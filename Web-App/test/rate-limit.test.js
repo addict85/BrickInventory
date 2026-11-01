@@ -71,7 +71,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
 
   // Alle Aufrufstellen gehen über den gemeinsamen Weg.
   for (const datei of ['clients/rebrickable.ts', 'src/katalog/partsImport.ts', 'src/sets/dienst.ts',
-                       'jobs/partsCatalogEnrich.ts', 'jobs/backfillBlPartNumbers.ts',
+                       'src/katalog/teileAnreicherung.ts',
                        'jobs/rebrickableCsvSync.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.doesNotMatch(src, /rebrickableDailyLimiter/,
@@ -143,7 +143,7 @@ test('das Eingabefeld zeigt denselben Standard an', () => {
 // ── Punkt 3: Zähler in der Datenbank ───────────────────────────────────────
 
 test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
-  const src = fs.readFileSync(path.join(ROOT, 'src/konto/loginLimiter.ts'), 'utf8');
+  const src = require('./helpers/sources').dienstQuelle('src/konto/loginLimiter.ts');
   assert.match(src, /rate_limit_attempts/,
     'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
   assert.match(src, /ON CONFLICT \(key\) DO UPDATE/,

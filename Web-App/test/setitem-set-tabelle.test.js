@@ -31,8 +31,6 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const APP = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main', 'java',
-  'ch', 'brickinventoryapp');
 
 const ohneKommentare = (s) =>
   s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*(\/\/|\*).*$/gm, '');
@@ -79,7 +77,7 @@ test('die Tabelle beginnt auf einer eigenen Zeile', () => {
 });
 
 test('die App zeigt dieselben drei Spalten', () => {
-  const datei = path.join(APP, 'ui', 'dialogs', 'SetItemDetailDialog.kt');
+  const datei = path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt');
   assert.ok(fs.existsSync(datei), `${datei} nicht gefunden`);
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
 
@@ -118,7 +116,7 @@ test('die gemeinsame Tabellenzeile sagt der Sprachausgabe, was das Antippen tut'
   // verschwunden — ein Verlust, den kein Bild zeigt und nur hoert, wer die
   // App nicht sieht.
   const zeile = ohneKommentare(
-    fs.readFileSync(path.join(APP, 'ui', 'screens', 'TabellenZeile.kt'), 'utf8'));
+    fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'TabellenZeile.kt'), 'utf8'));
   assert.match(zeile, /onClickLabel: String\? = null/,
     'TabellenZeile nimmt keine Beschriftung für die Sprachausgabe entgegen');
   // Weitere Argumente (role = Role.Button) dürfen dazwischen stehen.

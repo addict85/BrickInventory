@@ -16,6 +16,10 @@
  *      → rot: „Passkey als zweiter Faktor …“ (Berts Passkey öffnete Annas Konto)
  *   E  gespeicherten Zähler ignoriert (counter: 0, UPDATE ohne Zählerbedingung)
  *      → rot: „… und ein alter Zähler nicht“
+ *   F  (31.10.2026) in anmeldungPruefen() `...androidHerkuenfte()` aus
+ *      expectedOrigin gestrichen → rot: „die eingetragene App meldet sich an …“
+ *   G  (31.10.2026) in /passkey/anmelden `mit_token` überhört (immer false) →
+ *      rot: „die eingetragene App meldet sich an …“ (kein Token)
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  */
@@ -89,7 +93,7 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
   const ids = {};
   for (const n of ['pk_anna', 'pk_bert']) {
     await db.run('DELETE FROM users WHERE username = $1', [n]);
-    await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,0,1,1)', [n, hash]);
+    await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)', [n, hash]);
     ids[n] = (await db.get('SELECT id FROM users WHERE username=$1', [n])).id;
   }
 
@@ -192,6 +196,40 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     const ok = await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true,
       passkey: anna.anmelden(await optionen('zweiter_faktor'), { uv: false }) });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
+  });
+
+  const APP_HASH = crypto.createHash('sha256').update('app-zertifikat').digest();
+  const appHerkunft = (h) => `android:apk-key-hash:${b64u(h)}`;
+
+  await t.test('die eingetragene App meldet sich an und bekommt einen Token', async (tt) => {
+    process.env.PASSKEY_ANDROID_ZERTIFIKATE = APP_HASH.toString('hex').match(/../g).join(':');
+    tt.after(() => { delete process.env.PASSKEY_ANDROID_ZERTIFIKATE; });
+    const a = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }),
+      mit_token: true, scope: 'app', label: 'Pixel' });
+    assert.equal(a.status, 200, JSON.stringify(a.body));
+    assert.match(a.body.token, /^[0-9a-f]{64}$/);
+    assert.equal(a.body.token_info.scope, 'app');
+    const ich = await fetch(`${basis}/me`, { headers: { authorization: `Bearer ${a.body.token}` } });
+    assert.equal((await ich.json()).user.id, ids.pk_anna, 'Der Token gehört dem Konto des Passkeys');
+
+    const ohne = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen()) });
+    assert.equal(ohne.status, 200);
+    assert.equal(ohne.body.token, undefined, 'Der Browser bekommt keinen Token');
+
+    const zweiter = await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true,
+      passkey: anna.anmelden(await optionen('zweiter_faktor'), { origin: appHerkunft(APP_HASH) }) });
+    assert.equal(zweiter.status, 200, 'Auch als zweiter Faktor gilt die App');
+  });
+
+  await t.test('eine App mit anderem oder ohne eingetragenes Zertifikat wird abgewiesen', async (tt) => {
+    const fremd = crypto.createHash('sha256').update('fremdes-zertifikat').digest();
+    process.env.PASSKEY_ANDROID_ZERTIFIKATE = APP_HASH.toString('hex');
+    tt.after(() => { delete process.env.PASSKEY_ANDROID_ZERTIFIKATE; });
+    const r = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen(), { origin: appHerkunft(fremd) }), mit_token: true });
+    assert.equal(r.status, 401);
+    delete process.env.PASSKEY_ANDROID_ZERTIFIKATE;
+    const ohne = await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen(), { origin: appHerkunft(APP_HASH) }), mit_token: true });
+    assert.equal(ohne.status, 401, 'Ohne Eintrag nimmt der Server keine App an');
   });
 
   await t.test('löschen verlangt das Passwort', async () => {

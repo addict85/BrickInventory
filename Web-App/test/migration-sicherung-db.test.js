@@ -49,7 +49,7 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async (t) => {
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, ZWEIT]]);
   const anlegen = async (n) => (await db.get(
-    `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, 'x', 1, 1) RETURNING id`, [n])).id;
+    `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, 'x', true, true) RETURNING id`, [n])).id;
   const haupt = await anlegen(NAME), kind = await anlegen(ZWEIT);
   // Eine Haushaltsverknüpfung: Die Tabelle hat keine Spalte user_id, nur Fremdschlüssel auf users.
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, kind]);

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ressourcen.R
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
@@ -42,11 +43,10 @@ import org.robolectric.annotation.GraphicsMode
  * Barrierefreiheitsprüfung (ATF): Ein Knopf ohne Beschriftung, ein zu kleines
  * Ziel oder zu wenig Kontrast lässt den Test scheitern.
  *
- * Gegenproben — in CI zu messen (hier gibt es kein Android):
+ * Gegenproben (a) und (c) misst der CI-Job `gegenproben` (Android-App/
+ * gegenproben/ablauf-*.patch, er verlangt Rot); (b) und (d) sind noch ungemessen:
  *   (a) im Anmeldeknopf `onLogin(password, username, …)` vertauscht → rot
- *       „anmelden reicht Name und Passwort weiter“; ebenso das verticalScroll
- *       im LoginScreen entfernt (der Knopf läge auf dem kleinen Robolectric-
- *       Schirm unerreichbar unter dem Rand)
+ *       „anmelden reicht Name und Passwort weiter“
  *   (b) der Plus-Knopf ohne Beschreibung → ATF rot in „die Menge aendern …“
  *   (c) AddSetDialog übergibt die Anzahl fest als 1 → rot „ein Set erfassen …“
  *   (d) Gutschein-PIN immer sichtbar → rot „ein Gutschein zeigt den PIN …“

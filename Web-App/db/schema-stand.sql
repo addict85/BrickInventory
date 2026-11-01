@@ -135,7 +135,7 @@ CREATE TABLE catalog_cache (
   theme text,
   pieces integer,
   image_url text,
-  is_gear integer DEFAULT 0,
+  is_gear boolean NOT NULL DEFAULT false,
   bl_type text,
   fetched_at timestamp with time zone DEFAULT now(),
   CONSTRAINT catalog_cache_pkey PRIMARY KEY (set_number),
@@ -170,6 +170,19 @@ CREATE TABLE household_former_links (
 );
 CREATE INDEX idx_household_former_sub ON household_former_links USING btree (sub_user_id);
 CREATE INDEX idx_household_former_via ON household_former_links USING btree (via_user_id);
+
+CREATE TABLE idempotenz (
+  user_id integer NOT NULL,
+  schluessel text NOT NULL,
+  anfrage text NOT NULL,
+  status integer,
+  antwort text,
+  angelegt timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT idempotenz_pkey PRIMARY KEY (user_id, schluessel),
+  CONSTRAINT idempotenz_schluessel_check CHECK (((length(schluessel) >= 1) AND (length(schluessel) <= 100))),
+  CONSTRAINT idempotenz_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_idempotenz_angelegt ON idempotenz USING btree (angelegt);
 
 CREATE TABLE image_misses (
   cache_key text NOT NULL,
@@ -474,11 +487,10 @@ CREATE TABLE parts_summary (
   category_name text,
   image_url text,
   image_local text,
-  is_spare integer NOT NULL DEFAULT 0,
+  is_spare boolean NOT NULL DEFAULT false,
   total_quantity bigint DEFAULT 0,
   in_sets text,
   storage text,
-  CONSTRAINT parts_summary_ersatzteil_null_eins CHECK ((is_spare = ANY (ARRAY[0, 1]))),
   CONSTRAINT parts_summary_pkey PRIMARY KEY (user_id, part_key, color_id),
   CONSTRAINT parts_summary_user_fk FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -609,7 +621,7 @@ CREATE TABLE rb_colors (
   id integer NOT NULL,
   name text,
   rgb text,
-  is_trans text,
+  is_trans boolean NOT NULL DEFAULT false,
   bl_color_id integer,
   CONSTRAINT rb_colors_pkey PRIMARY KEY (id)
 );
@@ -639,9 +651,8 @@ CREATE TABLE rb_inventory_parts (
   part_num text NOT NULL,
   color_id integer,
   quantity integer,
-  is_spare integer NOT NULL DEFAULT 0,
+  is_spare boolean NOT NULL DEFAULT false,
   img_url text,
-  CONSTRAINT rb_inventory_parts_ersatzteil_null_eins CHECK ((is_spare = ANY (ARRAY[0, 1]))),
   CONSTRAINT rb_inventory_parts_pkey PRIMARY KEY (id)
 );
 CREATE INDEX idx_rb_inv_parts ON rb_inventory_parts USING btree (inventory_id);
@@ -749,10 +760,9 @@ CREATE TABLE set_teile (
   set_number text NOT NULL,
   part_number text NOT NULL,
   color_id integer NOT NULL,
-  is_spare integer NOT NULL DEFAULT 0,
+  is_spare boolean NOT NULL DEFAULT false,
   quantity integer DEFAULT 1,
   updated_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT set_teile_ersatzteil_null_eins CHECK ((is_spare = ANY (ARRAY[0, 1]))),
   CONSTRAINT set_teile_pkey PRIMARY KEY (set_number, part_number, color_id),
   CONSTRAINT set_teile_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
@@ -836,18 +846,15 @@ CREATE TABLE users (
   first_name text,
   last_name text,
   password_hash text NOT NULL,
-  is_admin integer NOT NULL DEFAULT 0,
-  is_active integer NOT NULL DEFAULT 1,
-  email_verified integer NOT NULL DEFAULT 0,
+  is_admin boolean NOT NULL DEFAULT false,
+  is_active boolean NOT NULL DEFAULT true,
+  email_verified boolean NOT NULL DEFAULT false,
   verification_token text,
   token_expires timestamp with time zone,
   reset_token text,
   reset_token_expires timestamp with time zone,
-  must_change_password integer DEFAULT 0,
+  must_change_password boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT users_email_verified_schalter CHECK ((email_verified = ANY (ARRAY[0, 1]))),
-  CONSTRAINT users_is_active_schalter CHECK ((is_active = ANY (ARRAY[0, 1]))),
-  CONSTRAINT users_is_admin_schalter CHECK ((is_admin = ANY (ARRAY[0, 1]))),
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_username_key UNIQUE (username)
 );

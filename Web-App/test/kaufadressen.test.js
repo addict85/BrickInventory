@@ -70,7 +70,7 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle je Seite', () 
   const treffer = [];
   for (const [basis, filter] of [
     [path.join(wurzel, 'Web-App'), (f) => /\.(ts|js)$/.test(f)],
-    [path.join(wurzel, 'Android-App', 'app', 'src', 'main'), (f) => f.endsWith('.kt')],
+    ...require('./helpers/android').quellwurzeln().map((w) => [w, (f) => f.endsWith('.kt')]),
   ]) {
     const stapel = [basis];
     while (stapel.length) {
@@ -90,7 +90,7 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle je Seite', () 
     }
   }
   assert.deepEqual(treffer.sort(), [
-    path.join('Android-App', 'app', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'ComparisonScreen.kt'),
+    path.join('Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'ComparisonScreen.kt'),
     path.join('Web-App', 'test', 'kaufadressen.test.js'),
     path.join('Web-App', 'src/finanzen/preisvergleich.ts'),
   ].sort(),

@@ -1,6 +1,17 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.util.IMG_PROXY
+import ch.brickinventoryapp.util.resolveFullUrl
+import ch.brickinventoryapp.util.resolveFullUrlViaProxy
+import ch.brickinventoryapp.util.resolveThumbUrl
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
+
+/** Serveradresse mit Schrägstrich am Ende: Die Helfer schneiden ihn ab. */
+private const val SERVER = "http://nas:3000/"
 
 /**
  * Vorschaubild-Rückfall auf die volle Auflösung, wenn "_thumb.jpg" (noch)
@@ -19,14 +30,14 @@ import org.junit.Test
 class ThumbFallbackTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
+        val f = java.io.File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
 
     @Test
     fun `rememberTileImageWithFallback existiert`() {
-        val src = read("util/ImageUrls.kt")
+        val src = read("util/BildRueckfall.kt")
         assert(src.contains("fun rememberTileImageWithFallback(")) {
             "Der Rückfall-Helfer fehlt"
         }
@@ -36,36 +47,12 @@ class ThumbFallbackTest {
 
     @Test
     fun `imageLocal wird unverändert übernommen — kein eigener _thumb-Rateversuch mehr`() {
-        // Die tiefere Ursache, warum Bilder auch nach einem vollständigen
-        // App-Neustart fehlten: utils/images.ts (Server) prüft bereits, ob
-        // "_thumb.jpg" existiert, und liefert ja nachdem den Thumb- ODER den
-        // Original-Pfad. Lieferte der Server den Original-Pfad (weil die
-        // Vorschau fehlt), konstruierte der Client TROTZDEM seinen eigenen
-        // "_thumb.jpg"-Pfad daraus — denselben, von dem der Server soeben
-        // festgestellt hatte, dass es ihn nicht gibt. Das scheiterte
-        // zuverlässig, unabhängig von verstrichener Zeit oder Neustarts.
-        val src = read("util/ImageUrls.kt")
-        // Kommentare ausblenden: Der Erklärtext nennt "toThumbPath" selbst,
-        // als Beschreibung dessen, was NICHT mehr passiert.
-        val code = src.lines().joinToString("\n") { if (it.trim().startsWith("//")) "" else it }
-        val fn = code.substring(code.indexOf("private fun resolveImageUrl"))
-        assert(fn.contains("imageLocal != null ->")) { "Der imageLocal-Zweig fehlt" }
-        assert(!fn.contains("toThumbPath(")) {
-            "imageLocal darf clientseitig nicht mehr zu einem eigenen _thumb-Pfad umgebaut werden"
-        }
-        assert(!code.contains("fun toThumbPath")) {
-            "Die tote Funktion sollte vollständig entfernt sein, nicht nur ungenutzt"
-        }
-        // Direkt im imageLocal-Zweig: "$base$imageLocal" unverändert.
-        val branchEnd = fn.indexOf("imageUrl != null")
-        val branch = fn.substring(0, branchEnd)
-        // Nicht am NAMEN der Zwischenvariablen festhalten: Der Zweig legt
-        // inzwischen `path` an (für thumb=true ist das imageLocal unverändert,
-        // für die volle Auflösung ohne "_thumb"-Suffix). Geprüft wird, was
-        // zählt — base + Serverpfad, ohne clientseitigen Umbau.
-        assert(branch.contains("\"\$base\$imageLocal\"") || branch.contains("\"\$base\$path\"")) {
-            "imageLocal muss unverändert an base angehängt werden"
-        }
+        // Der Server prüft, ob die Vorschau existiert, und liefert den passenden
+        // Pfad; ein clientseitig geratenes "_thumb.jpg" scheiterte genau dann.
+        assertEquals("http://nas:3000/images/sets/10283-1.jpg",
+            resolveThumbUrl(SERVER, "/images/sets/10283-1.jpg", "https://cdn.rebrickable.com/x.jpg"))
+        assertEquals("http://nas:3000/images/sets/10283-1_thumb.jpg",
+            resolveThumbUrl(SERVER, "/images/sets/10283-1_thumb.jpg", null))
     }
 
     @Test
@@ -127,11 +114,6 @@ class ThumbFallbackTest {
  * Beobachtbarkeit selbst.
  */
 class ImageClientLoggingTest {
-    private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
 
     @Test
     fun `HttpLoggingInterceptor haengt nicht mehr nur am API-Client`() {
@@ -172,55 +154,24 @@ class ImageClientLoggingTest {
  * jetzt die umgekehrte Aussage.
  */
 class FullResolutionBypassesProxyTest {
-    private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
 
     @Test
     fun `resolveFullUrl leitet die volle Aufloesung ueber den Server-Proxy`() {
-        val src = read("util/ImageUrls.kt")
-        val fn = src.substring(src.indexOf("private fun resolveImageUrl"))
-        assert(fn.contains("} else if (!thumb) {")) {
-            "Der eigene Zweig für die volle Auflösung fehlt"
-        }
-        val branchStart = fn.indexOf("} else if (!thumb) {")
-        val branchEnd = fn.indexOf("} else {", branchStart)
-        val branch = fn.substring(branchStart, branchEnd)
-        // ── Umgekehrt (Nachtrag 38, Marcos Entscheidung: „die Proxy-Lösung")
-        // Vorher verlangte dieser Test das Gegenteil: rohe CDN-Adresse ohne
-        // Proxy, mit der Begründung, ein einmaliger Detailabruf sei so
-        // schneller und entlaste den Server.
-        //
-        // Das ist die Ausnahme, die die Regel wertlos macht: Ein Gerät, das
-        // irgendwo doch direkt mit Rebrickable spricht, trifft dort auf
-        // Cloudflares Bot-Erkennung — genau die Ursache, gegen die in dieser
-        // App bereits Browser-Kennung, Referer-Kopfzeile, Drosselung und
-        // AVIF-Vermeidung eingebaut wurden. Jede dieser Massnahmen behandelte
-        // ein Symptom davon. Ausserdem bringt der Server Plattencache,
-        // Negativ-Cache und Entpacken mit — Arbeit, die bei einem
-        // Direktzugriff wirkungslos bleibt.
-        // Geprueft wird die KONSTANTE, nicht die abgeschriebene Adresse: Der
-        // Proxy ist nach /api/v1/img-proxy gezogen (Nachtrag 162), und ein
-        // Test, der die Zeichenkette woertlich sucht, faellt bei jedem Umzug —
-        // oder bleibt gruen und prueft auf eine Adresse, die es nicht gibt.
-        assert(branch.contains("${'$'}IMG_PROXY")) {
-            "Volle Auflösung muss über den Server-Proxy laufen — kein Gerät spricht direkt mit dem CDN"
-        }
-        assert(!branch.contains("&thumb=1")) {
-            "Volle Auflösung darf kein &thumb=1 tragen"
-        }
+        // Kein Gerät spricht direkt mit dem CDN (Cloudflares Bot-Erkennung);
+        // die volle Auflösung trägt kein &thumb=1.
+        assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fsets%2F1+2.jpg",
+            resolveFullUrl(SERVER, null, "https://cdn.rebrickable.com/sets/1 2.jpg"))
+        assertEquals("ein Server-Pfad braucht keinen Proxy", "http://nas:3000/media/a.jpg",
+            resolveFullUrl(SERVER, null, "/media/a.jpg"))
+        assertNull(resolveFullUrl(SERVER, null, null))
     }
 
     @Test
     fun `Vorschaubild laeuft weiterhin ueber den Proxy mit thumb=1`() {
-        val src = read("util/ImageUrls.kt")
-        val fn = src.substring(src.indexOf("private fun resolveImageUrl"))
-        assert(fn.contains("\"${'$'}base${'$'}IMG_PROXY?url=${'$'}encoded&thumb=1\"")) {
-            "Das Vorschaubild muss weiterhin über den Server-Proxy laufen"
-        }
+        assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fx.jpg&thumb=1",
+            resolveThumbUrl(SERVER, null, "https://cdn.rebrickable.com/x.jpg"))
     }
+
 }
 
 /**
@@ -231,21 +182,15 @@ class FullResolutionBypassesProxyTest {
  */
 class PartsMinifigsFullResBypassProxyTest {
     private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
+        val f = java.io.File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
 
     @Test
     fun `resolveFullUrlViaProxy existiert und wickelt CDN-Adressen in den Proxy`() {
-        val src = read("util/ImageUrls.kt")
-        assert(src.contains("fun resolveFullUrlViaProxy(")) { "Der Helfer fehlt" }
-        // Wie oben: erst Kommentare weg, dann das Fenster — sonst entscheidet
-        // die Länge des Erklärtexts über das Ergebnis.
-        val code = src.lines().joinToString("\n") { if (it.trim().startsWith("//")) "" else it }
-        val fn = code.substring(code.indexOf("fun resolveFullUrlViaProxy("), code.indexOf("fun resolveFullUrlViaProxy(") + 500)
-        assert(fn.contains("${'$'}IMG_PROXY?url=")) { "Muss über den Proxy laufen" }
-        assert(!fn.contains("&thumb=1")) { "Volle Auflösung darf kein &thumb=1 haben" }
+        assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fp.png",
+            resolveFullUrlViaProxy(SERVER, null, "https://cdn.rebrickable.com/p.png"))
     }
 
     @Test
@@ -306,7 +251,7 @@ class PartsMinifigsFullResBypassProxyTest {
  */
 class SetDetailUsesFullResolutionTest {
     private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
+        val f = java.io.File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -339,50 +284,36 @@ class SetDetailUsesFullResolutionTest {
  * denselben Wert, sobald der Server einen Vorschau-Pfad zurückgab — der
  * Normalfall bei bereits heruntergeladenen Sets. Dieselbe Umkehrung wie
  * fullUrl() in der Webapp (public/js/01-core.js).
+ *
+ * Die Adress-Prüfungen dieser Datei rufen die Helfer auf, statt ihren Quelltext
+ * zu lesen. Gegenproben (31.10.2026, gemessen):
+ *   A  in resolveImageUrl das Entfernen von `_thumb` weggelassen → rot „resolveFullUrl
+ *      entfernt …“ und „Vorschau und volle Aufloesung …“
+ *   B  `&thumb=1` beim Vorschaubild weggelassen → rot „Vorschaubild laeuft …“
+ *   C  im Zweig der vollen Auflösung den Proxy umgangen (`imageUrl` direkt) → rot
+ *      „resolveFullUrl leitet …“ und NoDirectCdnAccessTest „resolveImageUrl-Helfer …“
  */
 class FullResolutionStripsThumbSuffixTest {
-    private fun read(rel: String): String {
-        val f = java.io.File("src/main/java/ch/brickinventoryapp/$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
 
     @Test
     fun `resolveFullUrl entfernt ein vorhandenes _thumb-Suffix`() {
-        val src = read("util/ImageUrls.kt")
-        val fn = src.substring(src.indexOf("private fun resolveImageUrl"), src.indexOf("imageUrl != null ->"))
-        assert(fn.contains("if (thumb) imageLocal")) {
-            "Für die Vorschau muss imageLocal unverändert bleiben"
-        }
-        assert(fn.contains("""else imageLocal.replace(Regex(""")) {
-            "Für volle Auflösung muss ein _thumb-Suffix entfernt werden"
-        }
-        assert(fn.contains("_thumb")) { "Das Muster muss tatsächlich nach _thumb suchen" }
+        assertEquals("http://nas:3000/images/sets/10283-1.jpg", resolveFullUrl(SERVER, "/images/sets/10283-1_thumb.jpg", null))
+        assertEquals("die Abfrage bleibt", "http://nas:3000/images/p/3001.png?v=2",
+            resolveFullUrl(SERVER, "/images/p/3001_thumb.png?v=2", null))
+        assertEquals("nur das Suffix vor der Endung", "http://nas:3000/images/x_thumbnail.jpg",
+            resolveFullUrl(SERVER, "/images/x_thumbnail.jpg", null))
     }
 
     @Test
     fun `resolveFullUrlViaProxy entfernt ebenfalls ein vorhandenes _thumb-Suffix`() {
-        val src = read("util/ImageUrls.kt")
-        val fn = src.substring(src.indexOf("fun resolveFullUrlViaProxy("), src.indexOf("fun resolveFullUrlViaProxy(") + 500)
-        assert(!fn.contains("imageLocal != null -> \"\$base\$imageLocal\"")) {
-            "Die alte, unveränderte Durchreiche darf nicht mehr vorkommen"
-        }
-        assert(fn.contains("_thumb")) { "Muss ebenfalls ein _thumb-Suffix entfernen" }
+        assertEquals("http://nas:3000/images/minifigs/sw0001.jpg",
+            resolveFullUrlViaProxy(SERVER, "/images/minifigs/sw0001_thumb.jpg", null))
     }
 
     @Test
     fun `Vorschau und volle Aufloesung liefern unterschiedliche Adressen bei einem Vorschau-Pfad`() {
-        // Nachstellung der Kotlin-Logik in JS, um das Ergebnis konkret zu
-        // vergleichen statt nur die Textform zu prüfen.
-        fun stripThumb(s: String) = Regex("""_thumb(\.[^.?]+)(\?|$)""").replace(s) { m -> "${m.groupValues[1]}${m.groupValues[2]}" }
-        val serverThumbPath = "/images/sets/10283-1_thumb.jpg"
-        val thumbResult = serverThumbPath  // resolveThumbUrl: unverändert
-        val fullResult = stripThumb(serverThumbPath)  // resolveFullUrl: bereinigt
-        assert(thumbResult != fullResult) {
-            "Vorschau und volle Auflösung dürfen bei einem Vorschau-Pfad nicht identisch sein"
-        }
-        assert(fullResult == "/images/sets/10283-1.jpg") {
-            "Falsches Ergebnis nach dem Entfernen des Suffixes: $fullResult"
-        }
+        val pfad = "/images/sets/10283-1_thumb.jpg"
+        assertNotEquals(resolveThumbUrl(SERVER, pfad, null), resolveFullUrl(SERVER, pfad, null))
     }
+
 }

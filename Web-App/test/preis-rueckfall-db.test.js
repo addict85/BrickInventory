@@ -51,7 +51,7 @@ require.cache[blPfad].exports = Object.assign({}, echt, {
 async function konto(name, set) {
   await db.run('DELETE FROM users WHERE username = $1', [name]).catch(() => {});
   const uid = (await db.get(
-    `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, 'x', 1, 1) RETURNING id`, [name])).id;
+    `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, 'x', true, true) RETURNING id`, [name])).id;
   // Die Währung ausdrücklich: Ohne eigene Einstellung gälte die globale Vorgabe.
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
                 ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`, [uid]);
@@ -120,7 +120,7 @@ test('„BrickLink kennt das Set nicht" gilt nur eine Weile', { concurrency: 1 }
   const bewerte = async () => (await computeSetsValuation(uid, [uid])).sets.find(s => s.set_number === SET);
 
   // Frisch markiert: kein Abruf, kein Preis, und der Grund steht dabei.
-  await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear, fetched_at) VALUES ($1, 'x', 'NONE', 1, NOW())`, [SET]);
+  await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear, fetched_at) VALUES ($1, 'x', 'NONE', true, NOW())`, [SET]);
   abrufe = [];
   const frisch = await bewerte();
   assert.deepEqual(abrufe, [], 'frische Markierung: es wird trotzdem abgerufen');

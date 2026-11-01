@@ -94,7 +94,7 @@ async function starteApp(t, opt = {}) {
   const NAME = opt.name || `app_${process.pid}`, PASS = 'app-Passwort-1';
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
-    VALUES ($1, $2, $3, 1, 1, 1) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
+    VALUES ($1, $2, $3, true, true, true) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [uid, opt.sprache || 'de']);
   if (opt.bestand) await opt.bestand(db, uid);
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
@@ -165,14 +165,17 @@ async function starteApp(t, opt = {}) {
   const bis = async (ausdruck, was, versuche = 100) => {
     for (let i = 0; i < versuche; i++) { if (await b.auswerten(ausdruck).catch(() => false)) return; await warte(100); }
     const zustand = await b.auswerten(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
-    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}`);
+    const s401 = abgewiesen.length ? `\n401 auf: ${abgewiesen.join(', ')}` : '';
+    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}${s401}\nServer:\n${server.log().slice(-3000)}`);
   };
   await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
     document.getElementById('btn-login').click(); true`);
-  await bis(`document.getElementById('app')?.style.display === 'block' || getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet');
+  // 30 s wie beim Chrome-Start: Die Anmeldung rechnet bcrypt mit 12 Runden und
+  // schreibt die Sitzung; auf einem ausgelasteten Läufer dauerte das über 10 s.
+  await bis(`document.getElementById('app')?.style.display === 'block' || getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet', 300);
   // Am Telefon steht der Name nur im Menü; geprüft wird deshalb das Kontoschild selbst.
   await bis(`(document.getElementById('ubadge')?.textContent || '').includes(${JSON.stringify(NAME)})`, 'Kontoname im Kontoschild');
   // Der Start ist erst entschieden, wenn die App ohne Rebrickable-Schlüssel auf

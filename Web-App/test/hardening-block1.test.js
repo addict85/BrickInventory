@@ -15,12 +15,9 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-const KOTLIN_SCREENS = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
-                                 'java', 'ch', 'brickinventoryapp', 'ui', 'screens');
-
 // ── Punkt 1 ────────────────────────────────────────────────────────────────
 test('die Session-ID wird beim Anmelden erneuert', () => {
-  const auth = read('src/konto/auth.ts');
+  const auth = read('src/konto/http/anmeldung.ts');
   assert.match(auth, /function establishSession/, 'Der gemeinsame Helfer fehlt');
   assert.match(auth, /req\.session\.regenerate\(/,
     'Ohne regenerate() behält der Browser die ID von vor dem Login (Session Fixation)');
@@ -28,13 +25,18 @@ test('die Session-ID wird beim Anmelden erneuert', () => {
     'Ohne save() wäre die neue ID bei einer unmittelbar folgenden Anfrage noch nicht gültig');
 
   const routes = read('routes/auth.ts');
-  // Drei Aufrufe: Login, Passkey-Anmeldung — und seit der Sitzungs-Bereinigung auch
-  // /change-password. Dort werden erst ALLE Sitzungen des Kontos verworfen
-  // (ein Passwortwechsel soll einen fremden Zugang beenden, nicht nur die
-  // Tokens) und danach die eigene neu aufgebaut, damit man nicht aus dem
-  // eigenen Tab fliegt. Die neue ID ist dabei erwünscht, nicht Nebensache.
-  assert.equal((routes.match(/establishSession\(req,/g) || []).length, 3,
-    'Login, Passkey-Anmeldung und Passwortwechsel müssen die Session erneuern');
+  // Zwei Aufrufe: angemeldetAntworten() (Login und Passkey-Anmeldung) und
+  // /change-password, das nach dem Verwerfen aller Sitzungen die eigene neu
+  // aufbaut. Ob die Passkey-Anmeldung wirklich eine Sitzung bekommt, prüft
+  // passkeys-db.test.js über das Cookie.
+  assert.equal((routes.match(/establishSession\(req,/g) || []).length, 2,
+    'Anmeldung und Passwortwechsel müssen die Session erneuern');
+  const helfer = routes.slice(routes.indexOf('async function angemeldetAntworten'), routes.indexOf("router.post('/login'"));
+  assert.match(helfer, /establishSession\(req,/, 'der gemeinsame Anmeldeweg erneuert die Session nicht');
+  for (const route of ["router.post('/login'", "router.post('/passkey/anmelden',"]) {
+    const rumpf = routes.slice(routes.indexOf(route)).split(/\n\}\);\n/)[0];
+    assert.match(rumpf, /angemeldetAntworten\(req, res,/, `${route} geht nicht über den gemeinsamen Anmeldeweg`);
+  }
   // Der QR-Login legt seit den Token-Scopes KEINE Sitzung mehr an (sie trüge
   // die vollen Rechte an Scope `app` vorbei) — geprüft im Verhalten in
   // token-scope-rotation-db („Scope app: …“, kein Set-Cookie).
@@ -51,11 +53,11 @@ test('Rate-Limits zählen worker-übergreifend', () => {
   // CREATE-Anweisung ist inzwischen entfernt). Geprüft wird jetzt, was die
   // Implementierung tatsächlich zusichert: Zähler in der Datenbank, atomares
   // Hochzählen in einem Statement, Rückfall auf den Prozessspeicher.
-  const lim = read('src/konto/loginLimiter.ts');
+  const lim = require('./helpers/sources').dienstQuelle('src/konto/loginLimiter.ts');
   assert.match(lim, /rate_limit_attempts/, 'Der Zähler muss in der Datenbank liegen');
   assert.match(lim, /ON CONFLICT \(key\) DO UPDATE/,
     'Hochzählen und Fensterwechsel gehören in EIN Statement');
-  assert.match(lim, /Rückfallebene, falls die DB klemmt/,
+  assert.match(lim, /const _attempts = new Map/,
     'Ein Datenbankfehler darf den Login nicht blockieren');
 
   // Dass die Tabelle angelegt wird, prüft schema-basis-db.test.js am Schema.
@@ -138,7 +140,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
   // beiden zu pruefen reichte nicht — die Ausnahmeliste hier war jahrelang
   // gruen, WEIL nur ihr Vorhandensein geprueft wurde und nie ihr Nutzen.
   const { ohneKommentare, setKernQuelle, coreQuelle } = require('./helpers/sources');
-  const auth = ohneKommentare(read('src/konto/auth.ts'));
+  const auth = ohneKommentare(read('src/konto/auth.ts') + read('src/konto/http/anmeldung.ts'));
 
   assert.doesNotMatch(auth, /TOKEN_QUERY_ALLOWED/,
     'Die Ausnahmeliste ist zurueck — damit auch der Sitzungstoken in der Adresszeile');
@@ -168,9 +170,9 @@ test('kein Token reitet mehr in der Adresszeile', () => {
     // Android-Baum statisch auf und kann ein variables Segment nicht sehen.
     // Der erste Entwurf dieser Stelle hatte genau das — und wurde von jener
     // Pruefung prompt als „nicht aufloesbar" gemeldet.
-    ...[path.join(KOTLIN_SCREENS, 'SetDetailSections.kt'),
-        path.join(KOTLIN_SCREENS, 'SetDetailScreen.kt'),
-        path.join(KOTLIN_SCREENS, 'PdfViewerScreen.kt')]
+    ...[path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'),
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailScreen.kt'),
+        path.join(__dirname, '..', '..', 'Android-App', 'feature-finanzen', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'PdfViewerScreen.kt')]
       .map(voll => {
         assert.ok(fs.existsSync(voll),
           `${path.basename(voll)} steht nicht mehr dort — Pfad im Test veraltet`);

@@ -69,8 +69,8 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels',
 
   await db.run('DELETE FROM users WHERE username IN ($1,$2)', [CHEF, ZIEL]);
   const hash = await bcrypt.hash(PASS, 4);
-  await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,1,1,1)', [CHEF, hash]);
-  await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,1,1,1)', [ZIEL, hash]);
+  await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)', [CHEF, hash]);
+  await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)', [ZIEL, hash]);
   const idZiel = (await db.get('SELECT id FROM users WHERE username=$1', [ZIEL])).id;
 
   const app = express();

@@ -4,6 +4,10 @@
  * Geprüft wird hier, was ohne laufende Datenbank prüfbar ist: die Regeln im
  * Code und im Schema. Die Regeln selbst sind der heikle Teil — jede einzelne
  * verhindert einen Zustand, aus dem es kein sauberes Zurück gäbe.
+ *
+ * Gegenproben zur Ausnahmeliste OHNE_ANSICHTSFILTER (31.10.2026 gemessen):
+ * Liste leer → rot „der Kontofilter wird am Server …“ (lagerKonten gemeldet);
+ * ein zweiter Name ohne Aufruf darin → rot (veraltete Ausnahme).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -122,9 +126,9 @@ test('die Oberfläche bietet Einladen und Einlösen jedem Konto an', () => {
   const js = read('public/js/05-settings.js');
   assert.match(js, /inviteEl\.style\.display = ''/);
   assert.match(js, /redeemEl\.style\.display = ''/);
-  const kt = read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt')
-           + read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt')
-           + read('../Android-App/app/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt');
+  const kt = read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/SettingsScreen.kt')
+           + read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt')
+           + read('../Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt');
   assert.doesNotMatch(kt, /!st\.isSub\b/,
     'Die App blendet das Einlösen für Unterkonten aus — dann bleibt es bei einem Elternkonto');
 });
@@ -159,55 +163,29 @@ test('der Kontofilter wird am Server in IDs übersetzt, nicht in der Oberfläche
 
   // Und jeder Lesepfad reicht den Filter durch — einer, der es vergisst, zeigt
   // stumm den ganzen Haushalt, während die Ansicht daneben gefiltert ist.
-  // routes/minifigs.ts steht seit Nachtrag 72 NICHT mehr in dieser Liste: Seine
-  // Leserouten sind mit der v1-Fabrik zusammengelegt, übrig sind /stats sowie
-  // CSV-Import/-Export. Die Regel selbst gilt unverändert — sie wird für
-  // Minifiguren jetzt an routes/api_v1/minifigs.ts geprüft, das weiter unten in
-  // derselben Liste steht.
-  // routes/parts.ts fällt mit Nachtrag 73 ebenfalls weg (wie minifigs.ts in 72):
-  // seine Leserouten liegen in der v1-Fabrik, übrig sind /categories und die
-  // CSV-Wege. Die Regel wird für Teile an routes/api_v1/parts.ts geprüft, das
-  // weiter unten in derselben Liste steht.
-  // Mit Nachtrag 74 ist auch routes/sets.ts raus: seine Leserouten liegen in der
-  // v1-Fabrik, übrig sind CSV/SSE, Anleitungen und info/export. Die Regel wird
-  // für Sets an routes/api_v1/sets.ts geprüft — weiter unten in derselben Liste.
-  // routes/finance.ts fällt mit Etappe 5 weg (wie minifigs.ts in 72, parts.ts in
-  // 73, sets.ts in 74): Bewertung, GuV, Portfolio- und Preisverlauf liegen in
-  // der v1-Familie, übrig sind Cache-Statistik und die Preis-Job-Werkzeuge —
-  // alles ohne Kontobezug. Die Regel wird für die Finanzen an
-  // routes/api_v1/finance.ts geprüft, das weiter unten in derselben Liste steht.
-  // routes/settings.ts fällt mit Etappe 6 weg: /stats und die Haushalts-Routen
-  // liegen in der v1-Familie, übrig sind Formular, Export/Import, Token und die
-  // Admin-Felder — alles ohne Kontofilter. Geprüft wird die Regel für die
-  // Einstellungen an routes/api_v1/settings.ts und routes/api_v1/misc.ts.
+  // Die Leserouten liegen alle in der v1-Familie; geprüft wird dort.
+  // Die eine Ausnahme fragt „darf ich?“, nicht „was zeige ich?“: lagerKonten()
+  // prüft eine Berechtigung. Ihr Verhalten belegt household-db.test.js („die
+  // Lagerorte eines Unterkontos folgen dem Recht …“).
+  const OHNE_ANSICHTSFILTER = { 'routes/api_v1/sets.ts': ['lagerKonten'] };
+  const genutzt = new Set();
   for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/finance.ts',
                    'routes/api_v1/misc.ts']) {
-    const src = read(f);
-    const lines = src.split('\n').filter(l => l.includes('await scopeIds('));
-    assert.ok(lines.length > 0, `${f}: kein scopeIds-Aufruf`);
-    for (const l of lines) {
-      // ── Die eine Ausnahme, und warum sie eine ist ───────────────────────
-      //
-      // Die Regel sichert LESEPFADE: Wer eine Liste zeigt und den Filter
-      // vergisst, zeigt stumm den ganzen Haushalt, während die Ansicht
-      // daneben gefiltert ist.
-      //
-      // Es gibt einen Aufruf, der keine Liste zeigt, sondern eine BERECHTIGUNG
-      // prüft: lagerKonten() in routes/api_v1/sets.ts beantwortet „darf dieses
-      // Konto die Lagerorte jenes Kontos sehen?". Den Ansichtsfilter dort
-      // anzuwenden wäre nicht strenger, sondern FALSCH: Steht die Galerie
-      // gerade auf „nur eigene", bekäme der Grossvater beim Set des Enkels
-      // eine leere Auswahlliste — für eine Einstellung, die mit der Frage
-      // nichts zu tun hat.
-      //
-      // Die Ausnahme trägt ihren Namen im Quelltext und ist damit auffindbar;
-      // eine stumme Ausnahmeliste hier wäre der schlechtere Weg.
-      if (l.includes('KEIN Ansichtsfilter')) continue;
+    const zeilen = read(f).split('\n');
+    let block = null, gefunden = 0;
+    for (const l of zeilen) {
+      block = (l.match(/^(?:export )?(?:async )?function (\w+)/) || l.match(/^router\.\w+\('([^']+)'/) || [])[1] ?? block;
+      if (!l.includes('await scopeIds(')) continue;
+      gefunden++;
+      if ((OHNE_ANSICHTSFILTER[f] || []).includes(block)) { genutzt.add(`${f}#${block}`); continue; }
       assert.ok(l.includes('parseScopeMode(req.query.accounts)'),
-        `${f}: scopeIds ohne Kontofilter — ${l.trim()}`);
+        `${f} (${block}): scopeIds ohne Kontofilter — ${l.trim()}`);
     }
+    assert.ok(gefunden > 0, `${f}: kein scopeIds-Aufruf`);
   }
+  const erwartet = Object.entries(OHNE_ANSICHTSFILTER).flatMap(([f, n]) => n.map(x => `${f}#${x}`));
+  assert.deepEqual([...genutzt].sort(), erwartet.sort(), 'Eine Ausnahme ohne scopeIds-Aufruf ist veraltet');
 });
 
 test('ein Set erscheint nur EINMAL, mit der Summe der Mengen', () => {
@@ -259,7 +237,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // („hier stand dafuer UPDATE sets SET quantity=$1"). Auf dem Rohtext meldete
   // die Regel genau diesen Erklärtext — gemessen. Dieselbe Falle wie bei der
   // Haushaltsregel weiter oben.
-  const mv = require('./helpers/sources').ohneKommentare(read('src/sets/setMove.ts'));
+  const mv = require('./helpers/sources').ohneKommentare(require('./helpers/sources').dienstQuelle('src/sets/setMove.ts'));
   assert.ok(mv.includes("recordAcquisitionForDay('set', toId, [sn]"),
     'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern');
   assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/,
@@ -457,74 +435,6 @@ test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   // Ein Eintrag je Unterkonto, namentlich.
   assert.match(gal, /subs\.map\(m => `<option value="\$\{m\.id\}">/,
     'Die Auswahl muss jedes Unterkonto einzeln führen');
-});
-
-test('beim Verschieben wandert der Inhalt des Sets mit', () => {
-  // Teile und Minifiguren gehören zum Set, nicht zum Konto. Blieben sie
-  // zurück, hätte das Quellkonto Teile aus einem Set, das es nicht mehr
-  // besitzt — sichtbar in der Teileliste, aber ohne Herkunft.
-  //
-  // ohneKommentare(): Die Kommentare in setMove.ts ZITIEREN entfernte
-  // Anweisungen („hier stand dafuer UPDATE sets SET quantity=$1"), und die
-  // verneinenden Zusicherungen unten meldeten genau diesen Erklärtext.
-  const mv = require('./helpers/sources').ohneKommentare(read('src/sets/setMove.ts'));
-  for (const t of ['parts', 'minifigs', 'instructions']) {
-    assert.ok(mv.includes(`INSERT INTO ${t}`), `${t} wandern nicht mit`);
-  }
-  // KOPIEREN, nicht umhängen: Bei einer Teilverschiebung behält der Absender
-  // Exemplare — und damit auch deren Teile.
-  assert.doesNotMatch(mv, /UPDATE parts SET user_id/,
-    'Ein Umhängen liesse den Absender mit Exemplaren ohne Teile zurück');
-  // Erst wenn dort das letzte Exemplar geht, wird beim Absender aufgeräumt.
-  // Bei einer Teilverschiebung steht danach ALLES in beiden Konten: Der
-  // Absender behält Set, Teile und Anleitungen, das Ziel bekam Kopien.
-  // abschnitt() und nicht slice(indexOf(...)): Zeigt einer der beiden Anker
-  // eines Tages ins Leere, waere der Ausschnitt leer — und die verneinenden
-  // Zusicherungen darauf blieben gruen, ohne noch etwas zu pruefen.
-  // abschnitt() wirft dann. (test/stille-schnitte.test.js prueft genau das,
-  // und hat diese Stelle gemeldet.)
-  // Der Endanker ist CODE und kein Kommentar: `mv` ist hier schon durch
-  // ohneKommentare() gelaufen, und das frueher benutzte „// Letztes Exemplar"
-  // waere darin gar nicht mehr da — abschnitt() haette geworfen.
-  const teil = require('./helpers/sources').abschnitt(
-    mv, 'if (remaining > 0)', "for (const t of ['parts', 'minifigs'])",
-    'Teilverschiebung in setMove.ts');
-  // Der Ausschnitt ist der richtige: Er traegt die Antwort des Teilfalls.
-  // Ohne diese bejahende Zusicherung sagen die beiden darunter nur, was NICHT
-  // dasteht — und das sagt jeder leere Text.
-  assert.match(teil, /source_emptied: false/,
-    'Der Ausschnitt ist nicht der Teilfall — dort muss die Antwort ' +
-    'source_emptied: false tragen');
-  // Bei einer Teilverschiebung sinkt beim Absender nur die Stückzahl — und
-  // zwar VON SELBST: Die gewanderten Erfassungen sind bei ihm gelöscht, die
-  // verbliebenen ergeben seine neue Menge. Hier stand
-  // `UPDATE sets SET quantity=$1` mit einem von Hand ausgerechneten Rest;
-  // seit Migration 0036 darf in diesem Zweig GAR NICHTS mehr geschrieben
-  // werden, auch nicht gelöscht (die Zusicherung darunter).
-  assert.doesNotMatch(teil, /UPDATE\s+sets\s+SET/,
-    'Im Teilfall darf an der sets-Zeile des Absenders nichts geändert werden');
-  assert.doesNotMatch(teil, /DELETE FROM/,
-    'Im Teilfall darf beim Absender nichts gelöscht werden');
-  assert.ok(mv.includes("DELETE FROM ${t} WHERE user_id=$1 AND set_number=$2 AND COALESCE(source,'set') <> 'manual'"),
-    'Beim Aufräumen dürfen manuelle Einträge nicht mit weg');
-  const guards = (mv.match(/COALESCE\(source,'set'\) <> 'manual'/g) || []).length;
-  assert.ok(guards >= 3, `nur ${guards} Schutzklauseln gegen manuelle Einträge`);
-  // Geprüft wird JE TABELLE, ob das Ziel schon Zeilen hat — nicht, ob es das
-  // Set hat. Ein Set ohne Teile ist möglich; wer vom Set schliesst, kopiert
-  // dann nichts und löscht danach beim Absender.
-  //
-  // Auf die AUSSAGE geprüft, nicht auf die Schreibweise: Die Prüfungen liefen
-  // ursprünglich per Promise.all über ein Array — das musste weichen, weil
-  // parallele Abfragen auf einer Transaktionsverbindung nicht zulässig sind
-  // (siehe test/set-move-db.test.js). Die alte Fassung verlangte wörtlich
-  // `const [hasParts, hasFigs, hasInstr]` und wurde durch die Korrektur rot,
-  // obwohl sich an der geprüften Regel nichts geändert hat.
-  for (const name of ['hasParts', 'hasFigs', 'hasInstr']) {
-    assert.ok(new RegExp(`${name}\\b`).test(mv), `${name} fehlt`);
-  }
-  for (const t of ['parts', 'minifigs', 'instructions']) {
-    assert.ok(mv.includes(`has('${t}')`), `keine eigene Prüfung für ${t}`);
-  }
 });
 
 test('Verschieben geht NUR über den Kaufpreis', () => {

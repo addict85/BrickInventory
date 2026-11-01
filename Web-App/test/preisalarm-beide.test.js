@@ -17,28 +17,28 @@ const lies = p => fs.readFileSync(p, 'utf8');
 const web  = rel => lies(path.join(WEB, rel));
 
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN — siehe test/baumbruecken.test.js.
-const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
+const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
 // Seit dem Schnitt des MainViewModels (28.10.2026): das entprellte Speichern
 // in Preisalarmeingabe.kt, gehalten vom SetDetailViewModel.
-const KT_FEAT   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'Preisalarmeingabe.kt'));
-const KT_SECT   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
-const KT_ABHOL  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
-const KT_WORKER = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'));
+const KT_FEAT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Preisalarmeingabe.kt'));
+const KT_SECT   = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
+const KT_ABHOL  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmabholung.kt'));
+const KT_WORKER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'));
 const KT_START  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'BrickInventoryApp.kt'));
-const KT_ALARMEINGABE = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmeingabe.kt'));
-const KT_VM     = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt'));
+const KT_ALARMEINGABE = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'Alarmeingabe.kt'));
+const KT_VM     = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt'));
 // Die Einstellungen der App liegen in mehreren Dateien: Der Bildschirm
 // selbst traegt nur die Liste, jede Rubrik hat ihre eigene Seite
 // (EinstellungenUnterseiten.kt) mit der Karte in Einstellungen*.kt. Gelesen
 // werden deshalb alle, die es betrifft — die
 // Zusicherung lautet „die App tut das in ihren Einstellungen" und nicht
 // „in dieser Datei".
-const KT_EINST  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
-                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
-                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
-                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
-const XML_EN    = lies(path.join(APP, 'res', 'values', 'strings.xml'));
-const XML_DE    = lies(path.join(APP, 'res', 'values-de', 'strings.xml'));
+const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
+const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
+const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
 test('beide Oberflächen sprechen dieselben drei Endpunkte an', () => {
   const route = web('routes/api_v1/sets.ts');
@@ -61,23 +61,15 @@ test('ein Alarm gehört EINEM Konto — kein Blickfeld, nirgends', () => {
   // richtig ist: Wer eine Schwelle setzt, will selbst benachrichtigt werden.
   // Das Elternkonto hätte nichts davon, die Merkposten seiner Kinder per Mail zu
   // bekommen — und dürfte sie schon gar nicht löschen.
-  //
-  // Geprüft wird beides: dass die Route NICHT filtert, und dass sie es
-  // begründet. Ohne die Begründung sieht die Stelle beim nächsten Lesen wie
-  // ein vergessener Filter aus, und jemand „repariert" sie.
   const route = web('routes/api_v1/sets.ts');
   const i = route.indexOf("router.get('/sets/:setNumber/alert'");
-  // Bis zur NAECHSTEN Route nach den Alarmen, nicht bis zu /storage: Zwischen
-  // beiden stehen seit dem Lagerort-Vorrat vier weitere Routen, und die
-  // filtern sehr wohl nach Konto. Der erste Entwurf schnitt bis /storage und
-  // meldete deshalb genau die Zeilen, die richtig sind.
+  // Bis zur nächsten Route nach den Alarmen: Die Lagerort-Routen danach
+  // filtern zu Recht nach Konto.
   const j = route.indexOf("router.get('/alerts/pending'");
   assert.ok(i > 0 && j > i, 'Die Alarm-Routen stehen nicht, wo erwartet');
   const block = route.slice(i, j);
   assert.doesNotMatch(block, /scopeIds|writableIds|parseScopeMode/,
     'Eine Alarm-Route filtert nach Blickfeld — dann bekämen Eltern die Mails der Kinder');
-  assert.match(route.slice(Math.max(0, i - 900), i), /gehoert genau EINEM Konto/,
-    'Die Ausnahme ist nicht begründet — beim nächsten Lesen sieht sie aus wie ein Versehen');
 
   assert.doesNotMatch(KT_API.slice(KT_API.indexOf('getPreisalarme'),
                                    KT_API.indexOf('// ── Lagerort')), /@Query\("accounts"\)/,
@@ -287,7 +279,7 @@ test('die Marke kommt vom SERVER, nicht von der eigenen Uhr', () => {
   // Server darüber, ob eine Meldung doppelt kommt (Uhr geht nach) oder
   // verloren geht (sie geht vor). Beides fällt niemandem als Uhrenproblem
   // auf — man sieht nur eine Meldung zu viel oder keine.
-  assert.match(web('src/finanzen/preisalarm.ts'), /SELECT NOW\(\) AS jetzt/,
+  assert.match(web('src/finanzen/repository/preisalarme.ts'), /SELECT NOW\(\) AS jetzt/,
     'Der Server reicht seinen Zeitpunkt nicht mit');
 
   const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));

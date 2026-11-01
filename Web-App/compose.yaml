@@ -130,6 +130,9 @@ services:
       # Das Wurzelzertifikat der CA (kopiert vom Entrypoint) für /ca.crt und
       # den Fingerabdruck im QR-Code.
       CA_ZERTIFIKAT: /tmp/ca/root.crt
+      # Passkeys der Android-App und /.well-known/assetlinks.json (.env.example).
+      PASSKEY_ANDROID_ZERTIFIKATE: ${PASSKEY_ANDROID_ZERTIFIKATE:-}
+      PASSKEY_ANDROID_PAKET: ${PASSKEY_ANDROID_PAKET:-}
       # PORT: 3000
       # NODE_ENV: production
       # NODE_OPTIONS: "--max-old-space-size=384"

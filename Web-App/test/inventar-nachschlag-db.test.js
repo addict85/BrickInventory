@@ -7,7 +7,7 @@
  * die beiden Kandidaten nicht. Fuer die Eingabe „9999" (Set-Nummer ohne
  * Versionsanhang) ergab sich:
  *
- *   jobs/catalogSync, jobs/partsCatalogEnrich,
+ *   src/katalog/katalogAbgleich, src/katalog/teileAnreicherung,
  *   clients/rebrickable, routes/api_v1/sets (2x)   '9999-1' ODER '9999'
  *   src/teile/abfragen.ts                        '9999-1' ODER '9999-1'
  *   routes/api_v1/catalog.ts                       nur '9999-1'

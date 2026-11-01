@@ -43,11 +43,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { androidDatei } = require('./helpers/android');
 
-// Als EIN Pfad und nicht als acht Segmente: test/baumbruecken.test.js zählt die
-// Brücken zwischen den beiden Bäumen und will sie lesen können.
-const APP = path.join(ROOT, '../Android-App/app/src/main/java/ch/brickinventoryapp');
-const app = (rel) => ohneKommentare(fs.readFileSync(path.join(APP, rel), 'utf8'));
+// Die App-Quellen über alle Module: androidDatei() meldet eine fehlende Datei mit Namen.
+const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 
 test('1. einplanen() kann nicht werfen und meldet zurück', () => {
   const worker = app('alarm/PreisalarmWorker.kt');
@@ -89,8 +88,8 @@ test('3. und wirft den Fehler nicht weg', () => {
     'Für den Fehlschlag gibt es keinen eigenen Text.');
 
   // Beide Sprachen — sonst steht auf dem einen Gerät ein Platzhalter.
-  for (const rel of ['../Android-App/app/src/main/res/values/strings.xml',
-                     '../Android-App/app/src/main/res/values-de/strings.xml']) {
+  for (const rel of ['../Android-App/core-ressourcen/src/main/res/values/strings.xml',
+                     '../Android-App/core-ressourcen/src/main/res/values-de/strings.xml']) {
     const xml = fs.readFileSync(path.join(ROOT, rel), 'utf8');
     assert.match(xml, /name="alert_schedule_failed"/, `${rel}: Text fehlt`);
     assert.match(xml, /alert_schedule_failed">[^<]*%1\$s/,

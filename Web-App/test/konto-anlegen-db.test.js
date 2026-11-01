@@ -40,7 +40,7 @@ test('Konto anlegen', { concurrency: 1 }, async (t) => {
   const c = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ...NEU]]);
-  await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,1,1,1)',
+  await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
     [CHEF, await bcrypt.hash(PASS, 4)]);
 
   const app = express();

@@ -157,8 +157,8 @@ const C = {
   'DELETE /api/v1/auth/passkeys/:id': 'nur-web',
   'POST /api/v1/auth/passkey/registrieren/optionen': 'nur-web',
   'POST /api/v1/auth/passkey/registrieren': 'nur-web',
-  'POST /api/v1/auth/passkey/anmelden/optionen': 'nur-web',
-  'POST /api/v1/auth/passkey/anmelden': 'nur-web',
+  'POST /api/v1/auth/passkey/anmelden/optionen': 'nur-v1',
+  'POST /api/v1/auth/passkey/anmelden': 'nur-v1',
   // Fingerabdruck der CA zum Abgleich von Hand; die App bekommt ihn im QR-Code.
   'GET /api/v1/settings/tls': 'nur-web',
   // Angemeldete Geraete: seit der Token-Verwaltung von BEIDEN Apps gerufen.
@@ -438,8 +438,6 @@ test('keine verwaisten Klassifikations-Einträge', () => {
  * ruft, waere weiterhin unbemerkt falsch.
  */
 function androidAdressen() {
-  const wurzel = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main', 'java');
-  assert.ok(fs.existsSync(wurzel), `Android-Quellbaum nicht gefunden unter ${wurzel}`);
   const gefunden = new Set();
   const lauf = (d) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -458,7 +456,8 @@ function androidAdressen() {
           gefunden.add(`${v} ${vergleichbar(m[1])}`);
     }
   };
-  lauf(wurzel);
+  // Alle Module der App: Dienst-Interfaces in core-data, Adressen auch in den Bereichen.
+  for (const w of require('./helpers/android').quellwurzeln()) lauf(w);
   return gefunden;
 }
 

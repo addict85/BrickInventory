@@ -1,7 +1,4 @@
-/**
- * Fehlerzähler des Bild-Proxys.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/imgProxyStats.ts.md#imgproxyfailures
- */
+// Ausführlich: docs/begruendungen/src/katalog/bilder/imgProxyStats.ts.md#imgproxyfailures
 export const imgProxyFailures = {
   timeout: 0,
   error: 0,

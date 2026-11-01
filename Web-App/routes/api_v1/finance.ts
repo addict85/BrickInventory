@@ -1,48 +1,40 @@
-/** /api/v1/finance — Bewertungen, PnL, Portfolio-Historie (Logik in ../finance). */
-import express from 'express';
 import { fehlerAntwort } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { getPortfolioHistory } from '../../src/finanzen/portfolioHistory';
 import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
 import { computeMinifigsValuation, computePartsValuation, computePnl, computeSetsValuation } from '../../src/finanzen/financeCalc';
 import { einzelwert } from '../../src/infra/validate';
-const router = express.Router();
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
+const router = vertragsRouter();
 
-// ── FINANCE ───────────────────────────────────────────────────────────────────
-router.get('/finance/valuation', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/valuation', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/valuation'>) => {
   const data = await computeSetsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
-  // Kein `rate_limit` mehr in dieser Antwort
-  // Gekostet hat er drei Datenbankabfragen JE AUFRUF (gemessen, nicht
-  // geschätzt: getRateLimitStatus holt Zähler, Datum und Grenze einzeln) —
-  // bei jedem Öffnen des Finanzreiters und nach jedem Erfassen, weil …
+  // Kein `rate_limit` in der Antwort: Er kostete drei Abfragen je Aufruf und
+  // steht in der Überwachung.
   // Ausführlich: docs/begruendungen/routes/api_v1/finance.ts.md#get-finance-valuation
   res.json({ success:true, total_value: data.totals.qty_avg, ...data });
 });
 
-// ── Same computation as the webapp (routes/finance.js) — implemented once ────
-router.get('/finance/parts-valuation', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/parts-valuation', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/parts-valuation'>) => {
   const data = await computePartsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
   res.json({ success: true, ...data });
 });
 
-router.get('/finance/minifigs-valuation', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/minifigs-valuation', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/minifigs-valuation'>) => {
   const data = await computeMinifigsValuation(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
   res.json({ success: true, ...data });
 });
 
-router.get('/finance/pnl', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/pnl', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/pnl'>) => {
   const data = await computePnl(req.apiUser.user_id, await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts)));
   res.json({ success: true, ...data });
 });
 
-// ── PORTFOLIO HISTORY — uses shared util (identical to webapp) ───────────────
-router.get('/finance/portfolio-history', requireToken, async (req: AuthedRequest, res) => {
+router.get('/finance/portfolio-history', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/finance/portfolio-history'>) => {
   const uid    = req.apiUser.user_id;
-  // einzelwert(): Ein Abfrageparameter kann als ARRAY ankommen
-  // (?period=week&period=year) — Express macht daraus ['week','year'].
-  // Ein Array faellt hier zwar auf den Standardzweig (verglichen wird mit ===
-  // gegen drei Literale, nichts landet in SQL), wuerde aber unveraendert in der
-  // Antwort zurueckgegeben. Derselbe Helfer wie im Anmeldezaehler.
+  // einzelwert(): ?period=a&period=b kommt als Array an und ginge sonst
+  // unverändert in die Antwort zurück.
   const period = einzelwert(req.query.period, 'week');
   const result = await getPortfolioHistory(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), period);
   res.json(result);

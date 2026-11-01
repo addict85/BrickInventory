@@ -1,9 +1,6 @@
-/**
- * /api/v1/sets/partslist-pdf — asynchrone PDF-Erzeugung. Die Route stellt
- * einen Auftrag ein (src/auftraege/auftraege.ts); Bilder holt und zeichnet der
- * Job-Prozess (jobs/pdfErzeugung.ts) in einem eigenen Faden.
- * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt
- */
+/** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
+ * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
+ * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
 import express from 'express';
 import { fehlerAntwort, streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
@@ -14,16 +11,14 @@ import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pd
 import { AUFTRAG_STAND_KANAL } from '../../src/auftraege/dienst';
 import { listen, unlisten } from '../../db/pgNotify';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
-const router = express.Router();
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
+const router = vertragsRouter();
 
 // Eigenes Body-Limit: Der Export schickt die ganze Teileliste als JSON; die
 // Ausnahme vom serverweiten Limit gilt nur hier.
 router.use(express.json({ limit: '10mb' }));
 
-/**
- * Ein Auftragszustand, wie ihn der Ereignisstrom weiterreicht.
- * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#pdfjobstatus
- */
 type PdfJobStatus = { status?: string | undefined; error?: string | null; etaSeconds?: number | null; missingImages?: number | null };
 
 const validJobId = gueltigeAuftragsKennung;
@@ -32,19 +27,15 @@ async function pdfJobRead(id: string) {
   return liesAuftrag(id).catch(meldeUndLiefere('pdf:auftrag-lesen', null));
 }
 
-/**
- * Auftrag lesen UND die Zugehörigkeit prüfen — der einzige Weg, auf dem die
- * drei Abrufrouten an einen Auftrag kommen.
- * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#pdfjobreadfor
- */
+/** Der einzige Weg, auf dem die drei Abrufrouten an einen Auftrag kommen —
+ * damit keine die Zugehörigkeit vergisst. */
 async function pdfJobReadFor(id: string, userId: number) {
   const job = await pdfJobRead(id);
   if (!job) return null;
   if (job.user_id !== userId) return null;
   return job;
 }
-// ── POST /api/v1/sets/partslist-pdf — start async PDF job ─────────────────────
-router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res) => {
+router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/sets/partslist-pdf'>) => {
   const uid = req.apiUser.user_id;
   const { sets = [], parts = [] } = req.body;
   if (!parts.length) return sendeFehler(req, res, 400, 'keine_teile');
@@ -64,19 +55,14 @@ router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res)
   res.json({ success: true, jobId: r.jobId });
 });
 
-// ── GET /api/v1/sets/partslist-pdf/status/:jobId ──────────────────────────────
-router.get('/sets/partslist-pdf/status/:jobId', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/partslist-pdf/status/:jobId', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/partslist-pdf/status/:jobId'>) => {
   if (!validJobId(String(req.params.jobId))) return sendeFehler(req, res, 400, 'job_id_ungueltig');
   const job = await pdfJobReadFor(pfadParam(req, 'jobId'), req.apiUser.user_id);
   if (!job) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
   res.json({ success: true, status: job.status, error: job.error || null, etaSeconds: job.etaSeconds ?? null, missingImages: job.missingImages ?? null });
 });
 
-// ── GET /api/v1/sets/partslist-pdf/stream/:jobId — SSE statt Polling ──────────
-// Sendet den aktuellen Stand sofort und schließt sich, sobald der Job
-// done/error ist. Der Fallback-Poll (Cluster: Job kann auf anderem Worker
-// laufen) sendet nur noch bei *Änderung* — vorher bekam jeder Client alle
-// 3s ein redundantes Event mit unverändertem Status.
+// SSE statt Polling; der Rückfall sendet nur bei Änderung.
 router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: AuthedRequest, res) => {
   const jobId = String(req.params.jobId);
   if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
@@ -89,8 +75,7 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
 
-  // Anmelden, damit das Herunterfahren diesen Strom beenden kann
-  // (src/infra/sseRegistry.ts) — sonst wartet httpServer.close() auf ihn.
+  // Anmelden, sonst wartet httpServer.close() beim Herunterfahren auf diesen Strom.
   const unregisterSse = registerSse(res);
 
   let closed = false;
@@ -104,12 +89,11 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
   };
   const isDone = (s: string | undefined) => s === 'done' || s === 'error';
 
-  // 1) Sofort aktuellen Stand senden
   send({ status: initial.status, error: initial.error || null, etaSeconds: initial.etaSeconds ?? null, missingImages: initial.missingImages ?? null });
   if (isDone(initial.status)) { closed = true; unregisterSse(); return res.end(); }
 
-  // 2) Auf das NOTIFY hören — gleich in welchem Prozess der Auftrag läuft.
-  //    Ohne Nutzlast (beim Wiederverbinden) wird ebenfalls nachgesehen.
+  // NOTIFY, gleich in welchem Prozess der Auftrag läuft; ohne Nutzlast (beim
+  // Wiederverbinden) wird ebenfalls nachgesehen.
   const pruefe = async () => {
     const job = await pdfJobReadFor(jobId, req.apiUser.user_id);
     if (closed) return;
@@ -120,7 +104,7 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
   const onStatus = (nutzlast?: string) => { if (!nutzlast || nutzlast === pdfSchluessel(jobId)) return pruefe(); };
   listen(AUFTRAG_STAND_KANAL, onStatus);
 
-  // 3) Rückfall, falls ein Signal während einer Verbindungsstörung verloren geht.
+  // Rückfall, falls ein Signal während einer Verbindungsstörung verloren geht.
   const fallback = setInterval(pruefe, 15000);
 
   const heartbeat = setInterval(() => { if (!closed) res.write(': keep-alive\n\n'); }, 20000);
@@ -138,15 +122,13 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: Authed
   req.on('close', cleanup);
 });
 
-// ── GET /api/v1/sets/partslist-pdf/download/:jobId ────────────────────────────
 router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: AuthedRequest, res) => {
   const jobId = String(req.params.jobId);
   if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
   const job = await pdfJobReadFor(jobId, req.apiUser.user_id);
   if (!job) return sendeFehler(req, res, 404, 'job_nicht_gefunden');
   if (job.status !== 'done') {
-    // `status` haengt zusaetzlich dran — die Oberflaeche zeigt daran, WIE weit
-    // der Auftrag ist. sendeFehler kennt das Feld nicht.
+    // `status` zeigt der Oberfläche, wie weit der Auftrag ist; sendeFehler kennt das Feld nicht.
     return res.status(409).json({ success: false, code: 'pdf_nicht_fertig',
       error: fehlerText('pdf_nicht_fertig', antwortSprache(req)), status: job.status });
   }
@@ -154,10 +136,9 @@ router.get('/sets/partslist-pdf/download/:jobId', requireToken, async (req: Auth
   if (!pdfPath || !_fsSync.existsSync(pdfPath)) return sendeFehler(req, res, 410, 'pdf_nicht_verfuegbar');
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
-  // streamFileToResponse statt rohem pipe(): Zwischen existsSync oben und dem
-  // Öffnen hier kann cleanOldPdfJobs (10-Minuten-TTL) die Datei entfernen —
-  // ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess (src/infra/httpError.ts).
-  // Aufgeräumt wird nur bei VOLLSTÄNDIGER Auslieferung.
+  // streamFileToResponse statt pipe(): Das Aufräumen kann die Datei zwischen
+  // Prüfung und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet
+  // den Prozess. Aufgeräumt wird nur nach vollständiger Auslieferung.
   streamFileToResponse(res, pdfPath, () => {
     _pdfFs.unlink(pdfPath).catch(ohneFehlendeDatei('pdf:datei loeschen'));
     loescheAuftrag(jobId).catch((e: unknown) => meldeUndWeiter('pdf:auftrag-loeschen', e));

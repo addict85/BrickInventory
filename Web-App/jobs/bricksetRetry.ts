@@ -1,5 +1,4 @@
-import { fuelleSetLuecken } from '../src/katalog/bildlage';
-import { getSetInfo } from '../clients/brickset';
+import { fuelleAusBrickset } from '../src/katalog/bildlage';
 import { downloadSetInstructions, anzahlAnleitungen } from '../src/katalog/instructions';
 import { getLimitForApi, getRateLimitStatus } from '../src/finanzen/financeCalc';
 import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
@@ -7,12 +6,8 @@ import { pausiereArt } from '../src/auftraege/dienst';
 import { bricksetFaelligAb } from '../src/auftraege/bricksetAuftrag';
 import { AuftragVerschieben } from './auftragsWorker';
 
-/**
- * Ein Set der Brickset-Wiedervorlage (Auftrag 'brickset'). Ist das
- * Tageskontingent aufgebraucht, wartet die ganze Art bis zur eingestellten
- * Uhrzeit; der Versuch zählt dann nicht. Zwischen zwei Sets eine Sekunde Abstand.
- * Ausführlich: docs/begruendungen/jobs/bricksetRetry.ts.md#abschnitt
- */
+/** Ist das Tageskontingent aufgebraucht, wartet die ganze Art bis zur
+ * eingestellten Uhrzeit; der Versuch zählt dann nicht. */
 async function bricksetNachlauf(n: Record<string, unknown>): Promise<void> {
   const sn = String(n.set_number);
   try {
@@ -28,12 +23,7 @@ async function bricksetNachlauf(n: Record<string, unknown>): Promise<void> {
   }
 
   // Ist das Kontingent mittendrin weg, merkt getSetInfo das Set selbst erneut vor.
-  const info = await getSetInfo(sn);
-  if (info) {
-    // Nur Lücken im Katalog füllen; scheitert es, bleibt das Set namenlos — darum mit Protokoll.
-    await fuelleSetLuecken(sn, info).catch(logAndContinue(`brickset-nachlauf:set ${sn}`));
-    console.log(`[brickset] Retry OK: ${sn}`);
-  }
+  if (await fuelleAusBrickset(sn)) console.log(`[brickset] Retry OK: ${sn}`);
   if (await anzahlAnleitungen(sn) === 0) {
     await downloadSetInstructions(sn).catch(logAndContinue('brickset-retry:downloadSetInstructions'));
   }

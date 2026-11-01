@@ -8,7 +8,7 @@ import org.junit.Test
  */
 class ResultAndStateSplitTest {
 
-    private val root = java.io.File("src/main/java/ch/brickinventoryapp")
+    private val root = Quellen.wurzel
 
     private fun read(rel: String): String {
         val f = java.io.File(root, rel)
@@ -57,7 +57,7 @@ class ResultAndStateSplitTest {
      * nicht eine Datei.
      */
     private fun datenschicht(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/data/repository")
+        java.io.File(Quellen.wurzel, "data/repository")
             .listFiles { f -> f.extension == "kt" }
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }

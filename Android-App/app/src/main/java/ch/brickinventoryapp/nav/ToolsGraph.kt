@@ -32,7 +32,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.res.painterResource
-import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
@@ -262,6 +262,9 @@ fun NavGraphBuilder.toolsGraph(
         }
 
         composable(Screen.Monitoring.route) {
+            // Fällt das Verwalterrecht weg, verlässt die Seite sich selbst, statt weiter 403 zu sammeln.
+            val stand by vm.state.collectAsStateWithLifecycle()
+            LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navController.popBackStack() }
             ReiterGeruest(stringResource(R.string.nav_monitoring), vm, navController, bottomNavItems, snackbarHostState) {
                 MonitoringScreen(vm)
             }

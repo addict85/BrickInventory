@@ -40,7 +40,7 @@ test('Browser ohne Token', { concurrency: 1 }, async (t) => {
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(
-    `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, 1, 1) RETURNING id`,
+    `INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
     [NAME, await bcrypt.hash(PASS, 4)])).id;
 
   const app = express();

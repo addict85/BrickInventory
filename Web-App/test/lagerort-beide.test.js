@@ -16,36 +16,37 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const WEB = path.join(__dirname, '..');
-const APP = path.join(WEB, '..', 'Android-App', 'app', 'src', 'main');
 const lies = p => fs.readFileSync(p, 'utf8');
 const web  = rel => lies(path.join(WEB, rel));
 
 // Jeder Pfad in den Android-Baum AUSGESCHRIEBEN — test/baumbruecken.test.js
 // löst diese Brücken statisch auf und kann eine Variable nicht sehen.
-const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
-const KT_SCOPE  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilter.kt'));
+const KT_API    = require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api'));
+// Die Regeln des Filters (ScopeFilter) und seine Ablage im Gerät (ScopeFilterSpeicher).
+const KT_SCOPE  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-model', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilter.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'ScopeFilterSpeicher.kt'));
 // Seit dem Schnitt des MainViewModels (28.10.2026) liegt der Lagerortfilter
 // in der Grundlage der Bereichs-ViewModels, die Verwaltung im
 // EinstellungenViewModel und das Laden der eigenen Orte im Blickfeld.
-const KT_HAUS   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'BereichsViewModel.kt'))
-                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'EinstellungenViewModel.kt'))
-                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'Blickfeld.kt'));
-const KT_DIALOG = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt'));
-const KT_SETDET = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
-const KT_CHIPS  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'HouseholdComposables.kt'));
-const KT_FELD   = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LagerortFeld.kt'));
+const KT_HAUS   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'BereichsViewModel.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'EinstellungenViewModel.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'Blickfeld.kt'));
+const KT_DIALOG = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt'));
+const KT_SETDET = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SetDetailSections.kt'));
+const KT_CHIPS  = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'HouseholdComposables.kt'));
+const KT_FELD   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LagerortFeld.kt'));
 // Die Einstellungen der App liegen in mehreren Dateien: Der Bildschirm
 // selbst traegt nur die Liste, jede Rubrik hat ihre eigene Seite
 // (EinstellungenUnterseiten.kt) mit der Karte in Einstellungen*.kt. Gelesen
 // werden deshalb alle, die es betrifft — die
 // Zusicherung lautet „die App tut das in ihren Einstellungen" und nicht
 // „in dieser Datei".
-const KT_EINST  = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
-                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
-                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
-                + lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
-const XML_EN    = lies(path.join(APP, 'res', 'values', 'strings.xml'));
-const XML_DE    = lies(path.join(APP, 'res', 'values-de', 'strings.xml'));
+const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
+                + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
+const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
+const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
 test('beide Oberflächen setzen den Lagerort über dieselben Endpunkte', () => {
   const route = web('routes/api_v1/parts.ts') + web('routes/api_v1/sets.ts');
@@ -104,7 +105,8 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
   // Und in BEIDEN nur für Teile, nicht für Figuren.
   assert.match(web('public/js/13-acquisition-modals.js'), /if \(type === 'part'\) \{/,
     'Webapp: das Feld steht auch bei Figuren');
-  assert.match(KT_DIALOG, /kopf\.colorId != null/,
+  // Die Farbe als lokale Variable: Das Modell liegt in einem anderen Modul.
+  assert.match(KT_DIALOG, /val kopfFarbe = kopf\?\.colorId[\s\S]{0,80}kopfFarbe != null/,
     'App: das Feld steht auch bei Figuren (Figuren haben keine Farbe)');
 });
 
@@ -114,9 +116,9 @@ test('beide filtern am Server, nicht im Gerät', () => {
   // Seit Migration 0031 traegt die Zeile eine ID, der Name steht im Vorrat —
   // der Filter vergleicht deshalb `lo.name` statt `p.storage`. Die Aussage ist
   // dieselbe: Gefiltert wird am Server.
-  assert.match(web('src/teile/abfragen.ts'), /lo\.name = \$\$\{pi\+\+\}/,
+  assert.match(web('src/teile/repository/teileListe.ts'), /lo\.name = \$\$\{pi\+\+\}/,
     'Der Server filtert Teile nicht nach Lagerort');
-  assert.match(web('src/sets/abfragen.ts'), /s\.storage = \$\$\{params\.length\}/,
+  assert.match(web('src/sets/repository/sets.ts'), /s\.storage = \$\$\{params\.length\}/,
     'Der Server filtert Sets nicht nach Lagerort');
 
   assert.match(web('public/js/14-scope.js'), /p\.set\('storage', m\)/,
@@ -153,8 +155,8 @@ test('eine gefilterte Antwort landet nicht im Speicher der vollen Liste', () => 
   // der ganzen Sammlung — und der Reiter zeigte je nach Cache-Zustand mal
   // alles, mal eine Kiste. Genau dafür steht `accounts` dort schon.
   for (const [name, s] of [
-    ['SetsRepository.kt', lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepository.kt'))],
-    ['TeileRepository.kt', lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepository.kt'))],
+    ['SetsRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'SetsRepository.kt'))],
+    ['TeileRepository.kt', lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'repository', 'TeileRepository.kt'))],
   ]) {
     assert.match(s, /storage\.isNullOrBlank\(\)/,
       `${name}: der Lagerort fehlt in der Bedingung für „ungefiltert"`);
@@ -273,8 +275,7 @@ test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
 
   assert.match(web('public/js/13-acquisition-modals.js'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
     'Die Webapp fragt beim Teil nicht nach der Liste des Besitzers');
-  assert.match(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs',
-                              'SetItemDetailDialog.kt')),
+  assert.match(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt')),
     /vm\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
     'Die App fragt beim Teil nicht nach der Liste des Besitzers');
 });
@@ -294,7 +295,7 @@ test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
   // Zeile keine ID), und beides laeuft deshalb in einer Transaktion in
   // setzeLagerort(). Gesucht wird jetzt die Anweisung selbst — die Aussage
   // bleibt, dass ein getippter Ort in den Vorrat kommt.
-  assert.match(web('src/bestand/lagerort.ts'),
+  assert.match(web('src/bestand/repository/lagerort.ts'),
     /INSERT INTO storage_locations \(user_id, name\)\s*\n\s*SELECT id, \$2 FROM users/,
     'Ein frisch getippter Ort landet nicht im Vorrat');
 });
@@ -331,7 +332,7 @@ test('beide speichern den Lagerort beim Tippen, nicht beim Fokuswechsel', () => 
   assert.match(ohneK(KT_HAUS) + ohneK(KT_SETDET), /onWert = \{/,
     'Das Feld gibt den getippten Wert nicht weiter');
   // Und die Ruhezeit liegt im ViewModel, damit sie den Bildschirm überlebt.
-  const gal = ohneK(lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt')));
+  const gal = ohneK(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-sammlung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'SetDetailViewModel.kt')));
   assert.match(gal, /lagerJob\?\.cancel\(\)\s*\n\s*lagerJob = viewModelScope\.launch/,
     'Die Ruhezeit des Lagerorts läuft nicht im viewModelScope');
 });

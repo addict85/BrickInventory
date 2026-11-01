@@ -63,7 +63,7 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
   const bcrypt = require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs'));
   const ADMIN_PW = 'verwalterPasswort1';
   await db.run(`INSERT INTO users (username, password_hash, is_admin, is_active)
-                VALUES ($1,$3,1,1), ($2,'x',1,1)`, [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)]);
+                VALUES ($1,$3,true,true), ($2,'x',true,true)`, [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)]);
   const adminId = (await db.get(`SELECT id FROM users WHERE username=$1`, [ADMIN])).id;
   const zielId  = (await db.get(`SELECT id FROM users WHERE username=$1`, [ZIEL])).id;
 
@@ -74,8 +74,8 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
     t,
   });
 
-  const setzeZielAdmin = () => db.run(`UPDATE users SET is_admin=1 WHERE id=$1`, [zielId]);
-  const istAdmin = async () => (await db.get(`SELECT is_admin FROM users WHERE id=$1`, [zielId])).is_admin;
+  const setzeZielAdmin = () => db.run(`UPDATE users SET is_admin=true WHERE id=$1`, [zielId]);
+  const istAdmin = async () => Number((await db.get(`SELECT is_admin FROM users WHERE id=$1`, [zielId])).is_admin);
 
   const entziehe = async (url, methode, wert) => {
     await setzeZielAdmin();
@@ -120,7 +120,7 @@ test('Adminrechte lassen sich auch mit "false" als Text entziehen',
       body: JSON.stringify({ is_admin: 'false', admin_password: ADMIN_PW }),
     });
     assert.equal(r.status, 400, 'die eigene Admin-Rolle darf auch mit "false" nicht entfernt werden');
-    assert.equal((await db.get(`SELECT is_admin FROM users WHERE id=$1`, [adminId])).is_admin, 1);
+    assert.equal((await db.get(`SELECT is_admin FROM users WHERE id=$1`, [adminId])).is_admin, true);
   } finally {
     await db.run(`DELETE FROM users WHERE username IN ($1, $2)`, [ADMIN, ZIEL]).catch(() => {});
     await new Promise(r => srv.close(r));

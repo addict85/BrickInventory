@@ -54,7 +54,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async (t) =
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO set_catalog (set_number, name, year) VALUES ($1, 'Titanic', 2021)
                 ON CONFLICT (set_number) DO UPDATE SET name='Titanic', year=2021`, [SN]);
-  await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1, $2, 'NONE', 0)
+  await db.run(`INSERT INTO catalog_cache (set_number, name, bl_type, is_gear) VALUES ($1, $2, 'NONE', false)
                 ON CONFLICT (set_number) DO UPDATE SET name=$2, fetched_at=NOW()`, [SN, `Set ${SN}`]);
 
   try {

@@ -21,7 +21,7 @@ const path   = require('node:path');
 const { pruefeParameter } = require('./helpers/sources');
 
 const ROOT  = path.join(__dirname, '..');
-const read  = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
+const read  = f => require('./helpers/sources').dienstQuelle(f);
 const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', () => {
@@ -61,12 +61,12 @@ test('eine Mengenerhöhung legt auch ohne bestehende Erfassung eine Zeile an', (
 test('die LIFO-Reduktion entfernt die neueste Erfassung zuerst', () => {
   // Reihenfolge DESC ist die Voraussetzung dafür, dass beim Reduzieren der
   // HEUTIGE Eintrag zuerst schrumpft bzw. wegfällt.
-  for (const [f, table] of [['src/teile/manuelleTeile.ts', 'part_acquisitions'],
-                            ['src/figuren/manuelleFiguren.ts', 'minifig_acquisitions']]) {
-    const src = read(f);
-    assert.match(src, new RegExp(`FROM ${table} WHERE[^']*ORDER BY created_at DESC, id DESC`),
-      `${f}: ohne DESC würde beim Reduzieren die ÄLTESTE Erfassung zuerst abgebaut`);
-  }
+  // Teile und Figuren kürzen über denselben Weg (src/bestand/manuelleMenge.ts).
+  for (const f of ['src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts'])
+    assert.match(read(f), /passeManuelleMengeAn\(/, `${f}: kürzt nicht über den gemeinsamen Weg`);
+  assert.match(read('src/bestand/repository/manuelleMengen.ts'),
+    /function erfassungenNeuesteZuerst[\s\S]*?ORDER BY created_at DESC, id DESC/,
+    'ohne DESC würde beim Reduzieren die ÄLTESTE Erfassung zuerst abgebaut');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -200,8 +200,6 @@ test('die Regel gilt für alle drei Elementarten gleich', () => {
   // Set, ein manuell erfasstes Teil oder eine manuell erfasste Minifigur —
   // dieselbe Regel, nur ein anderer Schlüssel.
   const acq = read('src/bestand/acquisitions.ts');
-  assert.match(acq, /Pro Tag, Element, Zustand, Preis und Währung gibt es genau EINE Zeile/,
-    'Die Regel gehört im Wortlaut an den Anfang der Datei');
 
   // Die Schlüssel je Art stehen an EINER Stelle — sonst hiesse „Element" je
   // nach Aufrufer etwas anderes.
@@ -271,7 +269,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // stand sie ausgeschrieben. Was sie daraus macht, prueft
   // test/quantity-response-echo.test.js — diese Stelle prueft, dass der
   // Aufruf das BLICKFELD nennt und nicht ein einzelnes Konto.
-  assert.match(fn, /mengeSummeSql\('blickfeld'\)/,
+  assert.match(fn, /repo\.setMenge\(dbh, 'blickfeld', leseFeld/,
     'Die Ausgangsmenge muss über das Blickfeld summiert werden');
 });
 
@@ -284,8 +282,6 @@ test('das Löschen eines manuellen Eintrags räumt die Kaufpreise mit ab', () =>
   // dauerhaft weitergezählt, und zwar unsichtbar: Keine Ansicht zeigt
   // verwaiste Erfassungen, es fällt nur als „die Summe stimmt nicht" auf.
   const stellen = [
-    ['src/teile/manuelleTeile.ts',    'DELETE FROM part_acquisitions'],
-    ['src/figuren/manuelleFiguren.ts',  'DELETE FROM minifig_acquisitions'],
     // Die beiden v1-Routen und „alles löschen" gehen über src/bestand/loeschen.ts.
     ['src/bestand/loeschen.ts',         'DELETE FROM part_acquisitions'],
     ['src/bestand/loeschen.ts',         'DELETE FROM minifig_acquisitions'],

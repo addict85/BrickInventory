@@ -42,7 +42,7 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async (t) =>
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
-    VALUES ($1, $2, $3, 1, 1) RETURNING id`, [NAME, MAIL, bcrypt.hashSync('richtig-geheim', 4)])).id;
+    VALUES ($1, $2, $3, true, true) RETURNING id`, [NAME, MAIL, bcrypt.hashSync('richtig-geheim', 4)])).id;
   const aufraeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2`,
     [`%konto:${uid}`, `%${MAIL.split('@')[0]}%`]);
   await aufraeumen();

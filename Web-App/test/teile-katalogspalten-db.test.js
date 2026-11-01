@@ -163,7 +163,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen',
   await db.run(`INSERT INTO set_catalog (set_number,name) VALUES ('75192-1','Falcon')`);
   await haeltSet(db, uid, '75192-1', 2);
   await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,is_spare,quantity)
-    VALUES ('75192-1','3001',4,0,6), ('75192-1','3002',1,1,2)`);
+    VALUES ('75192-1','3001',4,false,6), ('75192-1','3002',1,true,2)`);
   await db.run(`INSERT INTO part_catalog (part_number,part_name,category_name)
     VALUES ('3001','Brick 2x4','Bricks'),('3002','Brick 2x3','Bricks')`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name,color_hex,image_url)

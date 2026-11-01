@@ -1,23 +1,18 @@
-/**
- * Eigene Anleitungen (data/uploads/<benutzer-id>/) und geteilte
- * (data/instructions/). Eigene Datei, damit ein Test die echten Handler
- * einhängen kann.
- */
+/** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
 import { fehlerAntwort } from '../src/infra/httpError';
 import express, { Request, Response } from 'express';
 import { liefereDatei } from '../src/infra/dateiAusliefern';
 import { safeDataPath } from '../src/infra/datenPfad';
 
-import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/auth';
+import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
 import { scopeIds } from '../src/haushalt/haushalt';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 const router = express.Router();
 
-// Wer lesen darf, entscheidet scopeIds(): Das Hauptkonto sieht die Uploads
-// seiner Unterkonten, nicht umgekehrt. Ein erstes Segment, das keine
-// Benutzer-ID ist, gibt es in uploads/ nicht — es wird abgewiesen statt
-// durchgewinkt. Ausführlich: docs/begruendungen/server.ts.md#servedatafile
+// scopeIds(): Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht
+// umgekehrt. Ein erstes Segment ohne Benutzer-ID wird abgewiesen.
+// Ausführlich: docs/begruendungen/server.ts.md#servedatafile
 router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardRequest, res: Response) => {
   const userId = angemeldeteNutzerId(req);
   const segments = req.params.pfad.filter(Boolean);

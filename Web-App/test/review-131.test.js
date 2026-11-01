@@ -61,7 +61,7 @@ test('Teile-Rückfallebene für fremde Sets', async (t) => {
     await db.run(`INSERT INTO rb_parts (part_num, name, part_img_url) VALUES ('3001','Brick 2x4','https://example.invalid/3001.png')`);
     await db.run(`INSERT INTO rb_colors (id, name, rgb) VALUES (4,'Red','C91A09')`);
     await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
-                  VALUES (1,'3001',4,6,0)`);
+                  VALUES (1,'3001',4,6,false)`);
 
     const r = await getParts([uid], { set_number: '10280-1' });
     assert.equal(r.source, 'csv_cache', `Quelle war ${r.source}`);
@@ -107,7 +107,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   //
   // pruefeAnmeldedaten steht in der Liste, seit die Anmeldung dorthin
   // zusammengezogen ist: Die Drossel (checkLoginAllowed) sitzt jetzt IN dieser
-  // Funktion, POST /login ruft nur noch sie auf. Ohne den Eintrag würde
+  // Funktion, POST /login ruft sie über anmelden() auf. Ohne den Eintrag würde
   // ausgerechnet das Zusammenlegen als ungeschützter Endpunkt gemeldet.
   const src = quelle('routes/auth.ts');
   const stellen = [...src.matchAll(/router\.(post|put|delete)\('([^']+)'/g)];
@@ -118,7 +118,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
     const von = stellen[i].index;
     const bis = i + 1 < stellen.length ? stellen[i + 1].index : src.length;
     const rumpf = src.slice(von, bis);
-    const geschuetzt = /requireLogin|requireToken|requireAdmin|ipThrottle|checkLoginAllowed|pruefeAnmeldedaten|req\.session\??\.?\.?userId/.test(rumpf);
+    const geschuetzt = /requireLogin|requireToken|requireAdmin|ipThrottle|checkLoginAllowed|pruefeAnmeldedaten|anmelden\(|req\.session\??\.?\.?userId/.test(rumpf);
     if (!geschuetzt) offen.push(`${stellen[i][1].toUpperCase()} ${stellen[i][2]}`);
   }
   assert.deepEqual(offen, [], `weder Anmeldung noch Drossel: ${offen.join(', ')}`);

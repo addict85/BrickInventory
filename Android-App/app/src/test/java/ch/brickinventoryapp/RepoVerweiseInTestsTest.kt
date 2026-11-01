@@ -40,7 +40,7 @@ class RepoVerweiseInTestsTest {
     /** `repo.x(`, `repo.y.x(` — mit ein- oder zweifach maskierten Punkten. */
     private val verweis = Regex("""repo(?:\\{1,2}\.|\.)(?:\w+(?:\\{1,2}\.|\.))*\w+\\{0,2}\(""")
 
-    private fun dateien(pfad: String) = File(pfad).walkTopDown()
+    private fun dateien(ordner: File) = ordner.walkTopDown()
         .filter { it.isFile && it.extension == "kt" }.toList()
 
     private fun verweiseIn(src: String): Set<String> {
@@ -55,14 +55,14 @@ class RepoVerweiseInTestsTest {
 
     @Test
     fun `kein Test sucht nach einem Repository-Aufruf den es nicht mehr gibt`() {
-        val appCode = dateien("src/main/java/ch/brickinventoryapp")
+        val appCode = dateien(Quellen.wurzel)
             .joinToString("\n") { it.readText() }
         assert(appCode.contains("repo.sets.getSets(")) {
             "Der App-Code wurde nicht gelesen — dieser Test prüfte sonst gegen Leere"
         }
 
         val tote = mutableListOf<String>()
-        for (datei in dateien("src/test/java/ch/brickinventoryapp")) {
+        for (datei in dateien(Quellen.tests)) {
             if (datei.name == "RepoVerweiseInTestsTest.kt") continue // eigene Beispiele
             for (v in verweiseIn(datei.readText())) {
                 if (!appCode.contains(v)) tote += "${datei.name}: $v"

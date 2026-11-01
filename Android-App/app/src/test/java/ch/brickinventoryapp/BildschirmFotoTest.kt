@@ -4,7 +4,6 @@ import android.os.Looper
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
@@ -43,16 +42,17 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Bildschirmfotos der Hauptbildschirme mit Beispieldaten (Beispiele), je in
- * drei Designs, hell und dunkel, auf Telefon und Tablet. Vorerst wird nur
- * aufgenommen (recordRoborazziDebug); verglichen wird, sobald die Bilder aus der
- * CI als Referenz eingecheckt sind.
+ * drei Designs, hell und dunkel, auf Telefon und Tablet. Liegen Referenzbilder
+ * in src/test/bildschirmfotos, vergleicht die CI gegen sie (verifyRoborazziDebug),
+ * sonst nimmt sie auf; eingecheckt werden sie per Workflow (bildschirmfotos=true).
  *
  * Die Einstellungen selbst holen AppViewModel und UpdateViewModel über Hilt;
  * hier stehen deshalb ihre Bausteine (Klartext-Schalter, Gutscheine).
  *
- * Gegenprobe: Ein Foto, das nichts vergleicht, kann nicht rot werden. Sie folgt,
- * wenn die Referenzbilder eingecheckt sind und `verifyRoborazziDebug` läuft;
- * bis dahin prüft BeispieldatenTest, dass die Bilder Inhalt zeigen.
+ * Gegenprobe: Ein Foto, das nichts vergleicht, kann nicht rot werden. Sie ist
+ * erst mit eingecheckten Referenzen möglich (eine Farbe in Theme.kt ändern →
+ * verifyRoborazziDebug rot) und hier ohne Android-SDK nicht messbar; bis dahin
+ * prüft BeispieldatenTest, dass die Bilder Inhalt zeigen.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -90,10 +90,17 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
      */
     private fun bereitstellen(name: String, bereit: () -> Boolean, zustand: () -> Any?) {
         val ende = System.nanoTime() + 10_000_000_000L
-        while (!bereit()) {
+        // Bereit allein genügt nicht: Ein Bildschirm lädt oft noch Beiwerk nach
+        // (Kennzahlen, Bewertungen). Erst wenn der Testserver eine Weile keine
+        // neue Anfrage sah und der Looper ihre Antworten verarbeitet hat.
+        var anfragen = welt.pfade.anfragen.size
+        var ruhigSeit = System.nanoTime()
+        while (!bereit() || System.nanoTime() - ruhigSeit < 500_000_000L) {
             if (System.nanoTime() > ende) throw AssertionError("$name: Daten nach 10 s nicht da: ${zustand()}")
             shadowOf(Looper.getMainLooper()).idle()
             Thread.sleep(10)
+            val jetzt = welt.pfade.anfragen.size
+            if (jetzt != anfragen) { anfragen = jetzt; ruhigSeit = System.nanoTime() }
         }
     }
 
@@ -106,10 +113,9 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
                 Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
             }
         }
-        // Läuft die Frist ab, soll die Meldung den Zustand nennen (etwa einen
-        // Ladefehler) statt nur „Condition still not satisfied“.
-        try { compose.waitUntil(10_000) { bereit() } }
-        catch (e: ComposeTimeoutException) { throw AssertionError("$name nicht bereit nach 10 s: ${zustand()}", e) }
+        // Der Bildschirm lädt beim Erscheinen teils nach (etwa die Käufe). Auch
+        // diese Antworten kommen über den Hauptlooper, also wieder selbst treiben.
+        bereitstellen("$name (angezeigt)", bereit, zustand)
         compose.waitForIdle()
         val hell = if (dunkel) "dunkel" else "hell"
         compose.onRoot().captureRoboImage("src/test/bildschirmfotos/${name}_${design}_${hell}_$geraet.png")
@@ -124,7 +130,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun galerie() {
         val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
-        foto("galerie", { vm.galleryState.value.sets.isNotEmpty() }, { vm.galleryState.value }) {
+        foto("galerie", { vm.galleryState.value.let { it.sets.isNotEmpty() && it.stats != null && !it.galleryLoading } }, { vm.galleryState.value }) {
             GalleryScreen(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
     }
@@ -132,7 +138,12 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun setDetail() {
         val vm = welt.setDetail().also { it.ladeAlles() }
-        foto("set-detail", { vm.setDetailState.value.setDetail != null }, { vm.setDetailState.value }) {
+        // Alle Abschnitte, nicht nur das Set: Preis, Verlauf und Käufe kommen
+        // in eigenen Abrufen, und ein Foto mitten im Laden weicht vom Referenzbild ab.
+        val fertig = { vm.setDetailState.value.let { s ->
+            s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
+                !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading } }
+        foto("set-detail", fertig, { vm.setDetailState.value }) {
             SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder,
                 onBack = {}, onDelete = {})
         }
@@ -157,7 +168,10 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun finanzen() {
         val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-        foto("finanzen", { vm.financeState.value.valuation != null }, { vm.financeState.value }) {
+        // Teile, Figuren und G&V lädt loadValuation() erst nach der Bewertung nach.
+        foto("finanzen", { vm.financeState.value.let { it.valuation != null && it.partsValuation != null &&
+            it.figsValuation != null && it.pnl != null && it.historyPoints.isNotEmpty() &&
+            !it.valuationLoading && !it.historyLoading } }, { vm.financeState.value }) {
             FinanceScreen(vm = vm, imageLoader = bilder)
         }
     }

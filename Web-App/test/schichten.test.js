@@ -357,85 +357,14 @@ const SQL_TEXT = /[`'"]\s*(?:SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+(?:\w+\s+)?SET|
 const SQL_AUFRUF = /\b(?:db|tx|client|pool)\.(?:run|get|all|query|exec)\s*(?:<[^>]*>)?\(/;
 const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s); };
 
-/**
- * Dateien, in denen Fachlogik und SQL noch zusammenstehen. Die Liste darf nur
- * kürzer werden: Wer eine Datei teilt, streicht ihre Zeile.
- */
-const SQL_NOCH_IM_DIENST = new Set([
-    'jobs/csvImportWorker.ts',
-    'jobs/imageQueue.ts',
-    'jobs/partsCatalogEnrich.ts',
-    'src/auftraege/bricksetAuftrag.ts',
-    'src/auftraege/hintergrund.ts',
-    'src/auftraege/importAuftrag.ts',
-    'src/auftraege/pdfAuftraege.ts',
-    'src/bestand/acquisitions.ts',
-    'src/bestand/bestandExport.ts',
-    'src/bestand/erfassungen.ts',
-    'src/bestand/gemeinsam.ts',
-    'src/bestand/kennzahlen.ts',
-    'src/bestand/lagerort.ts',
-    'src/bestand/loeschen.ts',
-    'src/bestand/papierkorb.ts',
-    'src/figuren/abfragen.ts',
-    'src/figuren/dienst.ts',
-    'src/figuren/manuelleFiguren.ts',
-    'src/finanzen/marketPrice.ts',
-    'src/finanzen/portfolio/kurve.ts',
-    'src/finanzen/portfolioHistory.ts',
-    'src/finanzen/preisalarm.ts',
-    'src/finanzen/priceHistory.ts',
-    'src/finanzen/rechnung/abfragen.ts',
-    'src/finanzen/rechnung/bewertung.ts',
-    'src/finanzen/rechnung/gewinnVerlust.ts',
-    'src/finanzen/rechnung/preise.ts',
-    'src/finanzen/setValue.ts',
-    'src/finanzen/wechselkurse.ts',
-    'src/gutscheine/gutscheinGuthabenSchranke.ts',
-    'src/infra/geheimnisAltbestand.ts',
-    'src/infra/protokoll.ts',
-    'src/katalog/apiKontingent.ts',
-    'src/katalog/bilder/bildNachschlagen.ts',
-    'src/katalog/bilder/bildbedarf.ts',
-    'src/katalog/bilder/imageMisses.ts',
-    'src/katalog/bilder/proxyThumbs.ts',
-    'src/katalog/blZuordnung.ts',
-    'src/katalog/bricklinkLink.ts',
-    'src/katalog/dienst.ts',
-    'src/katalog/instructions.ts',
-    'src/katalog/katalogPflege.ts',
-    'src/katalog/minifigsImport.ts',
-    'src/katalog/partsImport.ts',
-    'src/katalog/rateLimiter.ts',
-    'src/konto/auth.ts',
-    'src/konto/loginLimiter.ts',
-    'src/konto/passkeys.ts',
-    'src/konto/passwortBestaetigung.ts',
-    'src/konto/zweiterFaktor.ts',
-    'src/merkliste/merkliste.ts',
-    'src/merkliste/wantedListe.ts',
-    'src/sets/abfragen.ts',
-    'src/sets/dienst.ts',
-    'src/sets/setAdd.ts',
-    'src/sets/setMove.ts',
-    'src/sets/setService.ts',
-    'src/teile/abfragen.ts',
-    'src/teile/manuelleTeile.ts',
-    'src/teile/partsSummary.ts',
-    'src/teile/teilFarbeAendern.ts',
-    'src/verwaltung/dienst.ts',
-]);
-
 test('SQL steht nur in Repositories und in db/', () => {
-  // Gegenprobe (31.10.2026): `await db.get('SELECT 1')` in src/haushalt/haushalt.ts
-  // → rot; die Zeile aus SQL_NOCH_IM_DIENST gestrichen, ohne die Datei zu teilen → rot.
+  // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
+  // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
+  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in jobs/aufraeumen.ts → rot.
   const dateien = tsUnter('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
-  const mitSql = dateien.filter(d => !istRepository(d) && hatSql(d));
-  const neu = mitSql.filter(d => !SQL_NOCH_IM_DIENST.has(d));
-  assert.deepEqual(neu, [], 'SQL gehört in das Repository des Bereichs (src/<bereich>/repository…).');
-  const erledigt = [...SQL_NOCH_IM_DIENST].filter(d => !mitSql.includes(d));
-  assert.deepEqual(erledigt, [], 'Diese Dateien sind frei von SQL — Zeile streichen.');
+  assert.deepEqual(dateien.filter(d => !istRepository(d) && hatSql(d)), [],
+    'SQL gehört in das Repository des Bereichs (src/<bereich>/repository…).');
   assert.ok(tsUnter('src').filter(istRepository).every(hatSql), 'ein Repository ohne SQL ist keines');
 });
 
@@ -471,29 +400,35 @@ test('ein Repository kennt keine Dienste', () => {
   assert.deepEqual(treffer, []);
 });
 
-/** Dienste, die noch am Request arbeiten: die Anmeldung über HTTP. */
-const EXPRESS_IM_DIENST = new Map([
-  ['src/konto/auth.ts', 'Sitzung anlegen und Anmeldung aus Cookie oder Token lesen'],
-  ['src/konto/loginLimiter.ts', 'die Bremse zählt je Adresse des Requests'],
-  ['src/konto/passwortBestaetigung.ts', 'antwortet bei Sperre selbst (429)'],
-]);
+/** Die HTTP-Seite eines Bereichs (Middleware, Sitzung): src/<bereich>/http/. */
+const istHttp = (rel) => /^src\/[^/]+\/http\//.test(rel);
 
 test('Dienste importieren keine Express-Typen', () => {
-  // src/infra/ trägt die HTTP-Helfer (Fehlerweg, Herkunft, Dateiauslieferung).
-  // Gegenprobe (31.10.2026): `import type { Request } from 'express'` in
-  // src/sets/setService.ts → rot.
+  // Express kennen nur src/infra/ (Fehlerweg, Herkunft, Dateiauslieferung) und
+  // die HTTP-Seiten der Bereiche. Gegenprobe (31.10.2026): `import type {
+  // Request } from 'express'` in src/sets/setService.ts → rot; dasselbe in
+  // src/konto/loginLimiter.ts → rot.
   const treffer = tsUnter('src')
-    .filter(d => bereichVon(d) !== 'infra' && !EXPRESS_IM_DIENST.has(d))
+    .filter(d => bereichVon(d) !== 'infra' && !istHttp(d))
     .filter(d => /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)/.test(quelltext(d)));
   assert.deepEqual(treffer, []);
-  for (const d of EXPRESS_IM_DIENST.keys())
-    assert.match(quelltext(d), /['"]express['"]/, `${d} braucht Express nicht mehr — Eintrag streichen`);
+  assert.ok(tsUnter('src').some(istHttp), 'keine HTTP-Seite unter src/<bereich>/http/ gefunden');
+});
+
+test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite', () => {
+  // Ein Dienst, der die HTTP-Seite importiert, hängt wieder am Request.
+  // Gegenprobe (31.10.2026): `import { adresse } from './http/anmeldung'` in
+  // src/konto/auth.ts → rot.
+  const treffer = [];
+  for (const d of tsUnter('src', 'jobs', 'clients').filter(d => !istHttp(d)))
+    for (const z of aufgeloesteImporte(d)) if (istHttp(z)) treffer.push(`${d} -> ${z}`);
+  assert.deepEqual(treffer, []);
 });
 
 /** Routen, die etwas anderes tun als antworten (Strom, Teilergebnis, Aufräumen) — je Datei die Zahl. */
 const TRY_IN_ROUTEN = new Map([
-  ['routes/auth.ts', 2], ['routes/imgProxy.ts', 3], ['routes/api_v1/vouchers.ts', 3],
-  ['routes/api_v1/sets.ts', 2], ['routes/api_v1/wanted.ts', 3],
+  ['routes/auth.ts', 2], ['routes/imgProxy.ts', 3], ['routes/api_v1/vouchers.ts', 1],
+  ['routes/api_v1/sets.ts', 1], ['routes/api_v1/wanted.ts', 2],
 ]);
 
 test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () => {

@@ -37,7 +37,7 @@ class BildschirmHoltDatenNichtSelbstTest {
     private val bildschirmOrdner = listOf("ui/screens", "ui/dialogs", "ui/components")
 
     private fun dateien(): List<File> = bildschirmOrdner
-        .map { File("src/main/java/ch/brickinventoryapp/$it") }
+        .map { File(Quellen.wurzel, "$it") }
         .filter { it.exists() }
         .flatMap { it.walkTopDown().filter { f -> f.isFile && f.extension == "kt" }.toList() }
 
@@ -70,7 +70,7 @@ class BildschirmHoltDatenNichtSelbstTest {
 
     @Test
     fun `das Monitoring hat ein eigenes ViewModel und der Bildschirm benutzt es`() {
-        val vmDatei = File("src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt")
+        val vmDatei = File(Quellen.wurzel, "ui/viewmodel/MonitoringViewModel.kt")
         assert(vmDatei.exists()) { "MonitoringViewModel.kt gibt es nicht (mehr)" }
         val vm = ohneKommentare(vmDatei.readText())
 
@@ -94,7 +94,7 @@ class BildschirmHoltDatenNichtSelbstTest {
         }
 
         for (rel in listOf("ui/screens/MonitoringScreen.kt", "ui/screens/MonitoringSections.kt")) {
-            val src = ohneKommentare(File("src/main/java/ch/brickinventoryapp/$rel").readText())
+            val src = ohneKommentare(File(Quellen.wurzel, "$rel").readText())
             assert(src.contains("hiltViewModel()")) { "$rel haengt das ViewModel nicht ein" }
             assert(src.contains("mon.state.collectAsStateWithLifecycle()")) {
                 "$rel liest den Zustand nicht mit dem Lebenszyklus — bei einer " +
@@ -107,7 +107,7 @@ class BildschirmHoltDatenNichtSelbstTest {
     fun `jeder Zugriff auf den Monitoring-Zustand trifft ein Feld das es gibt`() {
         // Der Ersatz fuer den fehlenden Compiler — dieselbe Pruefung wie in
         // ScreenViewModelWiringTest, hier fuer die neue Zustandsklasse.
-        val vm = File("src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt").readText()
+        val vm = File(Quellen.wurzel, "ui/viewmodel/MonitoringViewModel.kt").readText()
         val i = vm.indexOf("data class MonitoringUiState(")
         assert(i >= 0) { "MonitoringUiState nicht gefunden" }
         var tiefe = 0
@@ -121,7 +121,7 @@ class BildschirmHoltDatenNichtSelbstTest {
 
         val fehler = mutableListOf<String>()
         for (rel in listOf("ui/screens/MonitoringScreen.kt", "ui/screens/MonitoringSections.kt")) {
-            val src = ohneKommentare(File("src/main/java/ch/brickinventoryapp/$rel").readText())
+            val src = ohneKommentare(File(Quellen.wurzel, "$rel").readText())
             for (m in Regex("""\bmonState\.(\w+)""").findAll(src)) {
                 if (m.groupValues[1] !in felder) fehler += "$rel: monState.${m.groupValues[1]}"
             }
@@ -132,34 +132,18 @@ class BildschirmHoltDatenNichtSelbstTest {
     /**
      * Bildschirme sehen UI-Modelle (ui/model), keine Server-Modelle: Ein neues
      * Feld oder eine andere Nullbarkeit im DTO soll im Repository oder ViewModel
-     * auffallen, nicht in einem Composable. Noch nicht umgestellt sind die
-     * Dateien in [NOCH_MIT_SERVERMODELL]; die Liste darf nur kürzer werden.
-     * Gegenprobe (30.10.2026, gemessen): in GutscheineCard.kt wieder
+     * auffallen, nicht in einem Composable. Seit dem 31.10.2026 ohne Ausnahme.
+     * Gegenprobe (31.10.2026, gemessen): in GutscheineCard.kt wieder
      * `import ch.brickinventoryapp.data.model.Gutschein` → rot, nennt die Datei.
      */
     @Test
-    fun `kein Bildschirm kennt die Server-Modelle, ausser den noch nicht umgestellten`() {
-        val mitModell = listOf("ui/screens", "ui/components").flatMap { Quellen.unter(it.substringAfter("ui/")) }
-            .filter { "data.model" in Quellen.ohneKommentare(it.readText()) }
-            .map { it.name }.toSortedSet()
-        assert(Quellen.unter("screens").size >= 40) { "Bildschirme nicht gefunden — Muster veraltet?" }
-        val neu = mitModell - NOCH_MIT_SERVERMODELL
-        assert(neu.isEmpty()) {
-            "Diese Bildschirme greifen auf data.model zu: $neu — UI-Modell aus ui/model nehmen, " +
+    fun `kein Bildschirm kennt die Server-Modelle`() {
+        val bildschirme = listOf("screens", "components", "dialogs").flatMap { Quellen.unter(it) }
+        assert(bildschirme.size >= 50) { "Bildschirme nicht gefunden — Muster veraltet?" }
+        val mitModell = bildschirme.filter { "data.model" in Quellen.ohneKommentare(it.readText()) }.map { it.name }
+        assert(mitModell.isEmpty()) {
+            "Diese Bildschirme greifen auf data.model zu: $mitModell — UI-Modell aus ui/model nehmen, " +
                 "die Abbildung gehört ins ViewModel."
         }
-        val erledigt = NOCH_MIT_SERVERMODELL - mitModell
-        assert(erledigt.isEmpty()) { "Schon umgestellt, bitte aus der Liste streichen: $erledigt" }
-    }
-
-    private companion object {
-        /** 27 am 30.10.2026 (Stand 4e9148e), jetzt 18. Nur kürzer werden lassen. */
-        val NOCH_MIT_SERVERMODELL = sortedSetOf(
-            "AcquisitionManagementScreen.kt", "CatalogDetailScreen.kt", "CatalogScreen.kt", "Filterblatt.kt",
-            "FinanceSections.kt", "GalleryScreen.kt", "HouseholdComposables.kt", "ManualItemComposables.kt",
-            "MerklisteScreen.kt", "MerkpostenDetailScreen.kt", "MinifigsScreen.kt", "MonitoringScreen.kt",
-            "MonitoringSections.kt", "PartsDialogs.kt", "PartsScreen.kt", "SetDetailComponents.kt",
-            "SetDetailScreen.kt", "SetDetailSections.kt",
-        )
     }
 }

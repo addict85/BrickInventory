@@ -1,9 +1,9 @@
 'use strict';
 /**
- * Der Vertrag mit der Android-App, gelesen aus ihrem eigenen Quelltext:
- * die @Serializable-Datenklassen und die Routen aus data/api/ (je Bereich eine Datei).
- * Handgeschriebene Schemas liefen den Modellen hinterher; diese hier können
- * es nicht, weil sie aus ihnen entstehen.
+ * Die Android-App, gelesen aus ihrem eigenen Quelltext: die
+ * @Serializable-Datenklassen und die Routen aus data/api/ (je Bereich eine
+ * Datei). Der Vertrag selbst steht im Server (src/infra/vertrag/);
+ * vergleiche() prüft, ob die Modelle der App ihn lesen können.
  */
 const fs = require('fs');
 const path = require('path');
@@ -107,11 +107,13 @@ function typ(roh) {
   return { art: 'klasse', name, nullbar };
 }
 
-/** Alle @Serializable-Klassen: Name → Felder. @param {string} wurzel @returns {KModelle} */
+/** Alle @Serializable-Klassen: Name → Felder. @param {string | string[]} wurzel @returns {KModelle} */
 function kotlinModelle(wurzel) {
   /** @type {KModelle} */
   const modelle = new Map();
-  for (const datei of kotlinDateien(wurzel)) {
+  // Eine Wurzel oder mehrere: Seit der Aufteilung der App liegen die Modelle in
+  // core-model, einige in core-data und app.
+  for (const datei of (Array.isArray(wurzel) ? wurzel : [wurzel]).flatMap((w) => kotlinDateien(w))) {
     const roh = fs.readFileSync(datei, 'utf8');
     const src = entschaerfe(roh);
     for (const m of src.matchAll(/@Serializable\s+(?:data\s+)?class\s+(\w+)\s*\(/g)) {
@@ -190,47 +192,72 @@ const FEHLEN_ERLAUBT = new Map([
    'die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions'],
   ['/api/v1/minifigs/manual FigValuationItem.acquisitions',
    'die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions'],
+  ['/api/v1/sets/exists/{setNumber} SetExistsResponse.is_self', 'nur, wenn es das Set im Blickfeld gibt'],
+  // Besitzer nennt der Server nur im Haushalt (withOwners); allein gibt es keine.
+  ...[['/api/v1/sets', 'SetItem'], ['/api/v1/sets/{setNumber}', 'SetItem'], ['/api/v1/minifigs', 'Minifig'],
+    ['/api/v1/sets/{setNumber}/minifigs-list', 'Minifig'], ['/api/v1/parts/manual', 'PartValuationItem'],
+    ['/api/v1/minifigs/manual', 'FigValuationItem'], ['/api/v1/finance/parts-valuation', 'PartValuationItem'],
+    ['/api/v1/finance/minifigs-valuation', 'FigValuationItem']]
+    .map(([route, klasse]) => /** @type {[string, string]} */ ([`${route} ${klasse}.owners`, 'nur im Haushalt'])),
 ]);
 
 /**
- * Passt `wert` zum Kotlin-Typ? Liefert die Abweichungen als Text.
- * Strenger als die App selbst: null in einem nicht-nullbaren Feld zählt
- * auch dann, wenn coerceInputValues es zur Laufzeit auf den Standard setzt,
- * und ein fehlendes Feld auch dann, wenn es einen Standardwert hat.
- * @param {unknown} wert @param {KTyp} t @param {KModelle} modelle @param {string} [ort]
- * @param {{ route?: string, standardwerte?: boolean }} [o] `route` für
- *   FEHLEN_ERLAUBT; `standardwerte: false` meldet nur fehlende Pflichtfelder.
+ * Passt ein Kotlin-Typ zu einem JSON-Schema des Vertrags (docs/openapi.json)?
+ * Geprüft wird, was die App beim Lesen braucht: Jedes Feld des Modells steht
+ * im Schema (unter seinem JSON-Namen), mit passendem Typ; was das Schema null
+ * sein lässt, ist in Kotlin nullbar; was das Schema weglassen darf, hat in
+ * Kotlin einen Standardwert. Bei GET-Routen zählt auch ein Feld mit
+ * Standardwert als Pflicht (sonst überdeckte der Standard ein vergessenes
+ * Feld), ausser es ist nullbar oder steht in FEHLEN_ERLAUBT.
+ * @param {KTyp} t @param {any} schema @param {KModelle} modelle
+ * @param {(ref: string) => any} aufloesen  `$ref` → Schema
+ * @param {string} [ort] @param {{ route?: string, standardwerte?: boolean }} [o]
  * @returns {string[]}
  */
-function pruefe(wert, t, modelle, ort = '$', o = {}) {
-  const { route = '', standardwerte = true } = o;
-  if (wert === null || wert === undefined) return t.nullbar ? [] : [`${ort}: null statt ${beschreibe(t)}`];
+function vergleiche(t, schema, modelle, aufloesen, ort = '$', o = {}) {
+  const s = schema && schema.$ref ? aufloesen(schema.$ref) : schema;
+  if (!s || typeof s !== 'object') return [`${ort}: kein Schema`];
+  const zweige = Array.isArray(s.anyOf) ? s.anyOf.map((/** @type {any} */ z) => (z.$ref ? aufloesen(z.$ref) : z)) : null;
+  if (zweige) {
+    const ohneNull = zweige.filter((/** @type {any} */ z) => z.type !== 'null');
+    if (ohneNull.length < zweige.length && !t.nullbar) return [`${ort}: Schema erlaubt null, Kotlin nicht (${beschreibe(t)})`];
+    // Jede erlaubte Form muss die App lesen können.
+    return ohneNull.flatMap((/** @type {any} */ z) => vergleiche({ ...t, nullbar: true }, z, modelle, aufloesen, ort, o));
+  }
+  if (s.type === 'null') return t.nullbar ? [] : [`${ort}: Schema sagt null, Kotlin ${beschreibe(t)}`];
+  // zod schreibt ein nullbares Primitiv als Typliste: ["string", "null"].
+  const typen = Array.isArray(s.type) ? s.type : [s.type];
+  if (typen.includes('null') && !t.nullbar) return [`${ort}: Schema erlaubt null, Kotlin nicht (${beschreibe(t)})`];
+  const ohneNull = typen.filter((/** @type {string} */ x) => x !== 'null');
+  const typ = ohneNull.length === 1 ? ohneNull[0] : ohneNull.join('|') || undefined;
+  const falsch = (/** @type {string} */ erwartet) => [`${ort}: Schema ${typ ?? 'beliebig'}, Kotlin ${erwartet}`];
   switch (t.art) {
-    case 'string':  return typeof wert === 'string' ? [] : [`${ort}: ${art(wert)} statt String`];
-    case 'boolean': return typeof wert === 'boolean' ? [] : [`${ort}: ${art(wert)} statt Boolean`];
-    case 'int':     return Number.isInteger(wert) ? [] : [`${ort}: ${art(wert)} ${JSON.stringify(wert)} statt Int`];
-    case 'number':  return typeof wert === 'number' ? [] : [`${ort}: ${art(wert)} statt Double`];
+    case 'string':  return typ === 'string' ? [] : falsch('String');
+    case 'boolean': return typ === 'boolean' ? [] : falsch('Boolean');
+    case 'int':     return typ === 'integer' ? [] : falsch('Int');
+    case 'number':  return typ === 'number' || typ === 'integer' ? [] : falsch('Double');
     case 'liste':
-      if (!Array.isArray(wert)) return [`${ort}: ${art(wert)} statt Liste`];
-      return wert.flatMap((w, i) => pruefe(w, t.element ?? { art: 'klasse', nullbar: true }, modelle, `${ort}[${i}]`, o));
+      if (typ !== 'array') return falsch('Liste');
+      return vergleiche(t.element ?? { art: 'klasse', nullbar: true }, s.items, modelle, aufloesen, `${ort}[]`, o);
     case 'karte':
-      if (typeof wert !== 'object' || Array.isArray(wert)) return [`${ort}: ${art(wert)} statt Map`];
-      return Object.entries(wert).flatMap(([k, w]) => pruefe(w, t.wert ?? { art: 'klasse', nullbar: true }, modelle, `${ort}.${k}`, o));
+      if (typ !== 'object' || !s.additionalProperties || typeof s.additionalProperties !== 'object')
+        return falsch('Map');
+      return vergleiche(t.wert ?? { art: 'klasse', nullbar: true }, s.additionalProperties, modelle, aufloesen, `${ort}{}`, o);
     case 'klasse': {
       const m = modelle.get(t.name ?? '');
-      if (!m) return [];                                     // Any, JsonElement, Unit …
-      if (typeof wert !== 'object' || Array.isArray(wert)) return [`${ort}: ${art(wert)} statt ${t.name}`];
+      if (!m) return [];                                     // JsonElement, Any …
+      if (typ !== 'object') return falsch(t.name ?? 'Klasse');
+      const { route = '', standardwerte = true } = o;
+      const pflicht = new Set(s.required ?? []);
       /** @type {string[]} */
       const aus = [];
-      const obj = /** @type {Record<string, unknown>} */ (wert);
       for (const f of m.felder) {
-        const da = Object.prototype.hasOwnProperty.call(obj, f.json);
-        if (!da) {
-          if (!f.typ.nullbar && (standardwerte || !f.hatDefault) && !FEHLEN_ERLAUBT.has(`${route} ${t.name}.${f.json}`))
-            aus.push(`${ort}.${f.json}: fehlt (${t.name}, ${f.hatDefault ? 'Standardwert' : 'Pflichtfeld'})`);
-          continue;
-        }
-        aus.push(...pruefe(obj[f.json], f.typ, modelle, `${ort}.${f.json}`, o));
+        const darfFehlen = f.hatDefault && (f.typ.nullbar || !standardwerte || FEHLEN_ERLAUBT.has(`${route} ${t.name}.${f.json}`));
+        const feld = s.properties?.[f.json];
+        if (!feld) { if (!darfFehlen) aus.push(`${ort}.${f.json}: fehlt im Schema (${t.name})`); continue; }
+        if (!pflicht.has(f.json) && !darfFehlen)
+          aus.push(`${ort}.${f.json}: im Schema optional, in Kotlin ${f.hatDefault ? 'ohne erlaubte Lücke' : 'ohne Standardwert'} (${t.name})`);
+        aus.push(...vergleiche(f.typ, feld, modelle, aufloesen, `${ort}.${f.json}`, o));
       }
       return aus;
     }
@@ -238,9 +265,7 @@ function pruefe(wert, t, modelle, ort = '$', o = {}) {
   return [];
 }
 
-/** @param {unknown} w */
-const art = (w) => Array.isArray(w) ? 'Liste' : typeof w;
 /** @param {KTyp} t */
 const beschreibe = (t) => t.art === 'klasse' ? t.name : t.art;
 
-module.exports = { kotlinModelle, apiRouten, schreibRouten, pruefe, typ, FEHLEN_ERLAUBT, apiQuelltext };
+module.exports = { kotlinModelle, apiRouten, schreibRouten, vergleiche, typ, FEHLEN_ERLAUBT, apiQuelltext };

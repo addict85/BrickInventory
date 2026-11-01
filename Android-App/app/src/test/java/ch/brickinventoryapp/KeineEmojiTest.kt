@@ -33,7 +33,7 @@ class KeineEmojiTest {
     @Test
     fun `kein Emoji in den Texten`() {
         val fehler = listOf("values", "values-de").flatMap { ordner ->
-            File("src/main/res/$ordner/strings.xml").readLines().mapIndexedNotNull { i, zeile ->
+            File(Quellen.res, "$ordner/strings.xml").readLines().mapIndexedNotNull { i, zeile ->
                 if (!zeile.trim().startsWith("<!--") && emoji.containsMatchIn(zeile))
                     "$ordner/strings.xml:${i + 1}  ${zeile.trim()}" else null
             }

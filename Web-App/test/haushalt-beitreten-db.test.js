@@ -38,7 +38,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND]]);
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async (n) => (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
-    VALUES ($1, $2, $3, 1, 1) RETURNING id`, [n, `${n}@example.org`, hash])).id;
+    VALUES ($1, $2, $3, true, true) RETURNING id`, [n, `${n}@example.org`, hash])).id;
   const haupt = await anlegen(HAUPT), kind = await anlegen(KIND);
   await db.run("DELETE FROM global_settings WHERE key LIKE 'smtp_%'");
   t.after(async () => {

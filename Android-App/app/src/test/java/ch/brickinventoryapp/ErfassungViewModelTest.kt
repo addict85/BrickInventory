@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.model.AddSetResponse

@@ -23,8 +23,9 @@ class StateDomainBoundaryTest {
         // Sitzung beginnen und beenden, Design, Sprache, Serverstart.
         "AppViewModel.kt" to setOf("appTheme", "serverUrl", "isLoggedIn", "authToken", "isAdmin",
                                    "currency", "language", "startupStatus"),
+        // isAdmin: rechteNachziehen() nach einem 403 `nur_admins`.
         "Sitzung.kt" to setOf("currency", "priceCondition", "defaultPriceCondition",
-                              "userDefaultCondition", "appTheme"),
+                              "userDefaultCondition", "appTheme", "isAdmin"),
         "AnmeldungViewModel.kt" to setOf("isLoggedIn", "isAdmin"),
         "EinstellungenViewModel.kt" to setOf("currency", "priceCondition"),
         // Die Bewertung nennt die Währung des Servers.

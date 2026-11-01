@@ -140,8 +140,8 @@ test('Der erste WorkManager-Zugriff liegt in einem runCatching', () => {
   // scheitern. Dass die Funktion nicht mehr werfen KANN, prueft
   // test/alarm-einplanen-faellt-nicht.test.js — hier steht nur der Verweis,
   // damit niemand die eine fuer die andere haelt.
-  const worker = fs.readFileSync(
-    APP.replace(/BrickInventoryApp\.kt$/, 'alarm/PreisalarmWorker.kt'), 'utf8');
+  const worker = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main',
+    'java', 'ch', 'brickinventoryapp', 'alarm', 'PreisalarmWorker.kt'), 'utf8');
   assert.match(worker, /fun einplanen\([^)]*\)\s*:\s*Throwable\?/,
     'einplanen() gibt keinen Fehler mehr zurueck — dann wirft es wieder, und die '
     + 'Aufrufstelle am Schalter hat kein Netz.');

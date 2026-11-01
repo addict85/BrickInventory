@@ -1,8 +1,5 @@
-/**
- * Pfad unter data/<subDir>/ aus den Segmenten einer Anfrage. Express dekodiert
- * `%2F` erst NACH dem Aufteilen — ein Segment kann also selbst einen
- * Schrägstrich tragen. Darum gelten Segmente mit / \ oder NUL als Angriff.
- */
+/** Express dekodiert `%2F` erst NACH dem Aufteilen; Segmente mit / \ oder NUL
+ * gelten deshalb als Angriff. */
 import path from 'path';
 
 import { DATA_DIR } from './appPaths';

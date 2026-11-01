@@ -92,11 +92,12 @@ test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
   // Selbstbeweis: Der Helfer muss die Schreibweisen wirklich kennen — sonst
   // wäre die Prüfung oben grün, weil es nirgends mehr etwas zu finden gibt.
   const helfer = fs.readFileSync(path.join(ROOT, 'src/infra/validate.ts'), 'utf8');
-  const i = helfer.indexOf('export function istErsatzteil(');
-  assert.ok(i > 0, 'istErsatzteil() fehlt');
+  // istErsatzteil() liest mit istJa(), der Lesart aller Ja/Nein-Werte von aussen.
+  const i = helfer.indexOf('export function istJa(');
+  assert.ok(i > 0, 'istJa() fehlt');
   const rumpf = helfer.slice(i, helfer.indexOf('\n}', i));
   for (const form of ["'1'", "'t'", "'true'"])
-    assert.ok(rumpf.includes(form), `istErsatzteil() kennt ${form} nicht`);
+    assert.ok(rumpf.includes(form), `istJa() kennt ${form} nicht`);
 });
 
 test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
@@ -123,8 +124,8 @@ test('die Antwort traegt einen echten Wahrheitswert', async (t) => {
   // naechsten Pflichtteil. Die Frage dieses Tests bleibt dieselbe — kommt
   // beim Leser ein echter Wahrheitswert an.
   await db.run(`INSERT INTO set_teile (set_number,part_number,color_id,quantity,is_spare)
-                VALUES ('75192-1','3001',4,10,1),
-                       ('75192-1','3020',0,2,0)`);
+                VALUES ('75192-1','3001',4,10,true),
+                       ('75192-1','3020',0,2,false)`);
   await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
   await haeltTeil(db, uid, '3020', { setNumber: '75192-1', menge: 2, colorId: 0 });
 

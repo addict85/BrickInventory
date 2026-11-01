@@ -1,10 +1,7 @@
-/**
- * Anleitungen je Set laden — der Auftrag 'anleitung' (eingereiht über
- * src/auftraege/anleitungsAuftrag.ts). Brickset und brickinstructions.com wollen
- * Abstand: Nach einem echten Abruf pausiert die ganze Art 15 Sekunden, nach
- * einer Cloudflare-Sperre 5, 10, 15, 20 Minuten und dann bis zum nächsten Tag.
- * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#db
- */
+/** Brickset und brickinstructions.com wollen Abstand: Nach einem echten Abruf
+ * pausiert die ganze Art 15 Sekunden, nach einer Cloudflare-Sperre 5–20
+ * Minuten und dann bis zum nächsten Tag.
+ * Ausführlich: docs/begruendungen/jobs/instructionQueue.ts.md#db */
 import { mitSitzungsSperre } from '../db/txLock';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../src/katalog/instructions';
 import { fehlertext } from '../src/infra/httpError';
@@ -17,12 +14,11 @@ import * as monitor from '../src/auftraege/jobMonitor';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { AuftragVerschieben } from './auftragsWorker';
 
-/** Abstand nach einem Abruf, der wirklich einen fremden Server fragte. */
 const TAKT_NACH_ABRUF_MS = 15_000;
 /** Pausen nach der ersten bis vierten Cloudflare-Sperre; danach bis morgen. */
 const CF_PAUSEN_MS = [5, 10, 15, 20].map(min => min * 60 * 1000);
 
-/** 00:05 des nächsten Tages: Dann ist das Tageskontingent wieder frei. */
+/** 00:05: Dann ist das Tageskontingent wieder frei. */
 function naechsterTag(jetzt = new Date()): Date {
   const z = new Date(jetzt);
   z.setHours(0, 5, 0, 0);
@@ -30,11 +26,8 @@ function naechsterTag(jetzt = new Date()): Date {
   return z;
 }
 
-/**
- * Zwei Job-Prozesse sollen sich den Takt nicht teilen: Hält ein anderer die
- * Sperre, wartet dieser Auftrag einen Takt (auf eigener Verbindung, weil
- * Advisory-Locks an der Sitzung hängen).
- */
+/** Zwei Job-Prozesse sollen sich den Takt nicht teilen; eigene Verbindung,
+ * weil Advisory-Locks an der Sitzung hängen. */
 function mitSperre<T>(lauf: () => Promise<T>): Promise<T> {
   return mitSitzungsSperre(LOCKS.ANLEITUNGS_QUEUE, lauf, () => {
     throw new AuftragVerschieben(new Date(Date.now() + TAKT_NACH_ABRUF_MS), 'Anleitungen laufen in einem anderen Prozess');
@@ -48,14 +41,14 @@ async function meldeMonitor(setNumber: string): Promise<void> {
     sub: offen > 1 ? `${setNumber} · ${offen - 1} ausstehend` : 'Alle erledigt' });
 }
 
-/** Der Bearbeiter. Eine Drosselung verschiebt den Auftrag, ohne ihn als Versuch zu zählen. */
+/** Eine Drosselung verschiebt den Auftrag, ohne ihn als Versuch zu zählen. */
 async function anleitungLaden(n: Record<string, unknown>): Promise<void> {
   const sn = String(n.set_number);
   if (await anzahlAnleitungen(sn) > 0) return;
   if (n.nur_ausweichquelle) { await scrapeInstructionsFromFallback(sn); return; }
   await mitSperre(async () => {
     try {
-      // eigenerTakt: Die Pausen in der Funktion entfallen, den Abstand hält die Pause der Art.
+      // Den Abstand hält die Pause der Art, nicht die Funktion.
       const anzahl = await downloadSetInstructions(sn, true);
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
       if (await liesPause('anleitung')) await beendePause('anleitung');

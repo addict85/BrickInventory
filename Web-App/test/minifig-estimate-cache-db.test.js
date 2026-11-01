@@ -100,19 +100,3 @@ test('ein veralteter Eintrag wird übergangen', async (t) => {
   await db.pool.end().catch(() => {});
 });
 
-test('Cache und Verlauf werden beide beschrieben', () => {
-  // Am Quelltext, weil ein echter Schreibvorgang einen BrickLink-Abruf
-  // voraussetzt. Beide Tabellen gehören zusammen: Der Cache hält über sein
-  // UNIQUE nur den letzten Wert, der Verlauf die Vergangenheit fürs Diagramm.
-  const fs = require('node:fs');
-  const path = require('node:path');
-  const src = fs.readFileSync(path.join(__dirname, '..', 'src/finanzen/marketPrice.ts'), 'utf8');
-  const i = src.indexOf('async function schaetzeFigurenpreis');
-  const fn = src.slice(i, src.indexOf('\n}', i));
-
-  assert.match(fn, /INSERT INTO minifig_price_cache/, 'Die Schätzung landet nicht im Cache');
-  assert.match(fn, /INSERT INTO minifig_price_history/, 'Die Schätzung landet nicht im Verlauf');
-  assert.match(fn, /SELECT avg_price, abdeckung FROM minifig_price_cache/,
-    'Der Cache wird nur beschrieben, nicht gelesen — genau der Zustand vor ' +
-    'Nachtrag 144.');
-});

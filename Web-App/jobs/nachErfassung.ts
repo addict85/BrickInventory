@@ -1,19 +1,14 @@
-/**
- * Was nach dem Erfassen eines Sets nachgezogen wird. Es läuft als Auftrag
- * (src/auftraege/auftraege.ts) im Job-Prozess: Ein Neustart verliert nichts, und
- * scheitert der Import von Teilen oder Figuren, wiederholt der Worker ihn.
- * Die Anreicherungen danach sind Beiwerk mit eigenen Kontingenten; sie melden
- * ihren Fehler und lassen den Auftrag nicht scheitern.
- */
+/** Als Auftrag im Job-Prozess: Ein Neustart verliert nichts, und ein
+ * gescheiterter Import von Teilen oder Figuren wird wiederholt. Die
+ * Anreicherungen danach melden ihren Fehler, ohne den Auftrag scheitern zu lassen. */
 import { importiereTeile, fetchMissingBlIds } from '../src/katalog/partsImport';
 import { importiereFiguren } from '../src/katalog/minifigsImport';
 import { downloadSetInstructions } from '../src/katalog/instructions';
 import { logAndContinue } from '../src/infra/httpError';
-import { fuelleSetLuecken } from '../src/katalog/bildlage';
-import { getSetInfo as bricksetSetInfo } from '../clients/brickset';
+import { fuelleAusBrickset } from '../src/katalog/bildlage';
 import { anleitungEinreihen } from '../src/auftraege/anleitungsAuftrag';
 import { refreshPriceForSet } from './priceJob';
-import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from './partsCatalogEnrich';
+import { enrichSetParts, enrichSetMinifigs, downloadSetImages } from '../src/katalog/teileAnreicherung';
 
 /** zweit: ein vorhandenes Set noch einmal erfasst; neu: angelegt; csv: aus dem CSV-Import. */
 export type NacharbeitArt = 'zweit' | 'neu' | 'csv';
@@ -34,18 +29,11 @@ async function zieheNach(setNumber: string, userId: number, art: NacharbeitArt):
   }
   await enrichSetParts(setNumber).catch(melde('teile-anreichern'));
   await enrichSetMinifigs(setNumber).catch(melde('figuren-anreichern'));
-  if (art === 'csv') await bricksetMetadaten(setNumber).catch(melde('brickset'));
+  // Brickset füllt nur Lücken; der CSV-Import fragt es beim Anlegen nicht.
+  if (art === 'csv') await fuelleAusBrickset(setNumber).catch(melde('brickset'));
   await downloadSetImages(setNumber).catch(melde('bilder'));
 }
 
-/** Brickset füllt nur Lücken im Katalog; der CSV-Import fragt es beim Anlegen nicht. */
-async function bricksetMetadaten(setNumber: string): Promise<void> {
-  const bs = await bricksetSetInfo(setNumber);
-  if (!bs) return;
-  await fuelleSetLuecken(setNumber, bs);
-}
-
-/** Die Bilder eines Sets, nachdem jemand seine Teileliste angesehen hat. */
 async function ladeSetBilder(setNumber: string): Promise<void> {
   await downloadSetImages(setNumber);
   await enrichSetMinifigs(setNumber);

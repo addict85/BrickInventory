@@ -1,20 +1,17 @@
-/** /api/v1 — Dashboard-Statistiken und Endpoint-Übersicht. */
-import express from 'express';
 import { fehlerAntwort } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
 import { getStats } from '../../src/bestand/kennzahlen';
-const router = express.Router();
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
+const router = vertragsRouter();
 
-router.get('/stats', requireToken, async (req: AuthedRequest, res) => {
-  // Gemeinsamer Handler (auch /api/settings/stats): zählt jetzt auch die
-  // eigenen (hochgeladenen) Anleitungen mit und filtert Sets nicht mehr
-  // auf pieces IS NOT NULL — Parität zur Webapp.
+router.get('/stats', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/stats'>) => {
   res.json({ success: true, stats: await getStats(await scopeIds(req.apiUser.user_id, parseScopeMode(req.query.accounts))) });
 });
 
-// Hinter requireToken: die Übersicht verrät ohne Auth die komplette API-Fläche.
-router.get('/', requireToken, (_req: AuthedRequest, res) => res.json({
+// Hinter requireToken: Die Übersicht verriete sonst die ganze API-Fläche.
+router.get('/', requireToken, (_req: AuthedRequest, res: Antwort<'GET /api/v1/'>) => res.json({
   api:'Brick Manager API v1', version:'1.0',
   auth:'Bearer token — POST /api/v1/auth/login',
   endpoints:{

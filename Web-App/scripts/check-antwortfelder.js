@@ -30,7 +30,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const ANDROID = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main');
+const { quellwurzeln } = require('../test/helpers/android');
 
 /**
  * Schlüssel, die absichtlich kein Client liest. Jeder mit Grund — die Liste
@@ -125,7 +125,7 @@ for (const p of quellen) {
 
 const verbraucher = [
   ...dateien(path.join(ROOT, 'public'), ['.js', '.html'], ['app.bundle.js']),
-  ...dateien(ANDROID, ['.kt'], []),
+  ...quellwurzeln().flatMap((w) => dateien(w, ['.kt'], [])),
 ];
 if (verbraucher.length < 50) {
   console.error(`❌ Nur ${verbraucher.length} Verbraucherdateien gefunden — ohne sie ` +

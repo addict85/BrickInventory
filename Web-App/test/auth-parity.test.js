@@ -26,7 +26,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { assertLoginAllowed, USERNAME_RE, BCRYPT_ROUNDS, escapeLike } =
   _req('src/konto/auth.js');
-const { ohneKommentare } = require('./helpers/sources');
+const { ohneKommentare, abschnitt } = require('./helpers/sources');
 
 test('aktives, bestätigtes Konto darf sich anmelden', () => {
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 1, email: 'a@b.c' }), null);
@@ -103,7 +103,7 @@ test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
     ' — es soll genau eine geben.');
 
   const abweichler = mitPasswort
-    .filter(h => !/pruefeAnmeldedaten/.test(h.koerper))
+    .filter(h => !/\b(pruefeAnmeldedaten|anmelden)\(/.test(h.koerper))
     .map(h => `${h.datei}  ${h.pfad}`);
   assert.deepEqual(abweichler, [],
     'Diese Anmeldungen prüfen die Zugangsdaten selbst statt über ' +
@@ -137,9 +137,9 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
     ' — die Anmeldung gehört ganz in pruefeAnmeldedaten() (src/konto/auth.ts).');
 
   // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
-  const zentral = fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8');
+  const zentral = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
   for (const name of ['checkLoginAllowed', 'recordLoginFailure', 'recordLoginSuccess'])
-    assert.match(zentral, new RegExp(`\\b${name}\\(req`), `src/konto/auth.ts ruft ${name} nicht auf`);
+    assert.match(zentral, new RegExp(`\\b${name}\\(ip`), `src/konto/auth.ts ruft ${name} nicht auf`);
 });
 
 test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
@@ -160,7 +160,7 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
 
 test('bcrypt-Kostenfaktor ist überall derselbe', () => {
   assert.ok(BCRYPT_ROUNDS >= 12);
-  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth = ['routes/auth.ts', 'src/konto/konten.ts'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
   const literals = [...auth.matchAll(/bcrypt\.hash\([^,]+,\s*([^)]+)\)/g)].map(m => m[1].trim());
   assert.deepEqual([...new Set(literals)], ['BCRYPT_ROUNDS'],
     `bcrypt.hash wird mit unterschiedlichen Kosten aufgerufen: ${literals.join(', ')}`);
@@ -251,27 +251,9 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
   // jetzt in passwortZuKurz() (src/konto/auth.ts); test/passwortlaenge.test.js
   // haelt fest, dass ALLE sechs Stellen sie benutzen.
   assert.match(fn, /passwortZuKurz\(password\)/, 'Mindestlänge fehlt');
-  assert.match(fn, /bcrypt\.hash\(String\(password\), BCRYPT_ROUNDS\)/,
-    'Das Passwort muss mit denselben Parametern gehasht werden wie überall');
-  // Der Weg zur Antwort hat sich geändert (Nachtrag 130): Fehler gehen jetzt
-  // über sendeFehler(), damit sie in der Sprache des Anfragenden ankommen.
-  // Geprüft wird weiter die AUSSAGE — 404 bei unbekanntem Nutzer.
-  assert.match(fn, /if \(!await K\.setzePasswortHash\(targetId, hash\)\) return sendeFehler\(req, res, 404/,
+  // Hashen und das Beenden aller Zugänge übernimmt der Kontodienst (Test darüber).
+  assert.match(fn, /if \(!await K\.setzeFremdesPasswort\(targetId, password\)\) return sendeFehler\(req, res, 404/,
     'Ein unbekannter Nutzer muss 404 ergeben, nicht stillen Erfolg');
-
-  // Offene Zugänge schliessen.
-  //
-  // Hier stand die Erwartung, die Session-Tabelle werde vor dem Löschen mit
-  // to_regclass geprüft — „der Store legt sie zur Laufzeit an". Die Annahme
-  // war falsch: Der Store läuft auf user_sessions (server.ts, tableName), und
-  // db/database.ts legt die Tabelle im Schema an. Der Test auf `session` war
-  // immer NULL, das DELETE lief nie, und dieser Test hat die Lücke
-  // festgeschrieben statt sie zu finden. Beide Schritte laufen jetzt über die
-  // Helfer in src/konto/auth.ts.
-  assert.match(fn, /revokeAllSessions\(targetId\)/,
-    'Offene Sitzungen des Kontos müssen enden');
-  assert.match(fn, /revokeAllTokens\(targetId\)/,
-    'Token des Kontos müssen ebenfalls verfallen');
 });
 
 test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => {
@@ -288,10 +270,10 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
   //     Verschluckt hiess: neues Passwort gesetzt, alte Zugänge gelten weiter.
   //   • revokeAllTokens() — dieselbe Regel an der zentralen Stelle.
   const auth  = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
-  const utils = fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8');
+  const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
-  // Das Feld heisst seit dem Zusammenlegen der beiden Anmeldungen `token`
-  // (vorher `webToken`) und die Zeile steht in derselben Route.
+  // Das Feld heisst `token`; ausgestellt wird es in angemeldetAntworten(),
+  // dem gemeinsamen Weg von Passwort- und Passkey-Anmeldung.
   //
   // Kommentare raus, BEVOR gesucht wird: Der Erklaertext IN der Route nennt
   // `.catch(() => {})` als das, was dort frueher stand — die Prüfung schlug
@@ -299,7 +281,7 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
   // mehrfach zuvor in dieser Suite; sie ist der haeufigste Fehler beim
   // Schreiben quelltextlesender Tests.
   const authOhne = ohneKommentare(auth);
-  const login = authOhne.slice(authOhne.indexOf("router.post('/login'"), authOhne.indexOf('mustChangePassword'));
+  const login = authOhne.slice(authOhne.indexOf('async function angemeldetAntworten'), authOhne.indexOf('mustChangePassword'));
   assert.doesNotMatch(login, /\.catch\(\(\)\s*=>\s*\{\}\)/,
     'Ein Token, den die Datenbank nicht kennt, darf nicht ausgeliefert werden');
   assert.match(login, /token \? \{ token \} : \{\}/,
@@ -336,7 +318,7 @@ test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {
   // Drei Wege ändern ein Passwort — Admin-Reset, Reset per E-Mail-Token und
   // die eigene Änderung. Alle drei müssen Tokens UND Sitzungen schliessen.
   const auth  = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
-  const utils = fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8');
+  const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
   assert.doesNotMatch(auth, /to_regclass\('public\.session'\)/,
     'Die Tabelle heisst user_sessions — der Test darauf war immer NULL');
@@ -360,9 +342,14 @@ test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {
     assert.ok(start > 0, `${name}: Route nicht gefunden`);
     const ende = auth.indexOf('router.', start + 10);
     const block = auth.slice(start, ende === -1 ? auth.length : ende);
-    assert.match(block, /revokeAllTokens\(/, `${name}: Tokens bleiben gültig`);
-    assert.match(block, /revokeAllSessions\(/, `${name}: Sitzungen bleiben gültig`);
+    assert.match(block, /K\.(setzeFremdesPasswort|aendereEigenesPasswort|setzePasswortZurueck)\(/,
+      `${name}: Passwort nicht über den Kontodienst gesetzt — die Zugänge bleiben gültig`);
   }
+  // Der Kontodienst beendet in jedem dieser Wege Tokens UND Sitzungen.
+  const konten = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/konto/konten.ts'), 'utf8'));
+  assert.match(konten, /async function zugaengeBeenden[^}]*revokeAllTokens\(uid\);[^}]*revokeAllSessions\(uid\);/);
+  for (const f of ['setzeFremdesPasswort', 'aendereEigenesPasswort', 'setzePasswortZurueck'])
+    assert.match(abschnitt(konten, `function ${f}(`, '\n}'), /await zugaengeBeenden\(uid\)/, `${f} beendet die Zugänge nicht`);
 });
 
 test('ungenutzte App-Tokens verfallen, aktive nicht', () => {
@@ -376,7 +363,7 @@ test('ungenutzte App-Tokens verfallen, aktive nicht', () => {
   // Das Mass ist „ungenutzt", nicht „alt": Ein Telefon, das täglich
   // synchronisiert, wird nie ausgesperrt, egal wie lange es das Konto schon
   // hat. Nur was ohnehin niemand mehr benutzt, verfällt.
-  const utils = fs.readFileSync(path.join(ROOT, 'src/konto/auth.ts'), 'utf8');
+  const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
   assert.match(utils, /const TOKEN_IDLE_DAYS/, 'Die Frist gehört an eine benannte Stelle');
   // TOKEN_IDLE_DAYS liest die zentrale Konfiguration (src/infra/konfig.ts).
@@ -398,5 +385,5 @@ test('ungenutzte App-Tokens verfallen, aktive nicht', () => {
   const fn = utils.slice(utils.indexOf('async function purgeExpiredTokens'),
                          utils.indexOf('export {'));
   assert.doesNotMatch(fn, /rowCount/, 'db.run() liefert changes, nicht rowCount');
-  assert.match(fn, /\?\.changes \|\| 0/, 'Die Zählung muss changes lesen');
+  assert.match(fn, /\.changes \|\| 0/, 'Die Zählung muss changes lesen');
 });

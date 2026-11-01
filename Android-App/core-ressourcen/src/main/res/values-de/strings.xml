@@ -1,0 +1,906 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">BrickInventory Manager</string>
+    <string name="lang_code">de</string>
+
+    <!-- ══════════════ Settings screen ══════════════ -->
+    <string name="settings_currency">Währung</string>
+    <string name="settings_price_condition">Preiszustand</string>
+    <string name="settings_default_condition">Standard-Zustand</string>
+    <string name="settings_default_condition_effective">Aktuell wirksam: %1$s.</string>
+    <string name="settings_default_condition_hint">Vorbelegung beim Erfassen. Leer = globale Vorgabe aus den Hintergrundarbeiten.</string>
+    <string name="settings_default_condition_global">— Globale Vorgabe —</string>
+    <string name="monitoring_default_condition">Standard-Zustand</string>
+    <string name="settings_price_basis">Preisgrundlage für BrickLink-Bewertungen</string>
+    <string name="settings_condition_new">Neu</string>
+    <string name="settings_condition_used">Gebraucht</string>
+    <string name="settings_save">Speichern</string>
+    <string name="settings_logout">Abmelden</string>
+    <string name="settings_language">Sprache</string>
+    <string name="settings_language_system">System-Sprache</string>
+    <string name="settings_language_en">Englisch</string>
+    <string name="settings_language_de">Deutsch</string>
+
+    <!-- ══════════════ Login screen ══════════════ -->
+    <string name="login_title">Anmelden</string>
+    <string name="login_username">Benutzername</string>
+    <string name="login_password">Passwort</string>
+    <string name="login_button">Anmelden</string>
+    <string name="login_code">Code aus der Authenticator-App</string>
+    <string name="login_code_hint">Oder einer deiner Wiederherstellungscodes</string>
+    <string name="login_passkey">Mit Passkey anmelden</string>
+    <string name="login_passkey_statt_code">Passkey statt Code verwenden</string>
+    <string name="login_passkey_keiner">Auf diesem Gerät ist kein Passkey für diesen Server gespeichert.</string>
+    <string name="login_passkey_fehler">Der Passkey konnte nicht abgefragt werden.</string>
+    <string name="settings_nutzer_ca">Der eigenen Zertifizierungsstelle vertrauen</string>
+    <string name="settings_nutzer_ca_hint">Für einen Server mit selbst ausgestelltem Zertifikat, dessen Zertifizierungsstelle auf diesem Gerät installiert ist. Sonst ausgeschaltet lassen: Eine installierte Zertifizierungsstelle kann jede Verbindung mitlesen.</string>
+    <string name="login_netz_titel">Anderes Netz als bei der Einrichtung</string>
+    <string name="login_netz_text">Dein Passwort ginge unverschlüsselt an %1$s. In diesem Netz kann die Adresse zu einem anderen Rechner gehören. Nur fortfahren, wenn du sicher bist, dass es dein Server ist.</string>
+    <string name="login_netz_trotzdem">Trotzdem anmelden</string>
+    <string name="setup_qr_titel">Diesen Server übernehmen?</string>
+    <string name="setup_qr_text">Der QR-Code zeigt auf:\n%1$s\n\nDie App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
+    <string name="setup_qr_klartext">Die Verbindung ist unverschlüsselt — der Zugang geht im Klartext übers Netz.</string>
+    <string name="setup_qr_uebernehmen">Übernehmen und anmelden</string>
+
+    <!-- ══════════════ CSV import banner ══════════════ -->
+    <string name="csv_ok_count">%1$d OK</string>
+    <string name="csv_stat_success">Erfolg</string>
+    <string name="csv_stat_warnings">Warnungen</string>
+    <string name="csv_stat_errors">Fehler</string>
+    <string name="csv_cancel">Import abbrechen</string>
+    <string name="csv_cancel_requested">Der Import hört nach dem laufenden Set auf</string>
+    <string name="csv_import_done">Import abgeschlossen</string>
+
+    <!-- ══════════════ Portfolio chart ══════════════ -->
+    <string name="chart_portfolio_value">Wertentwicklung Portfolio</string>
+    <string name="chart_no_history">Noch keine Verlaufsdaten</string>
+    <string name="chart_summary">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s, Veränderung %5$s</string>
+    <string name="chart_summary_no_change">Portfoliowert, %1$s bis %2$s: von %3$s auf %4$s</string>
+    <string name="price_chart_summary">Preisverlauf %1$s, %2$s bis %3$s: von %4$s auf %5$s, tiefster Wert %6$s, höchster %7$s</string>
+    <string name="chart_period_week">Woche</string>
+    <string name="chart_period_month">Monat</string>
+    <string name="chart_period_year">Jahr</string>
+    <string name="chart_period_max">Max</string>
+
+    <!-- ══════════════ Comparison screen ══════════════ -->
+    <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
+    <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">z.B. 75192-1 oder Barcode</string>
+    <string name="comparison_search">Suchen</string>
+    <string name="comparison_scan_new">Neu</string>
+    <string name="comparison_scan">Scan</string>
+    <string name="comparison_barcode_label">Barcode: %1$s</string>
+    <string name="comparison_title">Preisvergleich</string>
+    <string name="comparison_hint">Setnummer oder Barcode eingeben, oder Barcode scannen.\nDie Suche öffnet toppreise.ch im Browser.</string>
+
+    <!-- ══════════════ Barcode result dialog ══════════════ -->
+    <string name="barcode_add">Hinzufügen</string>
+    <string name="barcode_purchase_price">Kaufpreis (optional)</string>
+
+    <!-- ══════════════ Barcode scanner screen ══════════════ -->
+    <string name="scanner_hint_default">Halte die Kamera auf den Barcode der Schachtel</string>
+    <string name="scanner_hint_detected">Erkannt: %1$s</string>
+    <string name="scanner_hint_confirming">Barcode erkannt, bestätige…</string>
+    <string name="scanner_hint_aim">Kamera auf Barcode richten</string>
+    <string name="scanner_hint_error">Scan-Fehler — bitte nochmals versuchen</string>
+    <string name="scanner_torch_off">Licht aus</string>
+    <string name="scanner_torch_on">Licht ein</string>
+    <string name="scanner_camera_needed">Kamerazugriff benötigt</string>
+    <string name="scanner_allow">Erlauben</string>
+    <string name="scanner_close">Schließen</string>
+
+    <!-- ══════════════ Setup screen ══════════════ -->
+    <string name="setup_invalid_qr">Ungültiger QR-Code — bitte BrickInventory QR-Code verwenden</string>
+    <string name="setup_subtitle">Server-Einrichtung</string>
+    <string name="setup_scan_qr">QR-Code scannen</string>
+    <string name="setup_or_manual">  oder manuell  </string>
+    <string name="setup_server_url">Server-URL</string>
+    <string name="setup_url_label">URL der BrickInventory Manager Webapp</string>
+    <string name="setup_url_placeholder">http://192.168.1.100:3000</string>
+    <string name="setup_url_supporting">z.B. http://192.168.1.100:3000 oder https://brick.example.com</string>
+    <string name="api_app_zu_alt">Diese App ist zu alt für den Server. Bitte die App aktualisieren (Einstellungen → Aktualisierung).</string>
+    <string name="api_server_zu_alt">Der Server ist älter als diese App. Manches fehlt womöglich — bitte den Server aktualisieren.</string>
+    <string name="setup_url_klartext">Unverschlüsselt: Dein Zugang geht im Klartext übers Netz. Ist der Server aus dem Internet erreichbar, bitte https verwenden.</string>
+    <string name="setup_url_klartext_bestaetigen">Mir ist bewusst, dass der Zugang zu %1$s unverschlüsselt übertragen wird — trotzdem verbinden.</string>
+    <string name="setup_continue">Weiter</string>
+    <string name="setup_qr_detected">QR-Code erkannt</string>
+    <string name="setup_qr_scan_hint">BrickInventory QR-Code scannen</string>
+
+    <!-- ══════════════ Gallery screen ══════════════ -->
+    <string name="gallery_stat_sets">Sets</string>
+    <string name="gallery_stat_units">Einheiten</string>
+    <string name="gallery_stat_parts">Teile</string>
+    <string name="gallery_stat_minifigs">Minifiguren</string>
+    <string name="gallery_stat_instructions">Anleitungen</string>
+    <string name="gallery_search_placeholder">Sets suchen…</string>
+    <string name="gallery_all">Alle</string>
+    <string name="gallery_no_sets">Keine Sets vorhanden</string>
+    <string name="gallery_empty_hint">Erfasse dein erstes Set über die Setnummer oder scanne den Barcode auf der Schachtel.</string>
+    <string name="gallery_add_first">Erstes Set erfassen</string>
+    <string name="gallery_load_failed">Die Sammlung konnte nicht geladen werden</string>
+    <string name="gallery_refresh">Neu laden</string>
+    <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
+    <string name="gallery_quantity_badge">×%1$d</string>
+    <string name="gallery_delete_title">Set löschen?</string>
+    <string name="gallery_delete_text">%1$s und alle Teile werden entfernt.</string>
+    <string name="gallery_pieces_suffix"> Teile</string>
+    <string name="gallery_scan_barcode">Barcode scannen</string>
+    <string name="offline_stand">Offline – Stand von %1$s</string>
+    <string name="offline_verworfen">Nicht übernommen: %1$s – %2$s</string>
+    <string name="offline_verworfen_ohne_grund">der Server hat die Änderung nicht angenommen</string>
+    <plurals name="offline_ausgang">
+        <item quantity="one">Offline gespeichert – %1$d Änderung wird gesendet</item>
+        <item quantity="other">Offline gespeichert – %1$d Änderungen werden gesendet</item>
+    </plurals>
+    <string name="gallery_add_set">Set hinzufügen</string>
+    <string name="gallery_add_set_title">Set hinzufügen</string>
+    <string name="gallery_set_number">Set-Nummer</string>
+    <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">z.B. 75192-1 oder 75192</string>
+    <string name="gallery_purchase_price">Kaufpreis (optional)</string>
+    <string name="gallery_add">Hinzufügen</string>
+
+    <!-- ══════════════ Minifigs screen ══════════════ -->
+    <string name="minifigs_stat_types">Typen</string>
+    <string name="minifigs_stat_total">Gesamt</string>
+    <string name="minifigs_stat_manual">Manuell</string>
+    <string name="minifigs_search_placeholder">Minifiguren suchen…</string>
+    <string name="minifigs_manual_section">Manuell erfasste Minifiguren</string>
+    <string name="minifigs_sets_section">Aus Sets</string>
+    <string name="minifigs_none">Keine Minifiguren</string>
+    <string name="minifigs_loaded_on_import">Minifiguren werden beim Set-Import geladen</string>
+    <string name="minifigs_no_results">Keine Treffer</string>
+    <string name="minifigs_add">Minifigur hinzufügen</string>
+    <string name="minifigs_add_title">Minifigur erfassen</string>
+    <string name="minifigs_fig_number">Figur-Nummer</string>
+    <string name="minifigs_fig_number_placeholder">z.B. fig-007357 (Rebrickable)</string>
+    <string name="minifigs_bl_number">BrickLink-Nr. (optional)</string>
+    <string name="minifigs_bl_number_placeholder">z.B. sw0001 — für Marktpreis</string>
+    <string name="minifigs_bl_hint">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis näherungsweise aus den einzelnen Teilen der Figur berechnet.</string>
+    <string name="minifigs_add_button">Hinzufügen</string>
+    <string name="minifigs_delete_title">Minifigur löschen?</string>
+    <string name="minifigs_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
+    <string name="minifigs_manual_badge">Manuell</string>
+
+    <!-- ══════════════ Parts list screen ══════════════ -->
+    <string name="partslist_set_already_added">Set bereits in der Liste</string>
+    <plurals name="partslist_sets_in_list">
+        <item quantity="one">%1$d Set in der Liste</item>
+        <item quantity="other">%1$d Sets in der Liste</item>
+    </plurals>
+    <string name="partslist_loading_set">Lade %1$s (%2$d/%3$d)…</string>
+    <string name="partslist_error_for_set">Fehler bei %1$s</string>
+    <string name="partslist_summary">%1$s · %2$s</string>
+    <plurals name="partslist_summary_types">
+        <item quantity="one">%1$d Teiletyp</item>
+        <item quantity="other">%1$d Teiletypen</item>
+    </plurals>
+    <plurals name="partslist_summary_parts">
+        <item quantity="one">%1$d Teil</item>
+        <item quantity="other">%1$d Teile</item>
+    </plurals>
+    <string name="partslist_set_number_placeholder">Set-Nummer (z.B. 75192)</string>
+    <string name="partslist_scan">Scan</string>
+    <string name="partslist_generate">Erstellen</string>
+    <string name="partslist_pdf_error_title">PDF Fehler</string>
+    <string name="partslist_ok">OK</string>
+    <string name="partslist_reset">Zurücksetzen</string>
+    <string name="partslist_fill_owned">Mein Bestand</string>
+    <string name="storage_manage">Lagerorte</string>
+    <string name="storage_manage_hint">Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue lassen sich auch direkt dort eintragen.</string>
+    <string name="storage_new">Neuer Lagerort</string>
+    <string name="storage_add">Hinzufügen</string>
+    <string name="storage_empty">Noch keine Lagerorte angelegt.</string>
+    <string name="storage_default_hint">Der Stern markiert den Lagerort, der beim Erfassen schon vorausgewählt ist. Nochmal tippen schaltet ihn ab.</string>
+    <string name="storage_default_set">Als Vorgabe beim Erfassen setzen</string>
+    <string name="storage_default_is">Vorgabe beim Erfassen — tippen schaltet sie ab</string>
+    <string name="storage_delete">Lagerort löschen</string>
+    <string name="detail_storage">Lagerort</string>
+    <string name="detail_alert">Preisalarm</string>
+    <string name="alert_channel_name">Preisalarme</string>
+    <string name="alert_channel_desc">Meldet, wenn ein Set eine deiner Schwellen reisst.</string>
+    <string name="alert_notify">Auf diesem Gerät melden</string>
+    <string name="alert_notify_hint">Fragt stündlich im Hintergrund nach. Ohne ihn kommt nur die E-Mail.</string>
+    <string name="alert_schedule_failed">Preisalarm konnte nicht eingeplant werden: %1$s</string>
+    <string name="detail_alert_below">fällt unter</string>
+    <string name="detail_alert_above">steigt über</string>
+    <string name="detail_alert_armed">scharf</string>
+    <string name="detail_alert_fired">gemeldet — wieder scharf, sobald der Preis zurückkehrt</string>
+    <string name="detail_storage_ph">z. B. Kiste 3</string>
+    <string name="filter_condition_all">Alle Zustände</string>
+    <string name="filter_storage_all">Alle Lagerorte</string>
+    <string name="filter_button">Filter</string>
+    <string name="filter_title">Filter</string>
+    <string name="filter_reset">Zurücksetzen</string>
+    <string name="filter_section_sort">Sortierung</string>
+    <string name="filter_section_spare">Ersatzteile</string>
+    <string name="filter_section_color_category">Farbe und Kategorie</string>
+    <string name="filter_section_view">Ansicht</string>
+    <plurals name="filter_active">
+        <item quantity="one">%d Filter aktiv</item>
+        <item quantity="other">%d Filter aktiv</item>
+    </plurals>
+    <string name="partslist_only_loose">nur manuell erfasste Teile berücksichtigen</string>
+    <string name="partslist_include_subs">Unterkonten mit einbeziehen</string>
+    <string name="partslist_owned_complete">Alles vorhanden — das lässt sich bauen.</string>
+    <plurals name="partslist_owned_missing">
+        <item quantity="one">Es fehlt %1$d Teil.</item>
+        <item quantity="other">Es fehlen %1$d Teile (%2$s).</item>
+    </plurals>
+    <plurals name="partslist_owned_missing_distinct">
+        <item quantity="one">%1$d verschiedenes</item>
+        <item quantity="other">%1$d verschiedene</item>
+    </plurals>
+    <string name="partslist_owned_error">Der eigene Bestand liess sich nicht laden.</string>
+    <string name="partslist_empty_hint">Sets hinzufügen und Teileliste erstellen</string>
+    <string name="partslist_no_color">(Keine Farbe)</string>
+    <plurals name="partslist_group_summary">
+        <item quantity="one">%1$d×  ·  %2$d Typ</item>
+        <item quantity="other">%1$d×  ·  %2$d Typen</item>
+    </plurals>
+    <string name="partslist_rb_prefix">RB: %1$s</string>
+
+    <!-- ══════════════ Finance screen ══════════════ -->
+    <string name="finance_loading">Preise werden geladen…</string>
+    <string name="finance_no_data">Keine Preisdaten</string>
+    <string name="finance_load_prices">Preise laden</string>
+    <string name="finance_price_error">Preisfehler</string>
+    <string name="finance_no_sets">Keine Sets</string>
+    <string name="finance_load_prompt">→ Preise laden</string>
+    <string name="finance_total_pnl">Gesamt G&amp;V  %1$s</string>
+    <string name="finance_parts_extra">davon Teile &amp; Minifiguren: %1$s</string>
+    <plurals name="finance_fremde_waehrung">
+        <item quantity="one">%1$d Kaufpreis in anderer Währung nicht eingerechnet</item>
+        <item quantity="other">%1$d Kaufpreise in anderer Währung nicht eingerechnet</item>
+    </plurals>
+    <string name="finance_avg_label">Ø Durchschnitt</string>
+    <string name="finance_filter_all">Alle</string>
+    <string name="finance_filter_sets">Sets</string>
+    <string name="finance_filter_parts">Teile</string>
+    <string name="finance_filter_minifigs">Minifiguren</string>
+    <string name="finance_section_sets">SETS</string>
+    <string name="finance_section_parts">TEILE</string>
+    <string name="finance_section_minifigs">MINIFIGUREN</string>
+    <string name="finance_subtotal_parts">Total Teile</string>
+    <string name="finance_subtotal_minifigs">Total Minifiguren</string>
+    <string name="finance_total_sets">Sets</string>
+    <string name="finance_total_manual_parts">Manuell erfasste Teile</string>
+    <string name="finance_total_manual_minifigs">Manuell erfasste Minifiguren</string>
+    <string name="finance_grand_total">Total</string>
+    <string name="finance_market_avg">Ø Marktpreis</string>
+
+    <!-- ══════════════ Parts screen ══════════════ -->
+    <string name="parts_stat_types">Typen</string>
+    <string name="parts_stat_colors">Farben</string>
+    <string name="parts_stat_total">Gesamt</string>
+    <string name="parts_manual_section">Manuell erfasste Teile</string>
+    <string name="parts_sets_section">Aus Sets</string>
+    <string name="parts_none">Keine Teile</string>
+    <string name="parts_add">Teil hinzufügen</string>
+    <string name="parts_delete_title">Teil löschen?</string>
+    <string name="parts_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
+    <string name="parts_add_title">Teil erfassen</string>
+    <string name="parts_part_number">Teilenummer</string>
+    <string name="parts_part_number_placeholder">z.B. 3001</string>
+    <string name="parts_no_color">Keine Farbe</string>
+    <string name="parts_color_label">Farbe (optional)</string>
+    <string name="parts_color_unknown">Farbe %1$d</string>
+    <string name="parts_add_button">Hinzufügen</string>
+
+    <!-- ══════════════ Monitoring screen ══════════════ -->
+    <string name="monitoring_title">Hintergrundarbeiten</string>
+    <string name="monitoring_refresh">Neu laden</string>
+    <string name="monitoring_retry_error">Fehler beim erneuten Versuch</string>
+    <string name="monitoring_delete_error">Fehler beim Löschen</string>
+    <string name="monitoring_sync_now">Jetzt synchronisieren</string>
+    <string name="monitoring_queue_collapse">Warteschlange zuklappen</string>
+    <string name="monitoring_queue_show">Warteschlange anzeigen (%1$d)</string>
+    <string name="monitoring_icon_retry">Erneut versuchen</string>
+    <string name="monitoring_hide_error">Fehler ausblenden</string>
+    <string name="monitoring_show_error">Letzten Fehler anzeigen</string>
+    <string name="monitoring_price_cache">PREISSPEICHER</string>
+    <string name="monitoring_cache_prices">Preise</string>
+    <string name="monitoring_cache_stale">Veraltet</string>
+    <string name="monitoring_cache_subsets">Teilsets</string>
+    <string name="monitoring_cache_catalog">Katalog</string>
+    <string name="monitoring_cache_duration">Speicherdauer</string>
+    <string name="monitoring_cache_clear_prices">Preise leeren</string>
+    <string name="monitoring_cache_clear_all">Alles leeren</string>
+    <string name="monitoring_cache_clear_hint">Die zwischengespeicherten Preise werden verworfen. Sie neu zu holen kostet Anfragen aus dem gemeinsamen Tageskontingent.</string>
+    <string name="monitoring_cache_clear_confirm">Leeren</string>
+    <string name="monitoring_cache_cleared">Zwischenspeicher geleert</string>
+    <string name="monitoring_cache_saved">Speicherdauer gespeichert</string>
+    <string name="monitoring_api_calls">API-AUFRUFE</string>
+    <string name="monitoring_limits_saved">Grenzen gespeichert</string>
+    <string name="monitoring_limits_save">Grenzen speichern</string>
+    <string name="monitoring_retry_queued">%1$s wird nochmals versucht</string>
+    <string name="monitoring_entry_removed">%1$s entfernt</string>
+    <string name="monitoring_start_error">Fehler beim Starten</string>
+
+    <!-- ══════════════ Set detail screen ══════════════ -->
+    <string name="detail_year">Jahr</string>
+    <string name="detail_pieces">Steine</string>
+    <string name="detail_minifigs">Minifiguren</string>
+    <string name="detail_theme">Thema</string>
+    <string name="detail_section_details">Set-Details</string>
+    <string name="detail_part_number">Teile-Nr.</string>
+    <string name="detail_fig_number">Figuren-Nr.</string>
+    <string name="detail_color">Farbe</string>
+    <string name="detail_section_item">Details</string>
+    <string name="detail_set_number">Setnummer</string>
+    <string name="detail_added">Erfasst</string>
+    <string name="detail_purchase_price">Kaufpreis</string>
+    <string name="detail_price_placeholder">Marktpreis</string>
+    <string name="detail_section_market">Marktpreis</string>
+    <string name="detail_instructions_with_count">Anleitungen (%1$d)</string>
+    <string name="detail_instructions">Anleitungen</string>
+    <string name="detail_instruction_default">Anleitung</string>
+    <string name="detail_close">Schliessen</string>
+    <string name="detail_price_low">Tief</string>
+    <string name="detail_price_current">Aktuell</string>
+    <string name="detail_price_high">Hoch</string>
+
+    <!-- ══════════════ Navigation & Main ══════════════ -->
+    <string name="settings_dark_label">Darstellung auf diesem Gerät</string>
+    <string name="settings_dark_server">Design des Servers</string>
+    <string name="settings_dark_system">Dunkel nach System</string>
+    <string name="nav_collection">Sammlung</string>
+    <string name="nav_gallery">Galerie</string>
+    <string name="nav_parts">Teile</string>
+    <string name="nav_minifigs">Minifiguren</string>
+    <string name="nav_minifigs_short">Minifig.</string>
+    <string name="nav_partslist">Teileliste</string>
+    <string name="nav_finance">Finanzen</string>
+    <string name="nav_comparison">Vergleich</string>
+    <string name="nav_settings">Einstellungen</string>
+    <string name="nav_monitoring">Hintergrundarbeiten</string>
+    <string name="main_barcode_add_partslist">Zur Teileliste hinzufügen?</string>
+    <string name="main_barcode_add_set">Set hinzufügen?</string>
+    <string name="main_barcode_unsure">Nicht sicher erkannt — bitte Bild und Namen prüfen</string>
+    <string name="main_barcode_year">Jahr</string>
+    <string name="main_barcode_pieces">Teile</string>
+    <string name="main_barcode_figs">Figuren</string>
+    <string name="main_account">Konto</string>
+    <string name="main_menu_monitoring">Hintergrundarbeiten</string>
+    <string name="main_menu_logout">Abmelden</string>
+    <string name="main_menu_change_server">Server ändern</string>
+    <string name="vm_settings_saved">Einstellungen gespeichert</string>
+
+    <!-- ══════════════ ViewModel messages ══════════════ -->
+    <string name="vm_barcode_not_found">Kein Set für Barcode %1$s gefunden</string>
+
+    <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
+    <string name="parts_search_placeholder">Teile suchen…</string>
+    <string name="parts_spare_tag">Ersatzteil</string>
+    <string name="setitem_used_in">Verwendet in</string>
+    <string name="setitem_used_in_none">In keinem Set gefunden</string>
+    <string name="setitem_total_qty">Gesamtmenge</string>
+    <string name="setitem_open_set">Set öffnen</string>
+    <string name="setitem_category">Kategorie</string>
+    <string name="setitem_color">Farbe</string>
+    <string name="parts_filter_color">Nach Farbe filtern</string>
+    <string name="parts_filter_category">Nach Kategorie filtern</string>
+    <string name="parts_filter_all">Alle Teile</string>
+    <string name="view_cards">Karten</string>
+    <string name="view_table">Tabelle</string>
+    <string name="parts_filter_no_spare">Ohne Ersatzteile</string>
+    <string name="parts_filter_spare">Nur Ersatzteile</string>
+    <string name="common_quantity">Anzahl</string>
+    <string name="common_unit_price">Kaufpreis/Stk (optional)</string>
+    <string name="common_unit_price_placeholder">Leer = aktueller Marktpreis</string>
+    <string name="common_cancel">Abbrechen</string>
+    <string name="common_loading">Laden…</string>
+    <string name="detail_price_loading">Preis wird geladen…</string>
+    <string name="vm_saved">Gespeichert</string>
+    <string name="vm_part_deleted">Teil gelöscht</string>
+    <string name="vm_minifig_deleted">Minifigur gelöscht</string>
+    <string name="vm_set_deleted">%1$s gelöscht</string>
+    <string name="vm_added">%1$s hinzugefügt</string>
+    <string name="vm_updated">%1$s aktualisiert</string>
+    <string name="pruef_titel">Wird geprüft…</string>
+    <string name="pruef_barcode">Barcode %1$s wird aufgelöst…</string>
+    <string name="pruef_bestand">Prüfe, ob %1$s schon im Bestand ist…</string>
+    <string name="pruef_anlegen_stammdaten">Stammdaten zu %1$s werden geholt…</string>
+    <string name="pruef_anlegen_bild">Bild zu %1$s wird geladen…</string>
+    <string name="pruef_anlegen_abschluss">%1$s wird abgeschlossen…</string>
+    <string name="pruef_hinweis">Das Hinzufügen läuft danach im Hintergrund — kurz warten vor dem nächsten Scan.</string>
+    <string name="vm_barcode_no_set">Kein Set gefunden für: %1$s</string>
+    <string name="vm_set_added">%1$s hinzugefügt!</string>
+    <string name="vm_set_added_no_catalog">Set %1$s gespeichert — Name und Bild kommen nach, sobald der Katalog erreichbar ist.</string>
+    <string name="vm_error">Fehler: %1$s</string>
+    <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
+    <string name="vm_rechte_entzogen">Deine Verwalterrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
+
+    <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
+    <string name="notif_csv_title">BrickInventory – CSV-Import</string>
+    <string name="notif_csv_running">CSV-Import läuft…</string>
+    <string name="notif_csv_importing">Importiere…</string>
+    <string name="notif_csv_done">Import abgeschlossen</string>
+    <string name="notif_csv_channel_name">CSV-Import Fortschritt</string>
+    <string name="notif_csv_channel_desc">Zeigt den Fortschritt des CSV-Imports</string>
+    <string name="notif_pdf_title">BrickInventory – PDF-Export</string>
+    <string name="notif_pdf_running">PDF-Export läuft…</string>
+    <string name="notif_pdf_done_tap">PDF bereit – tippen zum Öffnen</string>
+    <string name="notif_pdf_failed">PDF-Export fehlgeschlagen: %1$s</string>
+    <string name="notif_pdf_channel_name">PDF-Export Fortschritt</string>
+    <string name="notif_pdf_channel_desc">Zeigt den Fortschritt des Teilelisten-PDF-Exports</string>
+
+    <!-- PDF-Export-Statustexte (PdfExportManager) -->
+    <string name="pdfexp_no_data">Keine Exportdaten vorhanden</string>
+    <string name="pdfexp_starting">Starte Export…</string>
+    <string name="pdfexp_unknown_error">Unbekannter Fehler</string>
+    <string name="pdfexp_loading_images">Bilder werden geladen…</string>
+    <string name="pdfexp_creating_eta">PDF wird erstellt… noch ~%1$ds</string>
+    <string name="pdfexp_almost_done">PDF wird gleich fertig…</string>
+    <string name="pdfexp_downloading">Lade PDF herunter…</string>
+    <string name="pdfexp_finalizing">PDF wird finalisiert…</string>
+    <string name="condition_new">Neu</string>
+    <string name="condition_used">Gebraucht</string>
+    <string name="acq_delete_title">Erfassung löschen</string>
+    <string name="acq_delete_text">Diese Kaufpreis-Erfassung wirklich löschen? Die Gesamtanzahl wird angepasst.</string>
+    <string name="common_back">Zurück</string>
+    <string name="common_delete">Löschen</string>
+    <string name="common_edit">Bearbeiten</string>
+    <string name="detail_edit_prices">Kaufpreise bearbeiten</string>
+    <string name="common_condition">Zustand</string>
+    <string name="monitoring_starting">Wird gestartet…</string>
+    <string name="monitoring_kontingent_eng">Kontingent fast aufgebraucht</string>
+    <string name="monitoring_started">Gestartet</string>
+    <string name="monitoring_sync_started_short">Abgleich gestartet</string>
+    <string name="monitoring_price_update">Preise aktualisieren</string>
+    <string name="monitoring_schedule_daily">Täglich um</string>
+    <string name="monitoring_schedule_every">Alle</string>
+    <string name="monitoring_schedule_unit">Min.</string>
+    <string name="monitoring_schedule_minutes">%1$d Min.</string>
+    <string name="cd_edit_schedule">Zeitplan ändern</string>
+    <string name="monitoring_theme">Design</string>
+    <string name="monitoring_vorschau_ablage">Vorschau-Ablage: %1$d MB</string>
+    <string name="monitoring_vorschau_leeren">Leeren</string>
+    <string name="monitoring_vorwaermen_netz">Bilder vorladen im</string>
+    <string name="monitoring_vorwaermen_wlan">WLAN</string>
+    <string name="monitoring_vorwaermen_mobil">Mobilfunk</string>
+    <string name="monitoring_vorwaermen_roaming">Roaming</string>
+    <string name="monitoring_vorwaermen_hinweis">Ein gemessenes WLAN — der Hotspot eines anderen Telefons — zählt als Mobilfunk.</string>
+    <string name="monitoring_theme_classic">Klassisch</string>
+    <string name="monitoring_theme_brick">Stein</string>
+    <string name="monitoring_theme_werkbank">Werkbank (dunkel)</string>
+    <string name="monitoring_theme_farbfaecher">Farbfächer</string>
+    <string name="monitoring_theme_noppe">Noppe</string>
+    <string name="monitoring_theme_hochglanz">Hochglanz</string>
+    <string name="monitoring_catalog_images">Katalogbilder einreihen</string>
+    <string name="monitoring_redownload_missing">Fehlende Bilder neu laden</string>
+    <string name="monitoring_import_missing_instr">Fehlende Anleitungen importieren</string>
+    <string name="monitoring_loading">Lädt…</string>
+    <string name="monitoring_reimport_error">Fehler beim Reimport</string>
+    <plurals name="monitoring_reimport_enqueued">
+        <item quantity="one">%1$d Set eingereiht</item>
+        <item quantity="other">%1$d Sets eingereiht</item>
+    </plurals>
+    <!-- Katalog -->
+    <string name="nav_catalog">Katalog</string>
+    <string name="catalog_search_placeholder">Setnummer / Name…</string>
+    <string name="catalog_filter_theme">Thema</string>
+    <string name="catalog_filter_year">Jahr</string>
+    <string name="catalog_all_themes">Alle Themen</string>
+    <string name="catalog_all_years">Alle Jahre</string>
+    <string name="catalog_theme_search">Themen durchsuchen…</string>
+    <plurals name="catalog_result_count">
+        <item quantity="one">%1$d Set im Katalog</item>
+        <item quantity="other">%1$d Sets im Katalog</item>
+    </plurals>
+    <string name="catalog_no_results">Keine Sets gefunden</string>
+    <string name="catalog_owned">Im Besitz</string>
+    <string name="catalog_add_to_gallery">In Galerie aufnehmen</string>
+    <string name="catalog_add_again">Erneut aufnehmen</string>
+    <string name="catalog_add_confirm">Hinzufügen</string>
+    <string name="catalog_open_in_gallery">In Galerie öffnen</string>
+    <string name="catalog_detail_year">Jahr</string>
+    <string name="catalog_detail_theme">Thema</string>
+    <string name="catalog_detail_parts">Teile</string>
+    <string name="catalog_detail_minifigs">Minifiguren</string>
+    <string name="catalog_sort_year_desc">Jahr ↓</string>
+    <string name="catalog_sort_year_asc">Jahr ↑</string>
+    <string name="catalog_sort_name">Name A–Z</string>
+    <string name="catalog_sort_number">Nummer ↑</string>
+    <string name="catalog_sort_parts_desc">Teile ↓</string>
+    <string name="catalog_sort_parts_asc">Teile ↑</string>
+    <string name="catalog_buy_bricklink">Auf BrickLink kaufen</string>
+    <string name="catalog_search_bricklink">Auf BrickLink suchen</string>
+    <string name="finance_purchase_short">Kauf: %1$s</string>
+    <string name="household_scope_label">Konten</string>
+    <string name="household_scope_all">Alle Konten</string>
+    <string name="household_scope_own">Eigene</string>
+    <string name="household_for_account">Für Konto</string>
+    <string name="household_self">(ich)</string>
+    <string name="household_title">Haushalt</string>
+    <string name="household_intro">Verknüpfe Konten zu einem Haushalt: Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner direkten Unterkonten zusammengefasst. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt. Beide Konten müssen dieselbe Währung verwenden.</string>
+    <string name="household_state_none">Dieses Konto ist mit keinem anderen verknüpft.</string>
+    <string name="household_state_main">Unterkonten</string>
+    <string name="household_state_parents">Gehört zu diesen Hauptkonten</string>
+    <string name="household_former_intro">Diese Konten waren bisher nur über ein anderes Konto verknüpft und sind deshalb nicht mehr sichtbar. Damit du sie wieder siehst, muss das jeweilige Konto eine Einladung von dir annehmen.</string>
+    <string name="household_former_via">bisher über %1$s</string>
+    <string name="household_former_dismiss">Ausblenden</string>
+    <string name="household_invite_create">Einladungscode erzeugen</string>
+    <string name="household_invite_hint">Gib den Code im anderen Konto unter Einstellungen ein. 24 Stunden gültig, einmal verwendbar.</string>
+    <string name="household_invite_copy">Kopieren</string>
+    <string name="household_invite_label">Einladungscode</string>
+    <string name="household_redeem_title">Einladung annehmen</string>
+    <string name="household_redeem_hint">Gib den Code aus dem Hauptkonto ein und bestätige mit dem Passwort dieses Kontos. Deine Daten bleiben deine.</string>
+    <string name="household_redeem_submit">Verknüpfen</string>
+    <string name="household_redeem_password">Passwort dieses Kontos</string>
+    <string name="household_redeem_password_wrong">Das Passwort stimmt nicht. Gib das Passwort des Kontos ein, mit dem du angemeldet bist.</string>
+    <string name="household_redeem_locked">Zu viele Fehlversuche. Bitte versuche es später erneut.</string>
+    <string name="household_unlink">Verknüpfung lösen</string>
+    <string name="household_remove">Entfernen</string>
+    <string name="household_move_ok">Set verschoben — %1$s und %2$s mitgenommen.</string>
+    <plurals name="household_move_parts">
+        <item quantity="one">%1$d Teil</item>
+        <item quantity="other">%1$d Teile</item>
+    </plurals>
+    <plurals name="household_move_minifigs">
+        <item quantity="one">%1$d Minifigur</item>
+        <item quantity="other">%1$d Minifiguren</item>
+    </plurals>
+    <string name="cd_search_clear">Suche leeren</string>
+    <string name="cd_password_show">Passwort anzeigen</string>
+    <string name="cd_password_hide">Passwort verbergen</string>
+    <string name="cd_set_menu">Weitere Aktionen für dieses Set</string>
+    <string name="cd_qty_increase">Menge erhöhen</string>
+    <string name="cd_qty_decrease">Menge verringern</string>
+    <string name="cd_edit_cache_ttl">Speicherdauer bearbeiten</string>
+    <string name="cd_edit_limits">Abrufgrenzen bearbeiten</string>
+    <string name="common_no_app_to_open">Keine App gefunden, um diesen Link zu öffnen</string>
+    <string name="gallery_sort_added_desc">Neueste zuerst</string>
+    <string name="gallery_sort_added_asc">Älteste zuerst</string>
+    <string name="gallery_sort_name">Name A–Z</string>
+    <string name="gallery_sort_number">Nummer ↑</string>
+    <string name="gallery_sort_year_desc">Jahr ↓</string>
+    <string name="gallery_sort_price_desc">Preis ↓</string>
+    <string name="gallery_sort_price_asc">Preis ↑</string>
+    <string name="gallery_sort_qty_desc">Anzahl ↓</string>
+    <string name="gallery_sort_qty_asc">Anzahl ↑</string>
+    <string name="vm_add_failed">%1$s konnte nicht hinzugefügt werden: %2$s</string>
+
+    <!-- PDF-Betrachter (Nachtrag 115). Die Texte standen bisher als Literale
+         im Code — hier stehen sie in der Sprache, in der sie dort standen. -->
+    <string name="monitoring_retry_attempt">Versuch %1$d/30 · nächster: %2$s</string>
+    <string name="monitoring_cache_ttl_hours">%1$s Stunden</string>
+    <string name="acq_total_quantity">Total ×%1$d</string>
+    <string name="setup_build">Build %1$s</string>
+    <string name="err_generic">Der Server hat die Anfrage ohne Begründung abgelehnt</string>
+    <string name="err_login_failed">Anmeldung fehlgeschlagen</string>
+    <string name="err_qr_login_failed">QR-Anmeldung fehlgeschlagen</string>
+    <string name="err_network">Keine Verbindung zum Server</string>
+    <string name="err_timeout">Der Server hat nicht rechtzeitig geantwortet</string>
+    <string name="err_empty_response">Der Server hat keine Daten geschickt</string>
+    <string name="err_server">Serverfehler (%1$d)</string>
+    <string name="err_not_signed_in">Nicht angemeldet</string>
+    <string name="err_connection_closed">Der Server hat die Verbindung beendet</string>
+    <string name="err_session_expired">Sitzung abgelaufen — bitte neu anmelden</string>
+    <string name="err_unknown">Etwas ist schiefgelaufen</string>
+    <string name="pdfview_print">Drucken</string>
+    <string name="pdfview_zoom_in">Vergrössern</string>
+    <string name="pdfview_zoom_out">Verkleinern</string>
+    <string name="pdfview_zoom_reset">Zoom zurücksetzen</string>
+    <string name="pdfview_download">Herunterladen</string>
+    <string name="pdfview_loading_pct">PDF wird geladen… %1$d%%</string>
+    <string name="pdfview_loading_bytes">PDF wird geladen… %1$s</string>
+    <string name="pdfview_rendering">PDF wird geladen…</string>
+    <string name="pdfview_load_failed">Fehler beim Laden: %1$s</string>
+    <string name="pdfview_page">Seite %1$d</string>
+    <string name="pdfview_unknown_error">Unbekannter Fehler</string>
+    <string name="pdfview_download_failed">Download fehlgeschlagen</string>
+    <string name="pdfview_print_failed">Drucken fehlgeschlagen: %1$s</string>
+    <string name="pdfview_saved">Gespeichert: %1$s</string>
+    <string name="pdfview_save_failed">Speichern fehlgeschlagen: %1$s</string>
+    <string name="pdfview_no_target">Kein Speicherort erhalten</string>
+    <string name="pdfview_write_failed">Datei konnte nicht geschrieben werden</string>
+    <string name="pdfview_default_name">Anleitung</string>
+    <string name="pdfview_share">PDF teilen</string>
+    <!-- Angemeldete Geraete (Token-Verwaltung) -->
+    <string name="tokens_title">Angemeldete Geräte</string>
+    <string name="tokens_hint">Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.</string>
+    <string name="tokens_none">Keine Zugänge.</string>
+    <string name="tokens_reload">Aktualisieren</string>
+    <string name="tokens_current">dieses Gerät</string>
+    <string name="login_full_access">Mit Verwalterrechten anmelden</string>
+    <string name="login_full_access_hint">Nur für die Verwaltung auf diesem Gerät. Ohne Häkchen arbeitet die App ohne Verwalterrechte.</string>
+    <string name="tokens_full_access">Vollzugriff</string>
+    <string name="tokens_already_gone">Dieses Gerät war schon abgemeldet.</string>
+    <string name="tokens_never">nie</string>
+    <string name="tokens_unused">nie benutzt</string>
+    <string name="tokens_row_hint">Angemeldet %1$s · zuletzt benutzt %2$s · läuft ab %3$s</string>
+    <string name="tokens_revoke_title">Gerät abmelden?</string>
+    <string name="tokens_revoke_text">„%1$s" verliert den Zugang. Wer dieses Gerät benutzt, muss sich neu anmelden.</string>
+    <string name="tokens_revoke_confirm">Abmelden</string>
+    <string name="tokens_revoked">Gerät abgemeldet</string>
+    <string name="tokens_revoke_others">Alle anderen abmelden</string>
+    <string name="tokens_revoke_others_title">Alle anderen abmelden?</string>
+    <plurals name="tokens_revoke_others_text">
+        <item quantity="one">%1$d anderer Zugang verliert seine Berechtigung. Dieses Gerät bleibt angemeldet.</item>
+        <item quantity="other">%1$d andere Zugänge verlieren ihre Berechtigung. Dieses Gerät bleibt angemeldet.</item>
+    </plurals>
+    <plurals name="tokens_revoked_n">
+        <item quantity="one">%1$d Zugang abgemeldet</item>
+        <item quantity="other">%1$d Zugänge abgemeldet</item>
+    </plurals>
+    <string name="tokens_no_others">Es gibt keine anderen Zugänge.</string>
+    <string name="tokens_self_unknown">Der eigene Zugang ist nicht erkennbar — ohne ihn liesse sich nicht sagen, welche die „anderen" sind.</string>
+
+    <!-- ══════════════ Konto anlegen / Passwort vergessen ══════════════ -->
+    <string name="login_no_account">Noch kein Konto? Registrieren</string>
+    <string name="startup_title">Der Server startet</string>
+    <string name="startup_hint">Der erste Start nach einer Installation holt den Katalog und dauert einige Minuten. Die App kann offen bleiben.</string>
+    <string name="login_forgot">Passwort vergessen?</string>
+    <string name="login_back">Zurück zur Anmeldung</string>
+    <string name="register_title">Konto erstellen</string>
+    <string name="register_email">E-Mail</string>
+    <string name="register_first_name">Vorname (optional)</string>
+    <string name="register_last_name">Nachname (optional)</string>
+    <string name="register_password_repeat">Passwort wiederholen</string>
+    <string name="register_button">Registrieren</string>
+    <string name="register_req_fields">Benutzername, E-Mail und Passwort sind erforderlich.</string>
+    <string name="register_password_short">Das Passwort muss mindestens 8 Zeichen lang sein.</string>
+    <string name="register_password_mismatch">Die Passwörter stimmen nicht überein.</string>
+    <string name="register_done">Konto erstellt. Bitte bestätige deine E-Mail-Adresse.</string>
+    <string name="register_console_hint">SMTP ist nicht eingerichtet — der Bestätigungslink steht in der Server-Konsole.</string>
+    <string name="forgot_title">Passwort zurücksetzen</string>
+    <string name="forgot_hint">Wir schicken dir einen Link, mit dem du ein neues Passwort setzt. Öffne ihn auf diesem Gerät — er führt zur Weboberfläche deines Servers.</string>
+    <string name="forgot_button">Link senden</string>
+    <string name="forgot_email_required">Bitte gib deine E-Mail-Adresse ein.</string>
+    <string name="forgot_done">Falls die Adresse existiert, wurde ein Link gesendet.</string>
+
+    <!-- ══════════════ Kontokarte (Profil / Passwort) ══════════════ -->
+    <string name="konto_title">Konto</string>
+    <string name="konto_email_unverified">E-Mail-Adresse nicht bestätigt</string>
+    <string name="konto_email_password">Aktuelles Passwort (für die neue E-Mail-Adresse)</string>
+    <string name="konto_save">Profil speichern</string>
+    <string name="konto_saved">Profil gespeichert</string>
+    <string name="konto_password_title">Passwort ändern</string>
+    <string name="konto_password_current">Aktuelles Passwort</string>
+    <string name="konto_password_new">Neues Passwort</string>
+    <string name="konto_password_hint">Alle Zugänge dieses Kontos werden verworfen — auch diese App. Du musst dich danach neu anmelden.</string>
+    <string name="konto_password_changed">Passwort geändert. Bitte melde dich neu an.</string>
+    <string name="konto_password_button">Passwort ändern</string>
+    <string name="konto_design_hint">Gilt für dieses Konto auf allen Geräten.</string>
+    <string name="konto_design_vorgabe">Vorgabe: %1$s</string>
+
+    <!-- ══════════════ CSV hochladen ══════════════ -->
+    <string name="csv_upload_title">CSV importieren</string>
+    <string name="csv_upload_sets">Sets</string>
+    <string name="csv_upload_parts">Teile</string>
+    <string name="csv_upload_figs">Minifiguren</string>
+    <string name="csv_upload_wanted">Merkliste</string>
+    <string name="csv_upload_alerts">Preisalarme</string>
+    <string name="vouchers_import_done">%1$s, %2$s</string>
+    <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp. Höchstens %1$d MB.</string>
+    <string name="csv_upload_unreadable">Die gewählte Datei liess sich nicht lesen.</string>
+    <string name="csv_upload_too_big">Die Datei ist grösser als %1$d MB.</string>
+    <string name="csv_upload_result">%1$s: %2$s, %3$s, %4$s</string>
+    <plurals name="csv_upload_rows">
+        <item quantity="one">%1$d Zeile</item>
+        <item quantity="other">%1$d Zeilen</item>
+    </plurals>
+    <plurals name="csv_upload_new">
+        <item quantity="one">%1$d neu</item>
+        <item quantity="other">%1$d neu</item>
+    </plurals>
+    <plurals name="csv_upload_updated">
+        <item quantity="one">%1$d aktualisiert</item>
+        <item quantity="other">%1$d aktualisiert</item>
+    </plurals>
+    <plurals name="csv_upload_errors">
+        <item quantity="one">%1$d Fehler</item>
+        <item quantity="other">%1$d Fehler</item>
+    </plurals>
+    <string name="csv_upload_close">Schliessen</string>
+
+    <!-- ══════════════ Anleitung hochladen ══════════════ -->
+    <string name="instr_upload">Anleitung hinzufügen</string>
+    <string name="instr_upload_wrong_type">Nur PDF, JPG oder PNG.</string>
+    <string name="instr_upload_done">Anleitung hinzugefügt</string>
+    <string name="instr_delete">Anleitung entfernen</string>
+    <!-- Neu einlesen: dieselben zwei Aktionen, die die Webapp im Set-Detail hat
+         (02-gallery.js: redownloadInstr, reimportParts). -->
+
+    <!-- ══════════════ Server-Protokoll ══════════════ -->
+    <string name="admin_log_title">Server-Protokoll</string>
+    <string name="admin_log_minutes">Letzte %1$d Min</string>
+    <string name="admin_log_empty">Keine Einträge in diesem Zeitraum.</string>
+    <string name="admin_log_search">Protokoll durchsuchen</string>
+    <string name="admin_log_no_match">Keine Einträge passen zum Filter</string>
+    <string name="admin_log_reload">Neu laden</string>
+
+    <string name="common_collapse">Zuklappen</string>
+    <string name="common_expand">Aufklappen</string>
+
+    <!-- ══════════════ Meldungen, die bis Nachtrag 130 fest verdrahtet waren ══════════════ -->
+    <string name="err_set_not_found">Set nicht gefunden</string>
+    <string name="pdfexp_server_error">Der Server konnte das PDF nicht erstellen</string>
+    <string name="pdfexp_http_error">Der Server antwortete mit %1$d</string>
+
+
+    <!-- ══════════════ Selbstaktualisierung aus dem GitHub-Release (util/AppUpdate.kt) ══════════════ -->
+    <string name="update_title">Aktualisierung</string>
+    <string name="update_check">Nach Update suchen</string>
+    <string name="update_current">Aktuell (%1$s)</string>
+    <string name="update_dialog_title">Neue Fassung verfügbar</string>
+    <string name="update_dialog_text">Fassung %1$s liegt bereit. Installiert ist %2$s.</string>
+    <string name="update_dialog_now">Jetzt aktualisieren</string>
+    <string name="update_dialog_later">Später</string>
+    <string name="update_available">Fassung %1$s ist verfuegbar</string>
+    <string name="update_installed">Installiert: %1$s</string>
+    <string name="update_download">Herunterladen</string>
+    <string name="update_downloading">Wird geladen … %1$d%%</string>
+    <string name="update_install">Installieren</string>
+    <string name="update_permission_needed">Android braucht dafuer einmalig deine Erlaubnis, Apps aus dieser Quelle zu installieren. Ohne deine Bestaetigung wird nichts installiert.</string>
+    <string name="update_permission_grant">Erlaubnis erteilen</string>
+    <string name="update_pruefung_fehlgeschlagen">Die Suche nach einem Update ist fehlgeschlagen — keine Verbindung zu GitHub.</string>
+    <string name="update_laden_fehlgeschlagen">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde geloescht.</string>
+    <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schluessel signiert wie diese und wurde geloescht. Installiert wurde nichts.</string>
+    <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
+    <string name="update_installer_fehlt">Auf diesem Geraet kann keine App Pakete installieren.</string>
+
+    <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
+    <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
+
+
+    <!-- Merkliste (Nachtrag 179) -->
+    <string name="nav_wanted">Merkliste</string>
+    <string name="wanted_add_title">Merkposten hinzufügen</string>
+    <string name="wanted_add_submit">Auf die Merkliste</string>
+    <string name="wanted_search">Merkliste durchsuchen…</string>
+    <string name="wanted_no_results">Keine Merkposten gefunden</string>
+    <string name="wanted_empty">Noch keine Merkposten.</string>
+    <string name="wanted_owned">schon vorhanden</string>
+    <string name="wanted_added">Auf die Merkliste gesetzt</string>
+    <string name="wanted_already">Stand schon auf der Merkliste</string>
+    <string name="wanted_deleted">Von der Merkliste genommen</string>
+    <string name="wanted_take">In Galerie aufnehmen</string>
+    <string name="wanted_taken">In die Galerie übernommen</string>
+    <string name="wanted_taken_existing">War schon in der Galerie — von der Merkliste genommen</string>
+    <string name="wanted_need_number">Bitte Set-Nummer eingeben</string>
+    <string name="wanted_threshold">Schwelle (optional)</string>
+    <string name="detail_compare">Preisvergleich</string>
+    <string name="wanted_since">Auf der Liste seit</string>
+    <string name="alerts_group">Preisalarme</string>
+    <string name="alerts_intro">Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
+    <string name="alerts_empty">Noch kein Preisalarm gesetzt. Du setzt einen in der Detailansicht eines Sets.</string>
+    <string name="alerts_below">fällt unter</string>
+    <string name="alerts_above">steigt über</string>
+    <string name="alerts_armed">● scharf</string>
+    <string name="alerts_fired">○ unscharf</string>
+    <string name="alerts_last">zuletzt %1$s</string>
+    <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
+    <string name="alerts_delete">Preisalarm entfernen</string>
+    <string name="alerts_confirm_delete">Preisalarm für %1$s wirklich entfernen?</string>
+
+    <!-- Gutscheine (LEGO-Geschenkkarten im eigenen Profil) -->
+    <string name="vouchers_title">Gutscheine</string>
+    <string name="vouchers_empty">Noch keine Gutscheine hinterlegt.</string>
+    <string name="vouchers_total">Summe</string>
+    <string name="vouchers_add">Gutschein hinzufügen</string>
+    <string name="vouchers_edit">Gutschein ändern</string>
+    <string name="vouchers_number">Gutscheinnummer</string>
+    <string name="vouchers_pin">PIN</string>
+    <string name="vouchers_copy_hint">Nummer oder PIN antippen, um sie zu kopieren</string>
+    <string name="vouchers_copied_number">Gutscheinnummer kopiert</string>
+    <string name="vouchers_copied_pin">PIN kopiert</string>
+    <string name="vouchers_amount">Betrag</string>
+    <string name="vouchers_pick_pdf">PDF wählen</string>
+    <string name="vouchers_pdf_chosen">Datei gewählt</string>
+    <string name="vouchers_pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</string>
+    <string name="vouchers_pdf_open">PDF öffnen</string>
+    <string name="vouchers_export">Alle Gutscheine als PDF exportieren</string>
+    <string name="vouchers_pin_show">PIN anzeigen</string>
+    <string name="vouchers_pin_hide">PIN verbergen</string>
+    <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>
+    <string name="vouchers_saved">Gutschein gespeichert</string>
+    <string name="vouchers_deleted">Gutschein gelöscht</string>
+    <string name="vouchers_save_error">Gutschein konnte nicht gespeichert werden</string>
+    <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
+    <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
+    <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
+    <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
+         kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
+    <string name="vouchers_balance_one">Guthaben abfragen</string>
+    <string name="vouchers_balance_all">Guthaben aller Karten abfragen</string>
+    <string name="vouchers_balance_progress">Karte %1$s von %2$s (%3$s)</string>
+    <string name="vouchers_balance_wait">noch %1$s s bis zur nächsten Abfrage (%2$s)</string>
+    <string name="vouchers_balance_keine">Keine Karte mit PIN — für die Abfrage braucht es die PIN.</string>
+    <string name="vouchers_balance_belegt">Die Abfrage ist belegt (eine Karte alle 30 Sekunden). Bitte später erneut.</string>
+    <string name="vouchers_balance_alle_fertig">%1$s abgefragt, %2$s nicht</string>
+    <string name="vouchers_balance_as_of">abgefragt am %1$s</string>
+    <string name="vouchers_balance_never">Guthaben noch nie abgefragt</string>
+    <string name="vouchers_balance_done">%1$s: %2$s</string>
+    <string name="vouchers_balance_currency">Währung auf %1$s geändert.</string>
+    <string name="settings_group_display">Anzeige &amp; Preise</string>
+    <string name="zf_title">Zweiter Faktor</string>
+    <string name="zf_hint">Zusätzlich zum Passwort ein Code aus einer Authenticator-App. Schützt, falls jemand dein Passwort kennt.</string>
+    <string name="zf_setup">Einrichten</string>
+    <string name="zf_step_app">Den Schlüssel in die Authenticator-App übernehmen und den Code eingeben, den sie zeigt.</string>
+    <string name="zf_open_app">In Authenticator-App öffnen</string>
+    <string name="zf_no_app">Keine Authenticator-App gefunden — den Schlüssel kopieren und von Hand eingeben.</string>
+    <string name="zf_copy_key">Schlüssel kopieren</string>
+    <string name="zf_confirm_code">Code aus der App zur Bestätigung</string>
+    <string name="zf_confirm">Bestätigen</string>
+    <string name="zf_codes_title">Deine Wiederherstellungscodes</string>
+    <string name="zf_codes_hint">Jeder gilt einmal, falls das Telefon fehlt. Jetzt sicher ablegen — sie werden nicht noch einmal angezeigt.</string>
+    <string name="zf_copy">Kopieren</string>
+    <string name="zf_codes_done">Gespeichert</string>
+    <string name="zf_new_codes">Neue Wiederherstellungscodes</string>
+    <string name="zf_disable">Abschalten</string>
+    <string name="zf_enabled">Zweiter Faktor eingerichtet</string>
+    <string name="zf_disabled">Zweiter Faktor abgeschaltet</string>
+    <plurals name="zf_active">
+        <item quantity="one">Eingerichtet · %d Wiederherstellungscode übrig</item>
+        <item quantity="other">Eingerichtet · %d Wiederherstellungscodes übrig</item>
+    </plurals>
+    <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
+    <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App nimmt nur dieses an.</string>
+    <string name="setup_klartext_gesperrt">Unverschlüsselte Verbindungen (http) sind ausgeschaltet. Bitte https verwenden oder unten den Expertenschalter einschalten.</string>
+    <string name="klartext_experte_titel">Experte: Unverschlüsselte Verbindungen (http) erlauben</string>
+    <string name="klartext_experte_warnung">Nur für einen Server im Heimnetz ohne https. Wer im selben WLAN ist, kann deinen Zugangsschlüssel mitlesen und dein Konto benutzen. Einen Zugang ohne Ablauf fordert die App dann nie an.</string>
+    <string name="settings_systemfarben">Systemfarben (Material You)</string>
+    <string name="settings_systemfarben_hint">Farben aus dem Hintergrundbild statt der Farben des Designs. Formen und Schrift bleiben.</string>
+    <string name="zert_titel_erstkontakt">Diesem Server vertrauen?</string>
+    <string name="zert_titel_unbekannt">Unbekanntes Zertifikat</string>
+    <string name="zert_titel_geaendert">Das Zertifikat des Servers hat sich geändert</string>
+    <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Vergleiche den Fingerabdruck mit dem, den der Server zeigt (Webapp, Einstellungen). Danach nimmt die App nur noch dieses Zertifikat an.</string>
+    <string name="zert_text_unbekannt">Das Zertifikat von %1$s stammt von keiner bekannten Stelle – es ist selbst ausgestellt oder kommt von einer eigenen Zertifizierungsstelle. Für einen Server zu Hause ist das üblich, es kann aber auch jemand dazwischen sein. Nur vertrauen, wenn der Fingerabdruck mit dem übereinstimmt, den der Server zeigt.</string>
+    <string name="zert_text_geaendert">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast.</string>
+    <string name="zert_fingerabdruck">Fingerabdruck (SHA-256)</string>
+    <string name="zert_bisher">Bisher bestätigt</string>
+    <string name="zert_vertrauen">Diesem Zertifikat vertrauen</string>
+    <string name="zert_vertrauen_neu">Neues Zertifikat annehmen</string>
+    <string name="zert_nutzer_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
+    <string name="common_load_failed">Konnte nicht geladen werden</string>
+    <string name="common_retry">Erneut versuchen</string>
+    <string name="common_no_results">Nichts gefunden</string>
+    <string name="common_no_results_hint">Suche oder Filter lockern.</string>
+    <string name="widget_titel">Sammlung</string>
+    <string name="widget_wert">Wert</string>
+    <string name="widget_heute">Heute</string>
+    <string name="widget_gesamt">Gesamt</string>
+    <string name="widget_leer">Öffne die App einmal, um die Zahlen zu laden.</string>
+    <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
+    <string name="art_nacharbeit">Nacharbeit nach dem Erfassen</string>
+    <string name="art_bilder">Bilder eines Sets</string>
+    <string name="art_pdf">PDF-Teileliste</string>
+    <string name="art_csv_import">CSV-Import von Sets</string>
+    <string name="art_wechselkurse">Wechselkurse (EZB)</string>
+    <string name="art_anleitung">Anleitung laden</string>
+    <string name="art_brickset">Brickset: erneuter Versuch</string>
+    <string name="art_bildbedarf">Katalogbilder laden</string>
+    <string name="art_bilder_neu_laden">Fehlende Bilder neu laden</string>
+    <string name="art_nachlauf">Nachlauf beim Start</string>
+    <string name="art_csv_sync">Rebrickable-Katalog</string>
+    <string name="art_preise">Preise aktualisieren</string>
+    <string name="art_bild_nachlauf">Bild-Download (CDN)</string>
+    <string name="art_aufraeumen">Aufräumen (stündlich)</string>
+    <string name="art_aufraeumen_taeglich">Aufräumen (täglich)</string>
+    <string name="hintergrund_titel">Hintergrundarbeiten</string>
+    <string name="hintergrund_kein_prozess">Kein Job-Prozess meldet sich — läuft der Dienst „jobs“?</string>
+    <string name="hintergrund_pause">%1$s pausiert bis %2$s: %3$s</string>
+    <string name="hintergrund_leer">Keine offenen oder gescheiterten Aufträge</string>
+    <string name="hintergrund_offen">offen</string>
+    <string name="hintergrund_laeuft">läuft</string>
+    <string name="hintergrund_fehler">Fehler</string>
+    <string name="hintergrund_abgebrochen">abgebrochen</string>
+    <string name="hintergrund_geplant">geplant für %1$s</string>
+    <string name="hintergrund_faellig">fällig ab %1$s</string>
+    <string name="hintergrund_versuch">Versuch %1$d von %2$d</string>
+    <string name="hintergrund_jetzt">Jetzt</string>
+    <string name="hintergrund_leeren">Leeren</string>
+    <string name="hintergrund_wiederholen">Wiederholen</string>
+    <plurals name="hintergrund_geleert">
+        <item quantity="one">%1$d Auftrag entfernt</item>
+        <item quantity="other">%1$d Aufträge entfernt</item>
+    </plurals>
+    <plurals name="hintergrund_bildbedarf">
+        <item quantity="one">%1$d Bild vorgemerkt</item>
+        <item quantity="other">%1$d Bilder vorgemerkt</item>
+    </plurals>
+    <string name="hintergrund_abgebrochen_ok">Auftrag abgebrochen</string>
+    <string name="hintergrund_wiederholt_ok">Auftrag wird wiederholt</string>
+    <string name="hintergrund_gestartet">%1$s startet</string>
+    <string name="hintergrund_nichts_gestartet">%1$s: nichts zu starten</string>
+</resources>

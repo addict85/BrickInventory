@@ -96,7 +96,7 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
-    VALUES ($1, $2, $3, 1, 1, 1) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
+    VALUES ($1, $2, $3, true, true, true) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
   // Mit heutigen Stempeln lädt der Start den Rebrickable-Katalog nicht herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])

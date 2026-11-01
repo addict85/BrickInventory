@@ -56,10 +56,10 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
   }
   const hash = await bcrypt.hash('altesPasswort1', 4);
   await db.run(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,1,1)",
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,true,true)",
     ['pw_chef', hash]);
   await db.run(
-    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,0,1)",
+    "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,false,true)",
     ['pw_opfer', hash]);
   const opferId = (await db.get("SELECT id FROM users WHERE username='pw_opfer'")).id;
 

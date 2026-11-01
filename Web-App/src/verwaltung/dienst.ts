@@ -1,13 +1,10 @@
-/**
- * Fachdienst Verwaltung: was die Überwachungsseite an Zahlen, Proben und
- * Hebeln braucht. Fremde Dienste und Jobs erreicht sie nur von hier aus.
- */
+/** Fremde Dienste und Jobs erreicht die Überwachungsseite nur von hier aus,
+ * damit die Routen keine Schichten überspringen. */
 import crypto from 'crypto';
 import fs from 'fs';
 import https from 'https';
 import path from 'path';
 import * as verwaltung from './repository/verwaltung';
-import * as db from '../../db/database';
 import { naechsteUhrzeit, taeglicheUhrzeit } from '../auftraege/zeitplan';
 import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/httpError';
@@ -33,18 +30,16 @@ import { fehlerWerfen } from '../infra/fehlerTexte';
 import { pruefeBricklinkZugang } from '../../clients/bricklink';
 import { ausRetryWarteschlange, pruefeBricksetZugang } from '../../clients/brickset';
 import { pruefeRebrickableZugang } from '../../clients/rebrickable';
+import * as verwaltungRepo from './repository/verwaltung';
 
-/**
- * Wie lange ein gemeldeter Betrieb ohne neues Lebenszeichen als laufend gilt.
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#job-frisch-ms
- */
+// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#job-frisch-ms
 const JOB_FRISCH_MS = 3 * 60_000;
 
 const QUELLEN: Record<string, () => Promise<void>> = {
   rebrickable: pruefeRebrickableZugang, brickset: pruefeBricksetZugang, bricklink: pruefeBricklinkZugang,
 };
 
-/** Den gespeicherten Zugang einer Quelle mit einem kleinen Abruf prüfen; wirft mit dem Grund. */
+/** Wirft mit dem Grund. */
 export async function quellePruefen(quelle: string) {
   const pruefe = Object.hasOwn(QUELLEN, quelle) ? QUELLEN[quelle] : undefined;
   if (!pruefe) fehlerWerfen('quelle_unbekannt', 400);
@@ -52,11 +47,10 @@ export async function quellePruefen(quelle: string) {
   catch (e) { fehlerWerfen('quelle_test_fehlgeschlagen', 400, { grund: fehlertext(e).slice(0, 200) }); }
 }
 
-/** Cache-Zahlen samt Kontingenten und Verbindungspool. */
 export async function cacheStatistik() {
-  const leer = { count: 0, limit: 0 };
+  const leer = { count: 0, limit: 0, remaining: 0 };
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
-    getCacheStats().catch(meldeUndLiefere('verwaltung:getCacheStats', {})),
+    getCacheStats().catch(meldeUndLiefere('verwaltung:getCacheStats', { prices: 0, subsets: 0, catalog: 0 })),
     verwaltung.veraltetePreise().catch(meldeUndLiefere('verwaltung:veraltetePreise', null)),
     getRateLimitStatus('bricklink').catch(meldeUndLiefere('verwaltung:kontingent', leer)),
     getRateLimitStatus('rebrickable').catch(meldeUndLiefere('verwaltung:kontingent', leer)),
@@ -66,16 +60,12 @@ export async function cacheStatistik() {
     rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS }, db_pool: verwaltung.getPoolStats() };
 }
 
-/** Preis-Cache leeren; mit `alle` auch die Kataloge von BrickLink. */
 export async function cachesLeeren(alle: boolean) {
   await verwaltung.leerePreisCache();
   if (alle) { await clearSubsetsCache(); await clearCatalogCache(); }
 }
 
-/**
- * Nach einem höheren Brickset-Limit: Ist heute noch Kontingent da, gleich
- * die Warteschlange abarbeiten statt bis morgen zu warten.
- */
+/** Ist heute noch Kontingent da, gleich abarbeiten statt bis morgen zu warten. */
 export async function bricksetLimitGesetzt(alt: number, neu: number) {
   if (!(neu > alt)) return;
   const rl = await getRateLimitStatus('brickset').catch(meldeUndLiefere('verwaltung:getRateLimitStatus', null));
@@ -85,7 +75,6 @@ export async function bricksetLimitGesetzt(alt: number, neu: number) {
   await bricksetJetzt();
 }
 
-/** Alle Sets ohne Anleitung neu einreihen; die Arbeit macht der Job-Prozess. */
 export async function anleitungenNeuEinreihen() {
   const fehlend = await verwaltung.setsOhneAnleitung();
   for (const { set_number } of fehlend) {
@@ -95,14 +84,9 @@ export async function anleitungenNeuEinreihen() {
   return fehlend.length;
 }
 
-/**
- * Der Stand des Preis-Jobs im Format von früher: Lauf und Fortschritt aus dem
- * geplanten Auftrag, das Ergebnis des letzten Laufs aus laufzustand.
- */
+/** Im Format von früher, damit die Oberfläche unverändert bleibt. */
 export async function preisJobStand() {
-  const plan = await db.get<{ status: string; faellig_ab: Date; fortschritt: any }>(
-    `SELECT status, faellig_ab, fortschritt FROM auftraege
-      WHERE art = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, faellig_ab LIMIT 1`);
+  const plan = await verwaltungRepo.letzterLaufDerArt();
   let letzter: Record<string, any> = {};
   try { letzter = JSON.parse(await liesZustand('preis_job_stand') ?? '{}'); } catch (e) { meldeUndWeiter('verwaltung:preis-stand', e); }
   const laeuft = plan?.status === 'laeuft';
@@ -117,35 +101,29 @@ export async function preisJobStand() {
   return { success: true, job, rate_limit: await getRateLimitStatus('bricklink') };
 }
 
-/** Den Preis-Job jetzt laufen lassen; false, wenn er schon läuft. */
+/** false, wenn er schon läuft. */
 export const preisJobJetzt = () => ziehePlanVor('preise');
 export const fehlendeBilderNachladen = () => {
   stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 })
     .catch(logAndContinue('verwaltung:bilder nachladen'));
 };
 
-/** Den Rebrickable-Katalog jetzt neu laden (auch wenn heute schon geladen). */
 export const katalogAbgleichJetzt = () => ziehePlanVor('csv_sync');
 
-/** Die Brickset-Wiedervorlage im Format der früheren Tabelle. */
 export { bricksetListe } from '../auftraege/bricksetAuftrag';
 
-/** Einen Brickset-Eintrag heute wiederholen, auch über das Tageskontingent hinweg. */
+/** Auch über das Tageskontingent hinweg. */
 export async function bricksetWiederholen(sn: string) {
   await setzeKontingentZurueck('brickset').catch(logAndContinue('brickset:kontingent zurücksetzen'));
   await bricksetJetzt(sn);
 }
 
-/** Aus der Brickset-Warteschlange nehmen und gleich die anderen Quellen fragen. */
 export async function bricksetEntfernen(sn: string) {
   await ausRetryWarteschlange(sn).catch(logAndContinue('verwaltung:ausRetryWarteschlange'));
   await anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 
-/**
- * Uhrzeit eines täglichen Jobs oder Intervall des Preis-Jobs setzen; der
- * offene geplante Auftrag bekommt sofort den neuen Termin.
- */
+/** Der offene geplante Auftrag bekommt sofort den neuen Termin. */
 export async function jobZeitplanSetzen(name: unknown, time: unknown, minutes: unknown) {
   const daily = DAILY_JOBS.find(j => j.monitorKey === name);
   if (daily) {
@@ -160,22 +138,17 @@ export async function jobZeitplanSetzen(name: unknown, time: unknown, minutes: u
   await zeitplanNeuPlanen();
 }
 
-/** Die offenen Termine an die eingestellten Zeiten anpassen; Brickset-Einträge warten auf ihre Uhrzeit. */
 export async function zeitplanNeuPlanen() {
   await zeitplanGeaendert('csv_sync');
   await zeitplanGeaendert('preise');
   const bis = naechsteUhrzeit(await taeglicheUhrzeit('brickset_retry'));
-  await db.run(`UPDATE auftraege SET faellig_ab = $1 WHERE art = 'brickset' AND status = 'offen' AND faellig_ab > NOW()`, [bis]);
+  await verwaltungRepo.bricksetTermineVorziehen(bis);
 }
 
-/**
- * Die Job-Karten der Überwachung: Stand aus jobMonitor, ergänzt um Zahlen,
- * die nur die Datenbank kennt (Anleitungen, Zuordnungen, Bilder, PDF-Aufträge).
- */
+/** Ergänzt um Zahlen, die nur die Datenbank kennt. */
 export async function jobUebersicht() {
     const jobs = await monitor.all(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
 
-  // Enrich with live DB counts
   const [pending, done, failed] = await Promise.all([
     zaehleArt('anleitung').then(z => z.offen + z.laeuft).catch(meldeUndLiefere('verwaltung:offeneAuftraege', 0)),
     zaehleArt('anleitung').then(z => ({ c: z.erledigt })).catch(meldeUndLiefere('verwaltung:anleitungenErledigt', null)),
@@ -187,7 +160,6 @@ export async function jobUebersicht() {
   const rbInvParts = await verwaltung.rbInventarTeile().catch(meldeUndLiefere('verwaltung:rbInventarTeile', null));
   const lastSync = await liesZustand('rb_csv_last_sync');
 
-  // Enrich blIds job with live DB counts
   const mappedC = parseInt(blMapped?.c||0);
   const totalBl = parseInt(blTotal?.c||0);
   if (totalBl > 0) {
@@ -200,7 +172,6 @@ export async function jobUebersicht() {
     };
   }
 
-  // Enrich instrQueue job with live DB counts
   const pendingC = pending ?? 0;
   const doneC    = done?.c ?? 0;
   const failedC  = failed?.c ?? 0;
@@ -216,7 +187,6 @@ export async function jobUebersicht() {
     jobs.instrQueue = enriched;
   }
 
-  // Brickset retry queue
   const bs = await bricksetZahlen().catch(meldeUndLiefere('verwaltung:bricksetZahlen', { wartend: 0, faellig: 0 }));
   const bsRetryC = bs.wartend, bsRetryDueC = bs.faellig;
   jobs.bricksetRetry = {
@@ -232,40 +202,29 @@ export async function jobUebersicht() {
     lastRun: null,
   };
 
-  // img-dl: active download locks and pending images count
   const [imgDlPending, imgDlDone, imgDlPendingFigs, imgDlPendingOwnFigs] = await Promise.all([
     verwaltung.teilbilderOffen().catch(meldeUndLiefere('verwaltung:teilbilderOffen', null)),
     verwaltung.teilbilderFertig().catch(meldeUndLiefere('verwaltung:teilbilderFertig', null)),
     verwaltung.setFigurenbilderOffen().catch(meldeUndLiefere('verwaltung:setFigurenbilderOffen', null)),
-    // Minifiguren des Bestands legt der img-dl-Hintergrundlauf ebenfalls lokal
-    // ab; sie gehören deshalb in die offene Menge.
+    // Figuren des Bestands legt derselbe Lauf lokal ab; sie gehören in die offene Menge.
     verwaltung.bestandsFigurenbilderOffen().catch(meldeUndLiefere('verwaltung:bestandsFigurenbilderOffen', null)),
   ]);
   const imgPending = parseInt(imgDlPending?.c||0) + parseInt(imgDlPendingFigs?.c||0)
                    + parseInt(imgDlPendingOwnFigs?.c||0);
   const imgDone    = parseInt(imgDlDone?.c||0);
-  // Aktiv laufende Downloads: über ALLE Batches/Worker summierter Zähler
-  // (imgDlAdd/-Sub in downloadSetImages) — nicht mehr der zuletzt gestartete
-  // Batch. Deckelung auf imgPending (real noch nicht gecachte Bilder) heilt
-  // einen evtl. verwaisten Zähler nach einem Worker-Crash selbst; bei 0 offenen
-  // Bildern wird der Zähler zurückgesetzt.
+  // Über alle Stapel summiert, gedeckelt auf die wirklich offenen Bilder: Das
+  // heilt einen verwaisten Zähler nach einem Absturz.
   const imgDlJob   = await monitor.get('imgDl').catch(meldeUndLiefere('verwaltung:get', null));
   let imgActive    = await monitor.imgDlPending().catch(meldeUndLiefere('verwaltung:imgDlPending', 0));
   if (imgPending === 0 && imgActive > 0) { await monitor.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset')); imgActive = 0; }
   imgActive = Math.min(imgActive, imgPending);
   const imgRunning = imgActive > 0;
-  // Manueller Re-Download fehlender Bilder (image_local gesetzt, Datei fehlt) —
-  // Status liegt in laufzustand.imgredl_status.
   let reDl: any = null;
   try {
     const roh = await liesZustand('imgredl_status');
     if (roh) reDl = JSON.parse(roh);
   } catch (_) { reDl = null; }
-  // „laeuft" heisst auch hier: hat KUERZLICH etwas getan
-  // Der Zeitstempel dafuer wird laengst mitgeschrieben: _redlSetStatus() in
-  // jobs/partsCatalogEnrich.ts haengt an JEDEN Stand ein `at`. Gelesen wurde
-  // er nie.
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-seitredl
+  // „läuft" heisst: hat KÜRZLICH etwas getan (Zeitstempel `at` des Standes).
   const seitReDl = typeof reDl?.at === 'number' ? Date.now() - reDl.at : null;
   const reDlRunning = reDl?.running === true
     && (seitReDl === null || seitReDl < JOB_FRISCH_MS);
@@ -274,16 +233,12 @@ export async function jobUebersicht() {
         ? '↻ suche fehlende Bilder…'
         : `↻ ${reDl.done || 0}/${reDl.total || 0} fehlende neu geladen`)
     : null;
-  // Katalog-Bilder gehören in DIESE Kachel
-  // Er hat recht: Die Kachel zählte ausschliesslich Bilder des eigenen
-  // BESTANDES und meldete „Alle 62 170 Bilder gecacht", während der
-  // Hintergrund-Job gerade hunderte Katalogbilder nachlud. Der Titel verspricht …
+  // Katalogbilder gehören in DIESE Kachel, sonst meldete sie „alle gecacht",
+  // während der Hintergrund-Job nachlädt.
   // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-katalogoffen
   const katalogOffen = (await verwaltung.katalogBilderOffen().catch(meldeUndLiefere('verwaltung:katalogBilderOffen', null)))?.c ?? 0;
-  // „läuft" heisst: hat kürzlich etwas getan
-  // Die Kachel meldete „läuft", sobald die Warteschlange nicht leer war
-  // . Das ist keine Aussage über TÄTIGKEIT: Eine
-  // steckengebliebene Warteschlange sah genauso aus wie eine, die abgearbeitet …
+  // „läuft" heisst: hat kürzlich etwas getan — eine steckengebliebene
+  // Warteschlange sähe sonst aus wie eine arbeitende.
   // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-letzterlauf
   let letzterLauf: { zeit?: number } | null = null;
   try {
@@ -301,18 +256,15 @@ export async function jobUebersicht() {
   const bestandSub = imgRunning ? `${imgActive} Bilder werden geladen`
               : imgPending > 0 ? `${imgPending} Bilder noch nicht gecacht`
               : `Alle ${imgDone} Bilder gecacht`;
-  // „Bestand" ausdrücklich benennen, sobald daneben Katalogzahlen stehen —
-  // sonst lässt sich nicht sagen, worauf sich welche Zahl bezieht.
+  // „Bestand" benennen, sobald Katalogzahlen daneben stehen.
   const imgBaseSub = katalogSub ? `Bestand: ${bestandSub} · ${katalogSub}` : bestandSub;
   jobs.imgDl = {
     label:    '📥 Bild-Download (CDN)',
-    // Läuft auch dann, wenn nur der Katalog-Job arbeitet — sonst stünde die
-    // Kachel auf „fertig", während sie gerade lädt.
+    // Auch wenn nur der Katalog-Job arbeitet, sonst stünde die Kachel auf „fertig".
     status:   (imgRunning || reDlRunning || (katalogOffen > 0 && jobLaeuft)) ? 'running'
               : (imgPending > 0 || katalogOffen > 0) ? 'idle' : 'done',
     sub:      reDlSub ? `${imgBaseSub} · ${reDlSub}` : imgBaseSub,
-    // Der Balken bezieht die Warteschlange mit ein: Sonst stünde er auf 100 %,
-    // während noch hunderte Bilder ausstehen.
+    // Mit Warteschlange, sonst stünde der Balken auf 100 %, während Bilder ausstehen.
     progress: imgDone,
     total:    imgDone + imgPending + katalogOffen,
     queue:    katalogOffen,
@@ -321,7 +273,6 @@ export async function jobUebersicht() {
     canRedownload: true,
   };
 
-  // PDF jobs: count from filesystem
   let pdfRunning = 0, pdfDone = 0;
   try {
     const pdfFiles = fs.readdirSync(PDF_JOB_DIR).filter((f: string) => f.endsWith('.json'));
@@ -344,8 +295,6 @@ export async function jobUebersicht() {
     lastRun:  null,
   };
 
-  // Konfigurierte Zeitpläne für die Monitoring-UI:
-  // tägliche Jobs (HH:MM) + Preis-Job (Intervall in Minuten).
   const schedules: any = {};
   for (const dj of DAILY_JOBS) {
     const zeit = await getGlobalSetting(`job_time_${dj.name}`);
@@ -366,10 +315,7 @@ export async function jobUebersicht() {
   };
 }
 
-/**
- * Fragt eine (geprüfte) Bildadresse vom Server aus ab — mit und ohne Referer
- * und ohne Kopfzeilen — und meldet, was der Proxy davon ausliefern würde.
- */
+/** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
 export async function bildProbe(url: string) {
     const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
   const variants = [
@@ -387,35 +333,30 @@ export async function bildProbe(url: string) {
       r.on('data', (c: Buffer) => { bytes += c.length; if (bytes > 65536) rq.destroy(); });
       r.on('end',   () => done({ status: r.statusCode, content_type: r.headers['content-type'] || null,
                                  content_length: r.headers['content-length'] || null,
-                                 // Liefert das CDN komprimiert, muss der Proxy die Kopfzeile
-                                 // weiterreichen — sonst hält der Browser die Bytes für ein JPEG.
+                                 // Komprimiert geliefert muss der Proxy die Kopfzeile weiterreichen, sonst hält
+                                 // der Browser die Bytes für ein JPEG.
                                  content_encoding: r.headers['content-encoding'] || null,
                                  transfer_encoding: r.headers['transfer-encoding'] || null,
                                  bytes, server: r.headers['server'] || null, cf_ray: r.headers['cf-ray'] || null }));
       r.on('close', () => done({ status: r.statusCode, content_type: r.headers['content-type'] || null, bytes, truncated: true }));
     });
     rq.on('error', (e: NodeJS.ErrnoException) => done({ error: e.message, code: e.code }));
-    // Ein Diagnosewert wie ein HTTP-Status, keine Meldung an den Nutzer: Die
-    // Monitoring-Ansicht zeigt ihn als Befund der Erreichbarkeitsprobe.
+    // Ein Diagnosewert, keine Meldung an den Nutzer.
     rq.setTimeout(10000, () => { rq.destroy(); done({ error: 'timeout' }); });
   });
 
   const results: any[] = [];
   for (const v of variants) results.push(await probe(v));
 
-  // Liegt das Bild bereits im Plattencache?
   const fsp = fs.promises, pathm = path;
   const key = crypto.createHash('sha1').update(url).digest('hex');
   const dir = pathm.join(DATA_DIR, 'img_proxy_cache');
   const cached = await fsp.stat(pathm.join(dir, key)).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
   const thumb  = await fsp.stat(pathm.join(dir, key + '_thumb.jpg')).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
 
-  // Fehlerzähler des Proxys mitliefern — zeigt auf einen Blick, ob und woran
-  // Abrufe scheitern, ohne im Server-Log suchen zu müssen.
+  // Zeigt auf einen Blick, woran Abrufe scheitern, ohne im Log zu suchen.
   const failures = imgProxyFailures;
-  // Was würde der Proxy AUSLIEFERN? Ein Abruf durch dieselbe Kette wie im
-  // Bild-Proxy, aber statt zum Client gehen die ersten Bytes hierher — als Hex.
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-img-probe-head
+  // Durch dieselbe Kette wie der Proxy, aber die ersten Bytes kommen als Hex hierher.
   const head = await new Promise(resolve => {
     const rq = https.get(url, { family: 4, headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8',
                                             'Accept-Encoding': 'identity' } }, (r: any) => {
@@ -444,7 +385,7 @@ export async function bildProbe(url: string) {
            proxy_failures: failures, body_check: head };
 }
 
-/** Alles, was in die Marktpreis-Anzeige eines Sets einfliesst; mit `live` auch die Antwort von BrickLink. */
+/** Mit `live` auch die Antwort von BrickLink. */
 export async function preisProbe(uid: number, setNumber: string, live: boolean) {
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
     verwaltung.probeSet(uid, setNumber),
@@ -455,10 +396,7 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
     getGlobalSetting('price_cache_ttl'),
   ]);
 
-  // Welchen Zustand würde die Bewertung wählen? Dieselbe Regel wie
-  // conditionFromAcquisitions() in src/bestand/gemeinsam.ts: Eine gebrauchte
-  // Erfassung genügt, sonst Neu.
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe-anyused
+  // Dieselbe Regel wie conditionFromAcquisitions(): Eine gebrauchte Erfassung genügt.
   const anyUsed = acqs.some(a => a.condition === 'U');
   const chosen = anyUsed ? 'U' : 'N';
 
@@ -480,14 +418,12 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
     price_history_last5: histRows,
   };
 
-  // Dieselbe Währung wie die Bewertung (getSetting fällt auf die globale
-  // Vorgabe zurück, user_settings allein nicht) — sonst zeigte die Probe
-  // andere Cache-Zeilen als die, die Finanzen liest.
+  // Dieselbe Währung wie die Bewertung, sonst zeigte die Probe andere Cache-Zeilen.
   out.currency = await getSetting(uid, 'currency', 'EUR');
   // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
   const katalog = await katalogEintrag(setNumber);
   out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
-  // Was Finanzen für den gewählten Zustand bekommt — genau dieser Aufruf.
+  // Genau der Aufruf, den Finanzen macht.
   try { out.finanzen_preis = await fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours); }
   catch (e) { out.finanzen_preis = { error: fehlertext(e) }; }
 
@@ -506,10 +442,8 @@ export async function preisProbe(uid: number, setNumber: string, live: boolean) 
   return out;
 }
 
-/**
- * Alle fehlenden Katalogbilder einreihen. Fertig ist ein Set mit Original UND
- * Vorschau; zurückgenommene Fehlanzeigen werden mitgezählt.
- */
+/** Fertig ist ein Set mit Original UND Vorschau; zurückgenommene Fehlanzeigen
+ * werden mitgezählt. */
 export async function katalogBilderEinreihen(alleErneut: boolean) {
     const zuVergessen = await (alleErneut
       ? verwaltung.setFehlanzeigen()
@@ -518,17 +452,13 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     const verworfen = zuVergessen.length
       ? await vergissFehlend(zuVergessen.map(r => r.cache_key))
       : 0;
-    // Was schon fertig ist, wird nicht wieder eingereiht
-    // Er hatte recht, und die Begründung, die ich früher dafür notiert
-    // habe, war zu kurz gedacht: Ich wollte 25 000 einzelne Dateizugriffe in
-    // einer Anfrage vermeiden — richtig — und habe daraus geschlossen, gar …
+    // Was schon fertig ist, wird nicht wieder eingereiht.
     // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-catalog-images-fs
         let vorhanden: Set<string> = new Set();
     try {
       const namen = new Set<string>(fs.readdirSync(SET_IMAGES_DIR));
-      // FERTIG heisst: Original UND Vorschau. Fehlt die Vorschau, gehört das
-      // Set weiter in die Warteschlange — der Job holt sie dann nach, ohne
-      // erneut zu laden.
+      // Fehlt die Vorschau, bleibt das Set in der Warteschlange; der Job lädt dann
+      // nicht erneut.
       for (const n of namen) {
         if (!n.endsWith('_thumb.jpg')) continue;
         const basis = n.slice(0, -'_thumb.jpg'.length);
@@ -538,8 +468,7 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
 
     const kandidaten = await verwaltung.katalogBildKandidaten();
 
-    // Dieselbe Namensregel wie in downloadSetImage() — sonst verglichen wir
-    // Setnummern mit Dateinamen und fänden nie eine Übereinstimmung.
+    // Dieselbe Namensregel wie downloadSetImage(), sonst fände der Vergleich nichts.
     const dateiname = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
     const offenSets: string[] = [];
     const offenUrls: string[] = [];
@@ -556,18 +485,14 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
       await bildbedarfAnstossen();
     }
     const offen = await verwaltung.offeneBildauftraege();
-    // Wie lange das dauert — die Zahl der Aufträge allein sagt es nicht, und
-    // „Stunden oder Tage?" ist die erste Frage, die sich stellt. Die Rate kommt
-    // aus dem Job selbst, damit sie nicht an zwei Stellen gepflegt wird.
+    // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
     const proMinute = anfragenJeMinute();
     return {
       success: true,
       queued:  neuEingereiht,
       pending: offen?.n ?? 0,
-      // Für die Rückmeldung: So viele waren schon fertig und blieben aussen vor.
       skipped: kandidaten.length - offenUrls.length,
-      // Zurückgenommene Fehlanzeigen — ohne die Zahl bliebe unklar, warum
-      // plötzlich wieder Bilder anstehen, die zuletzt als fehlend galten.
+      // Ohne die Zahl bliebe unklar, warum als fehlend geltende Bilder wieder anstehen.
       verworfen,
       dauer_minuten: Math.ceil((offen?.n ?? 0) / proMinute),
     };

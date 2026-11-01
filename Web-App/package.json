@@ -18,7 +18,8 @@
     "test:api": "node --test --test-concurrency=1 test/catalog-api.test.js test/api-parity.test.js",
     "build:frontend": "node scripts/build-frontend.js",
     "design:tokens": "node scripts/generate-design-tokens.js",
-    "schema:stand": "node scripts/schema-stand.js"
+    "schema:stand": "node scripts/schema-stand.js",
+    "vertrag:openapi": "node scripts/vertrag-openapi.js"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",
@@ -36,7 +37,8 @@
     "oauth": "^0.10.0",
     "pdfkit": "^0.20.1",
     "pg": "^8.12.0",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/archiver": "^8.0.0",

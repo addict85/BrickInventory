@@ -56,7 +56,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext',
   const vorschau = path.join(ordner, `${MIT}_thumb.jpg`);
 
   await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
-  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',1)`, [USER]);
+  await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[MIT, OHNE]]);

@@ -15,7 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import ch.brickinventoryapp.R
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.ZertifikatUngeklaert
 import ch.brickinventoryapp.util.fingerabdruckLesbar

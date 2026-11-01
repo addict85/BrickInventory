@@ -18,7 +18,7 @@ class TargetSdkConfigTest {
     }
 
     private val manifest: String by lazy {
-        val f = java.io.File("src/main/AndroidManifest.xml")
+        val f = Quellen.manifest
         assert(f.exists()) { "AndroidManifest.xml nicht gefunden" }
         f.readText()
     }

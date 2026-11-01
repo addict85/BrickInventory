@@ -19,6 +19,9 @@
  *      Hauptkonten angehören"
  *   D  beim Einlösen den Hinweis nicht gelöscht → rot: „die Umstellung trennt
  *      Ketten und hinterlässt einen Hinweis"
+ *   E  (31.10.2026) in lagerKonten() den Ansichtsfilter angewandt
+ *      (`scopeIds(uid, parseScopeMode(req.query.accounts))`) → rot: „die
+ *      Lagerorte eines Unterkontos folgen dem Recht …“
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL,
  * Default postgres://tester:test@localhost/cattest. Ohne DB: skip.
@@ -207,6 +210,19 @@ test('Haushalt gegen echte Datenbank', async (t) => {
     assert.ok(!(await household.writableIds(U.eltern)).includes(U.enkel));
     assert.equal(await household.canWriteFor(U.kindA, U.enkel), true);
     assert.equal(await household.canWriteFor(U.enkel, U.kindA), false);
+  });
+
+  await t.test('die Lagerorte eines Unterkontos folgen dem Recht, nicht dem Ansichtsfilter', async () => {
+    _actingAs = U.kindA;
+    const neu = await fetch(`${_base}/api/v1/storage/locations`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Kiste kindA' }) });
+    assert.equal(neu.status, 200, await neu.text());
+    const namen = async (accounts) => (await apiGet(U.eltern, `/api/v1/storage/locations?owner=${U.kindA}&accounts=${accounts}`))
+      .body.orte.map(o => o.name);
+    assert.deepEqual(await namen('all'), ['Kiste kindA']);
+    assert.deepEqual(await namen('own'), ['Kiste kindA'], 'Die Galerie auf „nur eigene“ leert die Auswahl beim Set des Kindes nicht');
+    assert.deepEqual((await apiGet(U.eltern, `/api/v1/storage/locations?owner=${U.enkel}`)).body.orte, [],
+      'Ohne Recht keine Orte, auch nicht über eine Kette');
   });
 
   await t.test('ein Konto kann mehreren Hauptkonten angehören', async () => {

@@ -51,7 +51,7 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
   await db.run(`INSERT INTO minifigs (user_id, set_number, fig_number, source) VALUES ($1, NULL, 'fig-t9', 'manual')`, [uid]);
   await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1, $2, 1)', [INV, SN]);
   await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
-                VALUES ($1, 'tp-1', 1, 4, 0), ($1, 'tp-1', 1, 1, 1), ($1, 'tp-2', 5, 2, 0)`, [INV]);
+                VALUES ($1, 'tp-1', 1, 4, false), ($1, 'tp-1', 1, 1, true), ($1, 'tp-2', 5, 2, false)`, [INV]);
 
   const figur = (nr) => db.get('SELECT id, storage_id FROM minifigs WHERE user_id=$1 AND fig_number=$2', [uid, nr]);
   const teil = (nr) => db.get(`SELECT id, storage_id, added_at::text AS added_at FROM parts WHERE user_id=$1 AND part_number=$2`, [uid, nr]);
@@ -77,7 +77,7 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
     await t.test('Bau- und Ersatzteil derselben Farbe', async () => {
       assert.equal(await importiereTeile(SN, uid), 3);
       const liste = await db.get(`SELECT quantity, is_spare FROM set_teile WHERE set_number=$1 AND part_number='tp-1'`, [SN]);
-      assert.deepEqual(liste, { quantity: 4, is_spare: 0 }, 'die Bauteilmenge zählt, nicht die Ersatzteile');
+      assert.deepEqual(liste, { quantity: 4, is_spare: false }, 'die Bauteilmenge zählt, nicht die Ersatzteile');
     });
 
     await t.test('das Teil behält Kennung, Lagerort und Datum', async () => {

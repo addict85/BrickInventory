@@ -1,69 +1,39 @@
 package ch.brickinventoryapp.di
 
-import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.util.KeystoreTokenTresor
-import ch.brickinventoryapp.util.TokenVerschluesselung
+import android.content.Context
+import androidx.glance.appwidget.updateAll
+import ch.brickinventoryapp.BuildConfig
+import ch.brickinventoryapp.MainActivity
+import ch.brickinventoryapp.util.AppFassung
+import ch.brickinventoryapp.data.Startziel
+import ch.brickinventoryapp.ui.Abmeldehaken
+import ch.brickinventoryapp.widget.SammlungsWidget
+import ch.brickinventoryapp.widget.WidgetAblage
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.serialization.json.Json
-import javax.inject.Singleton
 
+/**
+ * Was nur die App kennt: ihre Activity und ihr Widget. Die Module darunter sehen
+ * davon nur die Schnittstellen, sonst hinge die Datenschicht an der App.
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    /**
-     * Die Token-Verschlüsselung als Schnittstelle bereitstellen, nicht als konkrete
-     * Klasse: Die Umsetzung braucht den Android-Keystore und läuft nur auf einem
-     * Gerät. Fest daran gebunden liesse sich die Übernahme-Logik des
-     * PreferencesManagers nicht auf der JVM prüfen — und die entscheidet, ob
-     * bestehende Installationen beim Update angemeldet bleiben.
-     */
+    /** Die Klasse selbst, nicht ihr Name: Für R8 ist nur ein Klassenverweis ein Aufruf. */
     @Provides
-    @Singleton
-    fun provideTokenVerschluesselung(): TokenVerschluesselung = KeystoreTokenTresor()
+    fun provideStartziel(): Startziel = Startziel(MainActivity::class.java)
 
     @Provides
-    @Singleton
-    fun provideJson(): Json = ch.brickinventoryapp.data.api.ApiJson
+    fun provideAppFassung(): AppFassung = AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
 
-    // Die herausgelösten ViewModels sehen Texte und Dateien nur über diese
-    // Schnittstellen — so laufen sie im JVM-Test ohne Context.
+    /** Das Widget zeigt nach dem Abmelden sonst die Zahlen des alten Kontos. */
     @Provides
-    fun provideTexte(t: ch.brickinventoryapp.ui.viewmodel.AppTexte): ch.brickinventoryapp.ui.viewmodel.Texte = t
-
-    @Provides
-    fun provideDateiLeser(l: ch.brickinventoryapp.ui.viewmodel.AppDateiLeser): ch.brickinventoryapp.ui.viewmodel.DateiLeser = l
-
-    @Provides
-    fun provideAnmeldeablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Anmeldeablage = p
-
-    @Provides
-    fun provideNetzkennung(n: ch.brickinventoryapp.data.Netzlage): ch.brickinventoryapp.data.Netzkennung = n
-
-    @Provides
-    fun provideCacheBesitzer(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.cache.CacheBesitzer = p
-
-    /**
-     * Der Tausch des Tokens. Provider statt direkt: Das Konto-Repository hängt am
-     * api-Client, und der braucht diesen Tausch — ohne den Umweg ein Kreis.
-     */
-    @Provides
-    @javax.inject.Singleton
-    fun provideTokenTausch(
-        p: ch.brickinventoryapp.data.PreferencesManager,
-        konto: javax.inject.Provider<ch.brickinventoryapp.data.repository.KontoRepository>,
-    ): ch.brickinventoryapp.data.TokenTausch = ch.brickinventoryapp.data.TokenTausch(
-        token = { p.tokenJetzt() },
-        speichere = { p.saveAuthToken(it) },
-        rotiere = { konto.get().tokenRotieren(it) },
-    )
-
-    @Provides
-    fun provideSetAnleger(c: ch.brickinventoryapp.data.SetAnlegenSseClient): ch.brickinventoryapp.data.SetAnleger = c
-
-    @Provides
-    fun provideFilterAblage(a: ch.brickinventoryapp.ui.ScopeFilterAblage): ch.brickinventoryapp.ui.FilterAblage = a
+    fun provideAbmeldehaken(@ApplicationContext ctx: Context): Abmeldehaken = Abmeldehaken {
+        WidgetAblage.leeren(ctx)
+        SammlungsWidget().updateAll(ctx)
+    }
 }

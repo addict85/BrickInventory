@@ -1,35 +1,26 @@
-/**
- * Gutschein-PDFs ändern, verbinden und seitenweise lesen.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#abschnitt
- */
+/** Der Betrag wird IM Original ersetzt, damit der Export aussieht wie die
+ * Karte von LEGO; geht das nicht sicher, bleibt das Original unverändert.
+ * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#abschnitt */
 import {
   PDFDocument as PdfLibDocument, PDFArray, PDFDict, PDFName, PDFRawStream,
   decodePDFRawStream, PDFPage, PDFObject, StandardFonts, rgb,
 } from '@cantoo/pdf-lib';
 import { werteAusPdf, pdfText, textOperatoren } from './gutscheinPdf';
 import type { GutscheinWerte } from './gutscheinPdf';
+import { meldeUndLiefere } from '../infra/httpError';
 
-/**
- * Kodierungen, bei denen eine literale ASCII-Kette das druckt, was sie sagt.
- *
- * Fehlt /Encoding ganz, ist es eine der vierzehn Standardschriften mit
- * StandardEncoding — dort gilt dasselbe für den druckbaren ASCII-Bereich.
- */
+/** Nur hier druckt eine literale ASCII-Kette, was sie sagt. Ohne /Encoding ist
+ * es eine Standardschrift mit StandardEncoding — dort gilt dasselbe. */
 const SICHERE_KODIERUNGEN = new Set([
   'WinAnsiEncoding', 'MacRomanEncoding', 'StandardEncoding', 'PDFDocEncoding',
 ]);
 
-/** Eine literale PDF-Zeichenkette aus Text. */
 function alsLiteral(text: string): string {
   return '(' + text.replace(/([()\\])/g, '\\$1') + ')';
 }
 
-/**
- * Trägt die Schrift mit diesem Namen eine sichere Kodierung?
- *
- * Unbekannt heisst NEIN: Eine Schrift, die sich nicht nachsehen lässt, wird
- * nicht angefasst.
- */
+/** Unbekannt heisst NEIN: Eine Schrift, die sich nicht nachsehen lässt, wird
+ * nicht angefasst. */
 function schriftIstSicher(doc: PdfLibDocument, resources: PDFDict | undefined,
                           name: string): boolean {
   if (!resources) return false;
@@ -41,8 +32,7 @@ function schriftIstSicher(doc: PdfLibDocument, resources: PDFDict | undefined,
   if (!font) return false;
 
   const subtype = font.get(PDFName.of('Subtype'));
-  // Type0 ist zusammengesetzt (CID). Dort steht der Text als Glyphennummern,
-  // und eine literale ASCII-Kette hat damit nichts zu tun.
+  // Type0 (CID) trägt Glyphennummern; eine literale ASCII-Kette hat damit nichts zu tun.
   if (subtype !== undefined && String(subtype) === '/Type0') return false;
 
   const enc = font.get(PDFName.of('Encoding'));
@@ -52,17 +42,14 @@ function schriftIstSicher(doc: PdfLibDocument, resources: PDFDict | undefined,
   return SICHERE_KODIERUNGEN.has(roh.slice(1));
 }
 
-/**
- * In EINEM Inhaltsstrom jeden Textoperator ersetzen, der `suchen` enthält.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#ersetzeimstrom
- */
+/** Das Kerning eines TJ-Feldes geht verloren; der Betrag steht aber vollständig da.
+ * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#ersetzeimstrom */
 function ersetzeImStrom(inhalt: string, suchen: string, ersetzen: string,
                         sicher: (schrift: string) => boolean):
                         { aus: string; treffer: number; abgelehnt: number } {
   let treffer = 0, abgelehnt = 0;
-  // Die AKTIVE Schrift ist das letzte `/Name <groesse> Tf` vor dem Operator.
-  // Steht dort ein anderes Tf als in dieser Form, ist sie unbekannt — und
-  // unbekannt heisst: nicht anfassen. Beides in einem Durchgang gesammelt.
+  // Die AKTIVE Schrift ist das letzte `/Name <grösse> Tf` vor dem Operator;
+  // unbekannt heisst: nicht anfassen.
   const tfs = [...inhalt.matchAll(/\bTf\b/g)].map(m => m.index ?? 0);
   const namen = new Map<number, string>();
   for (const m of inhalt.matchAll(/\/([^\s/<>\][(){}]+)\s+[\d.+-]+\s+Tf/g))
@@ -84,10 +71,6 @@ function ersetzeImStrom(inhalt: string, suchen: string, ersetzen: string,
   return { aus, treffer, abgelehnt };
 }
 
-/**
- * Die Inhaltsströme einer Seite, aufgelöst.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#stroemevon
- */
 function stroemeVon(doc: PdfLibDocument, seite: PDFPage): PDFRawStream[] {
   const c = seite.node.Contents();
   if (c === undefined) return [];
@@ -98,22 +81,14 @@ function stroemeVon(doc: PdfLibDocument, seite: PDFPage): PDFRawStream[] {
 }
 
 export interface ErsetzBefund {
-  /** Das geänderte PDF — null, wenn nicht sicher ersetzt werden konnte. */
+  /** null, wenn nicht sicher ersetzt werden konnte. */
   daten: Buffer | null;
-  /** Wie viele Textoperatoren geändert wurden. */
   treffer: number;
-  /** Wie viele den Betrag trugen, aber eine unsichere Schrift hatten. */
+  /** Trugen den Betrag, aber mit unsicherer Schrift. */
   abgelehnt: number;
-  /** Warum es nicht ging — null bei Erfolg. */
   grund: string | null;
 }
 
-/**
- * Den Betrag im Original-PDF durch den der App ersetzen.
- *
- * @param daten       das Original
- * @param neuerBetrag der Stand aus der App
- */
 export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise<ErsetzBefund> {
   const vorher = werteAusPdf(daten);
   if (vorher.betrag === null) {
@@ -125,9 +100,8 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
     return { daten, treffer: 0, abgelehnt: 0, grund: null };
   }
 
-  // Wie der alte Betrag im PDF GESCHRIEBEN steht, nicht wie er gerechnet
-  // wird: „400", „1'234.50", „1.234,50". Gesucht wird die Schreibweise, denn
-  // die steht im Strom.
+  // Gesucht wird, wie der Betrag GESCHRIEBEN steht („1'234.50", „1.234,50"),
+  // denn das steht im Strom.
   const text = pdfText(daten);
   const geschrieben = text.match(/[\d'’.,]{1,30}(?=\s{0,9}(?:CHF|EUR|USD|GBP|SEK|NOK|AUD|CAD|DKK)\b)/i)?.[0]
     ?? String(vorher.betrag);
@@ -150,8 +124,8 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
       if (!r.treffer) continue;
       strom.contents = Buffer.from(r.aus, 'latin1');
       strom.dict.set(PDFName.of('Length'), doc.context.obj(strom.contents.length));
-      // Der Strom liegt jetzt UNKOMPRIMIERT da. Ohne das Entfernen von
-      // /Filter wuerde jeder Leser versuchen, Klartext zu entpacken.
+      // Der Strom liegt jetzt UNKOMPRIMIERT da; mit /Filter versuchte jeder Leser,
+      // Klartext zu entpacken.
       strom.dict.delete(PDFName.of('Filter'));
       strom.dict.delete(PDFName.of('DecodeParms'));
     }
@@ -167,7 +141,7 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
 
   const ergebnis = Buffer.from(await doc.save());
 
-  // ── Die Nachpruefung ─────────────────────────────────────────────────────
+  // Nachprüfen: Erst was der Leser findet, zählt als ersetzt.
   const nachher = werteAusPdf(ergebnis);
   if (nachher.betrag === null || Math.abs(nachher.betrag - neuerBetrag) >= 0.005) {
     return { daten: null, treffer, abgelehnt,
@@ -181,20 +155,17 @@ export async function ersetzeBetrag(daten: Buffer, neuerBetrag: number): Promise
   return { daten: ergebnis, treffer, abgelehnt, grund: null };
 }
 
-/**
- * Die Marke, mit der ein exportiertes PDF sich selbst erklärt.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#marke-kopf
- */
+/** Damit ein exportiertes PDF beim Import sich selbst erklärt, statt geraten zu werden.
+ * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#marke-kopf */
 const MARKE_KOPF = 'BIM-GUTSCHEIN v1';
 
-/** Eine Marke bauen. Trennzeichen ist das Semikolon, weil Notizen Kommas haben. */
+/** Semikolon als Trennzeichen, weil Notizen Kommas haben. */
 export function markeText(w: { nummer: string; pin: string | null; betrag: number;
                                waehrung: string }): string {
   return `${MARKE_KOPF} nummer=${w.nummer}; pin=${w.pin ?? ''}; `
        + `betrag=${w.betrag.toFixed(2)}; waehrung=${w.waehrung}`;
 }
 
-/** Eine Marke lesen. `null`, wenn die Zeile keine ist. */
 export function markeLesen(zeile: string): GutscheinWerte | null {
   if (!zeile.includes(MARKE_KOPF)) return null;
   const feld = (name: string) =>
@@ -210,39 +181,28 @@ export function markeLesen(zeile: string): GutscheinWerte | null {
   };
 }
 
-/** Ein Gutschein, wie der Export ihn entgegennimmt. */
 export interface ExportGutschein {
   id: number;
   number: string;
   pin: string | null;
   amount: number;
   currency: string;
-  /** Das gespeicherte Original, oder null bei rein manueller Erfassung. */
+  /** null bei rein manueller Erfassung. */
   pdf: Buffer | null;
 }
 
-/**
- * Was aus einem Gutschein im Export geworden ist.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#exportbefund
- */
+// Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#exportbefund
 export interface ExportBefund {
   id: number;
   number: string;
-  /**
-   * 'ersetzt'      — der Betrag im Original wurde auf den Stand der App gesetzt
-   * 'stimmte_schon' — es stand schon der richtige Betrag drin (kein Eingriff)
-   * 'unveraendert' — es haette ersetzt werden muessen und ging NICHT (mit Grund)
-   * 'erzeugt'      — kein Original vorhanden, die Seite wurde gebaut
-   */
+  /** 'unveraendert': Es hätte ersetzt werden müssen und ging NICHT (mit Grund);
+   * 'stimmte_schon' ist kein Eingriff und kein Fehler. */
   art: 'ersetzt' | 'stimmte_schon' | 'unveraendert' | 'erzeugt';
-  /** Warum nicht ersetzt wurde — nur bei 'unveraendert'. */
   grund: string | null;
 }
 
-/**
- * Eine Seite für einen Gutschein OHNE Original-PDF.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#erzeugeseite
- */
+/** Ein von Hand erfasster Gutschein hat kein Original, in dem etwas zu ersetzen wäre.
+ * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#erzeugeseite */
 async function erzeugeSeite(g: ExportGutschein): Promise<Buffer> {
   const doc = await PdfLibDocument.create();
   const seite = doc.addPage([595, 842]);
@@ -251,9 +211,8 @@ async function erzeugeSeite(g: ExportGutschein): Promise<Buffer> {
   const grau = rgb(0.45, 0.45, 0.45);
 
   seite.drawText('Geschenkkarte', { x: 60, y: 760, size: 22, font: fett });
-  // Der Satz ist WOERTLICH der des Originals („im Wert von … CHF:"), damit ein
-  // fremder Leser — und der Rueckfall in seitenweiseLesen — ihn genauso
-  // findet wie auf einer echten Karte.
+  // WÖRTLICH der Satz des Originals, damit seitenweiseLesen ihn genauso findet
+  // wie auf einer echten Karte.
   seite.drawText(`Ihre LEGO-Geschenkkarte im Wert von `
     + `${g.amount.toLocaleString('de-CH', { minimumFractionDigits: Number.isInteger(g.amount) ? 0 : 2 })
          .replace(/’/g, "'")} ${g.currency}:`,
@@ -265,10 +224,9 @@ async function erzeugeSeite(g: ExportGutschein): Promise<Buffer> {
   return Buffer.from(await doc.save());
 }
 
-/**
- * Alle Gutscheine in EIN PDF — eine Seite (oder mehrere) je Gutschein.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#verbindegutscheine
- */
+/** Ein nicht ersetzter Gutschein kommt unverändert hinein, mit Grund im Befund:
+ * eine Auskunft, kein Abbruch.
+ * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#verbindegutscheine */
 export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
     Promise<{ daten: Buffer; befunde: ExportBefund[] }> {
   const ziel = await PdfLibDocument.create();
@@ -281,8 +239,7 @@ export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
       const r = await ersetzeBetrag(g.pdf, g.amount);
       if (r.daten) {
         quelle = r.daten;
-        // Kein Treffer heisst hier NICHT „gescheitert": ersetzeBetrag hat die
-        // Datei zurueckgegeben, nur stand der gesuchte Betrag schon drin.
+        // Kein Treffer heisst hier NICHT „gescheitert": Der Betrag stand schon drin.
         befunde.push({ id: g.id, number: g.number,
                        art: r.treffer ? 'ersetzt' : 'stimmte_schon', grund: null });
       } else {
@@ -299,7 +256,6 @@ export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
     kopien.forEach((s, i) => {
       ziel.addPage(s);
       // Die Marke nur auf die ERSTE Seite eines Gutscheins.
-      // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#verbindegutscheine-2
       if (i === 0) {
         s.drawText(markeText({ nummer: g.number, pin: g.pin, betrag: g.amount,
                                waehrung: g.currency }),
@@ -311,22 +267,23 @@ export async function verbindeGutscheine(gutscheine: ExportGutschein[]):
   return { daten: Buffer.from(await ziel.save()), befunde };
 }
 
-/**
- * Ein PDF in Gutscheine zerlegen — Marken zuerst, Raten als Rückfall.
- * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#seitenweiselesen
- */
+/** Ein PDF, das sich nicht seitenweise lesen lässt, ist ein einzelner Gutschein. */
+export function seitenOderKeine(daten: Buffer): Promise<GutscheinWerte[]> {
+  return seitenweiseLesen(daten).catch(meldeUndLiefere('gutschein:seitenweise', []));
+}
+
+/** Marken zuerst, weil sie eine Ablesung sind; Raten nur als Rückfall.
+ * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinPdfSchreiben.ts.md#seitenweiselesen */
 export async function seitenweiseLesen(daten: Buffer): Promise<GutscheinWerte[]> {
   const gefunden: GutscheinWerte[] = [];
   const gesehen = new Set<string>();
 
-  // ── 1. Marken ────────────────────────────────────────────────────────────
   for (const zeile of pdfText(daten).split('\n')) {
     const w = markeLesen(zeile);
     if (w?.nummer && !gesehen.has(w.nummer)) { gesehen.add(w.nummer); gefunden.push(w); }
   }
   if (gefunden.length) return gefunden;
 
-  // ── 2. Seitenweise ───────────────────────────────────────────────────────
   const doc = await PdfLibDocument.load(daten);
   for (const i of doc.getPageIndices()) {
     const einzel = await PdfLibDocument.create();

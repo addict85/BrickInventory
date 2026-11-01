@@ -53,7 +53,7 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
-    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,0,1,1)',
+    'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
     [NAME, await bcrypt.hash(PASS, 4)]);
 
   const app = express();
@@ -169,7 +169,7 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     // beliebigen Zugang entwerten, wenn er den Hash-Anfang errät.
     await db.run('DELETE FROM users WHERE username = $1', [NAME + '_fremd']);
     await db.run(
-      'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,0,1,1)',
+      'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
       [NAME + '_fremd', await bcrypt.hash(PASS, 4)]);
     const fremd = await ruf(AUTH + '/login', { method: 'POST',
       body: { username: NAME + '_fremd', password: PASS, label: 'Fremd', never_expires: true } });

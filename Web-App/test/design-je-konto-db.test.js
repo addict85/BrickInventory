@@ -47,7 +47,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   const namen = [`design_a_${process.pid}`, `design_b_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
-  for (const n of namen) ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', 1) RETURNING id`, [n])).id);
+  for (const n of namen) ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', true) RETURNING id`, [n])).id);
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
   const { setGlobalSetting } = _req('src/konto/settings.js');
   await setGlobalSetting('app_theme', 'noppe');

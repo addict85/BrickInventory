@@ -2,21 +2,18 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { konfig } from './konfig';
 
-/** Was die App zum Pinnen und der Mensch zum Abgleichen braucht. */
 export interface TlsStand {
-  /** Base64 von SHA-256 über das SubjectPublicKeyInfo — das Format des QR-Codes. */
+  /** Das Format des QR-Codes. */
   fp: string;
-  /** Dieselben 32 Byte als Hex mit Doppelpunkten, zum Vorlesen. */
+  /** Zum Vorlesen. */
   fp_hex: string;
   subject: string;
   gueltig_bis: string;
-  /** Das Zertifikat selbst (PEM) für /ca.crt. */
   pem: string;
 }
 
 let _zwischen: { pfad: string; mtimeMs: number; stand: TlsStand } | null = null;
 
-/** Den Stand aus einem PEM berechnen; wirft bei etwas anderem als einem Zertifikat. */
 export function tlsStandAus(pem: string): TlsStand {
   const zert = new crypto.X509Certificate(pem);
   const spki = zert.publicKey.export({ type: 'spki', format: 'der' });
@@ -30,12 +27,8 @@ export function tlsStandAus(pem: string): TlsStand {
   };
 }
 
-/**
- * Die Wurzel der internen CA (CA_ZERTIFIKAT). Gelesen bei Bedarf und neu,
- * sobald sich die Datei ändert: Caddy legt sie erst beim ersten Start an, und
- * ein Neustart der App soll dafür nicht nötig sein.
- * @returns null, wenn keine CA eingerichtet oder die Datei (noch) nicht lesbar ist.
- */
+/** Neu gelesen, sobald sich die Datei ändert: Caddy legt sie erst beim ersten
+ * Start an, ein Neustart der App soll nicht nötig sein. */
 export async function tlsStand(): Promise<TlsStand | null> {
   const pfad = konfig().caZertifikat;
   if (!pfad) return null;

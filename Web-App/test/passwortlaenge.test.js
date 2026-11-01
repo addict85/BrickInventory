@@ -45,8 +45,6 @@ const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/auth.js');
 
 // Ausgeschrieben statt ueber eine Schleifenvariable zusammengesetzt — siehe
 // test/baumbruecken.test.js, das diese Bruecken statisch aufloest.
-const KOTLIN = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
-                         'java', 'ch', 'brickinventoryapp');
 
 test('die Regel selbst haelt auch das, was kein String ist', () => {
   assert.equal(passwortZuKurz('1234567'), true);
@@ -70,13 +68,13 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
 test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
   const quelle = ohneKommentare(read('routes/auth.ts'));
 
-  // Gezaehlt wird ueber das HASHEN, nicht ueber die Routennamen: Jede Stelle,
-  // die ein Passwort in die Datenbank schreibt, muss durch bcrypt.hash — eine
-  // neue Route kann diesem Test also nicht entgehen, indem sie anders heisst.
-  const hashes = (quelle.match(/bcrypt\.hash\(/g) || []).length;
+  // Gezaehlt wird ueber das SETZEN: Gehasht wird nur im Kontodienst
+  // (src/konto/konten.ts), jede Route, die ein Passwort setzt, ruft ihn.
+  assert.doesNotMatch(quelle, /bcrypt\.hash\(/, 'Eine Route hasht selbst — das gehört in den Kontodienst');
+  const hashes = (quelle.match(/K\.(setzeFremdesPasswort|aendereEigenesPasswort|setzePasswortZurueck|legeKontoAn|registriere)\(/g) || []).length;
   const pruefungen = (quelle.match(/passwortZuKurz\(/g) || []).length;
   assert.equal(hashes, 5,   // PUT /profile setzt seit dem 27.10. keines mehr
-    `${hashes} Stellen hashen ein Passwort — die Zahl hat sich geaendert, der Test muss mit`);
+    `${hashes} Stellen setzen ein Passwort — die Zahl hat sich geaendert, der Test muss mit`);
   assert.equal(pruefungen, hashes,
     `Nur ${pruefungen} von ${hashes} Stellen pruefen die Laenge. Genau so entstand die ` +
     'Luecke: PUT /profile und POST /change-password prueften nicht, und damit war ' +
@@ -94,7 +92,7 @@ test('Server, Webapp und App nennen dieselbe Zahl', () => {
   assert.equal(Number(webZahl[1]), PASSWORT_MIN_ZEICHEN,
     'Webapp und Server verlangen verschiedene Laengen');
 
-  const kotlinDatei = path.join(KOTLIN, 'util', 'Passwort.kt');
+  const kotlinDatei = path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'util', 'Passwort.kt');
   assert.ok(fs.existsSync(kotlinDatei), 'util/Passwort.kt fehlt — Pfad im Test veraltet?');
   // `const val`, nicht bloss der Name: Der erste Entwurf dieser Datei schrieb
   // `const PASSWORT_MIN_ZEICHEN = 8` — ohne `val`, und das ist kein gueltiges
@@ -170,8 +168,8 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   for (const [voll, anzahl, name] of [
     // Seit dem 16.10. steht die Kontokarte auf ihrer eigenen Seite: Der
     // Einstellungsbildschirm traegt nur noch die Liste dorthin.
-    [path.join(KOTLIN, 'ui', 'screens', 'EinstellungenKonto.kt'), 3, 'Passwort aendern'],
-    [path.join(KOTLIN, 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenKonto.kt'), 3, 'Passwort aendern'],
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-anmeldung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
   ]) {
     const kurz = path.basename(voll);
     assert.ok(fs.existsSync(voll), `${kurz} steht nicht mehr dort — Pfad im Test veraltet`);

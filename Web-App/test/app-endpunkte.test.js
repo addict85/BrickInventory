@@ -32,8 +32,7 @@ const path = require('node:path');
 const { routerEinhaengungen } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 // Je Bereich eine Datei (data/api/); geprüft wird der ganze Ordner.
-const SERVICE = path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
-  'java', 'ch', 'brickinventoryapp', 'data', 'api');
+const SERVICE = path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api');
 const { apiQuelltext } = require('../scripts/kotlin-vertrag.js');
 
 function ohneKommentare(src) {

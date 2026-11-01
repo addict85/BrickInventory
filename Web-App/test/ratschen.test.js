@@ -113,7 +113,10 @@ test('stille Faenge werden weniger, nie mehr', () => {
   // 30.10.2026: 36 (Protokoll: Schreibfehler nach app_logs werden gezählt und gemeldet).
   // 30.10.2026: 32 (Cluster, Planer und eigene Warteschlangen entfallen).
   // 31.10.2026: 21 (Schichtumbau: Routen ohne try/catch, Repositories melden).
-  const SCHRANKE = 21;
+  // 31.10.2026: 12 (Wanted-Liste und CSV-Tausch melden über meldeUndLiefere/logAndContinue).
+  // 31.10.2026: 2 (Abmeldung, Schema-Aufbau, Bildcache und Brickset melden; die
+  // beiden übrigen sind Rebrickable-Vermutungen, deren 404 die Antwort ist).
+  const SCHRANKE = 2;
   const ist = zaehle(STILLE_FAENGE);
   assert.ok(ist <= SCHRANKE,
     `${ist} stille Faenge, erlaubt sind ${SCHRANKE}. Ein neuer \`catch {}\` ` +
@@ -131,7 +134,11 @@ test('any wird weniger, nie mehr', () => {
   // 29.10.2026: 333. 30.10.2026: 288 (db.get<T>/db.all<T> statt any-Zeilen).
   // 30.10.2026: 281 (Planer und Preis-Job-Zustand entfallen).
   // 31.10.2026: 270 (typisierte Repositories, Fehlerweg ohne any).
-  const SCHRANKE = 270;
+  // 31.10.2026: 256 (HTTP-Seite der Anmeldung, typisierte Repositories).
+  // 31.10.2026: 233 (SQL aus allen Diensten und Aufträgen in typisierte Repositories).
+  // 31.10.2026: 232 (Parameter der Repositories typisiert).
+  // 31.10.2026: 221 (Anreicherung und Bewertung ohne any-Karten und any-Fänge).
+  const SCHRANKE = 221;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -246,12 +253,9 @@ test('kein Verweis auf „Nachtrag N" im Code', () => {
 });
 
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
-  // GEMESSEN am 28.10.2026: 33,4 % der nichtleeren Zeilen in server.ts,
-  // routes/, utils/ und jobs/ (25.10.: 50,5 %, siehe CLAUDE.md).
-  // 29.10.2026: 32,44 %. 30.10.2026: 30,6 % (Kommentare der umgebauten Dateien gekürzt).
-  // 30.10.2026: 30,0 % (Cluster, Planer und Warteschlangen entfallen).
-  // 31.10.2026: 29,8 % in server.ts, routes/, src/ und jobs/ (Schichtumbau).
-  const SCHRANKE = 29.8;
+  // Gemessen 13,8 % in server.ts, routes/, src/, utils/ und jobs/; 13,2 % mit dem
+  // API-Vertrag (src/infra/vertrag/). Schranke 13,2.
+  const SCHRANKE = 13.2;
   let zeilen = 0, kommentar = 0;
   for (const f of quellen().filter(f => /[\\/](routes|src|utils|jobs)[\\/]|[\\/]server\.ts$/.test(f))) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
@@ -270,9 +274,9 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. GEMESSEN am 30.10.2026: 37,0 % in test/*.js und test/helpers/.
-  // Gegenprobe (30.10.2026): 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 36.4;
+  // den Commit. Gemessen 35,9 % in test/*.js und test/helpers/; Schranke 35,9.
+  // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
+  const SCHRANKE = 35.9;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
@@ -310,4 +314,26 @@ test('jeder Verweis auf docs/begruendungen trifft Datei und Anker', () => {
   }
   assert.ok(n > 200, `nur ${n} Verweise gefunden — greift die Suche noch?`);
   assert.deepEqual(kaputt, []);
+});
+
+test('jedes Dokument unter docs/begruendungen wird vom Code erreicht', () => {
+  // Ein Dokument ohne Verweis ist Geschichte und gehört nach git, nicht in
+  // den Baum; eines, dessen Code umgezogen ist, zieht mit (Dateiname = Ort).
+  // Gegenprobe: docs/begruendungen/src/verwaist.ts.md angelegt → rot
+  // („src/verwaist.ts.md" in der Liste der unerreichten Dokumente).
+  const verwiesen = new Set();
+  for (const f of serverUndOberflaeche()) {
+    for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#/g)) verwiesen.add(m[1]);
+  }
+  const wurzel = path.join(WEB, 'docs', 'begruendungen');
+  const dokumente = [];
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) lauf(p);
+      else dokumente.push(path.relative(wurzel, p).split(path.sep).join('/'));
+    }
+  })(wurzel);
+  assert.ok(dokumente.length > 50, `nur ${dokumente.length} Dokumente gefunden — greift die Suche noch?`);
+  assert.deepEqual(dokumente.filter(d => !verwiesen.has(d)), []);
 });

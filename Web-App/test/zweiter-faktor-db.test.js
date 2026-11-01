@@ -69,7 +69,7 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
   const SPERRE = `zf_sperre_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE]]);
   for (const n of [NAME, SPERRE])
-    await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,1,1)',
+    await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)',
       [n, await bcrypt.hash(PASS, 4)]);
 
   const app = express();

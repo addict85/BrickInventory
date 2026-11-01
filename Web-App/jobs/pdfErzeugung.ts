@@ -1,55 +1,27 @@
 import fsp from 'fs/promises';
 import path from 'path';
-import { teilbilder, figurenbilder } from '../src/katalog/bildlage';
+import { bilderAusKatalog as katalogbilder } from '../src/katalog/bildlage';
 import { MINIFIG_IMAGES_DIR } from '../src/infra/appPaths';
 import { getMinifigInfo } from '../clients/rebrickable';
 import { logAndContinue, meldeUndWeiter } from '../src/infra/httpError';
 import { pdfDateiPfad } from '../src/auftraege/pdfAuftraege';
-import { downloadImage, downloadSetImages } from './partsCatalogEnrich';
+import { downloadImage, downloadSetImages } from '../src/katalog/teileAnreicherung';
 import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';
 import { KEINE_FARBE } from '../src/infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../src/katalog/katalogPflege';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../src/sets/setNummer';
 
-/**
- * Ein PDF-Auftrag aus der Auftragstabelle: fehlende Bilder holen, dann im
- * eigenen Faden zeichnen. Den Status für die Oberfläche liest
- * src/auftraege/pdfAuftraege.ts aus demselben Auftrag.
- */
+/** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
 export interface PdfNutzlast { job_id: string; user_id: number; sets: PdfSet[]; parts: PdfTeil[] }
 
 const istFigur = (p: PdfTeil) => !!p.is_fig || String(p.part_number).startsWith('fig-');
-/** Die CDN-Adresse hinter einer Proxy-Adresse. */
 const cdnAdresse = (url: string) => {
   const roh = url.match(/\/api\/img-proxy\?url=(.+)/)?.[1];
   return roh ? decodeURIComponent(roh) : url;
 };
 
-/**
- * Bildquellen nur aus dem Katalog, und dort nur aus geprüfter Quelle
- * (bild_von IS NULL): Die Dateien im Bildordner gelten für alle Konten, ein
- * Bild vom Client oder ein eingetipptes landete sonst bei allen anderen.
- */
-export async function bilderAusKatalog(parts: PdfTeil[]): Promise<void> {
-  for (const p of parts) { p.image_url = null; p.image_local = null; }
-  const teile = [...new Set(parts.filter(p => !istFigur(p)).map(p => String(p.part_number)))];
-  if (teile.length) {
-    const zeilen = await teilbilder(teile);
-    const m = new Map(zeilen.map(r => [`${r.part_number}|${r.color_id}`, r] as const));
-    for (const p of parts.filter(p => !istFigur(p))) {
-      const z = m.get(`${p.part_number}|${p.color_id ?? KEINE_FARBE}`);
-      if (z) { p.image_local = z.image_local; p.image_url = z.image_url; }
-    }
-  }
-  const figuren = [...new Set(parts.filter(istFigur).map(p => String(p.part_number)))];
-  if (!figuren.length) return;
-  const zeilen = await figurenbilder(figuren);
-  const m = new Map(zeilen.map(r => [r.fig_number, r] as const));
-  for (const p of parts.filter(istFigur)) {
-    const z = m.get(String(p.part_number));
-    if (z) { p.image_local = z.image_local; p.image_url = z.image_url; }
-  }
-}
+/** Nur geprüfte Bildquellen aus dem Katalog (src/katalog/bildlage.ts). */
+export const bilderAusKatalog = (parts: PdfTeil[]) => katalogbilder(parts, istFigur);
 
 async function figurenOhneAdresse(parts: PdfTeil[]) {
   for (const p of parts.filter(p => istFigur(p) && !p.image_url && !p.image_local && /^fig-\d{1,8}$/.test(p.part_number))) {
@@ -107,7 +79,6 @@ async function erzeugePdf(n: PdfNutzlast): Promise<void> {
   console.log(`[PDF job] ${jobId} fertig für Konto ${uid}`);
 }
 
-/** Nach dem letzten Versuch; den Fehler für die Oberfläche hält der Auftrag selbst. */
 async function pdfAufgegeben(n: PdfNutzlast, fehler: string): Promise<void> {
   console.error(`[PDF job] ${n.job_id} error:`, fehler);
 }

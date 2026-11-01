@@ -1,13 +1,14 @@
 /**
- * Die Schalter eines Kontos (is_admin, is_active, email_verified) sind 0 oder
- * 1 und nie leer, und eine E-Mail-Adresse gibt es nur einmal — ohne Rücksicht
+ * Die Schalter eines Kontos (is_admin, is_active, email_verified) sind
+ * Wahrheitswerte (Migration 0085, vorher 0/1) und nie leer, und eine E-Mail-Adresse gibt es nur einmal — ohne Rücksicht
  * auf Gross- und Kleinschreibung (Migration 0069). Der Code prüfte das schon
  * mit LOWER(email); die Datenbank kannte nur die genaue Schreibweise.
  *
  * Gegenproben (am 29.10.2026 gemessen, je auf frischer Datenbank):
  *   A  den Block mit users_email_lower aus 0069 entfernt → rot: „eine Adresse
  *      gibt es nur einmal, gleich in welcher Schreibweise“
- *   B  die CHECK-Schranken aus 0069 entfernt → rot: „ein Schalter ist 0 oder 1“
+ *   B  (31.10.2026) is_admin in 0085 nicht umgestellt → rot: „ohne Angabe gelten
+ *      die Vorgaben“ und „ein Schalter ist ein Wahrheitswert“
  *   C  `SET NOT NULL` für is_admin entfernt → rot: „ein Schalter ist nie leer“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -39,15 +40,15 @@ test('Kontoschalter und eindeutige Adresse', { concurrency: 1 }, async (t) => {
   try {
     await t.test('ohne Angabe gelten die Vorgaben', async () => {
       const u = await lege('a');
-      assert.deepEqual([u.is_admin, u.is_active, u.email_verified], [0, 1, 0]);
+      assert.deepEqual([u.is_admin, u.is_active, u.email_verified], [false, true, false]);
     });
     await t.test('ein Schalter ist nie leer', async () => {
       await assert.rejects(lege('b', 'is_admin', [null]), (e) => e.code === '23502');
       await assert.rejects(lege('c', 'is_active', [null]), (e) => e.code === '23502');
     });
-    await t.test('ein Schalter ist 0 oder 1', async () => {
-      await assert.rejects(lege('d', 'is_admin', [2]), (e) => e.code === '23514');
-      await assert.rejects(lege('e', 'email_verified', [-1]), (e) => e.code === '23514');
+    await t.test('ein Schalter ist ein Wahrheitswert', async () => {
+      await assert.rejects(lege('d', 'is_admin', [2]), (e) => e.code === '22P02');
+      await assert.rejects(lege('e', 'email_verified', [-1]), (e) => e.code === '22P02');
     });
     await t.test('eine Adresse gibt es nur einmal, gleich in welcher Schreibweise', async () => {
       await lege('f', 'email', [`${K}@Beispiel.ch`]);

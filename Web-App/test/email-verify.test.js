@@ -29,7 +29,7 @@ const { ROOT, ohneKommentare, pruefeParameter } = require('./helpers/sources');
 const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 // Die Abfrage, die den Token EINLÖST — erkennbar an der Bedingung
-// `email_verified = 0`. Bewusst am Spaltennamen festgemacht und nicht am
+// `NOT email_verified`. Bewusst am Spaltennamen festgemacht und nicht am
 // ganzen SQL-Text: Ob dort SELECT id oder SELECT * steht, ist für die Aussage
 // gleichgültig.
 //
@@ -37,12 +37,12 @@ const lies = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8
 // Ein erster Entwurf suchte nur nach `verification_token = $1`. Damit schlug
 // die Regel bei GET /api/auth/check-token an — und das ZU UNRECHT: Diese
 // Route fragt nur, OB ein Token noch gilt, sie löst ihn nicht ein. Sie lässt
-// `email_verified = 0` deshalb bewusst weg, weil sie dieselbe Antwort auch
+// `NOT email_verified` deshalb bewusst weg, weil sie dieselbe Antwort auch
 // für Rücksetz-Tokens gibt. Prüfen und Einlösen sind zwei Dinge; eine Regel,
 // die beides in einen Topf wirft, meldet Verstösse, die keine sind — und wird
 // beim nächsten Mal abgeschaltet statt befolgt.
-const ABFRAGE = /verification_token\s*=\s*\$1[\s\S]{0,120}?email_verified\s*=\s*0/;
-const EINLOESEN = /UPDATE\s+users\s+SET\s+email_verified\s*=\s*1/i;
+const ABFRAGE = /verification_token\s*=\s*\$1[\s\S]{0,120}?NOT email_verified/;
+const EINLOESEN = /UPDATE\s+users\s+SET\s+email_verified\s*=\s*true/i;
 
 test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
 
@@ -55,18 +55,18 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
   });
 
   await t.test('die Verifikationsabfrage steht genau einmal im Baum', () => {
-    const kandidaten = ['src/konto/auth.ts', 'server.ts', 'routes/auth.ts'];
+    const kandidaten = ['src/konto/auth.ts', 'src/konto/repository/zugaenge.ts', 'server.ts', 'routes/auth.ts'];
     const treffer = kandidaten.filter((rel) => ABFRAGE.test(lies(rel)));
-    assert.deepEqual(treffer, ['src/konto/auth.ts'],
+    assert.deepEqual(treffer, ['src/konto/repository/zugaenge.ts'],
       'Die Abfrage nach verification_token gehört ausschliesslich in ' +
       'utils/auth.verifiziereEmailToken(). Gefunden in: ' + treffer.join(', ') +
       ' — damit ist die Doppelung aus Nachtrag 154 zurück.');
   });
 
-  await t.test('das Einlösen (email_verified=1) steht genau einmal im Baum', () => {
-    const kandidaten = ['src/konto/auth.ts', 'server.ts', 'routes/auth.ts'];
+  await t.test('das Einlösen (email_verified=true) steht genau einmal im Baum', () => {
+    const kandidaten = ['src/konto/auth.ts', 'src/konto/repository/zugaenge.ts', 'server.ts', 'routes/auth.ts'];
     const treffer = kandidaten.filter((rel) => EINLOESEN.test(lies(rel)));
-    assert.deepEqual(treffer, ['src/konto/auth.ts'],
+    assert.deepEqual(treffer, ['src/konto/repository/zugaenge.ts'],
       'Auch das Setzen von email_verified gehört nur an eine Stelle. ' +
       'Gefunden in: ' + treffer.join(', '));
   });

@@ -1,23 +1,20 @@
-/**
- * Fachdienst Sets: was die Set-Routen an Daten und Fremdabrufen brauchen.
- * Die Routen lesen die Anfrage, rufen hier und schreiben die Antwort; SQL,
- * Rebrickable und Aufträge stehen nur hier und darunter.
- */
-import * as db from '../../db/database';
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext } from '../infra/httpError';
+/** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen
+ * nur Anfrage und Antwort kennen. */
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei } from '../infra/httpError';
+import fs from 'fs';
+import path from 'path';
+import { APP_ROOT } from '../infra/appPaths';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { resolveImageLocal, proxyImageUrl } from '../katalog/bilder/images';
 import { getSetting } from '../konto/settings';
 import { normalizeSetNumber } from './setAdd';
-import { istErsatzteil, ersatzteilSql } from '../infra/validate';
+import { istErsatzteil } from '../infra/validate';
 import { istVermutung } from '../katalog/barcodeQuelle';
 import { setnummerKandidaten } from '../katalog/produkttitel';
 import { fetchPrice, resolveSetCondition } from '../finanzen/financeCalc';
 import { neuestesInventar } from '../katalog/rbInventar';
 import { mitVersion, ohneVersion } from './setNummer';
 import { figurenAusKatalog } from '../katalog/minifigsImport';
-import { mengeSkalar } from '../../db/bestandsmenge';
-import { blJoin, blNummerSql } from '../katalog/blZuordnung';
 import { csvEinlesen, entschaerfungRueckgaengig, parseCsvDate, uebersprungenHinweis } from '../infra/csvExport';
 import { jobGet, jobSet, jobUpdate, emitJobStatus } from '../auftraege/importAuftrag';
 import { getSetByBarcode, getSetByEan } from '../../clients/brickset';
@@ -28,22 +25,17 @@ import { produktTitel } from '../../clients/upcitemdb';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
-
-// ── Katalog ──────────────────────────────────────────────────────────────────
+import * as repo from './repository/setDetail';
 
 export interface SetStamm {
   name: string | null; year: number | null; theme: string | null; pieces: number | null;
   minifigs?: number | null; image_url: string | null; image_local: string | null;
 }
 
-/** Name und Eckdaten eines Sets aus set_stamm (Migration 0076); ohne Eintrag null. */
+/** Ohne Eintrag null. */
 export async function setInfo(setNumber: string): Promise<SetStamm | null> {
-  return (await db.get<SetStamm>(
-    'SELECT name, year, theme, pieces, image_url, image_local FROM set_stamm WHERE set_number = $1',
-    [mitVersion(setNumber)])) ?? null;
+  return (await repo.setStamm(mitVersion(setNumber))) ?? null;
 }
-
-// ── Barcode ──────────────────────────────────────────────────────────────────
 
 export interface BarcodeTreffer {
   success: true; unsicher: boolean; set_number: string; name: string | null;
@@ -51,17 +43,12 @@ export interface BarcodeTreffer {
   image_url: string | null; image_local?: string | null | undefined; source: string;
 }
 
-/**
- * Ergänzt einen Treffer um Bild und Eckdaten: Rebrickable zuerst (dort stehen
- * Figurenzahl und Bild am verlässlichsten), dann der eigene Katalog.
- * Jede Antwort sagt, wie sie zustande kam (src/katalog/barcodeQuelle.ts).
- */
+/** Rebrickable zuerst: Dort stehen Figurenzahl und Bild am verlässlichsten.
+ * Jede Antwort sagt, wie sie zustande kam (src/katalog/barcodeQuelle.ts). */
 async function barcodeErgebnis(setNumber: string, name: string | null, source: string): Promise<BarcodeTreffer> {
   const rbData = await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/`);
   const mfData = rbData ? await rebrickableJson(`/lego/sets/${encodeURIComponent(setNumber)}/minifigs/?page_size=1`) : null;
-  const local = await db.get<SetStamm>(
-    'SELECT name, image_local, image_url, year, pieces, theme, minifigs FROM set_catalog WHERE set_number=$1',
-    [setNumber]).catch(meldeUndLiefere('sets:barcode-katalog', undefined));
+  const local = await repo.setKatalog(setNumber).catch(meldeUndLiefere('sets:barcode-katalog', undefined));
 
   const minifigs = mfData?.count ?? local?.minifigs ?? null;
   const image_url = rbData?.set_img_url || local?.image_url || null;
@@ -75,15 +62,11 @@ async function barcodeErgebnis(setNumber: string, name: string | null, source: s
       minifigs, image_local, image_url, source };
   }
   if (rbData?.set_num) {
-    await db.run(
-      'INSERT INTO catalog_cache(set_number,name,year,theme,pieces,image_url) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(set_number) DO UPDATE SET name=$2,year=$3,theme=$4,pieces=$5,image_url=$6',
-      [setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url]
-    ).catch(logAndContinue('sets:catalog_cache schreiben'));
+    await repo.merkeKatalogCache(setNumber, rbData.name, rbData.year, rbData.theme_name, rbData.num_parts, rbData.set_img_url).catch(logAndContinue('sets:catalog_cache schreiben'));
     return { success: true, unsicher, set_number: setNumber, name: rbData.name || name, year: rbData.year,
       pieces: rbData.num_parts, theme: rbData.theme_name, minifigs, image_url, source };
   }
-  const cat = await db.get<SetStamm>('SELECT name, image_url, year, pieces, theme FROM catalog_cache WHERE set_number=$1',
-    [setNumber]).catch(meldeUndLiefere('sets:barcode-cache', undefined));
+  const cat = await repo.katalogCacheEintrag(setNumber).catch(meldeUndLiefere('sets:barcode-cache', undefined));
   if (cat) {
     return { success: true, unsicher, set_number: setNumber, name: cat.name || name, year: cat.year,
       pieces: cat.pieces, theme: cat.theme, minifigs, image_url: cat.image_url || image_url, source };
@@ -92,19 +75,15 @@ async function barcodeErgebnis(setNumber: string, name: string | null, source: s
 }
 
 async function imKatalog(...nummern: string[]): Promise<{ set_number: string; name: string | null } | undefined> {
-  return db.get('SELECT set_number, name FROM catalog_cache WHERE set_number = ANY($1) LIMIT 1', [nummern])
+  return repo.ersterKatalogTreffer(nummern)
     .catch(meldeUndLiefere('sets:barcode-bekannt', undefined));
 }
 
-/**
- * Barcode → Set. Reihenfolge: eigener Katalog, EAN über Rebrickable, Brickset
- * und UPCitemdb, dann Bestellnummer über Brickset und Rebrickable. null heisst:
- * nichts gefunden.
- */
+/** Reihenfolge: eigener Katalog, EAN über Rebrickable, Brickset und UPCitemdb,
+ * dann Bestellnummer — die billigste Quelle zuerst. */
 export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer | null> {
   const barcode = rohBarcode.trim();
-  const direct = await db.get<{ set_number: string; name: string | null }>(
-    'SELECT set_number, name FROM catalog_cache WHERE set_number = $1', [mitVersion(barcode)]);
+  const direct = await repo.katalogCacheNachNummer(mitVersion(barcode));
   if (direct) return barcodeErgebnis(direct.set_number, direct.name, 'catalog_cache');
 
   if (/^\d{12,13}$/.test(barcode)) {
@@ -146,31 +125,22 @@ export async function setZumBarcode(rohBarcode: string): Promise<BarcodeTreffer 
   return null;
 }
 
-// ── Teile- und Figurenliste eines Sets (ohne Konto) ─────────────────────────
-
-interface ListenTeil {
+export interface ListenTeil {
   part_number: string; color_id: number; total_quantity: number | string; is_spare: unknown;
   bl_part_number?: string | null; part_name?: string | null; rb_image_url?: string | null;
   color_name?: string | null; color_hex?: string | null; bl_color_id?: number | null;
 }
-interface KatalogTeil {
+export interface KatalogTeil {
   part_number: string; color_id: number; bl_part_number: string | null; part_name: string | null;
   color_name: string | null; color_hex: string | null; image_url: string | null; image_local: string | null;
 }
 
 function katalogDesSets(setNumber: string): Promise<KatalogTeil[]> {
-  return db.all<KatalogTeil>(
-    `SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
-            c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
-       FROM set_parts_catalog c
-       ${blJoin('c.part_number', 'part')}
-      WHERE c.set_number = $1`, [mitVersion(setNumber)]);
+  return repo.katalogTeileDesSets(mitVersion(setNumber));
 }
 
-/**
- * Die Teileliste eines Sets kommt ungeblättert; die Seitenangaben stehen
- * trotzdem da, weil die App sie mit der Teileliste des Bestands teilt.
- */
+/** Ungeblättert; die Seitenangaben stehen da, weil die App sie mit der
+ * Teileliste des Bestands teilt. */
 const eineSeite = (n: number) => ({ total: n, page: 1, page_size: n });
 
 export async function teilelisteDesSets(setNum: string, anreichern: (sn: string) => Promise<unknown>) {
@@ -179,17 +149,7 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
   let teile: ListenTeil[] = [];
   let source = 'db';
   if (invId) {
-    teile = await db.all<ListenTeil>(
-      `SELECT ip.part_num AS part_number, ip.color_id, ip.quantity AS total_quantity, ip.is_spare,
-              COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
-              p.name AS part_name, p.part_img_url AS rb_image_url,
-              c.name AS color_name, c.rgb AS color_hex, c.bl_color_id
-         FROM rb_inventory_parts ip
-         LEFT JOIN rb_parts      p ON p.part_num = ip.part_num
-         LEFT JOIN rb_colors     c ON c.id       = ip.color_id
-         LEFT JOIN bl_zuordnung  m ON m.art = 'part' AND m.rb_id = ip.part_num
-        WHERE ip.inventory_id = $1
-          AND NOT ${ersatzteilSql('ip.is_spare')}`, [invId]);
+    teile = await repo.inventarTeileDesSets(invId);
   }
   if (!teile.length) {
     source = 'api';
@@ -212,7 +172,7 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
   }
 
   // Schlüssel ist die Rebrickable-Nummer samt Farbe: Formvarianten teilen sich
-  // oft eine BrickLink-Nummer und dürfen nicht zu einer Zeile verschmelzen.
+  // oft eine BrickLink-Nummer und dürfen nicht verschmelzen.
   const zeilen = new Map<string, {
     part_number: string; bl_part_number: string; part_name: string; color_id: number; bl_color_id: number | null;
     color_name: string; color_hex: string | null; image_url: string | null; total_quantity: number; is_spare: boolean;
@@ -236,18 +196,14 @@ export async function teilelisteDesSets(setNum: string, anreichern: (sn: string)
   return { parts: [...zeilen.values()], source, ...eineSeite(zeilen.size) };
 }
 
-/**
- * Die Figuren eines Sets: gemeinsamer Katalog, sonst Rebrickable-CSV, sonst
- * API. Was nicht aus dem Katalog kam, schreibt ein Nachlauf hinein.
- */
+/** Was nicht aus dem Katalog kam, schreibt ein Nachlauf hinein. */
 export async function figurenlisteDesSets(setNum: string) {
   const n = mitVersion(setNum), bare = ohneVersion(n);
   const ausgabe = (f: { fig_number: string; fig_name?: string | null; quantity?: number | null; image_url?: string | null }) => ({
     fig_number: f.fig_number, fig_name: f.fig_name || f.fig_number, quantity: f.quantity || 1,
     total_quantity: f.quantity || 1, image_url: proxyImageUrl(f.image_url),
-    // Dieselbe Form wie eine Figur des Bestands; die Liste hängt an keinem
-    // Konto, also ohne Zustände und Besitzer.
-    source: 'set', conditions: [] as string[], owners: [] as unknown[] });
+    // Dieselbe Form wie eine Figur des Bestands, ohne Zustände und Besitzer.
+    source: 'set', conditions: [] as string[], owners: [] as { id: number; username: string }[] });
 
   const katalog = await figurenAusKatalog(setNum);
   if (katalog.length) return { figs: katalog.map(ausgabe), source: 'catalog' };
@@ -256,11 +212,7 @@ export async function figurenlisteDesSets(setNum: string) {
   let figs: Fig[] = [];
   const invId = await neuestesInventar(setNum);
   if (invId) {
-    figs = await db.all<Fig>(
-      `SELECT ip.part_num AS fig_number, ip.quantity, COALESCE(mc.fig_name, ip.part_num) AS fig_name, mc.image_url
-         FROM rb_inventory_parts ip
-         LEFT JOIN minifigs_catalog mc ON mc.fig_number = ip.part_num
-        WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`, [invId]);
+    figs = await repo.inventarFigurenDesSets(invId);
   }
   if (!figs.length) {
     figs = (await getSetMinifigs(n).catch(meldeUndLiefere('sets:getSetMinifigs', null))
@@ -280,14 +232,12 @@ async function figurenMerken(n: string, figs: Array<{ fig_number: string; fig_na
   }
 }
 
-// ── Preis ────────────────────────────────────────────────────────────────────
-
-/** Marktpreis eines Sets im Blickfeld, im Zustand seines Bestands. null: kein Set im Blickfeld. */
+/** Im Zustand des Bestands. null: kein Set im Blickfeld. */
 export async function setPreis(uid: number, blickfeld: number[], sn: string) {
-  const set = await db.get('SELECT 1 AS da FROM sets WHERE set_number = $1 AND user_id = ANY($2) LIMIT 1', [sn, blickfeld]);
+  const set = await repo.setImFeld(sn, blickfeld);
   if (!set) return null;
-  // Die Währung aus der Einstellung, nicht aus der Anfrage: Die App schickte
-  // ihren lokalen Startwert mit, bevor sie die Einstellung kannte.
+  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert
+  // mit, bevor sie die Einstellung kannte.
   const currency  = await getSetting(uid, 'currency', 'EUR');
   const guideType = await getSetting(uid, 'price_guide_type', 'sold');
   const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
@@ -303,45 +253,38 @@ export async function setPreis(uid: number, blickfeld: number[], sn: string) {
   }
 }
 
-// ── Export, Anleitungen ─────────────────────────────────────────────────────
-
-/** Sets eines Kontos im Listenformat von Rebrickable („Set Number,Quantity“). */
 export async function rebrickableListe(uid: number) {
-  const sets = await db.all<{ set_number: string; quantity: number }>(
-    `SELECT s.set_number, ${mengeSkalar('s')} AS quantity FROM sets s WHERE s.user_id=$1 ORDER BY s.set_number ASC`, [uid]);
+  const sets = await repo.setsMitMenge(uid);
   return sets.map(s => ({ 'Set Number': s.set_number, 'Quantity': s.quantity }));
 }
 
-/** Gehört das Set diesem Konto? (Eine Anleitung hängt per Fremdschlüssel am Set.) */
+/** Eine Anleitung hängt per Fremdschlüssel am Set. */
 export async function setGehoertKonto(uid: number, sn: string): Promise<boolean> {
-  return !!(await db.get('SELECT 1 AS ok FROM sets WHERE user_id = $1 AND set_number = $2', [uid, sn]));
+  return !!(await repo.setDesKontos(uid, sn));
 }
 
 export async function anleitungMerken(uid: number, sn: string, pfad: string, beschreibung: string) {
-  await db.run('INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING',
-    [uid, sn, pfad, beschreibung, pfad]);
+  await repo.fuegeAnleitungEin(uid, sn, pfad, beschreibung, pfad);
 }
 
-/**
- * Löscht eine eigene Anleitung. Die Datei bleibt, solange eine andere Zeile
- * auf sie zeigt; im Zweifel bleibt sie ebenfalls.
- * @returns der lokale Pfad, wenn die Datei jetzt gelöscht werden darf; false, wenn es die Zeile nicht gab
- */
-export async function anleitungLoeschen(uid: number, id: string): Promise<string | null | false> {
-  const instr = await db.get<{ local_path: string | null }>('SELECT local_path FROM instructions WHERE id = $1 AND user_id = $2', [id, uid]);
+/** Die Datei bleibt, solange eine andere Zeile auf sie zeigt.
+ * @returns false, wenn es die Zeile nicht gab */
+export async function anleitungLoeschen(uid: number, id: string): Promise<boolean> {
+  const instr = await repo.anleitungsPfad(id, uid);
   if (!instr) return false;
-  await db.run('DELETE FROM instructions WHERE id = $1 AND user_id = $2', [id, uid]);
-  if (!instr.local_path?.startsWith('/data/uploads/')) return null;
-  const rest = await db.get('SELECT 1 AS ok FROM instructions WHERE local_path = $1 LIMIT 1', [instr.local_path])
+  await repo.loescheAnleitung(id, uid);
+  if (!instr.local_path?.startsWith('/data/uploads/')) return true;
+  const rest = await repo.anleitungsdateiBenutzt(instr.local_path)
     .catch(meldeUndLiefere('sets:anleitung-noch-benutzt', { ok: 1 }));
-  return rest ? null : instr.local_path;
+  // Der Eintrag ist schon weg; eine liegen gebliebene Datei kostet nur Platz.
+  if (!rest) await fs.promises.unlink(path.join(APP_ROOT, instr.local_path.slice(1)))
+    .catch(ohneFehlendeDatei('anleitung:datei-loeschen'));
+  return true;
 }
-
-// ── CSV-Import ───────────────────────────────────────────────────────────────
 
 export interface ImportZeile { sn: string; qty: number; purchasePrice: number | null; condition: string | null; acquiredAt: string | null }
 
-/** Die Zeilen einer Set-CSV in die Form des Auftrags; Spaltennamen ohne Gross/klein und BOM. */
+/** Spaltennamen ohne Gross/klein und BOM. */
 export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen: number[] } {
   let gelesen;
   try { gelesen = csvEinlesen(text); }
@@ -370,10 +313,7 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
   return { rows, uebersprungen: gelesen.uebersprungen };
 }
 
-/**
- * Startet den Set-Import als Auftrag für den Job-Prozess (jobs/setCsvImport.ts);
- * ein laufender Import desselben Kontos wird abgebrochen.
- */
+/** Ein laufender Import desselben Kontos wird abgebrochen. */
 export async function setCsvImportStarten(userId: number, text: string) {
   const laufend = await jobGet(userId);
   if (laufend && laufend.status === 'running') await jobUpdate(userId, { status: 'cancelled' });

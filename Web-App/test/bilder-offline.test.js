@@ -95,8 +95,7 @@ test('die Bilder der Tabellen duerfen offline aus dem Zwischenspeicher kommen', 
 test('die App hat einen Offline-Rueckfall, der davon Gebrauch macht', () => {
   // Ohne ihn nuetzt die Kopfzeile nichts: Die Kopie liegt da, aber niemand
   // holt sie, wenn die Anfrage scheitert.
-  const modul = fs.readFileSync(path.join(BAUM, 'Android-App', 'app', 'src', 'main',
-    'java', 'ch', 'brickinventoryapp', 'di', 'NetzModule.kt'), 'utf8');
+  const modul = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'di', 'NetzModule.kt'), 'utf8');
   assert.match(modul, /FORCE_CACHE/,
     'Der Offline-Rückfall der App ist weg — dann bleibt die Kopie ungenutzt.');
   assert.match(modul, /catch \(e: java\.io\.IOException\)/,

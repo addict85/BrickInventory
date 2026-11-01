@@ -1,9 +1,6 @@
-/**
- * Die Konfiguration aus der Umgebung — die EINE Stelle, die process.env liest.
- * Jede Variable hat Typ, Vorgabe und Grenzen; ein ungültiger Wert ist ein
+/** Die EINE Stelle, die process.env liest: Ein ungültiger Wert ist ein
  * Startfehler mit Namen und Grund, statt still auf eine Vorgabe zu fallen.
- * Die Liste mit Erklärung steht in .env.example.
- */
+ * Die Liste mit Erklärung steht in .env.example. */
 import { proxyVertrauen } from './proxyVertrauen';
 
 type Umgebung = Record<string, string | undefined>;
@@ -20,9 +17,8 @@ export interface Konfig {
   sitzungLeerlaufMin: number;
   sitzungHoechstStd: number;
   tokenLeerlaufTage: number;
-  /** Was dieser Prozess tut: Anfragen beantworten, Aufträge abarbeiten oder beides. */
   rolle: Rolle;
-  /** Gesetzte Variablen, die der Server nicht mehr auswertet — für einen Hinweis beim Start. */
+  /** Für einen Hinweis beim Start. */
   veraltet: string[];
   pgPoolMax: number | null;
   pgPoolMin: number;
@@ -42,20 +38,23 @@ export interface Konfig {
   csvZeileFristMs: number;
   auftragParallel: number;
   auftragFristSek: number;
-  /** Wurzelzertifikat der internen CA (Caddy), PEM; null: keine eigene CA. */
+  /** PEM; null: keine eigene CA. */
   caZertifikat: string | null;
-  /** APP_BASE_URL beginnt mit https:// — der Server steht hinter TLS. */
   hinterTls: boolean;
+  /** Nur in Tests: Antworten gegen den API-Vertrag prüfen (src/infra/vertrag/pruefen.ts). */
+  vertragPruefen: boolean;
+  /** SHA-256 der Signaturzertifikate der App, 64 Hex-Zeichen in Grossbuchstaben. */
+  androidZertifikate: string[];
+  androidPaket: string;
 }
 
 export type Rolle = 'web' | 'jobs' | 'beides';
 const ROLLEN: readonly Rolle[] = ['web', 'jobs', 'beides'];
 
-/** Vorgaben, die auch andere Module nennen (src/konto/sitzungsFrist.ts). */
-// Höchstdauer eine Woche, wie der Browser-Token.
+/** Auch andere Module nennen sie; Höchstdauer eine Woche wie der Browser-Token. */
 export const VORGABE = { sitzungLeerlaufMin: 240, sitzungHoechstStd: 168 } as const;
 
-/** Ein oder mehrere ungültige Werte; die Meldung nennt jede Variable. */
+/** Die Meldung nennt jede ungültige Variable. */
 export class KonfigFehler extends Error {
   constructor(readonly fehler: string[]) {
     super(`Ungültige Konfiguration:\n  - ${fehler.join('\n  - ')}`);
@@ -63,7 +62,7 @@ export class KonfigFehler extends Error {
   }
 }
 
-/** Alle Variablen, die der Server kennt — auch für die Signatur des Zwischenspeichers. */
+/** Auch für die Signatur des Zwischenspeichers. */
 export const VARIABLEN = [
   'NODE_ENV', 'PORT', 'HSTS_MAX_AGE', 'TRUST_PROXY', 'SESSION_SECRET', 'COOKIE_SECURE',
   'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'TOKEN_IDLE_DAYS', 'ROLLE',
@@ -71,10 +70,11 @@ export const VARIABLEN = [
   'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
   'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
-  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT',
+  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
+  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET',
 ] as const;
 
-/** Ausgewertet wird sie nicht mehr; steht sie noch in einer alten compose.yaml, sagt der Start es. */
+/** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
 const VERALTET = ['WEB_WORKERS'] as const;
 
 /** Ohne Angabe beides in einem Prozess: der einfache Start ohne Compose. */
@@ -85,7 +85,6 @@ function rolleAus(env: Umgebung, fehler: string[]): Rolle {
   return 'beides';
 }
 
-/** Liest eine ganze Zahl in [min, max]; leer heisst Vorgabe. */
 function ganzzahl(env: Umgebung, name: string, vorgabe: number, min: number, max: number, fehler: string[]): number {
   const roh = env[name]?.trim();
   if (roh === undefined || roh === '') return vorgabe;
@@ -97,7 +96,6 @@ function ganzzahl(env: Umgebung, name: string, vorgabe: number, min: number, max
   return n;
 }
 
-/** Eine positive Zahl, auch mit Nachkommastellen; leer heisst Vorgabe. */
 function zahl(env: Umgebung, name: string, vorgabe: number, fehler: string[]): number {
   const roh = env[name]?.trim();
   if (roh === undefined || roh === '') return vorgabe;
@@ -115,16 +113,33 @@ function schalter(env: Umgebung, name: string, fehler: string[]): boolean | null
   return null;
 }
 
-/** Ein Zeitzonenname, den Intl kennt und der sicher in eine Verbindungsoption passt. */
+/** Jeder Signaturschlüssel (eigener, Play App Signing, Debug) ergibt einen anderen
+ * Hash; welche Fassung die Nutzer eines Servers haben, weiss nur sein Betreiber.
+ * Leer: Der Server nimmt keine Passkey-Antwort einer App an. */
+function androidZertifikate(env: Umgebung, fehler: string[]): string[] {
+  const roh = env.PASSKEY_ANDROID_ZERTIFIKATE?.trim() || '';
+  const liste = roh ? roh.split(/[\s,;]+/).filter(Boolean) : [];
+  const hex = liste.map(f => f.replace(/:/g, '').toUpperCase());
+  const falsch = liste.filter((_, i) => !/^[0-9A-F]{64}$/.test(hex[i] ?? ''));
+  if (falsch.length) fehler.push(`PASSKEY_ANDROID_ZERTIFIKATE: ${falsch.join(', ')} ist kein SHA-256-Fingerabdruck (64 Hex-Zeichen)`);
+  return falsch.length ? [] : [...new Set(hex)];
+}
+
+function androidPaket(env: Umgebung, fehler: string[]): string {
+  const paket = env.PASSKEY_ANDROID_PAKET?.trim() || 'ch.brickinventoryapp';
+  if (/^[a-zA-Z]\w*(\.[a-zA-Z]\w*)+$/.test(paket)) return paket;
+  fehler.push(`PASSKEY_ANDROID_PAKET="${paket}" ist kein Paketname`);
+  return 'ch.brickinventoryapp';
+}
+
+/** Sicher genug, um in eine Verbindungsoption eingesetzt zu werden. */
 export function zeitzoneGueltig(name: string): boolean {
   if (!/^[A-Za-z0-9_+\-/]+$/.test(name)) return false;
   try { new Intl.DateTimeFormat('de', { timeZone: name }); return true; } catch { return false; }
 }
 
-/**
- * Ausdrücklich gesetzt muss die Zone stimmen; TZ und die Prozesszone sind nur
- * Rückfall und fallen bei einem Fremdwert auf UTC wie vor Migration 0070.
- */
+/** Ausdrücklich gesetzt muss die Zone stimmen; TZ und Prozesszone sind nur
+ * Rückfall und fallen bei einem Fremdwert auf UTC. */
 function zoneAus(env: Umgebung, fehler: string[]): string {
   let zone = env.ERFASSUNG_ZEITZONE?.trim() || '';
   if (zone && !zeitzoneGueltig(zone)) { fehler.push(`ERFASSUNG_ZEITZONE="${zone}" ist keine bekannte Zeitzone`); zone = ''; }
@@ -132,7 +147,7 @@ function zoneAus(env: Umgebung, fehler: string[]): string {
   return zeitzoneGueltig(zone) ? zone : 'UTC';
 }
 
-/** Die ganze Konfiguration aus `env`. Wirft KonfigFehler mit allen Fehlern auf einmal. */
+/** Wirft KonfigFehler mit allen Fehlern auf einmal. */
 export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const f: string[] = [];
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
@@ -181,16 +196,16 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
     caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
+    vertragPruefen: env.VERTRAG_PRUEFEN?.trim() === '1',
+    androidZertifikate: androidZertifikate(env, f),
+    androidPaket: androidPaket(env, f),
   };
   if (f.length) throw new KonfigFehler(f);
   return k;
 }
 
-/**
- * Das Sitzungscookie nur über TLS: in Produktion und immer, wenn APP_BASE_URL
- * mit https:// beginnt (hinter Caddy). COOKIE_SECURE=0 ist die bewusste
- * Ausnahme für einen Betrieb ohne TLS.
- */
+/** Auch hinter Caddy (APP_BASE_URL https://). COOKIE_SECURE=0 ist die bewusste
+ * Ausnahme für einen Betrieb ohne TLS. */
 export function cookieSicher(k: Konfig): boolean {
   return k.cookieSecure ?? (k.produktion || k.hinterTls);
 }
@@ -198,10 +213,8 @@ export function cookieSicher(k: Konfig): boolean {
 let _signatur: string | null = null;
 let _konfig: Konfig | null = null;
 
-/**
- * Die geltende Konfiguration. Zwischengespeichert, solange sich keine der
- * bekannten Variablen ändert — Tests setzen sie zur Laufzeit um.
- */
+/** Zwischengespeichert, solange sich keine Variable ändert — Tests setzen sie
+ * zur Laufzeit um. */
 export function konfig(): Konfig {
   const sig = [...VARIABLEN, ...VERALTET].map(n => process.env[n] ?? '\u0000').join('\u0001');
   if (_konfig && sig === _signatur) return _konfig;
@@ -210,7 +223,6 @@ export function konfig(): Konfig {
   return _konfig;
 }
 
-/** Beim Start: alle Werte prüfen und bei einem Fehler mit klarer Meldung beenden. */
 export function pruefeKonfigBeimStart(): Konfig {
   try { return konfig(); }
   catch (e) {
@@ -220,11 +232,8 @@ export function pruefeKonfigBeimStart(): Konfig {
   }
 }
 
-/**
- * Die Verbindung zur Datenbank — für Server, Worker und Skripte.
- * Der CSV-Worker hatte eigene Standardwerte (brickinv statt brickinventory);
- * ausserhalb von Docker verband er sich dadurch mit einer anderen Datenbank.
- */
+/** Für Server, Worker und Skripte gleich: Eigene Vorgaben verbanden sich
+ * ausserhalb von Docker mit einer anderen Datenbank. */
 export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
   if (env.DATABASE_URL) return { connectionString: env.DATABASE_URL };
   return {
@@ -239,7 +248,7 @@ export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
 /** Das Beispielpasswort aus compose.yaml; es steht in jedem öffentlichen Klon. */
 export const STANDARD_DB_PASSWORT = 'brickinventory_secret';
 
-/** Ob die Verbindung noch das Beispielpasswort benutzt (in Produktion ein Startverbot). */
+/** In Produktion ein Startverbot. */
 export function standardPasswortInBenutzung(env: NodeJS.ProcessEnv = process.env): boolean {
   const v = datenbankVerbindung(env);
   if (!('connectionString' in v)) return v.password === STANDARD_DB_PASSWORT;
@@ -247,11 +256,8 @@ export function standardPasswortInBenutzung(env: NodeJS.ProcessEnv = process.env
   catch { return false; }
 }
 
-/**
- * Gründe, den Start in Produktion zu verweigern. Ein öffentlich bekanntes
- * Datenbankpasswort oder ein TRUST_PROXY, das Clients ihre Adresse selbst
- * angeben lässt, soll beim Deploy auffallen, nicht erst im Ernstfall.
- */
+/** Ein öffentlich bekanntes Datenbankpasswort oder ein TRUST_PROXY, der Clients
+ * ihre Adresse selbst angeben lässt, soll beim Deploy auffallen. */
 export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
   if (env.NODE_ENV !== 'production') return [];
   const gruende: string[] = [];

@@ -25,13 +25,13 @@ import org.junit.Test
 class CameraFocusConfigTest {
 
     private fun scanner(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/ui/screens/BarcodeScannerScreen.kt").readText()
+        java.io.File(Quellen.wurzel, "ui/screens/BarcodeScannerScreen.kt").readText()
 
     private fun analyzer(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/ui/screens/BarcodeAnalyzer.kt").readText()
+        java.io.File(Quellen.wurzel, "ui/screens/BarcodeAnalyzer.kt").readText()
 
     private fun setup(): String =
-        java.io.File("src/main/java/ch/brickinventoryapp/ui/screens/SetupScreen.kt").readText()
+        java.io.File(Quellen.wurzel, "ui/screens/SetupScreen.kt").readText()
 
     private fun code(src: String) = src.lines()
         .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
@@ -74,7 +74,7 @@ class CameraFocusConfigTest {
      * zwei Stellen steht, sieht an jeder einzelnen Stelle richtig aus.
      */
     private fun mitTapToFocus(): List<java.io.File> {
-        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
         val treffer = ordner.listFiles { f -> f.extension == "kt" }
             ?.filter { code(it.readText()).contains("startFocusAndMetering(") }
             ?: emptyList()
@@ -127,7 +127,7 @@ class CameraFocusConfigTest {
      */
     @Test
     fun `der Kamera-Aufbau steht nur in KameraAufbau`() {
-        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
         val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray()).toList()
         assert(dateien.size >= 5) {
             "Nur ${dateien.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, und ein " +
@@ -167,7 +167,7 @@ class CameraFocusConfigTest {
     fun `beide Scanner holen ihre Kamera dort`() {
         // Sonst nützt die Regel oben nichts: Wer sich die Kamera selbst bindet,
         // umgeht autofokusDauerhaft() — und sieht dabei richtig aus.
-        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
         val nutzer = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
             .filter { it.name != "KameraAufbau.kt" }
             .filter { code(it.readText()).contains("kameraBinden(") }
@@ -185,7 +185,7 @@ class CameraFocusConfigTest {
         // Antippen.
         val pump = Regex(
             """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?startFocusAndMetering""")
-        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/screens")
+        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
         val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
             .filter { code(it.readText()).contains("startFocusAndMetering") }
         assert(dateien.size >= 2) {

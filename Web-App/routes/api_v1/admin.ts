@@ -1,9 +1,5 @@
-/**
- * /api/v1/admin — Monitoring, Cache-/Limit-Verwaltung, Nutzerverwaltung.
- * ALLE Routen laufen über requireApiAdmin (Token/Session + is_admin) —
- * der Check liegt in der Middleware statt in jedem Handler.
- */
-import express from 'express';
+/** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
+ * Prüfung vergessen kann. */
 import fs from 'fs';
 import path from 'path';
 import * as verwaltung from '../../src/verwaltung/dienst';
@@ -23,62 +19,55 @@ import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinre
          bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe } from '../../src/verwaltung/dienst';
 import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/auftraege/hintergrund';
 import { urlOderNull } from '../../src/infra/validate';
-const router = express.Router();
+import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
+import type { Antwort } from '../../src/infra/vertrag';
+const router = vertragsRouter();
 
 
-// ── Hintergrundarbeiten: die Auftragstabelle (src/auftraege/hintergrund.ts) ──
-router.get('/admin/auftraege', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/auftraege', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'GET /api/v1/admin/auftraege'>) => {
   res.json(await auftragsUebersicht({ status: typeof req.query.status === 'string' ? req.query.status : undefined,
                                       art: typeof req.query.art === 'string' ? req.query.art : undefined }));
 });
 
-router.post('/admin/auftraege/:id/abbrechen', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/auftraege/:id/abbrechen', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/auftraege/:id/abbrechen'>) => {
   res.json(await auftragAbbrechen(pfadParam(req, 'id'))); 
 });
 
-router.post('/admin/auftraege/:id/wiederholen', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/auftraege/:id/wiederholen', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/auftraege/:id/wiederholen'>) => {
   res.json(await auftragWiederholen(pfadParam(req, 'id'))); 
 });
 
-router.post('/admin/auftraege/art/:art/jetzt', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/auftraege/art/:art/jetzt', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/auftraege/art/:art/jetzt'>) => {
   res.json(await auftragsArtJetzt(pfadParam(req, 'art'))); 
 });
 
-router.delete('/admin/auftraege/art/:art', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.delete('/admin/auftraege/art/:art', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/admin/auftraege/art/:art'>) => {
   res.json(await auftragsArtLeeren(pfadParam(req, 'art'))); 
 });
 
-// ── POST /api/v1/admin/trigger-csv-sync — manually trigger CSV sync ──────────
-router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  // Der geplante Auftrag wird jetzt fällig; läuft er schon, bleibt es bei dem einen Lauf.
+router.post('/admin/trigger-csv-sync', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'POST /api/v1/admin/trigger-csv-sync'>) => {
+  // Läuft der Auftrag schon, bleibt es bei dem einen Lauf.
   await katalogAbgleichJetzt();
   res.json({ success: true, message: 'CSV-Sync wird gestartet…' });
 });
 
-// ── GET /api/v1/admin/cache-stats ─────────────────────────────────────────────
-router.get('/admin/protokoll', requireApiAdmin, async (_req: AuthedRequest, res) => {
+router.get('/admin/protokoll', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/protokoll'>) => {
   res.json({ success: true, eintraege: await letzteEintraege() });
 });
 
-router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res) => {
+router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/cache-stats'>) => {
   res.json(await cacheStatistik()); 
 });
 
-// GET /api/v1/admin/image-diag/:setNumber
-// Dieser Endpunkt ist die Lehre aus einer Fehlersuche, die fünf Anläufe
-// gebraucht hat. Dasselbe Symptom („Kachel bleibt leer") hatte nacheinander
-// fünf verschiedene Ursachen, und jede Runde begann damit, dieselben Fragen …
+// Beantwortet die wiederkehrenden Fragen zu einer leeren Kachel in einer
+// Antwort: Datenbank, Platte, Proxy, Fehlanzeige.
 // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-image-diag-setnumber
-router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'GET /api/v1/admin/image-diag/:setNumber'>) => {
   const sn = String(req.params.setNumber);
 
-  // 1. Was weiss die Datenbank — eigene Zeile UND gemeinsamer Katalog?
-  // Die Liste beantwortet „welche Konten fuehren dieses Set?" — genau das
-  // braucht die Einschaetzung unten.
   const zeilen: verwaltung.KontoBildzeile[] = await verwaltung.bildZeilenDerKonten(sn).catch(meldeUndLiefere('verwaltung:bildZeilenDerKonten', []));
   const katalog = await verwaltung.katalogBild(sn).catch(meldeUndLiefere('verwaltung:katalogBild', null));
 
-  // 2. Was liegt auf der Platte?
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const datei = (p: string) => {
     const st = fs.statSync(p, { throwIfNoEntry: false });
@@ -87,7 +76,6 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
   const original = datei(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
   const vorschau = datei(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
 
-  // 3. Kennt der Bild-Proxy das CDN-Bild schon?
   const cdnUrl = zeilen.find(r => r.image_url)?.image_url || katalog?.image_url || null;
   let proxy: any = { adresse: cdnUrl, gecacht: false };
   if (cdnUrl) {
@@ -98,13 +86,11 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
     }
   }
 
-  // 3b. Gilt das Bild als fehlend? Ein Eintrag dort verhindert jeden Abruf
-  // und macht die übrigen Auskünfte gegenstandslos.
+  // Eine Fehlanzeige verhindert jeden Abruf und macht die übrigen Auskünfte
+  // gegenstandslos.
   const merker = await verwaltung.fehlanzeigeDesSets(sn).catch(meldeUndLiefere('verwaltung:fehlanzeigeDesSets', null));
   const vorschauMerker = await verwaltung.fehlanzeigeDerVorschau(safe).catch(meldeUndLiefere('verwaltung:fehlanzeigeDerVorschau', null));
 
-  // 4. Eine Einschätzung im Klartext — das, was man sonst aus den Zahlen
-  //    selbst ableiten müsste.
   const hinweise: string[] = [];
   if (!zeilen.length) hinweise.push('Kein Konto führt dieses Set.');
   if (zeilen.length && !zeilen.some(r => r.image_local) && !cdnUrl)
@@ -131,18 +117,15 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: AuthedRe
     proxy, hinweise });
 });
 
-// POST /api/v1/admin/forget-image-misses
-// Fehlanzeigen zurücknehmen, damit die betroffenen Bilder wieder geholt werden.
 // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-forget-image-misses
-router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/forget-image-misses'>) => {
   const sets = Array.isArray(req.body?.set_numbers) ? req.body.set_numbers.map(String) : null;
   let entfernt = 0;
   if (sets?.length) {
     entfernt = await vergissFehlend(sets.map((sn: string) => 'set:' + sn));
   } else {
-    // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen
-    // Zweck (eine Verkleinerung, die nie gelingen kann) und sollen nicht
-    // nebenbei mitverschwinden.
+    // Nicht die ganze Tabelle: Die Vorschau-Vermerke haben einen anderen Zweck
+    // und sollen nicht nebenbei mitverschwinden.
     const rows = await verwaltung.setFehlanzeigen().catch(meldeUndLiefere('verwaltung:setFehlanzeigen', []));
     if (rows.length) entfernt = await vergissFehlend(rows.map(r => r.cache_key));
   }
@@ -150,65 +133,50 @@ router.post('/admin/forget-image-misses', requireApiAdmin, async (req: AuthedReq
     const rows = await verwaltung.vorschauFehlanzeigen().catch(meldeUndLiefere('verwaltung:vorschauFehlanzeigen', []));
     if (rows.length) entfernt += await vergissFehlend(rows.map(r => r.cache_key));
   }
-  // Die anderen Arbeitsprozesse halten den Merker im Speicher und frischen
-  // ihn im Fünf-Minuten-Takt vollständig aus der Tabelle auf — länger dauert
-  // es dort also nicht.
+  // Die anderen Prozesse frischen den Merker im Fünf-Minuten-Takt aus der Tabelle auf.
   res.json({ success: true, entfernt, hinweis: 'Greift in allen Arbeitsprozessen binnen fünf Minuten.' });
 });
 
-/**
- * POST /api/v1/admin/cache-clear — Preis-Cache leeren, optional alle Caches.
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-cache-clear
- */
-router.post('/admin/cache-clear', requireApiAdmin, async (req: AuthedRequest, res) => {
+// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-cache-clear
+router.post('/admin/cache-clear', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/cache-clear'>) => {
   await cachesLeeren(!!req.body?.all);
   res.json({ success: true, message: req.body?.all ? 'Alle Caches geleert' : 'Preis-Cache geleert' });
 });
 
-// ── GET /api/v1/admin/cache-ttl ───────────────────────────────────────────────
-router.get('/admin/cache-ttl', requireApiAdmin, async (_req: AuthedRequest, res) => {
+router.get('/admin/cache-ttl', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/cache-ttl'>) => {
   const ttl = await getGlobalSetting('price_cache_ttl');
   res.json({ success:true, ttl: ttl || '24' });
 });
 
-// POST /api/v1/admin/cache-ttl
-router.post('/admin/cache-ttl', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/cache-ttl', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/cache-ttl'>) => {
   const ttl = String(req.body?.ttl || '24');
   if (!['12','24','168'].includes(ttl)) return sendeFehler(req, res, 400, 'wert_ungueltig');
   setGlobalSetting('price_cache_ttl', ttl);
   res.json({ success:true, ttl });
 });
 
-// POST /api/v1/admin/default-condition — Standard-Zustand setzen (nur Admin)
-router.post('/admin/default-condition', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/default-condition', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/default-condition'>) => {
   const condition = String(req.body?.condition || 'N');
   if (!['N','U'].includes(condition)) return sendeFehler(req, res, 400, 'zustand_n_oder_u');
   setGlobalSetting('default_price_condition', condition);
   res.json({ success: true, condition });
 });
 
-// GET /api/v1/admin/api-limits — get current limits
-router.get('/admin/api-limits', requireApiAdmin, async (_req: AuthedRequest, res) => {
+router.get('/admin/api-limits', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/api-limits'>) => {
   const [rb, bl, bs] = await Promise.all([
     getLimitForApi('rebrickable'), getLimitForApi('bricklink'), getLimitForApi('brickset')
   ]);
   res.json({ success:true, limits: { rebrickable: rb, bricklink: bl, brickset: bs } });
 });
 
-// PUT /api/v1/admin/api-limits — update limits
-router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'PUT /api/v1/admin/api-limits'>) => {
   const { rebrickable, bricklink, brickset } = req.body;
   if (rebrickable) {
-    // Vorher ungeprüft: bei "abc" landete der String "NaN" in global_settings
-    // und der Vergleich gegen NaN liess jeden Aufruf scheitern.
+    // Ungeprüft landete "NaN" in global_settings und liess jeden Aufruf scheitern.
     const n = parseInt(rebrickable, 10);
     if (!Number.isFinite(n) || n < 1 || n > 100000)
       return sendeFehler(req, res, 400, 'tageslimit_bereich');
     setGlobalSetting('api_limit_rebrickable', String(n));
-    // Kein setMax() mehr nötig: Der Zähler liegt in der Datenbank und liest
-    // die Grenze bei jedem Aufruf (getLimitForApi). Der Wert galt vorher nur
-    // im Worker, der diese Anfrage bearbeitet hat — die übrigen liefen bis
-    // zum Neustart mit dem alten weiter.
   }
   if (bricklink) {
     setGlobalSetting('api_limit_bricklink', String(parseInt(bricklink)));
@@ -222,104 +190,75 @@ router.put('/admin/api-limits', requireApiAdmin, async (req: AuthedRequest, res)
   res.json({ success:true });
 });
 
-// Admin: job monitoring
-// ── GET /api/v1/admin/brickset-queue — list retry queue entries ───────────────
-// ── POST /api/v1/admin/reimport-instructions — enqueue all sets missing instructions ─
-router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: AuthedRequest, res) => {
+router.post('/admin/reimport-instructions', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'POST /api/v1/admin/reimport-instructions'>) => {
   const enqueued = await anleitungenNeuEinreihen();
   if (!enqueued) return res.json({ success: true, enqueued: 0, message: 'Alle Sets haben bereits Anleitungen' });
   res.json({ success: true, enqueued });
 });
 
-/**
- * GET /api/v1/admin/job-status — Stand des Preis-Jobs samt Kontingent.
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-job-status
- */
-router.get('/admin/job-status', requireApiAdmin, async (_req: AuthedRequest, res) => {
+// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-job-status
+router.get('/admin/job-status', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/job-status'>) => {
   res.json(await preisJobStand()); 
 });
 
-router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequest, res) => {
+router.post('/admin/trigger-price-job', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'POST /api/v1/admin/trigger-price-job'>) => {
   res.json({ success: true, started: await preisJobJetzt() }); 
 });
 
-/**
- * POST /api/v1/admin/catalog-images — alle fehlenden Katalogbilder einreihen.
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-catalog-images
- */
-router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest, res) => {
+// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-catalog-images
+router.post('/admin/catalog-images', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/catalog-images'>) => {
   res.json(await katalogBilderEinreihen(req.body?.alle_erneut === true));
 });
 
-// ── POST /api/v1/admin/redownload-missing-images ──────────────────────────────
-// Lädt Bilder neu, die laut DB (image_local) heruntergeladen sind, deren Datei
-// aber physisch fehlt. Läuft im Hintergrund; Fortschritt erscheint im Monitoring
-// unter „Bild-Download (CDN)".
-router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: AuthedRequest, res) => {
-  // Nicht abwarten: Das kann je nach Katalog lange dauern; der Fortschritt
-  // erscheint in der Überwachung unter „Bild-Download (CDN)“.
+// Bilder, die laut image_local da sind, deren Datei aber fehlt.
+router.post('/admin/redownload-missing-images', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'POST /api/v1/admin/redownload-missing-images'>) => {
+  // Nicht abwarten: Das kann lange dauern; der Fortschritt erscheint in der
+  // Überwachung unter „Bild-Download (CDN)".
   fehlendeBilderNachladen(); res.json({ success: true, started: true }); 
 });
 
-// Nutzerverwaltung: NUR unter /api/v1/auth/users
-// Schwerer als das Totliegen wog die Doppelung: Adminrechte liessen sich hier
-// mit dem Feld `is_admin` und dort mit `role` umschalten — zwei Schreibweisen
-// fuer dieselbe Umschaltung, jede mit eigener Pruefung. Bei Rechten ist genau …
-// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-logs
-
-// ── GET /api/v1/admin/logs?minutes=15 — return recent log entries ─────────────
-router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.get('/admin/logs', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'GET /api/v1/admin/logs'>) => {
   const minutes = Math.min(2880, Math.max(1, parseInt(String(req.query.minutes || '15'))));
   const rows = await verwaltung.protokollSeit(minutes);
   res.json({ success: true, minutes, count: rows.length, logs: rows });
 });
 
-router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest, res) => {
+router.get('/admin/brickset-queue', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/brickset-queue'>) => {
   const rows = await bricksetListe().catch(meldeUndLiefere('verwaltung:bricksetWarteschlange', []));
   res.json({ success: true, count: rows.length, entries: rows });
 });
 
-// ── POST /api/v1/admin/brickset-queue/:setNumber/retry — retry single entry now ─
-router.post('/admin/brickset-queue/:setNumber/retry', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.post('/admin/brickset-queue/:setNumber/retry', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/brickset-queue/:setNumber/retry'>) => {
   const sn = pfadParam(req, 'setNumber');
   await bricksetWiederholen(sn);
   res.json({ success: true, set_number: sn });
 });
 
-// ── DELETE /api/v1/admin/brickset-queue/:setNumber — remove + trigger fallback ─
-router.delete('/admin/brickset-queue/:setNumber', requireApiAdmin, async (req: AuthedRequest, res) => {
+router.delete('/admin/brickset-queue/:setNumber', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/admin/brickset-queue/:setNumber'>) => {
   const sn = pfadParam(req, 'setNumber');
   await bricksetEntfernen(sn);
   res.json({ success: true, set_number: sn });
 });
 
-router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res) => {
+router.get('/admin/jobs', requireApiAdmin, async (_req: AuthedRequest, res: Antwort<'GET /api/v1/admin/jobs'>) => {
   res.json(await jobUebersicht()); 
 });
 
-// ── POST /api/v1/admin/job-schedule — Zeitplan eines Jobs ändern ──────────────
-// Body: { name: <monitorKey>, time: "HH:MM" }  (für tägliche Jobs)
-//   oder { name: 'priceJob', minutes: <n> }    (für den Preis-Job, Intervall)
-// Die Änderung greift SOFORT (Reschedule-Trigger + direkter Aufruf).
-router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, res) => {
+// Body: { name, time: "HH:MM" } für tägliche Jobs oder { name: 'priceJob',
+// minutes } für das Intervall. Greift sofort.
+router.post('/admin/job-schedule', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'POST /api/v1/admin/job-schedule'>) => {
   const { name, time, minutes } = req.body || {};
   await jobZeitplanSetzen(name, time, minutes);
   res.json({ success: true });
 });
 
-/**
- * GET /api/v1/admin/img-probe?url=…
- * Fragt eine Bild-URL vom SERVER aus ab und meldet, was das CDN antwortet —
- * mit Referer, ohne Referer und ganz ohne Kopfzeilen. Damit lässt sich der
- * Unterschied zwischen „Bild fehlt", „Hotlink-Schutz" und „Server kommt gar …
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-img-probe
- */
-router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) => {
+/** Fragt eine Bild-URL vom SERVER aus ab (mit, ohne Referer, ohne Kopfzeilen),
+ * um „fehlt", „Hotlink-Schutz" und „nicht erreichbar" zu unterscheiden.
+ * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-img-probe */
+router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'GET /api/v1/admin/img-probe'>) => {
   const url = String(req.query.url || '');
   if (!/^https:\/\//.test(url)) return sendeFehler(req, res, 400, 'url_fehlt_https');
 
-  // Dieselbe Host-Allowlist wie der Bild-Proxy.
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-img-probe-2
   const adresse = urlOderNull(url);
   if (!adresse) return sendeFehler(req, res, 400, 'url_ungueltig');
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS))
@@ -334,14 +273,10 @@ router.get('/admin/img-probe', requireApiAdmin, async (req: AuthedRequest, res) 
 
   res.json(await bildProbe(url));
 });
-/**
- * GET /api/v1/admin/price-probe?set=10290-1
- * Zeigt für ein Set alles, was in die Marktpreis-Anzeige einfliesst:
- * Erfassungen, gespeicherter Zustand, sämtliche price_cache-Zeilen und — auf
- * Wunsch — was BrickLink gerade antwortet.
- * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe
- */
-router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res) => {
+/** Alles, was in die Marktpreis-Anzeige eines Sets einfliesst, auf Wunsch mit
+ * der aktuellen BrickLink-Antwort.
+ * Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-price-probe */
+router.get('/admin/price-probe', requireApiAdmin, async (req: AuthedRequest, res: Antwort<'GET /api/v1/admin/price-probe'>) => {
   const setNumber = String(req.query.set || '').trim();
   if (!setNumber) return sendeFehler(req, res, 400, 'parameter_set_fehlt');
   const uid = req.apiUser.user_id;

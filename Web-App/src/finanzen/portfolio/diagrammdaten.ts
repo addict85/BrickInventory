@@ -1,13 +1,8 @@
 import { buildChart } from '../chartData';
 
-/**
- * Aus den rekonstruierten Rohpunkten die fertigen Diagrammdaten machen:
- * Wertebereich mit Rand, fünf Y-Beschriftungen, X-Beschriftungen und die
- * Prozentänderung über den Zeitraum.
- * Ausführlich: docs/begruendungen/src/finanzen/portfolio/diagrammdaten.ts.md#bauediagrammdaten
- */
+/** Alle Beschriftungen entstehen auf dem Server, damit Webapp und App gleich aussehen.
+ * Ausführlich: docs/begruendungen/src/finanzen/portfolio/diagrammdaten.ts.md#bauediagrammdaten */
 export function baueDiagrammdaten(rawPoints: any[], currency: string, downsampled: boolean) {
-// X-label formatter — all label logic lives here on the server
 function fmtX(point: any) {
   const d = (point.day||'').toString();
   if (d.length===10 && d[4]==='-' && d[7]==='-') {
@@ -19,7 +14,6 @@ function fmtX(point: any) {
   return d;
 }
 
-// Compute Y axis: 5 evenly spaced values from bottom to top
 const vals   = rawPoints.map(p => p.total);
 const vRawMin = Math.min(...vals);
 const vRawMax = Math.max(...vals);
@@ -28,7 +22,6 @@ const pad2   = spread > 0 ? spread * 0.15 : vRawMax * 0.10;
 const vMin   = Math.max(0, vRawMin - pad2);
 const vMax   = vRawMax + pad2;
 
-// Currency symbol
 const sym = currency==='CHF' ? 'CHF'
           : currency==='USD' ? '$'
           : currency==='GBP' ? '£' : '€';
@@ -44,9 +37,8 @@ for (let t = 0; t <= 4; t++) {
   const value = vMin + frac * (vMax - vMin);
   y_axis.push({ label: fmtY(value), value: parseFloat(value.toFixed(2)), frac });
 }
-// y_axis[0] = bottom, y_axis[4] = top
+// y_axis[0] = unten, y_axis[4] = oben.
 
-// Build points with x_label — up to 7 evenly spaced labels
 const n = rawPoints.length;
 const maxLabels = 7;
 const step = Math.max(1, Math.ceil(n / maxLabels));
@@ -62,7 +54,7 @@ const points = rawPoints.map((p, i) => {
   let xLabel = '';
   if (labelIdxs.has(i)) {
     if (downsampled) {
-      // Monatsauflösung: erster Punkt mit exaktem Datum, letzter = heute
+      // Monatsauflösung: erster Punkt mit exaktem Datum, letzter = heute.
       if (i === 0) {
         const fd = (p.fullDay || p.day || '').slice(0,10);
         xLabel = fd.length === 10 ? fd.slice(8)+'.'+fd.slice(5,7) : fmtX(p);
@@ -82,21 +74,14 @@ const points = rawPoints.map((p, i) => {
   };
 });
 
-// Period change %
 const firstVal   = rawPoints[0].total;
 const currentVal = rawPoints[rawPoints.length-1].total;
 const period_change_pct = rawPoints.length >= 2 && firstVal > 0
   ? parseFloat(((currentVal - firstVal) / firstVal * 100).toFixed(2))
   : null;
 
-// Diagrammdaten in derselben Form wie die Preisverläufe — siehe
-// src/finanzen/chartData.ts. Eine Linie, weil hier der GESAMTWERT über die Zeit
-// steht; eine Trennung nach Zustand gehört in die Tabelle darunter, nicht
-// in dieses Diagramm.
-//
-// Der Sinn ist derselbe wie dort: Die Oberfläche bekommt fertige Punkte und
-// muss keine Achse mehr selbst ausrechnen. `points` bleibt daneben erhalten
-// — es trägt x_label und y_frac, die das bestehende SVG benutzt.
+// Eine Linie, weil hier der GESAMTWERT steht; die Trennung nach Zustand gehört
+// in die Tabelle darunter.
 const chart = buildChart([{
   name: 'total',
   rows: rawPoints.map((p: any) => ({

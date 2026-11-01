@@ -1,10 +1,7 @@
-/**
- * Setzt die Ausführung für src/auftraege/nacharbeit.ts ein: Was eine Anfrage sofort
- * braucht (Marktpreis, Katalog), läuft hier; was warten kann, wird ein
- * Auftrag. Die Module werden erst beim Aufruf geladen (dynamisches import):
- * Die Verdrahtung läuft vor dem Setzen der Datenbankadresse, etwa in Tests;
- * der Pfad über ../jobs/ lässt require-Haken der Tests ihn erkennen.
- */
+/** Was eine Anfrage sofort braucht, läuft hier; was warten kann, wird ein
+ * Auftrag. Dynamisches import, weil die Verdrahtung vor dem Setzen der
+ * Datenbankadresse läuft (etwa in Tests); am Pfad über ../jobs/ erkennen die
+ * require-Haken der Tests die Module. */
 import { verdrahteNacharbeit } from '../src/auftraege/nacharbeit';
 import { meldeUndWeiter } from '../src/infra/httpError';
 
@@ -19,8 +16,8 @@ function verdrahte(): void {
       import('../src/katalog/bilder/bildbedarf.js').then(b => b.merkeGebraucht(url, sn))
         .catch((e: unknown) => meldeUndWeiter('nacharbeit:bild-vormerken', e));
     },
-    setTeileAnreichern: async (sn) => (await import('../jobs/partsCatalogEnrich.js')).enrichSetParts(sn),
-    figurenAnreichern: async (sn) => (await import('../jobs/partsCatalogEnrich.js')).enrichSetMinifigs(sn),
+    setTeileAnreichern: async (sn) => (await import('../src/katalog/teileAnreicherung.js')).enrichSetParts(sn),
+    figurenAnreichern: async (sn) => (await import('../src/katalog/teileAnreicherung.js')).enrichSetMinifigs(sn),
     setBilderLaden: async (sn) => {
       const [{ stelleAuftragEin }, { mitVersion }] = await Promise.all([import('../src/auftraege/dienst.js'), import('../src/sets/setNummer.js')]);
       return stelleAuftragEin('bilder', { set_number: sn, nur_bilder: true },

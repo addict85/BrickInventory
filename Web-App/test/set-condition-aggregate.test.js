@@ -252,10 +252,7 @@ test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', 
   const iValue = fn.indexOf('getSetValue(userId, setNumber, currency)');
   assert.ok(iGuard > 0 && iValue > iGuard,
     'getSetValue darf einen angefragten Zustand nicht überstimmen');
-
-  // Und die Preisabfrage darunter muss den angefragten Zustand bevorzugen
-  assert.match(fn, /ORDER BY \(condition = \$2\) DESC LIMIT 1/,
-    'Der angefragte Zustand muss Vorrang haben');
+  // Den Vorrang des angefragten Zustands prüft test/figurenschaetzung-ablage-db.test.js.
 });
 
 test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', () => {
@@ -279,7 +276,7 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
   // Nicht neu ausformulieren, sondern denselben Helfer benutzen wie Sets.
   assert.match(fn, /conditionFromAcquisitions\(acqCount, usedCount\)/,
     'Manuelle Einträge müssen denselben Regel-Helfer benutzen wie Sets');
-  assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\) AS used_count/,
+  assert.match(src, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\) AS used_count/,
     'Ohne used_count kann die Regel nicht greifen');
 
   // Beide Listen müssen sie anwenden
@@ -289,7 +286,7 @@ test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', ()
     'getManualMinifigs wendet die Regel nicht an');
 
   // Eine Abfrage für die ganze Seite, nicht eine je Zeile
-  const queries = (fn.match(/db\.all\(/g) || []).length;
+  const queries = (fn.match(/db\.all\(|repo\.\w+\(/g) || []).length;
   assert.equal(queries, 1, `${queries} Abfragen — eine je Seite genügt`);
 });
 
@@ -433,22 +430,18 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   const est = src.slice(src.indexOf('async function estimateFigPriceFromParts'),
                         src.indexOf('async function getCurrentFigMarketPrice'));
 
-  assert.match(est, /INSERT INTO minifig_price_cache[\s\S]{0,200}ON CONFLICT \(fig_number,condition,currency_code\)/,
-    'Die Schätzung muss im Preis-Cache landen');
-  assert.match(est, /INSERT INTO minifig_price_history[\s\S]{0,200}ON CONFLICT DO NOTHING/,
-    'Ohne Verlaufspunkt bleibt das Diagramm für immer leer');
-  // Je ZUSTAND ein Eintrag — sonst stünde derselbe Wert in beiden Zeilen.
-  assert.match(est, /VALUES \(\$1,\$2,\$3,\$4,\$4,TRUE,\$5\)/,
-    'fig_number, condition, currency gehören in den Schlüssel');
-  assert.match(est, /\[figNumber, cond, currency, total, abdeckung\]/,
-    'Geschrieben wird der geschätzte Wert im angefragten Zustand');
+  // Cache und Verlauf je Zustand prüft test/figurenschaetzung-ablage-db.test.js.
   // Nur mit echtem Preis: Ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
   assert.match(est, /if \(priced === 0\) return null;/,
     'Ohne bepreiste Teile darf nichts geschrieben werden');
 
   // Und beim Anlegen muss der ermittelte Preis in die Erfassung
   // created_at gehört seit der Datumsübernahme zur Spaltenliste.
-  assert.match(src, /recordAcquisitionForDay\('fig', uid, \[num\][\s\S]{0,200}effectivePurchasePrice/,
+  // Beide Wege (Neuanlage und Zweiterfassung), ohne Kommentare gelesen.
+  const ohneKommentar = src.replace(/\/\/[^\n]*/g, '');
+  const erfassungen = [...ohneKommentar.matchAll(
+    /recordAcquisitionForDay\('fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?erfassungsPreis/g)];
+  assert.equal(erfassungen.length, 2,
     'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
 });
 
@@ -585,8 +578,10 @@ test('computePnl liest acq_count/used_count — sonst ist jedes Set neu', () => 
   // Migration 0032 laenger geworden und haben `acq_count` aus dem Fenster
   // geschoben. Genau die Falle, die der Kommentar darueber beschreibt — ein
   // knapp bemessener Ausschnitt meldet einen Fehler, den es nicht gibt.
-  const fn = src.slice(src.indexOf('async function computePnl'),
-                       src.indexOf('async function computePnl') + 4600);
+  // Die Abfrage steht im Repository (setsMitErfassungen); computePnl ruft sie.
+  assert.match(require('./helpers/sources').funktionsRumpf(src, 'computePnl'), /repo\.setsMitErfassungen\(/);
+  const fn = src.slice(src.indexOf('function setsMitErfassungen'),
+                       src.indexOf('function setsMitErfassungen') + 4600);
 
   assert.match(fn, /COUNT\(\*\)\s+AS acq_count,/, 'acq_count fehlt in der Unterabfrage');
   assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,
@@ -707,37 +702,7 @@ test('die Sparkline zeichnet avg_price, nicht qty_avg_price', () => {
     'Die alte, fehlerhafte Reihenfolge darf nicht mehr vorkommen');
 });
 
-test('parts_summary-Neuaufbau ist über eine Datenbank-Sperre vor Cluster-Workern geschützt', () => {
-  // Gemeldet: "duplicate key value violates unique constraint
-  // parts_summary_pkey" beim Hintergrundaufbau. Ursache: Der Server läuft im
-  // Cluster-Modus mit mehreren Worker-Prozessen (server.ts, cluster.fork());
-  // die In-Memory-Sperre (_rebuilding-Map) schützt nur INNERHALB eines
-  // Prozesses. Fragen zwei Worker fast gleichzeitig für denselben Nutzer an,
-  // können beide DELETE+INSERT ausführen — unter READ COMMITTED verpasst der
-  // zweite Workers DELETE die vom ersten gerade committeten neuen Zeilen
-  // (sie kamen nach Beginn seines Scans hinzu), sein anschliessender INSERT
-  // versucht dieselben Zeilen erneut anzulegen und verletzt den Primärschlüssel.
-  const src = fs.readFileSync(path.join(ROOT, 'src/teile/partsSummary.ts'), 'utf8');
-  const fn = src.slice(src.indexOf('export async function rebuild'),
-                       src.indexOf('export async function rebuild') + 3000);
-
-  // Auf die ART der Sperre geprüft, nicht auf die Zahl: Seit Nachtrag 149
-  // stehen alle Namensräume in src/infra/lockNamespaces.ts, und dass sie sich
-  // nicht überschneiden, prüft test/lock-namespaces-db.test.js gegen eine
-  // echte Datenbank. Hier zählt nur, dass die Sperre eine DATENBANK-Sperre ist
-  // — die alte In-Memory-Map schützte nur innerhalb eines Workers.
-  assert.match(fn, /pg_try_advisory_xact_lock\(/,
-    'Die Sperre muss prozessübergreifend in der Datenbank liegen, nicht nur im Node-Prozess');
-  assert.match(fn, /LOCKS\.TEILE_SUMMARY/,
-    'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
-  assert.match(fn, /if \(!lock\?\.ok\) \{\s*\/\//,
-    'Ohne die Sperre muss der Aufbau abgebrochen werden, statt zu kollidieren');
-  // Sperre muss VOR dem DELETE erworben werden, sonst nützt sie nichts.
-  const lockIdx = fn.indexOf('pg_try_advisory_xact_lock');
-  const deleteIdx = fn.indexOf('DELETE FROM parts_summary');
-  assert.ok(lockIdx > 0 && lockIdx < deleteIdx,
-    'Die Sperre muss vor dem DELETE erworben werden');
-});
+// Die Datenbank-Sperre des Neuaufbaus prüft test/teile-zusammenfassung-sperre-db.test.js.
 
 test('CDN-Anfragen erzwingen IPv4', () => {
   // Gemeldet: mehrere völlig unterschiedliche Set-Nummern liefen ALLE exakt
@@ -772,8 +737,8 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   // änderte: Wer eine tote Zweitfassung entfernt, senkt die Zahl. Geprüft wird
   // deshalb jetzt die REGEL — jeder ausgehende Aufruf trägt family: 4 —
   // unabhängig davon, wie viele es gerade sind.
-  const dateien = ['routes/imgProxy.ts', 'clients/rebrickable.ts', 'jobs/partsCatalogEnrich.ts',
-    'jobs/backfillBlPartNumbers.ts', 'jobs/rebrickableCsvSync.ts', 'clients/brickset.ts',
+  const dateien = ['routes/imgProxy.ts', 'clients/rebrickable.ts', 'src/katalog/teileAnreicherung.ts',
+    'jobs/rebrickableCsvSync.ts', 'clients/brickset.ts',
     'clients/bricklink.ts', 'src/verwaltung/dienst.ts', 'src/sets/dienst.ts'];
 
   const ohne = [];
@@ -792,7 +757,7 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
       }
     }
   }
-  assert.ok(gefunden >= 8, `nur ${gefunden} ausgehende Aufrufe erkannt — das Muster greift nicht mehr`);
+  assert.ok(gefunden >= 7, `nur ${gefunden} ausgehende Aufrufe erkannt — das Muster greift nicht mehr`);
   assert.deepEqual(ohne, [], `ausgehende Aufrufe ohne family: 4:\n  ${ohne.join('\n  ')}`);
 });
 

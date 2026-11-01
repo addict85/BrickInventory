@@ -1,27 +1,18 @@
-/**
- * Gemeinsame Middleware der /api/v1-Module.
- *
- * requireToken: akzeptiert Session-Cookie (Webapp) ODER Bearer-Token (Android).
- * requireApiAdmin: requireToken + is_admin-Prüfung — zentral, damit kein
- * Admin-Endpoint den Check versehentlich weglassen kann (genau das war
- * bei /admin/cache-ttl passiert).
- */
+/** requireApiAdmin bündelt Anmeldung und is_admin, damit kein Admin-Endpunkt
+ * die Prüfung versehentlich weglässt. */
 import { meldeUndLiefere } from '../../src/infra/httpError';
 import type { Request, Response, NextFunction } from 'express';
-import { validateToken, resolveUserId } from '../../src/konto/auth';
+import { validateToken } from '../../src/konto/auth';
+import { resolveUserId } from '../../src/konto/http/anmeldung';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 
-/** Extrahiert den Bearer-Token aus dem Authorization-Header (oder null). */
 export function bearerToken(req: any): string | null {
   const auth = req.headers.authorization || '';
   return auth.startsWith('Bearer ') ? auth.slice(7) : null;
 }
 
-/**
- * Was unter /api/v1 ohne Anmeldung erreichbar ist (Pfad relativ zu /api/v1).
- * Alles andere verlangt sie schon am Eingang: Eine neue Route, die ihren
- * eigenen Schutz vergisst, ist damit zu und nicht offen.
- */
+/** Alles andere verlangt die Anmeldung schon am Eingang: Eine neue Route, die
+ * ihren eigenen Schutz vergisst, ist damit zu und nicht offen. */
 const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/settings\/theme$/],
   ['GET', /^\/auth\/(me|registration-status)$/],
@@ -31,7 +22,6 @@ const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
 ];
 
-/** Eingang zu /api/v1: Sitzung oder Bearer-Token, ausser für OEFFENTLICH. */
 export async function anmeldungAmEingang(req: Request, res: Response, next: NextFunction) {
   const methode = req.method === 'HEAD' ? 'GET' : req.method;
   if (OEFFENTLICH.some(([m, re]) => m === methode && re.test(req.path))) return next();
@@ -47,9 +37,8 @@ export async function anmeldungAmEingang(req: Request, res: Response, next: Next
 }
 
 export function requireToken(req: any, res: any, next: any) {
-  // Schon am Eingang geprüft (anmeldungAmEingang): kein zweiter Datenbankzugriff.
+  // Schon am Eingang geprüft: kein zweiter Datenbankzugriff.
   if (req.apiUser) return next();
-  // Accept session cookie (webapp) OR Bearer token (Android)
   if (req.session?.userId) {
     req.apiUser = { user_id: req.session.userId, is_admin: req.session.isAdmin ? 1 : 0, username: req.session.username };
     return next();

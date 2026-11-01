@@ -51,8 +51,8 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
   const { PDF_JOB_DIR } = _req('src/infra/appPaths.js');
 
   for (const name of ['pdf_a', 'pdf_b']) await db.run('DELETE FROM users WHERE username = $1', [name]);
-  await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_a','x',1)");
-  await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_b','x',1)");
+  await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_a','x',true)");
+  await db.run("INSERT INTO users (username,password_hash,email_verified) VALUES ('pdf_b','x',true)");
   const idA = (await db.get("SELECT id FROM users WHERE username='pdf_a'")).id;
   const idB = (await db.get("SELECT id FROM users WHERE username='pdf_b'")).id;
 
@@ -166,7 +166,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       const start = Date.now();
       // Der Worker meldet das Ende über erledigt(); der Auftrag gehört hier dem Belegenden 'test'.
       const zeile = await db.get(`SELECT id FROM auftraege WHERE schluessel = $1`, [auftraege.pdfSchluessel(job)]);
-      setTimeout(() => Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/repository/auftraege.js')).erledigt({ id: String(zeile.id), belegt_von: 'test' }), 300);
+      setTimeout(() => Object.assign({}, _req('src/auftraege/auftraege.js'), _req('src/auftraege/dienst.js')).erledigt({ id: String(zeile.id), belegt_von: 'test' }), 300);
       while (!text.includes('"done"') && Date.now() - start < 8000) {
         const { value, done } = await Promise.race([leser.read(),
           new Promise(f => setTimeout(() => f({ done: true }), 8000 - (Date.now() - start)))]);

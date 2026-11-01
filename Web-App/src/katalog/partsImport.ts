@@ -14,14 +14,9 @@ import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import * as monitor from '../auftraege/jobMonitor';
 import { rebrickableBackgroundLimiter, consumeRebrickableDaily, parseThrottleWait } from './rateLimiter';
+import * as inhalt from './repository/setInhalt';
 
-/**
- * Teile eines Sets aus dem Katalog übernehmen — reine Katalogarbeit ohne
- * Route. Die Bilder lädt der Auftrag 'bilder' (jobs/partsCatalogEnrich);
- * image_local steht nur da, wo die Datei schon liegt.
- */
-
-/** Die Zeilen der Rebrickable-Antwort, nach Teil und Farbe sortiert (feste Sperrreihenfolge). */
+/** Nach Teil und Farbe sortiert: eine feste Sperrreihenfolge gegen Verklemmungen. */
 function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
   const zeilen: SetTeilZeile[] = [];
   for (const t of roh) {
@@ -47,12 +42,9 @@ function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
   return zeilen.sort((a, b) => a.partNumber < b.partNumber ? -1 : a.partNumber > b.partNumber ? 1 : a.colorId - b.colorId);
 }
 
-/**
- * Die Teile eines Sets in den Bestand: vorhandene Zeilen bleiben (mit
- * Lagerort und Datum), neue kommen dazu, weggefallene gehen — alles in einer
- * Transaktion, damit ein Fehler nie ein Set ohne Teile hinterlässt.
- * @returns die Zahl der Zeilen; wirft bei Fehlern (der Auftrag wiederholt dann)
- */
+/** In einer Transaktion, damit ein Fehler nie ein Set ohne Teile hinterlässt;
+ * vorhandene Zeilen behalten Lagerort und Datum.
+ * @returns die Zahl der Zeilen; wirft bei Fehlern (der Auftrag wiederholt dann) */
 export async function importiereTeile(setNumber: string, userId: number): Promise<number> {
   const n = mitVersion(setNumber);
   const roh: RbSetTeil[] | null = await getAllSetParts(n);
@@ -64,21 +56,14 @@ export async function importiereTeile(setNumber: string, userId: number): Promis
   for (let versuch = 1; ; versuch++) {
     try {
       await db.transaction(async (tx) => {
-        await tx.run(
-          `INSERT INTO parts (user_id, set_number, part_number, color_id)
-           SELECT $1, $2, p, f FROM unnest($3::text[], $4::int[]) AS x(p, f) ON CONFLICT DO NOTHING`,
-          [userId, n, teile, farben]);
-        await tx.run(
-          `DELETE FROM parts WHERE user_id=$1 AND set_number=$2 AND source='set'
-              AND (part_number, color_id) NOT IN (SELECT * FROM unnest($3::text[], $4::int[]))`,
-          [userId, n, teile, farben]);
+        await inhalt.fuegeSetTeileEin(tx, userId, n, teile, farben);
+        await inhalt.entferneFremdeSetTeile(tx, userId, n, teile, farben);
         await merkeSetTeile(n, zeilen, tx);
         await merkeBlNummern('part', zeilen.map(z => ({ rbId: z.partNumber, blId: z.blNummer ?? '' })), tx);
       });
       break;
     } catch (e) {
-      // Zwei Importe mit überlappenden Katalogzeilen können sich verklemmen;
-      // die feste Reihenfolge macht es selten, ganz ausschliessen nicht.
+      // Die feste Reihenfolge macht Verklemmungen selten, ganz ausschliessen nicht.
       if (!fehlertext(e)?.includes('deadlock') || versuch >= 3) throw e;
       console.warn(`[parts] Deadlock bei ${n}, Versuch ${versuch}/3`);
       await new Promise(r => setTimeout(r, 200 * versuch));
@@ -91,7 +76,7 @@ export async function importiereTeile(setNumber: string, userId: number): Promis
   return zeilen.length;
 }
 
-/** Wie importiereTeile(), aber ohne zu werfen — für die Route, die nur die Zahl zeigt. */
+/** Ohne zu werfen — für die Route, die nur die Zahl zeigt. */
 export async function importPartsForSet(setNumber: string, userId: number): Promise<number> {
   try {
     return await importiereTeile(setNumber, userId);
@@ -101,7 +86,6 @@ export async function importPartsForSet(setNumber: string, userId: number): Prom
   }
 }
 
-/** Eine Seite der Rebrickable-Teileabfrage. */
 function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: string }> {
   return new Promise(resolve => {
     const req = https.get(url, { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } }, r => {
@@ -113,23 +97,12 @@ function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: 
   });
 }
 
-/**
- * BrickLink-Nummern für Teile ohne Zeile in bl_zuordnung nachholen. Eine
- * Zeile mit leerer bl_id heisst „nachgesehen, keine abweichende Nummer" und
- * löst kein zweites Nachladen aus (merkeBlNummerUnveraendert).
- */
+/** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
 export async function fetchMissingBlIds() {
   try {
     const rbKey = await getGlobalSetting('rebrickable_api_key');
     if (!rbKey) return;
-    const missing = await db.all(
-      `SELECT DISTINCT p.part_number FROM parts p
-       LEFT JOIN bl_zuordnung m ON m.art = 'part' AND m.rb_id = p.part_number
-       WHERE m.rb_id IS NULL
-         AND p.part_number IS NOT NULL
-         AND p.source != 'manual'
-       LIMIT 5000`
-    );
+    const missing = await inhalt.teileOhneBlZuordnung();
     if (!missing.length) return;
 
     monitor.update('blIds', { status: 'running', progress: 0, total: missing.length, sub: `0 / ${missing.length}` });

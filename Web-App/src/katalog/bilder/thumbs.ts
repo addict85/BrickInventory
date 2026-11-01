@@ -1,7 +1,4 @@
-/**
- * Vorschaubilder: 200×200 JPEG, neben dem Original mit der Endung _thumb.jpg.
- * Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#abschnitt
- */
+// Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#abschnitt
 
 import { meldeUndWeiter } from '../../infra/httpError';
 import path from 'path';
@@ -11,14 +8,8 @@ import { isDecodable } from './imageGuard';
 
 const THUMB_SIZE = 200;
 
-/**
- * Das Bild auf THUMB_SIZE bringen und als JPEG schreiben.
- *
- * Erst sharp, bei einem Ladefehler Jimp. „Ladefehler" heisst: Die native
- * Bibliothek fehlt oder passt nicht zur Plattform — NICHT, dass ein einzelnes
- * Bild kaputt ist. Ein defektes Bild soll scheitern und gemerkt werden
- * (src/katalog/bilder/imageMisses), nicht zweimal gerechnet werden.
- */
+/** Erst sharp, Jimp nur bei einem LADEfehler (native Bibliothek fehlt). Ein
+ * defektes Bild soll scheitern und gemerkt werden, nicht zweimal gerechnet. */
 async function verkleinern(quelle: string, ziel: string): Promise<void> {
   let sharp: any = null;
   try { sharp = require('sharp'); }
@@ -27,9 +18,7 @@ async function verkleinern(quelle: string, ziel: string): Promise<void> {
   }
 
   if (sharp) {
-    // `fit: 'cover'` schneidet mittig zu, wie zuvor .cover().
-    // Der weisse Grund ersetzt die frühere Kopie auf eine weisse Fläche: Ohne
-    // ihn würden transparente PNGs beim Umwandeln nach JPEG schwarz.
+    // Weisser Grund: Transparente PNGs würden als JPEG sonst schwarz.
     await sharp(quelle)
       .flatten({ background: '#ffffff' })
       .resize(THUMB_SIZE, THUMB_SIZE, { fit: 'cover' })
@@ -38,7 +27,6 @@ async function verkleinern(quelle: string, ziel: string): Promise<void> {
     return;
   }
 
-  // ── Rückfall: Jimp ────────────────────────────────────────────────────────
   // Erst hier geladen: Jimp ist der Rückfall und wird meist nie gebraucht.
   const { Jimp } = require('jimp');
   const image = await Jimp.read(quelle);
@@ -51,40 +39,31 @@ async function verkleinern(quelle: string, ziel: string): Promise<void> {
 export async function generateThumb(localPath: string) {
   if (!localPath) return null;
 
-  // localPath ist z. B. /images/sets/75192-1.jpg oder /images/parts/3001_4.png.
-  // Die Auflösung liegt zentral in src/infra/appPaths.ts — /images/… zeigt seit der
-  // Umstellung nach data/images/ (Volume) statt nach public/ (Image-Inhalt).
+  // /images/… zeigt nach data/images/ (Volume), nicht nach public/.
   const fsPath = resolveWebPath(localPath);
   if (!fsPath) return null;
 
   if (!fs.existsSync(fsPath)) return null;
 
-  // Thumb path: same dir, filename + _thumb.jpg
   const ext      = path.extname(fsPath);
   const thumbFs  = fsPath.replace(ext, '_thumb.jpg');
   const thumbWeb = localPath.replace(ext, '_thumb.jpg');
 
-  // Already exists?
   if (fs.existsSync(thumbFs)) return thumbWeb;
 
-  // Vor dem Dekodieren die Abmessungen prüfen — siehe src/katalog/bilder/imageGuard.ts.
-  // Ohne das kann eine kleine, aber riesig aufgelöste Datei den Worker mit
-  // einem Bitmap im Gigabyte-Bereich lahmlegen.
+  // Abmessungen vor dem Dekodieren prüfen: Eine kleine, riesig aufgelöste Datei
+  // legte den Worker mit einem Gigabyte-Bitmap lahm.
   if (!(await isDecodable(fsPath))) return null;
 
   try {
-    // ATOMAR schreiben — dieselbe Begründung wie in
-    // routes/imgProxy.ts: Ein Schreibvorgang auf den ENDGÜLTIGEN Namen ist für
-    // parallele Anfragen sichtbar, bevor er fertig ist. Die Bildroute liefert
-    // dann eine Teilgrösse als Content-Length aus, der Browser zeigt nichts, …
-    // Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#generatethumb-tmpthumb
+    // ATOMAR schreiben: Ein Schreibvorgang auf den endgültigen Namen ist für
+    // parallele Anfragen sichtbar, bevor er fertig ist.
     const tmpThumb = `${thumbFs}.${process.pid}.${Date.now()}.tmp.jpg`;
     await verkleinern(fsPath, tmpThumb);
     await fs.promises.rename(tmpThumb, thumbFs);
     return thumbWeb;
   } catch (e: any) {
     // NICHT still scheitern.
-    // Ausführlich: docs/begruendungen/src/katalog/bilder/thumbs.ts.md#generatethumb
     console.error(`[thumb] Vorschau fehlgeschlagen für ${localPath}: ${e?.message || e}`);
     try {
       const reste = fs.readdirSync(path.dirname(fsPath))
@@ -94,8 +73,4 @@ export async function generateThumb(localPath: string) {
     return null;
   }
 }
-
-/**
- * Generate thumbnails for a batch of local paths (background, non-blocking).
- */
 

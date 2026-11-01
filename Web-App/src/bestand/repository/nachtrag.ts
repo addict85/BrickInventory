@@ -1,4 +1,3 @@
-/** Erfassungen ohne Kaufpreis — für den Nachtrag mit dem Marktpreis. */
 import * as db from '../../../db/database';
 
 export async function setErfassungenOhnePreis(): Promise<{ id: number; user_id: number; set_number: string; condition: string | null }[]> {

@@ -5,7 +5,7 @@ import { fuehreCsvImportAus, csvImportAufgegeben, type CsvNutzlast } from './set
 import { anleitungLaden } from './instructionQueue';
 import { bricksetNachlauf } from './bricksetRetry';
 import { bildbedarfAbarbeiten } from './imageQueue';
-import { redownloadMissingImages, downloadSetImages } from './partsCatalogEnrich';
+import { redownloadMissingImages, downloadSetImages } from '../src/katalog/teileAnreicherung';
 import { nachlauf } from './startNachlaeufe';
 import { csvAbgleich } from './rebrickableCsvSync';
 import { runPriceRefresh } from './priceJob';
@@ -14,10 +14,7 @@ import { aufraeumen, aufraeumenTaeglich } from './aufraeumen';
 import type { AuftragsArt } from '../src/auftraege/auftraege';
 import { kursauftrag } from '../src/finanzen/wechselkurse';
 
-/**
- * Welche Art wie bearbeitet wird. Die Nutzlast hat der Einsteller geschrieben.
- * Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen.
- */
+/** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
 const BEARBEITER: Bearbeitertabelle = {
   nacharbeit: {
     ausfuehren: (n) => zieheNach(String(n.set_number), Number(n.user_id), (n.art as NacharbeitArt) ?? 'neu'),
@@ -48,7 +45,6 @@ const BEARBEITER: Bearbeitertabelle = {
 
 let _worker: ReturnType<typeof erzeugeWorker> | null = null;
 
-/** Den Worker des Job-Prozesses starten; `arten` schränkt ein (Tests). */
 function starteAuftragsWorker(o: WorkerOptionen & { arten?: AuftragsArt[] } = {}) {
   if (_worker) return _worker;
   const tabelle: Bearbeitertabelle = o.arten
@@ -58,7 +54,6 @@ function starteAuftragsWorker(o: WorkerOptionen & { arten?: AuftragsArt[] } = {}
   return _worker;
 }
 
-/** Beim Herunterfahren: laufende Aufträge an sicherer Stelle anhalten und zurückgeben. */
 async function stoppeAuftragsWorker(): Promise<void> {
   const w = _worker;
   _worker = null;

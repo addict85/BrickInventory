@@ -968,6 +968,10 @@ export async function checkAuth(){
   applyLang(LANG, false);
   await waitForStartup();
   const d=await api('GET','/v1/auth/me');
+  // Die Anmeldemaske ist schon bedienbar, während diese Frage läuft. Wer sich
+  // inzwischen angemeldet hat, bekäme sonst von der späten Antwort „nein“ die
+  // Maske zurück, obwohl die Sitzung gilt.
+  if(ME) return;
   // Seit dem Zusammenlegen der Anmeldung steht der Nutzer unter `user` und
   // das Admin-Kennzeichen heisst `is_admin` — dieselbe Form wie in der
   // Antwort des Logins und dieselbe, die die App liest. ME behält seine

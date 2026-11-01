@@ -167,7 +167,8 @@ test('keine Zyklen über echte import-Anweisungen', () => {
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     const ziele = new Set();
-    for (const m of src.matchAll(/^import [^;]*from\s*'(\.[^']+)'/gm)) {
+    // `import type` verschwindet beim Übersetzen und lädt zur Laufzeit nichts.
+    for (const m of src.matchAll(/^import (?!type\b)[^;]*from\s*'(\.[^']+)'/gm)) {
       const z = aufloesen(datei, m[1]);
       if (z && z !== path.resolve(datei)) ziele.add(z);
     }

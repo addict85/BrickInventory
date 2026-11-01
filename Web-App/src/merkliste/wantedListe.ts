@@ -1,21 +1,18 @@
-/**
- * BrickLink-Wanted-Listen lesen und auf Rebrickable-Nummern abbilden.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt
- */
+/** BrickLink-Wanted-Listen lesen und auf Rebrickable-Nummern abbilden: Die Datei
+ * trägt BL-Nummern, der Bestand führt RB-Nummern.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt */
 import { blTeilZuRb, blFilterWirkungslos } from '../../clients/rebrickable';
-import * as db from '../../db/database';
+import * as repo from './repository/wantedListe';
+import { meldeUndLiefere } from '../infra/httpError';
 import { nutzerStandardZustand } from '../konto/settings';
 
-/** Die drei Arten, die diese Anwendung führt. */
 export type WantedArt = 'part' | 'fig' | 'set';
 
-/**
- * BrickLinks Artencodes, soweit sie hier etwas bedeuten.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#arten
- */
+// Nur P, M und S haben einen Platz im Bestand; andere Arten werden gezählt und
+// gemeldet statt still verworfen.
+// Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#arten
 const ARTEN: Record<string, WantedArt> = { P: 'part', M: 'fig', S: 'set' };
 
-/** Ein Posten, wie er in der Datei steht — noch ganz in BrickLink-Begriffen. */
 export interface WantedPosten {
   art: WantedArt;
   /** ITEMID — eine BrickLink-Nummer, KEINE Rebrickable-Nummer. */
@@ -30,14 +27,8 @@ export interface WantedPosten {
   maxPreis: number | null;
 }
 
-/**
- * Der Inhalt zwischen `<name>` und dem nächsten `</name>` ab `ab`.
- *
- * Zwei Suchen nach festem Text statt `<name>([\s\S]*?)</name>`: Das faule
- * Muster setzt bei einem offenen Tag ohne Ende an JEDER Fundstelle neu an und
- * läuft bis ans Dateiende — quadratisch. Fehlt das Ende nach dem ersten Tag,
- * fehlt es auch nach jedem späteren; dann ist Schluss.
- */
+/** Zwei Suchen nach festem Text statt `<name>([\s\S]*?)</name>`: Das faule
+ * Muster setzt bei offenem Tag an jeder Fundstelle neu an — quadratisch. */
 function zwischen(text: string, name: string, ab: number):
     { inhalt: string; ende: number } | null {
   const auf = new RegExp(`<${name}>`, 'gi');
@@ -51,13 +42,11 @@ function zwischen(text: string, name: string, ab: number):
   return { inhalt: text.slice(auf.lastIndex, z.index), ende: zu.lastIndex };
 }
 
-/** Ein Textfeld aus einem ITEM-Block. */
 function feld(block: string, name: string): string | null {
   const m = zwischen(block, name, 0);
   if (!m) return null;
-  // Die fünf vordefinierten Entitäten. Mehr kommt in einer Wanted-Liste nicht
-  // vor; käme etwas, bliebe es stehen und fiele auf, statt still falsch zu
-  // werden. &amp; ZULETZT — sonst würde aus „&amp;lt;" ein „<".
+  // Nur die fünf vordefinierten Entitäten; &amp; ZULETZT, sonst würde aus
+  // „&amp;lt;" ein „<".
   return m.inhalt.trim()
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
@@ -66,19 +55,12 @@ function feld(block: string, name: string): string | null {
 
 export interface LeseErgebnis {
   posten: WantedPosten[];
-  /** Posten mit einer Art, die diese Anwendung nicht führt — je Code gezählt. */
   fremdeArten: Record<string, number>;
-  /** ITEM-Blöcke ohne ITEMID. */
   ohneNummer: number;
 }
 
-/**
- * Eine Wanted-Liste lesen.
- *
- * Wirft NICHT bei fremden Arten oder fehlenden Feldern: Eine Liste, die zu
- * neun Zehnteln brauchbar ist, soll zu neun Zehnteln ankommen. Was nicht
- * geht, steht im Ergebnis.
- */
+/** Wirft NICHT bei fremden Arten oder fehlenden Feldern: Eine zu neun Zehnteln
+ * brauchbare Liste soll zu neun Zehnteln ankommen; der Rest steht im Ergebnis. */
 export function leseWantedListe(xml: string): LeseErgebnis {
   const posten: WantedPosten[] = [];
   const fremdeArten: Record<string, number> = {};
@@ -103,17 +85,12 @@ export function leseWantedListe(xml: string): LeseErgebnis {
     posten.push({
       art,
       blId,
-      // Farbe 0 ist bei BrickLink „(Not Applicable)" und keine Farbe. Bei
-      // Sets steht ohnehin keine.
+      // Farbe 0 ist bei BrickLink „(Not Applicable)", keine Farbe.
       blFarbe: farbe !== null && Number.isFinite(farbe) && farbe > 0 ? farbe : null,
       menge: Number.isFinite(mengeRoh) && mengeRoh > 0 ? mengeRoh : 1,
-      // X heisst „egal". Als null weitergegeben, damit darüber die Einstellung
-      // des Kontos entscheidet und nicht diese Datei — dieselbe Regel wie beim
-      // Merklisten-Import.
+      // X heisst „egal": null, damit die Einstellung des Kontos entscheidet.
       zustand: zustandRoh === 'N' || zustandRoh === 'U' ? zustandRoh : null,
-      // -1.0000 heisst „kein Höchstpreis". Der Wert ist ohnehin kein
-      // Kaufpreis, sondern eine Preisgrenze beim Suchen — er wird NICHT als
-      // Kaufpreis übernommen (siehe die Begründung an der Route).
+      // MAXPRICE ist eine Suchgrenze, kein Kaufpreis — -1 heisst „keiner".
       maxPreis: Number.isFinite(preisRoh) && preisRoh > 0 ? preisRoh : null,
     });
   }
@@ -121,65 +98,44 @@ export function leseWantedListe(xml: string): LeseErgebnis {
   return { posten, fremdeArten, ohneNummer };
 }
 
-/** Wie sicher eine Zuordnung ist. */
 export type Sicherheit =
-  /** bl_zuordnung kennt die Nummer ausdrücklich. */
   | 'zuordnung'
-  /** bl_zuordnung sagt „keine abweichende Nummer" (bl_id IS NULL). */
   | 'gleich_vermerkt'
-  /** Die Nummer steht so im Rebrickable-Katalog — niemand hat BrickLink dazu
-   *  nachgesehen. WAHRSCHEINLICH, nicht sicher. */
+  /** Die Nummer steht so im Rebrickable-Katalog — wahrscheinlich, nicht sicher. */
   | 'katalogtreffer'
-  /**
-   * Rebrickable hat die Abbildung geliefert UND sie bestätigt: Der Treffer
-   * trägt die gesuchte Nummer in external_ids.BrickLink. Das ist so sicher wie
-   * Stufe 1, nur frisch geholt statt gespeichert — und deshalb eine eigene
-   * Stufe, damit im Bericht steht, was ein Abruf gekostet hat.
-   */
+  /** Abgebildet UND bestätigt (external_ids.BrickLink); eigene Stufe, damit der
+   * Bericht zeigt, was ein Abruf gekostet hat. */
   | 'rebrickable'
-  /**
-   * Der Mensch hat sie in der Vorschau EINGETRAGEN.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#sicherheit
-   */
+  /** Von Hand eingetragen — eigene Stufe, damit der Bericht nicht behauptet, der
+   * Katalog habe geliefert, was jemand getippt hat.
+   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#sicherheit */
   | 'korrigiert';
 
 export interface Aufloesung {
   posten: WantedPosten;
-  /** Die Rebrickable-Nummer — null, wenn lokal nichts zu finden war. */
   rbId: string | null;
-  /** Die Rebrickable-Farbnummer — null bei Sets und wenn nichts zu finden war. */
   rbFarbe: number | null;
-  /**
-   * Name und Farbwert zur Nummer — beide aus rb_colors.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#aufloesung
-   */
+  /** Reisen mit, weil die Teileliste den Farbnamen von der Zeile liest.
+   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#aufloesung */
   rbFarbName: string | null;
   rbFarbHex: string | null;
-  /** Woher die Nummer kommt. */
   sicherheit: Sicherheit | null;
-  /** Die Farbe liess sich nicht abbilden, die Nummer schon. */
   farbeOffen: boolean;
 }
 
-/**
- * Lokal auflösen — ohne jeden Abruf bei einem fremden Dienst.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#loeselokalauf
- */
+/** Ohne fremden Abruf; die drei Stufen bleiben getrennt, weil sie verschieden
+ * sicher sind.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#loeselokalauf */
 export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[]> {
   if (!posten.length) return [];
 
-  // Alles in DREI Abfragen statt in 224: Eine Abfrage je Posten wäre bei
-  // Marcos Datei 672 Rundläufe zur Datenbank.
+  // Drei Abfragen für die ganze Liste statt eine je Posten.
   const nummern = [...new Set(posten.map(p => p.blId))];
   const farben = [...new Set(posten.map(p => p.blFarbe).filter((f): f is number => f !== null))];
 
   const zuordnung = new Map<string, { rbId: string; sicherheit: Sicherheit }>();
-  for (const z of await db.all(
-    `SELECT art, rb_id, bl_id FROM bl_zuordnung
-      WHERE (bl_id = ANY($1) OR (bl_id IS NULL AND rb_id = ANY($1)))`, [nummern])
-    .catch(() => [])) {
+  for (const z of await repo.zuordnungen(nummern).catch(meldeUndLiefere('wanted:zuordnung', []))) {
     const schluessel = `${z.art}:${z.bl_id ?? z.rb_id}`;
-    // Eine ausdrückliche Zuordnung gewinnt gegen einen NULL-Vermerk.
     const stufe: Sicherheit = z.bl_id ? 'zuordnung' : 'gleich_vermerkt';
     const schon = zuordnung.get(schluessel);
     if (!schon || (schon.sicherheit !== 'zuordnung' && stufe === 'zuordnung')) {
@@ -187,19 +143,13 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
     }
   }
 
-  // Stufe 3 je Art im eigenen Katalog.
   const katalog = new Set<string>();
-  for (const [art, sql] of [
-    ['part', 'SELECT part_number AS n FROM part_catalog WHERE part_number = ANY($1)'],
-    ['fig',  'SELECT fig_number AS n FROM minifigs_catalog WHERE fig_number = ANY($1)'],
-    ['set',  'SELECT set_number AS n FROM set_catalog WHERE set_number = ANY($1)'],
-  ] as const) {
-    for (const z of await db.all(sql, [nummern]).catch(() => [])) katalog.add(`${art}:${z.n}`);
+  for (const art of ['part', 'fig', 'set'] as const) {
+    for (const n of await repo.nummernImKatalog(art, nummern).catch(meldeUndLiefere('wanted:katalog', []))) katalog.add(`${art}:${n}`);
   }
 
   const farbMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
-  for (const z of await db.all(
-    'SELECT id, name, rgb, bl_color_id FROM rb_colors WHERE bl_color_id = ANY($1)', [farben]).catch(() => [])) {
+  for (const z of await repo.farbenZuBlFarben(farben).catch(meldeUndLiefere('wanted:farben', []))) {
     farbMap.set(Number(z.bl_color_id), {
       id: Number(z.id), name: z.name ?? null, hex: z.rgb ?? null,
     });
@@ -222,14 +172,10 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
   });
 }
 
-/**
- * Die offenen Posten über Rebrickable auflösen.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt-2
- */
-/**
- * Wie weit ist der Import? — für den Balken in der Oberfläche.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#wantedfortschritt
- */
+/** Rebrickable ist der einzige direkte Weg von BL- zu RB-Nummern.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt-2 */
+/** Zwei Phasen, weil die Rebrickable-Abrufe ungleich länger dauern.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#wantedfortschritt */
 export type WantedFortschritt = {
   phase: 'rebrickable' | 'schreiben';
   fertig: number;
@@ -243,8 +189,8 @@ export async function loeseUeberRebrickableAuf(
   let gefragt = 0, gefunden = 0;
 
   const ergebnis = [...auf];
-  // Wie viele Abrufe es HÖCHSTENS werden. Genau die Bedingungen der Schleife
-  // darunter, sonst zählt der Balken gegen eine andere Zahl als er füllt.
+  // Genau die Bedingungen der Schleife darunter, sonst zählt der Balken gegen
+  // eine andere Zahl als er füllt.
   const gesamt = Math.min(grenze,
     ergebnis.filter(a => a.rbId === null && a.posten.art === 'part').length);
   for (let i = 0; i < ergebnis.length; i++) {
@@ -255,67 +201,49 @@ export async function loeseUeberRebrickableAuf(
 
     gefragt++;
     let rbId: string | null = null;
-    // Ein Abruf, der scheitert (Netz, Kontingent, 500), beendet NICHT den
-    // ganzen Lauf: Die übrigen Posten sind davon unberührt, und ein Import,
-    // der an Posten 150 von 224 abbricht, lässt den Nutzer im Dunkeln.
+    // Ein gescheiterter Abruf beendet nicht den Lauf: Die übrigen Posten sind
+    // davon unberührt.
     try { rbId = await blTeilZuRb(a.posten.blId); } catch { rbId = null; }
     if (rbId) {
       gefunden++;
       ergebnis[i] = { ...a, rbId, sicherheit: 'rebrickable' };
     }
-    // NACH dem Abruf melden, nicht davor: „37 von 50" soll heissen, dass 37
-    // erledigt sind — nicht, dass der 37. gerade anfängt.
+    // Nach dem Abruf: „37 von 50" heisst 37 erledigt.
     fortschritt?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
   }
   return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: blFilterWirkungslos() };
 }
 
-/**
- * Was aus einem Posten geworden ist.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#postenergebnis
- */
+/** Bild und Name reisen mit, weil die Vorschau sie wie die Teileliste zeigt.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#postenergebnis */
 export interface PostenErgebnis {
   blId: string;
   art: WantedArt;
-  /** Die BrickLink-Farbnummer aus der Datei — die Vorschau zeigt sie an. */
   blFarbe: number | null;
   menge: number;
   zustand: string | null;
-  /**
-   * MAXPRICE aus der Datei, je Stück — oder null.
-   *
-   * Steht im Bericht, seit die Vorschau eine Preisspalte hat (Marcos Wunsch
-   * vom 21.10.). Vorher wurde der Wert gelesen und weitergereicht, aber nie
-   * gezeigt; wer ihn in der Vorschau ändern soll, muss ihn erst einmal sehen.
-   */
+  /** Je Stück; steht im Bericht, weil die Vorschau ihn änderbar zeigt. */
   maxPreis: number | null;
   rbId: string | null;
   rbFarbe: number | null;
   sicherheit: Sicherheit | null;
-  /** 'angelegt' | 'aufgestockt' | 'offen' | 'fehler' */
   ausgang: 'angelegt' | 'aufgestockt' | 'offen' | 'fehler';
   grund?: string;
-  /**
-   * Derselbe Grund als Kennung, für die Oberfläche.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#postenergebnis-2
-   */
+  /** Kennung statt Satz, damit die Oberfläche in der Sprache des Betrachters setzt.
+   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#postenergebnis-2 */
   grundCode?: 'nummer_unbekannt' | 'farbe_unbekannt';
   /** Beschreibung aus dem Katalog — leer, wenn er die Nummer nicht kennt. */
   name?: string | null;
   bild?: string | null;
-  /**
-   * Name und Bild wurden unter der BRICKLINK-Nummer gefunden, nicht über eine
-   * Abbildung. Die Oberfläche muss das kennzeichnen — siehe beschreibePosten.
-   */
+  /** Name und Bild unter der BL-Nummer gefunden, nicht über eine Abbildung — die
+   * Oberfläche muss das kennzeichnen. */
   nameGeraten?: boolean;
   farbName?: string | null;
   farbHex?: string | null;
 }
 
-/**
- * Eine Korrektur aus der Vorschau.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#korrektur
- */
+/** Adressiert über den Index: Dieselbe Nummer darf mehrfach in der Liste stehen.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#korrektur */
 export interface Korrektur {
   index: number;
   /** Gegenprobe — muss zu dem Posten an [index] passen. */
@@ -323,16 +251,13 @@ export interface Korrektur {
   art: WantedArt;
   rbId?: string | null;
   rbFarbe?: number | null;
-  /**
-   * Die Werte AUS DER DATEI, von Hand geändert — Marcos Wunsch vom 21.10.:
-   * „Alle Spalten sollen bearbeitbar sein in der Vorschau, damit der Inhalt
-   * vor dem Import korrigiert werden kann."
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#korrektur-2
-   */
+  /** Die Werte aus der Datei, von Hand geändert, damit ein Vertipper nicht ein
+   * erneutes Einlesen erzwingt.
+   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#korrektur-2 */
   menge?: number;
-  /** 'N' | 'U' | null — null heisst „Standard des Kontos". */
+  /** null heisst „Standard des Kontos". */
   zustand?: string | null;
-  /** Preis je Stück; null heisst „keiner, hol den Marktpreis". */
+  /** null heisst „keiner, hol den Marktpreis". */
   kaufpreis?: number | null;
 }
 
@@ -340,53 +265,36 @@ export interface WantedBericht {
   gelesen: number;
   fremdeArten: Record<string, number>;
   ohneNummer: number;
-  /** Wie viele Posten je Sicherheitsstufe aufgelöst wurden. */
   stufen: Record<string, number>;
-  /** Posten mit Nummer, aber ohne abbildbare Farbe. */
   farbeOffen: number;
-  /** Nicht aufgelöst — mit ihren BrickLink-Nummern, damit man sie nachsehen kann. */
+  /** Mit BL-Nummern, damit man sie nachsehen kann. */
   offen: { blId: string; art: WantedArt; blFarbe: number | null }[];
-  /** Nur gesetzt, wenn über Rebrickable gefragt wurde. */
   rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean };
-  /**
-   * Nur gesetzt, wenn Korrekturen mitkamen.
-   *
-   * `abgewiesen` ist nicht leer, wenn eine Korrektur auf einen Posten zeigte,
-   * der dort nicht steht — dann wurde zwischen Vorschau und Schreiben eine
-   * andere Datei gewählt. Sie wird GENANNT und nicht übergangen.
-   */
+  /** `abgewiesen`: Korrekturen, deren Posten nicht passte — dann wurde eine andere
+   * Datei gewählt. Sie werden GENANNT, nicht übergangen. */
   korrekturen?: { angewandt: number; abgewiesen: Korrektur[] };
   angelegt: number;
   aufgestockt: number;
   fehler: number;
   /** true = es wurde NICHTS geschrieben. */
   vorschau: boolean;
-  /**
-   * true = jemand hat abgebrochen, der Rest der Liste blieb liegen.
-   *
-   * Steht nur dann da. Die Zahlen oben (angelegt/aufgestockt/fehler) gelten
-   * für das, was BIS dahin geschehen ist — und das bleibt stehen.
-   */
+  /** Die Zahlen oben gelten für das, was bis zum Abbruch geschah. */
   abgebrochen?: boolean;
-  /**
-   * Der Standardzustand des Kontos — fuer die Vorschau.
-   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#wantedbericht
-   */
+  /** Damit die Vorschau zeigt, was angelegt WÜRDE, auch wenn die Datei keinen
+   * Zustand nennt.
+   * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#wantedbericht */
   standardZustand: 'N' | 'U';
   posten: PostenErgebnis[];
 }
 
-/**
- * Zu jedem aufgelösten Posten Name, Bild und Farbbezeichnung holen.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#beschreibeposten
- */
+/** Drei Abfragen für die ganze Liste, nicht eine je Posten.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#beschreibeposten */
 export async function beschreibePosten(
   auf: Aufloesung[],
 ): Promise<Map<number, { name: string | null; bild: string | null; geraten: boolean }>> {
   const raus = new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
 
-  // Die Nummern je Art sammeln. Ohne Rebrickable-Nummer gilt die
-  // BrickLink-Nummer als Schluessel — siehe oben.
+  // Ohne Rebrickable-Nummer gilt die BrickLink-Nummer als Schlüssel.
   const teile: { i: number; nr: string; farbe: number | null; geraten: boolean }[] = [];
   const figuren: { i: number; nr: string; geraten: boolean }[] = [];
   const sets: { i: number; nr: string; geraten: boolean }[] = [];
@@ -401,42 +309,28 @@ export async function beschreibePosten(
 
   if (teile.length) {
     const nummern = [...new Set(teile.map(t => t.nr))];
-    const zeilen = await db.all(`
-      SELECT p.part_number,
-             COALESCE(pc.part_name, rp.name)        AS name,
-             COALESCE(rp.part_img_url, '')          AS bild_allgemein
-        FROM (SELECT UNNEST($1::text[]) AS part_number) p
-        LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-        LEFT JOIN rb_parts     rp ON rp.part_num    = p.part_number`,
-      [nummern]).catch(() => []);
+    const zeilen = await repo.teileBeschreibung(nummern).catch(meldeUndLiefere('wanted:teile', []));
     const nachNummer = new Map(zeilen.map(z => [z.part_number, z]));
-    // Die Farbbilder in EINER Abfrage: (Nummer, Farbe) als Paare.
     const paare = teile.filter(t => t.farbe !== null);
     const bilder = new Map<string, string>();
     if (paare.length) {
-      const farbZeilen = await db.all(`
-        SELECT part_number, color_id, COALESCE(image_local, image_url) AS bild
-          FROM part_color_catalog
-         WHERE (part_number, color_id) IN (
-                 SELECT UNNEST($1::text[]), UNNEST($2::int[]))`,
-        [paare.map(t => t.nr), paare.map(t => t.farbe)]).catch(() => []);
+      const farbZeilen = await repo.teilFarbbilder(paare.map(t => t.nr), paare.map(t => t.farbe as number))
+        .catch(meldeUndLiefere('wanted:farbbilder', []));
       for (const z of farbZeilen) if (z.bild) bilder.set(`${z.part_number}|${z.color_id}`, z.bild);
     }
     for (const t of teile) {
       const z = nachNummer.get(t.nr);
       const name = z?.name ?? null;
       const bild = bilder.get(`${t.nr}|${t.farbe}`) || z?.bild_allgemein || null;
-      // `geraten` nur dann, wenn ueberhaupt etwas gefunden wurde: Eine leere
-      // Zeile „geraten" zu nennen waere eine Behauptung ueber nichts.
+      // `geraten` nur bei einem Fund: Eine leere Zeile „geraten" zu nennen wäre
+      // eine Behauptung über nichts.
       raus.set(t.i, { name, bild, geraten: t.geraten && !!(name || bild) });
     }
   }
 
   if (figuren.length) {
-    const zeilen = await db.all(
-      `SELECT fig_number, fig_name, COALESCE(image_local, image_url) AS bild
-         FROM minifigs_catalog WHERE fig_number = ANY($1)`,
-      [[...new Set(figuren.map(f => f.nr))]]).catch(() => []);
+    const zeilen = await repo.figurenBeschreibung([...new Set(figuren.map(f => f.nr))])
+      .catch(meldeUndLiefere('wanted:figuren', []));
     const nach = new Map(zeilen.map(z => [z.fig_number, z]));
     for (const f of figuren) {
       const z = nach.get(f.nr);
@@ -447,14 +341,7 @@ export async function beschreibePosten(
 
   if (sets.length) {
     const nummern = [...new Set(sets.map(x => x.nr))];
-    const zeilen = await db.all(`
-      SELECT s.set_number,
-             COALESCE(sc.name, rs.name)                                AS name,
-             COALESCE(sc.image_local, sc.image_url, rs.set_img_url)     AS bild
-        FROM (SELECT UNNEST($1::text[]) AS set_number) s
-        LEFT JOIN set_catalog sc ON sc.set_number = s.set_number
-        LEFT JOIN rb_sets     rs ON rs.set_num    = s.set_number`,
-      [nummern]).catch(() => []);
+    const zeilen = await repo.setsBeschreibung(nummern).catch(meldeUndLiefere('wanted:sets', []));
     const nach = new Map(zeilen.map(z => [z.set_number, z]));
     for (const x of sets) {
       const z = nach.get(x.nr);
@@ -466,10 +353,9 @@ export async function beschreibePosten(
   return raus;
 }
 
-/**
- * Die Korrekturen aus der Vorschau auf die Auflösung legen.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#wendekorrekturenan
- */
+/** Jede Korrektur wird gegen Art und Nummer am Index geprüft, sonst wirkte sie
+ * nach Dateiwechsel lautlos auf einen fremden Posten.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#wendekorrekturenan */
 function wendeKorrekturenAn(
   auf: Aufloesung[], korrekturen: Korrektur[],
 ): { auf: Aufloesung[]; angewandt: number; abgewiesen: Korrektur[] } {
@@ -479,19 +365,13 @@ function wendeKorrekturenAn(
   for (const k of korrekturen) {
     const a = ergebnis[k.index];
     if (!a || a.posten.art !== k.art || a.posten.blId !== k.blId) { abgewiesen.push(k); continue; }
-    // Nur was DASTEHT wird geändert: `undefined` heisst „nicht angefasst",
-    // `null` heisst „ausdrücklich geleert". Ohne die Unterscheidung löschte
-    // eine Korrektur, die nur die Farbe setzt, die Nummer mit.
+    // `undefined` heisst „nicht angefasst", `null` „ausdrücklich geleert" — sonst
+    // löschte eine Korrektur der Farbe die Nummer mit.
     const rbId    = k.rbId    === undefined ? a.rbId    : (k.rbId || null);
     const rbFarbe = k.rbFarbe === undefined ? a.rbFarbe : (k.rbFarbe ?? null);
 
-    // ── Die Werte aus der Datei (Marcos Wunsch vom 21.10.) ─────────────────
-    //
-    // Eine UNBRAUCHBARE Angabe weist die ganze Korrektur ab, statt sie still
-    // zurechtzubiegen: Eine Menge 0 ist ein Vertipper, und ein Posten, der
-    // danach mit Menge 1 im Bestand steht, sagt das niemandem. Abgewiesene
-    // Korrekturen stehen im Bericht (`korrekturen.abgewiesen`) — die
-    // Oberfläche zeigt sie, und zwar seit es sie gibt.
+    // Eine unbrauchbare Angabe weist die ganze Korrektur ab statt sie still
+    // zurechtzubiegen: Menge 0 ist ein Vertipper, keine 1.
     let menge = a.posten.menge;
     if (k.menge !== undefined) {
       const m = Math.trunc(Number(k.menge));
@@ -500,10 +380,8 @@ function wendeKorrekturenAn(
     }
     let zustand = a.posten.zustand;
     if (k.zustand !== undefined) {
-      // null/'' heisst ausdrücklich „Standard des Kontos" — dieselbe Lesart
-      // wie CONDITION=X in der Datei. Alles andere als N/U ist ein Fehler
-      // und nicht etwa „egal": Wer 'X' tippt, meint den Standard und
-      // schreibt dann auch nichts hin.
+      // null/'' heisst „Standard des Kontos" wie CONDITION=X; alles andere als N/U
+      // ist ein Fehler, nicht „egal".
       if (k.zustand === null || k.zustand === '') zustand = null;
       else if (k.zustand === 'N' || k.zustand === 'U') zustand = k.zustand;
       else { abgewiesen.push(k); continue; }
@@ -513,8 +391,7 @@ function wendeKorrekturenAn(
       if (k.kaufpreis === null || (k.kaufpreis as unknown) === '') maxPreis = null;
       else {
         const p = Number(k.kaufpreis);
-        // 0 ist hier KEIN Preis, sondern „keiner" — dieselbe Lesart wie beim
-        // Leser (`preisRoh > 0`), wo MAXPRICE=-1 und 0 zu null werden.
+        // 0 heisst „keiner", wie MAXPRICE beim Leser.
         if (!Number.isFinite(p) || p < 0) { abgewiesen.push(k); continue; }
         maxPreis = p > 0 ? p : null;
       }
@@ -527,22 +404,13 @@ function wendeKorrekturenAn(
 
     ergebnis[k.index] = {
       ...a, rbId, rbFarbe,
-      // Der POSTEN selbst ändert sich mit — das ist neu. Bis zum 21.10.
-      // betraf eine Korrektur nur die AUFLÖSUNG (Nummer, Farbe); Menge,
-      // Zustand und Preis galten als das, was in der Datei stand.
       ...(postenGeaendert ? { posten: { ...a.posten, menge, zustand, maxPreis } } : {}),
-      // Der Name der Farbe gilt nicht mehr: Er gehoerte zur alten Nummer.
-      // Er wird unten neu geholt (farbenNachtragen), damit die Zeile nicht
-      // mit „Red" an einer blauen Farbnummer herausgeht.
+      // Der Farbname gehörte zur alten Nummer und wird unten neu geholt.
       rbFarbName: rbFarbe === a.rbFarbe ? a.rbFarbName : null,
       rbFarbHex:  rbFarbe === a.rbFarbe ? a.rbFarbHex  : null,
-      // `korrigiert` NUR bei einer geänderten Nummer: Diese Stufe entscheidet,
-      // ob die Zuordnung gemerkt wird (siehe merkeNummer beim Anlegen). Eine
-      // geänderte Menge sagt nichts über die Nummer aus — sie als
-      // „nachgeschlagen" einzutragen wäre eine Behauptung über etwas, das
-      // niemand angesehen hat.
+      // `korrigiert` nur bei geänderter Nummer: Die Stufe entscheidet, ob die
+      // Zuordnung gemerkt wird; eine geänderte Menge sagt nichts über die Nummer.
       sicherheit: nummerGeaendert ? 'korrigiert' : a.sicherheit,
-      // Eine eingetragene Farbe ist nicht mehr offen.
       farbeOffen: rbId !== null && a.posten.blFarbe !== null && rbFarbe === null,
     };
     angewandt++;
@@ -550,21 +418,13 @@ function wendeKorrekturenAn(
   return { auf: ergebnis, angewandt, abgewiesen };
 }
 
-/**
- * Farbbezeichnung und Farbwert zu den korrigierten Farben nachholen.
- *
- * Die Auflösung holt sie für die Farben aus der DATEI; eine von Hand
- * eingetragene Farbnummer war dort nicht dabei. Ohne diesen Schritt ginge sie
- * ohne Namen an den Anleger — und das ist genau der Farbpunkt ohne
- * Beschriftung, der am 19.10. behoben wurde.
- */
+/** Eine von Hand eingetragene Farbe war in der Auflösung nicht dabei; ohne
+ * diesen Schritt ginge sie ohne Namen an den Anleger. */
 async function farbenNachtragen(auf: Aufloesung[]): Promise<Aufloesung[]> {
   const offen = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null)
                    .map(a => a.rbFarbe as number);
   if (!offen.length) return auf;
-  const zeilen = await db.all(
-    'SELECT id, name, rgb FROM rb_colors WHERE id = ANY($1)', [[...new Set(offen)]])
-    .catch(() => []);
+  const zeilen = await repo.farbenZuIds([...new Set(offen)]).catch(meldeUndLiefere('wanted:farbnamen', []));
   const nach = new Map(zeilen.map(z => [Number(z.id), z]));
   return auf.map(a => {
     if (a.rbFarbe === null || a.rbFarbName !== null) return a;
@@ -573,21 +433,17 @@ async function farbenNachtragen(auf: Aufloesung[]): Promise<Aufloesung[]> {
   });
 }
 
-/** Die Stufen zählen — eine Zeile, die sonst dreimal dastünde. */
 function zaehleStufen(auf: Aufloesung[]): Record<string, number> {
   const z: Record<string, number> = {};
   for (const a of auf) if (a.sicherheit) z[a.sicherheit] = (z[a.sicherheit] ?? 0) + 1;
   return z;
 }
 
-/**
- * Eine Wanted-Liste einlesen — als Vorschau oder wirklich.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt-3
- */
-/**
- * Die drei Anleger, die der Import braucht.
- * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#anleger
- */
+/** Vorschau und Ernstfall gehen denselben Weg, damit die Vorschau nichts
+ * verspricht, was der Import nicht tut.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt-3 */
+/** Als Schnittstelle: Die Route steckt die echten Funktionen hinein, ein Test Zähler.
+ * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#anleger */
 export interface Anleger {
   teil: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   figur: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
@@ -599,27 +455,16 @@ export async function importiereWantedListe(
   uid: number, xml: string,
   opt: {
     vorschau?: boolean; ueberRebrickable?: boolean; anleger?: Anleger;
-    /** Was der Mensch in der Vorschau geändert hat. */
     korrekturen?: Korrektur[];
-    /**
-     * Eine eingetragene Rebrickable-Nummer MERKEN.
-     * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste
-     */
+    /** Hereingegeben, damit diese Funktion bis auf den Anleger schreibfrei bleibt.
+     * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste */
     merkeNummer?: (art: WantedArt, rbId: string, blId: string) => Promise<unknown>;
-    /**
-     * Wie weit es ist — für den Balken in der Oberfläche (siehe
-     * WantedFortschritt). Wird SYNCHRON gerufen und darf nichts werfen; der
-     * Aufrufer schreibt damit eine Zeile in seinen Strom.
-     * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-2
-     */
+    /** Wird SYNCHRON gerufen und darf nichts werfen.
+     * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-2 */
     fortschritt?: (stand: WantedFortschritt) => void;
-    /**
-     * Der Fortschritt steht seit dem 20.10. auch im Auftragsdatensatz, den
-     * beide Oberflächen als Balken zeigen (src/auftraege/importAuftrag.ts), und dieser
-     * Balken trägt ein Kreuz. Ein Import, der das Kreuz nicht beachtet, hätte
-     * einen Abbrechen-Knopf, der lügt.
-     * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-3
-     */
+    /** Der Balken in der Oberfläche trägt ein Kreuz; ohne diese Frage hätte er einen
+     * Abbrechen-Knopf, der lügt.
+     * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-3 */
     abbruch?: () => Promise<boolean>;
   } = {},
 ): Promise<WantedBericht> {
@@ -634,11 +479,8 @@ export async function importiereWantedListe(
                     filterWirkungslos: r.filterWirkungslos };
   }
 
-  // ── Korrekturen NACH dem Auflösen, VOR dem Zählen ──────────────────────
-  //
-  // Nach dem Auflösen, weil sie es überstimmen sollen. Vor dem Zählen, weil
-  // der Bericht sonst die Zahlen von vor der Korrektur nennt — und Marco
-  // liest ihn, um zu entscheiden.
+  // Nach dem Auflösen, weil Korrekturen es überstimmen; vor dem Zählen, weil der
+  // Bericht sonst Zahlen von vor der Korrektur nennt.
   let korrekturen: WantedBericht['korrekturen'];
   if (opt.korrekturen?.length) {
     const k = wendeKorrekturenAn(auf, opt.korrekturen);
@@ -663,20 +505,16 @@ export async function importiereWantedListe(
   };
 
   let lfd = -1;
-  /** Ein Posten ist durch. `lfd` zählt ab 0, der Balken ab 1. */
   const melde = () => opt.fortschritt?.(
     { phase: 'schreiben', fertig: lfd + 1, gesamt: auf.length });
 
   for (const a of auf) {
-    // Alle zehn Posten nachsehen, ob jemand abgebrochen hat. Die Zählung geht
-    // über `lfd`, also über ALLE Posten — auch die übersprungenen; sonst hinge
-    // der Takt daran, wie viele Posten auflösbar waren.
+    // Der Takt zählt über ALLE Posten, sonst hinge er daran, wie viele auflösbar waren.
     if (opt.abbruch && !opt.vorschau && lfd >= 0 && (lfd + 1) % 10 === 0) {
       if (await opt.abbruch()) { bericht.abgebrochen = true; break; }
     }
-    // Eine Farbe, die sich nicht abbilden laesst, wird NICHT erfunden
-    // NACHGESTELLT: Liste mit 3001 in BL-Farbe 5 (abbildbar) und BL-Farbe 85
-    // (nicht abbildbar) ergab zwei Zeilen, color_id 4 und color_id 0.
+    // Eine nicht abbildbare Farbe wird nicht erfunden: color_id 0 ist bei
+    // Rebrickable Schwarz, nicht „keine Farbe".
     // Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-grund
     const grund = a.rbId === null
       ? 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt'
@@ -686,13 +524,10 @@ export async function importiereWantedListe(
     const grundCode: PostenErgebnis['grundCode'] = a.rbId === null
       ? 'nummer_unbekannt'
       : a.farbeOffen ? 'farbe_unbekannt' : undefined;
-    // Eigene Bindung statt nur eines Wahrheitswerts: Der Pruefer verengt
-    // `a.rbId` ueber eine Hilfsvariable NICHT, und `rbId` ist weiter unten als
-    // `string` gebraucht.
+    // Eigene Bindung: TypeScript verengt `a.rbId` über eine Hilfsvariable nicht.
     const rbId = a.rbId;
     const offen = rbId === null || a.farbeOffen;
     lfd++;
-    // Name und Bild kommen NACH der Schleife dazu — siehe dort, warum.
     const zeile: PostenErgebnis = {
       blId: a.posten.blId, art: a.posten.art,
       blFarbe: a.posten.blFarbe, menge: a.posten.menge, zustand: a.posten.zustand ?? null,
@@ -701,18 +536,13 @@ export async function importiereWantedListe(
       sicherheit: a.sicherheit, ausgang: a.rbId === null ? 'offen' : 'angelegt',
       ...(grund ? { grund } : {}),
       ...(grundCode ? { grundCode } : {}),
-      // Die Farbangaben stehen auch ohne Vorschau da — sie kosten nichts, die
-      // Auflösung hat sie ohnehin geholt.
       farbName: a.rbFarbName, farbHex: a.rbFarbHex,
     };
     if (rbId === null || a.farbeOffen || opt.vorschau) {
-      // In der Vorschau steht „angelegt" fuer „wuerde angelegt" — geschrieben
-      // wird nichts, und `vorschau: true` im Bericht sagt das.
+      // In der Vorschau heisst „angelegt" „würde angelegt".
       if (offen) zeile.ausgang = 'offen';
       bericht.posten.push(zeile);
-      // Auch der übersprungene Posten ist ERLEDIGT. Zählte der Balken nur die
-      // geschriebenen, bliebe er bei einer Liste mit vielen offenen Posten vor
-      // dem Ende stehen — und sähe aus wie ein hängender Import.
+      // Auch ein übersprungener Posten ist erledigt, sonst bliebe der Balken stehen.
       melde();
       continue;
     }
@@ -721,13 +551,8 @@ export async function importiereWantedListe(
       if (!opt.anleger) throw new Error('Kein Anleger übergeben — siehe Anleger');
       let rueckmeldung: unknown;
       if (a.posten.art === 'part') {
-        // `color_name`/`color_hex` reisen MIT. Ohne sie bleibt die Spalte
-        // leer, und die Teileliste liest den Namen von dort — der Hex-Wert
-        // faellt auf den Katalog zurueck, der Name NICHT. Ergebnis war ein
-        // Farbpunkt ohne Beschriftung (Marcos Bildschirmfoto).
-        //
-        // `a.rbFarbe` ist hier nie null: Ein Posten ohne abbildbare Farbe ist
-        // oben schon als offen ausgeschieden.
+        // Der Farbname reist mit: Die Teileliste liest ihn von der Zeile, ohne ihn
+        // fällt sie nicht auf den Katalog zurück.
         rueckmeldung = await opt.anleger.teil(uid, {
           part_number: rbId,
           color_id: a.rbFarbe ?? 0,
@@ -735,9 +560,8 @@ export async function importiereWantedListe(
           ...(a.rbFarbHex ? { color_hex: a.rbFarbHex } : {}),
           quantity: a.posten.menge,
           condition: a.posten.zustand ?? undefined,
-          // MAXPRICE als Preis/Stück — siehe oben. `undefined` und nicht
-          // `null`: Die Anleger unterscheiden „nichts angegeben" (dann gilt
-          // der Marktpreis) von einer ausdrücklichen Null.
+          // `undefined` statt `null`: Die Anleger unterscheiden „nichts angegeben"
+          // (Marktpreis) von einer ausdrücklichen Null.
           ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
         });
       } else if (a.posten.art === 'fig') {
@@ -751,18 +575,14 @@ export async function importiereWantedListe(
         rueckmeldung = await opt.anleger.set(uid, rbId, a.posten.menge,
                                              a.posten.zustand, a.posten.maxPreis);
       }
-      // Angelegt oder aufgestockt — der Anleger weiss es, und bis zum 19.10.
-      // wurde es nicht gefragt: Ein zweiter Import derselben Liste meldete
-      // `angelegt: 2, aufgestockt: 0`, obwohl beide Posten nur aufgestockt
-      // wurden (nachgestellt). Die Zahl, die Marco liest, war falsch.
+      // Der Anleger weiss, ob angelegt oder aufgestockt; ohne die Frage zählte ein
+      // zweiter Import alles als angelegt.
       const wieAngelegt = (rueckmeldung as { action?: string } | null | undefined)?.action !== 'updated';
       if (wieAngelegt) bericht.angelegt++; else bericht.aufgestockt++;
       zeile.ausgang = wieAngelegt ? 'angelegt' : 'aufgestockt';
 
-      // Warum 'rebrickable' dazugehört
-      // Dass es eine Abbildung ist und keine Vermutung, steht an blTeilZuRb
-      // selbst: „Jeder Treffer muss in seinen external_ids.BrickLink die
-      // GESUCHTE Nummer tragen" — nachgeschlagen und gegengeprüft, nur von …
+      // Auch 'rebrickable' wird gemerkt: blTeilZuRb prüft jeden Treffer gegen die
+      // gesuchte BL-Nummer, es ist eine Abbildung, keine Vermutung.
       // Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-4
       if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.merkeNummer) {
         await opt.merkeNummer(a.posten.art, rbId, a.posten.blId)
@@ -774,16 +594,12 @@ export async function importiereWantedListe(
       zeile.grund = e instanceof Error ? e.message : String(e);
     }
     bericht.posten.push(zeile);
-    // Nach dem Anlegen UND nach einem Fehlschlag: Der Posten ist in beiden
-    // Fällen abgearbeitet. Stünde die Meldung im try, bliebe der Balken bei
-    // einer Liste mit Fehlern stehen.
+    // Nach Erfolg UND Fehlschlag, sonst bliebe der Balken bei Fehlern stehen.
     melde();
   }
 
-  // Die Annahme war falsch. Der Dialog bleibt nach dem Schreiben offen und
-  // zeichnet dieselbe Tabelle mit der ANTWORT neu (zeichneTabelle in
-  // public/js/18-wanted-xml.js). Wer dort hinsieht, sieht also sehr wohl
-  // etwas — und seit es diese Regel gab, sah er leere Zellen. GEMESSEN:
+  // Auch nach dem Schreiben: Der Dialog zeichnet dieselbe Tabelle mit der
+  // Antwort neu und zeigte sonst leere Zellen.
   // Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-beschreibung
   const beschreibung = await beschreibePosten(auf);
   bericht.posten.forEach((zeile, i) => {

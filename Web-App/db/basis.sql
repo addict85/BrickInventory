@@ -442,7 +442,7 @@ CREATE TABLE public.catalog_cache (
     theme text,
     pieces integer,
     image_url text,
-    is_gear integer DEFAULT 0,
+    is_gear boolean DEFAULT false NOT NULL,
     bl_type text,
     fetched_at timestamp with time zone DEFAULT now(),
     CONSTRAINT catalog_cache_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
@@ -478,6 +478,20 @@ CREATE TABLE public.household_former_links (
     sub_user_id integer NOT NULL,
     via_user_id integer,
     created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+--
+-- Name: idempotenz; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.idempotenz (
+    user_id integer NOT NULL,
+    schluessel text NOT NULL,
+    anfrage text NOT NULL,
+    status integer,
+    antwort text,
+    angelegt timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT idempotenz_schluessel_check CHECK (((length(schluessel) >= 1) AND (length(schluessel) <= 100)))
 );
 
 --
@@ -984,11 +998,10 @@ CREATE TABLE public.parts_summary (
     category_name text,
     image_url text,
     image_local text,
-    is_spare integer DEFAULT 0 NOT NULL,
+    is_spare boolean DEFAULT false NOT NULL,
     total_quantity bigint DEFAULT 0,
     in_sets text,
-    storage text,
-    CONSTRAINT parts_summary_ersatzteil_null_eins CHECK ((is_spare = ANY (ARRAY[0, 1])))
+    storage text
 );
 
 --
@@ -1177,7 +1190,7 @@ CREATE TABLE public.rb_colors (
     id integer NOT NULL,
     name text,
     rgb text,
-    is_trans text,
+    is_trans boolean DEFAULT false NOT NULL,
     bl_color_id integer
 );
 
@@ -1231,9 +1244,8 @@ CREATE TABLE public.rb_inventory_parts (
     part_num text NOT NULL,
     color_id integer,
     quantity integer,
-    is_spare integer DEFAULT 0 NOT NULL,
-    img_url text,
-    CONSTRAINT rb_inventory_parts_ersatzteil_null_eins CHECK ((is_spare = ANY (ARRAY[0, 1])))
+    is_spare boolean DEFAULT false NOT NULL,
+    img_url text
 );
 
 --
@@ -1407,10 +1419,9 @@ CREATE TABLE public.set_teile (
     set_number text NOT NULL,
     part_number text NOT NULL,
     color_id integer NOT NULL,
-    is_spare integer DEFAULT 0 NOT NULL,
+    is_spare boolean DEFAULT false NOT NULL,
     quantity integer DEFAULT 1,
     updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT set_teile_ersatzteil_null_eins CHECK ((is_spare = ANY (ARRAY[0, 1]))),
     CONSTRAINT set_teile_setnummer_mit_version CHECK ((set_number ~ '-[0-9]+$'::text))
 );
 
@@ -1615,18 +1626,15 @@ CREATE TABLE public.users (
     first_name text,
     last_name text,
     password_hash text NOT NULL,
-    is_admin integer DEFAULT 0 NOT NULL,
-    is_active integer DEFAULT 1 NOT NULL,
-    email_verified integer DEFAULT 0 NOT NULL,
+    is_admin boolean DEFAULT false NOT NULL,
+    is_active boolean DEFAULT true NOT NULL,
+    email_verified boolean DEFAULT false NOT NULL,
     verification_token text,
     token_expires timestamp with time zone,
     reset_token text,
     reset_token_expires timestamp with time zone,
-    must_change_password integer DEFAULT 0,
-    created_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT users_email_verified_schalter CHECK ((email_verified = ANY (ARRAY[0, 1]))),
-    CONSTRAINT users_is_active_schalter CHECK ((is_active = ANY (ARRAY[0, 1]))),
-    CONSTRAINT users_is_admin_schalter CHECK ((is_admin = ANY (ARRAY[0, 1])))
+    must_change_password boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now()
 );
 
 --
@@ -2070,6 +2078,13 @@ ALTER TABLE ONLY public.gutschein_guthaben_schranke
 
 ALTER TABLE ONLY public.household_former_links
     ADD CONSTRAINT household_former_links_pkey PRIMARY KEY (main_user_id, sub_user_id);
+
+--
+-- Name: idempotenz idempotenz_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.idempotenz
+    ADD CONSTRAINT idempotenz_pkey PRIMARY KEY (user_id, schluessel);
 
 --
 -- Name: image_misses image_misses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -2608,6 +2623,12 @@ CREATE INDEX idx_household_former_sub ON public.household_former_links USING btr
 --
 
 CREATE INDEX idx_household_former_via ON public.household_former_links USING btree (via_user_id);
+
+--
+-- Name: idx_idempotenz_angelegt; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_idempotenz_angelegt ON public.idempotenz USING btree (angelegt);
 
 --
 -- Name: idx_image_wanted_alter; Type: INDEX; Schema: public; Owner: -
@@ -3310,6 +3331,13 @@ ALTER TABLE ONLY public.household_former_links
     ADD CONSTRAINT household_former_links_via_user_id_fkey FOREIGN KEY (via_user_id) REFERENCES public.users(id) ON DELETE SET NULL;
 
 --
+-- Name: idempotenz idempotenz_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.idempotenz
+    ADD CONSTRAINT idempotenz_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
 -- Name: instructions instructions_set_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3646,6 +3674,8 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('008
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0081-passkeys.sql', '2026-10-30 21:28:11.698176+00', '2d744e20a742ae3ea212bd13ed7adc3d12019eda7a53a5a8220b7451c507122e');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0082-auftraege-fuer-alle-hintergrundarbeit.sql', '2026-10-30 23:06:24.730278+00', '19a363da438aa10657bfa58892aa86b3206291d9bd4109f280c1bfdabe1e2e47');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0083-warteschlangen-in-auftraege.sql', '2026-10-30 23:06:24.744668+00', '81c51936203cfd2e60e1ddca67e03ae4c0bb97661e25229225bfdba08e146199');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0084-idempotenz.sql', '2026-10-31 14:46:46.80143+00', '6cf393aac4573bc2d219e5edc4dc7c821e105599e282112f4286a6314537eb23');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0085-schalter-als-boolean.sql', '2026-10-31 19:10:56.786936+00', '5da15115eebe8334a72a5a0bc4b425fd1c02b102d969641b5738c905a1795c58');
 
 --
 -- PostgreSQL database dump complete

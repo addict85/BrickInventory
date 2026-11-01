@@ -1,49 +1,38 @@
-/**
- * Löschen heisst: erst in den Papierkorb, dann weg (src/bestand/papierkorb.ts).
- * Eine Stelle für das Einzel-Löschen von Teil und Figur und für „alles
- * löschen", damit alle drei Wege dieselben Zeilen mitnehmen.
- */
+/** Eine Stelle für Teil, Figur und „alles löschen", damit alle Wege dieselben
+ * Zeilen in den Papierkorb nehmen. */
 import * as db from '../../db/database';
 import { legeInPapierkorb } from './papierkorb';
 import { loescheManuellesTeil, loescheManuelleFigur } from './gemeinsam';
 import { deleteSet } from '../sets/abfragen';
+import * as repo from './repository/loeschen';
 
-/** Ein manuelles Teil samt Erfassungen. @returns die Papierkorb-id, oder null, wenn es keins gab */
 export async function loescheTeil(besitzer: number, pn: string, cid: number): Promise<number | null> {
   return db.transaction(async (tx) => {
     const id = await legeInPapierkorb(tx, 'teil', besitzer, pn, cid);
     const r = await loescheManuellesTeil(tx, besitzer, pn, cid);
     if (r.changes === 0) return null;
-    // Erfassungen mit: Die Finanzsummen lesen sie und zählten das Teil sonst weiter.
-    await tx.run('DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3',
-      [besitzer, pn, cid || 0]);
+    // Erfassungen mit: Die Finanzsummen zählten das Teil sonst weiter.
+    await repo.loescheTeilErfassungen(tx, besitzer, pn, cid || 0);
     return id;
   });
 }
 
-/** Eine manuelle Minifigur samt Erfassungen. @returns die Papierkorb-id, oder null */
 export async function loescheFigur(besitzer: number, fn: string): Promise<number | null> {
   return db.transaction(async (tx) => {
     const id = await legeInPapierkorb(tx, 'figur', besitzer, fn);
     const r = await loescheManuelleFigur(tx, besitzer, fn);
     if (r.changes === 0) return null;
-    await tx.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [besitzer, fn]);
+    await repo.loescheFigurErfassungen(tx, besitzer, fn);
     return id;
   });
 }
 
-/**
- * Den ganzen eigenen Bestand in den Papierkorb: Sets (mit ihren Teilen und
- * Figuren), manuelle Teile, manuelle Figuren. Nur das EIGENE Konto — nie das
- * Blickfeld des Haushalts. Jedes Element einzeln, damit jedes einzeln
- * wiederherstellbar ist.
- */
+/** Nur das EIGENE Konto, nie das Blickfeld. Jedes Element einzeln, damit jedes
+ * einzeln wiederherstellbar ist. */
 export async function loescheAllesEigene(uid: number) {
-  const sets = await db.all('SELECT set_number FROM sets WHERE user_id = $1', [uid]);
-  const teile = await db.all(
-    "SELECT part_number, color_id FROM parts WHERE user_id = $1 AND source = 'manual'", [uid]);
-  const figuren = await db.all(
-    "SELECT fig_number FROM minifigs WHERE user_id = $1 AND source = 'manual'", [uid]);
+  const sets = await repo.setsDesKontos(uid);
+  const teile = await repo.manuelleTeileDesKontos(uid);
+  const figuren = await repo.manuelleFigurenDesKontos(uid);
   const papierkorb: number[] = [];
   const n = { sets: 0, teile: 0, figuren: 0 };
   for (const s of sets) {

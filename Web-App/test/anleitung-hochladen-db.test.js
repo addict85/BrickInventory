@@ -41,7 +41,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async (t) => {
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-                             VALUES ($1, 'x', 1, 1) RETURNING id`, [NAME])).id;
+                             VALUES ($1, 'x', true, true) RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO set_catalog (set_number, name, year, theme, pieces, minifigs)
                 VALUES ($1, 'Hochladeprobe', 2024, 'Test', 10, 0) ON CONFLICT (set_number) DO NOTHING`, [SET]);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);

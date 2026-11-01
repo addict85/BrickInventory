@@ -12,6 +12,8 @@
  *      schreibende Anfragen fremder Seiten ab“ (200)
  *   D  in server.ts den Aufruf stoppeJobs() aus herunterfahren() entfernt →
  *      rot: „SIGTERM: der Job-Prozess gibt seinen laufenden Auftrag zurück“
+ *   E  (31.10.2026) API_MIN_APP wieder auf 1 → rot: „eine App mit Zahlen statt
+ *      Wahrheitswerten (Fassung 1) bekommt …“ (401 statt 426)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -98,7 +100,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => 
   const NAME = `rollen_${process.pid}`, PASS = 'Passwort12345', MARKE = `rollen-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(`DELETE FROM auftraege WHERE nutzlast->>'marke' = $1`, [MARKE]);
-  await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, 1, 1) RETURNING id`,
+  await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true) RETURNING id`,
     [NAME, await bcrypt.hash(PASS, 4)]);
 
   const port = await freierPort(), jobsPort = await freierPort();
@@ -149,6 +151,12 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async (t) => 
       const { API_MIN_APP } = _req('src/infra/apiVersion.js');
       assert.equal((await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP - 1) } })).status, 426);
       assert.equal((await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP) } })).status, 200);
+    });
+
+    await t.test('eine App mit Zahlen statt Wahrheitswerten (Fassung 1) bekommt „App zu alt“', async () => {
+      // Woran die App den Hinweis erkennt: Statuscode, Kopfzeile, Code (ServerWaechter.kt).
+      const r = await hole(port, '/api/v1/auth/profile', { kopf: { 'X-App-Api': '1' } });
+      assert.deepEqual([r.status, r.headers['x-api-min-app'], r.body.code], [426, '2', 'app_zu_alt']);
     });
 
     await t.test('weist schreibende Anfragen fremder Seiten ab', async () => {

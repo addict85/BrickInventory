@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * API-Vertrag gegen einen laufenden Server: jede GET-Route der App ohne
- * Platzhalter gegen ihr Kotlin-Modell. Die Schemas entstehen aus dem
- * App-Quelltext (scripts/kotlin-vertrag.js) — es gibt keine Abschrift, die
- * den Modellen hinterherlaufen könnte. Die vollständige Prüfung mit Bestand
- * steht in test/api-vertrag-kotlin-db.test.js.
+ * API-Vertrag gegen einen laufenden Server: jede GET-Route des Vertrags
+ * (src/infra/vertrag/) ohne Platzhalter gegen ihr Schema. Die vollständige
+ * Prüfung mit Bestand steht in test/vertrag-lesen-db.test.js; dieses Skript
+ * ist für einen echten Bestand (nach `npm run build`).
  *
  *   BASE_URL=http://localhost:3000 TOKEN=… node scripts/check-api-contract.js
  *   BASE_URL=… USERNAME=marco PASSWORD=… node scripts/check-api-contract.js
@@ -13,11 +12,9 @@
  * Exit-Code 0 = Vertrag eingehalten, 1 = Abweichungen, 2 = keine Anmeldung.
  */
 const path = require('path');
-const { kotlinModelle, apiRouten, pruefe } = require('./kotlin-vertrag');
+const { VERTRAG } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'vertrag', 'index.js'));
 
 const BASE = process.env.BASE_URL || 'http://localhost:3000';
-const APP = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main', 'java', 'ch', 'brickinventoryapp');
-
 async function token() {
   if (process.env.TOKEN) return process.env.TOKEN;
   const { USERNAME, PASSWORD } = process.env;
@@ -32,24 +29,25 @@ async function token() {
 
 (async () => {
   const t = await token();
-  const modelle = kotlinModelle(APP);
-  const routen = apiRouten(path.join(APP, 'data', 'api'))
-    .filter(r => r.typ && modelle.has(r.typ) && !r.pfad.includes('{') && !r.anfrage.some(q => q.pflicht));
+  /** @type {[string, { antwort?: import('zod').ZodType }][]} */
+  const routen = Object.entries(VERTRAG).filter(([k, r]) => k.startsWith('GET ') && !k.includes(':') && r.antwort);
   let falsch = 0;
-  for (const r of routen) {
+  for (const [schluessel, r] of routen) {
+    const pfad = schluessel.slice(4);
+    /** @type {string[]} */
     let fehler;
     try {
-      const a = await fetch(BASE + r.pfad, { headers: { Authorization: `Bearer ${t}` } });
-      fehler = a.ok ? pruefe(await a.json(), { art: 'klasse', name: r.typ ?? '', nullbar: false }, modelle, '$', { route: r.pfad })
-                    : [`HTTP ${a.status}`];
+      const a = await fetch(BASE + pfad, { headers: { Authorization: `Bearer ${t}` } });
+      const ergebnis = a.ok ? r.antwort?.safeParse(await a.json()) : undefined;
+      fehler = !a.ok ? [`HTTP ${a.status}`]
+        : ergebnis && !ergebnis.success ? ergebnis.error.issues.map(i => `$.${i.path.join('.')}: ${i.message}`) : [];
     } catch (e) { fehler = [`Anfrage fehlgeschlagen: ${e instanceof Error ? e.message : String(e)}`]; }
     if (fehler.length) {
       falsch++;
-      console.error(`✗ GET ${r.pfad} (${r.typ})`);
-      [...new Set(fehler.map((/** @type {string} */ f) => f.replace(/\[\d+\]/g, '[i]')))].slice(0, 10)
-        .forEach(f => console.error(`    ${f}`));
-    } else console.log(`✓ GET ${r.pfad} (${r.typ})`);
+      console.error(`✗ ${schluessel}`);
+      [...new Set(fehler.map(f => f.replace(/\.\d+\./g, '.i.')))].slice(0, 10).forEach(f => console.error(`    ${f}`));
+    } else console.log(`✓ ${schluessel}`);
   }
-  if (falsch) { console.error(`\n${falsch} von ${routen.length} Routen weichen vom Android-Vertrag ab.`); process.exit(1); }
-  console.log(`\nAlle ${routen.length} Routen entsprechen den Kotlin-Modellen.`);
+  if (falsch) { console.error(`\n${falsch} von ${routen.length} Routen weichen vom Vertrag ab.`); process.exit(1); }
+  console.log(`\nAlle ${routen.length} Routen halten ihren Vertrag.`);
 })();

@@ -39,13 +39,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
+const { androidDatei } = require('./helpers/android');
 
-// Als EIN Pfad und nicht als acht Segmente: test/baumbruecken.test.js zählt
-// die Brücken zwischen den beiden Bäumen und will sie lesen können.
-const APP = path.join(ROOT, '../Android-App/app/src/main/java/ch/brickinventoryapp');
+// Die App-Quellen über alle Module: androidDatei() meldet eine fehlende Datei mit Namen.
 
 const web = (rel) => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-const app = (rel) => ohneKommentare(fs.readFileSync(path.join(APP, rel), 'utf8'));
+const app = (rel) => ohneKommentare(fs.readFileSync(androidDatei(rel), 'utf8'));
 
 /** Die Sortierwerte einer Quelle — alles, was wie ein MERK_SORTS-Schlüssel aussieht. */
 function sortWerte(quelle) {
@@ -78,7 +77,7 @@ test('1. die Webapp hat alle vier Filter', () => {
 test('2. die App hat dieselben vier', () => {
   // Der Weg zum Server: vier Anfrageparameter, dieselben Namen wie in der
   // Webapp und am Server.
-  const api = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(APP, 'data/api')));
+  const api = ohneKommentare(require('../scripts/kotlin-vertrag.js').apiQuelltext(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'data', 'api')));
   const abschnitt = api.slice(api.indexOf('suspend fun getMerkliste('));
   for (const p of ['search', 'condition', 'sort', 'accounts']) {
     assert.match(abschnitt.slice(0, 600), new RegExp(`@Query\\("${p}"\\)`),

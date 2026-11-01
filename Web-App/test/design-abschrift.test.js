@@ -75,8 +75,7 @@ const CSS_BASIS = path.join(BAUM, 'Web-App', 'public', 'styles.css');
 const CSS_BRICK = path.join(BAUM, 'Web-App', 'public', 'themes', 'brick.css');
 const CSS_MOBIL = path.join(BAUM, 'Web-App', 'public', 'mobile.css');
 const INDEX = path.join(BAUM, 'Web-App', 'public', 'index.html');
-const KT_THEME = path.join(BAUM, 'Android-App', 'app', 'src', 'main', 'java',
-  'ch', 'brickinventoryapp', 'ui', 'theme', 'Theme.kt');
+const KT_THEME = path.join(__dirname, '..', '..', 'Android-App', 'core-ui', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'theme', 'Theme.kt');
 
 const DATEN = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
 

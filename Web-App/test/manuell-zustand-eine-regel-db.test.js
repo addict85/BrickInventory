@@ -73,7 +73,7 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand',
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
-    'INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,1,1)',
+    'INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)',
     [NAME, await bcrypt.hash('x', 4)]);
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
 
@@ -172,8 +172,6 @@ test('beide Oberflaechen holen die manuellen Stuecke aus derselben Adresse', () 
   // anzuzeigen.
   const fs = require('node:fs');
   const path = require('node:path');
-  const APP = path.join(__dirname, '..', '..', 'Android-App', 'app', 'src', 'main');
-
   const kotlin = [];
   const gehen = (d) => {
     if (!fs.existsSync(d)) return;
@@ -183,7 +181,7 @@ test('beide Oberflaechen holen die manuellen Stuecke aus derselben Adresse', () 
       else if (e.name.endsWith('.kt')) kotlin.push(abs);
     }
   };
-  gehen(APP);
+  for (const w of require('./helpers/android').quellwurzeln()) gehen(w);
   // Selbstnachweis: Faende die Suche nichts, waere die Regel leer wahr.
   assert.ok(kotlin.length >= 40, `Nur ${kotlin.length} App-Quellen gefunden`);
 

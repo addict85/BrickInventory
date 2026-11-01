@@ -72,8 +72,7 @@ test('2. dieselbe Adresse wie im Workflow und in der App', () => {
     `"${etikett}/${apkName}" ab. Ein Klick endete auf der 404-Seite von GitHub.`);
 
   // ── Aus der App: dieselbe Ablage, aus der sie sich selbst aktualisiert ────
-  const kt = fs.readFileSync(path.join(ROOT, '..', 'Android-App', 'app', 'src', 'main',
-    'java', 'ch', 'brickinventoryapp', 'util', 'AppUpdate.kt'), 'utf8');
+  const kt = fs.readFileSync(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'util', 'AppUpdate.kt'), 'utf8');
   const basis = kt.match(/UPDATE_RELEASE_BASIS\s*=\s*\n?\s*"([^"]+)"/)?.[1];
   assert.ok(basis, 'UPDATE_RELEASE_BASIS ist in AppUpdate.kt nicht mehr zu finden.');
   assert.equal(adresse, `${basis}/${apkName}`,
