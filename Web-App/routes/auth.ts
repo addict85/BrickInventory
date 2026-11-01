@@ -410,8 +410,9 @@ router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res: Antwor
   const codes = await bestaetigeEinrichtungGebremst(uid, req.body?.code);
   if (!Array.isArray(codes)) return sendeFehler(req, res, codes.status, codes.code, codes.vars);
   const kopf = String(req.headers.authorization || '');
-  await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
+  const version = await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
     req.session?.userId ? req.sessionID : null);
+  if (req.session?.userId) req.session.sitzungsVersion = version;
   res.json({ success: true, codes });
 });
 

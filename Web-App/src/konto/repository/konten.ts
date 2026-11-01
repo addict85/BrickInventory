@@ -1,4 +1,5 @@
 import * as db from '../../../db/database';
+import { erhoeheSitzungsVersion } from '../sitzungsVersion';
 
 export type KontoKurz = { id: number; username: string; is_admin: boolean; must_change_password: boolean };
 
@@ -181,8 +182,10 @@ export async function zugaengeLoeschen(uid: number, praefix: string): Promise<nu
   return (await db.run("DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'", [uid, praefix + '%'])).changes;
 }
 
-export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<number> {
-  return (await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2", [String(uid), eigeneSid])).changes;
+export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<{ beendet: number; version: number }> {
+  const version = await erhoeheSitzungsVersion(uid);
+  const beendet = (await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2", [String(uid), eigeneSid])).changes;
+  return { beendet, version };
 }
 
 export async function mussPasswortAendern(uid: number): Promise<boolean> {

@@ -59,8 +59,8 @@ export async function registriere(d: { username: string; email: string; first_na
     last_name: d.last_name, hash: await hashe(d.passwort), tokenHash: d.tokenHash, bis: d.bis });
 }
 
-/** Erst sperren, dann Zugänge löschen (die Token-Abfrage prüft is_active). Sitzungen fallen
- * mit ihrer Zeile; jede Anfrage liest sie neu, eine Prüfung je Anfrage braucht es nicht. */
+/** Erst sperren, dann Zugänge löschen (die Token-Abfrage prüft is_active). Sitzungen
+ * fallen über die Sitzungsversion, auch eine wieder geschriebene Zeile. */
 export async function setzeAktiv(uid: number, soll: boolean): Promise<{ geaendert: boolean } | null> {
   const r = await repo.schreibeAktiv(uid, soll);
   if (!r) return null;

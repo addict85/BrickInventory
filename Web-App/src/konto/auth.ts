@@ -402,10 +402,10 @@ export async function revokeAllSessions(userId: number): Promise<void> {
 
 /** Nach dem Einschalten des zweiten Faktors: Wer schon drin war, soll nicht
  * mit einem alten Token oder einer alten Sitzung drinbleiben. */
-export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<void> {
+export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
   await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
   leereTokenCache();
-  await repo.loescheSitzungenDesKontos(userId, sitzungsId);
+  return repo.loescheSitzungenDesKontos(userId, sitzungsId);
 }
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer

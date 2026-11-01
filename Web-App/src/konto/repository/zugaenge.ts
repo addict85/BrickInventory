@@ -1,5 +1,6 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
+import { erhoeheSitzungsVersion } from '../sitzungsVersion';
 
 /** Tokens stehen nur als SHA-256 in der Tabelle; jede Funktion nimmt den Hash,
  * nie den Klartext. */
@@ -124,10 +125,13 @@ export async function loescheTokensDesKontos(userId: number, ausser: string | nu
   else await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
 }
 
-export async function loescheSitzungenDesKontos(userId: number, ausser: string | null = null): Promise<void> {
+/** @returns die neue Sitzungsversion; wer `ausser` behält, schreibt sie in seine Sitzung. */
+export async function loescheSitzungenDesKontos(userId: number, ausser: string | null = null): Promise<number> {
+  const version = await erhoeheSitzungsVersion(userId);
   if (ausser === null) await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
   else await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid IS DISTINCT FROM $2",
     [String(userId), ausser]);
+  return version;
 }
 
 export async function ziehAltzeilenNach(leerlaufTage: number): Promise<number> {

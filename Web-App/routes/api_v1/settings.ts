@@ -86,7 +86,9 @@ router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Logg
 });
 
 router.post('/settings/sessions/andere-beenden', requireLogin, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
-  res.json({ success: true, deleted: await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID) });
+  const { beendet, version } = await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID);
+  req.session.sitzungsVersion = version;
+  res.json({ success: true, deleted: beendet });
 });
 
 /** Ausdrücklich aufgezählt: Die App bekommt nur, was sie liest, keine globalen

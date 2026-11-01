@@ -7,6 +7,7 @@ import { zaehleAnfrage } from '../loginLimiter';
 import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetigung';
 import { sendeFehler } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/httpError';
+import { sitzungsVersionAusDb } from '../sitzungsVersion';
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
  * einem vertrauten Proxy kommt.
@@ -23,17 +24,20 @@ export function anmelden(req: Request, username: unknown, password: unknown, cod
 /** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
  * Anfrage die neue ID schon kennt.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#establishsession */
-export function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
+export async function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
                                                        mussPasswortAendern?: boolean }): Promise<void> {
+  // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
+  const sitzungsVersion = await sitzungsVersionAusDb(data.userId)
+    .catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0)) ?? 0;
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {
       // Nur in Tests ohne express-session: Im Betrieb steht die Middleware davor.
-      Object.assign(req.session || (req.session = {} as typeof req.session), data, { angemeldetAm: Date.now() });
+      Object.assign(req.session || (req.session = {} as typeof req.session), data, { angemeldetAm: Date.now(), sitzungsVersion });
       return resolve(undefined);
     }
     req.session.regenerate((err?: Error) => {
       if (err) return reject(err);
-      Object.assign(req.session, data, { angemeldetAm: Date.now() });
+      Object.assign(req.session, data, { angemeldetAm: Date.now(), sitzungsVersion });
       req.session.save((e2?: Error) => (e2 ? reject(e2) : resolve(undefined)));
     });
   });
