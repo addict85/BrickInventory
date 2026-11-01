@@ -149,8 +149,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// 256 KB: Ein grosses Limit überall liesse jeden Client den Heap füllen. Die
-// PDF-Routen setzen ihr eigenes.
+// 256 KB: Ein grosses Limit überall liesse jeden Client den Heap füllen. Nur der
+// PDF-Auftrag trägt die ganze Teileliste; sein Parser muss VOR dem allgemeinen stehen.
+app.post('/api/v1/sets/partslist-pdf', express.json({ limit: '4mb' }));
 app.use(express.json({ limit: '256kb' }));
 // Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
 app.use(merkeAnfrage);
