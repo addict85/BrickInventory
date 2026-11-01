@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 /**
  * Die Abschnitte der Finanz-Seite: Portfolio-Diagramm, Kennzahl-Karten,
  * Kategoriefilter und die drei Listen. Wie bei SetDetailSections.kt Erweiterungen
@@ -271,7 +272,7 @@ fun LazyListScope.financeCategoryFilter(
             modifier = Modifier.padding(bottom = 6.dp)
         ) {
             item {
-                FilterChip(
+                AuswahlChip(
                     selected = aktive.isEmpty(),
                     onClick = onAlle,
                     label = { Text(stringResource(R.string.finance_filter_all), style = MaterialTheme.typography.labelMedium) },
@@ -293,7 +294,7 @@ private fun KategorieChip(
     aktive: Set<String>,
     onUmschalten: (String) -> Unit,
 ) {
-    FilterChip(
+    AuswahlChip(
         selected = schluessel in aktive,
         onClick = { onUmschalten(schluessel) },
         label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },

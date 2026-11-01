@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 /**
  * Die Abschnitte der Set-Detailseite. Erweiterungen auf LazyListScope und keine
  * Composables, weil sie Einträge in die LazyColumn der Seite eintragen; die
@@ -548,12 +549,12 @@ fun LazyListScope.setDetailAlarmSection(
             // das Laden von selbst: Die Liste traegt beide.
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                FilterChip(
+                AuswahlChip(
                     selected = zustand == "N",
                     onClick = { zustand = "N" },
                     label = { Text(stringResource(R.string.condition_new), style = MaterialTheme.typography.labelMedium) },
                 )
-                FilterChip(
+                AuswahlChip(
                     selected = zustand == "U",
                     onClick = { zustand = "U" },
                     label = { Text(stringResource(R.string.condition_used), style = MaterialTheme.typography.labelMedium) },
@@ -573,17 +574,17 @@ fun LazyListScope.setDetailAlarmSection(
             // Aufklappen lesbar. Die Richtung geht nur mit, wenn eine Schwelle dasteht — sonst
             // liefe der Aufruf auf ein Löschen hinaus.
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                FilterChip(
+                AuswahlChip(
                     selected = richtung == "unter",
                     onClick = { richtung = "unter"
                         if (schwelle.isNotBlank()) onSetze(setNumber, "unter", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_below), style = MaterialTheme.typography.labelMedium) },
+                    label = { Text(stringResource(R.string.detail_alert_chip_below), style = MaterialTheme.typography.labelMedium) },
                 )
-                FilterChip(
+                AuswahlChip(
                     selected = richtung == "ueber",
                     onClick = { richtung = "ueber"
                         if (schwelle.isNotBlank()) onSetze(setNumber, "ueber", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_above), style = MaterialTheme.typography.labelMedium) },
+                    label = { Text(stringResource(R.string.detail_alert_chip_above), style = MaterialTheme.typography.labelMedium) },
                 )
             }
             // Unter den Chips in voller Breite: neben ihnen blieb bei grosser Schrift kein Platz.

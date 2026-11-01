@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.clickable
@@ -108,7 +109,7 @@ fun MerklisteScreen(
             ) {
                 item {
                     Box {
-                        FilterChip(
+                        AuswahlChip(
                             selected = zustand.sortierung != MERKLISTE_DEFAULT_SORT,
                             onClick = { sortMenueOffen = true },
                             label = { Text(gallerySortLabel(zustand.sortierung), style = MaterialTheme.typography.labelMedium) },
@@ -137,7 +138,7 @@ fun MerklisteScreen(
                 items(listOf("" to R.string.filter_condition_all,
                              "N" to R.string.condition_new,
                              "U" to R.string.condition_used)) { (wert, text) ->
-                    FilterChip(
+                    AuswahlChip(
                         selected = zustand.zustandFilter == wert,
                         onClick = { vm.setzeMerklisteZustand(wert) },
                         label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
@@ -351,9 +352,9 @@ private fun MerkpostenErfassenDialog(
 @Composable
 internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        FilterChip(selected = gewaehlt == "N", onClick = { onWahl("N") },
+        AuswahlChip(selected = gewaehlt == "N", onClick = { onWahl("N") },
                    label = { Text(stringResource(R.string.condition_new)) })
-        FilterChip(selected = gewaehlt == "U", onClick = { onWahl("U") },
+        AuswahlChip(selected = gewaehlt == "U", onClick = { onWahl("U") },
                    label = { Text(stringResource(R.string.condition_used)) })
     }
 }

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
 import ch.brickinventoryapp.ui.model.KontingentAnsicht
 import ch.brickinventoryapp.ui.model.ZeitplanAnsicht
@@ -266,7 +267,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                     Triple(netzRoaming, PreferencesManager.VORWAERMEN_ROAMING,
                         R.string.monitoring_vorwaermen_roaming),
                 )) {
-                    FilterChip(
+                    AuswahlChip(
                         selected = erlaubt,
                         onClick = {
                             scope.launch {
@@ -299,7 +300,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
                 for ((wert, text) in ch.brickinventoryapp.ui.DESIGN_NAMEN) {
-                    FilterChip(
+                    AuswahlChip(
                         selected = (monState.vorgabeDesign ?: appState.appTheme) == wert,
                         onClick = {
                             scope.launch {
@@ -579,7 +580,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                     // begrenzt selbst auf 2880 Minuten.
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         listOf(15, 60, 240, 1440).forEach { min ->
-                            FilterChip(
+                            AuswahlChip(
                                 selected = verwaltung.protokollMinuten == min,
                                 onClick = { protokollScope.launch { mon.ladeProtokoll(min) } },
                                 label = { Text(stringResource(R.string.admin_log_minutes, min),
@@ -607,7 +608,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                     if (stufen.size > 1) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             stufen.forEach { stufe ->
-                                FilterChip(
+                                AuswahlChip(
                                     selected = stufe !in versteckteStufen,
                                     onClick = {
                                         versteckteStufen =

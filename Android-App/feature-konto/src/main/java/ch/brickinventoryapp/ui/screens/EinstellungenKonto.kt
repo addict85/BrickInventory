@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
@@ -442,14 +443,14 @@ internal fun DesignCard(design: ch.brickinventoryapp.ui.DesignWahl?, onWahl: (St
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
             val vorgabe = namen[design.vorgabe]?.let { stringResource(it) } ?: design.vorgabe
-            FilterChip(
+            AuswahlChip(
                 selected = design.eigenes == null,
                 onClick = { if (design.eigenes != null) onWahl("") },
                 label = { Text(stringResource(R.string.konto_design_vorgabe, vorgabe), style = MaterialTheme.typography.labelMedium) },
                 shape = Formen.chip,
             )
             for ((wert, text) in ch.brickinventoryapp.ui.DESIGN_NAMEN) {
-                FilterChip(
+                AuswahlChip(
                     selected = design.eigenes == wert,
                     onClick = { if (design.eigenes != wert) onWahl(wert) },
                     label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },

@@ -151,7 +151,11 @@ fun SetupScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(80.dp)) {
+            // Auf surface statt primary: Der rote Stein des Logos verschwand auf manchem
+            // primary (noppe dunkel 1,2:1); auf surface steht er in jedem Design.
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.size(80.dp)) {
                 Box(contentAlignment = Alignment.Center) {
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(ch.brickinventoryapp.ressourcen.R.drawable.ic_logo),
@@ -182,10 +186,12 @@ fun SetupScreen(
 
         Spacer(Modifier.height(Abstaende.riesig))
 
-        // QR scan option
-        FilledTonalButton(
+        // QR scan option — mit Rand: Die Tonfläche lag im hellen Grunddesign 1,01:1 auf dem
+        // Hintergrund und war als Knopf nicht zu erkennen.
+        OutlinedButton(
             onClick = { scanError = null; showScanner = true },
-            modifier = Modifier.fillMaxWidth()
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
         ) {
             Icon(Icons.Default.QrCodeScanner, null, Modifier.size(20.dp))
             Spacer(Modifier.width(Abstaende.klein))

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -115,7 +116,8 @@ fun TabellenZeile(
                         )
                     }
                     Text(
-                        name ?: "—",
+                        name ?: stringResource(R.string.name_unknown),
+                        color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -154,7 +156,7 @@ fun AnsichtUmschalter(
 ) {
     Row(modifier, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         for ((wert, text) in listOf("grid" to R.string.view_cards, "table" to R.string.view_table)) {
-            FilterChip(
+            AuswahlChip(
                 selected = aktuell == wert,
                 onClick = { onWechsel(wert) },
                 label = { Text(stringResource(text), style = MaterialTheme.typography.bodyMedium) },

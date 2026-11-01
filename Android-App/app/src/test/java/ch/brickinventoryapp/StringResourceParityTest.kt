@@ -185,8 +185,10 @@ class StringResourceParityTest {
             "finance_grand_total", "finance_section_sets", "finance_total_sets",
             "gallery_quantity_badge", "gallery_sort_name", "gallery_stat_sets",
             "monitoring_theme",
-            "monitoring_theme_noppe", "monitoring_vorwaermen_roaming",
-            "nav_minifigs_short", "partslist_ok", "partslist_rb_prefix",
+            "monitoring_vorwaermen_roaming",
+            // System und Server heissen in beiden Sprachen so.
+            "nav_group_server", "settings_hell_system",
+            "partslist_ok", "partslist_rb_prefix",
             "partslist_scan", "setup_build",
             "setup_url_placeholder",
             // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.

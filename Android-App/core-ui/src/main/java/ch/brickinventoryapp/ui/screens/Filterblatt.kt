@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
@@ -23,7 +24,6 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -130,7 +130,7 @@ fun FilterAbschnitt(titel: String, chips: @Composable () -> Unit) {
 /** Ein Chip des Blatts; lange Namen (Themen, Konten) brechen nicht die Reihe. */
 @Composable
 fun FilterWahl(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
-    FilterChip(
+    AuswahlChip(
         selected = gewaehlt,
         onClick = onClick,
         label = { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) },
