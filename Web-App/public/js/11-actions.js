@@ -49,7 +49,7 @@ import { merkpostenLoeschen } from './16-merkliste.js';
   // wirklich nutzt; test/aktionen-schutz.test.js gleicht die Liste ab.
   const NUR = {
     change: new Set(['acqSave', 'aendereAlarmSchwelle', 'autosaveSet', 'benenneLagerortUm',
-      'gutscheinLandSpeichern', 'importAlarmeCsv', 'importConfig', 'importFigsCsv',
+      'gutscheinDateiGewaehlt', 'gutscheinLandSpeichern', 'importAlarmeCsv', 'importConfig', 'importFigsCsv',
       'importMerklisteCsv', 'importPartsCsv', 'ladeMerkliste', 'lagerortGewaehlt', 'manAcqSave',
       'manQtySave', 'merkpostenInhaberGewaehlt', 'onScopeChange', 'onStorageChange',
       'plFuelleBestand', 'renderFigsAll', 'renderGallery', 'saveJobMinutes', 'saveJobTime',
