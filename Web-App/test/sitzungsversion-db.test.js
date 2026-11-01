@@ -8,7 +8,7 @@
  * Gegenproben (01.11.2026 gemessen, je einzeln):
  *   A  sitzungsVersionPruefen() ruft immer next() → rot: „die zurückgeschriebene
  *      Verwaltersitzung gilt nicht mehr" und „das andere Fenster bleibt draussen"
- *   B  erhoeheSitzungsVersion() in loescheSitzungenDesKontos entfernt → rot:
+ *   B  erhoeheSitzungsVersion() in revokeAllSessions (src/konto/auth.ts) entfernt → rot:
  *      „die zurückgeschriebene Verwaltersitzung gilt nicht mehr"
  *   C  in routes/api_v1/settings.ts die neue Version nicht in die eigene
  *      Sitzung geschrieben → rot: „das eigene Fenster bleibt angemeldet"
@@ -53,7 +53,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
   app.use(express.json());
   app.use(session({ store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
     secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false }));
-  app.use(_req('src/konto/sitzungsVersion.js').sitzungsVersionPruefen());
+  app.use(_req('src/konto/http/sitzungsPruefung.js').sitzungsVersionPruefen());
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1', _req('routes/api_v1/index.js'));
   app.use('/api/v1/auth', _req('routes/auth.js'));

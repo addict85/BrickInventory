@@ -13,6 +13,7 @@ import { ausTabelle } from '../infra/validate';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
 import type { TokenScope } from './repository/zugaenge';
+import { erhoeheSitzungsVersion } from './sitzungsVersion';
 
 export type { TokenScope };
 
@@ -397,6 +398,7 @@ export async function deleteToken(token: string): Promise<void> {
 /** In user_sessions, wo der Session-Store wirklich liegt.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#revokeallsessions */
 export async function revokeAllSessions(userId: number): Promise<void> {
+  await erhoeheSitzungsVersion(userId);
   await repo.loescheSitzungenDesKontos(userId);
 }
 
@@ -405,7 +407,9 @@ export async function revokeAllSessions(userId: number): Promise<void> {
 export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
   await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
   leereTokenCache();
-  return repo.loescheSitzungenDesKontos(userId, sitzungsId);
+  const version = await erhoeheSitzungsVersion(userId);
+  await repo.loescheSitzungenDesKontos(userId, sitzungsId);
+  return version;
 }
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer
