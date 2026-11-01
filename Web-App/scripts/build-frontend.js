@@ -127,6 +127,9 @@ function main() {
 
   const after = fs.statSync(outAbs).size;
   console.log(`[build-frontend] ${ENTRY} → ${OUT_REL}: ${(after / 1024).toFixed(0)} KB`);
+
+  const pdfjs = require('./pdfjs-kopieren').kopierePdfjs();
+  if (pdfjs) console.log(`[build-frontend] PDF.js ${pdfjs} aus pdfjs-dist → public/vendor/pdfjs/`);
 }
 
 if (require.main === module) main();
