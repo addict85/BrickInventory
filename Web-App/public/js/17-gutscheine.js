@@ -116,7 +116,7 @@ function zeile(g) {
           <button class="v-btn" data-click="gutscheinPdfOeffnen" data-arg="${g.id}"
                   title="${tRaw('vouchers.pdf_open')}"
                   aria-label="${tRaw('vouchers.pdf_open')}">${ico('datei')}</button>`
-        : `<span class="voucher-nopdf" title="${tRaw('vouchers.no_pdf')}">—</span>`}
+        : `<span class="voucher-nopdf" title="${tRaw('vouchers.no_pdf')}"><span aria-hidden="true">—</span><span class="vh">${t('vouchers.no_pdf')}</span></span>`}
         <button class="v-btn" data-click="gutscheinBearbeiten" data-arg="${g.id}"
                 title="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
         <button class="delbtn" data-click="gutscheinLoeschen" data-arg="${g.id}"

@@ -422,6 +422,7 @@
     /* [hidden] muss display:flex schlagen — die Preis-Zeile ist jetzt immer im
        Markup (stabiler Anker für updateGalleryPrices) und nur leer ausgeblendet. */
     .price-badge[hidden]{display:none}
+    .price-badge .preis-art{color:var(--mut);font-weight:500}
     .price-badge{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:.35rem;padding:.2rem .4rem;background:var(--s50);border-radius:5px;font-size:var(--fs-1)}
     .pnl-geschenk{color:var(--txt);font-weight:600}
     /* Bezugslinie und Achsenbruch nehmen dem Fadenkreuz keine Zeigerereignisse weg. */

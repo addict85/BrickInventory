@@ -237,6 +237,10 @@ window.I18N_DE = {
   // ── Nachtrag: zuvor hartkodierte dynamische UI-Texte ──
   'common.filter': 'Filter',
   'common.more_actions': 'Weitere Aktionen',
+  'gallery.card.market': 'Markt',
+  'gallery.card.paid': 'Kauf',
+  'gallery.card.pnl_hint': 'Gewinn/Verlust gegenüber dem Kaufpreis',
+  'common.condition_badge_new': 'Neuware',
   'gallery.card.bought': 'Gekauft am',
   'common.reset_filter': 'Filter zurücksetzen',
   'gallery.no_results_filter': 'Keine Sets passen zu diesem Filter',

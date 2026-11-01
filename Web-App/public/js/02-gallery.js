@@ -941,12 +941,27 @@ export function updateGalleryPrices(){
   document.querySelectorAll('[data-price-for]').forEach(el => {
     const s = bySet.get(el.dataset.priceFor);
     if (!s) return;
-    const kauf = s.avg_purchase_price ?? s.max_purchase_price;
-    const priceStr = s._price ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : '');
-    const pnl = pnlBadge(s._pnl_pct, kauf);
-    el.innerHTML = `<span class="preis">${priceStr}</span>${pnl}`;
-    el.hidden = !(priceStr || pnl);
+    const inhalt = preisZeile(s);
+    el.innerHTML = inhalt;
+    el.hidden = !inhalt;
   });
+}
+
+/**
+ * Preis und Prozent der Kachel mit Beschriftung: Ohne sie war nicht zu sehen,
+ * ob der Betrag Markt- oder Kaufpreis ist und wogegen das Prozent rechnet.
+ * Ohne geladenen Marktpreis steht der mengengewichtete Kaufpreis da.
+ */
+function preisZeile(s){
+  const kauf = s.avg_purchase_price ?? s.max_purchase_price;
+  const markt = !!s._price;
+  const betrag = markt ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : '');
+  const pnl = pnlBadge(s._pnl_pct, kauf);
+  if (!betrag && !pnl) return '';
+  const art = betrag ? `<span class="preis-art">${t(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span> ` : '';
+  const pct = pnl && !istGeschenk(kauf)
+    ? `<span title="${esc(tRaw('gallery.card.pnl_hint'))}"><span class="vh">${t('gallery.card.pnl_hint')}: </span>${pnl}</span>` : pnl;
+  return `<span>${art}<span class="preis">${betrag}</span></span>${pct}`;
 }
 
 /**
@@ -1005,8 +1020,8 @@ export function condBadges(item) {
     ? item.conditions
     : [item?.condition === 'U' ? 'U' : 'N'];
   return list.map(c => c === 'U'
-    ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
-    : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`
+    ? `<span class="cond-badge cond-used"><span class="vh">${t('common.condition')}: </span>${t('common.condition_used')}</span>`
+    : `<span class="cond-badge cond-new"><span class="vh">${t('common.condition')}: </span>${t('common.condition_badge_new')}</span>`
   ).join('');
 }
 
@@ -1021,9 +1036,7 @@ function gridCard(s){
   // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis. Vorher stand
   // hier max_purchase_price — bei 2x100 und 1x160 zeigte die Kachel 160 statt
   // der tatsächlichen 120.
-  const fallbackPurchase = s.avg_purchase_price ?? s.max_purchase_price;
-  const priceStr = s._price ? fmtN(s._price, CURRENCY) : (fallbackPurchase!=null ? fmtGeld(fallbackPurchase, CURRENCY) : '');
-  const pnl = pnlBadge(s._pnl_pct, fallbackPurchase);
+  const preis = preisZeile(s);
   // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import
   // für alle Sets derselbe Tag und sagte nichts.
   const kaufFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
@@ -1046,8 +1059,8 @@ function gridCard(s){
           ${ownerBadges(s)}
         </div>
       </div>
-      <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span class="preis">${priceStr}</span>${pnl}</div>
-      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span class="vh">${esc(t('gallery.card.bought'))} </span>${kaufFmt}</div>` : ''}
+      <div class="price-badge" data-price-for="${esc(s.set_number)}"${preis ? '' : ' hidden'}>${preis}</div>
+      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span>${t('detail.added')}</span> ${kaufFmt}</div>` : ''}
     </div>
   </div>`;
 }
