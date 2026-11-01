@@ -749,7 +749,8 @@
     <string name="update_laden_fehlgeschlagen">Download failed. The partially downloaded file was deleted.</string>
     <string name="update_signatur_falsch">The downloaded app is not signed with the same key as this one and was deleted. It was not installed.</string>
     <string name="update_fremde_adresse">The update points to an address outside our release. Nothing was downloaded.</string>
-    <string name="update_installer_fehlt">No app on this device can install packages.</string>
+    <string name="update_installer_fehlt">The installation could not be started.</string>
+    <string name="update_installation_fehlgeschlagen">The installation failed: %1$s</string>
 
     <string name="price_from_other_condition_new">Purchase price taken from the "new" market price — BrickLink has no price for "used".</string>
     <string name="price_from_other_condition_used">Purchase price taken from the "used" market price — BrickLink has no price for "new".</string>

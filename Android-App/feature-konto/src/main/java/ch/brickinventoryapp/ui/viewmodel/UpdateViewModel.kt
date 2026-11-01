@@ -11,7 +11,8 @@ import ch.brickinventoryapp.util.UPDATE_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_VERSION_URL
 import ch.brickinventoryapp.util.UpdateBeschreibung
 import ch.brickinventoryapp.util.darfInstallieren
-import ch.brickinventoryapp.util.installationsAbsicht
+import ch.brickinventoryapp.util.Installationsmeldung
+import ch.brickinventoryapp.util.installiere
 import ch.brickinventoryapp.util.istErlaubteApkAdresse
 import ch.brickinventoryapp.util.istNeuer
 import ch.brickinventoryapp.util.signaturPasst
@@ -63,6 +64,13 @@ class UpdateViewModel @Inject constructor(
             prefs.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
                 .filter { abgemeldet -> abgemeldet }
                 .collect { _state.value = UpdateUiState() }
+        }
+        // Die Installer-Sitzung antwortet an einen Empfänger, nicht hierher (util/AppUpdate.kt).
+        viewModelScope.launch {
+            Installationsmeldung.fehler.filter { it != null }.collect { grund ->
+                Installationsmeldung.fehler.value = null
+                _state.update { it.copy(fehler = texte.text(R.string.update_installation_fehlgeschlagen, grund)) }
+            }
         }
     }
 
@@ -243,10 +251,12 @@ class UpdateViewModel @Inject constructor(
             _state.update { it.copy(erlaubnisFehlt = true) }
             return
         }
-        runCatching { ctx.startActivity(installationsAbsicht(ctx, datei)) }
-            .onFailure {
-                _state.update { s -> s.copy(fehler = texte.text(R.string.update_installer_fehlt)) }
-            }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { runCatching { installiere(ctx, datei) } }
+                .onFailure {
+                    _state.update { s -> s.copy(fehler = texte.text(R.string.update_installer_fehlt)) }
+                }
+        }
     }
 }
 

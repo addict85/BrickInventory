@@ -735,7 +735,8 @@
     <string name="update_laden_fehlgeschlagen">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde geloescht.</string>
     <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schluessel signiert wie diese und wurde geloescht. Installiert wurde nichts.</string>
     <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
-    <string name="update_installer_fehlt">Auf diesem Geraet kann keine App Pakete installieren.</string>
+    <string name="update_installer_fehlt">Die Installation liess sich nicht starten.</string>
+    <string name="update_installation_fehlgeschlagen">Die Installation ist gescheitert: %1$s</string>
 
     <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
     <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
