@@ -4,22 +4,22 @@ import ch.brickinventoryapp.util.NetworkPolicy
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Tests für util/NetworkPolicy — beide Regeln hatten vorher echte Lücken:
+ * Tests für util/NetworkPolicy: gleiche Herkunft statt Präfixvergleich, und
+ * kein Klartext ausser im Debug-Build zum Gerät und zum Emulator-Host.
  *
- *  - Der Token wurde per `finalUrl.startsWith(serverUrl)` angehängt. Ein
- *    Präfixvergleich hält "https://brick.example.com.angreifer.tld" für den
- *    eigenen Server.
- *  - `usesCleartextTraffic="true"` galt app-weit, also auch für öffentliche
- *    Hosts — der nie ablaufende Bearer-Token ging dann im Klartext raus.
- *
- * Gegenproben für Herkunft und Rückfrage (29.10.2026, gemessen): in herkunft()
- * den Port weggelassen → rot „die Herkunft eines Tokens …“; in
- * anmeldungBrauchtNetzBestaetigung() die Loopback-Ausnahme entfernt → rot „nur
- * ein Passwort im Klartext …“.
+ * Gegenproben:
+ *   (29.10.2026) in herkunft() den Port weggelassen → rot „die Herkunft eines Tokens …“
+ *   (01.11.2026) in verbindungErlaubt() `entwicklung &&` weggelassen → rot „https
+ *     geht immer, http im Release-Build nie“
+ *   (01.11.2026) ENTWICKLUNGS_HOSTS per `startsWith` statt `in` geprüft → rot „der
+ *     Debug-Build darf http nur …“ (localhost.angreifer.tld ging durch)
+ *   (01.11.2026) normalisiere() ohne https-Vorsatz → rot „die Einrichtung nimmt
+ *     nur https an …“ (brick.fritz.box unlesbar)
  */
 class NetworkPolicyTest {
 
@@ -47,116 +47,51 @@ class NetworkPolicyTest {
     fun `Scheme und Port zaehlen mit`() {
         assertFalse(NetworkPolicy.isSameOrigin("http://brick.example.com/x".toHttpUrl(), "https://brick.example.com"))
         assertFalse(NetworkPolicy.isSameOrigin("https://brick.example.com:8443/x".toHttpUrl(), "https://brick.example.com"))
-        assertTrue(NetworkPolicy.isSameOrigin("http://192.168.1.50:3000/x".toHttpUrl(), "http://192.168.1.50:3000"))
+        assertTrue(NetworkPolicy.isSameOrigin("https://192.168.1.50:8443/x".toHttpUrl(), "https://192.168.1.50:8443"))
     }
 
-    // ── isPrivateHost ───────────────────────────────────────────────────────
+    // ── Klartext ────────────────────────────────────────────────────────────
     @Test
-    fun `private Adressen werden erkannt`() {
-        listOf(
-            "192.168.1.50", "10.0.0.5", "172.16.0.1", "172.31.255.254",
-            "127.0.0.1", "169.254.1.1", "localhost", "brickserver.local", "::1"
-        ).forEach { assertTrue("$it sollte privat sein", NetworkPolicy.isPrivateHost(it)) }
-    }
-
-    @Test
-    fun `gewoehnliche Hostnamen im Heimnetz werden nicht blockiert`() {
-        // Der Fehler, der die App lahmgelegt hat: Die erste Fassung liess nur
-        // IP-Adressen und wenige Suffixe durch und blockierte damit jede
-        // Adresse der Form http://nas:3000 — also den Normalfall für einen
-        // selbstgehosteten Server.
-        listOf(
-            "http://nas:3000/api/v1/sets",
-            "http://raspberrypi:3000/api/v1/sets",
-            "http://brickserver:3000/api/v1/sets",
-            "http://brick.fritz.box:3000/api/v1/sets",
-            "http://server.lan:3000/api/v1/sets",
-        ).forEach {
-            assertTrue("$it muss erlaubt sein", NetworkPolicy.isCleartextAllowed(it.toHttpUrl(), experte = true))
-        }
+    fun `https geht immer, http im Release-Build nie`() {
+        for (url in listOf("https://brick.example.com/x", "https://192.168.1.50/x", "https://localhost:8443/x"))
+            for (entwicklung in listOf(false, true))
+                assertTrue(url, NetworkPolicy.verbindungErlaubt(url.toHttpUrl(), entwicklung))
+        for (url in listOf("http://localhost:3000/x", "http://127.0.0.1/x", "http://10.0.2.2:3000/x",
+                           "http://192.168.1.50:3000/x", "http://nas:3000/x", "http://brick.example.com/x"))
+            assertFalse(url, NetworkPolicy.verbindungErlaubt(url.toHttpUrl(), entwicklung = false))
     }
 
     @Test
-    fun `nur oeffentliche IP-Adressen werden im Klartext blockiert`() {
-        assertFalse("Bearer-Token darf nicht im Klartext an eine öffentliche IP",
-            NetworkPolicy.isCleartextAllowed("http://8.8.8.8/api/v1/sets".toHttpUrl(), experte = true))
-        assertTrue(NetworkPolicy.isCleartextAllowed("https://8.8.8.8/api/v1/sets".toHttpUrl()))
+    fun `der Debug-Build darf http nur zum Geraet und zum Emulator-Host`() {
+        for (url in listOf("http://localhost:3000/x", "http://LOCALHOST/x", "http://127.0.0.1:3000/x", "http://10.0.2.2:3000/x"))
+            assertTrue(url, NetworkPolicy.verbindungErlaubt(url.toHttpUrl(), entwicklung = true))
+        for (url in listOf("http://192.168.1.50:3000/x", "http://nas:3000/x", "http://10.0.2.3/x",
+                           "http://localhost.angreifer.tld/x", "http://brick.fritz.box/x"))
+            assertFalse(url, NetworkPolicy.verbindungErlaubt(url.toHttpUrl(), entwicklung = true))
     }
 
     @Test
-    fun `oeffentliche Adressen werden nicht als privat gewertet`() {
-        listOf(
-            "8.8.8.8", "1.1.1.1", "172.15.0.1", "172.32.0.1",
-            "192.169.1.1", "brick.example.com", "cdn.rebrickable.com",
-            // Hostnamen mit fc/fd-Präfix dürfen nicht als IPv6-ULA gelten
-            "fcbayern.example", "fdservice.example.com"
-            // Hinweis: Namen OHNE Punkt gelten bewusst als privat (Intranet-
-            // Namen sind öffentlich nicht auflösbar) — siehe eigener Test oben.
-        ).forEach { assertFalse("$it sollte öffentlich sein", NetworkPolicy.isPrivateHost(it)) }
-    }
-
-    // ── isCleartextAllowed ──────────────────────────────────────────────────
-    @Test
-    fun `https ist immer erlaubt`() {
-        assertTrue(NetworkPolicy.isCleartextAllowed("https://brick.example.com/x".toHttpUrl()))
-        assertTrue(NetworkPolicy.isCleartextAllowed("https://192.168.1.50/x".toHttpUrl()))
+    fun `die Einrichtung nimmt nur https an und ergaenzt es ohne Schema`() {
+        assertEquals("https://brick.fritz.box", NetworkPolicy.normalisiere("  brick.fritz.box/ "))
+        assertEquals("http://nas:3000", NetworkPolicy.normalisiere("http://nas:3000/"))
+        assertNull(NetworkPolicy.adressfehler("brick.fritz.box", entwicklung = false))
+        assertNull(NetworkPolicy.adressfehler("HTTPS://nas:8443/brick", entwicklung = false))
+        assertEquals(NetworkPolicy.Adressfehler.KLARTEXT, NetworkPolicy.adressfehler("http://nas:3000", entwicklung = false))
+        assertEquals(NetworkPolicy.Adressfehler.KLARTEXT, NetworkPolicy.adressfehler("HTTP://nas:3000", entwicklung = true))
+        assertEquals(NetworkPolicy.Adressfehler.UNLESBAR, NetworkPolicy.adressfehler("https://", entwicklung = false))
+        assertEquals(NetworkPolicy.Adressfehler.UNLESBAR, NetworkPolicy.adressfehler("https://nas:abc", entwicklung = false))
+        assertNull("Im Debug-Build der Emulator-Host", NetworkPolicy.adressfehler("http://10.0.2.2:3000", entwicklung = true))
     }
 
     @Test
-    fun `http im lokalen Netz ist mit dem Expertenschalter erlaubt`() {
-        assertTrue(NetworkPolicy.isCleartextAllowed("http://192.168.1.50:3000/api/v1/sets".toHttpUrl(), experte = true))
-        assertTrue(NetworkPolicy.isCleartextAllowed("http://localhost:3000/api/v1/sets".toHttpUrl(), experte = true))
-    }
-
-    // Gegenprobe (30.10.2026, gemessen): in isCleartextAllowed die Zeile
-    // `if (!experte) return false` entfernt → rot.
-    @Test
-    fun `ohne Expertenschalter geht kein Klartext hinaus, auch nicht ins Heimnetz`() {
-        listOf("http://192.168.1.50:3000/x", "http://nas:3000/x", "http://localhost:3000/x").forEach {
-            assertFalse(it, NetworkPolicy.isCleartextAllowed(it.toHttpUrl()))
-            assertFalse(it, NetworkPolicy.isCleartextAllowed(it.toHttpUrl(), setOf("nas", "localhost", "192.168.1.50")))
-        }
-        assertTrue(NetworkPolicy.isCleartextAllowed("https://nas:3000/x".toHttpUrl()))
-    }
-
-    // Gegenprobe (30.10.2026, gemessen): klartextVorgabe() immer false → rot.
-    @Test
-    fun `nach dem Update behaelt nur ein http-Altbestand den Klartext`() {
-        assertTrue(NetworkPolicy.klartextVorgabe(" HTTP://nas:3000"))
-        assertFalse(NetworkPolicy.klartextVorgabe("https://brick.example.org"))
-        assertFalse("Eine Neuinstallation beginnt ohne", NetworkPolicy.klartextVorgabe(""))
+    fun `eine gespeicherte http-Adresse ist Altbestand, eine leere nicht`() {
+        assertTrue(NetworkPolicy.klartextAltbestand("http://192.168.1.50:3000", entwicklung = false))
+        assertTrue(NetworkPolicy.klartextAltbestand("http://localhost:3000", entwicklung = false))
+        assertFalse(NetworkPolicy.klartextAltbestand("http://localhost:3000", entwicklung = true))
+        assertFalse(NetworkPolicy.klartextAltbestand("https://nas", entwicklung = false))
+        assertFalse("Noch nicht eingerichtet ist kein Altbestand", NetworkPolicy.klartextAltbestand("", entwicklung = false))
         assertTrue(NetworkPolicy.istHttps("https://nas:8443"))
         assertFalse(NetworkPolicy.istHttps("http://nas:3000"))
-    }
-
-    // Gegenprobe (am 27.10. mit kotlinc gemessen): in isCleartextAllowed wieder
-    // `return true` für Namen → rot, der unbestätigte Host ging durch.
-    @Test
-    fun `ein oeffentlicher Name im Klartext nur nach Bestaetigung genau dieses Hosts`() {
-        val url = "http://brick.example.com/api/v1/sets".toHttpUrl()
-        assertFalse(NetworkPolicy.isCleartextAllowed(url, experte = true))
-        assertFalse(NetworkPolicy.isCleartextAllowed(url, setOf("anderer.example.com"), experte = true))
-        assertTrue(NetworkPolicy.isCleartextAllowed(url, setOf("brick.example.com"), experte = true))
-        // Eine öffentliche IP bleibt gesperrt, auch bestätigt.
-        assertFalse(NetworkPolicy.isCleartextAllowed("http://8.8.8.8/x".toHttpUrl(), setOf("8.8.8.8"), experte = true))
-    }
-
-    @Test
-    fun `die Einrichtung fragt nur fuer oeffentliche Namen nach`() {
-        assertTrue(NetworkPolicy.klartextHost("http://Brick.Example.com:3000") == "brick.example.com")
-        for (url in listOf("https://brick.example.com", "http://192.168.1.50:3000", "http://nas:3000", "http://8.8.8.8", ""))
-            assertTrue("$url braucht keine Bestätigung", NetworkPolicy.klartextHost(url) == null)
-    }
-
-    // Gegenprobe (am 27.10. mit kotlinc gemessen): klartextNachAussen ohne die
-    // isPrivateHost-Prüfung → rot, die Heimnetz-Adressen warnten mit.
-    @Test
-    fun `die Einrichtung warnt bei Klartext nach aussen, nicht im Heimnetz`() {
-        for (url in listOf("http://brick.example.com", "http://203.0.113.5:3000", "HTTP://lego.example.org/brick"))
-            assertTrue("$url muss warnen", NetworkPolicy.klartextNachAussen(url))
-        for (url in listOf("https://brick.example.com", "http://192.168.1.50:3000", "http://nas:3000",
-                           "http://brick.fritz.box", "http://localhost:3000", "", "kein url"))
-            assertFalse("$url darf nicht warnen", NetworkPolicy.klartextNachAussen(url))
     }
 
     @Test
@@ -166,17 +101,5 @@ class NetworkPolicyTest {
         assertFalse(NetworkPolicy.gleicheHerkunft("http://nas:3000", "http://nas:3001"))
         assertFalse(NetworkPolicy.gleicheHerkunft("http://nas:3000", "https://nas:3000"))
         assertFalse("Eine leere Adresse ist kein Server", NetworkPolicy.gleicheHerkunft("", ""))
-    }
-
-    @Test
-    fun `nur ein Passwort im Klartext in einem unbekannten Netz braucht die Rueckfrage`() {
-        val bekannt = setOf(NetworkPolicy.netzEintrag("http://nas:3000", "heim"))
-        assertFalse(NetworkPolicy.anmeldungBrauchtNetzBestaetigung("http://nas:3000", "heim", bekannt))
-        assertTrue(NetworkPolicy.anmeldungBrauchtNetzBestaetigung("http://nas:3000", "hotel", bekannt))
-        assertTrue("Ohne Kennung ist das Netz unbekannt",
-            NetworkPolicy.anmeldungBrauchtNetzBestaetigung("http://nas:3000", null, bekannt))
-        assertFalse(NetworkPolicy.anmeldungBrauchtNetzBestaetigung("https://nas:3000", "hotel", emptySet()))
-        assertFalse("Das Gerät selbst ist kein fremder Rechner",
-            NetworkPolicy.anmeldungBrauchtNetzBestaetigung("http://127.0.0.1:3000", null, emptySet()))
     }
 }

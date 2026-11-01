@@ -249,14 +249,11 @@ fun SettingsScreen(
         // Die Serveradresse ist eine Einstellung wie Währung und Sprache, keine Handlung
         // an der laufenden Sitzung.
         val nutzerCa by app.nutzerCa.collectAsStateWithLifecycle()
-        val klartext by app.klartextErlaubt.collectAsStateWithLifecycle()
         ServerCard(
             serverUrl = appState.serverUrl,
             onWechseln = onServerWechseln,
             nutzerCa = nutzerCa,
             onNutzerCa = { app.setNutzerCa(it) },
-            klartext = klartext,
-            onKlartext = { app.setKlartextErlaubt(it) },
         )
 
         UpdateCard(
@@ -306,7 +303,6 @@ private fun Unterschrift(text: String) {
 @Composable
 private fun ServerCard(
     serverUrl: String, onWechseln: () -> Unit, nutzerCa: Boolean, onNutzerCa: (Boolean) -> Unit,
-    klartext: Boolean, onKlartext: (Boolean) -> Unit,
 ) {
     SettingsCard(title = stringResource(R.string.main_menu_change_server), icon = Icons.Default.Cloud) {
         Text(
@@ -334,8 +330,6 @@ private fun ServerCard(
             }
             Switch(checked = nutzerCa, onCheckedChange = onNutzerCa)
         }
-        // Derselbe Schalter wie in der Einrichtung, mit derselben Warnung.
-        KlartextSchalter(klartext, onKlartext)
     }
 }
 

@@ -3,7 +3,6 @@ package ch.brickinventoryapp.ui.viewmodel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.Anmeldeablage
-import ch.brickinventoryapp.data.Netzkennung
 import ch.brickinventoryapp.data.model.RegisterRequest
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.model.TOKEN_SCOPE_APP
@@ -40,43 +39,38 @@ class AnmeldungViewModel @Inject constructor(
     dienste: AppDienste,
     private val konto: KontoRepository,
     private val ablage: Anmeldeablage,
-    private val netzkennung: Netzkennung,
 ) : BereichsViewModel(dienste) {
 
     private val _anmeldeState = MutableStateFlow(AnmeldeUiState())
     val anmeldeState: StateFlow<AnmeldeUiState> = _anmeldeState.asStateFlow()
 
     /**
-     * Zuerst die Erlaubnis für Klartext, dann die Adresse: Die ersten Anfragen folgen
-     * sofort. Ein anderer Server meldet vorher ganz ab ([abmelden], der Weg der App),
-     * denn der Token gehört dem alten. Das Netz der Einrichtung gilt als bekannt.
+     * Nur eine https-Adresse wird gespeichert; false heisst abgelehnt, die
+     * Einrichtung bleibt stehen. Ein anderer Server meldet vorher ganz ab
+     * ([abmelden], der Weg der App), denn der Token gehört dem alten.
      */
-    fun saveServerUrl(url: String, klartextBestaetigt: Boolean = false, abmelden: suspend () -> Unit = {}) {
-        viewModelScope.launch { richteEin(url, klartextBestaetigt, abmelden) }
+    fun saveServerUrl(url: String, abmelden: suspend () -> Unit = {}): Boolean {
+        val neu = NetworkPolicy.normalisiere(url)
+        if (NetworkPolicy.adressfehler(neu, NetworkPolicy.entwicklung) != null) return false
+        viewModelScope.launch { richteEin(neu, abmelden) }
+        return true
     }
 
-    private suspend fun richteEin(url: String, klartextBestaetigt: Boolean, abmelden: suspend () -> Unit) {
-        val neu = url.trim().trimEnd('/')
+    private suspend fun richteEin(neu: String, abmelden: suspend () -> Unit) {
         if (dienste.sitzung.state.value.isLoggedIn && !NetworkPolicy.gleicheHerkunft(ablage.serverUrlJetzt(), neu)) {
             abmelden()
         }
-        if (klartextBestaetigt) NetworkPolicy.klartextHost(neu)?.let { ablage.bestaetigeKlartext(it) }
         ablage.saveServerUrl(neu)
-        netzkennung.fingerabdruck()?.let { ablage.merkeNetz(NetworkPolicy.netzEintrag(neu, it)) }
     }
 
-    /**
-     * [netzBestaetigt]: Der Nutzer hat die Rückfrage „anderes Netz, Passwort im
-     * Klartext“ ausdrücklich bejaht; das Netz gilt danach als bekannt.
-     */
-    fun login(username: String, password: String, code: String? = null, netzBestaetigt: Boolean = false) {
-        viewModelScope.launch { mitPasswort(username, password, code, netzBestaetigt) }
+    fun login(username: String, password: String, code: String? = null) {
+        viewModelScope.launch { mitPasswort(username, password, code) }
     }
 
     /** Der Passkey ersetzt den Code des zweiten Faktors; Name und Passwort gehen mit. */
-    fun passkeyStattCode(username: String, password: String, abfrage: PasskeyAbfrage, netzBestaetigt: Boolean = false) {
+    fun passkeyStattCode(username: String, password: String, abfrage: PasskeyAbfrage) {
         viewModelScope.launch {
-            mitPasswort(username, password, null, netzBestaetigt) { holePasskey(PASSKEY_ZWEITER_FAKTOR, abfrage) }
+            mitPasswort(username, password, null) { holePasskey(PASSKEY_ZWEITER_FAKTOR, abfrage) }
         }
     }
 
@@ -92,22 +86,11 @@ class AnmeldungViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Das Passwort geht erst nach der Netzprüfung hinaus. [passkey] läuft danach:
-     * Ein abgebrochener Dialog soll keine halbe Anmeldung hinterlassen.
-     */
-    private suspend fun mitPasswort(username: String, password: String, code: String?, netzBestaetigt: Boolean,
+    /** [passkey] läuft vor dem Senden: Ein abgebrochener Dialog soll keine halbe Anmeldung hinterlassen. */
+    private suspend fun mitPasswort(username: String, password: String, code: String?,
                                     passkey: (suspend () -> JsonObject?)? = null) {
         val url = ablage.serverUrlJetzt()
-        val netz = netzkennung.fingerabdruck()
-        if (NetworkPolicy.anmeldungBrauchtNetzBestaetigung(url, netz, ablage.bekannteNetze())) {
-            if (!netzBestaetigt) {
-                _anmeldeState.update { it.copy(netzFrage = true) }
-                return
-            }
-            netz?.let { ablage.merkeNetz(NetworkPolicy.netzEintrag(url, it)) }
-        }
-        _anmeldeState.update { it.copy(netzFrage = false, loginLaeuft = true, loginError = null) }
+        _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
         val antwort = passkey?.let { it() ?: return }
         val mitCode = !code.isNullOrBlank() || antwort != null
         when (val r = konto.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() }, scope(), antwort)) {
@@ -164,23 +147,25 @@ class AnmeldungViewModel @Inject constructor(
     /** Das Häkchen „mit Verwalterrechten“ im Anmeldeformular. */
     fun setzeVollerZugriff(an: Boolean) = _anmeldeState.update { it.copy(vollerZugriff = an) }
 
-    /** Die Rückfrage verneint: Es geht nichts hinaus. */
-    fun netzFrageVerwerfen() {
-        _anmeldeState.update { it.copy(netzFrage = false) }
-    }
-
     /**
      * Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem
      * Code. Trägt er einen Fingerabdruck, gilt der Pin schon für die erste Anfrage.
+     * Ein Code mit http-Adresse wird nicht übernommen, auch wenn die Oberfläche ihn
+     * durchliesse.
      */
     fun loginWithQrToken(
-        serverUrl: String, token: String, klartextBestaetigt: Boolean = false,
+        serverUrl: String, token: String,
         abmelden: suspend () -> Unit = {}, fingerabdruck: String? = null,
     ) {
+        val neu = NetworkPolicy.normalisiere(serverUrl)
+        if (NetworkPolicy.adressfehler(neu, NetworkPolicy.entwicklung) != null) {
+            _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(R.string.setup_qr_klartext_abgelehnt)) }
+            return
+        }
         viewModelScope.launch {
             _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
-            if (fingerabdruck != null) pinSchluessel(serverUrl)?.let { ablage.merkePin(it, fingerabdruck) }
-            richteEin(serverUrl, klartextBestaetigt, abmelden)
+            if (fingerabdruck != null) pinSchluessel(neu)?.let { ablage.merkePin(it, fingerabdruck) }
+            richteEin(neu, abmelden)
             when (val r = konto.qrLogin(token)) {
                 is Result.Success -> {
                     val neuesToken = r.data.token

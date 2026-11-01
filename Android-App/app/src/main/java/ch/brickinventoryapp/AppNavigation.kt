@@ -25,6 +25,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.util.NetworkPolicy
 
 // Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
 
@@ -107,10 +108,10 @@ fun BrickInventoryManagerApp(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val startDest = when {
-        state.serverUrl.isBlank() -> Screen.Setup.route
-        !state.isLoggedIn         -> Screen.Login.route
-        else                      -> Screen.Gallery.route
+    val startDest = when (startZiel(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung)) {
+        StartZiel.EINRICHTUNG -> Screen.Setup.route
+        StartZiel.ANMELDUNG   -> Screen.Login.route
+        StartZiel.SAMMLUNG    -> Screen.Gallery.route
     }
 
     // Nav-Labels hier auflösen (direkt im @Composable-Scope, nicht im remember-Lambda)

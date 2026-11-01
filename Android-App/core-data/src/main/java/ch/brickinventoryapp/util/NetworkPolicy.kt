@@ -1,12 +1,15 @@
 package ch.brickinventoryapp.util
 
+import ch.brickinventoryapp.core.data.BuildConfig
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import java.io.IOException
 
 /**
- * Netzregeln des Interceptors. Der Token geht nur an dieselbe Herkunft (Schema,
- * Host, Port), nie per String-Präfix. Klartext nur zu privaten Adressen, weil die
- * Network-Security-Config keine RFC1918-Wildcards kennt.
+ * Netzregeln des Wächters. Der Token geht nur an dieselbe Herkunft (Schema,
+ * Host, Port), nie per String-Präfix. Klartext gibt es nicht: Nur ein Debug-Build
+ * darf zum Gerät selbst und zum Emulator-Host, wie es seine eigene
+ * Network-Security-Config erlaubt.
  */
 object NetworkPolicy {
 
@@ -19,87 +22,44 @@ object NetworkPolicy {
     }
 
     /**
-     * Suffixe, die ausschliesslich im lokalen Netz vergeben werden. `.box` ist
-     * eine öffentliche Endung; lokal ist nur die der Fritzbox.
+     * Die Hosts, zu denen ein Debug-Build http darf. Dieselben drei stehen in
+     * app/src/debug/res/xml/network_security_config.xml; der Release-Build hat
+     * keine Ausnahme.
      */
-    private val LOCAL_SUFFIXES = listOf(
-        ".local", ".localhost", ".home.arpa", ".lan", ".home", ".internal", ".intern", ".fritz.box"
-    )
+    val ENTWICKLUNGS_HOSTS = setOf("localhost", "127.0.0.1", "10.0.2.2")
 
-    /**
-     * Privat = LAN, Loopback, mDNS oder ein Name, der öffentlich gar nicht auflösbar
-     * wäre. Gewöhnliche Hostnamen wie http://nas:3000, http://raspberrypi:3000 oder
-     * http://brick.fritz.box müssen durch — unter ihnen ist ein selbstgehosteter
-     * Server im Heimnetz üblicherweise erreichbar. Ein Name ohne Punkt kann nicht
-     * öffentlich auflösen, er ist per Definition ein Intranet-Name.
-     */
-    fun isPrivateHost(host: String): Boolean {
-        val h = host.lowercase().trim('[', ']')
-        if (h == "localhost") return true
-        if (LOCAL_SUFFIXES.any { h.endsWith(it) }) return true
-        // Einzelnes Label ohne Punkt → Intranet-Name (nas, synology, brickserver …)
-        if (!h.contains('.') && !h.contains(':')) return true
+    /** Ein Debug-Build? Die Aufrufer im Gerät nehmen diesen Wert, Tests setzen ihn ausdrücklich. */
+    val entwicklung: Boolean get() = BuildConfig.DEBUG
 
-        // IPv6 nur prüfen, wenn es auch wirklich eine IPv6-Adresse ist —
-        // sonst würde ein Hostname wie "fcbayern.example" über den
-        // fc/fd-Präfix (Unique Local Address) als privat durchgehen.
-        if (h.contains(':')) {
-            return h == "::1" || h.startsWith("fc") || h.startsWith("fd") || h.startsWith("fe80:")
-        }
+    /** Darf diese Anfrage hinaus? https immer, http nur im Debug-Build zu [ENTWICKLUNGS_HOSTS]. */
+    fun verbindungErlaubt(url: HttpUrl, entwicklung: Boolean): Boolean =
+        url.isHttps || (entwicklung && url.host.lowercase() in ENTWICKLUNGS_HOSTS)
 
-        val parts = h.split('.')
-        if (parts.size != 4) return false
-        val o = parts.map { it.toIntOrNull() ?: return false }
-        if (o.any { it !in 0..255 }) return false
-        return when {
-            o[0] == 10 -> true                              // 10.0.0.0/8
-            o[0] == 127 -> true                             // Loopback
-            o[0] == 172 && o[1] in 16..31 -> true           // 172.16.0.0/12
-            o[0] == 192 && o[1] == 168 -> true              // 192.168.0.0/16
-            o[0] == 169 && o[1] == 254 -> true              // Link-local
-            else -> false
-        }
+    /** Warum die Einrichtung eine Adresse nicht annimmt. */
+    enum class Adressfehler { UNLESBAR, KLARTEXT }
+
+    /** Eingabe ohne Schema gilt als https: „nas.fritz.box“ heisst https://nas.fritz.box. */
+    fun normalisiere(eingabe: String): String {
+        val t = eingabe.trim()
+        return (if (t.isEmpty() || t.contains("://")) t else "https://$t").trimEnd('/')
+    }
+
+    /** null heisst: Die Einrichtung nimmt die Adresse an. */
+    fun adressfehler(serverUrl: String, entwicklung: Boolean): Adressfehler? {
+        val url = normalisiere(serverUrl).toHttpUrlOrNull() ?: return Adressfehler.UNLESBAR
+        return if (verbindungErlaubt(url, entwicklung)) null else Adressfehler.KLARTEXT
     }
 
     /**
-     * Darf diese Anfrage unverschlüsselt rausgehen? Ohne [experte] nie: Im WLAN
-     * liest jeder den Token mit. Mit dem Expertenschalter ins Heimnetz; eine
-     * öffentliche IP nie, ein öffentlich aussehender NAME nur, wenn genau dieser
-     * Host in der Einrichtung bestätigt wurde (brick.meinname.ch kann Heimnetz sein).
+     * Eine gespeicherte http-Adresse aus der Zeit vor dem Klartext-Verbot. Die App
+     * geht dann in die Einrichtung und erklärt den Weg zu https, statt beim ersten
+     * Abruf mit einem Netzfehler zu scheitern.
      */
-    fun isCleartextAllowed(url: HttpUrl, bestaetigt: Set<String> = emptySet(), experte: Boolean = false): Boolean {
-        if (url.isHttps) return true
-        if (!experte) return false
-        if (isPrivateHost(url.host)) return true
-        if (isIpLiteral(url.host)) return false
-        return url.host.lowercase() in bestaetigt
-    }
+    fun klartextAltbestand(serverUrl: String, entwicklung: Boolean): Boolean =
+        adressfehler(serverUrl, entwicklung) == Adressfehler.KLARTEXT
 
     /** Ist die Adresse verschlüsselt? Nur dann bietet die App einen Token ohne Ablauf an. */
     fun istHttps(serverUrl: String): Boolean = serverUrl.trim().toHttpUrlOrNull()?.isHttps == true
-
-    /**
-     * Der Expertenschalter beim ersten Start mit dieser Regel: an nur für den, der
-     * schon über http eingerichtet ist — sonst wäre er nach dem Update ausgesperrt.
-     */
-    fun klartextVorgabe(serverUrlBeimUpdate: String): Boolean =
-        serverUrlBeimUpdate.trim().lowercase().startsWith("http://")
-
-    /** Der Host, den die Einrichtung bestätigen lassen muss — oder null. */
-    fun klartextHost(serverUrl: String): String? {
-        val url = serverUrl.trim().toHttpUrlOrNull() ?: return null
-        return if (!url.isHttps && !isPrivateHost(url.host) && !isIpLiteral(url.host)) url.host.lowercase() else null
-    }
-
-    /**
-     * Geht der Zugang zu dieser Server-Adresse unverschlüsselt aus dem lokalen
-     * Netz? Die Einrichtung zeigt dann eine Warnung; blockiert wird nicht, weil
-     * ein Heimnetz-Name auch öffentlich aussehen kann.
-     */
-    fun klartextNachAussen(serverUrl: String): Boolean {
-        val url = serverUrl.trim().toHttpUrlOrNull() ?: return false
-        return !url.isHttps && !isPrivateHost(url.host)
-    }
 
     /**
      * Schema, Host und Port als ein Text — die Herkunft, an die ein Token
@@ -115,32 +75,11 @@ object NetworkPolicy {
         val ha = herkunft(a) ?: return false
         return ha == herkunft(b)
     }
-
-    private fun istLoopback(host: String): Boolean {
-        val h = host.lowercase().trim('[', ']')
-        return h == "localhost" || h == "::1" || h.startsWith("127.")
-    }
-
-    /**
-     * Ein Passwort über http in einem Netz, in dem dieser Server nie eingerichtet
-     * oder bestätigt wurde, braucht eine Rückfrage: Im fremden WLAN kann
-     * „http://nas:3000“ ein anderer Rechner sein. Ohne Kennung des Netzes
-     * ([netz] null) ist es immer ein unbekanntes.
-     */
-    fun anmeldungBrauchtNetzBestaetigung(serverUrl: String, netz: String?, bekannt: Set<String>): Boolean {
-        val url = serverUrl.trim().toHttpUrlOrNull() ?: return false
-        if (url.isHttps || istLoopback(url.host)) return false
-        return netz == null || netzEintrag(serverUrl, netz) !in bekannt
-    }
-
-    /** Der gemerkte Eintrag „dieser Server in diesem Netz“. */
-    fun netzEintrag(serverUrl: String, netz: String): String = "${herkunft(serverUrl)}|$netz"
-
-    /** Ist der Host eine numerische IPv4/IPv6-Adresse (kein Name)? */
-    fun isIpLiteral(host: String): Boolean {
-        val h = host.trim('[', ']')
-        if (h.contains(':')) return true
-        val parts = h.split('.')
-        return parts.size == 4 && parts.all { it.toIntOrNull() in 0..255 }
-    }
 }
+
+/**
+ * Eine Anfrage ohne TLS, die der Wächter nicht sendet. Eigener Typ, damit die
+ * Datenschicht daraus eine Meldung mit Anleitung macht statt „Netzfehler“.
+ */
+class KlartextAbgelehnt(val host: String) :
+    IOException("Unverschlüsselte Verbindung zu $host abgelehnt: Die App spricht nur https.")

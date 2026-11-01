@@ -112,14 +112,6 @@ class AppViewModel @Inject constructor(
         apiHttpClient.connectionPool.evictAll()
     }
 
-    /** Expertenschalter: Klartext zum eigenen Server (NetworkPolicy.isCleartextAllowed). */
-    private val _klartextErlaubt = MutableStateFlow(prefs.klartextErlaubt())
-    val klartextErlaubt: StateFlow<Boolean> = _klartextErlaubt.asStateFlow()
-    fun setKlartextErlaubt(an: Boolean) {
-        prefs.setzeKlartextErlaubt(an)
-        _klartextErlaubt.value = an
-    }
-
     /** Je Gerät: Material You statt der Farben des Designs (ui/theme/Darstellung.kt). */
     private val _systemfarben = MutableStateFlow(prefs.systemfarben())
     val systemfarben: StateFlow<Boolean> = _systemfarben.asStateFlow()
@@ -160,7 +152,10 @@ class AppViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .collect { (url, token) ->
                     sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank(), authToken = token) }
-                    if (token.isNotBlank() && url.isNotBlank()) {
+                    // Eine alte http-Adresse führt in die Einrichtung (startZiel); Abrufe
+                    // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
+                    if (token.isNotBlank() && url.isNotBlank() &&
+                        !ch.brickinventoryapp.util.NetworkPolicy.klartextAltbestand(url, ch.brickinventoryapp.util.NetworkPolicy.entwicklung)) {
                         launch {
                             val me = repo.konto.getMe()
                             if (me is Result.Success) sitzung.aendere { it.copy(isAdmin = me.data.user?.isAdmin == true) }

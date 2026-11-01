@@ -34,12 +34,8 @@
     <string name="login_passkey_fehler">Der Passkey konnte nicht abgefragt werden.</string>
     <string name="settings_nutzer_ca">Der eigenen Zertifizierungsstelle vertrauen</string>
     <string name="settings_nutzer_ca_hint">Für einen Server mit selbst ausgestelltem Zertifikat, dessen Zertifizierungsstelle auf diesem Gerät installiert ist. Sonst ausgeschaltet lassen: Eine installierte Zertifizierungsstelle kann jede Verbindung mitlesen.</string>
-    <string name="login_netz_titel">Anderes Netz als bei der Einrichtung</string>
-    <string name="login_netz_text">Dein Passwort ginge unverschlüsselt an %1$s. In diesem Netz kann die Adresse zu einem anderen Rechner gehören. Nur fortfahren, wenn du sicher bist, dass es dein Server ist.</string>
-    <string name="login_netz_trotzdem">Trotzdem anmelden</string>
     <string name="setup_qr_titel">Diesen Server übernehmen?</string>
     <string name="setup_qr_text">Der QR-Code zeigt auf:\n%1$s\n\nDie App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
-    <string name="setup_qr_klartext">Die Verbindung ist unverschlüsselt — der Zugang geht im Klartext übers Netz.</string>
     <string name="setup_qr_uebernehmen">Übernehmen und anmelden</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
@@ -95,12 +91,10 @@
     <string name="setup_or_manual">  oder manuell  </string>
     <string name="setup_server_url">Server-URL</string>
     <string name="setup_url_label">URL der BrickInventory Manager Webapp</string>
-    <string name="setup_url_placeholder">http://192.168.1.100:3000</string>
-    <string name="setup_url_supporting">z.B. http://192.168.1.100:3000 oder https://brick.example.com</string>
+    <string name="setup_url_placeholder">https://brick.fritz.box</string>
+    <string name="setup_url_supporting">z.B. https://brick.fritz.box oder https://brick.example.com – ohne https:// davor ergänzt die App es</string>
     <string name="api_app_zu_alt">Diese App ist zu alt für den Server. Bitte die App aktualisieren (Einstellungen → Aktualisierung).</string>
     <string name="api_server_zu_alt">Der Server ist älter als diese App. Manches fehlt womöglich — bitte den Server aktualisieren.</string>
-    <string name="setup_url_klartext">Unverschlüsselt: Dein Zugang geht im Klartext übers Netz. Ist der Server aus dem Internet erreichbar, bitte https verwenden.</string>
-    <string name="setup_url_klartext_bestaetigen">Mir ist bewusst, dass der Zugang zu %1$s unverschlüsselt übertragen wird — trotzdem verbinden.</string>
     <string name="setup_continue">Weiter</string>
     <string name="setup_qr_detected">QR-Code erkannt</string>
     <string name="setup_qr_scan_hint">BrickInventory QR-Code scannen</string>
@@ -575,6 +569,7 @@
     <string name="err_not_signed_in">Nicht angemeldet</string>
     <string name="err_connection_closed">Der Server hat die Verbindung beendet</string>
     <string name="err_session_expired">Sitzung abgelaufen — bitte neu anmelden</string>
+    <string name="err_klartext">Die Server-Adresse ist unverschlüsselt (http). Die App verbindet sich nur über https – bitte unter „Server wechseln“ die https-Adresse eintragen oder den QR-Code neu scannen.</string>
     <string name="err_unknown">Etwas ist schiefgelaufen</string>
     <string name="pdfview_print">Drucken</string>
     <string name="pdfview_zoom_in">Vergrössern</string>
@@ -836,9 +831,11 @@
     </plurals>
     <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
     <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App nimmt nur dieses an.</string>
-    <string name="setup_klartext_gesperrt">Unverschlüsselte Verbindungen (http) sind ausgeschaltet. Bitte https verwenden oder unten den Expertenschalter einschalten.</string>
-    <string name="klartext_experte_titel">Experte: Unverschlüsselte Verbindungen (http) erlauben</string>
-    <string name="klartext_experte_warnung">Nur für einen Server im Heimnetz ohne https. Wer im selben WLAN ist, kann deinen Zugangsschlüssel mitlesen und dein Konto benutzen. Einen Zugang ohne Ablauf fordert die App dann nie an.</string>
+    <string name="setup_altbestand_text">Gespeichert ist %1$s – eine unverschlüsselte Adresse. Diese Fassung verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.\n\nSo geht es weiter:\n1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und hier oben scannen.\n2. Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.\n\nDanach meldest du dich einmal neu an.</string>
+    <string name="setup_altbestand_titel">Nur noch verschlüsselte Verbindungen</string>
+    <string name="setup_qr_klartext_abgelehnt">Dieser QR-Code nennt eine unverschlüsselte Adresse (http). Die App verbindet sich nur über https: Den Server auf https umstellen (README, „HTTPS mit eigener CA“) und den Code danach neu erzeugen.</string>
+    <string name="setup_url_unlesbar">Diese Adresse lässt sich nicht lesen. Beispiel: https://brick.fritz.box</string>
+    <string name="setup_klartext_abgelehnt">http wird nicht unterstützt. Bitte die https-Adresse des Servers eintragen.</string>
     <string name="settings_systemfarben">Systemfarben (Material You)</string>
     <string name="settings_systemfarben_hint">Farben aus dem Hintergrundbild statt der Farben des Designs. Formen und Schrift bleiben.</string>
     <string name="zert_titel_erstkontakt">Diesem Server vertrauen?</string>

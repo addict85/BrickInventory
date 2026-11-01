@@ -6,8 +6,6 @@ import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.di.ServerWaechter
 import ch.brickinventoryapp.di.Zugangslage
-import ch.brickinventoryapp.util.BeweisSpeicher
-import ch.brickinventoryapp.util.ServerBeweis
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -27,7 +25,8 @@ import java.util.concurrent.TimeUnit
 /**
  * Der Tausch des Tokens im echten Netzweg: Wächter, Konto-Repository und
  * TokenTausch über einen Client, gegen einen Testserver, der den alten Token
- * abweist oder den Tausch per Kopfzeile verlangt.
+ * abweist oder den Tausch per Kopfzeile verlangt. Der Testserver spricht http
+ * auf localhost; der Wächter läuft darum wie im Debug-Build (entwicklung = true).
  *
  * Gegenproben (30.10.2026, gemessen):
  *   A  in ServerWaechter den Zweig für 401 `token_rotation_noetig` entfernt →
@@ -48,9 +47,6 @@ class TokenRotationTest {
         override fun serverUrl() = server.url("/").toString().trimEnd('/')
         override fun token() = gespeichert
         override fun tokenHerkunft(): String? = null
-        override fun klartextHosts() = emptySet<String>()
-        override fun klartextErlaubt() = true
-        override fun netz() = "heim"
     }
 
     init {
@@ -58,12 +54,6 @@ class TokenRotationTest {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val pfad = request.path.orEmpty().substringBefore('?')
                 val bearer = request.getHeader("Authorization")?.removePrefix("Bearer ")
-                if (pfad.endsWith("/auth/serverbeweis")) {
-                    val rumpf = request.body.readUtf8()
-                    val nonce = Regex("\"nonce\":\"([0-9a-f]+)\"").find(rumpf)!!.groupValues[1]
-                    val tok = listOf("alt", "neu").first { "\"kennung\":\"${ServerBeweis.kennung(it)}\"" in rumpf }
-                    return MockResponse().setBody("""{"success":true,"beweis":"${ServerBeweis.erwartet(tok, nonce)}"}""")
-                }
                 ereignisse += "$pfad $bearer"
                 return when {
                     pfad == "/api/v1/auth/token-rotieren" -> MockResponse().setBody(
@@ -87,7 +77,7 @@ class TokenRotationTest {
         rotiere = { konto.tokenRotieren(it) },
     )
     private val client = OkHttpClient.Builder()
-        .addInterceptor(ServerWaechter(lage, true, BeweisSpeicher(), sitzungAbgelaufen = { abgelaufen++ }, rotation = tausch))
+        .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = tausch))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     init {

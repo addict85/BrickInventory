@@ -2,36 +2,23 @@ package ch.brickinventoryapp.di
 
 import ch.brickinventoryapp.core.data.BuildConfig
 import ch.brickinventoryapp.data.PreferencesManager
-import ch.brickinventoryapp.util.BeweisSpeicher
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.VersionsHinweis
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
-
-/** Gemeinsam für API- und Bild-Client: ein Beweis je Server, Netz und Token. */
-private val beweise = BeweisSpeicher()
 
 /**
  * Die Zugangslage des Geräts. Die Werte kommen aus dem Speicherspiegel des
  * PreferencesManagers; nur beim Kaltstart wird auf die Platte gewartet, ohne
  * runBlocking (PreferencesManager.warteAufStart).
  */
-private class GeraeteZugang(
-    private val prefs: PreferencesManager,
-    private val ctx: android.content.Context,
-) : Zugangslage {
-    private fun bereit() {
-        if (prefs.serverUrlState.value == null || prefs.authTokenState.value == null ||
-            prefs.klartextHostsState.value == null) prefs.warteAufStart()
-    }
+private class GeraeteZugang(private val prefs: PreferencesManager) : Zugangslage {
+    // Immer warten, nicht nur ohne Spiegelwert: Erst danach ist auch der alte
+    // Stand der Nutzer-CAs zurückgesetzt. Nach dem Kaltstart kehrt es sofort zurück.
+    private fun bereit() = prefs.warteAufStart()
     override fun serverUrl(): String { bereit(); return prefs.serverUrlState.value.orEmpty() }
     override fun token(): String { bereit(); return prefs.authTokenState.value.orEmpty() }
     override fun tokenHerkunft(): String? { bereit(); return prefs.tokenHerkunftState.value }
-    override fun klartextHosts(): Set<String> { bereit(); return prefs.klartextHostsState.value.orEmpty() }
-    override fun klartextErlaubt(): Boolean { bereit(); return prefs.klartextErlaubt() }
-    override fun netz(): String = runCatching {
-        (ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager)
-            ?.activeNetwork?.toString()
-    }.getOrNull() ?: "?"
 }
 
 private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTrustManager {
@@ -90,7 +77,10 @@ internal fun buildInterceptorClient(
                 addInterceptor(ch.brickinventoryapp.util.netzMitschnitt())
             }
         }
-        .addInterceptor(ServerWaechter(GeraeteZugang(prefs, ctx), isApiClient, beweise,
+        // Eine Umleitung von https auf http liefe am Wächter vorbei, der nur die
+        // erste Anfrage sieht.
+        .followSslRedirects(false)
+        .addInterceptor(ServerWaechter(GeraeteZugang(prefs), isApiClient, NetworkPolicy.entwicklung,
             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung,
             // Die Sprache aus den Ressourcen: Der Server antwortet in der, die die Oberfläche zeigt.
             eigeneKoepfe = { original, ziel ->

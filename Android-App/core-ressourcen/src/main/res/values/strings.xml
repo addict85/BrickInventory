@@ -50,12 +50,8 @@
     <string name="login_passkey_fehler">The passkey could not be requested.</string>
     <string name="settings_nutzer_ca">Trust my own certificate authority</string>
     <string name="settings_nutzer_ca_hint">For a server with a self-issued certificate whose authority is installed on this device. Otherwise leave it off: an installed authority can read every connection.</string>
-    <string name="login_netz_titel">Different network than at setup</string>
-    <string name="login_netz_text">Your password would go unencrypted to %1$s. In this network the address may belong to another computer. Only continue if you are sure it is your server.</string>
-    <string name="login_netz_trotzdem">Log in anyway</string>
     <string name="setup_qr_titel">Use this server?</string>
     <string name="setup_qr_text">The QR code points to:\n%1$s\n\nThe app will only send your login there. Continue only if this is your server.</string>
-    <string name="setup_qr_klartext">The connection is unencrypted — access goes over the network in plain text.</string>
     <string name="setup_qr_uebernehmen">Use and log in</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
@@ -111,12 +107,10 @@
     <string name="setup_or_manual">  or manually  </string>
     <string name="setup_server_url">Server URL</string>
     <string name="setup_url_label">URL of the BrickInventory Manager webapp</string>
-    <string name="setup_url_placeholder">http://192.168.1.100:3000</string>
-    <string name="setup_url_supporting">e.g. http://192.168.1.100:3000 or https://brick.example.com</string>
+    <string name="setup_url_placeholder">https://brick.fritz.box</string>
+    <string name="setup_url_supporting">e.g. https://brick.fritz.box or https://brick.example.com – without https:// the app adds it</string>
     <string name="api_app_zu_alt">This app is too old for the server. Please update the app (Settings → Update).</string>
     <string name="api_server_zu_alt">The server is older than this app. Some functions may be missing — please update the server.</string>
-    <string name="setup_url_klartext">Unencrypted: your access goes over the network in plain text. If the server is reachable from the internet, use https.</string>
-    <string name="setup_url_klartext_bestaetigen">I understand that access to %1$s is sent unencrypted — connect anyway.</string>
     <string name="setup_continue">Continue</string>
     <string name="setup_qr_detected">QR code detected</string>
     <string name="setup_qr_scan_hint">Scan the BrickInventory QR code</string>
@@ -589,6 +583,7 @@
     <string name="err_not_signed_in">Not signed in</string>
     <string name="err_connection_closed">The server closed the connection</string>
     <string name="err_session_expired">Session expired — please sign in again</string>
+    <string name="err_klartext">The server address is unencrypted (http). The app only connects via https – please enter the https address under “Change server” or scan the QR code again.</string>
     <string name="err_unknown">Something went wrong</string>
     <string name="pdfview_print">Print</string>
     <string name="pdfview_zoom_in">Zoom in</string>
@@ -855,9 +850,11 @@
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
     <string name="setup_qr_pin">The code also names the server\'s certificate. The app will accept only that one.</string>
-    <string name="setup_klartext_gesperrt">Unencrypted connections (http) are switched off. Use https, or turn on the expert switch below.</string>
-    <string name="klartext_experte_titel">Expert: allow unencrypted connections (http)</string>
-    <string name="klartext_experte_warnung">Only for a server in your home network without https. Anyone on the same Wi-Fi can read your access token and use your account. The app then never asks for an access without expiry.</string>
+    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it above.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
+    <string name="setup_altbestand_titel">Encrypted connections only</string>
+    <string name="setup_qr_klartext_abgelehnt">This QR code names an unencrypted address (http). The app only connects via https: switch the server to https (README, “HTTPS with your own CA”) and create the code again.</string>
+    <string name="setup_url_unlesbar">This address cannot be read. Example: https://brick.fritz.box</string>
+    <string name="setup_klartext_abgelehnt">http is not supported. Please enter the server\'s https address.</string>
     <string name="settings_systemfarben">System colours (Material You)</string>
     <string name="settings_systemfarben_hint">Colours from your wallpaper instead of the design\'s colours. Shapes and fonts stay.</string>
     <string name="zert_titel_erstkontakt">Trust this server?</string>

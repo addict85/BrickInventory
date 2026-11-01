@@ -21,6 +21,7 @@ fun fehlerTextId(art: Fehlerart?): Int = when (art) {
     Fehlerart.NICHT_ANGEMELDET   -> R.string.err_not_signed_in
     Fehlerart.VERBINDUNG_BEENDET -> R.string.err_connection_closed
     Fehlerart.SITZUNG_ABGELAUFEN -> R.string.err_session_expired
+    Fehlerart.KLARTEXT           -> R.string.err_klartext
     Fehlerart.UNBEKANNT          -> R.string.err_unknown
     null                         -> R.string.err_unknown
 }

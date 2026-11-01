@@ -1,22 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  cleartextTrafficPermitted="true" in der base-config, weil sich ein Schalter
-  hier nicht zur Laufzeit umlegen lässt. Die Regel steht im Wächter
-  (di/ServerWaechter.kt, util/NetworkPolicy.kt): ohne Expertenschalter nur https,
-  mit ihm Klartext ins Heimnetz. Andere Clients als die des eigenen Servers
-  bekommen ihre Hosts unten fest verdrahtet.
+  Kein Klartext, nirgends: Der Server läuft hinter Caddy mit https. Diese Datei
+  ist die zweite Linie hinter dem Wächter (di/ServerWaechter.kt), der eine
+  http-Anfrage schon vor dem Netz abbricht. Der Debug-Build hat eine eigene
+  Fassung unter src/debug/ mit dem Emulator und dem Gerät selbst.
 
   Nur System-CAs. Nutzer-CAs und Pins des eigenen Servers entscheidet
-  util/ServerVertrauen.kt zur Laufzeit; nach Nutzer-CAs fragt die App erst bei
-  einem Zertifikatsfehler.
+  util/ServerVertrauen.kt zur Laufzeit.
 -->
-<network-security-config xmlns:tools="http://schemas.android.com/tools">
+<network-security-config>
     <!--
-      Die Selbstaktualisierung lädt ein APK von GitHub: nur System-CAs und kein
-      Klartext, auch wenn der Nutzer für seinen Server eigene CAs erlaubt. Die
-      Signaturprüfung fängt ein fremdes APK ab, nicht aber ein unterdrücktes
-      Update oder einen vorgetäuschten Downgrade. Zwei Hosts, weil der Anhang
-      von *.githubusercontent.com ausgeliefert wird.
+      Die Selbstaktualisierung lädt ein APK von GitHub: nur System-CAs, auch wenn
+      der Nutzer für seinen Server eigene CAs erlaubt. Die Signaturprüfung fängt
+      ein fremdes APK ab, nicht aber ein unterdrücktes Update oder einen
+      vorgetäuschten Downgrade. Zwei Hosts, weil der Anhang von
+      *.githubusercontent.com ausgeliefert wird.
     -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">github.com</domain>
@@ -26,9 +24,7 @@
         </trust-anchors>
     </domain-config>
 
-    <!-- Klartext nur hinter dem Expertenschalter, durchgesetzt im Wächter; hier
-         lässt er sich nicht zur Laufzeit umschalten. -->
-    <base-config cleartextTrafficPermitted="true" tools:ignore="InsecureBaseConfiguration">
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

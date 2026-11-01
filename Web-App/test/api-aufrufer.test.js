@@ -138,6 +138,10 @@ const OHNE_AUFRUFER = new Map([
     '(Sitzung ODER Token). Die App holt ihren Token beim Anmelden, die Webapp ' +
     'über den QR-Weg (/auth/qr-token) — dieser dritte Weg wird derzeit von ' +
     'keinem der beiden gerufen.'],
+  ['POST /api/v1/auth/serverbeweis',
+    'Serverbeweis vor einer Klartext-Anmeldung. Die App spricht seit dem ' +
+    'Klartext-Verbot nur https und fragt ihn nicht mehr; die Route geht mit ' +
+    'dem Server-Auftrag weg, dann meldet diese Prüfung die Zeile als veraltet.'],
 ]);
 
 test('jede Route hat einen Aufrufer oder einen eingetragenen Grund', () => {
