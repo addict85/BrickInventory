@@ -985,6 +985,7 @@ window.I18N_DE = {
   'login.code': 'Code aus der Authenticator-App',
   'login.code_hint': 'Oder einer deiner Wiederherstellungscodes.',
   'zf.title': 'Zweiter Faktor',
+  'zf.code_noetig': 'Diese Änderung braucht zusätzlich den Code aus der Authenticator-App (oder einen Wiederherstellungscode).',
   'zf.hint': 'Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password). Schützt, falls jemand dein Passwort kennt.',
   'zf.setup': 'Einrichten',
   'zf.scan': 'Den Code mit der Authenticator-App scannen:',

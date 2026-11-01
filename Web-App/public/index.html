@@ -1637,6 +1637,10 @@
       <label for="cd-pw" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
       <input type="password" id="cd-pw" autocomplete="current-password">
     </div>
+    <div id="cd-code-wrap" class="bestaetigung-passwort" hidden>
+      <label for="cd-code" data-i18n="login.code">Code aus der Authenticator-App</label>
+      <input type="text" id="cd-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24">
+    </div>
     <div class="knopf-reihe-mitte knopf-reihe-weit">
       <button type="button" class="btn bs min-100" id="cd-cancel" data-dialog-zu data-erstfokus data-i18n="common.cancel">Abbrechen</button>
       <button type="button" class="btn bd min-100" id="cd-confirm" data-i18n="confirm.delete_btn">Löschen</button>

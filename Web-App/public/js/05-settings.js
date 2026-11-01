@@ -4,7 +4,7 @@ import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, 
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
-import { confirmDelete, bestaetigeMitPasswort } from './07-admin.js';
+import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 
 // ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -450,8 +450,9 @@ G('btn-sav-prof').onclick = async () => {
     if (typeof initDefaultCondition === 'function') initDefaultCondition();
 
     // Profil
-    const d = await api('PUT', '/v1/auth/profile', { username, email, first_name, last_name,
-                                                      ...(emailChanged ? { password_current: pwC } : {}) });
+    const d = await mitZweitemFaktor(z => api('PUT', '/v1/auth/profile', { username, email, first_name, last_name,
+                                                      ...(emailChanged ? { password_current: pwC, ...z } : {}) }));
+    if (!d) return;
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
     if (d.emailChanged) {
       const hint = G('prof-email-hint');
@@ -474,8 +475,9 @@ G('btn-sav-prof').onclick = async () => {
       // laengst (SettingsScreen sperrt den Knopf), die Webapp lief bis
       // hierher in den Serverfehler.
       if (passwortRegelText(pwN)) { toast(passwortRegelText(pwN), 'error'); return; }
-      const dPw = await api('POST', '/v1/auth/change-password',
-        { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked });
+      const dPw = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password',
+        { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked, ...z }));
+      if (!dPw) return;
       if (!dPw.success) {
         // Profil & Währung sind gespeichert, nur das Passwort schlug fehl —
         // das dem Nutzer explizit so sagen statt pauschal "Fehler".

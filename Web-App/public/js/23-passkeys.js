@@ -1,7 +1,7 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { ico, G, api, esc, toast } from './01-core.js';
-import { bestaetigeMitPasswort } from './07-admin.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 
 // ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
 // Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der
@@ -119,7 +119,8 @@ export async function passkeyHinzufuegen() {
 export async function passkeyLoeschen(id, name) {
   const password = await bestaetigeMitPasswort(tRaw('pk.delete_title'), tRaw('pk.delete_text', { name: name || '—' }), 'schluessel');
   if (password === null) return;
-  const d = await api('DELETE', `/v1/auth/passkeys/${encodeURIComponent(id)}`, { password });
+  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/passkeys/${encodeURIComponent(id)}`, { password, ...z }));
+  if (!d) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   toast(tRaw('pk.deleted'), 'success');
   ladePasskeys();

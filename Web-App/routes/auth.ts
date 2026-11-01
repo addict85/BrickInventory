@@ -6,7 +6,7 @@ import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
-import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode } from '../src/konto/http/anmeldung';
+import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode, bestaetigeMitFaktor } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import { bestaetigeEinrichtungGebremst } from '../src/konto/passwortBestaetigung';
@@ -221,7 +221,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
     // Über die neue Adresse liesse sich danach das Passwort zurücksetzen —
     // wer kurz eine fremde Sitzung hat, übernähme so das Konto.
     if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-    if (!await bestaetigePasswort(req, res, user.id, String(password_current))) return;
+    if (!await bestaetigeMitFaktor(req, res, user.id, String(password_current), req.body?.code)) return;
   }
 
   const felder: Record<string, unknown> = {};
@@ -231,7 +231,8 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
   if (emailChanged) {
     const token   = crypto.randomBytes(32).toString('hex');
     felder.email = email;
-    felder.email_verified = user.is_admin;
+    // Auch für Verwalter: Ob die Adresse dem Inhaber gehört, zeigt erst der Link.
+    felder.email_verified = false;
     // Nur der Hash in die DB, der Klartext geht ausschliesslich per Mail hinaus.
     felder.verification_token = hashToken(token);
     felder.token_expires = new Date(Date.now() + 24*60*60*1000);
@@ -358,7 +359,7 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   if (!current || !newPassword) return sendeFehler(req, res, 400, 'alle_felder_erforderlich');
   const uid = nutzerId(req);
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
-  if (!await bestaetigePasswort(req, res, uid, String(current))) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, String(current), req.body?.code)) return;
   // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
   const mangel = passwortMangel(newPassword, req.session?.username);
   if (mangel) return sendeFehler(req, res, 400, mangel);
@@ -638,7 +639,7 @@ router.delete('/passkeys/:id', requireLoginOrToken, async (req, res: Antwort<'DE
   const uid = angemeldeteNutzerId(req);
   const id = parseInt(pfadParam(req, 'id'));
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-  if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password, req.body?.code)) return;
   res.json({ success: true, deleted: await P.loeschePasskey(uid, id) ? 1 : 0 });
 });
 

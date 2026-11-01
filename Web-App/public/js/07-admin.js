@@ -32,12 +32,26 @@ export function bestaetigeMitPasswort(title, msg, icon) {
   return dialogOeffnen(title, msg, icon, true);
 }
 
-function dialogOeffnen(title, msg, icon, mitPasswort) {
+/** Bei aktivem zweitem Faktor verlangt der Server für heikle Änderungen den
+ * Code (zweiter_faktor_noetig); dann einmal fragen und mit `code` wiederholen.
+ * @param {(zusatz: object) => Promise<any>} ruf
+ * @returns die Antwort, oder null, wenn der Dialog abgebrochen wurde */
+export async function mitZweitemFaktor(ruf) {
+  const d = await ruf({});
+  if (d?.code !== 'zweiter_faktor_noetig') return d;
+  const code = await dialogOeffnen(tRaw('zf.title'), tRaw('zf.code_noetig'), 'schloss', false, true);
+  return code === null ? null : ruf({ code: code.trim() });
+}
+
+function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
     const pwWrap = G('cd-pw-wrap'), pw = G('cd-pw');
+    const codeWrap = G('cd-code-wrap'), codeFeld = G('cd-code');
     if (pwWrap) pwWrap.hidden = !mitPasswort;
+    if (codeWrap) codeWrap.hidden = !mitCode;
     if (pw) pw.value = '';
+    if (codeFeld) codeFeld.value = '';
     G('cd-title').textContent = title || t('common.delete_title');
     G('cd-msg').textContent   = msg   || t('common.delete_text');
     G('cd-icon').innerHTML  = ico(icon || 'loeschen');
@@ -45,15 +59,17 @@ function dialogOeffnen(title, msg, icon, mitPasswort) {
     const btnYes = G('cd-confirm');
     const btnNo  = G('cd-cancel');
     if (mitPasswort) setTimeout(() => pw?.focus(), 0);
+    else if (mitCode) setTimeout(() => codeFeld?.focus(), 0);
     function cleanup(result) {
       if (pw) pw.value = '';
+      if (codeFeld) codeFeld.value = '';
       modal.style.display = 'none';
       btnYes.onclick = null;
       btnNo.onclick  = null;
       modal.onclick  = null;
       resolve(result);
     }
-    const wert = () => (mitPasswort ? (pw?.value || '') : '');
+    const wert = () => (mitPasswort ? (pw?.value || '') : mitCode ? (codeFeld?.value || '') : '');
     btnYes.onclick = () => { const w = wert(); cleanup(w); };
     btnNo.onclick  = () => cleanup(null);
     modal.onclick  = e => { if (e.target === modal) cleanup(null); };

@@ -8,6 +8,7 @@ import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetig
 import { sendeFehler } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/httpError';
 import { sitzungsVersionAusDb } from '../sitzungsVersion';
+import * as zf from '../zweiterFaktor';
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
  * einem vertrauten Proxy kommt.
@@ -131,6 +132,15 @@ export async function bestaetigePasswort(req: Request, res: Response, uid: numbe
   const absage = await pruefeBestaetigung(uid, passwort, zusatz);
   if (absage) sendeFehler(req, res, absage.status, absage.code, absage.vars);
   return !absage;
+}
+
+/** Bei aktivem zweitem Faktor auch der Code. Fehlt er, kommt die Absage vor
+ * jeder Prüfung: Ein Erfolg des Passworts setzte sonst die Bremse zurück. */
+export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: unknown,
+                                          code: unknown): Promise<boolean> {
+  if (!await zf.istAktiv(uid)) return bestaetigePasswort(req, res, uid, passwort);
+  if (!String(code ?? '').trim()) { sendeFehler(req, res, 400, 'zweiter_faktor_noetig'); return false; }
+  return bestaetigePasswort(req, res, uid, passwort, { zweiterFaktor: code });
 }
 
 export async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {
