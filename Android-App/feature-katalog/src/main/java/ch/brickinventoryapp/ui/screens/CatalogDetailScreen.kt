@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
@@ -388,10 +389,10 @@ private fun MerkpostenDialog(
                      style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalAlignment = Alignment.CenterVertically) {
-                    FilterChip(selected = richtung == "unter", onClick = { richtung = "unter" },
-                               label = { Text(stringResource(R.string.detail_alert_below)) })
-                    FilterChip(selected = richtung == "ueber", onClick = { richtung = "ueber" },
-                               label = { Text(stringResource(R.string.detail_alert_above)) })
+                    AuswahlChip(selected = richtung == "unter", onClick = { richtung = "unter" },
+                               label = { Text(stringResource(R.string.detail_alert_chip_below)) })
+                    AuswahlChip(selected = richtung == "ueber", onClick = { richtung = "ueber" },
+                               label = { Text(stringResource(R.string.detail_alert_chip_above)) })
                 }
                 // Eine Schwelle ist ein Preis — dieselbe Eingaberegel und
                 // dieselbe Tastatur wie ueberall (util/NumericInput.kt).

@@ -1,0 +1,18 @@
+Gegenprobe: Sekundärtext im Design brick wieder #6B7785 (3,91:1 auf background)
+Modul: core-ui
+Test: ch.brickinventoryapp.TextKontrastTest
+Rot: jede Schriftrolle erreicht
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+index 6584291..b4715b2 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -105,7 +105,7 @@ private val BrickBlueColors = lightColorScheme(
+     surface             = Color.White,
+     surfaceVariant      = Color(0xFFEEF1F5),
+     onSurface           = Color(0xFF26323F),
+-    onSurfaceVariant    = Color(0xFF56616E),
++    onSurfaceVariant    = Color(0xFF6B7785),
+     outline             = Color(0xFF768391),
+     outlineVariant      = Color(0xFFCDD7E2),
+     // Derselbe Ton wie die Statusfarbe „fehler“; #C0564E trug weisse Schrift nur mit 4,48:1.

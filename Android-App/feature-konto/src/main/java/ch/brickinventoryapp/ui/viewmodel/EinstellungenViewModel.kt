@@ -72,7 +72,11 @@ class EinstellungenViewModel @Inject constructor(
     fun saveUserDefaultCondition(condition: String) {
         viewModelScope.launch {
             when (val r = konto.setUserDefaultCondition(condition)) {
-                is Result.Success -> dienste.sitzung.ladeEinstellungen(konto)
+                is Result.Success -> {
+                    // Die Wahl gilt ohne Speichern-Knopf; ohne diese Meldung bliebe offen, ob sie ankam.
+                    _snackbar.value = text(R.string.vm_settings_saved)
+                    dienste.sitzung.ladeEinstellungen(konto)
+                }
                 is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
             }
         }

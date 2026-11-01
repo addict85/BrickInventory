@@ -50,6 +50,8 @@ import org.junit.Test
  *      „bei aktivem zweitem Faktor …“ (Zeitüberschreitung Codefeld)
  *   K  (01.11.2026) im Fehlerzweig `faktorNoetig` nicht gesetzt → rot „verlangt
  *      der Server den Code …“
+ *   L  (01.11.2026) in saveUserDefaultCondition() die Erfolgsmeldung entfernt →
+ *      rot „der Standard-Zustand meldet das Speichern“ (Zeitüberschreitung Meldung)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EinstellungenViewModelTest {
@@ -135,6 +137,16 @@ class EinstellungenViewModelTest {
         assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), liste)
         assertEquals("CHF", t.sitzung.state.value.currency)
         assertEquals("U", t.sitzung.state.value.priceCondition)
+    }
+
+    @Test
+    fun `der Standard-Zustand meldet das Speichern`() {
+        pfade.antworten["/api/v1/settings/user/default-condition"] = """{"success":true}"""
+        val vm = vm()
+        vm.saveUserDefaultCondition("U")
+        TestApi.warteBis("Meldung") { t.meldungen.meldung.value != null }
+        assertEquals("t${R.string.vm_settings_saved}", t.meldungen.meldung.value)
+        assertTrue(pfade.koerper.any { "\"U\"" in it })
     }
 
     @Test

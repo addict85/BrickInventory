@@ -121,7 +121,7 @@ class KachelMasseTest {
      */
     @Test
     fun `Knoepfe und Chips haben keine feste Hoehe`() {
-        val knopf = Regex("""\b(Button|OutlinedButton|TextButton|FilledTonalButton|FilterChip|AssistChip|InputChip|Surface)\(""")
+        val knopf = Regex("""\b(Button|OutlinedButton|TextButton|FilledTonalButton|FilterChip|AuswahlChip|AssistChip|InputChip|Surface)\(""")
         val festeHoehe = Regex("""modifier\s*=\s*Modifier\.height\(""")
         val verstoesse = mutableListOf<String>()
         var knoepfe = 0

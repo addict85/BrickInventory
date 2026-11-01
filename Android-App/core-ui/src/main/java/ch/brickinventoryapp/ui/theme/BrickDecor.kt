@@ -207,7 +207,7 @@ fun BrickStatTile(
         Column {
             Text(
                 label,
-                color = onContainer.copy(alpha = 0.85f),
+                color = onContainer,
                 style = MaterialTheme.typography.labelMedium
             )
             Text(

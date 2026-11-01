@@ -115,7 +115,7 @@ fun ZoomableImageDialog(
             }
             if (zoomScale > 1.01f) {
                 Text(
-                    "${"%.1f".format(zoomScale)}x",
+                    String.format(ch.brickinventoryapp.util.appNumberLocale(), "%.1f×", zoomScale),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier

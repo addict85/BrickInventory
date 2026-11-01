@@ -80,6 +80,8 @@ class FarbeAlleinTest {
         "CsvImportBanner.kt",
         // G&V auf der Set-Karte: Vorzeichen und Zahl wie bei der PnlBadge.
         "GalleryScreen.kt",
+        // G&V-Plakette der Finanzkarte: fmtProzent schreibt das Vorzeichen mit.
+        "FinanceSections.kt",
     )
 
     @Test

@@ -2,15 +2,17 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.ui.theme.Darstellung
 import ch.brickinventoryapp.ui.theme.darstellung
+import ch.brickinventoryapp.ui.theme.Helligkeit
 import ch.brickinventoryapp.ui.theme.dunkelNachSystemGilt
+import ch.brickinventoryapp.ui.theme.helligkeitGilt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * „Dunkel nach System" je Gerät: die dunkle Fassung DESSELBEN Designs, nur wenn
- * das Gerät es will UND das System dunkel ist; Werkbank ist schon dunkel. Ohne
- * gespeicherte Wahl folgt die App dem System, eine ausdrückliche Wahl bleibt.
+ * System, Hell oder Dunkel je Gerät: die dunkle Fassung DESSELBEN Designs bei
+ * „Dunkel“ immer, bei „System“ nur, wenn das System dunkel ist; Werkbank ist schon
+ * dunkel. Ohne gespeicherte Wahl folgt die App dem System, eine frühere bleibt.
  *
  * Gegenproben (29.10.2026, gemessen gegen ui/theme/Darstellung.kt bzw.
  * MainActivity.kt):
@@ -21,24 +23,43 @@ import org.junit.Test
  *      zeichnet das wirksame Design“
  *   D  installSplashScreen() hinter super.onCreate() → rot „der Start blitzt nicht weiss auf"
  *   E  `&& hatDunkleFassung(design)` entfernt → rot „Werkbank bleibt, wie es ist“
+ *   F  (01.11.2026) in darstellung() der Zweig `Helligkeit.DUNKEL -> true` entfernt →
+ *      rot „Dunkel gilt auch bei hellem System …“
+ *   G  (01.11.2026) in helligkeitGilt() die Prüfung auf bekannte Werte entfernt →
+ *      rot „die fruehere Ja-Nein-Wahl …“ („blau“ kam durch)
  */
 class WirksamesDesignTest {
 
     @Test
     fun `ohne Wahl gilt das Design des Servers, auch bei dunklem System`() {
-        assertEquals(Darstellung("brick", false), darstellung("brick", dunkelNachSystem = false, systemDunkel = true))
+        assertEquals(Darstellung("brick", false), darstellung("brick", helligkeit = Helligkeit.HELL, systemDunkel = true))
     }
 
     @Test
     fun `mit Wahl dunkel nur bei dunklem System, im selben Design`() {
-        assertEquals(Darstellung("classic", true), darstellung("classic", dunkelNachSystem = true, systemDunkel = true))
-        assertEquals(Darstellung("noppe", true), darstellung("noppe", dunkelNachSystem = true, systemDunkel = true))
-        assertEquals(Darstellung("classic", false), darstellung("classic", dunkelNachSystem = true, systemDunkel = false))
+        assertEquals(Darstellung("classic", true), darstellung("classic", helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
+        assertEquals(Darstellung("noppe", true), darstellung("noppe", helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
+        assertEquals(Darstellung("classic", false), darstellung("classic", helligkeit = Helligkeit.SYSTEM, systemDunkel = false))
+    }
+
+    @Test
+    fun `Dunkel gilt auch bei hellem System, Hell auch bei dunklem`() {
+        assertEquals(Darstellung("brick", true), darstellung("brick", helligkeit = Helligkeit.DUNKEL, systemDunkel = false))
+        assertEquals(Darstellung("noppe", false), darstellung("noppe", helligkeit = Helligkeit.HELL, systemDunkel = true))
+    }
+
+    @Test
+    fun `die fruehere Ja-Nein-Wahl wird zu System oder Hell`() {
+        assertEquals(Helligkeit.SYSTEM, helligkeitGilt(null, null))
+        assertEquals(Helligkeit.SYSTEM, helligkeitGilt(null, true))
+        assertEquals(Helligkeit.HELL, helligkeitGilt(null, false))
+        assertEquals(Helligkeit.DUNKEL, helligkeitGilt(Helligkeit.DUNKEL, false))
+        assertEquals("Unbekanntes faellt auf die fruehere Wahl zurueck", Helligkeit.HELL, helligkeitGilt("blau", false))
     }
 
     @Test
     fun `Werkbank bleibt, wie es ist`() {
-        assertEquals(Darstellung("werkbank", false), darstellung("werkbank", dunkelNachSystem = true, systemDunkel = true))
+        assertEquals(Darstellung("werkbank", false), darstellung("werkbank", helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
     }
 
     // Gegenprobe (30.10.2026, gemessen): in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`
@@ -46,13 +67,13 @@ class WirksamesDesignTest {
     @Test
     fun `Systemfarben gelten erst ab Android 12 und haben immer eine dunkle Fassung`() {
         assertEquals(Darstellung("classic", false, systemfarben = false),
-            darstellung("classic", dunkelNachSystem = true, systemDunkel = false, systemfarben = true, sdk = 30))
+            darstellung("classic", helligkeit = Helligkeit.SYSTEM, systemDunkel = false, systemfarben = true, sdk = 30))
         assertEquals(Darstellung("classic", false, systemfarben = true),
-            darstellung("classic", dunkelNachSystem = true, systemDunkel = false, systemfarben = true, sdk = 31))
+            darstellung("classic", helligkeit = Helligkeit.SYSTEM, systemDunkel = false, systemfarben = true, sdk = 31))
         assertEquals(Darstellung("werkbank", true, systemfarben = true),
-            darstellung("werkbank", dunkelNachSystem = true, systemDunkel = true, systemfarben = true, sdk = 34))
+            darstellung("werkbank", helligkeit = Helligkeit.SYSTEM, systemDunkel = true, systemfarben = true, sdk = 34))
         assertEquals("Ohne Wahl kein Dunkel, auch mit Systemfarben", Darstellung("brick", false, systemfarben = true),
-            darstellung("brick", dunkelNachSystem = false, systemDunkel = true, systemfarben = true, sdk = 34))
+            darstellung("brick", helligkeit = Helligkeit.HELL, systemDunkel = true, systemfarben = true, sdk = 34))
     }
 
     @Test
@@ -70,7 +91,7 @@ class WirksamesDesignTest {
     fun `MainActivity zeichnet das wirksame Design`() {
         val src = Quellen.ohneKommentare(Quellen.lies("MainActivity.kt"))
         assertTrue("MainActivity nutzt darstellung() nicht — die Wahl bliebe ohne Wirkung",
-            Regex("""darstellung\(theme,\s*dunkel,\s*isSystemInDarkTheme\(\),\s*systemfarben,\s*android\.os\.Build\.VERSION\.SDK_INT\)""").containsMatchIn(src))
+            Regex("""darstellung\(theme,\s*helligkeit,\s*isSystemInDarkTheme\(\),\s*systemfarben,\s*android\.os\.Build\.VERSION\.SDK_INT\)""").containsMatchIn(src))
         assertTrue("MainActivity reicht die dunkle Fassung nicht ans Theme",
             Regex("""(\w+) = darstellung\(theme,[^\n]*\n\s*BrickInventoryManagerTheme\(theme\s*=\s*\1\.design,\s*dunkel\s*=\s*\1\.dunkel,\s*systemfarben\s*=\s*\1\.systemfarben\)""").containsMatchIn(src))
     }

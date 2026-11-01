@@ -56,6 +56,13 @@ fun fmtMoney(amount: Double, currencyCode: String?): String {
     }
 }
 
+/**
+ * Eine Gutscheinnummer zum Ablesen: erst die Trennzeichen des Herausgebers weg,
+ * dann gleichmässig in Vierer — „1234-5678 9“ hiesse sonst „1234 -567 8 9“.
+ */
+fun inVierergruppen(nummer: String): String =
+    nummer.filter { it.isLetterOrDigit() }.chunked(4).joinToString(" ")
+
 /** Wie fmtMoney, aber aus dem String der API — `null`/unlesbar ergibt „—". */
 fun fmtMoneyOrDash(amount: String?, currencyCode: String?): String {
     val v = amount?.toDoubleOrNull() ?: return "—"

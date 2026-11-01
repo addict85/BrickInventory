@@ -57,7 +57,8 @@ private val LightColors = lightColorScheme(
     onSecondary         = Color.White,
     secondaryContainer  = BrandBlueLight,
     onSecondaryContainer = BrandBlueDark,
-    tertiary            = BrandRed,
+    // BrandRed selbst trägt weisse Schrift nur mit 4,3:1 (TextKontrastTest).
+    tertiary            = BrandRedDark,
     onTertiary          = Color.White,
     tertiaryContainer   = Color(0xFFFFDAD6),
     onTertiaryContainer = BrandRedDark,
@@ -68,12 +69,13 @@ private val LightColors = lightColorScheme(
     surface             = Color.White,
     surfaceVariant      = Color(0xFFF8FAFC),
     onSurface           = Color(0xFF1E293B),
-    onSurfaceVariant    = Color(0xFF64748B),
+    // --s600 statt --s500: Sekundärtext liegt auch auf den Containerstufen (TextKontrastTest).
+    onSurfaceVariant    = Color(0xFF475569),
     // outline umrandet Bedienelemente (Textfelder) und braucht 3:1 gegen jede
     // Fläche; der helle Ton taugt nur für Trennlinien (FarbrollenTest).
     outline             = Color(0xFF748399),
     outlineVariant      = Color(0xFFE2E8F0),
-    error               = Color(0xFFDC2626),
+    error               = Color(0xFFB91C1C),
 )
 
 // ── Stein-Design (blau) — gedämpftes Schieferblau, passend zur Webapp ──────────
@@ -103,10 +105,11 @@ private val BrickBlueColors = lightColorScheme(
     surface             = Color.White,
     surfaceVariant      = Color(0xFFEEF1F5),
     onSurface           = Color(0xFF26323F),
-    onSurfaceVariant    = Color(0xFF6B7785),
+    onSurfaceVariant    = Color(0xFF56616E),
     outline             = Color(0xFF768391),
     outlineVariant      = Color(0xFFCDD7E2),
-    error               = Color(0xFFC0564E),
+    // Derselbe Ton wie die Statusfarbe „fehler“; #C0564E trug weisse Schrift nur mit 4,48:1.
+    error               = Color(0xFFA34B3C),
 )
 
 // ── Diagrammfarben je Zustand ────────────────────────────────────────────────
@@ -178,16 +181,20 @@ private val FarbfaecherColors = lightColorScheme(
     surface              = Color.White,
     surfaceVariant       = Color(0xFFF4F4F4),
     onSurface            = Color(0xFF2B2B2B),
-    onSurfaceVariant     = Color(0xFF6B6B6B),
+    onSurfaceVariant     = Color(0xFF5E5E5E),
     outline              = Color(0xFF7F7F7F),
     outlineVariant       = Color(0xFFE6E6E6),
-    error                = Color(0xFFDC2626),
+    error                = Color(0xFFB91C1C),
 )
 
 // Noppe: weisse Flächen, Tintenkante, roter Kopf; Werte aus DesignTokens.kt.
 // `outline` ist die TINTE, weil in diesem Design der Rahmen trägt, nicht der Schatten.
+// Rot färbt nur Flächen und Akzente (Container, tertiary): Als primary sah es aus
+// wie die Fehlerfarbe, jeder Knopf wirkte wie „Löschen“.
+private val NoppeBlau = Color(0xFF1A5FB8)
+
 private val NoppeColors = lightColorScheme(
-    primary              = NoppeRot,
+    primary              = NoppeBlau,
     onPrimary            = Color.White,
     primaryContainer     = NoppeRotHell,
     onPrimaryContainer   = NoppeTinte,
@@ -195,7 +202,7 @@ private val NoppeColors = lightColorScheme(
     onSecondary          = Color.White,
     secondaryContainer   = Color(0xFFEEF1F6),
     onSecondaryContainer = NoppeTinte,
-    tertiary             = NoppeTinte,
+    tertiary             = NoppeRot,
     onTertiary           = Color.White,
     tertiaryContainer    = NoppeRotHell,
     onTertiaryContainer  = NoppeTinte,
@@ -207,7 +214,7 @@ private val NoppeColors = lightColorScheme(
     outline              = NoppeTinte,
     // Derselbe Wert, den ergaenzeRollen() vorher aus surface und onSurface mischte.
     outlineVariant       = Color(0xFFD7D8DA),
-    error                = Color(0xFFDC2626),
+    error                = Color(0xFFB91C1C),
 )
 
 /**
@@ -317,7 +324,12 @@ private fun dunklesSchema(theme: String): ColorScheme = dunkleRollen(theme).let 
  * `when` statt geschachtelter Bedingungen: Ein weiteres Design kostet eine Zeile.
  */
 internal fun farbschema(theme: String, dunkel: Boolean = false): ColorScheme =
-    if (dunkel && hatDunkleFassung(theme)) ergaenzeRollen(dunklesSchema(theme), dunkel = true)
+    if (dunkel && hatDunkleFassung(theme)) ergaenzeRollen(dunklesSchema(theme).let {
+        // Wie hell: Im Dunkeln ist das Noppe-Rot (#ff7479) kaum von der Fehlerfarbe zu
+        // unterscheiden; Hauptfarbe wird das Blau der Diagrammlinie, Rot bleibt Akzent.
+        if (theme == "noppe" || theme == "hochglanz") it.copy(primary = Color(0xFF6AA8FF), tertiary = it.primary)
+        else it
+    }, dunkel = true)
     else when (theme) {
         "brick" -> BrickBlueColors
         "werkbank" -> WerkbankColors
@@ -337,7 +349,7 @@ internal fun statusFarbenFuer(theme: String, dunkel: Boolean = false): StatusFar
 } else when (theme) {
     "brick" -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFFB08A3E), fehler = Color(0xFFA34B3C))
     "werkbank" -> StatusFarben(erfolg = Color(0xFF6FBF7F), warnung = Color(0xFFD9A84E), fehler = Color(0xFFE07A72))
-    else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFFE3B341), fehler = Color(0xFFDC2626))
+    else -> StatusFarben(erfolg = Color(0xFF166534), warnung = Color(0xFFE3B341), fehler = Color(0xFFB91C1C))
 }
 
 /**
@@ -363,6 +375,8 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
         inverseSurface = s.onSurface,
         inverseOnSurface = s.surface,
         inversePrimary = lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f),
+        // Material setzt im Dunkeln #690005, auf den hellen Fehlertönen nur 4,48:1.
+        onError = if (dunkel) s.background else Color.White,
         errorContainer = lerp(s.error, s.surface, 0.85f),
         onErrorContainer = lerp(s.error, s.onSurface, 0.5f),
     )

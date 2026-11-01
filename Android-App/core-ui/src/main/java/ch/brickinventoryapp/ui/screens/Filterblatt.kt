@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -22,7 +24,6 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -58,7 +59,8 @@ fun SucheMitFilter(
     aktiveFilter: Int,
     onFilter: () -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    // Auf dem Tablet nicht über die ganze Breite: Ein Suchfeld von 1900 px ist keines mehr.
+    Row(Modifier.mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste), verticalAlignment = Alignment.CenterVertically) {
         Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
         FilterKnopf(aktiveFilter, onFilter, Modifier.padding(end = 14.dp))
     }
@@ -128,7 +130,7 @@ fun FilterAbschnitt(titel: String, chips: @Composable () -> Unit) {
 /** Ein Chip des Blatts; lange Namen (Themen, Konten) brechen nicht die Reihe. */
 @Composable
 fun FilterWahl(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
-    FilterChip(
+    AuswahlChip(
         selected = gewaehlt,
         onClick = onClick,
         label = { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) },

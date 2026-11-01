@@ -46,16 +46,25 @@ fun Part.alsAnsicht() = TeilAnsicht(
     isSpare = isSpare,
 )
 
+/** [teileGesamt] ist die Gesamtzahl wie in der Sammlung: aus Sets und einzeln erfasst zusammen. */
 data class TeileKennzahlenAnsicht(
     val uniqueParts: Int = 0,
     val uniqueColors: Int = 0,
-    val totalParts: Int = 0,
+    val teileGesamt: Int = 0,
+    val teileAusSets: Int? = null,
+    val teileEinzeln: Int? = null,
 )
 
+/**
+ * /parts/stats zählt in total_parts nur Teile aus Sets, /stats beide zusammen;
+ * ohne die Summe zeigten Sammlung und Teile-Reiter verschiedene Zahlen.
+ */
 fun PartsStats.alsAnsicht() = TeileKennzahlenAnsicht(
     uniqueParts = uniqueParts,
     uniqueColors = uniqueColors,
-    totalParts = totalParts,
+    teileGesamt = totalParts + (manualParts ?: 0),
+    teileAusSets = if (manualParts != null) totalParts else null,
+    teileEinzeln = manualParts,
 )
 
 data class FigurAnsicht(

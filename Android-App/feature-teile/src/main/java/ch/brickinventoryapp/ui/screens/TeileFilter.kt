@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -91,7 +91,7 @@ fun TeileFilterZeile(
     val alle = stringResource(R.string.parts_filter_all)
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         if (farben.isNotEmpty()) {
-            FilterChip(
+            AuswahlChip(
                 selected = farbeGewaehlt.isNotBlank(),
                 onClick = { offenFarbe = true },
                 label = {
@@ -103,7 +103,7 @@ fun TeileFilterZeile(
             )
         }
         if (kategorien.isNotEmpty()) {
-            FilterChip(
+            AuswahlChip(
                 selected = kategorieGewaehlt.isNotBlank(),
                 onClick = { offenKategorie = true },
                 label = {

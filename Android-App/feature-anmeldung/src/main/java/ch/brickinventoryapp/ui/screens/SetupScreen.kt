@@ -49,6 +49,7 @@ import ch.brickinventoryapp.util.fingerabdruckLesbar
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ui.QrLoginPayload
 import ch.brickinventoryapp.ui.parseQrPayload
@@ -160,13 +161,21 @@ fun SetupScreen(
         )
     }
 
+    // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
+    // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(Abstaende.riesig),
+        modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+            .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular).padding(Abstaende.riesig),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(80.dp)) {
+            // Auf surface statt primary: Der rote Stein des Logos verschwand auf manchem
+            // primary (noppe dunkel 1,2:1); auf surface steht er in jedem Design.
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.size(80.dp)) {
                 Box(contentAlignment = Alignment.Center) {
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(ch.brickinventoryapp.ressourcen.R.drawable.ic_logo),
@@ -197,10 +206,12 @@ fun SetupScreen(
 
         Spacer(Modifier.height(Abstaende.riesig))
 
-        // QR scan option
-        FilledTonalButton(
+        // QR scan option — mit Rand: Die Tonfläche lag im hellen Grunddesign 1,01:1 auf dem
+        // Hintergrund und war als Knopf nicht zu erkennen.
+        OutlinedButton(
             onClick = { scanError = null; showScanner = true },
-            modifier = Modifier.fillMaxWidth()
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
         ) {
             Icon(Icons.Default.QrCodeScanner, null, Modifier.size(20.dp))
             Spacer(Modifier.width(Abstaende.klein))
@@ -260,15 +271,19 @@ fun SetupScreen(
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }
         }
-        Spacer(Modifier.height(Abstaende.gross))
-        Text(
-            // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
-            // (app/build.gradle.kts), ein fest eingetragener Stand veraltet unbemerkt.
-            stringResource(R.string.setup_build, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
+        // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
+        // (app/build.gradle.kts). Ohne Namen (Vorschau, Test) bliebe nur „Build “ stehen.
+        val fassung = ch.brickinventoryapp.ui.components.LocalAppFassung.current.name
+        if (fassung.isNotBlank()) {
+            Spacer(Modifier.height(Abstaende.gross))
+            Text(
+                stringResource(R.string.setup_build, fassung),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+        }
+    }
     }
 }
 

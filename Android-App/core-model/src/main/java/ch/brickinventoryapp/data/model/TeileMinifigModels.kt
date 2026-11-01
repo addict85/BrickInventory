@@ -125,7 +125,9 @@ data class PartsResponse(
 data class PartsStats(
     @SerialName("unique_parts") val uniqueParts: Int = 0,
     @SerialName("unique_colors") val uniqueColors: Int = 0,
-    @SerialName("total_parts") val totalParts: Int = 0
+    @SerialName("total_parts") val totalParts: Int = 0,
+    // Einzeln erfasste Teile, getrennt von total_parts (nur Teile aus Sets); ältere Server ohne.
+    @SerialName("manual_parts") val manualParts: Int? = null,
 )
 
 @Serializable
