@@ -25,14 +25,16 @@
  *      Klasse einst-aktiv nicht gesetzt → rot: dieselbe Prüfung
  *   D  in toggleAdmin admin_password nicht mitgeschickt → rot: „Admin-Rechte
  *      entziehen“ (am 28.10. nach dem Zusammenführen gemessen)
+ *   H  (01.11.) toggleAktiv schickt is_active ohne Umkehr → rot: „Deaktivieren
+ *      und Aktivieren …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
 
 const NUTZER = { '/v1/auth/users': { success: true, users: [
-  { id: 1, username: 'anna', is_admin: true, created_at: '2026-10-01T00:00:00Z' },
-  { id: 2, username: 'ben', is_admin: false, created_at: '2026-10-02T00:00:00Z', zweiter_faktor: true },
+  { id: 1, username: 'anna', is_admin: true, is_active: true, created_at: '2026-10-01T00:00:00Z' },
+  { id: 2, username: 'ben', is_admin: false, is_active: false, created_at: '2026-10-02T00:00:00Z', zweiter_faktor: true },
 ] } };
 
 test('Speichern-Knöpfe sehen gleich aus', async () => {
@@ -57,7 +59,7 @@ test('Aktionen der Benutzertabelle sind benannt', async () => {
     await reiter(w, 'settings');
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 2);
     const knoepfe = [...d.querySelectorAll('#users-tbl .nutzer-aktionen button')];
-    assert.equal(knoepfe.length, 7, '3 + 4 Knöpfe erwartet (ben hat einen zweiten Faktor)');
+    assert.equal(knoepfe.length, 9, '4 + 5 Knöpfe erwartet (ben hat einen zweiten Faktor)');
     for (const k of knoepfe) {
       const wort = k.querySelector('span')?.textContent.trim();
       assert.ok(wort, `Knopf ${k.dataset.click} ohne sichtbares Wort`);
@@ -83,6 +85,26 @@ test('Admin-Rechte entziehen schickt is_admin:false', async () => {
     const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/1/admin'));
     assert.ok(put, 'Kein Aufruf zum Rollenwechsel');
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
+  } finally { w.close(); }
+});
+
+test('Deaktivieren und Aktivieren schicken is_active mit dem Passwort', async () => {
+  const { w, d, aufrufe } = await oeffneOberflaeche(NUTZER);
+  try {
+    await reiter(w, 'settings');
+    await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 2);
+    const ben = d.querySelectorAll('#users-tbl tbody tr')[1];
+    assert.match(ben.textContent, /Deaktiviert/);
+    for (const [id, soll] of [[1, false], [2, true]]) {
+      d.querySelector(`#users-tbl [data-click="toggleAktiv"][data-arg="${id}"]`).click();
+      await takt(20);
+      d.getElementById('cd-pw').value = 'mein-passwort';
+      d.getElementById('cd-confirm').click();
+      await takt(20);
+      const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes(`/v1/auth/users/${id}/aktiv`));
+      assert.ok(put, `Kein Aufruf für Konto ${id}`);
+      assert.deepEqual(JSON.parse(put.body), { is_active: soll, admin_password: 'mein-passwort' });
+    }
   } finally { w.close(); }
 });
 
