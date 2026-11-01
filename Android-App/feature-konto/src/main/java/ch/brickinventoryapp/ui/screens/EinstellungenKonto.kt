@@ -179,8 +179,7 @@ internal fun ZweiterFaktorCard(
     val kopieren: (String) -> Unit = { text ->
         kopierBereich.launch {
             clipboard.setClipEntry(
-                androidx.compose.ui.platform.ClipEntry(
-                    android.content.ClipData.newPlainText(schluesselEtikett, text)))
+                androidx.compose.ui.platform.ClipEntry(ch.brickinventoryapp.util.geheimerClip(schluesselEtikett, text)))
         }
     }
     // Felder leeren, sobald ein Schritt gelungen ist — sonst stuende das
@@ -213,8 +212,9 @@ internal fun ZweiterFaktorCard(
         }
 
         when {
-            // 1. Frische Codes: einmal zeigen, dann wegraeumen.
+            // 1. Frische Codes: einmal zeigen, dann wegraeumen. Kein Bildschirmfoto davon.
             zfZustand.codes.isNotEmpty() -> {
+                ch.brickinventoryapp.ui.components.Sichtschutz()
                 Text(stringResource(R.string.zf_codes_title), fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
                 Text(zfZustand.codes.joinToString("\n"),
@@ -227,6 +227,7 @@ internal fun ZweiterFaktorCard(
             }
             // 2. Einrichtung laeuft: Schluessel in die App, Code bestaetigen.
             zfZustand.geheimnis != null -> {
+                ch.brickinventoryapp.ui.components.Sichtschutz()
                 Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodySmall)
                 Button(
                     onClick = {
