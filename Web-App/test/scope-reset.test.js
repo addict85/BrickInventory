@@ -34,10 +34,11 @@ test('die Anmeldung ruft ihn auf — vor dem Aufbau der Oberfläche', () => {
   const login = code.slice(code.indexOf('async function doLogin'));
   const block = login.slice(0, 1200);
   const reset = block.indexOf('resetScopeModes()');
-  const show  = block.indexOf('showApp()');
+  // oeffneApp() baut die Oberfläche auf (oder zeigt zuerst den Pflichtwechsel).
+  const show  = block.indexOf('oeffneApp()');
   assert.ok(reset > 0, 'doLogin setzt den Kontofilter nicht zurück');
   assert.ok(show > 0 && reset < show,
-    'das Zurücksetzen muss VOR showApp() stehen — sonst entstehen die Auswahlfelder noch mit dem alten Wert');
+    'das Zurücksetzen muss VOR oeffneApp() stehen — sonst entstehen die Auswahlfelder noch mit dem alten Wert');
 });
 
 test('der Filter wird beim Wechseln der Ansicht weiterhin gemerkt', () => {

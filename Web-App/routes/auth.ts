@@ -9,7 +9,7 @@ import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessi
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
-import { bestaetigeEinrichtung } from '../src/konto/passwortBestaetigung';
+import { bestaetigeEinrichtungGebremst } from '../src/konto/passwortBestaetigung';
 import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
@@ -407,7 +407,7 @@ router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res: Antwort
 // hat, könnte ebenso das Passwort wechseln; eine Sitzungspflicht schützte nichts.
 router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/bestaetigen'>) => {
   const uid = angemeldeteNutzerId(req);
-  const codes = await bestaetigeEinrichtung(uid, req.body?.code);
+  const codes = await bestaetigeEinrichtungGebremst(uid, req.body?.code);
   if (!Array.isArray(codes)) return sendeFehler(req, res, codes.status, codes.code, codes.vars);
   const kopf = String(req.headers.authorization || '');
   await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,

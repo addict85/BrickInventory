@@ -31,7 +31,7 @@ test('POST /api/v1/auth/serverbeweis gibt es nicht mehr', { concurrency: 1 }, as
   t.after(() => db.pool.end().catch(() => {}));
   const app = express();
   app.use(express.json());
-  app.use((req, _res, next) => { req.session = req.get('x-probe-angemeldet') ? { userId: 1 } : {}; next(); });
+  app.use((req, _res, next) => { req.session = req.get('x-probe-angemeldet') ? { userId: 1, mussPasswortAendern: false } : {}; next(); });
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1/auth', _req('routes/auth.js'));
   const srv = app.listen(0);
