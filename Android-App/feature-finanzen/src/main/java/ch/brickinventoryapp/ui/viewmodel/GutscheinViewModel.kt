@@ -201,7 +201,7 @@ class GutscheinViewModel @Inject constructor(
                             _snackbar.value = d.error ?: texte.text(R.string.err_generic)
                             return@launch
                         }
-                        val betrag = d.angezeigt ?: "%.2f %s".format(v.amount, v.currency)
+                        val betrag = d.angezeigt ?: ch.brickinventoryapp.util.fmtMoney(v.amount, v.currency)
                         var satz = texte.text(R.string.vouchers_balance_done, v.number, betrag)
                         // Angehängt statt als zweite Meldung, die die erste überschriebe.
                         if (d.waehrungGeaendert) satz += " " + texte.text(R.string.vouchers_balance_currency, v.currency)

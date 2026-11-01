@@ -423,5 +423,7 @@ data class PortfolioHistoryResponse(
     val points: List<ChartPoint> = emptyList(),
     @SerialName("y_axis") val yAxis: List<ChartYAxis> = emptyList(),
     @SerialName("period_change_pct") val periodChangePct: Double? = null,
-    @SerialName("purchase_total") val purchaseTotal: String? = null
+    @SerialName("purchase_total") val purchaseTotal: String? = null,
+    // Dieselbe Reihe als ISO-Tage (chart.x); daraus beschriftet die App die Achse in ihrer Sprache.
+    val chart: PriceChartData? = null,
 )
