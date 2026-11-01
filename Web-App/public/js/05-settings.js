@@ -682,8 +682,9 @@ G('btn-clr-all-cache').onclick=async()=>{
 G('btn-dall').onclick=async()=>{
   // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage
   // statt des früheren Eintippens von „LÖSCHEN". Nur das EIGENE Konto (Server).
-  if(!await confirmDelete(tRaw('settings.delete_all.title'),t('settings.delete_all.text'),'loeschen')) return;
-  const d=await api('DELETE','/v1/bestand');
+  const password=await bestaetigeMitPasswort(tRaw('settings.delete_all.title'),tRaw('settings.delete_all.text'),'loeschen');
+  if(password===null) return;
+  const d=await api('DELETE','/v1/bestand',{password});
   if(!d?.success){ toast(d?.error||tRaw('settings.error'),'error'); return; }
   toast(tRaw('settings.delete_all.done',{n:d.sets+d.teile+d.figuren}),'success');
   loadGallery(); loadParts(); loadMinifigs(); loadStats();

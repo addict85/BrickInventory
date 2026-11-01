@@ -5,6 +5,7 @@ import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { writableIds } from '../../src/haushalt/haushalt';
 import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../src/bestand/papierkorb';
 import { requireToken } from './middleware';
+import { bestaetigePasswort } from '../../src/konto/http/anmeldung';
 import { loescheAllesEigene } from '../../src/bestand/loeschen';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
@@ -31,7 +32,9 @@ router.delete('/papierkorb/:id', requireToken, async (req: AuthedRequest, res: A
   res.json({ success: true });
 });
 
+// Mit Passwort: Ein erbeutetes App-Token soll nicht die ganze Sammlung wegräumen können.
 router.delete('/bestand', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/bestand'>) => {
+  if (!await bestaetigePasswort(req, res, req.apiUser.user_id, req.body?.password)) return;
   res.json({ success: true, ...(await loescheAllesEigene(req.apiUser.user_id)) });
 });
 

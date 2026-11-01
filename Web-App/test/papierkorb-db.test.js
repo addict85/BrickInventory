@@ -62,16 +62,18 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
   const namen = [`pk-haupt-${process.pid}`, `pk-sub-${process.pid}`, `pk-fremd-${process.pid}`];
   await aufraeumen(namen);
   const ids = [];
+  const PASS = 'pk-Passwort-1', hash = require('../node_modules/bcryptjs').hashSync(PASS, 4);
   for (const n of namen)
-    ids.push((await db.get("INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id", [n])).id);
+    ids.push((await db.get('INSERT INTO users (username,password_hash) VALUES ($1,$2) RETURNING id', [n, hash])).id);
   const [haupt, sub, fremd] = ids;
   await db.run('INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)', [haupt, sub]);
 
   const routen = { '/api/v1': 'routes/api_v1/index.js' };
   const H = testServer(_req, { sitzung: { userId: haupt }, apiNutzer: { user_id: haupt, is_admin: 0 }, routen, t });
   const F = testServer(_req, { sitzung: { userId: fremd }, apiNutzer: { user_id: fremd, is_admin: 0 }, routen, t });
-  const api = async (srv, methode, pfad) => {
-    const r = await fetch(srv.base + '/api/v1' + pfad, { method: methode });
+  const api = async (srv, methode, pfad, body) => {
+    const r = await fetch(srv.base + '/api/v1' + pfad, { method: methode,
+      ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) });
     return { status: r.status, body: await r.json() };
   };
   const eintraege = async (srv) => (await api(srv, 'GET', '/papierkorb')).body.eintraege;
@@ -167,7 +169,7 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       await haeltSet(db, sub, SN2, 1);
       const vorher = await zeilen(haupt);
 
-      const r = await api(H, 'DELETE', '/bestand');
+      const r = await api(H, 'DELETE', '/bestand', { password: PASS });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.deepEqual([r.body.sets, r.body.teile, r.body.figuren], [1, 1, 1]);
       const nachher = await zeilen(haupt);
