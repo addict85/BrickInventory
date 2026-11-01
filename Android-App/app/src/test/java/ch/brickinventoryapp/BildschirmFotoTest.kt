@@ -90,10 +90,17 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
      */
     private fun bereitstellen(name: String, bereit: () -> Boolean, zustand: () -> Any?) {
         val ende = System.nanoTime() + 10_000_000_000L
-        while (!bereit()) {
+        // Bereit allein genügt nicht: Ein Bildschirm lädt oft noch Beiwerk nach
+        // (Kennzahlen, Bewertungen). Erst wenn der Testserver eine Weile keine
+        // neue Anfrage sah und der Looper ihre Antworten verarbeitet hat.
+        var anfragen = welt.pfade.anfragen.size
+        var ruhigSeit = System.nanoTime()
+        while (!bereit() || System.nanoTime() - ruhigSeit < 500_000_000L) {
             if (System.nanoTime() > ende) throw AssertionError("$name: Daten nach 10 s nicht da: ${zustand()}")
             shadowOf(Looper.getMainLooper()).idle()
             Thread.sleep(10)
+            val jetzt = welt.pfade.anfragen.size
+            if (jetzt != anfragen) { anfragen = jetzt; ruhigSeit = System.nanoTime() }
         }
     }
 
