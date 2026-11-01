@@ -6,14 +6,15 @@ import fs from 'fs';
 import { resolveUserId } from '../src/konto/http/anmeldung';
 import { streamFileToResponse, vorDem, ohneFehlendeDatei, fehlertext } from '../src/infra/httpError';
 import { queueThumb } from '../src/katalog/bilder/proxyThumbs';
-import { liefereAusCache } from '../src/katalog/bilder/imgCacheServe';
+import { liefereAusCache, merkeCacheZuwachs } from '../src/katalog/bilder/imgCacheServe';
 import { imgProxyFailures } from '../src/katalog/bilder/imgProxyStats';
 import { istBekanntFehlend, merkeFehlend } from '../src/katalog/bilder/imageMisses';
-import { IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT } from '../src/katalog/bilder/images';
+import { IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT, proxyAdresse, proxyCacheSchluessel } from '../src/katalog/bilder/images';
+import { zaehleAnfrage } from '../src/konto/loginLimiter';
+import { konfig } from '../src/infra/konfig';
 import type { Request, Response, Express } from 'express';
 import type { Readable } from 'stream';
 import { oeffneHttps, AbrufFehler, type AbrufStrom } from '../src/infra/abruf';
-import crypto from 'crypto';
 import https from 'https';
 import zlib from 'zlib';
 import { nacharbeit } from '../src/auftraege/nacharbeit';
@@ -80,10 +81,11 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Nur bekannte Bild-CDNs (src/infra/fremdeAdressen.ts); eine unlesbare
   // Adresse ist ebenfalls 403.
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return res.status(403).end();
+  url = proxyAdresse(url) ?? url;
   // Jedes CDN-Bild wird serverseitig nur einmal geholt. Content-Type als
   // Sidecar-Datei (.ct).
   const cacheDir  = path.join(APP_ROOT, 'data', 'img_proxy_cache');
-  const cacheKey  = crypto.createHash('sha1').update(url).digest('hex');
+  const cacheKey  = proxyCacheSchluessel(url);
   const cacheFile = path.join(cacheDir, cacheKey);
   // ?thumb=1: Teilebilder gibt es auf dem CDN nicht verkleinert.
   const wantThumb = req.query.thumb === '1';
@@ -106,6 +108,14 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // antwortet sofort. Eine Stunde, damit ein nachgereichtes Bild nicht dauerhaft
   // fehlt.
   if (istBekanntFehlend(cacheKey)) return sendePlatzhalter(res);
+
+  // Nur Abrufe beim CDN zählen: Jeder füllt Platte und Bandbreite, Treffer nicht.
+  const takt = await zaehleAnfrage('bild-abruf', `konto:${proxyUserId}`, 60_000);
+  if (takt.count > konfig().bildAbrufeJeMinute) {
+    res.setHeader('Retry-After', String(takt.waitMin * 60));
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(429).end();
+  }
 
 
   // Der erste Satz imitiert einen Browser; der zweite lässt Referer und
@@ -251,6 +261,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
       }
       await fs.promises.writeFile(cacheFile + '.ct', contentType);
       await fs.promises.rename(tmpFile, cacheFile);
+      merkeCacheZuwachs(st.size);
       // Gleich miterzeugen, sonst entstünde sie beim zweiten Aufruf für eine ganze
       // Kachelwand auf einmal.
       if (wantThumb) { if (darfErzeugen) queueThumb(cacheFile, thumbFile); else notiere(); }

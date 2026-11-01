@@ -1,6 +1,6 @@
 /** Fremde Dienste und Jobs erreicht die Überwachungsseite nur von hier aus,
  * damit die Routen keine Schichten überspringen. */
-import crypto from 'crypto';
+import { proxyCacheSchluessel } from '../katalog/bilder/images';
 import fs from 'fs';
 import { oeffneHttps, AbrufFehler, type AbrufStrom } from '../infra/abruf';
 import { ERLAUBTE_BILD_HOSTS } from '../infra/fremdeAdressen';
@@ -356,7 +356,7 @@ export async function bildProbe(url: string) {
   for (const v of variants) results.push(await probe(v));
 
   const fsp = fs.promises, pathm = path;
-  const key = crypto.createHash('sha1').update(url).digest('hex');
+  const key = proxyCacheSchluessel(url);
   const dir = pathm.join(DATA_DIR, 'img_proxy_cache');
   const cached = await fsp.stat(pathm.join(dir, key)).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));
   const thumb  = await fsp.stat(pathm.join(dir, key + '_thumb.jpg')).then((st: any) => ({ bytes: st.size })).catch(ohneFehlendeDatei('verwaltung:stat', null));

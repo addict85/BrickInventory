@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { queueThumb } from './proxyThumbs';
-import { vorDem, ohneFehlendeDatei } from '../../infra/httpError';
+import { vorDem, ohneFehlendeDatei, logAndContinue } from '../../infra/httpError';
+import { konfig } from '../../infra/konfig';
 import path from 'path';
 import { APP_ROOT } from '../../infra/appPaths';
 
@@ -62,6 +63,9 @@ export async function liefereAusCache(opts: {
     // Länge mitgeben: Eine chunked-Antwort kann ein Reverse-Proxy puffern.
     const cst = await fs.promises.stat(cacheFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
     if (cst) {
+      // Der Deckel löscht nach letzter Nutzung; unter noatime merkt sich das
+      // sonst niemand. mtime bleibt, sie steckt im ETag.
+      if (Date.now() - cst.atimeMs > 86_400_000) fs.promises.utimes(cacheFile, new Date(), cst.mtime).catch(logAndContinue('bild-cache:utimes'));
       res.setHeader('Content-Length', String(cst.size));
       res.setHeader('ETag', `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"`);
     }
@@ -73,18 +77,46 @@ export async function liefereAusCache(opts: {
   return false;
 }
 
-/** 30 Tage nicht angefasst → löschen, sonst wächst der Cache unbegrenzt.
+const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
+
+/** 30 Tage nicht angefasst → weg; danach, falls der Cache noch über der
+ * Grenze liegt, die am längsten unbenutzten Bilder samt .ct und Vorschau.
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#startimgcachecleanup */
-export async function raeumeBildCacheAuf(): Promise<number> {
-  const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
+export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 1024 * 1024): Promise<number> {
+  const cacheDir = CACHE_DIR();
   const files = await fs.promises.readdir(cacheDir).catch(() => [] as string[]);
   const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  let weg = 0;
+  const gruppen = new Map<string, { dateien: string[]; bytes: number; zuletzt: number }>();
+  let weg = 0, summe = 0;
   for (const f of files) {
     const p = path.join(cacheDir, f);
     const st = await fs.promises.stat(p).catch(ohneFehlendeDatei('img-cache:stat', null));
+    if (!st?.isFile()) continue;
     // atime UND mtime: Unter noatime bleibt atime auf dem Erstellungszeitpunkt.
-    if (st?.isFile() && st.atimeMs < cutoff && st.mtimeMs < cutoff && await fs.promises.unlink(p).then(() => true, () => false)) weg++;
+    if (st.atimeMs < cutoff && st.mtimeMs < cutoff && await fs.promises.unlink(p).then(() => true, () => false)) { weg++; continue; }
+    const g = gruppen.get(f.slice(0, 40)) ?? { dateien: [], bytes: 0, zuletzt: 0 };
+    g.dateien.push(p); g.bytes += st.size; g.zuletzt = Math.max(g.zuletzt, st.atimeMs, st.mtimeMs);
+    gruppen.set(f.slice(0, 40), g);
+    summe += st.size;
+  }
+  if (summe <= maxBytes) return weg;
+  // Auf 90 % statt knapp unter die Grenze: sonst liefe das gleich wieder an.
+  for (const g of [...gruppen.values()].sort((a, b) => a.zuletzt - b.zuletzt)) {
+    if (summe <= maxBytes * 0.9) break;
+    for (const d of g.dateien) if (await fs.promises.unlink(d).then(() => true, () => false)) weg++;
+    summe -= g.bytes;
   }
   return weg;
+}
+
+let _zuwachs = 0, _deckelLaeuft = false;
+
+/** Zwischen zwei Tagesläufen kann der Cache schnell wachsen; nach je einem
+ * Zehntel der Grenze an neuen Bytes wird deshalb sofort gedeckelt. */
+export function merkeCacheZuwachs(bytes: number): void {
+  _zuwachs += bytes;
+  const max = konfig().bildCacheMaxMb * 1024 * 1024;
+  if (_deckelLaeuft || _zuwachs < max / 10) return;
+  _zuwachs = 0; _deckelLaeuft = true;
+  raeumeBildCacheAuf(max).catch(logAndContinue('bild-cache:deckel')).finally(() => { _deckelLaeuft = false; });
 }
