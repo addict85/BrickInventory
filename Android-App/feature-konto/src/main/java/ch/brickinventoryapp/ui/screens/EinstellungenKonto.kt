@@ -236,7 +236,7 @@ internal fun ZweiterFaktorCard(
                 Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodySmall)
                 Button(
                     onClick = {
-                        val uri = zfZustand.otpauth
+                        val uri = ch.brickinventoryapp.util.otpauthAdresse(zfZustand.otpauth)
                         ohneApp = uri == null || !oeffneMitAuswahl(kontext, uri, auswahlTitel)
                     },
                     modifier = Modifier.fillMaxWidth(), shape = Formen.knopf

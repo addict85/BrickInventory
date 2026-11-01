@@ -202,7 +202,7 @@ class KontoViewModel @Inject constructor(
     }
 
     fun richteZweitenFaktorEin(passwort: String) = zweiterFaktor({ konto.zweiterFaktorEinrichten(passwort) }) { s, d ->
-        s.copy(geheimnis = d.geheimnis, otpauth = d.otpauth)
+        s.copy(geheimnis = d.geheimnis, otpauth = ch.brickinventoryapp.util.otpauthAdresse(d.otpauth))
     }
 
     fun bestaetigeZweitenFaktor(code: String) =

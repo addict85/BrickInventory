@@ -35,6 +35,8 @@ import java.io.File
  *    Geräteliste zeigt Vollzugriff und die frühere Frist" rot (2027 statt 2026);
  *    `deleted` beim Zählen nicht beachtet: „ein schon entwertetes Gerät zählt
  *    nicht“ rot (m…:1 statt m…:0).
+ *  - (01.11.2026) In richteZweitenFaktorEin() `d.otpauth` ungeprüft übernommen:
+ *    „eine fremde Adresse statt otpauth wird nicht geöffnet“ rot.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KontoViewModelTest {
@@ -173,5 +175,21 @@ class KontoViewModelTest {
         assertEquals("t${R.string.zf_enabled}", kanal.fluss.value)
         // Der Code geht ohne Leerzeichen hinaus.
         assertTrue(server.takeRequest().body.readUtf8().contains("\"123456\""))
+    }
+
+    @Test
+    fun `eine fremde Adresse statt otpauth wird nicht geöffnet`() {
+        server.enqueue(antwort("""{"success":true,"geheimnis":"JBSWY3DPEHPK3PXP",
+            "otpauth":"intent://totp/#Intent;scheme=otpauth;end"}"""))
+        vm.richteZweitenFaktorEin("geheim")
+        warteBis("Einrichtung") { vm.zweiterFaktorState.value.geheimnis != null }
+        assertNull("Nur otpauth:// geht an ACTION_VIEW", vm.zweiterFaktorState.value.otpauth)
+        assertEquals("Der Schlüssel bleibt zum Abtippen", "JBSWY3DPEHPK3PXP", vm.zweiterFaktorState.value.geheimnis)
+
+        val echt = "otpauth://totp/BrickInventory%3Amarco?secret=JBSWY3DPEHPK3PXP"
+        server.enqueue(antwort("""{"success":true,"geheimnis":"JBSWY3DPEHPK3PXQ","otpauth":"$echt"}"""))
+        vm.richteZweitenFaktorEin("geheim")
+        warteBis("zweite Einrichtung") { vm.zweiterFaktorState.value.geheimnis == "JBSWY3DPEHPK3PXQ" }
+        assertEquals(echt, vm.zweiterFaktorState.value.otpauth)
     }
 }
