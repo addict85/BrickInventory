@@ -93,6 +93,8 @@ export const FEHLER = {
   kein_zugriff_konto:          { de: 'Kein Zugriff auf dieses Konto',
                                  en: 'No access to this account' },
   einladungscode_ungueltig:    { de: 'Ungültiger Einladungscode.', en: 'Invalid invitation code.' },
+  einladungen_zu_viele:        { de: 'Es sind schon {n} Einladungen offen. Eine davon einlösen lassen oder bis zu 24 Stunden warten.',
+                                 en: 'There are already {n} open invitations. Have one redeemed or wait up to 24 hours.' },
   einladungscode_abgelaufen:   { de: 'Ungültiger oder abgelaufener Einladungscode.',
                                  en: 'Invalid or expired invitation code.' },
   konto_mit_sich_selbst:       { de: 'Ein Konto kann sich nicht mit sich selbst verknüpfen.',
