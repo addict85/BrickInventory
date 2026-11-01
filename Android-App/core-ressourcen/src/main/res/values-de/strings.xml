@@ -740,6 +740,7 @@
     <string name="update_pruefung_fehlgeschlagen">Die Suche nach einem Update ist fehlgeschlagen — keine Verbindung zu GitHub.</string>
     <string name="update_laden_fehlgeschlagen">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde geloescht.</string>
     <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schluessel signiert wie diese und wurde geloescht. Installiert wurde nichts.</string>
+    <string name="update_fassung_falsch">Die geladene App trägt eine andere Fassung als angekündigt und wurde gelöscht. Installiert wurde nichts.</string>
     <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
     <string name="update_installer_fehlt">Die Installation liess sich nicht starten.</string>
     <string name="update_installation_fehlgeschlagen">Die Installation ist gescheitert: %1$s</string>

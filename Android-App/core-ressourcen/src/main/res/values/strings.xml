@@ -754,6 +754,7 @@
     <string name="update_pruefung_fehlgeschlagen">Could not check for updates — no connection to GitHub.</string>
     <string name="update_laden_fehlgeschlagen">Download failed. The partially downloaded file was deleted.</string>
     <string name="update_signatur_falsch">The downloaded app is not signed with the same key as this one and was deleted. It was not installed.</string>
+    <string name="update_fassung_falsch">The downloaded app carries a different version than announced and was deleted. It was not installed.</string>
     <string name="update_fremde_adresse">The update points to an address outside our release. Nothing was downloaded.</string>
     <string name="update_installer_fehlt">The installation could not be started.</string>
     <string name="update_installation_fehlgeschlagen">The installation failed: %1$s</string>

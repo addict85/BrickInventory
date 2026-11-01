@@ -10,7 +10,9 @@ import ch.brickinventoryapp.util.UPDATE_JSON_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_VERSION_URL
 import ch.brickinventoryapp.util.UpdateBeschreibung
+import ch.brickinventoryapp.util.apkFassung
 import ch.brickinventoryapp.util.darfInstallieren
+import ch.brickinventoryapp.util.fassungPasst
 import ch.brickinventoryapp.util.Installationsmeldung
 import ch.brickinventoryapp.util.installiere
 import ch.brickinventoryapp.util.istErlaubteApkAdresse
@@ -213,6 +215,13 @@ class UpdateViewModel @Inject constructor(
                     }
                     return@launch
                 }
+                if (!fassungPasst(withContext(Dispatchers.IO) { apkFassung(ctx, ziel) }, fassung.versionCode, this@UpdateViewModel.fassung.code)) {
+                    ziel.delete()
+                    _state.update {
+                        it.copy(fortschritt = null, fehler = texte.text(R.string.update_fassung_falsch))
+                    }
+                    return@launch
+                }
                 if (!darfInstallieren(ctx)) {
                     _state.update {
                         it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = true)
@@ -240,7 +249,8 @@ class UpdateViewModel @Inject constructor(
      */
     fun starteInstallation() {
         val datei = updateDatei(ctx)
-        if (!datei.isFile || !signaturPasst(ctx, datei)) {
+        val gemeldet = _state.value.neuereFassung?.versionCode ?: 0
+        if (!datei.isFile || !signaturPasst(ctx, datei) || !fassungPasst(apkFassung(ctx, datei), gemeldet, fassung.code)) {
             datei.delete()
             _state.update {
                 it.copy(bereitZurInstallation = false, fehler = texte.text(R.string.update_signatur_falsch))
