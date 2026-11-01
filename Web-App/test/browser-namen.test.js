@@ -59,7 +59,8 @@ test('public/js: die Typprüfung (checkJs) meldet weniger, nie mehr', () => {
   // Typprüfung. GEMESSEN am 28.10.2026: 492 Meldungen, nach dem Typ für G()
   // und den window-Feldern (test/helpers/fenster.d.ts) 184.
   // Gegenprobe: `@returns {HTMLInputElement}` an G() entfernt → rot (459).
-  const SCHRANKE = 184;
+  // 01.11.2026: 183 (Zeitraum-Knöpfe lesen dataset einmal).
+  const SCHRANKE = 183;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'browser-typen-'));
   try {
     fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({

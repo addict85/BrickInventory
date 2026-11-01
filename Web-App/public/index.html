@@ -395,7 +395,7 @@
     <div class="tab active" id="tab-gallery">
       <div class="ph">
         <h1 class="ptitle" data-tab-title="gallery"><span class="ptitle-icon"></span><span data-i18n="gallery.title">Meine Sammlung</span></h1>
-        <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
+        <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
       <div class="brick-stats">
@@ -574,8 +574,9 @@
 
     <div class="tab" id="tab-parts">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h1>
-        <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
+        <div><h1 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h1>
+        <p class="ptitle-unter" data-i18n="parts.subtitle">Alle Teile deiner Sammlung — aus Sets und einzeln erfasst.</p></div>
+        <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
       <div class="brick-stats" id="parts-stats-bar">
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="parts.stat.total_label">Teile gesamt</div><div class="bstat-v" id="ps-total">—</div><div class="bstat-s" id="ps-total-sub"></div></div>
@@ -661,7 +662,7 @@
     <div class="tab" id="tab-minifigs">
       <div class="ph">
         <h1 class="ptitle" data-tab-title="minifigs"><span class="ptitle-icon"></span><span data-i18n="nav.minifigs">Minifiguren</span></h1>
-        <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
+        <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
       <!-- Stats (farbig, wie Galerie) -->
@@ -742,11 +743,11 @@
         <div class="chart-wrap diagramm-flaeche" id="portfolio-chart">
           <div class="diagramm-hinweis" data-i18n="finance.chart.loading">Laden…</div>
         </div>
-        <div class="zeitraum-wahl">
-          <button class="period-btn"        data-period="week"  data-click="setChartPeriod" data-arg="week" data-i18n="finance.period.week">Woche</button>
-          <button class="period-btn"        data-period="month" data-click="setChartPeriod" data-arg="month" data-i18n="finance.period.month">Monat</button>
-          <button class="period-btn"        data-period="year"  data-click="setChartPeriod" data-arg="year" data-i18n="finance.period.year">Jahr</button>
-          <button class="period-btn active" data-period="max"   data-click="setChartPeriod" data-arg="max" data-i18n="finance.period.max">Max</button>
+        <div class="zeitraum-wahl" role="group" aria-label="Zeitraum" data-i18n="finance.period.label" data-i18n-attr="aria-label">
+          <button class="period-btn" aria-pressed="false" data-period="week"  data-click="setChartPeriod" data-arg="week" data-i18n="finance.period.week">Woche</button>
+          <button class="period-btn" aria-pressed="false" data-period="month" data-click="setChartPeriod" data-arg="month" data-i18n="finance.period.month">Monat</button>
+          <button class="period-btn" aria-pressed="false" data-period="year"  data-click="setChartPeriod" data-arg="year" data-i18n="finance.period.year">Jahr</button>
+          <button class="period-btn active" aria-pressed="true" data-period="max"   data-click="setChartPeriod" data-arg="max" data-i18n="finance.period.max">Max</button>
 
         </div>
       </div>
@@ -770,11 +771,11 @@
            „Alle" ist kein vierter Zustand, sondern die LEERE Auswahl: Der Chip
            ist genau dann gewaehlt, wenn nichts eingeschraenkt ist. Die Regel
            steht ausformuliert in FinanceUiState.kategorien. -->
-      <div id="fin-filter" class="chip-reihe">
-        <button class="period-btn active" data-art=""      data-click="finFilter" data-arg="alle"  data-i18n="finance.filter.all">Alle</button>
-        <button class="period-btn"        data-art="sets"  data-click="finFilter" data-arg="sets"  data-i18n="finance.filter.sets">Sets</button>
-        <button class="period-btn"        data-art="parts" data-click="finFilter" data-arg="parts" data-i18n="finance.filter.parts">Teile</button>
-        <button class="period-btn"        data-art="figs"  data-click="finFilter" data-arg="figs"  data-i18n="finance.filter.minifigs">Minifiguren</button>
+      <div id="fin-filter" class="chip-reihe" role="group" aria-label="Anzeigen" data-i18n="finance.filter.label" data-i18n-attr="aria-label">
+        <button class="period-btn active" aria-pressed="true" data-art=""      data-click="finFilter" data-arg="alle"  data-i18n="finance.filter.all">Alle</button>
+        <button class="period-btn" aria-pressed="false" data-art="sets"  data-click="finFilter" data-arg="sets"  data-i18n="finance.filter.sets">Sets</button>
+        <button class="period-btn" aria-pressed="false" data-art="parts" data-click="finFilter" data-arg="parts" data-i18n="finance.filter.parts">Teile</button>
+        <button class="period-btn" aria-pressed="false" data-art="figs"  data-click="finFilter" data-arg="figs"  data-i18n="finance.filter.minifigs">Minifiguren</button>
       </div>
       <div id="fin-tbl"><div class="empty"><div class="icon"><svg class="ico" aria-hidden="true"><use href="#i-finanzen"/></svg></div><h3 data-i18n="finance.not_loaded">Preise noch nicht geladen</h3><p>Klicke auf «Preise laden»</p></div></div>
     </div>

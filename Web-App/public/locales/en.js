@@ -747,6 +747,8 @@ window.I18N_EN = {
   'finance.title': 'Portfolio value',
   'finance.chart.label': 'Portfolio performance',
   'finance.market_label': 'Market value',
+  'finance.period.label': 'Period',
+  'finance.filter.label': 'Show',
   'finance.period.week': 'Week',
   'finance.period.month': 'Month',
   'finance.period.year': 'Year',

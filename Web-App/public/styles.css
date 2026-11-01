@@ -255,9 +255,9 @@
     .import-eintrag .ico,.import-eintrag svg{width:18px;height:18px;flex:0 0 auto}
 
     /* Umschalter der Sammlung: Sets | Teile | Minifiguren */
-    .sammlung-wahl{display:inline-flex;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bdr);border-radius:10px}
+    .sammlung-wahl{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bdr);border-radius:10px}
     .sammlung-wahl button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--s600);font:inherit;font-size:var(--fs-3);font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
-    .sammlung-wahl button[aria-selected="true"]{background:var(--sur);color:var(--b600);box-shadow:var(--sh0)}
+    .sammlung-wahl button[aria-current="page"]{background:var(--sur);color:var(--b600);box-shadow:var(--sh0)}
     .sammlung-wahl button:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:1px}
     /* Mittlere Fenster: schmalere Reiter, damit alle neun auf EINE Zeile
        passen, statt seitlich wegzuscrollen. Unterhalb von 640px uebernimmt

@@ -760,6 +760,8 @@ window.I18N_DE = {
   'finance.title': 'Portfolio-Wert',
   'finance.chart.label': 'Wertentwicklung Portfolio',
   'finance.market_label': 'Marktwert',
+  'finance.period.label': 'Zeitraum',
+  'finance.filter.label': 'Anzeigen',
   'finance.period.week': 'Woche',
   'finance.period.month': 'Monat',
   'finance.period.year': 'Jahr',

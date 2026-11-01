@@ -65,8 +65,10 @@ function markiereGruppe(tab){
     if (schluessel) { unter.setAttribute('data-i18n', schluessel); unter.textContent = tRaw(schluessel); }
     else { unter.removeAttribute('data-i18n'); unter.textContent = ''; }
   }
-  document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b =>
-    b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
+  // Die drei Knöpfe wechseln die Ansicht; die offene ist die aktuelle Seite.
+  document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b => {
+    if (b.dataset.arg === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
   // Vorleseprogramme erfahren so, welcher Reiter offen ist.
   // „Sammlung“ gilt nur dann als aktuelle Seite, wenn der eigene Reiter der
   // Ansicht nicht zu sehen ist (am Telefon).

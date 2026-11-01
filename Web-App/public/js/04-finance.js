@@ -25,7 +25,9 @@ function setChartPeriod(period){
   _chartPeriod = period;
   // Nur die Zeitraum-Knöpfe: Die Filterchips darunter tragen dieselbe Klasse.
   document.querySelectorAll('.zeitraum-wahl .period-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.period === period);
+    const an = /** @type {HTMLElement} */ (b).dataset.period === period;
+    b.classList.toggle('active', an);
+    b.setAttribute('aria-pressed', String(an));
   });
   loadPortfolioChart();
 }
@@ -482,7 +484,9 @@ function finFilterAnwenden(){
   });
   document.querySelectorAll('#fin-filter button').forEach(b => {
     const art = b.dataset.art;
-    b.classList.toggle('active', art ? finKategorien.has(art) : finKategorien.size === 0);
+    const an = art ? finKategorien.has(art) : finKategorien.size === 0;
+    b.classList.toggle('active', an);
+    b.setAttribute('aria-pressed', String(an));
   });
 }
 
