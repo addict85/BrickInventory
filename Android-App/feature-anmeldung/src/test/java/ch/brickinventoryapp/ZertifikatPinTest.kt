@@ -3,6 +3,7 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.ui.parseQrPayload
 import ch.brickinventoryapp.util.PinAblage
 import ch.brickinventoryapp.util.PinVertrauen
+import ch.brickinventoryapp.util.WahlVertrauen
 import ch.brickinventoryapp.util.ZertifikatUngeklaert
 import ch.brickinventoryapp.util.ZertifikatsFrage
 import ch.brickinventoryapp.util.fingerabdruckLesbar
@@ -54,6 +55,8 @@ import javax.net.ssl.X509ExtendedTrustManager
  *      (nach der Erneuerung GEAENDERT)
  *   G  (01.11.2026) fingerabdruckLesbar() wieder in Vierergruppen → rot „der
  *      Fingerabdruck steht da wie in der Webapp“
+ *   H  (01.11.2026) in pruefe() fremde Hosts wieder mit `kette` statt
+ *      `fremdeHosts` → rot „Nutzer-CAs gelten nur fuer den eigenen Server …“
  */
 class ZertifikatPinTest {
 
@@ -90,8 +93,8 @@ class ZertifikatPinTest {
 
     private fun eigener() = "${server.url("/").host}:${server.port}"
 
-    private fun hole(kette: X509ExtendedTrustManager, eigen: String = eigener()): Boolean {
-        val tm = PinVertrauen(kette, pins, eigenerServer = { eigen }, frage = frage)
+    private fun hole(kette: X509ExtendedTrustManager, eigen: String = eigener(), fremd: X509ExtendedTrustManager = kette): Boolean {
+        val tm = PinVertrauen(kette, pins, eigenerServer = { eigen }, frage = frage, fremdeHosts = fremd)
         val ctx = SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
         val c = OkHttpClient.Builder().sslSocketFactory(ctx.socketFactory, tm)
             .connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build()
@@ -206,6 +209,20 @@ class ZertifikatPinTest {
         assertNull(frage.offen.value)
         assertFalse(hole(system(FREMD), eigen = "brick.example.org:443"))
         assertNull("Für fremde Hosts gibt es nichts zu bestätigen", frage.offen.value)
+    }
+
+    /** Nutzer-CA ist hier ROOT, das System kennt nur FREMD. */
+    @Test
+    fun `Nutzer-CAs gelten nur fuer den eigenen Server, nie fuer fremde Hosts`() {
+        starte()
+        val mitNutzerCa = WahlVertrauen(system = system(FREMD), mitNutzer = lazy { system(ROOT) }, nutzerErlaubt = { true })
+        assertFalse("Ein fremder Host nimmt eine Nutzer-CA an",
+            hole(mitNutzerCa, eigen = "brick.example.org:443", fremd = system(FREMD)))
+        assertEquals(0, server.requestCount)
+        assertNull(frage.offen.value)
+
+        assertFalse("Auch mit Nutzer-CA geht ohne Pin nichts hinaus", hole(mitNutzerCa, fremd = system(FREMD)))
+        assertEquals("Für den eigenen Server zählt die Nutzer-CA", ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
     }
 
     @Test

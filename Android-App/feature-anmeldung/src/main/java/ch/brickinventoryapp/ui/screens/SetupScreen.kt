@@ -97,6 +97,8 @@ fun SetupScreen(
             onDismissRequest = { qrVorschlag = null },
             title = { Text(stringResource(R.string.setup_qr_titel)) },
             text = {
+                // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
+                ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
                 Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Text(stringResource(R.string.setup_qr_text, vorschlag.url))
                     if (vorschlag.fingerabdruck != null) Text(stringResource(R.string.setup_qr_pin),

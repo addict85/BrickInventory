@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.model.PnlResponse
 import ch.brickinventoryapp.data.model.PortfolioHistoryResponse
 import ch.brickinventoryapp.widget.WidgetZahlen
 import ch.brickinventoryapp.widget.gvText
+import ch.brickinventoryapp.widget.widgetAnzeige
 import ch.brickinventoryapp.widget.widgetZahlen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -20,6 +21,8 @@ import org.junit.Test
  *      Differenz der letzten zwei Tage“
  *   B  gesamt = wert statt wert - kauf → rot „gesamt ist Wert minus Kaufpreis“
  *   C  in gvText() das Pluszeichen entfernt → rot „ein Gewinn trägt ein Plus“
+ *   D  (01.11.2026) widgetAnzeige() gibt immer `abgelegt` zurück → rot
+ *      „abgemeldet zeigt das Widget keine Zahlen“
  */
 class WidgetZahlenTest {
 
@@ -27,6 +30,13 @@ class WidgetZahlenTest {
         """{"success":true,"currency":"CHF","totals":{"purchase":"1000.00","current":"1250.50","pnl_prozent":25.05}}""")
     private val verlauf = ApiJson.decodeFromString(PortfolioHistoryResponse.serializer(),
         """{"success":true,"currency":"CHF","period":"week","points":[{"value":1200.0},{"value":1240.0},{"value":1250.5}]}""")
+
+    @Test
+    fun `abgemeldet zeigt das Widget keine Zahlen`() {
+        val z = widgetZahlen(pnl, verlauf, jetzt = 7)!!
+        assertNull("Die Ablage hält noch Zahlen, gezeigt werden sie nicht", widgetAnzeige(z, angemeldet = false))
+        assertEquals(z, widgetAnzeige(z, angemeldet = true))
+    }
 
     @Test
     fun `gesamt ist Wert minus Kaufpreis`() {

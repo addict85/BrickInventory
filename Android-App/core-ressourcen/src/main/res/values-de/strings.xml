@@ -32,8 +32,11 @@
     <string name="login_passkey_statt_code">Passkey statt Code verwenden</string>
     <string name="login_passkey_keiner">Auf diesem Gerät ist kein Passkey für diesen Server gespeichert.</string>
     <string name="login_passkey_fehler">Der Passkey konnte nicht abgefragt werden.</string>
-    <string name="settings_nutzer_ca">Der eigenen Zertifizierungsstelle vertrauen</string>
-    <string name="settings_nutzer_ca_hint">Für einen Server mit selbst ausgestelltem Zertifikat, dessen Zertifizierungsstelle auf diesem Gerät installiert ist. Sonst ausgeschaltet lassen: Eine installierte Zertifizierungsstelle kann jede Verbindung mitlesen.</string>
+    <string name="settings_nutzer_ca">Nutzer-Zertifizierungsstellen vertrauen (Risiko)</string>
+    <string name="settings_nutzer_ca_hint">Nur für die Verbindung zu deinem Server, nie für Updates. Risiko: Eine vom Nutzer installierte Zertifizierungsstelle – etwa von der Firma oder von Schadsoftware – kann Zertifikate für jeden Server ausstellen und so den Verkehr mitlesen. Nur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
+    <string name="nutzer_ca_frage_titel">Nutzer-Zertifizierungsstellen vertrauen?</string>
+    <string name="nutzer_ca_frage_text">Die App nimmt dann für deinen Server auch Zertifikate an, die eine vom Nutzer installierte Zertifizierungsstelle ausgestellt hat.\n\nEine solche Stelle kann von deiner Firma, einem Netzwerkverwalter oder von Schadsoftware stammen. Wer sie kontrolliert, kann den Verkehr mitlesen und verändern, auch Passwort und Anmeldetoken. Schutz bleibt dann nur der Vergleich des Fingerabdrucks mit der Webapp.\n\nUpdates von GitHub prüft die App weiter nur gegen die Zertifizierungsstellen des Systems.\n\nNur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
+    <string name="nutzer_ca_frage_ja">Trotzdem einschalten</string>
     <string name="setup_qr_titel">Diesen Server übernehmen?</string>
     <string name="setup_qr_text">Der QR-Code zeigt auf:\n%1$s\n\nDie App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
     <string name="setup_qr_uebernehmen">Übernehmen und anmelden</string>

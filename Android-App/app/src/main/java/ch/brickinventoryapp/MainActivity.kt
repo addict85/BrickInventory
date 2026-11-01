@@ -77,24 +77,23 @@ class MainActivity : ComponentActivity() {
     // DiskCache-Instanzen liefen auf demselben Verzeichnis.
     @Inject lateinit var imageLoader: ImageLoader
 
+    /** Das Ziel einer angetippten Meldung; abgelegt nur vom nicht exportierten MeldungsEinstieg. */
+    @Inject lateinit var meldungseingang: ch.brickinventoryapp.ui.Meldungseingang
+
     /**
-     * Eine angetippte Preisalarm-Meldung, waehrend die App schon laeuft.
-     *
-     * launchMode="singleTop" im Manifest sorgt dafuer, dass hier gelandet wird
-     * statt in einer zweiten Instanz. setIntent() ist noetig, weil getIntent()
-     * sonst weiter den ALTEN Intent liefert — eine zweite angetippte Meldung
-     * oeffnete dann wieder das erste Set.
+     * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Die
+     * Extras des Intents werden bewusst nicht gelesen: Diese Activity ist
+     * exportiert, jede App koennte sie mit beliebigen Extras starten.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        meldungsZielUebernehmen(intent)
+        meldungsZielUebernehmen()
     }
 
-    /** Traegt das Set aus dem Intent in den Zustand — der NavHost holt es dort ab. */
-    private fun meldungsZielUebernehmen(intent: Intent?) {
-        vm.setAusMeldungAnfordern(
-            intent?.getStringExtra(ch.brickinventoryapp.alarm.PreisalarmWorker.EXTRA_SET))
+    /** Traegt das abgelegte Set in den Zustand — der NavHost holt es dort ab. */
+    private fun meldungsZielUebernehmen() {
+        vm.setAusMeldungAnfordern(meldungseingang.abholen())
     }
 
     /**
@@ -116,8 +115,8 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Die App war zu: Der Intent, der sie gestartet hat, traegt das Ziel.
-        meldungsZielUebernehmen(intent)
+        // Die App war zu: Der MeldungsEinstieg hat das Ziel vor dem Start abgelegt.
+        meldungsZielUebernehmen()
 
         setContent {
             // Global vom Admin gewähltes Design. Bewusst NUR dieses Feld
@@ -136,14 +135,22 @@ class MainActivity : ComponentActivity() {
                     BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
                     // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.
                     val zertifikat by vm.zertifikatsFrage.offen.collectAsStateWithLifecycle()
-                    val nutzerCa by vm.nutzerCa.collectAsStateWithLifecycle()
+                    val nutzerCa by vm.nutzerCa.an.collectAsStateWithLifecycle()
                     zertifikat?.let { frage ->
                         ch.brickinventoryapp.ui.components.ZertifikatDialog(
                             frage = frage,
                             nutzerCaAn = nutzerCa,
                             onVertrauen = vm::zertifikatVertrauen,
-                            onNutzerCa = { vm.setNutzerCa(true); vm.zertifikatsFrage.verwerfen() },
+                            onNutzerCa = { vm.nutzerCa.anfragen(); vm.zertifikatsFrage.verwerfen() },
                             onAbbrechen = vm.zertifikatsFrage::verwerfen,
+                        )
+                    }
+                    // Hier und nicht in den Einstellungen: Auch der Zertifikatsdialog fragt an.
+                    val nutzerCaFrage by vm.nutzerCa.frage.collectAsStateWithLifecycle()
+                    if (nutzerCaFrage) {
+                        ch.brickinventoryapp.ui.components.NutzerCaDialog(
+                            onJa = vm.nutzerCa::bestaetigen,
+                            onAbbrechen = vm.nutzerCa::abbrechen,
                         )
                     }
                 }

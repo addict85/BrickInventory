@@ -1,0 +1,13 @@
+Gegenprobe: Der Einstieg reicht die Setnummer als Extra an MainActivity durch
+Modul: app
+Test: ch.brickinventoryapp.FremderEinstiegTest
+Rot: die eigene Meldung oeffnet ihr Set
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MeldungsEinstieg.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MeldungsEinstieg.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/MeldungsEinstieg.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MeldungsEinstieg.kt
+@@ -36,3 +36,3 @@
+     return Intent(ctx, MainActivity::class.java).addFlags(
+-        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
++        Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP).putExtras(ankunft ?: Intent())
+ }

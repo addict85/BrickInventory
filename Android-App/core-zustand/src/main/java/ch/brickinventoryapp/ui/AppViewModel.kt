@@ -102,15 +102,12 @@ class AppViewModel @Inject constructor(
         _dunkelNachSystem.value = an
     }
 
-    /** Je Gerät: auch nutzerinstallierte CAs für den eigenen Server (util/ServerVertrauen.kt). */
-    private val _nutzerCa = MutableStateFlow(prefs.nutzerCaErlaubt())
-    val nutzerCa: StateFlow<Boolean> = _nutzerCa.asStateFlow()
-    fun setNutzerCa(an: Boolean) {
-        prefs.setzeNutzerCa(an)
-        _nutzerCa.value = an
-        // Offene Verbindungen trugen das alte Vertrauen.
-        apiHttpClient.connectionPool.evictAll()
-    }
+    /** Je Gerät: auch nutzerinstallierte CAs für den eigenen Server; an nur nach Bestätigung. */
+    val nutzerCa = NutzerCaSchalter(
+        lies = prefs::nutzerCaErlaubt,
+        schreibe = prefs::setzeNutzerCa,
+        nachAenderung = { apiHttpClient.connectionPool.evictAll() },
+    )
 
     /** Je Gerät: Material You statt der Farben des Designs (ui/theme/Darstellung.kt). */
     private val _systemfarben = MutableStateFlow(prefs.systemfarben())
@@ -311,8 +308,9 @@ class AppViewModel @Inject constructor(
 
     /** Der Intent kommt am Rand der App an, und dieser Rand ist die Activity. */
     fun setAusMeldungAnfordern(setNummer: String?) {
-        if (setNummer.isNullOrBlank()) return
-        _meldungsZiel.value = MeldungsZielUiState(setNummer)
+        // Auch hier geprüft: Die Nummer wird Teil einer Navigationsroute.
+        val sn = setnummerAusMeldung(setNummer) ?: return
+        _meldungsZiel.value = MeldungsZielUiState(sn)
     }
 
     /** Erledigt — sonst springt die App bei der nächsten Rekomposition erneut. */

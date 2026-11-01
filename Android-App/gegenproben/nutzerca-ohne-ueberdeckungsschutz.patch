@@ -1,0 +1,13 @@
+Gegenprobe: Die Rückfrage für Nutzer-CAs ohne Schutz vor Überlagerung
+Modul: app
+Test: ch.brickinventoryapp.FremderEinstiegTest
+Rot: die Rueckfrage ist vor Ueberlagerung geschuetzt
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/NutzerCaDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/NutzerCaDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/NutzerCaDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/ui/components/NutzerCaDialog.kt
+@@ -26,4 +26,3 @@
+         text = {
+-            Ueberdeckungsschutz()
+             Text(stringResource(R.string.nutzer_ca_frage_text), modifier = Modifier.verticalScroll(rememberScrollState()))
+         },

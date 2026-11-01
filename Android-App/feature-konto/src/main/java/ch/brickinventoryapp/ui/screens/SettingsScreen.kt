@@ -248,12 +248,13 @@ fun SettingsScreen(
         //
         // Die Serveradresse ist eine Einstellung wie Währung und Sprache, keine Handlung
         // an der laufenden Sitzung.
-        val nutzerCa by app.nutzerCa.collectAsStateWithLifecycle()
+        val nutzerCa by app.nutzerCa.an.collectAsStateWithLifecycle()
         ServerCard(
             serverUrl = appState.serverUrl,
             onWechseln = onServerWechseln,
             nutzerCa = nutzerCa,
-            onNutzerCa = { app.setNutzerCa(it) },
+            // Einschalten fragt erst nach (NutzerCaDialog in MainActivity).
+            onNutzerCa = { if (it) app.nutzerCa.anfragen() else app.nutzerCa.ausschalten() },
         )
 
         UpdateCard(
@@ -317,6 +318,7 @@ private fun ServerCard(
             Text(stringResource(R.string.main_menu_change_server))
         }
         // Je Gerät und sofort wirksam (util/ServerVertrauen.kt); ausgeschaltet nur System-CAs.
+        // Nur für den eigenen Server; Updates und fremde Hosts prüfen immer gegen das System.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
@@ -324,9 +326,10 @@ private fun ServerCard(
         ) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.settings_nutzer_ca), style = MaterialTheme.typography.bodyMedium)
+                // In der Fehlerfarbe: Es ist ein Risiko, keine Komforteinstellung.
                 Text(stringResource(R.string.settings_nutzer_ca_hint),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    color = MaterialTheme.colorScheme.error)
             }
             Switch(checked = nutzerCa, onCheckedChange = onNutzerCa)
         }
