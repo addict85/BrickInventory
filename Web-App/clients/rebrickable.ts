@@ -1,10 +1,4 @@
-// ── Warum diese Datei nicht mehr in routes/ liegt ────────────
-//
-// Sie enthält KEINE einzige Route und wird nirgends als Router montiert — sie
-// ist ein reiner API-Client. In routes/ zu liegen war ein Erbstück, hatte aber
-// Folgen: Wer sie importierte, importierte scheinbar einen Router, und die
-// Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
-//
+// Ein API-Client, kein Router: Deshalb liegt er nicht unter routes/.
 import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../src/katalog/rateLimiter';
 import { KEINE_FARBE } from '../src/infra/validate';
 

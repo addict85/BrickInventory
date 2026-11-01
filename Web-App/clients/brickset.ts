@@ -1,10 +1,4 @@
-// ── Warum diese Datei nicht mehr in routes/ liegt ────────────
-//
-// Sie enthält KEINE einzige Route und wird nirgends als Router montiert — sie
-// ist ein reiner API-Client. In routes/ zu liegen war ein Erbstück, hatte aber
-// Folgen: Wer sie importierte, importierte scheinbar einen Router, und die
-// Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
-//
+// Ein API-Client, kein Router: Deshalb liegt er nicht unter routes/.
 
 import { holeHttps, auszug } from '../src/infra/abruf';
 import { getGlobalSetting } from '../src/konto/settings';

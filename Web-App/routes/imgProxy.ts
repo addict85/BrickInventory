@@ -30,8 +30,7 @@ const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 const _imgNegCache = new Map();
 let _tmpSeq = 0;
 
-// Fehlgeschlagene Abrufe zählt src/katalog/bilder/imgProxyStats.ts: Ohne
-// Zähler war „Bilder erscheinen teilweise nicht" nicht einzugrenzen.
+// Fehlschläge zählt src/katalog/bilder/imgProxyStats.ts, sonst nicht einzugrenzen.
 
 /** Die Obergrenze verhindert, dass eine Kachelwand beliebig viele TLS-Verbindungen öffnet.
  * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#cdnagent */
@@ -40,8 +39,7 @@ const _cdnAgent = new https.Agent({
   maxSockets: 32,
   maxFreeSockets: 16,
   timeout: 30000,
-  // IPv4 erzwingen: Der Server hat keine IPv6-Route; Abrufe liefen sonst
-  // stumm bis zur Zeitgrenze.
+  // IPv4: Ohne IPv6-Route liefen Abrufe sonst stumm bis zur Zeitgrenze.
   family: 4,
 });
 
@@ -69,8 +67,7 @@ function sendePlatzhalter(res: Response) {
 
 
 export async function bildDurchreichen(req: Request, res: Response) {
-  // Ohne Login-Pflicht wäre das ein offener Proxy (Bandbreiten-Missbrauch,
-  // IP-Verschleierung).
+  // Ohne Login-Pflicht ein offener Proxy (Bandbreite, IP-Verschleierung).
   const proxyUserId = await resolveUserId(req);
   if (!proxyUserId) return res.status(401).end();
   let url = String(req.query.url || '');
@@ -78,12 +75,10 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Rebrickable liefert manchmal vorkodierte Adressen — einmal dekodieren.
   const decoded = einmalDekodiert(url);
   if (decoded.startsWith('https://')) url = decoded;
-  // Nur bekannte Bild-CDNs (src/infra/fremdeAdressen.ts); eine unlesbare
-  // Adresse ist ebenfalls 403.
+  // Nur bekannte Bild-CDNs; eine unlesbare Adresse ist ebenfalls 403.
   if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return res.status(403).end();
   url = proxyAdresse(url) ?? url;
-  // Jedes CDN-Bild wird serverseitig nur einmal geholt. Content-Type als
-  // Sidecar-Datei (.ct).
+  // Jedes Bild nur einmal holen; Content-Type liegt daneben (.ct).
   const cacheDir  = path.join(APP_ROOT, 'data', 'img_proxy_cache');
   const cacheKey  = proxyCacheSchluessel(url);
   const cacheFile = path.join(cacheDir, cacheKey);
@@ -104,9 +99,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
     res, req, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, streamFileToResponse,
   })) return;
 
-  // Ein fehlendes Bild holte der Browser bei jedem Seitenaufruf neu; der Merker
-  // antwortet sofort. Eine Stunde, damit ein nachgereichtes Bild nicht dauerhaft
-  // fehlt.
+  // Der Merker (eine Stunde) erspart dem CDN die Frage bei jedem Seitenaufruf.
   if (istBekanntFehlend(cacheKey)) return sendePlatzhalter(res);
 
   // Nur Abrufe beim CDN zählen: Jeder füllt Platte und Bandbreite, Treffer nicht.
@@ -118,16 +111,14 @@ export async function bildDurchreichen(req: Request, res: Response) {
   }
 
 
-  // Der erste Satz imitiert einen Browser; der zweite lässt Referer und
-  // Accept-Language weg, weil der Hotlink-Schutz auf fremde Referer mit 404 antwortet.
+  // Der zweite Satz ohne Referer: Der Hotlink-Schutz antwortet darauf mit 404.
   const HEADER_SETS: [Record<string, string>, Record<string, string>] = [
     {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Referer':    'https://rebrickable.com/',
       'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.9',
-      // Unkomprimiert anfordern: Ein durchgereichter komprimierter Körper ergibt beim
-      // Browser eine weisse Fläche, ohne jeden Hinweis im Log.
+      // Unkomprimiert: Ein komprimierter Körper ergäbe still eine weisse Fläche.
       'Accept-Encoding': 'identity',
     },
     {
@@ -155,8 +146,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   }
   if (r.status !== 200) {
     r.verwerfen();
-    // NUR 404 merken: 403 kommt auch als Drosselung bei einer Kachelwand vor,
-    // und die Bilder existieren.
+    // NUR 404 merken: 403 ist bei einer Kachelwand oft nur Drosselung.
     if (r.status === 404) {
       merkeFehlend(cacheKey);
       _imgNegCache.set(cacheKey, Date.now());
@@ -189,8 +179,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   // Nur eine vollständige Datei darf in den Cache.
   const expected = parseInt(String(r.kopf['content-length'] || '0'), 10) || 0;
   res.setHeader('Content-Type', contentType);
-  // Content-Length weiterreichen: Eine chunked-Antwort puffert ein
-  // Reverse-Proxy womöglich, und der Browser wartet minutenlang.
+  // Mit Länge: Eine chunked-Antwort puffert ein Reverse-Proxy womöglich lange.
   if (expected > 0) res.setHeader('Content-Length', String(expected));
 
   // Entpacken, auch wenn identity verlangt war: Nicht jedes CDN hält sich daran.
@@ -218,15 +207,12 @@ export async function bildDurchreichen(req: Request, res: Response) {
       console.error(`[img-proxy] an den Client gingen ${sentToClient} von ${expected} Bytes: ${url}`);
     }
   });
-  // Kurz und mit Rückfrage: Die Antwort wird ungeprüft gestreamt; ein langes
-  // max-age nagelte einen Fehler im Browser fest.
+  // Kurz: Ungeprüft gestreamt nagelte ein langes max-age Fehler im Browser fest.
   res.setHeader('Cache-Control', 'private, max-age=3600, must-revalidate');
 
-  // Erst in .tmp, bei Erfolg atomar umbenennen, damit nie halbe Dateien im Cache
-  // landen.
+  // Erst in .tmp, dann atomar umbenennen: nie halbe Dateien im Cache.
   fs.mkdirSync(cacheDir, { recursive: true });
-  // Je ANFRAGE eindeutig: Gleichzeitige Anfragen desselben Bildes schrieben
-  // sonst in dieselbe Datei.
+  // Je ANFRAGE eindeutig: Sonst schrieben gleichzeitige in dieselbe Datei.
   const tmpFile = `${cacheFile}.tmp-${process.pid}-${_tmpSeq++}`;
   const ws = fs.createWriteStream(tmpFile);
   let bytes = 0, aborted = false;
@@ -239,8 +225,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
     imgProxyFailures.lastError = `${grund}: ${url}`;
     console.error(`[img-proxy] ${grund} — weder gecacht noch verkleinert: ${url}`);
   };
-  // Der entpackte Strom zählt: Auch ein kleiner komprimierter Körper darf nicht
-  // beliebig wachsen.
+  // Der entpackte Strom zählt: Auch Komprimiertes darf nicht beliebig wachsen.
   body.on('data', (chunk: Buffer) => {
     bytes += chunk.length;
     if (bytes > PROXY_CACHE_MAX_BYTES) { verwirf(`grösser als ${Math.round(PROXY_CACHE_MAX_BYTES / 1024 / 1024)} MB`); body.destroy(); res.destroy(); }
@@ -251,8 +236,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   ws.on('finish', async () => {
     if (aborted) return;
     try {
-      // Nur vollständige Dateien übernehmen: Eine abgeschnittene ginge dauerhaft mit
-      // 200 hinaus und bliebe leer, ohne Fehler.
+      // Nur vollständig: Eine abgeschnittene ginge dauerhaft mit 200 hinaus.
       const st = await fs.promises.stat(tmpFile);
       if (!enc && expected > 0 && st.size !== expected) {
         console.error(`[img-proxy] unvollständig (${st.size}/${expected} Bytes), nicht gecacht: ${url}`);
@@ -262,15 +246,13 @@ export async function bildDurchreichen(req: Request, res: Response) {
       await fs.promises.writeFile(cacheFile + '.ct', contentType);
       await fs.promises.rename(tmpFile, cacheFile);
       merkeCacheZuwachs(st.size);
-      // Gleich miterzeugen, sonst entstünde sie beim zweiten Aufruf für eine ganze
-      // Kachelwand auf einmal.
+      // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
       if (wantThumb) { if (darfErzeugen) queueThumb(cacheFile, thumbFile); else notiere(); }
     } catch (_) { fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink')); }
   });
   ws.on('error', () => fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink')));
 
-  // Bricht der Browser ab (beim Scrollen der Normalfall), muss die Verbindung
-  // zum CDN sofort frei werden, sonst ist der Pool bald belegt.
+  // Abbruch beim Scrollen: Die CDN-Verbindung muss sofort zurück in den Pool.
   res.on('close', () => {
     if (res.writableFinished || !res.destroyed) return;
     console.log(`[img-proxy] Client hat abgebrochen, Verbindung freigegeben: ${url}`);
