@@ -602,20 +602,6 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
 });
 
 
-// Im fremden WLAN kann "http://nas:3000" auf einen anderen Rechner zeigen, der
-// sonst den Token bekäme. Nur der echte Server kennt den Hash und kann die
-// Zufallszahl damit unterschreiben; die Kennung verrät über den Token nichts.
-router.post('/serverbeweis', ipThrottle('serverbeweis', 120, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/serverbeweis'>) => {
-  const { kennung, nonce } = req.body ?? {};
-  if (typeof kennung !== 'string' || !/^[0-9a-f]{16}$/.test(kennung)
-      || typeof nonce !== 'string' || !/^[0-9a-f]{32,128}$/.test(nonce))
-    return sendeFehler(req, res, 400, 'wert_ungueltig');
-  const zeile = await K.tokenNachKennung(kennung);
-  if (!zeile) return sendeFehler(req, res, 404, 'token_ungueltig');
-  res.json({ success: true,
-    beweis: crypto.createHmac('sha256', zeile.token).update(nonce).digest('hex') });
-});
-
 // ── Passkeys: Verwalten im Konto, Anmelden auf der Anmeldeseite ─────────────
 const NAME_MAX = 60;
 const passkeyName = (roh: unknown) =>

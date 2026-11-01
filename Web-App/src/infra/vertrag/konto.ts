@@ -147,7 +147,6 @@ export const QrToken = z.looseObject({
   success: z.literal(true), token: z.string(), expires_in: ganz, url: z.string(),
   token_days: ganz.nullable().optional(), fp: z.string().optional(),
 });
-export const ServerBeweis = z.looseObject({ success: z.literal(true), beweis: z.string() });
 export const Passkey = z.looseObject({
   id: ganz, name: z.string().nullable(), transports: z.string().nullable().optional(),
   created_at: zeit.nullable(), last_used: zeit.nullable(),
@@ -196,7 +195,6 @@ export const routen = {
   'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: Erfolg },
   'POST /api/v1/auth/token-create': { antwort: TokenErstellt },
   'POST /api/v1/auth/qr-token': { antwort: QrToken },
-  'POST /api/v1/auth/serverbeweis': { antwort: ServerBeweis },
   'POST /api/v1/auth/reset-password': { antwort: ForgotPasswordResponse },
   'GET /api/v1/auth/passkeys': { antwort: PasskeyListe },
   'DELETE /api/v1/auth/passkeys/:id': { antwort: Geloescht },

@@ -149,7 +149,6 @@ const C = {
   'POST /api/v1/auth/token-create': 'nur-v1',
   'POST /api/v1/auth/qr-login': 'nur-v1',
   // Die App fragt vor einem Klartext-Zugang, ob der Server ihren Token kennt.
-  'POST /api/v1/auth/serverbeweis': 'nur-v1',
   // Tausch des eigenen Tokens: ein Weg der App (Rotation).
   'POST /api/v1/auth/token-rotieren': 'nur-v1',
   // Passkeys sind WebAuthn im Browser; die Anmeldung legt eine Sitzung an.

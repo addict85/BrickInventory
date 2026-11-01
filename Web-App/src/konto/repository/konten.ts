@@ -138,15 +138,6 @@ export async function setzePasswortNachRuecksetzen(id: number, hash: string): Pr
   await db.run('UPDATE users SET password_hash=$1, reset_token=NULL, reset_token_expires=NULL WHERE id=$2', [hash, id]);
 }
 
-export function tokenNachKennung(kennung: string): Promise<{ token: string } | undefined> {
-  return db.get(
-    `SELECT token FROM api_tokens
-      WHERE left(token, 16) = $1
-        AND (expires_at IS NULL OR expires_at > NOW())
-        AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
-      LIMIT 1`, [kennung]);
-}
-
 export interface Zugang {
   token: string; label: string | null; created_at: Date; last_used: Date | null;
   hard_expires_at: Date | null; expires_at: Date | null; scope: 'app' | 'voll';

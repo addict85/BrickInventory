@@ -321,7 +321,7 @@ window.I18N_EN = {
   'tls.fp_base64': 'The same value in Base64 (as in the QR code)',
   'tls.download': 'Download root certificate',
   'tls.ohne_ca': 'The server runs over HTTPS with a certificate that does not come from its own certificate authority. Nothing to install.',
-  'tls.ohne_https': 'The server runs without HTTPS. Password, session and app access travel unencrypted over the network. See README, “HTTPS mit eigener CA”.',
+  'tls.ohne_https': 'The server runs without HTTPS. Password and session travel unencrypted over the network, and the Android app only connects over HTTPS. See README, “HTTPS mit eigener CA”.',
   'pk.title': 'Passkeys',
   'pk.hint': 'Sign in without a password using fingerprint, face or device PIN. With two-factor authentication on, a passkey also replaces the code.',
   'pk.login': 'Sign in with a passkey',
@@ -908,7 +908,7 @@ window.I18N_EN = {
 
 
   'settings.importing': 'Importing…',
-  'qr.klartext_hinweis': 'The address starts with http://. The app access token then travels unencrypted over the Wi-Fi — anyone listening can take it over. Better set up HTTPS (see README).',
+  'qr.klartext_hinweis': 'The address starts with http://. The Android app only accepts HTTPS and cannot connect this way. Please set up HTTPS (see README).',
   'qr.access_days': 'The access is then valid for {n} days.',
   'qr.access_days_one': 'The access is then valid for {n} day.',
   'qr.access_default': 'The access stays valid while the device is used (90 days unused).',

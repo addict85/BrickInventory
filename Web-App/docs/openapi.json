@@ -1559,35 +1559,6 @@
         }
       }
     },
-    "/api/v1/auth/serverbeweis": {
-      "post": {
-        "tags": [
-          "konto"
-        ],
-        "responses": {
-          "200": {
-            "description": "Erfolg",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ServerBeweis"
-                }
-              }
-            }
-          },
-          "default": {
-            "description": "Fehler",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Fehler"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/auth/token-create": {
       "post": {
         "tags": [
@@ -14470,23 +14441,6 @@
         "required": [
           "success",
           "settings"
-        ],
-        "additionalProperties": {}
-      },
-      "ServerBeweis": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "const": true
-          },
-          "beweis": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "success",
-          "beweis"
         ],
         "additionalProperties": {}
       },
