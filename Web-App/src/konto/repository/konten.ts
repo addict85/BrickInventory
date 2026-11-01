@@ -181,7 +181,7 @@ export async function zugaengeLoeschen(uid: number, praefix: string): Promise<nu
   return (await db.run("DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'", [uid, praefix + '%'])).changes;
 }
 
-export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<number> {
+export async function loescheAndereSitzungen(uid: number, eigeneSid: string): Promise<number> {
   return (await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2", [String(uid), eigeneSid])).changes;
 }
 

@@ -21,7 +21,7 @@ export async function aktuelleSitzungsVersion(uid: number): Promise<number | nul
 
 /** Vor dem Löschen der Zeilen aufrufen; liefert die neue Version. */
 export async function erhoeheSitzungsVersion(uid: number): Promise<number> {
-  const version = await repo.erhoeheSitzungsVersion(uid);
+  const version = await repo.zaehleSitzungsVersionHoch(uid);
   gemerkt.delete(uid);
   return version;
 }

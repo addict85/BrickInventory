@@ -136,7 +136,7 @@ export async function sitzungsVersion(uid: number): Promise<number | null> {
   return r?.v ?? null;
 }
 
-export async function erhoeheSitzungsVersion(uid: number): Promise<number> {
+export async function zaehleSitzungsVersionHoch(uid: number): Promise<number> {
   const r = await db.get<{ v: number }>(
     'UPDATE users SET sitzungs_version = sitzungs_version + 1 WHERE id = $1 RETURNING sitzungs_version AS v', [uid]);
   return r?.v ?? 0;

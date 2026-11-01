@@ -11,7 +11,7 @@ export { aendereProfil, aktivesKontoNachEmail, emailVergeben, kontoExistiert, ko
 /** Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
 export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<{ beendet: number; version: number }> {
   const version = await erhoeheSitzungsVersion(uid);
-  return { beendet: await repo.andereSitzungenBeenden(uid, eigeneSid), version };
+  return { beendet: await repo.loescheAndereSitzungen(uid, eigeneSid), version };
 }
 
 export async function kontenListe() {
