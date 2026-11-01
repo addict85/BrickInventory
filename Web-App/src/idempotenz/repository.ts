@@ -17,7 +17,7 @@ export function eintrag(uid: number, schluessel: string) {
     [uid, schluessel]);
 }
 
-export async function schliesseAb(uid: number, schluessel: string, status: number, antwort: string): Promise<void> {
+export async function schliesseAb(uid: number, schluessel: string, status: number, antwort: string | null): Promise<void> {
   await db.run('UPDATE idempotenz SET status = $3, antwort = $4 WHERE user_id = $1 AND schluessel = $2',
     [uid, schluessel, status, antwort]);
 }

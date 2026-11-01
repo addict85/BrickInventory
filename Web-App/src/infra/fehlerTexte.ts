@@ -276,6 +276,8 @@ export const FEHLER = {
                                  en: 'This Idempotency-Key belongs to a different request.' },
   idempotenz_laeuft:           { de: 'Die Anfrage mit diesem Idempotency-Key läuft noch.',
                                  en: 'The request with this Idempotency-Key is still running.' },
+  idempotenz_nicht_wiederholbar: { de: 'Diese Antwort wird nicht wiederholt. Bitte mit neuem Idempotency-Key erneut senden.',
+                                 en: 'This response is not replayed. Please resend with a new Idempotency-Key.' },
   zu_viele_verbindungen:       { de: 'Zu viele offene Verbindungen', en: 'Too many open connections' },
   zeitlimit:                   { de: 'Zeitlimit überschritten', en: 'Timed out' },
   wert_ungueltig:              { de: 'Ungültiger Wert', en: 'Invalid value' },
