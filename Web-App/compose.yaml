@@ -110,10 +110,9 @@ services:
       # Der Datenschlüssel für gespeicherte Geheimnisse, getrennt von ./data:
       # Eine Sicherung von data/ (scripts/backup.sh) enthält ihn so nie.
       - ./schluessel:/app/schluessel
-      # Caddys CA, nur lesend. Der Entrypoint kopiert daraus allein das
-      # öffentliche Wurzelzertifikat nach CA_ZERTIFIKAT; die Schlüssel daneben
-      # sind nur für root lesbar, der Server läuft als brickinv.
-      - ./caddy/data/caddy/pki/authorities/local:/caddy-ca:ro
+      # Nur das öffentliche Wurzelzertifikat, das Caddy hineinkopiert (siehe
+      # dort); Caddys Ordner mit dem Schlüssel der CA sieht die App nicht.
+      - ca-wurzel:/caddy-ca:ro
     environment:
 
       # ── PFLICHT: in .env setzen (Vorlage: .env.example) ──────────────────────
@@ -130,9 +129,8 @@ services:
       # (feste Adresse unten). Erst damit weiss der Server, dass die Anfrage
       # über TLS kam (Cookie mit Secure, HSTS).
       TRUST_PROXY: ${TRUST_PROXY:-172.28.73.10}
-      # Das Wurzelzertifikat der CA (kopiert vom Entrypoint) für /ca.crt und
-      # den Fingerabdruck im QR-Code.
-      CA_ZERTIFIKAT: /tmp/ca/root.crt
+      # Das Wurzelzertifikat der CA für /ca.crt und den Fingerabdruck im QR-Code.
+      CA_ZERTIFIKAT: /caddy-ca/root.crt
       # Legt der erste Start an. Ältere Installationen mit data/.datenschluessel
       # laufen weiter und bekommen beim Start den Umzug erklärt (UPGRADE.md).
       DATA_KEY_FILE: /app/schluessel/datenschluessel
@@ -245,6 +243,22 @@ services:
       - /tmp
     depends_on:
       - app
+    # Nur root.crt verlässt Caddy: Die Schleife kopiert es in das Volume
+    # ca-wurzel, das die App nur lesend sieht. Ein Datei-Mount von root.crt
+    # taugt nicht — fehlt die Datei beim ersten Start, legt Docker an ihrer
+    # Stelle ein Verzeichnis an, und Caddy kann seine CA nicht schreiben.
+    command:
+      - sh
+      - -c
+      - |
+        q=/data/caddy/pki/authorities/local/root.crt
+        while :; do
+          if [ -f "$$q" ] && ! cmp -s "$$q" /ca-wurzel/root.crt; then
+            cp "$$q" /ca-wurzel/root.crt.neu && chmod 644 /ca-wurzel/root.crt.neu && mv /ca-wurzel/root.crt.neu /ca-wurzel/root.crt
+          fi
+          sleep 5
+        done &
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     environment:
       BRICK_HOST: ${BRICK_HOST:?BRICK_HOST in .env setzen (Name oder IP des Servers) - siehe UPGRADE.md}
       BRICK_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
@@ -257,6 +271,7 @@ services:
       # verloren, muss jedes Gerät das neue Wurzelzertifikat bekommen.
       - ./caddy/data:/data
       - ./caddy/config:/config
+      - ca-wurzel:/ca-wurzel
     networks:
       brickinventory-net:
         # Genau diese Adresse steht in TRUST_PROXY der App.
@@ -313,6 +328,10 @@ services:
       - "127.0.0.1:8081:8081"
     networks:
       - brickinventory-net
+
+volumes:
+  # Allein das Wurzelzertifikat der CA, von Caddy geschrieben, von der App gelesen.
+  ca-wurzel:
 
 networks:
   # Festes Netz: Ein Reverse-Proxy davor bekommt darin eine feste Adresse

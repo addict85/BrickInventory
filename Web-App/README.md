@@ -26,13 +26,15 @@ Name oder die IP-Adresse, unter der Geräte den Server erreichen.
 Vor der App steht Caddy (`compose.yaml`, `Caddyfile`). Er macht TLS mit einer
 eigenen, lokalen CA (`tls internal`) für `BRICK_HOST` und leitet an die App
 weiter; die App selbst veröffentlicht keinen Port mehr. Die CA liegt unter
-`./caddy/data/` — mitsichern.
+`./caddy/data/` — mitsichern. Der App-Container sieht davon nur das öffentliche
+Wurzelzertifikat (Volume `ca-wurzel`), nie den Schlüssel der CA.
 
 Damit Browser und Telefone dem Zertifikat vertrauen, kommt das
 **Wurzelzertifikat** einmal auf jedes Gerät: Es liegt unter
 `https://<BRICK_HOST>/ca.crt` (auch über `http://`, ohne Umleitung). Der
 Fingerabdruck steht in den Einstellungen unter „Sicherheit“ zum Abgleich; die
-Android-App braucht das nicht, sie bekommt ihn über den QR-Code. Schritt für
+Android-App braucht das nicht: Sie pinnt den Fingerabdruck aus dem QR-Code und
+vertraut der Wurzel ohne systemweite Installation. Schritt für
 Schritt: `UPGRADE.md`, Abschnitt 14.
 
 ### Ohne HTTPS (bewusste Ausnahme)

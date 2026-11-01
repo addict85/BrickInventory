@@ -429,7 +429,10 @@ Derselbe Wert steht in der Web-App unter Einstellungen → Sicherheit
   Firefox hat einen eigenen Speicher (Einstellungen → Zertifikate → Importieren).
 - **Android:** Einstellungen → Sicherheit → Verschlüsselung & Anmeldedaten →
   Zertifikat installieren → CA-Zertifikat. Für die BrickInventory-App nicht
-  nötig, nur für den Browser.
+  nötig, nur für den Browser: Die App pinnt den Fingerabdruck aus dem QR-Code
+  (`fp`) und braucht keine systemweite Installation. Eine im System
+  installierte Wurzel gilt für jede Adresse — wer nur die App nutzt, lässt sie
+  besser weg.
 - **iOS/iPadOS:** Datei in Safari laden → Einstellungen → Profil installieren;
   danach Allgemein → Info → Zertifikatsvertrauenseinstellungen → einschalten.
 
@@ -636,3 +639,18 @@ kopiert, lässt sich dort nicht mehr lesen.
 - Eine Sicherung von vor dem Update lässt sich weiter einspielen: Der nächste
   Start schlüsselt sie um. Ohne den Datenschlüssel bleibt sie unlesbar wie
   bisher.
+
+## 23. Der App-Container sieht den Schlüssel der CA nicht mehr
+
+`compose.yaml` hängte Caddys Ordner `pki/authorities/local` samt `root.key` in
+die App ein. Jetzt kopiert Caddys Start allein `root.crt` in das Volume
+`ca-wurzel` (alle 5 s, nur bei Änderung); die App hängt nur dieses ein und
+liest `CA_ZERTIFIKAT=/caddy-ca/root.crt`. Ein Datei-Mount von `root.crt` wäre
+kürzer, scheitert aber beim ersten Start: Fehlt die Datei noch, legt Docker an
+ihrer Stelle ein Verzeichnis an.
+
+Nichts zu tun ausser die neue `compose.yaml` zu übernehmen und
+`docker compose up -d` — die CA in `./caddy/data/` bleibt dieselbe, Geräte und
+QR-Codes gelten weiter. Wer `compose.yaml` angepasst hat: Die Zeile
+`./caddy/data/caddy/pki/authorities/local:/caddy-ca:ro` bei `app` ersetzen,
+`command:` und das Volume bei `caddy` und `volumes: ca-wurzel:` übernehmen.

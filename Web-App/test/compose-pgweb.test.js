@@ -168,7 +168,7 @@ test('die App ist nur über Caddy erreichbar', () => {
   assert.match(caddy, /:443:443"/);
   assert.match(caddy, /:80:80"/);
   assert.match(caddy, /^\s*image:\s*caddy:\S+@sha256:[0-9a-f]{64}\s*$/m, 'Caddy ist nicht per Digest festgelegt');
-  assert.match(app, /\.\/caddy\/data\/caddy\/pki\/authorities\/local:\/caddy-ca:ro/, 'die CA ist nicht nur lesend eingehängt');
+  assert.match(app, /^\s*-\s*ca-wurzel:\/caddy-ca:ro\s*$/m, 'das Wurzelzertifikat ist nicht nur lesend eingehängt');
 });
 
 test('Caddy: interne CA, Wurzel in der Kette, eigene Anfragekennung, /ca.crt im Klartext', () => {
