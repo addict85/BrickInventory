@@ -871,7 +871,7 @@
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
     <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. Compare the fingerprint character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
-    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. Only trust it if the fingerprint matches the one the web app shows under Settings → Server certificate.</string>
+    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. That is why one tap is not enough here: copy the last 16 characters of the fingerprint from the web app (Settings → Server certificate) – not from this screen. Scanning the web app\'s QR code is easier, it carries the fingerprint.</string>
     <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself.</string>
     <string name="zert_fingerabdruck">Fingerprint (SHA-256 of the public key)</string>
     <string name="zert_jetzt">Shown now (new)</string>
@@ -881,6 +881,7 @@
     <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
     <string name="zert_geaendert_eingabe">Last 16 characters of the new fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
+    <string name="zert_unbekannt_eingabe">Last 16 characters of the fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_eingabe_falsch">That does not match the fingerprint shown.</string>
     <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself.</string>
     <string name="setup_qr_pin_uebernehmen">Accept the new certificate and log in</string>

@@ -121,7 +121,7 @@ class AppViewModel @Inject constructor(
         _systemfarben.value = an
     }
 
-    /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. Ein geänderter nur mit [eingabe]. */
+    /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. Ohne bekannte CA oder geändert nur mit [eingabe]. */
     fun zertifikatVertrauen(eingabe: String? = null): Boolean {
         if (!zertifikatsFrage.bestaetige(prefs, eingabe)) return false
         apiHttpClient.connectionPool.evictAll()
