@@ -31,6 +31,8 @@ dist
 # Laufzeitdaten: Bilder, Vorschaubilder, Uploads, Zwischenstände
 data/
 schluessel/
+# Standardziel von scripts/backup.sh: Dumps samt Schlüsselkopie
+backups/
 pgdata/
 pgdata18/
 # Caddy: CA mit privatem Schlüssel und Zertifikate

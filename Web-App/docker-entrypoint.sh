@@ -110,8 +110,10 @@ berichtige() {
 # Die Marke schreiben. `|| true`, weil `set -e` sonst bei einem nur lesbar
 # eingehaengten Datentraeger den ganzen Start abbraeche — die Marke ist eine
 # Abkuerzung, kein Muss.
+# Nicht als root: Der Dienst kann unter /app/data einen Symlink ablegen, und
+# root schriebe durch ihn in jede Datei des Images. rm entfernt den Link selbst.
 setzeMarke() {
-  { printf '%s' "$ZIEL_UID" > "$MARKE" && chown -h brickinv:brickinv "$MARKE"; } 2>/dev/null || true
+  { rm -f "$MARKE" && su-exec brickinv sh -c 'printf "%s" "$1" > "$2"' marke "$ZIEL_UID" "$MARKE"; } 2>/dev/null || true
 }
 
 case "${BRICKINV_CHOWN:-auto}" in

@@ -1,7 +1,8 @@
 /**
  * Die Prüfung der Antworten gegen den Vertrag (src/infra/vertrag/pruefen.ts):
- * In Tests wird eine abweichende 2xx-Antwort zur 500 mit den Abweichungen,
- * eine angenommene, aber vertragswidrige Eingabe ebenso; im Betrieb
+ * In Tests wird eine abweichende 2xx-Antwort zur 500 mit den Abweichungen;
+ * eine vertragswidrige Eingabe ist schon vor der Route 400 (eingabePruefen,
+ * auch im Betrieb, siehe test/eingabe-vertrag-db.test.js); im Betrieb
  * (VERTRAG_PRUEFEN nicht 1) geht die Antwort ungeprüft hinaus.
  *
  * Gegenproben (31.10.2026 gemessen):
@@ -47,14 +48,14 @@ test('eine vertragsgemässe Antwort geht unverändert hinaus', async (t) => {
   assert.deepEqual([r.status, await r.json()], [200, { enabled: true }]);
 });
 
-test('eine angenommene, aber vertragswidrige Eingabe wird zur 500', async (t) => {
+test('eine vertragswidrige Eingabe erreicht die Route nicht', async (t) => {
   const basis = server(t, {});
   const senden = (rumpf) => fetch(`${basis}/users/7/admin`, { method: 'PUT',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rumpf) });
   assert.equal((await senden({ is_admin: true })).status, 200);
   const r = await senden({ is_admin: 'vielleicht' });
-  assert.equal(r.status, 500);
-  assert.match((await r.json()).abweichungen.join(), /Anfrage is_admin/);
+  assert.equal(r.status, 400);
+  assert.match((await r.json()).error, /is_admin/);
 });
 
 test('eine Fehlerantwort wird nicht geprüft', async (t) => {

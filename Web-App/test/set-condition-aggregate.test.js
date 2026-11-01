@@ -718,10 +718,9 @@ test('CDN-Anfragen erzwingen IPv4', () => {
     'Der Bild-Proxy muss IPv4 für CDN-Anfragen erzwingen');
 
   // Der lokale Set-Bild-Download liegt seit Nachtrag 125 in src/katalog/bilder/setImages.ts.
+  // Er läuft über den gemeinsamen Abrufhelfer; der erzwingt IPv4 (Test darunter).
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
-  const dlFn = setsFile.slice(setsFile.indexOf('async function downloadSetImage'),
-                             setsFile.indexOf('async function downloadSetImage') + 700);
-  assert.match(dlFn, /https\.get\(u, \{ timeout:10000, family: 4,/,
+  assert.match(setsFile, /await holeHttps\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort');
 });
 
@@ -737,27 +736,16 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   // änderte: Wer eine tote Zweitfassung entfernt, senkt die Zahl. Geprüft wird
   // deshalb jetzt die REGEL — jeder ausgehende Aufruf trägt family: 4 —
   // unabhängig davon, wie viele es gerade sind.
-  const dateien = ['routes/imgProxy.ts', 'clients/rebrickable.ts', 'src/katalog/teileAnreicherung.ts',
-    'jobs/rebrickableCsvSync.ts', 'clients/brickset.ts',
-    'clients/bricklink.ts', 'src/verwaltung/dienst.ts', 'src/sets/dienst.ts'];
-
+  // Seit src/infra/abruf.ts ruft nur er https.get (test/umleitungen.test.js);
+  // die Regel gilt damit an genau dieser Stelle.
   const ohne = [];
   let gefunden = 0;
-  for (const rel of dateien) {
-    const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
-    // Jeder Aufruf von get(...) / request(...) mit Optionsobjekt als zweitem
-    // Argument. Der Bereich bis zur schliessenden Klammer des Objekts muss
-    // family: 4 enthalten.
-    for (const m of src.matchAll(/\b(?:https?\.)?(?:get|request)\(\s*[^,()]*,\s*\{([^}]*)\}/g)) {
-      gefunden++;
-      // `agent: _cdnAgent` ist ebenfalls in Ordnung — der Agent trägt das
-      // family: 4 selbst, geprüft im Test darüber.
-      if (!/family:\s*4/.test(m[1]) && !/agent:/.test(m[1])) {
-        ohne.push(`${rel}: ${m[0].slice(0, 70).replace(/\s+/g, ' ')}…`);
-      }
-    }
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/abruf.ts'), 'utf8'));
+  for (const m of src.matchAll(/\bhttps\.(?:get|request)\(\s*[^,()]*,\s*\{([^}]*)\}/g)) {
+    gefunden++;
+    if (!/family:\s*4/.test(m[1])) ohne.push(m[0].slice(0, 70));
   }
-  assert.ok(gefunden >= 7, `nur ${gefunden} ausgehende Aufrufe erkannt — das Muster greift nicht mehr`);
+  assert.equal(gefunden, 1, `${gefunden} Aufrufe in abruf.ts erkannt — das Muster greift nicht mehr`);
   assert.deepEqual(ohne, [], `ausgehende Aufrufe ohne family: 4:\n  ${ohne.join('\n  ')}`);
 });
 

@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs';
-import https from 'https';
+import { holeHttps } from '../infra/abruf';
 import * as db from '../../db/database';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
 import { type RbSetTeil } from '../../clients/rebrickable';
@@ -8,7 +8,7 @@ import { getAllSetParts } from './rebrickableKatalog';
 import { fehlertext, logAndContinue, meldeUndWeiter } from '../infra/httpError';
 import { getGlobalSetting } from '../konto/settings';
 import { mitVersion } from '../sets/setNummer';
-import { nummernListe } from '../infra/fremdeAdressen';
+import { nummernListe, ERLAUBTE_API_HOSTS } from '../infra/fremdeAdressen';
 import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
 import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
 import { stelleAuftragEin } from '../auftraege/dienst';
@@ -87,14 +87,9 @@ export async function importPartsForSet(setNumber: string, userId: number): Prom
 }
 
 function holeSeite(url: string, rbKey: string): Promise<{ status: number; body: string }> {
-  return new Promise(resolve => {
-    const req = https.get(url, { family: 4, headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } }, r => {
-      let b = ''; r.on('data', (d: Buffer) => b += d);
-      r.on('end', () => resolve({ status: r.statusCode ?? 0, body: b }));
-    });
-    req.on('error', () => resolve({ status: 0, body: '' }));
-    req.setTimeout(30000, () => { req.destroy(); resolve({ status: 0, body: '' }); });
-  });
+  return holeHttps(url, { hosts: ERLAUBTE_API_HOSTS, maxBytes: 32 * 1024 * 1024, zeitlimitMs: 30_000,
+    kopfzeilen: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } })
+    .then(r => ({ status: r.status, body: r.koerper.toString('utf8') }), () => ({ status: 0, body: '' }));
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */

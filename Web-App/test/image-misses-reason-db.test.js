@@ -187,7 +187,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     const { ohneKommentare } = require('./helpers/sources');
     const proxy = ohneKommentare(require('./helpers/sources').proxyThumbQuelle());
     const job   = ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/imageQueue.ts'), 'utf8'));
-    assert.match(proxy, /statusCode === 404[\s\S]{0,200}merkeFehlend/,
+    assert.match(proxy, /status === 404[\s\S]{0,200}merkeFehlend/,
       'Im Proxy hängt die Fehlanzeige nicht mehr am 404');
     assert.match(job, /info\.status === 404/,
       'Der Job unterscheidet den 404 nicht — dann sperrt wieder jeder ' +

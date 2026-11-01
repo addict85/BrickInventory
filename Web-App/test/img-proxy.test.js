@@ -42,7 +42,7 @@ test('gleichzeitige Anfragen schreiben in getrennte Temp-Dateien', () => {
 test('nur vollständige Dateien kommen in den Cache', () => {
   // Eine abgeschnittene Datei würde dauerhaft ausgeliefert: Der Browser bekommt
   // 200, kann das Bild aber nicht dekodieren.
-  assert.match(SERVER, /const expected = parseInt\(String\(r\.headers\['content-length'\]/,
+  assert.match(SERVER, /const expected = parseInt\(String\(r\.kopf\['content-length'\]/,
     'Die erwartete Länge muss gemerkt werden');
   // Nach dem Entpacken passt die angekündigte Länge nicht mehr — dann entfällt
   // die Prüfung (siehe „komprimierte Antworten werden entpackt").
@@ -54,7 +54,7 @@ test('der Cache-Stream hängt vor dem Client-Stream', () => {
   // r.pipe(ws) stand einmal hinter einem `await mkdir`. r.pipe(res) läuft
   // synchron davor — die ersten Chunks flossen also zum Client, bevor der
   // Cache-Stream überhaupt hing.
-  const blk = CODE.slice(CODE.indexOf("const contentType = r.headers['content-type']"),
+  const blk = CODE.slice(CODE.indexOf("const contentType = String(r.kopf['content-type']"),
                          CODE.indexOf('body.pipe(res);') + 20);
   // Seit der Entpackung heisst die Quelle `body` (bei unkomprimierten
   // Antworten identisch mit r, sonst der entpackte Strom).
@@ -91,7 +91,7 @@ test('komprimierte Antworten werden entpackt, nicht weitergereicht', () => {
 test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
   // Ohne das blieb der Socket belegt: Der Antwort-Stream lief in ein totes res,
   // die Gegendruck-Steuerung hielt ihn an, und die Warteschlange verhungerte.
-  assert.match(SERVER, /res\.on\('close', \(\) => \{[\s\S]{0,400}?activeReq\?\.destroy\(\)/,
+  assert.match(SERVER, /res\.on\('close', \(\) => \{[\s\S]{0,400}?roh\.destroy\(\)/,
     'Der Abbruch muss die laufende CDN-Anfrage beenden');
   // `!writableFinished` allein ist zu scharf: Je nachdem, was zwischen Server
   // und Browser sitzt, kann close feuern, bevor Node writableFinished gesetzt
@@ -101,8 +101,8 @@ test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
     'res.destroyed ist der belastbare Hinweis auf einen echten Abbruch');
   assert.match(SERVER, /Client hat abgebrochen, Verbindung freigegeben/,
     'Ein Abbruch muss sichtbar sein — stilles Abschiessen war die Ursache');
-  assert.match(SERVER, /let activeReq: any = null;/,
-    'Beim Rückfall ohne Referer läuft nicht mehr die erste Anfrage');
+  assert.match(SERVER, /r\.verwerfen\(\); r = await holen\(HEADER_SETS\[1\]\)/,
+    'Beim Rückfall ohne Referer muss die erste Antwort freigegeben werden');
 });
 
 test('der Verbindungs-Pool ist weit genug', () => {
@@ -142,7 +142,7 @@ test('die Diagnose-Endpunkte sind vorhanden', () => {
   assert.match(route, /router\.get\('\/admin\/price-probe', requireApiAdmin/, 'price-probe fehlt');
   // Die Abrufe selbst stehen im Dienst der Verwaltung (Routen rufen nicht ins Netz).
   const admin = fs.readFileSync(path.join(ROOT, 'src/verwaltung/dienst.ts'), 'utf8');
-  assert.match(admin, /content_encoding: r\.headers\['content-encoding'\]/,
+  assert.match(admin, /content_encoding: k\['content-encoding'\]/,
     'Die Probe muss zeigen, ob das CDN komprimiert liefert');
   assert.match(admin, /proxy_failures: failures/, 'Die Zähler gehören in die Antwort');
 });
@@ -205,7 +205,7 @@ test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', ()
     'Ein langes max-age ohne must-revalidate nagelt Fehler im Browser fest');
 
   // Der gestreamte Pfad kennt den Inhalt noch nicht — dort kurz halten.
-  const stream = SERVER.slice(SERVER.indexOf("const contentType = r.headers['content-type']"),
+  const stream = SERVER.slice(SERVER.indexOf("const contentType = String(r.kopf['content-type']"),
                               SERVER.indexOf('body.pipe(res);'));
   assert.match(stream, /max-age=3600, must-revalidate/,
     'Frisch gestreamte Antworten dürfen nicht lange festgehalten werden');
@@ -382,7 +382,7 @@ test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', (
     .map(m => m[1]);
   assert.deepEqual(stellen, ['sendePlatzhalter'],
     'Der Negativ-Cache antwortet nicht mit dem Platzhalter');
-  assert.match(proxy, /statusCode === 404 \? sendePlatzhalter\(res\)/,
+  assert.match(proxy, /r\.status === 404 \? sendePlatzhalter\(res\)/,
     'Ein 404 vom CDN wird nicht in den Platzhalter übersetzt');
 
   // Und der Merker bleibt: ohne ihn fragt der Server bei JEDEM Aufruf erneut.

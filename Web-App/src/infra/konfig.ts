@@ -37,6 +37,8 @@ export interface Konfig {
   uploadKontingentMb: number;
   mailKonsoleMitToken: boolean;
   bildUserAgent: string | null;
+  bildCacheMaxMb: number;
+  bildAbrufeJeMinute: number;
   csvZeileFristMs: number;
   auftragParallel: number;
   auftragFristSek: number;
@@ -72,6 +74,7 @@ export const VARIABLEN = [
   'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
   'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
+  'BILD_CACHE_MAX_MB', 'BILD_ABRUFE_JE_MINUTE',
   'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
   'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET',
 ] as const;
@@ -194,6 +197,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     uploadKontingentMb: zahl(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
     mailKonsoleMitToken: env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1',
     bildUserAgent: env.IMG_USER_AGENT?.trim() || null,
+    bildCacheMaxMb: zahl(env, 'BILD_CACHE_MAX_MB', 2048, f),
+    bildAbrufeJeMinute: ganzzahl(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
     csvZeileFristMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
     auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', 4, 1, 64, f),
     auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),

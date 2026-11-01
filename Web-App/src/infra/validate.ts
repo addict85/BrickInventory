@@ -178,7 +178,7 @@ export function ausTabelle<T>(
  * gibt es die Regel einmal, und der Vertrag kann ihr nicht davonlaufen. */
 function alsSchema(pruefe: (v: unknown) => unknown, json: Record<string, unknown>, pflicht = false) {
   const geprueft = z.unknown().superRefine((v, ctx) => {
-    try { pruefe(v); } catch (e) { ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e) }); }
+    try { pruefe(v); } catch (e) { ctx.addIssue({ code: 'custom', message: e instanceof Error ? e.message : String(e), params: { fehler: e } }); }
   }).meta(json);
   return pflicht ? geprueft : geprueft.optional();
 }

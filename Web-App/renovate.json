@@ -54,6 +54,15 @@
         "build-pinned"
       ],
       "dependencyDashboardApproval": true
+    },
+    {
+      "//": "pdfjs-dist wird beim Bauen nach public/vendor/pdfjs/ kopiert (scripts/pdfjs-kopieren.js). Nach dem Update `npm run build:frontend` laufen lassen und die Kopie mitcommitten \u2014 test/pdfjs-fassung.test.js meldet, wenn sie fehlt.",
+      "matchPackageNames": [
+        "pdfjs-dist"
+      ],
+      "addLabels": [
+        "vendored"
+      ]
     }
   ],
   "vulnerabilityAlerts": {
