@@ -69,6 +69,13 @@ chown -h brickinv:brickinv \
   /app/data/images/parts \
   /app/data/images/minifigs 2>/dev/null || true
 
+# Der Datenschlüssel liegt ausserhalb von /app/data (compose.yaml). Docker legt
+# den Ordner beim ersten Start root gehörend an; der Server legt die Datei an
+# und muss sie lesen.
+for f in /app/schluessel /app/schluessel/datenschluessel; do
+  [ -e "$f" ] && chown -h brickinv:brickinv "$f" 2>/dev/null || true
+done
+
 # ── Die Marke: warum auch die SUCHE nicht bei jedem Start laufen soll ────────
 #
 # Marcos Rueckfrage: „Kann dieser Schritt mit den Dateien nicht erfolgen

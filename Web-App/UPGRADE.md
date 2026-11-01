@@ -579,3 +579,40 @@ openssl x509 -in smtp.pem -noout -fingerprint -sha256
   dem Update (`backups/db_*.sql.gz`) enthalten die Nummern weiter im
   Klartext: nach einem geglückten Update löschen oder wie den Schlüssel
   verwahren.
+
+## 20. Mailserver nur noch verschlüsselt (STARTTLS)
+
+Ohne „SSL/TLS" (Port 465) verlangt der Versand jetzt STARTTLS ab TLS 1.2.
+Bietet der Mailserver auf Port 25/587 kein STARTTLS an, bricht der Versand
+ab, bevor Benutzername und Passwort gesendet werden; Einstellungen → E-Mail →
+„Test" sagt das. Abhilfe: Port 465 mit „SSL/TLS" wählen oder STARTTLS am
+Mailserver einschalten. Ein Mailserver ohne jede Verschlüsselung wird nicht
+mehr unterstützt — Passwort und Rücksetzlinks gingen sonst lesbar durchs Netz.
+
+## 21. Datenschlüssel ausserhalb von `data/`
+
+Der Schlüssel für die verschlüsselten Werte in der Datenbank (API-Schlüssel,
+SMTP-Passwort, Gutscheine, zweiter Faktor) lag in `data/.datenschluessel` —
+also in jeder Sicherung von `data/` und auf demselben Datenträger wie die
+Bilder. `compose.yaml` hängt jetzt `./schluessel` nach `/app/schluessel` ein
+und setzt `DATA_KEY_FILE=/app/schluessel/datenschluessel`; eine neue
+Installation legt den Schlüssel dort beim ersten Start an.
+
+**Eine bestehende Installation läuft ohne Zutun weiter**: Der Start nimmt
+`data/.datenschluessel` und warnt bei jedem Start. Umzug:
+
+```
+docker compose down
+mkdir -p schluessel
+mv data/.datenschluessel schluessel/datenschluessel
+docker compose up -d
+```
+
+Stehen beide Dateien mit verschiedenem Inhalt da, startet der Server nicht und
+nennt beide Pfade — dann die Datei behalten, die vorher in `data/` lag.
+`DATA_KEY` geht weiterhin allen Dateien vor. Wer lieber ein Docker-Secret
+nimmt, setzt `DATA_KEY_FILE` auf dessen Pfad (z. B. `/run/secrets/datenschluessel`).
+
+`scripts/backup.sh` nimmt den Schlüssel nie ins Archiv; mit
+`BACKUP_SCHLUESSEL_ZIEL=/anderer/ort` legt es ihn getrennt dort ab.
+`restore.sh` sucht ihn unter `schluessel/` (und noch unter `data/`).

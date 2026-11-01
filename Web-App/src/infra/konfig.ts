@@ -30,6 +30,8 @@ export interface Konfig {
   appRoot: string | null;
   appVersion: string | null;
   datenSchluessel: string;
+  /** Pfad der Schlüsseldatei; null: <APP_ROOT>/schluessel/datenschluessel. */
+  datenSchluesselDatei: string | null;
   erfassungZeitzone: string;
   preisverlaufTage: number;
   uploadKontingentMb: number;
@@ -68,7 +70,7 @@ export const VARIABLEN = [
   'SESSION_IDLE_MINUTES', 'SESSION_MAX_HOURS', 'TOKEN_IDLE_DAYS', 'ROLLE',
   'DATABASE_URL', 'PGHOST', 'PGPORT', 'PGUSER', 'PGPASSWORD', 'PGDATABASE',
   'PG_POOL_MAX', 'PG_POOL_MIN', 'PG_IDLE_MS', 'PG_CONN_MS', 'PG_STMT_MS', 'ADMIN_PASSWORD',
-  'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'ERFASSUNG_ZEITZONE', 'TZ',
+  'APP_BASE_URL', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
   'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET',
@@ -185,6 +187,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     appRoot: env.APP_ROOT?.trim() || null,
     appVersion: env.APP_VERSION?.trim() || null,
     datenSchluessel,
+    datenSchluesselDatei: env.DATA_KEY_FILE?.trim() || null,
     erfassungZeitzone: zone,
     // 0 oder weniger schaltet das Beschneiden des Preisverlaufs ab.
     preisverlaufTage: ganzzahl(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),

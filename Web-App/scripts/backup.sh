@@ -22,9 +22,10 @@
 # Faktor. Darum entstehen Dateien und Verzeichnis nur für den Besitzer lesbar
 # (umask 077), und ein offenes Ziel wird gemeldet.
 #
-# Der Schlüssel dazu (data/.datenschluessel) kommt NICHT ins Archiv: Neben dem
-# Dump machte er die Verschlüsselung wertlos. Mit BACKUP_SCHLUESSEL_ZIEL=<Ordner
-# an einem anderen Ort> legt das Skript ihn dort ab; sonst meldet es ihn.
+# Der Schlüssel dazu (schluessel/datenschluessel, bei älteren Installationen
+# data/.datenschluessel) kommt NICHT ins Archiv: Neben dem Dump machte er die
+# Verschlüsselung wertlos. Mit BACKUP_SCHLUESSEL_ZIEL=<Ordner an einem anderen
+# Ort> legt das Skript ihn dort ab; sonst meldet es ihn.
 set -eu
 umask 077
 
@@ -86,9 +87,13 @@ tar czf "$TARGET/data_$STAMP.tar.gz" \
   --exclude='data/.datenschluessel' \
   data 2>/dev/null || echo "[backup] Warnung: data/ nicht vollständig gesichert"
 
-SCHLUESSEL=data/.datenschluessel
+SCHLUESSEL=schluessel/datenschluessel
+if [ ! -f "$SCHLUESSEL" ] && [ -f data/.datenschluessel ]; then
+  SCHLUESSEL=data/.datenschluessel
+  echo "[backup] Hinweis: Der Schlüssel liegt noch im Datenordner — Umzug nach schluessel/ steht in UPGRADE.md." >&2
+fi
 if [ ! -f "$SCHLUESSEL" ]; then
-  echo "[backup] Hinweis: kein $SCHLUESSEL — steht der Schlüssel in DATA_KEY, diesen getrennt aufbewahren." >&2
+  echo "[backup] Hinweis: keine Schlüsseldatei — steht der Schlüssel in DATA_KEY, diesen getrennt aufbewahren." >&2
 elif [ -n "${BACKUP_SCHLUESSEL_ZIEL:-}" ]; then
   mkdir -p "$BACKUP_SCHLUESSEL_ZIEL"
   if [ "$(cd "$BACKUP_SCHLUESSEL_ZIEL" && pwd)" = "$(cd "$TARGET" && pwd)" ]; then

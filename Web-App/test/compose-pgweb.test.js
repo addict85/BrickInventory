@@ -130,6 +130,19 @@ test('die App schreibt nur in ./data und /tmp — der Entrypoint auch', () => {
   assert.match(ep, /exec su-exec brickinv /, 'Der Wechsel zu brickinv (SETUID/SETGID) ist nicht mehr su-exec');
 });
 
+// Gegenproben (01.11.2026 gemessen): DATA_KEY_FILE bei jobs gestrichen → rot
+// „jobs: DATA_KEY_FILE fehlt“; Pfad auf /app/data/.datenschluessel → rot „… ./data“.
+test('der Datenschlüssel liegt für app und jobs ausserhalb von ./data', () => {
+  for (const dienst of ['app', 'jobs']) {
+    const block = leseDienst(compose, dienst);
+    const datei = block.match(/^\s*DATA_KEY_FILE:\s*(\S+)\s*$/m)?.[1];
+    assert.ok(datei, `${dienst}: DATA_KEY_FILE fehlt`);
+    const ordner = [...block.matchAll(/^\s*-\s*(\.\/[^:\s]+):(\/[^:\s]+)(:ro)?\s*$/gm)].find(m => datei.startsWith(m[2] + '/'));
+    assert.ok(ordner, `${dienst}: ${datei} liegt in keinem eingehängten Ordner`);
+    assert.notEqual(ordner[1], './data', `${dienst}: der Schlüssel liegt wieder in ./data`);
+  }
+});
+
 // Gegenproben (am 30.10.2026 gemessen): Vorgabe wieder `${TRUST_PROXY:-docker}` →
 // rot „TRUST_PROXY vertraut genau Caddy …“; `ipam` am Netz entfernt → rot „… festes
 // Subnetz“; pgweb wieder ohne Digest → rot „pgweb ist nicht per Digest …“;

@@ -107,6 +107,9 @@ services:
       # Abschnitt 10 — die Dateien einmal von Hand nach ./data/images/sets/
       # verschieben, danach kann der Ordner weg.
       - ./data:/app/data
+      # Der Datenschlüssel für gespeicherte Geheimnisse, getrennt von ./data:
+      # Eine Sicherung von data/ (scripts/backup.sh) enthält ihn so nie.
+      - ./schluessel:/app/schluessel
       # Caddys CA, nur lesend. Der Entrypoint kopiert daraus allein das
       # öffentliche Wurzelzertifikat nach CA_ZERTIFIKAT; die Schlüssel daneben
       # sind nur für root lesbar, der Server läuft als brickinv.
@@ -130,6 +133,9 @@ services:
       # Das Wurzelzertifikat der CA (kopiert vom Entrypoint) für /ca.crt und
       # den Fingerabdruck im QR-Code.
       CA_ZERTIFIKAT: /tmp/ca/root.crt
+      # Legt der erste Start an. Ältere Installationen mit data/.datenschluessel
+      # laufen weiter und bekommen beim Start den Umzug erklärt (UPGRADE.md).
+      DATA_KEY_FILE: /app/schluessel/datenschluessel
       # Passkeys der Android-App und /.well-known/assetlinks.json (.env.example).
       PASSKEY_ANDROID_ZERTIFIKATE: ${PASSKEY_ANDROID_ZERTIFIKATE:-}
       PASSKEY_ANDROID_PAKET: ${PASSKEY_ANDROID_PAKET:-}
@@ -192,12 +198,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    # Bilder, Anleitungen, PDFs und der Schlüssel für gespeicherte Geheimnisse
-    # (data/.datenschluessel) liegen dort, wo auch `app` sie sucht.
+    # Bilder, Anleitungen, PDFs und der Datenschlüssel liegen dort, wo auch
+    # `app` sie sucht.
     volumes:
       - ./data:/app/data
+      - ./schluessel:/app/schluessel
     environment:
       ROLLE: jobs
+      DATA_KEY_FILE: /app/schluessel/datenschluessel
       PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
       # Für Links in Mails (Preisalarm), die der Job-Prozess verschickt.
       APP_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
