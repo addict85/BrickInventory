@@ -120,11 +120,11 @@ router.post('/alerts/import/csv', requireToken, csvEmpfang.single('file'),
 /** Der Vorrat an Lagerorten ist je Konto; wer ihn sehen darf, entscheidet das Recht.
  * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#lagerkonten */
 async function lagerKonten(req: AuthedRequest, schreiben: boolean): Promise<number[]> {
-  // KEIN Ansichtsfilter: Die Frage ist „darf ich?", nicht „was zeige ich?" —
+  // Ohne Ansichtsfilter: Die Frage ist „darf ich?", nicht „was zeige ich?" —
   // mit „nur eigene" bekäme der Grossvater beim Set des Enkels eine leere Liste.
   const erlaubt = schreiben
     ? await writableIds(req.apiUser.user_id)
-    : await scopeIds(req.apiUser.user_id);  // KEIN Ansichtsfilter, Begruendung darueber
+    : await scopeIds(req.apiUser.user_id);
   const roh = String((req.query.owner ?? req.body?.owner) ?? '').trim();
   if (!roh) return [req.apiUser.user_id];
   const gewuenscht = roh.split(',').map(x => parseInt(x.trim(), 10)).filter(Number.isFinite);

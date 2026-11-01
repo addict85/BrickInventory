@@ -25,13 +25,18 @@ test('die Session-ID wird beim Anmelden erneuert', () => {
     'Ohne save() wäre die neue ID bei einer unmittelbar folgenden Anfrage noch nicht gültig');
 
   const routes = read('routes/auth.ts');
-  // Drei Aufrufe: Login, Passkey-Anmeldung — und seit der Sitzungs-Bereinigung auch
-  // /change-password. Dort werden erst ALLE Sitzungen des Kontos verworfen
-  // (ein Passwortwechsel soll einen fremden Zugang beenden, nicht nur die
-  // Tokens) und danach die eigene neu aufgebaut, damit man nicht aus dem
-  // eigenen Tab fliegt. Die neue ID ist dabei erwünscht, nicht Nebensache.
-  assert.equal((routes.match(/establishSession\(req,/g) || []).length, 3,
-    'Login, Passkey-Anmeldung und Passwortwechsel müssen die Session erneuern');
+  // Zwei Aufrufe: angemeldetAntworten() (Login und Passkey-Anmeldung) und
+  // /change-password, das nach dem Verwerfen aller Sitzungen die eigene neu
+  // aufbaut. Ob die Passkey-Anmeldung wirklich eine Sitzung bekommt, prüft
+  // passkeys-db.test.js über das Cookie.
+  assert.equal((routes.match(/establishSession\(req,/g) || []).length, 2,
+    'Anmeldung und Passwortwechsel müssen die Session erneuern');
+  const helfer = routes.slice(routes.indexOf('async function angemeldetAntworten'), routes.indexOf("router.post('/login'"));
+  assert.match(helfer, /establishSession\(req,/, 'der gemeinsame Anmeldeweg erneuert die Session nicht');
+  for (const route of ["router.post('/login'", "router.post('/passkey/anmelden',"]) {
+    const rumpf = routes.slice(routes.indexOf(route)).split(/\n\}\);\n/)[0];
+    assert.match(rumpf, /angemeldetAntworten\(req, res,/, `${route} geht nicht über den gemeinsamen Anmeldeweg`);
+  }
   // Der QR-Login legt seit den Token-Scopes KEINE Sitzung mehr an (sie trüge
   // die vollen Rechte an Scope `app` vorbei) — geprüft im Verhalten in
   // token-scope-rotation-db („Scope app: …“, kein Set-Cookie).

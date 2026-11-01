@@ -14,6 +14,14 @@ import ch.brickinventoryapp.ui.AnmeldeUiState
 import ch.brickinventoryapp.ui.qrFehler
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.pinSchluessel
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.model.LoginResponse
+import ch.brickinventoryapp.data.model.PASSKEY_ANMELDEN
+import ch.brickinventoryapp.data.model.PASSKEY_ZWEITER_FAKTOR
+import ch.brickinventoryapp.ui.PasskeyAbfrage
+import ch.brickinventoryapp.ui.PasskeyErgebnis
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +31,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Server einrichten, anmelden (Passwort, zweiter Faktor, QR), Konto anlegen,
+ * Server einrichten, anmelden (Passwort, zweiter Faktor, Passkey, QR), Konto anlegen,
  * Passwort vergessen. An die Activity gebunden, weil der QR-Weg die Einrichtung
  * verlässt, während die Anmeldung noch läuft.
  */
@@ -62,40 +70,96 @@ class AnmeldungViewModel @Inject constructor(
      * Klartext“ ausdrücklich bejaht; das Netz gilt danach als bekannt.
      */
     fun login(username: String, password: String, code: String? = null, netzBestaetigt: Boolean = false) {
+        viewModelScope.launch { mitPasswort(username, password, code, netzBestaetigt) }
+    }
+
+    /** Der Passkey ersetzt den Code des zweiten Faktors; Name und Passwort gehen mit. */
+    fun passkeyStattCode(username: String, password: String, abfrage: PasskeyAbfrage, netzBestaetigt: Boolean = false) {
         viewModelScope.launch {
-            val url = ablage.serverUrlJetzt()
-            val netz = netzkennung.fingerabdruck()
-            if (NetworkPolicy.anmeldungBrauchtNetzBestaetigung(url, netz, ablage.bekannteNetze())) {
-                if (!netzBestaetigt) {
-                    _anmeldeState.update { it.copy(netzFrage = true) }
-                    return@launch
-                }
-                netz?.let { ablage.merkeNetz(NetworkPolicy.netzEintrag(url, it)) }
-            }
-            _anmeldeState.update { it.copy(netzFrage = false, loginLaeuft = true, loginError = null) }
-            val scope = if (_anmeldeState.value.vollerZugriff) TOKEN_SCOPE_VOLL else TOKEN_SCOPE_APP
-            when (val r = konto.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() }, scope)) {
-                is Result.Success -> {
-                    // In eine lokale Variable: Das Modell liegt in core-model, über die
-                    // Modulgrenze prüft Kotlin `!= null` nicht für den Aufruf darunter.
-                    val neuesToken = r.data.token
-                    when {
-                        // Erstes Mal nur das Codefeld zeigen; mit Code den Satz des Servers.
-                        r.data.zweiterFaktor -> _anmeldeState.update { it.copy(codeNoetig = true, loginLaeuft = false,
-                            loginError = if (code.isNullOrBlank()) null else r.data.error) }
-                        r.data.success && neuesToken != null -> {
-                            angemeldet(neuesToken, r.data.user?.username ?: username, r.data.verwalter)
-                            _anmeldeState.update { it.copy(codeNoetig = false, loginLaeuft = false) }
-                        }
-                        else -> _anmeldeState.update {
-                            it.copy(loginLaeuft = false, loginError = r.data.error ?: text(R.string.err_login_failed))
-                        }
-                    }
-                }
+            mitPasswort(username, password, null, netzBestaetigt) { holePasskey(PASSKEY_ZWEITER_FAKTOR, abfrage) }
+        }
+    }
+
+    /** Ohne Passwort: Der Credential Manager bietet die Passkeys dieses Servers an. */
+    fun passkeyAnmelden(abfrage: PasskeyAbfrage) {
+        viewModelScope.launch {
+            _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
+            val antwort = holePasskey(PASSKEY_ANMELDEN, abfrage) ?: return@launch
+            when (val r = konto.passkeyAnmelden(ablage.serverUrlJetzt(), antwort, scope())) {
+                is Result.Success -> nachAntwort(r.data, "", mitCode = false)
                 is Result.Error -> _anmeldeState.update { it.copy(loginLaeuft = false, loginError = meldung(r)) }
             }
         }
     }
+
+    /**
+     * Das Passwort geht erst nach der Netzprüfung hinaus. [passkey] läuft danach:
+     * Ein abgebrochener Dialog soll keine halbe Anmeldung hinterlassen.
+     */
+    private suspend fun mitPasswort(username: String, password: String, code: String?, netzBestaetigt: Boolean,
+                                    passkey: (suspend () -> JsonObject?)? = null) {
+        val url = ablage.serverUrlJetzt()
+        val netz = netzkennung.fingerabdruck()
+        if (NetworkPolicy.anmeldungBrauchtNetzBestaetigung(url, netz, ablage.bekannteNetze())) {
+            if (!netzBestaetigt) {
+                _anmeldeState.update { it.copy(netzFrage = true) }
+                return
+            }
+            netz?.let { ablage.merkeNetz(NetworkPolicy.netzEintrag(url, it)) }
+        }
+        _anmeldeState.update { it.copy(netzFrage = false, loginLaeuft = true, loginError = null) }
+        val antwort = passkey?.let { it() ?: return }
+        val mitCode = !code.isNullOrBlank() || antwort != null
+        when (val r = konto.login(url, username, password, code?.trim()?.takeIf { it.isNotEmpty() }, scope(), antwort)) {
+            is Result.Success -> {
+                if (r.data.antwort.zweiterFaktor)
+                    _anmeldeState.update { it.copy(passkeyStattCode = r.data.passkeyStattCode) }
+                nachAntwort(r.data.antwort, username, mitCode)
+            }
+            is Result.Error -> _anmeldeState.update { it.copy(loginLaeuft = false, loginError = meldung(r)) }
+        }
+    }
+
+    /** [mitCode]: Ein zweiter Faktor wurde mitgeschickt; dann ist ein Nein des Servers ein Fehler. */
+    private suspend fun nachAntwort(antwort: LoginResponse, benutzer: String, mitCode: Boolean) {
+        // In eine lokale Variable: Das Modell liegt in core-model, über die
+        // Modulgrenze prüft Kotlin `!= null` nicht für den Aufruf darunter.
+        val neuesToken = antwort.token
+        when {
+            antwort.zweiterFaktor -> _anmeldeState.update { it.copy(codeNoetig = true, loginLaeuft = false,
+                loginError = if (mitCode) antwort.error else null) }
+            antwort.success && neuesToken != null -> {
+                angemeldet(neuesToken, antwort.user?.username ?: benutzer, antwort.verwalter)
+                _anmeldeState.update { it.copy(codeNoetig = false, passkeyStattCode = false, loginLaeuft = false) }
+            }
+            else -> _anmeldeState.update {
+                it.copy(loginLaeuft = false, loginError = antwort.error ?: text(R.string.err_login_failed))
+            }
+        }
+    }
+
+    /** null, wenn es nicht weitergeht; der Zustand sagt dann schon, warum. */
+    private suspend fun holePasskey(zweck: String, abfrage: PasskeyAbfrage): JsonObject? {
+        _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
+        val optionen = when (val o = konto.passkeyOptionen(zweck)) {
+            is Result.Success -> o.data.optionen ?: return passkeyGescheitert(o.data.error ?: text(R.string.login_passkey_fehler))
+            is Result.Error -> return passkeyGescheitert(meldung(o))
+        }
+        return when (val e = abfrage.hole(optionen.toString())) {
+            is PasskeyErgebnis.Antwort -> runCatching { ApiJson.parseToJsonElement(e.json).jsonObject }.getOrNull()
+                ?: passkeyGescheitert(text(R.string.login_passkey_fehler))
+            PasskeyErgebnis.Abgebrochen -> passkeyGescheitert(null)
+            PasskeyErgebnis.KeinPasskey -> passkeyGescheitert(text(R.string.login_passkey_keiner))
+            is PasskeyErgebnis.Fehler -> passkeyGescheitert(text(R.string.login_passkey_fehler))
+        }
+    }
+
+    private fun passkeyGescheitert(satz: String?): JsonObject? {
+        _anmeldeState.update { it.copy(loginLaeuft = false, loginError = satz) }
+        return null
+    }
+
+    private fun scope() = if (_anmeldeState.value.vollerZugriff) TOKEN_SCOPE_VOLL else TOKEN_SCOPE_APP
 
     /** Das Häkchen „mit Verwalterrechten“ im Anmeldeformular. */
     fun setzeVollerZugriff(an: Boolean) = _anmeldeState.update { it.copy(vollerZugriff = an) }

@@ -65,6 +65,20 @@ suspend fun Sitzung.ladeEinstellungen(konto: ch.brickinventoryapp.data.repositor
     }
 }
 
+/**
+ * Nach einem 403 `nur_admins`: das Verwalterrecht aus /auth/me nachziehen. Nur
+ * aus dem Verwalterzustand heraus — wiederholte 403 (eine pollende Seite)
+ * lösen so höchstens einen Abruf aus. @return true, wenn das Recht wegfiel
+ */
+suspend fun Sitzung.rechteNachziehen(konto: ch.brickinventoryapp.data.repository.KontoRepository): Boolean {
+    if (!state.value.isAdmin) return false
+    val me = konto.getMe()
+    // Ohne Antwort gilt das 403: Der Server hat das Recht eben verneint.
+    val verwalter = me is ch.brickinventoryapp.data.repository.Result.Success && me.data.user?.isAdmin == true
+    aendere { it.copy(isAdmin = verwalter) }
+    return !verwalter
+}
+
 /** Das wirksame Design, z. B. nach einer Wahl im Konto; das AppViewModel merkt es sich für den Kaltstart. */
 fun Sitzung.setzeDesign(theme: String) = aendere { it.copy(appTheme = theme) }
 

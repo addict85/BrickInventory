@@ -98,6 +98,8 @@ fun NavGraphBuilder.authGraph(
             val anmeldungVm: AnmeldungViewModel = aktivitaetsViewModel()
             val state by anmeldungVm.state.collectAsStateWithLifecycle()
             val anmeldung by anmeldungVm.anmeldeState.collectAsStateWithLifecycle()
+            val aktivitaet = androidx.compose.ui.platform.LocalContext.current
+            val passkeys = remember(aktivitaet) { ch.brickinventoryapp.ui.CredentialManagerAbfrage(aktivitaet) }
             // Einmal beim Betreten: Steht die Registrierung ueberhaupt offen?
             // Ohne Anmeldung erreichbar — die Frage kommt ja, bevor es ein
             // Konto gibt. `Unit` als Schluessel: genau einmal je Aufbau, nicht
@@ -125,6 +127,10 @@ fun NavGraphBuilder.authGraph(
                 onNetzAbgelehnt = { anmeldungVm.netzFrageVerwerfen() },
                 vollerZugriff = anmeldung.vollerZugriff,
                 onVollerZugriff = { anmeldungVm.setzeVollerZugriff(it) },
+                // Die Abfrage hängt an der Activity (Auswahldialog des Systems); das ViewModel lebt länger.
+                onPasskey = { anmeldungVm.passkeyAnmelden(passkeys) },
+                passkeyStattCode = anmeldung.passkeyStattCode,
+                onPasskeyStattCode = { user, pw -> anmeldungVm.passkeyStattCode(user, pw, passkeys) },
                 onFormular = { anmeldungVm.zeigeAnmeldeFormular(it) },
                 onRegistrieren = { u, e, v, n, pw -> anmeldungVm.registriere(u, e, v, n, pw) },
                 onPasswortVergessen = { anmeldungVm.passwortVergessen(it) },

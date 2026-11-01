@@ -28,6 +28,10 @@
     <string name="login_button">Anmelden</string>
     <string name="login_code">Code aus der Authenticator-App</string>
     <string name="login_code_hint">Oder einer deiner Wiederherstellungscodes</string>
+    <string name="login_passkey">Mit Passkey anmelden</string>
+    <string name="login_passkey_statt_code">Passkey statt Code verwenden</string>
+    <string name="login_passkey_keiner">Auf diesem Gerät ist kein Passkey für diesen Server gespeichert.</string>
+    <string name="login_passkey_fehler">Der Passkey konnte nicht abgefragt werden.</string>
     <string name="settings_nutzer_ca">Der eigenen Zertifizierungsstelle vertrauen</string>
     <string name="settings_nutzer_ca_hint">Für einen Server mit selbst ausgestelltem Zertifikat, dessen Zertifizierungsstelle auf diesem Gerät installiert ist. Sonst ausgeschaltet lassen: Eine installierte Zertifizierungsstelle kann jede Verbindung mitlesen.</string>
     <string name="login_netz_titel">Anderes Netz als bei der Einrichtung</string>
@@ -403,6 +407,7 @@
     <string name="vm_set_added_no_catalog">Set %1$s gespeichert — Name und Bild kommen nach, sobald der Katalog erreichbar ist.</string>
     <string name="vm_error">Fehler: %1$s</string>
     <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
+    <string name="vm_rechte_entzogen">Deine Verwalterrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
     <string name="notif_csv_title">BrickInventory – CSV-Import</string>

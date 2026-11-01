@@ -46,6 +46,9 @@ import java.util.concurrent.atomic.AtomicInteger
  *      Pfade auf "/settings/theme") → rot „das Design des Kontos wird mit Token geholt“
  *   J  (31.10.2026) im Wächter die Meldung über versionsHinweis() entfernt → rot „ein
  *      Server mit hoeherer Mindestfassung meldet App zu alt …“ (leere Liste statt APP_ZU_ALT)
+ *   L  (31.10.2026) rechteEntzogen() bei jedem 403 → rot „ein 403 nur_admins …“
+ *   M  (31.10.2026) BESTAETIGUNG_NOETIG nicht beachtet (jeder 401 meldet ab) →
+ *      rot „eine falsche Passwortbestaetigung meldet nicht ab“
  */
 class ServerWaechterTest {
 
@@ -55,6 +58,9 @@ class ServerWaechterTest {
     @Volatile private var beweisArt = "echt"
     private val codes = Collections.synchronizedMap(mutableMapOf<String, Int>())
     private val abgelaufen = AtomicInteger()
+    private val entzogen = AtomicInteger()
+    /** Rumpf je Pfad für Antworten mit Fehlercode. */
+    private val ruempfe = Collections.synchronizedMap(mutableMapOf<String, String>())
 
     private inner class Lage(
         var url: String,
@@ -84,7 +90,8 @@ class ServerWaechterTest {
                         else -> MockResponse().setResponseCode(401).setBody("""{"success":false,"code":"token_ungueltig"}""")
                     }
                 }
-                return MockResponse().setResponseCode(codes[pfad.substringBefore('?')] ?: 200).setBody("""{"success":true}""")
+                return MockResponse().setResponseCode(codes[pfad.substringBefore('?')] ?: 200)
+                    .setBody(ruempfe[pfad.substringBefore('?')] ?: """{"success":true}""")
             }
         }
         server.start()
@@ -97,7 +104,7 @@ class ServerWaechterTest {
 
     private fun client(lage: Zugangslage, api: Boolean = true) = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, api, BeweisSpeicher(), sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
-            eigeneKoepfe = { _, ziel -> ziel.header("Accept-Language", "de") }))
+            eigeneKoepfe = { _, ziel -> ziel.header("Accept-Language", "de") }, rechteEntzogen = { entzogen.incrementAndGet() }))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     private fun hole(c: OkHttpClient, url: String): Int =
@@ -249,6 +256,35 @@ class ServerWaechterTest {
             assertTrue(e.message.orEmpty(), e.message.orEmpty().contains("Expertenschalter"))
         }
         assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun `ein 403 nur_admins auf einen Token meldet den Rechteentzug, ein anderes 403 nicht`() {
+        codes["/api/v1/admin/jobs"] = 403
+        ruempfe["/api/v1/admin/jobs"] = """{"success":false,"code":"nur_admins","error":"Nur für Admins"}"""
+        codes["/api/v1/auth/passkey/registrieren/optionen"] = 403
+        ruempfe["/api/v1/auth/passkey/registrieren/optionen"] = """{"success":false,"code":"nur_mit_sitzung"}"""
+        val c = client(Lage(basis()))
+        assertEquals(403, hole(c, "http://localhost:3000/api/v1/admin/jobs"))
+        assertEquals(403, hole(c, "http://localhost:3000/api/v1/auth/passkey/registrieren/optionen"))
+        assertEquals(1, entzogen.get())
+        assertEquals("Ein 403 ist keine abgelaufene Sitzung", 0, abgelaufen.get())
+
+        hole(client(Lage(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v1/admin/jobs")
+        assertEquals("Ohne Token sagt ein 403 nichts über dieses Konto", 1, entzogen.get())
+    }
+
+    @Test
+    fun `eine falsche Passwortbestaetigung meldet nicht ab, ein ungueltiger Token schon`() {
+        codes["/api/v1/auth/zweiter-faktor/abschalten"] = 401
+        ruempfe["/api/v1/auth/zweiter-faktor/abschalten"] = """{"success":false,"code":"aktuelles_passwort_falsch"}"""
+        codes["/api/v1/sets"] = 401
+        ruempfe["/api/v1/sets"] = """{"success":false,"code":"token_ungueltig"}"""
+        val c = client(Lage(basis()))
+        assertEquals(401, hole(c, "http://localhost:3000/api/v1/auth/zweiter-faktor/abschalten"))
+        assertEquals("Die Bestätigung fragt erneut, statt abzumelden", 0, abgelaufen.get())
+        assertEquals(401, hole(c, "http://localhost:3000/api/v1/sets"))
+        assertEquals(1, abgelaufen.get())
     }
 
     private companion object { const val TOKEN = "geheim-0123" }

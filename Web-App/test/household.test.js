@@ -4,6 +4,10 @@
  * Geprüft wird hier, was ohne laufende Datenbank prüfbar ist: die Regeln im
  * Code und im Schema. Die Regeln selbst sind der heikle Teil — jede einzelne
  * verhindert einen Zustand, aus dem es kein sauberes Zurück gäbe.
+ *
+ * Gegenproben zur Ausnahmeliste OHNE_ANSICHTSFILTER (31.10.2026 gemessen):
+ * Liste leer → rot „der Kontofilter wird am Server …“ (lagerKonten gemeldet);
+ * ein zweiter Name ohne Aufruf darin → rot (veraltete Ausnahme).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -159,55 +163,29 @@ test('der Kontofilter wird am Server in IDs übersetzt, nicht in der Oberfläche
 
   // Und jeder Lesepfad reicht den Filter durch — einer, der es vergisst, zeigt
   // stumm den ganzen Haushalt, während die Ansicht daneben gefiltert ist.
-  // routes/minifigs.ts steht seit Nachtrag 72 NICHT mehr in dieser Liste: Seine
-  // Leserouten sind mit der v1-Fabrik zusammengelegt, übrig sind /stats sowie
-  // CSV-Import/-Export. Die Regel selbst gilt unverändert — sie wird für
-  // Minifiguren jetzt an routes/api_v1/minifigs.ts geprüft, das weiter unten in
-  // derselben Liste steht.
-  // routes/parts.ts fällt mit Nachtrag 73 ebenfalls weg (wie minifigs.ts in 72):
-  // seine Leserouten liegen in der v1-Fabrik, übrig sind /categories und die
-  // CSV-Wege. Die Regel wird für Teile an routes/api_v1/parts.ts geprüft, das
-  // weiter unten in derselben Liste steht.
-  // Mit Nachtrag 74 ist auch routes/sets.ts raus: seine Leserouten liegen in der
-  // v1-Fabrik, übrig sind CSV/SSE, Anleitungen und info/export. Die Regel wird
-  // für Sets an routes/api_v1/sets.ts geprüft — weiter unten in derselben Liste.
-  // routes/finance.ts fällt mit Etappe 5 weg (wie minifigs.ts in 72, parts.ts in
-  // 73, sets.ts in 74): Bewertung, GuV, Portfolio- und Preisverlauf liegen in
-  // der v1-Familie, übrig sind Cache-Statistik und die Preis-Job-Werkzeuge —
-  // alles ohne Kontobezug. Die Regel wird für die Finanzen an
-  // routes/api_v1/finance.ts geprüft, das weiter unten in derselben Liste steht.
-  // routes/settings.ts fällt mit Etappe 6 weg: /stats und die Haushalts-Routen
-  // liegen in der v1-Familie, übrig sind Formular, Export/Import, Token und die
-  // Admin-Felder — alles ohne Kontofilter. Geprüft wird die Regel für die
-  // Einstellungen an routes/api_v1/settings.ts und routes/api_v1/misc.ts.
+  // Die Leserouten liegen alle in der v1-Familie; geprüft wird dort.
+  // Die eine Ausnahme fragt „darf ich?“, nicht „was zeige ich?“: lagerKonten()
+  // prüft eine Berechtigung. Ihr Verhalten belegt household-db.test.js („die
+  // Lagerorte eines Unterkontos folgen dem Recht …“).
+  const OHNE_ANSICHTSFILTER = { 'routes/api_v1/sets.ts': ['lagerKonten'] };
+  const genutzt = new Set();
   for (const f of ['routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/finance.ts',
                    'routes/api_v1/misc.ts']) {
-    const src = read(f);
-    const lines = src.split('\n').filter(l => l.includes('await scopeIds('));
-    assert.ok(lines.length > 0, `${f}: kein scopeIds-Aufruf`);
-    for (const l of lines) {
-      // ── Die eine Ausnahme, und warum sie eine ist ───────────────────────
-      //
-      // Die Regel sichert LESEPFADE: Wer eine Liste zeigt und den Filter
-      // vergisst, zeigt stumm den ganzen Haushalt, während die Ansicht
-      // daneben gefiltert ist.
-      //
-      // Es gibt einen Aufruf, der keine Liste zeigt, sondern eine BERECHTIGUNG
-      // prüft: lagerKonten() in routes/api_v1/sets.ts beantwortet „darf dieses
-      // Konto die Lagerorte jenes Kontos sehen?". Den Ansichtsfilter dort
-      // anzuwenden wäre nicht strenger, sondern FALSCH: Steht die Galerie
-      // gerade auf „nur eigene", bekäme der Grossvater beim Set des Enkels
-      // eine leere Auswahlliste — für eine Einstellung, die mit der Frage
-      // nichts zu tun hat.
-      //
-      // Die Ausnahme trägt ihren Namen im Quelltext und ist damit auffindbar;
-      // eine stumme Ausnahmeliste hier wäre der schlechtere Weg.
-      if (l.includes('KEIN Ansichtsfilter')) continue;
+    const zeilen = read(f).split('\n');
+    let block = null, gefunden = 0;
+    for (const l of zeilen) {
+      block = (l.match(/^(?:export )?(?:async )?function (\w+)/) || l.match(/^router\.\w+\('([^']+)'/) || [])[1] ?? block;
+      if (!l.includes('await scopeIds(')) continue;
+      gefunden++;
+      if ((OHNE_ANSICHTSFILTER[f] || []).includes(block)) { genutzt.add(`${f}#${block}`); continue; }
       assert.ok(l.includes('parseScopeMode(req.query.accounts)'),
-        `${f}: scopeIds ohne Kontofilter — ${l.trim()}`);
+        `${f} (${block}): scopeIds ohne Kontofilter — ${l.trim()}`);
     }
+    assert.ok(gefunden > 0, `${f}: kein scopeIds-Aufruf`);
   }
+  const erwartet = Object.entries(OHNE_ANSICHTSFILTER).flatMap(([f, n]) => n.map(x => `${f}#${x}`));
+  assert.deepEqual([...genutzt].sort(), erwartet.sort(), 'Eine Ausnahme ohne scopeIds-Aufruf ist veraltet');
 });
 
 test('ein Set erscheint nur EINMAL, mit der Summe der Mengen', () => {

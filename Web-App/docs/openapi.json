@@ -12826,6 +12826,12 @@
             "type": "boolean",
             "const": true
           },
+          "token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "user": {
             "type": "object",
             "properties": {
@@ -12850,6 +12856,28 @@
               "is_admin"
             ],
             "additionalProperties": {}
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "zweiter_faktor": {
+            "type": "boolean"
+          },
+          "never_expires": {
+            "type": "boolean"
+          },
+          "token_info": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TokenAngaben"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

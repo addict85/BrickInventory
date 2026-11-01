@@ -154,7 +154,8 @@ export const PasskeyListe = z.looseObject({ success: z.literal(true), verfuegbar
 /** Die Optionen gehen unverändert an WebAuthn (navigator.credentials); ihre Form legt @simplewebauthn fest. */
 export const PasskeyOptionen = z.looseObject({ success: z.literal(true), optionen: z.record(z.string(), z.unknown()) });
 export const PasskeyAngelegt = z.looseObject({ success: z.literal(true), passkey: z.looseObject({ id: ganz, name: z.string() }) });
-export const PasskeyAnmeldung = z.looseObject({
+/** Wie die Passwort-Anmeldung: Mit `mit_token` (App) kommt auch der Token. */
+export const PasskeyAnmeldung = LoginResponse.extend({
   success: z.literal(true),
   user: z.looseObject({ id: ganz, username: z.string(), is_admin: z.boolean(), mustChangePassword: z.boolean().optional() }),
 });

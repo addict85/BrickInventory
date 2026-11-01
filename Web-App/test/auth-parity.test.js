@@ -272,8 +272,8 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
   const auth  = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
   const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
-  // Das Feld heisst seit dem Zusammenlegen der beiden Anmeldungen `token`
-  // (vorher `webToken`) und die Zeile steht in derselben Route.
+  // Das Feld heisst `token`; ausgestellt wird es in angemeldetAntworten(),
+  // dem gemeinsamen Weg von Passwort- und Passkey-Anmeldung.
   //
   // Kommentare raus, BEVOR gesucht wird: Der Erklaertext IN der Route nennt
   // `.catch(() => {})` als das, was dort frueher stand — die Prüfung schlug
@@ -281,7 +281,7 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
   // mehrfach zuvor in dieser Suite; sie ist der haeufigste Fehler beim
   // Schreiben quelltextlesender Tests.
   const authOhne = ohneKommentare(auth);
-  const login = authOhne.slice(authOhne.indexOf("router.post('/login'"), authOhne.indexOf('mustChangePassword'));
+  const login = authOhne.slice(authOhne.indexOf('async function angemeldetAntworten'), authOhne.indexOf('mustChangePassword'));
   assert.doesNotMatch(login, /\.catch\(\(\)\s*=>\s*\{\}\)/,
     'Ein Token, den die Datenbank nicht kennt, darf nicht ausgeliefert werden');
   assert.match(login, /token \? \{ token \} : \{\}/,

@@ -58,6 +58,9 @@ dependencies {
     implementation(libs.bundles.compose)
     implementation(libs.bundles.camera)
     implementation(libs.mlkit.barcode)
+    // Passkeys über den Credential Manager (ui/CredentialManagerAbfrage.kt).
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
 
     testImplementation(project(":core-testing"))
     testImplementation(libs.bundles.unit.tests)

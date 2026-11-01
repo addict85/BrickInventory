@@ -1,0 +1,18 @@
+Gegenprobe: MIGRATION_1_2 fehlt in BestandDatenbank.MIGRATIONEN
+Modul: core-data
+Test: ch.brickinventoryapp.BestandMigrationTest
+Rot: jede frühere Fassung
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt
+index af80dbd..ce86fab 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/room/BestandDatenbank.kt
+@@ -129,7 +129,7 @@ abstract class BestandDatenbank : RoomDatabase() {
+         const val NAME = "bestand.db"
+ 
+         /** Alle Migrationen, in der Reihenfolge der Fassungen. */
+-        val MIGRATIONEN: Array<Migration> = arrayOf(MIGRATION_1_2)
++        val MIGRATIONEN: Array<Migration> = arrayOf()
+     }
+ }
+ 

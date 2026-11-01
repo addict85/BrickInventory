@@ -44,6 +44,10 @@
     <string name="login_button">Sign in</string>
     <string name="login_code">Code from your authenticator app</string>
     <string name="login_code_hint">Or one of your recovery codes</string>
+    <string name="login_passkey">Sign in with a passkey</string>
+    <string name="login_passkey_statt_code">Use a passkey instead of the code</string>
+    <string name="login_passkey_keiner">There is no passkey for this server on this device.</string>
+    <string name="login_passkey_fehler">The passkey could not be requested.</string>
     <string name="settings_nutzer_ca">Trust my own certificate authority</string>
     <string name="settings_nutzer_ca_hint">For a server with a self-issued certificate whose authority is installed on this device. Otherwise leave it off: an installed authority can read every connection.</string>
     <string name="login_netz_titel">Different network than at setup</string>
@@ -421,6 +425,7 @@
     <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalogue is reachable.</string>
     <string name="vm_error">Error: %1$s</string>
     <string name="vm_session_expired">Session expired — please log in again</string>
+    <string name="vm_rechte_entzogen">Your administrator rights no longer apply — the administration areas are hidden.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
     <string name="notif_csv_title">BrickInventory – CSV import</string>
