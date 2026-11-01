@@ -98,12 +98,12 @@ class AppViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, sitzung.state.value.appTheme)
 
-    /** Je Gerät: die dunkle Fassung des Designs, solange das System dunkel ist (ui/theme/Darstellung.kt). */
-    private val _dunkelNachSystem = MutableStateFlow(prefs.dunkelNachSystem())
-    val dunkelNachSystem: StateFlow<Boolean> = _dunkelNachSystem.asStateFlow()
-    fun setDunkelNachSystem(an: Boolean) {
-        prefs.setzeDunkelNachSystem(an)
-        _dunkelNachSystem.value = an
+    /** Je Gerät: System, Hell oder Dunkel (ui/theme/Darstellung.kt). */
+    private val _helligkeit = MutableStateFlow(prefs.helligkeit())
+    val helligkeit: StateFlow<String> = _helligkeit.asStateFlow()
+    fun setHelligkeit(wahl: String) {
+        prefs.setzeHelligkeit(wahl)
+        _helligkeit.value = wahl
     }
 
     /** Je Gerät: auch nutzerinstallierte CAs für den eigenen Server; an nur nach Bestätigung. */

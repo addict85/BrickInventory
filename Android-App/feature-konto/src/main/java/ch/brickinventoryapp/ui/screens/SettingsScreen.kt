@@ -28,15 +28,16 @@ import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Helligkeit
+import ch.brickinventoryapp.ui.components.WahlChips
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 /**
- * Die Einstellungen — wenige Karten statt eines Stapels: Anzeige & Preise (Sprache
- * wirkt sofort, die drei darunter mit dem Speichern-Knopf), Server und
- * Aktualisierung. Die Rubriken mit eigener Seite liegen in der Konto-Klappe
+ * Die Einstellungen — wenige Karten statt eines Stapels: Anzeige & Preise (jede
+ * Wahl gilt sofort), Server und Aktualisierung. Die Rubriken mit eigener Seite liegen in der Konto-Klappe
  * (MainScaffold.kt) und in EinstellungenUnterseiten.kt.
  */
 @Composable
@@ -72,20 +73,11 @@ fun SettingsScreen(
     val defaultPriceCondition = appState.defaultPriceCondition
     val language = appState.language
 
-    val onSave: (String, String) -> Unit = { cur, cond ->
-        vm.saveSettings(cur, cond)
-    }
-
-    var selectedCurrency  by remember(currency)       { mutableStateOf(currency) }
-    var selectedCondition by remember(priceCondition) { mutableStateOf(priceCondition) }
     // Rückfall auf die globale Vorgabe des Servers beim Erfassen
     // (`defaultPriceCondition`), nicht auf die Preisgrundlage für Bewertungen. `null`
     // heisst: keine eigene Vorgabe — nicht dasselbe wie "N".
     val eigeneVorgabe = userDefaultCondition?.takeIf { it.isNotBlank() }
     val effectiveUserDefault = eigeneVorgabe ?: defaultPriceCondition
-    var selectedUserDefault by remember(eigeneVorgabe) { mutableStateOf(eigeneVorgabe) }
-    val hasChanges = selectedCurrency != currency || selectedCondition != priceCondition ||
-        selectedUserDefault != eigeneVorgabe
 
     Column(
         Modifier
@@ -103,42 +95,26 @@ fun SettingsScreen(
         // ── 2. Anzeige & Preise ──
         SettingsCard(title = stringResource(R.string.settings_group_display),
                      icon = Icons.Default.Euro) {
+            // Jede Wahl gilt sofort und meldet sich: früher wirkten Sprache und Darstellung
+            // sofort, Währung und Zustände erst über einen Knopf darunter — zwei Regeln auf
+            // einer Karte, und wer den Knopf übersah, verlor die Wahl.
             Unterschrift(stringResource(R.string.settings_language))
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                modifier = Modifier.fillMaxWidth()) {
-                val options = listOf(
-                    "system" to stringResource(R.string.settings_language_system),
-                    "en"     to stringResource(R.string.settings_language_en),
-                    "de"     to stringResource(R.string.settings_language_de)
-                )
-                options.forEach { (code, label) ->
-                    FilterChip(
-                        selected = language == code,
-                        onClick = { app.setLanguage(code) },
-                        label = { Text(label) },
-                        shape = Formen.chip
-                    )
-                }
-            }
+            WahlChips(
+                listOf("system" to stringResource(R.string.settings_language_system),
+                       "en" to stringResource(R.string.settings_language_en),
+                       "de" to stringResource(R.string.settings_language_de)),
+                gewaehlt = language, onWahl = { app.setLanguage(it) },
+            )
 
-            // Darstellung je Gerät — wirkt sofort wie die Sprache.
+            // Darstellung je Gerät: System folgt dem Telefon, Hell und Dunkel gelten immer.
             Unterschrift(stringResource(R.string.settings_dark_label))
-            val dunkel by app.dunkelNachSystem.collectAsStateWithLifecycle()
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                modifier = Modifier.fillMaxWidth()) {
-                FilterChip(
-                    selected = !dunkel,
-                    onClick = { app.setDunkelNachSystem(false) },
-                    label = { Text(stringResource(R.string.settings_dark_server)) },
-                    shape = Formen.chip
-                )
-                FilterChip(
-                    selected = dunkel,
-                    onClick = { app.setDunkelNachSystem(true) },
-                    label = { Text(stringResource(R.string.settings_dark_system)) },
-                    shape = Formen.chip
-                )
-            }
+            val helligkeit by app.helligkeit.collectAsStateWithLifecycle()
+            WahlChips(
+                listOf(Helligkeit.SYSTEM to stringResource(R.string.settings_hell_system),
+                       Helligkeit.HELL to stringResource(R.string.settings_hell_hell),
+                       Helligkeit.DUNKEL to stringResource(R.string.settings_hell_dunkel)),
+                gewaehlt = helligkeit, onWahl = { app.setHelligkeit(it) },
+            )
 
             // Material You: zusätzlich zu den sechs Designs, je Gerät. Erst ab
             // Android 12 gibt es Systemfarben; darunter fehlt der Schalter ganz.
@@ -158,47 +134,29 @@ fun SettingsScreen(
                 }
             }
 
-            // Die Linie trennt, was SOFORT wirkt (Sprache), von dem, was der
-            // Knopf darunter speichert. Ohne sie stuenden vier Wahlmoeglichkeiten
-            // da, von denen drei erst spaeter gelten — und niemand saehe, welche.
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
+            // Währung und Preisgrundlage gehen zusammen an den Server (ein Endpunkt).
             Unterschrift(stringResource(R.string.settings_currency))
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                modifier = Modifier.fillMaxWidth()) {
-                listOf("CHF", "EUR", "USD", "GBP").forEach { cur ->
-                    FilterChip(
-                        selected = selectedCurrency == cur,
-                        onClick = { selectedCurrency = cur },
-                        label = { Text(cur, fontWeight = FontWeight.SemiBold) },
-                        shape = Formen.chip
-                    )
-                }
-            }
+            WahlChips(
+                listOf("CHF", "EUR", "USD", "GBP").map { it to it },
+                gewaehlt = currency, onWahl = { vm.saveSettings(it, priceCondition) },
+            )
 
             Unterschrift(stringResource(R.string.settings_price_condition))
             Text(stringResource(R.string.settings_price_basis),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                FilterChip(
-                    selected = selectedCondition == "N",
-                    onClick = { selectedCondition = "N" },
-                    label = { Text(stringResource(R.string.settings_condition_new)) },
-                    shape = Formen.chip
-                )
-                FilterChip(
-                    selected = selectedCondition == "U",
-                    onClick = { selectedCondition = "U" },
-                    label = { Text(stringResource(R.string.settings_condition_used)) },
-                    shape = Formen.chip
-                )
-            }
+            WahlChips(
+                listOf("N" to stringResource(R.string.settings_condition_new),
+                       "U" to stringResource(R.string.settings_condition_used)),
+                gewaehlt = priceCondition, onWahl = { vm.saveSettings(currency, it) },
+            )
 
             // ── Standard-Zustand beim Erfassen ──
             //
             // Drei Möglichkeiten, damit es einen Weg zurück zur Vorgabe des Servers gibt; der
-            // Hinweis nennt, worauf sie steht.
+            // Hinweis nennt, worauf sie steht. "" heisst beim Server: zurück auf die Vorgabe.
             Unterschrift(stringResource(R.string.settings_default_condition))
             val wirkt = if (effectiveUserDefault == "U") stringResource(R.string.condition_used)
                         else stringResource(R.string.condition_new)
@@ -206,42 +164,12 @@ fun SettingsScreen(
                     stringResource(R.string.settings_default_condition_effective, wirkt),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                FilterChip(
-                    selected = selectedUserDefault == null,
-                    onClick = { selectedUserDefault = null },
-                    label = { Text(stringResource(R.string.settings_default_condition_global)) },
-                    shape = Formen.chip
-                )
-                FilterChip(
-                    selected = selectedUserDefault == "N",
-                    onClick = { selectedUserDefault = "N" },
-                    label = { Text(stringResource(R.string.condition_new)) },
-                    shape = Formen.chip
-                )
-                FilterChip(
-                    selected = selectedUserDefault == "U",
-                    onClick = { selectedUserDefault = "U" },
-                    label = { Text(stringResource(R.string.condition_used)) },
-                    shape = Formen.chip
-                )
-            }
-
-            Button(
-                onClick = {
-                    onSave(selectedCurrency, selectedCondition)
-                    // Leerer String = zuruecksetzen auf die Vorgabe des Servers.
-                    // So versteht es der Endpunkt (siehe BrickRepository).
-                    vm.saveUserDefaultCondition(selectedUserDefault ?: "")
-                },
-                enabled = hasChanges,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                shape = Formen.knopf
-            ) {
-                Icon(Icons.Default.Save, null, Modifier.size(18.dp))
-                Spacer(Modifier.width(Abstaende.klein))
-                Text(stringResource(R.string.settings_save), fontWeight = FontWeight.SemiBold)
-            }
+            WahlChips(
+                listOf("" to stringResource(R.string.settings_default_condition_global),
+                       "N" to stringResource(R.string.condition_new),
+                       "U" to stringResource(R.string.condition_used)),
+                gewaehlt = eigeneVorgabe ?: "", onWahl = { vm.saveUserDefaultCondition(it) },
+            )
         }
 
         // ── 3. Server ──

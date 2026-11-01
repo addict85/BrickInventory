@@ -134,9 +134,9 @@ class MainActivity : ComponentActivity() {
             // jeder Zustandsänderung die Wurzel der Composition invalidiert
             // und darüber die ganze App rekomponiert.
             val theme by vm.appTheme.collectAsStateWithLifecycle()
-            val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
+            val helligkeit by vm.helligkeit.collectAsStateWithLifecycle()
             val systemfarben by vm.systemfarben.collectAsStateWithLifecycle()
-            val sicht = darstellung(theme, dunkel, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
+            val sicht = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
                 // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.
                 CompositionLocalProvider(

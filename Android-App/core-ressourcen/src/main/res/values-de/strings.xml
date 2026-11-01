@@ -344,8 +344,9 @@
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
     <string name="settings_dark_label">Darstellung auf diesem Gerät</string>
-    <string name="settings_dark_server">Design des Servers</string>
-    <string name="settings_dark_system">Dunkel nach System</string>
+    <string name="settings_hell_system">System</string>
+    <string name="settings_hell_hell">Hell</string>
+    <string name="settings_hell_dunkel">Dunkel</string>
     <string name="nav_collection">Sammlung</string>
     <string name="nav_gallery">Galerie</string>
     <string name="nav_parts">Teile</string>
