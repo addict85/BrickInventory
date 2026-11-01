@@ -357,6 +357,7 @@ window.I18N_DE = {
   'users.protokoll.leer': 'Noch keine Verwalteraktionen an fremden Konten.',
   'users.create_title': 'Konto anlegen',
   'users.aktion.konto_angelegt': 'Konto angelegt',
+  'users.aktion.einstellungen_geaendert': 'Servereinstellungen geändert',
   'users.aktion.passwort_gesetzt': 'Passwort neu gesetzt',
   'users.aktion.zweiter_faktor_entfernt': 'Zweiten Faktor entfernt',
   'users.aktion.verwalter_ernannt': 'Zum Verwalter ernannt',

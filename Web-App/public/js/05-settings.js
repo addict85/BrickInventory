@@ -706,6 +706,8 @@ export async function loadUsers(){
 // Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im
 // Quelltext steht und die Wörterbuchprüfung ihn findet.
 const AKTIONEN = {
+  konto_angelegt:          () => t('users.aktion.konto_angelegt'),
+  einstellungen_geaendert: () => t('users.aktion.einstellungen_geaendert'),
   passwort_gesetzt:        () => t('users.aktion.passwort_gesetzt'),
   zweiter_faktor_entfernt: () => t('users.aktion.zweiter_faktor_entfernt'),
   verwalter_ernannt:       () => t('users.aktion.verwalter_ernannt'),
@@ -720,7 +722,7 @@ async function ladeProtokoll(){
   const eintraege = d.eintraege || [];
   G('vw-protokoll').innerHTML = eintraege.length ? `<div class="tw"><table class="dt"><thead><tr><th>${t('users.protokoll.zeit')}</th><th>${t('users.protokoll.verwalter')}</th><th>${t('users.protokoll.aktion')}</th><th>${t('users.protokoll.konto')}</th></tr></thead><tbody>${
     eintraege.map(e=>`<tr><td>${new Date(e.zeit).toLocaleString(locale())}</td><td>${esc(e.verwalter_name||'—')}</td>
-      <td>${(AKTIONEN[e.aktion] || (() => esc(e.aktion)))()}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
+      <td>${(AKTIONEN[e.aktion] || (() => esc(e.aktion)))()}${e.einzelheiten ? `: ${esc(e.einzelheiten)}` : ''}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
   }</tbody></table></div>` : `<p data-stil="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
 }
 /**

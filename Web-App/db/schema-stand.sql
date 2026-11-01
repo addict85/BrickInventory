@@ -867,6 +867,7 @@ CREATE TABLE verwaltungsprotokoll (
   ziel_id integer,
   ziel_name text,
   aktion text NOT NULL,
+  einzelheiten text,
   CONSTRAINT verwaltungsprotokoll_pkey PRIMARY KEY (id),
   CONSTRAINT verwaltungsprotokoll_verwalter_id_fkey FOREIGN KEY (verwalter_id) REFERENCES users(id) ON DELETE SET NULL
 );

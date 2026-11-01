@@ -21,7 +21,7 @@ import { buildPartsCsv, buildFigsCsv } from '../../src/bestand/bestandExport';
 import { buildMerklisteCsv } from '../../src/merkliste/merkliste';
 import { buildPreisalarmeCsv } from '../../src/finanzen/preisalarm';
 import { DAILY_JOBS } from '../../src/auftraege/zeitplan';
-import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen } from '../../src/verwaltung/dienst';
+import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen, protokolliere } from '../../src/verwaltung/dienst';
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
 import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigePasswort } from '../../src/konto/http/anmeldung';
@@ -231,14 +231,17 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
       ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')
       : null;
 
+    const geaendert: string[] = [];
     for (const key of globalKeys) {
       if (req.body[key] !== undefined) {
         // Eine unverändert zurückgeschickte Maske ist kein neuer Wert, sonst
         // überschriebe jedes Speichern die echten Schlüssel mit Punkten.
         if (SECRET_KEYS.has(key) && isMaskedValue(req.body[key])) continue;
+        if (String(req.body[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
         await setGlobalSetting(key, req.body[key]);
       }
     }
+    if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
     // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
     if (globalKeys.some(k => k.startsWith('smtp_') && req.body[k] !== undefined)) await deleteGlobalSetting('smtp_insecure_tls');
 
@@ -317,14 +320,17 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
   if (config.global && istVerwalter(req)) {
     if (globalKeys.some(k => config.global[k] !== undefined && !globalerWertGueltig(k, config.global[k])))
       return sendeFehler(req, res, 400, 'wert_ungueltig');
+    const geaendert: string[] = [];
     for (const key of globalKeys) {
       if (config.global[key] !== undefined) {
         // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
         if (SECRET_KEYS.has(key) && isMaskedValue(config.global[key])) continue;
+        if (String(config.global[key]) !== String(await getGlobalSetting(key) ?? '')) geaendert.push(key);
         await setGlobalSetting(key, config.global[key]);
         imported++;
       }
     }
+    if (geaendert.length) await protokolliere(uid, uid, 'einstellungen_geaendert', `Import: ${geaendert.join(', ')}`);
   }
   if (config.user_settings) {
     for (const key of userKeys) {
