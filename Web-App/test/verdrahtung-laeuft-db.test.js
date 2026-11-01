@@ -153,7 +153,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     const r2 = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling2', email: 'n2@example.org',
-                             password: '12345678', language: 'de' }),
+                             password: 'acht8Zch', language: 'de' }),
     });
     assert.notEqual(r2.status, 400,
       'Auch acht Zeichen wurden mit 400 abgelehnt — dann ist die Grenze nicht acht');

@@ -1,6 +1,7 @@
 /** Anmeldung und Geräte-Tokens. Der Token-Cache spart je Anfrage zwei
  * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#abschnitt */
+import * as passwortRegel from '../infra/passwortRegel';
 import { konfig } from '../infra/konfig';
 import * as db from '../../db/database';
 import crypto from 'crypto';
@@ -204,11 +205,8 @@ export const BCRYPT_ROUNDS = 12;
 
 /** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#passwort-min-zeichen */
-export const PASSWORT_MIN_ZEICHEN = 8;
-
-export function passwortZuKurz(passwort: unknown): boolean {
-  return String(passwort ?? '').length < PASSWORT_MIN_ZEICHEN;
-}
+export const PASSWORT_MIN_ZEICHEN = passwortRegel.PASSWORT_MIN_ZEICHEN;
+export const passwortZuKurz = passwortRegel.passwortZuKurz;
 
 export const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
 

@@ -6,12 +6,13 @@ const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, passwortZuKurz, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
+import { passwortMangel } from '../src/infra/passwortRegel';
 import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
 import { setUserSetting } from '../src/konto/settings';
@@ -260,8 +261,8 @@ router.post('/users', requireAdmin, async (req, res: Antwort<'POST /api/v1/auth/
   if (!username || !password) return sendeFehler(req, res, 400, 'benutzername_passwort');
   if (!USERNAME_RE.test(String(username)))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
-  if (passwortZuKurz(password))
-    return sendeFehler(req, res, 400, 'passwort_zu_kurz');
+  const mangel = passwortMangel(password, username);
+  if (mangel) return sendeFehler(req, res, 400, mangel);
   // Streng: Die Zeichenkette "false" ist in JavaScript wahr und legte einen
   // Verwalter an.
   const roh = req.body.is_admin ?? req.body.isAdmin;
@@ -314,8 +315,8 @@ router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /a
   const { password } = req.body || {};
   const targetId = parseInt(pfadParam(req, 'id'));
 
-  if (!password || passwortZuKurz(password))
-    return sendeFehler(req, res, 400, 'passwort_zu_kurz');
+  const mangel = passwortMangel(password);
+  if (mangel) return sendeFehler(req, res, 400, mangel);
   if (!targetId || targetId === nutzerId(req))
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
 
@@ -358,7 +359,8 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
   if (!await bestaetigePasswort(req, res, uid, String(current))) return;
   // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
-  if (passwortZuKurz(newPassword)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
+  const mangel = passwortMangel(newPassword, req.session?.username);
+  if (mangel) return sendeFehler(req, res, 400, mangel);
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
   await K.aendereEigenesPasswort(uid, newPassword);
   if (req.session?.userId) {
@@ -516,8 +518,8 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 
   if (!username || !email || !password)
     return sendeFehler(req, res, 400, 'registrierung_felder');
-  if (passwortZuKurz(password))
-    return sendeFehler(req, res, 400, 'passwort_zu_kurz');
+  const mangel = passwortMangel(password, username);
+  if (mangel) return sendeFehler(req, res, 400, mangel);
   if (!EMAIL_RE.test(email))
     return sendeFehler(req, res, 400, 'email_ungueltig');
   if (!USERNAME_RE.test(username))
@@ -601,7 +603,8 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
 router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/reset-password'>) => {
   const { token, password } = req.body;
   if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
-  if (passwortZuKurz(password)) return sendeFehler(req, res, 400, 'passwort_zu_kurz');
+  const mangel = passwortMangel(password);
+  if (mangel) return sendeFehler(req, res, 400, mangel);
   const user = await K.kontoNachRuecksetzToken(hashToken(token));
   if (!user) return sendeFehler(req, res, 400, 'token_ungueltig');
   await K.setzePasswortZurueck(user.id, password);

@@ -72,7 +72,8 @@ test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
   // (src/konto/konten.ts), jede Route, die ein Passwort setzt, ruft ihn.
   assert.doesNotMatch(quelle, /bcrypt\.hash\(/, 'Eine Route hasht selbst — das gehört in den Kontodienst');
   const hashes = (quelle.match(/K\.(setzeFremdesPasswort|aendereEigenesPasswort|setzePasswortZurueck|legeKontoAn|registriere)\(/g) || []).length;
-  const pruefungen = (quelle.match(/passwortZuKurz\(/g) || []).length;
+  // Seit dem 01.11.2026 über passwortMangel(): Länge, 72 Byte, häufige Passwörter.
+  const pruefungen = (quelle.match(/passwortMangel\(/g) || []).length;
   assert.equal(hashes, 5,   // PUT /profile setzt seit dem 27.10. keines mehr
     `${hashes} Stellen setzen ein Passwort — die Zahl hat sich geaendert, der Test muss mit`);
   assert.equal(pruefungen, hashes,
@@ -140,8 +141,8 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   // gar nicht erst freigibt.
   const core = ohneKommentare(read('public/js/01-core.js'));
   const settings = ohneKommentare(read('public/js/05-settings.js'));
-  const webAufrufe = (core.match(/passwortZuKurz\(/g) || []).length
-                   + (settings.match(/passwortZuKurz\(/g) || []).length;
+  const webAufrufe = (core.match(/passwortRegelText\(/g) || []).length
+                   + (settings.match(/passwortRegelText\(/g) || []).length;
   // Fuenf Stellen setzen in der Webapp ein Passwort: Registrieren,
   // Zuruecksetzen, Aendern, Konto anlegen, Konto-Passwort zuruecksetzen.
   // Dazu die Definition selbst in 01-core.js.

@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, toast, passwortZuKurz, passwortZuKurzText } from './01-core.js';
+import { ico, G, api, toast, passwortRegelText } from './01-core.js';
 import { oeffneErfassen } from './02-gallery.js';
 
 // ═══ Einrichtung beim ersten Start (Server: routes/settings.ts /einrichtung) ═
@@ -65,7 +65,7 @@ export async function einrichtungWeiter() {
 export async function einrichtungPasswort() {
   const alt = G('ew-pw-alt').value, neu = G('ew-pw-neu').value, wdh = G('ew-pw-wdh').value;
   if (neu !== wdh) { toast(tRaw('settings.password.mismatch'), 'error'); return; }
-  if (passwortZuKurz(neu)) { toast(passwortZuKurzText(), 'error'); return; }
+  if (passwortRegelText(neu)) { toast(passwortRegelText(neu), 'error'); return; }
   const d = await api('POST', '/v1/auth/change-password', { current: alt, newPassword: neu });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   ['ew-pw-alt', 'ew-pw-neu', 'ew-pw-wdh'].forEach(id => { G(id).value = ''; });

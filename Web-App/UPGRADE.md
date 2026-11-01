@@ -654,3 +654,20 @@ Nichts zu tun ausser die neue `compose.yaml` zu übernehmen und
 QR-Codes gelten weiter. Wer `compose.yaml` angepasst hat: Die Zeile
 `./caddy/data/caddy/pki/authorities/local:/caddy-ca:ro` bei `app` ersetzen,
 `command:` und das Volume bei `caddy` und `volumes: ca-wurzel:` übernehmen.
+
+## 24. Passwortregel und Registrierung
+
+- **Passwörter**: mindestens 8 Zeichen, höchstens 72 Byte (bcrypt las bisher
+  nur die ersten 72 und schnitt den Rest still ab; Umlaute zählen doppelt),
+  und nicht auf der mitgelieferten Liste häufiger und aus Datenlecks bekannter
+  Passwörter (`src/infra/haeufige-passwoerter.txt`, keine Netzabfrage) und
+  nicht gleich dem Benutzernamen. Gilt für Registrierung, Ändern,
+  Zurücksetzen, Konto anlegen und Passwort setzen durch den Verwalter.
+  Bestehende Passwörter bleiben gültig; die Regel greift beim nächsten Setzen.
+- **`ADMIN_PASSWORD`** wird beim ersten Start nur übernommen, wenn es die
+  Regel erfüllt; sonst legt der Server ein zufälliges Startpasswort an
+  (Protokoll), das beim ersten Login zu ändern ist.
+- **Registrierung**: Ein schon vergebener Benutzername ergibt dieselbe
+  Antwort wie eine erfolgreiche Registrierung; die angegebene Adresse bekommt
+  eine Mail „Benutzername schon vergeben". So lässt sich ohne Postfach nicht
+  mehr abfragen, welche Konten es gibt.

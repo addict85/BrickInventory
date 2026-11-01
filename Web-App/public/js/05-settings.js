@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortZuKurz, passwortZuKurzText} from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -473,7 +473,7 @@ G('btn-sav-prof').onclick = async () => {
       // Vor dem Absenden pruefen — die App tut das in ihrer Oberflaeche
       // laengst (SettingsScreen sperrt den Knopf), die Webapp lief bis
       // hierher in den Serverfehler.
-      if (passwortZuKurz(pwN)) { toast(passwortZuKurzText(), 'error'); return; }
+      if (passwortRegelText(pwN)) { toast(passwortRegelText(pwN), 'error'); return; }
       const dPw = await api('POST', '/v1/auth/change-password', { current: pwC, newPassword: pwN });
       if (!dPw.success) {
         // Profil & Währung sind gespeichert, nur das Passwort schlug fehl —
@@ -736,7 +736,7 @@ function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2) {
 G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
   if(!n||!p){toast(tRaw('users.name_pw_req'),'error');return;}
-  if(passwortZuKurz(p)){toast(passwortZuKurzText(),'error');return;}
+  if(passwortRegelText(p)){toast(passwortRegelText(p),'error');return;}
   const admin_password = await bestaetigeMitPasswort(tRaw('users.create_title'), tRaw('users.admin_confirm_text'), 'schloss');
   if (admin_password === null) return;
   const d=await api('POST','/v1/auth/users',{username:n,password:p,is_admin:a,admin_password});
@@ -745,7 +745,7 @@ G('btn-cu').onclick=async()=>{
 function openRpw(uid){ G('rpw-uid').value=uid; G('rpw-v').value=''; G('pw-modal').classList.add('open'); }
 G('btn-rpw').onclick=async()=>{
   const neuesPw = G('rpw-v').value;
-  if(passwortZuKurz(neuesPw)){toast(passwortZuKurzText(),'error');return;}
+  if(passwortRegelText(neuesPw)){toast(passwortRegelText(neuesPw),'error');return;}
   const admin_password = await bestaetigeMitPasswort(tRaw('users.reset_pw_title'), tRaw('users.admin_confirm_text'), 'schloss');
   if (admin_password === null) return;
   const d=await api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:neuesPw, admin_password});
