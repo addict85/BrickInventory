@@ -4,6 +4,7 @@ import android.content.Context
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
+import ch.brickinventoryapp.util.teilelistenAblage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.coroutineScope
@@ -134,14 +135,7 @@ class PdfExportManager @Inject constructor(
             }
             when (val r = downloadResult) {
                 is Result.Success -> {
-                    // Unterverzeichnis pdf/: file_paths.xml grenzt den
-                    // FileProvider auf genau dieses Verzeichnis ein — vorher
-                    // waren die kompletten files-/cache-Wurzeln (inkl. des
-                    // API-Caches mit dem Inventar) über die Provider-Authority
-                    // freigegeben.
-                    val dir  = File(context.getExternalFilesDir(null) ?: context.filesDir, "pdf")
-                        .apply { mkdirs() }
-                    val file = File(dir, "teileliste.pdf")
+                    val file = teilelistenAblage(context.filesDir, context.getExternalFilesDir(null))
                     file.outputStream().use { it.write(r.data) }
                     _state.value = PdfExportState.Done(file)
                 }

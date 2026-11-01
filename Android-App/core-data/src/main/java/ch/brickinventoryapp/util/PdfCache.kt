@@ -66,3 +66,13 @@ fun vergissPdf(datei: File) {
 fun raeumeVertraulichePdfsAuf(cacheDir: File) {
     File(cacheDir, PDF_VERTRAULICH_ORDNER).deleteRecursively()
 }
+
+/**
+ * Wohin die Teileliste kommt: Sie trägt das Inventar, also nach filesDir. Den
+ * externen App-Bereich liest unter Android 8/9 jede App mit Speicherrecht; eine
+ * Kopie älterer Fassungen dort wird entfernt. pdf/ gibt file_paths.xml frei.
+ */
+internal fun teilelistenAblage(intern: File, extern: File?): File {
+    extern?.let { File(it, "pdf/teileliste.pdf").delete() }
+    return File(File(intern, "pdf").apply { mkdirs() }, "teileliste.pdf")
+}

@@ -166,6 +166,7 @@ fun PdfViewerScreen(
     // (dazu FLAG_SECURE über Sichtschutz im Graphen). Anleitungen bleiben im Zwischenspeicher.
     val vertraulich = remember(pdfUrl) { ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine(pdfUrl) }
     val ablage = remember(pdfUrl) { pdfAblage(ctx.cacheDir, pdfUrl, vertraulich) }
+    val speicherbar = remember(pdfUrl) { ch.brickinventoryapp.ui.viewmodel.pdfDarfGespeichertWerden(pdfUrl) }
     DisposableEffect(ablage) {
         onDispose { if (vertraulich) vergissPdf(ablage) }
     }
@@ -221,17 +222,18 @@ fun PdfViewerScreen(
                     }
                 },
                 actions = {
-                    // Beide Knöpfe erst im Zustand Ready: Sie arbeiten auf der
-                    // geladenen Datei. Der Herunterladen-Knopf stand vorher
-                    // ausserhalb dieser Bedingung und startete einen eigenen,
-                    // nicht authentifizierten Download (siehe savePdfToDownloads).
+                    // Erst im Zustand Ready: Beide Knöpfe arbeiten auf der geladenen
+                    // Datei, ein eigener Download kennte den Bearer-Token nicht.
+                    // Herunterladen nur, wo es erlaubt ist (pdfDarfGespeichertWerden).
                     val s = state
                     if (s is PdfLoadState.Ready) {
                         IconButton(onClick = { printPdf(ctx, s.file, title) }) {
                             Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
                         }
-                        IconButton(onClick = { savePdfToDownloads(ctx, s.file, title) }) {
-                            Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
+                        if (speicherbar) {
+                            IconButton(onClick = { savePdfToDownloads(ctx, s.file, title) }) {
+                                Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
+                            }
                         }
                     }
                 }
