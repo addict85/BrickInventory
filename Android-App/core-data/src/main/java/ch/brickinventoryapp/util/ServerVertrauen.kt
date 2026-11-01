@@ -127,13 +127,14 @@ class ZertifikatsFrage @Inject constructor() {
     }
 
     /**
-     * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Einen geänderten
-     * nur mit [eingabe] aus einer zweiten Quelle ([bestaetigtFingerabdruck]): Ein
-     * Tipp allein wäre genau das, was ein Angreifer dazwischen braucht.
+     * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Ohne bekannte CA
+     * oder bei geändertem Schlüssel nur mit [eingabe] aus einer zweiten Quelle
+     * ([bestaetigtFingerabdruck]): Dort prüft sonst niemand die Kette, und ein Tipp
+     * allein wäre genau das, was ein Angreifer dazwischen braucht.
      */
     fun bestaetige(pins: PinAblage, eingabe: String? = null): Boolean {
         val f = _offen.value ?: return false
-        if (f.art == ZertifikatUngeklaert.Art.GEAENDERT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
+        if (f.art != ZertifikatUngeklaert.Art.ERSTKONTAKT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
         pins.merkePin(f.schluessel, f.fingerabdruck)
         _offen.value = null
         return true

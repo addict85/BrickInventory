@@ -2,10 +2,17 @@ package ch.brickinventoryapp
 
 import android.content.ComponentName
 import android.content.Intent
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.core.net.toUri
+import androidx.navigation.NavController
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.ComposeNavigator
+import androidx.navigation.compose.composable
+import androidx.navigation.createGraph
 import ch.brickinventoryapp.alarm.PreisalarmWorker
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.Meldungseingang
@@ -18,6 +25,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
@@ -37,6 +45,10 @@ import org.robolectric.shadows.ShadowDialog
  *   (d) Ueberdeckungsschutz() setzt beim Verlassen nicht zurück → rot „ein
  *       geschuetzter Bildschirm schuetzt die Activity nur, solange er steht“
  *       (gegenproben/ueberdeckung-bleibt-an.patch)
+ *   (e) NurLauncherStart.onCreate entfernt nichts mehr → rot „ein fremder
+ *       Start …“ (gegenproben/start-behaelt-extras.patch)
+ *   (f) fremdeAngabenEntfernen() lässt die Extras stehen → rot „ohne Extras
+ *       navigiert …“ und „ein fremder Start …“ (gegenproben/extras-bleiben.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -96,5 +108,61 @@ class FremderEinstiegTest {
         zeigen.value = false
         compose.waitForIdle()
         assertFalse("Nach dem Bildschirm bleibt die übrige App ohne", fenster.filterTouchesWhenObscured)
+    }
+
+    // Wie Navigation den Pfad zum Ziel im Start-Intent erwartet: Wurzelgraph, dann das Ziel.
+    private fun angriff(nav: NavController) = Intent(Intent.ACTION_MAIN).apply {
+        putExtra(NavController.KEY_DEEP_LINK_IDS, intArrayOf(nav.graph.id, nav.graph.findNode("konto")!!.id))
+        data = "android-app://androidx.navigation/konto".toUri()
+    }
+
+    private fun navigation() = NavHostController(ctx.applicationContext).apply {
+        navigatorProvider.addNavigator(ComposeNavigator())
+        graph = createGraph(startDestination = "start") {
+            composable("start") {}
+            composable("konto") {}
+        }
+    }
+
+    @Test
+    fun `ohne Extras navigiert ein fremder Deep-Link nicht`() {
+        val offen = navigation()
+        assertTrue("Ohne Entfernen springt der fremde Start ins Ziel", offen.handleDeepLink(angriff(offen)))
+        assertEquals("konto", offen.currentDestination?.route)
+
+        val nav = navigation()
+        val bereinigt = angriff(nav).also { fremdeAngabenEntfernen(it) }
+        assertFalse(nav.handleDeepLink(bereinigt))
+        assertEquals("start", nav.currentDestination?.route)
+    }
+
+    @Test
+    fun `ein fremder Start erreicht die Activity ohne Extras und Daten`() {
+        val nav = navigation()
+        val start = angriff(nav).setClass(ctx, ProbeStart::class.java)
+        val probe = Robolectric.buildActivity(ProbeStart::class.java, start).create()
+        assertNull("Extras beim Start", probe.get().gesehen?.extras)
+        assertNull("Daten beim Start", probe.get().gesehen?.data)
+
+        probe.start().resume().newIntent(angriff(nav).setClass(ctx, ProbeStart::class.java))
+        assertNull("Extras bei onNewIntent", probe.get().neu?.extras)
+        assertNull("Daten bei onNewIntent", probe.get().neu?.data)
+        assertTrue("MainActivity entfernt nicht", NurLauncherStart::class.java.isAssignableFrom(MainActivity::class.java))
+    }
+}
+
+/** Hält fest, was nach NurLauncherStart beim eigenen Code ankommt. */
+class ProbeStart : NurLauncherStart() {
+    var gesehen: Intent? = null
+    var neu: Intent? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        gesehen = Intent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        neu = Intent(intent)
     }
 }

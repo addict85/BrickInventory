@@ -11,14 +11,15 @@
   es in <files>/pdf/ ab, PdfExportService und TeilelisteViewModel reichen es
   per ACTION_VIEW weiter).
 
-  Beide Wurzeln (extern + intern), weil der Manager auf filesDir
-  zurückfällt, wenn getExternalFilesDir(null) null liefert.
-
   export/ kam mit der BrickLink-Wunschliste dazu (PartsListFeature.
   exportPartsBricklink legt bricklink-wanted.xml dort ab und reicht sie per
   ACTION_SEND weiter). Ein EIGENES Verzeichnis und nicht pdf/, damit an der
   Freigabe ablesbar bleibt, was sie hergibt — und damit ein künftiger Export
   nicht stillschweigend im PDF-Ordner landet.
+
+  pdf/ in beiden Wurzeln: intern die Teileliste (sie trägt das Inventar),
+  extern nur, was der PDF-Betrachter unter Android 8/9 zum Teilen ablegt —
+  Anleitungen, keine Gutscheine.
 -->
 <paths>
     <external-files-path name="pdf_external" path="pdf/" />

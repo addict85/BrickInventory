@@ -32,9 +32,9 @@ import ch.brickinventoryapp.util.fingerabdruckLesbar
 /**
  * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der
  * Fingerabdruck steht in derselben Schreibweise da wie in der Webapp, damit man
- * ihn vergleichen kann; ein geänderter Schlüssel nennt den bisherigen und den neuen
- * und gilt erst, wenn man den neuen aus einer zweiten Quelle abschreibt — ein
- * einzelner Tipp wird sonst zur Gewohnheit, und genau die nutzt ein Angreifer.
+ * ihn vergleichen kann. Ohne bekannte CA oder bei geändertem Schlüssel gilt er erst,
+ * wenn man ihn aus einer zweiten Quelle abschreibt — dort prüft sonst niemand die
+ * Kette, und ein einzelner Tipp wird zur Gewohnheit, die ein Angreifer nutzt.
  * [onVertrauen] bekommt die Eingabe und sagt, ob sie passte.
  */
 @Composable
@@ -54,6 +54,7 @@ fun ZertifikatDialog(
         ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
     }
     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
+    val abschreiben = frage.art != ZertifikatUngeklaert.Art.ERSTKONTAKT
     AlertDialog(
         onDismissRequest = onAbbrechen,
         title = { Text(stringResource(titel), modifier = Modifier.semantics { heading() }) },
@@ -72,11 +73,11 @@ fun ZertifikatDialog(
                 Text(fingerabdruckLesbar(frage.fingerabdruck), fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
-                if (geaendert) {
+                if (abschreiben) {
                     OutlinedTextField(
                         value = eingabe,
                         onValueChange = { eingabe = it; falsch = false },
-                        label = { Text(stringResource(R.string.zert_geaendert_eingabe)) },
+                        label = { Text(stringResource(if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
                         isError = falsch,
                         supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
                         textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
@@ -94,8 +95,8 @@ fun ZertifikatDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { falsch = !onVertrauen(eingabe.takeIf { geaendert }) },
-                enabled = !geaendert || eingabe.isNotBlank(),
+                onClick = { falsch = !onVertrauen(eingabe.takeIf { abschreiben }) },
+                enabled = !abschreiben || eingabe.isNotBlank(),
                 colors = if (geaendert) ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                          else ButtonDefaults.textButtonColors(),
             ) { Text(stringResource(if (geaendert) R.string.zert_vertrauen_neu else R.string.zert_vertrauen)) }

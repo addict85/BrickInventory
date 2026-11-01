@@ -740,6 +740,7 @@
     <string name="update_pruefung_fehlgeschlagen">Die Suche nach einem Update ist fehlgeschlagen — keine Verbindung zu GitHub.</string>
     <string name="update_laden_fehlgeschlagen">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde geloescht.</string>
     <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schluessel signiert wie diese und wurde geloescht. Installiert wurde nichts.</string>
+    <string name="update_fassung_falsch">Die geladene App trägt eine andere Fassung als angekündigt und wurde gelöscht. Installiert wurde nichts.</string>
     <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
     <string name="update_installer_fehlt">Die Installation liess sich nicht starten.</string>
     <string name="update_installation_fehlgeschlagen">Die Installation ist gescheitert: %1$s</string>
@@ -852,7 +853,7 @@
     <string name="zert_titel_unbekannt">Unbekanntes Zertifikat</string>
     <string name="zert_titel_geaendert">Das Zertifikat des Servers hat sich geändert</string>
     <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Vergleiche den Fingerabdruck Zeichen für Zeichen mit dem, den die Webapp unter Einstellungen → Server-Zertifikat zeigt. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
-    <string name="zert_text_unbekannt">Das Zertifikat von %1$s stammt von keiner bekannten Stelle – es ist selbst ausgestellt oder kommt von einer eigenen Zertifizierungsstelle. Für einen Server zu Hause ist das üblich, es kann aber auch jemand dazwischen sein. Nur vertrauen, wenn der Fingerabdruck mit dem übereinstimmt, den die Webapp unter Einstellungen → Server-Zertifikat zeigt.</string>
+    <string name="zert_text_unbekannt">Das Zertifikat von %1$s stammt von keiner bekannten Stelle – es ist selbst ausgestellt oder kommt von einer eigenen Zertifizierungsstelle. Für einen Server zu Hause ist das üblich, es kann aber auch jemand dazwischen sein. Darum genügt hier kein Tipp: Schreibe die letzten 16 Zeichen des Fingerabdrucks aus der Webapp (Einstellungen → Server-Zertifikat) ab – nicht von diesem Bildschirm. Einfacher geht es mit dem QR-Code der Webapp, er trägt den Fingerabdruck mit.</string>
     <string name="zert_text_geaendert">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast.</string>
     <string name="zert_fingerabdruck">Fingerabdruck (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_jetzt">Jetzt gezeigt (neu)</string>
@@ -862,8 +863,9 @@
     <string name="zert_nutzer_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
     <string name="zert_geaendert_eingabe">Die letzten 16 Zeichen des neuen Fingerabdrucks, abgeschrieben aus der Webapp (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Webapp scannen.</string>
+    <string name="zert_unbekannt_eingabe">Die letzten 16 Zeichen des Fingerabdrucks, abgeschrieben aus der Webapp (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_eingabe_falsch">Das passt nicht zum gezeigten Fingerabdruck.</string>
-    <string name="setup_qr_pin_geaendert">Dieser Code nennt ein anderes Zertifikat als das für diesen Server bestätigte. Nur fortfahren, wenn du den Server selbst umgestellt hast.</string>
+    <string name="setup_qr_pin_geaendert">Dieser Code nennt ein anderes Zertifikat als das für diesen Server bestätigte. Nur fortfahren, wenn du den Server selbst umgestellt hast – dann zeigt die Webapp unter Einstellungen → Server-Zertifikat den neuen Fingerabdruck; schreibe seine letzten 16 Zeichen unten ab.</string>
     <string name="setup_qr_pin_uebernehmen">Neues Zertifikat annehmen und anmelden</string>
     <string name="setup_qr_pin_wechsel_abgelehnt">Der QR-Code nennt ein anderes Zertifikat als das bestätigte. Es wurde nichts geändert.</string>
     <string name="common_load_failed">Konnte nicht geladen werden</string>

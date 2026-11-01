@@ -16,12 +16,13 @@ import java.security.MessageDigest
 /**
  * Die App aktualisiert sich selbst aus dem GitHub-Release: beim Start still
  * prüfen, nie von allein laden. Es geht, weil der versionCode monoton steigt
- * (BASIS + Minuten seit 2020, app/build.gradle.kts).
+ * (VERSION_CODE_BASE + Anzahl Commits, app/build.gradle.kts).
  *
  * 1. version.json aus dem Release lesen
  * 2. versionCode vergleichen — echt grösser, nie „ungleich“
  * 3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage prüfen
- * 4. Signatur mit der installierten App vergleichen, erst dann anbieten
+ * 4. Signatur mit der installierten App vergleichen und den versionCode IM APK
+ *    gegen version.json ([fassungPasst]), erst dann anbieten
  *
  * Schritt 4 ersetzt Androids Prüfung nicht, er kommt früher: Ein fremdes APK wird
  * gar nicht erst angeboten.
@@ -96,6 +97,12 @@ private fun fingerabdruecke(ctx: Context, apk: File): Signatur? {
     if (info.packageName != ctx.packageName) return null
     return signaturen(info)
 }
+
+/** Der versionCode im geladenen APK; `null`, wenn es nicht lesbar ist. */
+@Suppress("DEPRECATION") // die Fassung mit PackageInfoFlags gibt es erst ab API 33
+fun apkFassung(ctx: Context, apk: File): Long? =
+    ctx.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+        ?.let { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it) }
 
 /** Dieselbe Ermittlung fuer die INSTALLIERTE App. */
 private fun eigeneFingerabdruecke(ctx: Context): Signatur? {

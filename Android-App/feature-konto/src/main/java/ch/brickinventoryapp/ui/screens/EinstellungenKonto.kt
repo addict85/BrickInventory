@@ -34,8 +34,8 @@ internal fun KontoCard(
     // Gültigkeitsbereiche, UiStateFieldsTest bestimmt den Typ aber je Name und Datei
     // und hielte die Felder für fehlend.
     kontoZustand: ch.brickinventoryapp.ui.KontoUiState,
-    onSpeichern: (String, String, String, String, String?) -> Unit,
-    onPasswort: (String, String) -> Unit,
+    onSpeichern: (String, String, String, String, String?, String?) -> Unit,
+    onPasswort: (String, String, String?) -> Unit,
     onMeldungWeg: () -> Unit,
 ) {
     val profil = kontoZustand.profil
@@ -47,9 +47,13 @@ internal fun KontoCard(
     var email        by remember(profil) { mutableStateOf(profil?.email.orEmpty()) }
     var vorname      by remember(profil) { mutableStateOf(profil?.firstName.orEmpty()) }
     var nachname     by remember(profil) { mutableStateOf(profil?.lastName.orEmpty()) }
-    var pwAktuell    by rememberSaveable { mutableStateOf("") }
+    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
+    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    var pwAktuell    by remember { mutableStateOf("") }
     var pwFuerEmail  by remember(profil) { mutableStateOf("") }
-    var pwNeu        by rememberSaveable { mutableStateOf("") }
+    var pwNeu        by remember { mutableStateOf("") }
+    var faktorCode   by remember { mutableStateOf("") }
+    val code = faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }
 
     val emailNeu = profil != null && !email.trim().equals(profil.email.orEmpty(), ignoreCase = true)
     val geaendert = profil != null && (
@@ -69,6 +73,8 @@ internal fun KontoCard(
             Text(kontoZustand.fehler, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
+        // Erst nachdem der Server ihn verlangt hat; gilt für E-Mail und Passwort.
+        if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
 
         if (profil != null) {
             val tippen: (String) -> Unit = { onMeldungWeg() }
@@ -111,7 +117,7 @@ internal fun KontoCard(
                     modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf)
             }
             Button(
-                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }) },
+                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }, code) },
                 enabled = geaendert && !kontoZustand.speichert && (!emailNeu || pwFuerEmail.isNotEmpty()),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
@@ -146,12 +152,23 @@ internal fun KontoCard(
                 modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
             OutlinedButton(
-                onClick = { onPasswort(pwAktuell, pwNeu) },
+                onClick = { onPasswort(pwAktuell, pwNeu, code) },
                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
         }
     }
+}
+
+/** Der Code des zweiten Faktors, den der Server für Passwort und E-Mail verlangt. */
+@Composable
+internal fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
+    OutlinedTextField(
+        value = code, onValueChange = { onCode(it.take(24)) },
+        label = { Text(stringResource(R.string.login_code)) },
+        supportingText = { Text(stringResource(R.string.login_code_hint)) },
+        modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
 }
 
 /**
@@ -178,8 +195,9 @@ internal fun ZweiterFaktorCard(
     onAbschalten: (String, String) -> Unit,
     onZurueck: () -> Unit,
 ) {
-    var zfPasswort by rememberSaveable { mutableStateOf("") }
-    var zfCode     by rememberSaveable { mutableStateOf("") }
+    // Passwörter nur in remember, siehe oben.
+    var zfPasswort by remember { mutableStateOf("") }
+    var zfCode     by remember { mutableStateOf("") }
     var ohneApp    by rememberSaveable { mutableStateOf(false) }
     val auswahlTitel = stringResource(R.string.zf_open_app)
     val kontext = androidx.compose.ui.platform.LocalContext.current
@@ -236,7 +254,7 @@ internal fun ZweiterFaktorCard(
                 Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodySmall)
                 Button(
                     onClick = {
-                        val uri = zfZustand.otpauth
+                        val uri = ch.brickinventoryapp.util.otpauthAdresse(zfZustand.otpauth)
                         ohneApp = uri == null || !oeffneMitAuswahl(kontext, uri, auswahlTitel)
                     },
                     modifier = Modifier.fillMaxWidth(), shape = Formen.knopf

@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.eigeneAdresse
 import ch.brickinventoryapp.util.externeAdresse
+import ch.brickinventoryapp.util.otpauthAdresse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -15,6 +16,8 @@ import org.junit.Test
  *      geht an den Browser“ (http durchgelassen)
  *   B  in eigeneAdresse() die Prüfung auf denselben Host entfernt → rot „ein
  *      local_path bleibt auf dem eigenen Server“
+ *   C  (01.11.2026) in otpauthAdresse() die Schema-Prüfung entfernt → rot „an
+ *      die Authenticator-App geht nur otpauth“ (https durchgelassen)
  */
 class ExterneAdresseTest {
 
@@ -25,6 +28,18 @@ class ExterneAdresseTest {
         for (fremd in listOf("http://www.bricklink.com/x", "intent://scan/#Intent;scheme=zxing;end", "file:///data/data/x",
                              "content://ch.brickinventoryapp.provider/x", "javascript:alert(1)", "", null)) {
             assertNull("$fremd", externeAdresse(fremd))
+        }
+    }
+
+    @Test
+    fun `an die Authenticator-App geht nur otpauth`() {
+        val echt = "otpauth://totp/BrickInventory%3Amarco?secret=JBSWY3DPEHPK3PXP&issuer=BrickInventory"
+        assertEquals(echt, otpauthAdresse(" $echt "))
+        assertEquals("OTPAUTH://hotp/x?secret=A", otpauthAdresse("OTPAUTH://hotp/x?secret=A"))
+        for (fremd in listOf("https://fremd.example/?secret=JBSWY3DP", "intent://totp/#Intent;scheme=otpauth;end",
+                             "otpauth:totp/x?secret=A", "otpauth://evil/x?secret=A", "otpauth://totp/x y?secret=A",
+                             "content://ch.brickinventoryapp.provider/x", "", null)) {
+            assertNull("$fremd", otpauthAdresse(fremd))
         }
     }
 

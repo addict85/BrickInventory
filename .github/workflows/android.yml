@@ -487,14 +487,13 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  # ── Veröffentlichen: der einzige Job mit Schreibrecht ─────────────────────
   # ── Signieren: Secrets ohne Projektcode ──────────────────────────────────
   #
   # Der Schlüssel sieht weder Gradle noch ein Plugin noch ein Werkzeug aus dem
   # Repository: kein Checkout, nur das Artefakt des Bau-Jobs und apksigner/
   # zipalign aus dem SDK des Runners (Prüfsummen im Protokoll). Auf main mit
-  # der Environment `release` — dort liegen die Secrets, und deren Regeln
-  # (nur main, Prüfer) gelten zusätzlich. Auf Zweigen derselbe Ablauf mit einem
+  # der Environment `release`: Nur dort liegen die Secrets, und ihre Regeln
+  # (nur main, Pflichtprüfer) gelten. Auf Zweigen derselbe Ablauf mit einem
   # Wegwerfschlüssel, ohne Environment und ohne Secrets.
   signieren:
     needs: build
@@ -528,7 +527,7 @@ jobs:
           trap 'rm -f "$KS"' EXIT
           if [ "$ECHT" = "true" ]; then
             if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
-              echo "::error::Auf main fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — in der Environment release oder als Repository-Secret. Ohne Signatur wird nichts veröffentlicht."
+              echo "::error::Auf main fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — sie gehören in die Environment release. Ohne Signatur wird nichts veröffentlicht."
               exit 1
             fi
             printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KS"
@@ -653,9 +652,15 @@ jobs:
           python3 tools/apk-ausrichtung.py \
             app/build/outputs/apk/release/BrickInventory.apk
 
+  # ── Veröffentlichen: der einzige Job mit Schreibrecht ─────────────────────
+  #
+  # Was hier landet, holt sich jede installierte App als Update. Darum hängt
+  # auch dieser Job an der Environment `release`: Ihre Pflichtprüfer geben die
+  # Veröffentlichung frei, nicht schon der Push auf main allein.
   release:
     needs: [signieren, apk-pruefen]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    environment: release
     runs-on: ubuntu-latest
     permissions:
       contents: write

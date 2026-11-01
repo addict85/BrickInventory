@@ -86,8 +86,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      # Lockfiles im ganzen Baum: Web-App/package-lock.json und die
-      # Gradle-Abhängigkeiten der App. Nur behebbare Lücken ab „high“ sind rot.
+      # Lockfiles im Baum, praktisch Web-App/package-lock.json: Die App hat keine
+      # gradle.lockfile (siehe Job android-abhaengigkeiten). Nur behebbare
+      # Lücken ab „high“ sind rot.
       - name: Abhängigkeiten im Dateisystem
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -185,3 +186,53 @@ jobs:
         run: |
           [ -f "$RUNNER_TEMP/server.log" ] || exit 0
           echo "::error title=Serverprotokoll::$(tail -c 3000 "$RUNNER_TEMP/server.log" | tr '\n' '~' | sed 's/%/%25/g; s/~/%0A/g')"
+
+  # ── Abhängigkeiten der App ────────────────────────────────────────────────
+  # Trivy liest Gradle nur aus gradle.lockfile, und der Bau hat kein Locking.
+  # Ein Init-Skript schreibt die Lockfiles hier für die Laufzeit-Klassenpfade
+  # (dieselben Auflösungen wie das Release, also deckt verification-metadata
+  # sie ab). Vorerst nur ein Bericht: Er bricht nicht, bis ein Lauf gezeigt hat,
+  # was er findet.
+  android-abhaengigkeiten:
+    name: Trivy (Android-Abhängigkeiten, nur Bericht)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+      - name: Lockfiles schreiben
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --no-configuration-cache --init-script tools/abhaengigkeiten-sperren.init.gradle \
+            abhaengigkeitenSperren --write-locks
+          ls */gradle.lockfile
+      - name: Bekannte Lücken
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: Android-App
+          scanners: vuln
+          severity: MEDIUM,HIGH,CRITICAL
+          format: table
+          output: trivy-android.txt
+          exit-code: '0'
+      - name: Bericht
+        if: always()
+        working-directory: .
+        run: |
+          [ -f trivy-android.txt ] || exit 0
+          { echo '## Android-Abhängigkeiten (Trivy)'; echo '```'; cat trivy-android.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if grep -qE 'Total: [1-9]' trivy-android.txt; then
+            echo "::warning title=Android-Abhängigkeiten::Trivy meldet bekannte Lücken, siehe Zusammenfassung."
+          fi

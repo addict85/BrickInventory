@@ -64,6 +64,8 @@ import javax.net.ssl.X509ExtendedTrustManager
  *      rot „ein geaenderter Schluessel gilt erst mit abgeschriebenem …“
  *   K  bestaetigtFingerabdruck() mit `>= 4` statt `>= 16` → rot „ein
  *      geaenderter Schluessel …“ (vier getippte Zeichen genügten)
+ *   L  in bestaetige() wieder nur GEAENDERT prüfen (`f.art == GEAENDERT &&`)
+ *      → rot „ohne bekannte CA genuegt ein Tipp nicht …“
  */
 class ZertifikatPinTest {
 
@@ -125,12 +127,15 @@ class ZertifikatPinTest {
         assertTrue("Nach der Bestätigung gilt der Pin", hole(system(ROOT)))
     }
 
+    /** Die letzten 16 Hex-Zeichen, wie sie jemand aus der Webapp abschreibt. */
+    private fun abgeschrieben() = fingerabdruckLesbar(frage.offen.value!!.fingerabdruck).takeLast(23)
+
     @Test
     fun `nach der Bestaetigung gilt der Pin auch ohne bekannte CA`() {
         starte()
         assertFalse(hole(system(FREMD)))
         assertEquals(ZertifikatUngeklaert.Art.UNBEKANNTE_CA, frage.offen.value?.art)
-        frage.bestaetige(pins)
+        assertTrue(frage.bestaetige(pins, abgeschrieben()))
         assertTrue(hole(system(FREMD)))
         assertEquals(1, server.requestCount)
     }
@@ -181,7 +186,7 @@ class ZertifikatPinTest {
         val f = frage.offen.value!!
         assertEquals(ZertifikatUngeklaert.Art.UNBEKANNTE_CA, f.art)
         assertEquals(spkiFingerabdruck(zert(ERNEUERT_WURZEL)), f.fingerabdruck)
-        frage.bestaetige(pins)
+        assertTrue(frage.bestaetige(pins, abgeschrieben()))
         assertTrue(hole(system(FREMD)))
 
         // Derselbe Server nach der Erneuerung; ein neuer Testserver braucht einen
@@ -238,6 +243,31 @@ class ZertifikatPinTest {
         assertTrue(frage.bestaetige(pins, hex.takeLast(23).lowercase()))
         assertNull(frage.offen.value)
         assertTrue(hole(system(ROOT)))
+    }
+
+    @Test
+    fun `ohne bekannte CA genuegt ein Tipp nicht, der Fingerabdruck wird abgeschrieben`() {
+        starte()
+        assertFalse(hole(system(FREMD)))
+        val f = frage.offen.value!!
+        assertEquals(ZertifikatUngeklaert.Art.UNBEKANNTE_CA, f.art)
+
+        assertFalse("Ein Tipp genügt nicht", frage.bestaetige(pins))
+        assertFalse("Falsche Zeichen", frage.bestaetige(pins, "00:11:22:33:44:55:66:77"))
+        assertNull("Nichts gemerkt", pins.pin(eigener()))
+        assertFalse("Ohne Pin geht nichts hinaus", hole(system(FREMD)))
+        assertEquals(0, server.requestCount)
+
+        assertTrue(frage.bestaetige(pins, abgeschrieben()))
+        assertTrue(hole(system(FREMD)))
+    }
+
+    @Test
+    fun `beim Erstkontakt mit gueltiger Kette genuegt der Vergleich`() {
+        starte()
+        assertFalse(hole(system(ROOT)))
+        assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
+        assertTrue("Die Kette hat das System geprüft", frage.bestaetige(pins))
     }
 
     /** Den Vergleichswert hat openssl gerechnet, unabhängig von der App. */

@@ -123,6 +123,9 @@ test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schl�
 // `environment:` entfernt → rot „… Environment release“; `needs: [signieren,
 // apk-pruefen]` am Release-Job → `needs: build` → rot „… veröffentlicht nur
 // das geprüfte, signierte APK“.
+// Gegenproben (01.11.2026, zweite Runde): `environment: release` am Release-Job
+// entfernt → rot „… erst nach Freigabe“; die Fehlermeldung wieder mit „oder
+// als Repository-Secret“ → rot „… nur aus der Environment“.
 test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffentlicht danach', () => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8')
     .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
@@ -151,4 +154,7 @@ test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffe
   const release = job('release');
   assert.match(release, /\n    needs: \[signieren, apk-pruefen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
   assert.match(release, /name: apk-signiert/);
+  assert.match(release, /\n    environment: release\n/, 'das Release mit Schreibrecht läuft erst nach Freigabe in der Environment release');
+  assert.match(release, /\n    permissions:\n      contents: write\n/);
+  assert.doesNotMatch(signieren, /Repository-Secret/, 'die Signier-Secrets kommen nur aus der Environment');
 });

@@ -12,6 +12,7 @@ import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.AnmeldeUiState
 import ch.brickinventoryapp.ui.qrFehler
 import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.bestaetigtFingerabdruck
 import ch.brickinventoryapp.util.pinSchluessel
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.model.LoginResponse
@@ -150,14 +151,15 @@ class AnmeldungViewModel @Inject constructor(
     /**
      * Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem
      * Code. Sein Fingerabdruck gilt schon für die erste Anfrage, gemerkt wird er aber
-     * erst nach gelungener Anmeldung. Ein anderer als der gemerkte nur mit
-     * [pinWechselBestaetigt] (Dialog mit bisher/neu), nie still. Ein Code mit
-     * http-Adresse wird nicht übernommen, auch wenn die Oberfläche ihn durchliesse.
+     * erst nach gelungener Anmeldung. Ein anderer als der gemerkte nur, wenn
+     * [pinWechselEingabe] ihn aus einer zweiten Quelle bestätigt: Ein Code kann von
+     * jedem stammen, ein Tipp genügte sonst für einen fremden Schlüssel. Ein Code
+     * mit http-Adresse wird nicht übernommen, auch wenn die Oberfläche ihn durchliesse.
      */
     fun loginWithQrToken(
         serverUrl: String, token: String,
         abmelden: suspend () -> Unit = {}, fingerabdruck: String? = null,
-        pinWechselBestaetigt: Boolean = false,
+        pinWechselEingabe: String? = null,
     ) {
         val neu = NetworkPolicy.normalisiere(serverUrl)
         if (NetworkPolicy.adressfehler(neu, NetworkPolicy.entwicklung) != null) {
@@ -165,7 +167,8 @@ class AnmeldungViewModel @Inject constructor(
             return
         }
         val schluessel = if (fingerabdruck != null) pinSchluessel(neu) else null
-        if (schluessel != null && !pinWechselBestaetigt && bisherigerPin(neu, fingerabdruck) != null) {
+        if (schluessel != null && fingerabdruck != null && bisherigerPin(neu, fingerabdruck) != null &&
+            !bestaetigtFingerabdruck(pinWechselEingabe, fingerabdruck)) {
             _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(R.string.setup_qr_pin_wechsel_abgelehnt)) }
             return
         }

@@ -1,6 +1,8 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.viewmodel.gutscheinExportAdresse
 import ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse
+import ch.brickinventoryapp.ui.viewmodel.pdfDarfGespeichertWerden
 import ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine
 import ch.brickinventoryapp.util.PDF_VERTRAULICH_ORDNER
 import ch.brickinventoryapp.util.pdfAblage
@@ -30,6 +32,10 @@ import java.io.File
  *      das PDF samt Teildatei …“
  *   C  im PdfViewerScreen das `onDispose { … vergissPdf(ablage) }` entfernt →
  *      rot „Betrachter, Abmelden und Start räumen auf“
+ *   D  (01.11.2026) pdfDarfGespeichertWerden() immer true → rot „ein
+ *      Gutschein-PDF laesst sich nicht herunterladen …“
+ *   E  (01.11.2026) im PdfViewerScreen `if (speicherbar)` um den Knopf entfernt
+ *      → rot „Betrachter, Abmelden und Start räumen auf“ (Knopf ungeschützt)
  */
 class GutscheinPdfAblageTest {
 
@@ -73,11 +79,20 @@ class GutscheinPdfAblageTest {
     }
 
     @Test
+    fun `ein Gutschein-PDF laesst sich nicht herunterladen, eine Anleitung schon`() {
+        assertFalse(pdfDarfGespeichertWerden(gutschein))
+        assertFalse(pdfDarfGespeichertWerden(gutscheinExportAdresse("https://brick.example/")))
+        assertTrue(pdfDarfGespeichertWerden(anleitung))
+    }
+
+    @Test
     fun `Betrachter, Abmelden und Start raeumen auf`() {
         val betrachter = Quellen.ohneKommentare(Quellen.lies("ui/screens/PdfViewerScreen.kt"))
         assertTrue("Der Betrachter löscht ein Gutschein-PDF beim Verlassen nicht",
             Regex("""onDispose\s*\{\s*if \(vertraulich\) vergissPdf\(ablage\)""").containsMatchIn(betrachter))
         assertTrue("Der Betrachter legt nicht über pdfAblage() ab", betrachter.contains("pdfAblage(ctx.cacheDir, pdfUrl, vertraulich)"))
+        assertTrue("Herunterladen steht ohne Prüfung da",
+            Regex("""if \(speicherbar\) \{\s*IconButton\(onClick = \{ savePdfToDownloads\(""").containsMatchIn(betrachter))
         val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt")), "fun logout(")
         assertTrue("Abmelden lässt Gutschein-PDFs liegen", abmelden.contains("raeumeVertraulichePdfsAuf("))
         assertTrue("Der Start räumt Reste nicht weg",

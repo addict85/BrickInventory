@@ -127,10 +127,11 @@ class ServicePolishTest {
             "file_paths.xml deckt das pdf/-Verzeichnis nicht mehr ab — das Öffnen des " +
                 "exportierten Teilelisten-PDFs bricht dann mit SecurityException ab"
         }
-        // Und der Export muss auch dort ablegen, wo der Provider hinzeigt:
+        // Und der Export muss auch dort ablegen, wo der Provider hinzeigt; wohin
+        // teilelistenAblage() legt, prüft TeilelistenAblageTest (core-data).
         val mgr = code(read("java/ch/brickinventoryapp/service/PdfExportManager.kt"))
-        assert(mgr.contains("\"pdf\"")) {
-            "PdfExportManager schreibt das PDF nicht mehr ins pdf/-Unterverzeichnis — " +
+        assert(mgr.contains("teilelistenAblage(context.filesDir")) {
+            "PdfExportManager legt die Teileliste nicht über teilelistenAblage() in filesDir/pdf ab — " +
                 "ausserhalb des freigegebenen Pfads wirft FileProvider.getUriForFile()"
         }
     }

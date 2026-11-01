@@ -109,13 +109,13 @@ auf einen ungeprüften Zweig.
 Signiert wird in einem eigenen Job `signieren`, der nur das unsignierte APK aus
 dem Bau-Job bekommt und keinen Projektcode ausführt (kein Checkout, kein
 Gradle; `zipalign`/`apksigner` aus dem SDK des Runners). Auf `main` läuft er in
-der Environment `release`; dort gehören die vier Secrets `KEYSTORE_BASE64`,
+der Environment `release`; nur dort gehören die vier Secrets `KEYSTORE_BASE64`,
 `KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` hin (GitHub → Settings →
-Environments → `release`: Deployment-Branch nur `main`, auf Wunsch Pflichtprüfer).
-Repository-Secrets gleichen Namens werden übergangsweise weiter gelesen. Fehlen
+Environments → `release`: Deployment-Branch nur `main`, Pflichtprüfer). Fehlen
 sie auf `main`, wird der Lauf rot und nichts veröffentlicht. Danach prüft der
 Job `apk-pruefen` das signierte APK (R8, 16-KB-Ausrichtung), erst dann
-veröffentlicht `release` — siehe *Release signieren*.
+veröffentlicht `release` — ebenfalls in der Environment `release`, also erst
+nach der Freigabe eines Prüfers. Siehe *Release signieren*.
 
 ## Erster Start
 1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen
@@ -396,10 +396,18 @@ werden:
 
 Unter **Settings → Environments → New environment** die Environment `release`
 anlegen: *Deployment branches and tags* auf *Selected branches* mit `main`
-stellen, auf Wunsch *Required reviewers* setzen (dann wartet jeder
-Veröffentlichungslauf auf ein Ja). Dort unter *Environment secrets* vier
-Secrets anlegen und die gleichnamigen Repository-Secrets danach löschen — bis
-dahin liest der Job sie übergangsweise weiter:
+stellen und *Required reviewers* setzen (empfohlen; ohne sie veröffentlicht
+jeder Push auf `main` ohne menschliche Freigabe). Die Jobs `signieren` und
+`release` warten dann je auf ein Ja. Dort unter *Environment secrets* vier
+Secrets anlegen.
+
+**Übergang:** Gleichnamige Repository-Secrets danach löschen. Der Workflow
+braucht sie nicht mehr; solange sie bestehen, könnte jeder Job auf `main` sie
+lesen, auch ohne Freigabe.
+
+Dazu gehört eine Branch-Protection (oder ein Ruleset) auf `main`: Merge nur
+über Pull-Request mit grüner CI, kein Force-Push. Sonst genügt ein direkter
+Push, um Code bis vor die Freigabe zu bringen.
 
 | Secret              | Inhalt                        |
 |---------------------|-------------------------------|

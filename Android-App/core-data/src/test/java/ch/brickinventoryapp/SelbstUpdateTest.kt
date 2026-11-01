@@ -127,6 +127,11 @@ class SelbstUpdateTest {
         assert(starte.contains("signaturPasst(ctx, datei)")) {
             "Der zweite Installationsweg prueft die Signatur nicht"
         }
+        // Und die Fassung im APK gegen version.json (fassungPasst, UpdateFassungTest).
+        assert(feature.substringBefore("fun starteInstallation()").contains("fassungPasst(") &&
+            starte.contains("fassungPasst(apkFassung(ctx, datei)")) {
+            "Ein Weg installiert, ohne den versionCode im APK zu pruefen"
+        }
     }
 
     @Test

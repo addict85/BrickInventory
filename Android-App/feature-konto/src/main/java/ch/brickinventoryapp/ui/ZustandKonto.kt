@@ -14,6 +14,8 @@ data class KontoUiState(
     val speichert: Boolean = false,
     val meldung: String? = null,
     val fehler: String? = null,
+    /** Der Server verlangt den zweiten Faktor (zweiter_faktor_noetig): Codefeld zeigen. */
+    val codeNoetig: Boolean = false,
     /** Null, solange nicht geladen oder der Server kein Design je Konto kennt. */
     val design: DesignWahl? = null,
 )

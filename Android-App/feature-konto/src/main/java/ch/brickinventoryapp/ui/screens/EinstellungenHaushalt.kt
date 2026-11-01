@@ -5,7 +5,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -36,9 +35,11 @@ internal fun HouseholdCard(
     onVerwerfen: (Int) -> Unit,
 ) {
     val st = state.status
-    var code by rememberSaveable { mutableStateOf("") }
-    var passwort by rememberSaveable { mutableStateOf("") }
-    var faktorCode by rememberSaveable { mutableStateOf("") }
+    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
+    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    var code by remember { mutableStateOf("") }
+    var passwort by remember { mutableStateOf("") }
+    var faktorCode by remember { mutableStateOf("") }
     LaunchedEffect(state.eingeloest) { if (state.eingeloest > 0) code = "" }
     // Über GeheimeZwischenablage statt LocalClipboard: Sie nimmt den Code nach
     // einer Minute wieder heraus, auch wenn die Seite dann schon zu ist.

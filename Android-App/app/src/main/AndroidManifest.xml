@@ -26,9 +26,8 @@
       Ohne diese Zeile erklaert die CAMERA-Erlaubnis `android.hardware.camera`
       IMPLIZIT als erforderlich — und damit faellt die App auf Geraeten ohne
       Kamera aus dem Raster (ChromeOS-Geraete, manche Tablets). Lint meldet das
-      als PermissionImpliesUnsupportedChromeOsHardware, Stufe ERROR; gesehen hat
-      es niemand, weil `abortOnError = false` steht und der Bericht in einer
-      Ablage liegt, die aus der Entwicklungsumgebung nicht erreichbar ist.
+      als PermissionImpliesUnsupportedChromeOsHardware, Stufe ERROR — seit
+      `abortOnError = true` (app/build.gradle.kts) bricht der Bau daran ab.
 
       `required="false"` ist hier nicht der Trick, mit dem man die Pruefung
       ruhigstellt, sondern die Wahrheit ueber die App: Bestand, Preise, Listen

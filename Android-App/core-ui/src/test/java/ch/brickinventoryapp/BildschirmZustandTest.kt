@@ -44,6 +44,12 @@ import java.io.File
  *     den Ausdruck `gemessen` weiter unten; dort steht auch, warum eine
  *     Layout-Messung ausdrücklich NICHT dazugehört.
  *
+ *  4. Passwörter und Codes. Das Bundle liegt bei Prozesstod auf der Platte;
+ *     sie gehören nicht hinein und werden nach einer Drehung neu eingegeben.
+ *     Gegenprobe (01.11.2026, gemessen): `pwNeu` in StartpasswortMaske wieder
+ *     `rememberSaveable` → rot „Passwoerter und Codes …“; die Ausnahme `geheim`
+ *     im ersten Test entfernt → rot „vom Menschen eingegebener Zustand …“.
+ *
  * Dieselbe Falle ist in diesem Baum schon einmal zugeschnappt: ScrollMemory.kt
  * hält in seiner eigenen Erklärung fest, dass der dortige Merker als
  * `rememberSaveable` „die Wiederherstellung nach dem ersten Betreten für immer
@@ -163,6 +169,9 @@ class BildschirmZustandTest {
      */
     private val gemessen = Regex("""(?i)bytes|belegt|belegung""")
 
+    /** Passwörter und Codes (Sorte 4): nie im Bundle. */
+    private val geheim = Regex("""(?i)passw|^pw(?!$)|^(zf|faktor)?code$""")
+
     /** Werte, die das Bundle nicht aufnehmen kann. */
     private val nichtSpeicherbar = Regex("""Offset|listOf|mapOf|setOf|Bitmap""")
 
@@ -193,6 +202,7 @@ class BildschirmZustandTest {
             for ((zn, z) in zustandsZeilen(f)) {
                 if ("rememberSaveable" in z) continue
                 val name = nameAus.find(z)?.groupValues?.get(1) ?: continue
+                if (geheim.containsMatchIn(name)) continue
                 if (fluechtig.containsMatchIn(name)) continue
                 if (rollMerker.containsMatchIn(name)) continue
                 if (gemessen.containsMatchIn(name)) continue
@@ -241,6 +251,22 @@ class BildschirmZustandTest {
                 falsch.joinToString("\n  "),
             falsch.isEmpty(),
         )
+    }
+
+    @Test
+    fun `Passwoerter und Codes werden nicht im Bundle gesichert`() {
+        val gefunden = mutableListOf<String>()
+        val gesichert = mutableListOf<String>()
+        for (f in kotlinDateien()) {
+            for ((zn, z) in zustandsZeilen(f)) {
+                val name = nameAus.find(z)?.groupValues?.get(1) ?: continue
+                if (!geheim.containsMatchIn(name)) continue
+                gefunden += name
+                if ("rememberSaveable" in z) gesichert += "${f.name}:$zn  $name"
+            }
+        }
+        assertTrue("Keine Passwortfelder gefunden — greift die Suche?", "pwNeu" in gefunden && "password" in gefunden)
+        assertTrue("remember statt rememberSaveable:\n  " + gesichert.joinToString("\n  "), gesichert.isEmpty())
     }
 
     @Test
