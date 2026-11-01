@@ -859,6 +859,7 @@ CREATE TABLE users (
   CONSTRAINT users_username_key UNIQUE (username)
 );
 CREATE UNIQUE INDEX users_email_lower ON users USING btree (lower(email));
+CREATE UNIQUE INDEX users_username_lower ON users USING btree (lower(username));
 
 CREATE TABLE verwaltungsprotokoll (
   id integer NOT NULL DEFAULT nextval('verwaltungsprotokoll_id_seq'::regclass),

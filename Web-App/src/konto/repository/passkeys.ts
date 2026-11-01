@@ -51,6 +51,10 @@ export async function hatWelche(uid: number): Promise<boolean> {
   return !!await db.get('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]);
 }
 
+export async function loescheAlleDesKontos(uid: number): Promise<number> {
+  return (await db.run('DELETE FROM passkeys WHERE user_id = $1', [uid])).changes ?? 0;
+}
+
 export async function loeschePasskeyZeile(uid: number, id: number): Promise<boolean> {
   return !!(await db.run('DELETE FROM passkeys WHERE user_id = $1 AND id = $2', [uid, id])).changes;
 }

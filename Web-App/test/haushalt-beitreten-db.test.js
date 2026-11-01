@@ -8,6 +8,10 @@
  *      Verknüpfung“
  *   B  die Hinweis-Mail nicht verschickt → rot: „mit Passwort verknüpft, und
  *      der Inhaber erfährt es“
+ * Gegenprobe (01.11.2026 gemessen): Code-Pflicht in der Route entfernt → rot:
+ *   „mit zweitem Faktor braucht es auch den Code“
+ * Gegenprobe (01.11.2026 gemessen): maskiereAdresse() im Konsolenweg des Mailers
+ *   umgangen → rot: „mit Passwort verknüpft, und der Inhaber erfährt es“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -24,7 +28,7 @@ const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const PASS = 'eigenes-Passwort-1';
-const HAUPT = `beitritt_haupt_${process.pid}`, KIND = `beitritt_kind_${process.pid}`;
+const HAUPT = `beitritt_haupt_${process.pid}`, KIND = `beitritt_kind_${process.pid}`, HAUPT2 = `beitritt_haupt2_${process.pid}`;
 
 test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -35,15 +39,15 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
   }
   const c = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND, HAUPT2]]);
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async (n) => (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
     VALUES ($1, $2, $3, true, true) RETURNING id`, [n, `${n}@example.org`, hash])).id;
-  const haupt = await anlegen(HAUPT), kind = await anlegen(KIND);
+  const haupt = await anlegen(HAUPT), kind = await anlegen(KIND), haupt2 = await anlegen(HAUPT2);
   await db.run("DELETE FROM global_settings WHERE key LIKE 'smtp_%'");
   t.after(async () => {
     await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`passwort-bestaetigen|${kind}`]);
-    await db.run('DELETE FROM users WHERE id = ANY($1)', [[haupt, kind]]);
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[haupt, kind, haupt2]]);
     await db.pool.end().catch(() => {});
   });
   const { createInvite } = _req('src/haushalt/haushalt.js');
@@ -77,7 +81,28 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
     } finally { console.log = echt; }
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await verknuepft(), true);
-    assert.ok(zeilen.some(z => z.includes(`An:      ${KIND}@example.org`)), zeilen.join('\n'));
+    // Die Konsole landet in app_logs: Die Adresse steht dort nur maskiert.
+    assert.ok(zeilen.some(z => z.includes(`An:      ${KIND[0]}…@example.org`)), zeilen.join('\n'));
+    assert.ok(!zeilen.some(z => z.includes(`${KIND}@`)), 'die volle Adresse steht im Protokoll');
     assert.ok(zeilen.some(z => /Haushalt/.test(z)), 'Betreff fehlt');
+  });
+
+  await t.test('mit zweitem Faktor braucht es auch den Code', async () => {
+    const zf = _req('src/konto/zweiterFaktor.js');
+    const geheim = await zf.beginneEinrichtung(kind);
+    const codes = await zf.bestaetigeEinrichtung(kind, zf.hotp(zf.ausBase32(geheim), zf.zeitschritt()));
+    const { code } = await createInvite(haupt2);
+    const ohne = await einloesen({ code, password: PASS });
+    assert.equal(ohne.status, 400, JSON.stringify(ohne.body));
+    assert.equal(ohne.body.code, 'zweiter_faktor_falsch');
+    // Die Hinweis-Mail abwarten: Spät auf stdout geschrieben, stört sie den Testlauf.
+    const zeilen = [], echt = console.log;
+    console.log = (...a) => { zeilen.push(a.join(' ')); };
+    let mit;
+    try {
+      mit = await einloesen({ code, password: PASS, faktor_code: codes[0] });
+      for (let i = 0; i < 50 && !zeilen.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
+    } finally { console.log = echt; }
+    assert.equal(mit.status, 200, JSON.stringify(mit.body));
   });
 });

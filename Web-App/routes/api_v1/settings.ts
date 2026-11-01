@@ -32,6 +32,7 @@ import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { tlsStand } from '../../src/infra/tlsWurzel';
 import { konfig } from '../../src/infra/konfig';
 import { invalidateTheme } from '../../src/konto/indexHtml';
+import { istAktiv as zweiterFaktorAktiv } from '../../src/konto/zweiterFaktor';
 import { jsonOderNull } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
@@ -169,7 +170,9 @@ router.post('/settings/household/invite', requireToken, async (req: AuthedReques
 // soll das nicht einrichten können.
 router.post('/settings/household/redeem', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/redeem'>) => {
   const uid = req.apiUser.user_id;
-  if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
+  // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
+  const zusatz = await zweiterFaktorAktiv(uid) ? { zweiterFaktor: req.body?.faktor_code } : {};
+  if (!await bestaetigePasswort(req, res, uid, req.body?.password, zusatz)) return;
   const r = await redeemInvite(uid, String(req.body?.code || ''));
   if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
   const ich = await profil(uid);

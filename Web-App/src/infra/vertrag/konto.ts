@@ -59,7 +59,7 @@ export const LoginResponse = z.looseObject({
 export const MeResponse = z.looseObject({
   success: z.boolean(),
   loggedIn: z.boolean(),
-  user: User.nullable().optional(),
+  user: User.extend({ mustChangePassword: z.boolean().optional() }).nullable().optional(),
   token_expires: zeit.nullable().optional(),
   token_last_used: zeit.nullable().optional(),
   token_info: TokenInfo.nullable().optional(),

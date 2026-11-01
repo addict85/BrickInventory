@@ -32,6 +32,8 @@ const assert = require('node:assert/strict');
 const path   = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+// Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
+process.env.APP_BASE_URL = 'http://localhost';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');

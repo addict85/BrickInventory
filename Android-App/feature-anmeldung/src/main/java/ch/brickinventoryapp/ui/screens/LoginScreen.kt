@@ -266,7 +266,7 @@ private fun AnmeldeFelder(
     if (codeNoetig) {
         val absenden = { if (username.isNotBlank() && password.isNotBlank() && code.isNotBlank()) onLogin(username, password, code) }
         OutlinedTextField(
-            value = code, onValueChange = { onCode(it.take(12)) },
+            value = code, onValueChange = { onCode(it.take(24)) },
             label = { Text(stringResource(R.string.login_code)) },
             supportingText = { Text(stringResource(R.string.login_code_hint)) },
             leadingIcon = { Icon(Icons.Default.Key, null) },

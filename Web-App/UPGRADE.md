@@ -671,3 +671,57 @@ QR-Codes gelten weiter. Wer `compose.yaml` angepasst hat: Die Zeile
   Antwort wie eine erfolgreiche Registrierung; die angegebene Adresse bekommt
   eine Mail „Benutzername schon vergeben". So lässt sich ohne Postfach nicht
   mehr abfragen, welche Konten es gibt.
+
+## 25. Konto und Anmeldung gehärtet
+
+**Vor dem Update prüfen — Benutzernamen**: Migration 0090 legt einen
+eindeutigen Index auf `lower(username)`. Gibt es zwei Konten, deren Namen
+sich nur in Gross-/Kleinschreibung unterscheiden, bricht der Start mit den
+Namen ab; geändert wird nichts. Vorher nachsehen:
+
+```
+docker compose exec postgres psql -U brickinventory -c \
+  "SELECT lower(username), string_agg(username || ' (id ' || id || ')', ', ')
+     FROM users GROUP BY 1 HAVING COUNT(*) > 1"
+```
+
+Je Paar eines umbenennen (`UPDATE users SET username = '…' WHERE id = …`),
+dann starten.
+
+**`APP_BASE_URL` ist Pflicht für Links in Mails** — auch ausserhalb von
+`NODE_ENV=production`. Ohne sie wird die Adresse nicht mehr aus `Host` oder
+`X-Forwarded-Host` abgeleitet: Bestätigungs- und Rücksetzmails gehen ohne
+Link bzw. gar nicht, der Start warnt. `compose.yaml` setzt sie schon
+(`https://${BRICK_HOST}`). Der Hinweis in §2 („ohne sie stammt der Host aus
+dem Request-Header") gilt nicht mehr.
+
+Was sich für Nutzer und Clients ändert:
+
+- **Zweiter Faktor**: Ein neuer Passkey (`POST /auth/passkey/registrieren/optionen`,
+  Feld `code`) und das Einlösen einer Haushaltseinladung
+  (`POST /settings/household/redeem`, Feld `faktor_code`) verlangen bei
+  aktivem TOTP zusätzlich einen Code. Das Bestätigen der TOTP-Einrichtung
+  zählt falsche Codes wie jede andere Prüfung (Sperre nach fünf).
+- **Wiederherstellungscodes** sind jetzt 16 Zeichen (`xxxx-xxxx-xxxx-xxxx`).
+  Bestehende zehnstellige Codes gelten weiter, bis sie verbraucht sind;
+  empfohlen ist, im Konto einmal „Neue Codes" zu erzeugen. Codefelder in Web
+  und App nehmen 24 Zeichen an.
+- **Passwort zurücksetzen** (per Mail) widerruft zusätzlich alle Passkeys.
+  Der Passwortwechsel im Profil beendet wie bisher alle Sitzungen und
+  Tokens; Passkeys nur, wenn „Auch alle Passkeys entfernen" angekreuzt ist
+  (`passkeys_widerrufen: true`).
+- **Hinweis-Mails** bei neuem Passkey, Passwortwechsel und -rücksetzung —
+  nur mit eingerichtetem Mailserver, ohne Link. Sie nennen die Hauptkonten,
+  die die Sammlung sehen.
+- **Passwort vergessen**: höchstens ein Link je Konto und 15 Minuten; jede
+  Antwort dauert mindestens 400 ms.
+- **Startpasswort**: Solange `must_change_password` gesetzt ist, antwortet
+  die API ausser auf `change-password` und `logout` mit 403
+  `passwort_wechsel_noetig`; die Weboberfläche zeigt dann die Maske zum
+  Wechseln. `GET /auth/me` meldet `user.mustChangePassword`.
+- **Verwalter legt Konto an**: Ein Name, der sich nur in der Schreibweise
+  von einem bestehenden unterscheidet, ergibt 409 `benutzername_vergeben`.
+- **„Alle meine Daten löschen"** (`DELETE /api/v1/bestand`) verlangt
+  `password`.
+- **Protokoll**: Mailadressen erscheinen in `app_logs` nur noch maskiert
+  (`m…@example.org`); voll nur mit `MAIL_KONSOLE_MIT_TOKEN=1` (Entwicklung).

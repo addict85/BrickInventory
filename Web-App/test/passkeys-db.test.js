@@ -20,6 +20,12 @@
  *      expectedOrigin gestrichen → rot: „die eingetragene App meldet sich an …“
  *   G  (31.10.2026) in /passkey/anmelden `mit_token` überhört (immer false) →
  *      rot: „die eingetragene App meldet sich an …“ (kein Token)
+ * Gegenproben (01.11.2026 gemessen):
+ *   H  Code-Pflicht in /passkey/registrieren/optionen entfernt → rot: „mit zweitem
+ *      Faktor verlangt ein neuer Passkey auch den Code“
+ *   I  setzePasswortZurueck() ohne loescheAlleDesKontos → rot: „Zurücksetzen per Mail …“
+ *   J  hinweisNebenher() in /reset-password entfernt → rot: „kein Hinweis verschickt“
+ *   K  passkeys_widerrufen überhört → rot: „ein Passwortwechsel widerruft Passkeys nur auf Wunsch“
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  */
@@ -133,6 +139,7 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
   const optionen = async (zweck) => (await ruf('/passkey/anmelden/optionen', { zweck })).body.optionen.challenge;
 
   const anna = authenticator(), bert = authenticator(), ohneZaehler = authenticator();
+  let annaCodes = [];
 
   await t.test('registrieren und ohne Passwort anmelden', async () => {
     const c = await registriere('pk_anna', anna);
@@ -181,7 +188,7 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
 
   await t.test('Passkey als zweiter Faktor statt des TOTP-Codes, nur für das eigene Konto', async () => {
     const geheim = await zf.beginneEinrichtung(ids.pk_anna);
-    await zf.bestaetigeEinrichtung(ids.pk_anna, zf.hotp(zf.ausBase32(geheim), zf.zeitschritt()));
+    annaCodes = await zf.bestaetigeEinrichtung(ids.pk_anna, zf.hotp(zf.ausBase32(geheim), zf.zeitschritt()));
     await registriere('pk_bert', bert);
 
     const ohne = await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true });
@@ -241,5 +248,51 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     assert.equal((await loesche(liste[0].id, { password: 'falsch' })).status, 400);
     for (const p of liste) assert.equal((await (await loesche(p.id, { password: PASS })).json()).deleted, 1);
     assert.equal((await ruf('/passkey/anmelden', { antwort: bert.anmelden(await optionen()) })).status, 401);
+  });
+
+  const anzahl = async (uid) => (await db.get('SELECT COUNT(*)::int n FROM passkeys WHERE user_id = $1', [uid])).n;
+
+  await t.test('mit zweitem Faktor verlangt ein neuer Passkey auch den Code', async () => {
+    const c = (await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true, code: annaCodes[0] })).cookie;
+    const ohne = await ruf('/passkey/registrieren/optionen', { password: PASS }, c);
+    assert.equal(ohne.status, 400, 'Passwort allein prägt einen Passkey am zweiten Faktor vorbei');
+    assert.equal(ohne.body.code, 'zweiter_faktor_falsch');
+    const mit = await ruf('/passkey/registrieren/optionen', { password: PASS, code: annaCodes[1] }, c);
+    assert.equal(mit.status, 200, JSON.stringify(mit.body));
+    const r = await ruf('/passkey/registrieren', { antwort: authenticator().registrieren(mit.body.optionen.challenge) }, c);
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(await anzahl(ids.pk_anna), 2);
+  });
+
+  await t.test('ein Passwortwechsel widerruft Passkeys nur auf Wunsch', async () => {
+    const c = await registriere('pk_bert', authenticator());
+    const wechsel = (cookie, alt, neu, mehr = {}) => ruf('/change-password', { current: alt, newPassword: neu, ...mehr }, cookie);
+    assert.equal((await wechsel(c, PASS, 'zwischenPasswort-9')).status, 200);
+    assert.equal(await anzahl(ids.pk_bert), 1, 'ohne Wunsch bleiben die Passkeys');
+    const c2 = (await ruf('/login', { username: 'pk_bert', password: 'zwischenPasswort-9', ohne_token: true })).cookie;
+    assert.equal((await wechsel(c2, 'zwischenPasswort-9', PASS, { passkeys_widerrufen: true })).status, 200);
+    assert.equal(await anzahl(ids.pk_bert), 0, 'passkeys_widerrufen wirkt nicht');
+  });
+
+  await t.test('Zurücksetzen per Mail widerruft alle Passkeys und meldet es', async (tt) => {
+    assert.ok(await anzahl(ids.pk_anna) > 0);
+    // Ein Mailserver, der nicht antwortet: Der Versuch steht dann im Fehlerprotokoll.
+    await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', '127.0.0.1'), ('smtp_port', '1'), ('smtp_user', 'x')
+                  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
+    await db.run("UPDATE users SET email = 'pk_anna@example.org' WHERE id = $1", [ids.pk_anna]);
+    tt.after(() => db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_port', 'smtp_user')"));
+    const roh = crypto.randomBytes(16).toString('hex');
+    await db.run("UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '1 hour' WHERE id = $2",
+      [crypto.createHash('sha256').update(roh).digest('hex'), ids.pk_anna]);
+    const zeilen = [], echt = console.error;
+    console.error = (...a) => { zeilen.push(a.join(' ')); };
+    try {
+      const r = await ruf('/reset-password', { token: roh, password: 'ganzNeuesPasswort-7' });
+      assert.equal(r.status, 200, JSON.stringify(r.body));
+      for (let i = 0; i < 100 && !zeilen.some(z => z.includes('SMTP')); i++) await new Promise(f => setTimeout(f, 50));
+    } finally { console.error = echt; }
+    assert.equal(await anzahl(ids.pk_anna), 0, 'ein untergeschobener Passkey überlebt das Zurücksetzen');
+    assert.equal((await ruf('/passkey/anmelden', { antwort: anna.anmelden(await optionen()) })).status, 401);
+    assert.ok(zeilen.some(z => z.includes('SMTP') && z.includes('example.org')), `kein Hinweis verschickt: ${zeilen.join('\n')}`);
   });
 });

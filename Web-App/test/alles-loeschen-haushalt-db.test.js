@@ -33,6 +33,9 @@
  * Regel „nur meine" steht damit am Server; geprüft wird sie hier am selben
  * Haushalt wie zuvor.
  *
+ * Gegenprobe (01.11.2026 gemessen): bestaetigePasswort() aus DELETE /bestand
+ * entfernt → rot: „ohne Passwort gelöscht“ (Code fehlt in der Antwort).
+ *
  * Voraussetzung: Test-DB über TEST_DATABASE_URL (Inhalt wird geleert!).
  */
 const test = require('node:test');
@@ -80,7 +83,9 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
   }
   t.after(() => db.pool.end());
 
-  await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt','x'), ('kind','x')`);
+  const PASS = 'eigenes-Passwort-1';
+  await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt', $1), ('kind','x')`,
+    [require(path.join(ROOT, 'node_modules', 'bcryptjs')).hashSync(PASS, 4)]);
   const haupt = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   const kind  = (await db.get(`SELECT id FROM users WHERE username='kind'`)).id;
   await db.run(`INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
@@ -103,11 +108,16 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async (t) => {
     routen: { '/api/v1': 'routes/api_v1/index.js' },
     t,
   });
-  const hole = async (pfad, methode = 'GET') =>
-    (await fetch(base + pfad, { method: methode })).json();
+  const hole = async (pfad, methode = 'GET', body) => (await fetch(base + pfad, { method: methode,
+    ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) })).json();
+
+  // Ohne Passwort bleibt alles stehen: Ein erbeutetes App-Token allein soll nicht alles löschen.
+  const ohne = await hole('/api/v1/bestand', 'DELETE');
+  assert.equal(ohne.code, 'aktuelles_passwort_falsch', JSON.stringify(ohne));
+  assert.equal((await db.all('SELECT 1 FROM sets WHERE user_id = $1', [haupt])).length, 1, 'ohne Passwort gelöscht');
 
   // Genau der Aufruf aus public/js/05-settings.js (btn-dall).
-  const r = await hole('/api/v1/bestand', 'DELETE');
+  const r = await hole('/api/v1/bestand', 'DELETE', { password: PASS });
   assert.equal(r.success, true, JSON.stringify(r));
   assert.deepEqual([r.sets, r.teile, r.figuren], [1, 1, 0], 'Gezählt wird nur das eigene Konto');
 
@@ -144,7 +154,7 @@ test('der Knopf überlässt die Auswahl dem Server', () => {
   const i = src.indexOf("G('btn-dall')");
   assert.ok(i > 0, 'Knopf btn-dall nicht gefunden');
   const block = src.slice(i, src.indexOf('\n};', i));
-  assert.match(block, /api\('DELETE','\/v1\/bestand'\)/, 'Der Knopf ruft DELETE /v1/bestand');
+  assert.match(block, /api\('DELETE','\/v1\/bestand',\s*\{\s*password\s*\}\)/, 'Der Knopf ruft DELETE /v1/bestand mit Passwort');
   assert.doesNotMatch(block, /\/v1\/sets/, 'Der Knopf listet und löscht wieder selbst');
   const loeschen = fs.readFileSync(path.join(ROOT, 'src/bestand/loeschen.ts'), 'utf8');
   assert.match(loeschen, /deleteSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');

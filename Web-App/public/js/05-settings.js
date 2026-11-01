@@ -474,7 +474,8 @@ G('btn-sav-prof').onclick = async () => {
       // laengst (SettingsScreen sperrt den Knopf), die Webapp lief bis
       // hierher in den Serverfehler.
       if (passwortRegelText(pwN)) { toast(passwortRegelText(pwN), 'error'); return; }
-      const dPw = await api('POST', '/v1/auth/change-password', { current: pwC, newPassword: pwN });
+      const dPw = await api('POST', '/v1/auth/change-password',
+        { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked });
       if (!dPw.success) {
         // Profil & Währung sind gespeichert, nur das Passwort schlug fehl —
         // das dem Nutzer explizit so sagen statt pauschal "Fehler".
@@ -482,6 +483,7 @@ G('btn-sav-prof').onclick = async () => {
         return;
       }
       G('pw-c').value = G('pw-n').value = G('pw-r').value = '';
+      if (G('pw-pk')) G('pw-pk').checked = false;
     }
 
     toast(d.emailChanged ? t('profile.saved_mail') : t('settings.saved'), 'success');
@@ -544,9 +546,13 @@ export async function loadSettings(){
  * Fehlermeldung erzeugt, ist schlimmer als keiner.
  */
 export async function loadHousehold(){
-  const d = await api('GET','/v1/settings/household').catch(()=>null);
+  const [d, zf] = await Promise.all([api('GET','/v1/settings/household').catch(()=>null),
+                                     api('GET','/v1/auth/zweiter-faktor').catch(()=>null)]);
   if(!d?.success) return;
   renderHousehold(d);
+  // Mit zweitem Faktor verlangt der Server beim Einlösen auch den Code.
+  const faktor = G('household-redeem-faktor');
+  if(faktor) faktor.style.display = zf?.aktiv ? '' : 'none';
 }
 
 /**
@@ -625,9 +631,11 @@ export async function redeemHouseholdInvite(){
   // Das Hauptkonto sieht und ändert danach die eigene Sammlung — deshalb mit Passwort.
   const password = await bestaetigeMitPasswort(tRaw('household.redeem_title'), tRaw('household.redeem_confirm_text'), 'link');
   if(password === null) return;
-  const d = await api('POST','/v1/settings/household/redeem',{ code, password });
+  const faktor_code = (G('household-redeem-faktor-code')?.value || '').trim();
+  const d = await api('POST','/v1/settings/household/redeem',{ code, password, ...(faktor_code ? { faktor_code } : {}) });
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   G('household-redeem-code').value = '';
+  if(G('household-redeem-faktor-code')) G('household-redeem-faktor-code').value = '';
   // tRaw + roher Name: Der Toast setzt Text, keine HTML — mit esc() stünde
   // dort "Marco &amp; Co" statt "Marco & Co".
   toast(tRaw('household.redeem_ok', { name: d.linked_to?.username || '' }),'success');
@@ -674,8 +682,9 @@ G('btn-clr-all-cache').onclick=async()=>{
 G('btn-dall').onclick=async()=>{
   // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage
   // statt des früheren Eintippens von „LÖSCHEN". Nur das EIGENE Konto (Server).
-  if(!await confirmDelete(tRaw('settings.delete_all.title'),t('settings.delete_all.text'),'loeschen')) return;
-  const d=await api('DELETE','/v1/bestand');
+  const password=await bestaetigeMitPasswort(tRaw('settings.delete_all.title'),tRaw('settings.delete_all.text'),'loeschen');
+  if(password===null) return;
+  const d=await api('DELETE','/v1/bestand',{password});
   if(!d?.success){ toast(d?.error||tRaw('settings.error'),'error'); return; }
   toast(tRaw('settings.delete_all.done',{n:d.sets+d.teile+d.figuren}),'success');
   loadGallery(); loadParts(); loadMinifigs(); loadStats();

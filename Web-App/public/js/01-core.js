@@ -685,6 +685,7 @@ export async function api(method, path, body) {
   }
   if (daten && typeof daten === 'object') daten.status = res.status;
   if (res.status === 401) meldeSitzungBeendet(path);
+  if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') zeigePflichtwechsel();
   return daten;
 }
 
@@ -835,10 +836,27 @@ function _updateLangChips() { _updateLangSelect(); }
 let _resetToken = null;
 
 function showPanel(name){
-  ['login','register','forgot','reset'].forEach(p => {
+  ['login','register','forgot','reset','pflichtwechsel'].forEach(p => {
     const el = G('panel-'+p); if(el) el.style.display = p===name?'block':'none';
   });
 }
+
+// Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig);
+// die Anwendung käme sonst mit lauter Fehlern hoch.
+function zeigePflichtwechsel(){
+  G('login-screen').style.display='flex'; G('app').style.display='none';
+  showPanel('pflichtwechsel');
+}
+function oeffneApp(){ if(ME?.mustChangePassword) zeigePflichtwechsel(); else showApp(); }
+G('btn-pflicht')?.addEventListener('click', async () => {
+  const alt=G('pflicht-alt').value, neu=G('pflicht-neu').value, err=G('pflicht-err');
+  err.style.display='none';
+  const fehler = passwortRegelText(neu) || (neu!==G('pflicht-wdh').value ? tRaw('settings.password.mismatch') : '');
+  if(fehler){ err.textContent=fehler; err.style.display='block'; return; }
+  const d=await api('POST','/v1/auth/change-password',{ current: alt, newPassword: neu });
+  if(!d.success){ err.textContent=d.error||tRaw('settings.error'); err.style.display='block'; return; }
+  location.reload();
+});
 
 // Check URL params on load
 (function(){
@@ -988,7 +1006,7 @@ export async function checkAuth(){
   // Antwort des Logins und dieselbe, die die App liest. ME behält seine
   // gewohnten Felder (isAdmin, id, username), damit die Oberfläche
   // unverändert bleibt.
-  if(d.loggedIn){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; showApp(); }
+  if(d.loggedIn){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; oeffneApp(); }
   else {
     G('login-screen').style.display='flex';
     G('app').style.display='none';
@@ -1235,7 +1253,7 @@ async function doLogin(){
     // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
-    showApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" data-stil="color:var(--b600)">E-Mail erneut senden?</a>'; } }
+    oeffneApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" data-stil="color:var(--b600)">E-Mail erneut senden?</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.

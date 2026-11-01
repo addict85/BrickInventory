@@ -18,7 +18,7 @@ const knopf = (aktion, text, art = 'bs') =>
 // findet nur wörtliche id-Angaben.
 const PASSWORTFELD = () =>
   `<div class="fg"><label for="zf-pw">${t('settings.password.current')}</label><input type="password" id="zf-pw" autocomplete="current-password" /></div>`;
-const CODEFELD = (label, laenge = 12) =>
+const CODEFELD = (label, laenge = 24) =>
   `<div class="fg"><label for="zf-code">${label}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;
 
 export async function ladeZweitenFaktor() {

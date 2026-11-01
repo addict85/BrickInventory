@@ -10,7 +10,7 @@ export type TokenZeile = {
   user_id: number; expires_at: string | Date | null; hard_expires_at: string | Date | null;
   last_used: string | Date | null; sliding: boolean; never_expires: boolean; scope: TokenScope;
   rotiert_am: string | Date | null; vorgaenger: string | null; label: string | null; ip_bereich: string | null;
-  username: string; konto_is_admin: boolean; is_admin?: number;
+  username: string; konto_is_admin: boolean; is_admin?: number; muss_passwort_aendern: boolean;
 };
 
 /** Fristen und Kontozustand in der Abfrage: Ein abgelaufener Token oder einer
@@ -19,7 +19,7 @@ export function gueltigerToken(hash: string) {
   return db.get<TokenZeile>(`
     SELECT t.user_id, t.expires_at, t.hard_expires_at, t.last_used, t.sliding, t.never_expires,
            t.scope, t.rotiert_am, t.vorgaenger, t.label, t.ip_bereich,
-           u.username, u.is_admin AS konto_is_admin
+           u.username, u.is_admin AS konto_is_admin, u.must_change_password AS muss_passwort_aendern
     FROM api_tokens t JOIN users u ON u.id = t.user_id
     WHERE t.token = $1 AND u.is_active
       AND (t.expires_at      IS NULL OR t.expires_at      > NOW())
@@ -164,8 +164,12 @@ export async function bestaetigeEmail(id: number): Promise<void> {
   await db.run('UPDATE users SET email_verified=true, verification_token=NULL, token_expires=NULL WHERE id=$1', [id]);
 }
 
-export function kontoZurAnmeldung(name: string) {
-  return db.get('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)', [name]);
+/** Zwei Treffer (ein Name gleich der Adresse eines anderen Kontos, nur im
+ * Altbestand möglich) heissen „kein Konto": Welches gemeint war, ist nicht zu entscheiden. */
+export async function kontoZurAnmeldung(name: string) {
+  const treffer = await db.all('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1) LIMIT 2', [name]);
+  if (treffer.length > 1) console.warn('[anmeldung] Name passt auf zwei Konten (Benutzername und Adresse) — Anmeldung abgewiesen');
+  return treffer.length === 1 ? treffer[0] : undefined;
 }
 
 export function passwortHash(id: number) {

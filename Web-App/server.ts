@@ -15,6 +15,7 @@ import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
 import { fehlertext, logAndContinue, meldeUndWeiter, fehlerAntwort } from './src/infra/httpError';
 import { startVerbote } from './src/infra/konfig';
+import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
@@ -438,6 +439,7 @@ async function starte(): Promise<void> {
     if (verbote.length) { for (const v of verbote) console.error(`❌ ${v}`); process.exit(1); }
   }
   for (const v of k.veraltet) console.warn(`⚠️ [start] ${v} wird nicht mehr ausgewertet und kann weg (siehe UPGRADE.md).`);
+  if (!k.appBaseUrl) hinweisOhneBasisUrl('start', 'Mails enthalten keine Links (Bestätigung, Passwort vergessen), Passkeys und QR-Code der App sind aus.');
   const web = k.rolle !== 'jobs', jobs = k.rolle !== 'web';
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.

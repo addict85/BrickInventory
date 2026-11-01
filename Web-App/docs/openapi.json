@@ -11810,7 +11810,29 @@
           "user": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/User"
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "is_admin": {
+                    "type": "boolean"
+                  },
+                  "mustChangePassword": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "username",
+                  "is_admin"
+                ],
+                "additionalProperties": {}
               },
               {
                 "type": "null"

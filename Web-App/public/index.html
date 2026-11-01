@@ -168,7 +168,7 @@
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
         <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><input type="password" id="lp" autocomplete="current-password" /></div>
         <!-- Erst sichtbar, wenn der Server einen zweiten Faktor verlangt (utils/zweiterFaktor.ts). -->
-        <div class="fg" id="lc-zeile" data-stil="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" inputmode="numeric" autocomplete="one-time-code" maxlength="12" /><div class="text-klein abstand-o-3" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div>
+        <div class="fg" id="lc-zeile" data-stil="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /><div class="text-klein abstand-o-3" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div>
           <button type="button" class="btn bs btn-sm abstand-o-075" id="lc-passkey" data-click="passkeyZweiterFaktor" data-i18n="pk.statt_code" hidden>Passkey statt Code verwenden</button></div>
         <button type="button" class="btn bp knopf-breit" id="btn-login" data-i18n="login.submit">Anmelden</button>
         <button type="button" class="btn bs knopf-breit abstand-o-075" id="btn-passkey" data-click="passkeyAnmelden" data-i18n="pk.login" hidden>Mit Passkey anmelden</button>
@@ -231,6 +231,19 @@
         <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 8 Zeichen, kein häufiges)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
         <div class="fg"><label for="reset-pass2" data-i18n="reset.repeat">Passwort wiederholen</label><input type="password" id="reset-pass2" autocomplete="new-password" /></div>
         <button type="button" class="btn bp knopf-breit" id="btn-reset" data-i18n="reset.button">Passwort ändern</button>
+      </form>
+    </div>
+
+    <!-- ── STARTPASSWORT ERSETZEN (Server: 403 passwort_wechsel_noetig) ─ -->
+    <div id="panel-pflichtwechsel" data-stil="display:none">
+      <p class="login-unterzeile" data-i18n="pflicht.title">Startpasswort ersetzen</p>
+      <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Konto hat noch das Startpasswort aus dem Protokoll. Bitte zuerst ein eigenes setzen.</div>
+      <div class="lerr" id="pflicht-err"></div>
+      <form class="sform" data-submit="btn-pflicht">
+        <div class="fg"><label for="pflicht-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
+        <div class="fg"><label for="pflicht-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pflicht-neu" autocomplete="new-password" /></div>
+        <div class="fg"><label for="pflicht-wdh" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pflicht-wdh" autocomplete="new-password" /></div>
+        <button type="button" class="btn bp knopf-breit" id="btn-pflicht" data-i18n="reset.button">Passwort ändern</button>
       </form>
     </div>
   </div>
@@ -1080,6 +1093,7 @@
               <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" /></div>
               <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" /></div>
             </div>
+            <label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="pw-pk" /> <span data-i18n="settings.password.revoke_passkeys">Auch alle Passkeys entfernen (falls jemand Fremdes Zugang hatte)</span></label>
           </div>
 
           <button type="button" class="btn bp btn-speichern" id="btn-sav-prof" data-i18n="settings.save" data-ico="speichern">Speichern</button>
@@ -1384,6 +1398,10 @@
             <div class="fg">
               <label for="household-redeem-code" data-i18n="household.invite_code">Einladungscode</label>
               <input class="mono-2" type="text" id="household-redeem-code" autocomplete="off" />
+            </div>
+            <div class="fg" id="household-redeem-faktor" data-stil="display:none">
+              <label for="household-redeem-faktor-code" data-i18n="login.code">Code aus der Authenticator-App</label>
+              <input type="text" id="household-redeem-faktor-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" />
             </div>
             <!-- margin-top: Der Knopf klebte am Eingabefeld. .75rem ist der
                  Abstand, den der Hinweistext darueber schon benutzt — kein

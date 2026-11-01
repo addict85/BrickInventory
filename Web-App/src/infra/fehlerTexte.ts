@@ -71,6 +71,7 @@ export const FEHLER = {
   import_zeile_unterbrochen:   { de: 'Der Server wurde während dieses Sets neu gestartet — bitte die Menge prüfen.',
                                  en: 'The server restarted while importing this set — please check the quantity.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
+  passwort_wechsel_noetig:     { de: 'Bitte zuerst das Startpasswort ändern.', en: 'Please change the initial password first.' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {
     de: 'Passwort-Zurücksetzen per E-Mail ist auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt). Bitte den Verwalter fragen.',
