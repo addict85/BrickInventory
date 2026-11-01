@@ -70,6 +70,7 @@ export const PartsStats = z.looseObject({
   unique_parts: z.number().int(),
   unique_colors: z.number().int(),
   total_parts: z.number().int(),
+  manual_parts: z.number().int().optional(),
 });
 
 export const PartsStatsResponse = z.looseObject({

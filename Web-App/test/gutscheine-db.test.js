@@ -474,12 +474,11 @@ testOberflaeche('Gutscheine in der Webapp: Marcos Nachbesserungen', async (t) =>
     }
   });
 
-  await t.test('das Dateifeld bekommt Platz fuer seinen eingebauten Knopf', () => {
-    // Marcos Befund: „der rot markierte Bereich beim Upload ist zu klein. Der
-    // Text wird abgeschnitten." Ursache war `.fg input{height:38px}` auf einem
-    // nativen Dateifeld.
-    assert.match(html, /class="fg voucher-upload"/, 'das Dateifeld traegt die eigene Klasse nicht');
-    assert.match(css, /\.voucher-upload input\[type=file\]\{[^}]*height:auto/,
-      'die Hoehe steht nicht auf auto — eine feste Zahl schneidet je nach Browser wieder ab');
+  await t.test('das Dateifeld ist ein gestalteter Knopf wie bei den Anleitungen', () => {
+    // Das native Feld schnitt seinen Text ab und sah anders aus als jede
+    // andere Dateiwahl; jetzt dieselbe Form (label.btn mit .datei-versteckt).
+    assert.match(html, /<label class="btn bs zeiger">[^]*?<input type="file" id="v-pdf"[^>]*class="datei-versteckt"/,
+      'die Dateiwahl der Gutscheine ist kein Knopf mit verstecktem Feld');
+    assert.ok(!/\.voucher-upload input\[type=file\]/.test(css), 'die Regel fuer das native Feld steht noch da');
   });
 });

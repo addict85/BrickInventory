@@ -7,6 +7,7 @@ interface Window {
   __bimApplyTheme: (name: string) => void;
   __bimDunkel: unknown;
   __bimDunkelWert: string;
+  __bimNurDunkel: (theme: string) => boolean;
   __bimLabelTables: unknown;
   _finGrandTotal: unknown;
   _finPartsExtra: unknown;

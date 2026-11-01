@@ -6,7 +6,7 @@
  * der beiden Wörterbücher, wie das Bündel sie lädt.
  *
  * Gegenproben (am 28.10. gemessen):
- *   A  gallery.no_results in de.js wieder mit "  → rot: „Suche ohne Treffer: de“
+ *   A  common.no_hits in de.js wieder mit "  → rot: „Suche ohne Treffer: de“
  *      und „jedes „ hat sein ““
  *   B  en.js wieder "{query}" → rot: „Suche ohne Treffer: en“ und „keine geraden …“
  */
@@ -27,12 +27,12 @@ async function suche(sprache) {
 
 test('Suche ohne Treffer: de', async () => {
   const { o, text } = await suche('de');
-  try { assert.equal(text, 'Keine Sets gefunden für „xyzxyz“'); } finally { o.w.close(); }
+  try { assert.equal(text, 'Keine Treffer für „xyzxyz“'); } finally { o.w.close(); }
 });
 
 test('Suche ohne Treffer: en', async () => {
   const { o, text } = await suche('en');
-  try { assert.equal(text, 'No sets found for “xyzxyz”'); } finally { o.w.close(); }
+  try { assert.equal(text, 'No results for “xyzxyz”'); } finally { o.w.close(); }
 });
 
 test('jedes „ hat sein “, und englisch keine geraden Anführungszeichen um Wörter', async () => {

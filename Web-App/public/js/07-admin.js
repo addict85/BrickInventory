@@ -1143,7 +1143,7 @@ export async function openModal(sn){
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
       <button class="btn bs btn-sm" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
+      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:46px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
       <button class="btn bs btn-sm" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
     `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
@@ -1162,7 +1162,7 @@ export async function openModal(sn){
     ${qtyRow}
     ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" data-stil="padding:1px 6px;font-size:var(--fs-1);margin-left:4px">${PARTS_ICON_SVG}</button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
-    ${detailZeile(t('detail.added'), `${ico('kalender')} ${addedFmt}`)}
+    ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
@@ -1221,7 +1221,7 @@ export async function openModal(sn){
     // Beide Zustände in EINEM Diagramm — siehe priceChartSVG().
     el.innerHTML = ph.success
       ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el))
-      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
+      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`;
   });
 
 }

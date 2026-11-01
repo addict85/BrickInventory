@@ -9644,6 +9644,16 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
+          "set_parts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "manual_parts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
           "total_minifigs": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -13113,6 +13123,11 @@
             "maximum": 9007199254740991
           },
           "total_parts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "manual_parts": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991

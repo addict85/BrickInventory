@@ -157,7 +157,7 @@
 
     <!-- ── LOGIN ─────────────────────────────────────────────────────── -->
     <div id="panel-login">
-      <div class="lerr" id="lerr"></div>
+      <div class="lerr" id="lerr" role="alert"></div>
       <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten:
            Chrome meldet sonst „Password field is not contained in a form", und
            das Anbieten haengt dann an Heuristiken statt am Dokument.
@@ -178,13 +178,13 @@
         <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600">Registrieren</a></span>
       </div>
       <div class="start-fuss">Build 2026.10.27.1901</div>
-      <div id="verified-msg" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
+      <div id="verified-msg" role="status" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
     </div>
 
     <!-- ── REGISTRIERUNG ─────────────────────────────────────────────── -->
     <div id="panel-register" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="register.title">Registrieren</p>
-      <div class="lerr" id="reg-err"></div>
+      <div class="lerr" id="reg-err" role="alert"></div>
       <div class="erfolg-box" id="reg-success" data-stil="display:none"></div>
       <form class="sform" id="reg-form" data-submit="btn-register">
         <div data-stil="display:flex;gap:10px">
@@ -211,7 +211,7 @@
     <!-- ── PASSWORT VERGESSEN ─────────────────────────────────────────── -->
     <div id="panel-forgot" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="reset.title">Neues Passwort</p>
-      <div class="lerr" id="forgot-err"></div>
+      <div class="lerr" id="forgot-err" role="alert"></div>
       <div class="erfolg-box" id="forgot-success" data-stil="display:none"></div>
       <div class="sform" id="forgot-form">
         <div class="fg"><label for="forgot-email" data-i18n="auth.email_label">E-Mail-Adresse</label><input type="email" id="forgot-email" autocomplete="email" /></div>
@@ -225,7 +225,7 @@
     <!-- ── PASSWORT ZURÜCKSETZEN ──────────────────────────────────────── -->
     <div id="panel-reset" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="reset.new_password">Neues Passwort setzen</p>
-      <div class="lerr" id="reset-err"></div>
+      <div class="lerr" id="reset-err" role="alert"></div>
       <div class="erfolg-box" id="reset-success" data-stil="display:none"></div>
       <form class="sform" id="reset-form" data-submit="btn-reset">
         <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 8 Zeichen, kein häufiges)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
@@ -238,7 +238,7 @@
     <div id="panel-pflichtwechsel" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="pflicht.title">Startpasswort ersetzen</p>
       <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Konto hat noch das Startpasswort aus dem Protokoll. Bitte zuerst ein eigenes setzen.</div>
-      <div class="lerr" id="pflicht-err"></div>
+      <div class="lerr" id="pflicht-err" role="alert"></div>
       <form class="sform" data-submit="btn-pflicht">
         <div class="fg"><label for="pflicht-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
         <div class="fg"><label for="pflicht-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pflicht-neu" autocomplete="new-password" /></div>
@@ -395,12 +395,12 @@
     <div class="tab active" id="tab-gallery">
       <div class="ph">
         <h1 class="ptitle" data-tab-title="gallery"><span class="ptitle-icon"></span><span data-i18n="gallery.title">Meine Sammlung</span></h1>
-        <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
+        <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
       <div class="brick-stats">
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.sets">Sets</div><div class="bstat-v" id="bstat-sets">—</div></div>
-        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="nav.parts">Teile</div><div class="bstat-v" id="bstat-parts">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="nav.parts">Teile</div><div class="bstat-v" id="bstat-parts">—</div><div class="bstat-s" id="bstat-parts-sub"></div></div>
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="nav.minifigs">Minifiguren</div><div class="bstat-v" id="bstat-minifigs">—</div></div>
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.instr">Anleitungen</div><div class="bstat-v" id="bstat-instr">—</div></div>
       </div>
@@ -531,7 +531,7 @@
                ist das Feld ueber aria-label. -->
           <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="mk-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importMerklisteCsv" /></label>
         </div>
-        <div class="abstand-o-8 schrift-2" id="mk-status"></div>
+        <div class="abstand-o-8 schrift-2" id="mk-status" role="status"></div>
       </div>
 
       <!-- Suche/Filter/Sortierung — dieselbe Zeile wie in der Galerie, an
@@ -574,11 +574,12 @@
 
     <div class="tab" id="tab-parts">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h1>
-        <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
+        <div><h1 class="ptitle" data-tab-title="parts"><span class="ptitle-icon"></span><span data-i18n="nav.parts">Teile</span></h1>
+        <p class="ptitle-unter" data-i18n="parts.subtitle">Alle Teile deiner Sammlung — aus Sets und einzeln erfasst.</p></div>
+        <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
       <div class="brick-stats" id="parts-stats-bar">
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="parts.stat.total_label">Teile gesamt</div><div class="bstat-v" id="ps-total">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="parts.stat.total_label">Teile gesamt</div><div class="bstat-v" id="ps-total">—</div><div class="bstat-s" id="ps-total-sub"></div></div>
         <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="parts.stat.unique">Sorten</div><div class="bstat-v" id="ps-unique">—</div></div>
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="parts.stat.colors">Farben</div><div class="bstat-v" id="ps-colors">—</div></div>
       </div>
@@ -594,7 +595,7 @@
           </div>
         </details>
       </div>
-        <div class="csv-status" id="part-csv-status" data-stil="display:none"></div>
+        <div class="csv-status" id="part-csv-status" role="status" data-stil="display:none"></div>
         <!-- mp stats hidden, kept for JS -->
         <span id="mp-count" data-stil="display:none"></span>
         <span id="mp-qty" data-stil="display:none"></span>
@@ -661,7 +662,7 @@
     <div class="tab" id="tab-minifigs">
       <div class="ph">
         <h1 class="ptitle" data-tab-title="minifigs"><span class="ptitle-icon"></span><span data-i18n="nav.minifigs">Minifiguren</span></h1>
-        <div class="sammlung-wahl" role="tablist" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" role="tab" aria-selected="false" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" role="tab" aria-selected="true" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
+        <div class="sammlung-wahl" role="group" aria-label="Sammlung" data-i18n-attr="aria-label" data-i18n="nav.collection"><button type="button" data-click="oeffneReiter" data-arg="gallery"><svg class="ico" aria-hidden="true"><use href="#i-set"/></svg><span data-i18n="header.sets">Sets</span></button><button type="button" data-click="oeffneReiter" data-arg="parts"><svg class="ico" aria-hidden="true"><use href="#i-teil"/></svg><span data-i18n="nav.parts">Teile</span></button><button type="button" aria-current="page" data-click="oeffneReiter" data-arg="minifigs"><svg class="ico" aria-hidden="true"><use href="#i-figur"/></svg><span data-i18n="nav.minifigs">Minifiguren</span></button></div>
       </div>
 
       <!-- Stats (farbig, wie Galerie) -->
@@ -683,7 +684,7 @@
           </div>
         </details>
       </div>
-        <div class="csv-status" id="fig-csv-status" data-stil="display:none"></div>
+        <div class="csv-status" id="fig-csv-status" role="status" data-stil="display:none"></div>
 
 
       <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
@@ -742,11 +743,11 @@
         <div class="chart-wrap diagramm-flaeche" id="portfolio-chart">
           <div class="diagramm-hinweis" data-i18n="finance.chart.loading">Laden…</div>
         </div>
-        <div class="zeitraum-wahl">
-          <button class="period-btn"        data-period="week"  data-click="setChartPeriod" data-arg="week" data-i18n="finance.period.week">Woche</button>
-          <button class="period-btn"        data-period="month" data-click="setChartPeriod" data-arg="month" data-i18n="finance.period.month">Monat</button>
-          <button class="period-btn"        data-period="year"  data-click="setChartPeriod" data-arg="year" data-i18n="finance.period.year">Jahr</button>
-          <button class="period-btn active" data-period="max"   data-click="setChartPeriod" data-arg="max" data-i18n="finance.period.max">Max</button>
+        <div class="zeitraum-wahl" role="group" aria-label="Zeitraum" data-i18n="finance.period.label" data-i18n-attr="aria-label">
+          <button class="period-btn" aria-pressed="false" data-period="week"  data-click="setChartPeriod" data-arg="week" data-i18n="finance.period.week">Woche</button>
+          <button class="period-btn" aria-pressed="false" data-period="month" data-click="setChartPeriod" data-arg="month" data-i18n="finance.period.month">Monat</button>
+          <button class="period-btn" aria-pressed="false" data-period="year"  data-click="setChartPeriod" data-arg="year" data-i18n="finance.period.year">Jahr</button>
+          <button class="period-btn active" aria-pressed="true" data-period="max"   data-click="setChartPeriod" data-arg="max" data-i18n="finance.period.max">Max</button>
 
         </div>
       </div>
@@ -763,18 +764,18 @@
       <div class="fgrid" id="fin-sum">
         <div class="fstat"><div class="flbl" data-i18n="finance.stat.purchase">Einstand</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
         <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
-        <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">G&amp;V</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
+        <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
       <!-- Kategoriefilter — dieselben vier Chips wie im Finanzen-Reiter der
            Android-App (FinanceSections.financeCategoryFilter). Additiv, und
            „Alle" ist kein vierter Zustand, sondern die LEERE Auswahl: Der Chip
            ist genau dann gewaehlt, wenn nichts eingeschraenkt ist. Die Regel
            steht ausformuliert in FinanceUiState.kategorien. -->
-      <div id="fin-filter" class="chip-reihe">
-        <button class="period-btn active" data-art=""      data-click="finFilter" data-arg="alle"  data-i18n="finance.filter.all">Alle</button>
-        <button class="period-btn"        data-art="sets"  data-click="finFilter" data-arg="sets"  data-i18n="finance.filter.sets">Sets</button>
-        <button class="period-btn"        data-art="parts" data-click="finFilter" data-arg="parts" data-i18n="finance.filter.parts">Teile</button>
-        <button class="period-btn"        data-art="figs"  data-click="finFilter" data-arg="figs"  data-i18n="finance.filter.minifigs">Minifiguren</button>
+      <div id="fin-filter" class="chip-reihe" role="group" aria-label="Anzeigen" data-i18n="finance.filter.label" data-i18n-attr="aria-label">
+        <button class="period-btn active" aria-pressed="true" data-art=""      data-click="finFilter" data-arg="alle"  data-i18n="finance.filter.all">Alle</button>
+        <button class="period-btn" aria-pressed="false" data-art="sets"  data-click="finFilter" data-arg="sets"  data-i18n="finance.filter.sets">Sets</button>
+        <button class="period-btn" aria-pressed="false" data-art="parts" data-click="finFilter" data-arg="parts" data-i18n="finance.filter.parts">Teile</button>
+        <button class="period-btn" aria-pressed="false" data-art="figs"  data-click="finFilter" data-arg="figs"  data-i18n="finance.filter.minifigs">Minifiguren</button>
       </div>
       <div id="fin-tbl"><div class="empty"><div class="icon"><svg class="ico" aria-hidden="true"><use href="#i-finanzen"/></svg></div><h3 data-i18n="finance.not_loaded">Preise noch nicht geladen</h3><p>Klicke auf «Preise laden»</p></div></div>
     </div>
@@ -783,6 +784,7 @@
     <div class="tab" id="tab-partslist">
       <div class="ph spalte-05">
         <h1 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Teileliste</span></h1>
+        <p class="ptitle-unter" data-i18n="pl.subtitle">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</p>
         <div class="zeile mittig luecke-05 umbruch">
         <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" data-stil="width:140px;flex-shrink:0" aria-label="Set-Nr." />
         <button class="btn bp fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
@@ -841,7 +843,7 @@
       <!-- Added sets -->
       <div id="pl-sets" data-stil="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px"></div>
       <!-- Status -->
-      <div id="pl-status" data-stil="color:var(--mut);font-size:var(--fs-3);margin-bottom:.75rem"></div>
+      <div id="pl-status" role="status" data-stil="color:var(--mut);font-size:var(--fs-3);margin-bottom:.75rem"></div>
       <!-- Parts list table -->
       <div id="pl-result"></div>
     </div>
@@ -890,7 +892,7 @@
               <select id="mon-app-theme">
                 <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
                 <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
-                <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (dunkel)</option>
+                <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (immer dunkel)</option>
                 <option value="farbfaecher" data-i18n="settings.theme_farbfaecher">Farbfächer</option>
                 <option value="noppe" data-i18n="settings.theme_noppe">Noppe (poppig)</option>
                 <option value="hochglanz" data-i18n="settings.theme_hochglanz">Hochglanz</option>
@@ -984,7 +986,7 @@
               <div class="fg max-240 ohne-rand"><label for="smtp-test-email" data-i18n="settings.smtp.test_to">Test-E-Mail senden an</label><input type="email" id="smtp-test-email" placeholder="deine@email.com" /></div>
               <button class="btn bs abstand-u-1px" id="btn-test-smtp" data-i18n="smtp.test_btn" data-ico="link">Verbindung testen</button>
             </div>
-            <div id="smtp-test-result" data-stil="display:none;font-size:var(--fs-2);margin-top:.5rem;padding:.5rem .75rem;border-radius:6px"></div>
+            <div id="smtp-test-result" role="status" data-stil="display:none;font-size:var(--fs-2);margin-top:.5rem;padding:.5rem .75rem;border-radius:6px"></div>
           </div>
         </div>
 
@@ -999,7 +1001,7 @@
                 <div class="zeile luecke-10 umbruch mittig abstand-u-1">
                   <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export" data-ico="import">Konfiguration exportieren</button>
                   <label for="cfg-import-file" class="btn bs zeiger"><span data-i18n="settings.cfg_import" data-ico="export">Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" class="datei-versteckt" data-change="importConfig" /></label>
-                  <span class="text-mittel" id="cfg-import-status"></span>
+                  <span class="text-mittel" id="cfg-import-status" role="status"></span>
                 </div>
               </div>
           </div>
@@ -1025,7 +1027,7 @@
                 <option value="" data-i18n="settings.own_theme_vorgabe">Vorgabe</option>
                 <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
                 <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
-                <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (dunkel)</option>
+                <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (immer dunkel)</option>
                 <option value="farbfaecher" data-i18n="settings.theme_farbfaecher">Farbfächer</option>
                 <option value="noppe" data-i18n="settings.theme_noppe">Noppe (poppig)</option>
                 <option value="hochglanz" data-i18n="settings.theme_hochglanz">Hochglanz</option>
@@ -1198,7 +1200,7 @@
           <div class="zeile luecke-8 mittig umbruch abstand-o-075">
             <button class="btn bs" type="button" data-click="guthabenAlleAbfragen"
                     data-i18n="vouchers.balance_all" data-ico="aktualisieren">Guthaben aller Karten abfragen</button>
-            <span class="text-mittel" id="vouchers-balance-status"></span>
+            <span class="text-mittel" id="vouchers-balance-status" role="status"></span>
           </div>
 
 
@@ -1269,9 +1271,12 @@
               Beides zusammen in einem Formular, weil es ein Vorgang ist:
               „diesen Gutschein erfassen".
             -->
-            <div class="fg voucher-upload">
-              <label for="v-pdf" data-i18n="vouchers.pdf_label">PDF des Gutscheins (optional)</label>
-              <input type="file" id="v-pdf" accept="application/pdf" />
+            <div class="fg">
+              <span class="feld-titel" id="v-pdf-titel" data-i18n="vouchers.pdf_label">PDF des Gutscheins (optional)</span>
+              <div class="zeile luecke-05 mittig umbruch">
+                <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="vouchers.pdf_choose">PDF wählen</span><input type="file" id="v-pdf" accept="application/pdf" class="datei-versteckt" aria-label="PDF des Gutscheins (optional)" data-i18n="vouchers.pdf_label" data-i18n-attr="aria-label" data-change="gutscheinDateiGewaehlt" /></label>
+                <span class="text-klein" id="v-pdf-name" data-i18n="vouchers.pdf_none">Keine Datei gewählt</span>
+              </div>
               <div class="text-klein abstand-o-3" data-i18n="vouchers.pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</div>
             </div>
 
@@ -1316,7 +1321,7 @@
                ein for= auf ein fremdes Feld fällt in test/a11y.test.js auf. -->
           <div class="zeile luecke-8 mittig abstand-o-075">
             <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="alerts-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importAlarmeCsv" /></label>
-            <span class="text-mittel" id="alerts-csv-status"></span>
+            <span class="text-mittel" id="alerts-csv-status" role="status"></span>
           </div>
         </div>
       </div>
@@ -1670,7 +1675,7 @@
             <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
             <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-i18n="gallery.add.submit">Hinzufügen</button></div>
           </div>
-          <div class="schrift-2 abstand-o-05 status-zeile" id="ap-inline-result"></div>
+          <div class="schrift-2 abstand-o-05 status-zeile" id="ap-inline-result" role="status"></div>
         </div>
   </div>
 </div>
@@ -1693,7 +1698,7 @@
             <button class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-i18n="gallery.add.submit">Hinzufügen</button></div>
         </div>
         <div class="text-klein abstand-o-05" data-i18n="figs.add.hint" data-ico="idee">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.</div>
-        <div class="schrift-2 abstand-o-05 status-zeile" id="af-inline-result"></div>
+        <div class="schrift-2 abstand-o-05 status-zeile" id="af-inline-result" role="status"></div>
       </div>
   </div>
 </div>
@@ -1712,14 +1717,14 @@
       <div class="fg" id="add-storage-box"><span class="feld-titel" id="add-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="add-storage-slot"></span></div>
       <div class="erfassen-fuss"><button class="btn bp" id="btn-add" data-i18n="gallery.add.submit">Hinzufügen</button></div>
     </div>
-    <div class="abstand-o-8 schrift-2" id="add-status"></div>
+    <div class="abstand-o-8 schrift-2" id="add-status" role="status"></div>
   </div>
 </div>
 <div class="ovl" id="set-modal" role="dialog" aria-modal="true" aria-labelledby="m-tit">
   <div class="modal">
     <div class="mhd"><div><div class="mtit" id="m-tit">Set</div><div class="muntertit" id="m-untertit"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div class="m-kopfteil">
-      <img id="m-img" alt="" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+      <img id="m-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
       <div id="m-det"></div>
     </div>
     <div id="m-instr" class="il"></div>
@@ -1780,7 +1785,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="schliesseMerkpostenDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="mk-m-img" alt="" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="mk-m-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="mk-m-det"></div>
     <div id="mk-m-market-rows"></div>
     <div class="abstand-o-075" id="mk-m-price-chart">
@@ -1788,7 +1793,7 @@
       <div class="sparkline-wrap" id="mk-m-sparkline-content"></div>
     </div>
     <div class="mfooter verteilt umbruch luecke-8">
-      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Merkposten entfernen" data-i18n="wanted.remove" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
+      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Merkposten löschen" data-i18n="wanted.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
       <!-- Marcos Vorgabe: die beiden Kaufadressen NEBENEINANDER, und darunter
            mit ABSTAND die Uebernahme. Der groessere Abstand ist die ganze
            Aussage: Oben zwei Wege nach draussen, unten der eine Griff, der
@@ -1855,7 +1860,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="closeCatModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="cat-m-img" alt="" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="cat-m-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
       <div class="zeile luecke-8 unten umbruch">
@@ -2005,7 +2010,7 @@
     </div>
     <!-- data-click="openImageLightboxFromEl" ist der Zoom (11-actions.js);
          die Adresse dafuer steht in data-orig und wird beim Oeffnen gesetzt. -->
-    <img id="setitem-img" alt="" data-click="openImageLightboxFromEl"
+    <img id="setitem-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-click="openImageLightboxFromEl"
          data-stil="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none;cursor:zoom-in" />
     <div id="setitem-body"></div>
     <div class="mfooter">

@@ -105,7 +105,7 @@ test('die Preis-Zeile ist ein stabiler Anker', () => {
   assert.match(gallery, /function updateGalleryPrices/);
   // Immer im Markup, nur leer ausgeblendet — sonst gäbe es beim ersten
   // Preis-Update doch wieder ein Layout-Sprung
-  assert.match(gallery, /data-price-for="\$\{esc\(s\.set_number\)\}"\$\{priceStr\|\|pnl \? '' : ' hidden'\}/,
+  assert.match(gallery, /data-price-for="\$\{esc\(s\.set_number\)\}"\$\{preis \? '' : ' hidden'\}/,
     'Der Container muss immer gerendert und nur bei leerem Inhalt hidden sein');
   assert.match(styles, /\.price-badge\[hidden\]\{display:none\}/,
     '.price-badge setzt display:flex — ohne diese Regel bliebe [hidden] wirkungslos');

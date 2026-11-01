@@ -173,7 +173,7 @@ export async function getPartsStats(userId: Blickfeld) {
     const r = await repo.kennzahlen(uids, true);
     if (r) return r;
   }
-  return (await repo.kennzahlen(uids, false)) ?? { unique_parts: 0, unique_colors: 0, total_parts: 0 };
+  return (await repo.kennzahlen(uids, false)) ?? { unique_parts: 0, unique_colors: 0, total_parts: 0, manual_parts: 0 };
 }
 
 export async function getBlColorMap() {

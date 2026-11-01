@@ -66,6 +66,8 @@
     neuAnwenden();
   };
   window.__bimDunkelWert = function () { return folgtSystem() ? 'system' : 'server'; };
+  // Hat ein Design keine helle Fassung? Die Einstellungen sagen es dann dazu.
+  window.__bimNurDunkel = function (theme) { return theme === 'werkbank'; };
 
   /**
    * Setter für 01-core.js und den Admin-Speichern-Handler. Nur gültige Werte

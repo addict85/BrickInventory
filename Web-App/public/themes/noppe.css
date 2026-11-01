@@ -227,8 +227,10 @@
 [data-theme="noppe"] select,[data-theme="hochglanz"] select,
 [data-theme="noppe"] textarea,[data-theme="hochglanz"] textarea{
   background:var(--sur);color:var(--txt);
-  border:2.5px solid var(--ink);border-radius:10px;
+  border:2.5px solid var(--feldrand);border-radius:10px;
 }
+/* Hell trägt das Feld die Tintenkontur wie die Kacheln; dunkel wäre Tinte unsichtbar. */
+[data-theme="noppe"]:not([data-dunkel]),[data-theme="hochglanz"]:not([data-dunkel]){--feldrand:var(--ink)}
 [data-theme="noppe"] input::placeholder,[data-theme="hochglanz"] input::placeholder,
 [data-theme="noppe"] textarea::placeholder,[data-theme="hochglanz"] textarea::placeholder{color:var(--mut)}
 

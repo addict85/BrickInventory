@@ -36,8 +36,8 @@ test('Teile: manuelle da, aus Sets leer — kein Leerzustand', async () => {
   try {
     assert.equal(d.querySelectorAll('#manual-parts-list .man-tile').length, 1);
     assert.ok(sichtbar(d.getElementById('manual-parts-box')));
-    assert.ok(!text(d.getElementById('tab-parts')).includes('Keine Teile gefunden'),
-      'Unter einer Liste mit Einträgen steht „Keine Teile gefunden"');
+    assert.ok(!text(d.getElementById('tab-parts')).includes('Noch keine Teile'),
+      'Unter einer Liste mit Einträgen steht „Noch keine Teile"');
   } finally { w.close(); }
 });
 
@@ -46,7 +46,7 @@ test('Teile: beide leer — genau ein Leerzustand, der leere Kasten verschwindet
   try {
     const leer = d.querySelectorAll('#tab-parts .leer');
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
-    assert.ok(text(leer[0]).includes('Keine Teile gefunden'));
+    assert.ok(text(leer[0]).includes('Noch keine Teile'));
     assert.ok(leer[0].querySelector('[data-click="oeffneErfassen"][data-arg="part"]'), 'Der Leerzustand bietet das Erfassen an');
     // Dasselbe Symbol wie der Reiter „Teile" — kein Puzzleteil.
     assert.equal(leer[0].querySelector('.leer-ico use')?.getAttribute('href'),
@@ -95,8 +95,8 @@ test('Figuren: manuelle da, aus Sets leer — kein Leerzustand', async () => {
   const { w, d } = await figuren({ '/v1/minifigs/manual': { success: true, figs: [FIGUR] } });
   try {
     assert.equal(d.querySelectorAll('#manual-figs-list .man-tile').length, 1);
-    assert.ok(!text(d.getElementById('tab-minifigs')).includes('Keine Minifiguren'),
-      'Unter einer Liste mit Einträgen steht „Keine Minifiguren"');
+    assert.ok(!text(d.getElementById('tab-minifigs')).includes('Noch keine Minifiguren'),
+      'Unter einer Liste mit Einträgen steht „Noch keine Minifiguren"');
   } finally { w.close(); }
 });
 
@@ -105,7 +105,7 @@ test('Figuren: beide leer — genau ein Leerzustand', async () => {
   try {
     const leer = d.querySelectorAll('#tab-minifigs .leer');
     assert.equal(leer.length, 1, `${leer.length} Leerzustände`);
-    assert.ok(text(leer[0]).includes('Keine Minifiguren'));
+    assert.ok(text(leer[0]).includes('Noch keine Minifiguren'));
     assert.equal(sichtbar(d.getElementById('manual-figs-box')), false);
   } finally { w.close(); }
 });

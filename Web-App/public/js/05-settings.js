@@ -399,6 +399,9 @@ function zeigeDesignWahl(d) {
   const vorgabeName = tRaw(NAMEN[d.vorgabe] || NAMEN.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
   sel.value = d.eigenes || '';
+  // Werkbank hat keine helle Fassung; ohne Hinweis wirkt „Darstellung: hell“ kaputt.
+  const hinweis = G('design-hinweis');
+  if (hinweis) hinweis.textContent = window.__bimNurDunkel?.(d.eigenes || d.vorgabe) ? tRaw('settings.werkbank_hint') : '';
 }
 
 async function setzeEigenesDesign() {
@@ -888,7 +891,7 @@ export async function ladeAlarmUebersicht() {
       <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
              data-click="stopEvent"
-             data-stil="width:90px;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
+             data-stil="width:90px;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
       <span data-stil="font-size:var(--fs-1);color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
       <div data-stil="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">
         ${marke}
@@ -982,7 +985,7 @@ export async function ladeLagerortVerwaltung() {
     return `<div data-stil="display:contents">
       <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}" aria-label="${esc(tRaw('detail.storage'))}"
              data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"
-             data-stil="width:100%;border:1px solid var(--bdr);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" /></span>
+             data-stil="width:100%;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" /></span>
       <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end">${wie}</span>
       <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs btn-sm" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
               data-arg2="${o.id === vorgabeId ? 1 : 0}" data-stil="padding:2px 8px"

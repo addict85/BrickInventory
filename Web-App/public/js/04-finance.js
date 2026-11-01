@@ -25,7 +25,9 @@ function setChartPeriod(period){
   _chartPeriod = period;
   // Nur die Zeitraum-Knöpfe: Die Filterchips darunter tragen dieselbe Klasse.
   document.querySelectorAll('.zeitraum-wahl .period-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.period === period);
+    const an = /** @type {HTMLElement} */ (b).dataset.period === period;
+    b.classList.toggle('active', an);
+    b.setAttribute('aria-pressed', String(an));
   });
   loadPortfolioChart();
 }
@@ -44,6 +46,11 @@ window.addEventListener('resize', () => {
   el.innerHTML = portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || CURRENCY);
 });
 
+/** Hinweis statt Kurve, wenn der Verlauf nicht zu holen war. */
+function diagrammNichtDa(offline){
+  return `<div class="diagramm-hinweis">${t(offline ? 'chart.offline' : 'chart.unavailable')}</div>`;
+}
+
 async function loadPortfolioChart(){
   const el  = G('portfolio-chart');
   if(!el) return;
@@ -51,7 +58,9 @@ async function loadPortfolioChart(){
 
   const d = await api('GET', `/v1/finance/portfolio-history?period=${_chartPeriod}${scopeMode('finance') !== 'all' ? '&accounts=' + scopeMode('finance') : ''}`);
   if(!d.success){
-    el.innerHTML='<span class="diagramm-fehler">'+t('toast.error')+': '+esc(d.error||t('common.unknown'))+'</span>'; return;
+    el.innerHTML = d.networkError ? diagrammNichtDa(true)
+      : '<span class="diagramm-fehler">'+t('toast.error')+': '+esc(d.error||t('common.unknown'))+'</span>';
+    return;
   }
   // Weniger als zwei echte Messpunkte sind kein Verlauf: Der Server ergänzt
   // dann einen künstlichen Startwert, und die Linie behauptete Stillstand.
@@ -167,6 +176,8 @@ export async function loadFinance(){
     api('GET','/v1/finance/pnl'+scopeQuery('finance')),
   ]);
   if (listeLadefehler(G('fin-tbl'), d, { erneut: 'loadFinance', behalten: hatteTabelle })) {
+    // Das Diagramm lädt erst nach den Werten; ohne sie bliebe „Laden…“ stehen.
+    if (!_letzteKurve) G('portfolio-chart').innerHTML = diagrammNichtDa(!!d.networkError);
     if (!G('fin-sum').dataset.geladen) {
       G('fin-sum').removeAttribute('aria-busy');
       for (const id of ['fin-einstand', 'fin-wert', 'portfolio-current']) G(id).textContent = '—';
@@ -376,14 +387,14 @@ export async function loadFinance(){
       <table class="dt dt-summe">
         <thead><tr><th></th><th>${t('finance.stat.purchase')}</th><th>${t('finance.grand.value')}</th></tr></thead>
         <tbody>
-          ${summenZeile('Sets', einstand.sets, setsQtyAvg)}
+          ${summenZeile(t('finance.filter.sets'), einstand.sets, setsQtyAvg)}
           ${summenZeile(t('finance.grand.parts'), einstand.parts, partsTotal)}
           ${summenZeile(t('finance.figs_section'), einstand.figs, figsTotal)}
         </tbody>
         <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal)}</tfoot>
       </table>
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-250"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-40"></colgroup><thead><tr><th></th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-250"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-40"></colgroup><thead><tr><th></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
   // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
   // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
   // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine
@@ -446,7 +457,9 @@ function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max, guvKau
   if (guv != null && wert > 0) {
     G('fin-total-pnl').innerHTML = pnlBadge(guv);
     // Betrag und Prozent aus denselben Posten (mit Kauf- UND Marktpreis).
-    G('fin-pnl-sub').textContent = guvKauf > 0 ? `${guvMarkt >= guvKauf ? '+' : '−'}${fmtN(Math.abs(guvMarkt - guvKauf), cur)}` : '';
+    // „gegenüber dem Einstand“: Das Prozent im Diagramm rechnet gegen den Anfang des Zeitraums.
+    G('fin-pnl-sub').textContent = guvKauf > 0
+      ? tRaw('finance.pnl_vs_purchase', { betrag: `${guvMarkt >= guvKauf ? '+' : '−'}${fmtN(Math.abs(guvMarkt - guvKauf), cur)}` }) : '';
   } else {
     G('fin-total-pnl').textContent = '—';
     G('fin-pnl-sub').textContent = tRaw('finance.pnl_needs_prices');
@@ -482,7 +495,9 @@ function finFilterAnwenden(){
   });
   document.querySelectorAll('#fin-filter button').forEach(b => {
     const art = b.dataset.art;
-    b.classList.toggle('active', art ? finKategorien.has(art) : finKategorien.size === 0);
+    const an = art ? finKategorien.has(art) : finKategorien.size === 0;
+    b.classList.toggle('active', an);
+    b.setAttribute('aria-pressed', String(an));
   });
 }
 
