@@ -22,8 +22,8 @@ import ch.brickinventoryapp.util.fingerabdruckLesbar
 
 /**
  * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der
- * Fingerabdruck steht in Vierergruppen da, damit man ihn mit der Anzeige des
- * Servers vergleichen kann; ein geänderter Schlüssel nennt beide.
+ * Fingerabdruck steht in derselben Schreibweise da wie in der Webapp, damit man
+ * ihn vergleichen kann; ein geänderter Schlüssel nennt den bisherigen und den neuen.
  */
 @Composable
 fun ZertifikatDialog(
@@ -46,15 +46,17 @@ fun ZertifikatDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(text, host))
-                Text(stringResource(R.string.zert_fingerabdruck), style = MaterialTheme.typography.labelMedium)
-                Text(fingerabdruckLesbar(frage.fingerabdruck), fontFamily = FontFamily.Monospace,
-                    style = MaterialTheme.typography.bodySmall)
                 frage.erwartet?.let {
                     Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
                     Text(fingerabdruckLesbar(it), fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                Text(stringResource(if (geaendert) R.string.zert_jetzt else R.string.zert_fingerabdruck),
+                    style = MaterialTheme.typography.labelMedium)
+                Text(fingerabdruckLesbar(frage.fingerabdruck), fontFamily = FontFamily.Monospace,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                 // Die einzige Stelle, an der nach Nutzer-CAs gefragt wird: beim Fehler,
                 // mit Erklärung. Den Fingerabdruck bestätigt man danach trotzdem einmal.
                 if (frage.art == ZertifikatUngeklaert.Art.UNBEKANNTE_CA && !nutzerCaAn) {

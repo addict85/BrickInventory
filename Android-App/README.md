@@ -112,9 +112,11 @@ sie, läuft der Bau durch und sagt per Warnung deutlich, dass das Ergebnis
 unsigniert und damit nicht installierbar ist — siehe *Release signieren*.
 
 ## Erster Start
-1. Server-URL eingeben: `http://192.168.x.x:3000`  
-   (IP-Adresse des Geräts auf dem der BrickInventory Manager läuft)
-2. Mit Benutzername + Passwort anmelden
+1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen
+   und in der App scannen — oder die https-Adresse des Servers von Hand
+   eintragen, z. B. `https://brick.fritz.box`.
+2. Bei Eingabe von Hand: den Fingerabdruck bestätigen (siehe unten), dann mit
+   Benutzername und Passwort anmelden.
 
 ## Funktionen
 - **Galerie** – Sets anzeigen, suchen, hinzufügen, löschen
@@ -125,9 +127,38 @@ unsigniert und damit nicht installierbar ist — siehe *Release signieren*.
 Die App kommuniziert ausschliesslich über `/api/v1/` mit Bearer-Token-Authentifizierung.
 Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile API.
 
+## Sicherheit im Netz
+
+**Nur https.** Die Release-App sendet nichts unverschlüsselt. Zwei Linien:
+der Wächter (`di/ServerWaechter.kt`) bricht jede http-Anfrage vor dem Netz ab,
+und die Network-Security-Config (`app/src/main/res/xml/`) verbietet Klartext
+für alle Hosts. Nur der Debug-Build darf http zu `localhost`, `127.0.0.1` und
+`10.0.2.2` (Emulator), festgelegt in `app/src/debug/res/xml/` und
+`NetworkPolicy.ENTWICKLUNGS_HOSTS`. Eine noch gespeicherte `http://`-Adresse
+führt beim Start in die Einrichtung mit einer Anleitung (QR neu scannen oder
+https-Adresse eintragen).
+
+**Wem die App beim eigenen Server vertraut** (`util/ServerVertrauen.kt`):
+
+| Weg | Was passiert |
+| --- | --- |
+| QR-Code mit `fp` | Der Fingerabdruck (SHA-256 des öffentlichen Schlüssels der Caddy-Wurzel) wird vor der ersten Anfrage gespeichert. Kein Dialog. |
+| Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck des obersten Zertifikats der Kette in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`). Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich). |
+| Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur auf ausdrückliches Ja. |
+
+Weil die Wurzel gepinnt wird und nicht das Blatt, übersteht der Pin die
+regelmässige Erneuerung des Serverzertifikats durch Caddy. Andere Hosts
+(GitHub für die Selbstaktualisierung) prüft nur die System-CA-Liste.
+Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
+ausdrücklich einschaltet.
+
+**Logcat.** Die App schreibt nur über `util/Protokoll.kt`, und das nur im
+Debug-Build; dort zeigt der Netzmitschnitt Anfrage- und Statuszeile, nie Rümpfe,
+und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
+zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
+`ProtokollTest` verbietet rohe Log-Aufrufe ausserhalb der Hülle.
+
 ## Hinweise
-- `usesCleartextTraffic="true"` im Manifest erlaubt HTTP (für lokale Server ohne HTTPS)
-- Für HTTPS-Server: kein Problem, funktioniert automatisch
 - Bildcaching erfolgt via Coil (automatisch)
 
 

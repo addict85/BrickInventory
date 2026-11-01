@@ -69,10 +69,14 @@ fun spkiFingerabdruck(zertifikat: X509Certificate): String =
 fun istFingerabdruck(text: String?): Boolean =
     text != null && runCatching { Base64.getDecoder().decode(text.trim()).size == 32 }.getOrDefault(false)
 
-/** Für die Anzeige: Hex in Vierergruppen liest sich laut vor und lässt sich vergleichen. */
+/**
+ * Für die Anzeige: Hex in Paaren mit Doppelpunkt, genau wie die Webapp ihn unter
+ * „Server-Zertifikat“ zeigt (`fp_hex`). Gleiche Schreibweise heisst: Zeichen für
+ * Zeichen vergleichbar, ohne umzurechnen.
+ */
 fun fingerabdruckLesbar(fp: String): String =
     runCatching { Base64.getDecoder().decode(fp) }.getOrNull()
-        ?.joinToString("") { "%02X".format(it) }?.chunked(4)?.joinToString(" ") ?: fp
+        ?.joinToString(":") { "%02X".format(it) } ?: fp
 
 /** Unter diesem Schlüssel gilt ein Pin: Host und Port, ohne Schema und Pfad. */
 fun pinSchluessel(serverUrl: String): String? {
@@ -140,6 +144,10 @@ class ZertifikatsFrage @Inject constructor() {
  * und die Kette muss bis dahin lückenlos signiert sein — dann gilt sie auch ohne
  * bekannte CA. Ohne Pin wird nie still vertraut. Andere Hosts (Bild-CDN)
  * prüft nur die Kette.
+ *
+ * Zur Bestätigung angeboten wird das oberste Zertifikat der Kette, nicht das
+ * Blatt: Bei Caddy mit `sign_with_root` ist das die Wurzel, also derselbe Wert
+ * wie im QR-Code und in der Webapp, und er übersteht die Erneuerung des Blatts.
  */
 // Das Pinning braucht ihn: Er prüft die Kette per PKIX bis zum Pin bzw. über
 // WahlVertrauen und lehnt ab, was der Nutzer nicht bestätigt hat.
@@ -157,7 +165,7 @@ class PinVertrauen(
 
     private fun pruefe(chain: Array<X509Certificate>, schluessel: String?, kettenPruefung: () -> Unit) {
         if (schluessel == null || chain.isEmpty() || schluessel != eigenerServer()) return kettenPruefung()
-        val fp = spkiFingerabdruck(chain[0])
+        val fp = spkiFingerabdruck(chain.last())
         val pin = pins.pin(schluessel)
         if (pin != null) {
             if (passtZumPin(chain, pin)) return

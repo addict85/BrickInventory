@@ -860,10 +860,11 @@
     <string name="zert_titel_erstkontakt">Trust this server?</string>
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
-    <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. Compare the fingerprint with the one the server shows (web app, settings). Afterwards the app accepts only this certificate.</string>
-    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. Only trust it if the fingerprint matches the one the server shows.</string>
+    <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. Compare the fingerprint character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
+    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. Only trust it if the fingerprint matches the one the web app shows under Settings → Server certificate.</string>
     <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself.</string>
-    <string name="zert_fingerabdruck">Fingerprint (SHA-256)</string>
+    <string name="zert_fingerabdruck">Fingerprint (SHA-256 of the public key)</string>
+    <string name="zert_jetzt">Shown now (new)</string>
     <string name="zert_bisher">Previously confirmed</string>
     <string name="zert_vertrauen">Trust this certificate</string>
     <string name="zert_vertrauen_neu">Accept the new certificate</string>
