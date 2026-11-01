@@ -36,6 +36,7 @@ import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/import
 import * as pgNotify from '../../db/pgNotify';
 import { DATA_DIR } from '../../src/infra/appPaths';
 import { setBildSichtbar } from '../../src/katalog/bilder/bildBlickfeld';
+import { zaehleAnfrage } from '../../src/konto/loginLimiter';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
@@ -411,8 +412,14 @@ router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) 
   res.end();
 });
 
+/** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
 router.post('/sets/:setNumber/parts', requireToken, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/sets/:setNumber/parts'>) => {
-  res.json({ success: true, count: await importPartsForSet(pfadParam(req, 'setNumber'), angemeldeteNutzerId(req)) }); 
+  const uid = angemeldeteNutzerId(req);
+  const set = await findSetInScope(uid, pfadParam(req, 'setNumber'));
+  if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+  const takt = await zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
+  if (takt.count > 30) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: takt.waitMin });
+  res.json({ success: true, count: await importPartsForSet(set.set_number, set.owner_user_id) });
 });
 
 // ── Anleitungen ─────────────────────────────────────────────────────────────
