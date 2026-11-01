@@ -16,7 +16,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
-import kotlinx.coroutines.launch
 
 /**
  * Haushalts-Karte: verknüpfen, Einladungscode erzeugen, Verknüpfung lösen.
@@ -40,19 +39,9 @@ internal fun HouseholdCard(
     var code by rememberSaveable { mutableStateOf("") }
     var passwort by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(state.eingeloest) { if (state.eingeloest > 0) code = "" }
-    // LocalClipboardManager ist veraltet („Use LocalClipboard instead which
-    // supports suspend functions"). Der Nachfolger ist kein reiner
-    // Namenstausch: `Clipboard.setClipEntry` ist SUSPEND, braucht also einen
-    // Bereich, und der Eintrag wird aus einem ClipData gebaut.
-    //
-    // GELESEN in der Quelle von androidx (Google-Maven ist aus dieser
-    // Umgebung gesperrt, raw.githubusercontent.com nicht):
-    //
-    //   public val LocalClipboard: ProvidableCompositionLocal<Clipboard>
-    //   public suspend fun setClipEntry(clipEntry: ClipEntry?)
-    //   public actual class ClipEntry(public val clipData: ClipData)
-    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
-    val kopierBereich = rememberCoroutineScope()
+    // Über GeheimeZwischenablage statt LocalClipboard: Sie nimmt den Code nach
+    // einer Minute wieder heraus, auch wenn die Seite dann schon zu ist.
+    val kontext = androidx.compose.ui.platform.LocalContext.current
     // Das Etikett eines ClipData ist auf manchen Android-Oberflaechen SICHTBAR
     // — es gehoert darum in die Sprachdateien und nicht in den Quelltext.
     //
@@ -150,11 +139,7 @@ internal fun HouseholdCard(
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         IconButton(onClick = {
-                            kopierBereich.launch {
-                                clipboard.setClipEntry(
-                                    androidx.compose.ui.platform.ClipEntry(
-                                        ch.brickinventoryapp.util.geheimerClip(einladungEtikett, c)))
-                            }
+                            ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c)
                         }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
                     }
                 )

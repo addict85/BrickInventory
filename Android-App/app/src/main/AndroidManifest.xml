@@ -58,6 +58,15 @@
     -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- Nur um zu sehen, ob es eine Authenticator-App gibt (zweiter Faktor,
+         EinstellungenKonto.kt); sonst bleibt der Schlüssel zum Kopieren. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="otpauth" />
+        </intent>
+    </queries>
+
     <!--
       tools:targetApi="33" fuer localeConfig und enableOnBackInvokedCallback:
       Lint meldet beide als UnusedAttribute, weil sie erst ab API 33 wirken und

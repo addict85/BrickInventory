@@ -21,7 +21,6 @@ import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
-import kotlinx.coroutines.launch
 
 /**
  * Das eigene Konto: Profil und Passwort. Über /auth/profile und
@@ -158,8 +157,17 @@ internal fun KontoCard(
  * Zweiter Faktor: einrichten, abschalten, neue Wiederherstellungscodes.
  *
  * Auf dem Telefon braucht es keinen QR-Code: Der otpauth-Link oeffnet die
- * Authenticator-App direkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
+ * Authenticator-App. Immer über die Auswahl des Systems: Der Link trägt das
+ * Geheimnis, und eine App, die sich als Standard dafür eingetragen hat, bekäme es
+ * sonst unbemerkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
  */
+/** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
+private fun oeffneMitAuswahl(ctx: android.content.Context, uri: String, titel: String): Boolean {
+    val ansicht = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri))
+    if (ansicht.resolveActivity(ctx.packageManager) == null) return false
+    return runCatching { ctx.startActivity(android.content.Intent.createChooser(ansicht, titel)) }.isSuccess
+}
+
 @Composable
 internal fun ZweiterFaktorCard(
     zfZustand: ch.brickinventoryapp.ui.ZweiterFaktorUiState,
@@ -172,15 +180,11 @@ internal fun ZweiterFaktorCard(
     var zfPasswort by rememberSaveable { mutableStateOf("") }
     var zfCode     by rememberSaveable { mutableStateOf("") }
     var ohneApp    by rememberSaveable { mutableStateOf(false) }
-    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
-    val kopierBereich = rememberCoroutineScope()
+    val auswahlTitel = stringResource(R.string.zf_open_app)
+    val kontext = androidx.compose.ui.platform.LocalContext.current
     val schluesselEtikett = stringResource(R.string.app_name)
     val kopieren: (String) -> Unit = { text ->
-        kopierBereich.launch {
-            clipboard.setClipEntry(
-                androidx.compose.ui.platform.ClipEntry(ch.brickinventoryapp.util.geheimerClip(schluesselEtikett, text)))
-        }
+        ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, schluesselEtikett, text)
     }
     // Felder leeren, sobald ein Schritt gelungen ist — sonst stuende das
     // Passwort beim naechsten Schritt noch da.
@@ -232,7 +236,7 @@ internal fun ZweiterFaktorCard(
                 Button(
                     onClick = {
                         val uri = zfZustand.otpauth
-                        ohneApp = uri == null || runCatching { uriHandler.openUri(uri) }.isFailure
+                        ohneApp = uri == null || !oeffneMitAuswahl(kontext, uri, auswahlTitel)
                     },
                     modifier = Modifier.fillMaxWidth(), shape = Formen.knopf
                 ) { Text(stringResource(R.string.zf_open_app)) }

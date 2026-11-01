@@ -109,6 +109,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Ein abgelaufenes Geheimnis lässt sich ab Android 10 erst mit Fokus aus der Zwischenablage nehmen. */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) ch.brickinventoryapp.util.GeheimeZwischenablage.pruefe(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Vor super.onCreate(): Das Startbild ersetzt das Fenster-Theme, bis
         // Compose das erste Bild gezeichnet hat — kein weisses Aufblitzen.

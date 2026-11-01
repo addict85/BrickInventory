@@ -8,7 +8,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
-import kotlinx.coroutines.launch
 
 /**
  * Gutscheine — der erste Eintrag der Liste, weil sie im Laden gebraucht werden:
@@ -27,12 +26,9 @@ fun GutscheineUnterseite(
     // Feldzugriff auf GutscheinUiState.
     val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
     ch.brickinventoryapp.ui.components.Sichtschutz()
-    // Die Zwischenablage kommt aus Compose und nicht aus dem ViewModel: Sie
-    // ist an die Komposition gebunden. Die Rueckmeldung laeuft ueber den
-    // Snackbar des ViewModels, damit sie dort steht, wo alle anderen Meldungen
-    // stehen.
-    val zwischenablage = androidx.compose.ui.platform.LocalClipboard.current
-    val kopierBereich = androidx.compose.runtime.rememberCoroutineScope()
+    // Kopiert wird über GeheimeZwischenablage (nach einer Minute wieder leer); die
+    // Rückmeldung läuft über den Snackbar des ViewModels wie alle anderen Meldungen.
+    val kontext = androidx.compose.ui.platform.LocalContext.current
     val etikett = stringResource(R.string.vouchers_title)
     // Beim Oeffnen DIESER Seite laden und nicht mehr beim Oeffnen der
     // Einstellungen: Wer die Sprache umstellt, braucht keine Gutscheinliste.
@@ -49,10 +45,7 @@ fun GutscheineUnterseite(
             onPdfOeffnen = { gvm.oeffneGutscheinPdf(it) },
             onKopieren = { wert, istNummer ->
                 // Nummer und PIN zusammen sind Geld: als Geheimnis markiert.
-                kopierBereich.launch {
-                    zwischenablage.setClipEntry(androidx.compose.ui.platform.ClipEntry(
-                        ch.brickinventoryapp.util.geheimerClip(etikett, wert)))
-                }
+                ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, etikett, wert)
                 gvm.meldeGutscheinKopiert(istNummer)
             },
             onGuthaben = { gvm.frageGuthabenAb(it) },
