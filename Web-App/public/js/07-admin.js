@@ -1205,7 +1205,7 @@ export async function openModal(sn){
     // Beide Zustände in EINEM Diagramm — siehe priceChartSVG().
     el.innerHTML = ph.success
       ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el))
-      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
+      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`;
   });
 
 }

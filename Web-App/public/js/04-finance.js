@@ -46,6 +46,11 @@ window.addEventListener('resize', () => {
   el.innerHTML = portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || CURRENCY);
 });
 
+/** Hinweis statt Kurve, wenn der Verlauf nicht zu holen war. */
+function diagrammNichtDa(offline){
+  return `<div class="diagramm-hinweis">${t(offline ? 'chart.offline' : 'chart.unavailable')}</div>`;
+}
+
 async function loadPortfolioChart(){
   const el  = G('portfolio-chart');
   if(!el) return;
@@ -171,6 +176,8 @@ export async function loadFinance(){
     api('GET','/v1/finance/pnl'+scopeQuery('finance')),
   ]);
   if (listeLadefehler(G('fin-tbl'), d, { erneut: 'loadFinance', behalten: hatteTabelle })) {
+    // Das Diagramm lädt erst nach den Werten; ohne sie bliebe „Laden…“ stehen.
+    if (!_letzteKurve) G('portfolio-chart').innerHTML = diagrammNichtDa(!!d.networkError);
     if (!G('fin-sum').dataset.geladen) {
       G('fin-sum').removeAttribute('aria-busy');
       for (const id of ['fin-einstand', 'fin-wert', 'portfolio-current']) G(id).textContent = '—';

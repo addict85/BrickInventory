@@ -436,7 +436,7 @@ export async function oeffneMerkpostenDetail(arg) {
     if (_detail !== arg) return;
     G('mk-m-sparkline-content').innerHTML = ph?.success
       ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(G('mk-m-sparkline-content')))
-      : `<span class="text-mut schrift-1">${esc(tRaw('detail.no_history'))}</span>`;
+      : `<span class="text-mut schrift-1">${esc(tRaw(ph?.networkError ? 'chart.offline' : 'detail.no_history'))}</span>`;
   }).catch(() => {});
 }
 

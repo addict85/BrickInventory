@@ -927,6 +927,8 @@ window.I18N_DE = {
   'col.part_nr': 'Teilenr.',
   'col.sets': 'Sets',
   'common.cancel': 'Abbrechen',
+  'chart.offline': 'Nicht verfügbar – offline',
+  'chart.unavailable': 'Diagramm nicht verfügbar',
   'finance.chart.loading': 'Laden…',
   'monitor.loading': 'Lade…',
   'monitor.sub.imgs_cached': 'Alle {n} Bilder gecacht',

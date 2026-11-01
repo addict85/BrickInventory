@@ -914,6 +914,8 @@ window.I18N_EN = {
   'col.part_nr': 'Part no.',
   'col.sets': 'Sets',
   'common.cancel': 'Cancel',
+  'chart.offline': 'Not available – offline',
+  'chart.unavailable': 'Chart not available',
   'finance.chart.loading': 'Loading…',
   'monitor.loading': 'Loading…',
   'monitor.sub.imgs_cached': 'All {n} images cached',
