@@ -205,7 +205,7 @@ internal fun ZweiterFaktorCard(
         }
         val codeFeld: @Composable (String) -> Unit = { beschriftung ->
             OutlinedTextField(
-                value = zfCode, onValueChange = { zfCode = it.take(12) },
+                value = zfCode, onValueChange = { zfCode = it.take(24) },
                 label = { Text(beschriftung) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))

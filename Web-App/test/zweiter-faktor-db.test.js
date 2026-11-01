@@ -12,6 +12,9 @@
  *      Token von vor dem Einschalten gilt weiter"
  *   G  (28.10.) beim Abschalten wieder ohne Zählen des falschen Codes → rot:
  *      „Code beim Abschalten beliebig oft ratbar"
+ *   H  (01.11.) hashCode() wieder als blankes SHA-256 → rot: „ungesalzenes SHA-256";
+ *      randomBytes(7)/10 Zeichen → rot: Format; Rückfall auf alterHash entfernt → rot:
+ *      „alter Code gilt nicht mehr"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -121,7 +124,17 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
       'Ein Token von vor dem Einschalten gilt weiter — ein Eindringling bliebe drin');
     assert.deepEqual((await ruf('/zweiter-faktor', null, token)).body, { success: true, aktiv: true, codes_uebrig: 10 });
     const roh = JSON.stringify(await db.all('SELECT code_hash FROM zweiter_faktor_codes'));
-    assert.ok(!codes.some(c => roh.includes(c.replace('-', ''))), 'Wiederherstellungscodes stehen im Klartext');
+    assert.ok(!codes.some(c => roh.includes(c.replace(/-/g, ''))), 'Wiederherstellungscodes stehen im Klartext');
+    // 80 Bit: 16 Base32-Zeichen in Vierergruppen; gespeichert als HMAC, nicht als blankes SHA-256.
+    for (const c of codes) assert.match(c, /^[a-z2-7]{4}(-[a-z2-7]{4}){3}$/);
+    const sha = c => require('node:crypto').createHash('sha256').update(c.replace(/-/g, '')).digest('hex');
+    assert.ok(!codes.some(c => roh.includes(sha(c))), 'Wiederherstellungscodes als ungesalzenes SHA-256 gespeichert');
+    // Ein Code der alten Form (10 Zeichen, SHA-256) gilt weiter, einmal.
+    const uid = (await db.get('SELECT id FROM users WHERE username = $1', [NAME])).id;
+    await db.run('INSERT INTO zweiter_faktor_codes (user_id, code_hash) VALUES ($1, $2)', [uid, sha('abcde23456')]);
+    assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), 'wiederherstellung', 'alter Code gilt nicht mehr');
+    assert.equal(await zf.pruefeCode(uid, 'abcde-23456'), null, 'alter Code gilt zweimal');
+    await db.run('DELETE FROM zweiter_faktor_codes WHERE user_id = $1 AND verbraucht_am IS NOT NULL', [uid]);
 
     // Ohne Code: Absage mit Hinweis, kein Token.
     const ohne = await anmelden(NAME);
