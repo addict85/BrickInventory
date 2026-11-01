@@ -97,3 +97,17 @@
 # wirkt in ProGuard transitiv, WorkDatabase_Impl -> WorkDatabase -> RoomDatabase
 # ist damit erfasst.
 -keep class * extends androidx.room.RoomDatabase { <init>(); }
+
+# ── Kein Logcat im Release ───────────────────────────────────────────────────
+# util/Protokoll.kt schreibt im Release ohnehin nichts. Diese Regel nimmt auch
+# die Aufrufe der Bibliotheken heraus: Deren Texte nennen Adressen samt Abfrage
+# und Ausnahmen, und Logcat liest jeder mit adb oder einem Fehlerbericht mit.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+    public static int e(...);
+    public static int wtf(...);
+    public static int println(...);
+}

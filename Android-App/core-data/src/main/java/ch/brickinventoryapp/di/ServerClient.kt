@@ -5,7 +5,6 @@ import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.util.BeweisSpeicher
 import ch.brickinventoryapp.util.VersionsHinweis
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 
 /** Gemeinsam für API- und Bild-Client: ein Beweis je Server, Netz und Token. */
@@ -88,7 +87,7 @@ internal fun buildInterceptorClient(
             // Auch der Bild-Client: Sonst fehlten Bildanfragen im Logcat, und ihr
             // Fehlen sähe aus wie ein Befund statt wie eine Lücke der Beobachtung.
             if (BuildConfig.DEBUG) {
-                addInterceptor(HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BASIC })
+                addInterceptor(ch.brickinventoryapp.util.netzMitschnitt())
             }
         }
         .addInterceptor(ServerWaechter(GeraeteZugang(prefs, ctx), isApiClient, beweise,

@@ -106,7 +106,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         lifecycleScope.launch {
             runCatching { ch.brickinventoryapp.alarm.PreisalarmWorker.durchgang(applicationContext) }
-                .onFailure { android.util.Log.w("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
+                .onFailure { ch.brickinventoryapp.util.Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
         }
     }
 
