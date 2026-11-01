@@ -16,10 +16,10 @@ type JobHttpResult = { status: number; body: string };
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.
 import { bildEndung, dateiTeil, zielImOrdner, ladeBild } from './bilder/bildDatei';
-import { ERLAUBTE_BILD_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
+import { ERLAUBTE_BILD_HOSTS, ERLAUBTE_API_HOSTS, pfadSegment, nummernListe } from '../infra/fremdeAdressen';
 import { setzeZustand } from '../auftraege/laufzustand';
 import * as repo from './repository/teileAnreicherung';
-import https from 'https';
+import { holeHttps } from '../infra/abruf';
 import fs from 'fs';
 import path from 'path';
 import * as monitor from '../auftraege/jobMonitor';
@@ -40,17 +40,9 @@ async function apiGet(url: string, rbKey: string) {
   while (true) {
     if (!await consumeRebrickableDaily()) return null;
     await rebrickableLimiter.waitForSlot();
-    const result = await new Promise<JobHttpResult>(resolve => {
-      const req = https.get(url, {
-        family: 4,   // Server hat keine IPv6-Route (bestätigt), siehe server.ts _cdnAgent
-        headers: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' }
-      }, (r: import('http').IncomingMessage) => {
-        let b = ''; r.on('data', d => b += d);
-        r.on('end', () => resolve({ status: r.statusCode ?? 0, body: b }));
-      });
-      req.on('error', () => resolve({ status: 0, body: '' }));
-      req.setTimeout(30000, () => { req.destroy(); resolve({ status: 0, body: '' }); });
-    });
+    const result: JobHttpResult = await holeHttps(url, { hosts: ERLAUBTE_API_HOSTS, maxBytes: 32 * 1024 * 1024, zeitlimitMs: 30_000,
+      kopfzeilen: { Authorization: `key ${rbKey}`, 'User-Agent': 'BrickInventory/1.0' } })
+      .then(r => ({ status: r.status, body: r.koerper.toString('utf8') }), () => ({ status: 0, body: '' }));
     if (result.status === 429) {
       const wait = ptw(result.body);
       rebrickableLimiter.throttle(wait);

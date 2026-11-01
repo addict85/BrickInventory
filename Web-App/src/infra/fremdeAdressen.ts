@@ -14,6 +14,9 @@ export const ERLAUBTE_DOWNLOAD_HOSTS = [
   ...ERLAUBTE_BILD_HOSTS, 'lego.com', 'bdpinstructions.s3.amazonaws.com',
 ];
 
+/** JSON- und Seitenabrufe: Rebrickable, Anleitungsbilder, EAN-Suche. */
+export const ERLAUBTE_API_HOSTS = ['rebrickable.com', 'lego.brickinstructions.com', 'api.upcitemdb.com'];
+
 /** @returns false, wenn die Adresse nicht parsebar ist — im Zweifel NICHT holen
  * Ausführlich: docs/begruendungen/src/infra/fremdeAdressen.ts.md#hosterlaubt */
 export function hostErlaubt(url: string, liste: readonly string[]): boolean {

@@ -2,7 +2,8 @@
  * damit die Routen keine Schichten überspringen. */
 import crypto from 'crypto';
 import fs from 'fs';
-import https from 'https';
+import { oeffneHttps, AbrufFehler, type AbrufStrom } from '../infra/abruf';
+import { ERLAUBTE_BILD_HOSTS } from '../infra/fremdeAdressen';
 import path from 'path';
 import * as verwaltung from './repository/verwaltung';
 import { naechsteUhrzeit, taeglicheUhrzeit } from '../auftraege/zeitplan';
@@ -324,26 +325,32 @@ export async function bildProbe(url: string) {
     { name: 'nackt',        headers: {} },
   ];
 
-  const probe = (v: any) => new Promise(resolve => {
-    const t0 = Date.now();
-    let settled = false;
-    const done = (o: any) => { if (!settled) { settled = true; resolve({ variant: v.name, ms: Date.now() - t0, ...o }); } };
-    const rq = https.get(url, { family: 4, headers: v.headers }, (r) => {
-      let bytes = 0;
-      r.on('data', (c: Buffer) => { bytes += c.length; if (bytes > 65536) rq.destroy(); });
-      r.on('end',   () => done({ status: r.statusCode, content_type: r.headers['content-type'] || null,
-                                 content_length: r.headers['content-length'] || null,
-                                 // Komprimiert geliefert muss der Proxy die Kopfzeile weiterreichen, sonst hält
-                                 // der Browser die Bytes für ein JPEG.
-                                 content_encoding: r.headers['content-encoding'] || null,
-                                 transfer_encoding: r.headers['transfer-encoding'] || null,
-                                 bytes, server: r.headers['server'] || null, cf_ray: r.headers['cf-ray'] || null }));
-      r.on('close', () => done({ status: r.statusCode, content_type: r.headers['content-type'] || null, bytes, truncated: true }));
-    });
-    rq.on('error', (e: NodeJS.ErrnoException) => done({ error: e.message, code: e.code }));
-    // Ein Diagnosewert, keine Meldung an den Nutzer.
-    rq.setTimeout(10000, () => { rq.destroy(); done({ error: 'timeout' }); });
+  // Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen.
+  const offen = (kopfzeilen: Record<string, string>) => oeffneHttps(url,
+    { hosts: ERLAUBTE_BILD_HOSTS, maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
+  const lies = (a: AbrufStrom, genug = Infinity) => new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {
+    const teile: Buffer[] = []; let bytes = 0;
+    const s = a.strom();
+    s.on('data', (c: Buffer) => { teile.push(c); bytes += c.length; if (bytes >= genug) { s.destroy(); fertig({ teile, bytes, truncated: false }); } });
+    s.on('end', () => fertig({ teile, bytes, truncated: false }));
+    s.on('error', () => fertig({ teile, bytes, truncated: true }));
   });
+  const probe = async (v: { name: string; headers: Record<string, string> }) => {
+    const t0 = Date.now();
+    try {
+      const a = await offen(v.headers);
+      const { bytes, truncated } = await lies(a);
+      const k = a.kopf;
+      return { variant: v.name, ms: Date.now() - t0, status: a.status, content_type: k['content-type'] || null,
+               content_length: k['content-length'] || null,
+               // Komprimiert geliefert muss der Proxy die Kopfzeile weiterreichen, sonst hält
+               // der Browser die Bytes für ein JPEG.
+               content_encoding: k['content-encoding'] || null, transfer_encoding: k['transfer-encoding'] || null,
+               bytes, server: k['server'] || null, cf_ray: k['cf-ray'] || null, ...(truncated ? { truncated } : {}) };
+    } catch (e) {
+      return { variant: v.name, ms: Date.now() - t0, error: fehlertext(e), code: e instanceof AbrufFehler ? e.grund : undefined };
+    }
+  };
 
   const results: any[] = [];
   for (const v of variants) results.push(await probe(v));
@@ -357,29 +364,19 @@ export async function bildProbe(url: string) {
   // Zeigt auf einen Blick, woran Abrufe scheitern, ohne im Log zu suchen.
   const failures = imgProxyFailures;
   // Durch dieselbe Kette wie der Proxy, aber die ersten Bytes kommen als Hex hierher.
-  const head = await new Promise(resolve => {
-    const rq = https.get(url, { family: 4, headers: { 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8',
-                                            'Accept-Encoding': 'identity' } }, (r: any) => {
-      const chunks: Buffer[] = []; let n = 0;
-      r.on('data', (c: Buffer) => { chunks.push(c); n += c.length; if (n >= 32) rq.destroy(); });
-      const fin = () => resolve({
-        status: r.statusCode,
-        content_encoding: r.headers['content-encoding'] || null,
-        first_bytes_hex: Buffer.concat(chunks).slice(0, 16).toString('hex').replace(/(..)/g, '$1 ').trim(),
-        looks_like: (() => {
-          const b = Buffer.concat(chunks);
-          if (b[0] === 0xFF && b[1] === 0xD8) return 'JPEG';
-          if (b[0] === 0x89 && b[1] === 0x50) return 'PNG';
-          if (b[0] === 0x1F && b[1] === 0x8B) return 'gzip (komprimiert!)';
-          if (b.slice(0, 5).toString().toLowerCase().startsWith('<')) return 'HTML/XML statt Bild';
-          return 'unbekannt';
-        })(),
-      });
-      r.on('end', fin); r.on('close', fin);
-    });
-    rq.on('error', (e: Error) => resolve({ error: e.message }));
-    rq.setTimeout(10000, () => { rq.destroy(); resolve({ error: 'timeout' }); });
-  });
+  const head = await offen({ 'User-Agent': UA, 'Accept': 'image/*,*/*;q=0.8', 'Accept-Encoding': 'identity' })
+    .then(async a => {
+      const b = Buffer.concat((await lies(a, 32)).teile);
+      return {
+        status: a.status,
+        content_encoding: a.kopf['content-encoding'] || null,
+        first_bytes_hex: b.slice(0, 16).toString('hex').replace(/(..)/g, '$1 ').trim(),
+        looks_like: b[0] === 0xFF && b[1] === 0xD8 ? 'JPEG'
+          : b[0] === 0x89 && b[1] === 0x50 ? 'PNG'
+          : b[0] === 0x1F && b[1] === 0x8B ? 'gzip (komprimiert!)'
+          : b.slice(0, 5).toString().toLowerCase().startsWith('<') ? 'HTML/XML statt Bild' : 'unbekannt',
+      };
+    }, (e: unknown) => ({ error: fehlertext(e) }));
 
   return { success: true, url, cache: { original: cached, thumb }, probes: results,
            proxy_failures: failures, body_check: head };

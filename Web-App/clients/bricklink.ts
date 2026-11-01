@@ -7,7 +7,7 @@
 //
 
 import crypto from 'crypto';
-import https from 'https';
+import { holeHttps, auszug } from '../src/infra/abruf';
 import { getGlobalSetting } from '../src/konto/settings';
 import { mitVersion } from '../src/sets/setNummer';
 import { checkAndIncrementRateLimit } from '../src/katalog/apiKontingent';
@@ -63,19 +63,10 @@ function buildAuthHeader(method: string, baseUrl: string,
   return `OAuth realm="", ${parts}`;
 }
 
-function httpsGet(url: string, authHeader: string): Promise<{ status: number; body: string }> {
-  return new Promise((resolve, reject) => {
-    const parsed = new URL(url);
-    https.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
-      headers: { Authorization: authHeader, Accept: 'application/json', 'User-Agent': 'BrickManager/3.0' },
-      timeout: 20000,
-      family: 4,
-    }, res => {
-      let body = '';
-      res.on('data', d => body += d);
-      res.on('end', () => resolve({ status: res.statusCode ?? 0, body }));
-    }).on('error', reject).on('timeout', () => reject(new Error('BrickLink timeout')));
-  });
+async function httpsGet(url: string, authHeader: string): Promise<{ status: number; body: string }> {
+  const r = await holeHttps(url, { hosts: ['api.bricklink.com'], maxBytes: 8 * 1024 * 1024, zeitlimitMs: 20_000,
+    kopfzeilen: { Authorization: authHeader, Accept: 'application/json', 'User-Agent': 'BrickManager/3.0' } });
+  return { status: r.status, body: r.koerper.toString('utf8') };
 }
 
 async function bricklinkRequest(method: string, path: string,
@@ -105,7 +96,7 @@ async function bricklinkRequest(method: string, path: string,
   if (!rl.allowed) throw new Error(`BrickLink Tageslimit erreicht (${rl.limit} Aufrufe/Tag)`);
   const { status, body } = await httpsGet(baseUrl + qs, buildAuthHeader(method, baseUrl, queryParams, creds));
   let data;
-  try { data = JSON.parse(body); } catch (_) { throw new Error(`BrickLink non-JSON (HTTP ${status}): ${body.substring(0, 200)}`); }
+  try { data = JSON.parse(body); } catch (_) { throw new Error(`BrickLink non-JSON (HTTP ${status}): ${auszug(body)}`); }
   if (data?.meta && data.meta.code !== 200) {
     const e = Object.assign(new Error(`BrickLink API Error ${data.meta.code}: ${data.meta.message}`), { detail: data });
     throw e;

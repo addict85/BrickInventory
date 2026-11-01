@@ -6,7 +6,7 @@
 // Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
 //
 
-import https from 'https';
+import { holeHttps, auszug } from '../src/infra/abruf';
 import { getGlobalSetting } from '../src/konto/settings';
 import { checkAndIncrementRateLimit } from '../src/katalog/apiKontingent';
 import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
@@ -20,36 +20,11 @@ async function getApiKey() {
   return (await getGlobalSetting('brickset_api_key')) || '';
 }
 
-function httpsGetOnce(url: string): Promise<{ status: number; body: string }> {
-  return new Promise((resolve, reject) => {
-    const attempt = (u: string) => {
-      const req = https.get(u, { timeout:30000, family: 4, headers:{'User-Agent':'BrickInventory/2026.06.17'} }, res => {
-        if (res.statusCode===301||res.statusCode===302) {
-          res.resume();
-          const ziel = res.headers.location;
-          // Eine Umleitung OHNE Location-Kopfzeile ist nicht befolgbar, und
-          // hier waere sie teuer: `attempt(undefined)` liefe in
-          // https.get(undefined, …), das wirft — AUS EINEM ANTWORT-RUECKRUF
-          // heraus, also nicht mehr im Promise-Rumpf. Damit waere es eine …
-          // Ausführlich: docs/begruendungen/clients/brickset.ts.md#httpsgetonce
-          if (!ziel) return reject(new Error(
-            `Brickset: Umleitung ${res.statusCode} ohne Location-Kopfzeile`));
-          return attempt(ziel);
-        }
-        let body=''; res.on('data',d=>body+=d); res.on('end',()=>resolve({status:res.statusCode ?? 0,body}));
-      });
-      // Netzwerkfehler (ECONNRESET, ETIMEDOUT, ENOTFOUND, socket hang up, …) sind
-      // transient → markieren, damit sie NICHT als permanenter Fehler gelten.
-      req.on('error', (err: any) => { err.isTransient = true; reject(err); });
-      req.on('timeout', () => {
-        req.destroy(); // Socket schliessen, sonst bleibt die Verbindung hängen
-        const err: any = new Error('Brickset timeout');
-        err.isTransient = true;
-        reject(err);
-      });
-    };
-    attempt(url);
-  });
+/** Netz- und Zeitfehler des Helfers tragen isTransient; der Aufrufer reiht dann neu ein. */
+async function httpsGetOnce(url: string): Promise<{ status: number; body: string }> {
+  const r = await holeHttps(url, { hosts: ['brickset.com'], maxBytes: 8 * 1024 * 1024, zeitlimitMs: 30_000,
+    kopfzeilen: { 'User-Agent': 'BrickInventory/2026.06.17' } });
+  return { status: r.status, body: r.koerper.toString('utf8') };
 }
 
 // Leichter Sofort-Retry für kurzzeitige Aussetzer, bevor auf die (tägliche)
@@ -77,7 +52,7 @@ class BricksetQuotaError extends Error {
 
 function parseResponse(body: string) {
   let data;
-  try { data = JSON.parse(body); } catch(_) { throw new Error(`Brickset: invalid JSON response: ${body?.substring(0, 200)}`); }
+  try { data = JSON.parse(body); } catch(_) { throw new Error(`Brickset: invalid JSON response: ${auszug(body)}`); }
   if (data.status === 'error') {
     if (data.message?.toLowerCase().includes('daily api key usage limit')) throw new BricksetQuotaError();
     const err = Object.assign(new Error(`Brickset API error: ${data.message}`), { detail: data });
@@ -173,7 +148,7 @@ async function getSetInfo(setNumber: string) {
     const f = alsAbrufFehler(e);
     if (f.isQuota) {
       const errMsg = f.detail
-        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${JSON.stringify(f.detail)}`
+        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${auszug(JSON.stringify(f.detail), 300)}`
         : fehlertext(e);
       await enqueueRetry(n, errMsg);
       return null;
@@ -201,8 +176,8 @@ async function getInstructions(setNumber: string) {
     if (status !== 200) {
       // 5xx ist ein Fehler der Gegenseite, kein Kontingentproblem.
       // Ausführlich: docs/begruendungen/clients/brickset.ts.md#getinstructions-errmsg
-      const errMsg = `HTTP ${status}: ${body?.substring(0, 500)}`;
-      console.log(`  Brickset getInstructions HTTP ${status} for ${n}: ${body?.substring(0, 200)}`);
+      const errMsg = `HTTP ${status}: ${auszug(body, 300)}`;
+      console.log(`  Brickset getInstructions HTTP ${status} for ${n}: ${auszug(body)}`);
       if (status >= 500) {
         await enqueueRetry(n, errMsg, true);
         return { instructions: [], usesFallback: false };
@@ -222,7 +197,7 @@ async function getInstructions(setNumber: string) {
     }
     if (f.isQuota) {
       const errMsg = f.detail
-        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${JSON.stringify(f.detail)}`
+        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${auszug(JSON.stringify(f.detail), 300)}`
         : `Quota exceeded: ${fehlertext(e)}`;
       const requeued = await enqueueRetry(n, errMsg);
       return { instructions: [], usesFallback: !requeued };
@@ -236,7 +211,7 @@ async function getInstructions(setNumber: string) {
       return { instructions: [], usesFallback: !requeued };
     }
     await removeFromQueue(n);
-    const detail = f.detail ? ` | response: ${JSON.stringify(f.detail)}` : '';
+    const detail = f.detail ? ` | response: ${auszug(JSON.stringify(f.detail), 300)}` : '';
     console.log(`  Brickset getInstructions failed for ${n}: ${fehlertext(e)}${detail}`);
     return { instructions: [], usesFallback: true };
   }

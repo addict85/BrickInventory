@@ -156,27 +156,22 @@ test('der BDP-Eimer darf geholt werden — aber nur er', () => {
     'liefert an den Browser aus, und das ist eine andere Frage');
 });
 
-test('die beiden Stellen benutzen die Regel wirklich', () => {
-  const rb = ohneKommentare(read('clients/rebrickable.ts'));
-
-  // ── httpsGetRobust ────────────────────────────────────────────────────────
-  assert.match(rb, /naechsteUmleitung\(u, res\.headers\.location, kopf\)/,
-    'httpsGetRobust folgt wieder von Hand — dann wandert der API-Schluessel mit');
-  assert.match(rb, /\+\+umleitungen > UMLEITUNGS_GRENZE/,
-    'Ohne eigenen Zaehler laeuft eine Umleitungsschleife unbegrenzt: `attempts` ' +
-    'wird nur bei 429, Timeout und ECONNRESET geprueft');
-  // Der Kopf muss DURCHGEREICHT werden, nicht aus dem aeusseren `headers`
-  // gelesen — sonst ist das Abwerfen wirkungslos, weil beim naechsten Anlauf
-  // wieder das Original steht.
-  assert.doesNotMatch(rb, /\.\.\.headers \} \}, res =>/,
-    'Der Anlauf muss den GEFILTERTEN Kopf benutzen, nicht den urspruenglichen');
-  assert.match(rb, /\.\.\.kopf \} \}, res =>/,
-    'httpsGetRobust schickt nicht mehr den durchgereichten Kopf');
-
-  // ── downloadFile ──────────────────────────────────────────────────────────
-  assert.match(rb, /hostErlaubt\(url, ERLAUBTE_DOWNLOAD_HOSTS\)/,
-    'downloadFile prueft die Ausgangsadresse nicht mehr');
-  assert.match(rb, /naechsteUmleitung\(u, res\.headers\.location, kopf, ERLAUBTE_DOWNLOAD_HOSTS\)/,
+test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
+  // Struktur, kein Verhalten: Das Verhalten des Helfers prüft
+  // test/abruf-helfer.test.js gegen einen echten TLS-Server.
+  const fremd = [];
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) { if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(n)) lauf(p); continue; }
+      if (!n.endsWith('.ts') || p.endsWith(path.join('src', 'infra', 'abruf.ts'))) continue;
+      if (/\bhttps?\.(get|request)\(|\bfetch\(/.test(ohneKommentare(fs.readFileSync(p, 'utf8')))) fremd.push(path.relative(ROOT, p));
+    }
+  })(ROOT);
+  assert.deepEqual(fremd, [], 'eigener Abrufweg an Hostliste, Umleitungs- und Grössengrenze vorbei');
+  assert.match(ohneKommentare(read('src/infra/abruf.ts')), /naechsteUmleitung\(u, r\.headers\?\.location, kopf, o\.hosts\)/,
+    'der Helfer prüft die Umleitungsziele nicht gegen die Hostliste');
+  assert.match(ohneKommentare(read('clients/rebrickable.ts')), /hosts: ERLAUBTE_DOWNLOAD_HOSTS/,
     'downloadFile prueft die Umleitungsziele nicht mehr — die Datei wird ausgeliefert');
 
   // ── Und die Liste steht nur noch an EINER Stelle ──────────────────────────

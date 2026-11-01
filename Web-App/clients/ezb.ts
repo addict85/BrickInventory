@@ -6,6 +6,7 @@
  */
 import { inflateRawSync } from 'zlib';
 import { hostErlaubt } from '../src/infra/fremdeAdressen';
+import { holeHttps } from '../src/infra/abruf';
 
 export const EZB_HISTORIE = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip';
 export const EZB_TAGESKURSE = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml';
@@ -21,9 +22,9 @@ export type Abruf = (url: string) => Promise<Buffer>;
 export const ezbAbruf: Abruf = async (url) => {
   if (!url.startsWith('https://') || !hostErlaubt(url, ERLAUBTE_KURS_HOSTS))
     throw new Error(`Kursabruf nur von https://${ERLAUBTE_KURS_HOSTS.join(', ')}: ${url.slice(0, 120)}`);
-  const r = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(60_000) });
-  if (!r.ok) throw new Error(`EZB ${r.status} für ${url}`);
-  return Buffer.from(await r.arrayBuffer());
+  const r = await holeHttps(url, { hosts: ERLAUBTE_KURS_HOSTS, maxBytes: 16 * 1024 * 1024, zeitlimitMs: 60_000, umleitungen: 0 });
+  if (r.status !== 200) throw new Error(`EZB ${r.status} für ${url}`);
+  return r.koerper;
 };
 
 const WAEHRUNG = /^[A-Z]{3}$/;
