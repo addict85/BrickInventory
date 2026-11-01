@@ -163,6 +163,22 @@ fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * Eine Auskunft in Chipform, nicht antippbar: Ein AssistChip mit leerem
+ * onClick sah aus wie ein Knopf, wurde als Knopf vorgelesen und tat nichts.
+ */
+@Composable
+fun InfoPlakette(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, modifier: Modifier = Modifier) {
+    Surface(shape = Formen.chip, color = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
+        Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (icon != null) Icon(icon, null, Modifier.size(16.dp))
+            Text(text, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
 // Der frühere ManualItemDetailDialog steht hier nicht mehr: Die Detailansicht
 // manueller Teile und Minifiguren ist seit hardened-99 ein ganzer Screen
 // (ui/screens/ManualItemDetailScreen.kt), wie bei den Sets. Übrig bleiben hier

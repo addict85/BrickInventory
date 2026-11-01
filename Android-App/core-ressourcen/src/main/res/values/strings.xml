@@ -772,6 +772,9 @@
     <string name="wanted_no_results">No wanted items found</string>
     <string name="wanted_empty">Nothing on the wanted list yet.</string>
     <string name="wanted_owned">already owned</string>
+    <string name="wanted_alert_below">Alert below %1$s</string>
+    <string name="wanted_alert_above">Alert above %1$s</string>
+    <string name="wanted_price_pending">Price pending</string>
     <string name="wanted_added">Added to the wanted list</string>
     <string name="wanted_already">Already on the wanted list</string>
     <string name="wanted_deleted">Removed from the wanted list</string>

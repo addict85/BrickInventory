@@ -366,10 +366,15 @@ private fun MerkpostenZeile(
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
+                // Ohne Bild oder beim Fehler das Logo wie in der Galerie, statt eines leeren Flecks.
+                val ersatz = androidx.compose.ui.res.painterResource(R.drawable.ic_logo)
                 coil3.compose.AsyncImage(
                     model = resolveThumbUrl(serverUrl, w.imageLocal, w.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,
+                    placeholder = ersatz,
+                    error = ersatz,
+                    fallback = ersatz,
                     modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross),
                 )
                 Column(Modifier.weight(1f)) {
@@ -392,32 +397,27 @@ private fun MerkpostenZeile(
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 w.alarm?.let { a ->
-                    AssistChip(onClick = {}, leadingIcon = {
-                        Icon(if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
-                            null, Modifier.size(AssistChipDefaults.IconSize))
-                    }, label = {
-                        Text(stringResource(if (a.richtung == "ueber") R.string.detail_alert_above
-                                            else R.string.detail_alert_below) +
-                             " ${a.schwelle}")
-                    })
+                    InfoPlakette(
+                        stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
+                                       ch.brickinventoryapp.util.fmtMoney(a.schwelle, w.waehrung)),
+                        if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
+                    )
                 }
                 // „Habe ich das inzwischen?" meint das BLICKFELD: Beim
                 // Grossvater heisst „ich habe es" auch „der Enkel hat es".
-                if (w.owned) {
-                    AssistChip(onClick = {},
-                        label = { Text(stringResource(R.string.wanted_owned)) })
-                }
+                if (w.owned) InfoPlakette(stringResource(R.string.wanted_owned), Icons.Default.Check)
                 Spacer(Modifier.weight(1f))
                 // ── Marktpreis statt Knopf ──
                 //
-                // In die Galerie übernommen wird im Merkposten-Detail. Ein Strich, solange kein
-                // Preis im Cache liegt — der Preisjob war seit dem Eintragen noch nicht da.
-                Text(
-                    w.marktpreis?.let { ch.brickinventoryapp.util.fmtMoney(it, w.waehrung) } ?: "—",
-                    fontWeight = FontWeight.Bold,
-                    color = if (w.marktpreis == null) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface,
-                )
+                // In die Galerie übernommen wird im Merkposten-Detail. Ohne Preis im Cache war der
+                // Preisjob seit dem Eintragen noch nicht da — das sagt der Text, ein Strich sagte nichts.
+                val preis = w.marktpreis
+                if (preis != null) {
+                    Text(ch.brickinventoryapp.util.fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold)
+                } else {
+                    Text(stringResource(R.string.wanted_price_pending), style = MaterialTheme.typography.bodySmall,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }

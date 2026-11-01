@@ -758,6 +758,9 @@
     <string name="wanted_no_results">Keine Merkposten gefunden</string>
     <string name="wanted_empty">Noch keine Merkposten.</string>
     <string name="wanted_owned">schon vorhanden</string>
+    <string name="wanted_alert_below">Alarm unter %1$s</string>
+    <string name="wanted_alert_above">Alarm über %1$s</string>
+    <string name="wanted_price_pending">Preis folgt</string>
     <string name="wanted_added">Auf die Merkliste gesetzt</string>
     <string name="wanted_already">Stand schon auf der Merkliste</string>
     <string name="wanted_deleted">Von der Merkliste genommen</string>
