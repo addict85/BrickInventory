@@ -117,6 +117,27 @@ test('die Host-Pruefung faellt nicht auf einen angehaengten Namen herein', () =>
 });
 
 /**
+ * Port, Userinfo und Eimer-Unterdomänen.
+ *
+ * Gegenproben (01.11.2026 gemessen, je einzeln):
+ *   `u.hostname === h` statt `u.host === h` → rot bei „:22"
+ *   Userinfo-Prüfung entfernt → rot bei „evil.com@"
+ *   zusätzlich `u.host.endsWith('.' + h)` (alter Suffix) → rot bei „x.bdpinstructions"
+ */
+test('Hostprüfung: nur Standardport, keine Userinfo, Eimer exakt', () => {
+  for (const gut of ['https://cdn.rebrickable.com/x', 'https://cdn.rebrickable.com:443/x',
+                     'https://www.lego.com/cdn/a.pdf', 'https://assets.lego.com/a.pdf'])
+    assert.ok(hostErlaubt(gut, ERLAUBTE_DOWNLOAD_HOSTS), `${gut} muss erlaubt sein`);
+  for (const boese of ['https://cdn.rebrickable.com:22/', 'https://cdn.rebrickable.com:8443/x'])
+    assert.ok(!hostErlaubt(boese, ERLAUBTE_BILD_HOSTS), `${boese}: fremder Port`);
+  for (const boese of ['https://evil.com@cdn.rebrickable.com/', 'https://a:b@cdn.rebrickable.com/'])
+    assert.ok(!hostErlaubt(boese, ERLAUBTE_BILD_HOSTS), `${boese}: Userinfo`);
+  for (const boese of ['https://x.bdpinstructions.s3.amazonaws.com/a.pdf',
+                       'https://x.cdn.rebrickable.com/a.png'])
+    assert.ok(!hostErlaubt(boese, ERLAUBTE_DOWNLOAD_HOSTS), `${boese}: Unterdomäne`);
+});
+
+/**
  * Die Anleitungen der BrickLink Designer Programme.
  *
  * ── Marcos Serverprotokoll ─────────────────────────────────────────────────

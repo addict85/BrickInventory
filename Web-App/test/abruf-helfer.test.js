@@ -65,7 +65,7 @@ class Umlenker extends https.Agent {
 }
 
 const agent = new https.Agent({ ca: cert });
-const opt = (mehr = {}) => ({ hosts: ['localhost'], maxBytes: 1000, zeitlimitMs: 3000, agent, ...mehr });
+const opt = (mehr = {}) => ({ hosts: [`localhost:${port}`], maxBytes: 1000, zeitlimitMs: 3000, agent, ...mehr });
 const basis = () => `https://localhost:${port}`;
 
 test.before(async () => {
@@ -116,7 +116,7 @@ test('Umleitungsschleife endet an der Grenze', async () => {
 
 test('Authorization bleibt beim Hostwechsel nicht stehen', async () => {
   const r = await holeHttps(`${basis()}/wechsel`,
-    opt({ hosts: ['localhost', '127.0.0.1'], kopfzeilen: { Authorization: 'key geheim', Cookie: 'a=b' } }));
+    opt({ hosts: [`localhost:${port}`, `127.0.0.1:${port}`], kopfzeilen: { Authorization: 'key geheim', Cookie: 'a=b' } }));
   assert.equal(JSON.parse(r.koerper.toString()).auth, null);
   assert.equal(gesehen.find(g => g.pfad === '/wechsel').auth, 'key geheim', 'der erste Sprung trägt den Schlüssel');
 });
