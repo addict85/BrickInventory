@@ -6,6 +6,7 @@ import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/httpError';
+import { zaehleAnfrage } from './loginLimiter';
 import crypto from 'node:crypto';
 
 export async function getSetting(userId: number, key: string, fallback?: any) {
@@ -57,7 +58,14 @@ async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
   const vorher = await db.transaction(async (tx) => {
     await sperreHaushaltswaehrung(tx);
     const alt = await repo.nutzerWert(userId, 'currency', tx);
-    await repo.setzeWaehrungFuer(tx, await repo.verbundeneKonten(tx, userId), waehrung);
+    const unterkonto = await repo.hatHauptkonto(tx, userId);
+    if (alt !== waehrung) {
+      if (unterkonto) fehlerWerfen('waehrung_nur_hauptkonto', 403);
+      // Jeder Wechsel stösst einen vollen Preislauf an.
+      const takt = await zaehleAnfrage('waehrung', `konto:${userId}`, 60 * 60 * 1000);
+      if (takt.count > 5) fehlerWerfen('zu_viele_anfragen', 429, { minuten: takt.waitMin });
+    }
+    if (!unterkonto) await repo.setzeWaehrungFuer(tx, await repo.verbundeneKonten(tx, userId), waehrung);
     return alt;
   });
   if (vorher !== waehrung) {

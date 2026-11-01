@@ -205,6 +205,8 @@ export const FEHLER = {
                                  en: 'Invalid PIN (digits only, 3–10 characters)' },
   betrag_ungueltig:            { de: 'Ungültiger Betrag', en: 'Invalid amount' },
   waehrung_ungueltig:          { de: 'Ungültige Währung', en: 'Invalid currency' },
+  waehrung_nur_hauptkonto:     { de: 'Die Währung gilt für den ganzen Haushalt; ändern kann sie nur das Hauptkonto.',
+                                 en: 'The currency applies to the whole household; only the main account can change it.' },
   gutschein_existiert:         { de: 'Diesen Gutschein gibt es bereits.',
                                  en: 'This voucher already exists.' },
   nur_pdf:                     { de: 'Nur PDF-Dateien', en: 'PDF files only' },
