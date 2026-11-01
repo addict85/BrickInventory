@@ -369,6 +369,10 @@
     <string name="nav_finance">Finance</string>
     <string name="nav_comparison">Comparison</string>
     <string name="nav_settings">Settings</string>
+    <string name="nav_more">More</string>
+    <string name="nav_group_prices">Prices and vouchers</string>
+    <string name="nav_group_manage">Manage inventory</string>
+    <string name="nav_group_server">Server</string>
     <string name="nav_monitoring">Background work</string>
     <string name="main_barcode_add_partslist">Add to parts list?</string>
     <string name="main_barcode_add_set">Add set?</string>

@@ -356,6 +356,10 @@
     <string name="nav_finance">Finanzen</string>
     <string name="nav_comparison">Vergleich</string>
     <string name="nav_settings">Einstellungen</string>
+    <string name="nav_more">Mehr</string>
+    <string name="nav_group_prices">Preise und Gutscheine</string>
+    <string name="nav_group_manage">Bestand verwalten</string>
+    <string name="nav_group_server">Server</string>
     <string name="nav_monitoring">Hintergrundarbeiten</string>
     <string name="main_barcode_add_partslist">Zur Teileliste hinzufügen?</string>
     <string name="main_barcode_add_set">Set hinzufügen?</string>
