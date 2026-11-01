@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -163,7 +164,7 @@ internal fun KontoCard(
  */
 /** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
 private fun oeffneMitAuswahl(ctx: android.content.Context, uri: String, titel: String): Boolean {
-    val ansicht = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(uri))
+    val ansicht = android.content.Intent(android.content.Intent.ACTION_VIEW, uri.toUri())
     if (ansicht.resolveActivity(ctx.packageManager) == null) return false
     return runCatching { ctx.startActivity(android.content.Intent.createChooser(ansicht, titel)) }.isSuccess
 }

@@ -2,7 +2,7 @@ package ch.brickinventoryapp.util
 
 import android.content.Context
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 
 /**
  * Öffnet eine Adresse im Browser, wenn [externeAdresse] sie durchlässt; false,
@@ -12,6 +12,6 @@ import android.net.Uri
 fun oeffneExtern(ctx: Context, url: String?): Boolean {
     val ziel = externeAdresse(url) ?: return false
     return runCatching {
-        ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ziel.toString())).addCategory(Intent.CATEGORY_BROWSABLE))
+        ctx.startActivity(Intent(Intent.ACTION_VIEW, ziel.toString().toUri()).addCategory(Intent.CATEGORY_BROWSABLE))
     }.isSuccess
 }
