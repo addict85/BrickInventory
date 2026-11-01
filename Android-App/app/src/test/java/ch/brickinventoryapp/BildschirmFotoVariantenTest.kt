@@ -288,8 +288,11 @@ class BildschirmFotoVariantenTest {
             zustand = { vm.merklisteState.value }) {
             MerklisteScreen(vm = vm, imageLoader = bilder, onScan = {}, onOeffnen = { _, _ -> })
         }
+        // Der Dialog fokussiert sein erstes Feld; der blinkende Cursor lässt
+        // Compose nie ruhig werden. Darum die Uhr anhalten und gezielt vorstellen.
+        compose.mainClock.autoAdvance = false
         compose.onNodeWithContentDescription("Add a wanted item").performClick()
-        compose.waitForIdle()
+        compose.mainClock.advanceTimeBy(600)
         compose.onNode(isDialog()).captureRoboImage(pfad("dialog-merkposten", "classic", true, "telefon"))
     }
 
