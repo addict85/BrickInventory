@@ -1049,7 +1049,7 @@ function gridCard(s){
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>
-      <div class="sname">${esc(s.name)||'Unbekannt'}</div>
+      <div class="sname">${esc(s.name)||t('common.unknown')}</div>
       <div class="smeta">
         <span class="smeta-text"${s.theme ? ` title="${esc(s.theme)}"` : ''}>${s.year||'—'}${s.theme?' · '+esc(s.theme):''}</span>
         <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">

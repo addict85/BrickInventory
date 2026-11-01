@@ -367,7 +367,7 @@ function plRenderTable() {
   for (const grp of sorted) {
     const colorDot = grp.color_hex ? `<span data-stil="display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;margin-right:6px" data-farbe="${escHex(grp.color_hex, 'var(--s300)')}"></span>` : '';
     html += `<div data-stil="margin-bottom:1.5rem"><div data-stil="font-weight:700;font-size:var(--fs-4);padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${esc(grp.color_name)} <span data-stil="font-weight:400;color:var(--mut);font-size:var(--fs-3)">${t('pl.types',{n:grp.parts.length})}</span></div><div>`;
-      html += `<div data-stil="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:var(--fs-0);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span data-stil="width:44px;flex-shrink:0"></span><span data-stil="min-width:65px;flex-shrink:0">Nr.</span><span data-stil="flex:1">${t('pl.col_name')}</span><span data-stil="width:70px;text-align:right;flex-shrink:0">${t('pl.col_needed')}</span><span data-stil="width:70px;padding-left:6px;flex-shrink:0">${t('pl.col_have')}</span></div>`;
+      html += `<div data-stil="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:var(--fs-0);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span data-stil="width:44px;flex-shrink:0"></span><span data-stil="min-width:65px;flex-shrink:0">${t('col.nr')}</span><span data-stil="flex:1">${t('pl.col_name')}</span><span data-stil="width:70px;text-align:right;flex-shrink:0">${t('pl.col_needed')}</span><span data-stil="width:70px;padding-left:6px;flex-shrink:0">${t('pl.col_have')}</span></div>`;
     for (const p of grp.parts.sort((a,b) => (a.bl_part_number||a.part_number).localeCompare(b.bl_part_number||b.part_number, undefined, { numeric: true }))) {
       totalParts += p.quantity;
       // Build image source: prefer local cached file, then stored URL, then Rebrickable CDN
@@ -493,7 +493,7 @@ async function pollPdfStatus(jobId, btn, finish, startEta) {
       if (status === 'error') { finish(error || t('pdf.server_error')); return; }
     } catch(e) { finish(fehlerMeldung(e)); return; }
   }
-  finish('Timeout');
+  finish(t('pdf.timeout'));
 }
 
 export function plInit() {

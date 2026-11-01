@@ -256,7 +256,7 @@ function appendParts(parts){
   for (const p of parts){
     // Gruppiert wird über den ENGLISCHEN Namen — er ist der stabile Schlüssel
     // aus der Datenbank. Übersetzt wird erst die Überschrift beim Zeichnen.
-    const key = p.color_name || 'Unbekannt';
+    const key = p.color_name || tRaw('common.unknown');
     const last = groups[groups.length - 1];
     if (last && last.color === key) last.parts.push(p);
     else groups.push({ color: key, hex: p.color_hex, parts: [p] });
