@@ -35,6 +35,10 @@ import java.io.File
  *    Geräteliste zeigt Vollzugriff und die frühere Frist" rot (2027 statt 2026);
  *    `deleted` beim Zählen nicht beachtet: „ein schon entwertetes Gerät zählt
  *    nicht“ rot (m…:1 statt m…:0).
+ *  - (01.11.2026) In abgelehnt() `codeNoetig` nicht gesetzt: „ohne Code
+ *    verlangt der zweite Faktor …“ und „eine neue E-Mail …“ rot; in aenderePasswort()
+ *    den Code nicht an changePassword() gereicht: dieselbe Prüfung rot (kein
+ *    "code" im Rumpf).
  *  - (01.11.2026) In richteZweitenFaktorEin() `d.otpauth` ungeprüft übernommen:
  *    „eine fremde Adresse statt otpauth wird nicht geöffnet“ rot.
  */
@@ -191,5 +195,36 @@ class KontoViewModelTest {
         vm.richteZweitenFaktorEin("geheim")
         warteBis("zweite Einrichtung") { vm.zweiterFaktorState.value.geheimnis == "JBSWY3DPEHPK3PXQ" }
         assertEquals(echt, vm.zweiterFaktorState.value.otpauth)
+    }
+
+    @Test
+    fun `ohne Code verlangt der zweite Faktor das Codefeld, mit Code geht der Wechsel durch`() {
+        var abgemeldet = false
+        server.enqueue(antwort("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
+        vm.aenderePasswort("alt", "neuNeuNeu123!") { abgemeldet = true }
+        warteBis("Absage") { vm.kontoState.value.fehler != null }
+        assertTrue("Das Codefeld erscheint", vm.kontoState.value.codeNoetig)
+        assertFalse(abgemeldet)
+        server.takeRequest()
+
+        server.enqueue(antwort("""{"success":true}"""))
+        vm.aenderePasswort("alt", "neuNeuNeu123!", " 123456 ") { abgemeldet = true }
+        warteBis("abgemeldet") { abgemeldet }
+        assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"123456\""))
+    }
+
+    @Test
+    fun `eine neue E-Mail traegt den Code mit`() {
+        server.enqueue(antwort("""{"success":false,"error":"Bitte den Code eingeben.","code":"zweiter_faktor_noetig"}""", 400))
+        vm.speichereProfil("marco", "neu@example.org", "", "", "pw")
+        warteBis("Absage") { vm.kontoState.value.codeNoetig }
+        server.takeRequest()
+
+        server.enqueue(antwort("""{"success":true}"""))
+        server.enqueue(antwort("""{"success":true,"user":{"id":1,"username":"marco"}}"""))
+        vm.speichereProfil("marco", "neu@example.org", "", "", "pw", "654321")
+        warteBis("gespeichert") { vm.kontoState.value.meldung != null }
+        assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"654321\""))
+        assertFalse("Nach Erfolg kein Codefeld mehr", vm.kontoState.value.codeNoetig)
     }
 }

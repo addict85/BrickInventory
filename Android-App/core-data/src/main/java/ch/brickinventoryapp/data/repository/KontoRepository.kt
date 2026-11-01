@@ -100,8 +100,8 @@ class KontoRepository @Inject constructor(
     suspend fun updateProfil(aenderung: ProfilAenderung): Result<GenericResponse> =
         safeCall { api.updateProfil(aenderung) }
 
-    suspend fun changePassword(aktuell: String, neu: String): Result<GenericResponse> =
-        safeCall { api.changePassword(PasswortAenderung(aktuell, neu)) }
+    suspend fun changePassword(aktuell: String, neu: String, code: String? = null): Result<GenericResponse> =
+        safeCall { api.changePassword(PasswortAenderung(aktuell, neu, code)) }
 
     suspend fun getTokens(): Result<TokensResponse> = safeCall { api.getTokens() }
 

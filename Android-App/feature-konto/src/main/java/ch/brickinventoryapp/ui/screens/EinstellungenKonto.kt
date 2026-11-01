@@ -34,8 +34,8 @@ internal fun KontoCard(
     // Gültigkeitsbereiche, UiStateFieldsTest bestimmt den Typ aber je Name und Datei
     // und hielte die Felder für fehlend.
     kontoZustand: ch.brickinventoryapp.ui.KontoUiState,
-    onSpeichern: (String, String, String, String, String?) -> Unit,
-    onPasswort: (String, String) -> Unit,
+    onSpeichern: (String, String, String, String, String?, String?) -> Unit,
+    onPasswort: (String, String, String?) -> Unit,
     onMeldungWeg: () -> Unit,
 ) {
     val profil = kontoZustand.profil
@@ -52,6 +52,8 @@ internal fun KontoCard(
     var pwAktuell    by remember { mutableStateOf("") }
     var pwFuerEmail  by remember(profil) { mutableStateOf("") }
     var pwNeu        by remember { mutableStateOf("") }
+    var faktorCode   by remember { mutableStateOf("") }
+    val code = faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }
 
     val emailNeu = profil != null && !email.trim().equals(profil.email.orEmpty(), ignoreCase = true)
     val geaendert = profil != null && (
@@ -71,6 +73,8 @@ internal fun KontoCard(
             Text(kontoZustand.fehler, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
+        // Erst nachdem der Server ihn verlangt hat; gilt für E-Mail und Passwort.
+        if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
 
         if (profil != null) {
             val tippen: (String) -> Unit = { onMeldungWeg() }
@@ -113,7 +117,7 @@ internal fun KontoCard(
                     modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf)
             }
             Button(
-                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }) },
+                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }, code) },
                 enabled = geaendert && !kontoZustand.speichert && (!emailNeu || pwFuerEmail.isNotEmpty()),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
@@ -148,12 +152,23 @@ internal fun KontoCard(
                 modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
             OutlinedButton(
-                onClick = { onPasswort(pwAktuell, pwNeu) },
+                onClick = { onPasswort(pwAktuell, pwNeu, code) },
                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
         }
     }
+}
+
+/** Der Code des zweiten Faktors, den der Server für Passwort und E-Mail verlangt. */
+@Composable
+internal fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
+    OutlinedTextField(
+        value = code, onValueChange = { onCode(it.take(24)) },
+        label = { Text(stringResource(R.string.login_code)) },
+        supportingText = { Text(stringResource(R.string.login_code_hint)) },
+        modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
 }
 
 /**

@@ -152,7 +152,7 @@ class MainActivity : NurLauncherStart() {
                         val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
                         ch.brickinventoryapp.ui.screens.StartpasswortMaske(
                             kontoZustand = kontoZustand,
-                            onErsetzen = { alt, neu -> startKontoVm.aenderePasswort(alt, neu) { vm.logout() } },
+                            onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) { vm.logout() } },
                             onAbmelden = { vm.logout() },
                         )
                     }

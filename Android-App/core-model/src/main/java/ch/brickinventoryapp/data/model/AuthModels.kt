@@ -266,6 +266,8 @@ data class ProfilAenderung(
     @SerialName("last_name") val lastName: String? = null,
     /** Nur bei neuer E-Mail-Adresse: Der Server verlangt dann das Passwort. */
     @SerialName("password_current") val passwordCurrent: String? = null,
+    /** Bei aktivem zweitem Faktor und neuer E-Mail-Adresse: TOTP- oder Wiederherstellungscode. */
+    val code: String? = null,
 )
 
 /**
@@ -278,6 +280,8 @@ data class ProfilAenderung(
 data class PasswortAenderung(
     val current: String,
     @SerialName("newPassword") val neuesPasswort: String,
+    /** Bei aktivem zweitem Faktor: TOTP- oder Wiederherstellungscode. */
+    val code: String? = null,
 )
 
 // ── Server-Protokoll (nur für Verwalter) ──

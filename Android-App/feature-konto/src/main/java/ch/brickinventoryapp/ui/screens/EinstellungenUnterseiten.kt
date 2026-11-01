@@ -107,8 +107,8 @@ fun KontoUnterseite(
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
         KontoCard(
             kontoZustand = kontoZustand,
-            onSpeichern = { b, e, v, n, p -> konto.speichereProfil(b, e, v, n, p) },
-            onPasswort = { alt, neu -> konto.aenderePasswort(alt, neu) { vm.logout() } },
+            onSpeichern = { b, e, v, n, p, c -> konto.speichereProfil(b, e, v, n, p, c) },
+            onPasswort = { alt, neu, c -> konto.aenderePasswort(alt, neu, c) { vm.logout() } },
             onMeldungWeg = { konto.kontoMeldungWeg() },
         )
         DesignCard(design = kontoZustand.design, onWahl = { konto.waehleDesign(it) })

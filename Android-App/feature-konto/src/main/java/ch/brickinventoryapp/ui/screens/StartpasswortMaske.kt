@@ -39,7 +39,7 @@ import ch.brickinventoryapp.util.passwortZuKurz
 @Composable
 fun StartpasswortMaske(
     kontoZustand: KontoUiState,
-    onErsetzen: (aktuell: String, neu: String) -> Unit,
+    onErsetzen: (aktuell: String, neu: String, code: String?) -> Unit,
     onAbmelden: () -> Unit,
 ) {
     // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
@@ -47,6 +47,7 @@ fun StartpasswortMaske(
     var pwAktuell by remember { mutableStateOf("") }
     var pwNeu by remember { mutableStateOf("") }
     var pwWiederholt by remember { mutableStateOf("") }
+    var faktorCode by remember { mutableStateOf("") }
     val zuKurz = pwNeu.isNotEmpty() && passwortZuKurz(pwNeu)
     val verschieden = pwWiederholt.isNotEmpty() && pwWiederholt != pwNeu
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -82,8 +83,9 @@ fun StartpasswortMaske(
                 supportingText = if (verschieden) { { Text(stringResource(R.string.startpasswort_verschieden)) } } else null,
                 modifier = Modifier.fillMaxWidth())
             kontoZustand.fehler?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
             Button(
-                onClick = { onErsetzen(pwAktuell, pwNeu) },
+                onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
                 enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.konto_password_button)) }

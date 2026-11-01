@@ -63,6 +63,7 @@ class KontoViewModel @Inject constructor(
 
     fun speichereProfil(
         benutzername: String, email: String, vorname: String, nachname: String, passwort: String? = null,
+        code: String? = null,
     ) {
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
@@ -73,20 +74,31 @@ class KontoViewModel @Inject constructor(
                 firstName = vorname.trim().ifBlank { null },
                 lastName = nachname.trim().ifBlank { null },
                 passwordCurrent = passwort?.ifBlank { null },
+                code = code?.trim()?.ifBlank { null },
             )
             when (val r = konto.updateProfil(aenderung)) {
                 is Result.Success ->
                     if (r.data.success) {
-                        _kontoState.update { it.copy(speichert = false, meldung = texte.text(R.string.konto_saved)) }
+                        _kontoState.update { it.copy(speichert = false, codeNoetig = false, meldung = texte.text(R.string.konto_saved)) }
                         // Neu holen: Der Server normalisiert, die Karte zeigt seinen Stand.
                         ladeProfil()
                     } else {
                         _kontoState.update { it.copy(speichert = false,
                             fehler = r.data.error ?: texte.text(R.string.err_generic)) }
                     }
-                is Result.Error -> _kontoState.update { it.copy(speichert = false, fehler = texte.meldung(r)) }
+                is Result.Error -> abgelehnt(r)
             }
         }
+    }
+
+    /**
+     * Bei aktivem zweitem Faktor verlangt der Server für Passwort und E-Mail einen
+     * Code. Fehlt er, merkt sich der Zustand das; die Oberfläche zeigt das Feld,
+     * und die nächste Anfrage trägt ihn mit. Ein falscher Code lässt das Feld stehen.
+     */
+    private fun abgelehnt(r: Result.Error) = _kontoState.update {
+        it.copy(speichert = false, fehler = texte.meldung(r),
+            codeNoetig = it.codeNoetig || r.code == "zweiter_faktor_noetig" || r.code == "zweiter_faktor_falsch")
     }
 
     /**
@@ -94,10 +106,10 @@ class KontoViewModel @Inject constructor(
      * diesen; [abmelden] geht deshalb den vollen Abmeldeweg der App. Die
      * Erklärung kommt in den Snackbar — die Kontokarte ist danach weg.
      */
-    fun aenderePasswort(aktuell: String, neu: String, abmelden: () -> Unit) {
+    fun aenderePasswort(aktuell: String, neu: String, code: String? = null, abmelden: () -> Unit) {
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
-            when (val r = konto.changePassword(aktuell, neu)) {
+            when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
                 is Result.Success ->
                     if (r.data.success) {
                         abmelden()
@@ -107,7 +119,7 @@ class KontoViewModel @Inject constructor(
                         _kontoState.update { it.copy(speichert = false,
                             fehler = r.data.error ?: texte.text(R.string.err_generic)) }
                     }
-                is Result.Error -> _kontoState.update { it.copy(speichert = false, fehler = texte.meldung(r)) }
+                is Result.Error -> abgelehnt(r)
             }
         }
     }
