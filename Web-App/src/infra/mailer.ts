@@ -30,9 +30,11 @@ async function getTransporter() {
     if (normiereFingerabdruck(zert.fingerprint256) === fp) return undefined;
     return Object.assign(new Error(`Fingerabdruck ${zert.fingerprint256} ist nicht der eingetragene`), { code: 'SMTP_FINGERABDRUCK' });
   };
+  // requireTLS: Ohne STARTTLS in der EHLO-Antwort fiele nodemailer sonst auf
+  // Klartext zurück und schickte Passwort und Rücksetzlinks lesbar durchs Netz.
   return nodemailer.createTransport({
-    host, port, secure, auth: { user, pass },
-    tls: { rejectUnauthorized: true, checkServerIdentity: pruefeGegenstelle, ...(ca ? { ca } : {}) },
+    host, port, secure, requireTLS: !secure, auth: { user, pass },
+    tls: { rejectUnauthorized: true, minVersion: 'TLSv1.2', checkServerIdentity: pruefeGegenstelle, ...(ca ? { ca } : {}) },
     connectionTimeout: 10000, greetingTimeout: 8000, socketTimeout: 10000,
   });
 }
@@ -45,9 +47,12 @@ function smtpFehlertext(e: unknown): { text: string; zertifikat: boolean } {
   const code = String((e as { code?: unknown; cause?: { code?: unknown } })?.code ?? '');
   const ursache = String((e as { cause?: { code?: unknown } })?.cause?.code ?? '');
   const zertifikat = ZERTIFIKATSFEHLER.has(code) || ZERTIFIKATSFEHLER.has(ursache) || /certificate|Fingerabdruck/i.test(fehlertext(e));
+  const ohneStarttls = code === 'ETLS' && /upgrading connection with STARTTLS/.test(fehlertext(e));
   return { zertifikat, text: zertifikat
     ? `Zertifikat des Mailservers nicht bestätigt (${fehlertext(e)}). In Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.`
-    : fehlertext(e) };
+    : ohneStarttls
+      ? 'Der Mailserver bietet kein STARTTLS an; unverschlüsselt wird nichts gesendet. Port 465 mit „SSL/TLS" wählen oder STARTTLS am Mailserver einschalten.'
+      : fehlertext(e) };
 }
 
 /** Wer die entfallene Ausnahme „Zertifikat nicht prüfen" gesetzt hatte, erfährt es beim Start. */
