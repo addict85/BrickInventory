@@ -215,12 +215,13 @@ prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`.
 
 ## Abhängigkeiten und Lieferkette
 
-`renovate.json` liegt im Wurzelverzeichnis: Renovate erzeugt montags früh
-gesammelte Pull-Requests für kleine Sprünge und einzelne für grosse. Zwei Pins
-sind ausdrücklich abgeschaltet und dürfen NICHT automatisch steigen —
-`datastore-preferences` und `graphics-path` hängen an der 16-KB-Ausrichtung
-(siehe INVARIANTEN.md). Die Begründung steht als `description` direkt in der
-Regel, damit sie beim Lesen der Konfiguration mitkommt.
+`renovate.json` liegt im Wurzelverzeichnis (nur dort liest Renovate sie) und
+gilt nur für Gradle; Actions und Docker-Images hält `.github/dependabot.yml`
+aktuell. Renovate erzeugt montags früh gesammelte Pull-Requests für kleine
+Sprünge und einzelne für grosse. `graphics-path` steigt nicht automatisch,
+`datastore-preferences` kommt als eigener PR: Ob die Bibliotheken 16-KB-
+ausgerichtet sind, misst die CI am fertigen APK (siehe INVARIANTEN.md). Die
+Begründung steht als `description` direkt in der Regel.
 
 ### Gradle-Wrapper
 
