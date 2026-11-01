@@ -130,6 +130,11 @@ function getPoolStats() {
   };
 }
 
+/** Für /api/v1/health/ready: eine Abfrage ohne Tabelle, die nur die Verbindung prüft. */
+async function datenbankAntwortet(): Promise<boolean> {
+  return pool.query('SELECT 1').then(() => true, (e: unknown) => { meldeUndWeiter('health:ready', e); return false; });
+}
+
 
 // ── Sync-compatible wrapper ───────────────────────────────────────────────────
 // All methods are async but named to mirror better-sqlite3's API.
@@ -400,4 +405,4 @@ async function eigeneVerbindung() {
   return c;
 }
 
-export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, eigeneVerbindung };
+export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, datenbankAntwortet, eigeneVerbindung };

@@ -5,7 +5,7 @@
  *
  * Gegenproben (01.11.2026 gemessen):
  *   A  in /api/v1/health `startup` wieder für alle → rot: „anonym nur der Status"
- *   B  /api/v1/health/ready ohne SELECT 1 (immer 200) → rot: „ohne Datenbank
+ *   B  /api/v1/health/ready ohne datenbankAntwortet() (immer 200) → rot: „ohne Datenbank
  *      meldet ready 503"
  *   C  startup-status ohne oeffentlicherStartZustand() → rot: „der
  *      Startzustand nennt nur seine Felder" (pfad und fehler gingen hinaus)

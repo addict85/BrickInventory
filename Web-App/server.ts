@@ -318,7 +318,7 @@ app.get('/api/v1/startup-status', async (_req, res) => {
 // Ohne Anmeldung (compose.yaml): anonym nur der Status; live = Prozess, ready = Datenbank.
 app.get('/api/v1/health/live', (_req, res) => { res.json({ status: 'ok' }); });
 app.get('/api/v1/health/ready', async (_req, res) => {
-  const bereit = await db.get('SELECT 1 AS ok').then(() => true, (e: unknown) => { meldeUndWeiter('health:ready', e); return false; });
+  const bereit = await db.datenbankAntwortet();
   res.status(bereit ? 200 : 503).json({ status: bereit ? 'ok' : 'unavailable' });
 });
 app.get('/api/v1/health', async (req, res) => {
