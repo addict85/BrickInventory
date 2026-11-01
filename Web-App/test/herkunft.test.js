@@ -15,6 +15,9 @@
  *      Herkunftsangabe"
  *   E  Host-Vergleich durch `startsWith` ersetzt → rot: „ein Host, der nur
  *      so anfängt wie der eigene"
+ * Gegenprobe (am 01.11.2026 gemessen):
+ *   F  traegtSitzungsKeks() erkennt wieder nur `connect.sid` → rot: „eine
+ *      Cookie-Sitzung ohne jede Herkunftsangabe", „ein Bearer-Kopf …"
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,7 +52,7 @@ test('Herkunft schreibender Anfragen', async (t) => {
     assert.equal(await ruf('POST', { authorization: 'Bearer abc' }), 200);
   });
   const eigen = () => `http://127.0.0.1:${srv.address().port}`;
-  const SITZUNG = { cookie: 'connect.sid=s%3Aabc' };
+  const SITZUNG = { cookie: '__Host-bim.sid=s%3Aabc' };
   await t.test('eine Cookie-Sitzung ohne jede Herkunftsangabe', async () => {
     assert.equal(await ruf('POST', SITZUNG), 403);
     assert.equal(await ruf('DELETE', SITZUNG), 403);
@@ -82,8 +85,8 @@ test('Herkunft schreibender Anfragen', async (t) => {
   await t.test('ein Bearer-Kopf neben dem Sitzungs-Cookie schaltet nichts ab', async () => {
     // Mit Cookie gilt die Sitzung, nicht das Token — die Herkunft zählt also.
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'same-site', authorization: 'Bearer x',
-                                     cookie: 'theme=dunkel; connect.sid=s%3Aabc' }), 403);
+                                     cookie: 'theme=dunkel; bim.sid=s%3Aabc' }), 403);
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'same-origin', authorization: 'Bearer x',
-                                     cookie: 'connect.sid=s%3Aabc' }), 200);
+                                     cookie: 'bim.sid=s%3Aabc' }), 200);
   });
 });

@@ -82,8 +82,9 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('Altbestand wird nachverschlüsselt', async () => {
-    const id = (await db.get(`INSERT INTO vouchers (user_id, number, pin, amount, currency)
-      VALUES ($1, '5045076374450013131', '9753', 10, 'CHF') RETURNING id`, [uid])).id;
+    const n = _req('src/gutscheine/repository/gutscheine.js').nummerSpalten(uid, '5045076374450013131');
+    const id = (await db.get(`INSERT INTO vouchers (user_id, number, nummer_suche, pin, amount, currency)
+      VALUES ($1, $2, $3, '9753', 10, 'CHF') RETURNING id`, [uid, n.number, n.nummer_suche])).id;
     await _req('src/konto/geheimnisAltbestand.js').verschluesseleAltbestand();
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [id])).pin;
     assert.ok(roh.startsWith('v1:'), roh);

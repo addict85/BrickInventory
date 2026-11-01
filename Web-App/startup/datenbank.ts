@@ -2,6 +2,7 @@ import * as db from '../db/database';
 import { logAndContinue } from '../src/infra/httpError';
 import { initImageMisses } from '../src/katalog/bilder/imageMisses';
 import { initImageQueue } from '../jobs/imageQueue';
+import { kopienVerschluesseln, nummernNachverschluesseln } from '../src/gutscheine/dienst';
 
 /**
  * Schema und Migrationen, danach die Bild-Hilfsdienste — in JEDEM
@@ -10,6 +11,10 @@ import { initImageQueue } from '../jobs/imageQueue';
  */
 export async function bereiteDatenbankVor(): Promise<void> {
   await db.initSchemaOnce();
+  // Vor der ersten Anfrage und ohne Ausweg: Eine Zeile ohne nummer_suche
+  // entginge der Doppelprüfung, und ihr CHECK sperrte jede Änderung an ihr.
+  const n = await nummernNachverschluesseln() + await kopienVerschluesseln();
+  if (n) console.log(`[geheimnis] ${n} Gutscheine verschlüsselt (Tabelle und Sicherungskopien)`);
   await initImageMisses().catch(logAndContinue('db:image_misses'));
   await initImageQueue().catch(logAndContinue('db:image_wanted'));
 }

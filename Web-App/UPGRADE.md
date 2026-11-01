@@ -551,3 +551,31 @@ openssl x509 -in smtp.pem -noout -fingerprint -sha256
   zeigt jetzt hierher; eine eigene Überwachung sollte das auch tun.
 - `GET /api/v1/health` liefert ohne Anmeldung nur noch `status`; Startzustand,
   Pool und Laufzeit sieht nur ein Verwalter.
+
+## 18. Sitzungscookie mit `__Host-`-Präfix
+
+- **Nach dem Update sind alle Browser einmal abgemeldet.** Das Sitzungscookie
+  heisst nicht mehr `connect.sid`, sondern mit HTTPS `__Host-bim.sid` (nur
+  über HTTPS, gilt für die ganze Adresse, keine Subdomain kann es setzen oder
+  überschreiben) und ohne HTTPS (`COOKIE_SECURE=0`) `bim.sid`. Ein altes
+  `connect.sid` wird nicht mehr gelesen; einfach neu anmelden. Die
+  Android-App meldet sich mit Token an und ist nicht betroffen. Wer in einem
+  eigenen Proxy oder Monitoring den Namen `connect.sid` verwendet, stellt ihn um.
+- Abmelden löscht das Cookie jetzt auch im Browser, statt nur die Sitzung
+  in der Datenbank zu beenden.
+
+## 19. Gutscheinnummern verschlüsselt
+
+- **Gutscheinnummern** liegen jetzt wie die PINs verschlüsselt in der
+  Datenbank (Migration 0087). Der erste Start schlüsselt den Bestand um, bevor
+  er Anfragen annimmt; danach nimmt die Datenbank keine Nummer im Klartext
+  mehr an. Doppelte erkennt ein HMAC (`nummer_suche`), dessen Schlüssel aus
+  dem Datenschlüssel abgeleitet ist. Ohne `data/.datenschluessel` bzw.
+  `DATA_KEY` sind nach einer Wiederherstellung damit auch die Nummern
+  verloren — den Schlüssel getrennt sichern (Abschnitt 13, `backup.sh`).
+- Die Kopien `vor_migration_*`, die der Start vor Migrationen anlegt,
+  enthielten Nummer und PIN im Klartext. Der Start verschlüsselt sie dort
+  ebenfalls; mit dem Datenschlüssel bleiben sie lesbar. Sicherungen von vor
+  dem Update (`backups/db_*.sql.gz`) enthalten die Nummern weiter im
+  Klartext: nach einem geglückten Update löschen oder wie den Schlüssel
+  verwahren.

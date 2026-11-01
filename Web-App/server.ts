@@ -14,7 +14,8 @@ import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
 import { fehlertext, logAndContinue, meldeUndWeiter, fehlerAntwort } from './src/infra/httpError';
-import { startVerbote, cookieSicher } from './src/infra/konfig';
+import { startVerbote } from './src/infra/konfig';
+import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
 import { bereiteDatenbankVor } from './startup/datenbank';
 import { starteJobs, stoppeJobs } from './startup/jobsProzess';
 import { verdrahte } from './jobs/verdrahtung';
@@ -218,14 +219,8 @@ app.use(session({
   secret: sitzungsGeheimnis(),
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    // Ohne maxAge ein Sitzungscookie: endet mit dem Browser. httpOnly hält
-    // Skripte fern, sameSite schützt vor CSRF.
-    httpOnly: true,
-    sameSite: 'lax',
-    // In Produktion nur über HTTPS; COOKIE_SECURE=0 für den Betrieb ohne TLS.
-    secure: cookieSicher(konfig()),
-  }
+  name: sitzungsKeksName(),
+  cookie: sitzungsKeksOptionen(),
 }));
 app.use(sitzungsHoechstdauer());
 

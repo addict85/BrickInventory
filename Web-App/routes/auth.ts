@@ -1,5 +1,6 @@
 
 import { konfig } from '../src/infra/konfig';
+import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/infra/sitzungsKeks';
 import { protokolliere } from '../src/verwaltung/dienst';
 const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
@@ -114,7 +115,9 @@ router.post('/logout', async (req, res: Antwort<'POST /api/v1/auth/logout'>) => 
   // aber unbemerkt.
   if (auth.startsWith('Bearer ')) await deleteToken(auth.slice(7)).catch(logAndContinue('logout:token entsorgen'));
   // destroy gibt es nur mit Sitzungs-Middleware; die App ruft ohne Cookie auf.
-  if (req.session?.destroy) return req.session.destroy(() => res.json({ success: true }));
+  if (req.session?.destroy) return req.session.destroy(() => {
+    res.clearCookie(sitzungsKeksName(), sitzungsKeksOptionen()).json({ success: true });
+  });
   res.json({ success: true });
 });
 

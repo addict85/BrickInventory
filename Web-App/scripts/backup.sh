@@ -18,7 +18,7 @@
 #   0 3 * * * cd /opt/brickinventory && ./scripts/backup.sh >> backup.log 2>&1
 #
 # Eine Sicherung ist ein GEHEIMNIS: Der Dump enthält alle Passwort-Hashes und,
-# verschlüsselt, API-Schlüssel, SMTP-Passwort, Gutschein-PINs und den zweiten
+# verschlüsselt, API-Schlüssel, SMTP-Passwort, Gutscheinnummern und -PINs und den zweiten
 # Faktor. Darum entstehen Dateien und Verzeichnis nur für den Besitzer lesbar
 # (umask 077), und ein offenes Ziel wird gemeldet.
 #
@@ -99,7 +99,7 @@ elif [ -n "${BACKUP_SCHLUESSEL_ZIEL:-}" ]; then
   echo "[backup] Datenschlüssel → $BACKUP_SCHLUESSEL_ZIEL/datenschluessel"
 else
   echo "[backup] ACHTUNG: $SCHLUESSEL ist NICHT in der Sicherung. Ohne ihn sind nach einem" >&2
-  echo "[backup]   Wiederherstellen API-Schlüssel, SMTP-Passwort, Gutschein-PINs und der zweite" >&2
+  echo "[backup]   Wiederherstellen API-Schlüssel, SMTP-Passwort, Gutscheine (Nummer, PIN) und der zweite" >&2
   echo "[backup]   Faktor verloren. Einmal getrennt sichern oder BACKUP_SCHLUESSEL_ZIEL setzen." >&2
 fi
 

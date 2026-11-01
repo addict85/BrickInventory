@@ -137,7 +137,7 @@ Eintrag ohne Datei; die Sammlung selbst ist davon nicht betroffen. Nachts
 gesichert, kommt das praktisch nicht vor.
 
 **Sicherungen sind Geheimnisse.** API-Schlüssel, SMTP-Passwort,
-Gutschein-PINs und die Geheimnisse des zweiten Faktors liegen verschlüsselt im
+Gutscheinnummern und -PINs und die Geheimnisse des zweiten Faktors liegen verschlüsselt im
 Dump; der Schlüssel dazu steht in `data/.datenschluessel` (oder in `DATA_KEY`).
 **Diese Datei mitsichern, aber getrennt vom Dump** — ohne sie lassen sich die
 Werte nach einer Wiederherstellung nicht mehr lesen und müssen neu eingegeben

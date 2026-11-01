@@ -66,6 +66,13 @@ export function entschluessele(wert: string | null | undefined): string | null {
   }
 }
 
+/** HMAC statt Hash: Kleine Wertebereiche (Kartennummern mit festem Präfix)
+ * liessen sich sonst durchprobieren. Ein Schlüssel je Zweck. */
+export function suchwert(zweck: string, wert: string): string {
+  const k = Buffer.from(crypto.hkdfSync('sha256', datenSchluessel(), Buffer.alloc(0), `brickinventory/suche/${zweck}`, 32));
+  return crypto.createHmac('sha256', k).update(wert, 'utf8').digest('hex');
+}
+
 /** Ein PDF beginnt nie so. */
 const DATEI_KOPF = Buffer.from('BIENC1\n', 'ascii');
 

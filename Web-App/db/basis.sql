@@ -1701,6 +1701,7 @@ CREATE TABLE public.vouchers (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     guthaben_geprueft_am timestamp with time zone,
+    nummer_suche text,
     CONSTRAINT vouchers_amount_nicht_negativ CHECK ((amount >= (0)::numeric)),
     CONSTRAINT vouchers_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text))
 );
@@ -2479,6 +2480,13 @@ ALTER TABLE ONLY public.verwaltungsprotokoll
     ADD CONSTRAINT verwaltungsprotokoll_pkey PRIMARY KEY (id);
 
 --
+-- Name: vouchers vouchers_nummer_verschluesselt; Type: CHECK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE public.vouchers
+    ADD CONSTRAINT vouchers_nummer_verschluesselt CHECK (((number ~~ 'v1:%'::text) AND (nummer_suche IS NOT NULL))) NOT VALID;
+
+--
 -- Name: vouchers vouchers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2486,11 +2494,11 @@ ALTER TABLE ONLY public.vouchers
     ADD CONSTRAINT vouchers_pkey PRIMARY KEY (id);
 
 --
--- Name: vouchers vouchers_user_id_number_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: vouchers vouchers_user_id_nummer_suche_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.vouchers
-    ADD CONSTRAINT vouchers_user_id_number_key UNIQUE (user_id, number);
+    ADD CONSTRAINT vouchers_user_id_nummer_suche_key UNIQUE (user_id, nummer_suche);
 
 --
 -- Name: webauthn_challenges webauthn_challenges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -3676,6 +3684,8 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('008
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0083-warteschlangen-in-auftraege.sql', '2026-10-30 23:06:24.744668+00', '81c51936203cfd2e60e1ddca67e03ae4c0bb97661e25229225bfdba08e146199');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0084-idempotenz.sql', '2026-10-31 14:46:46.80143+00', '6cf393aac4573bc2d219e5edc4dc7c821e105599e282112f4286a6314537eb23');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0085-schalter-als-boolean.sql', '2026-10-31 19:10:56.786936+00', '5da15115eebe8334a72a5a0bc4b425fd1c02b102d969641b5738c905a1795c58');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0086-idempotenz-ohne-klartext.sql', '2026-11-01 09:10:18.811298+00', 'cbcd0f300429ef0c1e27f2b0e6421aef9702fca8acd87b7d6d17551d603060b1');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0087-gutscheinnummer-verschluesselt.sql', '2026-11-01 09:10:18.815944+00', '9f3ffc42db4fbbcaac460126f8843345d84a9a31c2513c715c8c324894fb92d6');
 
 --
 -- PostgreSQL database dump complete
