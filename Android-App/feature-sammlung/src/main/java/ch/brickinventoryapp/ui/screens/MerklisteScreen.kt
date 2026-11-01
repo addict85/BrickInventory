@@ -405,12 +405,12 @@ private fun MerkpostenZeile(
                     InfoPlakette(
                         stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
                                        ch.brickinventoryapp.util.fmtMoney(a.schwelle, w.waehrung)),
-                        if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
+                        icon = if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
                     )
                 }
                 // „Habe ich das inzwischen?" meint das BLICKFELD: Beim
                 // Grossvater heisst „ich habe es" auch „der Enkel hat es".
-                if (w.owned) InfoPlakette(stringResource(R.string.wanted_owned), Icons.Default.Check)
+                if (w.owned) InfoPlakette(stringResource(R.string.wanted_owned), icon = Icons.Default.Check)
                 Spacer(Modifier.weight(1f))
                 // ── Marktpreis statt Knopf ──
                 //

@@ -173,7 +173,7 @@ fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
  * onClick sah aus wie ein Knopf, wurde als Knopf vorgelesen und tat nichts.
  */
 @Composable
-fun InfoPlakette(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector? = null, modifier: Modifier = Modifier) {
+fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
     Surface(shape = Formen.chip, color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
