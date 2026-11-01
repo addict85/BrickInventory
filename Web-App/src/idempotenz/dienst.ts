@@ -3,12 +3,15 @@
  * Wirkung. Derselbe Schlüssel mit anderem Inhalt ist ein Fehler des Clients. */
 import crypto from 'crypto';
 import * as repo from './repository';
-import { verschluessele, entschluessele, istVerschluesselt } from '../infra/geheimnis';
+import { verschluessele, entschluessele, istVerschluesselt, kontext, umschluesseln } from '../infra/geheimnis';
 
 /** Die App wiederholt innerhalb von Stunden, nicht Tagen. */
 export const FRIST_STUNDEN = 24;
 /** Danach gilt die erste Anfrage als abgebrochen (Absturz, Neustart). */
 const VERWAIST_NACH_S = 120;
+
+/** Konto und Schlüssel im Kontext: Eine gespeicherte Antwort gilt nur für ihren Eintrag. */
+export const antwortKontext = (uid: number, schluessel: string) => kontext('idempotenz.antwort', uid, schluessel);
 
 export const SCHLUESSEL_MUSTER = /^[A-Za-z0-9._:-]{1,100}$/;
 
@@ -31,7 +34,7 @@ export async function beginne(uid: number, schluessel: string, abdruck: string):
   if (!e) return await repo.belege(uid, schluessel, abdruck, VERWAIST_NACH_S) ? { art: 'neu' } : { art: 'laeuft' };
   if (e.anfrage !== abdruck) return { art: 'anders' };
   if (e.status === null) return { art: 'laeuft' };
-  const antwort = istVerschluesselt(e.antwort) ? entschluessele(e.antwort) : null;
+  const antwort = istVerschluesselt(e.antwort) ? entschluessele(e.antwort, antwortKontext(uid, schluessel)) : null;
   if (antwort === null) return { art: 'nicht_wiederholbar' };
   return { art: 'wiederholung', status: e.status, antwort };
 }
@@ -40,11 +43,21 @@ export async function beginne(uid: number, schluessel: string, abdruck: string):
  * eine Wiederholung soll es noch einmal versuchen dürfen. */
 export async function beende(uid: number, schluessel: string, status: number, antwort: string | null): Promise<void> {
   if (status >= 500) await repo.loescheLaufenden(uid, schluessel);
-  else await repo.schliesseAb(uid, schluessel, status, antwort === null ? null : verschluessele(antwort));
+  else await repo.schliesseAb(uid, schluessel, status, antwort === null ? null : verschluessele(antwort, antwortKontext(uid, schluessel)));
 }
 
 export function gibFrei(uid: number, schluessel: string): Promise<void> {
   return repo.loescheLaufenden(uid, schluessel);
+}
+
+/** v1-Antworten von vor dem Kontext; der Start schlüsselt sie um. */
+export async function antwortenUmschluesseln(): Promise<number> {
+  let n = 0;
+  for (const z of await repo.alteAntworten()) {
+    const neu = umschluesseln(z.antwort, antwortKontext(z.user_id, z.schluessel));
+    if (neu) n += await repo.ersetzeAntwort(z.user_id, z.schluessel, z.antwort, neu);
+  }
+  return n;
 }
 
 export function raeumeIdempotenzAuf(): Promise<number> {

@@ -46,7 +46,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 const PL = require('@cantoo/pdf-lib');
-const suche = (uid, nr) => _req('src/gutscheine/repository/gutscheine.js').nummerSpalten(uid, nr).nummer_suche;
+const suche = (uid, nr) => _req('src/gutscheine/repository/gutscheine.js').nummerSuche(uid, nr);
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -84,7 +84,7 @@ async function aufbau() {
   const { gutscheinAnlegen } = _req('src/gutscheine/dienst.js');
   for (const k of KARTEN) {
     const z = await gutscheinAnlegen(HAUPT, { number: k.nr, pin: k.pin, amount: k.app, currency: 'CHF' });
-    await fs.promises.writeFile(path.join(dir, `${z.id}.pdf`),
+    await _req('src/gutscheine/gutscheinDateien.js').schreibeGutscheinPdf(path.join(dir, `${z.id}.pdf`),
       await baueGutschein(k.gedruckt, k.nr, k.pin));
     await db.run('UPDATE vouchers SET pdf_path=$1 WHERE id=$2', [`${HAUPT}/${z.id}.pdf`, z.id]);
   }
@@ -178,11 +178,12 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
 
     for (const k of KARTEN) {
       const z = await db.get(
-        'SELECT amount, pin, currency FROM vouchers WHERE user_id=$1 AND nummer_suche=$2',
+        'SELECT id, amount, pin, currency FROM vouchers WHERE user_id=$1 AND nummer_suche=$2',
         [HAUPT, suche(HAUPT, k.nr)]);
       assert.ok(z, `${k.nr} kam nicht zurück`);
       assert.equal(Number(z.amount), k.app, `${k.nr}: ${z.amount} statt ${k.app}`);
-      assert.equal(_req('src/infra/geheimnis.js').entschluessele(z.pin), k.pin, `${k.nr}: PIN ${z.pin} statt ${k.pin}`);
+      assert.equal(_req('src/infra/geheimnis.js').entschluessele(z.pin, _req('src/gutscheine/repository/gutscheine.js').pinKontext(HAUPT, z.id)),
+        k.pin, `${k.nr}: PIN ${z.pin} statt ${k.pin}`);
     }
     // Und der von Hand erfasste, der nie ein PDF hatte.
     const ohne = await db.get(

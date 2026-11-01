@@ -616,3 +616,23 @@ nimmt, setzt `DATA_KEY_FILE` auf dessen Pfad (z. B. `/run/secrets/datenschluesse
 `scripts/backup.sh` nimmt den Schlüssel nie ins Archiv; mit
 `BACKUP_SCHLUESSEL_ZIEL=/anderer/ort` legt es ihn getrennt dort ab.
 `restore.sh` sucht ihn unter `schluessel/` (und noch unter `data/`).
+
+## 22. Geheimnisse an ihren Ort gebunden (Format v2)
+
+Verschlüsselte Werte tragen jetzt das Präfix `v2:` (Gutschein-PDFs: Kopf
+`BIENC2`). Neu ist der Kontext: Spalte, Konto und Zeile gehen als zusätzlich
+authentifizierte Daten in AES-GCM ein. Ein Geheimtext, den jemand mit
+Schreibzugriff auf die Datenbank in ein anderes Konto oder eine andere Zeile
+kopiert, lässt sich dort nicht mehr lesen.
+
+- **Der erste Start schlüsselt den Bestand um**, bevor er Anfragen annimmt
+  (Migration 0088, dann `startup/datenbank.ts`): API-Schlüssel und
+  SMTP-Passwort, TOTP-Geheimnisse, Gutscheinnummern und -PINs (auch in den
+  Kopien `vor_migration_*`), gespeicherte Antworten der Idempotency-Keys und
+  die Gutschein-PDFs unter `data/vouchers/`. Das Protokoll meldet die Zahl.
+- Danach liest der Server nur noch `v2`. Klartext oder `v1`, der später in
+  die Tabelle geschrieben wird, gilt als nicht lesbar (Warnung im Protokoll);
+  ein Neustart schlüsselt ihn wieder um.
+- Eine Sicherung von vor dem Update lässt sich weiter einspielen: Der nächste
+  Start schlüsselt sie um. Ohne den Datenschlüssel bleibt sie unlesbar wie
+  bisher.

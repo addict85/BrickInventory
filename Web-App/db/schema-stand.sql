@@ -887,7 +887,7 @@ CREATE TABLE vouchers (
   nummer_suche text,
   CONSTRAINT vouchers_amount_nicht_negativ CHECK ((amount >= (0)::numeric)),
   CONSTRAINT vouchers_currency_iso CHECK ((currency ~ '^[A-Z]{3}$'::text)),
-  CONSTRAINT vouchers_nummer_verschluesselt CHECK (((number ~~ 'v1:%'::text) AND (nummer_suche IS NOT NULL))) NOT VALID,
+  CONSTRAINT vouchers_nummer_verschluesselt CHECK (((number ~~ 'v2:%'::text) AND (nummer_suche IS NOT NULL))) NOT VALID,
   CONSTRAINT vouchers_pkey PRIMARY KEY (id),
   CONSTRAINT vouchers_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT vouchers_user_id_nummer_suche_key UNIQUE (user_id, nummer_suche)

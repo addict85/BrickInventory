@@ -30,3 +30,14 @@ export async function loescheLaufenden(uid: number, schluessel: string): Promise
 export async function loescheAelterAls(stunden: number): Promise<number> {
   return (await db.run('DELETE FROM idempotenz WHERE angelegt < NOW() - make_interval(hours => $1)', [stunden])).changes || 0;
 }
+
+export function alteAntworten() {
+  return db.all<{ user_id: number; schluessel: string; antwort: string }>(
+    "SELECT user_id, schluessel, antwort FROM idempotenz WHERE antwort IS NOT NULL AND antwort NOT LIKE 'v2:%'");
+}
+
+/** `AND antwort = $3`: Eine inzwischen neu geschriebene Zeile bleibt. */
+export async function ersetzeAntwort(uid: number, schluessel: string, alt: string, neu: string): Promise<number> {
+  return (await db.run('UPDATE idempotenz SET antwort = $4 WHERE user_id = $1 AND schluessel = $2 AND antwort = $3',
+    [uid, schluessel, alt, neu])).changes || 0;
+}

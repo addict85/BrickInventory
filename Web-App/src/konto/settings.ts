@@ -3,7 +3,7 @@ import { nacharbeit } from '../auftraege/nacharbeit';
 import * as db from '../../db/database';
 import * as repo from './repository/einstellungen';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { verschluessele, entschluessele, istVerschluesselt } from '../infra/geheimnis';
+import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/httpError';
 import crypto from 'node:crypto';
@@ -16,8 +16,11 @@ export async function getSetting(userId: number, key: string, fallback?: any) {
 
 /** Geheime Werte liegen verschlüsselt (src/infra/geheimnis.ts). */
 function klar(key: string, wert: string | null | undefined): string | null | undefined {
-  return SECRET_KEYS.has(key) ? entschluessele(wert) : wert;
+  return SECRET_KEYS.has(key) ? entschluessele(wert, globalerKontext(key)) : wert;
 }
+
+/** Der Name im Kontext: Ein SMTP-Passwort, in die Zeile eines API-Schlüssels kopiert, bleibt unlesbar. */
+const globalerKontext = (key: string) => kontext('global_settings.value', key);
 
 export async function getGlobalSetting(key: string, fallback: any = null) {
   const g = await repo.globalerWert(key).catch(meldeUndLiefere(`einstellungen:${key}`, null));
@@ -110,7 +113,7 @@ export function globalerWertGueltig(key: string, value: unknown): boolean {
  * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setglobalsetting */
 export async function setGlobalSetting(key: string, value: unknown) {
   if (!globalerWertGueltig(key, value)) fehlerWerfen('wert_ungueltig', 400);
-  await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(String(value)) : String(value));
+  await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(String(value), globalerKontext(key)) : String(value));
 }
 
 /** Offen nur bei genau '1'; fehlt die Zeile oder ist sie unlesbar, bleibt sie zu. */
@@ -123,8 +126,8 @@ export async function registrierungOffen(): Promise<boolean> {
 export async function verschluesseleGlobaleAltwerte(): Promise<number> {
   let n = 0;
   for (const z of await repo.globaleWerte([...SECRET_KEYS])) {
-    if (!z.value || istVerschluesselt(z.value)) continue;
-    if (await repo.ersetzeGlobalenWert(z.key, z.value, verschluessele(z.value))) n++;
+    const neu = umschluesseln(z.value, globalerKontext(z.key));
+    if (neu && await repo.ersetzeGlobalenWert(z.key, z.value, neu)) n++;
   }
   return n;
 }

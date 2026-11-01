@@ -345,8 +345,9 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async (t) => {
     // meldete einen Leck, den es nicht gab — der Text enthielt eine Ziffernfolge,
     // die gar nicht mehr die PIN dieser Karte war. Die Zusicherung muss gegen
     // DEN Wert prüfen, den die Route an verdecke() gibt.
-    const pinJetzt = _req('src/infra/geheimnis.js').entschluessele(
-      (await db.get('SELECT pin FROM vouchers WHERE id=$1', [MIT_PIN])).pin);
+    const pinZeile = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [MIT_PIN]);
+    const pinJetzt = _req('src/infra/geheimnis.js').entschluessele(pinZeile.pin,
+      _req('src/gutscheine/repository/gutscheine.js').pinKontext(pinZeile.user_id, MIT_PIN));
     naechsteAntwort = antwort({ status: 500, text: `kaputt für ${NUMMER} mit ${pinJetzt}` });
     const r = await abfrage(srv.base, MIT_PIN);
     const d = await r.json();

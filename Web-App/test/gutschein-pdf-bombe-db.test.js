@@ -174,7 +174,7 @@ test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { co
     fd.append('number', nummer); fd.append('pin', '1234');
     fd.append('amount', '50'); fd.append('currency', 'CHF');
     const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
-    const { nummer_suche } = _req('src/gutscheine/repository/gutscheine.js').nummerSpalten(uid, nummer);
+    const nummer_suche = _req('src/gutscheine/repository/gutscheine.js').nummerSuche(uid, nummer);
     const zeile = await db.get('SELECT id FROM vouchers WHERE user_id=$1 AND nummer_suche=$2', [uid, nummer_suche]);
     return { status: r.status, body: await r.json().catch(() => ({})), zeile };
   }

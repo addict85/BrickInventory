@@ -7,7 +7,8 @@ import { APP_ROOT, DATA_DIR } from './appPaths';
 /** Ein Abzug der Datenbank oder von data/ allein gibt die Geheimnisse nicht
  * preis: Der Schlüssel liegt in DATA_KEY oder in einer eigenen Datei
  * ausserhalb des Datenordners (DATA_KEY_FILE, Vorgabe schluessel/). */
-const PRAEFIX = 'v1:';
+/** v2: AES-256-GCM mit Kontext (AAD); v1 ohne, nur noch zum Umschlüsseln lesbar. */
+const V1 = 'v1:', V2 = 'v2:';
 let geladen: Buffer | null = null;
 
 export function schluesselDatei(): string {
@@ -64,32 +65,78 @@ export function datenSchluessel(): Buffer {
   finally { fs.rmSync(tmp, { force: true }); }
 }
 
-export function istVerschluesselt(wert: unknown): boolean {
-  return typeof wert === 'string' && wert.startsWith(PRAEFIX);
+/** Wofür und für welche Zeile ein Geheimtext gilt. Geht als AAD in AES-GCM ein:
+ * Ein Geheimtext, in eine andere Spalte, ein anderes Konto oder eine andere
+ * Zeile kopiert, lässt sich dort nicht mehr entschlüsseln. */
+export type Kontext = string & { readonly __kontext: true };
+export function kontext(zweck: string, ...bezug: (string | number)[]): Kontext {
+  return JSON.stringify([zweck, ...bezug.map(String)]) as Kontext;
 }
 
-export function verschluessele(klartext: string | null | undefined): string | null {
-  if (klartext === null || klartext === undefined || klartext === '') return klartext ?? null;
-  if (istVerschluesselt(klartext)) return klartext;
+/** Eigener Teilschlüssel für v2: Derselbe Rohschlüssel dient sonst auch v1 und suchwert(). */
+let v2: Buffer | null = null;
+function v2Schluessel(): Buffer {
+  return v2 ??= Buffer.from(crypto.hkdfSync('sha256', datenSchluessel(), Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32));
+}
+
+function versiegle(schluessel: Buffer, daten: Buffer, aad: Kontext | null): Buffer {
   const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv('aes-256-gcm', datenSchluessel(), iv);
-  const daten = Buffer.concat([c.update(String(klartext), 'utf8'), c.final()]);
-  return PRAEFIX + Buffer.concat([iv, c.getAuthTag(), daten]).toString('base64');
+  const c = crypto.createCipheriv('aes-256-gcm', schluessel, iv);
+  if (aad !== null) c.setAAD(Buffer.from(aad, 'utf8'));
+  const inhalt = Buffer.concat([c.update(daten), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), inhalt]);
 }
 
-/** Passt der Schlüssel nicht (Datei verloren), null statt eines falschen Werts. */
-export function entschluessele(wert: string | null | undefined): string | null {
-  if (wert === null || wert === undefined) return null;
-  if (!istVerschluesselt(wert)) return wert;
+/** null, wenn Schlüssel, Inhalt oder Kontext nicht passen. */
+function oeffne(schluessel: Buffer, roh: Buffer, aad: Kontext | null): Buffer | null {
   try {
-    const roh = Buffer.from(wert.slice(PRAEFIX.length), 'base64');
-    const d = crypto.createDecipheriv('aes-256-gcm', datenSchluessel(), roh.subarray(0, 12));
+    const d = crypto.createDecipheriv('aes-256-gcm', schluessel, roh.subarray(0, 12));
+    if (aad !== null) d.setAAD(Buffer.from(aad, 'utf8'));
     d.setAuthTag(roh.subarray(12, 28));
-    return Buffer.concat([d.update(roh.subarray(28)), d.final()]).toString('utf8');
-  } catch {
-    console.warn('⚠️ [geheimnis] Ein gespeichertes Geheimnis passt nicht zum Datenschlüssel (DATA_KEY oder DATA_KEY_FILE).');
-    return null;
-  }
+    return Buffer.concat([d.update(roh.subarray(28)), d.final()]);
+  } catch { return null; }
+}
+
+function warne(was: string): void {
+  console.warn(`⚠️ [geheimnis] ${was} passt nicht zum Datenschlüssel (DATA_KEY oder DATA_KEY_FILE) oder gehört an eine andere Stelle.`);
+}
+
+export function istVerschluesselt(wert: unknown): boolean {
+  return typeof wert === 'string' && wert.startsWith(V2);
+}
+
+export function verschluessele(klartext: string | null | undefined, k: Kontext): string | null {
+  if (klartext === null || klartext === undefined || klartext === '') return klartext ?? null;
+  return V2 + versiegle(v2Schluessel(), Buffer.from(String(klartext), 'utf8'), k).toString('base64');
+}
+
+/** Nur das aktuelle Format: Klartext und v1 liest allein das Umschlüsseln beim
+ * Start (altwertLesen); hier wären sie ein eingeschleuster Wert. */
+export function entschluessele(wert: string | null | undefined, k: Kontext): string | null {
+  if (wert === null || wert === undefined) return null;
+  if (wert === '') return '';
+  if (!istVerschluesselt(wert)) { warne('Ein gespeicherter Wert ohne v2-Verschlüsselung'); return null; }
+  const klar = oeffne(v2Schluessel(), Buffer.from(wert.slice(V2.length), 'base64'), k);
+  if (klar === null) warne('Ein gespeichertes Geheimnis');
+  return klar === null ? null : klar.toString('utf8');
+}
+
+/** Für das Umschlüsseln: v2, v1 (ohne Kontext) und Klartext von vor der Verschlüsselung. */
+export function altwertLesen(wert: string | null | undefined, k: Kontext): string | null {
+  if (wert === null || wert === undefined) return null;
+  if (istVerschluesselt(wert)) return entschluessele(wert, k);
+  if (!wert.startsWith(V1)) return wert;
+  const klar = oeffne(datenSchluessel(), Buffer.from(wert.slice(V1.length), 'base64'), null);
+  if (klar === null) warne('Ein gespeichertes Geheimnis (v1)');
+  return klar === null ? null : klar.toString('utf8');
+}
+
+/** Der neue Wert, wenn `wert` umzuschlüsseln ist; undefined, wenn nichts zu tun
+ * ist oder er sich nicht lesen lässt (falscher Schlüssel: Zeile bleibt). */
+export function umschluesseln(wert: string | null | undefined, k: Kontext): string | null | undefined {
+  if (!wert || istVerschluesselt(wert)) return undefined;
+  const klar = altwertLesen(wert, k);
+  return klar === null ? undefined : verschluessele(klar, k);
 }
 
 /** HMAC statt Hash: Kleine Wertebereiche (Kartennummern mit festem Präfix)
@@ -100,32 +147,32 @@ export function suchwert(zweck: string, wert: string): string {
 }
 
 /** Ein PDF beginnt nie so. */
-const DATEI_KOPF = Buffer.from('BIENC1\n', 'ascii');
+const KOPF1 = Buffer.from('BIENC1\n', 'ascii');
+const KOPF2 = Buffer.from('BIENC2\n', 'ascii');
+const beginntMit = (daten: Buffer, kopf: Buffer) => daten.subarray(0, kopf.length).equals(kopf);
 
 export function istVerschluesselterPuffer(daten: Buffer): boolean {
-  return daten.subarray(0, DATEI_KOPF.length).equals(DATEI_KOPF);
+  return beginntMit(daten, KOPF2);
 }
 
-export function verschluesselePuffer(daten: Buffer): Buffer {
-  if (istVerschluesselterPuffer(daten)) return daten;
-  const iv = crypto.randomBytes(12);
-  const c = crypto.createCipheriv('aes-256-gcm', datenSchluessel(), iv);
-  const inhalt = Buffer.concat([c.update(daten), c.final()]);
-  return Buffer.concat([DATEI_KOPF, iv, c.getAuthTag(), inhalt]);
+export function verschluesselePuffer(daten: Buffer, k: Kontext): Buffer {
+  return Buffer.concat([KOPF2, versiegle(v2Schluessel(), daten, k)]);
 }
 
-/** Verändert oder falscher Schlüssel: null. */
-export function entschluesselePuffer(daten: Buffer): Buffer | null {
-  if (!istVerschluesselterPuffer(daten)) return daten;
-  try {
-    const roh = daten.subarray(DATEI_KOPF.length);
-    const d = crypto.createDecipheriv('aes-256-gcm', datenSchluessel(), roh.subarray(0, 12));
-    d.setAuthTag(roh.subarray(12, 28));
-    return Buffer.concat([d.update(roh.subarray(28)), d.final()]);
-  } catch {
-    console.warn('⚠️ [geheimnis] Eine verschlüsselte Datei passt nicht zum Datenschlüssel (DATA_KEY oder DATA_KEY_FILE).');
-    return null;
-  }
+/** Nur BIENC2 mit passendem Kontext; sonst null. */
+export function entschluesselePuffer(daten: Buffer, k: Kontext): Buffer | null {
+  const klar = istVerschluesselterPuffer(daten) ? oeffne(v2Schluessel(), daten.subarray(KOPF2.length), k) : null;
+  if (klar === null) warne('Eine verschlüsselte Datei');
+  return klar;
 }
 
-export function _vergissSchluessel() { geladen = null; }
+/** Für das Umschlüsseln: BIENC2, BIENC1 und unverschlüsselte Dateien. */
+export function altenPufferLesen(daten: Buffer, k: Kontext): Buffer | null {
+  if (istVerschluesselterPuffer(daten)) return entschluesselePuffer(daten, k);
+  if (!beginntMit(daten, KOPF1)) return daten;
+  const klar = oeffne(datenSchluessel(), daten.subarray(KOPF1.length), null);
+  if (klar === null) warne('Eine verschlüsselte Datei (BIENC1)');
+  return klar;
+}
+
+export function _vergissSchluessel() { geladen = null; v2 = null; }

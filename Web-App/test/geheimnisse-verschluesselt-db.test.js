@@ -9,7 +9,8 @@
  *      „globale Schlüssel …“
  *   B  in POST /vouchers verschluessele() weggelassen → rot: „Gutschein-PIN …“
  *   C  verschluesseleAltbestand() überspringt die Gutscheine → rot:
- *      „Altbestand …“
+ *      „Altbestand …“ (seit 01.11.2026 schlüsselt nummernNachverschluesseln()
+ *      auch die PIN um)
  * Gegenprobe (am 29.10.2026 gemessen):
  *   D  maskSecret() hängt wieder die letzten vier Zeichen an → rot:
  *      „globale Schlüssel …“
@@ -53,7 +54,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
   await t.test('globale Schlüssel', async () => {
     await settings.setGlobalSetting('brickset_api_key', 'klar-brickset-4242');
     const roh = (await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'")).value;
-    assert.ok(roh.startsWith('v1:') && !roh.includes('4242'), roh);
+    assert.ok(roh.startsWith('v2:') && !roh.includes('4242'), roh);
     assert.equal(await settings.getGlobalSetting('brickset_api_key'), 'klar-brickset-4242');
     const gelesen = await settings.readSettings(uid, true);
     assert.equal(gelesen.brickset_api_key, '\u2022'.repeat(12), 'die Maske sagt nur „gesetzt"');
@@ -68,7 +69,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
     assert.equal(r.status, 200, JSON.stringify(b));
     assert.equal(b.voucher.pin, '8642');
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
-    assert.ok(roh.startsWith('v1:') && !roh.includes('8642'), roh);
+    assert.ok(roh.startsWith('v2:') && !roh.includes('8642'), roh);
     const liste = await (await fetch(`${base}/api/v1/vouchers`)).json();
     assert.equal(liste.vouchers.find(v => v.id === b.voucher.id).pin, '8642');
   });
@@ -77,25 +78,25 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
     const zf = _req('src/konto/zweiterFaktor.js');
     const geheimnis = await zf.beginneEinrichtung(uid);
     const roh = (await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [uid])).geheimnis;
-    assert.ok(roh.startsWith('v1:') && !roh.includes(geheimnis), roh);
-    assert.equal(g.entschluessele(roh), geheimnis);
+    assert.ok(roh.startsWith('v2:') && !roh.includes(geheimnis), roh);
+    assert.equal(g.entschluessele(roh, zf.faktorKontext(uid)), geheimnis);
   });
 
   await t.test('Altbestand wird nachverschlüsselt', async () => {
-    const n = _req('src/gutscheine/repository/gutscheine.js').nummerSpalten(uid, '5045076374450013131');
-    const id = (await db.get(`INSERT INTO vouchers (user_id, number, nummer_suche, pin, amount, currency)
-      VALUES ($1, $2, $3, '9753', 10, 'CHF') RETURNING id`, [uid, n.number, n.nummer_suche])).id;
-    await _req('src/konto/geheimnisAltbestand.js').verschluesseleAltbestand();
+    const gs = _req('src/gutscheine/repository/gutscheine.js');
+    const { id } = await gs.gutscheinAnlegen(uid, { number: '5045076374450013131', pin: null, amount: 10, currency: 'CHF' });
+    await db.run("UPDATE vouchers SET pin = '9753' WHERE id = $1", [id]);
+    await gs.nummernNachverschluesseln();
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [id])).pin;
-    assert.ok(roh.startsWith('v1:'), roh);
-    assert.equal(g.entschluessele(roh), '9753');
+    assert.ok(roh.startsWith('v2:'), roh);
+    assert.equal(g.entschluessele(roh, gs.pinKontext(uid, id)), '9753');
   });
 
   await t.test('falscher Schlüssel ergibt null, nicht Unsinn', async () => {
-    const wert = g.verschluessele('geheim');
+    const wert = g.verschluessele('geheim', g.kontext('probe'));
     process.env.DATA_KEY = crypto.randomBytes(32).toString('base64');
     g._vergissSchluessel();
     const echt = console.warn; console.warn = () => {};
-    try { assert.equal(g.entschluessele(wert), null); } finally { console.warn = echt; }
+    try { assert.equal(g.entschluessele(wert, g.kontext('probe')), null); } finally { console.warn = echt; }
   });
 });

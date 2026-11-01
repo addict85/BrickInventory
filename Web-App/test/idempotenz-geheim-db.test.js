@@ -107,8 +107,8 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async (
     const erst = await post('/auth/profile', 'p-1', { first_name: 'Erika' }, 'PUT');
     assert.deepEqual(erst, { status: 200, replay: null, body: { success: true } });
     const z = await zeile('p-1');
-    assert.ok(z.antwort.startsWith('v1:'), z.antwort);
-    assert.equal(geheimnis.entschluessele(z.antwort), '{"success":true}');
+    assert.ok(z.antwort.startsWith('v2:'), z.antwort);
+    assert.equal(geheimnis.entschluessele(z.antwort, _req('src/idempotenz/dienst.js').antwortKontext(uid, 'p-1')), '{"success":true}');
     const nochmal = await post('/auth/profile', 'p-1', { first_name: 'Erika' }, 'PUT');
     assert.deepEqual(nochmal, { status: 200, replay: 'true', body: { success: true } });
   });
@@ -117,9 +117,11 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async (
     const abdruck = _req('src/idempotenz/dienst.js').fingerabdruck('PUT', '/api/v1/auth/profile', { last_name: 'Alt' });
     await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort)
                   VALUES ($1, 'alt-1', $2, 200, '{"token":"klartext-aus-frueher"}')`, [uid, abdruck]);
+    // Zur Zeit von 0086 war verschlüsselt gleich v1.
+    await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort) VALUES ($1, 'v1-1', 'x', 200, 'v1:AAAA')`, [uid]);
     await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0086-idempotenz-ohne-klartext.sql'), 'utf8'));
     assert.deepEqual(await fundstellen('klartext-aus-frueher'), []);
-    assert.equal((await zeile('p-1')).antwort.startsWith('v1:'), true, 'verschlüsselte Zeilen bleiben');
+    assert.equal((await zeile('v1-1')).antwort, 'v1:AAAA', 'verschlüsselte Zeilen bleiben');
     const r = await post('/auth/profile', 'alt-1', { last_name: 'Alt' }, 'PUT');
     assert.equal(r.status, 409);
     assert.equal(r.body.code, 'idempotenz_nicht_wiederholbar');

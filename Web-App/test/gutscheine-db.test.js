@@ -322,7 +322,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
       assert.equal(r.status, 422);
       assert.equal((await r.json()).code, 'pdf_unlesbar');
-      const { nummer_suche } = _req('src/gutscheine/repository/gutscheine.js').nummerSpalten(U.opa, '5045076374450018888');
+      const nummer_suche = _req('src/gutscheine/repository/gutscheine.js').nummerSuche(U.opa, '5045076374450018888');
       assert.equal((await db.get('SELECT count(*)::int AS n FROM vouchers WHERE nummer_suche = $1', [nummer_suche])).n, 0);
     });
 
