@@ -5,7 +5,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import { fehlerAntwort, fehlertext, pfadParam, meldeUndLiefere, logAndContinue } from '../../src/infra/httpError';
+import { fehlerAntwort, fehlertext, pfadParam, meldeUndLiefere, logAndContinue, oeffentlicherFehler } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { getSetting } from '../../src/konto/settings';
 import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
@@ -407,7 +407,7 @@ router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) 
       V.optionalPrice(purchase_price, 'Kaufpreis'), setCondition, storage);
     // success gehört dazu: Die Clients lesen das letzte Ereignis wie eine Antwort.
     send({ step: 'done', success: true, ...result });
-  } catch (e) { if (fehlertext(e) !== 'CANCELLED') send({ step: 'error', error: fehlertext(e) }); }
+  } catch (e) { if (fehlertext(e) !== 'CANCELLED') send({ step: 'error', ...oeffentlicherFehler(e, 'sets:add-stream', req) }); }
   unregisterAddSse();
   res.end();
 });

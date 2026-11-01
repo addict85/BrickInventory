@@ -1,6 +1,6 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen
  * nur Anfrage und Antwort kennen. */
-import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei } from '../infra/httpError';
+import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/httpError';
 import fs from 'fs';
 import path from 'path';
 import { APP_ROOT } from '../infra/appPaths';
@@ -324,7 +324,7 @@ export async function setCsvImportStarten(userId: number, text: string) {
   try {
     await stelleAuftragEin('csv_import', { user_id: userId, lauf, rows }, { userId, maxVersuche: 3 });
   } catch (e) {
-    await jobUpdate(userId, { status: 'error', error: fehlertext(e) }, lauf).catch(logAndContinue('csv-import:fehler vermerken'));
+    await jobUpdate(userId, { status: 'error', error: oeffentlicherFehler(e, 'csv-import:einstellen').error }, lauf).catch(logAndContinue('csv-import:fehler vermerken'));
     throw e;
   }
   await emitJobStatus(userId);

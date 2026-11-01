@@ -180,6 +180,7 @@ export const FEHLER = {
   anfrage_json_ungueltig:      { de: 'Die Anfrage ist kein gültiges JSON', en: 'The request body is not valid JSON' },
   anfrage_zu_gross:            { de: 'Die Anfrage ist zu gross', en: 'The request is too large' },
   anfrage_unlesbar:            { de: 'Die Anfrage ist nicht lesbar', en: 'The request cannot be read' },
+  interner_fehler:             { de: 'Interner Fehler — Einzelheiten stehen im Protokoll.', en: 'Internal error — see the server log for details.' },
   csv_parse_fehler:            { de: 'CSV Parse Fehler: {grund}', en: 'CSV parse error: {grund}' },
   kein_import_laeuft:          { de: 'Kein Import läuft', en: 'No import is running' },
 

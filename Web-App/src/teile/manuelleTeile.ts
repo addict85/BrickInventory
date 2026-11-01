@@ -1,6 +1,6 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
-import { meldeUndLiefere, fehlertext } from '../infra/httpError';
+import { meldeUndLiefere, oeffentlicherFehler } from '../infra/httpError';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
@@ -233,7 +233,7 @@ export async function importiereTeileCsv(uid: number, text: string) {
       results.push({ part_number: partNumber, action: 'added' });
     } catch (e) {
       errors++;
-      results.push({ part_number: partNumber, action: 'error', error: fehlertext(e) });
+      results.push({ part_number: partNumber, action: 'error', error: oeffentlicherFehler(e, 'teile-csv:zeile').error });
     }
   }
   return { added, updated, errors, records, results, uebersprungen };
