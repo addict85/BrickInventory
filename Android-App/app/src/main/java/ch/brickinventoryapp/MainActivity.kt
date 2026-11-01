@@ -145,8 +145,10 @@ class MainActivity : ComponentActivity() {
                     BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
                     val startpasswort by vm.passwortPflicht.noetig.collectAsStateWithLifecycle()
+                    // Startwert false: Die Maske erscheint erst mit beiden Zuständen,
+                    // und StateFlow.value in der Komposition verbietet Lint.
                     val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
-                        .collectAsStateWithLifecycle(vm.state.value.isLoggedIn)
+                        .collectAsStateWithLifecycle(false)
                     if (startpasswort && angemeldet) {
                         val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
                         ch.brickinventoryapp.ui.screens.StartpasswortMaske(
