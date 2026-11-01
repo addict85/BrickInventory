@@ -457,7 +457,9 @@ function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max, guvKau
   if (guv != null && wert > 0) {
     G('fin-total-pnl').innerHTML = pnlBadge(guv);
     // Betrag und Prozent aus denselben Posten (mit Kauf- UND Marktpreis).
-    G('fin-pnl-sub').textContent = guvKauf > 0 ? `${guvMarkt >= guvKauf ? '+' : '−'}${fmtN(Math.abs(guvMarkt - guvKauf), cur)}` : '';
+    // „gegenüber dem Einstand“: Das Prozent im Diagramm rechnet gegen den Anfang des Zeitraums.
+    G('fin-pnl-sub').textContent = guvKauf > 0
+      ? tRaw('finance.pnl_vs_purchase', { betrag: `${guvMarkt >= guvKauf ? '+' : '−'}${fmtN(Math.abs(guvMarkt - guvKauf), cur)}` }) : '';
   } else {
     G('fin-total-pnl').textContent = '—';
     G('fin-pnl-sub').textContent = tRaw('finance.pnl_needs_prices');

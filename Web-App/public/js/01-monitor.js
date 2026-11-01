@@ -160,6 +160,8 @@ export async function loadMonitor() {
       };
       return svgs[k] ? `<svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0">${svgs[k]}</svg>` : '';
     };
+    const jobZustand = (s) => ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'),
+      error: tRaw('monitor.state.error') })[s] || tRaw('monitor.state.idle');
     const statusIcon = (s, j) => {
       if (s === 'running') return ico('uhr');
       if (s === 'done')    return ico('ok');
@@ -192,7 +194,7 @@ export async function loadMonitor() {
                 ${k==='imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : ''}
                 ${k==='imgDl' ? `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : ''}
                 ${k==='bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1);display:inline-flex;align-items:center;gap:5px" data-click="toggleBricksetQueue" data-self="1"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0"><rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/></svg> ${t('monitor.show')}</button>` : ''}
-                <span title="${esc(j.status)}">${statusIcon(j.status, j)}</span>
+                <span role="img" title="${esc(jobZustand(j.status))}" aria-label="${esc(jobZustand(j.status))}">${statusIcon(j.status, j)}</span>
               </div>
             </div>
             ${j.sub ? `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${translateJobSub(j.sub)}</div>` : ''}
@@ -267,6 +269,24 @@ const artName = (art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : esc(a
  * (GET /api/v1/admin/auftraege) — je Art die Zahlen mit „Jetzt“ und
  * „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
  */
+/**
+ * Eine Fehlermeldung des Servers in einem Satz, den man ohne Netzwerkwissen
+ * versteht; der Originaltext bleibt aufklappbar, er ist für die Fehlersuche da.
+ */
+export function fehlerKurz(text) {
+  const s = String(text || '');
+  if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|fetch failed|network|socket hang up/i.test(s)) return tRaw('monitor.err.net');
+  if (/timed? ?out|ETIMEDOUT|Zeitüberschreitung/i.test(s)) return tRaw('monitor.err.timeout');
+  if (/\b429\b|rate.?limit|too many/i.test(s)) return tRaw('monitor.err.limit');
+  if (/\b40[13]\b|unauthori[sz]ed|forbidden|api.?key|schlüssel/i.test(s)) return tRaw('monitor.err.auth');
+  if (/\b404\b|not found/i.test(s)) return tRaw('monitor.err.missing');
+  return tRaw('monitor.err.other');
+}
+
+function fehlerKasten(text) {
+  return `<details class="fehler-kasten"><summary>${ico('warnung')} ${esc(fehlerKurz(text))}</summary><code>${esc(text)}</code></details>`;
+}
+
 async function zeigeAuftraege() {
   const el = G('auftraege-karte');
   if (!el) return;
@@ -285,7 +305,7 @@ async function zeigeAuftraege() {
       <span data-stil="font-weight:600">${artName(a.art)}${a.set_number ? ' · ' + esc(a.set_number) : ''}</span>
       <span data-stil="color:var(--mut)">${Object.hasOwn(STATUSNAMEN, a.status) ? STATUSNAMEN[a.status]() : esc(a.status)}${wann ? ' · ' + wann : ''}${stand ? ' · ' + esc(stand) : ''}</span>
       ${a.versuche > 1 ? `<span data-stil="color:var(--mut)">${t('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>` : ''}
-      ${a.fehler && a.status !== 'laeuft' ? `<span data-stil="color:var(--r700);flex-basis:100%">${esc(a.fehler)}</span>` : ''}
+      ${a.fehler && a.status !== 'laeuft' ? fehlerKasten(a.fehler) : ''}
       <span data-stil="margin-left:auto;display:inline-flex;gap:.35rem">
         ${a.status === 'offen' || a.status === 'laeuft' ? knopf('auftragAbbrechen', a.id, t('monitor.auftraege.abbrechen')) : ''}
         ${a.status === 'fehler' || a.status === 'abgebrochen' ? knopf('auftragWiederholen', a.id, t('monitor.auftraege.wiederholen')) : ''}

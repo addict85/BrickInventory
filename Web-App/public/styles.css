@@ -985,6 +985,10 @@ input.suchfeld{width:220px}
 @media(max-width:700px){
   #global-settings-grid{grid-template-columns:minmax(0,1fr)}
   #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;position:static}
+  /* Verlauf am Rand, solange dort noch Abschnitte liegen (data-mehr aus 10-mobile.js). */
+  .einst-nav[data-mehr="r"]{mask-image:linear-gradient(to right,#000 calc(100% - 48px),transparent)}
+  .einst-nav[data-mehr="l"]{mask-image:linear-gradient(to left,#000 calc(100% - 48px),transparent)}
+  .einst-nav[data-mehr="lr"]{mask-image:linear-gradient(to right,transparent,#000 48px,#000 calc(100% - 48px),transparent)}
   #global-settings-grid > .einst-nav a{flex:none}
   #global-settings-grid > .ssec{grid-column:1}
 }

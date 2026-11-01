@@ -399,6 +399,9 @@ function zeigeDesignWahl(d) {
   const vorgabeName = tRaw(NAMEN[d.vorgabe] || NAMEN.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
   sel.value = d.eigenes || '';
+  // Werkbank hat keine helle Fassung; ohne Hinweis wirkt „Darstellung: hell“ kaputt.
+  const hinweis = G('design-hinweis');
+  if (hinweis) hinweis.textContent = window.__bimNurDunkel?.(d.eigenes || d.vorgabe) ? tRaw('settings.werkbank_hint') : '';
 }
 
 async function setzeEigenesDesign() {
