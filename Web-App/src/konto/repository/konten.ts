@@ -41,7 +41,9 @@ export async function aendereProfil(id: number, felder: Record<string, unknown>)
   const spalten = Object.keys(felder);
   if (!spalten.length) return;
   for (const s of spalten) if (!PROFILSPALTEN.has(s)) throw new Error(`Profilspalte nicht erlaubt: ${s}`);
-  await db.run(`UPDATE users SET ${spalten.map((s, i) => `${s}=$${i + 1}`).join(',')} WHERE id=$${spalten.length + 1}`,
+  // Eine neue Adresse: Der Link an die alte gilt nicht mehr.
+  const zusatz = 'email' in felder ? `, ${OHNE_RUECKSETZLINK}` : '';
+  await db.run(`UPDATE users SET ${spalten.map((s, i) => `${s}=$${i + 1}`).join(',')}${zusatz} WHERE id=$${spalten.length + 1}`,
     [...spalten.map(s => felder[s]), id]);
 }
 
@@ -72,13 +74,17 @@ export async function schreibeAktiv(id: number, ja: boolean): Promise<{ vorher: 
                   WHERE u.id = $1 AND alt.id = u.id RETURNING alt.is_active AS vorher`, [id, ja]);
 }
 
+/** Ein noch offener Rücksetzlink fällt mit jedem neuen Passwort: Er stammt aus
+ * der Zeit davor und ginge sonst eine Stunde lang weiter. */
+const OHNE_RUECKSETZLINK = 'reset_token = NULL, reset_token_expires = NULL';
+
 export async function setzePasswortHash(id: number, hash: string): Promise<boolean> {
-  return !!(await db.run('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, id])).changes;
+  return !!(await db.run(`UPDATE users SET password_hash = $1, ${OHNE_RUECKSETZLINK} WHERE id = $2`, [hash, id])).changes;
 }
 
 /** Eigenes Passwort geändert: auch die Aufforderung dazu ist erledigt. */
 export async function setzeEigenesPasswort(id: number, hash: string): Promise<void> {
-  await db.run('UPDATE users SET password_hash = $1, must_change_password = false WHERE id = $2', [hash, id]);
+  await db.run(`UPDATE users SET password_hash = $1, must_change_password = false, ${OHNE_RUECKSETZLINK} WHERE id = $2`, [hash, id]);
 }
 
 export async function kontoExistiert(id: number): Promise<boolean> {
