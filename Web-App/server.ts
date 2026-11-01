@@ -114,10 +114,11 @@ app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
-  // HSTS nur über eine verschlüsselte Verbindung; danach geht auch die erste
-  // getippte Anfrage nicht mehr samt Cookie im Klartext hinaus.
+  // HSTS nur über eine verschlüsselte Verbindung. req.secure, weil Express
+  // X-Forwarded-Proto nur von einem vertrauten Proxy übernimmt; den rohen Kopf
+  // kann jeder Client schicken.
   // Ausführlich: docs/begruendungen/server.ts.md#port-uebertls
-  const ueberTls = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  const ueberTls = req.secure;
   const hstsAlter = konfig().hstsMaxAge;   // Vorgabe ein Jahr, 0 schaltet ab
   if (ueberTls && hstsAlter !== 0) {
     res.setHeader('Strict-Transport-Security', `max-age=${hstsAlter}; includeSubDomains`);
