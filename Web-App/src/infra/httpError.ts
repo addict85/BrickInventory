@@ -34,7 +34,12 @@ export function handleRouteError(res: any, e: any, status?: number, req?: any) {
 /** Ohne Status sähe eine zu grosse Datei wie ein Serverfehler aus; hier wird
  * daraus 413 bzw. 400 mit Code. */
 function alsUploadFehler<T>(e: T): T | Error {
-  const m = e as { name?: unknown; code?: unknown } | null;
+  const m = e as { name?: unknown; code?: unknown; type?: unknown } | null;
+  // Fehler des Body-Parsers: Sein Text nennt Parser und Zeichenposition.
+  if (m?.type === 'entity.parse.failed') return dateiFehler('anfrage_json_ungueltig', 400);
+  if (m?.type === 'entity.too.large') return dateiFehler('anfrage_zu_gross', 413);
+  if (typeof m?.type === 'string' && /^(charset|encoding)\.unsupported$|^request\.aborted$|^entity\.verify\.failed$/.test(m.type))
+    return dateiFehler('anfrage_unlesbar', 400);
   if (m?.name !== 'MulterError') return e;
   const zuGross = m.code === 'LIMIT_FILE_SIZE';
   return dateiFehler(zuGross ? 'datei_zu_gross' : 'upload_ungueltig', zuGross ? 413 : 400);

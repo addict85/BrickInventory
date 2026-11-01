@@ -168,6 +168,9 @@ export const FEHLER = {
                                  en: 'The space for your own instructions ({mb} MB) is full — please delete old ones first' },
   datei_nicht_verfuegbar:      { de: 'Datei nicht verfügbar', en: 'File not available' },
   json_ungueltig:              { de: 'Ungültige JSON-Datei', en: 'Invalid JSON file' },
+  anfrage_json_ungueltig:      { de: 'Die Anfrage ist kein gültiges JSON', en: 'The request body is not valid JSON' },
+  anfrage_zu_gross:            { de: 'Die Anfrage ist zu gross', en: 'The request is too large' },
+  anfrage_unlesbar:            { de: 'Die Anfrage ist nicht lesbar', en: 'The request cannot be read' },
   csv_parse_fehler:            { de: 'CSV Parse Fehler: {grund}', en: 'CSV parse error: {grund}' },
   kein_import_laeuft:          { de: 'Kein Import läuft', en: 'No import is running' },
 

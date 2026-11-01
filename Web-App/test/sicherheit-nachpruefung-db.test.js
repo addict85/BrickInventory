@@ -5,6 +5,8 @@
  *   N1  `Cache-Control: no-store` im /api-Vorlauf von server.ts gestrichen →
  *       rot: „API und Anmeldewege …" (/api/v1/vouchers ohne Kopf); die
  *       statische Datei bleibt grün, sie hat ihren eigenen.
+ *   H4  in alsUploadFehler() die Zuordnung von entity.parse.failed gestrichen →
+ *       rot: „kaputtes JSON …" (Antwort nennt „Expected double-quoted property name … at position 18")
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -80,5 +82,19 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
     const statisch = await holen('/js/app.bundle.js'); await statisch.arrayBuffer();
     assert.equal(statisch.status, 200);
     assert.doesNotMatch(statisch.headers.get('cache-control'), /no-store/);
+  });
+
+  await t.test('kaputtes JSON und zu grosse Anfragen: einheitliche Antwort ohne Parsertext', async () => {
+    for (const [pfad, mitKeks] of [['/api/v1/auth/login', false], ['/api/v1/vouchers', true]]) {
+      const r = await (mitKeks ? holen : (p, o) => fetch(basis + p, o))(pfad, { method: 'POST',
+        headers: { 'content-type': 'application/json' }, body: '{"username": "x", ' });
+      const text = await r.text();
+      assert.equal(r.status, 400, pfad);
+      assert.deepEqual(JSON.parse(text), { success: false, code: 'anfrage_json_ungueltig', error: 'Die Anfrage ist kein gültiges JSON' }, pfad);
+      assert.doesNotMatch(text, /position|Unexpected|Expected|SyntaxError|body-parser/i, pfad);
+    }
+    const gross = await fetch(`${basis}/api/v1/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: 'x'.repeat(300 * 1024) }) });
+    assert.deepEqual([gross.status, (await gross.json()).code], [413, 'anfrage_zu_gross']);
   });
 });
