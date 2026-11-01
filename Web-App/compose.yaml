@@ -289,9 +289,10 @@ services:
   # Werkzeug, das man dreimal im Jahr braucht, soll nicht dauerhaft mitlaufen.
   #
   # ⚠️  SICHERHEIT — der wichtigste Punkt an diesem Dienst:
-  # pgweb bringt KEINE Anmeldung mit. Wer die Seite erreicht, hat vollen Zugriff
-  # auf die Datenbank: alle Konten, alle Sitzungen, alle Daten — und kann sie
-  # ändern. Deshalb:
+  # Wer pgweb erreicht und anmeldet, liest die ganze Datenbank: alle Konten,
+  # alle Sitzungen, alle Daten. Deshalb eine Anmeldung (PGWEB_USER, Vorgabe
+  # „pgweb", und PGWEB_PASSWORD in .env — ohne Passwort startet der Dienst
+  # nicht) und zusätzlich:
   #   • Die Portangabe beginnt mit 127.0.0.1 — damit ist der Dienst NUR auf dem
   #     Server selbst erreichbar, nicht aus dem Netz. Ein blosses "8081:8081"
   #     würde ihn an alle Schnittstellen binden und wäre je nach Router von
@@ -319,11 +320,24 @@ services:
       # ändert, muss sie hier mitändern — der Verbindungsstring ist die einzige
       # Stelle, an der pgweb sie erfährt.
       PGWEB_DATABASE_URL: postgres://brickinventory:${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}@postgres:5432/brickinventory?sslmode=disable
+      # HTTP-Basic-Anmeldung von pgweb. Ohne PGWEB_PASSWORD startet der Dienst
+      # nicht (Prüfung unten); als :? stünde es hier, verlangte Compose es aber
+      # auch für jedes `docker compose up` ohne Profil.
+      PGWEB_AUTH_USER: ${PGWEB_USER:-pgweb}
+      PGWEB_AUTH_PASS: ${PGWEB_PASSWORD:-}
     # --readonly erlaubt ausschliesslich lesende Abfragen. Zum Nachsehen ist
-    # das die richtige Voreinstellung; für Reparaturen die Zeile auskommentieren
+    # das die richtige Voreinstellung; für Reparaturen `--readonly` streichen
     # und den Dienst neu starten. Lieber bewusst freischalten als versehentlich
     # ein UPDATE ohne WHERE absetzen.
-    command: ["--bind=0.0.0.0", "--listen=8081", "--readonly"]
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        if [ -z "$$PGWEB_AUTH_PASS" ]; then
+          echo "pgweb: PGWEB_PASSWORD in .env setzen (Anmeldung im Browser) - siehe README." >&2
+          exit 1
+        fi
+        exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly
     ports:
       - "127.0.0.1:8081:8081"
     networks:
