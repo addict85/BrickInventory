@@ -161,7 +161,10 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun finanzen() {
         val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-        foto("finanzen", { vm.financeState.value.let { it.valuation != null && it.historyPoints.isNotEmpty() && !it.valuationLoading && !it.historyLoading } }, { vm.financeState.value }) {
+        // Teile, Figuren und G&V lädt loadValuation() erst nach der Bewertung nach.
+        foto("finanzen", { vm.financeState.value.let { it.valuation != null && it.partsValuation != null &&
+            it.figsValuation != null && it.pnl != null && it.historyPoints.isNotEmpty() &&
+            !it.valuationLoading && !it.historyLoading } }, { vm.financeState.value }) {
             FinanceScreen(vm = vm, imageLoader = bilder)
         }
     }
