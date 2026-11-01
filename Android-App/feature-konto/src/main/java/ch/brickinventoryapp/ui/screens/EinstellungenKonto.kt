@@ -47,9 +47,11 @@ internal fun KontoCard(
     var email        by remember(profil) { mutableStateOf(profil?.email.orEmpty()) }
     var vorname      by remember(profil) { mutableStateOf(profil?.firstName.orEmpty()) }
     var nachname     by remember(profil) { mutableStateOf(profil?.lastName.orEmpty()) }
-    var pwAktuell    by rememberSaveable { mutableStateOf("") }
+    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
+    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    var pwAktuell    by remember { mutableStateOf("") }
     var pwFuerEmail  by remember(profil) { mutableStateOf("") }
-    var pwNeu        by rememberSaveable { mutableStateOf("") }
+    var pwNeu        by remember { mutableStateOf("") }
 
     val emailNeu = profil != null && !email.trim().equals(profil.email.orEmpty(), ignoreCase = true)
     val geaendert = profil != null && (
@@ -178,8 +180,9 @@ internal fun ZweiterFaktorCard(
     onAbschalten: (String, String) -> Unit,
     onZurueck: () -> Unit,
 ) {
-    var zfPasswort by rememberSaveable { mutableStateOf("") }
-    var zfCode     by rememberSaveable { mutableStateOf("") }
+    // Passwörter nur in remember, siehe oben.
+    var zfPasswort by remember { mutableStateOf("") }
+    var zfCode     by remember { mutableStateOf("") }
     var ohneApp    by rememberSaveable { mutableStateOf(false) }
     val auswahlTitel = stringResource(R.string.zf_open_app)
     val kontext = androidx.compose.ui.platform.LocalContext.current

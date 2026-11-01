@@ -17,7 +17,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -42,11 +42,13 @@ fun StartpasswortMaske(
     onErsetzen: (aktuell: String, neu: String) -> Unit,
     onAbmelden: () -> Unit,
 ) {
-    var aktuell by rememberSaveable { mutableStateOf("") }
-    var neu by rememberSaveable { mutableStateOf("") }
-    var wiederholt by rememberSaveable { mutableStateOf("") }
-    val zuKurz = neu.isNotEmpty() && passwortZuKurz(neu)
-    val verschieden = wiederholt.isNotEmpty() && wiederholt != neu
+    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
+    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    var pwAktuell by remember { mutableStateOf("") }
+    var pwNeu by remember { mutableStateOf("") }
+    var pwWiederholt by remember { mutableStateOf("") }
+    val zuKurz = pwNeu.isNotEmpty() && passwortZuKurz(pwNeu)
+    val verschieden = pwWiederholt.isNotEmpty() && pwWiederholt != pwNeu
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // Ein untergeschobener Tipp setzte hier das Passwort des Kontos.
         ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
@@ -58,13 +60,13 @@ fun StartpasswortMaske(
                 modifier = Modifier.semantics { heading() })
             Text(stringResource(R.string.startpasswort_text), style = MaterialTheme.typography.bodyMedium)
             OutlinedTextField(
-                value = aktuell, onValueChange = { aktuell = it }, singleLine = true,
+                value = pwAktuell, onValueChange = { pwAktuell = it }, singleLine = true,
                 label = { Text(stringResource(R.string.konto_password_current)) },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth())
             OutlinedTextField(
-                value = neu, onValueChange = { neu = it }, singleLine = true,
+                value = pwNeu, onValueChange = { pwNeu = it }, singleLine = true,
                 label = { Text(stringResource(R.string.konto_password_new)) },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -72,7 +74,7 @@ fun StartpasswortMaske(
                 supportingText = if (zuKurz) { { Text(stringResource(R.string.register_password_short)) } } else null,
                 modifier = Modifier.fillMaxWidth())
             OutlinedTextField(
-                value = wiederholt, onValueChange = { wiederholt = it }, singleLine = true,
+                value = pwWiederholt, onValueChange = { pwWiederholt = it }, singleLine = true,
                 label = { Text(stringResource(R.string.startpasswort_wiederholen)) },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -81,8 +83,8 @@ fun StartpasswortMaske(
                 modifier = Modifier.fillMaxWidth())
             kontoZustand.fehler?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(
-                onClick = { onErsetzen(aktuell, neu) },
-                enabled = !kontoZustand.speichert && aktuell.isNotEmpty() && neu.isNotEmpty() && !zuKurz && wiederholt == neu,
+                onClick = { onErsetzen(pwAktuell, pwNeu) },
+                enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
                 modifier = Modifier.fillMaxWidth(),
             ) { Text(stringResource(R.string.konto_password_button)) }
             TextButton(onClick = onAbmelden) { Text(stringResource(R.string.settings_logout)) }

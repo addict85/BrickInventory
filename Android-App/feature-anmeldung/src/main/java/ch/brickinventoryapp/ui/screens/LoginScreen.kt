@@ -61,9 +61,11 @@ fun LoginScreen(
     onPasskeyStattCode: (String, String) -> Unit = { _, _ -> },
 ) {
     var username by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
+    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    var password by remember { mutableStateOf("") }
     var showPw   by rememberSaveable { mutableStateOf(false) }
-    var code     by rememberSaveable { mutableStateOf("") }
+    var code     by remember { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
 
     // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
@@ -341,8 +343,9 @@ private fun RegistrierFelder(
     var email    by rememberSaveable { mutableStateOf("") }
     var vorname  by rememberSaveable { mutableStateOf("") }
     var nachname by rememberSaveable { mutableStateOf("") }
-    var pw1      by rememberSaveable { mutableStateOf("") }
-    var pw2      by rememberSaveable { mutableStateOf("") }
+    // Passwörter nur in remember, siehe oben.
+    var pw1      by remember { mutableStateOf("") }
+    var pw2      by remember { mutableStateOf("") }
     // Was HIER schiefgeht, bevor ueberhaupt gesendet wird. Getrennt vom
     // Serverfehler, sonst ueberschreibt das eine das andere.
     var eigenerFehler by rememberSaveable { mutableStateOf<String?>(null) }
