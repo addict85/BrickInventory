@@ -13,6 +13,8 @@ declare module 'express-session' {
     isAdmin?: boolean;
     /** Zeitpunkt der Anmeldung (ms), Grundlage der Höchstdauer */
     angemeldetAm?: number;
+    /** Startpasswort noch nicht ersetzt; undefined bei Sitzungen von vor dem Feld. */
+    mussPasswortAendern?: boolean;
   }
 }
 

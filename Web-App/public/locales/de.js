@@ -174,6 +174,8 @@ window.I18N_DE = {
   'settings.password.current': 'Aktuelles Passwort',
   'settings.password.new': 'Neues Passwort',
   'settings.password.repeat': 'Passwort wiederholen',
+  'pflicht.title': 'Startpasswort ersetzen',
+  'pflicht.hint': 'Dieses Konto hat noch das Startpasswort aus dem Protokoll. Bitte zuerst ein eigenes setzen.',
   'settings.password.revoke_passkeys': 'Auch alle Passkeys entfernen (falls jemand Fremdes Zugang hatte)',
   'settings.password.change': 'Passwort ändern',
   'settings.password.mismatch': 'Passwörter stimmen nicht überein',

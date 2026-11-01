@@ -62,6 +62,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
     userId:   uid,
     username: user.username,
     isAdmin:  user.is_admin,
+    mussPasswortAendern: user.must_change_password === true,
   });
   // Ein Token, den die Datenbank nie sah, liefe im SSE-Kanal in ein 401.
   const dauerhaft = never_expires === true;
@@ -135,7 +136,7 @@ router.get('/me', async (req, res: Antwort<'GET /api/v1/auth/me'>) => {
     if (req.session?.userId) {
       const user = await K.kontoKurz(req.session.userId);
       if (user) return res.json({ success: true, loggedIn: true,
-        user: { id: user.id, username: user.username, is_admin: user.is_admin } });
+        user: { id: user.id, username: user.username, is_admin: user.is_admin, mustChangePassword: user.must_change_password } });
     }
     const p = token ? await pruefeToken(token, { ip: req.ip }) : { nutzer: null };
     const u = p.nutzer;
@@ -144,7 +145,7 @@ router.get('/me', async (req, res: Antwort<'GET /api/v1/auth/me'>) => {
       if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
       // is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false.
       return res.json({ success: true, loggedIn: true,
-        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1 },
+        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1, mustChangePassword: u.muss_passwort_aendern === true },
         token_expires: u.expires_at, token_last_used: u.last_used,
         token_info: { scope: u.scope, expires_at: u.expires_at, hard_expires_at: u.hard_expires_at ?? null,
                       never_expires: u.never_expires === true, rotiert_am: u.rotiert_am,
@@ -365,7 +366,7 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   await K.aendereEigenesPasswort(uid, newPassword, { passkeysWiderrufen: req.body?.passkeys_widerrufen === true });
   hinweisNebenher(uid, 'passwort_geaendert');
   if (req.session?.userId) {
-    const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin };
+    const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin, mussPasswortAendern: false };
     await establishSession(req, _self);
   }
   res.json({ success: true });

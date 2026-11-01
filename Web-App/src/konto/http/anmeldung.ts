@@ -23,7 +23,8 @@ export function anmelden(req: Request, username: unknown, password: unknown, cod
 /** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
  * Anfrage die neue ID schon kennt.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#establishsession */
-export function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean }): Promise<void> {
+export function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
+                                                       mussPasswortAendern?: boolean }): Promise<void> {
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {
       // Nur in Tests ohne express-session: Im Betrieb steht die Middleware davor.

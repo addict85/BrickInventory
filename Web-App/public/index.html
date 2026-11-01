@@ -233,6 +233,19 @@
         <button type="button" class="btn bp knopf-breit" id="btn-reset" data-i18n="reset.button">Passwort ändern</button>
       </form>
     </div>
+
+    <!-- ── STARTPASSWORT ERSETZEN (Server: 403 passwort_wechsel_noetig) ─ -->
+    <div id="panel-pflichtwechsel" data-stil="display:none">
+      <p class="login-unterzeile" data-i18n="pflicht.title">Startpasswort ersetzen</p>
+      <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Konto hat noch das Startpasswort aus dem Protokoll. Bitte zuerst ein eigenes setzen.</div>
+      <div class="lerr" id="pflicht-err"></div>
+      <form class="sform" data-submit="btn-pflicht">
+        <div class="fg"><label for="pflicht-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
+        <div class="fg"><label for="pflicht-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pflicht-neu" autocomplete="new-password" /></div>
+        <div class="fg"><label for="pflicht-wdh" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pflicht-wdh" autocomplete="new-password" /></div>
+        <button type="button" class="btn bp knopf-breit" id="btn-pflicht" data-i18n="reset.button">Passwort ändern</button>
+      </form>
+    </div>
   </div>
 </div>
 
