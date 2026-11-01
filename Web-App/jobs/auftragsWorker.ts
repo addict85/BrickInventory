@@ -101,13 +101,24 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     return true;
   }
 
-  async function pumpe(): Promise<void> {
-    if (pumpt || beendet) return;
+  // Die laufende Runde, damit stoppe() auf eine Belegung warten kann, die
+  // gerade in der Datenbank steht: Sie käme sonst nach dem Abschalten an und
+  // bliebe bis zum Ablauf ihrer Frist auf 'laeuft'.
+  let pumpLauf: Promise<void> = Promise.resolve();
+
+  function pumpe(): Promise<void> {
+    if (pumpt || beendet) return pumpLauf;
     pumpt = true;
+    pumpLauf = runde();
+    return pumpLauf;
+  }
+
+  async function runde(): Promise<void> {
     try {
       while (!beendet && laufend.size < parallel) {
         const a = await belegeAuftrag(arten, fristSek, randomUUID(), exklusiv);
         if (!a) break;
+        if (beendet) { await gibZurueck(a).catch(logAndContinue('auftraege:zurückgeben')); break; }
         const fertig = fuehreAus(a)
           .catch(logAndContinue(`auftraege:${a.art}`))
           .finally(() => { laufend.delete(a.id); void pumpe(); });
@@ -133,6 +144,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     beendet = true;
     if (takt) clearInterval(takt);
     if (gestartet) unlisten(AUFTRAG_KANAL, geweckt);
+    await pumpLauf;
     const alle = [...laufend.values()];
     await Promise.race([Promise.all(alle.map(l => l.fertig)), new Promise(r => setTimeout(r, wartenMs).unref())]);
     const rest = [...laufend.values()];
