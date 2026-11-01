@@ -45,6 +45,7 @@ window.I18N_DE = {
   'nav.wanted': 'Merkliste',
   'wanted.title': 'Merkliste',
   'wanted.since': 'Auf der Liste seit',
+  'wanted.delete_item': 'Merkposten löschen',
   'wanted.remove': 'Merkposten entfernen',
   'wanted.add.title': 'Merkposten hinzufügen',
   'wanted.add.submit': 'Auf die Merkliste',
@@ -254,6 +255,7 @@ window.I18N_DE = {
   // common.close stand hier schon einmal und ist als tot entfernt worden —
   // damals zu Recht: Es rief ihn niemand. Jetzt gibt es einen Aufrufer.
   'common.close': 'Schliessen',
+  'common.zoom_image': 'Bild vergrössern',
   'common.image_view': 'Bildansicht',
   'common.delete_item': 'Eintrag löschen',
   'common.delete_text': 'Diese Aktion kann nicht rückgängig gemacht werden.',

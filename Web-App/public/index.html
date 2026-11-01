@@ -1715,7 +1715,7 @@
   <div class="modal">
     <div class="mhd"><div><div class="mtit" id="m-tit">Set</div><div class="muntertit" id="m-untertit"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div class="m-kopfteil">
-      <img id="m-img" alt="" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+      <img id="m-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
       <div id="m-det"></div>
     </div>
     <div id="m-instr" class="il"></div>
@@ -1776,7 +1776,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="schliesseMerkpostenDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="mk-m-img" alt="" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="mk-m-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="mk-m-det"></div>
     <div id="mk-m-market-rows"></div>
     <div class="abstand-o-075" id="mk-m-price-chart">
@@ -1784,7 +1784,7 @@
       <div class="sparkline-wrap" id="mk-m-sparkline-content"></div>
     </div>
     <div class="mfooter verteilt umbruch luecke-8">
-      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Merkposten entfernen" data-i18n="wanted.remove" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
+      <button class="btn bd" id="mk-m-del" data-click="merkpostenDetailLoeschen" aria-label="Merkposten löschen" data-i18n="wanted.delete_item" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
       <!-- Marcos Vorgabe: die beiden Kaufadressen NEBENEINANDER, und darunter
            mit ABSTAND die Uebernahme. Der groessere Abstand ist die ganze
            Aussage: Oben zwei Wege nach draussen, unten der eine Griff, der
@@ -1851,7 +1851,7 @@
       </div>
       <button class="btn bs btn-sm" data-click="closeCatModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="cat-m-img" alt="" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="cat-m-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
       <div class="zeile luecke-8 unten umbruch">
@@ -2001,7 +2001,7 @@
     </div>
     <!-- data-click="openImageLightboxFromEl" ist der Zoom (11-actions.js);
          die Adresse dafuer steht in data-orig und wird beim Oeffnen gesetzt. -->
-    <img id="setitem-img" alt="" data-click="openImageLightboxFromEl"
+    <img id="setitem-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-click="openImageLightboxFromEl"
          data-stil="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none;cursor:zoom-in" />
     <div id="setitem-body"></div>
     <div class="mfooter">

@@ -1413,12 +1413,12 @@ export function renderInstructions(instr, sn) {
         <div data-stil="flex:1;min-width:140px">
           <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" data-stil="font-size:var(--fs-2);padding:6px 10px" />
         </div>
-        <label class="btn bs btn-sm" data-stil="cursor:pointer">
-          ${t('instr.choose_file')}
-          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" data-stil="display:none" data-change="uploadInstr" data-arg="${escJs(sn)}" />
+        <label class="btn bs btn-sm zeiger">
+          ${ico('datei')} ${t('instr.choose_file')}
+          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" class="datei-versteckt" data-change="uploadInstr" data-arg="${escJs(sn)}" />
         </label>
       </div>
-      <div id="instr-upload-status" data-stil="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
+      <div id="instr-upload-status" role="status" data-stil="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
     </div>`;
 
   G('m-instr').innerHTML = `

@@ -7,7 +7,9 @@
 // Geschlossen wird über den Knopf mit `data-dialog-zu` — so läuft dieselbe
 // Aufräumarbeit wie beim Klick auf ✕, statt sie hier nachzubauen.
 
-const FOKUSSIERBAR = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+// `summary` gehört dazu: Fehlt es, springt die Falle vor „Weitere Aktionen“
+// zurück an den Anfang, und alles dahinter ist per Tastatur unerreichbar.
+const FOKUSSIERBAR = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
 /** Offen heisst: Klasse `open`, oder ein Inline-`display` ausser none (confirm, PDF). */
 function istOffen(el) {

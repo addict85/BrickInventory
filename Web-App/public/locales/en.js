@@ -45,6 +45,7 @@ window.I18N_EN = {
   'nav.wanted': 'Wanted',
   'wanted.title': 'Wanted',
   'wanted.since': 'On the list since',
+  'wanted.delete_item': 'Delete wanted item',
   'wanted.remove': 'Remove from wanted list',
   'wanted.add.title': 'Add a wanted item',
   'wanted.add.submit': 'Add to wanted list',
@@ -253,6 +254,7 @@ window.I18N_EN = {
   // common.close stand hier schon einmal und ist als tot entfernt worden —
   // damals zu Recht: Es rief ihn niemand. Jetzt gibt es einen Aufrufer.
   'common.close': 'Close',
+  'common.zoom_image': 'Enlarge image',
   'common.image_view': 'Image view',
   'common.delete_item': 'Delete entry',
   'common.delete_text': 'This action cannot be undone.',

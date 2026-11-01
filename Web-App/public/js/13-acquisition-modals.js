@@ -87,6 +87,18 @@ async function loadAcqModal(sn) {
   renderAcqModalBody(sn, acqs, ad?.totals);
 }
 
+/**
+ * Neu zeichnen, ohne den Fokus zu verlieren: Das Speichern beim Verlassen
+ * eines Feldes zeichnet die Tabelle neu, wenn Tab schon im nächsten Feld
+ * steht — der Fokus fiel dann auf <body>, und die Tastatur war draussen.
+ */
+function setzeMitFokus(ziel, html) {
+  const felder = () => [...ziel.querySelectorAll('input, select, button')];
+  const stelle = felder().indexOf(/** @type {HTMLElement} */ (document.activeElement));
+  ziel.innerHTML = html;
+  if (stelle >= 0) felder()[stelle]?.focus({ preventScroll: true });
+}
+
 export function renderAcqModalBody(sn, acqs, totals) {
   if (!acqs.length) {
     G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`;
@@ -156,7 +168,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
   // in der App, und mit verschiedenen Preisfeldern.
   html += acqSummary(totals);
 
-  G('acq-modal-body').innerHTML = html;
+  setzeMitFokus(G('acq-modal-body'), html);
 }
 
 async function acqSave(sn, id, field, value) {
@@ -1000,7 +1012,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
 
   html += `</tbody></table></div>`;
   html += acqSummary(totals);
-  G('acq-modal-body').innerHTML = html;
+  setzeMitFokus(G('acq-modal-body'), html);
 }
 
 async function manAcqSave(type, id, colorId, acqId, field, value) {
