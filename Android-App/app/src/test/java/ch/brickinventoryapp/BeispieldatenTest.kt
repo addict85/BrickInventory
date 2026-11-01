@@ -134,7 +134,7 @@ object Beispiele {
             {"set_number":"42115-1","name":"Lamborghini Sián FKP 37","year":2020,"condition":"U","user_id":1,"waehrung":"CHF"},
             {"set_number":"10294-1","name":"Titanic","year":2021,"condition":"N","user_id":1,"marktpreis":449.95,"waehrung":"CHF","owned":true}]}""",
         "/api/v1/sets/75192-1" to """{"success":true,"quantity":1,"set":{"set_number":"75192-1","name":"Millennium Falcon","year":2017,
-            "theme":"Star Wars","quantity":1,"num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z"}}""",
+            "theme":"Star Wars","quantity":1,"num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":700.0}}""",
         "/api/v1/sets/75192-1/price" to """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":812.5,"min_price":760.0,"max_price":880.0,"qty_avg_price":812.5}""",
         "/api/v1/sets/75192-1/price-history" to """{"success":true,"set_number":"75192-1","currency":"CHF",
             "by_condition":{"N":{"market_price":812.5,"purchase_price":700.0,"pnl_pct":16.1}},
