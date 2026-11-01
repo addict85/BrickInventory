@@ -35,9 +35,15 @@ class HaushaltRepository @Inject constructor(
     suspend fun createHouseholdInvite(): Result<HouseholdInviteResponse> =
         safeCall { api.createHouseholdInvite() }
 
-    /** [passwort]: das aktuelle Passwort des einlösenden Kontos — der Server prüft es. */
-    suspend fun redeemHouseholdInvite(code: String, passwort: String): Result<GenericResponse> =
-        safeCall { api.redeemHouseholdInvite(mapOf("code" to code, "password" to passwort)) }
+    /**
+     * [passwort]: das aktuelle Passwort des einlösenden Kontos — der Server prüft es.
+     * [faktorCode]: bei aktivem zweitem Faktor dessen Code; nur mitgeschickt, wenn da.
+     */
+    suspend fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null): Result<GenericResponse> =
+        safeCall {
+            api.redeemHouseholdInvite(mapOf("code" to code, "password" to passwort) +
+                listOfNotNull(faktorCode?.trim()?.takeIf { it.isNotEmpty() }?.let { "faktor_code" to it }))
+        }
 
     /**
      * [subUserId]: ein Unterkonto lösen. [mainUserId]: sich von diesem einen

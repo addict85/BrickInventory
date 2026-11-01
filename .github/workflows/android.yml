@@ -70,17 +70,11 @@ jobs:
       run:
         working-directory: Android-App
 
-    # Nur lesen: Bauen, Testen und Signieren läuft mit allen Gradle-Plugins und
-    # auf jedem Zweig. Schreiben darf allein der Job `release` unten, und der
-    # läuft nur auf main. Alle nicht genannten Bereiche stehen auf `none`.
+    # Nur lesen: Bauen und Testen läuft mit allen Gradle-Plugins und auf jedem
+    # Zweig — und ohne ein einziges Secret. Signiert wird im Job `signieren`,
+    # schreiben darf allein `release`. Nicht genannte Bereiche stehen auf `none`.
     permissions:
       contents: read
-
-    # Der `secrets`-Kontext steht in einem `if:` auf SCHRITTEBENE nicht zur
-    # Verfügung — `env` schon. Deshalb wird die Frage "gibt es einen
-    # Schlüsselspeicher?" hier einmal beantwortet und unten über env geprüft.
-    env:
-      HAT_SCHLUESSEL: ${{ secrets.KEYSTORE_BASE64 != '' }}
 
     steps:
       # Volle Historie samt Tags: versionCode zählt die Commits, versionName
@@ -256,8 +250,8 @@ jobs:
           summe=$(grep -E '[0-9]+ tests completed' "$RUNNER_TEMP/test.log" | tr '\n' ' ' || true)
           echo "::notice title=Testsumme::${summe:-keine Summenzeile — der Lauf ist vor dem ersten Test gescheitert}"
 
-      # Ohne Signier-Secrets: Gradle und alle Plugins laufen hier, und keines
-      # davon soll den Schlüssel sehen. Signiert wird im Schritt danach.
+      # Ohne Signier-Secrets: Gradle und alle Plugins laufen hier. Signiert wird
+      # im Job `signieren`, der nur das Ergebnis dieses Jobs bekommt.
       - name: Release bauen
         id: bau
         # tee wie bei den Unit-Tests, aus einem zweiten Grund: Die
@@ -274,53 +268,6 @@ jobs:
           # da sind. Das ausgelieferte APK wird deshalb immer frisch gerechnet.
           ./gradlew --no-daemon --no-build-cache assembleRelease bundleRelease 2>&1 \
             | tee "$RUNNER_TEMP/bau.log"
-
-      # ── Signieren, getrennt vom Bau ─────────────────────────────────────────
-      #
-      # Ein signiertes APK ist ein Update für jede installierte App; mit dem
-      # echten Schlüssel deshalb nur auf main. Auf Zweigen läuft derselbe Ablauf
-      # mit einem Wegwerfschlüssel gegen eine Kopie: So ist der Schritt vor dem
-      # Merge erprobt, und das Zweig-APK bleibt unsigniert.
-      - name: Signieren
-        if: steps.bau.outcome == 'success'
-        env:
-          ECHT: ${{ env.HAT_SCHLUESSEL == 'true' && github.ref == 'refs/heads/main' }}
-          KEYSTORE_BASE64: ${{ github.ref == 'refs/heads/main' && secrets.KEYSTORE_BASE64 || '' }}
-          KS_PASS: ${{ github.ref == 'refs/heads/main' && secrets.KEYSTORE_PASSWORT || '' }}
-          KEY_ALIAS: ${{ github.ref == 'refs/heads/main' && secrets.KEY_ALIAS || '' }}
-          KEY_PASS: ${{ github.ref == 'refs/heads/main' && secrets.KEY_PASSWORT || '' }}
-        run: |
-          set -euo pipefail
-          WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
-          APKS=app/build/outputs/apk/release
-          AAB=app/build/outputs/bundle/release/app-release.aab
-          KS="$RUNNER_TEMP/signatur.jks"
-          trap 'rm -f "$KS"' EXIT
-          if [ "$ECHT" = "true" ]; then
-            printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KS"
-            ZIEL_APK="$APKS/app-release.apk"; ZIEL_AAB="$AAB"
-          else
-            KS_PASS=probe-$RANDOM$RANDOM; KEY_PASS=$KS_PASS; KEY_ALIAS=probe
-            keytool -genkeypair -keystore "$KS" -storepass "$KS_PASS" -keypass "$KEY_PASS" \
-              -alias probe -keyalg RSA -keysize 2048 -validity 1 -dname CN=Probe >/dev/null
-            ZIEL_APK="$RUNNER_TEMP/probe.apk"; ZIEL_AAB="$RUNNER_TEMP/probe.aab"
-          fi
-          export KS_PASS KEY_PASS
-          # Ausrichten VOR dem Signieren; -P 16 hält native Bibliotheken auf
-          # 16-KB-Seiten (geprüft weiter unten).
-          "$WERKZEUGE/zipalign" -f -P 16 4 "$APKS/app-release-unsigned.apk" "$RUNNER_TEMP/ausgerichtet.apk"
-          "$WERKZEUGE/apksigner" sign --ks "$KS" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" \
-            --key-pass env:KEY_PASS --out "$ZIEL_APK" "$RUNNER_TEMP/ausgerichtet.apk"
-          "$WERKZEUGE/apksigner" verify --print-certs "$ZIEL_APK" | head -3
-          [ "$ZIEL_AAB" = "$AAB" ] || cp "$AAB" "$ZIEL_AAB"
-          jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$ZIEL_AAB" "$KEY_ALIAS" >/dev/null
-          jarsigner -verify "$ZIEL_AAB" >/dev/null
-          if [ "$ECHT" = "true" ]; then
-            cp "$ZIEL_APK" "$APKS/BrickInventory.apk"
-            echo "signiert mit dem Release-Schlüssel"
-          else
-            echo "Probe-Signatur gelungen; das APK dieses Laufs bleibt unsigniert."
-          fi
 
       # ── Warum ZUSÄTZLICH ein Bundle (.aab) ──────────────────────────────────
       #
@@ -425,58 +372,15 @@ jobs:
       #
       # Ein lokaler Bau bekommt damit denselben Dateinamen wie der Lauf hier —
       # vorher unterschied er sich in einem Buchstaben.
-      - name: APK prüfen
+      - name: APK abgelegt?
         run: |
           set -eu
           cd app/build/outputs/apk/release
           ls -la
           if [ ! -f BrickInventory.apk ]; then
-            echo "::error::BrickInventory.apk fehlt. Die Gradle-Aufgabe copyReleaseApkAsBrickInventory hat nicht gegriffen — ohne sie gibt es nichts hochzuladen."
+            echo "::error::BrickInventory.apk fehlt. Die Gradle-Aufgabe copyReleaseApkAsBrickInventory hat nicht gegriffen — ohne sie gibt es nichts zu signieren."
             exit 1
           fi
-          # Signiert oder nicht, sagt der Name der QUELLE: Ohne Schlüssel legt
-          # AGP app-release-unsigned.apk ab. Die Kopie heisst in beiden Fällen
-          # gleich, deshalb ist sie hier keine Auskunft.
-          if [ -f app-release.apk ]; then
-            echo "signiert: ja"
-          elif [ "$GITHUB_REF" != "refs/heads/main" ]; then
-            echo "Zweig: unsigniert gebaut — signiert wird nur auf main."
-          else
-            echo "::warning::APK ist UNSIGNIERT und lässt sich nicht installieren. Die vier Secrets KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS und KEY_PASSWORT fehlen oder sind unvollständig."
-          fi
-
-      # ── Das fertige APK gegen R8 prüfen ─────────────────────────────────────
-      #
-      # Der Unit-Test-Lauf oben ist `testDebugUnitTest` — auf der JVM, ohne R8.
-      # Zwischen "470 Tests grün" und "auf dem Gerät passiert etwas" lag damit
-      # niemand, und genau dort ging es schief: Im APK von main (120c998) hatte
-      # PreisalarmWorker nur noch seinen Konstruktor, doWork() war weg. Der
-      # Preisalarm konnte nie laufen, und kein Test hat es gemerkt.
-      #
-      # Diese Prüfung liest das APK, das gleich hochgeladen wird — nicht den
-      # Quelltext, aus dem es entstanden ist. Das ist der Punkt: Was R8 gemacht
-      # hat, steht nur im Ergebnis.
-      - name: APK gegen R8-Verluste prüfen
-        run: |
-          python3 tools/apk-pruefen.py \
-            app/build/outputs/apk/release/BrickInventory.apk \
-            */src/main/java
-
-      # ── 16-KB-Speicherseiten am ERGEBNIS messen ─────────────────────────────
-      #
-      # Bis hierher stand die 16-KB-Tauglichkeit auf einer ZAHL: datastore war
-      # auf 1.1.7 festgenagelt, weil 1.2.0 wieder 4-KB-ausgerichtet war, und
-      # ein Test verlangte genau diese Nummer.
-      #
-      # Das prüft die Nummer, nicht die Ausrichtung — und war in der
-      # Entwicklungsumgebung gar nicht nachprüfbar: Die AARs liegen auf
-      # dl.google.com, das von dort nicht erreichbar ist. Hier liegt das
-      # gebaute APK, also wird hier gemessen. Dieselbe Umkehrung wie beim
-      # Schritt darüber, der R8s Ergebnis liest statt des Quelltexts.
-      - name: Native Bibliotheken auf 16 KB ausgerichtet?
-        run: |
-          python3 tools/apk-ausrichtung.py \
-            app/build/outputs/apk/release/BrickInventory.apk
 
       # ── Sind die Abhängigkeiten aktuell? Gemessen, nicht geschätzt ─────────
       #
@@ -569,16 +473,97 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      # Übergabe an den Job `release`, der als einziger schreiben darf: APK und
-      # output-metadata.json, nach einem Tag weg. Ausgeliefert wird weiter der
-      # rohe Release-Anhang, nicht dieses Zip — deshalb der Ordner und nicht
-      # der APK-Name, den ApkNameTest an einem Artefaktschritt als Zip wertet.
-      - name: APK an den Release-Job übergeben
-        if: success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      # Übergabe an den Job `signieren`: unsigniertes APK samt output-metadata.json
+      # und Bundle, nach einem Tag weg. Ordner statt APK-Name: Ausgeliefert wird
+      # der rohe Release-Anhang, nie ein Zip (ApkNameTest).
+      - name: Unsigniertes APK an den Signierjob übergeben
+        if: success()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: apk-fuer-release
-          path: Android-App/app/build/outputs/apk/release/
+          name: apk-unsigniert
+          path: |
+            Android-App/app/build/outputs/apk/release/
+            Android-App/app/build/outputs/bundle/release/
+          if-no-files-found: error
+          retention-days: 1
+
+  # ── Veröffentlichen: der einzige Job mit Schreibrecht ─────────────────────
+  # ── Signieren: Secrets ohne Projektcode ──────────────────────────────────
+  #
+  # Der Schlüssel sieht weder Gradle noch ein Plugin noch ein Werkzeug aus dem
+  # Repository: kein Checkout, nur das Artefakt des Bau-Jobs und apksigner/
+  # zipalign aus dem SDK des Runners (Prüfsummen im Protokoll). Auf main mit
+  # der Environment `release` — dort liegen die Secrets, und deren Regeln
+  # (nur main, Prüfer) gelten zusätzlich. Auf Zweigen derselbe Ablauf mit einem
+  # Wegwerfschlüssel, ohne Environment und ohne Secrets.
+  signieren:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'release' || '' }}
+    permissions:
+      actions: read
+    steps:
+      - name: Unsigniertes APK holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: apk-unsigniert
+          path: ${{ runner.temp }}/eingang
+
+      - name: Signieren
+        env:
+          ECHT: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          KEYSTORE_BASE64: ${{ github.ref == 'refs/heads/main' && secrets.KEYSTORE_BASE64 || '' }}
+          KS_PASS: ${{ github.ref == 'refs/heads/main' && secrets.KEYSTORE_PASSWORT || '' }}
+          KEY_ALIAS: ${{ github.ref == 'refs/heads/main' && secrets.KEY_ALIAS || '' }}
+          KEY_PASS: ${{ github.ref == 'refs/heads/main' && secrets.KEY_PASSWORT || '' }}
+        run: |
+          set -euo pipefail
+          WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          echo "Werkzeuge: $WERKZEUGE"
+          sha256sum "$WERKZEUGE/zipalign" "$WERKZEUGE/lib/apksigner.jar"
+          EIN="$RUNNER_TEMP/eingang"
+          AUS="$RUNNER_TEMP/ausgang"
+          mkdir -p "$AUS/apk/release" "$AUS/bundle/release"
+          KS="$RUNNER_TEMP/signatur.jks"
+          trap 'rm -f "$KS"' EXIT
+          if [ "$ECHT" = "true" ]; then
+            if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
+              echo "::error::Auf main fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — in der Environment release oder als Repository-Secret. Ohne Signatur wird nichts veröffentlicht."
+              exit 1
+            fi
+            printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KS"
+          else
+            KS_PASS=probe-$RANDOM$RANDOM; KEY_PASS=$KS_PASS; KEY_ALIAS=probe
+            keytool -genkeypair -keystore "$KS" -storepass "$KS_PASS" -keypass "$KEY_PASS" \
+              -alias probe -keyalg RSA -keysize 2048 -validity 1 -dname CN=Probe >/dev/null
+          fi
+          export KS_PASS KEY_PASS
+          # Ausrichten VOR dem Signieren; -P 16 hält native Bibliotheken auf
+          # 16-KB-Seiten (geprüft im Job `apk-pruefen`).
+          "$WERKZEUGE/zipalign" -f -P 16 4 "$EIN/apk/release/app-release-unsigned.apk" "$RUNNER_TEMP/ausgerichtet.apk"
+          "$WERKZEUGE/apksigner" sign --ks "$KS" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" \
+            --key-pass env:KEY_PASS --out "$AUS/apk/release/BrickInventory.apk" "$RUNNER_TEMP/ausgerichtet.apk"
+          "$WERKZEUGE/apksigner" verify --print-certs "$AUS/apk/release/BrickInventory.apk" > "$RUNNER_TEMP/zertifikat.txt"
+          head -3 "$RUNNER_TEMP/zertifikat.txt"
+          install -m 644 "$EIN/apk/release/output-metadata.json" "$AUS/apk/release/output-metadata.json"
+          install -m 644 "$EIN/bundle/release/app-release.aab" "$RUNNER_TEMP/bundle.aab"
+          jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$RUNNER_TEMP/bundle.aab" "$KEY_ALIAS" >/dev/null
+          jarsigner -verify "$RUNNER_TEMP/bundle.aab" >/dev/null
+          if [ "$ECHT" = "true" ]; then
+            install -m 644 "$RUNNER_TEMP/bundle.aab" "$AUS/bundle/release/app-release.aab"
+            echo "signiert mit dem Release-Schlüssel"
+          else
+            install -m 644 "$EIN/bundle/release/app-release.aab" "$AUS/bundle/release/app-release.aab"
+            echo "Probe-Signatur gelungen; geprüft wird das probe-signierte APK, veröffentlicht wird nichts."
+          fi
+
+      # Nur das Ergebnis geht weiter, nicht der Schlüssel: Prüfen und
+      # Veröffentlichen laufen in eigenen Jobs ohne Secrets.
+      - name: Signiertes APK übergeben
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: apk-signiert
+          path: ${{ runner.temp }}/ausgang/
           if-no-files-found: error
           retention-days: 1
 
@@ -596,17 +581,80 @@ jobs:
       # arbeiten fuer die beiden Formate nicht gleich. Als Artefakt ist es
       # ausserdem da, falls der Play-Weg je wieder gewollt ist.
       - name: App-Bundle (.aab) sichern
-        if: success()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: BrickInventory-bundle
-          path: Android-App/app/build/outputs/bundle/release/app-release.aab
+          path: ${{ runner.temp }}/ausgang/bundle/release/app-release.aab
           if-no-files-found: error
           retention-days: 90
 
-  # ── Veröffentlichen: der einzige Job mit Schreibrecht ─────────────────────
+  # ── Das signierte Ergebnis prüfen: Projektcode ohne Secrets ──────────────
+  #
+  # Die Werkzeuge kommen aus dem Repository, deshalb hier und nicht im
+  # Signierjob. Geprüft wird das APK, das gleich veröffentlicht wird.
+  apk-pruefen:
+    needs: signieren
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: Android-App
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Signiertes APK holen
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: apk-signiert
+          path: Android-App/app/build/outputs
+
+      - name: APK prüfen
+        run: |
+          set -euo pipefail
+          cd app/build/outputs/apk/release
+          ls -la
+          WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
+          "$WERKZEUGE/apksigner" verify --print-certs BrickInventory.apk > "$RUNNER_TEMP/zertifikat.txt"
+          head -3 "$RUNNER_TEMP/zertifikat.txt"
+
+      # ── Das fertige APK gegen R8 prüfen ─────────────────────────────────────
+      #
+      # Der Unit-Test-Lauf oben ist `testDebugUnitTest` — auf der JVM, ohne R8.
+      # Zwischen "470 Tests grün" und "auf dem Gerät passiert etwas" lag damit
+      # niemand, und genau dort ging es schief: Im APK von main (120c998) hatte
+      # PreisalarmWorker nur noch seinen Konstruktor, doWork() war weg. Der
+      # Preisalarm konnte nie laufen, und kein Test hat es gemerkt.
+      #
+      # Diese Prüfung liest das APK, das gleich hochgeladen wird — nicht den
+      # Quelltext, aus dem es entstanden ist. Das ist der Punkt: Was R8 gemacht
+      # hat, steht nur im Ergebnis.
+      - name: APK gegen R8-Verluste prüfen
+        run: |
+          python3 tools/apk-pruefen.py \
+            app/build/outputs/apk/release/BrickInventory.apk \
+            */src/main/java
+
+      # ── 16-KB-Speicherseiten am ERGEBNIS messen ─────────────────────────────
+      #
+      # Bis hierher stand die 16-KB-Tauglichkeit auf einer ZAHL: datastore war
+      # auf 1.1.7 festgenagelt, weil 1.2.0 wieder 4-KB-ausgerichtet war, und
+      # ein Test verlangte genau diese Nummer.
+      #
+      # Das prüft die Nummer, nicht die Ausrichtung — und war in der
+      # Entwicklungsumgebung gar nicht nachprüfbar: Die AARs liegen auf
+      # dl.google.com, das von dort nicht erreichbar ist. Hier liegt das
+      # gebaute APK, also wird hier gemessen. Dieselbe Umkehrung wie beim
+      # Schritt darüber, der R8s Ergebnis liest statt des Quelltexts.
+      - name: Native Bibliotheken auf 16 KB ausgerichtet?
+        run: |
+          python3 tools/apk-ausrichtung.py \
+            app/build/outputs/apk/release/BrickInventory.apk
+
   release:
-    needs: build
+    needs: [signieren, apk-pruefen]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -619,11 +667,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: APK aus dem Build-Job holen
+      - name: Signiertes APK holen
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
-          name: apk-fuer-release
-          path: Android-App/app/build/outputs/apk/release
+          name: apk-signiert
+          path: Android-App/app/build/outputs
 
       # ── Warum ein Release und kein Artefakt ─────────────────────────────────
       #

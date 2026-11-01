@@ -95,7 +95,8 @@ test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schl�
   // Ein signiertes APK im Kanal apk-neuste ist ein Update für jede installierte
   // App. Von einem Zweig aus wäre das ungeprüfter Code an Review und Merge vorbei.
   // Gegenproben (28.10.2026): die main-Bedingung am Release-Schritt entfernt → rot;
-  // BRICK_KEYSTORE_PASSWORT wieder im Schritt „Release bauen“ → rot.
+  // BRICK_KEYSTORE_PASSWORT wieder im Schritt „Release bauen“ → rot;
+  // (01.11.2026) KEY_PASS ohne die main-Bedingung → rot.
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8');
   const schritt = (name) => {
     const i = yml.indexOf(`- name: ${name}`);
@@ -110,9 +111,44 @@ test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schl�
   for (const geheim of ['KEYSTORE_BASE64', 'KEYSTORE_PASSWORT', 'KEY_ALIAS', 'KEY_PASSWORT'])
     assert.match(signieren, new RegExp(`github\\.ref == 'refs/heads/main' && secrets\\.${geheim}`),
       `${geheim}: auch auf Zweigen erreichbar`);
-  assert.match(signieren, /ECHT: \$\{\{ env\.HAT_SCHLUESSEL == 'true' && github\.ref == 'refs\/heads\/main' \}\}/);
-  // Nur dieser Schritt nennt die Secrets; der Bau mit allen Gradle-Plugins nicht.
+  assert.match(signieren, /ECHT: \$\{\{ github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request' \}\}/);
+  // Nur dieser Schritt nennt Secrets; der Bau mit allen Gradle-Plugins nicht.
   const andere = yml.split(/\n      - name: /).filter(t => !t.startsWith('Signieren'))
-    .join('\n').split('\n').filter(z => /secrets\.(KEYSTORE_PASSWORT|KEY_ALIAS|KEY_PASSWORT)|secrets\.KEYSTORE_BASE64 [^!]/.test(z));
-  assert.deepEqual(andere, [], 'Signier-Secrets ausserhalb des Signierschritts');
+    .join('\n').split('\n').filter(z => !z.trimStart().startsWith('#') && /secrets\./.test(z));
+  assert.deepEqual(andere, [], 'Secrets ausserhalb des Signierschritts');
+});
+
+// Gegenproben (01.11.2026 gemessen): ein `- uses: actions/checkout@…` in den
+// Job `signieren` → rot „… führt keinen Projektcode aus“; die Zeile
+// `environment:` entfernt → rot „… Environment release“; `needs: [signieren,
+// apk-pruefen]` am Release-Job → `needs: build` → rot „… veröffentlicht nur
+// das geprüfte, signierte APK“.
+test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffentlicht danach', () => {
+  const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8')
+    .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+  const job = (name) => {
+    const teil = yml.split(new RegExp(`\\n  ${name}:\\n`))[1];
+    assert.ok(teil, `Job ${name} fehlt`);
+    return '\n' + teil.split(/\n  [\w-]+:\n/)[0] + '\n';
+  };
+  const signieren = job('signieren');
+  assert.match(signieren, /\n    needs: build\n/);
+  assert.match(signieren, /\n    environment: \$\{\{ github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request' && 'release' \|\| '' \}\}\n/,
+    'die Secrets auf main nur über die Environment release');
+  for (const verboten of [/actions\/checkout/, /gradlew/, /tools\/[\w-]+\.py/, /python/, /setup-gradle/])
+    assert.doesNotMatch(signieren, verboten, `der Signierjob führt keinen Projektcode aus (${verboten})`);
+  assert.match(signieren, /name: apk-unsigniert/);
+  assert.match(signieren, /name: apk-signiert/);
+  assert.doesNotMatch(job('build'), /secrets\./, 'der Bau-Job sieht kein Secret');
+
+  const pruefen = job('apk-pruefen');
+  assert.match(pruefen, /\n    needs: signieren\n/);
+  assert.match(pruefen, /name: apk-signiert/);
+  assert.match(pruefen, /python3 tools\/apk-pruefen\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/);
+  assert.match(pruefen, /python3 tools\/apk-ausrichtung\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/);
+  assert.doesNotMatch(pruefen, /secrets\./);
+
+  const release = job('release');
+  assert.match(release, /\n    needs: \[signieren, apk-pruefen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
+  assert.match(release, /name: apk-signiert/);
 });

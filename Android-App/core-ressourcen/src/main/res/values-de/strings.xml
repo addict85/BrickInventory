@@ -524,6 +524,8 @@
     <string name="household_redeem_submit">Verknüpfen</string>
     <string name="household_redeem_password">Passwort dieses Kontos</string>
     <string name="household_redeem_password_wrong">Das Passwort stimmt nicht. Gib das Passwort des Kontos ein, mit dem du angemeldet bist.</string>
+    <string name="household_redeem_code">Code aus der Authenticator-App oder Wiederherstellungscode</string>
+    <string name="household_redeem_code_wrong">Der Code stimmt nicht oder ist abgelaufen.</string>
     <string name="household_redeem_locked">Zu viele Fehlversuche. Bitte versuche es später erneut.</string>
     <string name="household_unlink">Verknüpfung lösen</string>
     <string name="household_remove">Entfernen</string>
@@ -658,6 +660,10 @@
     <string name="konto_password_hint">Alle Zugänge dieses Kontos werden verworfen — auch diese App. Du musst dich danach neu anmelden.</string>
     <string name="konto_password_changed">Passwort geändert. Bitte melde dich neu an.</string>
     <string name="konto_password_button">Passwort ändern</string>
+    <string name="startpasswort_titel">Startpasswort ersetzen</string>
+    <string name="startpasswort_text">Dieses Konto meldet sich noch mit dem Startpasswort an, mit dem es angelegt wurde. Wähle zuerst ein eigenes Passwort. Danach meldest du dich mit dem neuen an.</string>
+    <string name="startpasswort_wiederholen">Neues Passwort wiederholen</string>
+    <string name="startpasswort_verschieden">Die beiden Eingaben unterscheiden sich.</string>
     <string name="konto_design_hint">Gilt für dieses Konto auf allen Geräten.</string>
     <string name="konto_design_vorgabe">Vorgabe: %1$s</string>
 
@@ -735,7 +741,8 @@
     <string name="update_laden_fehlgeschlagen">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde geloescht.</string>
     <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schluessel signiert wie diese und wurde geloescht. Installiert wurde nichts.</string>
     <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
-    <string name="update_installer_fehlt">Auf diesem Geraet kann keine App Pakete installieren.</string>
+    <string name="update_installer_fehlt">Die Installation liess sich nicht starten.</string>
+    <string name="update_installation_fehlgeschlagen">Die Installation ist gescheitert: %1$s</string>
 
     <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
     <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
@@ -853,6 +860,12 @@
     <string name="zert_vertrauen">Diesem Zertifikat vertrauen</string>
     <string name="zert_vertrauen_neu">Neues Zertifikat annehmen</string>
     <string name="zert_nutzer_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
+    <string name="zert_geaendert_eingabe">Die letzten 16 Zeichen des neuen Fingerabdrucks, abgeschrieben aus der Webapp (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Webapp scannen.</string>
+    <string name="zert_eingabe_falsch">Das passt nicht zum gezeigten Fingerabdruck.</string>
+    <string name="setup_qr_pin_geaendert">Dieser Code nennt ein anderes Zertifikat als das für diesen Server bestätigte. Nur fortfahren, wenn du den Server selbst umgestellt hast.</string>
+    <string name="setup_qr_pin_uebernehmen">Neues Zertifikat annehmen und anmelden</string>
+    <string name="setup_qr_pin_wechsel_abgelehnt">Der QR-Code nennt ein anderes Zertifikat als das bestätigte. Es wurde nichts geändert.</string>
     <string name="common_load_failed">Konnte nicht geladen werden</string>
     <string name="common_retry">Erneut versuchen</string>
     <string name="common_no_results">Nichts gefunden</string>

@@ -34,6 +34,9 @@ import org.robolectric.shadows.ShadowDialog
  *       …“ (gegenproben/nutzerca-ohne-ueberdeckungsschutz.patch)
  *   (c) meldungWeiterreichen() hängt das Extra an den Start der App → rot „die
  *       eigene Meldung oeffnet ihr Set …“ (gegenproben/einstieg-reicht-extra-durch.patch)
+ *   (d) Ueberdeckungsschutz() setzt beim Verlassen nicht zurück → rot „ein
+ *       geschuetzter Bildschirm schuetzt die Activity nur, solange er steht“
+ *       (gegenproben/ueberdeckung-bleibt-an.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -81,5 +84,17 @@ class FremderEinstiegTest {
         compose.onNodeWithText(ctx.getString(R.string.nutzer_ca_frage_ja)).performClick()
         assertEquals(1, ja)
         assertEquals(0, nein)
+    }
+
+    @Test
+    fun `ein geschuetzter Bildschirm schuetzt die Activity nur, solange er steht`() {
+        val zeigen = androidx.compose.runtime.mutableStateOf(true)
+        compose.setContent { if (zeigen.value) ch.brickinventoryapp.ui.components.Ueberdeckungsschutz() }
+        compose.waitForIdle()
+        val fenster = compose.activity.window.decorView
+        assertTrue("Berührungen durch ein fremdes Fenster kämen an", fenster.filterTouchesWhenObscured)
+        zeigen.value = false
+        compose.waitForIdle()
+        assertFalse("Nach dem Bildschirm bleibt die übrige App ohne", fenster.filterTouchesWhenObscured)
     }
 }

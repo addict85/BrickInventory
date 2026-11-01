@@ -533,6 +533,8 @@
     <string name="household_redeem_submit">Link</string>
     <string name="household_redeem_password">Password of this account</string>
     <string name="household_redeem_password_wrong">The password is wrong. Enter the password of the account you are signed in with.</string>
+    <string name="household_redeem_code">Code from the authenticator app or recovery code</string>
+    <string name="household_redeem_code_wrong">The code is wrong or has expired.</string>
     <string name="household_redeem_locked">Too many wrong attempts. Please try again later.</string>
     <string name="household_unlink">Unlink</string>
     <string name="household_remove">Remove</string>
@@ -672,6 +674,10 @@
     <string name="konto_password_hint">All access tokens of this account are revoked — including this app. You will have to sign in again.</string>
     <string name="konto_password_changed">Password changed. Please sign in again.</string>
     <string name="konto_password_button">Change password</string>
+    <string name="startpasswort_titel">Replace the initial password</string>
+    <string name="startpasswort_text">This account still uses the initial password it was created with. Choose your own password before you continue. Afterwards you sign in again with the new one.</string>
+    <string name="startpasswort_wiederholen">Repeat new password</string>
+    <string name="startpasswort_verschieden">The two entries differ.</string>
     <string name="konto_design_hint">Applies to this account on every device.</string>
     <string name="konto_design_vorgabe">Default: %1$s</string>
 
@@ -749,7 +755,8 @@
     <string name="update_laden_fehlgeschlagen">Download failed. The partially downloaded file was deleted.</string>
     <string name="update_signatur_falsch">The downloaded app is not signed with the same key as this one and was deleted. It was not installed.</string>
     <string name="update_fremde_adresse">The update points to an address outside our release. Nothing was downloaded.</string>
-    <string name="update_installer_fehlt">No app on this device can install packages.</string>
+    <string name="update_installer_fehlt">The installation could not be started.</string>
+    <string name="update_installation_fehlgeschlagen">The installation failed: %1$s</string>
 
     <string name="price_from_other_condition_new">Purchase price taken from the "new" market price — BrickLink has no price for "used".</string>
     <string name="price_from_other_condition_used">Purchase price taken from the "used" market price — BrickLink has no price for "new".</string>
@@ -872,6 +879,12 @@
     <string name="zert_vertrauen">Trust this certificate</string>
     <string name="zert_vertrauen_neu">Accept the new certificate</string>
     <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
+    <string name="zert_geaendert_eingabe">Last 16 characters of the new fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
+    <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
+    <string name="zert_eingabe_falsch">That does not match the fingerprint shown.</string>
+    <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself.</string>
+    <string name="setup_qr_pin_uebernehmen">Accept the new certificate and log in</string>
+    <string name="setup_qr_pin_wechsel_abgelehnt">The QR code names a different certificate than the confirmed one. Nothing was changed.</string>
     <string name="common_load_failed">Could not be loaded</string>
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>

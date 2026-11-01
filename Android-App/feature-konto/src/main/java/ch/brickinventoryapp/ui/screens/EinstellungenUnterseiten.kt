@@ -71,11 +71,13 @@ fun HaushaltUnterseite(
 ) {
     val haushalt by vm.householdState.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) { vm.loadHouseholdStatus() }
+    // Einladung einlösen und Konten trennen: kein Tipp durch eine Überlagerung.
+    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
     Unterseite(stringResource(R.string.household_title), snackbarHostState, onZurueck) {
         HouseholdCard(
             state = haushalt,
             onCreateInvite = { vm.createHouseholdInvite() },
-            onRedeemInvite = { code, passwort -> vm.redeemHouseholdInvite(code, passwort) },
+            onRedeemInvite = { code, passwort, faktorCode -> vm.redeemHouseholdInvite(code, passwort, faktorCode) },
             onUnlink = { id -> vm.unlinkHousehold(subUserId = id) },
             onUnlinkParent = { id -> vm.unlinkHousehold(mainUserId = id) },
             onVerwerfen = { id -> vm.verwerfeGetrenntesKonto(id) },
@@ -100,6 +102,8 @@ fun KontoUnterseite(
     LaunchedEffect(Unit) { konto.ladeGeraete() }
     LaunchedEffect(Unit) { konto.ladeZweitenFaktor() }
     LaunchedEffect(Unit) { konto.ladeDesign() }
+    // Passwort, zweiter Faktor, Geräte: Ein untergeschobener Tipp schaltete hier Schutz ab.
+    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
     Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
         KontoCard(
             kontoZustand = kontoZustand,

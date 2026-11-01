@@ -1,11 +1,12 @@
 package ch.brickinventoryapp.util
 
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
-import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -77,20 +78,14 @@ data class UpdateBeschreibung(
  */
 fun istNeuer(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
 
-/**
- * Zeigt die Adresse in unsere Release-Ablage? Verglichen wird mit Schrägstrich
- * nach der Basis — ein blosses startsWith liesse
- * „…/apk-neuste.angreifer.tld/x.apk“ durch (dieselbe Falle wie in
- * util/NetworkPolicy.kt).
- */
-fun istErlaubteApkAdresse(url: String): Boolean =
-    url.startsWith("$UPDATE_RELEASE_BASIS/") && url.endsWith(".apk")
+/** Zeigt die Adresse in unsere Release-Ablage? Geparst verglichen, siehe [liegtUnter]. */
+fun istErlaubteApkAdresse(url: String): Boolean = liegtUnter(url, UPDATE_RELEASE_BASIS)
 
 /**
  * Die Signatur eines APK als Fingerabdruck. `null`, wenn nicht lesbar oder nicht
  * signiert — dann wird nicht installiert; „unbekannt“ gilt nie als „passt“.
  */
-private fun fingerabdruecke(ctx: Context, apk: File): Set<String>? {
+private fun fingerabdruecke(ctx: Context, apk: File): Signatur? {
     val pm = ctx.packageManager
     @Suppress("DEPRECATION")
     val flagge = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
@@ -99,47 +94,45 @@ private fun fingerabdruecke(ctx: Context, apk: File): Set<String>? {
     // Der Paketname muss stimmen, sonst signiert ein fremdes Paket mit
     // demselben Schluessel sich hier durch.
     if (info.packageName != ctx.packageName) return null
-    return signaturen(info)?.takeIf { it.isNotEmpty() }
+    return signaturen(info)
 }
 
 /** Dieselbe Ermittlung fuer die INSTALLIERTE App. */
-private fun eigeneFingerabdruecke(ctx: Context): Set<String>? {
+private fun eigeneFingerabdruecke(ctx: Context): Signatur? {
     val pm = ctx.packageManager
     @Suppress("DEPRECATION")
     val flagge = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
         PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
     val info = runCatching { pm.getPackageInfo(ctx.packageName, flagge) }.getOrNull() ?: return null
-    return signaturen(info)?.takeIf { it.isNotEmpty() }
+    return signaturen(info)
 }
 
 /**
- * Die Signaturen aus einem PackageInfo, beide Wege: GET_SIGNING_CERTIFICATES gibt
- * es erst ab API 28, auf 26 und 27 bleibt `signatures`. Sonst prüfte der Updater
- * dort nichts.
+ * Die Signatur aus einem PackageInfo, beide Wege: GET_SIGNING_CERTIFICATES gibt
+ * es erst ab API 28, auf 26 und 27 bleibt `signatures` (ohne Ahnenreihe). Sonst
+ * prüfte der Updater dort nichts. `null` bei fehlender Signatur.
  */
 @Suppress("DEPRECATION")
-private fun signaturen(info: android.content.pm.PackageInfo): Set<String>? {
-    val roh: Array<android.content.pm.Signature>? =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            val si = info.signingInfo ?: return null
-            if (si.hasMultipleSigners()) si.apkContentsSigners else si.signingCertificateHistory
-        } else {
-            info.signatures
-        }
-    return roh?.map { sig ->
-        MessageDigest.getInstance("SHA-256").digest(sig.toByteArray())
-            .joinToString("") { "%02x".format(it) }
-    }?.toSet()
+private fun signaturen(info: android.content.pm.PackageInfo): Signatur? {
+    fun hex(s: Array<android.content.pm.Signature>?) = s.orEmpty().map { sig ->
+        MessageDigest.getInstance("SHA-256").digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+    val (aktuell, ahnen) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        val si = info.signingInfo ?: return null
+        hex(si.apkContentsSigners) to (if (si.hasMultipleSigners()) hex(si.apkContentsSigners) else hex(si.signingCertificateHistory))
+    } else hex(info.signatures).let { it to it }
+    return Signatur(aktuell.toSet(), ahnen).takeIf { aktuell.isNotEmpty() }
 }
 
 /**
- * Stammt das APK vom selben Schlüssel wie die laufende App? Bei Unklarheit falsch
- * — eine Prüfung, die im Zweifel durchwinkt, ist keine.
+ * Stammt das APK vom Schlüssel der laufenden App oder von seinem Nachfolger
+ * ([signaturFolgt])? Bei Unklarheit falsch — eine Prüfung, die im Zweifel
+ * durchwinkt, ist keine.
  */
 fun signaturPasst(ctx: Context, apk: File): Boolean {
     val neu = fingerabdruecke(ctx, apk) ?: return false
     val alt = eigeneFingerabdruecke(ctx) ?: return false
-    return neu == alt
+    return signaturFolgt(alt, neu)
 }
 
 /**
@@ -156,16 +149,63 @@ fun erlaubnisAbsicht(ctx: Context): Intent =
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
 /**
- * Die Absicht, die den System-Installer öffnet — über den FileProvider, weil
- * `file://` seit Android 7 eine FileUriExposedException wirft; die Leseerlaubnis
- * gilt nur für diesen Aufruf.
+ * Übergibt das geprüfte APK über eine PackageInstaller-Sitzung direkt dem System.
+ * Ein impliziter ACTION_VIEW ginge an jede App, die sich als Installer ausgibt;
+ * hier landen die Bytes in der Sitzung, und die Antwort kommt an einen eigenen,
+ * nicht exportierten Empfänger. Blockiert: im Hintergrund aufrufen.
  */
-fun installationsAbsicht(ctx: Context, apk: File): Intent {
-    val uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", apk)
-    return Intent(Intent.ACTION_VIEW)
-        .setDataAndType(uri, "application/vnd.android.package-archive")
-        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+fun installiere(ctx: Context, apk: File) {
+    val installer = ctx.packageManager.packageInstaller
+    val parameter = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        .apply { setAppPackageName(ctx.packageName) }
+    val id = installer.createSession(parameter)
+    try {
+        installer.openSession(id).use { sitzung ->
+            apk.inputStream().use { ein ->
+                sitzung.openWrite("BrickInventory", 0, apk.length()).use { aus ->
+                    ein.copyTo(aus)
+                    sitzung.fsync(aus)
+                }
+            }
+            // MUTABLE ab Android 12, weil das System den Status einträgt; das Ziel ist ausdrücklich genannt.
+            val antwort = PendingIntent.getBroadcast(ctx, id,
+                Intent(ctx, InstallationsEmpfaenger::class.java).setPackage(ctx.packageName),
+                PendingIntent.FLAG_UPDATE_CURRENT or
+                    (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0))
+            sitzung.commit(antwort.intentSender)
+        }
+    } catch (e: Exception) {
+        runCatching { installer.abandonSession(id) }
+        throw e
+    }
+}
+
+/** Was die Installation meldet, wenn sie scheitert; UpdateViewModel zeigt es an. */
+object Installationsmeldung {
+    val fehler = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+}
+
+/**
+ * Die Antwort der Installer-Sitzung. Verlangt das System eine Bestätigung, zeigt
+ * es dafür seinen eigenen Dialog (EXTRA_INTENT); dieser Empfänger ist nicht
+ * exportiert, die Absicht kommt also nur vom System über unsere PendingIntent.
+ */
+class InstallationsEmpfaenger : BroadcastReceiver() {
+    override fun onReceive(ctx: Context, intent: Intent) {
+        when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
+            PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                bestaetigung(intent)?.let { ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            }
+            PackageInstaller.STATUS_SUCCESS -> Unit
+            else -> Installationsmeldung.fehler.value =
+                intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "Status $status"
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun bestaetigung(intent: Intent): Intent? =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
+        else intent.getParcelableExtra(Intent.EXTRA_INTENT)
 }
 
 /** Die Datei, in die geladen wird. Immer dieselbe — ein altes APK ist Ballast. */

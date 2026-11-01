@@ -394,10 +394,16 @@ class PreferencesManager @Inject constructor(
 
     // Pins je Host und Port (util/ServerVertrauen.kt). apply genügt: Der Speicher
     // gilt sofort für den nächsten Handshake, nur die Platte folgt nach.
-    override fun pin(schluessel: String): String? = designSpiegel.getString(PIN_PRAEFIX + schluessel, null)
+    // Der vorgehaltene Pin (Anmeldeablage.halteVor) geht vor und lebt nur im Speicher.
+    override fun pin(schluessel: String): String? = vorgehalten[schluessel] ?: gemerkterPin(schluessel)
+    override fun gemerkterPin(schluessel: String): String? = designSpiegel.getString(PIN_PRAEFIX + schluessel, null)
     override fun merkePin(schluessel: String, fingerabdruck: String) {
         designSpiegel.edit { putString(PIN_PRAEFIX + schluessel, fingerabdruck) }
+        vorgehalten.remove(schluessel)
     }
+    override fun halteVor(schluessel: String, fingerabdruck: String) { vorgehalten[schluessel] = fingerabdruck }
+    override fun vergissVorgehaltenen(schluessel: String) { vorgehalten.remove(schluessel) }
+    private val vorgehalten = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */
     fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)

@@ -3,6 +3,8 @@ package ch.brickinventoryapp
 import android.app.Application
 import android.os.Bundle
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -71,6 +73,8 @@ class MainActivity : ComponentActivity() {
     // Ebenso: Eine Guthabenabfrage über alle Karten soll weiterlaufen, wenn
     // man die Gutschein-Seite verlässt.
     private val gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel by viewModels()
+    // Nur für die Maske „Startpasswort ersetzen“, die über allem liegt.
+    private val startKontoVm: ch.brickinventoryapp.ui.viewmodel.KontoViewModel by viewModels()
 
     // ImageLoader als Hilt-Singleton aus NetzModule — eine Instanz je Prozess statt je
     // Activity: Sonst verlöre jede Drehung den Memory-Cache, und zwei
@@ -109,6 +113,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Ein abgelaufenes Geheimnis lässt sich ab Android 10 erst mit Fokus aus der Zwischenablage nehmen. */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) ch.brickinventoryapp.util.GeheimeZwischenablage.pruefe(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Vor super.onCreate(): Das Startbild ersetzt das Fenster-Theme, bis
         // Compose das erste Bild gezeichnet hat — kein weisses Aufblitzen.
@@ -133,6 +143,18 @@ class MainActivity : ComponentActivity() {
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                 ) {
                     BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
+                    // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
+                    val startpasswort by vm.passwortPflicht.noetig.collectAsStateWithLifecycle()
+                    val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
+                        .collectAsStateWithLifecycle(vm.state.value.isLoggedIn)
+                    if (startpasswort && angemeldet) {
+                        val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
+                        ch.brickinventoryapp.ui.screens.StartpasswortMaske(
+                            kontoZustand = kontoZustand,
+                            onErsetzen = { alt, neu -> startKontoVm.aenderePasswort(alt, neu) { vm.logout() } },
+                            onAbmelden = { vm.logout() },
+                        )
+                    }
                     // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.
                     val zertifikat by vm.zertifikatsFrage.offen.collectAsStateWithLifecycle()
                     val nutzerCa by vm.nutzerCa.an.collectAsStateWithLifecycle()

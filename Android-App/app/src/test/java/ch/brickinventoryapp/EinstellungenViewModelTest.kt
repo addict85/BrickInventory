@@ -44,6 +44,12 @@ import org.junit.Test
  *      falsches Passwort beim Einlösen markiert das Feld“
  *   H  in einloeseFehler() den Zweig für die Sperre entfernt → rot „nach zu
  *      vielen Fehlversuchen …“ (statt des eigenen Satzes kam „fehler“)
+ *   I  (01.11.2026) im Repository `faktor_code` nicht in den Rumpf → rot „bei
+ *      aktivem zweitem Faktor geht dessen Code …“
+ *   J  (01.11.2026) in pruefeZweitenFaktor() `r.data.aktiv` → `false` → rot
+ *      „bei aktivem zweitem Faktor …“ (Zeitüberschreitung Codefeld)
+ *   K  (01.11.2026) im Fehlerzweig `faktorNoetig` nicht gesetzt → rot „verlangt
+ *      der Server den Code …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EinstellungenViewModelTest {
@@ -133,7 +139,7 @@ class EinstellungenViewModelTest {
 
     @Test
     fun `eine eingeloeste Einladung laedt Status und Haushaltskonten`() {
-        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.redeemHouseholdInvite(" ABC123 ", "geheim1234")
         TestApi.warteBis("Konten da") { t.blickfeld.konten.value.householdMembers.size == 2 }
         TestApi.warteBis("Status da") { vm.householdState.value.status?.isSub == true }
@@ -148,7 +154,7 @@ class EinstellungenViewModelTest {
         pfade.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"aktuelles_passwort_falsch","error":"Aktuelles Passwort falsch"}"""
         pfade.codes["/api/v1/settings/household/redeem"] = 400
-        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
         TestApi.warteBis("Antwort") { !vm.householdState.value.isLoading && vm.householdState.value.message != null }
         assertTrue(vm.householdState.value.passwortFalsch)
@@ -157,11 +163,38 @@ class EinstellungenViewModelTest {
     }
 
     @Test
+    fun `bei aktivem zweitem Faktor geht dessen Code beim Einloesen mit`() {
+        pfade.antworten["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
+        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        vm.loadHouseholdStatus()
+        TestApi.warteBis("Codefeld") { vm.householdState.value.faktorNoetig }
+        vm.redeemHouseholdInvite("ABC123", "geheim1234", " 123456 ")
+        TestApi.warteBis("eingeloest") { pfade.anfragen.any { "household/redeem" in it } }
+        val rumpf = pfade.koerper[pfade.anfragen.indexOfFirst { "household/redeem" in it }]
+        assertEquals("""{"code":"ABC123","password":"geheim1234","faktor_code":"123456"}""", rumpf)
+    }
+
+    @Test
+    fun `verlangt der Server den Code des zweiten Faktors, erscheint das Feld`() {
+        pfade.antworten["/api/v1/settings/household/redeem"] =
+            """{"success":false,"code":"zweiter_faktor_falsch","error":"Code falsch"}"""
+        pfade.codes["/api/v1/settings/household/redeem"] = 400
+        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
+        assertFalse(vm.householdState.value.faktorNoetig)
+        vm.redeemHouseholdInvite("ABC123", "geheim1234")
+        TestApi.warteBis("Antwort") { vm.householdState.value.message != null }
+        assertTrue(vm.householdState.value.faktorNoetig)
+        assertTrue(vm.householdState.value.faktorFalsch)
+        assertFalse(vm.householdState.value.passwortFalsch)
+        assertEquals("t${R.string.household_redeem_code_wrong}", vm.householdState.value.message)
+    }
+
+    @Test
     fun `nach zu vielen Fehlversuchen kommt der Satz des Servers, ohne ihn ein eigener`() {
         pfade.antworten["/api/v1/settings/household/redeem"] =
             """{"success":false,"code":"zu_viele_fehlversuche","error":"Bitte in 5 Min. erneut"}"""
         pfade.codes["/api/v1/settings/household/redeem"] = 429
-        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache)))
+        val vm = t.merke(HaushaltViewModel(t.dienste, HaushaltRepository(t.api, t.cache), KontoRepository(t.api, t.cache)))
         vm.redeemHouseholdInvite("ABC123", "falsch")
         TestApi.warteBis("Antwort") { vm.householdState.value.message != null }
         assertEquals("Bitte in 5 Min. erneut", vm.householdState.value.message)

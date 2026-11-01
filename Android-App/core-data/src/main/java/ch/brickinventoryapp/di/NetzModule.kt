@@ -36,9 +36,10 @@ object NetzModule {
         frage: ch.brickinventoryapp.util.ZertifikatsFrage,
         tausch: ch.brickinventoryapp.data.TokenTausch,
         rechte: ch.brickinventoryapp.data.RechteSignal,
+        pflicht: ch.brickinventoryapp.data.PasswortPflicht,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
-            meldungen = meldungen, frage = frage, rotation = tausch, rechte = rechte)
+            meldungen = meldungen, frage = frage, rotation = tausch, rechte = rechte, pflicht = pflicht)
 
     /**
      * Der Client für die Selbstaktualisierung — bewusst blank: Server, Bearer-Token

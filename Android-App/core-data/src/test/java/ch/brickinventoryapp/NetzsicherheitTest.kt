@@ -20,6 +20,9 @@ import javax.xml.parsers.DocumentBuilderFactory
  *      Debug-Build erlaubt Klartext nur …“
  *   C  in src/main ein <certificates src="user" /> → rot „beide Fassungen
  *      vertrauen nur System-CAs“
+ *   D  in data_extraction_rules.xml unter device-transfer die Zeile widget.xml
+ *      entfernt → rot „Kontodaten verlassen das Geraet nicht“
+ *   E  in backup_rules.xml die Zeile files/vorschau entfernt → rot (dieselbe Prüfung)
  */
 class NetzsicherheitTest {
 
@@ -61,5 +64,29 @@ class NetzsicherheitTest {
             val quellen = lies(variante).alle("certificates").map { it.getAttribute("src") }
             assertTrue("$variante: $quellen", quellen.isNotEmpty() && quellen.all { it == "system" })
         }
+    }
+
+    private fun regeln(name: String): Element {
+        val f = File(Quellen.projekt, "app/src/main/res/xml/$name")
+        assertTrue("$f fehlt", f.isFile)
+        return DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(f).documentElement
+    }
+
+    private fun Element.ausgenommen(): Set<String> =
+        alle("exclude").map { "${it.getAttribute("domain")}:${it.getAttribute("path")}" }.toSet()
+
+    /** Die dritte Linie: Was zum Konto gehört, wandert weder per Transfer noch per Sicherung mit. */
+    @Test
+    fun `Kontodaten verlassen das Geraet nicht`() {
+        val noetig = setOf("file:datastore", "database:bestand.db", "sharedpref:widget.xml",
+            "file:vorschau", "file:pdf", "file:export", "file:update", "external:pdf")
+        val r = regeln("data_extraction_rules.xml")
+        val listen = mapOf(
+            "cloud-backup" to r.alle("cloud-backup").single().ausgenommen(),
+            "device-transfer" to r.alle("device-transfer").single().ausgenommen(),
+            "backup_rules.xml" to regeln("backup_rules.xml").ausgenommen(),
+        )
+        for ((wo, liste) in listen) assertTrue("$wo: es fehlt ${noetig - liste}", liste.containsAll(noetig))
+        assertEquals("Die drei Listen weichen voneinander ab", 1, listen.values.toSet().size)
     }
 }

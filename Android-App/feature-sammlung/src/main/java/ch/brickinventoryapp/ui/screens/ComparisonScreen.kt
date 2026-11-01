@@ -1,7 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
-import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,7 +24,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 
@@ -41,15 +40,19 @@ fun ComparisonScreen() {
     fun triggerSearch() {
         keyboard?.hide()
         activeQuery = when {
-            searchText.isNotBlank() -> searchText.trim().replace(" ", "+")
+            searchText.isNotBlank() -> searchText.trim()
             scannedBarcode != null  -> scannedBarcode
             else                    -> null
         }
     }
 
+    // Die Eingabe als Abfragewert kodiert: Ein `#` oder `&` darin veränderte sonst die Adresse.
+    val keineAppText = stringResource(R.string.common_no_app_to_open)
     fun openInBrowser(query: String) {
-        val url = "https://www.toppreise.ch/produktsuche?q=$query"
-        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+        val url = "https://www.toppreise.ch/produktsuche".toHttpUrl().newBuilder().addQueryParameter("q", query).build()
+        if (!ch.brickinventoryapp.util.oeffneExtern(context, url.toString())) {
+            android.widget.Toast.makeText(context, keineAppText, android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     LaunchedEffect(activeQuery) {

@@ -108,9 +108,27 @@ class KontoRepository @Inject constructor(
     suspend fun revokeToken(tokenId: String): Result<TokenWiderruf> =
         safeCall { api.revokeToken(tokenId) }
 
-    /** Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch). */
+    /**
+     * Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch).
+     * Synchron auf einem IO-Faden, am Dispatcher von OkHttp vorbei (KontoApi.tokenRotieren).
+     */
     suspend fun tokenRotieren(alterToken: String): Result<TokenRotation> =
-        safeCall { api.tokenRotieren("Bearer $alterToken") }
+        safeCall { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { api.tokenRotieren("Bearer $alterToken").execute() } }
+
+    /**
+     * Den Token am Server entwerten, bevor er lokal verschwindet — sonst bliebe er
+     * gültig, bis er verfällt. Höchstens [grenzeMs]: Abmelden darf nicht am Netz
+     * hängen; ein Fehler wird nur protokolliert.
+     */
+    suspend fun abmeldenAmServer(grenzeMs: Long = 3_000): Boolean = try {
+        kotlinx.coroutines.withTimeoutOrNull(grenzeMs) { api.logout().isSuccessful }
+            ?: false.also { ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Server antwortete nicht in $grenzeMs ms") }
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Token am Server nicht entwertet", e)
+        false
+    }
 
     suspend fun getSettings(): Result<SettingsResponse> =
         safeCall { api.getSettings() }

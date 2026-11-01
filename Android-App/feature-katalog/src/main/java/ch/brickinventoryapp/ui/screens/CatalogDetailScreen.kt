@@ -3,7 +3,6 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
-import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -32,7 +31,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
@@ -174,8 +172,7 @@ fun CatalogDetailScreen(
                     onClick = {
                         // Nicht still schlucken: Ist kein Browser da oder scheitert der Aufruf,
                         // passierte sonst beim Tippen nichts.
-                        try { ctx.startActivity(Intent(Intent.ACTION_VIEW, blUrl.toUri())) }
-                        catch (_: Exception) {
+                        if (!ch.brickinventoryapp.util.oeffneExtern(ctx, blUrl)) {
                             android.widget.Toast.makeText(ctx, keineAppText,
                                 android.widget.Toast.LENGTH_SHORT).show()
                         }

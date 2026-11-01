@@ -34,6 +34,10 @@ import java.util.concurrent.TimeUnit
  *      (401 statt 200, Sitzung abgelaufen gemeldet)
  *   B  den Zweig für die Kopfzeile entfernt → rot „die Kopfzeile tauscht im
  *      Hintergrund, einmal“ (Zeitüberschreitung, kein Tausch)
+ *   C  KontoApi.tokenRotieren wieder als `suspend` (über den Dispatcher) →
+ *      rot „gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht“
+ *      (Zeitüberschreitung: beide Plätze warten auf den Tausch, der Tausch auf
+ *      einen Platz)
  */
 class TokenRotationTest {
 
@@ -100,6 +104,33 @@ class TokenRotationTest {
         assertEquals(listOf("/api/v1/sets alt", "/api/v1/auth/token-rotieren alt", "speichere neu", "/api/v1/sets neu"),
             ereignisse.toList())
         assertEquals("Ein Tausch ist keine abgelaufene Sitzung", 0, abgelaufen)
+    }
+
+    /**
+     * Abgewiesene Anfragen warten im Interceptor auf den Tausch und belegen dabei
+     * ihre Plätze im Dispatcher. Braucht der Tausch selbst einen, wartet er ewig.
+     */
+    @Test
+    fun `gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht`() {
+        val plaetze = okhttp3.Dispatcher().apply { maxRequestsPerHost = 2 }
+        lateinit var k: KontoRepository
+        val t = TokenTausch(token = { gespeichert }, speichere = { gespeichert = it }, rotiere = { k.tokenRotieren(it) })
+        val c = OkHttpClient.Builder().dispatcher(plaetze)
+            .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = t))
+            .readTimeout(2, TimeUnit.SECONDS).build()
+        k = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(c)
+            .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+            .build().create(KontoApi::class.java), ResponseCache { dir })
+        val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
+        repeat(2) {
+            c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).enqueue(object : okhttp3.Callback {
+                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) { codes += -1 }
+                override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) { response.use { codes += it.code } }
+            })
+        }
+        TestApi.warteBis("beide Antworten") { codes.size == 2 }
+        assertEquals(listOf(200, 200), codes.toList())
+        assertEquals(1, ereignisse.count { it.startsWith("/api/v1/auth/token-rotieren") })
     }
 
     @Test

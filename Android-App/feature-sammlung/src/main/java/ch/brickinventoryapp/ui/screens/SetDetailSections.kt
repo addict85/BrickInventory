@@ -11,7 +11,6 @@ import ch.brickinventoryapp.ui.model.PreisverlaufAnsicht
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.ui.model.SetPreisAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
-import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -60,7 +59,6 @@ import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.Petrol
 import androidx.compose.material.icons.filled.*
-import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -103,7 +101,8 @@ fun LazyListScope.setDetailInstructionsSection(
                             // Backstack, als Text unter der Anleitung und im Zugriffsprotokoll. Der
                             // In-App-Betrachter lädt über den geteilten Client, der den
                             // Authorization-Kopf setzt (di/ServerClient.kt).
-                            val openUrl = instr.localPath?.let { "$serverUrl$it" } ?: instr.url
+                            val eigene = instr.localPath?.let { ch.brickinventoryapp.util.eigeneAdresse(serverUrl, it) }
+                            val openUrl = eigene ?: instr.url
 
                             if (idx > 0) HorizontalDivider(
                                 Modifier.padding(vertical = Abstaende.winzig),
@@ -114,16 +113,13 @@ fun LazyListScope.setDetailInstructionsSection(
                             // Handlung. Der Papierkorb liegt neben, nicht in der antippbaren Zeile,
                             // damit ein Fehlgriff nicht löscht.
                             val oeffneAnleitung: () -> Unit = {
-                                if (instr.localPath != null) {
-                                    onOpenPdf(openUrl, instr.description ?: "")
-                                } else {
+                                if (eigene != null) {
+                                    onOpenPdf(eigene, instr.description ?: "")
+                                } else if (!ch.brickinventoryapp.util.oeffneExtern(ctx, instr.url)) {
                                     // Rückmeldung statt Stille, siehe CatalogDetailScreen.
-                                    try { ctx.startActivity(Intent(Intent.ACTION_VIEW, openUrl.toUri())) }
-                                    catch (_: Exception) {
-                                        android.widget.Toast.makeText(ctx,
-                                            keineAppText,
-                                            android.widget.Toast.LENGTH_SHORT).show()
-                                    }
+                                    android.widget.Toast.makeText(ctx,
+                                        keineAppText,
+                                        android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             }
                             Row(

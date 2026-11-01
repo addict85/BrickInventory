@@ -2,4 +2,6 @@
 <resources>
     <!-- Zähler am Fenster: wie viele Bildschirme gerade Sichtschutz wollen (ui/components/Sichtschutz.kt). -->
     <item name="sichtschutz_anzahl" type="id" />
+    <!-- Dasselbe für den Schutz vor Überlagerung (ui/components/Ueberdeckungsschutz.kt). -->
+    <item name="ueberdeckung_anzahl" type="id" />
 </resources>

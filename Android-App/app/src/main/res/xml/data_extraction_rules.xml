@@ -1,40 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Cloud-Backup ist über android:allowBackup="false" ohnehin aus. Diese Regeln
-  greifen für den Geräte-zu-Geräte-Transfer (Android 12+), der davon unabhängig
-  läuft: Der Datastore enthält den Bearer-Token. Er darf das Gerät nicht
-  verlassen.
-
-  ── Hier stand „im Klartext". Das stimmt seit Nachtrag 155 nicht mehr ──────
-  Der Token liegt AES/GCM-verschlüsselt im Datastore (util/TokenTresor.kt,
-  benutzt von data/PreferencesManager.kt). Die REGEL bleibt trotzdem richtig,
-  und zwar aus einem anderen Grund als dem alten:
-
-  Der Schlüssel liegt im Android-Keystore und wandert bei einem Transfer NICHT
-  mit — ein mitgenommener Geheimtext wäre auf dem neuen Gerät also wertlos.
-  Genau darauf zu bauen hiesse aber, die Ausnahme von einer zweiten Zusicherung
-  abhängig zu machen, die woanders steht. Zwei Schlösser, von denen eines
-  reicht, sind besser als eines, das reichen MUSS.
-
-  Warum die alte Begründung trotzdem nicht einfach stehenbleiben durfte: Wer
-  hier künftig etwas ändert, entscheidet sonst auf einer Grundlage, die es
-  nicht mehr gibt — und käme zum Beispiel zum Schluss, die Ausnahme sei seit
-  der Verschlüsselung überflüssig.
-
-  Der Token trug früher gar kein Ablaufdatum. Seit TOKEN_IDLE_DAYS (Vorgabe
-  90 Tage) räumt der Server ihn auf, wenn er so lange ungenutzt bleibt — auf
-  einem Gerät, das die App regelmässig öffnet, gilt er weiterhin unbegrenzt.
-  An dieser Regel ändert das nichts: Ein mitgewanderter Token ist auf dem
-  neuen Gerät sofort gültig, und „läuft irgendwann ab" ist kein Ersatz für
-  „kommt gar nicht erst dorthin".
+  Cloud-Backup ist über allowBackup="false" aus; der Geräte-zu-Geräte-Transfer
+  (Android 12+) läuft trotzdem. Was zum angemeldeten Konto gehört, bleibt auf
+  diesem Gerät: Token (Datastore, verschlüsselt — doppelt hält besser), lokale
+  Ablage, Zahlen des Widgets, Vorschaubilder, PDFs (Gutscheine), Exporte und das
+  geladene Update. Neue Ablagen mit Kontodaten gehören in beide Listen.
 -->
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="datastore" />
         <exclude domain="database" path="bestand.db" />
+        <exclude domain="sharedpref" path="widget.xml" />
+        <exclude domain="file" path="vorschau" />
+        <exclude domain="file" path="pdf" />
+        <exclude domain="file" path="export" />
+        <exclude domain="file" path="update" />
+        <exclude domain="external" path="pdf" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="datastore" />
         <exclude domain="database" path="bestand.db" />
+        <exclude domain="sharedpref" path="widget.xml" />
+        <exclude domain="file" path="vorschau" />
+        <exclude domain="file" path="pdf" />
+        <exclude domain="file" path="export" />
+        <exclude domain="file" path="update" />
+        <exclude domain="external" path="pdf" />
     </device-transfer>
 </data-extraction-rules>
