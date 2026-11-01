@@ -45,6 +45,7 @@ fun UpdateDialog(selbstUpdate: UpdateViewModel) {
         onDismissRequest = { if (!laedt) schliessen() },
         title = { Text(stringResource(R.string.update_dialog_title)) },
         text = {
+            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
             Column {
                 Text(stringResource(R.string.update_dialog_text,
                     neuere.versionName, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name))

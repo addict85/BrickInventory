@@ -43,6 +43,14 @@ fun widgetZahlen(pnl: PnlResponse?, verlauf: PortfolioHistoryResponse?, jetzt: L
     return WidgetZahlen(waehrung, wert, gesamt, pnl?.totals?.pnlProzent, heute, heuteProzent, jetzt)
 }
 
+/**
+ * Was das Widget zeigen darf: abgemeldet nichts, auch wenn die Ablage noch Zahlen
+ * hält. Das Leeren beim Abmelden kann ausbleiben (Prozess beendet, Fehler im
+ * Haken); der Startbildschirm soll dann keine Zahlen eines fremden Kontos zeigen.
+ */
+fun widgetAnzeige(abgelegt: WidgetZahlen?, angemeldet: Boolean): WidgetZahlen? =
+    if (angemeldet) abgelegt else null
+
 /** Ein Betrag mit Vorzeichen und, wenn bekannt, der Prozentzahl daneben. */
 fun gvText(betrag: Double?, prozent: Double?, waehrung: String): String {
     if (betrag == null) return "—"

@@ -44,6 +44,7 @@ fun ZertifikatDialog(
         onDismissRequest = onAbbrechen,
         title = { Text(stringResource(titel), modifier = Modifier.semantics { heading() }) },
         text = {
+            Ueberdeckungsschutz()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Text(stringResource(text, host))
                 frage.erwartet?.let {

@@ -30,6 +30,12 @@
  *   b) Das Auslesen in AppNavigation entfernt             → Schritt 2 rot.
  *   c) Den Knopf aus der Mail entfernt                    → Schritt 3 rot.
  *   d) Das Auslesen von ?set= in showApp() entfernt       → Schritt 4 rot.
+ *   e) (01.11.2026) MeldungsEinstieg exported="true"      → Schritte 5, 6 rot.
+ *   f) (01.11.2026) MainActivity liest wieder
+ *      getStringExtra(EXTRA_SET)                          → Schritte 2, 5 rot.
+ *   g) (01.11.2026) taskAffinity an MainActivity entfernt → Schritt 6 rot.
+ *   h) (01.11.2026) BIND_APPWIDGET am Widget entfernt     → Schritt 6 rot.
+ *   i) (01.11.2026) CsvImportService exported="true"      → Schritt 6 rot.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -54,8 +60,10 @@ test('1. die Benachrichtigung trägt ein Ziel', () => {
   // herein (Startziel in di/AppModule.kt).
   assert.match(w, /Intent\(context, startziel\.aktivitaet\)/,
     'Die Meldung öffnet nicht das Startziel der App.');
-  assert.match(app('di/AppModule.kt'), /Startziel\(MainActivity::class\.java\)/,
-    'Das Ziel wird über einen Namen aufgelöst — R8 sieht darin keinen Aufruf.');
+  // Ziel ist der nicht exportierte Einstieg; die exportierte MainActivity nimmt
+  // kein Ziel aus einem Intent an (Schritt 5).
+  assert.match(app('di/AppModule.kt'), /Startziel\(MeldungsEinstieg::class\.java\)/,
+    'Das Ziel wird über einen Namen aufgelöst oder ist nicht der MeldungsEinstieg.');
   assert.ok(!/Class\.forName/.test(w),
     'Class.forName() im Worker — dieselbe Falle wie bei WorkDatabase_Impl.');
 
@@ -77,9 +85,10 @@ test('2. und die App löst es ein', () => {
   const act = app('MainActivity.kt');
   assert.match(act, /override fun onNewIntent\(/,
     'Eine angetippte Meldung bei laufender App landet nirgends.');
-  assert.match(act, /setIntent\(intent\)/,
-    'Ohne setIntent() liefert getIntent() weiter den alten — die zweite Meldung öffnet das erste Set.');
-  assert.match(act, /setAusMeldungAnfordern\(/, 'Das Ziel wird nicht weitergereicht.');
+  assert.match(act, /setAusMeldungAnfordern\(meldungseingang\.abholen\(\)\)/,
+    'Das abgelegte Ziel wird nicht weitergereicht.');
+  assert.match(app('MeldungsEinstieg.kt'), /eingang\.ablegen\(ankunft\?\.getStringExtra\(PreisalarmWorker\.EXTRA_SET\)\)/,
+    'Der Einstieg legt das Ziel der Meldung nicht ab.');
 
   // Und der NavHost navigiert.
   const nav = app('AppNavigation.kt');
@@ -116,4 +125,40 @@ test('4. und die Webapp löst ihn ein', () => {
   assert.match(block, /openModal\?\.\(/, 'Die Webapp öffnet das Set-Detail nicht.');
   assert.match(block, /history\.replaceState/,
     'Die Adresse wird nicht bereinigt — ein F5 reisst das Detail erneut auf.');
+});
+
+// ── Fremde Apps ──────────────────────────────────────────────────────────────
+// MainActivity ist für den Launcher exportiert; jede App kann sie mit beliebigen
+// Extras starten. Ein Ziel nimmt darum nur der nicht exportierte Einstieg an.
+
+const MANIFEST = () => fs.readFileSync(
+  path.join(ROOT, '../Android-App/app/src/main/AndroidManifest.xml'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+const element = (xml, art, name) => {
+  const m = xml.match(new RegExp(`<${art}\\b[^>]*android:name="${name.replace(/\./g, '\\.')}"[^>]*>`));
+  assert.ok(m, `<${art} ${name}> fehlt im Manifest`);
+  return m[0];
+};
+
+test('5. nur der eigene, nicht exportierte Einstieg öffnet ein Set', () => {
+  const xml = MANIFEST();
+  assert.match(element(xml, 'activity', '.MeldungsEinstieg'), /android:exported="false"/,
+    'Der MeldungsEinstieg ist exportiert — dann kann jede App ein Ziel setzen.');
+  const act = app('MainActivity.kt');
+  assert.ok(!/getStringExtra|getExtras|\.extras\b|intent\??\.data\b|getData\(\)/.test(act),
+    'MainActivity liest den Intent aus — sie ist exportiert, jede App könnte ihn füllen.');
+});
+
+test('6. keine Task-Übernahme, kein fremder Anstoss des Widgets', () => {
+  const xml = MANIFEST();
+  for (const a of xml.match(/<activity\b[^>]*>/g) ?? []) {
+    assert.match(a, /android:taskAffinity=""/,
+      `${a.match(/android:name="([^"]+)"/)?.[1]}: ohne taskAffinity="" kann eine fremde Activity in die Task rutschen.`);
+  }
+  assert.ok((xml.match(/<activity\b/g) ?? []).length >= 2, 'Keine Activity im Manifest gefunden — greift die Suche?');
+  assert.match(element(xml, 'receiver', '.widget.SammlungsWidgetEmpfaenger'),
+    /android:permission="android\.permission\.BIND_APPWIDGET"/,
+    'Das Widget nimmt Broadcasts jeder App an (onEnabled/onDisabled, Aktualisierung).');
+  assert.ok(!/<(activity|service|receiver|provider)\b[^>]*android:exported="true"[^>]*>/g.test(
+    xml.replace(element(xml, 'activity', '.MainActivity'), '').replace(element(xml, 'receiver', '.widget.SammlungsWidgetEmpfaenger'), '')),
+    'Eine weitere Komponente ist exportiert.');
 });

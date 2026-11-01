@@ -29,23 +29,27 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
 
 /**
  * System-CAs nach network_security_config (ohne Nutzer-CAs), dazu der
- * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung; darüber das
- * Pinning des eigenen Servers (util/ServerVertrauen.kt).
+ * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung — nur für den
+ * eigenen Server; darüber dessen Pinning (util/ServerVertrauen.kt).
  */
 private var gemeinsamesVertrauen: ch.brickinventoryapp.util.PinVertrauen? = null
 
 @Synchronized
-private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventoryapp.util.ZertifikatsFrage): ch.brickinventoryapp.util.PinVertrauen =
-    gemeinsamesVertrauen ?: ch.brickinventoryapp.util.PinVertrauen(
+private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventoryapp.util.ZertifikatsFrage): ch.brickinventoryapp.util.PinVertrauen {
+    gemeinsamesVertrauen?.let { return it }
+    val system = vertrauen(null)
+    return ch.brickinventoryapp.util.PinVertrauen(
         kette = ch.brickinventoryapp.util.WahlVertrauen(
-            system = vertrauen(null),
+            system = system,
             mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
             nutzerErlaubt = { prefs.nutzerCaErlaubt() },
         ),
         pins = prefs,
         eigenerServer = { ch.brickinventoryapp.util.pinSchluessel(prefs.serverUrlState.value.orEmpty()) },
         frage = frage,
+        fremdeHosts = system,
     ).also { gemeinsamesVertrauen = it }
+}
 
 /** API-, Bild- und SSE-Client: derselbe Wächter (ServerWaechter.kt), eigene Zeitgrenzen. */
 internal fun buildInterceptorClient(

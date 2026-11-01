@@ -48,8 +48,11 @@
     <string name="login_passkey_statt_code">Use a passkey instead of the code</string>
     <string name="login_passkey_keiner">There is no passkey for this server on this device.</string>
     <string name="login_passkey_fehler">The passkey could not be requested.</string>
-    <string name="settings_nutzer_ca">Trust my own certificate authority</string>
-    <string name="settings_nutzer_ca_hint">For a server with a self-issued certificate whose authority is installed on this device. Otherwise leave it off: an installed authority can read every connection.</string>
+    <string name="settings_nutzer_ca">Trust user-installed certificate authorities (risk)</string>
+    <string name="settings_nutzer_ca_hint">Only for the connection to your server, never for updates. Risk: an authority installed by a user – for example by your employer or by malware – can issue certificates for any server and so read the traffic. Only turn this on if you installed the authority yourself for your server.</string>
+    <string name="nutzer_ca_frage_titel">Trust user-installed authorities?</string>
+    <string name="nutzer_ca_frage_text">The app will then also accept certificates for your server that were issued by a certificate authority a user installed.\n\nSuch an authority may come from your employer, a network administrator or malware. Whoever controls it can read and change the traffic, including your password and sign-in token. The only remaining protection is comparing the fingerprint with the web app.\n\nUpdates from GitHub are still checked against the system authorities only.\n\nOnly turn this on if you installed the authority yourself for your server.</string>
+    <string name="nutzer_ca_frage_ja">Turn on anyway</string>
     <string name="setup_qr_titel">Use this server?</string>
     <string name="setup_qr_text">The QR code points to:\n%1$s\n\nThe app will only send your login there. Continue only if this is your server.</string>
     <string name="setup_qr_uebernehmen">Use and log in</string>

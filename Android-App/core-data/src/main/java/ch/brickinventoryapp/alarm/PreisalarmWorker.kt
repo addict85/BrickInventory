@@ -58,7 +58,8 @@ class PreisalarmWorker(
     companion object {
         /**
          * Die Setnummer, die eine angetippte Meldung öffnen soll — hier, weil wer den
-         * Intent baut, seinen Inhalt bestimmt; die Activity liest denselben Namen.
+         * Intent baut, seinen Inhalt bestimmt. Lesen darf es nur der nicht exportierte
+         * MeldungsEinstieg der App.
          */
         const val EXTRA_SET = "preisalarm_set"
 
@@ -160,13 +161,12 @@ class PreisalarmWorker(
             for ((i, a) in meldungen.withIndex()) {
                 // ── Antippen öffnet das Set ──
                 //
-                // CLEAR_TOP|SINGLE_TOP mit launchMode="singleTop": Eine laufende App bekommt den
-                // Intent in onNewIntent() statt einer zweiten Instanz. Ein requestCode je Set,
-                // sonst lieferte das System denselben PendingIntent und die ältere Meldung öffnete
-                // das falsche Set. Die Klasse kommt als Klasse aus der App (Startziel), nicht als
-                // Name über Class.forName(), damit R8 sie ohne Keep-Regel behält.
+                // Ziel ist der nicht exportierte Einstieg der App (Startziel); er reicht an die
+                // laufende App weiter. Ein requestCode je Set, sonst lieferte das System denselben
+                // PendingIntent und die ältere Meldung öffnete das falsche Set. Die Klasse kommt
+                // als Klasse, nicht als Name über Class.forName(), damit R8 sie ohne Keep-Regel behält.
                 val ziel = Intent(context, startziel.aktivitaet).apply {
-                    flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     putExtra(EXTRA_SET, a.setNumber)
                 }
                 val tippen = PendingIntent.getActivity(

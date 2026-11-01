@@ -382,8 +382,11 @@ internal fun GeraeteCard(
     if (zuEntwerten != null) AlertDialog(
         onDismissRequest = { fragt = null },
         title = { Text(stringResource(R.string.tokens_revoke_title)) },
-        text = { Text(stringResource(R.string.tokens_revoke_text,
-            zustand.geraete.firstOrNull { it.tokenId == zuEntwerten }?.bezeichnung ?: "—")) },
+        text = {
+            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+            Text(stringResource(R.string.tokens_revoke_text,
+                zustand.geraete.firstOrNull { it.tokenId == zuEntwerten }?.bezeichnung ?: "—"))
+        },
         confirmButton = {
             TextButton(onClick = { fragt = null; onRevoke(zuEntwerten) }) {
                 Text(stringResource(R.string.tokens_revoke_confirm),
@@ -399,6 +402,7 @@ internal fun GeraeteCard(
         onDismissRequest = { fragtAlle = false },
         title = { Text(stringResource(R.string.tokens_revoke_others_title)) },
         text = {
+            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
             val betroffen = zustand.geraete.count { !it.aktuell }
             Text(pluralStringResource(
                 R.plurals.tokens_revoke_others_text, betroffen, betroffen))
