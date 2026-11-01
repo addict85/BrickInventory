@@ -1,6 +1,7 @@
 /** /api/v1/settings — ein Router für den ganzen Pfad, weil die Reihenfolge vor
  * und nach router.use(requireLogin) hier an einer Stelle entschieden wird. */
 import multer from 'multer';
+import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { fehlerAntwort, logAndContinue } from '../../src/infra/httpError';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken } from './middleware';
 import {
@@ -298,7 +299,7 @@ router.get('/settings/export/data', async (req: LoggedInRequest, res) => {
   await archive.finalize();
 });
 
-const importUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 1024 * 1024 } });
+const importUpload = multer({ storage: multer.memoryStorage(), limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 } });
 router.post('/settings/import', importUpload.single('file'), async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const gelesen = jsonOderNull(req.file.buffer.toString('utf-8'));
