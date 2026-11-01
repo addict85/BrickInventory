@@ -17,6 +17,7 @@
  * nächsten Schnitt wieder einzeln angefasst werden müssen. Hier steht es
  * einmal.
  */
+const path = require('node:path');
 
 /**
  * „Dieses Konto hält dieses Set, so viele Exemplare."
@@ -292,7 +293,9 @@ async function musterSammlung(db, uid) {
   await haeltFigur(db, uid, 'fig-000001', { setNumber: '10300-1', menge: 1 });
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('fig-000002', 'Doc Brown') ON CONFLICT DO NOTHING`);
   await haeltFigur(db, uid, 'fig-000002', { menge: 2, preis: 4.5 });
-  await db.run(`INSERT INTO vouchers (user_id, number, pin, amount, currency) VALUES ($1, '6123-4567-8901', '4711', 50, 'EUR')`, [uid]);
+  // Über den Dienst: Nur er verschlüsselt die Nummer, wie es die Datenbank verlangt.
+  await require(path.join(__dirname, '..', '..', 'dist', 'src', 'gutscheine', 'dienst.js'))
+    .gutscheinAnlegen(uid, { number: '6123-4567-8901', pin: '4711', amount: 50, currency: 'EUR' });
   await db.run(`INSERT INTO price_alerts (user_id, set_number, condition, richtung, schwelle, currency_code)
                 VALUES ($1, '10276-1', 'N', 'unter', 299, 'EUR') ON CONFLICT DO NOTHING`, [uid]);
   await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal Keller')`, [uid]);

@@ -322,7 +322,8 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
       assert.equal(r.status, 422);
       assert.equal((await r.json()).code, 'pdf_unlesbar');
-      assert.equal((await db.get(`SELECT count(*)::int AS n FROM vouchers WHERE number = '5045076374450018888'`)).n, 0);
+      const { nummer_suche } = _req('src/gutscheine/repository/gutscheine.js').nummerSpalten(U.opa, '5045076374450018888');
+      assert.equal((await db.get('SELECT count(*)::int AS n FROM vouchers WHERE nummer_suche = $1', [nummer_suche])).n, 0);
     });
 
     // ── Aendern ─────────────────────────────────────────────────────────────
@@ -398,8 +399,8 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     await t.test('mit dem Konto verschwinden auch seine Gutscheine', async () => {
       // ON DELETE CASCADE. Ohne das blieben Nummer und PIN eines geloeschten
       // Kontos in der Datenbank stehen — Zahlen, die weiter einloesbar sind.
-      await db.run('INSERT INTO vouchers (user_id, number, amount) VALUES ($1,$2,$3)',
-        [U.enkel, '5045076374450013333', 60]);
+      await _req('src/gutscheine/dienst.js').gutscheinAnlegen(U.enkel,
+        { number: '5045076374450013333', pin: null, amount: 60, currency: null });
       assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE user_id=$1', [U.enkel])).n, 1);
       await db.run('DELETE FROM users WHERE id = $1', [U.enkel]);
       assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE user_id=$1', [U.enkel])).n, 0);
