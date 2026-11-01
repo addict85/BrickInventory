@@ -50,15 +50,22 @@ async function setTeileAusCsv(setNumber: string) {
   }));
 }
 
+/** Eine leere Antwort (404, Abbruch) kurz merken: Sonst kostet jeder
+ * wiederholte Import einer unbekannten Nummer erneut Kontingent. */
+const _leer = new Map<string, number>();
+const LEER_MS = 10 * 60 * 1000;
+
 export async function getAllSetParts(setNumber: string) {
   const csvParts = await setTeileAusCsv(setNumber);
   if (csvParts) return csvParts;
   const n = mitVersion(setNumber);
   const gemerkt = ausCache<any[]>(await repo.teilelisteAusCache(n));
   if (gemerkt) return gemerkt;
+  if (Date.now() - (_leer.get(n) ?? 0) < LEER_MS) return [];
   const { teile, verweigert } = await holeSetTeile(n);
   // Eine Absage (403) wird als leere Liste gemerkt, damit nicht jeder Import erneut fragt.
   if (teile.length > 0 || verweigert) await repo.merkeTeileliste(n, JSON.stringify(teile));
+  else { if (_leer.size > 5000) _leer.clear(); _leer.set(n, Date.now()); }
   return teile;
 }
 

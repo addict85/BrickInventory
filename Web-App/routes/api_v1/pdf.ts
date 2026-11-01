@@ -1,7 +1,6 @@
 /** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
-import express from 'express';
 import { fehlerAntwort, streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { registerSse } from '../../src/infra/sseRegistry';
@@ -14,10 +13,6 @@ import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerT
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
-
-// Eigenes Body-Limit: Der Export schickt die ganze Teileliste als JSON; die
-// Ausnahme vom serverweiten Limit gilt nur hier.
-router.use(express.json({ limit: '10mb' }));
 
 type PdfJobStatus = { status?: string | undefined; error?: string | null; etaSeconds?: number | null; missingImages?: number | null };
 

@@ -1,7 +1,7 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
 import * as db from '../../db/database';
-import { logAndContinue, fehlertext } from '../infra/httpError';
+import { logAndContinue, oeffentlicherFehler } from '../infra/httpError';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { mengenwunsch, passeManuelleMengeAn } from '../bestand/manuelleMenge';
@@ -208,7 +208,7 @@ export async function importiereFigurenCsv(uid: number, text: string) {
       results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
     } catch (e) {
       errors++;
-      results.push({ fig_number: figNumber, action: 'error', error: fehlertext(e) });
+      results.push({ fig_number: figNumber, action: 'error', error: oeffentlicherFehler(e, 'figuren-csv:zeile').error });
     }
   }
   return { added, updated, errors, records, results, uebersprungen };

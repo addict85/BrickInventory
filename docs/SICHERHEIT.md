@@ -100,6 +100,16 @@ den Commits, nicht hier.
 - Jede Abfrage über `scopeIds()`/`writableIds()` (Haushalt):
   `utils/household.ts` — `erfassung-fremd-loeschen-db`, `gutscheine-db`, `pdf-jobs-db`.
 - Uploads nur für Besitzer und Hauptkonto: `routes/datenDateien.ts` — `daten-dateien-db`, `media-auth`.
+- Set-Bilder (`/images/sets/…`) nur im Blickfeld (Bestand, Merkliste,
+  Preisalarme des Haushalts), Anleitungen (`/data/instructions/…`) nur zu Sets
+  im Bestand; fremd und fehlend antworten gleich (404). Teile- und
+  Figurenbilder sind Katalog. Katalog, `/sets/info` und `/sets/barcode` nennen
+  `image_local` nur im Blickfeld: `src/katalog/bilder/bildBlickfeld.ts` —
+  `bild-blickfeld-db`, `katalog-bilder-db`.
+- Teile-Import (`POST /sets/:setNumber/parts`) nur für Sets im Blickfeld, für
+  deren Besitzer: `routes/api_v1/sets.ts` — `teile-import-besitz-db`.
+- Die Haushaltswährung stellt nur das Hauptkonto (Unterkonto: 403
+  `waehrung_nur_hauptkonto`): `src/konto/settings.ts` — `haushalt-waehrung-db`.
 - Gutscheine nie über den Haushalt, auch nicht für Verwalter — `gutscheine-db`.
 
 ### Gemeinsame Daten (3)
@@ -141,11 +151,18 @@ den Commits, nicht hier.
   zu langer Text oder wiederholter Abfrageparameter ergeben 400
   `eingabe_ungueltig` — `eingabe-vertrag-db`. Routen ohne `eingabe` im
   Vertrag prüfen selbst (`src/infra/validate.ts`).
+- Vor-/Nachname ohne Steuerzeichen und Webadressen (`nameGueltig`). Mails an
+  unbestätigte Adressen (Bestätigung, Rücksetzen, „Name vergeben“) grüssen
+  ohne Namen; die Konsole zeigt nur den vom Absender übergebenen Link:
+  `src/infra/mailer.ts` — `mail-fremder-text-db`, `mail-link-konsole`.
 
 ### Ausgabe und Kopfzeilen (2)
 - CSP ohne Inline-Skripte, `X-Frame-Options`, `nosniff`, HSTS nur bei
   `req.secure` (also hinter dem vertrauten Proxy), nicht nach einem rohen
   `X-Forwarded-Proto`: `server.ts` — `csp-actions`, `hsts`, `frontend-escaping`.
+- Ströme und Sammelberichte (Erfassungsstrom, CSV-/XML-Importe) melden
+  Fachfehler mit Code, alles andere als `interner_fehler`; der Text steht nur
+  im Protokoll: `oeffentlicherFehler` in `src/infra/httpError.ts` — `fehlertext-intern-db`.
 
 ### Protokoll und Kontingente
 - `X-Request-Id` nur aus `[A-Za-z0-9._:-]{1,64}`, sonst eigene Kennung;
@@ -153,6 +170,12 @@ den Commits, nicht hier.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;
   Aufträge zählen beim Konto, das sie eingestellt hat:
   `utils/apiKontingent.ts`, `utils/auftraege.ts` — `api-kontingent-konto-db`.
+- Je Zieladresse (gehasht): Registrierung 3/h (429), „Passwort vergessen“ 3/h
+  (still keine Mail): `src/konto/zielDrossel.ts` — `mail-fremder-text-db`.
+- Teile-Import 30/h je Konto, leere Rebrickable-Antworten 10 min gemerkt;
+  Währungswechsel 5/h je Konto (jeder zieht den Preislauf vor).
+- Rumpf höchstens 256 KB, nur der PDF-Auftrag 4 MB (pfadgenau vor dem
+  allgemeinen Parser): `server.ts` — `upload-grenzen-db`.
 
 ### Ruhende Daten
 - Geheimnisse und Gutschein-PDFs mit dem Datenschlüssel: `utils/geheimnis.ts`
@@ -217,5 +240,10 @@ den Commits, nicht hier.
 - **Fremdkontingent**: Nicht-Verwalter bekommen zusammen höchstens die Hälfte;
   ein Verwalter oder ein Hintergrundlauf kann den Rest weiterhin aufbrauchen.
 - **ZAP ohne Anmeldung**: Der Baseline-Lauf sieht nur die öffentlichen Seiten.
+- **Gemeinsamer Set-Katalog**: `set_catalog` füllt sich beim Erfassen. Name
+  und Daten eines Sets (etwa über `/sets/info`) verraten deshalb weiterhin,
+  dass es jemand auf dem Server erfasst hat — nur das Bild nicht mehr. Ebenso
+  erscheinen geteilte Anleitungen eines selbst erfassten Sets sofort, wenn sie
+  schon jemand geladen hatte.
 - **Bilder der Container** (`postgres`, `caddy`, `pgweb`, ZAP) sind per Digest
   fest und veralten damit; Renovate (`renovate.json`) schlägt neue Fassungen vor.

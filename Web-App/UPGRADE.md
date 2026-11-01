@@ -752,3 +752,35 @@ Was sich für Nutzer und Clients ändert:
 - **PDF.js** kommt aus `pdfjs-dist` (exakte Fassung in `package.json`). Nach
   einem Update `npm run build:frontend` laufen lassen; das kopiert die Dateien
   nach `public/vendor/pdfjs/`.
+
+## 27. Runde 4 – Daten: Blickfeld, Mails, Fehlertexte
+
+- **Set-Bilder und Anleitungen nur im eigenen Blickfeld.** `/images/sets/…`
+  liefert nur Bilder zu Sets in Bestand, Merkliste oder Preisalarmen des
+  eigenen Haushalts aus, `/data/instructions/…` nur Anleitungen zu Sets im
+  Bestand; alles andere antwortet 404 wie eine fehlende Datei. Teile- und
+  Figurenbilder bleiben für jedes Konto offen. Katalog, `/sets/info` und
+  `/sets/barcode` nennen `image_local` für fremde Sets nicht mehr; Web und App
+  nehmen dann `image_url` über den Bild-Proxy. An Clients ändert sich nichts.
+  Ein Verwalter sieht fremde Set-Bilder ebenfalls nicht mehr über `/images/`.
+- **Mails**: Bestätigungs-, Rücksetz- und „Benutzername vergeben“-Mail grüssen
+  ohne Namen („Hallo,“). Vor-/Nachname dürfen keine Steuerzeichen und keine
+  Webadressen enthalten (400 `name_ungueltig`). Ohne SMTP zeigt die Konsole
+  den Link, den der Server erzeugt hat, nicht mehr die erste URL im Text.
+- **Neue Drosseln**: Registrierung 3/h und „Passwort vergessen“ 3/h je
+  Zieladresse (zusätzlich zu 5/h je IP); Teile-Import 30/h je Konto;
+  Währungswechsel 5/h je Konto. Die Zähler stehen wie die übrigen in
+  `rate_limit_attempts` (Schlüssel `register-ziel|…`, `forgot-ziel|…`,
+  `teile-import|…`, `waehrung|…`; Adressen nur als Hash).
+- **Haushaltswährung**: Nur das Hauptkonto ändert sie; ein Unterkonto bekommt
+  403 `waehrung_nur_hauptkonto`. Ein Konfig-Import eines Unterkontos mit
+  anderer Währung scheitert daran ebenso.
+- **Teile-Import** (`POST /api/v1/sets/:setNumber/parts`) nur für Sets im
+  Blickfeld (sonst 404 `set_nicht_gefunden`).
+- **Fehlertexte**: Erfassungsstrom und CSV-/XML-Importe melden unbekannte
+  Fehler als `interner_fehler`; die Einzelheiten stehen im Protokoll
+  (`[weiter-trotz-fehler] …`).
+- **PDF-Teileliste**: Der Auftrag nimmt jetzt wirklich grössere Listen an
+  (bis 4 MB, vorher griff trotz anderslautender Angabe die allgemeine Grenze
+  von 256 KB). Ein vorgeschalteter Proxy mit kleinerem `max body` muss für
+  `/api/v1/sets/partslist-pdf` mindestens 4 MB erlauben (Caddy begrenzt nicht).

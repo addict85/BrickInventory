@@ -5,7 +5,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
-import { fehlerAntwort, fehlertext, pfadParam, meldeUndLiefere, logAndContinue } from '../../src/infra/httpError';
+import { fehlerAntwort, fehlertext, pfadParam, meldeUndLiefere, logAndContinue, oeffentlicherFehler } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { getSetting } from '../../src/konto/settings';
 import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
@@ -35,6 +35,8 @@ import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/
 import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/importAuftrag';
 import * as pgNotify from '../../db/pgNotify';
 import { DATA_DIR } from '../../src/infra/appPaths';
+import { setBildSichtbar } from '../../src/katalog/bilder/bildBlickfeld';
+import { zaehleAnfrage } from '../../src/konto/loginLimiter';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
@@ -46,6 +48,7 @@ router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res
   const n = mitVersion(pfadParam(req, 'setNumber'));
   // Ohne Katalogzeile zeigt die Oberfläche die Nummer als Namen.
   const row = await setInfo(n);
+  if (row?.image_local && !await setBildSichtbar(req.apiUser.user_id, n)) row.image_local = null;
   res.json(row ? { success: true, set_number: n, ...row, name: row.name || n } : { success: true, set_number: n, name: n });
 });
 
@@ -60,6 +63,8 @@ router.get('/sets/exists/:setNumber', requireToken, async (req: AuthedRequest, r
 router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/barcode/:barcode'>) => {
   const barcode = String(req.params.barcode).trim();
   const treffer = await setZumBarcode(barcode);
+  // Ein fremdes Set-Bild liefert die Bildroute nicht aus (bildBlickfeld.ts).
+  if (treffer?.image_local && !await setBildSichtbar(req.apiUser.user_id, treffer.set_number)) treffer.image_local = null;
   if (treffer) return res.json(treffer);
   sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
 });
@@ -402,13 +407,19 @@ router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) 
       V.optionalPrice(purchase_price, 'Kaufpreis'), setCondition, storage);
     // success gehört dazu: Die Clients lesen das letzte Ereignis wie eine Antwort.
     send({ step: 'done', success: true, ...result });
-  } catch (e) { if (fehlertext(e) !== 'CANCELLED') send({ step: 'error', error: fehlertext(e) }); }
+  } catch (e) { if (fehlertext(e) !== 'CANCELLED') send({ step: 'error', ...oeffentlicherFehler(e, 'sets:add-stream', req) }); }
   unregisterAddSse();
   res.end();
 });
 
+/** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
 router.post('/sets/:setNumber/parts', requireToken, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/sets/:setNumber/parts'>) => {
-  res.json({ success: true, count: await importPartsForSet(pfadParam(req, 'setNumber'), angemeldeteNutzerId(req)) }); 
+  const uid = angemeldeteNutzerId(req);
+  const set = await findSetInScope(uid, pfadParam(req, 'setNumber'));
+  if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+  const takt = await zaehleAnfrage('teile-import', `konto:${uid}`, 60 * 60 * 1000);
+  if (takt.count > 30) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: takt.waitMin });
+  res.json({ success: true, count: await importPartsForSet(set.set_number, set.owner_user_id) });
 });
 
 // ── Anleitungen ─────────────────────────────────────────────────────────────

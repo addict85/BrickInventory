@@ -160,11 +160,11 @@ export function reisst(richtung: Richtung, preis: number, schwelle: number): boo
 
 /** Gemeldet wird der ÜBERGANG, nicht der Zustand.
  * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#versender */
-export type Versender = (mail: { to: string; subject: string; text: string; html?: string }) => Promise<unknown>;
+export type Versender = (mail: { to: string; subject: string; text: string; html?: string; link?: string }) => Promise<unknown>;
 
 /** Als Parameter, damit ein Test den Versand ersetzen kann.
  * Ausführlich: docs/begruendungen/src/finanzen/preisalarm.ts.md#standardversand */
-async function standardVersand(mail: { to: string; subject: string; text: string }) {
+async function standardVersand(mail: { to: string; subject: string; text: string; html?: string; link?: string }) {
   return mailer.sendMail(mail);
 }
 

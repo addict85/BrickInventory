@@ -68,7 +68,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise',
   // Die ipThrottle des Endpunkts (5/h) zählt in rate_limit_attempts und
   // ÜBERLEBT Prozesse — dieser Test macht vier Aufrufe von derselben Adresse,
   // ein zweiter Lauf innerhalb der Stunde liefe sonst in 429.
-  await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`).catch(() => {});
+  await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-%'`).catch(() => {});
   const hash = await bcrypt.hash('passwort123', 4);
   // Registriert mit gemischter Schreibweise — genau so speichert die
   // Registrierung die Adresse (unverändert, wie eingegeben).
@@ -126,7 +126,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
   }
   const USERNAME = 'forgothosttest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
-  await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`).catch(() => {});
+  await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-%'`).catch(() => {});
   await db.run(
     `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
      VALUES ($1, 'forgot.host@example.ch', 'x', false, true, true)`, [USERNAME]);
@@ -188,7 +188,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
 test('höchstens ein Link je Konto in 15 Minuten, und jede Antwort braucht gleich lange', { concurrency: 1 }, async (t) => {
   const USERNAME = `forgotpause_${process.pid}`;
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
-  await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`);
+  await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-%'`);
   await db.run(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
                 VALUES ($1, $2, 'x', true, true)`, [USERNAME, `${USERNAME}@example.ch`]);
   const app = express();

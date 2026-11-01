@@ -71,6 +71,8 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
   const tokB = await tokenFuer(idB, 'test-b');
 
   const app = express();
+  // Den Rumpf liest wie im Betrieb der Parser des Servers, nicht der Router.
+  app.use(express.json());
   app.use('/api/v1', pdf.default || pdf);
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;

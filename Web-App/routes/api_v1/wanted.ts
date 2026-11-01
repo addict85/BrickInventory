@@ -1,7 +1,7 @@
 /** /api/v1/wanted — die Merkliste. Die Regeln stehen in src/merkliste/; hier
  * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
 import express from 'express';
-import { fehlerAntwort, fehlertext, handleRouteError, logAndContinue, pfadParam } from '../../src/infra/httpError';
+import { fehlerAntwort, oeffentlicherFehler, handleRouteError, logAndContinue, pfadParam } from '../../src/infra/httpError';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
@@ -114,9 +114,9 @@ router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
         const { war_neu } = await legeMerkpostenAn(owner, setNumber, condition, am);
         if (war_neu) { added++; results.push({ set_number: setNumber, action: 'added' }); }
         else         { updated++; results.push({ set_number: setNumber, action: 'exists' }); }
-      } catch (e: any) {
+      } catch (e) {
         errors++;
-        results.push({ set_number: setNumber, action: 'error', error: e?.message });
+        results.push({ set_number: setNumber, action: 'error', error: oeffentlicherFehler(e, 'wanted-csv:zeile', req).error });
       }
     }
 
@@ -256,7 +256,7 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
       // Die Kopfzeilen sind schon hinaus: Der Fehler muss als letzte ZEILE kommen,
       // sonst wartet der Client auf einen Bericht, der nie kommt.
       if (res.headersSent && !res.writableEnded) {
-        res.write(JSON.stringify({ success: false, error: fehlertext(e) }) + '\n');
+        res.write(JSON.stringify({ success: false, ...oeffentlicherFehler(e, 'wanted-import:strom', req) }) + '\n');
         return res.end();
       }
       handleRouteError(res, e, undefined, req);

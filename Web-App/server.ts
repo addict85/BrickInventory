@@ -13,7 +13,7 @@ import session from 'express-session';
 import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
-import { fehlertext, logAndContinue, meldeUndWeiter, fehlerAntwort } from './src/infra/httpError';
+import { fehlertext, logAndContinue, meldeUndWeiter, fehlerAntwort, meldeUndLiefere } from './src/infra/httpError';
 import { startVerbote } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
@@ -24,6 +24,7 @@ import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
 import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
+import { bildFreigegeben } from './src/katalog/bilder/bildBlickfeld';
 import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/infra/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
@@ -148,8 +149,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// 256 KB: Ein grosses Limit überall liesse jeden Client den Heap füllen. Die
-// PDF-Routen setzen ihr eigenes.
+// 256 KB: Ein grosses Limit überall liesse jeden Client den Heap füllen. Nur der
+// PDF-Auftrag trägt die ganze Teileliste; sein Parser muss VOR dem allgemeinen stehen.
+app.post('/api/v1/sets/partslist-pdf', express.json({ limit: '4mb' }));
 app.use(express.json({ limit: '256kb' }));
 // Das Konto der Anfrage für Zähler tief unten (src/katalog/apiKontingent.ts).
 app.use(merkeAnfrage);
@@ -247,7 +249,9 @@ app.get('/images/*pfad', async (req: WildcardRequest, res: Response) => {
 
   const segments = req.params.pfad.filter(Boolean);
   const filePath = safeDataPath('images', segments);
-  if (!filePath) return res.status(404).send('Datei nicht gefunden');
+  // Fremdes Set-Bild wie fehlendes: 404, sonst verriete die Antwort den Bestand.
+  if (!filePath || !await bildFreigegeben(imgUserId, segments).catch(meldeUndLiefere('bilder:blickfeld', false)))
+    return res.status(404).send('Datei nicht gefunden');
 
   // private: Die Antwort hängt an einer Anmeldung und darf nicht in einen
   // geteilten Zwischenspeicher. max-age=0, damit ein ersetztes Bild sofort gilt.

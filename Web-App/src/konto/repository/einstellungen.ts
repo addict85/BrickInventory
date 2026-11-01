@@ -63,6 +63,10 @@ export async function verbundeneKonten(tx: DbSchnittstelle, userId: number): Pro
   return rows.map(r => r.id);
 }
 
+export async function hatHauptkonto(tx: DbSchnittstelle, userId: number): Promise<boolean> {
+  return !!await tx.get('SELECT 1 FROM account_links WHERE sub_user_id = $1 LIMIT 1', [userId]);
+}
+
 export async function setzeWaehrungFuer(tx: DbSchnittstelle, ids: number[], waehrung: string): Promise<void> {
   await tx.run(
     `INSERT INTO user_settings (user_id, key, value, updated_at)
