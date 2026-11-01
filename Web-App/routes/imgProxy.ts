@@ -59,11 +59,11 @@ function sendePlatzhalter(res: Response) {
     }
   }
   if (!_platzhalter.length) {
-    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
     return res.status(404).end();
   }
   res.setHeader('Content-Type', 'image/svg+xml');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Cache-Control', 'private, max-age=3600');
   return res.status(200).end(_platzhalter);
 }
 
@@ -220,7 +220,7 @@ export async function bildDurchreichen(req: Request, res: Response) {
   });
   // Kurz und mit Rückfrage: Die Antwort wird ungeprüft gestreamt; ein langes
   // max-age nagelte einen Fehler im Browser fest.
-  res.setHeader('Cache-Control', 'public, max-age=3600, must-revalidate');
+  res.setHeader('Cache-Control', 'private, max-age=3600, must-revalidate');
 
   // Erst in .tmp, bei Erfolg atomar umbenennen, damit nie halbe Dateien im Cache
   // landen.

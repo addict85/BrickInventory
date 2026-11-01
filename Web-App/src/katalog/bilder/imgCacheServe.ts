@@ -34,7 +34,7 @@ export async function liefereAusCache(opts: {
         res.setHeader('Content-Length', String(tst.size));
         res.setHeader('ETag', `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"`);
       }
-      res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+      res.setHeader('Cache-Control', 'private, max-age=86400, must-revalidate');
       // Kennt der Browser die Datei schon, reicht ein leeres 304.
       if (req.fresh) { res.status(304).end(); return true; }
       // Kein rohes pipe(): Die Cache-Pflege kann die Datei zwischen Prüfung und
@@ -69,7 +69,7 @@ export async function liefereAusCache(opts: {
       res.setHeader('Content-Length', String(cst.size));
       res.setHeader('ETag', `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"`);
     }
-    res.setHeader('Cache-Control', 'public, max-age=86400, must-revalidate');
+    res.setHeader('Cache-Control', 'private, max-age=86400, must-revalidate');
     if (req.fresh) { res.status(304).end(); return true; }
     streamFileToResponse(res, cacheFile, undefined, req); return true;
   } catch (_) { /* Cache-Miss oder Fehler — normal weiterladen */ }

@@ -12,6 +12,8 @@
  *      fremde Bild wird gedrosselt"
  *   C  in raeumeBildCacheAuf die Sortierung umgedreht (neueste zuerst) → rot:
  *      „der Deckel löscht das am längsten unbenutzte Bild"
+ *   D  Cache-Control des gestreamten Wegs wieder `public` → rot: „ein
+ *      Zeitstempel …“ (private fehlt)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,7 +50,8 @@ app.use((req, _res, next) => { req.session = { userId: konto }; next(); });
 app.get('/p', bildDurchreichen);
 const srv = app.listen(0);
 const basis = `http://127.0.0.1:${srv.address().port}/p?url=`;
-const hole = (adresse) => fetch(basis + encodeURIComponent(adresse)).then(async r => ({ status: r.status, n: (await r.arrayBuffer()).byteLength }));
+const hole = (adresse) => fetch(basis + encodeURIComponent(adresse))
+  .then(async r => ({ status: r.status, n: (await r.arrayBuffer()).byteLength, cache: r.headers.get('cache-control') }));
 const warte = () => new Promise(r => setTimeout(r, 100));
 
 test.after(async () => {
@@ -66,6 +69,8 @@ test('ein Zeitstempel im Anfrageteil holt das Bild nicht neu', async () => {
   await warte();
   const b = await hole('https://cdn.rebrickable.com/media/sets/10294-1.jpg?1800000000#x');
   assert.equal(b.status, 200);
+  // Nur für Angemeldete: Ein geteilter Zwischenspeicher darf die Antwort nicht halten.
+  assert.match(`${a.cache} ${b.cache}`, /^private,.* private,/);
   assert.deepEqual(geholt, ['https://cdn.rebrickable.com/media/sets/10294-1.jpg']);
   // Wo der Anfrageteil das Bild bestimmt, bleibt er — sortiert.
   await hole('https://www.bricklink.com/getPic.asp?itemNo=3001&colorID=5');
