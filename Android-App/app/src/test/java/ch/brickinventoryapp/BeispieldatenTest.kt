@@ -86,8 +86,8 @@ object Beispiele {
             "totals":{"min":"1500.00","avg":"1712.40","max":"1900.00","qty_avg":"1712.40"}}""",
         "/api/v1/finance/portfolio-history" to """{"success":true,"currency":"CHF","period":"week","points":[
             {"x_label":"Mo","value":1690.0,"y_frac":0.2},{"x_label":"Di","value":1701.0,"y_frac":0.5},{"x_label":"Mi","value":1712.4,"y_frac":0.9}]}""",
-        "/api/v1/finance/parts-valuation" to """{"success":true,"parts":[]}""",
-        "/api/v1/finance/minifigs-valuation" to """{"success":true,"figs":[]}""",
+        "/api/v1/finance/parts-valuation" to """{"success":true,"currency":"CHF","parts":[],"total_value":"0.00"}""",
+        "/api/v1/finance/minifigs-valuation" to """{"success":true,"currency":"CHF","figs":[],"total_value":"0.00"}""",
         "/api/v1/parts" to """{"success":true,"total":2,"parts":[
             {"part_number":"3001","color_id":5,"name":"Brick 2 x 4","color_name":"Red","quantity":12},
             {"part_number":"3003","color_id":1,"name":"Brick 2 x 2","color_name":"Blue","quantity":30}]}""",
