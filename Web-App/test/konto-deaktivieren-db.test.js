@@ -53,7 +53,8 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
   const app = express();
   app.use(express.json());
   app.use(session({ store: new pgSession({ pool: db.pool, tableName: 'user_sessions' }),
-    secret: 'deaktivieren-test-geheimnis-lang-genug', resave: false, saveUninitialized: false }));
+    secret: 'deaktivieren-test-geheimnis-lang-genug', resave: false, saveUninitialized: false,
+    name: _req('src/infra/sitzungsKeks.js').sitzungsKeksName() }));
   app.use('/api/v1', _req('routes/api_v1/middleware.js').anmeldungAmEingang);
   app.use('/api/v1/auth', _req('routes/auth.js'));
   const srv = app.listen(0);
@@ -70,7 +71,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
     'SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY id', [nutzer])).map(z => z.aktion);
 
   const chefKeks = (await anmelden(CHEF, { ohne_token: true })).cookie;
-  assert.match(chefKeks, /^connect\.sid=/);
+  assert.match(chefKeks, /^bim\.sid=/);
 
   await t.test('Token und Sitzung gelten sofort nicht mehr', async () => {
     const a = await anmelden(NUTZER);

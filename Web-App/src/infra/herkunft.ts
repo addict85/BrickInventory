@@ -4,6 +4,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { sendeFehler } from './fehlerTexte';
 import { konfig } from './konfig';
+import { traegtSitzungsKeks } from './sitzungsKeks';
 
 const LESEND = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -27,7 +28,7 @@ function eigeneHosts(req: Request): Set<string> {
 export function nurEigeneHerkunft(req: Request, res: Response, next: NextFunction) {
   if (LESEND.has(req.method)) return next();
   // Mit Cookie entscheidet die Sitzung; ein Bearer-Kopf daneben schaltet nichts ab.
-  const mitSitzung = /(?:^|;\s*)connect\.sid=/.test(String(req.headers.cookie || ''));
+  const mitSitzung = traegtSitzungsKeks(String(req.headers.cookie || ''));
   if (!mitSitzung && String(req.headers.authorization || '').startsWith('Bearer ')) return next();
   const fremd = () => sendeFehler(req, res, 403, 'fremde_herkunft');
 
