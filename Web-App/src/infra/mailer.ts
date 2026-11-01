@@ -76,8 +76,9 @@ export function linkFuerKonsole(text?: string, schalter = konfig().mailKonsoleMi
   return schalter === '1' ? url : url.replace(/([?&]token=)[^&#\s]+/g, '$1…');
 }
 
-/** Die Konsole landet in app_logs, das jeder Verwalter liest. */
-export function maskiereAdresse(adresse: string): string {
+/** Die Konsole landet in app_logs, das jeder Verwalter liest; voll nur mit dem Entwicklerschalter wie die Links. */
+export function maskiereAdresse(adresse: string, voll = konfig().mailKonsoleMitToken): string {
+  if (voll) return adresse;
   const at = adresse.lastIndexOf('@');
   return at < 1 ? '…' : `${adresse[0]}…${adresse.slice(at)}`;
 }

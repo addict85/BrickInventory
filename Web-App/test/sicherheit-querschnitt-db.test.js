@@ -27,6 +27,8 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 // Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
+// Die Konsole zeigt die Empfängeradresse sonst nur maskiert (src/infra/mailer.ts).
+process.env.MAIL_KONSOLE_MIT_TOKEN = '1';
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');

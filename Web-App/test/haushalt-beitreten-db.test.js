@@ -95,7 +95,14 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
     const ohne = await einloesen({ code, password: PASS });
     assert.equal(ohne.status, 400, JSON.stringify(ohne.body));
     assert.equal(ohne.body.code, 'zweiter_faktor_falsch');
-    const mit = await einloesen({ code, password: PASS, faktor_code: codes[0] });
+    // Die Hinweis-Mail abwarten: Spät auf stdout geschrieben, stört sie den Testlauf.
+    const zeilen = [], echt = console.log;
+    console.log = (...a) => { zeilen.push(a.join(' ')); };
+    let mit;
+    try {
+      mit = await einloesen({ code, password: PASS, faktor_code: codes[0] });
+      for (let i = 0; i < 50 && !zeilen.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));
+    } finally { console.log = echt; }
     assert.equal(mit.status, 200, JSON.stringify(mit.body));
   });
 });
