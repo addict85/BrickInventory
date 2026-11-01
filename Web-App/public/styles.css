@@ -344,6 +344,13 @@
     .bs{background:var(--sur);color:var(--txt);border:1.5px solid var(--bdr)}.bs:hover{background:var(--s100)}
     .bd{background:var(--sur);color:var(--r700);border:1.5px solid var(--r100)}.bd:hover{background:var(--r100)}
     .btn-sm{padding:5px 11px;font-size:var(--fs-1)}
+    /* Zielgrösse am Rechner mindestens 24 × 24 px (WCAG 2.5.8): Kleine Knöpfe
+       mit Innenabstand 1–3 px, Häkchen-Beschriftungen und Verweise in Hinweis-
+       kästen lagen bei 16–23 px. Am Telefon gilt die 44-px-Regel aus mobile.css. */
+    .btn{min-height:24px;min-width:24px;justify-content:center}
+    label:has(> input[type="checkbox"]),label:has(> input[type="radio"]),summary{min-height:24px}
+    .ibox a[href]{display:inline-flex;align-items:center;min-height:24px}
+    :where(.job-sched-input){min-height:24px}
     .btn:disabled{opacity:.5;cursor:not-allowed}
 
     /* Ein arbeitender Knopf BEHAELT seine Beschriftung.

@@ -207,6 +207,8 @@
      Schlüsseln in Einstellungen und Einrichtung. */
   .ca { top: 4px; right: 4px; z-index: 2; }
   .delbtn { width: 44px; height: 44px; }
+  /* Tabellenzeilen, die einen Dialog öffnen (Sets eines Teils), sind Tippziele. */
+  tr[tabindex="0"] > td { height: 44px; }
   /* Platz für den 44-px-Knopf, damit er weder Bild noch Preis verdeckt. */
   .man-tile:has(> .ca) { padding-top: 52px; }
   .mk-zeile { padding-right: 56px; }
