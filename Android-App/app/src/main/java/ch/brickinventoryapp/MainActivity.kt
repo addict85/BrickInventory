@@ -5,7 +5,6 @@ import android.os.Bundle
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -61,7 +60,7 @@ import javax.inject.Inject
 
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : NurLauncherStart() {
     private val vm: AppViewModel by viewModels()
 
     // Hier gehalten und nicht ueber hiltViewModel() geholt: Katalogliste und
@@ -85,9 +84,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var meldungseingang: ch.brickinventoryapp.ui.Meldungseingang
 
     /**
-     * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Die
-     * Extras des Intents werden bewusst nicht gelesen: Diese Activity ist
-     * exportiert, jede App koennte sie mit beliebigen Extras starten.
+     * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Das
+     * Ziel liegt im Meldungseingang; NurLauncherStart hat Extras und Daten des
+     * Intents schon entfernt, denn jede App kann diese Activity starten.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
