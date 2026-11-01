@@ -14,6 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -79,4 +80,16 @@ test('das Laufzeit-Image trägt kein npm, corepack oder yarn', () => {
   const laufzeit = df.split(/^FROM /m).pop().split('\n').filter(l => !l.trim().startsWith('#')).join('\n');
   for (const pfad of ['/usr/local/lib/node_modules', '/usr/local/bin/npm', '/usr/local/bin/corepack', '/opt/yarn-'])
     assert.ok(laufzeit.includes(pfad), `${pfad} bleibt im Laufzeit-Image`);
+});
+
+test('Geheimnisse und Sicherungen bleiben aus Image und Repository', () => {
+  // Der Build-Kontext ist Web-App/: Ohne Eintrag landeten .env (Passwörter),
+  // die Sicherungen von scripts/backup.sh und der Datenschlüssel im Image.
+  // Gegenprobe (01.11.2026): `backups` aus .dockerignore gestrichen → rot.
+  const muster = fs.readFileSync(path.join(ROOT, '.dockerignore'), 'utf8').split('\n').map(l => l.trim());
+  for (const m of ['.env', '.env.*', 'backups', 'schluessel', 'data'])
+    assert.ok(muster.includes(m), `.dockerignore schliesst ${m} nicht aus`);
+  const git = spawnSync('git', ['check-ignore', '--no-index', 'backups/x.sql.gz', 'schluessel/datenschluessel', '.env'], { cwd: ROOT, encoding: 'utf8' });
+  if (git.error) return;   // ohne git (z. B. im Image) nur der erste Teil
+  assert.deepEqual(git.stdout.trim().split('\n').sort(), ['.env', 'backups/x.sql.gz', 'schluessel/datenschluessel']);
 });

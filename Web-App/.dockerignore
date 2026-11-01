@@ -2,6 +2,9 @@ node_modules
 dist
 data
 schluessel
+backups
+.env
+.env.*
 pgdata
 pgdata18
 caddy
