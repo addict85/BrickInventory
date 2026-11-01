@@ -35,6 +35,7 @@ import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/
 import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/importAuftrag';
 import * as pgNotify from '../../db/pgNotify';
 import { DATA_DIR } from '../../src/infra/appPaths';
+import { setBildSichtbar } from '../../src/katalog/bilder/bildBlickfeld';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
@@ -46,6 +47,7 @@ router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res
   const n = mitVersion(pfadParam(req, 'setNumber'));
   // Ohne Katalogzeile zeigt die Oberfläche die Nummer als Namen.
   const row = await setInfo(n);
+  if (row?.image_local && !await setBildSichtbar(req.apiUser.user_id, n)) row.image_local = null;
   res.json(row ? { success: true, set_number: n, ...row, name: row.name || n } : { success: true, set_number: n, name: n });
 });
 
@@ -60,6 +62,8 @@ router.get('/sets/exists/:setNumber', requireToken, async (req: AuthedRequest, r
 router.get('/sets/barcode/:barcode', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/barcode/:barcode'>) => {
   const barcode = String(req.params.barcode).trim();
   const treffer = await setZumBarcode(barcode);
+  // Ein fremdes Set-Bild liefert die Bildroute nicht aus (bildBlickfeld.ts).
+  if (treffer?.image_local && !await setBildSichtbar(req.apiUser.user_id, treffer.set_number)) treffer.image_local = null;
   if (treffer) return res.json(treffer);
   sendeFehler(req, res, 404, 'barcode_kein_set', { barcode });
 });
