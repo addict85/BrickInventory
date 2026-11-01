@@ -201,6 +201,11 @@
     <string name="detail_alert_above">steigt über</string>
     <string name="detail_alert_armed">scharf</string>
     <string name="detail_alert_fired">gemeldet — wieder scharf, sobald der Preis zurückkehrt</string>
+    <string name="detail_alert_threshold">Schwelle (%1$s)</string>
+    <string name="detail_alert_hint">Wird nach dem Tippen gespeichert</string>
+    <string name="detail_alert_saved">Gespeichert: Preis %1$s %2$s · %3$s</string>
+    <string name="detail_price_none_yet">noch kein Preis</string>
+    <string name="detail_purchase_none">nicht erfasst</string>
     <string name="detail_storage_ph">z. B. Kiste 3</string>
     <string name="filter_condition_all">Alle Zustände</string>
     <string name="filter_storage_all">Alle Lagerorte</string>

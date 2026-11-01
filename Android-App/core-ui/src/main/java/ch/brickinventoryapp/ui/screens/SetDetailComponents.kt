@@ -299,15 +299,16 @@ fun MarketPriceByCondition(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(
-                        data.marketPrice?.let {
-                            ch.brickinventoryapp.util.fmtMoney(it, currency)
-                        } ?: "—",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (data.marketPrice != null) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // Der Preis in Schriftfarbe statt primary: In „noppe“ war primary Rot, ein Preis
+                    // sah aus wie ein Fehler. Ohne Preis ein Wort statt eines Strichs.
+                    val markt = data.marketPrice
+                    if (markt != null) {
+                        Text(ch.brickinventoryapp.util.fmtMoney(markt, currency),
+                            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                    } else {
+                        Text(stringResource(R.string.detail_price_none_yet), style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     data.pnlPct?.let { PnlBadge(it) }
                 }
             }

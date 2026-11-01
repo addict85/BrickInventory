@@ -69,7 +69,7 @@ fun AcquisitionSummarySection(
             )
             Column(horizontalAlignment = Alignment.End) {
                 if (acquisitions.isEmpty()) {
-                    Text("—", style = MaterialTheme.typography.bodyMedium,
+                    Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
                     acquisitions.forEach { acq ->
@@ -81,9 +81,14 @@ fun AcquisitionSummarySection(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                             ConditionBadge(acq.condition)
-                            if (acq.effectivePrice != null) {
-                                Text(fmtMoney(acq.effectivePrice ?: 0.0, currency),
+                            // Ohne Betrag sagt die Zeile, dass keiner erfasst ist; sonst stand „×2 Neu“ allein da.
+                            val preis = acq.effectivePrice
+                            if (preis != null) {
+                                Text(fmtMoney(preis, currency),
                                     fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                            } else {
+                                Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }

@@ -217,6 +217,11 @@
     <string name="detail_alert_above">rises above</string>
     <string name="detail_alert_armed">armed</string>
     <string name="detail_alert_fired">sent — armed again once the price moves back</string>
+    <string name="detail_alert_threshold">Threshold (%1$s)</string>
+    <string name="detail_alert_hint">Saved automatically after typing</string>
+    <string name="detail_alert_saved">Saved: price %1$s %2$s · %3$s</string>
+    <string name="detail_price_none_yet">no price yet</string>
+    <string name="detail_purchase_none">not recorded</string>
     <string name="detail_storage_ph">e.g. box 3</string>
     <string name="filter_condition_all">All conditions</string>
     <string name="filter_storage_all">All locations</string>
