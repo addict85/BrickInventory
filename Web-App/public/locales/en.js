@@ -980,6 +980,8 @@ window.I18N_EN = {
   'vouchers.export_offen': 'for {n} the amount could not be replaced — see below',
   'vouchers.total': 'Total',
   'vouchers.empty': 'No vouchers stored yet.',
+  'vouchers.pdf_choose': 'Choose PDF',
+  'vouchers.pdf_none': 'No file chosen',
   'vouchers.pdf_label': 'Voucher PDF (optional)',
   'vouchers.pdf_hint': 'The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.',
   'vouchers.pdf_open': 'Open PDF in a new window',

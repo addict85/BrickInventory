@@ -151,7 +151,7 @@ export async function ladeGutscheine() {
 function formularLeeren() {
   _bearbeitet = null;
   for (const id of ['v-number', 'v-pin', 'v-amount']) { const e = el(id); if (e) e.value = ''; }
-  const datei = el('v-pdf'); if (datei) datei.value = '';
+  const datei = el('v-pdf'); if (datei) { datei.value = ''; gutscheinDateiGewaehlt.call(datei); }
   const titel = el('vouchers-form-title');
   if (titel) titel.textContent = tRaw('vouchers.add');
   const abbrechen = el('v-cancel');
@@ -584,7 +584,16 @@ export async function gutscheinLandSpeichern() {
     d?.success ? 'success' : 'error');
 }
 
+/** Der Name der gewählten Datei neben dem Knopf — das native Feld zeigte ihn selbst. */
+function gutscheinDateiGewaehlt() {
+  const name = el('v-pdf-name');
+  if (!name) return;
+  const datei = this?.files?.[0];
+  name.textContent = datei ? datei.name : tRaw('vouchers.pdf_none');
+}
+
 registerActions({
+  gutscheinDateiGewaehlt,
   gutscheineExportieren,
   ladeGutscheine,
   gutscheinSpeichern,

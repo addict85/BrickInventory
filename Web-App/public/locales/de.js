@@ -991,6 +991,8 @@ window.I18N_DE = {
   'vouchers.export_offen': 'bei {n} konnte der Betrag nicht ersetzt werden — siehe unten',
   'vouchers.total': 'Summe',
   'vouchers.empty': 'Noch keine Gutscheine hinterlegt.',
+  'vouchers.pdf_choose': 'PDF wählen',
+  'vouchers.pdf_none': 'Keine Datei gewählt',
   'vouchers.pdf_label': 'PDF des Gutscheins (optional)',
   'vouchers.pdf_hint': 'Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.',
   'vouchers.pdf_open': 'PDF in neuem Fenster öffnen',

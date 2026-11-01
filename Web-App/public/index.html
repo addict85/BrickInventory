@@ -1270,9 +1270,12 @@
               Beides zusammen in einem Formular, weil es ein Vorgang ist:
               „diesen Gutschein erfassen".
             -->
-            <div class="fg voucher-upload">
-              <label for="v-pdf" data-i18n="vouchers.pdf_label">PDF des Gutscheins (optional)</label>
-              <input type="file" id="v-pdf" accept="application/pdf" />
+            <div class="fg">
+              <span class="feld-titel" id="v-pdf-titel" data-i18n="vouchers.pdf_label">PDF des Gutscheins (optional)</span>
+              <div class="zeile luecke-05 mittig umbruch">
+                <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="vouchers.pdf_choose">PDF wählen</span><input type="file" id="v-pdf" accept="application/pdf" class="datei-versteckt" aria-label="PDF des Gutscheins (optional)" data-i18n="vouchers.pdf_label" data-i18n-attr="aria-label" data-change="gutscheinDateiGewaehlt" /></label>
+                <span class="text-klein" id="v-pdf-name" data-i18n="vouchers.pdf_none">Keine Datei gewählt</span>
+              </div>
               <div class="text-klein abstand-o-3" data-i18n="vouchers.pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</div>
             </div>
 
