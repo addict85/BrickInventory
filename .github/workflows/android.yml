@@ -269,7 +269,10 @@ jobs:
         # gescheiterter Bau ginge als Erfolg durch.
         run: |
           set -o pipefail
-          ./gradlew --no-daemon assembleRelease bundleRelease 2>&1 \
+          # Ohne Build-Cache: Auf main kam R8 samt Ressourcen-Schrumpfen aus
+          # dem Cache, und dem Ergebnis fehlten 80 Texte, die frisch gebaut
+          # da sind. Das ausgelieferte APK wird deshalb immer frisch gerechnet.
+          ./gradlew --no-daemon --no-build-cache assembleRelease bundleRelease 2>&1 \
             | tee "$RUNNER_TEMP/bau.log"
 
       # ── Signieren, getrennt vom Bau ─────────────────────────────────────────

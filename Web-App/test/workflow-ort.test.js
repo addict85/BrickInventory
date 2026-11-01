@@ -227,6 +227,17 @@ test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys',
     'ein fremdes Repository (Fork) darf kein Image auslösen');
 });
 
+// Gegenprobe (01.11.2026 gemessen): `--no-build-cache` aus „Release bauen“
+// gestrichen → rot „… ohne Build-Cache …“.
+test('das Release-APK wird ohne Build-Cache gebaut', () => {
+  const yml = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
+  const schritt = yml.split(/\n      - name: Release bauen\n/)[1]?.split(/\n      - name: /)[0] ?? '';
+  const aufrufe = schritt.split('\n').filter(z => !z.trimStart().startsWith('#') && /gradlew/.test(z));
+  assert.ok(aufrufe.length > 0, 'Schritt „Release bauen“ mit gradlew nicht gefunden');
+  for (const z of aufrufe)
+    assert.match(z, /--no-build-cache/, `Release ohne Build-Cache bauen: ${z.trim()}`);
+});
+
 test('jede Action ist per Commit-SHA festgelegt', () => {
   const lose = [];
   for (const f of fs.readdirSync(ECHTER_ORT).filter(n => n.endsWith('.yml'))) {
