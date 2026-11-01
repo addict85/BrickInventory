@@ -752,3 +752,41 @@ Was sich für Nutzer und Clients ändert:
 - **PDF.js** kommt aus `pdfjs-dist` (exakte Fassung in `package.json`). Nach
   einem Update `npm run build:frontend` laufen lassen; das kopiert die Dateien
   nach `public/vendor/pdfjs/`.
+
+## 27. Runde 4 – Härtung
+
+- **Migration 0091** legt `users.sitzungs_version` an (läuft beim Start von
+  selbst). Bestehende Browser-Sitzungen bleiben gültig. Wer Zugänge beendet
+  (Passwort setzen/ändern/zurücksetzen, Sperren, Rollenwechsel, Konto löschen,
+  „andere Sitzungen beenden“, zweiten Faktor einschalten), erhöht die Version;
+  alte Sitzungen des Kontos enden dann sicher, auch wenn eine gleichzeitige
+  Anfrage sie zurückschreibt.
+- **pgweb verlangt eine Anmeldung**: `PGWEB_PASSWORD` (und optional
+  `PGWEB_USER`, Vorgabe `pgweb`) in `.env` setzen, sonst startet
+  `docker compose --profile tools up -d pgweb` nicht (Meldung in
+  `docker compose logs pgweb`). Der Browser fragt dann nach Benutzer und
+  Passwort. Für den normalen Betrieb ohne Profil ändert sich nichts.
+- **Zweiter Faktor für heikle Änderungen**: Bei aktivem TOTP verlangen
+  `POST /api/v1/auth/change-password`, `DELETE /api/v1/auth/passkeys/:id` und
+  `PUT /api/v1/auth/profile` mit neuer E-Mail zusätzlich `code` (TOTP oder
+  Wiederherstellungscode). Ohne `code`: 400 `zweiter_faktor_noetig`; falsch:
+  400 `zweiter_faktor_falsch`. Die Weboberfläche fragt nach. Ältere Fassungen
+  der Android-App können das Passwort eines Kontos mit zweitem Faktor erst
+  nach ihrem Update wieder ändern.
+- **Verwalter-E-Mail**: Eine neue Adresse des Verwalters gilt erst nach dem
+  Bestätigungslink als bestätigt (wie bei allen Konten). Die Anmeldung des
+  Verwalters hängt nicht daran.
+- **Drosseln je Adresse**: IPv6-Clients aus demselben /64 teilen sich die
+  Grenzen (Registrieren, Passwort vergessen, QR-Anmeldung, Anmeldung …) –
+  viele Geräte hinter einem IPv6-Anschluss zählen also gemeinsam, wie hinter
+  einer IPv4-Adresse.
+- **Abrufe nach aussen**: Hosts werden exakt geprüft; Adressen mit eigenem
+  Port oder `benutzer@` werden abgelehnt. Unterdomänen sind nur noch für
+  `lego.com` erlaubt (Anleitungs-PDFs). Gespeicherte Bildadressen anderer
+  Unterdomänen (etwa ein altes `m.rebrickable.com`) lädt der Proxy nicht mehr.
+- **Wiederherstellen**: `scripts/restore.sh` prüft das data-Archiv vorher
+  (`scripts/archiv-pruefen.sh`): nur Dateien und Ordner unter `data/`, keine
+  Verknüpfungen, kein `..`. Archive von `scripts/backup.sh` erfüllen das.
+- **Image von Hand bauen** (Workflow `Web-App`, `workflow_dispatch`): Der
+  zusätzliche Tag muss die Docker-Tag-Form haben (Buchstaben, Ziffern,
+  `_ . -`, höchstens 128 Zeichen), sonst bricht der Lauf ab.
