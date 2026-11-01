@@ -79,7 +79,7 @@ const flaeche = () => G('pk-flaeche');
 export async function ladePasskeys() {
   const f = flaeche();
   if (!f) return;
-  const d = await api('GET', '/v1/auth/passkeys');
+  const [d, zf] = await Promise.all([api('GET', '/v1/auth/passkeys'), api('GET', '/v1/auth/zweiter-faktor')]);
   if (!d?.success || !Array.isArray(d.passkeys)) { f.innerHTML = `<div class="voucher-leer">${t('settings.error')}</div>`; return; }
   const liste = d.passkeys.length
     ? `<div class="tw"><table class="dt"><thead><tr><th>${t('pk.col.name')}</th><th>${t('tokens.col.created')}</th>
@@ -95,14 +95,17 @@ export async function ladePasskeys() {
     : `<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">
         <div class="fg"><label for="pk-name">${t('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
         <div class="fg"><label for="pk-pw">${t('settings.password.current')}</label><input type="password" id="pk-pw" autocomplete="current-password" /></div>
+        ${zf?.aktiv ? `<div class="fg"><label for="pk-code">${t('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
         <div><button type="button" class="btn bp btn-sm" id="pk-neu" data-click="passkeyHinzufuegen">${t('pk.add')}</button></div>
       </form>`;
   f.innerHTML = liste + neu;
 }
 
 export async function passkeyHinzufuegen() {
-  const o = await api('POST', '/v1/auth/passkey/registrieren/optionen', { password: G('pk-pw')?.value || '' });
-  if (G('pk-pw')) G('pk-pw').value = '';
+  // Bei aktivem zweitem Faktor verlangt der Server auch den Code.
+  const o = await api('POST', '/v1/auth/passkey/registrieren/optionen',
+    { password: G('pk-pw')?.value || '', ...(G('pk-code') ? { code: G('pk-code').value.trim() } : {}) });
+  for (const id of ['pk-pw', 'pk-code']) if (G(id)) G(id).value = '';
   if (!o?.success) { toast(o?.error || tRaw('settings.error'), 'error'); return; }
   let antwort;
   try { antwort = await erzeuge(o.optionen); }

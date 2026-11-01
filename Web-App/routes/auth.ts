@@ -11,6 +11,7 @@ import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, 
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import { bestaetigeEinrichtung } from '../src/konto/passwortBestaetigung';
+import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
 import { passwortMangel } from '../src/infra/passwortRegel';
@@ -352,12 +353,9 @@ router.delete('/users/:id', requireAdmin, async (req, res: Antwort<'DELETE /api/
   res.json({ success: true });
 });
 
-// LoggedInRequest statt `userId!`: Der Typ bindet die Zusicherung an die
-// Middleware (types/augmentations.d.ts).
 router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/auth/change-password'>) => {
   const { current, newPassword } = req.body;
   if (!current || !newPassword) return sendeFehler(req, res, 400, 'alle_felder_erforderlich');
-  // Über den gemeinsamen Helfer, weil hier auch die App stehen kann.
   const uid = nutzerId(req);
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
   if (!await bestaetigePasswort(req, res, uid, String(current))) return;
@@ -365,7 +363,8 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   const mangel = passwortMangel(newPassword, req.session?.username);
   if (mangel) return sendeFehler(req, res, 400, mangel);
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
-  await K.aendereEigenesPasswort(uid, newPassword);
+  await K.aendereEigenesPasswort(uid, newPassword, { passkeysWiderrufen: req.body?.passkeys_widerrufen === true });
+  hinweisNebenher(uid, 'passwort_geaendert');
   if (req.session?.userId) {
     const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin };
     await establishSession(req, _self);
@@ -415,9 +414,8 @@ router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res: Antwort
   res.json({ success: true, geheimnis, otpauth: zf.otpauthAdresse(geheimnis, u?.username ?? String(uid)) });
 });
 
-// Auch mit App-Token: Die Android-App richtet den Faktor ein. Wer Token und
-// Passwort hat, könnte ohnehin das Passwort wechseln; die Sitzung allein
-// schützte hier nichts zusätzlich.
+// Auch mit App-Token (die Android-App richtet so ein): Wer Token und Passwort
+// hat, könnte ebenso das Passwort wechseln; eine Sitzungspflicht schützte nichts.
 router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/bestaetigen'>) => {
   const uid = angemeldeteNutzerId(req);
   const codes = await bestaetigeEinrichtung(uid, req.body?.code);
@@ -613,6 +611,7 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   const user = await K.kontoNachRuecksetzToken(hashToken(token));
   if (!user) return sendeFehler(req, res, 400, 'token_ungueltig');
   await K.setzePasswortZurueck(user.id, password);
+  hinweisNebenher(user.id, 'passwort_zurueckgesetzt');
   res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
 });
 
@@ -632,7 +631,9 @@ router.get('/passkeys', requireLoginOrToken, async (req, res: Antwort<'GET /api/
 router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req, res: Antwort<'POST /api/v1/auth/passkey/registrieren/optionen'>) => {
   if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const uid = angemeldeteNutzerId(req);
-  if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
+  // Ein Passkey ersetzt den Code; ohne Code hier umginge das Passwort allein den zweiten Faktor.
+  const zusatz = await zf.istAktiv(uid) ? { zweiterFaktor: req.body?.code } : {};
+  if (!await bestaetigePasswort(req, res, uid, req.body?.password, zusatz)) return;
   const konto = await K.kontoKurz(uid);
   const optionen = await P.registrierungsOptionen(uid, konto?.username ?? String(uid));
   if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
@@ -643,6 +644,7 @@ router.post('/passkey/registrieren', requireLoginOrToken, async (req, res: Antwo
   if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const neu = await P.registrierungPruefen(angemeldeteNutzerId(req), req.body?.antwort, passkeyName(req.body?.name));
   if (!neu) return sendeFehler(req, res, 400, 'passkey_ungueltig');
+  hinweisNebenher(angemeldeteNutzerId(req), 'passkey_neu', neu.name);
   res.json({ success: true, passkey: neu });
 });
 

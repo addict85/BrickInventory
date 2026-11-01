@@ -454,6 +454,40 @@ export async function sendHaushaltVerknuepftMail(to: string, username: string, h
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
+/** Ohne Mailserver gibt es keinen Hinweis: Die Konsole erreicht den Inhaber nicht. */
+export async function mailEingerichtet(): Promise<boolean> {
+  return !!(await getSetting('smtp_host')) && !!(await getSetting('smtp_user'));
+}
+
+export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt';
+
+/** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
+ * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
+export async function sendKontoHinweisMail(to: string, username: string, art: KontoHinweis,
+                                           o: { lang?: string; passkey?: string; haushalt?: string[] } = {}) {
+  const theme = await getMailTheme();
+  const en = o.lang === 'en';
+  const was = {
+    passkey_neu: en ? `a new passkey (“${o.passkey ?? ''}”) was added to your account.`
+                    : `deinem Konto wurde ein neuer Passkey („${o.passkey ?? ''}“) hinzugefügt.`,
+    passwort_geaendert: en ? 'the password of your account was changed.' : 'das Passwort deines Kontos wurde geändert.',
+    passwort_zurueckgesetzt: en ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
+                                : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.',
+  }[art];
+  const subject = en ? 'BrickInventory Manager — Change to your account' : 'BrickInventory Manager — Änderung an deinem Konto';
+  const haushalt = o.haushalt?.length
+    ? (en ? `These accounts can see and change your collection: ${o.haushalt.join(', ')}.`
+          : `Diese Konten sehen und ändern deine Sammlung: ${o.haushalt.join(', ')}.`) : '';
+  const note = en
+    ? 'If this was not you, reset your password via “Forgot password”, check Settings → Account and Household — or ask the administrator.'
+    : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Einstellungen → Konto und Haushalt — oder wende dich an den Verwalter.';
+  const hallo = en ? 'Hello' : 'Hallo';
+  const text = `${hallo} ${username},\n\n${was}\n${haushalt ? `\n${haushalt}\n` : ''}\n${note}\n\nBrickInventory Manager`;
+  const html = `<p style="margin:0 0 8px">${hallo} <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">${esc(was)}</p>${haushalt ? `<p style="margin:0 0 16px">${esc(haushalt)}</p>` : ''}`;
+  return sendMail({ to, subject, text, html: emailTemplate(en ? 'Account changed' : 'Konto geändert', subject, `${html}${infoBox(note, theme)}`, theme) });
+}
+
 // In der Sprache des Kontos, wie die übrigen Mails.
 // Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#sendpasswordresetmail
 export async function sendPasswordResetMail(to: string, username: string, token: string,

@@ -174,6 +174,7 @@ window.I18N_EN = {
   'settings.password.current': 'Current password',
   'settings.password.new': 'New password',
   'settings.password.repeat': 'Repeat password',
+  'settings.password.revoke_passkeys': 'Also remove all passkeys (if someone else had access)',
   'settings.password.change': 'Change password',
   'settings.password.mismatch': 'Passwords do not match',
   'settings.password.too_short': 'The password must be at least {n} characters long',

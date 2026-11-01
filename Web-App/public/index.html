@@ -1080,6 +1080,7 @@
               <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" /></div>
               <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" /></div>
             </div>
+            <label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="pw-pk" /> <span data-i18n="settings.password.revoke_passkeys">Auch alle Passkeys entfernen (falls jemand Fremdes Zugang hatte)</span></label>
           </div>
 
           <button type="button" class="btn bp btn-speichern" id="btn-sav-prof" data-i18n="settings.save" data-ico="speichern">Speichern</button>
@@ -1384,6 +1385,10 @@
             <div class="fg">
               <label for="household-redeem-code" data-i18n="household.invite_code">Einladungscode</label>
               <input class="mono-2" type="text" id="household-redeem-code" autocomplete="off" />
+            </div>
+            <div class="fg" id="household-redeem-faktor" data-stil="display:none">
+              <label for="household-redeem-faktor-code" data-i18n="login.code">Code aus der Authenticator-App</label>
+              <input type="text" id="household-redeem-faktor-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" />
             </div>
             <!-- margin-top: Der Knopf klebte am Eingabefeld. .75rem ist der
                  Abstand, den der Hinweistext darueber schon benutzt — kein
