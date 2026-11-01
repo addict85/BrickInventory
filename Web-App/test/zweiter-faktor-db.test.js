@@ -15,6 +15,8 @@
  *   H  (01.11.) hashCode() wieder als blankes SHA-256 → rot: „ungesalzenes SHA-256";
  *      randomBytes(7)/10 Zeichen → rot: Format; Rückfall auf alterHash entfernt → rot:
  *      „alter Code gilt nicht mehr"
+ *   I  (01.11.) /zweiter-faktor/bestaetigen wieder direkt über zf.bestaetigeEinrichtung →
+ *      rot: „Einrichtungscode beliebig oft ratbar"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -69,9 +71,9 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
   const NAME = `zf_${process.pid}`, PASS = 'richtigesPasswort1';
-  const SPERRE = `zf_sperre_${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE]]);
-  for (const n of [NAME, SPERRE])
+  const SPERRE = `zf_sperre_${process.pid}`, BREMSE = `zf_bremse_${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE, BREMSE]]);
+  for (const n of [NAME, SPERRE, BREMSE])
     await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)',
       [n, await bcrypt.hash(PASS, 4)]);
 
@@ -181,8 +183,15 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     assert.equal(geraten.status, 429, `Code beim Abschalten beliebig oft ratbar: ${geraten.status}`);
     assert.equal((await ruf('/zweiter-faktor/codes', { code: cS[1] }, tS)).status, 429,
       'Auch das Erneuern der Wiederherstellungscodes muss gesperrt sein');
+
+    // Das Bestätigen der Einrichtung bremst genauso.
+    const tB = (await anmelden(BREMSE)).body.token;
+    assert.equal((await ruf('/zweiter-faktor/einrichten', { password: PASS }, tB)).status, 200);
+    for (let i = 0; i < 5; i++) await ruf('/zweiter-faktor/bestaetigen', { code: String(300000 + i) }, tB);
+    const spaet = await ruf('/zweiter-faktor/bestaetigen', { code: await codeFuer(BREMSE) }, tB);
+    assert.equal(spaet.status, 429, `Einrichtungscode beliebig oft ratbar: ${spaet.status}`);
   } finally {
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE, BREMSE]]).catch(() => {});
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%zf_%${process.pid}%`]).catch(() => {});
     await db.pool.end().catch(() => {});
   }
