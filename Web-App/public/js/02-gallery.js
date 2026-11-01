@@ -7,10 +7,10 @@ import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
          LAGER_VIEWS, addLagerParam, lagerModus, setLagerModus } from './14-scope.js';
 import { setScrollLabel } from './15-scrollbar.js';
-import { loadParts } from './03-parts.js';
+import { loadParts, teileFilterZuruecksetzen } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
 import { loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeTls, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
-import { loadBrickColors, loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
+import { figurenFilterZuruecksetzen, loadBrickColors, loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { ladeGutscheine } from './17-gutscheine.js';
 import { geloeschtMitRueckgaengig, ladePapierkorb } from './20-papierkorb.js';
 import { ladeZweitenFaktor } from './21-zweiter-faktor.js';
@@ -602,6 +602,8 @@ function filterZuruecksetzen(ansicht) {
     loadGallery();
   } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
   else if (ansicht === 'catalog') katalogZuruecksetzen();
+  else if (ansicht === 'parts') teileFilterZuruecksetzen();
+  else if (ansicht === 'minifigs') figurenFilterZuruecksetzen();
 }
 
 export function onStorageChange(view) {
@@ -910,9 +912,9 @@ export function renderGallery(){
   const gefiltert = !!(q || G('gtheme')?.value || lagerModus('gallery'));
   if(!list.length){
     c.innerHTML = gefiltert
-      ? leerZustand({ ico: 'suche', titel: q ? tRaw('gallery.no_results', { query: q }) : tRaw('gallery.no_results_filter'),
+      ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
                       knopf: zuruecksetzenKnopf('gallery') })
-      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'),
+      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint'),
                       knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
   }

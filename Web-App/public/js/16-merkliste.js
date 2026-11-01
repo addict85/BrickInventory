@@ -195,7 +195,7 @@ export async function ladeMerkliste() {
   ziel.innerHTML = _merkposten.length
     ? _merkposten.map(zeile).join('')
     : (gefiltert
-      ? leerZustand({ ico: 'suche', titel: tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') })
+      ? leerZustand({ ico: 'suche', titel: G('mks')?.value.trim() ? tRaw('common.no_hits', { query: G('mks').value.trim() }) : tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') })
       : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint') }));
 }
 

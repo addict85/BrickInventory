@@ -58,7 +58,7 @@ window.I18N_DE = {
   'wanted.deleted': 'Von der Merkliste genommen',
   'wanted.take': 'In Galerie aufnehmen',
   'wanted.taken': 'In die Galerie übernommen',
-  'wanted.no_results': 'Keine Merkposten gefunden',
+  'wanted.no_results': 'Keine Merkposten passen zu diesem Filter',
   'wanted.search': 'Merkliste durchsuchen…',
   'wanted.taken_existing': 'War schon in der Galerie — von der Merkliste genommen',
   'catalog.add_again': 'Erneut aufnehmen',
@@ -86,8 +86,7 @@ window.I18N_DE = {
   'gallery.sort.price_asc': 'Preis ↑',
   'gallery.sort.qty_desc': 'Anzahl ↓',
   'gallery.sort.qty_asc': 'Anzahl ↑',
-  'gallery.empty': 'Noch keine Sets. Füge dein erstes Set hinzu!',
-  'gallery.no_results': 'Keine Sets gefunden für „{query}“',
+  'gallery.empty': 'Noch keine Sets',
   'gallery.delete.title': 'Set löschen?',
   'gallery.delete.text': '{name} wird aus deiner Sammlung entfernt.',
   'gallery.add.title': 'Set hinzufügen',
@@ -128,7 +127,6 @@ window.I18N_DE = {
   // Minifigs
   'figs.search': 'Minifiguren suchen…',
   'figs.manual_section': 'Manuell erfasste Minifiguren',
-  'figs.none': 'Keine Minifiguren',
   'figs.delete.title': 'Minifigur löschen?',
 
   // Finance
@@ -747,6 +745,11 @@ window.I18N_DE = {
   'settings.smtp.secure_label': 'SMTP-Verschlüsselung',
   'parts.filter.all_colors': 'Alle Farben',
   'parts.filter.all_categories': 'Alle Kategorien',
+  'common.no_hits': 'Keine Treffer für „{query}“',
+  'parts.empty': 'Noch keine Teile',
+  'parts.no_filter_match': 'Keine Teile passen zu diesem Filter',
+  'figs.empty': 'Noch keine Minifiguren',
+  'gallery.empty_hint': 'Füge dein erstes Set hinzu oder importiere eine Liste.',
   'common.filter_no_match': 'Zu Suche und Filter passt nichts. Filter zurücksetzen oder anders suchen.',
   'parts.filter.color': 'Nach Farbe filtern',
   'parts.filter.category': 'Nach Kategorie filtern',

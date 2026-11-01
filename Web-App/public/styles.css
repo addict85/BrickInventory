@@ -279,6 +279,10 @@
     main{max-width:1720px;margin:0 auto;padding:var(--sp-6) var(--sp-6)}
     .tab{display:none}.tab.active{display:block}
     .ph{margin-bottom:var(--sp-5);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-3)}
+    .fehler-kasten{flex-basis:100%;font-size:var(--fs-2)}
+    .fehler-kasten summary{color:var(--r700);cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+    .fehler-kasten code{display:block;margin-top:4px;padding:.3rem .45rem;background:var(--s100);border-radius:4px;font-size:var(--fs-1);white-space:pre-wrap;word-break:break-word;color:var(--txt)}
+    .ptitle-unter{color:var(--mut);font-size:var(--fs-3);margin-top:2px}
     .ptitle{font-size:var(--fs-6);font-weight:800;letter-spacing:-.3px;display:inline-flex;align-items:center;gap:.4rem}
     /* Reiter-Icon links vom Titel — Emoji erbt die Schriftgröße, Inline-SVG
        wird auf Titelhöhe skaliert. Leerer Slot (kein Icon) nimmt keinen Platz. */

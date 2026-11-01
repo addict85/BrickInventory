@@ -58,7 +58,7 @@ window.I18N_EN = {
   'wanted.deleted': 'Removed from the wanted list',
   'wanted.take': 'Add to gallery',
   'wanted.taken': 'Moved into the gallery',
-  'wanted.no_results': 'No wanted items found',
+  'wanted.no_results': 'No wanted items match this filter',
   'wanted.search': 'Search the wanted list…',
   'wanted.taken_existing': 'Was already in the gallery — taken off the wanted list',
   'catalog.add_again': 'Add again',
@@ -86,8 +86,7 @@ window.I18N_EN = {
   'gallery.sort.price_asc': 'Price ↑',
   'gallery.sort.qty_desc': 'Quantity ↓',
   'gallery.sort.qty_asc': 'Quantity ↑',
-  'gallery.empty': 'No sets yet. Add your first set!',
-  'gallery.no_results': 'No sets found for “{query}”',
+  'gallery.empty': 'No sets yet',
   'gallery.delete.title': 'Delete set?',
   'gallery.delete.text': '{name} will be removed from your collection.',
   'gallery.add.title': 'Add set',
@@ -128,7 +127,6 @@ window.I18N_EN = {
   // Minifigs
   'figs.search': 'Search minifigures…',
   'figs.manual_section': 'Manually added minifigures',
-  'figs.none': 'No minifigures',
   'figs.delete.title': 'Delete minifigure?',
 
   // Finance
@@ -736,6 +734,11 @@ window.I18N_EN = {
   'settings.smtp.secure_label': 'SMTP encryption',
   'parts.filter.all_colors': 'All colours',
   'parts.filter.all_categories': 'All categories',
+  'common.no_hits': 'No results for “{query}”',
+  'parts.empty': 'No parts yet',
+  'parts.no_filter_match': 'No parts match this filter',
+  'figs.empty': 'No minifigures yet',
+  'gallery.empty_hint': 'Add your first set or import a list.',
   'common.filter_no_match': 'Nothing matches the search and filters. Reset the filters or search differently.',
   'parts.filter.color': 'Filter by color',
   'parts.filter.category': 'Filter by category',

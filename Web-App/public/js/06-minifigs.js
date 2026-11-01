@@ -1,7 +1,7 @@
 import { registerActions } from './00-registry.js';
 import { listeLadefehler } from './01-bausteine.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { condBadges, leereLagerortFeld, ownerBadges, schliesseErfassen, selectedOwner, selectedStorage } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
@@ -316,10 +316,17 @@ function figurenLeerAbgleichen() {
   if (_setFigurenLeer !== true) return;
   const el = G('figs-list');
   if (_manuelleFigurenLeer === false) { el.innerHTML = ''; return; }
-  const gesucht = !!G('fig-search')?.value.trim();
-  el.innerHTML = leerZustand({ ico: 'figur', titel: tRaw('figs.none'),
-    text: gesucht ? tRaw('common.filter_no_match') : tRaw('figs.auto_hint'),
-    knopf: gesucht ? null : { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } });
+  const q = G('fig-search')?.value.trim() || '';
+  el.innerHTML = q
+    ? leerZustand({ ico: 'suche', titel: tRaw('common.no_hits', { query: q }), knopf: zuruecksetzenKnopf('minifigs') })
+    : leerZustand({ ico: 'figur', titel: tRaw('figs.empty'), text: tRaw('figs.auto_hint'),
+                    knopf: { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } });
+}
+
+/** Die Suche leeren (Knopf im Leerzustand). */
+export function figurenFilterZuruecksetzen() {
+  const el = G('fig-search'); if (el) el.value = '';
+  filterFigs();
 }
 
 export function renderManualFigsTable() {

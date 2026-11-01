@@ -1,7 +1,7 @@
 import { ladeAnzeige, skelettKacheln, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-core.js';
+import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { allSets, teileAufschluesselung } from './02-gallery.js';
 import { loadManualParts, manualPartsCache, renderManualParts } from './06-minifigs.js';
@@ -97,10 +97,22 @@ export function teileLeerAbgleichen(manuelleLeer){
   if (_setTeileLeer !== true) return;
   const main = G('parts-main');
   if (_manuelleLeer === false) { main.innerHTML = ''; return; }
-  const gefiltert = !!(activeColor || activeCat || G('parts-search')?.value.trim() || G('parts-spare')?.value);
-  main.innerHTML = leerZustand({ ico: 'teil', titel: tRaw('parts.none_found'),
-    text: gefiltert ? tRaw('common.filter_no_match') : tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
-    knopf: gefiltert ? null : { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
+  const q = G('parts-search')?.value.trim() || '';
+  const gefiltert = !!(activeColor || activeCat || q || G('parts-spare')?.value);
+  // Wie in allen Listen: „Noch keine …“ ohne Filter, sonst „Keine Treffer“.
+  main.innerHTML = gefiltert
+    ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'),
+                    knopf: zuruecksetzenKnopf('parts') })
+    : leerZustand({ ico: 'teil', titel: tRaw('parts.empty'),
+                    text: tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
+                    knopf: { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
+}
+
+/** Suche, Ersatzteil-, Farb- und Kategoriefilter leeren (Knopf im Leerzustand). */
+export function teileFilterZuruecksetzen(){
+  activeColor = null; activeCat = null;
+  for (const id of ['parts-search', 'parts-spare', 'parts-color', 'parts-cat']) { const el = G(id); if (el) el.value = ''; }
+  teileFilterGeaendert();
 }
 // esc / escJs / escUrl / escHex liegen jetzt zentral in 01-core.js — sie wurden
 // hier definiert, aber auch von 02-gallery.js und 04-finance.js benutzt, also
