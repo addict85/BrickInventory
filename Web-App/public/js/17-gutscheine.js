@@ -60,12 +60,18 @@ const KOPIE_ICON_SVG =
   '<rect x="9" y="9" width="13" height="13" rx="2"/>' +
   '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
+/** „6123-4567-8901“ und „612345678901“ → „6123 4567 8901“. */
+export function gruppiereNummer(roh) {
+  return String(roh ?? '').replace(/[\s-]/g, '').replace(/(.{4})(?=.)/g, '$1 ');
+}
+
 function zeile(g) {
   const pinOffen = _sichtbar.has(g.id);
   // Die Nummer in Vierergruppen: 19 Ziffern am Stück sind beim Abtippen an
-  // der Kasse nicht zu lesen, und genau dafür ist sie da. Kopiert wird
+  // der Kasse nicht zu lesen, und genau dafür ist sie da. Erst die eigenen
+  // Trenner weg, sonst zählen sie mit („6123 -456 7-89“). Kopiert wird
   // trotzdem die ROHE Nummer — mit Leerzeichen nimmt sie kein Bezahlfeld an.
-  const nummer = String(g.number).replace(/(.{4})/g, '$1 ').trim();
+  const nummer = gruppiereNummer(g.number);
   return `
     <div class="voucher-row" data-id="${g.id}">
       <div class="voucher-main">
