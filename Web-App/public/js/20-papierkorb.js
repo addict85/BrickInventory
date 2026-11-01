@@ -1,4 +1,4 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, ico, G, api, esc, toast } from './01-core.js';
 import { confirmDelete } from './07-admin.js';
@@ -21,7 +21,7 @@ function zeile(e) {
       ${e.anzahl > 1 ? ` · ${e.anzahl}×` : ''}</span>
     <span class="pk-frist">${esc(tRaw('trash.until', { datum: frist }))}</span>
     <button class="btn bs btn-sm" data-click="papierkorbWiederherstellen" data-arg="${e.id}">${t('trash.restore')}</button>
-    <button class="btn bd btn-sm" data-click="papierkorbEndgueltig" data-arg="${e.id}">${t('trash.delete_final')}</button>
+    <button class="btn bd btn-sm" data-click="papierkorbEndgueltig"${echt()} data-arg="${e.id}">${t('trash.delete_final')}</button>
   </div>`;
 }
 

@@ -180,7 +180,7 @@ const Anmeldedaten = z.looseObject({ username: txt(254), password: txt(PASSWORT)
 const Registrierung = z.looseObject({ username: txt(64), email: txt(254), first_name: txtLeer(100), last_name: txtLeer(100),
   password: txt(PASSWORT), language: txt(10) });
 const ProfilAenderung = z.looseObject({ username: txt(64), email: txtLeer(254), first_name: txtLeer(100), last_name: txtLeer(100),
-  password_current: txt(PASSWORT) });
+  password_current: txt(PASSWORT), code });
 const NurPasswort = z.looseObject({ password: txt(PASSWORT), code });
 
 export const routen = {
@@ -195,7 +195,7 @@ export const routen = {
   'POST /api/v1/auth/register': { antwort: RegisterResponse, eingabe: Registrierung },
   'POST /api/v1/auth/forgot-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
   'PUT /api/v1/auth/profile': { antwort: ProfilGespeichert, eingabe: ProfilAenderung },
-  'POST /api/v1/auth/change-password': { antwort: GenericResponse, eingabe: z.looseObject({ current: txt(PASSWORT), newPassword: txt(PASSWORT) }) },
+  'POST /api/v1/auth/change-password': { antwort: GenericResponse, eingabe: z.looseObject({ current: txt(PASSWORT), newPassword: txt(PASSWORT), code }) },
   'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, eingabe: NurPasswort },
   'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurPasswort },
   'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse, eingabe: NurPasswort },
@@ -213,7 +213,7 @@ export const routen = {
   'POST /api/v1/auth/qr-token': { antwort: QrToken, eingabe: z.looseObject({ password: txt(PASSWORT) }) },
   'POST /api/v1/auth/reset-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ token: txt(200), password: txt(PASSWORT) }) },
   'GET /api/v1/auth/passkeys': { antwort: PasskeyListe },
-  'DELETE /api/v1/auth/passkeys/:id': { antwort: Geloescht },
+  'DELETE /api/v1/auth/passkeys/:id': { antwort: Geloescht, eingabe: NurPasswort },
   'POST /api/v1/auth/passkey/registrieren/optionen': { antwort: PasskeyOptionen },
   'POST /api/v1/auth/passkey/registrieren': { antwort: PasskeyAngelegt, eingabe: z.looseObject({ name: txtLeer(100) }) },
   'POST /api/v1/auth/passkey/anmelden/optionen': { antwort: PasskeyOptionen },

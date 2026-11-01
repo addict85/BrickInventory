@@ -1,6 +1,5 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
-
 /** Tokens stehen nur als SHA-256 in der Tabelle; jede Funktion nimmt den Hash,
  * nie den Klartext. */
 
@@ -128,6 +127,19 @@ export async function loescheSitzungenDesKontos(userId: number, ausser: string |
   if (ausser === null) await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
   else await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid IS DISTINCT FROM $2",
     [String(userId), ausser]);
+}
+
+/** null: Konto fehlt oder ist gesperrt. */
+export async function sitzungsVersion(uid: number): Promise<number | null> {
+  const r = await db.get<{ v: number | null }>(
+    'SELECT CASE WHEN is_active THEN sitzungs_version END AS v FROM users WHERE id = $1', [uid]);
+  return r?.v ?? null;
+}
+
+export async function erhoeheSitzungsVersion(uid: number): Promise<number> {
+  const r = await db.get<{ v: number }>(
+    'UPDATE users SET sitzungs_version = sitzungs_version + 1 WHERE id = $1 RETURNING sitzungs_version AS v', [uid]);
+  return r?.v ?? 0;
 }
 
 export async function ziehAltzeilenNach(leerlaufTage: number): Promise<number> {

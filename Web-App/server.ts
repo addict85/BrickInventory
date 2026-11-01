@@ -22,6 +22,7 @@ import { starteJobs, stoppeJobs } from './startup/jobsProzess';
 import { verdrahte } from './jobs/verdrahtung';
 import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
+import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
 import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
 import { bildFreigegeben } from './src/katalog/bilder/bildBlickfeld';
@@ -233,6 +234,7 @@ app.use(session({
   name: sitzungsKeksName(),
   cookie: sitzungsKeksOptionen(),
 }));
+app.use(sitzungsVersionPruefen());
 app.use(sitzungsHoechstdauer());
 
 app.use(datenDateien);

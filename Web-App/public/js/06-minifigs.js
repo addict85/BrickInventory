@@ -1,4 +1,4 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { listeLadefehler } from './01-bausteine.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
 import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast } from './01-core.js';
@@ -244,7 +244,7 @@ export function renderFigs(list, target) {
           // top:6px;right:6px und blendet ihn beim Ueberfahren ein
           // (styles.css). Marcos Vorgabe vom 24.09., zweiter Teil: „analog den
           // Kacheln bei den Sets. Dies aber nur in der webapp."
-          const delBtn = f.source==='manual' ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop" aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</span></div>` : '';
+          const delBtn = f.source==='manual' ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</span></div>` : '';
           // Zustand nur bei manuell erfassten Minifiguren anzeigen (automatisch
           // hinzugefügte aus Sets haben keinen eigenen Zustand).
           // Eine Plakette je erfasstem Zustand — gemeinsame Fassung in
@@ -347,7 +347,7 @@ export function renderManualFigsTable() {
       const priceStr = figPrice!=null ? fmtN(figPrice, CURRENCY) : '—';
       const condBadge = condBadges(f);
       return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="fig" data-arg2="${esc(f.fig_number)}" data-arg3="0" data-stil="cursor:pointer">
-        <div class="ca"><span class="delbtn" data-click="deleteManualFigStop" aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</span></div>
+        <div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</span></div>
         ${img}
         <div class="man-tile-num">${esc(f.fig_number)}</div>
         <div class="man-tile-name">${esc(f.fig_name) || '—'}</div>
@@ -606,7 +606,7 @@ function manuelleTabelle(posten, art) {
       <td>${condBadges(p)}</td>
       <td class="preis">${preis != null ? fmtN(preis, CURRENCY) : '—'}</td>
       <td data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(p.storage || '')}</td>
-      <td><button class="delbtn" data-click="${loeschKlick}" ${loeschArgs} title="${esc(loeschTitel)}" aria-label="${esc(loeschTitel)}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
+      <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${loeschArgs} title="${esc(loeschTitel)}" aria-label="${esc(loeschTitel)}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;
   };
   return `<div class="tw"><table class="dt" data-stil="font-size:var(--fs-2)"><thead><tr>${
@@ -669,7 +669,7 @@ export function renderManualParts() {
       const priceStr = partPrice!=null ? fmtN(partPrice, CURRENCY) : '—';
       const condBadge = condBadges(p);
       return `<div class="man-tile" tabindex="0" role="button" data-click="openManDetail" data-arg="part" data-arg2="${esc(p.part_number)}" data-arg3="${p.color_id||0}" data-stil="cursor:pointer">
-        <div class="ca"><span class="delbtn" data-click="deleteManualPartStop" aria-hidden="true" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</span></div>
+        <div class="ca"><span class="delbtn" data-click="deleteManualPartStop"${echt()} aria-hidden="true" data-arg="${esc(p.part_number)}" data-arg2="${p.color_id||0}" data-arg3="${p.user_id||''}" title="${esc(t('parts.delete.title'))}">${TRASH_ICON_SVG}</span></div>
         ${img}
         <div class="man-tile-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
         <div class="man-tile-name">${esc(p.part_name) || '—'}</div>

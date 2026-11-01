@@ -5,6 +5,7 @@ import { I18N, LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js
 import { setAllSets, bindTabs, loadGallery, loadStats } from './02-gallery.js';
 import { plInit, resetPartsList } from './08-init.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
+import { mitZweitemFaktor } from './07-admin.js';
 
 // ═══ Escaping, Werkzeuge, api(), i18n-Glue, Auth & Panels, Login/Logout ═══
 //
@@ -853,7 +854,8 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   err.style.display='none';
   const fehler = passwortRegelText(neu) || (neu!==G('pflicht-wdh').value ? tRaw('settings.password.mismatch') : '');
   if(fehler){ err.textContent=fehler; err.style.display='block'; return; }
-  const d=await api('POST','/v1/auth/change-password',{ current: alt, newPassword: neu });
+  const d=await mitZweitemFaktor(z => api('POST','/v1/auth/change-password',{ current: alt, newPassword: neu, ...z }));
+  if(!d) return;
   if(!d.success){ err.textContent=d.error||tRaw('settings.error'); err.style.display='block'; return; }
   location.reload();
 });

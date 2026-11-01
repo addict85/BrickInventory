@@ -1,7 +1,7 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { ico, G, api, esc, toast } from './01-core.js';
-import { bestaetigeMitPasswort } from './07-admin.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 
 // ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
 // Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der
@@ -87,7 +87,7 @@ export async function ladePasskeys() {
         d.passkeys.map(p => `<tr><td><strong>${esc(p.name || '—')}</strong></td>
           <td>${new Date(p.created_at).toLocaleString()}</td>
           <td>${p.last_used ? new Date(p.last_used).toLocaleString() : '—'}</td>
-          <td><button class="btn bd btn-sm" data-click="passkeyLoeschen" data-arg="${esc(p.id)}" data-arg2="${esc(p.name || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button></td></tr>`).join('')
+          <td><button class="btn bd btn-sm" data-click="passkeyLoeschen"${echt()} data-arg="${esc(p.id)}" data-arg2="${esc(p.name || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button></td></tr>`).join('')
       }</tbody></table></div>`
     : `<p class="hinweis-absatz">${t('pk.none')}</p>`;
   const neu = !d.verfuegbar ? `<p class="text-klein hinweis-warnung">${t('pk.ohne_domain')}</p>`
@@ -96,7 +96,7 @@ export async function ladePasskeys() {
         <div class="fg"><label for="pk-name">${t('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
         <div class="fg"><label for="pk-pw">${t('settings.password.current')}</label><input type="password" id="pk-pw" autocomplete="current-password" /></div>
         ${zf?.aktiv ? `<div class="fg"><label for="pk-code">${t('login.code')}</label><input type="text" id="pk-code" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /></div>` : ''}
-        <div><button type="button" class="btn bp btn-sm" id="pk-neu" data-click="passkeyHinzufuegen">${t('pk.add')}</button></div>
+        <div><button type="button" class="btn bp btn-sm" id="pk-neu" data-click="passkeyHinzufuegen"${echt()}>${t('pk.add')}</button></div>
       </form>`;
   f.innerHTML = liste + neu;
 }
@@ -119,7 +119,8 @@ export async function passkeyHinzufuegen() {
 export async function passkeyLoeschen(id, name) {
   const password = await bestaetigeMitPasswort(tRaw('pk.delete_title'), tRaw('pk.delete_text', { name: name || '—' }), 'schluessel');
   if (password === null) return;
-  const d = await api('DELETE', `/v1/auth/passkeys/${encodeURIComponent(id)}`, { password });
+  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/passkeys/${encodeURIComponent(id)}`, { password, ...z }));
+  if (!d) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   toast(tRaw('pk.deleted'), 'success');
   ladePasskeys();

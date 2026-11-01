@@ -974,6 +974,7 @@ window.I18N_EN = {
   'login.code': 'Code from your authenticator app',
   'login.code_hint': 'Or one of your recovery codes.',
   'zf.title': 'Two-factor authentication',
+  'zf.code_noetig': 'This change also needs the code from your authenticator app (or a recovery code).',
   'zf.hint': 'A code from an authenticator app (e.g. Aegis, Google Authenticator, 1Password) in addition to your password. Protects you if someone knows your password.',
   'zf.setup': 'Set up',
   'zf.scan': 'Scan this code with your authenticator app:',

@@ -53,6 +53,14 @@ den Commits, nicht hier.
   `utils/auth.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `auth-sessions-db`.
 - Passwortwechsel und Kontolöschung beenden Sitzungen und Tokens —
   `auth-sessions-db`, `token-laufzeit-db`.
+- Beendete Sitzungen bleiben beendet: Jede Sitzung trägt
+  `users.sitzungs_version` von der Anmeldung; wer Zugänge beendet (Passwort,
+  Sperre, Rolle, Löschen, „andere beenden“, 2FA eingeschaltet), erhöht sie,
+  jede Anfrage vergleicht (5 s Zwischenspeicher je Konto). Eine von einer
+  laufenden Anfrage zurückgeschriebene Zeile gilt damit nicht mehr:
+  `src/konto/sitzungsVersion.ts` — `sitzungsversion-db`.
+- Drosseln je Adresse zählen ein IPv6-/64 als eine Adresse, IPv4 in IPv6 als
+  IPv4: `drosselAdresse` in `src/konto/loginLimiter.ts` — `drossel-ipv6-db`.
 - Tokens mit Scope: `app` hat nie Verwalterrechte, QR-Codes geben nur `app`;
   Verwalterrouten verlangen Sitzung oder Scope `voll`. Gleitender Ablauf
   (90 Tage), Tausch über `/auth/token-rotieren` mit 5 min Überlappung;
@@ -66,6 +74,9 @@ den Commits, nicht hier.
   einer Haushaltseinladung verlangen bei aktivem TOTP auch den Code; jede
   Code-Prüfung (auch das Bestätigen der Einrichtung) läuft über die
   Konto-Bremse — `passkeys-db`, `haushalt-beitreten-db`, `zweiter-faktor-db`.
+  Ebenso Passwortwechsel, Passkey löschen und neue E-Mail (`code`; fehlt er,
+  400 `zweiter_faktor_noetig` ohne Zählung) — `zweiter-faktor-heikel-db`.
+  Eine neue E-Mail gilt auch beim Verwalter erst nach dem Link als bestätigt.
 - Wiederherstellungscodes: 80 Bit, als HMAC mit Teilschlüssel des
   Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`.
 - Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys; der
@@ -137,6 +148,8 @@ den Commits, nicht hier.
   Anfrageteil (dort stehen API-Schlüssel), fremder Antworttext nur gekürzt
   im Protokoll — `abruf-helfer` (echter TLS-Server), `umleitungen` (niemand
   sonst ruft `https.get`/`fetch`), `download-grenzen`, `img-proxy-size`.
+  Hosts exakt (Unterdomänen nur über `*.`-Eintrag, nur bei `lego.com`), nur
+  Standardport, keine Userinfo: `hostErlaubt` in `src/infra/fremdeAdressen.ts` — `umleitungen`.
   Ausgenommen sind nur `scripts/loadtest.js` und `scripts/check-api-contract.js`,
   die von der Kommandozeile den eigenen Server rufen.
 - Bild-Proxy: Cache-Schlüssel ohne Zeitstempel im Anfrageteil, CDN-Abrufe je
@@ -163,6 +176,11 @@ den Commits, nicht hier.
 - Ströme und Sammelberichte (Erfassungsstrom, CSV-/XML-Importe) melden
   Fachfehler mit Code, alles andere als `interner_fehler`; der Text steht nur
   im Protokoll: `oeffentlicherFehler` in `src/infra/httpError.ts` — `fehlertext-intern-db`.
+- Aktions-Dispatcher kein Skript-Gadget: kein `mouseenter`, je Ereignis nur
+  die genutzten Handler, kein Rückfall auf `window`; Löschen, Konto, Tokens
+  und Verwaltung nur von Elementen aus dem Markup beim Laden oder aus
+  Vorlagen mit `echt()` (Zufallsmarke je Seitenladung):
+  `public/js/11-actions.js`, `public/js/00-registry.js` — `aktionen-schutz`.
 
 ### Protokoll und Kontingente
 - `X-Request-Id` nur aus `[A-Za-z0-9._:-]{1,64}`, sonst eigene Kennung;
@@ -192,6 +210,8 @@ den Commits, nicht hier.
 - Build-Kontext ohne `.env`, `backups/`, `schluessel/`, `data/` — `dockerfile`.
 - Der Entrypoint schreibt seine Marke unter `/app/data` nicht als root und
   folgt keinem Symlink des Dienstes — `entrypoint-start`.
+- `docker-publish.yml`: Der Tag beim Handstart nur über `env` und in
+  Docker-Tag-Form, sonst Abbruch — `workflow-tag`.
 - `.github/workflows/sicherheit.yml`: CodeQL (TypeScript, Kotlin), Trivy
   (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver.
 
@@ -200,7 +220,10 @@ den Commits, nicht hier.
 - `DB_PASSWORD` und `BRICK_HOST` sind Pflicht; Klartext nur als bewusste
   Ausnahme (Port 3000 in `compose.yaml` einkommentieren, `COOKIE_SECURE=0`).
 - `caddy/data/` mitsichern und wie ein Passwort behandeln (Schlüssel der CA).
-- pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur lesend.
+- pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur lesend und nur mit
+  Anmeldung (`PGWEB_PASSWORD`, sonst startet er nicht) — `compose-pgweb`.
+- `scripts/restore.sh` entpackt ein data-Archiv nur, wenn es aus Dateien und
+  Ordnern unter `data/` besteht (`scripts/archiv-pruefen.sh`) — `restore-archiv`.
 - Container ohne Capabilities ausser den nötigen, `read_only`, `no-new-privileges`.
 - Datenschlüssel getrennt von `data/` sichern (`DATA_KEY`), sonst sind
   Geheimnisse und Gutschein-PDFs einer Sicherung nicht lesbar.
@@ -239,6 +262,9 @@ den Commits, nicht hier.
   eines Clients geladen wurden, bleiben liegen, bis sie neu geladen werden.
 - **Fremdkontingent**: Nicht-Verwalter bekommen zusammen höchstens die Hälfte;
   ein Verwalter oder ein Hintergrundlauf kann den Rest weiterhin aufbrauchen.
+- **Sitzungsversion zwischengespeichert**: Läuft mehr als ein Webprozess,
+  sieht ein anderer Prozess eine beendete Sitzung bis zu 5 s später als
+  beendet (im eigenen Prozess sofort).
 - **ZAP ohne Anmeldung**: Der Baseline-Lauf sieht nur die öffentlichen Seiten.
 - **Gemeinsamer Set-Katalog**: `set_catalog` füllt sich beim Erfassen. Name
   und Daten eines Sets (etwa über `/sets/info`) verraten deshalb weiterhin,

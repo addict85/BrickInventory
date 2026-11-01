@@ -7,6 +7,8 @@ import { zaehleAnfrage } from '../loginLimiter';
 import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetigung';
 import { sendeFehler } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/httpError';
+import { sitzungsVersionAusDb } from '../sitzungsVersion';
+import * as zf from '../zweiterFaktor';
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
  * einem vertrauten Proxy kommt.
@@ -23,17 +25,20 @@ export function anmelden(req: Request, username: unknown, password: unknown, cod
 /** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
  * Anfrage die neue ID schon kennt.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#establishsession */
-export function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
+export async function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
                                                        mussPasswortAendern?: boolean }): Promise<void> {
+  // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
+  const sitzungsVersion = await sitzungsVersionAusDb(data.userId)
+    .catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0)) ?? 0;
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {
       // Nur in Tests ohne express-session: Im Betrieb steht die Middleware davor.
-      Object.assign(req.session || (req.session = {} as typeof req.session), data, { angemeldetAm: Date.now() });
+      Object.assign(req.session || (req.session = {} as typeof req.session), data, { angemeldetAm: Date.now(), sitzungsVersion });
       return resolve(undefined);
     }
     req.session.regenerate((err?: Error) => {
       if (err) return reject(err);
-      Object.assign(req.session, data, { angemeldetAm: Date.now() });
+      Object.assign(req.session, data, { angemeldetAm: Date.now(), sitzungsVersion });
       req.session.save((e2?: Error) => (e2 ? reject(e2) : resolve(undefined)));
     });
   });
@@ -127,6 +132,15 @@ export async function bestaetigePasswort(req: Request, res: Response, uid: numbe
   const absage = await pruefeBestaetigung(uid, passwort, zusatz);
   if (absage) sendeFehler(req, res, absage.status, absage.code, absage.vars);
   return !absage;
+}
+
+/** Bei aktivem zweitem Faktor auch der Code. Fehlt er, kommt die Absage vor
+ * jeder Prüfung: Ein Erfolg des Passworts setzte sonst die Bremse zurück. */
+export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: unknown,
+                                          code: unknown): Promise<boolean> {
+  if (!await zf.istAktiv(uid)) return bestaetigePasswort(req, res, uid, passwort);
+  if (!String(code ?? '').trim()) { sendeFehler(req, res, 400, 'zweiter_faktor_noetig'); return false; }
+  return bestaetigePasswort(req, res, uid, passwort, { zweiterFaktor: code });
 }
 
 export async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {

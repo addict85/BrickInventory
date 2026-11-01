@@ -43,9 +43,10 @@ if ! gunzip -c "$DUMP" | tail -n 5 | grep -q 'PostgreSQL database dump complete'
 fi
 echo "[restore] Dump-Endmarke vorhanden: $DUMP"
 
-if [ -n "$DATA_TAR" ] && [ ! -f "$DATA_TAR" ]; then
-  echo "[restore] FEHLER: $DATA_TAR existiert nicht." >&2
-  exit 1
+# Das Archiv vor jeder Änderung prüfen; entpackt wird später nur data/.
+if [ -n "$DATA_TAR" ]; then
+  sh "$(dirname "$0")/archiv-pruefen.sh" "$DATA_TAR"
+  echo "[restore] Archiv geprüft: $DATA_TAR"
 fi
 
 # 2. Einmal nachfragen — das hier überschreibt den aktuellen Stand.
@@ -64,7 +65,7 @@ echo "[restore] Datenbank eingespielt."
 #    Galerie und Anleitungsliste ins Leere, bis alles neu geladen ist.
 if [ -n "$DATA_TAR" ]; then
   echo "[restore] Laufzeitdaten aus $DATA_TAR …"
-  tar xzf "$DATA_TAR"
+  tar xzf "$DATA_TAR" --no-same-owner data
   echo "[restore] data/ wiederhergestellt."
 else
   echo "[restore] Hinweis: kein data-Archiv angegeben — Bilder/Anleitungen bleiben wie sie sind."

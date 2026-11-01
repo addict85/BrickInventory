@@ -223,13 +223,17 @@ docker compose --profile tools down pgweb     # wieder abschalten
 ```
 
 pgweb ist standardmässig auf **Lesen** beschränkt (`--readonly` in
-`compose.yaml`). Für Reparaturen die Zeile dort auskommentieren und den Dienst
+`compose.yaml`). Für Reparaturen `--readonly` dort streichen und den Dienst
 neu starten.
 
-> **Wichtig:** pgweb hat **keine Anmeldung**. Wer die Seite erreicht, sieht und
-> ändert die ganze Datenbank. Der Port ist deshalb an `127.0.0.1` gebunden und
-> nur auf dem Server selbst erreichbar — diese Bindung bitte nicht ändern. Von
-> einem anderen Rechner aus geht es per SSH-Tunnel:
+Die Seite fragt nach Benutzer und Passwort (HTTP-Basic): `PGWEB_USER`
+(Vorgabe `pgweb`) und `PGWEB_PASSWORD` in `.env`. Ohne `PGWEB_PASSWORD`
+startet pgweb nicht und meldet das im Protokoll (`docker compose logs pgweb`).
+
+> **Wichtig:** Wer sich an pgweb anmeldet, sieht die ganze Datenbank. Der Port
+> ist deshalb zusätzlich an `127.0.0.1` gebunden und nur auf dem Server selbst
+> erreichbar — diese Bindung bitte nicht ändern. Von einem anderen Rechner aus
+> geht es per SSH-Tunnel:
 >
 > ```bash
 > ssh -L 8081:127.0.0.1:8081 <benutzer>@<server>

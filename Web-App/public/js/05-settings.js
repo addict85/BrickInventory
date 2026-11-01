@@ -1,10 +1,10 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
 import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText} from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
-import { confirmDelete, bestaetigeMitPasswort } from './07-admin.js';
+import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 
 // ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -300,7 +300,7 @@ export async function loadTokens() {
         // Benutzung nach; die feste, die beim QR-Code gewaehlt wurde, nicht.
         tk.hard_expires_at ? ` <span class="rb ra" title="${esc(tokenDatum(tk.hard_expires_at))}">${t('tokens.fixed')}</span>` : ''}</td>
       <td>${tk.aktuell ? '' :
-        `<button class="btn bd btn-sm" data-click="revokeToken" data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>`}</td>
+        `<button class="btn bd btn-sm" data-click="revokeToken"${echt()} data-arg="${esc(tk.token_id)}" data-arg2="${esc(tk.label || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button>`}</td>
     </tr>`).join('')
   }</tbody></table></div>`;
 }
@@ -450,8 +450,9 @@ G('btn-sav-prof').onclick = async () => {
     if (typeof initDefaultCondition === 'function') initDefaultCondition();
 
     // Profil
-    const d = await api('PUT', '/v1/auth/profile', { username, email, first_name, last_name,
-                                                      ...(emailChanged ? { password_current: pwC } : {}) });
+    const d = await mitZweitemFaktor(z => api('PUT', '/v1/auth/profile', { username, email, first_name, last_name,
+                                                      ...(emailChanged ? { password_current: pwC, ...z } : {}) }));
+    if (!d) return;
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
     if (d.emailChanged) {
       const hint = G('prof-email-hint');
@@ -474,8 +475,9 @@ G('btn-sav-prof').onclick = async () => {
       // laengst (SettingsScreen sperrt den Knopf), die Webapp lief bis
       // hierher in den Serverfehler.
       if (passwortRegelText(pwN)) { toast(passwortRegelText(pwN), 'error'); return; }
-      const dPw = await api('POST', '/v1/auth/change-password',
-        { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked });
+      const dPw = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password',
+        { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked, ...z }));
+      if (!dPw) return;
       if (!dPw.success) {
         // Profil & Währung sind gespeichert, nur das Passwort schlug fehl —
         // das dem Nutzer explizit so sagen statt pauschal "Fehler".
@@ -578,11 +580,11 @@ function renderHousehold(d){
   const eltern = d.parents || (d.linked_to ? [d.linked_to] : []);
   if(eltern.length){
     teile.push(`<div>${t('household.state_parents', { n: eltern.length })}${liste(eltern,
-      a => `<button class="btn" data-click="unlinkFromParent" data-arg="${a.id}">${t('household.unlink_self')}</button>`)}</div>`);
+      a => `<button class="btn" data-click="unlinkFromParent"${echt()} data-arg="${a.id}">${t('household.unlink_self')}</button>`)}</div>`);
   }
   if(d.sub_accounts?.length){
     teile.push(`${eltern.length ? '<div data-stil="margin-top:.6rem">' : '<div>'}${t('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
-      a => `<button class="btn" data-click="unlinkHousehold" data-arg="${a.id}">${t('household.unlink_sub')}</button>`)}</div>`);
+      a => `<button class="btn" data-click="unlinkHousehold"${echt()} data-arg="${a.id}">${t('household.unlink_sub')}</button>`)}</div>`);
   }
   if(!teile.length){
     teile.push(`<div data-stil="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
@@ -740,7 +742,7 @@ async function ladeProtokoll(){
  */
 function nutzerKnopf(u, art, klick, symbol, wortKey, titelKey, arg2) {
   const wort = tRaw(wortKey), titel = tRaw(titelKey);
-  return `<button type="button" class="btn ${art} btn-sm" data-click="${klick}" data-arg="${u.id}"` +
+  return `<button type="button" class="btn ${art} btn-sm" data-click="${klick}"${echt()} data-arg="${u.id}"` +
     `${arg2 !== undefined ? ` data-arg2="${esc(String(arg2))}"` : ''} title="${esc(titel)}"` +
     ` aria-label="${esc(`${wort}: ${u.username}`)}">${ico(symbol)}<span>${esc(wort)}</span></button>`;
 }
@@ -892,7 +894,7 @@ export async function ladeAlarmUebersicht() {
         ${marke}
         <span data-stil="font-size:var(--fs-0);color:var(--mut);white-space:nowrap">${esc(stand)}</span>
       </div>
-      <button class="btn bs btn-sm" data-click="loescheAlarm" data-arg="${esc(schluessel)}"
+      <button class="btn bs btn-sm" data-click="loescheAlarm"${echt()} data-arg="${esc(schluessel)}"
               aria-label="${esc(tRaw('common.delete'))}: ${esc(a.set_number)}" title="${esc(tRaw('common.delete'))}"
               data-arg2="${esc(a.set_number)}" data-stil="padding:2px 8px">${ico('loeschen')}</button>
     </div>`;
@@ -987,7 +989,7 @@ export async function ladeLagerortVerwaltung() {
               title="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-label="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
-      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs btn-sm" data-click="loescheLagerort" data-arg="${o.id}"
+      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs btn-sm" data-click="loescheLagerort"${echt()} data-arg="${o.id}"
               aria-label="${esc(tRaw('common.delete'))}: ${esc(o.name)}" title="${esc(tRaw('common.delete'))}"
               data-arg2="${esc(o.name)}" data-stil="padding:2px 8px">${ico('loeschen')}</button></span>
     </div>`;
