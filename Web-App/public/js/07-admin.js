@@ -1,4 +1,4 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { detailZeile, oderStrich } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
@@ -1395,7 +1395,7 @@ export async function loadBricksetQueue() {
             <button class="btn bs btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
               data-click="retryBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('aktualisieren')}</button>
             <button class="btn bd btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
-              data-click="deleteBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('loeschen')}</button>
+              data-click="deleteBricksetQueueEntry"${echt()} data-arg="${esc(e.set_number)}" data-self="1">${ico('loeschen')}</button>
           </div>
         </div>`).join('')}
     </div>`;

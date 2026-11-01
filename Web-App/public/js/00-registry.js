@@ -35,19 +35,33 @@ export function registerActions(map) {
   }
 }
 
-/**
- * Handler nachschlagen.
- *
- * Rückfall auf window: Der Log-Betrachter (js/logviewer.js) wird zur Laufzeit
- * in ein eigenes Popup-Fenster geladen, ist kein Modul und meldet seine vier
- * Handler nicht an. Für ihn gilt weiterhin die alte Auflösung.
- *
+/** Nur angemeldete Handler, kein Rückfall auf window: Sonst wäre jede globale
+ * Funktion (open, close, print …) aus eingeschleustem Markup aufrufbar. Der
+ * Log-Betrachter im Popup löst seine Handler selbst auf (js/logviewer.js).
  * @param {string} name
- * @returns {Function|null}
- */
+ * @returns {Function|null} */
 export function resolveAction(name) {
-  const fn = _actions.get(name) || (typeof window !== 'undefined' ? window[name] : null);
+  const fn = _actions.get(name);
   return typeof fn === 'function' ? fn : null;
+}
+
+// Zufallsmarke je Seitenladung. Gefährliche Aktionen laufen nur von Elementen,
+// die beim Laden schon im Markup standen oder deren Vorlage echt() trägt;
+// eingeschleustes HTML kennt die Marke nicht.
+const _marke = typeof crypto !== 'undefined' && crypto.getRandomValues
+  ? [...crypto.getRandomValues(new Uint8Array(12))].map(b => b.toString(16).padStart(2, '0')).join('')
+  : String(Math.random()).slice(2);
+const _vonAnfang = new WeakSet();
+if (typeof document !== 'undefined')
+  for (const el of document.querySelectorAll('[data-click],[data-change],[data-input],[data-blur],[data-keydown]'))
+    _vonAnfang.add(el);
+
+/** Attribut für Vorlagen, die eine gefährliche Aktion auslösen. */
+export function echt() { return ` data-echt="${_marke}"`; }
+
+/** @param {Element} el  das Element mit dem data-*-Attribut */
+export function istVertraut(el) {
+  return _vonAnfang.has(el) || el.getAttribute('data-echt') === _marke;
 }
 
 /** Alle angemeldeten Namen — für Tests und die Fehlersuche. */

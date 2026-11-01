@@ -12,7 +12,7 @@
 // hinzufügt, hängt es dort an, wo er gerade liest. Hier stehen jetzt beide
 // Seiten der Überwachung beieinander — die Liste, die zeigt, was läuft, und
 // das Fenster, das zeigt, was dabei protokolliert wurde.
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { fmtDatum, ico, G, api, esc, escHtmlAttr, toast } from './01-core.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 
@@ -275,7 +275,7 @@ async function zeigeAuftraege() {
   const zahl = {};
   for (const z of d.zusammenfassung) (zahl[z.art] ||= {})[z.status] = z.anzahl;
   const knopf = (aktion, arg, text) =>
-    `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="${aktion}" data-arg="${esc(arg)}">${text}</button>`;
+    `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="${aktion}"${echt()} data-arg="${esc(arg)}">${text}</button>`;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
   const zeile = (a) => {
     const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');

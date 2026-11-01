@@ -1,4 +1,4 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { ico, G, api, esc, toast } from './01-core.js';
 import { confirmDelete, bestaetigeMitPasswort } from './07-admin.js';
@@ -13,7 +13,7 @@ const flaeche = () => G('zf-flaeche');
 function zeichne(html) { const f = flaeche(); if (f) f.innerHTML = html; }
 
 const knopf = (aktion, text, art = 'bs') =>
-  `<button type="button" class="btn ${art} btn-sm" data-click="${aktion}">${text}</button>`;
+  `<button type="button" class="btn ${art} btn-sm" data-click="${aktion}"${echt()}>${text}</button>`;
 // Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js
 // findet nur wörtliche id-Angaben.
 const PASSWORTFELD = () =>
@@ -28,7 +28,7 @@ export async function ladeZweitenFaktor() {
   if (!d.aktiv) {
     zeichne(`<form class="sform" data-submit="zf-start" data-stil="max-width:420px">
       ${PASSWORTFELD()}
-      <div><button type="button" class="btn bp btn-sm" id="zf-start" data-click="zfEinrichten">${t('zf.setup')}</button></div>
+      <div><button type="button" class="btn bp btn-sm" id="zf-start" data-click="zfEinrichten"${echt()}>${t('zf.setup')}</button></div>
     </form>`);
     return;
   }

@@ -1,4 +1,4 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, ico, G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
@@ -113,7 +113,7 @@ function zeile(g) {
         : `<span class="voucher-nopdf" title="${tRaw('vouchers.no_pdf')}">—</span>`}
         <button class="v-btn" data-click="gutscheinBearbeiten" data-arg="${g.id}"
                 title="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
-        <button class="delbtn" data-click="gutscheinLoeschen" data-arg="${g.id}"
+        <button class="delbtn" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
                 title="${tRaw('vouchers.delete_title')}">${TRASH_ICON_SVG}</button>
       </div>
     </div>`;

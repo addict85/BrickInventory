@@ -14,7 +14,7 @@
 // hinaus geht renderAcquisitionSummary. Genau das machte den Schnitt möglich,
 // ohne irgendetwas umzubauen.
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
@@ -142,7 +142,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
         </select>
       </td>` : ''}
       <td data-stil="padding:6px 4px;text-align:center">
-        <button class="acq-loeschen" data-click="acqDelete" data-arg="${esc(sn)}" data-arg2="${a.id}"
+        <button class="acq-loeschen" data-click="acqDelete"${echt()} data-arg="${esc(sn)}" data-arg2="${a.id}"
           title="${t('gallery.delete.title')}" aria-label="${t('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
     </tr>`;
@@ -992,7 +992,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
         </select>
       </td>` : ''}
       <td data-stil="padding:6px 4px;text-align:center">
-        <button data-click="manAcqDelete" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}"
+        <button data-click="manAcqDelete"${echt()} data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}"
           data-stil="background:none;border:none;cursor:pointer;font-size:var(--fs-4);color:var(--r500);padding:2px 4px;border-radius:4px">${ico('loeschen')}</button>
       </td>
     </tr>`;
