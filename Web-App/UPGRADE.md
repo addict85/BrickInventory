@@ -671,3 +671,30 @@ QR-Codes gelten weiter. Wer `compose.yaml` angepasst hat: Die Zeile
   Antwort wie eine erfolgreiche Registrierung; die angegebene Adresse bekommt
   eine Mail „Benutzername schon vergeben". So lässt sich ohne Postfach nicht
   mehr abfragen, welche Konten es gibt.
+
+## 25. Abrufe nach aussen, Bild-Proxy und Eingabeprüfung
+
+- **Bild-Proxy-Cache neu geschlüsselt**: Bei `cdn.rebrickable.com`,
+  `images.brickset.com` und `img.bricklink.com` zählt der Anfrageteil
+  (Zeitstempel) nicht mehr. Bestehende Einträge unter `data/img_proxy_cache/`
+  werden dadurch einmal neu geholt; die alten fallen nach 30 Tagen oder über
+  den Deckel weg. Wer sofort Platz will: Ordner leeren, er füllt sich wieder.
+- **Neue Variablen** (`.env.example`):
+  `BILD_CACHE_MAX_MB` (Vorgabe 2048) deckelt den Cache, älteste Nutzung zuerst;
+  `BILD_ABRUFE_JE_MINUTE` (Vorgabe 240) begrenzt CDN-Abrufe je Konto, darüber
+  antwortet der Proxy 429 (Cache-Treffer zählen nicht).
+- **Antworten des Bild-Proxys** tragen `Cache-Control: private`; ein geteilter
+  Zwischenspeicher vor Caddy hält sie nicht mehr.
+- **Eingaben** werden im Betrieb gegen den API-Vertrag geprüft: Ein Feld mit
+  falschem Typ, zu langem Text oder ein wiederholter Abfrageparameter ergibt
+  400 mit `code: "eingabe_ungueltig"` statt eines 500. Grenzen der Kontofelder:
+  Vor-/Nachname 100, E-Mail 254, Benutzername 64 Zeichen.
+- **HSTS** setzt der Server nur noch bei `req.secure`, also hinter dem in
+  `TRUST_PROXY` genannten Proxy oder bei direktem TLS. Wer ohne
+  `NODE_ENV=production` hinter Caddy betreibt, bekommt die Kopfzeile von der
+  App nicht mehr (Caddy kann sie selbst setzen).
+- **Image**: `.env`, `.env.*` und `backups/` gehören nicht mehr zum
+  Build-Kontext; `backups/` steht in `.gitignore`.
+- **PDF.js** kommt aus `pdfjs-dist` (exakte Fassung in `package.json`). Nach
+  einem Update `npm run build:frontend` laufen lassen; das kopiert die Dateien
+  nach `public/vendor/pdfjs/`.

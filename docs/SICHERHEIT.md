@@ -100,14 +100,33 @@ den Commits, nicht hier.
   Gutscheine: `utils/gutscheinDateien.ts` — `konto-dateien-db`.
 
 ### Abrufe nach aussen (SSRF, 5)
-- Nur https, Host-Liste bei jedem Sprung, Schlüssel nicht über Hostwechsel,
-  Größengrenze im Strom: `utils/fremdeAdressen.ts`, `clients/rebrickable.ts`,
-  `utils/bildDatei.ts` — `umleitungen`, `download-grenzen`, `img-proxy-size`.
+- Ein Weg nach draussen: `src/infra/abruf.ts` (`holeHttps`, `oeffneHttps`).
+  Nur https, Host-Liste für Start und jeden Sprung, relative `Location`
+  aufgelöst, höchstens 5 Umleitungen, Byte-Grenze (angesagt und gezählt),
+  Gesamtfrist, `Authorization`/`Cookie` fallen bei Hostwechsel weg; jeder
+  Fehler wird Ablehnung, kein Wurf im Antwort-Rückruf. Fehlertexte ohne
+  Anfrageteil (dort stehen API-Schlüssel), fremder Antworttext nur gekürzt
+  im Protokoll — `abruf-helfer` (echter TLS-Server), `umleitungen` (niemand
+  sonst ruft `https.get`/`fetch`), `download-grenzen`, `img-proxy-size`.
+  Ausgenommen sind nur `scripts/loadtest.js` und `scripts/check-api-contract.js`,
+  die von der Kommandozeile den eigenen Server rufen.
+- Bild-Proxy: Cache-Schlüssel ohne Zeitstempel im Anfrageteil, CDN-Abrufe je
+  Konto gedrosselt (`BILD_ABRUFE_JE_MINUTE`), Cache gedeckelt
+  (`BILD_CACHE_MAX_MB`), Antworten `Cache-Control: private`:
+  `routes/imgProxy.ts`, `src/katalog/bilder/imgCacheServe.ts` — `bild-proxy-deckel`.
 - Nummern als kodiertes Pfadsegment (`pfadSegment`) — `fremde-pfade-db`.
 
+### Eingaben (2, 3)
+- Rumpf und Abfrage im Betrieb gegen den API-Vertrag, unmittelbar vor der
+  Route (`eingabePruefen` in `src/infra/vertrag/pruefen.ts`): falscher Typ,
+  zu langer Text oder wiederholter Abfrageparameter ergeben 400
+  `eingabe_ungueltig` — `eingabe-vertrag-db`. Routen ohne `eingabe` im
+  Vertrag prüfen selbst (`src/infra/validate.ts`).
+
 ### Ausgabe und Kopfzeilen (2)
-- CSP ohne Inline-Skripte, `X-Frame-Options`, `nosniff`, HSTS hinter TLS:
-  `server.ts` — `csp-actions`, `hsts`, `frontend-escaping`.
+- CSP ohne Inline-Skripte, `X-Frame-Options`, `nosniff`, HSTS nur bei
+  `req.secure` (also hinter dem vertrauten Proxy), nicht nach einem rohen
+  `X-Forwarded-Proto`: `server.ts` — `csp-actions`, `hsts`, `frontend-escaping`.
 
 ### Protokoll und Kontingente
 - `X-Request-Id` nur aus `[A-Za-z0-9._:-]{1,64}`, sonst eigene Kennung;
@@ -124,6 +143,13 @@ den Commits, nicht hier.
 ### Lieferkette (5)
 - Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-pgweb`.
 - `npm ci` aus dem Lockfile; `npm audit --omit=dev` (web-ci.yml).
+- PDF.js als `pdfjs-dist` mit exakter Fassung; `public/vendor/pdfjs/` ist eine
+  beim Bauen geschriebene, byte-gleiche Kopie — `pdfjs-fassung`. Als
+  devDependency fehlt es in `npm audit --omit=dev`; web-ci.yml prüft es
+  deshalb zusätzlich im vollen `npm audit`.
+- Build-Kontext ohne `.env`, `backups/`, `schluessel/`, `data/` — `dockerfile`.
+- Der Entrypoint schreibt seine Marke unter `/app/data` nicht als root und
+  folgt keinem Symlink des Dienstes — `entrypoint-start`.
 - `.github/workflows/sicherheit.yml`: CodeQL (TypeScript, Kotlin), Trivy
   (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver.
 
