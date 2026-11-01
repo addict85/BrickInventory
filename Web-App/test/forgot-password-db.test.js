@@ -26,6 +26,8 @@
  *   B  Prüfung erst nach der Nutzersuche, mit 200 für Unbekannte → rot: „verrät die E-Mail"
  *   C  (01.11., gemessen) Sperre in forgot-password wieder nur bei NODE_ENV=production → rot: „Reset-Code
  *      an den Host aus dem Header"
+ * Dritter Test, Gegenproben (01.11., gemessen): Pausenbedingung im UPDATE entfernt → rot
+ *   „zweiter Link innerhalb der Pause“; Mindestdauer entfernt → rot „die Dauer verrät die Adresse“
  *
  * Voraussetzung: Test-DB (Inhalt wird verändert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
@@ -181,4 +183,39 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
     await new Promise(r => srv.close(r));
   }
+});
+
+test('höchstens ein Link je Konto in 15 Minuten, und jede Antwort braucht gleich lange', { concurrency: 1 }, async (t) => {
+  const USERNAME = `forgotpause_${process.pid}`;
+  await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
+  await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`);
+  await db.run(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
+                VALUES ($1, $2, 'x', true, true)`, [USERNAME, `${USERNAME}@example.ch`]);
+  const app = express();
+  app.use(express.json());
+  app.use((req, _res, next) => { req.session = {}; next(); });
+  app.use(AUTH, _req('routes/auth.js'));
+  const srv = app.listen(0);
+  t.after(async () => {
+    await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
+    await new Promise(r => srv.close(r));
+  });
+  const forgot = async (email) => {
+    const beginn = Date.now();
+    const r = await fetch(`http://localhost:${srv.address().port}${AUTH}/forgot-password`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) });
+    const dauer = Date.now() - beginn;
+    const z = await db.get(`SELECT reset_token FROM users WHERE username = $1`, [USERNAME]);
+    return { status: r.status, body: await r.json(), dauer, token: z.reset_token };
+  };
+  const erste = await forgot(`${USERNAME}@example.ch`);
+  assert.ok(erste.token);
+  const zweite = await forgot(`${USERNAME}@example.ch`);
+  assert.equal(zweite.token, erste.token, 'zweiter Link innerhalb der Pause — das Postfach lässt sich fluten');
+  assert.deepEqual(zweite.body, erste.body, 'die Antwort verrät die Pause');
+  // Nach der Pause (Ablauf liegt weniger als 45 Minuten vorn) gibt es wieder einen.
+  await db.run(`UPDATE users SET reset_token_expires = NOW() + INTERVAL '44 minutes' WHERE username = $1`, [USERNAME]);
+  assert.notEqual((await forgot(`${USERNAME}@example.ch`)).token, erste.token, 'nach der Pause kein neuer Link');
+  const unbekannt = await forgot(`gibt.es.nicht.${process.pid}@example.ch`);
+  for (const r of [erste, zweite, unbekannt]) assert.ok(r.dauer >= 390, `Antwort nach ${r.dauer} ms — die Dauer verrät die Adresse`);
 });

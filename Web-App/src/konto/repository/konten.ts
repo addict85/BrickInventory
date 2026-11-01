@@ -132,8 +132,15 @@ export function aktivesKontoNachEmail(email: string): Promise<Konto | undefined>
   return db.get<Konto>('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active', [email]);
 }
 
-export async function setzeRuecksetzToken(id: number, hash: string, bis: Date): Promise<void> {
-  await db.run('UPDATE users SET reset_token=$1, reset_token_expires=$2 WHERE id=$3', [hash, bis, id]);
+/** Der Zeitpunkt des letzten Links ergibt sich aus seinem Ablauf; die Bedingung
+ * im UPDATE lässt auch bei gleichzeitigen Anfragen nur eine durch.
+ * @returns false, wenn der letzte Link jünger als `pauseMin` ist */
+export async function setzeRuecksetzTokenWennFrei(id: number, hash: string, gueltigMin: number, pauseMin: number): Promise<boolean> {
+  return !!(await db.run(
+    `UPDATE users SET reset_token = $1, reset_token_expires = NOW() + make_interval(mins => $2::int)
+      WHERE id = $3 AND (reset_token_expires IS NULL
+                         OR reset_token_expires < NOW() + make_interval(mins => $2::int - $4::int))`,
+    [hash, gueltigMin, id, pauseMin])).changes;
 }
 
 export function kontoNachRuecksetzToken(hash: string): Promise<{ id: number } | undefined> {

@@ -557,6 +557,8 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     });
 });
 
+const RUECKSETZ_GUELTIG_MIN = 60, RUECKSETZ_PAUSE_MIN = 15, RUECKSETZ_MINDESTDAUER_MS = 400;
+
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {
   const { email } = req.body;
   if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
@@ -567,27 +569,23 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
     hinweisOhneBasisUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
     return sendeFehler(req, res, 503, 'passwort_reset_nicht_eingerichtet');
   }
-  // LOWER auf beiden Seiten wie bei jeder E-Mail-Suche; sonst bekäme eine anders
-  // geschriebene Adresse still nie eine Mail.
+  // Immer dieselbe Antwort nach derselben Mindestdauer: Weder Inhalt noch Zeit
+  // verraten, ob es die Adresse gibt.
+  const beginn = Date.now();
   const user = await K.aktivesKontoNachEmail(email);
-  // Immer Erfolg, damit sich keine E-Mail-Adressen abfragen lassen.
-  if (!user) return res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
-
-  const token   = crypto.randomBytes(32).toString('hex');
-  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-  await K.setzeRuecksetzToken(user.id, hashToken(token), expires);
-
-  // NICHT awaiten: Die Dauer des SMTP-Versands verriete sonst, ob die Adresse
-  // existiert. Auch die Sprache wird deshalb erst in der Kette geholt.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password-2
-  getSetting(user.id, 'language', 'de')
-    .catch(() => 'de')
-    .then((lang: unknown) => sendPasswordResetMail(
-      // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch
-      // als Unicode-Variante (Kelvin-K, „İ") und kann ein fremdes Postfach sein.
-      user.email ?? '', user.first_name || user.username, token, getBaseUrl()!, String(lang ?? 'de')))
-    .catch((e: any) => console.error('[forgot-password] Mailversand fehlgeschlagen:', e?.message));
-
+  const token = crypto.randomBytes(32).toString('hex');
+  // Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach.
+  if (user && await K.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN)) {
+    // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
+    // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password-2
+    getSetting(user.id, 'language', 'de')
+      .catch(() => 'de')
+      // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
+      .then((lang: unknown) => sendPasswordResetMail(
+        user.email ?? '', user.first_name || user.username, token, getBaseUrl()!, String(lang ?? 'de')))
+      .catch(logAndContinue('forgot-password:mailversand'));
+  }
+  await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));
   res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
 });
 
