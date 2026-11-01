@@ -62,6 +62,25 @@ den Commits, nicht hier.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
   einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `utils/passkeys.ts` —
   `passkeys-db`. TOTP: `utils/zweiterFaktor.ts` — `zweiter-faktor-db`.
+- Kein Weg am zweiten Faktor vorbei: Ein neuer Passkey und das Einlösen
+  einer Haushaltseinladung verlangen bei aktivem TOTP auch den Code; jede
+  Code-Prüfung (auch das Bestätigen der Einrichtung) läuft über die
+  Konto-Bremse — `passkeys-db`, `haushalt-beitreten-db`, `zweiter-faktor-db`.
+- Wiederherstellungscodes: 80 Bit, als HMAC mit Teilschlüssel des
+  Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`.
+- Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys; der
+  Wechsel Passkeys auf Wunsch. Hinweis-Mail bei neuem Passkey und bei
+  Passwortwechsel/-rücksetzung, mit den Konten, die die Sammlung sehen —
+  `passkeys-db`.
+- „Passwort vergessen": ein Link je Konto und 15 Minuten, gleiche Antwort
+  und Mindestdauer für bekannte und unbekannte Adressen; Links nur aus
+  `APP_BASE_URL`, nie aus Kopfzeilen — `forgot-password-db`.
+- Startpasswort (`must_change_password`): bis zum Wechsel nur
+  `change-password`/`logout`, sonst 403 — `passwort-pflichtwechsel-db`.
+- Benutzernamen ohne Rücksicht auf Gross-/Kleinschreibung eindeutig
+  (Index, Migration 0090) — `konto-anlegen-db`.
+- „Alle meine Daten löschen" nur mit Passwort — `alles-loeschen-haushalt-db`.
+- Mailadressen stehen im Protokoll nur maskiert — `haushalt-beitreten-db`.
 - In Produktion kein Start mit Beispiel-`SESSION_SECRET` oder
   Beispiel-Datenbankpasswort: `server.ts`, `utils/konfig.ts` (`startVerbote`) — `startverbot`.
 
@@ -160,6 +179,11 @@ den Commits, nicht hier.
 - **Passkeys ohne zweiten Faktor**: Ein Konto ohne TOTP kann sich mit Passkey
   ODER Passwort anmelden; der Passkey verschärft die Passwortanmeldung nicht.
   Passkeys brauchen einen Namen in `APP_BASE_URL` (keine IP-Adresse).
+- **Haushalt nach einem Einbruch**: Zurücksetzen löst Haushaltsverknüpfungen
+  nicht; die Hinweis-Mail nennt die Hauptkonten, trennen muss der Inhaber
+  selbst (Einstellungen → Haushalt).
+- **Alte Wiederherstellungscodes** (vor dem 01.11.2026, 50 Bit, SHA-256) gelten, bis
+  sie verbraucht oder neu erzeugt sind.
 - **Datenschlüssel neben den Daten**: Ohne `DATA_KEY` liegt der Schlüssel in
   `data/`. Wer das ganze Volume hat, hat auch die Geheimnisse.
 - **Altbestand im Bildcache**: Bilder, die vor dieser Fassung aus Angaben
