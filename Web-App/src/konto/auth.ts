@@ -210,6 +210,14 @@ export const passwortZuKurz = passwortRegel.passwortZuKurz;
 
 export const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
 
+/** Ein Name ist Freitext, aber kein Träger für Adressen oder Zeilenumbrüche:
+ * Er steht in Oberflächen und Exporten, wo ein Link wie vom Server aussähe. */
+export function nameGueltig(v: unknown): boolean {
+  if (v === undefined || v === null || v === '') return true;
+  const s = String(v);
+  return s.length <= 100 && !/[\p{Cc}\u2028\u2029]/u.test(s) && !/:\/\/|www\.|https?:/i.test(s);
+}
+
 /** Bewusst grob: Die Adresse wird ohnehin gegen die Datenbank geprüft, und
  * strengere Muster lehnen regelmässig gültige Adressen ab. */
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -5,7 +5,8 @@ const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
+import { zielGedrosselt } from '../src/konto/zielDrossel';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
@@ -206,6 +207,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
   // Benutzername eintragen, und der Login sucht „username ODER email".
   if (username !== undefined && !USERNAME_RE.test(String(username || '')))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
+  if (!nameGueltig(first_name) || !nameGueltig(last_name)) return sendeFehler(req, res, 400, 'name_ungueltig');
 
   // Case-insensitiv und auch gegen die E-Mail-Spalte, weil der Login mit LOWER()
   // beide Felder vergleicht.
@@ -241,7 +243,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(() => 'de'));
     const basis = getBaseUrl();
-    if (basis) emailSent = await sendVerificationMail(email, first_name || username || user.username, token, basis, lang)
+    if (basis) emailSent = await sendVerificationMail(email, token, basis, lang)
       .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));
     // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
     if (user.email) await sendEmailGeaendertMail(user.email, user.username, email, lang)
@@ -517,6 +519,10 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     return sendeFehler(req, res, 400, 'email_ungueltig');
   if (!USERNAME_RE.test(username))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
+  if (!nameGueltig(first_name) || !nameGueltig(last_name)) return sendeFehler(req, res, 400, 'name_ungueltig');
+  // Zählt jeden Versuch, ob es die Adresse gibt oder nicht: Die Absage verrät nichts.
+  const ziel = await zielGedrosselt('register-ziel', email, 3, 60 * 60 * 1000);
+  if (ziel) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: ziel.waitMin });
 
   // Vergebene Adresse oder vergebener Name: dieselbe Antwort wie bei Erfolg, sonst liesse
   // sich abfragen, wer ein Konto hat. Die Rückmeldung geht per Mail an die Adresse.
@@ -531,7 +537,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       : { success: false, mode: 'ohne_basis' };
   } else if (nameVergeben) {
     await K.rechneWieRegistrierung(password);
-    result = basis ? await sendBenutzernameVergebenMail(email, username, lang, basis) : { success: false, mode: 'ohne_basis' };
+    result = basis ? await sendBenutzernameVergebenMail(email, lang, basis) : { success: false, mode: 'ohne_basis' };
   } else {
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -542,7 +548,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
     // Sprache startet.
     if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
-    result = basis ? await sendVerificationMail(email, first_name || username, token, basis, lang)
+    result = basis ? await sendVerificationMail(email, token, basis, lang)
       : { success: false, mode: 'ohne_basis' };
   }
 
@@ -571,7 +577,9 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
   // Immer dieselbe Antwort nach derselben Mindestdauer: Weder Inhalt noch Zeit
   // verraten, ob es die Adresse gibt.
   const beginn = Date.now();
-  const user = await K.aktivesKontoNachEmail(email);
+  // Über der Grenze still keine Mail: Eine Absage verriete, dass jemand die Adresse bedrängt.
+  const gedrosselt = await zielGedrosselt('forgot-ziel', String(email), 3, 60 * 60 * 1000);
+  const user = gedrosselt ? null : await K.aktivesKontoNachEmail(email);
   const token = crypto.randomBytes(32).toString('hex');
   // Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach.
   if (user && await K.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN)) {
@@ -581,7 +589,7 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
       .catch(() => 'de')
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
       .then((lang: unknown) => sendPasswordResetMail(
-        user.email ?? '', user.first_name || user.username, token, getBaseUrl()!, String(lang ?? 'de')))
+        user.email ?? '', token, getBaseUrl()!, String(lang ?? 'de')))
       .catch(logAndContinue('forgot-password:mailversand'));
   }
   await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));

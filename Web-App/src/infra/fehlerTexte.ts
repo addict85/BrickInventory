@@ -49,6 +49,8 @@ export const FEHLER = {
   benutzername_ungueltig:      { de: 'Benutzername darf nur Buchstaben, Zahlen und _.- enthalten (3–32 Zeichen).',
                                  en: 'A username may contain only letters, digits and _.- (3–32 characters).' },
   email_ungueltig:             { de: 'Ungültige E-Mail-Adresse.', en: 'Invalid email address.' },
+  name_ungueltig:              { de: 'Vor- und Nachname: höchstens 100 Zeichen, ohne Steuerzeichen und ohne Webadressen.',
+                                 en: 'First and last name: at most 100 characters, without control characters or web addresses.' },
   email_erforderlich:          { de: 'E-Mail erforderlich.', en: 'Email address required.' },
   passwort_zu_kurz:            { de: 'Passwort muss mindestens 8 Zeichen lang sein.',
                                  en: 'The password must be at least 8 characters long.' },
