@@ -1127,7 +1127,7 @@ export async function openModal(sn){
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
       <button class="btn bs btn-sm" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
+      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:46px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
       <button class="btn bs btn-sm" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
     `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 

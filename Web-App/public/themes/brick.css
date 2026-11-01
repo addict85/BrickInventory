@@ -316,7 +316,7 @@
 [data-theme="brick"] .lcard input,
 [data-theme="brick"] .lcard select{
   background:var(--sur);
-  border:1px solid var(--b200);
+  border:1px solid var(--feldrand);
   border-radius:10px;
 }
 [data-theme="brick"] .lcard input:focus,

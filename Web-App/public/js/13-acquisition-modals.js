@@ -127,16 +127,16 @@ export function renderAcqModalBody(sn, acqs, totals) {
         <input inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
           data-keydown="blurOnEnter"
-          data-stil="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
+          data-stil="width:48px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
       </td>
       <td data-stil="padding:6px 8px;white-space:nowrap">
         <input type="date" value="${dateIso}" aria-label="${esc(tRaw('detail.added'))}"
           data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"
-          data-stil="border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
+          data-stil="border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
       </td>
       <td data-stil="padding:6px 4px;text-align:center">
         <select aria-label="${esc(tRaw('common.condition'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="cond" data-val="1"
-          data-stil="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+          data-stil="font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           <option value="N" ${a.condition!=='U'?'selected':''}>${t('common.condition_new')}</option>
           <option value="U" ${a.condition==='U'?'selected':''}>${t('common.condition_used')}</option>
         </select>
@@ -145,11 +145,11 @@ export function renderAcqModalBody(sn, acqs, totals) {
         <input type="text" inputmode="decimal" value="${priceVal}" aria-label="${esc(tRaw('detail.purchase_price'))}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="price" data-val="1"
           data-keydown="blurOnEnter"
-          data-stil="width:84px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
+          data-stil="width:84px;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
       </td>
       ${_householdMembers.length > 1 ? `<td data-stil="padding:6px 4px">
         <select aria-label="${esc(tRaw('household.owner'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="owner" data-val="1"
-          data-stil="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+          data-stil="font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           ${_householdMembers.map(m => `<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${esc(m.username)}</option>`).join('')}
         </select>
       </td>` : ''}
@@ -407,14 +407,14 @@ export async function openManDetail(type, id, colorId) {
     ? ad.totals.quantity : item.quantity;
   rows.push(detailZeile(t('detail.qty'), `
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-    <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" value="${totalQty}" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
+    <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" value="${totalQty}" data-stil="width:46px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
   `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
 
   // BrickLink-Nr (minifigs only, editable)
   if (type === 'fig') {
     rows.push(detailZeile('BrickLink-Nr.', `
-      <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="z.B. sw0001" aria-label="BrickLink-Nr." data-stil="width:110px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px"
+      <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="${esc(tRaw('figs.bl_placeholder'))}" aria-label="${esc(tRaw('figs.bl_number'))}" data-stil="width:110px;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:2px 6px"
         data-blur="saveManualFigBl" data-arg="${esc(id)}" data-arg2="${item?.user_id||''}" />
     `));
   }
@@ -436,7 +436,7 @@ export async function openManDetail(type, id, colorId) {
   if (type === 'part') {
     const swatch = `<span id="man-farb-punkt" data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`;
     rows.push(detailZeile(t('parts.color_label'), `${swatch}
-      <select id="man-farb-wahl" aria-label="${esc(tRaw('parts.color_label'))}" data-stil="max-width:150px;border:1px solid var(--bdr);border-radius:6px;padding:2px 4px;font-size:var(--fs-2)"
+      <select id="man-farb-wahl" aria-label="${esc(tRaw('parts.color_label'))}" data-stil="max-width:150px;border:1px solid var(--feldrand);border-radius:6px;padding:2px 4px;font-size:var(--fs-2)"
         data-change="speichereTeilFarbe" data-part="${escJs(id)}" data-color="${_manItem.colorId}"
         data-owner="${esc(item?.user_id ?? '')}">
         <option value="${_manItem.colorId}">${esc(item.color_name || tRaw('parts.no_color_dash'))}</option>
@@ -977,16 +977,16 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
         <input inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
           data-blur="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="qty" data-val="1"
           data-keydown="blurOnEnter"
-          data-stil="width:48px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
+          data-stil="width:48px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
       </td>
       <td data-stil="padding:6px 8px;white-space:nowrap">
         <input type="date" value="${dateIso}" aria-label="${esc(tRaw('detail.added'))}"
           data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="date" data-val="1"
-          data-stil="border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
+          data-stil="border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
       </td>
       <td data-stil="padding:6px 4px;text-align:center">
         <select data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="cond" data-val="1"
-          data-stil="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+          data-stil="font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           <option value="N" ${a.condition!=='U'?'selected':''}>${t('common.condition_new')}</option>
           <option value="U" ${a.condition==='U'?'selected':''}>${t('common.condition_used')}</option>
         </select>
@@ -995,11 +995,11 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
         <input type="text" inputmode="decimal" value="${priceVal}" aria-label="${esc(tRaw('detail.purchase_price'))}"
           data-blur="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="price" data-val="1"
           data-keydown="blurOnEnter"
-          data-stil="width:84px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
+          data-stil="width:84px;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
       </td>
       ${_householdMembers.length > 1 ? `<td data-stil="padding:6px 4px">
         <select data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="owner" data-val="1"
-          data-stil="font-size:var(--fs-2);border:1px solid var(--bdr);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+          data-stil="font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
           ${_householdMembers.map(m => `<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${esc(m.username)}</option>`).join('')}
         </select>
       </td>` : ''}
