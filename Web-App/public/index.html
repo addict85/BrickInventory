@@ -157,7 +157,7 @@
 
     <!-- ── LOGIN ─────────────────────────────────────────────────────── -->
     <div id="panel-login">
-      <div class="lerr" id="lerr"></div>
+      <div class="lerr" id="lerr" role="alert"></div>
       <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten:
            Chrome meldet sonst „Password field is not contained in a form", und
            das Anbieten haengt dann an Heuristiken statt am Dokument.
@@ -178,13 +178,13 @@
         <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600">Registrieren</a></span>
       </div>
       <div class="start-fuss">Build 2026.10.27.1901</div>
-      <div id="verified-msg" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
+      <div id="verified-msg" role="status" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
     </div>
 
     <!-- ── REGISTRIERUNG ─────────────────────────────────────────────── -->
     <div id="panel-register" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="register.title">Registrieren</p>
-      <div class="lerr" id="reg-err"></div>
+      <div class="lerr" id="reg-err" role="alert"></div>
       <div class="erfolg-box" id="reg-success" data-stil="display:none"></div>
       <form class="sform" id="reg-form" data-submit="btn-register">
         <div data-stil="display:flex;gap:10px">
@@ -211,7 +211,7 @@
     <!-- ── PASSWORT VERGESSEN ─────────────────────────────────────────── -->
     <div id="panel-forgot" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="reset.title">Neues Passwort</p>
-      <div class="lerr" id="forgot-err"></div>
+      <div class="lerr" id="forgot-err" role="alert"></div>
       <div class="erfolg-box" id="forgot-success" data-stil="display:none"></div>
       <div class="sform" id="forgot-form">
         <div class="fg"><label for="forgot-email" data-i18n="auth.email_label">E-Mail-Adresse</label><input type="email" id="forgot-email" autocomplete="email" /></div>
@@ -225,7 +225,7 @@
     <!-- ── PASSWORT ZURÜCKSETZEN ──────────────────────────────────────── -->
     <div id="panel-reset" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="reset.new_password">Neues Passwort setzen</p>
-      <div class="lerr" id="reset-err"></div>
+      <div class="lerr" id="reset-err" role="alert"></div>
       <div class="erfolg-box" id="reset-success" data-stil="display:none"></div>
       <form class="sform" id="reset-form" data-submit="btn-reset">
         <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 8 Zeichen, kein häufiges)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
@@ -238,7 +238,7 @@
     <div id="panel-pflichtwechsel" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="pflicht.title">Startpasswort ersetzen</p>
       <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Konto hat noch das Startpasswort aus dem Protokoll. Bitte zuerst ein eigenes setzen.</div>
-      <div class="lerr" id="pflicht-err"></div>
+      <div class="lerr" id="pflicht-err" role="alert"></div>
       <form class="sform" data-submit="btn-pflicht">
         <div class="fg"><label for="pflicht-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
         <div class="fg"><label for="pflicht-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pflicht-neu" autocomplete="new-password" /></div>
@@ -531,7 +531,7 @@
                ist das Feld ueber aria-label. -->
           <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="mk-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importMerklisteCsv" /></label>
         </div>
-        <div class="abstand-o-8 schrift-2" id="mk-status"></div>
+        <div class="abstand-o-8 schrift-2" id="mk-status" role="status"></div>
       </div>
 
       <!-- Suche/Filter/Sortierung — dieselbe Zeile wie in der Galerie, an
@@ -594,7 +594,7 @@
           </div>
         </details>
       </div>
-        <div class="csv-status" id="part-csv-status" data-stil="display:none"></div>
+        <div class="csv-status" id="part-csv-status" role="status" data-stil="display:none"></div>
         <!-- mp stats hidden, kept for JS -->
         <span id="mp-count" data-stil="display:none"></span>
         <span id="mp-qty" data-stil="display:none"></span>
@@ -683,7 +683,7 @@
           </div>
         </details>
       </div>
-        <div class="csv-status" id="fig-csv-status" data-stil="display:none"></div>
+        <div class="csv-status" id="fig-csv-status" role="status" data-stil="display:none"></div>
 
 
       <!-- Suche/Filter/Sortierung — BEWUSST unter der Erfassen-Box statt im
@@ -841,7 +841,7 @@
       <!-- Added sets -->
       <div id="pl-sets" data-stil="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px"></div>
       <!-- Status -->
-      <div id="pl-status" data-stil="color:var(--mut);font-size:var(--fs-3);margin-bottom:.75rem"></div>
+      <div id="pl-status" role="status" data-stil="color:var(--mut);font-size:var(--fs-3);margin-bottom:.75rem"></div>
       <!-- Parts list table -->
       <div id="pl-result"></div>
     </div>
@@ -984,7 +984,7 @@
               <div class="fg max-240 ohne-rand"><label for="smtp-test-email" data-i18n="settings.smtp.test_to">Test-E-Mail senden an</label><input type="email" id="smtp-test-email" placeholder="deine@email.com" /></div>
               <button class="btn bs abstand-u-1px" id="btn-test-smtp" data-i18n="smtp.test_btn" data-ico="link">Verbindung testen</button>
             </div>
-            <div id="smtp-test-result" data-stil="display:none;font-size:var(--fs-2);margin-top:.5rem;padding:.5rem .75rem;border-radius:6px"></div>
+            <div id="smtp-test-result" role="status" data-stil="display:none;font-size:var(--fs-2);margin-top:.5rem;padding:.5rem .75rem;border-radius:6px"></div>
           </div>
         </div>
 
@@ -999,7 +999,7 @@
                 <div class="zeile luecke-10 umbruch mittig abstand-u-1">
                   <button class="btn bs" id="btn-cfg-export" data-i18n="settings.cfg_export" data-ico="import">Konfiguration exportieren</button>
                   <label for="cfg-import-file" class="btn bs zeiger"><span data-i18n="settings.cfg_import" data-ico="export">Konfiguration importieren</span><input type="file" id="cfg-import-file" accept=".json" class="datei-versteckt" data-change="importConfig" /></label>
-                  <span class="text-mittel" id="cfg-import-status"></span>
+                  <span class="text-mittel" id="cfg-import-status" role="status"></span>
                 </div>
               </div>
           </div>
@@ -1198,7 +1198,7 @@
           <div class="zeile luecke-8 mittig umbruch abstand-o-075">
             <button class="btn bs" type="button" data-click="guthabenAlleAbfragen"
                     data-i18n="vouchers.balance_all" data-ico="aktualisieren">Guthaben aller Karten abfragen</button>
-            <span class="text-mittel" id="vouchers-balance-status"></span>
+            <span class="text-mittel" id="vouchers-balance-status" role="status"></span>
           </div>
 
 
@@ -1316,7 +1316,7 @@
                ein for= auf ein fremdes Feld fällt in test/a11y.test.js auf. -->
           <div class="zeile luecke-8 mittig abstand-o-075">
             <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="alerts-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importAlarmeCsv" /></label>
-            <span class="text-mittel" id="alerts-csv-status"></span>
+            <span class="text-mittel" id="alerts-csv-status" role="status"></span>
           </div>
         </div>
       </div>
@@ -1666,7 +1666,7 @@
             <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
             <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-i18n="gallery.add.submit">Hinzufügen</button></div>
           </div>
-          <div class="schrift-2 abstand-o-05 status-zeile" id="ap-inline-result"></div>
+          <div class="schrift-2 abstand-o-05 status-zeile" id="ap-inline-result" role="status"></div>
         </div>
   </div>
 </div>
@@ -1689,7 +1689,7 @@
             <button class="btn bp voll-breit hoehe-38" id="btn-add-fig" data-i18n="gallery.add.submit">Hinzufügen</button></div>
         </div>
         <div class="text-klein abstand-o-05" data-i18n="figs.add.hint" data-ico="idee">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.</div>
-        <div class="schrift-2 abstand-o-05 status-zeile" id="af-inline-result"></div>
+        <div class="schrift-2 abstand-o-05 status-zeile" id="af-inline-result" role="status"></div>
       </div>
   </div>
 </div>
@@ -1708,7 +1708,7 @@
       <div class="fg" id="add-storage-box"><span class="feld-titel" id="add-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="add-storage-slot"></span></div>
       <div class="erfassen-fuss"><button class="btn bp" id="btn-add" data-i18n="gallery.add.submit">Hinzufügen</button></div>
     </div>
-    <div class="abstand-o-8 schrift-2" id="add-status"></div>
+    <div class="abstand-o-8 schrift-2" id="add-status" role="status"></div>
   </div>
 </div>
 <div class="ovl" id="set-modal" role="dialog" aria-modal="true" aria-labelledby="m-tit">
