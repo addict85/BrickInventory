@@ -272,6 +272,7 @@ export const FEHLER = {
                                  en: 'This is not a BrickLink wanted list '
                                    + '(no <INVENTORY> in the file).' },
   id_ungueltig:                { de: 'Ungültige ID', en: 'Invalid ID' },
+  eingabe_ungueltig:           { de: 'Ungültige Eingabe im Feld „{feld}“', en: 'Invalid input in field “{feld}”' },
 
   // ── Betrieb und Verwaltung ───────────────────────────────────────────────
   nicht_gefunden:              { de: 'Nicht gefunden', en: 'Not found' },
