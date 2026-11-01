@@ -292,7 +292,11 @@ class BildschirmFotoVariantenTest {
         // Compose nie ruhig werden. Darum die Uhr anhalten und gezielt vorstellen.
         compose.mainClock.autoAdvance = false
         compose.onNodeWithContentDescription("Add a wanted item").performClick()
-        compose.mainClock.advanceTimeBy(600)
+        // Das Dialogfenster entsteht über den Hauptlooper, nicht über die Compose-Uhr.
+        repeat(3) {
+            compose.mainClock.advanceTimeBy(200)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        }
         compose.onNode(isDialog()).captureRoboImage(pfad("dialog-merkposten", "classic", true, "telefon"))
     }
 
