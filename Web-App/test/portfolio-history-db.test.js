@@ -269,24 +269,12 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
   await db2.pool.end().catch(() => {});
 });
 
-test('der Mailer prüft Zertifikate, sofern es niemand ausdrücklich abschaltet', () => {
+test('der Mailer schaltet die Zertifikatsprüfung nirgends ab', () => {
+  // Verhalten: test/smtp-tls-festnageln-db.test.js. Hier nur das Verbot im Quelltext.
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/mailer.ts'), 'utf8'));
-
-  assert.doesNotMatch(src, /rejectUnauthorized:\s*false/,
-    'Zertifikatsprüfung fest abgeschaltet — SMTP-Zugangsdaten und Rücksetz-Links gehen über eine ungeprüfte Verbindung');
-  assert.match(src, /rejectUnauthorized:\s*!/, 'die Prüfung hängt an keiner Einstellung');
-  assert.match(src, /smtp_insecure_tls/, 'die Ausnahme ist nicht einstellbar');
-
-  // Die Einstellung muss auch gespeichert werden können, sonst steht ein
-  // Kontrollkästchen da, das nichts tut. Gespeichert wird über POST / (der
-  // Import übergeht smtp_* seit dem 29.10. absichtlich, der Export nimmt alle
-  // Zeilen aus global_settings). Gegenprobe (29.10.2026): smtp_insecure_tls aus
-  // der Liste von POST / entfernt → rot.
-  const settings = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/settings.ts'), 'utf8'));
-  const speichern = settings.slice(settings.indexOf("router.post('/settings',"), settings.indexOf("router.post('/settings/import'"));
-  assert.ok(speichern.length > 0, 'POST / in routes/api_v1/settings.ts nicht gefunden');
-  assert.match(speichern, /'smtp_insecure_tls'/, 'smtp_insecure_tls lässt sich über POST / nicht speichern');
+  assert.doesNotMatch(src, /rejectUnauthorized:\s*(false|!)/,
+    'Zertifikatsprüfung abschaltbar — SMTP-Zugangsdaten und Rücksetz-Links gingen über eine ungeprüfte Verbindung');
 });

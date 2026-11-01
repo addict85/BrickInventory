@@ -10,7 +10,7 @@ import {
 } from '../../src/konto/settings';
 import { nutzerEinstellungen } from '../../src/konto/settings';
 import { deleteUserSetting } from '../../src/konto/settings';
-import { setGlobalSetting } from '../../src/konto/settings';
+import { setGlobalSetting, globalerWertGueltig, deleteGlobalSetting } from '../../src/konto/settings';
 import { globalDefaultCondition } from '../../src/konto/settings';
 import { nutzerStandardZustand } from '../../src/konto/settings';
 import { setUserSetting } from '../../src/konto/settings';
@@ -207,13 +207,16 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
   const globalKeys = ['bricklink_consumer_key','bricklink_consumer_secret','bricklink_token',
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
-    'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure','smtp_insecure_tls',
+    'registration_enabled','smtp_host','smtp_port','smtp_user','smtp_pass','smtp_from','smtp_secure',
+    'smtp_tls_fingerprint','smtp_tls_ca',
     'default_price_condition',
     // Global, also nur vom Verwalter gesetzt; kein Geheimnis, lesen dürfen es alle.
     'gutschein_land'];
   const userKeys = ['currency', 'language', 'user_default_condition'];
 
   if (istVerwalter(req)) {
+    if (globalKeys.some(k => req.body[k] !== undefined && !globalerWertGueltig(k, req.body[k])))
+      return sendeFehler(req, res, 400, 'wert_ungueltig');
     // Mailserver nur mit Passwort umstellen: Wer eine Verwaltersitzung erbeutet,
     // läse sonst alle künftigen Rücksetz-Mails mit. Nur bei echter Änderung.
     const smtpGeaendert: string[] = [];
@@ -236,6 +239,8 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
         await setGlobalSetting(key, req.body[key]);
       }
     }
+    // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
+    if (globalKeys.some(k => k.startsWith('smtp_') && req.body[k] !== undefined)) await deleteGlobalSetting('smtp_insecure_tls');
 
     if (oldBricksetLimit !== null) await bricksetLimitGesetzt(oldBricksetLimit, parseInt(req.body.api_limit_brickset));
   }
@@ -301,7 +306,7 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
     'bricklink_token_secret','brickset_api_key','rebrickable_api_key','price_job_interval_minutes',
     'price_cache_ttl','api_limit_rebrickable','api_limit_bricklink','api_limit_brickset',
     // smtp_* fehlen mit Absicht: Eine Importdatei kommt von irgendwoher, und mit
-    // smtp_host + smtp_insecure_tls gingen Rücksetz-Mails an einen fremden Server.
+    // smtp_host + smtp_tls_ca gingen Rücksetz-Mails an einen fremden Server.
     'registration_enabled', 'default_price_condition', 'gutschein_land',
     ...DAILY_JOBS.map(j => `job_time_${j.name}`)];
   const userKeys = ['currency', 'user_default_condition'];
@@ -310,6 +315,8 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
   const smtpUebergangen = config.global && typeof config.global === 'object'
     ? Object.keys(config.global).filter(k => k.startsWith('smtp_')) : [];
   if (config.global && istVerwalter(req)) {
+    if (globalKeys.some(k => config.global[k] !== undefined && !globalerWertGueltig(k, config.global[k])))
+      return sendeFehler(req, res, 400, 'wert_ungueltig');
     for (const key of globalKeys) {
       if (config.global[key] !== undefined) {
         // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
@@ -341,7 +348,7 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
 router.post('/settings/smtp-test', async (req, res: Antwort<'POST /api/v1/settings/smtp-test'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
   const verify = await testSmtp();
-  if (!verify.success) return sendeFehler(req, res, 400, (verify as any).code);
+  if (!verify.success) return sendeFehler(req, res, 400, verify.code, 'vars' in verify ? verify.vars : undefined);
 
   let to = (req.body.to || '').trim();
   if (!to) {

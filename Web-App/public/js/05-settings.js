@@ -24,8 +24,10 @@ async function loadSmtpSettings(settings){
   if(G('smtp-pass'))   G('smtp-pass').value   = s.smtp_pass||'';
   if(G('smtp-from'))   G('smtp-from').value   = s.smtp_from||'';
   if(G('smtp-secure')) G('smtp-secure').checked = s.smtp_secure==='1';
-  if(G('smtp-insecure')) G('smtp-insecure').checked = s.smtp_insecure_tls==='1';
-  if(G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled!=='0';
+  if(G('smtp-tls-fp')) G('smtp-tls-fp').value = s.smtp_tls_fingerprint||'';
+  if(G('smtp-tls-ca')) G('smtp-tls-ca').value = s.smtp_tls_ca||'';
+  if(G('smtp-tls-altlast')) G('smtp-tls-altlast').style.display = s.smtp_insecure_tls==='1' ? '' : 'none';
+  if(G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled==='1';
   geladeneSmtp = JSON.stringify(smtpFormular());
 }
 
@@ -40,17 +42,20 @@ function smtpFormular() {
     smtp_pass:   G('smtp-pass')?.value || '',
     smtp_from:   G('smtp-from')?.value.trim() || '',
     smtp_secure: G('smtp-secure')?.checked ? '1' : '0',
-    smtp_insecure_tls: G('smtp-insecure')?.checked ? '1' : '0',
+    smtp_tls_fingerprint: G('smtp-tls-fp')?.value.trim() || '',
+    smtp_tls_ca: G('smtp-tls-ca')?.value.trim() || '',
   };
 }
 /** SMTP speichern; null, wenn die Passwortabfrage abgebrochen wurde. */
 async function speichereSmtp() {
   const werte = smtpFormular();
-  if (JSON.stringify(werte) === geladeneSmtp) return { success: true };
+  // Mit dem Hinweis auf die alte Ausnahme auch unverändert speichern: Erst das räumt sie ab.
+  const altlast = G('smtp-tls-altlast');
+  if (JSON.stringify(werte) === geladeneSmtp && (!altlast || altlast.style.display === 'none')) return { success: true };
   const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss');
   if (admin_password === null) return null;
   const d = await api('POST','/v1/settings', { ...werte, admin_password });
-  if (d.success) geladeneSmtp = JSON.stringify(werte);
+  if (d.success) { geladeneSmtp = JSON.stringify(werte); if (altlast) altlast.style.display = 'none'; }
   return d;
 }
 
@@ -234,8 +239,7 @@ async function generateQrCode() {
     // wie „nichts gewaehlt" (null). Ein `d.token_days ? … : …` wuerde beide
     // in denselben Zweig werfen und bei „unbegrenzt" die Gleitfrist ansagen —
     // also genau das Gegenteil.
-    // Ohne TLS geht das langlebige App-Token im WLAN lesbar mit; der
-    // Serverbeweis der App schützt nur vor einem falschen Server, nicht vor Mithören.
+    // Ohne TLS verbindet sich die Android-App nicht (sie nimmt nur HTTPS an).
     const klartext = G('qr-tls-hint');
     if (klartext) {
       klartext.hidden = !/^http:\/\//i.test(serverUrl || '');
@@ -682,13 +686,17 @@ export async function loadUsers(){
   const d=await api('GET','/v1/auth/users'); if(!d.success) return;
   G('users-tbl').innerHTML=`<div class="tw"><table class="dt user-tbl"><thead><tr><th>ID</th><th>${t('users.col.username')}</th><th>${t('users.col.role')}</th><th>${t('users.col.created')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
     d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
-      <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span></td>
+      <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span>
+        ${u.is_active === false ? `<span class="rb ru">${t('users.status.inaktiv')}</span>` : ''}</td>
       <td>${fmtDatum(u.created_at)}</td>
       <td><div class="nutzer-aktionen">
         ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title')}
         ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
             u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
             u.is_admin ? 'users.action.make_user_title' : 'users.action.make_admin_title', u.is_admin ? 1 : 0)}
+        ${nutzerKnopf(u, 'bs', 'toggleAktiv', u.is_active === false ? 'ok' : 'pause',
+            u.is_active === false ? 'users.action.activate' : 'users.action.deactivate',
+            u.is_active === false ? 'users.action.activate_title' : 'users.action.deactivate_title', u.is_active === false ? 0 : 1)}
         ${u.zweiter_faktor ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
         ${nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username)}
       </div></td></tr>`).join('')
@@ -703,6 +711,8 @@ const AKTIONEN = {
   verwalter_ernannt:       () => t('users.aktion.verwalter_ernannt'),
   verwalter_entzogen:      () => t('users.aktion.verwalter_entzogen'),
   konto_geloescht:         () => t('users.aktion.konto_geloescht'),
+  konto_deaktiviert:       () => t('users.aktion.konto_deaktiviert'),
+  konto_reaktiviert:       () => t('users.aktion.konto_reaktiviert'),
 };
 /** Wer hat an welchem fremden Konto was geändert — die letzten Einträge. */
 async function ladeProtokoll(){
@@ -748,6 +758,16 @@ async function toggleAdmin(uid,isAdmin){
   const admin_password = await bestaetigeMitPasswort(tRaw('users.role_title'), tRaw('users.admin_confirm_text'), 'schloss');
   if (admin_password === null) return;
   const d=await api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur, admin_password}); if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+/** Deaktivieren meldet das Konto auf allen Geräten ab; die Daten bleiben. */
+async function toggleAktiv(uid, aktiv){
+  const istAktiv = String(aktiv) === '1';
+  const admin_password = await bestaetigeMitPasswort(
+    tRaw(istAktiv ? 'users.deactivate_title' : 'users.activate_title'), tRaw('users.admin_confirm_text'), 'schloss');
+  if (admin_password === null) return;
+  const d = await api('PUT', `/v1/auth/users/${uid}/aktiv`, { is_active: !istAktiv, admin_password });
+  if (d.success) { toast(tRaw(istAktiv ? 'users.deactivated' : 'users.activated'), 'success'); loadUsers(); }
+  else toast(d.error || t('settings.error'), 'error');
+}
 async function delUser(uid,name){ const admin_password = await bestaetigeMitPasswort(tRaw('users.delete.title'),tRaw('users.delete.text'),'profil'); if(admin_password === null) return; const d=await api('DELETE',`/v1/auth/users/${uid}`,{admin_password}); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 
 
@@ -1134,6 +1154,7 @@ registerActions({
   revokeToken,
   saveRegEnabled,
   toggleAdmin,
+  toggleAktiv,
   unlinkHousehold,
   unlinkFromParent,
   dismissFormerLink,

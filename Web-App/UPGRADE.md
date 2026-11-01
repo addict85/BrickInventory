@@ -516,3 +516,38 @@ wechselt der Name, gelten die bisherigen Passkeys nicht mehr.
 Die alten Tabellen sind nach Migration 0083 entfernt. Eine Rückkehr geht nur
 über die Sicherung, die der Server vor offenen Migrationen anlegt
 (Abschnitt 5).
+
+## 16. Mailserver: Zertifikat immer geprüft
+
+Die Einstellung „Zertifikat des Mailservers nicht prüfen“ (`smtp_insecure_tls`)
+entfällt; die Verbindung zum Mailserver wird immer geprüft. Wer sie gesetzt
+hatte, sieht beim Start eine Warnung im Log und unter Einstellungen → E-Mail
+einen Hinweis. Ohne Eintrag schlägt der Versand an einen Server mit selbst
+signiertem Zertifikat mit einer Meldung fehl, die sagt, was fehlt.
+
+- **Zertifikat (PEM)**: das selbst signierte Zertifikat des Mailservers oder
+  seine eigene CA. Es ersetzt für SMTP die Liste der öffentlichen CAs.
+- **SHA-256-Fingerabdruck** (optional): nagelt genau ein Zertifikat fest; bei
+  Abweichung bricht der Versand ab. Mit Fingerabdruck entfällt der Abgleich
+  des Hostnamens, etwa wenn der Server über seine IP erreicht wird. Nach einem
+  Zertifikatswechsel ist er neu einzutragen.
+
+Abrufen lassen sich beide mit
+
+```
+openssl s_client -connect mail.example:465 </dev/null 2>/dev/null | openssl x509 > smtp.pem
+openssl x509 -in smtp.pem -noout -fingerprint -sha256
+```
+
+(für Port 587 zusätzlich `-starttls smtp`). Das Speichern verlangt wie jede
+Änderung am Mailserver das Verwalterpasswort.
+
+## 17. Gesundheitsprüfung: `live` und `ready`
+
+- `GET /api/v1/health/live` antwortet `{"status":"ok"}`, solange der Prozess
+  läuft — ohne Datenbank.
+- `GET /api/v1/health/ready` fragt die Datenbank (`SELECT 1`) und antwortet
+  sonst **503** `{"status":"unavailable"}`. Der Healthcheck in `compose.yaml`
+  zeigt jetzt hierher; eine eigene Überwachung sollte das auch tun.
+- `GET /api/v1/health` liefert ohne Anmeldung nur noch `status`; Startzustand,
+  Pool und Laufzeit sieht nur ein Verwalter.

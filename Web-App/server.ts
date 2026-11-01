@@ -22,7 +22,7 @@ import { drossleBeruehren } from './src/konto/sitzungsBeruehrung';
 import { SITZUNG_LEERLAUF_SEK, sitzungsHoechstdauer } from './src/konto/sitzungsFrist';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
 import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
-import { aktuellerStartZustand } from './src/infra/startZustand';
+import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/infra/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
 import { nurEigeneHerkunft } from './src/infra/herkunft';
@@ -35,6 +35,7 @@ import { safeDataPath } from './src/infra/datenPfad';
 import { generateThumb } from './src/katalog/bilder/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
 import { renderIndexHtml } from './src/konto/indexHtml';
+import { meldeSmtpAltlast } from './src/infra/mailer';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
@@ -105,7 +106,10 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  // Kein fremdes Fenster hält einen Griff auf die App, keine fremde Seite bettet ihre Antworten ein.
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
   // HSTS nur über eine verschlüsselte Verbindung; danach geht auch die erste
   // getippte Anfrage nicht mehr samt Cookie im Klartext hinaus.
@@ -308,19 +312,22 @@ app.get('/api/v1/startup-status', async (_req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
-  res.json(await aktuellerStartZustand());
+  res.json(oeffentlicherStartZustand(await aktuellerStartZustand()));
 });
 
-// Ohne Anmeldung (compose.yaml). Pool und Laufzeit verraten Last und
-// Neustarts — die nur für den Verwalter.
+// Ohne Anmeldung (compose.yaml): anonym nur der Status; live = Prozess, ready = Datenbank.
+app.get('/api/v1/health/live', (_req, res) => { res.json({ status: 'ok' }); });
+app.get('/api/v1/health/ready', async (_req, res) => {
+  const bereit = await db.datenbankAntwortet();
+  res.status(bereit ? 200 : 503).json({ status: bereit ? 'ok' : 'unavailable' });
+});
 app.get('/api/v1/health', async (req, res) => {
   // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
   const verwalter = !!(await resolveUserId(req).catch(logAndContinue('health:anmeldung'))) && istVerwalter(req);
   const start = await aktuellerStartZustand();
   res.json({
     status: start.ready ? 'ok' : 'starting',
-    startup: start,
-    ...(verwalter ? { db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
+    ...(verwalter ? { startup: start, db_pool: db.getPoolStats(), uptime_seconds: Math.floor(process.uptime()) } : {}),
   });
 });
 
@@ -439,6 +446,7 @@ async function starte(): Promise<void> {
     process.exit(1);
   }
   protokollInDieDatenbank(db.pool);
+  if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
   const httpServer = web ? baueApp().listen(k.port, () => {

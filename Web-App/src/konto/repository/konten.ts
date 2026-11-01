@@ -8,7 +8,7 @@ export interface Konto {
   must_change_password: boolean; created_at: Date; [spalte: string]: unknown;
 }
 export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'last_name' | 'email_verified'>;
-export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'created_at'> & { zweiter_faktor: boolean };
+export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & { zweiter_faktor: boolean };
 
 export function kontoKurz(id: number): Promise<KontoKurz | undefined> {
   return db.get('SELECT id, username, is_admin FROM users WHERE id = $1', [id]);
@@ -47,7 +47,7 @@ export async function aendereProfil(id: number, felder: Record<string, unknown>)
 
 export function alleKonten(): Promise<KontoInListe[]> {
   return db.all<KontoInListe>(
-    `SELECT u.id, u.username, u.is_admin, u.created_at,
+    `SELECT u.id, u.username, u.is_admin, u.is_active, u.created_at,
             EXISTS (SELECT 1 FROM zweiter_faktor z WHERE z.user_id = u.id AND z.aktiv) AS zweiter_faktor
        FROM users u ORDER BY u.id`);
 }
@@ -64,6 +64,12 @@ export function verwalterVorher(id: number): Promise<{ is_admin: boolean } | und
 
 export async function setzeVerwalter(id: number, ja: boolean): Promise<void> {
   await db.run('UPDATE users SET is_admin = $1 WHERE id = $2', [ja, id]);
+}
+
+/** @returns der Zustand vor der Änderung, oder undefined ohne Konto */
+export async function schreibeAktiv(id: number, ja: boolean): Promise<{ vorher: boolean } | undefined> {
+  return db.get(`UPDATE users u SET is_active = $2 FROM users alt
+                  WHERE u.id = $1 AND alt.id = u.id RETURNING alt.is_active AS vorher`, [id, ja]);
 }
 
 export async function setzePasswortHash(id: number, hash: string): Promise<boolean> {
@@ -101,8 +107,8 @@ export function loeseQrTokenEin(hash: string): Promise<{ user_id: number; token_
      RETURNING user_id, token_days`, [hash]);
 }
 
-export async function nameOderEmailVergeben(username: string, email: string): Promise<boolean> {
-  return !!await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($2)', [username, email]);
+export function kontoMitEmail(email: string): Promise<KontoKurz & { email: string } | undefined> {
+  return db.get('SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
 }
 
 /** Ohne RETURNING: Die Kompatschicht hängt an ein INSERT ohne ON CONFLICT
@@ -130,15 +136,6 @@ export function kontoNachRuecksetzToken(hash: string): Promise<{ id: number } | 
 
 export async function setzePasswortNachRuecksetzen(id: number, hash: string): Promise<void> {
   await db.run('UPDATE users SET password_hash=$1, reset_token=NULL, reset_token_expires=NULL WHERE id=$2', [hash, id]);
-}
-
-export function tokenNachKennung(kennung: string): Promise<{ token: string } | undefined> {
-  return db.get(
-    `SELECT token FROM api_tokens
-      WHERE left(token, 16) = $1
-        AND (expires_at IS NULL OR expires_at > NOW())
-        AND (hard_expires_at IS NULL OR hard_expires_at > NOW())
-      LIMIT 1`, [kennung]);
 }
 
 export interface Zugang {

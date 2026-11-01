@@ -1,6 +1,8 @@
 // Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#abschnitt
 
 import nodemailer from 'nodemailer';
+import tls from 'node:tls';
+import type { PeerCertificate } from 'node:tls';
 import { konfig } from './konfig';
 import { getGlobalSetting } from '../konto/settings';
 import { ausTabelle } from './validate';
@@ -8,23 +10,52 @@ import { fehlertext } from './httpError';
 import { basisUrl, hinweisOhneBasisUrl } from './basisUrl';
 const getSetting = (key: string) => getGlobalSetting(key, '');
 
-// Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#gettransporter
+function normiereFingerabdruck(wert: unknown): string {
+  return String(wert ?? '').replace(/[\s:]/g, '').toUpperCase();
+}
+
+/** Die Prüfung bleibt an: Ein selbst signiertes Zertifikat kommt als PEM herein; ein
+ * Fingerabdruck nagelt genau eines fest und ersetzt den Abgleich des Hostnamens. */
 async function getTransporter() {
   const host   = await getSetting('smtp_host');
   const port   = parseInt(await getSetting('smtp_port') || '587');
   const user   = await getSetting('smtp_user');
   const pass   = await getSetting('smtp_pass');
   const secure = (await getSetting('smtp_secure')) === '1';
-  const unsicher = (await getSetting('smtp_insecure_tls')) === '1';
+  const ca     = (await getSetting('smtp_tls_ca')).trim();
+  const fp     = normiereFingerabdruck(await getSetting('smtp_tls_fingerprint'));
   if (!host || !user) return null;
-  if (unsicher) {
-    console.warn('⚠️  [mailer] smtp_insecure_tls ist aktiv — das Zertifikat des Mailservers wird NICHT geprüft.');
-  }
+  const pruefeGegenstelle = (name: string, zert: PeerCertificate) => {
+    if (!fp) return tls.checkServerIdentity(name, zert);
+    if (normiereFingerabdruck(zert.fingerprint256) === fp) return undefined;
+    return Object.assign(new Error(`Fingerabdruck ${zert.fingerprint256} ist nicht der eingetragene`), { code: 'SMTP_FINGERABDRUCK' });
+  };
   return nodemailer.createTransport({
     host, port, secure, auth: { user, pass },
-    tls: { rejectUnauthorized: !unsicher },
+    tls: { rejectUnauthorized: true, checkServerIdentity: pruefeGegenstelle, ...(ca ? { ca } : {}) },
     connectionTimeout: 10000, greetingTimeout: 8000, socketTimeout: 10000,
   });
+}
+
+const ZERTIFIKATSFEHLER = new Set(['SMTP_FINGERABDRUCK', 'DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN',
+  'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'CERT_HAS_EXPIRED', 'ERR_TLS_CERT_ALTNAME_INVALID']);
+
+/** Ein Zertifikatsfehler sagt dem Verwalter, was er eintragen muss, statt nur den Code. */
+function smtpFehlertext(e: unknown): { text: string; zertifikat: boolean } {
+  const code = String((e as { code?: unknown; cause?: { code?: unknown } })?.code ?? '');
+  const ursache = String((e as { cause?: { code?: unknown } })?.cause?.code ?? '');
+  const zertifikat = ZERTIFIKATSFEHLER.has(code) || ZERTIFIKATSFEHLER.has(ursache) || /certificate|Fingerabdruck/i.test(fehlertext(e));
+  return { zertifikat, text: zertifikat
+    ? `Zertifikat des Mailservers nicht bestätigt (${fehlertext(e)}). In Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.`
+    : fehlertext(e) };
+}
+
+/** Wer die entfallene Ausnahme „Zertifikat nicht prüfen" gesetzt hatte, erfährt es beim Start. */
+export async function meldeSmtpAltlast(): Promise<boolean> {
+  if ((await getSetting('smtp_insecure_tls')) !== '1') return false;
+  console.warn('⚠️  [mailer] smtp_insecure_tls wird nicht mehr ausgewertet: Das Zertifikat des Mailservers wird jetzt geprüft. ' +
+    'Für ein selbst signiertes Zertifikat in Einstellungen → E-Mail das Zertifikat (PEM) oder den SHA-256-Fingerabdruck eintragen.');
+  return true;
 }
 
 async function getFrom() {
@@ -62,8 +93,9 @@ export async function sendMail({ to, subject, html, text }: {
     console.log(`📧 E-Mail gesendet an ${to}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
-    console.error(`📧 SMTP Fehler (${to}):`, fehlertext(e));
-    return { success: false, error: fehlertext(e), mode: 'smtp' };
+    const { text } = smtpFehlertext(e);
+    console.error(`📧 SMTP Fehler (${to}):`, text);
+    return { success: false, error: text, mode: 'smtp' };
   }
 }
 
@@ -339,6 +371,28 @@ export async function sendEmailGeaendertMail(to: string, username: string, neueA
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
+/** Die Registrierung antwortet auf eine vergebene Adresse wie auf eine neue; das hier erfährt ihr Inhaber. */
+export async function sendRegistrierungsVersuchMail(to: string, username: string, lang = 'de') {
+  const theme = await getMailTheme();
+  const L = lang === 'en' ? {
+    subject: 'BrickInventory Manager — Registration with your email address',
+    title: 'Registration attempt',
+    text: `Hello ${username},\n\nsomeone tried to register a new account with your email address. You already have an account; nothing was changed.\n\nIf you forgot your password, use “Forgot password” on the sign-in page.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">someone tried to register a new account with your email address. You already have an account; nothing was changed.</p>`,
+    note: 'If you forgot your password, use “Forgot password” on the sign-in page.',
+  } : {
+    subject: 'BrickInventory Manager — Registrierung mit deiner E-Mail-Adresse',
+    title: 'Registrierungsversuch',
+    text: `Hallo ${username},\n\njemand hat versucht, mit deiner E-Mail-Adresse ein neues Konto anzulegen. Du hast schon eines; geändert wurde nichts.\n\nHast du dein Passwort vergessen, nutze „Passwort vergessen“ auf der Anmeldeseite.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">jemand hat versucht, mit deiner E-Mail-Adresse ein neues Konto anzulegen. Du hast schon eines; geändert wurde nichts.</p>`,
+    note: 'Hast du dein Passwort vergessen, nutze „Passwort vergessen“ auf der Anmeldeseite.',
+  };
+  return sendMail({ to, subject: L.subject, text: L.text,
+    html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
+}
+
 /** Das Hauptkonto liest danach den Bestand mit; wer nur eine Sitzung erbeutet
  * hat, soll das nicht unbemerkt einrichten können. */
 export async function sendHaushaltVerknuepftMail(to: string, username: string, hauptkonto: string, lang = 'de') {
@@ -514,12 +568,14 @@ export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: strin
 export async function testSmtp() {
   const transporter = await getTransporter();
   // Code statt Satz: testSmtp() kennt den Anfragenden nicht.
-  if (!transporter) return { success: false, code: 'smtp_nicht_konfiguriert' as const };
+  if (!transporter) return { success: false as const, code: 'smtp_nicht_konfiguriert' as const };
   try {
     await transporter.verify();
-    return { success: true, message: 'SMTP-Verbindung erfolgreich' };
+    return { success: true as const, message: 'SMTP-Verbindung erfolgreich' };
   } catch (e) {
-    return { success: false, error: fehlertext(e) };
+    const { text, zertifikat } = smtpFehlertext(e);
+    return zertifikat ? { success: false as const, code: 'smtp_zertifikat' as const, vars: { grund: fehlertext(e) } }
+      : { success: false as const, code: 'smtp_fehler' as const, vars: { grund: text } };
   }
 }
 

@@ -11,10 +11,10 @@ import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
-import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../src/infra/mailer';
+import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
 import { setUserSetting } from '../src/konto/settings';
-import { getGlobalSetting } from '../src/konto/settings';
+import { registrierungOffen } from '../src/konto/settings';
 import { getSetting } from '../src/konto/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache, alsDoppelt } from '../src/infra/fehlerTexte';
@@ -292,6 +292,19 @@ router.put('/users/:id/admin', requireAdmin, async (req, res: Antwort<'PUT /api/
   res.json({ success: true });
 });
 
+router.put('/users/:id/aktiv', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/aktiv'>) => {
+  const targetId = parseInt(pfadParam(req, 'id'));
+  const soll = strictBool(req.body.is_active, 'is_active');
+  if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
+  if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  const r = await K.setzeAktiv(targetId, soll);
+  if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
+  res.json({ success: true, is_active: soll });
+});
+
 /** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters.
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-password */
 router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
@@ -489,17 +502,14 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
 });
 
 router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
-  // Ohne lesbare Einstellung gilt die Registrierung als geschlossen.
-  const wert = await getGlobalSetting('registration_enabled').catch(meldeUndLiefere('registrierung:status', null));
-  res.json({ enabled: wert === '1' });
+  res.json({ enabled: await registrierungOffen() });
 });
 
 router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/register'>) => {
   const { username, email, first_name, last_name, password, language } = req.body;
   const lang = ['de', 'en'].includes(language) ? language : 'de';
 
-  const regEnabled = await getGlobalSetting('registration_enabled');
-  if (regEnabled === '0') return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
+  if (!await registrierungOffen()) return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
 
   if (!username || !email || !password)
     return sendeFehler(req, res, 400, 'registrierung_felder');
@@ -510,8 +520,18 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   if (!USERNAME_RE.test(username))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
 
-  if (await K.nameOderEmailVergeben(username, email)) return sendeFehler(req, res, 409, 'benutzername_oder_email_vergeben');
-
+  if (await K.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
+  // Eine vergebene Adresse bekommt dieselbe Antwort wie eine neue, sonst liesse
+  // sich abfragen, wer ein Konto hat; ihr Inhaber bekommt einen Hinweis.
+  const inhaber = await K.kontoMitEmail(email);
+  const basis = getBaseUrl(req);
+  let result: { success: boolean; mode: string };
+  if (inhaber) {
+    await K.rechneWieRegistrierung(password);
+    const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(() => 'de'));
+    result = basis ? await sendRegistrierungsVersuchMail(inhaber.email, inhaber.username, sprache)
+      : { success: false, mode: 'ohne_basis' };
+  } else {
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     // Nur als SHA-256: Bei einem Datenbank-Leak wäre ein ausstehender
@@ -521,11 +541,9 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
     // Sprache startet.
     if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
-
-    const basis = getBaseUrl(req);
-    const result = basis
-      ? await sendVerificationMail(email, first_name || username, token, basis, lang)
-      : { success: false, mode: 'ohne_basis' as const };
+    result = basis ? await sendVerificationMail(email, first_name || username, token, basis, lang)
+      : { success: false, mode: 'ohne_basis' };
+  }
 
     res.json({
       success: true,
@@ -583,20 +601,6 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
 });
 
-
-// Im fremden WLAN kann "http://nas:3000" auf einen anderen Rechner zeigen, der
-// sonst den Token bekäme. Nur der echte Server kennt den Hash und kann die
-// Zufallszahl damit unterschreiben; die Kennung verrät über den Token nichts.
-router.post('/serverbeweis', ipThrottle('serverbeweis', 120, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/serverbeweis'>) => {
-  const { kennung, nonce } = req.body ?? {};
-  if (typeof kennung !== 'string' || !/^[0-9a-f]{16}$/.test(kennung)
-      || typeof nonce !== 'string' || !/^[0-9a-f]{32,128}$/.test(nonce))
-    return sendeFehler(req, res, 400, 'wert_ungueltig');
-  const zeile = await K.tokenNachKennung(kennung);
-  if (!zeile) return sendeFehler(req, res, 404, 'token_ungueltig');
-  res.json({ success: true,
-    beweis: crypto.createHmac('sha256', zeile.token).update(nonce).digest('hex') });
-});
 
 // ── Passkeys: Verwalten im Konto, Anmelden auf der Anmeldeseite ─────────────
 const NAME_MAX = 60;

@@ -6,6 +6,7 @@ import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { verschluessele, entschluessele, istVerschluesselt } from '../infra/geheimnis';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/httpError';
+import crypto from 'node:crypto';
 
 export async function getSetting(userId: number, key: string, fallback?: any) {
   const eigen = await repo.nutzerWert(userId, key);
@@ -88,11 +89,33 @@ export async function globalDefaultCondition(): Promise<'N' | 'U'> {
   return g === 'U' ? 'U' : 'N';
 }
 
+/** Ja/Nein nur als 0 oder 1: "false" las die Anzeige als aus, die Durchsetzung als an. */
+const JA_NEIN = new Set(['registration_enabled', 'smtp_secure', 'einrichtung_erledigt']);
+/** Ein unlesbarer Fingerabdruck oder ein kaputtes PEM fiele sonst erst beim Versand auf. */
+const GLOBALE_REGELN: Record<string, (v: string) => boolean> = {
+  smtp_tls_fingerprint: v => v === '' || /^[0-9A-F]{64}$/.test(v.replace(/[\s:]/g, '').toUpperCase()),
+  smtp_tls_ca: v => {
+    if (v.trim() === '') return true;
+    try { return !!new crypto.X509Certificate(v); } catch { return false; }
+  },
+};
+
+export function globalerWertGueltig(key: string, value: unknown): boolean {
+  if (JA_NEIN.has(key)) return String(value) === '0' || String(value) === '1';
+  return GLOBALE_REGELN[key]?.(String(value)) ?? true;
+}
+
 /** Die EINE Schreibstelle: global_settings wurde vorher an vielen Stellen
  * verschieden angefasst.
  * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setglobalsetting */
 export async function setGlobalSetting(key: string, value: unknown) {
+  if (!globalerWertGueltig(key, value)) fehlerWerfen('wert_ungueltig', 400);
   await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(String(value)) : String(value));
+}
+
+/** Offen nur bei genau '1'; fehlt die Zeile oder ist sie unlesbar, bleibt sie zu. */
+export async function registrierungOffen(): Promise<boolean> {
+  return await getGlobalSetting('registration_enabled') === '1';
 }
 
 /** `AND value = $3`: Hat ein anderer Prozess die Zeile inzwischen neu

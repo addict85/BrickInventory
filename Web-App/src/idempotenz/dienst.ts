@@ -3,6 +3,7 @@
  * Wirkung. Derselbe Schlüssel mit anderem Inhalt ist ein Fehler des Clients. */
 import crypto from 'crypto';
 import * as repo from './repository';
+import { verschluessele, entschluessele, istVerschluesselt } from '../infra/geheimnis';
 
 /** Die App wiederholt innerhalb von Stunden, nicht Tagen. */
 export const FRIST_STUNDEN = 24;
@@ -18,24 +19,28 @@ export function fingerabdruck(methode: string, pfad: string, rumpf: unknown): st
 export type Ausgang =
   | { art: 'neu' }
   | { art: 'wiederholung'; status: number; antwort: string }
+  | { art: 'nicht_wiederholbar' }
   | { art: 'laeuft' }
   | { art: 'anders' };
 
+/** Ohne lesbaren Rumpf lieber eine klare Absage als eine zweite Wirkung. */
 export async function beginne(uid: number, schluessel: string, abdruck: string): Promise<Ausgang> {
   if (await repo.belege(uid, schluessel, abdruck, VERWAIST_NACH_S)) return { art: 'neu' };
   const e = await repo.eintrag(uid, schluessel);
   // Zwischen Belegen und Lesen freigegeben (die erste scheiterte): neu versuchen.
   if (!e) return await repo.belege(uid, schluessel, abdruck, VERWAIST_NACH_S) ? { art: 'neu' } : { art: 'laeuft' };
   if (e.anfrage !== abdruck) return { art: 'anders' };
-  if (e.status === null || e.antwort === null) return { art: 'laeuft' };
-  return { art: 'wiederholung', status: e.status, antwort: e.antwort };
+  if (e.status === null) return { art: 'laeuft' };
+  const antwort = istVerschluesselt(e.antwort) ? entschluessele(e.antwort) : null;
+  if (antwort === null) return { art: 'nicht_wiederholbar' };
+  return { art: 'wiederholung', status: e.status, antwort };
 }
 
 /** Ein 5xx wird nicht gemerkt, sondern freigegeben: Die Wirkung ist unsicher,
  * eine Wiederholung soll es noch einmal versuchen dürfen. */
-export async function beende(uid: number, schluessel: string, status: number, antwort: string): Promise<void> {
+export async function beende(uid: number, schluessel: string, status: number, antwort: string | null): Promise<void> {
   if (status >= 500) await repo.loescheLaufenden(uid, schluessel);
-  else await repo.schliesseAb(uid, schluessel, status, antwort);
+  else await repo.schliesseAb(uid, schluessel, status, antwort === null ? null : verschluessele(antwort));
 }
 
 export function gibFrei(uid: number, schluessel: string): Promise<void> {
