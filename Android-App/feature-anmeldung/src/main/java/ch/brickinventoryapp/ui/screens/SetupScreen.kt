@@ -44,6 +44,10 @@ import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.fingerabdruckLesbar
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ui.QrLoginPayload
 import ch.brickinventoryapp.ui.parseQrPayload
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -56,8 +60,11 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String) -> Unit,
-    onQrScanned: ((QrLoginPayload) -> Unit)? = null,
+    /** Zweiter Wert: Der Dialog hat einen abweichenden Pin mit bisher/neu gezeigt. */
+    onQrScanned: ((QrLoginPayload, Boolean) -> Unit)? = null,
     entwicklung: Boolean = NetworkPolicy.entwicklung,
+    /** Der gemerkte Pin für Adresse und Fingerabdruck des Codes, wenn er abweicht. */
+    bisherigerPin: (url: String, fingerabdruck: String?) -> String? = { _, _ -> null },
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
@@ -93,15 +100,26 @@ fun SetupScreen(
 
     qrVorschlag?.let { vorschlag ->
         val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
+        // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
+        val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
         AlertDialog(
             onDismissRequest = { qrVorschlag = null },
-            title = { Text(stringResource(R.string.setup_qr_titel)) },
+            title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
             text = {
                 // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
                 ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-                Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Text(stringResource(R.string.setup_qr_text, vorschlag.url))
-                    if (vorschlag.fingerabdruck != null) Text(stringResource(R.string.setup_qr_pin),
+                    val fp = vorschlag.fingerabdruck
+                    if (bisher != null && fp != null) {
+                        Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
+                        Text(fingerabdruckLesbar(bisher), fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.zert_jetzt), style = MaterialTheme.typography.labelMedium)
+                        Text(fingerabdruckLesbar(fp), fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    } else if (fp != null) Text(stringResource(R.string.setup_qr_pin),
                         style = MaterialTheme.typography.bodySmall)
                     if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                 }
@@ -110,8 +128,11 @@ fun SetupScreen(
                 TextButton(enabled = !qrGesperrt, onClick = {
                     qrVorschlag = null
                     url = vorschlag.url
-                    onQrScanned?.invoke(vorschlag)
-                }) { Text(stringResource(R.string.setup_qr_uebernehmen)) }
+                    onQrScanned?.invoke(vorschlag, bisher != null)
+                }) {
+                    Text(stringResource(if (bisher != null) R.string.setup_qr_pin_uebernehmen else R.string.setup_qr_uebernehmen),
+                        color = if (bisher != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)
+                }
             },
             dismissButton = {
                 TextButton(onClick = { qrVorschlag = null }) { Text(stringResource(R.string.common_cancel)) }

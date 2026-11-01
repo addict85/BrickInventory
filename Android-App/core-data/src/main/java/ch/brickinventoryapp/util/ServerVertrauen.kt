@@ -126,11 +126,17 @@ class ZertifikatsFrage @Inject constructor() {
         if (_offen.value == null) _offen.value = frage
     }
 
-    /** Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. */
-    fun bestaetige(pins: PinAblage) {
-        val f = _offen.value ?: return
+    /**
+     * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Einen geänderten
+     * nur mit [eingabe] aus einer zweiten Quelle ([bestaetigtFingerabdruck]): Ein
+     * Tipp allein wäre genau das, was ein Angreifer dazwischen braucht.
+     */
+    fun bestaetige(pins: PinAblage, eingabe: String? = null): Boolean {
+        val f = _offen.value ?: return false
+        if (f.art == ZertifikatUngeklaert.Art.GEAENDERT && !bestaetigtFingerabdruck(eingabe, f.fingerabdruck)) return false
         pins.merkePin(f.schluessel, f.fingerabdruck)
         _offen.value = null
+        return true
     }
 
     fun verwerfen() {
@@ -145,9 +151,11 @@ class ZertifikatsFrage @Inject constructor() {
  * bekannte CA. Ohne Pin wird nie still vertraut. Andere Hosts (Bild-CDN)
  * prüft nur die Kette.
  *
- * Zur Bestätigung angeboten wird das oberste Zertifikat der Kette, nicht das
- * Blatt: Bei Caddy mit `sign_with_root` ist das die Wurzel, also derselbe Wert
- * wie im QR-Code und in der Webapp, und er übersteht die Erneuerung des Blatts.
+ * Angeboten wird ein Schlüssel, der Erneuerungen übersteht: bei einer Kette, die
+ * das System kennt, die Wurzel aus dem Vertrauensspeicher ([anker]) — das oberste
+ * gesendete Zertifikat wäre bei öffentlichen CAs eine Zwischenstelle, und die
+ * wechselt (Let's Encrypt). Sonst das oberste der Kette, bei Caddy mit
+ * `sign_with_root` die Wurzel wie im QR-Code und in der Webapp.
  */
 // Das Pinning braucht ihn: Er prüft die Kette per PKIX bis zum Pin bzw. über
 // WahlVertrauen und lehnt ab, was der Nutzer nicht bestätigt hat.
@@ -171,13 +179,16 @@ class PinVertrauen(
 
     private fun pruefe(chain: Array<X509Certificate>, schluessel: String?, mit: (X509ExtendedTrustManager) -> Unit) {
         if (schluessel == null || chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
-        val fp = spkiFingerabdruck(chain.last())
         val pin = pins.pin(schluessel)
+        if (pin != null && passtZumPin(chain, pin)) return
+        val kettenOk = runCatching { mit(kette) }.isSuccess
+        val wurzel = if (kettenOk) anker(chain, kette.acceptedIssuers) else null
+        val fp = spkiFingerabdruck(wurzel ?: chain.last())
         if (pin != null) {
-            if (passtZumPin(chain, pin)) return
+            // Gepinnt ist die Wurzel des Systems: Die Kette hat das System eben bis zu ihr geprüft.
+            if (wurzel != null && fp == pin) return
             throw gemeldet(ZertifikatUngeklaert(schluessel, fp, ZertifikatUngeklaert.Art.GEAENDERT, erwartet = pin))
         }
-        val kettenOk = runCatching { mit(kette) }.isSuccess
         throw gemeldet(ZertifikatUngeklaert(schluessel, fp,
             if (kettenOk) ZertifikatUngeklaert.Art.ERSTKONTAKT else ZertifikatUngeklaert.Art.UNBEKANNTE_CA))
     }
@@ -223,4 +234,32 @@ fun passtZumPin(chain: Array<X509Certificate>, pin: String): Boolean {
         val parameter = PKIXParameters(setOf(TrustAnchor(chain[i], null))).apply { isRevocationEnabled = false }
         CertPathValidator.getInstance("PKIX").validate(pfad, parameter)
     }.isSuccess
+}
+
+/**
+ * Die Stelle aus dem Vertrauensspeicher, die das oberste gesendete Zertifikat
+ * ausgestellt hat (oder es selbst ist). Server senden die Wurzel meist nicht mit;
+ * ohne diesen Schritt wäre der Pin eine Zwischenstelle, die die CA austauscht.
+ */
+fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509Certificate? {
+    val oben = chain.lastOrNull() ?: return null
+    return vertraut.firstOrNull {
+        it.subjectX500Principal == oben.issuerX500Principal && runCatching { oben.verify(it.publicKey) }.isSuccess
+    }
+}
+
+/**
+ * Hat jemand den Fingerabdruck aus einer zweiten Quelle abgeschrieben (Webapp,
+ * Zertifikatsanzeige des Browsers)? Ganz oder mindestens die letzten 16
+ * Hex-Zeichen: genug, dass kein passender fremder Schlüssel zu finden ist, und
+ * kurz genug zum Tippen. Doppelpunkte, Leerzeichen und Gross-/Kleinschreibung
+ * zählen nicht; Base64 wie im QR-Code nur vollständig.
+ */
+fun bestaetigtFingerabdruck(eingabe: String?, fp: String): Boolean {
+    val roh = eingabe?.trim().orEmpty()
+    if (roh.isEmpty()) return false
+    if (roh == fp) return true
+    val hex = fingerabdruckLesbar(fp).replace(":", "")
+    val getippt = roh.uppercase().filter { it.isLetterOrDigit() }
+    return getippt.length >= 16 && getippt.all { it in "0123456789ABCDEF" } && hex.endsWith(getippt)
 }

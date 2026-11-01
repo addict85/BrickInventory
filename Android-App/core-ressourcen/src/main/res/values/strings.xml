@@ -872,6 +872,12 @@
     <string name="zert_vertrauen">Trust this certificate</string>
     <string name="zert_vertrauen_neu">Accept the new certificate</string>
     <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
+    <string name="zert_geaendert_eingabe">Last 16 characters of the new fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
+    <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
+    <string name="zert_eingabe_falsch">That does not match the fingerprint shown.</string>
+    <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself.</string>
+    <string name="setup_qr_pin_uebernehmen">Accept the new certificate and log in</string>
+    <string name="setup_qr_pin_wechsel_abgelehnt">The QR code names a different certificate than the confirmed one. Nothing was changed.</string>
     <string name="common_load_failed">Could not be loaded</string>
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
