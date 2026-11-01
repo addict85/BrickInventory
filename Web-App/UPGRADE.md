@@ -724,4 +724,4 @@ Was sich für Nutzer und Clients ändert:
 - **„Alle meine Daten löschen"** (`DELETE /api/v1/bestand`) verlangt
   `password`.
 - **Protokoll**: Mailadressen erscheinen in `app_logs` nur noch maskiert
-  (`m…@example.org`).
+  (`m…@example.org`); voll nur mit `MAIL_KONSOLE_MIT_TOKEN=1` (Entwicklung).
