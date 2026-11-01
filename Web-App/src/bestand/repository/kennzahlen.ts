@@ -23,6 +23,13 @@ export function teileImBestand(uids: number[]) {
              WHERE p.user_id = ANY($1)`, [uids]);
 }
 
+/** Nur die einzeln erfassten Teile, für die Aufschlüsselung „aus Sets · einzeln“. */
+export function teileEinzeln(uids: number[]) {
+  return db.get(`SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t
+              FROM parts p ${mengeJoin('p', 'sm', '= ANY($1)')} ${teilmengeJoin('p', 'part')}
+             WHERE p.user_id = ANY($1) AND p.source = 'manual'`, [uids]);
+}
+
 export function figurenImBestand(uids: number[]) {
   return db.get(`SELECT SUM(${teilmengeAus('m', 'fig')}*${mengeAus('sm', 1)}) AS t
               FROM minifigs m ${mengeJoin('m', 'sm', '= ANY($1)')} ${teilmengeJoin('m', 'fig')}

@@ -3,7 +3,7 @@ import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
-import { allSets } from './02-gallery.js';
+import { allSets, teileAufschluesselung } from './02-gallery.js';
 import { loadManualParts, manualPartsCache, renderManualParts } from './06-minifigs.js';
 
 // ═══ Teile-Inventar (Liste, Suche, Filter) ═══
@@ -28,7 +28,10 @@ async function loadPartsStats(){
   const d=await api('GET','/v1/parts/stats'+scopeQuery('parts'));
   if(!d.success) return;
   const s=d.stats;
-  G('ps-total').textContent=fmtBig(s.total_parts||0);
+  // Wie die Kachel der Sammlung: Teile aus Sets und einzeln erfasste zusammen.
+  const einzeln=s.manual_parts||0;
+  G('ps-total').textContent=fmtBig((s.total_parts||0)+einzeln);
+  G('ps-total-sub').textContent=teileAufschluesselung(s.total_parts||0, einzeln);
   G('ps-unique').textContent=fmtBig(s.unique_parts||0);
   G('ps-colors').textContent=s.unique_colors||0;
 }

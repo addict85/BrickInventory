@@ -278,9 +278,16 @@ export async function loadStats(){
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung.
     G('bstat-sets').textContent     = d.stats.total_sets;
     G('bstat-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
+    G('bstat-parts-sub').textContent = teileAufschluesselung(d.stats.set_parts, d.stats.manual_parts);
     G('bstat-minifigs').textContent = fmtBig(d.stats.total_minifigs || 0);
     G('bstat-instr').textContent    = d.stats.total_instructions;
   }
+}
+
+/** „144 aus Sets · 250 einzeln“ — leer, solange nur eine der beiden Quellen etwas hat. */
+export function teileAufschluesselung(ausSets, einzeln) {
+  if (!ausSets || !einzeln) return '';
+  return t('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
 }
 
 // ── PROGRESS OVERLAY ─────────────────────────────────

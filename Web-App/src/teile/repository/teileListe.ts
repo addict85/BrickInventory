@@ -275,8 +275,17 @@ export async function kennzahlen(uids: number[], ausZusammenfassung: boolean) {
     ${teilmengeJoin('p', 'part')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source, 'set') <> 'manual'`, [uids]);
   if (!r) return null;
+  // Einzeln erfasste Teile stehen nicht in der Zusammenfassung; die Oberfläche
+  // zählt sie zur Gesamtzahl, damit Sammlung und Teile-Reiter dieselbe zeigen.
+  const einzeln = await db.get<{ t: string | number | null }>(`
+    SELECT SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS t
+    FROM parts p
+    ${mengeJoin('p', 'sm', '= ANY($1)')}
+    ${teilmengeJoin('p', 'part')}
+    WHERE p.user_id = ANY($1) AND p.source = 'manual'`, [uids]);
   const zahl = (v: string | number | null) => parseInt(String(v ?? 0)) || 0;
-  return { unique_parts: zahl(r.unique_parts), unique_colors: zahl(r.unique_colors), total_parts: zahl(r.total_parts) };
+  return { unique_parts: zahl(r.unique_parts), unique_colors: zahl(r.unique_colors), total_parts: zahl(r.total_parts),
+           manual_parts: zahl(einzeln?.t ?? null) };
 }
 
 export interface ManuellesTeil {

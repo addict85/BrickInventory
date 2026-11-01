@@ -522,7 +522,8 @@
     /* Kennzahlen: in jedem Design dieselbe Reihe Kacheln über dem Inhalt. */
     .brick-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:0 0 var(--sp-5)}
     .bstat{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:12px 16px;box-shadow:var(--sh0);min-width:0}
-    .bstat .bstat-l{font-size:var(--fs-1);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+    .bstat .bstat-l{overflow-wrap:anywhere;font-size:var(--fs-1);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+    .bstat .bstat-s{font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     .bstat .bstat-v{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:700;line-height:1.2;margin-top:2px;color:var(--txt)}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
     .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}
