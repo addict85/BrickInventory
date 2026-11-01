@@ -220,12 +220,14 @@ class AppViewModel @Inject constructor(
      * Abmelden räumt alles weg, was zum Konto gehört — auch API- und
      * Bild-Cache, sonst sähe der nächste Nutzer auf dem Gerät fremde Daten.
      * Die Bereichs-ViewModels leeren sich auf [Sitzung.abgemeldet]. Der Job lässt
-     * einen Serverwechsel warten, bis alles weg ist.
+     * einen Serverwechsel warten, bis alles weg ist. Zuerst entwertet der Server
+     * den Token (kurz begrenzt) — beim Wechsel ist das noch der alte Server.
      */
     @OptIn(coil3.annotation.ExperimentalCoilApi::class)
     fun logout(): Job {
         csvWatchJob?.cancel(); csvWatchJob = null
         return viewModelScope.launch {
+            if (sitzung.state.value.isLoggedIn) repo.konto.abmeldenAmServer()
             prefs.clearSession()
             repo.clearCache()
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
