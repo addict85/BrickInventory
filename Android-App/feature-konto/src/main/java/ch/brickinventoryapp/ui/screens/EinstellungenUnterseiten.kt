@@ -77,7 +77,7 @@ fun HaushaltUnterseite(
         HouseholdCard(
             state = haushalt,
             onCreateInvite = { vm.createHouseholdInvite() },
-            onRedeemInvite = { code, passwort -> vm.redeemHouseholdInvite(code, passwort) },
+            onRedeemInvite = { code, passwort, faktorCode -> vm.redeemHouseholdInvite(code, passwort, faktorCode) },
             onUnlink = { id -> vm.unlinkHousehold(subUserId = id) },
             onUnlinkParent = { id -> vm.unlinkHousehold(mainUserId = id) },
             onVerwerfen = { id -> vm.verwerfeGetrenntesKonto(id) },

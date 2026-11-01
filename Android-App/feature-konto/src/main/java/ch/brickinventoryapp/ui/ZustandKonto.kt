@@ -59,6 +59,10 @@ data class HouseholdUiState(
     val passwortFalsch: Boolean = false,
     /** Zählt gelungene Einlösungen — daran leert die Ansicht ihre Felder. */
     val eingeloest: Int = 0,
+    /** Der zweite Faktor ist aktiv (oder der Server verlangte seinen Code): Codefeld zeigen. */
+    val faktorNoetig: Boolean = false,
+    /** Der Code des zweiten Faktors war falsch; das Feld zeigt es an. */
+    val faktorFalsch: Boolean = false,
 )
 
 /**

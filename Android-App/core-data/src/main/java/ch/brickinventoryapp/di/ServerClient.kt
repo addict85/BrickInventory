@@ -65,6 +65,8 @@ internal fun buildInterceptorClient(
     rotation: Rotationsanlass? = null,
     /** Nur der API-Client: Dort kommen die Verwalteraufrufe an. */
     rechte: ch.brickinventoryapp.data.RechteSignal? = null,
+    /** Nur der API-Client: Mit Startpasswort weist der Server jeden Abruf ab. */
+    pflicht: ch.brickinventoryapp.data.PasswortPflicht? = null,
 ): OkHttpClient {
     val versionsMeldung: ((VersionsHinweis) -> Unit)? = meldungen?.let { kanal ->
         { hinweis: VersionsHinweis ->
@@ -91,7 +93,8 @@ internal fun buildInterceptorClient(
                 if (original.header("Accept-Language") == null) ziel.header("Accept-Language",
                     ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
                         .getString(ch.brickinventoryapp.ressourcen.R.string.lang_code))
-            }, rotation = rotation, rechteEntzogen = { rechte?.melde() }))
+            }, rotation = rotation, rechteEntzogen = { rechte?.melde() },
+            passwortWechselNoetig = { pflicht?.melde() }))
         .apply {
             val tm = serverVertrauen(prefs, frage)
             val tls = javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }

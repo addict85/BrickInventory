@@ -30,7 +30,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 internal fun HouseholdCard(
     state: ch.brickinventoryapp.ui.HouseholdUiState,
     onCreateInvite: () -> Unit,
-    onRedeemInvite: (code: String, passwort: String) -> Unit,
+    onRedeemInvite: (code: String, passwort: String, faktorCode: String?) -> Unit,
     onUnlink: (Int) -> Unit,
     onUnlinkParent: (Int) -> Unit,
     onVerwerfen: (Int) -> Unit,
@@ -38,6 +38,7 @@ internal fun HouseholdCard(
     val st = state.status
     var code by rememberSaveable { mutableStateOf("") }
     var passwort by rememberSaveable { mutableStateOf("") }
+    var faktorCode by rememberSaveable { mutableStateOf("") }
     LaunchedEffect(state.eingeloest) { if (state.eingeloest > 0) code = "" }
     // Über GeheimeZwischenablage statt LocalClipboard: Sie nimmt den Code nach
     // einer Minute wieder heraus, auch wenn die Seite dann schon zu ist.
@@ -171,15 +172,30 @@ internal fun HouseholdCard(
                 } else null,
                 modifier = Modifier.fillMaxWidth()
             )
-            Button(onClick = { onRedeemInvite(code, passwort); passwort = "" },
-                   enabled = code.isNotBlank() && passwort.isNotEmpty() && !state.isLoading) {
+            // Bei aktivem zweitem Faktor verlangt der Server dessen Code (oder einen Wiederherstellungscode).
+            if (state.faktorNoetig) {
+                val faktorFalsch = state.faktorFalsch && faktorCode.isEmpty()
+                OutlinedTextField(
+                    value = faktorCode, onValueChange = { faktorCode = it.take(24) }, singleLine = true,
+                    label = { Text(stringResource(R.string.household_redeem_code)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                    isError = faktorFalsch,
+                    supportingText = if (faktorFalsch) {
+                        { Text(stringResource(R.string.household_redeem_code_wrong)) }
+                    } else null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.faktorNoetig }); passwort = ""; faktorCode = "" },
+                   enabled = code.isNotBlank() && passwort.isNotEmpty() && (!state.faktorNoetig || faktorCode.isNotBlank()) &&
+                       !state.isLoading) {
                 Text(stringResource(R.string.household_redeem_submit))
             }
         }
 
         // Meldung des Servers — Währung weicht ab, Konten schon oder
         // umgekehrt verknüpft. Wortlaut unverändert übernommen.
-        state.message?.takeUnless { state.passwortFalsch }?.let {
+        state.message?.takeUnless { state.passwortFalsch || state.faktorFalsch }?.let {
             Text(it, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }

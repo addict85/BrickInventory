@@ -533,6 +533,8 @@
     <string name="household_redeem_submit">Link</string>
     <string name="household_redeem_password">Password of this account</string>
     <string name="household_redeem_password_wrong">The password is wrong. Enter the password of the account you are signed in with.</string>
+    <string name="household_redeem_code">Code from the authenticator app or recovery code</string>
+    <string name="household_redeem_code_wrong">The code is wrong or has expired.</string>
     <string name="household_redeem_locked">Too many wrong attempts. Please try again later.</string>
     <string name="household_unlink">Unlink</string>
     <string name="household_remove">Remove</string>
@@ -672,6 +674,10 @@
     <string name="konto_password_hint">All access tokens of this account are revoked — including this app. You will have to sign in again.</string>
     <string name="konto_password_changed">Password changed. Please sign in again.</string>
     <string name="konto_password_button">Change password</string>
+    <string name="startpasswort_titel">Replace the initial password</string>
+    <string name="startpasswort_text">This account still uses the initial password it was created with. Choose your own password before you continue. Afterwards you sign in again with the new one.</string>
+    <string name="startpasswort_wiederholen">Repeat new password</string>
+    <string name="startpasswort_verschieden">The two entries differ.</string>
     <string name="konto_design_hint">Applies to this account on every device.</string>
     <string name="konto_design_vorgabe">Default: %1$s</string>
 

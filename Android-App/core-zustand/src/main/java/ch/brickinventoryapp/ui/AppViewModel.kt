@@ -69,6 +69,8 @@ class AppViewModel @Inject constructor(
     val zertifikatsFrage: ch.brickinventoryapp.util.ZertifikatsFrage,
     ausgangsmelder: Ausgangsmelder,
     private val abmeldehaken: Abmeldehaken,
+    /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
+    val passwortPflicht: ch.brickinventoryapp.data.PasswortPflicht,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -231,6 +233,7 @@ class AppViewModel @Inject constructor(
         return viewModelScope.launch {
             if (sitzung.state.value.isLoggedIn) repo.konto.abmeldenAmServer()
             prefs.clearSession()
+            passwortPflicht.erledigt()
             repo.clearCache()
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }

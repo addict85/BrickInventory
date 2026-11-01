@@ -524,6 +524,8 @@
     <string name="household_redeem_submit">Verknüpfen</string>
     <string name="household_redeem_password">Passwort dieses Kontos</string>
     <string name="household_redeem_password_wrong">Das Passwort stimmt nicht. Gib das Passwort des Kontos ein, mit dem du angemeldet bist.</string>
+    <string name="household_redeem_code">Code aus der Authenticator-App oder Wiederherstellungscode</string>
+    <string name="household_redeem_code_wrong">Der Code stimmt nicht oder ist abgelaufen.</string>
     <string name="household_redeem_locked">Zu viele Fehlversuche. Bitte versuche es später erneut.</string>
     <string name="household_unlink">Verknüpfung lösen</string>
     <string name="household_remove">Entfernen</string>
@@ -658,6 +660,10 @@
     <string name="konto_password_hint">Alle Zugänge dieses Kontos werden verworfen — auch diese App. Du musst dich danach neu anmelden.</string>
     <string name="konto_password_changed">Passwort geändert. Bitte melde dich neu an.</string>
     <string name="konto_password_button">Passwort ändern</string>
+    <string name="startpasswort_titel">Startpasswort ersetzen</string>
+    <string name="startpasswort_text">Dieses Konto meldet sich noch mit dem Startpasswort an, mit dem es angelegt wurde. Wähle zuerst ein eigenes Passwort. Danach meldest du dich mit dem neuen an.</string>
+    <string name="startpasswort_wiederholen">Neues Passwort wiederholen</string>
+    <string name="startpasswort_verschieden">Die beiden Eingaben unterscheiden sich.</string>
     <string name="konto_design_hint">Gilt für dieses Konto auf allen Geräten.</string>
     <string name="konto_design_vorgabe">Vorgabe: %1$s</string>
 

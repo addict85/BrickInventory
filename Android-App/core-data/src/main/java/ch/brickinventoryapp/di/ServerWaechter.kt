@@ -51,6 +51,9 @@ private val BESTAETIGUNG_NOETIG = setOf("aktuelles_passwort_falsch", "aktuelles_
 /** 403 mit diesem Code: Das Konto oder der Token hat keine Verwalterrechte (mehr). */
 const val NUR_ADMINS = "nur_admins"
 
+/** 403 mit diesem Code: Erst das Startpasswort ersetzen (data/PasswortPflicht). */
+const val PASSWORT_WECHSEL_NOETIG = "passwort_wechsel_noetig"
+
 /**
  * Token, Sprache und das Klartext-Verbot für alle Anfragen der Server-Clients.
  * Eine Anfrage ohne TLS bricht hier ab, bevor ein Kopf gebaut wird; die
@@ -68,6 +71,8 @@ class ServerWaechter(
     private val rotation: Rotationsanlass? = null,
     /** Ein 403 `nur_admins` auf einen Token: Die App zieht ihr Verwalterrecht nach. */
     private val rechteEntzogen: () -> Unit = {},
+    /** Ein 403 `passwort_wechsel_noetig`: Die App zeigt die Maske für das Startpasswort. */
+    private val passwortWechselNoetig: () -> Unit = {},
 ) : Interceptor {
 
     private val versionGemeldet = AtomicBoolean(false)
@@ -144,6 +149,7 @@ class ServerWaechter(
             val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
             if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
             if (antwort.code == 403 && code == NUR_ADMINS) rechteEntzogen()
+            if (antwort.code == 403 && code == PASSWORT_WECHSEL_NOETIG) passwortWechselNoetig()
         }
 
         val melden = versionsMeldung
