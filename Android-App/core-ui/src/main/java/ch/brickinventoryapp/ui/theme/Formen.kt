@@ -119,6 +119,6 @@ val LocalStatusFarben = staticCompositionLocalOf {
     StatusFarben(
         erfolg  = Color(0xFF166534),
         warnung = Color(0xFFE3B341),
-        fehler  = Color(0xFFDC2626),
+        fehler  = Color(0xFFB91C1C),
     )
 }

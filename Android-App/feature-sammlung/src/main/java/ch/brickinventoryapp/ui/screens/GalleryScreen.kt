@@ -314,12 +314,10 @@ private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
         item { GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets)) }
         item { GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units)) }
         item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts)) }
-        // Minifiguren und Anleitungen nur, wenn es welche gibt: Ein Chip mit
-        // einer Null ist eine Zahl ohne Aussage.
-        if (stats.totalMinifigs > 0)
-            item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
-        if (stats.totalInstructions > 0)
-            item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
+        // Alle Kennzahlen immer, auch mit 0: Eine Reihe, deren Chips je nach Bestand
+        // kommen und gehen, liest sich nicht gleich; 0 Figuren ist auch eine Auskunft.
+        item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
+        item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
     }
 }
 
@@ -529,7 +527,7 @@ fun SetCard(
                         lineHeight = 16.sp)
                     set.theme?.let { thema ->
                         Text(thema, style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f), maxLines = 1)
+                            color = MaterialTheme.colorScheme.primary, maxLines = 1)
                     }
                     set.pieces?.let { teile ->
                         Text(fmtInt(teile) + stringResource(R.string.gallery_pieces_suffix),

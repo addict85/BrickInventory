@@ -38,6 +38,7 @@ import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.compose.AsyncImage
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 
 /** Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. */
 /**
@@ -312,7 +313,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
             Column(Modifier.padding(20.dp)) {
                 Text(
                     stringResource(R.string.finance_market_avg),
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
+                    color = MaterialTheme.colorScheme.onPrimary,
                     style = MaterialTheme.typography.labelMedium
                 )
                 Spacer(Modifier.height(6.dp))
@@ -331,13 +332,16 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                     )
                     val pnlPct = pnl?.totals?.pnlProzent
                     if (pnlPct != null) {
+                        // Gewinn grün, Verlust rot wie überall sonst; auf weissem Grund, weil die
+                        // Statusfarben nur auf surface 4,5:1 zusagen (TextKontrastTest), nicht auf primary.
+                        val status = LocalStatusFarben.current
                         Surface(
                             shape = Formen.chip,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.18f)
+                            color = MaterialTheme.colorScheme.surface,
+                            contentColor = if (pnlPct < 0) status.fehler else status.erfolg,
                         ) {
                             Text(
                                 stringResource(R.string.finance_total_pnl, fmtProzent(pnlPct)),
-                                color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold,
                                 style = MaterialTheme.typography.bodyMedium,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
@@ -349,7 +353,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                     Spacer(Modifier.height(Abstaende.winzig))
                     Text(
                         stringResource(R.string.finance_parts_extra, fmtPrice(summen.teileUndFiguren.toPlainString())),
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
+                        color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -359,7 +363,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                     Spacer(Modifier.height(Abstaende.winzig))
                     Text(
                         pluralStringResource(R.plurals.finance_fremde_waehrung, fremde, fremde),
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
+                        color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -367,9 +371,9 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                 HorizontalDivider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f))
                 Spacer(Modifier.height(Abstaende.mittel))
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
-                    PriceColumn("Min", fmtPrice(valuation.totals.min))
+                    PriceColumn(stringResource(R.string.finance_min_label), fmtPrice(valuation.totals.min))
                     PriceColumn(stringResource(R.string.finance_avg_label), fmtPrice(valuation.totals.avg))
-                    PriceColumn("Max", fmtPrice(valuation.totals.max))
+                    PriceColumn(stringResource(R.string.finance_max_label), fmtPrice(valuation.totals.max))
                 }
             }
         }

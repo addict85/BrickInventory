@@ -333,8 +333,8 @@ fun PartsScreen(
 @Composable
 private fun TeileKennzahlen(stats: TeileKennzahlenAnsicht) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        GalleryStatChip("${stats.uniqueParts}", stringResource(R.string.parts_stat_types))
-        GalleryStatChip("${stats.uniqueColors}", stringResource(R.string.parts_stat_colors))
+        GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.uniqueParts), stringResource(R.string.parts_stat_types))
+        GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.uniqueColors), stringResource(R.string.parts_stat_colors))
         GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.totalParts), stringResource(R.string.parts_stat_total))
     }
 }

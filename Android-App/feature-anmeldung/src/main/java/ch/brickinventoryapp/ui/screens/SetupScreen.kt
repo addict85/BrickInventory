@@ -240,15 +240,18 @@ fun SetupScreen(
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }
         }
-        Spacer(Modifier.height(Abstaende.gross))
-        Text(
-            // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
-            // (app/build.gradle.kts), ein fest eingetragener Stand veraltet unbemerkt.
-            stringResource(R.string.setup_build, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
+        // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
+        // (app/build.gradle.kts). Ohne Namen (Vorschau, Test) bliebe nur „Build “ stehen.
+        val fassung = ch.brickinventoryapp.ui.components.LocalAppFassung.current.name
+        if (fassung.isNotBlank()) {
+            Spacer(Modifier.height(Abstaende.gross))
+            Text(
+                stringResource(R.string.setup_build, fassung),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+        }
     }
 }
 

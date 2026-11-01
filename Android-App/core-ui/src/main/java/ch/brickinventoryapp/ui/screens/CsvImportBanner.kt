@@ -93,7 +93,7 @@ fun CsvImportBanner(
                     Text(
                         current,
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f),
+                        color = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.padding(top = Abstaende.haar)
                     )
                 }
