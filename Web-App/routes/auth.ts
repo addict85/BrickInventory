@@ -14,7 +14,7 @@ import { strictBool } from '../src/infra/validate';
 import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
 import { setUserSetting } from '../src/konto/settings';
-import { getGlobalSetting } from '../src/konto/settings';
+import { registrierungOffen } from '../src/konto/settings';
 import { getSetting } from '../src/konto/settings';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache, alsDoppelt } from '../src/infra/fehlerTexte';
@@ -489,17 +489,14 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
 });
 
 router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
-  // Ohne lesbare Einstellung gilt die Registrierung als geschlossen.
-  const wert = await getGlobalSetting('registration_enabled').catch(meldeUndLiefere('registrierung:status', null));
-  res.json({ enabled: wert === '1' });
+  res.json({ enabled: await registrierungOffen() });
 });
 
 router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/register'>) => {
   const { username, email, first_name, last_name, password, language } = req.body;
   const lang = ['de', 'en'].includes(language) ? language : 'de';
 
-  const regEnabled = await getGlobalSetting('registration_enabled');
-  if (regEnabled === '0') return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
+  if (!await registrierungOffen()) return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
 
   if (!username || !email || !password)
     return sendeFehler(req, res, 400, 'registrierung_felder');

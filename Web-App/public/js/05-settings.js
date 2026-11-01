@@ -25,7 +25,7 @@ async function loadSmtpSettings(settings){
   if(G('smtp-from'))   G('smtp-from').value   = s.smtp_from||'';
   if(G('smtp-secure')) G('smtp-secure').checked = s.smtp_secure==='1';
   if(G('smtp-insecure')) G('smtp-insecure').checked = s.smtp_insecure_tls==='1';
-  if(G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled!=='0';
+  if(G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled==='1';
   geladeneSmtp = JSON.stringify(smtpFormular());
 }
 

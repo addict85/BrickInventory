@@ -10,7 +10,7 @@ import {
 } from '../../src/konto/settings';
 import { nutzerEinstellungen } from '../../src/konto/settings';
 import { deleteUserSetting } from '../../src/konto/settings';
-import { setGlobalSetting } from '../../src/konto/settings';
+import { setGlobalSetting, globalerWertGueltig } from '../../src/konto/settings';
 import { globalDefaultCondition } from '../../src/konto/settings';
 import { nutzerStandardZustand } from '../../src/konto/settings';
 import { setUserSetting } from '../../src/konto/settings';
@@ -214,6 +214,8 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
   const userKeys = ['currency', 'language', 'user_default_condition'];
 
   if (istVerwalter(req)) {
+    if (globalKeys.some(k => req.body[k] !== undefined && !globalerWertGueltig(k, req.body[k])))
+      return sendeFehler(req, res, 400, 'wert_ungueltig');
     // Mailserver nur mit Passwort umstellen: Wer eine Verwaltersitzung erbeutet,
     // läse sonst alle künftigen Rücksetz-Mails mit. Nur bei echter Änderung.
     const smtpGeaendert: string[] = [];
@@ -310,6 +312,8 @@ router.post('/settings/import', importUpload.single('file'), async (req: LoggedI
   const smtpUebergangen = config.global && typeof config.global === 'object'
     ? Object.keys(config.global).filter(k => k.startsWith('smtp_')) : [];
   if (config.global && istVerwalter(req)) {
+    if (globalKeys.some(k => config.global[k] !== undefined && !globalerWertGueltig(k, config.global[k])))
+      return sendeFehler(req, res, 400, 'wert_ungueltig');
     for (const key of globalKeys) {
       if (config.global[key] !== undefined) {
         // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.

@@ -88,11 +88,25 @@ export async function globalDefaultCondition(): Promise<'N' | 'U'> {
   return g === 'U' ? 'U' : 'N';
 }
 
+/** Ja/Nein nur als 0 oder 1: Ein "false" las die Anzeige als aus, die
+ * Durchsetzung als an. */
+const JA_NEIN = new Set(['registration_enabled', 'smtp_secure', 'einrichtung_erledigt']);
+
+export function globalerWertGueltig(key: string, value: unknown): boolean {
+  return !JA_NEIN.has(key) || String(value) === '0' || String(value) === '1';
+}
+
 /** Die EINE Schreibstelle: global_settings wurde vorher an vielen Stellen
  * verschieden angefasst.
  * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setglobalsetting */
 export async function setGlobalSetting(key: string, value: unknown) {
+  if (!globalerWertGueltig(key, value)) fehlerWerfen('wert_ungueltig', 400);
   await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(String(value)) : String(value));
+}
+
+/** Offen nur bei genau '1'; fehlt die Zeile oder ist sie unlesbar, bleibt sie zu. */
+export async function registrierungOffen(): Promise<boolean> {
+  return await getGlobalSetting('registration_enabled') === '1';
 }
 
 /** `AND value = $3`: Hat ein anderer Prozess die Zeile inzwischen neu
