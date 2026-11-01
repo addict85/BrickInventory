@@ -10,6 +10,8 @@
  *      der Inhaber erfährt es“
  * Gegenprobe (01.11.2026 gemessen): Code-Pflicht in der Route entfernt → rot:
  *   „mit zweitem Faktor braucht es auch den Code“
+ * Gegenprobe (01.11.2026 gemessen): maskiereAdresse() im Konsolenweg des Mailers
+ *   umgangen → rot: „mit Passwort verknüpft, und der Inhaber erfährt es“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -79,7 +81,9 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
     } finally { console.log = echt; }
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await verknuepft(), true);
-    assert.ok(zeilen.some(z => z.includes(`An:      ${KIND}@example.org`)), zeilen.join('\n'));
+    // Die Konsole landet in app_logs: Die Adresse steht dort nur maskiert.
+    assert.ok(zeilen.some(z => z.includes(`An:      ${KIND[0]}…@example.org`)), zeilen.join('\n'));
+    assert.ok(!zeilen.some(z => z.includes(`${KIND}@`)), 'die volle Adresse steht im Protokoll');
     assert.ok(zeilen.some(z => /Haushalt/.test(z)), 'Betreff fehlt');
   });
 

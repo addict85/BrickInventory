@@ -563,9 +563,7 @@ const RUECKSETZ_GUELTIG_MIN = 60, RUECKSETZ_PAUSE_MIN = 15, RUECKSETZ_MINDESTDAU
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {
   const { email } = req.body;
   if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
-  // Ohne feste Adresse käme der Link aus dem Host-Header — wer den fälscht,
-  // bekäme den Reset-Code des Opfers. Vor der Nutzersuche, damit die Antwort
-  // nichts über die E-Mail verrät.
+  // Vor der Nutzersuche, damit die Absage nichts über die Adresse verrät.
   if (!basisUrl()) {
     hinweisOhneBasisUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
     return sendeFehler(req, res, 503, 'passwort_reset_nicht_eingerichtet');

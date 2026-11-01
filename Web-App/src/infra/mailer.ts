@@ -76,6 +76,12 @@ export function linkFuerKonsole(text?: string, schalter = konfig().mailKonsoleMi
   return schalter === '1' ? url : url.replace(/([?&]token=)[^&#\s]+/g, '$1…');
 }
 
+/** Die Konsole landet in app_logs, das jeder Verwalter liest. */
+export function maskiereAdresse(adresse: string): string {
+  const at = adresse.lastIndexOf('@');
+  return at < 1 ? '…' : `${adresse[0]}…${adresse.slice(at)}`;
+}
+
 /** Ohne SMTP auf der Konsole; `html` und `text` optional, weil die Konsole
  * nur `text` liest. */
 export async function sendMail({ to, subject, html, text }: {
@@ -87,7 +93,7 @@ export async function sendMail({ to, subject, html, text }: {
     const link = linkFuerKonsole(text);
     console.log('\n══════════════════════════════════════════════════');
     console.log('📧  E-Mail (SMTP nicht konfiguriert):');
-    console.log(`    An:      ${to}`);
+    console.log(`    An:      ${maskiereAdresse(to)}`);
     console.log(`    Betreff: ${subject}`);
     if (link) console.log(`    Link:    ${link}`);
     console.log('══════════════════════════════════════════════════\n');
@@ -95,11 +101,11 @@ export async function sendMail({ to, subject, html, text }: {
   }
   try {
     const info = await transporter.sendMail({ from, to, subject, text, html });
-    console.log(`📧 E-Mail gesendet an ${to}: ${info.messageId}`);
+    console.log(`📧 E-Mail gesendet an ${maskiereAdresse(to)}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
     const { text } = smtpFehlertext(e);
-    console.error(`📧 SMTP Fehler (${to}):`, text);
+    console.error(`📧 SMTP Fehler (${maskiereAdresse(to)}):`, text);
     return { success: false, error: text, mode: 'smtp' };
   }
 }
