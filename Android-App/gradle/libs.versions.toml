@@ -7,11 +7,14 @@ mlkitBarcode                = "18.3.1"   # unbundled (Play-Dienste) — siehe 16
 mlkitTextRec                = "16.0.1"   # bundled — liegt IM APK, kein Play-Nachladen
 accompanistPermissions      = "0.37.3"
 
+# 9.5.0 bleibt aus: Damit fehlten im Release-APK Texte, die erreichbarer Code
+# benutzt (Monitoring, Kaufpreise) – die Prüfung „APK gegen R8-Verluste“ war
+# rot, mit 9.4.1 auf demselben Stand nicht. Erst heben, wenn das geklärt ist.
 # Die hoechste Fassung meldet der CI-Schritt „Fassungen“ gegen
 # dl.google.com/dl/android/maven2/com/android/application/group-index.xml —
 # aus der Entwicklungsumgebung ist dieses Verzeichnis nicht abrufbar, vom
 # Runner sehr wohl (tools/fassungen-pruefen.py).
-agp                         = "9.5.0"
+agp                         = "9.4.1"
 # ── Die Nummern der beiden muessen NICHT uebereinstimmen ────────────────
 #
 # Hier stand: „KSP 2.3.7 und hoeher erwartet Kotlin 2.3.20", gelesen aus der
