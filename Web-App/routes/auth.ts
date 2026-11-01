@@ -271,6 +271,8 @@ router.post('/users', requireAdmin, async (req, res: Antwort<'POST /api/v1/auth/
   // Verwalter anlegen.
   const verwalter = angemeldeteNutzerId(req);
   if (!await bestaetigePasswort(req, res, verwalter, req.body?.admin_password)) return;
+  // Wie bei der Registrierung auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
+  if (await K.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
   const neu = await K.legeKontoAn(username, password, alsVerwalter).catch(alsDoppelt('benutzername_vergeben'));
   if (neu === null) return sendeFehler(req, res, 409, 'benutzername_vergeben');
   await protokolliere(verwalter, neu, 'konto_angelegt');

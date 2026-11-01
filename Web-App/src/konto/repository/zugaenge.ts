@@ -164,8 +164,12 @@ export async function bestaetigeEmail(id: number): Promise<void> {
   await db.run('UPDATE users SET email_verified=true, verification_token=NULL, token_expires=NULL WHERE id=$1', [id]);
 }
 
-export function kontoZurAnmeldung(name: string) {
-  return db.get('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)', [name]);
+/** Zwei Treffer (ein Name gleich der Adresse eines anderen Kontos, nur im
+ * Altbestand möglich) heissen „kein Konto": Welches gemeint war, ist nicht zu entscheiden. */
+export async function kontoZurAnmeldung(name: string) {
+  const treffer = await db.all('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1) LIMIT 2', [name]);
+  if (treffer.length > 1) console.warn('[anmeldung] Name passt auf zwei Konten (Benutzername und Adresse) — Anmeldung abgewiesen');
+  return treffer.length === 1 ? treffer[0] : undefined;
 }
 
 export function passwortHash(id: number) {
