@@ -139,7 +139,8 @@ test('any wird weniger, nie mehr', () => {
   // 31.10.2026: 232 (Parameter der Repositories typisiert).
   // 31.10.2026: 221 (Anreicherung und Bewertung ohne any-Karten und any-Fänge).
   // 01.11.2026: 220 (SMTP-Test liefert seinen Fehlercode typisiert).
-  const SCHRANKE = 208;
+  // 01.11.2026: 206 (Merklisten-CSV-Import fängt ohne any).
+  const SCHRANKE = 206;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
