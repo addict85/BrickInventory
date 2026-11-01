@@ -335,7 +335,8 @@ private fun TeileKennzahlen(stats: TeileKennzahlenAnsicht) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.uniqueParts), stringResource(R.string.parts_stat_types))
         GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.uniqueColors), stringResource(R.string.parts_stat_colors))
-        GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.totalParts), stringResource(R.string.parts_stat_total))
+        GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.teileGesamt), stringResource(R.string.parts_stat_total),
+            teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln))
     }
 }
 
@@ -436,8 +437,9 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold)
-                Text(part.partName ?: "—",
+                Text(part.partName ?: stringResource(R.string.name_unknown),
                     style = MaterialTheme.typography.labelSmall,
+                    color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     maxLines = 2, overflow = TextOverflow.Ellipsis)
                 part.colorName?.let {
                     Text(it, style = MaterialTheme.typography.labelSmall,

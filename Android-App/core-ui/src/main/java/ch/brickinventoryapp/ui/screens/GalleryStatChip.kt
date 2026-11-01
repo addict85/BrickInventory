@@ -7,6 +7,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
+import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.util.fmtInt
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -16,7 +19,7 @@ import androidx.compose.ui.unit.dp
  * damit „12 Sets“ eine Fundstelle ist und nicht zwei.
  */
 @Composable
-fun GalleryStatChip(value: String, label: String) {
+fun GalleryStatChip(value: String, label: String, detail: String? = null) {
     Surface(
         shape = Formen.chip,
         color = MaterialTheme.colorScheme.primaryContainer,
@@ -29,6 +32,17 @@ fun GalleryStatChip(value: String, label: String) {
         ) {
             Text(value, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
             Text(label, style = MaterialTheme.typography.labelSmall)
+            if (detail != null) Text(detail, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
+
+/**
+ * „144 aus Sets · 250 einzeln“ unter der Teilezahl, wie in der Webapp — nur wenn
+ * es einzeln erfasste Teile gibt; sonst wäre die Zeile die Zahl darüber noch einmal.
+ */
+@Composable
+fun teileAufschluesselung(ausSets: Int?, einzeln: Int?): String? =
+    if (ausSets != null && einzeln != null && einzeln > 0)
+        stringResource(R.string.parts_breakdown, fmtInt(ausSets), fmtInt(einzeln))
+    else null

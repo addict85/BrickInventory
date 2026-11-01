@@ -396,6 +396,9 @@ data class DashboardStats(
     @SerialName("total_instructions") val totalInstructions: Int,
     @SerialName("total_parts") val totalParts: Int,
     @SerialName("total_minifigs") val totalMinifigs: Int,
+    // Die Aufschlüsselung von total_parts; ältere Server liefern sie nicht.
+    @SerialName("set_parts") val setParts: Int? = null,
+    @SerialName("manual_parts") val manualParts: Int? = null,
 )
 
 @Serializable

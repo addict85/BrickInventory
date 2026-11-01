@@ -115,6 +115,9 @@ class UiModellAbbildungTest {
         val EIGENE_REGELN = setOf("Auftrag", "AuftraegeResponse")
         /** Bewusst umbenannt oder abgeleitet; geprüft in den Einzeltests oben. */
         val OHNE_GEGENSTUECK = sortedSetOf(
+            // Teile-Gesamtzahl und Aufschlüsselung, geprüft in TeileGesamtzahlTest.
+            "DashboardStats.getTeileAusSets", "DashboardStats.getTeileEinzeln",
+            "PartsStats.getTeileAusSets", "PartsStats.getTeileEinzeln", "PartsStats.getTeileGesamt",
             "Preisalarm.getUnter", "Profil.getEmailBestaetigt", "StartupStatus.getAnteil", "StartupStatus.getBereit", "StartupStatus.getFortschritt",
             "StartupStatus.getGesamt", "StartupStatus.getSchritt", "StartupStatus.getUnterschritt",
         )

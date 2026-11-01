@@ -120,7 +120,7 @@
 
     <!-- ══════════════ Gallery screen ══════════════ -->
     <string name="gallery_stat_sets">Sets</string>
-    <string name="gallery_stat_units">Units</string>
+    <string name="gallery_stat_units">Copies</string>
     <string name="gallery_stat_parts">Parts</string>
     <string name="gallery_stat_minifigs">Minifigs</string>
     <string name="gallery_stat_instructions">Instructions</string>
@@ -215,6 +215,8 @@
     <string name="alert_schedule_failed">Price alert could not be scheduled: %1$s</string>
     <string name="detail_alert_below">falls below</string>
     <string name="detail_alert_above">rises above</string>
+    <string name="detail_alert_chip_below">Falls below</string>
+    <string name="detail_alert_chip_above">Rises above</string>
     <string name="detail_alert_armed">armed</string>
     <string name="detail_alert_fired">sent — armed again once the price moves back</string>
     <string name="detail_alert_threshold">Threshold (%1$s)</string>
@@ -301,7 +303,7 @@
     <string name="parts_part_number_placeholder">e.g. 3001</string>
     <string name="parts_no_color">No color</string>
     <string name="parts_color_label">Color (optional)</string>
-    <string name="parts_color_unknown">Colour %1$d</string>
+    <string name="parts_color_unknown">Color %1$d</string>
     <string name="parts_add_button">Add</string>
 
     <!-- ══════════════ Monitoring screen ══════════════ -->
@@ -364,7 +366,9 @@
     <string name="nav_gallery">Gallery</string>
     <string name="nav_parts">Parts</string>
     <string name="nav_minifigs">Minifigures</string>
-    <string name="nav_minifigs_short">Minifig.</string>
+    <string name="nav_minifigs_short">Minifigs</string>
+    <string name="name_unknown">Name unknown</string>
+    <string name="parts_breakdown">%1$s from sets · %2$s loose</string>
     <string name="nav_partslist">Parts list</string>
     <string name="nav_finance">Finance</string>
     <string name="nav_comparison">Comparison</string>
@@ -403,7 +407,7 @@
     <string name="setitem_total_qty">Total quantity</string>
     <string name="setitem_open_set">Open set</string>
     <string name="setitem_category">Category</string>
-    <string name="setitem_color">Colour</string>
+    <string name="setitem_color">Color</string>
     <string name="parts_filter_color">Filter by color</string>
     <string name="parts_filter_category">Filter by category</string>
     <string name="parts_filter_all">All parts</string>
@@ -431,7 +435,7 @@
     <string name="pruef_hinweis">Adding then happens in the background — just a moment before the next scan.</string>
     <string name="vm_barcode_no_set">No set found for: %1$s</string>
     <string name="vm_set_added">%1$s added!</string>
-    <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalogue is reachable.</string>
+    <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalog is reachable.</string>
     <string name="vm_error">Error: %1$s</string>
     <string name="vm_session_expired">Session expired — please log in again</string>
     <string name="vm_rechte_entzogen">Your administrator rights no longer apply — the administration areas are hidden.</string>
@@ -480,10 +484,10 @@
     <string name="monitoring_theme_classic">Classic</string>
     <string name="monitoring_theme_brick">Brick</string>
     <string name="monitoring_theme_werkbank">Workbench (dark)</string>
-    <string name="monitoring_theme_farbfaecher">Colour fan</string>
-    <string name="monitoring_theme_noppe">Noppe</string>
+    <string name="monitoring_theme_farbfaecher">Color fan</string>
+    <string name="monitoring_theme_noppe">Stud (bright bricks)</string>
     <string name="monitoring_theme_hochglanz">High gloss</string>
-    <string name="monitoring_catalog_images">Queue catalogue images</string>
+    <string name="monitoring_catalog_images">Queue catalog images</string>
     <string name="monitoring_redownload_missing">Redownload missing images</string>
     <string name="monitoring_import_missing_instr">Import missing instructions</string>
     <string name="monitoring_loading">Loading…</string>
@@ -628,7 +632,7 @@
     <string name="tokens_reload">Refresh</string>
     <string name="tokens_current">this device</string>
     <string name="login_full_access">Sign in with administrator rights</string>
-    <string name="login_full_access_hint">Only for administration on this device. Without it, the app works without administrator rights.</string>
+    <string name="login_full_access_hint">Only needed to manage users, designs or the server from this device. Collecting works without it.</string>
     <string name="tokens_full_access">full access</string>
     <string name="tokens_already_gone">This device was already signed out.</string>
     <string name="tokens_never">never</string>
@@ -654,7 +658,7 @@
     <!-- ══════════════ Create account / forgot password ══════════════ -->
     <string name="login_no_account">No account yet? Register</string>
     <string name="startup_title">The server is starting</string>
-    <string name="startup_hint">The first start after an installation imports the catalogue and can take several minutes. You can leave the app open.</string>
+    <string name="startup_hint">The first start after an installation imports the catalog and can take several minutes. You can leave the app open.</string>
     <string name="login_forgot">Forgot password?</string>
     <string name="login_back">Back to sign-in</string>
     <string name="register_title">Create account</string>
@@ -781,7 +785,7 @@
     <string name="wanted_search">Search the wanted list…</string>
     <string name="wanted_no_results">No wanted items found</string>
     <string name="wanted_empty">Nothing on the wanted list yet.</string>
-    <string name="wanted_owned">already owned</string>
+    <string name="wanted_owned">Already owned</string>
     <string name="wanted_alert_below">Alert below %1$s</string>
     <string name="wanted_alert_above">Alert above %1$s</string>
     <string name="wanted_price_pending">Price pending</string>
@@ -880,8 +884,8 @@
     <string name="setup_qr_klartext_abgelehnt">This QR code names an unencrypted address (http). The app only connects via https: switch the server to https (README, “HTTPS with your own CA”) and create the code again.</string>
     <string name="setup_url_unlesbar">This address cannot be read. Example: https://brick.fritz.box</string>
     <string name="setup_klartext_abgelehnt">http is not supported. Please enter the server\'s https address.</string>
-    <string name="settings_systemfarben">System colours (Material You)</string>
-    <string name="settings_systemfarben_hint">Colours from your wallpaper instead of the design\'s colours. Shapes and fonts stay.</string>
+    <string name="settings_systemfarben">System colors (Material You)</string>
+    <string name="settings_systemfarben_hint">Colors from your wallpaper instead of the design\'s colors. Shapes and fonts stay.</string>
     <string name="zert_titel_erstkontakt">Trust this server?</string>
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
@@ -932,7 +936,7 @@
     <string name="hintergrund_offen">open</string>
     <string name="hintergrund_laeuft">running</string>
     <string name="hintergrund_fehler">failed</string>
-    <string name="hintergrund_abgebrochen">cancelled</string>
+    <string name="hintergrund_abgebrochen">canceled</string>
     <string name="hintergrund_geplant">scheduled for %1$s</string>
     <string name="hintergrund_faellig">due from %1$s</string>
     <string name="hintergrund_versuch">attempt %1$d of %2$d</string>
@@ -947,7 +951,7 @@
         <item quantity="one">%1$d image queued</item>
         <item quantity="other">%1$d images queued</item>
     </plurals>
-    <string name="hintergrund_abgebrochen_ok">Job cancelled</string>
+    <string name="hintergrund_abgebrochen_ok">Job canceled</string>
     <string name="hintergrund_wiederholt_ok">Job will be retried</string>
     <string name="hintergrund_gestartet">%1$s is starting</string>
     <string name="hintergrund_nichts_gestartet">%1$s: nothing to start</string>

@@ -313,7 +313,8 @@ private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
         // Webapp formatiert dieselben Kennzahlen mit toLocaleString(locale()).
         item { GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets)) }
         item { GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units)) }
-        item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts)) }
+        item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts),
+            teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln)) }
         // Alle Kennzahlen immer, auch mit 0: Eine Reihe, deren Chips je nach Bestand
         // kommen und gehen, liest sich nicht gleich; 0 Figuren ist auch eine Auskunft.
         item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
