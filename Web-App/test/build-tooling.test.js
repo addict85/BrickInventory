@@ -609,9 +609,9 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async (t) => {
   // den es nur waehrend des Laufs gibt, bricht `eigenbruecken.test.js`. Dieser
   // Waechter hat recht: Ein Test, der eine verschwundene Quelle liest, prueft
   // irgendwann nichts mehr und schweigt dabei.
-  const fremdTxt = path.join(gebaut, 'nicht-mitkopiert.txt');
+  const fremdTxt = path.join(gebaut, 'nicht-mitkopiert.md');
   fs.writeFileSync(fremd, '-- zweiter Versuch\nSELECT 1;\n');
-  fs.writeFileSync(fremdTxt, 'keine .sql — darf liegen bleiben\n');
+  fs.writeFileSync(fremdTxt, 'keine mitkopierte Endung — darf liegen bleiben\n');
 
   const protokoll = baue();
   assert.match(protokoll, /verwaiste Datei\(en\) entfernt:.*9999-verwaist-aus-anderem-zweig\.sql/,
@@ -620,7 +620,7 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async (t) => {
     'spaeter sucht, warum eine Datei weg ist, findet keine Spur.\n' + protokoll);
   assert.ok(!fs.existsSync(fremd), 'Die verwaiste .sql liegt noch da.');
   assert.ok(fs.existsSync(fremdTxt),
-    'Auch die .txt ist verschwunden. Dann raeumt etwas PAUSCHAL auf, und der Fall ' +
+    'Auch die .md ist verschwunden. Dann raeumt etwas PAUSCHAL auf, und der Fall ' +
     'oben prueft nicht das gezielte Entfernen quellenloser Abbilder.');
 });
 

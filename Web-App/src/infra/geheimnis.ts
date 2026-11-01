@@ -20,7 +20,7 @@ export function alteSchluesselDatei(): string {
   return path.join(DATA_DIR, '.datenschluessel');
 }
 
-function lies(datei: string): Buffer | null {
+function liesSchluessel(datei: string): Buffer | null {
   let roh: string;
   try { roh = fs.readFileSync(datei, 'utf8'); }
   catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null; throw e; }
@@ -46,7 +46,7 @@ export function datenSchluessel(): Buffer {
     return (geladen = k);
   }
   const datei = schluesselDatei(), alt = alteSchluesselDatei();
-  const k = lies(datei), altK = lies(alt);
+  const k = liesSchluessel(datei), altK = liesSchluessel(alt);
   if (k && altK && !k.equals(altK))
     throw new Error(`Zwei verschiedene Datenschlüssel: ${datei} und ${alt}. Den gültigen behalten, den anderen entfernen (UPGRADE.md).`);
   if (k) {
@@ -61,7 +61,7 @@ export function datenSchluessel(): Buffer {
   const tmp = `${datei}.${process.pid}`;
   fs.writeFileSync(tmp, neu.toString('base64'), { mode: 0o600 });
   try { fs.linkSync(tmp, datei); return (geladen = neu); }
-  catch { return (geladen = lies(datei) ?? neu); }
+  catch { return (geladen = liesSchluessel(datei) ?? neu); }
   finally { fs.rmSync(tmp, { force: true }); }
 }
 
