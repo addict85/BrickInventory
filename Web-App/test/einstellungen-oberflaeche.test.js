@@ -27,6 +27,8 @@
  *      entziehen“ (am 28.10. nach dem Zusammenführen gemessen)
  *   H  (01.11.) toggleAktiv schickt is_active ohne Umkehr → rot: „Deaktivieren
  *      und Aktivieren …“
+ *   I  (01.11.) loadSmtpSettings() blendet den Hinweis smtp-tls-altlast nicht
+ *      ein → rot: „SMTP: Hinweis auf die alte Ausnahme …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -105,6 +107,30 @@ test('Deaktivieren und Aktivieren schicken is_active mit dem Passwort', async ()
       assert.ok(put, `Kein Aufruf für Konto ${id}`);
       assert.deepEqual(JSON.parse(put.body), { is_active: soll, admin_password: 'mein-passwort' });
     }
+  } finally { w.close(); }
+});
+
+test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', async () => {
+  const roh = { success: true, settings: { language: 'de', smtp_host: 'mail.example', smtp_user: 'u',
+    smtp_insecure_tls: '1', smtp_tls_fingerprint: 'AB:CD' } };
+  const { w, d, aufrufe } = await oeffneOberflaeche({ ...NUTZER, '/v1/settings/raw': roh, '/v1/settings': { success: true } });
+  try {
+    await reiter(w, 'settings');
+    await warte(() => d.getElementById('smtp-host').value === 'mail.example');
+    assert.notEqual(d.getElementById('smtp-tls-altlast').style.display, 'none', 'Der Hinweis fehlt');
+    assert.equal(d.getElementById('smtp-tls-fp').value, 'AB:CD');
+    d.getElementById('smtp-tls-ca').value = '-----BEGIN CERTIFICATE-----';
+    d.getElementById('btn-sav-smtp').click();
+    await takt(20);
+    d.getElementById('cd-pw').value = 'mein-passwort';
+    d.getElementById('cd-confirm').click();
+    await takt(20);
+    const post = aufrufe.find(a => a.method === 'POST' && a.url.endsWith('/v1/settings'));
+    assert.ok(post, 'Nicht gespeichert');
+    const body = JSON.parse(post.body);
+    assert.deepEqual([body.smtp_tls_fingerprint, body.smtp_tls_ca, body.smtp_insecure_tls],
+      ['AB:CD', '-----BEGIN CERTIFICATE-----', undefined]);
+    assert.equal(d.getElementById('smtp-tls-altlast').style.display, 'none');
   } finally { w.close(); }
 });
 

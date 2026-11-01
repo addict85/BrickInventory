@@ -24,7 +24,9 @@ async function loadSmtpSettings(settings){
   if(G('smtp-pass'))   G('smtp-pass').value   = s.smtp_pass||'';
   if(G('smtp-from'))   G('smtp-from').value   = s.smtp_from||'';
   if(G('smtp-secure')) G('smtp-secure').checked = s.smtp_secure==='1';
-  if(G('smtp-insecure')) G('smtp-insecure').checked = s.smtp_insecure_tls==='1';
+  if(G('smtp-tls-fp')) G('smtp-tls-fp').value = s.smtp_tls_fingerprint||'';
+  if(G('smtp-tls-ca')) G('smtp-tls-ca').value = s.smtp_tls_ca||'';
+  if(G('smtp-tls-altlast')) G('smtp-tls-altlast').style.display = s.smtp_insecure_tls==='1' ? '' : 'none';
   if(G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled==='1';
   geladeneSmtp = JSON.stringify(smtpFormular());
 }
@@ -40,17 +42,20 @@ function smtpFormular() {
     smtp_pass:   G('smtp-pass')?.value || '',
     smtp_from:   G('smtp-from')?.value.trim() || '',
     smtp_secure: G('smtp-secure')?.checked ? '1' : '0',
-    smtp_insecure_tls: G('smtp-insecure')?.checked ? '1' : '0',
+    smtp_tls_fingerprint: G('smtp-tls-fp')?.value.trim() || '',
+    smtp_tls_ca: G('smtp-tls-ca')?.value.trim() || '',
   };
 }
 /** SMTP speichern; null, wenn die Passwortabfrage abgebrochen wurde. */
 async function speichereSmtp() {
   const werte = smtpFormular();
-  if (JSON.stringify(werte) === geladeneSmtp) return { success: true };
+  // Mit dem Hinweis auf die alte Ausnahme auch unverändert speichern: Erst das räumt sie ab.
+  const altlast = G('smtp-tls-altlast');
+  if (JSON.stringify(werte) === geladeneSmtp && (!altlast || altlast.style.display === 'none')) return { success: true };
   const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss');
   if (admin_password === null) return null;
   const d = await api('POST','/v1/settings', { ...werte, admin_password });
-  if (d.success) geladeneSmtp = JSON.stringify(werte);
+  if (d.success) { geladeneSmtp = JSON.stringify(werte); if (altlast) altlast.style.display = 'none'; }
   return d;
 }
 

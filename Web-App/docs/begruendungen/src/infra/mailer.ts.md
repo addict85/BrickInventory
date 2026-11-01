@@ -26,25 +26,6 @@ Fuer die beiden bisherigen Nutzer (routes/auth.ts, routes/settings.ts)
 aendert sich nur der Importpfad.
 ```
 
-<a id="gettransporter"></a>
-## `getTransporter`
-
-```text
-Verbindung zum Mailserver.
-
-── Zertifikatsprüfung ──────────────────────────────────────────────────────
-Hier stand fest verdrahtet `rejectUnauthorized: false` — die einzige Stelle
-im ganzen Projekt, die eine TLS-Prüfung abschaltete. Damit ging die
-SMTP-Anmeldung (Benutzer und Passwort) und jeder Link zum
-Passwort-Zurücksetzen über eine Verbindung, deren Gegenstelle nicht
-überprüft wurde: Wer sich dazwischenhängt, bekommt beides.
-
-Für ein selbst signiertes Zertifikat im Heimnetz ist das Abschalten
-nachvollziehbar — deshalb bleibt es möglich, aber als bewusste Entscheidung
-unter `smtp_insecure_tls` (Einstellungen → E-Mail). Vorgabe ist jetzt
-PRÜFEN; wer nichts einstellt, ist geschützt.
-```
-
 <a id="mailtheme"></a>
 ## `MailTheme`
 

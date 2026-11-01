@@ -35,6 +35,7 @@ import { safeDataPath } from './src/infra/datenPfad';
 import { generateThumb } from './src/katalog/bilder/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
 import { renderIndexHtml } from './src/konto/indexHtml';
+import { meldeSmtpAltlast } from './src/infra/mailer';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
 import { anmeldungAmEingang } from './routes/api_v1/middleware';
@@ -439,6 +440,7 @@ async function starte(): Promise<void> {
     process.exit(1);
   }
   protokollInDieDatenbank(db.pool);
+  if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
   const httpServer = web ? baueApp().listen(k.port, () => {
