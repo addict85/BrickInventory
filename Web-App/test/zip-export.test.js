@@ -138,3 +138,14 @@ test('kein veraltetes glob mehr im Abhängigkeitsbaum', () => {
     'Wer es hereinzieht, steht oben in der Liste — entweder dort heben oder ' +
     'einen overrides-Eintrag setzen (bis 05.10. stand einer auf ^13).');
 });
+
+test('kein minimatch unter 11.0.1 im Abhängigkeitsbaum', () => {
+  // GHSA-g3hv-75wg-m249 über archiver → readdir-glob; gehalten vom overrides-Eintrag.
+  // Gegenprobe (01.11.2026): package-lock.json von e21f747 (minimatch 10.2.6) → rot.
+  const lock = require(path.join(__dirname, '..', 'package-lock.json'));
+  const fassungen = Object.entries(lock.packages || {})
+    .filter(([p]) => p.endsWith('node_modules/minimatch')).map(([p, v]) => [p, v.version.split('.').map(Number)]);
+  assert.ok(fassungen.length > 0, 'minimatch nicht im Lockfile — greift die Suche noch?');
+  const alt = fassungen.filter(([, [a, b, c]]) => a < 11 || (a === 11 && b === 0 && c < 1)).map(([p, v]) => `${p}@${v.join('.')}`);
+  assert.deepEqual(alt, []);
+});
