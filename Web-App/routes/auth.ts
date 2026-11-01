@@ -1,5 +1,4 @@
 
-import { konfig } from '../src/infra/konfig';
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/infra/sitzungsKeks';
 import { protokolliere } from '../src/verwaltung/dienst';
 const router  = vertragsRouter();
@@ -240,7 +239,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(() => 'de'));
-    const basis = getBaseUrl(req);
+    const basis = getBaseUrl();
     if (basis) emailSent = await sendVerificationMail(email, first_name || username || user.username, token, basis, lang)
       .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));
     // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
@@ -373,23 +372,12 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
 });
 
 
-/** Ohne APP_BASE_URL in Produktion KEINE Adresse: Ein Link aus dem Host-Kopf
- * liesse sich auf eine fremde Seite lenken. Ausserhalb des Betriebs gibt es
- * keinen Angreifer. */
-function getBaseUrl(req: Request): string | null {
+/** Nie aus Kopfzeilen: Ein Link aus Host oder X-Forwarded-Host liesse sich auf
+ * eine fremde Seite lenken — auch ein „Testserver" steht oft im Netz. */
+function getBaseUrl(): string | null {
   const basis = basisUrl();
-  if (basis) return basis;
-  if (konfig().produktion) {
-    hinweisOhneBasisUrl('auth', 'Links in E-Mails werden nicht verschickt.');
-    return null;
-  }
-  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host  = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
-  return `${proto}://${host}`;
-}
-
-function resetLinkMoeglich(): boolean {
-  return !!basisUrl() || !konfig().produktion;
+  if (!basis) hinweisOhneBasisUrl('auth', 'Links in E-Mails werden nicht verschickt.');
+  return basis;
 }
 
 // Der QR-Code trägt nur eine einmalige Nonce (SHA-256 in qr_login_tokens),
@@ -533,7 +521,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   // sich abfragen, wer ein Konto hat. Die Rückmeldung geht per Mail an die Adresse.
   const inhaber = await K.kontoMitEmail(email);
   const nameVergeben = !inhaber && await K.nameVergeben(username, 0);
-  const basis = getBaseUrl(req);
+  const basis = getBaseUrl();
   let result: { success: boolean; mode: string };
   if (inhaber) {
     await K.rechneWieRegistrierung(password);
@@ -575,7 +563,7 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
   // Ohne feste Adresse käme der Link aus dem Host-Header — wer den fälscht,
   // bekäme den Reset-Code des Opfers. Vor der Nutzersuche, damit die Antwort
   // nichts über die E-Mail verrät.
-  if (!resetLinkMoeglich()) {
+  if (!basisUrl()) {
     hinweisOhneBasisUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
     return sendeFehler(req, res, 503, 'passwort_reset_nicht_eingerichtet');
   }
@@ -597,7 +585,7 @@ router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000)
     .then((lang: unknown) => sendPasswordResetMail(
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch
       // als Unicode-Variante (Kelvin-K, „İ") und kann ein fremdes Postfach sein.
-      user.email ?? '', user.first_name || user.username, token, getBaseUrl(req)!, String(lang ?? 'de')))
+      user.email ?? '', user.first_name || user.username, token, getBaseUrl()!, String(lang ?? 'de')))
     .catch((e: any) => console.error('[forgot-password] Mailversand fehlgeschlagen:', e?.message));
 
   res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });

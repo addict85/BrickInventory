@@ -20,10 +20,12 @@
  * Gegenprobe (durchgeführt): LOWER($1) in routes/auth.ts wieder auf $1
  * zurückgedreht → genau der erste Teilschritt hier wird rot.
  *
- * Zweiter Test: Im Betrieb ohne APP_BASE_URL geht kein Reset-Link raus.
+ * Zweiter Test: Ohne APP_BASE_URL geht kein Reset-Link raus, auch nicht mit NODE_ENV=development.
  * Gegenproben (25.10., gemessen):
  *   A  resetLinkMoeglich() liefert immer true → rot: „Reset-Code an den Host aus dem Header"
  *   B  Prüfung erst nach der Nutzersuche, mit 200 für Unbekannte → rot: „verrät die E-Mail"
+ *   C  (01.11., gemessen) Sperre in forgot-password wieder nur bei NODE_ENV=production → rot: „Reset-Code
+ *      an den Host aus dem Header"
  *
  * Voraussetzung: Test-DB (Inhalt wird verändert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
@@ -34,6 +36,8 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+// Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
+process.env.APP_BASE_URL = 'http://localhost';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -110,7 +114,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise',
   }
 });
 
-test('im Betrieb: Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header',
+test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserhalb des Betriebs',
   { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
   catch (e) {
@@ -126,7 +130,7 @@ test('im Betrieb: Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header',
      VALUES ($1, 'forgot.host@example.ch', 'x', false, true, true)`, [USERNAME]);
 
   const alt = { NODE_ENV: process.env.NODE_ENV, APP_BASE_URL: process.env.APP_BASE_URL, SMTP_HOST: process.env.SMTP_HOST };
-  process.env.NODE_ENV = 'production';
+  process.env.NODE_ENV = 'development';
   delete process.env.SMTP_HOST;
   const ausgabe = [];
   const altLog = console.log, altWarn = console.warn;
