@@ -166,11 +166,17 @@ test('Auftragstabelle', { concurrency: 1 }, async (t) => {
     await t.test('ein abgebrochener Auftrag bleibt abgebrochen', async () => {
       await leeren();
       let lebt = null;
-      const w = erzeugeWorker({ [ART]: { ausfuehren: async (_n, k) => { await warte(80); lebt = await k.lebenszeichen(); } } });
+      // Ohne feste Wartezeiten: Der Bearbeiter meldet, dass er läuft, und
+      // fragt erst nach dem Abbruch nach seinem Lebenszeichen.
+      let laeuft = () => {}, abgebrochen = () => {};
+      const gestartet = new Promise(r => { laeuft = r; });
+      const nachAbbruch = new Promise(r => { abgebrochen = r; });
+      const w = erzeugeWorker({ [ART]: { ausfuehren: async (_n, k) => { laeuft(); await nachAbbruch; lebt = await k.lebenszeichen(); } } });
       const id = await A.stelleAuftragEin(ART, { marke: MARKE });
       const lauf = w.verarbeiteEinen();
-      await warte(30);
+      await gestartet;
       assert.ok(await A.brichAb(id), 'ein laufender Auftrag lässt sich abbrechen');
+      abgebrochen();
       await lauf;
       assert.equal(lebt, false, 'der Bearbeiter erfährt vom Abbruch');
       assert.equal((await zeile(id)).status, 'abgebrochen');
