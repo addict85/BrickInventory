@@ -67,7 +67,7 @@ export async function setzeVerwalter(id: number, ja: boolean): Promise<void> {
 }
 
 /** @returns der Zustand vor der Änderung, oder undefined ohne Konto */
-export async function setzeAktiv(id: number, ja: boolean): Promise<{ vorher: boolean } | undefined> {
+export async function schreibeAktiv(id: number, ja: boolean): Promise<{ vorher: boolean } | undefined> {
   return db.get(`UPDATE users u SET is_active = $2 FROM users alt
                   WHERE u.id = $1 AND alt.id = u.id RETURNING alt.is_active AS vorher`, [id, ja]);
 }
