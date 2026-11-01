@@ -85,9 +85,11 @@ interface KontoApi {
     /**
      * Den Token tauschen (Rotation). Der alte geht ausdrücklich mit, weil der
      * Tausch auch dann laufen muss, wenn er gerade erst ersetzt wurde (data/TokenTausch).
+     * Ein `Call` zum direkten Ausführen, nicht `suspend`: Die abgewiesenen Anfragen
+     * warten im Interceptor und belegen den Dispatcher; über ihn käme der Tausch nie dran.
      */
     @POST("api/v1/auth/token-rotieren")
-    suspend fun tokenRotieren(@Header("Authorization") bearer: String): Response<TokenRotation>
+    fun tokenRotieren(@Header("Authorization") bearer: String): retrofit2.Call<TokenRotation>
 
     /**
      * Das Design — ohne Anmeldung die Vorgabe des Verwalters (Anmeldebildschirm),

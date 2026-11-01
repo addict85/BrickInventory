@@ -108,9 +108,12 @@ class KontoRepository @Inject constructor(
     suspend fun revokeToken(tokenId: String): Result<TokenWiderruf> =
         safeCall { api.revokeToken(tokenId) }
 
-    /** Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch). */
+    /**
+     * Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch).
+     * Synchron auf einem IO-Faden, am Dispatcher von OkHttp vorbei (KontoApi.tokenRotieren).
+     */
     suspend fun tokenRotieren(alterToken: String): Result<TokenRotation> =
-        safeCall { api.tokenRotieren("Bearer $alterToken") }
+        safeCall { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { api.tokenRotieren("Bearer $alterToken").execute() } }
 
     suspend fun getSettings(): Result<SettingsResponse> =
         safeCall { api.getSettings() }
