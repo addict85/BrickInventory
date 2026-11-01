@@ -1185,17 +1185,6 @@
                   "ohne_token": {
                     "type": "boolean"
                   },
-                  "label": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 100
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
                   "never_expires": {
                     "type": "boolean"
                   },
@@ -1882,17 +1871,6 @@
                   "password": {
                     "type": "string",
                     "maxLength": 1024
-                  },
-                  "label": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 100
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
                   },
                   "scope": {
                     "type": "string",

@@ -168,14 +168,15 @@ export const QrLoginResponse = LoginResponse.extend({ username: z.string(), isAd
 export const ProfilGespeichert = GenericResponse.extend({ emailChanged: z.boolean().optional(), emailSent: z.boolean().optional() });
 
 /** Eingaben der Kontorouten: Typ und Länge; die Regeln (USERNAME_RE, Passwort)
- * prüft weiter die Route. Freitext ist begrenzt, die Spalten sind `text`. */
+ * prüft weiter die Route. Freitext ist begrenzt, die Spalten sind `text`;
+ * `label` fehlt, weil tokenLabel() jeden Wert kürzt oder ersetzt. */
 const txt = (n: number) => z.string().max(n).optional();
 const txtLeer = (n: number) => z.string().max(n).nullable().optional();
 const PASSWORT = 1024;
 const code = z.union([z.string().max(64), z.number()]).nullable().optional();
 const Verwalter = { admin_password: txt(PASSWORT) };
 const Anmeldedaten = z.looseObject({ username: txt(254), password: txt(PASSWORT), code, ohne_token: z.boolean().optional(),
-  label: txtLeer(100), never_expires: z.boolean().optional(), scope: txt(20), passkey: z.record(z.string(), z.unknown()).nullable().optional() });
+  never_expires: z.boolean().optional(), scope: txt(20), passkey: z.record(z.string(), z.unknown()).nullable().optional() });
 const Registrierung = z.looseObject({ username: txt(64), email: txt(254), first_name: txtLeer(100), last_name: txtLeer(100),
   password: txt(PASSWORT), language: txt(10) });
 const ProfilAenderung = z.looseObject({ username: txt(64), email: txtLeer(254), first_name: txtLeer(100), last_name: txtLeer(100),
@@ -208,7 +209,7 @@ export const routen = {
   'PUT /api/v1/auth/users/:id/password': { antwort: Erfolg, eingabe: z.looseObject({ password: txt(PASSWORT), ...Verwalter }) },
   'DELETE /api/v1/auth/users/:id': { antwort: Erfolg },
   'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: Erfolg },
-  'POST /api/v1/auth/token-create': { antwort: TokenErstellt, eingabe: z.looseObject({ password: txt(PASSWORT), label: txtLeer(100), scope: txt(20) }) },
+  'POST /api/v1/auth/token-create': { antwort: TokenErstellt, eingabe: z.looseObject({ password: txt(PASSWORT), scope: txt(20) }) },
   'POST /api/v1/auth/qr-token': { antwort: QrToken, eingabe: z.looseObject({ password: txt(PASSWORT) }) },
   'POST /api/v1/auth/reset-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ token: txt(200), password: txt(PASSWORT) }) },
   'GET /api/v1/auth/passkeys': { antwort: PasskeyListe },
