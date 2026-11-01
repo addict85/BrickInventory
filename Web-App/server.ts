@@ -178,7 +178,12 @@ app.use((req, _res, next) => {
 });
 
 app.use(nurEigeneHerkunft);
+// no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens und
+// gehören in keinen Browser- oder Proxy-Zwischenspeicher. Bewusst gecacht
+// werden nur öffentliche Katalogbilder (img-proxy) und das Design; sie setzen
+// ihren Kopf selbst und überschreiben diesen.
 app.use('/api', (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Api-Version', String(API_VERSION));
   res.setHeader('X-Api-Min-App', String(API_MIN_APP));
   next();
@@ -337,6 +342,7 @@ app.use('/api/v1/auth',     authRouter);
 
 // Der Link kommt aus einer E-Mail: Die Antwort ist eine Seite, kein JSON.
 app.get('/verify', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
     const e = await verifiziereEmailToken(req.query.token);
     res.redirect(e.ok ? '/?verified=1' : '/?verified=invalid');
@@ -350,7 +356,8 @@ app.get('/verify', async (req, res) => {
 
 // Ausdrücklich, damit location.pathname === '/reset-password' stimmt.
 app.get('/reset-password', async (_req, res) => {
-  res.set('Cache-Control', 'no-cache');
+  // Die Adresse trägt das Rücksetz-Token.
+  res.set('Cache-Control', 'no-store');
   // Über den Renderer statt sendFile: sonst gingen die Assets ohne Stempel
   // und im Standarddesign hinaus.
   try {

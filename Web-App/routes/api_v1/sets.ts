@@ -317,7 +317,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, async (req, res) => {
   }
   _sseCounts.set(uid, offen + 1);
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Cache-Control', 'no-store, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
@@ -390,7 +390,7 @@ router.post('/sets/add-stream', requireToken, async (req: LoggedInRequest, res) 
   // Schon im Blickfeld: kein Strom, sondern „exists" — es gibt nichts zu verfolgen.
   const vorhanden = await findSetInScope(angemeldeteNutzerId(req), set_number);
   if (vorhanden) { res.json({ success: true, action: 'exists', ...vorhanden }); return; }
-  res.setHeader('Content-Type', 'text/event-stream'); res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Content-Type', 'text/event-stream'); res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Connection', 'keep-alive'); res.flushHeaders();
   const unregisterAddSse = registerSse(res);
   let cancelled = false; req.on('close', () => { cancelled = true; });
