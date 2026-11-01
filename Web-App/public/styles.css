@@ -66,8 +66,9 @@
     *{box-sizing:border-box;margin:0;padding:0}
     /* Plus Jakarta Sans hat einen engen Wortabstand (gemessen 0,14 em bei 600):
        „Set hinzufügen“ las sich wie ein Wort. +0,08 em bringt ihn auf das Mass
-       üblicher Textschriften. */
-    body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:15px;line-height:1.5;min-height:100vh;word-spacing:.08em}
+       üblicher Textschriften. Die Grösse folgt der Schriftgrösse des Browsers
+       (15 px bei der Vorgabe 16 px); eine feste px-Zahl überging sie. */
+    body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:calc(var(--fs-4) * .9375);line-height:1.5;min-height:100vh;word-spacing:.08em}
 
     /* LOGIN */
     #startup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:var(--screen-bg)}
@@ -94,8 +95,8 @@
     .kopf-sicht::before{content:"›" / "";margin-right:9px}
     .kopf-sicht[hidden]{display:none}
     /* Sprunglink: erst sichtbar, wenn er den Fokus hat. */
-    .sprunglink{position:absolute;left:8px;top:-60px;z-index:10000;background:var(--sur);color:var(--txt);border:2px solid var(--b600);border-radius:8px;padding:10px 16px;font-weight:700;text-decoration:none}
-    .sprunglink:focus{top:8px}
+    .sprunglink{position:absolute;left:8px;top:8px;transform:translateY(-200%);z-index:10000;background:var(--sur);color:var(--txt);border:2px solid var(--b600);border-radius:8px;padding:10px 16px;font-weight:700;text-decoration:none}
+    .sprunglink:focus{transform:none}
     main:focus{outline:none}
     .hright{display:flex;align-items:center;gap:16px}
     .hstats{display:flex;gap:14px}

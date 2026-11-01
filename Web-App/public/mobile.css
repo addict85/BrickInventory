@@ -380,6 +380,8 @@
   .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
   .ntab       { font-size: var(--fs-0); }
+  /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
+  .ntab       { padding-left: 0; padding-right: 0; letter-spacing: -.02em; word-spacing: 0; }
 }
 
 
