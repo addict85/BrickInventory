@@ -1,6 +1,7 @@
 /** Die Funktionen nehmen die Adresse als Wert; welche Adresse eine Anfrage
  * hat, entscheidet die HTTP-Schicht.
  * Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#abschnitt */
+import { isIPv4, isIPv6 } from 'node:net';
 import * as db from '../../db/database';
 import { einzelwert } from '../infra/validate';
 import { meldeUndLiefere } from '../infra/httpError';
@@ -36,11 +37,24 @@ type Eintrag = { count: number; firstAt: number; lastAt: number | null; laufend:
 /** Rückfall, falls die Datenbank klemmt: Die Bremse soll dann nicht offen stehen. */
 const _attempts = new Map<string, Eintrag>();
 
+/** Ein IPv6-Anschluss bekommt ein ganzes /64; je Adresse gezählt, wäre jede
+ * Bremse mit einer neuen Adresse aus dem eigenen Netz umgangen. IPv4 in IPv6
+ * (::ffff:a.b.c.d) zählt als IPv4. Alles andere (`konto:7`) bleibt, wie es ist. */
+export function drosselAdresse(ip: string): string {
+  const v4 = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
+  if (v4 && isIPv4(v4[1]!)) return v4[1]!;
+  if (!isIPv6(ip)) return ip;
+  const [links = '', rechts = ''] = ip.toLowerCase().split('::');
+  const l = links ? links.split(':') : [], r = rechts ? rechts.split(':') : [];
+  const gruppen = ip.includes('::') ? [...l, ...Array(8 - l.length - r.length).fill('0'), ...r] : l;
+  return gruppen.slice(0, 4).map(g => g.replace(/^0+(?=.)/, '')).join(':') + '::/64';
+}
+
 // einzelwert(): Kommt der Name doppelt an, liefert Express ein Array.
-const _key = (ip: string, name: unknown) => `login|${ip}|${einzelwert(name).toLowerCase()}`;
-const _adressKey = (ip: string) => `login-adresse|${ip}`;
+const _key = (ip: string, name: unknown) => `login|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
+const _adressKey = (ip: string) => `login-adresse|${drosselAdresse(ip)}`;
 const _nameKey = (name: unknown) => `login-name|${einzelwert(name).toLowerCase()}`;
-const _bekanntKey = (ip: string, name: unknown) => `login-bekannt|${ip}|${einzelwert(name).toLowerCase()}`;
+const _bekanntKey = (ip: string, name: unknown) => `login-bekannt|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
 
 function _prune() {
   if (_attempts.size <= 5000) return;
@@ -191,7 +205,7 @@ export async function raeumeAnmeldezaehlerAuf(): Promise<number> {
 /** In einem Schritt: Getrennt gelesen und gezählt kamen gleichzeitige Anfragen
  * durch. Abgewiesene zählen mit, verlängern aber nicht. */
 export async function zaehleAnfrage(bucket: string, ip: string, windowMs: number): Promise<{ count: number; waitMin: number }> {
-  const key = `${bucket}|${ip}`;
+  const key = `${bucket}|${drosselAdresse(ip)}`;
   const windowMin = windowMs / 60000;
   try {
     const r = await repo.zaehleHoch(key, windowMin);
