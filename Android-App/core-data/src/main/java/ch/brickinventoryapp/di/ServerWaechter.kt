@@ -137,14 +137,14 @@ class ServerWaechter(
         if (rotierbar && antwort.code == 401) {
             val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
             val gesendet = ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim().orEmpty()
-            if (code == "token_rotation_noetig") rotation!!.noetig(gesendet)?.let { neu ->
+            if (code == "token_rotation_noetig") rotation.noetig(gesendet)?.let { neu ->
                 // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
                 antwort.close()
                 val wieder = ausgehend.newBuilder().header("Authorization", "Bearer $neu").build()
                 antwort = chain.proceed(wieder)
             }
         } else if (rotierbar && antwort.header("X-Token-Rotation") == "faellig") {
-            ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation!!.faellig(it) }
+            ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation.faellig(it) }
         }
 
         if ((antwort.code == 401 || antwort.code == 403) && tokenMitgeschickt && unserServer) {

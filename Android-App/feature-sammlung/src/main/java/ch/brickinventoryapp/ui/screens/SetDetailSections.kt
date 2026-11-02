@@ -227,10 +227,10 @@ fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: Se
                 if (detailState.setPriceLoading && price == null) {
                     PreisLaedtZeile()
                 } else if (price != null && !price.noPrice) {
-                    // Je Zustand eine Zeile — wer ein Exemplar neu und eines gebraucht
-                    // besitzt, braucht beide Zahlen.
+                    // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen
+                    // Zustand stünden Preis und G&V der Wert-Kacheln oben gleich noch einmal da.
                     history?.byCondition?.let { byCond ->
-                        if (byCond.present().isNotEmpty()) MarketPriceByCondition(byCond, currency)
+                        if (byCond.present().size > 1) MarketPriceByCondition(byCond, currency)
                     }
                     // Preis und Verlauf sind zwei Abrufe; der Hinweis verhindert, dass das
                     // Diagramm später kommentarlos in die Karte springt.

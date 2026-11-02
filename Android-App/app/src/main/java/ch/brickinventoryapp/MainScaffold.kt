@@ -136,7 +136,7 @@ fun MainScaffold(
                     ),
                 )
                 if (art == Navigationsart.LEISTE_UNTEN && currentDest?.route?.let { it in SAMMLUNG } == true) {
-                    SammlungUmschalter(currentDest?.route, onWahl = { ziel ->
+                    SammlungUmschalter(currentDest.route, onWahl = { ziel ->
                         onTabAngetippt(ziel)
                         navController.zuReiter(ziel.route)
                     })
@@ -171,7 +171,7 @@ fun MainScaffold(
                     // Auf dem Tablet gehört der Umschalter zum Inhalt: linksbündig über
                     // Suchfeld und Raster, auf deren Lesebreite begrenzt.
                     if (art == Navigationsart.SEITENLEISTE && currentDest?.route?.let { it in SAMMLUNG } == true) {
-                        SammlungUmschalter(currentDest?.route, onWahl = { ziel ->
+                        SammlungUmschalter(currentDest.route, onWahl = { ziel ->
                             onTabAngetippt(ziel)
                             navController.zuReiter(ziel.route)
                         }, modifier = Modifier.linksBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste))

@@ -395,7 +395,7 @@ private fun PdfPages(
     val dichte = LocalDensity.current
     val waagrecht = rememberScrollState()
     val senkrecht = rememberLazyListState()
-    val geste = rememberTransformableState { zoomChange, _, _ -> setzeZoom(zoom * zoomChange, anker.finger) }
+    val geste = rememberTransformableState { _, zoomChange, _, _ -> setzeZoom(zoom * zoomChange, anker.finger) }
 
     // Solange zwei Finger aufliegen, rollt die Liste nicht: Die LazyColumn sieht die
     // Bewegung vor dem transformable und gewönne eine leicht senkrechte

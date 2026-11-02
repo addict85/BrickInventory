@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import ch.brickinventoryapp.data.model.Gutschein
@@ -115,7 +116,13 @@ class AblaufTest {
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
         }
         compose.waitUntil(10_000) { vm.setDetailState.value.setDetail != null }
-        compose.onNodeWithContentDescription(ctx.getString(R.string.cd_qty_increase)).performClick()
+        // Die Menge steht unter Wert-Kacheln und Marktpreis (M2); auf dem kleinen
+        // Robolectric-Bildschirm (320 × 470 dp) ist sie erst nach dem Rollen da.
+        val plus = androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.cd_qty_increase))
+        compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction() and
+            androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))
+            .performScrollToNode(plus)
+        compose.onNode(plus).performClick()
         compose.waitUntil(10_000) { w.pfade.anfragenAn("PUT /api/v1/sets/75192-1").isNotEmpty() }
         assertTrue(w.pfade.koerper.any { it.contains("\"quantity_delta\":1") })
     }

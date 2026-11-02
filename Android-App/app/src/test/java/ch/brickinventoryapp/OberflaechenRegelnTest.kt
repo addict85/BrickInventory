@@ -17,6 +17,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -280,11 +282,20 @@ class OberflaechenRegelnTest {
             warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
             val namen = vm.partsState.value.parts.mapNotNull { it.partName }
             assertTrue(namen.size >= 3)
+            val dichte = ctx.resources.displayMetrics.density
             for (name in namen) {
+                // Die Kachel ist mit der Schrift gewachsen (110 dp × 2) …
+                val kachel = compose.onNode(hasText(name) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+                assertTrue("Kachel von $name nur ${kachel.width / dichte} dp breit", kachel.width / dichte >= 200f)
+                // … und der Name steht ganz da: keine Auslassung in der letzten Zeile, kein
+                // Wort breiter als die Kachel. (hasVisualOverflow zählt auch die Höhe mit,
+                // die der Semantik-Abruf mit anderen Grenzen rechnet als das Zeichnen.)
                 val ergebnis = mutableListOf<TextLayoutResult>()
                 compose.onNodeWithText(name, useUnmergedTree = true).fetchSemanticsNode()
                     .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-                assertTrue("$name ist abgeschnitten", !ergebnis.single().hasVisualOverflow)
+                val text = ergebnis.single()
+                assertTrue("$name ist abgeschnitten (${text.lineCount} Zeilen)",
+                    !text.isLineEllipsized(text.lineCount - 1) && !text.didOverflowWidth)
             }
         } finally {
             welt.close()
