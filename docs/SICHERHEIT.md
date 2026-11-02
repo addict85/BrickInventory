@@ -233,8 +233,10 @@ den Commits, nicht hier.
   devDependency fehlt es in `npm audit --omit=dev`; web-ci.yml prüft es
   deshalb zusätzlich im vollen `npm audit`.
 - Build-Kontext ohne `.env`, `backups/`, `schluessel/`, `data/` — `dockerfile`.
-- Der Entrypoint schreibt seine Marke unter `/app/data` nicht als root und
-  folgt keinem Symlink des Dienstes — `entrypoint-start`.
+- Der Entrypoint richtet als root nur `/app/data` selbst (`chown -h`); die
+  Unterordner legt er als `brickinv` an, die Marke schreibt er als
+  `brickinv`, und der Reparaturschritt (`find -xdev … -exec chown -h`) folgt
+  keinem Symlink des Dienstes und bleibt im Datenträger — `entrypoint-start`.
 - `docker-publish.yml`: Der Tag beim Handstart nur über `env` und in
   Docker-Tag-Form, sonst Abbruch — `workflow-tag`.
 - `.github/workflows/sicherheit.yml`: CodeQL (TypeScript, Kotlin), Trivy

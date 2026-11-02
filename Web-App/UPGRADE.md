@@ -884,3 +884,9 @@ Was sich für Nutzer und Clients ändert:
   `password` (das eigene Passwort). Falsch oder fehlend: 400
   `aktuelles_passwort_falsch`, nach fünf Fehlversuchen 429. Die
   Weboberfläche fragt beim Knopf „Alle anderen abmelden“ danach.
+- **Entrypoint**: Die Unterordner von `./data` legt der Container jetzt als
+  `brickinv` an, nicht mehr als root. Gehört `./data` einem anderen Nutzer und
+  ist `BRICKINV_CHOWN=never` gesetzt (SMB/CIFS), muss die Einhängung dem
+  Nutzer `brickinv` des Images gehören; sonst steht im Log eine WARNUNG. Der
+  Reparaturschritt (`BRICKINV_CHOWN=auto/always`) ändert nur noch fremde
+  Einträge und bleibt im Datenträger.
