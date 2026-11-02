@@ -385,7 +385,7 @@ window.I18N_DE = {
   'users.pw_reset_title': 'Passwort zurücksetzen',
   'settings.password.optional_hint': 'Nur ausfüllen, wenn du dein Passwort ändern möchtest.',
   'settings.password.fill_all': 'Bitte aktuelles und neues Passwort ausfüllen',
-  'settings.password.failed_rest_saved': 'Profil gespeichert, aber Passwort-Änderung fehlgeschlagen: {error}',
+  'settings.password.failed_rest_saved': 'Konto gespeichert, aber Passwort-Änderung fehlgeschlagen: {error}',
 
 
   'gallery.adding_set': 'Set {num} hinzufügen',
@@ -432,7 +432,7 @@ window.I18N_DE = {
   'profile.username_empty': 'Benutzername darf nicht leer sein',
   'profile.mail_sent_hint': 'Bestätigungsmail gesendet — bitte E-Mail verifizieren.',
   'profile.email_needs_password': 'Zum Ändern der E-Mail-Adresse bitte unten das aktuelle Passwort eingeben.',
-  'profile.saved_mail': 'Profil gespeichert — Bestätigungsmail gesendet',
+  'profile.saved_mail': 'Konto gespeichert — Bestätigungsmail gesendet',
   'profile.save_error': 'Fehler beim Speichern',
   'figs.auto_hint': 'Minifiguren werden beim Set-Import automatisch geladen',
   'figs.deleted': 'Minifigur gelöscht',
@@ -613,7 +613,7 @@ window.I18N_DE = {
   'monitor.err.net': 'Dienst nicht erreichbar — Netz oder Server gestört.',
   'monitor.err.timeout': 'Keine Antwort in der vorgesehenen Zeit.',
   'monitor.err.limit': 'Zu viele Anfragen — der Dienst bremst, später erneut versuchen.',
-  'monitor.err.auth': 'Zugang abgelehnt — API-Schlüssel in den Einstellungen prüfen.',
+  'monitor.err.auth': 'Zugang abgelehnt — API-Schlüssel unter Menü → Einstellungen prüfen.',
   'monitor.err.missing': 'Beim Dienst nicht gefunden.',
   'monitor.err.other': 'Fehlgeschlagen — Einzelheiten aufklappen.',
   'monitor.state.running': 'Läuft',
@@ -702,7 +702,7 @@ window.I18N_DE = {
   // Steht unter der Zustandsplakette, wenn die Datei fuer diesen Posten
   // keinen Zustand nennt (CONDITION=X oder gar nichts) — dann wird der
   // Standard des Kontos angelegt, und die Vorschau sagt es dazu.
-  'wanted.cond_default': 'aus deinen Einstellungen',
+  'wanted.cond_default': 'Standard aus Menü → Konto',
   // Die erste Wahl der Zustandsspalte in der Vorschau. Kein leerer Eintrag:
   // „Standard" ist eine Aussage und keine Lücke — dieselbe wie CONDITION=X.
   'wanted.cond_default_opt': '— Standard —',
@@ -720,7 +720,7 @@ window.I18N_DE = {
   'wanted.name_guessed': 'Name unter der BrickLink-Nummer gefunden',
   'wanted.corrections_rejected': 'Korrekturen abgewiesen (andere Datei?)',
   'wanted.topped_up': 'aufgestockt',
-  'settings.data_zip_hint': 'Sets, manuell erfasste Teile, Minifiguren, die Merkliste und die Preisalarme als ZIP mit 5 CSV-Dateien exportieren — diese können danach über den entsprechenden CSV-Importer (Reiter Sets/Teile/Minifiguren/Merkliste bzw. Einstellungen → Preisalarme) wieder importiert werden.',
+  'settings.data_zip_hint': 'Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Jede Datei lässt sich über den CSV-Import ihrer Seite wieder einlesen.',
   'settings.data_zip_btn': 'Sets, Teile, Minifiguren, Merkliste & Alarme exportieren (ZIP)',
   'monitor.title': 'Hintergrundarbeiten',
   'monitor.parts_lists': 'Teile-Listen',
@@ -903,7 +903,7 @@ window.I18N_DE = {
   'household.former_via': 'bisher über {via}',
   'household.former_dismiss': 'Ausblenden',
   'household.invite_title': 'Konto einladen',
-  'household.invite_hint': 'Erzeuge einen Einladungscode und gib ihn im anderen Konto unter Einstellungen ein. Der Code ist 24 Stunden gültig und nur einmal verwendbar.',
+  'household.invite_hint': 'Erzeuge einen Einladungscode. Im anderen Konto unter Menü → Haushalt → „Einladung annehmen“ eingeben. Der Code gilt 24 Stunden und nur einmal.',
   'household.invite_create': 'Einladungscode erzeugen',
   'household.invite_code': 'Einladungscode',
   'household.invite_copy': 'Kopieren',

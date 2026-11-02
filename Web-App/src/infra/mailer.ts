@@ -49,7 +49,7 @@ function smtpFehlertext(e: unknown): { text: string; zertifikat: boolean } {
   const zertifikat = ZERTIFIKATSFEHLER.has(code) || ZERTIFIKATSFEHLER.has(ursache) || /certificate|Fingerabdruck/i.test(fehlertext(e));
   const ohneStarttls = code === 'ETLS' && /upgrading connection with STARTTLS/.test(fehlertext(e));
   return { zertifikat, text: zertifikat
-    ? `Zertifikat des Mailservers nicht bestätigt (${fehlertext(e)}). In Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.`
+    ? `Zertifikat des Mailservers nicht bestätigt (${fehlertext(e)}). Unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.`
     : ohneStarttls
       ? 'Der Mailserver bietet kein STARTTLS an; unverschlüsselt wird nichts gesendet. Port 465 mit „SSL/TLS" wählen oder STARTTLS am Mailserver einschalten.'
       : fehlertext(e) };
@@ -59,7 +59,7 @@ function smtpFehlertext(e: unknown): { text: string; zertifikat: boolean } {
 export async function meldeSmtpAltlast(): Promise<boolean> {
   if ((await getSetting('smtp_insecure_tls')) !== '1') return false;
   console.warn('⚠️  [mailer] smtp_insecure_tls wird nicht mehr ausgewertet: Das Zertifikat des Mailservers wird jetzt geprüft. ' +
-    'Für ein selbst signiertes Zertifikat in Einstellungen → E-Mail das Zertifikat (PEM) oder den SHA-256-Fingerabdruck eintragen.');
+    'Für ein selbst signiertes Zertifikat unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder den SHA-256-Fingerabdruck eintragen.');
   return true;
 }
 
@@ -450,17 +450,17 @@ export async function sendHaushaltVerknuepftMail(to: string, username: string, h
   const L = lang === 'en' ? {
     subject: 'BrickInventory Manager — Your account joined a household',
     title: 'Household linked',
-    text: `Hello ${username},\n\nyour account is now a sub-account of ${hauptkonto}. That account can see and change your collection.\n\nIf this was not you, sign in, change your password and leave the household under Settings → Household — or ask the administrator.\n\nBrickInventory Manager`,
+    text: `Hello ${username},\n\nyour account is now a sub-account of ${hauptkonto}. That account can see and change your collection.\n\nIf this was not you, sign in, change your password and leave the household under Menu → Household — or ask the administrator.\n\nBrickInventory Manager`,
     html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
        <p style="margin:0 0 16px">your account is now a sub-account of <strong>${esc(hauptkonto)}</strong>. That account can see and change your collection.</p>`,
-    note: 'If this was not you, sign in, change your password and leave the household under Settings → Household — or ask the administrator.',
+    note: 'If this was not you, sign in, change your password and leave the household under Menu → Household — or ask the administrator.',
   } : {
     subject: 'BrickInventory Manager — Dein Konto ist einem Haushalt beigetreten',
     title: 'Haushalt verknüpft',
-    text: `Hallo ${username},\n\ndein Konto ist jetzt Unterkonto von ${hauptkonto}. Dieses Konto sieht und ändert deine Sammlung.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Einstellungen → Haushalt — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
+    text: `Hallo ${username},\n\ndein Konto ist jetzt Unterkonto von ${hauptkonto}. Dieses Konto sieht und ändert deine Sammlung.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
     html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
        <p style="margin:0 0 16px">dein Konto ist jetzt Unterkonto von <strong>${esc(hauptkonto)}</strong>. Dieses Konto sieht und ändert deine Sammlung.</p>`,
-    note: 'Warst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Einstellungen → Haushalt — oder wende dich an den Verwalter.',
+    note: 'Warst du das nicht, melde dich an, ändere dein Passwort und verlasse den Haushalt unter Menü → Haushalt — oder wende dich an den Verwalter.',
   };
   return sendMail({ to, subject: L.subject, text: L.text,
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
@@ -491,8 +491,8 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
     ? (en ? `These accounts can see and change your collection: ${o.haushalt.join(', ')}.`
           : `Diese Konten sehen und ändern deine Sammlung: ${o.haushalt.join(', ')}.`) : '';
   const note = en
-    ? 'If this was not you, reset your password via “Forgot password”, check Settings → Account and Household — or ask the administrator.'
-    : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Einstellungen → Konto und Haushalt — oder wende dich an den Verwalter.';
+    ? 'If this was not you, reset your password via “Forgot password”, check Menu → Account and Menu → Household — or ask the administrator.'
+    : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Menü → Konto und Menü → Haushalt — oder wende dich an den Verwalter.';
   const hallo = en ? 'Hello' : 'Hallo';
   const text = `${hallo} ${username},\n\n${was}\n${haushalt ? `\n${haushalt}\n` : ''}\n${note}\n\nBrickInventory Manager`;
   const html = `<p style="margin:0 0 8px">${hallo} <strong>${esc(username)}</strong>,</p>
