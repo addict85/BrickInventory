@@ -96,7 +96,11 @@ test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schl�
   // App. Von einem Zweig aus wäre das ungeprüfter Code an Review und Merge vorbei.
   // Gegenproben (28.10.2026): die main-Bedingung am Release-Schritt entfernt → rot;
   // BRICK_KEYSTORE_PASSWORT wieder im Schritt „Release bauen“ → rot;
-  // (01.11.2026) KEY_PASS ohne die main-Bedingung → rot.
+  // (02.11.2026) am Schritt „Release-Schlüssel bereitstellen“ die `if:`-Zeile
+  // entfernt → rot „… nur in der Environment release“; `KEY_PASS: ${{
+  // secrets.KEY_PASSWORT }}` in den Schritt „Signieren“ → rot „Secrets
+  // ausserhalb …“; im Fehlertext „Repository-Secrets gleichen Namens löschen“
+  // entfernt → rot „… sagt, dass Repository-Secrets wegmüssen“.
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8');
   const schritt = (name) => {
     const i = yml.indexOf(`- name: ${name}`);
@@ -107,15 +111,20 @@ test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schl�
   };
   assert.match(schritt('BrickInventory.apk als Release bereitstellen'),
     /if:.*github\.ref == 'refs\/heads\/main'/, 'Release läuft auch auf Zweigen');
-  const signieren = schritt('Signieren');
+  // Die Secrets stehen in genau einem Schritt, und der läuft nur unter derselben
+  // Bedingung, unter der der Job in der Environment release steht.
+  const bedingung = "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'";
+  const schluessel = schritt('Release-Schlüssel bereitstellen');
+  assert.ok(schluessel.includes(`\n        if: ${bedingung}\n`), 'Secrets nur in der Environment release');
   for (const geheim of ['KEYSTORE_BASE64', 'KEYSTORE_PASSWORT', 'KEY_ALIAS', 'KEY_PASSWORT'])
-    assert.match(signieren, new RegExp(`github\\.ref == 'refs/heads/main' && secrets\\.${geheim}`),
-      `${geheim}: auch auf Zweigen erreichbar`);
-  assert.match(signieren, /ECHT: \$\{\{ github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request' \}\}/);
+    assert.match(schluessel, new RegExp(`: \\$\\{\\{ secrets\\.${geheim} \\}\\}`), `${geheim} fehlt`);
+  assert.match(schluessel, /Repository-Secrets gleichen Namens löschen/, 'der Fehlertext sagt, dass Repository-Secrets wegmüssen');
+  assert.ok(yml.includes(`environment: \${{ ${bedingung} && 'release' || '' }}`));
+  assert.match(schritt('Signieren'), /ECHT: \$\{\{ github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request' \}\}/);
   // Nur dieser Schritt nennt Secrets; der Bau mit allen Gradle-Plugins nicht.
-  const andere = yml.split(/\n      - name: /).filter(t => !t.startsWith('Signieren'))
+  const andere = yml.split(/\n      - name: /).filter(t => !t.startsWith('Release-Schlüssel bereitstellen'))
     .join('\n').split('\n').filter(z => !z.trimStart().startsWith('#') && /secrets\./.test(z));
-  assert.deepEqual(andere, [], 'Secrets ausserhalb des Signierschritts');
+  assert.deepEqual(andere, [], 'Secrets ausserhalb des Schritts „Release-Schlüssel bereitstellen“');
 });
 
 // Gegenproben (01.11.2026 gemessen): ein `- uses: actions/checkout@…` in den
@@ -156,5 +165,36 @@ test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffe
   assert.match(release, /name: apk-signiert/);
   assert.match(release, /\n    environment: release\n/, 'das Release mit Schreibrecht läuft erst nach Freigabe in der Environment release');
   assert.match(release, /\n    permissions:\n      contents: write\n/);
-  assert.doesNotMatch(signieren, /Repository-Secret/, 'die Signier-Secrets kommen nur aus der Environment');
+  assert.doesNotMatch(signieren, /oder als Repository-Secret/, 'die Signier-Secrets kommen nur aus der Environment');
+});
+
+// Neue Prüfsummen entscheiden, welche Bytes der Bau annimmt: Sie kommen als
+// Pull-Request mit Zusammenfassung, nie als Push auf einen bestehenden Zweig.
+// Gegenproben (02.11.2026 gemessen): im Job `pruefsummen-vorschlagen` wieder
+// `git push origin "HEAD:$GITHUB_REF_NAME"` → rot (Push-Ziel nicht der eigene
+// Zweig); `pull-requests: write` zusätzlich im Job `pruefsummen` → rot „… nur
+// der vorschlagende Job …“; im Job `bildschirmfotos-einchecken` die PNG-Prüfung
+// entfernt → rot „eingecheckt wird nur PNG“.
+test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
+  const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8')
+    .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+  const job = (name) => {
+    const teil = yml.split(new RegExp(`\\n  ${name}:\\n`))[1];
+    assert.ok(teil, `Job ${name} fehlt`);
+    return '\n' + teil.split(/\n  [\w-]+:\n/)[0] + '\n';
+  };
+  const vorschlag = job('pruefsummen-vorschlagen');
+  assert.match(vorschlag, /\n    permissions:\n      contents: write\n      pull-requests: write\n/);
+  assert.match(vorschlag, /ZWEIG="pruefsummen\/\$GITHUB_RUN_ID"/);
+  assert.match(vorschlag, /git push origin "HEAD:refs\/heads\/\$ZWEIG"/);
+  assert.match(vorschlag, /gh pr create --base "\$GITHUB_REF_NAME" --head "\$ZWEIG"/);
+  assert.doesNotMatch(vorschlag, /HEAD:\$GITHUB_REF_NAME/, 'nie auf den Zweig des Laufs');
+  assert.doesNotMatch(vorschlag, /python|gradlew/, 'mit Schreibrecht läuft kein Werkzeug aus dem Repository');
+  assert.match(job('pruefsummen'), /tools\/pruefsummen-vergleich\.py/, 'die Zusammenfassung entsteht ohne Schreibrecht');
+  for (const name of ['build', 'signieren', 'apk-pruefen', 'release', 'gegenproben', 'pruefsummen',
+    'bildschirmfotos', 'bildschirmfotos-einchecken'])
+    assert.doesNotMatch(job(name), /pull-requests: write/, `${name}: nur der vorschlagende Job legt Pull-Requests an`);
+  const bilder = job('bildschirmfotos-einchecken');
+  assert.match(bilder, /89504e470d0a1a0a/, 'eingecheckt wird nur PNG');
+  assert.match(bilder, /git add Android-App\/app\/src\/test\/bildschirmfotos\/\*\.png/);
 });

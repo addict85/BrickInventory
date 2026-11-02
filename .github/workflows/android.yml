@@ -508,13 +508,39 @@ jobs:
           name: apk-unsigniert
           path: ${{ runner.temp }}/eingang
 
+      # Die Secrets nennt nur dieser Schritt, und er läuft nur dort, wo der Job in
+      # der Environment `release` steht. Gleichnamige Repository-Secrets fände
+      # GitHub sonst ebenfalls — sie gehören gelöscht (README, Release signieren).
+      - name: Release-Schlüssel bereitstellen
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.KEYSTORE_PASSWORT }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.KEY_PASSWORT }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
+            echo "::error::Auf main fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — sie gehören in die Environment release; Repository-Secrets gleichen Namens löschen. Ohne Signatur wird nichts veröffentlicht."
+            exit 1
+          fi
+          S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$S/signatur.jks"
+          printf '%s' "$KS_PASS" > "$S/ks_pass"; printf '%s' "$KEY_PASS" > "$S/key_pass"; printf '%s' "$KEY_ALIAS" > "$S/alias"
+
+      - name: Probe-Schlüssel erzeugen
+        if: github.ref != 'refs/heads/main' || github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
+          P=probe-$RANDOM$RANDOM
+          keytool -genkeypair -keystore "$S/signatur.jks" -storepass "$P" -keypass "$P" \
+            -alias probe -keyalg RSA -keysize 2048 -validity 1 -dname CN=Probe >/dev/null
+          printf '%s' "$P" > "$S/ks_pass"; printf '%s' "$P" > "$S/key_pass"; printf probe > "$S/alias"
+
       - name: Signieren
         env:
           ECHT: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
-          KEYSTORE_BASE64: ${{ github.ref == 'refs/heads/main' && secrets.KEYSTORE_BASE64 || '' }}
-          KS_PASS: ${{ github.ref == 'refs/heads/main' && secrets.KEYSTORE_PASSWORT || '' }}
-          KEY_ALIAS: ${{ github.ref == 'refs/heads/main' && secrets.KEY_ALIAS || '' }}
-          KEY_PASS: ${{ github.ref == 'refs/heads/main' && secrets.KEY_PASSWORT || '' }}
         run: |
           set -euo pipefail
           WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
@@ -523,19 +549,10 @@ jobs:
           EIN="$RUNNER_TEMP/eingang"
           AUS="$RUNNER_TEMP/ausgang"
           mkdir -p "$AUS/apk/release" "$AUS/bundle/release"
-          KS="$RUNNER_TEMP/signatur.jks"
-          trap 'rm -f "$KS"' EXIT
-          if [ "$ECHT" = "true" ]; then
-            if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
-              echo "::error::Auf main fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — sie gehören in die Environment release. Ohne Signatur wird nichts veröffentlicht."
-              exit 1
-            fi
-            printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$KS"
-          else
-            KS_PASS=probe-$RANDOM$RANDOM; KEY_PASS=$KS_PASS; KEY_ALIAS=probe
-            keytool -genkeypair -keystore "$KS" -storepass "$KS_PASS" -keypass "$KEY_PASS" \
-              -alias probe -keyalg RSA -keysize 2048 -validity 1 -dname CN=Probe >/dev/null
-          fi
+          S="$RUNNER_TEMP/schluessel"
+          trap 'rm -rf "$S"' EXIT
+          KS="$S/signatur.jks"
+          KS_PASS=$(cat "$S/ks_pass"); KEY_PASS=$(cat "$S/key_pass"); KEY_ALIAS=$(cat "$S/alias")
           export KS_PASS KEY_PASS
           # Ausrichten VOR dem Signieren; -P 16 hält native Bibliotheken auf
           # 16-KB-Seiten (geprüft im Job `apk-pruefen`).
@@ -883,6 +900,15 @@ jobs:
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys
+      # Hier, ohne Schreibrecht: Das Werkzeug kommt aus dem Repository. Neu
+      # vertraute Schlüssel mit Gruppen-Regex stehen hervorgehoben vorn.
+      - name: Änderungen zusammenfassen
+        if: ${{ !cancelled() }}
+        run: |
+          git show HEAD:Android-App/gradle/verification-metadata.xml > "$RUNNER_TEMP/alt.xml" 2>/dev/null || true
+          python3 tools/pruefsummen-vergleich.py "$RUNNER_TEMP/alt.xml" gradle/verification-metadata.xml \
+            > gradle/pruefsummen-zusammenfassung.md
+          cat gradle/pruefsummen-zusammenfassung.md >> "$GITHUB_STEP_SUMMARY"
       # Auch nach einem roten Test: Gradle schreibt die Datei am Ende jedes
       # Laufs, und die Prüfsummen hängen nicht am Testergebnis.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -892,43 +918,58 @@ jobs:
           path: |
             Android-App/gradle/verification-metadata.xml
             Android-App/gradle/verification-keyring.*
+            Android-App/gradle/pruefsummen-zusammenfassung.md
           if-no-files-found: error
 
-  # Checkt die erzeugte Datei auf dem Zweig des Laufs ein. Ein eigener Job,
-  # damit nur Code ohne Gradle-Plugins Schreibrecht hat; main bleibt aussen
-  # vor, dort kommt die Datei über den Merge an.
-  pruefsummen-einchecken:
+  # Neue Prüfsummen kommen als Pull-Request, nie als Push: Sie entscheiden, welche
+  # Bytes der Bau als echt annimmt, und ein Schlüssel mit Gruppen-Regex deckt
+  # jedes künftige Paket der Gruppe. Das sieht ein Mensch im Review, bevor es gilt.
+  pruefsummen-vorschlagen:
     needs: pruefsummen
     if: github.event_name == 'workflow_dispatch' && inputs.pruefsummen && github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: verification-metadata
-          path: Android-App/gradle
-      # Vor dem Einchecken: Was ist neu, was fällt weg, wo änderte sich eine
-      # Prüfsumme bei gleicher Fassung? Letzteres darf nie still durchgehen.
-      - name: Änderungen zusammenfassen
+          path: ${{ runner.temp }}/pruefsummen
+      # Ein eigener Zweig je Lauf; der Zweig des Laufs bleibt unberührt. Ein mit
+      # GITHUB_TOKEN angelegter Pull-Request startet keine CI von selbst.
+      - name: Zweig und Pull-Request anlegen
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          git show HEAD:Android-App/gradle/verification-metadata.xml > "$RUNNER_TEMP/alt.xml" 2>/dev/null || true
-          python3 Android-App/tools/pruefsummen-vergleich.py "$RUNNER_TEMP/alt.xml" \
-            Android-App/gradle/verification-metadata.xml >> "$GITHUB_STEP_SUMMARY"
-      - name: Einchecken
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          set -euo pipefail
+          NEU="$RUNNER_TEMP/pruefsummen"
+          install -m 644 "$NEU/verification-metadata.xml" Android-App/gradle/verification-metadata.xml
+          for f in "$NEU"/verification-keyring.*; do install -m 644 "$f" Android-App/gradle/; done
           git add Android-App/gradle/verification-metadata.xml Android-App/gradle/verification-keyring.*
-          if git diff --cached --quiet; then echo "Prüfsummen unverändert."; exit 0; fi
-          git commit -m "Gradle-Prüfsummen erneuert (Lauf $GITHUB_RUN_ID)"
-          git push origin "HEAD:$GITHUB_REF_NAME"
+          if git diff --cached --quiet; then echo "Prüfsummen unverändert." >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          ZWEIG="pruefsummen/$GITHUB_RUN_ID"
+          git switch -c "$ZWEIG"
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Gradle-Prüfsummen erneuert (Lauf $GITHUB_RUN_ID)"
+          git push origin "HEAD:refs/heads/$ZWEIG"
+          { head -c 60000 "$NEU/pruefsummen-zusammenfassung.md"
+            printf '\n\nDie CI startet für diesen Zweig nicht von selbst: Pull-Request schliessen und wieder öffnen oder den Workflow auf dem Zweig von Hand anstossen.\n'
+          } > "$RUNNER_TEMP/text.md"
+          if gh pr create --base "$GITHUB_REF_NAME" --head "$ZWEIG" \
+              --title "Gradle-Prüfsummen erneuern (Lauf $GITHUB_RUN_ID)" --body-file "$RUNNER_TEMP/text.md"; then
+            echo "Pull-Request für $ZWEIG angelegt." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Zweig $ZWEIG liegt bereit, der Pull-Request liess sich nicht anlegen (Settings → Actions → General: Allow GitHub Actions to create and approve pull requests). Von Hand vorschlagen."
+          fi
 
   # ── Referenzbilder für die Bildschirmfotos ──────────────────────────────────
-  # Wie die Prüfsummen: Aufnehmen kann nur ein Lauf mit Android-SDK, also die
-  # CI. Der erste Job nimmt mit Lesezugriff auf, der zweite checkt die Bilder
-  # auf dem Zweig ein — nie auf main, dort kommen sie über den Merge an.
+  # Aufnehmen kann nur ein Lauf mit Android-SDK, also die CI. Der erste Job nimmt
+  # mit Lesezugriff auf, der zweite checkt die Bilder direkt auf dem Zweig ein —
+  # nie auf main. Anders als bei den Prüfsummen ohne eigenen Pull-Request: PNGs
+  # werden nie ausgeführt und entscheiden nicht, was der Bau annimmt; der Merge
+  # nach main zeigt sie ohnehin im Review. Eingecheckt wird nur, was PNG ist.
   bildschirmfotos:
     if: github.event_name == 'workflow_dispatch' && inputs.bildschirmfotos
     runs-on: ubuntu-latest
@@ -978,9 +1019,13 @@ jobs:
           path: Android-App/app/src/test/bildschirmfotos
       - name: Einchecken
         run: |
+          set -euo pipefail
+          for f in Android-App/app/src/test/bildschirmfotos/*; do
+            [ "$(head -c 8 "$f" | od -An -tx1 | tr -d ' \n')" = "89504e470d0a1a0a" ] || { echo "::error::$f ist kein PNG"; exit 1; }
+          done
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Android-App/app/src/test/bildschirmfotos
+          git add Android-App/app/src/test/bildschirmfotos/*.png
           if git diff --cached --quiet; then echo "Bildschirmfotos unverändert."; exit 0; fi
           echo "## Bildschirmfotos" >> "$GITHUB_STEP_SUMMARY"
           git diff --cached --stat >> "$GITHUB_STEP_SUMMARY"
