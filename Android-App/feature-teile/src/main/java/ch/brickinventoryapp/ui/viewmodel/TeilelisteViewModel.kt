@@ -1,8 +1,7 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import android.content.Context
-import android.content.Intent
-import androidx.core.content.FileProvider
+import ch.brickinventoryapp.service.teilelistenAuswahl
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -81,11 +80,7 @@ class TeilelisteViewModel @Inject constructor(
 
         return when (val result = pdfExport.state.first { it is PdfExportState.Done || it is PdfExportState.Error }) {
             is PdfExportState.Done -> {
-                val uri = FileProvider.getUriForFile(context, context.packageName + ".provider", result.file)
-                context.startActivity(Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, "application/pdf")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                })
+                context.startActivity(teilelistenAuswahl(context, result.file, text(R.string.pdfexp_oeffnen_mit)))
                 null
             }
             is PdfExportState.Error -> result.message

@@ -194,6 +194,7 @@
     <string name="detail_alert">Preisalarm</string>
     <string name="alert_channel_name">Preisalarme</string>
     <string name="alert_channel_desc">Meldet, wenn ein Set eine deiner Schwellen reisst.</string>
+    <string name="alert_gesperrt">Ein Set hat eine deiner Schwellen gerissen.</string>
     <string name="alert_notify">Auf diesem Gerät melden</string>
     <string name="alert_notify_hint">Fragt stündlich im Hintergrund nach. Ohne ihn kommt nur die E-Mail.</string>
     <string name="alert_schedule_failed">Preisalarm konnte nicht eingeplant werden: %1$s</string>
@@ -440,6 +441,7 @@
     <string name="pdfexp_no_data">Keine Exportdaten vorhanden</string>
     <string name="pdfexp_starting">Starte Export…</string>
     <string name="pdfexp_unknown_error">Unbekannter Fehler</string>
+    <string name="pdfexp_oeffnen_mit">Teileliste öffnen mit</string>
     <string name="pdfexp_loading_images">Bilder werden geladen…</string>
     <string name="pdfexp_creating_eta">PDF wird erstellt… noch ~%1$ds</string>
     <string name="pdfexp_almost_done">PDF wird gleich fertig…</string>
