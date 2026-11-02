@@ -111,12 +111,19 @@ fun SettingsScreen(
             // Darstellung je Gerät: System folgt dem Telefon, Hell und Dunkel gelten immer.
             Unterschrift(stringResource(R.string.settings_dark_label))
             val helligkeit by app.helligkeit.collectAsStateWithLifecycle()
+            val design by app.appTheme.collectAsStateWithLifecycle()
+            val farbenDesSystems by app.systemfarben.collectAsStateWithLifecycle()
+            val waehlbar = ch.brickinventoryapp.ui.theme.helligkeitWaehlbar(design, farbenDesSystems, android.os.Build.VERSION.SDK_INT)
             WahlChips(
                 listOf(Helligkeit.SYSTEM to stringResource(R.string.settings_hell_system),
                        Helligkeit.HELL to stringResource(R.string.settings_hell_hell),
                        Helligkeit.DUNKEL to stringResource(R.string.settings_hell_dunkel)),
                 gewaehlt = helligkeit, onWahl = { app.setHelligkeit(it) },
+                enabled = waehlbar,
             )
+            // Werkbank ist schon dunkel: Die Wahl ist aus, und der Satz sagt, warum.
+            if (!waehlbar) Text(stringResource(R.string.settings_hell_fest), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             // Material You: zusätzlich zu den sechs Designs, je Gerät. Erst ab
             // Android 12 gibt es Systemfarben; darunter fehlt der Schalter ganz.

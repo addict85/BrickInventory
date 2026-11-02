@@ -891,6 +891,7 @@
     <string name="common_retry">Erneut versuchen</string>
     <string name="common_no_results">Nichts gefunden</string>
     <string name="common_no_results_hint">Suche oder Filter lockern.</string>
+    <string name="settings_hell_fest">Dieses Design ist immer dunkel; Hell und Dunkel wirken hier nicht.</string>
     <string name="vouchers_cd_delete">Gutschein %1$s löschen</string>
     <string name="vouchers_cd_edit">Gutschein %1$s bearbeiten</string>
     <string name="vouchers_cd_pdf">PDF von Gutschein %1$s öffnen</string>

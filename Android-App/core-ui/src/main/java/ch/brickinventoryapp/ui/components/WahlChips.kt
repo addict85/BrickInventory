@@ -24,6 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -68,6 +69,8 @@ fun <T> WahlChips(
     gewaehlt: T,
     onWahl: (T) -> Unit,
     modifier: Modifier = Modifier,
+    /** Aus, wenn die Wahl gerade nichts bewirkt; der Aufrufer sagt daneben, warum. */
+    enabled: Boolean = true,
 ) {
     FlowRow(
         modifier.selectableGroup(),
@@ -80,12 +83,13 @@ fun <T> WahlChips(
             Surface(
                 selected = an,
                 onClick = { onWahl(wert) },
+                enabled = enabled,
                 shape = Formen.chip,
                 color = if (an) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
                 contentColor = if (an) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
                 border = BorderStroke(if (an) 2.dp else 1.dp,
                     if (an) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
-                modifier = Modifier.heightIn(min = 48.dp).semantics { role = Role.RadioButton },
+                modifier = Modifier.heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.6f).semantics { role = Role.RadioButton },
             ) {
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,

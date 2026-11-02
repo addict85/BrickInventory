@@ -62,6 +62,15 @@ class WirksamesDesignTest {
         assertEquals(Darstellung("werkbank", false), darstellung("werkbank", helligkeit = Helligkeit.SYSTEM, systemDunkel = true))
     }
 
+    // Die Einstellungen schalten Hell/Dunkel bei Werkbank ab. Gegenprobe (02.11.2026,
+    // kotlinc): helligkeitWaehlbar gibt immer true zurück → rot.
+    @Test
+    fun `bei Werkbank ist Hell und Dunkel nicht waehlbar`() {
+        assertTrue(!ch.brickinventoryapp.ui.theme.helligkeitWaehlbar("werkbank"))
+        assertTrue(ch.brickinventoryapp.ui.theme.helligkeitWaehlbar("classic"))
+        assertTrue(ch.brickinventoryapp.ui.theme.helligkeitWaehlbar("werkbank", systemfarben = true, sdk = 31))
+    }
+
     // Gegenprobe (30.10.2026, gemessen): in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`
     // entfernt → rot (Android 11); `dynamisch ||` entfernt → rot (Werkbank dunkel).
     @Test

@@ -25,6 +25,14 @@ fun darstellung(
         Helligkeit.HELL -> false
         else -> systemDunkel
     }
-    return Darstellung(design, gewuenscht && (dynamisch || hatDunkleFassung(design)), dynamisch)
+    return Darstellung(design, gewuenscht && helligkeitWaehlbar(design, systemfarben, sdk), dynamisch)
 }
+
+/**
+ * Wirkt die Wahl Hell/Dunkel bei diesem Design? Nicht bei einem Design ohne dunkle
+ * Fassung (Werkbank ist schon dunkel) — die Einstellungen schalten die Wahl dann ab,
+ * statt einen Schalter ohne Wirkung anzubieten.
+ */
+fun helligkeitWaehlbar(design: String, systemfarben: Boolean = false, sdk: Int = 0): Boolean =
+    (systemfarben && sdk >= SYSTEMFARBEN_AB_SDK) || hatDunkleFassung(design)
 

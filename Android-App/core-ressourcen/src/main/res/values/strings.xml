@@ -910,6 +910,7 @@
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="settings_hell_fest">This design is always dark; light and dark have no effect here.</string>
     <string name="vouchers_cd_delete">Delete voucher %1$s</string>
     <string name="vouchers_cd_edit">Edit voucher %1$s</string>
     <string name="vouchers_cd_pdf">Open PDF of voucher %1$s</string>
