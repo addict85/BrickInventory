@@ -58,8 +58,19 @@ fun FinanceScreen(
     val historyLoading = financeState.historyLoading
     val historyPeriod = financeState.historyPeriod
     val historyPeriodChangePct = financeState.historyPeriodChangePct
-    val historyPoints = financeState.historyPoints
-    val historyYAxis = financeState.historyYAxis
+    // Achsen in der Sprache der Anzeige: Die Konfiguration ist der Schlüssel, damit ein
+    // Sprachwechsel neu formatiert, ohne neu zu laden.
+    val konfig = androidx.compose.ui.platform.LocalConfiguration.current
+    val zahlen = remember(konfig) {
+        ch.brickinventoryapp.util.zahlenLocale(konfig.locales[0], java.util.Locale.getDefault())
+    }
+    val historyPoints = remember(financeState.historyPoints, financeState.historyTage, zahlen) {
+        lokaleAchse(financeState.historyPoints, financeState.historyTage, zahlen)
+    }
+    val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen) {
+        val w = financeState.historyWaehrung ?: valuation?.currency
+        if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen)
+    }
     val partsValuation = financeState.partsValuation
     val figsValuation = financeState.figsValuation
     val pnl = financeState.pnl

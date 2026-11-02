@@ -39,7 +39,9 @@ import org.junit.Test
  * "fig_name" → rot „Teile und Figuren tragen echte Namen“; den Pfad
  * /api/v1/minifigs/stats entfernt → ebenso rot (keine Kennzahlen).
  * Gegenproben (02.11.2026, kotlinc): beim Falcon jedes "wert_gesamt" entfernt → rot
- * „jede Finanzzeile trägt …“ (wert=null).
+ * „jede Finanzzeile trägt …“ (wert=null); im FinanzViewModel die Punkte wieder beim
+ * Laden mit Locale.getDefault() übersetzt → rot „die Finanzachse wird erst beim
+ * Zeichnen formatiert“ ([10/27, , 10/29]) und „die Beispiele sind stimmig“.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BeispieldatenTest {
@@ -101,9 +103,35 @@ class BeispieldatenTest {
         assertEquals(falcon.avgPrice, detail.setDetailState.value.setPrice?.avgPrice)
         assertEquals(listOf("CHF"), listOf(welt.t.sitzung.state.value.currency))
         assertTrue("jeder Kauf hat einen Betrag", detail.setDetailState.value.acquisitions.all { it.effectivePrice != null })
-        // Die Achse trägt Daten, keine Wochentage — chart.x passt Punkt für Punkt.
-        val beschriftet = finanzen.financeState.value.historyPoints.map { it.xLabel }.filter { it.isNotBlank() }
-        assertTrue(beschriftet.toString(), beschriftet.size == 2 && beschriftet.none { it in setOf("Mo", "Di", "Mi", "27.10") })
+        // Die Achse trägt Daten, keine Wochentage — chart.x passt Punkt für Punkt, und
+        // übersetzt wird erst in der Sprache der Anzeige.
+        val f = finanzen.financeState.value
+        val de = ch.brickinventoryapp.ui.lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("de-CH"))
+        val en = ch.brickinventoryapp.ui.lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("en-GB"))
+        assertEquals(listOf("27.10.", "29.10."), de.map { it.xLabel }.filter { it.isNotBlank() })
+        assertEquals(listOf("27/10", "29/10"), en.map { it.xLabel }.filter { it.isNotBlank() })
+    }
+
+    /**
+     * Der Zustand hält die Achse roh; formatiert wird beim Zeichnen. Stünde dort schon
+     * Text in der Sprache des Ladens, zeigte ein Sprachwechsel die alte Form weiter.
+     */
+    @Test
+    fun `die Finanzachse wird erst beim Zeichnen formatiert`() {
+        val vorher = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.US)
+        try {
+            val finanzen = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
+            TestApi.warteBis("Verlauf") { finanzen.financeState.value.historyPoints.isNotEmpty() }
+            val f = finanzen.financeState.value
+            assertEquals(listOf("27.10", "", "29.10"), f.historyPoints.map { it.xLabel })
+            assertEquals("CHF", f.historyWaehrung)
+            val y = ch.brickinventoryapp.ui.lokaleWerte(f.historyYAxis, f.historyWaehrung!!, java.util.Locale.forLanguageTag("de-CH"))
+            val label = y.last().label.replace(' ', ' ')
+            assertTrue(label, label == "CHF 1’720" || label == "CHF 1'720")
+        } finally {
+            java.util.Locale.setDefault(vorher)
+        }
     }
 
     /**

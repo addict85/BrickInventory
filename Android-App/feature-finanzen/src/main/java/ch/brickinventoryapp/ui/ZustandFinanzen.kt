@@ -22,8 +22,16 @@ data class FinanceUiState(
     val valuationFehlerKlasse: Fehlerklasse? = null,
     val historyLoading: Boolean = false,
     val historyPeriodChangePct: Double? = null,
+    /**
+     * Punkte und Achse, wie der Server sie schickt. Übersetzt werden sie erst beim
+     * Zeichnen (FinanceScreen): Die Sprache beim Laden ist nicht die beim Anzeigen.
+     */
     val historyPoints: List<DiagrammPunkt> = emptyList(),
     val historyYAxis: List<DiagrammAchse> = emptyList(),
+    /** Der ISO-Tag jedes Punkts (chart.x) — daraus entsteht die lokale x-Achse. */
+    val historyTage: List<String> = emptyList(),
+    /** Währung der y-Achse; null = die der Bewertung. */
+    val historyWaehrung: String? = null,
     val historyPeriod: String = "week",
     /**
      * Welche Zeilenarten der Reiter zeigt: "sets", "parts", "figs". Im Zustand und
