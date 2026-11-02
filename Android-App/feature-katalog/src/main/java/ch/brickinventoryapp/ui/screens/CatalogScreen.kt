@@ -209,7 +209,7 @@ fun CatalogScreen(
             when {
                 // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
                 state.isLoading && state.total == 0 -> SkelettRaster(
-                    GridCells.Adaptive(160.dp), kachelHoehe = 200.dp,
+                    ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 200.dp,
                     innenabstand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
                                                  bottom = Abstaende.mittel, end = 30.dp),
                 )
@@ -229,7 +229,7 @@ fun CatalogScreen(
                 else -> Box(Modifier.fillMaxSize()) {
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = GridCells.Adaptive(160.dp),
+                        columns = ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp),
                         contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel, end = 30.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)

@@ -191,7 +191,7 @@ fun GalleryScreen(
             PullToRefreshBox(isRefreshing = isLoading && anzeige == GalerieAnzeige.LISTE, onRefresh = onRefresh,
                              modifier = Modifier.fillMaxSize()) {
                 when (anzeige) {
-                    GalerieAnzeige.LAEDT -> SkelettRaster(GridCells.Adaptive(160.dp), kachelHoehe = 272.dp)
+                    GalerieAnzeige.LAEDT -> SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 272.dp)
                     // Fehler und leere Sammlung sehen verschieden aus und bieten
                     // Verschiedenes an: hier den Grund und einen neuen Versuch.
                     GalerieAnzeige.FEHLER -> GalerieHinweis {
@@ -224,7 +224,7 @@ fun GalleryScreen(
                         Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
                     }
                     GalerieAnzeige.LISTE -> LazyVerticalGrid(
-                        columns = GridCells.Adaptive(160.dp),
+                        columns = ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp),
                         state = gridState,
                         contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
                             bottom = ch.brickinventoryapp.ui.components.FabPlatz),

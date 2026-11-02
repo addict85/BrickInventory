@@ -114,7 +114,7 @@ fun MinifigsScreen(
         val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
         when (ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)) {
             Ladeanzeige.LAEDT ->
-                SkelettRaster(GridCells.Adaptive(140.dp), kachelHoehe = 196.dp)
+                SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(140.dp), kachelHoehe = 196.dp)
             Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh, partsState.minifigsFehlerKlasse) }
             Ladeanzeige.LEER -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
@@ -136,7 +136,7 @@ fun MinifigsScreen(
             }
             Ladeanzeige.LISTE -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(140.dp),
+                    columns = ch.brickinventoryapp.ui.components.LesbareSpalten(140.dp),
                     state = gridState,
                     // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
                     contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
@@ -428,7 +428,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     Text(figName,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
                 } else {
                     Text(stringResource(R.string.name_unknown), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
