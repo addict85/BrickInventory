@@ -1,7 +1,7 @@
 import { registerActions } from './00-registry.js';
 import { esc } from './00-escapen.js';
 import { resetScopeModes } from './14-scope.js';
-import { I18N, LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
+import { LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
 import { setAllSets, bindTabs, loadGallery, loadStats } from './02-gallery.js';
 import { plInit, resetPartsList } from './08-init.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
@@ -702,6 +702,31 @@ export function fehlerMeldung(e) {
   return text || tRaw('common.unknown_error');
 }
 
+// ── Hinweis „Rebrickable-Schlüssel fehlt“ ───────────────────────────────────
+const RB_HINWEIS_WEG = 'bim_rb_hinweis_weg';
+/** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab.
+ * Schliesst man ihn mit „Später“, kommt das Band (22-einrichtung.js). */
+export function rbHinweisZeigen() {
+  const band = G('rb-hinweis');
+  if (!band || !ME?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
+  if (String(_settingsCache?.rebrickable_api_key || '').trim()) return;
+  try { if (sessionStorage.getItem(RB_HINWEIS_WEG)) return; } catch (_) { /* ohne Speicher: zeigen */ }
+  band.hidden = false;
+}
+export function rbHinweisVerbergen() { const b = G('rb-hinweis'); if (b) b.hidden = true; }
+function rbHinweisOeffnen() {
+  rbHinweisVerbergen();
+  document.querySelector('.ntab[data-tab="settings"]')?.click();
+  /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
+  G('rb-key')?.focus();
+}
+/** Wegklicken gilt für die Sitzung; der Fokus geht an den Seiteninhalt statt ins Leere. */
+function rbHinweisWeg() {
+  rbHinweisVerbergen();
+  try { sessionStorage.setItem(RB_HINWEIS_WEG, '1'); } catch (_) { /* dann eben bis zum Neuladen */ }
+  G('inhalt')?.focus({ preventScroll: true });
+}
+
 // ── Verbindung ──────────────────────────────────────────────────────────────
 // Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es
 // einer ist und von wann — sonst hält man alte Zahlen für aktuell.
@@ -714,11 +739,52 @@ export function zeigeVerbindung(erreichbar) {
   if (!band) return;
   if (erreichbar) {
     if (_offline) toast(tRaw('net.back'), 'success');
+    if (_offline) schreibenSperren(false);
     _offline = false; band.hidden = true; return;
   }
   _offline = true;
-  band.textContent = _letzteAntwort ? tRaw('net.offline_since', { zeit: fmtDatum(_letzteAntwort, 'tagzeit') }) : tRaw('net.offline');
+  band.textContent = (_letzteAntwort ? tRaw('net.offline_since', { zeit: fmtDatum(_letzteAntwort, 'tagzeit') }) : tRaw('net.offline'))
+    + ' ' + tRaw('net.offline_gesperrt');
   band.hidden = false;
+  schreibenSperren(true);
+}
+
+// Ohne Verbindung scheitert jede Änderung. Statt erst nach dem Klick eine
+// Meldung zu zeigen, sind die schreibenden Knöpfe gesperrt und nennen per
+// aria-describedby das Band als Grund. Neu gezeichnete Knöpfe fängt ein
+// Beobachter, solange die Verbindung fehlt.
+const SCHREIBEND = 'button.bp, button.bd, [data-click="oeffneErfassen"], button[data-click*="speicher" i], button[data-click*="save" i], '
+  + 'button[data-click*="loesch" i], button[data-click*="delete" i], button[data-click*="import" i], button[data-click*="hinzufueg" i]';
+const NICHT_SPERREN = '#login-screen, #rb-hinweis, .toast, [data-dialog-zu]';
+/** @type {MutationObserver|null} */
+let _sperrBeobachter = null;
+/** @param {Element|Document} wurzel */
+function sperreIn(wurzel) {
+  const selbst = wurzel instanceof Element && wurzel.matches(SCHREIBEND) ? [wurzel] : [];
+  /** @type {HTMLButtonElement[]} */ ([...selbst, ...wurzel.querySelectorAll(SCHREIBEND)]).forEach(k => {
+    if (k.disabled || k.closest(NICHT_SPERREN)) return;
+    k.disabled = true; k.dataset.offlineGesperrt = '1';
+    k.setAttribute('aria-describedby', ((k.getAttribute('aria-describedby') || '') + ' offline-band').trim());
+  });
+}
+/** @param {boolean} an */
+function schreibenSperren(an) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.toggleAttribute('data-offline', an);
+  if (an) {
+    sperreIn(document);
+    if (!_sperrBeobachter && typeof MutationObserver !== 'undefined') {
+      _sperrBeobachter = new MutationObserver(m => { for (const x of m) for (const n of x.addedNodes) if (n.nodeType === 1) sperreIn(/** @type {Element} */ (n)); });
+      _sperrBeobachter.observe(document.body, { childList: true, subtree: true });
+    }
+    return;
+  }
+  _sperrBeobachter?.disconnect(); _sperrBeobachter = null;
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('[data-offline-gesperrt]')).forEach(k => {
+    k.disabled = false; delete k.dataset.offlineGesperrt;
+    const rest = (k.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== 'offline-band');
+    if (rest.length) k.setAttribute('aria-describedby', rest.join(' ')); else k.removeAttribute('aria-describedby');
+  });
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('offline', () => zeigeVerbindung(false));
@@ -844,6 +910,38 @@ function showPanel(name){
 
 // Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig);
 // die Anwendung käme sonst mit lauter Fehlern hoch.
+/**
+ * Fehler eines Formulars an die betroffenen Felder binden: aria-invalid
+ * markiert das Feld, aria-describedby lässt Vorleser die Meldung beim Feld
+ * nennen, und der Fokus springt in das erste, damit man gleich korrigiert.
+ * Ohne Text verschwinden Meldung und Markierungen.
+ * @param {HTMLElement} box  das Meldungsfeld (role=alert)
+ * @param {string} text
+ * @param {string[]} [felder] IDs der betroffenen Felder
+ */
+export function formularFehler(box, text, felder = []) {
+  box.textContent = text; box.style.display = text ? 'block' : 'none';
+  box.parentElement?.querySelectorAll('[aria-invalid="true"]').forEach(f => feldGueltig(f, box.id));
+  const ziele = /** @type {HTMLElement[]} */ (felder.map(id => G(id)).filter(Boolean));
+  for (const f of ziele) {
+    f.setAttribute('aria-invalid', 'true');
+    const ids = new Set((f.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean)); ids.add(box.id);
+    f.setAttribute('aria-describedby', [...ids].join(' '));
+  }
+  if (text && ziele[0]) ziele[0].focus();
+}
+/** @param {Element} f @param {string} boxId */
+function feldGueltig(f, boxId) {
+  f.removeAttribute('aria-invalid');
+  const rest = (f.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== boxId);
+  if (rest.length) f.setAttribute('aria-describedby', rest.join(' ')); else f.removeAttribute('aria-describedby');
+}
+// Wer im markierten Feld tippt, korrigiert: Die Markierung geht, die Meldung bleibt stehen.
+if (typeof document !== 'undefined') document.addEventListener('input', (ev) => {
+  const f = ev.target instanceof Element ? ev.target : null;
+  if (f?.getAttribute('aria-invalid') === 'true') f.removeAttribute('aria-invalid');
+});
+
 function zeigePflichtwechsel(){
   G('login-screen').style.display='flex'; G('app').style.display='none';
   showPanel('pflichtwechsel');
@@ -851,12 +949,13 @@ function zeigePflichtwechsel(){
 function oeffneApp(){ if(ME?.mustChangePassword) zeigePflichtwechsel(); else showApp(); }
 G('btn-pflicht')?.addEventListener('click', async () => {
   const alt=G('pflicht-alt').value, neu=G('pflicht-neu').value, err=G('pflicht-err');
-  err.style.display='none';
-  const fehler = passwortRegelText(neu) || (neu!==G('pflicht-wdh').value ? tRaw('settings.password.mismatch') : '');
-  if(fehler){ err.textContent=fehler; err.style.display='block'; return; }
+  formularFehler(err, '');
+  const regel = passwortRegelText(neu);
+  if(regel){ formularFehler(err, regel, ['pflicht-neu']); return; }
+  if(neu!==G('pflicht-wdh').value){ formularFehler(err, tRaw('settings.password.mismatch'), ['pflicht-wdh']); return; }
   const d=await mitZweitemFaktor(z => api('POST','/v1/auth/change-password',{ current: alt, newPassword: neu, ...z }));
   if(!d) return;
-  if(!d.success){ err.textContent=d.error||tRaw('settings.error'); err.style.display='block'; return; }
+  if(!d.success){ formularFehler(err, d.error||tRaw('settings.error'), ['pflicht-alt']); return; }
   location.reload();
 });
 
@@ -885,15 +984,15 @@ G('btn-register')?.addEventListener('click', async () => {
   const u=G('reg-user').value.trim(), e=G('reg-email').value.trim();
   const p=G('reg-pass').value, p2=G('reg-pass2').value;
   const err=G('reg-err');
-  err.style.display='none';
-  if(!u||!e||!p){ err.textContent=tRaw('register.req_fields'); err.style.display='block'; return; }
+  formularFehler(err, '');
+  if(!u||!e||!p){ formularFehler(err, tRaw('register.req_fields'), [!u&&'reg-user', !e&&'reg-email', !p&&'reg-pass'].filter(Boolean)); return; }
   // Reihenfolge: zu kurz VOR ungleich — dieselbe wie in der App
   // (LoginScreen.kt). Deren Kommentar behauptete schon vorher „dieselben drei
   // Pruefungen wie im Web-Formular, und in derselben Reihenfolge"; wahr war
   // daran bis hierher weder das eine noch das andere, weil die Webapp die
   // Laenge gar nicht prueft.
-  if(passwortRegelText(p)){ err.textContent=passwortRegelText(p); err.style.display='block'; return; }
-  if(p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
+  if(passwortRegelText(p)){ formularFehler(err, passwortRegelText(p), ['reg-pass']); return; }
+  if(p!==p2){ formularFehler(err, tRaw('settings.password.mismatch'), ['reg-pass2']); return; }
   const btn=G('btn-register'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/register',{
     username:u, email:e, first_name:G('reg-first').value.trim()||null,
@@ -906,19 +1005,19 @@ G('btn-register')?.addEventListener('click', async () => {
     G('reg-success').style.display='block';
     G('reg-success').textContent = d.message;
     if(d.console_mode) G('reg-success').textContent += t('register.console_hint');
-  } else { err.textContent=d.error||t('settings.error'); err.style.display='block'; }
+  } else { formularFehler(err, d.error||tRaw('settings.error')); }
 });
 
 // Forgot password
 G('btn-forgot')?.addEventListener('click', async () => {
   const email=G('forgot-email').value.trim();
   const err=G('forgot-err');
-  err.style.display='none';
-  if(!email){ err.textContent=tRaw('register.email_required'); err.style.display='block'; return; }
+  formularFehler(err, '');
+  if(!email){ formularFehler(err, tRaw('register.email_required'), ['forgot-email']); return; }
   const btn=G('btn-forgot'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/forgot-password',{email});
   frei();
-  if(d && d.success===false){ err.textContent=d.error||tRaw('common.network_error'); err.style.display='block'; return; }
+  if(d && d.success===false){ formularFehler(err, d.error||tRaw('common.network_error'), ['forgot-email']); return; }
   G('forgot-form').style.display='none';
   G('forgot-success').style.display='block';
   G('forgot-success').textContent = d.message || 'Falls die E-Mail existiert, wurde ein Link gesendet.';
@@ -928,10 +1027,10 @@ G('btn-forgot')?.addEventListener('click', async () => {
 G('btn-reset')?.addEventListener('click', async () => {
   const p=G('reset-pass').value, p2=G('reset-pass2').value;
   const err=G('reset-err');
-  err.style.display='none';
-  if(!p||p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
-  if(passwortRegelText(p)){ err.textContent=passwortRegelText(p); err.style.display='block'; return; }
-  if(!_resetToken){ err.textContent=tRaw('reset.invalid_token'); err.style.display='block'; return; }
+  formularFehler(err, '');
+  if(!p||p!==p2){ formularFehler(err, tRaw('settings.password.mismatch'), [p ? 'reset-pass2' : 'reset-pass']); return; }
+  if(passwortRegelText(p)){ formularFehler(err, passwortRegelText(p), ['reset-pass']); return; }
+  if(!_resetToken){ formularFehler(err, tRaw('reset.invalid_token')); return; }
   const btn=G('btn-reset'); btn.disabled=true; btn.textContent=tRaw('reset.saving');
   const d=await api('POST','/v1/auth/reset-password',{token:_resetToken,password:p});
   btn.disabled=false; btn.textContent=tRaw('reset.button');
@@ -940,7 +1039,7 @@ G('btn-reset')?.addEventListener('click', async () => {
     G('reset-success').style.display='block';
     G('reset-success').textContent=tRaw('reset.done');
     setTimeout(()=>showPanel('login'),2000);
-  } else { err.textContent=d.error||t('settings.error'); err.style.display='block'; }
+  } else { formularFehler(err, d.error||tRaw('settings.error')); }
 });
 
 // ── AUTH ──────────────────────────────────────────────
@@ -1197,7 +1296,8 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
       applyTheme(d.settings.app_theme);
       // Server language wins (explicit user choice), update localStorage too
       const srvLang = d.settings.language;
-      if (srvLang && I18N[srvLang]) {
+      // Auch eine noch nicht geladene Sprache: applyLang lädt sie nach.
+      if (srvLang === 'de' || srvLang === 'en') {
         if (srvLang !== LANG) applyLang(srvLang, false);
         localStorage.setItem('bim_lang', srvLang);
       }
@@ -1211,21 +1311,12 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   if(ME.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
   if(ME.isAdmin){ document.querySelectorAll('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
   else { ['bl-ck','bl-cs','bl-tok','bl-ts','rb-key','bs-key','lim-rb','lim-bl','lim-bs'].forEach(id=>{const el=G(id);if(el){el.disabled=true;if(el.type!=='number')el.placeholder=tRaw('settings.admins_only_ph')}}); G('btn-sav-bl').disabled=true; G('btn-sav-rb').disabled=true; G('btn-sav-bs').disabled=true; }
-  // Admin: check if API keys are set, redirect to settings if not
-  // Re-use the already-fetched cache (populated above); if not ready yet, wait briefly
+  // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in
+  // die Einstellungen bei jeder Anmeldung nimmt dem Verwalter seine Startseite.
+  // Ein Band weist einmal je Sitzung darauf hin.
   if(ME.isAdmin) {
     const checkRbKey = () => {
-      const s = _settingsCache || {};
-      const hasRbKey = s.rebrickable_api_key && s.rebrickable_api_key.trim();
-      if(!hasRbKey) {
-        const ntab = document.querySelector('.ntab[data-tab="settings"]');
-        if(ntab) ntab.click();
-        /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
-        // Der Einrichtungsassistent fragt genau diesen Schlüssel ab; über ihm
-        // wäre der Hinweis doppelt. Öffnet er später, räumt er ihn weg.
-        if (!G('einrichtung-modal')?.classList.contains('open')) toast(tRaw('rb_key.missing'),'info').dataset.art = 'rb-schluessel';
-        return;
-      }
+      rbHinweisZeigen();
       loadGallery();
     };
     if(_settingsCache) checkRbKey();
@@ -1247,7 +1338,7 @@ async function doLogin(){
     G('lc-zeile').style.display=''; G('lc').value=''; G('lc').focus();
     // Hat das Konto Passkeys, geht einer statt des Codes (js/23-passkeys.js).
     G('lc-passkey').hidden=!d.passkey;
-    G('lerr').textContent=d.error||''; G('lerr').style.display=code?'block':'none';
+    formularFehler(G('lerr'), code ? (d.error||'') : '', code ? ['lc'] : []);
     return;
   }
   G('lc-zeile').style.display='none'; G('lc').value='';
@@ -1255,7 +1346,8 @@ async function doLogin(){
     // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
-    oeffneApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
+    formularFehler(G('lerr'), '');
+    oeffneApp(); } else { const err=d.error||tRaw('settings.error'); formularFehler(G('lerr'), err, d.unverified ? [] : ['lp','lu']); if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
@@ -1290,7 +1382,7 @@ G('btn-logout').onclick=async()=>{
 // closePdfViewer/printPdfViewer js/12-pdfviewer.js — der Handler gehört zu dem
 // Modul, das ihn umsetzt.
 registerActions({
-  showPanel,
+  showPanel, rbHinweisOeffnen, rbHinweisWeg,
 });
 
 /**

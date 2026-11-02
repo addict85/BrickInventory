@@ -41,8 +41,8 @@
  *      Tab-Halt war .ubadge-knopf)
  *   D  (29.10.) --fs-0 wieder .6875rem → rot: „Tippziele und Schrift je
  *      Reiter“ (span.tab-label 11 px); .delbtn wieder 36 px → rot (36×36)
- *   E  (29.10.) in markiereGruppe die Zeilen für .tab-unter entfernt → rot:
- *      „Teile und Minifiguren in der Leiste auffindbar“ („Sammlung“);
+ *   E  (02.11.) in markiereGruppe die Klasse gruppe-aktiv nicht mehr gesetzt
+ *      → rot: „Teile und Minifiguren in der Leiste auffindbar“ (aria-current);
  *      (29.10.) `.ntab.ntab-sammlung{display:none}` aus styles.css entfernt
  *      → rot: am Rechner wieder zwei Navigationen (teile: true)
  *   F  (29.10.; 30.10. mit Farbüberschrift über die volle Breite) .parts-list
@@ -205,7 +205,8 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     const telefon = await b.auswerten(`(() => { const s = document.querySelector('.ntab[data-tab="gallery"]');
       return { text: s.innerText.trim(), aktuell: s.getAttribute('aria-current'),
                teileSichtbar: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
-    assert.equal(telefon.text, 'Teile', 'Die Leiste nennt die offene Ansicht nicht');
+    // Der Platz heisst immer „Sammlung“; welche Ansicht offen ist, sagt der Umschalter oben.
+    assert.equal(telefon.text, 'Sammlung', 'Der erste Platz der Leiste wechselt seinen Namen');
     assert.equal(telefon.aktuell, 'page');
     assert.equal(telefon.teileSichtbar, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
     // Am Rechner EINE Navigation: „Sammlung“ in der Leiste, Sets/Teile/
@@ -286,7 +287,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     const [d] = await b.auswerten(DIAGRAMMSCHRIFT('#m-sparkline-content'));
     assert.ok(d.kleinste >= 11, `kleinste Beschriftung ${d.kleinste.toFixed(1)} px`);
     assert.equal(d.rolle, 'img');
-    assert.match(d.name, /Preisverlauf, .+ bis .+: Neu zuletzt/);
+    assert.match(d.name, /Preisverlauf, .+ bis .+: Neuware zuletzt/);
     // Set-Detail: Löschen steht hinter „Weitere Aktionen“, der Preisalarm in
     // einer eigenen Zeile über die volle Breite.
     const sichtbar = (sel) => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;

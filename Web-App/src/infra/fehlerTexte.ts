@@ -263,9 +263,9 @@ export const FEHLER = {
   // Aus dem Land wird eine Adresse gebaut; was nicht auf der Liste steht, wird
   // nicht gefragt.
   guthaben_land_ungueltig:     { de: 'Das eingestellte Ausgabeland ist unbekannt. '
-                                   + 'Bitte in den Einstellungen bei den Gutscheinen wählen.',
+                                   + 'Bitte unter Menü → Gutscheine wählen.',
                                  en: 'The configured card country is unknown. '
-                                   + 'Please choose one in the voucher settings.' },
+                                   + 'Please choose one under Menu → Vouchers.' },
 
   // ── BrickLink-Wanted-Liste ───────────────────────────────────────────────
   // „keine Wanted-Liste" ist eine andere Auskunft als „0 Posten". Unlesbare
@@ -306,7 +306,7 @@ export const FEHLER = {
   unbekannte_aufgabe:          { de: 'Unbekannte Aufgabe: {aufgabe}', en: 'Unknown task: {aufgabe}' },
   smtp_nicht_konfiguriert:     { de: 'SMTP nicht konfiguriert (Host oder Benutzername fehlt)',
                                  en: 'SMTP is not configured (host or username missing)' },
-  smtp_zertifikat:             { de: 'Zertifikat des Mailservers nicht bestätigt ({grund}). In Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.',
+  smtp_zertifikat:             { de: 'Zertifikat des Mailservers nicht bestätigt ({grund}). Unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.',
                                  en: 'Mail server certificate not confirmed ({grund}). Enter the certificate (PEM) or its SHA-256 fingerprint under Settings → Email.' },
   smtp_fehler:                 { de: 'SMTP-Verbindung fehlgeschlagen: {grund}', en: 'SMTP connection failed: {grund}' },
   keine_ziel_email:            { de: 'Keine Ziel-E-Mail-Adresse angegeben. Bitte eine E-Mail-Adresse eingeben.',

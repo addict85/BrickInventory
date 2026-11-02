@@ -73,9 +73,9 @@
   .erfassen-leiste .import-menue { flex: 0 0 auto; position: static; }
   .import-klappe { left: 0; right: 0; min-width: 0; }
 
-  /* Kachel: Jahr und Thema in einer Zeile, die Plaketten darunter. */
+  /* Kachel: Jahr und Thema umbrechend, die Plaketten darunter. */
   .smeta { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .smeta > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .smeta > span { max-width: 100%; }
 
   /* Filter hinter einem Knopf: Suche und Ansicht bleiben, die Auswahlfelder
      klappen auf. Vorher belegten fünf Felder den halben Bildschirm. */
@@ -121,10 +121,7 @@
   .ntab .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .ntab .ico { width: 22px; height: 22px; }
   .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); color: var(--b600); }
-  /* Fünf Ziele passen in die Leiste: Teile und Minifiguren laufen über
-     „Sammlung“, und deren Beschriftung nennt die offene Ansicht. */
-  .ntab .tab-unter:not(:empty) { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .ntab:has(.tab-unter:not(:empty)) .tab-label { display: none; }
+
   .sammlung-wahl { display: flex; width: 100%; }
   .sammlung-wahl button { flex: 1 1 0; justify-content: center; padding: 8px 4px; }
 
@@ -132,9 +129,10 @@
   .card, .sc, .ssec  { padding: 1rem .85rem; border-radius: 12px; }
   .ptitle            { font-size: var(--fs-5); }
 
-  .sgrid       { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem; }
-  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
-  .man-grid    { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
+  /* Zwei Spalten ab etwa 360 px, darunter und bei grosser Schrift eine. */
+  .sgrid       { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: .7rem; }
+  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.75rem), 1fr)); gap: .6rem; }
+  .man-grid    { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: .6rem; }
   /* minmax(0, …) statt 1fr: Eine Spalte darf schmaler werden als ihre längste
      Zahl, die dann umbricht — sonst schob „Gesamtwert“ die Kachel über den Rand. */
   .fgrid       { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
@@ -176,8 +174,11 @@
 
   /* Kennzahl-Kacheln: Zahl in einer Zeile */
   .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
+  /* Bei grosser Schrift bricht eine lange Beschriftung um, statt über den Rand zu ragen. */
+  .btn { white-space: normal; text-align: center; }
   input, select, textarea, .btn {
     font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
+    font-size: max(16px, 1rem);   /* … und mit grosser Schrift wächst es mit */
     min-height: 44px;
   }
   /* 44 px ist das Mass für einen Fingertipp (Apple HIG, WCAG 2.5.5). Die
@@ -249,7 +250,6 @@
     padding: .5rem .7rem;
     margin-bottom: .6rem;
   }
-  .dt tr:hover td { background: none; }
 
   .dt td {
     display: flex;
@@ -312,7 +312,7 @@
   .fin-fuss-wert { font-size: var(--fs-3); }
   .dt-fin tfoot { display: block; }
   /* Der Grund der Summenzeile liegt auf der ganzen Zeile, nicht nur hinter den Zahlen. */
-  .dt-fin tfoot tr { display: flex; justify-content: space-between; align-items: flex-end; gap: .75rem;
+  .dt-fin tfoot tr { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: .75rem;
                      background: var(--b50); border: none; border-radius: 8px; padding: .5rem .7rem; }
   .dt-fin tfoot td, .dt-summe tfoot td { background: transparent !important; }
   .dt-summe tfoot tr { background: var(--b50); }
@@ -353,7 +353,8 @@
   .prog-steps { flex-wrap: wrap; gap: .4rem; }
 
   /* ─ Toasts über die volle Breite ────────────────────────────────────── */
-  #toasts { left: .6rem; right: .6rem; bottom: calc(68px + env(safe-area-inset-bottom)); }
+  /* Oben statt über der Leiste: Unten liegen die Felder der Dialoge (Blätter). */
+  #toasts { left: .6rem; right: .6rem; top: calc(56px + env(safe-area-inset-top)); bottom: auto; }
   .toast  { width: auto; }
 
   /* ─ Login-, Registrierungs- und Startup-Screen ──────────────────────── */
@@ -370,14 +371,31 @@
 }
 
 
+/* Fünf Beschriftungen brauchen je rund 3,9 em; em misst hier die Schrift-
+   grösse des Browsers. Darunter stehen nur die Symbole da; der Name bleibt
+   für Vorleser im Knopf (visuell verborgen). */
+@media (max-width: 19.5em) {
+  .ntab .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden;
+                     clip-path: inset(50%); white-space: nowrap; }
+  .ntab .ico { width: 28px; height: 28px; }
+  .ntab { padding-top: 10px; padding-bottom: 10px; min-height: 44px; }
+}
+
+
+/* Als Karte hebt sich die Tabellenzeile beim Überfahren nicht farbig ab. */
+@media (max-width: 640px) and (hover: hover) {
+  .dt tr:hover td { background: none; }
+}
+
+
 /* ── Kleines Telefon ─────────────────────────────────────────────────────── */
 @media (max-width: 420px) {
   .fgrid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 380px) {
-  .sgrid      { grid-template-columns: 1fr 1fr; gap: .5rem; }
-  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .sgrid      { gap: .5rem; }
+  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6rem), 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
   .ntab       { font-size: var(--fs-0); }
   /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
@@ -395,8 +413,8 @@
 
   /* Kennzahlen (alle Designs) kompakt in zwei Spalten: untereinander füllten
      sie den ersten Bildschirm; eine rollende Reihe versteckte die Hälfte. */
-  .brick-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-bottom: var(--sp-4); }
-  .brick-stats:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .brick-stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: .5rem; margin-bottom: var(--sp-4); }
+  .brick-stats:has(> :nth-child(3):last-child) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr)); }
   .bstat { padding: 8px 12px; }
   .bstat .bstat-v { font-size: var(--fs-5); }
   [data-theme="brick"] .bstat { padding: 8px 12px; }

@@ -27,10 +27,15 @@ async function readIndex(): Promise<string> {
   if (_html !== null && konfig().produktion) return _html;
   const st = await fs.promises.stat(INDEX_PATH);
   if (_html === null || st.mtimeMs !== _mtime) {
-    _html = await fs.promises.readFile(INDEX_PATH, 'utf8');
+    _html = ohneKommentare(await fs.promises.readFile(INDEX_PATH, 'utf8'));
     _mtime = st.mtimeMs;
   }
   return _html;
+}
+
+/** Entwicklerkommentare gehören in den Quelltext, nicht in jede Auslieferung. */
+export function ohneKommentare(html: string): string {
+  return html.replace(/[ \t]*<!--[\s\S]*?-->[ \t]*\n?/g, '');
 }
 
 /** Nur die Vorgabe liegt im Zwischenspeicher; angemeldet zählt das eigene Design. */

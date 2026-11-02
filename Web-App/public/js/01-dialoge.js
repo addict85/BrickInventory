@@ -72,8 +72,24 @@ function zustandGeaendert(dialog) {
     // wer inzwischen woanders hingeklickt hat, wird nicht zurückgerissen.
     const aktiv = document.activeElement;
     const verwaist = !aktiv || aktiv === document.body || dialog.contains(aktiv);
-    if (zurueck && zurueck.isConnected && verwaist) zurueck.focus({ preventScroll: true });
+    if (!verwaist) return;
+    const ziel = rueckziel(zurueck);
+    if (ziel) { ziel.focus({ preventScroll: true }); return; }
+    const darunter = obersterDialog();
+    if (darunter) fokussiereFlaeche(darunter);
   }
+}
+
+/**
+ * Wohin der Fokus nach dem Schliessen zurückgeht. Lag der Auslöser in einem
+ * inzwischen zugeklappten <details> („Weitere Aktionen“), ist er unsichtbar
+ * und nähme keinen Fokus — dann dessen <summary>.
+ */
+function rueckziel(el) {
+  if (!el?.isConnected) return null;
+  if (sichtbar(el)) return el;
+  const summary = el.closest('details:not([open])')?.querySelector(':scope > summary');
+  return summary && sichtbar(summary) ? summary : null;
 }
 
 function tasteGedrueckt(ev) {

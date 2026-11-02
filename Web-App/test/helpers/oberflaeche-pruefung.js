@@ -7,7 +7,8 @@
  *   - Layout (layout-messung.js): kein waagrechter Überlauf, jedes Tippziel
  *     ≥ 44 × 44 px am Telefon und ≥ 24 × 24 px am Rechner, keine überlappenden
  *     Bedienelemente, kein abgeschnittener Text ohne „…“, Text und Platzhalter
- *     ≥ 4,5:1 (gross 3:1), Feldgrenzen und Sinnbild-Knöpfe ≥ 3:1;
+ *     ≥ 4,5:1 (gross 3:1), Feldgrenzen, Sinnbild-Knöpfe, Knopfgrenzen und
+ *     aktive Zustände (Ansicht, Sammlungswahl, Zeitraum, Reiter) ≥ 3:1;
  *   - in jedem Dialog: Tab erreicht jedes Bedienelement, jede Klickfläche
  *     nimmt den Fokus, und der Fokus bleibt im Dialog.
  * Gemessen werden Eigenschaften statt Bilder: Pixelvergleiche hingen an den
@@ -28,6 +29,13 @@
  *   G  Dateifeld der Anleitungen wieder display:none → „Set-Detail“ (Knopf ohne Tastatur)
  *   H  --feldrand wieder var(--bdr) → fast jede Ansicht (Feldgrenze 1,18:1)
  *   I  .btn ohne min-height 24px → „Hintergrundarbeiten“, „Set-Detail“ u. a. (21–23 px)
+ * Gegenproben (02.11.2026, je einzeln):
+ *   K  .bs wieder border var(--bdr) → classic/rechner „Sammlung“, „Teile“,
+ *      „Einstellungen“, Sichten u. a. (Knopfgrenze, z. B. „Schliessen“)
+ *   L  .vb.active ohne border-color → classic/rechner „Sammlung“, „Teile“,
+ *      „Minifiguren“, „Benutzermenü“, „Import-Menü“ (aktiver Zustand „Karten“)
+ *   M  noppe dunkel .ntab.active ohne hellen Rand → noppe/rechner „Sammlung“,
+ *      „Teileliste“, „Finanzen“ u. a. (aktiver Zustand 1,13:1)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -81,7 +89,7 @@ function pruefeOberflaeche(design, geraet) {
     const { b } = app;
     const [w, h, mobil] = GERAETE[geraet];
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
-    // Ohne Rebrickable-Schlüssel springt die App nach dem Start in die Einstellungen.
+    // Ohne Rebrickable-Schlüssel öffnet nach dem Start der Einrichtungsassistent.
     await warte(1000);
     await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
     const bild = () => b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
