@@ -28,7 +28,7 @@ import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PortfolioChart(
     points: List<DiagrammPunkt>,
@@ -56,10 +56,10 @@ fun PortfolioChart(
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(Abstaende.gross)) {
 
-            // Header
-            Row(Modifier.fillMaxWidth(),
+            // Titel und Veränderung; bei grosser Schrift rückt die Plakette darunter.
+            FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
+                verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 Text(stringResource(R.string.chart_portfolio_value),
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleSmall)
@@ -187,8 +187,8 @@ fun PortfolioChart(
 
             Spacer(Modifier.height(10.dp))
 
-            // Period selector
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Zeitraum — umbrechend, damit „Monat“ bei 200 % nicht hinausgeschoben wird.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(
                     "week" to stringResource(R.string.chart_period_week),
                     "month" to stringResource(R.string.chart_period_month),

@@ -377,6 +377,7 @@ internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MerkpostenZeile(
     w: MerkpostenAnsicht, serverUrl: String, imageLoader: coil3.ImageLoader,
@@ -417,8 +418,9 @@ private fun MerkpostenZeile(
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                verticalAlignment = Alignment.CenterVertically) {
+            // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 w.alarm?.let { a ->
                     InfoPlakette(
                         stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
@@ -436,7 +438,8 @@ private fun MerkpostenZeile(
                 // Preisjob seit dem Eintragen noch nicht da — das sagt der Text, ein Strich sagte nichts.
                 val preis = w.marktpreis
                 if (preis != null) {
-                    Text(ch.brickinventoryapp.util.fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold)
+                    Text(ch.brickinventoryapp.util.fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold,
+                         maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
                 } else {
                     Text(stringResource(R.string.wanted_price_pending), style = MaterialTheme.typography.bodySmall,
                          color = MaterialTheme.colorScheme.onSurfaceVariant)
