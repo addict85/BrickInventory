@@ -23,6 +23,8 @@ import javax.xml.parsers.DocumentBuilderFactory
  *   D  in data_extraction_rules.xml unter device-transfer die Zeile widget.xml
  *      entfernt → rot „Kontodaten verlassen das Geraet nicht“
  *   E  in backup_rules.xml die Zeile files/vorschau entfernt → rot (dieselbe Prüfung)
+ *   F  (02.11.2026) in backup_rules.xml die Zeile design_spiegel.xml entfernt →
+ *      rot „Kontodaten verlassen das Geraet nicht“ (Pins, Schalter Nutzer-CA)
  */
 class NetzsicherheitTest {
 
@@ -79,7 +81,7 @@ class NetzsicherheitTest {
     @Test
     fun `Kontodaten verlassen das Geraet nicht`() {
         val noetig = setOf("file:datastore", "database:bestand.db", "sharedpref:widget.xml",
-            "file:vorschau", "file:pdf", "file:export", "file:update", "external:pdf")
+            "sharedpref:design_spiegel.xml", "file:vorschau", "file:pdf", "file:update", "external:pdf")
         val r = regeln("data_extraction_rules.xml")
         val listen = mapOf(
             "cloud-backup" to r.alle("cloud-backup").single().ausgenommen(),

@@ -49,7 +49,7 @@ const val UPDATE_MAX_BYTES: Long = 300L * 1024 * 1024
  */
 const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
 
-/** Wohin das geladene APK kommt — siehe res/xml/file_paths.xml, update_internal. */
+/** Wohin das geladene APK kommt; installiert wird per PackageInstaller-Sitzung, ohne FileProvider. */
 const val UPDATE_ORDNER = "update"
 
 /**
