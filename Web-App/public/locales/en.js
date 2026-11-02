@@ -259,7 +259,8 @@ window.I18N_EN = {
   // Vorlesetexte fuer Knoepfe, die nur ein Symbol tragen (Nachtrag 143).
   // common.close stand hier schon einmal und ist als tot entfernt worden —
   // damals zu Recht: Es rief ihn niemand. Jetzt gibt es einen Aufrufer.
-  'auth.resend_mail': 'Resend e-mail?',
+  'auth.resend_mail': 'Address not confirmed yet? Resend link',
+  'auth.resend_need_email': 'Please enter your e-mail address above instead of the user name.',
   'common.close': 'Close',
   'common.zoom_image': 'Enlarge image',
   'common.image_view': 'Image view',

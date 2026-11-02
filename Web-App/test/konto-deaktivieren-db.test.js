@@ -11,6 +11,11 @@
  *      prüft is_active"
  *   C  die Prüfung auf das eigene Konto entfernt → rot: „nicht das eigene
  *      Konto" (200; der Verwalter sperrte sich aus, die Fälle danach folgen)
+ *   D  (02.11.2026) in pruefeAnmeldedaten() die Sperrprüfung wieder als eigene
+ *      Absage nach dem Passwort → rot: „gesperrt antwortet wie ein falsches
+ *      Passwort“ und „unbestätigt antwortet wie ein falsches Passwort“ (403)
+ *   E  (02.11.2026) in erneuereEmailTokenWennFrei() die Pause entfernt → rot:
+ *      „ein zweiter Link sofort danach“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -20,6 +25,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.APP_BASE_URL = 'http://brick.example';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
@@ -88,7 +94,9 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
 
   await t.test('die Anmeldung ist gesperrt, die Liste zeigt es, das Protokoll nennt es', async () => {
     const a = await anmelden(NUTZER);
-    assert.deepEqual([a.status, a.body.code], [403, 'konto_deaktiviert']);
+    const falsch = await rufe('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
+    assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'gesperrt antwortet wie ein falsches Passwort');
+    assert.equal(a.body.code, 'anmeldedaten_ungueltig');
     const liste = (await rufe('GET', '/users', { cookie: chefKeks })).body.users;
     assert.equal(liste.find(u => u.id === nutzer).is_active, false);
     assert.equal(liste.find(u => u.id === chef).is_active, true);
@@ -113,6 +121,26 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal((await rufe('GET', '/profile', { token: a.body.token })).status, 200);
     assert.deepEqual(await protokoll(), ['konto_deaktiviert', 'konto_reaktiviert']);
+  });
+
+  await t.test('unbestätigt: dieselbe Absage, neuer Link ohne Kontoauskunft', async () => {
+    const adresse = `deakt_${process.pid}@example.org`;
+    await db.run('UPDATE users SET email = $2, email_verified = false, verification_token = NULL, token_expires = NULL WHERE id = $1', [nutzer, adresse]);
+    const a = await anmelden(NUTZER);
+    const falsch = await rufe('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
+    assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'unbestätigt antwortet wie ein falsches Passwort');
+    const erneut = (email) => rufe('POST', '/bestaetigung-erneut', { body: { email } });
+    const unbekannt = await erneut(`niemand_${process.pid}@example.org`);
+    const bekannt = await erneut(adresse.toUpperCase());
+    assert.deepEqual([bekannt.status, bekannt.body], [unbekannt.status, unbekannt.body], 'die Antwort verrät das Konto');
+    assert.equal(bekannt.status, 200);
+    const z = await db.get('SELECT verification_token, token_expires > NOW() + interval \'23 hours\' AS frisch FROM users WHERE id = $1', [nutzer]);
+    assert.ok(z.verification_token && z.frisch, 'kein neuer Link für das unbestätigte Konto');
+    await erneut(adresse);
+    assert.equal((await db.get('SELECT verification_token FROM users WHERE id = $1', [nutzer])).verification_token,
+      z.verification_token, 'ein zweiter Link sofort danach');
+    await db.run('UPDATE users SET email = NULL, email_verified = true, verification_token = NULL, token_expires = NULL WHERE id = $1', [nutzer]);
+    await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   });
 
   await t.test('die Token-Abfrage prüft is_active', async () => {

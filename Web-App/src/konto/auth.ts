@@ -290,12 +290,11 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   const user = await repo.kontoZurAnmeldung(name);
   // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen.
   const passtDasPasswort = await bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH);
-  if (!user || !passtDasPasswort) {
+  // Gesperrt oder unbestätigt wie falsches Passwort: Eine eigene Absage verriete, dass es stimmte.
+  if (!user || !passtDasPasswort || assertLoginAllowed(user)) {
     await recordLoginFailure(ip, name);
     return absage(401, 'anmeldedaten_ungueltig');
   }
-  const blockiert = assertLoginAllowed(user);
-  if (blockiert) { await recordLoginSuccess(ip, name); return absage(blockiert.status, blockiert.code, undefined, blockiert.unverified); }
 
   if (await zf.istAktiv(user.id)) {
     // Ein Passkey ersetzt den Code — gebunden an DIESES Konto, dessen Passwort stimmte.

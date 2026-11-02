@@ -569,6 +569,28 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 
 const RUECKSETZ_GUELTIG_MIN = 60, RUECKSETZ_PAUSE_MIN = 15, RUECKSETZ_MINDESTDAUER_MS = 400;
 
+// Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
+router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/bestaetigung-erneut'>) => {
+  const { email } = req.body ?? {};
+  if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
+  if (!basisUrl()) {
+    hinweisOhneBasisUrl('bestaetigung-erneut', 'Bestätigungs-Mails werden nicht versendet.');
+    return sendeFehler(req, res, 503, 'bestaetigung_nicht_eingerichtet');
+  }
+  const beginn = Date.now();
+  const gedrosselt = await zielGedrosselt('bestaetigung-ziel', String(email), 3, 60 * 60 * 1000);
+  const token = crypto.randomBytes(32).toString('hex');
+  const konto = gedrosselt ? null : await K.erneuereEmailTokenWennFrei(String(email), hashToken(token), 24, RUECKSETZ_PAUSE_MIN);
+  if (konto) {
+    getSetting(konto.id, 'language', 'de')
+      .catch(() => 'de')
+      .then((lang: unknown) => sendVerificationMail(konto.email, token, getBaseUrl()!, String(lang ?? 'de')))
+      .catch(logAndContinue('bestaetigung-erneut:mailversand'));
+  }
+  await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));
+  res.json({ success: true, message: fehlerText('bestaetigung_gesendet', antwortSprache(req)) });
+});
+
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {
   const { email } = req.body;
   if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');

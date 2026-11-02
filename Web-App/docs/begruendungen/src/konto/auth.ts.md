@@ -260,9 +260,10 @@ einer der beiden Stellen sichtbar ist.
 2. Sperre abfragen — VOR der teuren Passwortprüfung.
 3. Konto suchen und Passwort prüfen, immer mit bcrypt (s. o.).
 4. Fehlversuch/Erfolg beim Zähler melden.
-5. Konto-Vorbedingungen (assertLoginAllowed) NACH dem Passwort — sonst
-   verrät die Antwort „Konto deaktiviert" die Existenz des Kontos an jeden,
-   der nur den Namen kennt.
+5. Konto-Vorbedingungen (assertLoginAllowed) zusammen mit dem Passwort:
+   Ein gesperrtes oder unbestätigtes Konto bekommt dieselbe 401 wie ein
+   falsches Passwort und zählt als Fehlversuch. Eine eigene Absage verriete
+   sonst, dass das Passwort stimmte (Passwort-Orakel).
 6. Zweiter Faktor, falls eingerichtet. Ein falscher Code zählt als
    Fehlversuch, sonst liessen sich die 10^6 Codes durchprobieren.
 

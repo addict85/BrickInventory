@@ -143,6 +143,15 @@ export async function setzeRuecksetzTokenWennFrei(id: number, hash: string, guel
     [hash, gueltigMin, id, pauseMin])).changes;
 }
 
+/** Wie setzeRuecksetzTokenWennFrei, für den Bestätigungslink eines aktiven, unbestätigten Kontos. */
+export function erneuereEmailTokenWennFrei(email: string, hash: string, gueltigStd: number, pauseMin: number) {
+  return db.get<{ id: number; email: string }>(
+    `UPDATE users SET verification_token = $2, token_expires = NOW() + make_interval(hours => $3::int)
+      WHERE LOWER(email) = LOWER($1) AND is_active AND NOT email_verified
+        AND (token_expires IS NULL OR token_expires < NOW() + make_interval(hours => $3::int, mins => -$4::int))
+      RETURNING id, email`, [email, hash, gueltigStd, pauseMin]);
+}
+
 export function kontoNachRuecksetzToken(hash: string): Promise<{ id: number } | undefined> {
   return db.get('SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()', [hash]);
 }

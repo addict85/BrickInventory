@@ -6,7 +6,7 @@ import * as passkeyRepo from './repository/passkeys';
 import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 
-export { aendereProfil, aktivesKontoNachEmail, emailVergeben, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameVergeben, raeumeQrTokensAuf, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
+export { aendereProfil, aktivesKontoNachEmail, erneuereEmailTokenWennFrei, emailVergeben, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameVergeben, raeumeQrTokensAuf, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
 
 /** Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
 export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<{ beendet: number; version: number }> {

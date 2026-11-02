@@ -1347,7 +1347,7 @@ async function doLogin(){
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
     formularFehler(G('lerr'), '');
-    oeffneApp(); } else { const err=d.error||tRaw('settings.error'); formularFehler(G('lerr'), err, d.unverified ? [] : ['lp','lu']); if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
+    oeffneApp(); } else { const err=d.error||tRaw('settings.error'); formularFehler(G('lerr'), err, ['lp','lu']); if(d.code==='anmeldedaten_ungueltig'){ G('lerr').innerHTML=esc(err)+' <a href="#" data-click="bestaetigungErneut" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
@@ -1381,8 +1381,16 @@ G('btn-logout').onclick=async()=>{
 // gibToggle meldet js/01-fortschritt.js an, openLogViewer js/01-monitor.js,
 // closePdfViewer/printPdfViewer js/12-pdfviewer.js — der Handler gehört zu dem
 // Modul, das ihn umsetzt.
+// Ohne Auskunft über das Konto: Der Server antwortet für jede Adresse gleich.
+async function bestaetigungErneut(){
+  const email=G('lu').value.trim();
+  if(!email.includes('@')){ toast(tRaw('auth.resend_need_email'),'info'); G('lu').focus(); return; }
+  const d=await api('POST','/v1/auth/bestaetigung-erneut',{email});
+  toast(d.message||d.error||tRaw('settings.error'), d.success?'success':'error');
+}
+
 registerActions({
-  showPanel, rbHinweisOeffnen, rbHinweisWeg,
+  showPanel, rbHinweisOeffnen, rbHinweisWeg, bestaetigungErneut,
 });
 
 /**
