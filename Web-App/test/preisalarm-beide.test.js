@@ -419,6 +419,7 @@ test('der Alarm gilt für einen ZUSTAND, und der ist wählbar — in beiden', ()
   const block = js.slice(i, js.indexOf('\n}', i));
   assert.doesNotMatch(block, /sendeAlarm|api\('PUT'|api\('DELETE'/,
     'Ein Zustandswechsel der Webapp schreibt');
-  assert.match(kt, /onClick = \{ zustand = "U" \}/,
+  // Die App wählt seit dem 02.11.2026 über eine Segmentschaltfläche (SegmentWahl).
+  assert.match(kt, /onWahl = \{ zustand = it \}/,
     'Der Zustandswechsel der App tut mehr als umschalten');
 });
