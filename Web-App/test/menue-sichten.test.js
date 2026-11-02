@@ -253,7 +253,7 @@ test('die Kopfleiste behaelt ihre bewusste Hoehe', () => {
   // haette niemand mehr gemerkt, wenn die Hoehe an `.btn-sm` wandert — und
   // genau das ist die Falle, gegen die er gebaut wurde.
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
-  assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*\d+px/,
+  assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*(max\()?\d+px/,
     'In `.umenu` steht keine Hoehe mehr.');
   assert.match(css, /\.umenu \.ubadge\{height:var\(--kopf-hoehe\)\}/,
     'Der Namensknopf nimmt die Hoehe nicht mehr.');

@@ -32,6 +32,8 @@
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
  *   a) inputmode bei #add-price entfernt   → Schritt 1 rot, nennt die Stelle
  *   b) decimal → numeric bei #add-price    → Schritt 2 rot
+ *   c) #add-price wieder type="number" (02.11.2026) → Schritt 3 rot, nennt
+ *      public/index.html:1719
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -54,7 +56,7 @@ function zahlenfelder() {
   for (const [p, s] of quellen()) {
     for (const m of s.matchAll(/<input\b[^>]*>/g)) {
       const tag = m[0];
-      if (!/type=["']?number/.test(tag)) continue;
+      if (!/type=["']?number|inputmode=["']?decimal/.test(tag)) continue;
       treffer.push({ datei: p, zeile: s.slice(0, m.index).split('\n').length, tag });
     }
   }
@@ -89,4 +91,12 @@ test('2. Preise und Schwellen bekommen `decimal`, nicht `numeric`', () => {
   assert.deepEqual(falsch, [],
     'Diese Felder erlauben Kommastellen (step=0.01), zeigen aber einen reinen ' +
     'Ziffernblock:\n  ' + falsch.join('\n  '));
+});
+
+test('3. Geldfelder sind Textfelder: type="number" verwirft „149,95“', () => {
+  // Chrome liefert für ein Zahlenfeld mit Komma je nach Sprache "" oder 149;
+  // gelesen wird mit leseBetrag() (geldeingabe.test.js prüft das Verhalten).
+  const falsch = zahlenfelder().filter(f => /inputmode=["']?decimal/i.test(f.tag) && /type=["']?number/.test(f.tag))
+    .map(f => `${f.datei}:${f.zeile}`);
+  assert.deepEqual(falsch, []);
 });

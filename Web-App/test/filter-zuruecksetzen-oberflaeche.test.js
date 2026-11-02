@@ -46,8 +46,8 @@ test('Sammlung: Themenfilter ohne Treffer', async () => {
     await warte(() => d.querySelector('#gtheme option[value="Icons"]'));
     d.getElementById('gtheme').value = 'Icons';
     d.getElementById('gtheme').dispatchEvent(new w.Event('change'));
-    await warte(() => d.querySelector('#gallery .leer h3')?.textContent.includes('Filter'));
-    assert.equal(d.querySelector('#gallery .leer h3').textContent, 'Keine Sets passen zu diesem Filter');
+    await warte(() => d.querySelector('#gallery .leer h2')?.textContent.includes('Filter'));
+    assert.equal(d.querySelector('#gallery .leer h2').textContent, 'Keine Sets passen zu diesem Filter');
     assert.ok(d.querySelector('#gallery [data-click="filterZuruecksetzen"]'));
   } finally { w.close(); }
 });

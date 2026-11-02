@@ -132,7 +132,7 @@
        mit in der Reihe, weil die Ungleichheit, die Marco sieht, die ganze
        Reihe betrifft. Soll sie kleiner bleiben, fällt sie hier einfach aus
        der Aufzählung. */
-    .umenu{display:flex;align-items:center;gap:8px;font-size:var(--fs-3);--kopf-hoehe:28px}
+    .umenu{display:flex;align-items:center;gap:8px;font-size:var(--fs-3);--kopf-hoehe:max(28px,1.75rem)}
     /* `.umenu .btn` stand hier bis zum 17.10. und ist RAUS, weil der einzige
        Knopf der Reihe — „Abmelden" — in die Klappe umgezogen ist (Marcos
        Vorgabe: „Kannst du abmelden ebenfalls in das neue Menu integrieren?").
@@ -148,8 +148,12 @@
        nicht an der Seite; z-index über den Kopfzeilen-Inhalten, sonst
        verschwindet sie hinter der Statistik daneben. */
     .umenu-wrap{position:relative;display:inline-flex;min-width:0}
+    /* Breite und Höhe an den Bildschirm gebunden: Bei 200 % Schrift ragte
+       die Klappe links hinaus. Lange Einträge brechen um, die Klappe rollt. */
     .umenu-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:80;
-               min-width:14rem;padding:6px;background:var(--sur);
+               width:max-content;min-width:min(14rem,calc(100vw - 1.5rem));max-width:calc(100vw - 1.5rem);
+               max-height:calc(100dvh - 5rem);overflow-y:auto;overscroll-behavior:contain;
+               padding:6px;background:var(--sur);
                border:1px solid var(--bdr);border-radius:var(--rad);
                box-shadow:0 10px 24px rgba(0,0,0,.14)}
     /* Die Einträge sind Knöpfe und keine Links: Sie wechseln die Sicht
@@ -160,7 +164,7 @@
        Grund gaelte hier der gestrichene Streifen der Leiste — und dagegen
        gemessen waere dunkle Schrift auf dunklem Grund, was sie nie ist: Die
        Eintraege liegen auf der Klappe. */
-    .umenu-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;white-space:nowrap;
+    .umenu-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;white-space:normal;hyphens:auto;
                 background:var(--sur);color:var(--txt);border:0;
                 border-radius:8px;cursor:pointer;
                 padding:.5rem .7rem;font-size:var(--fs-3)}
@@ -239,8 +243,8 @@
     .ntab:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:-3px;border-radius:6px}
 
     /* Die Symbolfamilie (Sprite am Anfang von index.html) */
-    .ico{width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
-    .ptitle-icon .ico{width:22px;height:22px;color:var(--b600)}
+    .ico{width:1.125rem;height:1.125rem;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
+    .ptitle-icon .ico{width:1.375rem;height:1.375rem;color:var(--b600)}
 
     /* Handlungen über der Sammlung — das Formular dazu steht im Dialog */
     .erfassen-leiste{display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center;margin-bottom:var(--sp-5)}
@@ -254,7 +258,7 @@
     .import-klappe{position:absolute;top:calc(100% + 4px);left:0;z-index:60;min-width:17rem;background:var(--sur);color:var(--txt);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--sh2);padding:6px}
     .import-eintrag{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border-radius:8px;color:var(--txt);text-decoration:none;font-size:var(--fs-3);font-weight:500}
     @media (hover:hover){.import-eintrag:hover{background:var(--bg)}}
-    .import-eintrag .ico,.import-eintrag svg{width:18px;height:18px;flex:0 0 auto}
+    .import-eintrag .ico,.import-eintrag svg{width:1.125rem;height:1.125rem;flex:0 0 auto}
 
     /* Umschalter der Sammlung: Sets | Teile | Minifiguren */
     .sammlung-wahl{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bedienrand);border-radius:10px}
@@ -277,7 +281,7 @@
        125-Prozent-Zoom sind davon noch 1024 nutzbare Pixel uebrig, und dann
        passt es nicht mehr. Deshalb ZWEI Aenderungen: hier die Inhaltsbreite,
        und weiter unten schmalere Reiter fuer mittlere Fenster. */
-    main{max-width:1720px;margin:0 auto;padding:var(--sp-6) var(--sp-6)}
+    main:not(#login-screen){max-width:1720px;margin:0 auto;padding:var(--sp-6) var(--sp-6)}
     .tab{display:none}.tab.active{display:block}
     .ph{margin-bottom:var(--sp-5);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-3)}
     .fehler-kasten{flex-basis:100%;font-size:var(--fs-2)}
@@ -297,8 +301,8 @@
     .ctitle{font-size:var(--fs-3);font-weight:700;color:var(--txt);margin-bottom:1rem}
     .frow{display:flex;gap:var(--sp-3);align-items:flex-end;flex-wrap:wrap}
     .fg{display:flex;flex-direction:column;gap:var(--sp-1);flex:1;min-width:145px}
-    .fg input,.fg select,.fg textarea{box-sizing:border-box;height:38px;padding:.5rem .75rem;border:1px solid var(--feldrand);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3);font-family:inherit;width:100%}
-    .fg input[type=email]{height:38px}
+    .fg input,.fg select,.fg textarea{box-sizing:border-box;height:max(38px,2.6em);padding:.5rem .75rem;border:1px solid var(--feldrand);border-radius:var(--rad);background:var(--sur);color:var(--txt);font-size:var(--fs-3);font-family:inherit;width:100%}
+    .fg input[type=email]{height:max(38px,2.6em)}
     label{font-size:var(--fs-1);font-weight:600;color:var(--s600)}
     input[type=text],input[type=number],input[type=password],input[type=email],input[type=search],input[type=date],input[type=time],input[type=url],input[type=tel],select,textarea{background:var(--sur);border:1.5px solid var(--feldrand);color:var(--txt);padding:9px 13px;border-radius:8px;font-family:var(--font);font-size:var(--fs-3);outline:none;transition:border-color .15s,box-shadow .15s;width:100%}
     input:focus,select:focus{border-color:var(--b600);box-shadow:0 0 0 3px rgba(59,130,246,.12)}
@@ -342,7 +346,7 @@
        Klasse — das Zahlenfeld behielt so seine 9px-Polsterung und stand elf
        Pixel hoeher als die beiden Auswahlfelder daneben (gemessen). */
     select.alarm-feld,input.alarm-feld{width:auto;padding:3px 8px;font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;background:var(--sur);color:var(--txt)}
-    input.alarm-feld[type=number]{width:84px;text-align:right}
+    input.alarm-feld[inputmode=decimal]{width:5.5em;text-align:right}
     input[type=file]{background:var(--b50);border:2px dashed var(--b200);color:var(--txt);padding:14px;border-radius:8px;width:100%;cursor:pointer;font-size:var(--fs-3)}
     @media (hover:hover){input[type=file]:hover{border-color:var(--b400)}}
 
@@ -442,8 +446,8 @@
     .diagramm-leer{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;padding:1.5rem 1rem;color:var(--mut);font-size:var(--fs-2)}
     .diagramm-leer strong{color:var(--txt);font-weight:600}
     .pnl-zeitraum{margin-left:6px;font-size:var(--fs-1);color:var(--mut)}
-    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--bedienrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
-    @media (hover:hover){.period-btn:hover{border-color:var(--b400);color:var(--b600)}}
+    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--feldrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
+    @media (hover:hover){.period-btn:hover{border-color:var(--b600);color:var(--b600)}}
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
     .snum{white-space:nowrap;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600);font-weight:500;margin-bottom:2px}
     .sname{font-size:var(--fs-2);font-weight:600;line-height:1.3;margin-bottom:6px}
@@ -476,6 +480,18 @@
     /* Papierkorb statt ✕: Das Symbol erbt die Farbe über currentColor und
        richtet sich nach der Schriftgrösse des Knopfes. */
     .delbtn svg{width:14px;height:14px}
+    /* Kaufpreis-Tabellen: Breiten in em, damit die Felder mit der Schrift wachsen. */
+    .acq-tabelle th{padding:6px 8px;font-weight:600;font-size:var(--fs-1)}
+    .acq-tabelle td{padding:6px}
+    .acq-tabelle .zahl{text-align:right}
+    .acq-feld{border:1px solid var(--feldrand);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);background:var(--sur);color:var(--txt);max-width:100%}
+    .acq-tabelle input.acq-menge{width:5.5em;text-align:center;font-weight:700}
+    .acq-tabelle input.acq-preis{width:7em;text-align:right;font-weight:600}
+    .acq-datum{display:inline-flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
+    .acq-datum-text{font-size:var(--fs-1);color:var(--txt)}
+    .acq-aktion{text-align:right;white-space:nowrap}
+    .acq-ok{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-1);font-weight:600;color:var(--gewinn,var(--g700));margin-right:6px}
+    .acq-ok[hidden]{display:none}
     .acq-loeschen{background:none;border:none;cursor:pointer;color:var(--r700);min-width:32px;min-height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
     @media (hover:hover){.acq-loeschen:hover{background:var(--r100)}}
 
@@ -556,6 +572,9 @@
     .part-card.skelett .skelett-bild{width:70px;height:70px;margin:0 auto}
     .skelett-zeile{height:12px;margin-top:10px}
     .skelett-zeile.kurz{width:60%}
+    .skelett-liste{display:grid;gap:.75rem}
+    .skelett-listenzeile{display:grid;grid-template-columns:3.5rem 1fr;gap:.75rem;align-items:center}
+    .skelett-listenzeile .skelett-bild{aspect-ratio:1;width:3.5rem}
     .part-num{font-family:var(--mono);font-size:var(--fs-0);color:var(--b600);margin-bottom:3px}
     .part-name{font-size:var(--fs-1);font-weight:600;line-height:1.3;margin-bottom:6px;color:var(--txt)}
     .part-color{display:flex;align-items:center;justify-content:center;gap:5px;font-size:var(--fs-0);color:var(--mut)}
@@ -707,7 +726,7 @@
     .loading{display:flex;align-items:center;justify-content:center;padding:3rem;flex-direction:column;gap:.75rem;color:var(--mut)}
     .empty{text-align:center;padding:3rem 1.5rem;color:var(--mut)}
     .empty .icon{font-size:var(--fs-8);margin-bottom:.75rem}
-    .empty h3{font-size:var(--fs-4);font-weight:700;color:var(--txt);margin-bottom:.3rem}
+    .empty :is(h2,h3){font-size:var(--fs-4);font-weight:700;color:var(--txt);margin-bottom:.3rem}
     tfoot td{background:var(--b50)!important;font-weight:600}
     /* Beträge neutral: Grün sah beim Kaufpreis wie ein Gewinn aus; Gewinn und
        Verlust zeigt die G&V-Spalte. */
@@ -853,9 +872,11 @@ html::-webkit-scrollbar{width:0;height:0}
     .voucher-pin-label{color:var(--mut);text-transform:uppercase;
                        letter-spacing:.5px;font-size:var(--fs-0)}
     .voucher-pin code{font-size:var(--fs-2);letter-spacing:.08em}
-    .voucher-nopdf{color:var(--mut);font-size:var(--fs-2);padding:0 .35rem}
+    .voucher-nopdf{color:var(--mut);font-size:var(--fs-1);padding:0 .35rem;white-space:nowrap}
+    .v-btn.v-btn-gefahr{color:var(--r700)}
+    [data-nur-mit-gutscheinen][hidden]{display:none}
     .voucher-actions{display:flex;align-items:center;gap:.3rem;margin-left:auto}
-    .v-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bedienrand);
+    .v-btn{width:1.625rem;height:1.625rem;border-radius:6px;border:1px solid var(--bedienrand);
            cursor:pointer;background:transparent;color:var(--txt);font-size:var(--fs-2);
            display:flex;align-items:center;justify-content:center;
            transition:background .15s,border-color .15s}
@@ -880,13 +901,13 @@ html::-webkit-scrollbar{width:0;height:0}
     .voucher-num-row{display:flex;align-items:center;gap:.35rem}
 
     /* ── Symbole an ihren Plätzen (Emoji abgelöst am 27.10.) ─────────────── */
-    .empty .icon .ico,.no-parts .icon .ico,.leer-ico .ico{width:44px;height:44px;color:var(--s400);stroke-width:1.6}
+    .empty .icon .ico,.no-parts .icon .ico,.leer-ico .ico{width:2.75rem;height:2.75rem;color:var(--s400);stroke-width:1.6}
     .leer-ico{margin-bottom:.5rem}
-    #cd-icon .ico{width:44px;height:44px;color:var(--r500);stroke-width:1.6}
-    .step-icon .ico{width:18px;height:18px}
+    #cd-icon .ico{width:2.75rem;height:2.75rem;color:var(--r500);stroke-width:1.6}
+    .step-icon .ico{width:1.125rem;height:1.125rem}
     .toast-ico{display:inline-flex}
     .toast.success .toast-ico{color:var(--g500)} .toast.error .toast-ico{color:var(--r500)} .toast.info .toast-ico{color:var(--b600)}
-    .pst .ico{width:12px;height:12px;stroke-width:3}
+    .pst .ico{width:.75rem;height:.75rem;stroke-width:3}
     .fin-unter{display:none}
     /* Platzhalter für ein fehlendes oder nicht ladendes Bild (bildTag/bildPlatzhalter in
        01-core.js): dieselbe getönte Fläche, ob es nie ein Bild gab oder eines kaputt ist. */
@@ -902,8 +923,8 @@ html::-webkit-scrollbar{width:0;height:0}
     .bild-40{width:40px;height:40px;object-fit:contain;background:var(--s50);border-radius:4px}
     .bild-44{width:44px;height:44px;object-fit:contain;flex-shrink:0;border-radius:6px;background:var(--s100)}
     .bild-56{width:56px;height:56px;object-fit:contain;border-radius:6px;background:var(--bg)}
-    .ibadge .ico,.lc .ico,.lv .ico{width:14px;height:14px}
-    .btn .ico{width:16px;height:16px}
+    .ibadge .ico,.lc .ico,.lv .ico{width:.875rem;height:.875rem}
+    .btn .ico{width:1rem;height:1rem}
     /* Knöpfe und Felder in der Textschrift und mit ihrem Wortabstand — der Browser setzt
        für sie beides zurück (Arial, word-spacing:normal). */
     button,input,select,textarea{font-family:inherit;word-spacing:inherit}
@@ -913,7 +934,7 @@ html::-webkit-scrollbar{width:0;height:0}
     /* Nur am Handy sichtbar (mobile.css) */
     .filter-knopf,.ubadge-ico{display:none}
     .empty.leer{text-align:center;padding:2.5rem 1rem}
-    .empty.leer h3{margin:.25rem 0 .35rem}
+    .empty.leer h2{margin:.25rem 0 .35rem}
     .empty.leer p{color:var(--mut);margin:0 auto 1rem;max-width:42ch}
     .empty.leer .btn{display:inline-flex;align-items:center;gap:6px}
 
@@ -930,7 +951,7 @@ html::-webkit-scrollbar{width:0;height:0}
 .luecke-8{gap:8px}
 .luecke-10{gap:10px}
 .spalte-05{display:flex;flex-direction:column;gap:.5rem;align-items:flex-start}
-.raster-160{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;align-items:end}
+.raster-160{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,10em),1fr));gap:10px;align-items:end}
 .filterzeile{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:1.5rem}
 .verteilt{justify-content:space-between}
 .zentriert{justify-content:center}
@@ -954,9 +975,10 @@ input[type="checkbox"]{width:24px;height:24px;margin:0;flex:none;accent-color:va
 .teile-neu{margin-left:6px}
 /* Ohne Verbindung kein Löschen auf der Kachel (siehe schreibenSperren). */
 html[data-offline] .delbtn{display:none}
+html[data-offline] summary[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
 input.suchfeld{width:220px}
-.hoehe-38,.fg .hoehe-38{height:38px}
-.min-100{min-width:100px}
+.hoehe-38,.fg .hoehe-38{height:max(38px,2.6em)}
+.min-100{min-width:min(100px,100%)}
 .max-82{max-width:82px}.max-110{max-width:110px}.max-120{max-width:120px}.max-150{max-width:150px}
 .max-160{max-width:160px}.max-220{max-width:220px}.max-240{max-width:240px}.max-360{max-width:360px}
 .max-420{max-width:420px}.max-440{max-width:440px}.max-480{max-width:480px}.max-520{max-width:520px}
@@ -981,7 +1003,7 @@ input.suchfeld{width:220px}
 .merk-kasten{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
 .merk-kasten-titel{margin:0;font-size:var(--fs-4);font-weight:700}
 /* Feld, Auswahl und Knöpfe einer Zeile gleich hoch — wie die Felder (38 px). */
-.merk-erfassen > .btn{height:38px;box-sizing:border-box}
+.merk-erfassen > .btn{height:max(38px,2.6em);box-sizing:border-box}
 /* Geheimnisse verdeckt, mit Knopf zum Anzeigen daneben. */
 .geheim-feld{display:flex;gap:6px;align-items:stretch}
 .geheim-feld input{flex:1;min-width:0}
@@ -1001,10 +1023,15 @@ input.suchfeld{width:220px}
 @media(max-width:700px){
   #global-settings-grid{grid-template-columns:minmax(0,1fr)}
   #global-settings-grid > .einst-nav{grid-row:auto;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;position:static}
-  /* Verlauf am Rand, solange dort noch Abschnitte liegen (data-mehr aus 10-mobile.js). */
-  .einst-nav[data-mehr="r"]{mask-image:linear-gradient(to right,#000 calc(100% - 48px),transparent)}
-  .einst-nav[data-mehr="l"]{mask-image:linear-gradient(to left,#000 calc(100% - 48px),transparent)}
-  .einst-nav[data-mehr="lr"]{mask-image:linear-gradient(to right,transparent,#000 48px,#000 calc(100% - 48px),transparent)}
+  /* Pfeil am Rand, solange dort noch Abschnitte liegen (data-mehr aus 10-mobile.js).
+     Der frühere Verlauf blendete weisse Knöpfe in weissen Grund – unsichtbar.
+     sticky hält den Pfeil beim Rollen am Rand der Leiste. */
+  .einst-nav[data-mehr*="r"]::after,.einst-nav[data-mehr*="l"]::before{position:sticky;flex:none;display:flex;align-items:center;
+    align-self:stretch;width:2rem;font-size:var(--fs-5);font-weight:800;color:var(--b600);pointer-events:none;z-index:1}
+  .einst-nav[data-mehr*="r"]::after{content:"›" / "";right:0;margin-left:-2rem;justify-content:flex-end;
+    background:linear-gradient(to right,transparent,var(--bg) 60%)}
+  .einst-nav[data-mehr*="l"]::before{content:"‹" / "";left:0;margin-right:-2rem;justify-content:flex-start;
+    background:linear-gradient(to left,transparent,var(--bg) 60%)}
   #global-settings-grid > .einst-nav a{flex:none}
   #global-settings-grid > .ssec{grid-column:1}
 }
@@ -1052,12 +1079,18 @@ a{color:var(--b600);text-underline-offset:2px}
 .offline-band{position:sticky;top:0;z-index:120;display:flex;justify-content:center;gap:8px;padding:8px 16px;
   background:var(--a100);color:var(--a-schrift);border-bottom:1px solid var(--bdr);font-size:var(--fs-2);font-weight:600;text-align:center}
 .offline-band[hidden]{display:none}
-.hinweis-band{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 16px;
-  background:var(--b50);color:var(--txt);border-bottom:1px solid var(--bdr);font-size:var(--fs-3)}
+/* Kompakt in einer Zeile; schmal steht der Knopf unter dem Text, das Schliessen bleibt oben rechts. */
+.hinweis-band{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:4px 10px;padding:6px 16px;
+  background:var(--b50);color:var(--txt);border-bottom:1px solid var(--bdr);font-size:var(--fs-2)}
 .hinweis-band[hidden]{display:none}
-.hinweis-band > .ico{color:var(--b700);flex:none}
-.hinweis-band > span{flex:1 1 14rem;min-width:0}
-.hinweis-band .hinweis-zu{margin-left:auto}
+.hinweis-band > .ico{color:var(--b700)}
+@media (max-width:640px){
+  .hinweis-band{grid-template-columns:auto minmax(0,1fr) auto}
+  .hinweis-band > .btn.bp{grid-column:2;grid-row:2;justify-self:start}
+  .hinweis-band .hinweis-zu{grid-column:3;grid-row:1}
+}
+/* Der Schlüssel betrifft Sammlung und Katalog; auf anderen Seiten wäre das Band nur Lärm. */
+body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #rb-hinweis{display:none}
 .loading.klein{padding:1rem;font-size:var(--fs-2);gap:6px}
 .loading.klein .spin{width:18px;height:18px;border-width:2px}
 .diagramm-fehler{display:block;padding:.5rem;color:var(--r700);font-size:var(--fs-2)}
@@ -1109,7 +1142,7 @@ a{color:var(--b600);text-underline-offset:2px}
 
 
 /* ── Dialog „Set hinzufügen“: zwei Spalten, Knopf rechts unten ─────────── */
-.erfassen-raster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem 1rem;align-items:end}
+.erfassen-raster{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,max(10em,calc(50% - .5rem))),1fr));gap:.75rem 1rem;align-items:end}
 .erfassen-raster .fg{min-width:0}
 .erfassen-raster .fg select,.erfassen-raster .fg input{width:100%}
 .erfassen-raster .zeile > select{flex:1 1 auto;min-width:0}
@@ -1117,7 +1150,7 @@ a{color:var(--b600);text-underline-offset:2px}
 .feld-titel{font-size:var(--fs-1);font-weight:600;color:var(--s600)}
 
 /* ── Konto (Profil): begrenzte Breite, eine Beschriftungsgrösse ─────────── */
-#tab-profil .ssec{max-width:52rem}
+#tab-profil .ssec,#tab-gutscheine .ssec,#tab-lagerorte .ssec,#tab-alarme .ssec,#tab-haushalt .ssec,#tab-app .ssec{max-width:52rem}
 .profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:.75rem 1rem}
 .profil-raster .fg{min-width:0}
 .profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr))}
@@ -1145,13 +1178,15 @@ a{color:var(--b600);text-underline-offset:2px}
 .gefahrenzone{border:1px solid var(--r500);border-radius:var(--rad);padding:1rem;background:color-mix(in srgb,var(--r100) 40%,var(--sur))}
 .gefahrenzone .text-mittel{color:var(--txt)}
 .dialog-fuss{display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem}
-.knopf-reihe-mitte{text-align:center;margin-top:1rem;display:flex;gap:.5rem;justify-content:center}
-.dialog-schmal-mitte{max-width:400px;padding:2rem;text-align:center}
+.knopf-reihe-mitte{text-align:center;margin-top:1rem;display:flex;flex-wrap:wrap;gap:.5rem;justify-content:center}
+/* Zu schmal für zwei 8-em-Knöpfe: jeder bekommt eine eigene Zeile in voller Breite. */
+.knopf-reihe-mitte > .btn{flex:1 1 8em;justify-content:center;white-space:normal}
+.dialog-schmal-mitte{max-width:400px;padding:2rem min(2rem,5vw);text-align:center}
 .dialog-symbol{font-size:var(--fs-7);margin-bottom:.75rem}
 .dialog-titel-mitte{margin:0 0 .5rem;font-size:var(--fs-4);font-weight:700}
 .dialog-text-mitte{margin:0 0 1.5rem;font-size:var(--fs-3);color:var(--mut);line-height:1.55}
 .max-1360{max-width:1360px}
-.max-17rem{max-width:17rem}
+.max-17rem{max-width:min(17rem,100%)}
 .max-74{max-width:74px}
 .max-130-rechts{max-width:130px;justify-content:flex-end}
 .relativ{position:relative}
@@ -1173,6 +1208,8 @@ a{color:var(--b600);text-underline-offset:2px}
 .start-fuss{color:var(--mut);font-size:var(--fs-0);margin-top:1.5rem;text-align:center;letter-spacing:.03em}
 /* Die Verweise unter der Anmeldung sind eigene Ziele, kein Fliesstext: 24 px hoch. */
 #login-screen .lcard a[href]{display:inline-flex;align-items:center;min-height:24px}
+/* Verborgene Anmeldewege (Passkey, Passwort vergessen) bleiben verborgen, auch gegen .btn und a[href]. */
+#login-screen [hidden]{display:none !important}
 .fortschritt-zeile{display:flex;justify-content:space-between;font-size:var(--fs-1);color:var(--s500)}
 .balken{background:var(--s200);border-radius:999px;height:8px;overflow:hidden;margin-bottom:.3rem}
 .fortschritt-titel{font-size:var(--fs-2);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem}
@@ -1195,3 +1232,7 @@ a{color:var(--b600);text-underline-offset:2px}
 @media (hover:none) and (pointer:coarse){ #tab-gallery .sc .ca{display:none} }
 /* Warnhinweis neben einem Ergebnis: Rand in der Bernsteinfarbe jedes Designs, Text in Grundfarbe für vollen Kontrast. */
 .hinweis-warnung{color:var(--txt);font-weight:600;border-left:3px solid var(--chart-used);padding-left:8px;margin-top:6px}
+/* Leere Liste: „hinzufügen“ steht im Leerzustand, wo der Blick ist – nicht doppelt in der Leiste. */
+.tab:has(.empty.leer [data-click="oeffneErfassen"]) .erfassen-leiste > [data-click="oeffneErfassen"]{display:none}
+/* Die weisse QR-Fläche erst, wenn ein Code darin steht. */
+#qr-code:empty{display:none !important}

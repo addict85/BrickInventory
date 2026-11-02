@@ -1,7 +1,7 @@
 import { echt, registerActions } from './00-registry.js';
 import { listeLadefehler } from './01-bausteine.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { condBadges, leereLagerortFeld, ownerBadges, schliesseErfassen, selectedOwner, selectedStorage } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
@@ -403,13 +403,15 @@ G('btn-add-fig')?.addEventListener('click', async () => {
   const num = G('af-num-inline')?.value.trim();
   const res = G('af-inline-result');
   if(!num){ res.style.color='var(--r500)'; res.textContent=tRaw('figs.number_required'); return; }
+  const preis = betragAusFeld('af-price-inline');
+  if (!preis.ok) return;
   const btn = G('btn-add-fig'); btn.disabled=true; btn.textContent='…';
   res.style.color='var(--mut)'; res.textContent=tRaw('adding.progress');
   const d = await api('POST','/v1/minifigs',{
     fig_number: num,
     bl_fig_number: G('af-blnum-inline')?.value.trim()||null,
     quantity:   parseInt(G('af-qty-inline')?.value)||1,
-    unit_price: (v => { const n = parseFloat(v); return String(v).trim() !== '' && !isNaN(n) ? n : null; })(G('af-price-inline')?.value ?? ''),
+    unit_price: preis.wert,
     condition: G('af-condition')?.value || 'N',
     owner_user_id: selectedOwner('af-owner'),
     storage: selectedStorage('af-storage'),
@@ -762,12 +764,14 @@ G('btn-add-part')?.addEventListener('click', async () => {
   const colorOpt  = colorSel?.options[colorSel.selectedIndex];
   const colorName = colorOpt?.dataset.name || null;
   const colorHex  = colorOpt?.dataset.hex  || null;
+  const preis = betragAusFeld('ap-price-inline');
+  if (!preis.ok) return;
   const btn = G('btn-add-part'); btn.disabled=true; btn.textContent='…';
   res.style.color='var(--mut)'; res.textContent=tRaw('adding.progress');
   const d = await api('POST','/v1/parts',{
     part_number: num, color_id: colorId, color_name: colorName, color_hex: colorHex,
     quantity: parseInt(G('ap-qty-inline')?.value)||1,
-    unit_price: (v => { const n = parseFloat(v); return String(v).trim() !== '' && !isNaN(n) ? n : null; })(G('ap-price-inline')?.value ?? ''),
+    unit_price: preis.wert,
     condition: G('ap-condition')?.value || 'N',
     owner_user_id: selectedOwner('ap-owner'),
     storage: selectedStorage('ap-storage'),

@@ -30,7 +30,7 @@
 /* ── Tablet ──────────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
 
-  main { padding: 1rem; }
+  main:not(#login-screen) { padding: 1rem; }
 
   /* Zweispaltige Bereiche zusammenklappen */
   .sgrid2,
@@ -44,11 +44,13 @@
 @media (max-width: 640px) {
 
   /* ─ Grundgerüst ─────────────────────────────────────────────────────── */
-  main { padding: .75rem 16px 5rem; }         /* 16 px Rand; unten Luft für den Daumen */
+  main:not(#login-screen) { padding: .75rem 16px 5rem; }         /* 16 px Rand; unten Luft für den Daumen */
 
+  /* Bei grosser Schrift wächst der Kopf und bricht um, statt Namen zu kürzen. */
   header {
-    padding: 0 .75rem;
-    height: 52px;
+    padding: 4px .75rem;
+    height: auto;
+    min-height: 52px;
     gap: .5rem;
   }
   header .logo span,
@@ -88,9 +90,14 @@
   .hstats             { display: none; }
   /* Kopfzeile: Name und Importleiste geben nach, das Benutzermenü nie. */
   header .logo        { min-width: 0; flex: 0 1 auto; }
-  header .logo .marke  { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header .logo .marke, header .logo .kopf-sicht { min-width: 0; white-space: normal; overflow: visible;
+    text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; }
+  /* Die Marke bricht am <wbr> („Brick / Inventory“), der Seitenname silbenweise. */
+  header .logo .kopf-sicht { hyphens: auto; }
   .hright             { min-width: 0; flex: 1 1 auto; justify-content: flex-end; gap: .5rem; }
   .umenu              { flex: 0 0 auto; }
+  /* Die Klappe endet über der unteren Leiste (bei grosser Schrift zwei Reihen). */
+  .umenu-pop          { max-height: calc(100dvh - 9rem); }
   #global-import-bar  { min-width: 0 !important; max-width: none !important; flex: 1 1 60px; }
 
   /* ─ Navigation ──────────────────────────────────────────────────────── */
@@ -119,7 +126,7 @@
     margin: -1px 0 0;
   }
   .ntab .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .ntab .ico { width: 22px; height: 22px; }
+  .ntab .ico { width: 1.375rem; height: 1.375rem; }
   .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); color: var(--b600); }
 
   .sammlung-wahl { display: flex; width: 100%; }
@@ -277,6 +284,9 @@
   .dt td[data-label=""]::before,
   .dt td:not([data-label])::before { content: none; }
   .dt td[data-label=""] { justify-content: flex-end; }
+  /* Kaufpreis-Karten: Wird es eng (grosse Schrift), steht das Feld unter seiner Beschriftung. */
+  .acq-tabelle td { flex-wrap: wrap; gap: .25rem 1rem; }
+  .acq-tabelle td > * { margin-left: auto; }
 
   /* Finanzen: eine kompakte Zeile je Eintrag — Bild, Name, Wert, G&V. Alles
      Weitere steht in der Detailansicht, die das Antippen öffnet. Zehn Felder
@@ -372,15 +382,28 @@
 
 
 /* Fünf Beschriftungen brauchen je rund 3,9 em; em misst hier die Schrift-
-   grösse des Browsers. Darunter stehen nur die Symbole da; der Name bleibt
-   für Vorleser im Knopf (visuell verborgen). */
+   grösse des Browsers. Darunter zwei Reihen zu drei Zielen mit etwas kleinerer
+   Schrift: Die Namen bleiben lesbar, statt nur Symbole zu zeigen. */
 @media (max-width: 19.5em) {
-  .ntab .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden;
-                     clip-path: inset(50%); white-space: nowrap; }
-  .ntab .ico { width: 28px; height: 28px; }
-  .ntab { padding-top: 10px; padding-bottom: 10px; min-height: 44px; }
+  nav:not(.einst-nav) { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-around; }
+  .ntab { padding: 4px 2px; min-height: 44px; gap: 1px; }
+  .ntab .ico { width: .8rem; height: .8rem; }
+  .ntab .tab-label { font-size: var(--fs-0); line-height: 1.15; white-space: normal; overflow: visible;
+                     text-overflow: clip; overflow-wrap: anywhere; text-align: center; }
 }
 
+
+/* Sehr schmal (320 px bei 200 %): Felder, Auswahllisten und lange Zeilen geben nach,
+   statt über den Rand zu ragen. */
+@media (max-width: 19.5em) {
+  main select, main input:not([type=checkbox]):not([type=radio]) { max-width: 100%; min-width: 0; }
+  main .fg, main :is(.zeile, .sform, .ssec) > *, .diagramm-werte > *, .apk-btn, .apk-btn-txt { min-width: 0; max-width: 100%; }
+  #tab-lagerorte .sgrid2 { grid-template-columns: minmax(0, 1fr) !important; }
+  main .btn { white-space: normal; max-width: 100%; }
+  .voucher-row, .voucher-actions { flex-wrap: wrap; }
+  .empty.leer :is(h2, p, .btn), .dt-summe td { overflow-wrap: anywhere; hyphens: auto; max-width: 100%; min-width: 0; }
+  .diagramm-werte > *, .apk-btn-txt, #household-state, #tab-haushalt .text-mittel { overflow-wrap: anywhere; white-space: normal; }
+}
 
 /* Als Karte hebt sich die Tabellenzeile beim Überfahren nicht farbig ab. */
 @media (max-width: 640px) and (hover: hover) {

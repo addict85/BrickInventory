@@ -7,7 +7,7 @@
  *   - Set-Nummern stehen auf einer Zeile;
  *   - nichts in einer Kachel ragt über ihren Rand;
  *   - Kachelüberschriften der Kennzahlen brechen nicht im Wort;
- *   - die untere Leiste zeigt ganze Beschriftungen oder nur Symbole, nie „Sam…“;
+ *   - die untere Leiste zeigt ganze Beschriftungen, nie „Sam…“ und nie nur Symbole;
  *   - ab etwa 360 px Breite zwei Spalten, darunter eine.
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
@@ -16,9 +16,10 @@
  *   B  white-space:nowrap an .snum entfernt, zusammen mit A (allein bricht
  *      in einer Spalte nichts) → rot: „390 px, 200 %“ (Set-Nummer auf zwei
  *      Zeilen, zusätzlich zu den Funden von A)
- *   C  Symbolmodus der Leiste wirkungslos (@media max-width: 1px statt 19.5em)
- *      → rot: „390 px, 200 %“
- *      und „320 px, 200 %“ (Leiste: Beschriftung abgeschnitten)
+ *   C  Zwei-Reihen-Leiste wirkungslos (@media max-width: 1px statt 19.5em)
+ *      → rot: „390 px, 200 %“ und „320 px, 200 %“ (Beschriftung abgeschnitten)
+ *   F  (02.11.) alte Regel zurück: Beschriftung bei grosser Schrift visuell
+ *      verborgen → rot: „390 px, 200 %“ und „320 px, 200 %“ (nur Symbol)
  *   D  .bstat-l wieder overflow-wrap:anywhere und .brick-stats wieder
  *      repeat(2, minmax(0, 1fr)) → rot: „390 px, 200 %“ und „320 px, 200 %“
  *      (Wort gebrochen: „Minifiguren“, „Anleitungen“)
@@ -55,7 +56,7 @@ const MESSUNG = `(() => {
     const l = t.querySelector('.tab-label');
     const versteckt = l.getBoundingClientRect().width <= 1;
     if (!versteckt && l.scrollWidth > l.clientWidth + 1) funde.push('Leiste: „' + l.textContent.trim() + '“ abgeschnitten');
-    if (versteckt && !l.textContent.trim()) funde.push('Leiste: Symbol ohne Namen');
+    if (versteckt) funde.push('Leiste: nur Symbol für „' + l.textContent.trim() + '“');
   }
   const knopf = document.querySelector('#tab-gallery .erfassen-leiste .btn.bp');
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize);

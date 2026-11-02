@@ -142,7 +142,7 @@
   </div>
 </div>
 
-<div id="login-screen">
+<main id="login-screen">
   <div class="lcard max-440">
     <div class="llogo"><svg width="44" height="44" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild">
   <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
@@ -247,7 +247,7 @@
       </form>
     </div>
   </div>
-</div>
+</main>
 
 <!-- PROGRESS OVERLAY -->
 <div id="progress-overlay">
@@ -296,7 +296,7 @@
   <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
   <rect x="80" y="78" width="16" height="13" rx="2" fill="#f5a800"/>
   <text x="88" y="88" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="9" fill="#3b2600">6+</text>
-</svg><p class="marke">BrickInventory <span>Manager</span></p><span class="kopf-sicht" id="kopf-sicht" hidden></span></div>
+</svg><p class="marke">Brick<wbr>Inventory <span>Manager</span></p><span class="kopf-sicht" id="kopf-sicht" hidden></span></div>
     <div class="hright">
       <!-- Inline CSV import progress -->
       <div id="global-import-bar" class="import-leiste" data-stil="display:none">
@@ -522,7 +522,7 @@
       -->
       <div class="merk-kasten">
         <div class="zeile mittig verteilt abstand-u-075">
-          <h3 class="merk-kasten-titel" data-i18n="wanted.add.title">Merkposten hinzufügen</h3>
+          <h2 class="merk-kasten-titel" data-i18n="wanted.add.title">Merkposten hinzufügen</h2>
         </div>
         <div class="zeile luecke-8 unten umbruch merk-erfassen">
           <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
@@ -783,7 +783,7 @@
         <button class="period-btn" aria-pressed="false" data-art="parts" data-click="finFilter" data-arg="parts" data-i18n="finance.filter.parts">Teile</button>
         <button class="period-btn" aria-pressed="false" data-art="figs"  data-click="finFilter" data-arg="figs"  data-i18n="finance.filter.minifigs">Minifiguren</button>
       </div>
-      <div id="fin-tbl"><div class="empty"><div class="icon"><svg class="ico" aria-hidden="true"><use href="#i-finanzen"/></svg></div><h3 data-i18n="finance.not_loaded">Preise noch nicht geladen</h3><p>Klicke auf «Preise laden»</p></div></div>
+      <div id="fin-tbl"><div class="empty"><div class="icon"><svg class="ico" aria-hidden="true"><use href="#i-finanzen"/></svg></div><h2 data-i18n="finance.not_loaded">Preise noch nicht geladen</h2><p>Klicke auf «Preise laden»</p></div></div>
     </div>
 
     <!-- ══ TEILELISTE ══ -->
@@ -792,7 +792,7 @@
         <h1 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Bauliste</span></h1>
         <p class="ptitle-unter" data-i18n="pl.subtitle">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</p>
         <div class="zeile mittig luecke-05 umbruch">
-        <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" data-stil="width:140px;flex-shrink:0" aria-label="Set-Nr." />
+        <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" data-stil="width:9em;max-width:100%;flex-shrink:0" aria-label="Set-Nr." />
         <button class="btn bp fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
         <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" disabled data-i18n="pl.generate" data-ico="werkzeug">Erstellen</button>
         <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
@@ -870,6 +870,7 @@
          waere, ist schlimmer als keiner. -->
     <div class="tab" id="tab-settings">
       <div class="ph"><h1 class="ptitle" data-tab-title="settings"><span class="ptitle-icon"></span><span data-i18n="settings.title">Einstellungen</span></h1></div>
+      <div id="einst-kein-zugriff" hidden></div>
 
 
       <!-- ── GLOBALE EINSTELLUNGEN (nur Admins) ─────────────────────────── -->
@@ -1185,7 +1186,7 @@
           </div>
 
           <div id="vouchers-list" class="voucher-list"></div>
-          <div class="voucher-total-row">
+          <div class="voucher-total-row" data-nur-mit-gutscheinen>
             <span class="farbe-mut" data-i18n="vouchers.total">Summe</span>
             <strong id="vouchers-total"></strong>
           </div>
@@ -1203,7 +1204,7 @@
                bei mehreren Karten dauert es Minuten, und ein Knopf, der nur
                ausgegraut waere, liesse niemanden wissen, ob noch etwas
                passiert. -->
-          <div class="zeile luecke-8 mittig umbruch abstand-o-075">
+          <div class="zeile luecke-8 mittig umbruch abstand-o-075" data-nur-mit-gutscheinen>
             <button class="btn bs" type="button" data-click="guthabenAlleAbfragen"
                     data-i18n="vouchers.balance_all" data-ico="aktualisieren">Guthaben aller Karten abfragen</button>
             <span class="text-mittel" id="vouchers-balance-status" role="status"></span>
@@ -1230,7 +1231,7 @@
                (siehe ExportBefund in utils/gutscheinPdfSchreiben.ts); was
                wirklich nicht ersetzt werden konnte, sagt weiterhin die
                Meldung. -->
-          <div class="zeile luecke-8 mittig umbruch abstand-o-075">
+          <div class="zeile luecke-8 mittig umbruch abstand-o-075" data-nur-mit-gutscheinen>
             <button class="btn bs" type="button" data-click="gutscheineExportieren"
                     data-i18n="vouchers.export" data-ico="datei">Alle Gutscheine als PDF exportieren</button>
           </div>
@@ -1253,7 +1254,7 @@
             <div class="sgrid2 luecke-075">
               <div class="fg">
                 <label for="v-amount" data-i18n="vouchers.amount">Betrag</label>
-                <input type="number" id="v-amount" step="0.01" min="0" inputmode="decimal" />
+                <input type="text" autocomplete="off" id="v-amount" inputmode="decimal" />
               </div>
               <div class="fg">
                 <label for="v-currency" data-i18n="settings.currency">Währung</label>
@@ -1641,7 +1642,7 @@
 <div class="ovl" id="confirm-modal" role="dialog" aria-modal="true" aria-labelledby="cd-title" data-stil="display:none;z-index:400">
   <div class="modal dialog-schmal-mitte">
     <div class="dialog-symbol" id="cd-icon"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg></div>
-    <h3 class="dialog-titel-mitte" id="cd-title" data-i18n="common.delete_title">Löschen?</h3>
+    <h2 class="dialog-titel-mitte" id="cd-title" data-i18n="common.delete_title">Löschen?</h2>
     <p class="dialog-text-mitte" id="cd-msg"></p>
     <form class="ohne-rand" data-submit="cd-confirm">
     <div id="cd-pw-wrap" class="bestaetigung-passwort" hidden>
@@ -1670,13 +1671,13 @@
             <div class="fg"><label for="ap-qty-inline" data-i18n="parts.color_label">Farbe</label>
               <div class="zeile luecke-6 mittig">
                 <div id="ap-color-dot" data-stil="width:20px;height:20px;border-radius:50%;background:var(--s200);border:1px solid var(--bdr);flex-shrink:0"></div>
-                <select id="ap-color-select" aria-label="Farbe" data-i18n="parts.color_label" data-i18n-attr="aria-label" data-stil="height:38px;padding:.45rem .7rem;flex:1" data-change="updateColorDot">
+                <select id="ap-color-select" aria-label="Farbe" data-i18n="parts.color_label" data-i18n-attr="aria-label" data-stil="height:max(38px,2.6em);padding:.45rem .7rem;flex:1" data-change="updateColorDot">
                   <option value="" data-i18n="parts.add.no_color">Keine Farbe</option>
                 </select>
               </div>
             </div>
             <div class="fg"><label data-i18n="parts.add.qty">Anzahl</label><input class="hoehe-38" inputmode="numeric" type="number" id="ap-qty-inline" value="1" min="1" /></div>
-            <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (optional)</label><input class="hoehe-38" inputmode="decimal" type="number" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" /></div>
+            <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (optional)</label><input class="hoehe-38" inputmode="decimal" type="text" autocomplete="off" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" /></div>
             <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="ap-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
             <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-i18n="gallery.add.submit">Hinzufügen</button></div>
@@ -1697,7 +1698,7 @@
           <div class="fg"><label for="af-qty-inline" data-i18n="figs.qty_label">Anzahl</label>
             <input class="hoehe-38" inputmode="numeric" type="number" id="af-qty-inline" value="1" min="1" /></div>
           <div class="fg"><label for="af-price-inline" data-i18n="figs.price_label">Kaufpreis/Stk (opt.)</label>
-            <input class="hoehe-38" inputmode="decimal" type="number" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" /></div>
+            <input class="hoehe-38" inputmode="decimal" type="text" autocomplete="off" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" /></div>
           <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="af-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg max-150" id="af-owner-box" data-stil="display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="af-owner"></select></div><div class="fg max-220" id="af-storage-box"><span class="feld-titel" id="af-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="af-storage-slot"></span></div>
           <div class="fg unten-buendig">
@@ -1716,7 +1717,7 @@
     <div class="erfassen-raster">
       <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z. B. 75192" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
       <div class="fg"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
-      <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="add-price" placeholder="z. B. 79,99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
+      <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="add-price" placeholder="z. B. 79,99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" /></div>
       <div class="fg"><label for="add-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="add-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
       <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
@@ -1730,7 +1731,7 @@
   <div class="modal">
     <div class="mhd"><div><div class="mtit" id="m-tit">Set</div><div class="muntertit" id="m-untertit"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div class="m-kopfteil">
-      <img id="m-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+      <img id="m-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
       <div id="m-det"></div>
     </div>
     <div id="m-instr" class="il"></div>
@@ -1847,7 +1848,7 @@
     </div>
     <div data-stil="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px">
       <div class="fg max-82"><label for="mk-take-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="mk-take-qty" value="1" min="1" /></div>
-      <div class="fg max-120"><label for="mk-take-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="mk-take-price" step="0.01" min="0" placeholder="—" /></div>
+      <div class="fg max-120"><label for="mk-take-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="mk-take-price" placeholder="—" /></div>
       <div class="fg max-110"><label for="mk-take-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-take-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div><div class="fg max-220" id="mk-take-storage-box"><span class="feld-titel" id="mk-take-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="mk-take-storage-slot"></span></div>
     </div>
     <div class="mfooter">
@@ -1872,7 +1873,7 @@
       <div class="zeile luecke-8 unten umbruch">
         <div class="fg max-150" id="cat-m-owner-box" data-stil="display:none"><label for="cat-m-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="cat-m-owner"></select></div><div class="fg max-220" id="cat-m-storage-box"><span class="feld-titel" id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="cat-m-storage-slot"></span></div>
         <div class="fg max-74"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="cat-m-qty" value="1" min="1" /></div>
-        <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="cat-m-price" step="0.01" min="0" placeholder="—" /></div>
+        <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-price" placeholder="—" /></div>
         <div class="fg max-110"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="cat-m-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       </div>
       <!--
@@ -1886,7 +1887,7 @@
       -->
       <div class="zeile luecke-8 unten umbruch">
         <div class="fg max-120"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select class="auswahl-kompakt" id="cat-m-alert-dir"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
-        <div class="fg max-110"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (optional)</label><input inputmode="decimal" type="number" id="cat-m-alert-val" step="0.01" min="0" placeholder="—" /></div>
+        <div class="fg max-110"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-alert-val" placeholder="—" /></div>
       </div>
       <!-- Marcos Vorgabe: BrickLink eine Zeile hoeher, die beiden
            Erfassungsknoepfe nebeneinander. Bis hierher standen alle drei in

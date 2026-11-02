@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, ico, G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
+import { fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
@@ -116,11 +116,11 @@ function zeile(g) {
           <button class="v-btn" data-click="gutscheinPdfOeffnen" data-arg="${g.id}"
                   title="${tRaw('vouchers.pdf_open')}"
                   aria-label="${tRaw('vouchers.pdf_open')}">${ico('datei')}</button>`
-        : `<span class="voucher-nopdf" title="${tRaw('vouchers.no_pdf')}"><span aria-hidden="true">—</span><span class="vh">${t('vouchers.no_pdf')}</span></span>`}
+        : `<span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}
         <button class="v-btn" data-click="gutscheinBearbeiten" data-arg="${g.id}"
-                title="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
-        <button class="delbtn" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
-                title="${tRaw('vouchers.delete_title')}">${TRASH_ICON_SVG}</button>
+                title="${tRaw('vouchers.edit_title')}" aria-label="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
+        <button class="v-btn v-btn-gefahr" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
+                title="${tRaw('vouchers.delete_title')}" aria-label="${tRaw('vouchers.delete_title')}">${ico('loeschen')}</button>
       </div>
     </div>`;
 }
@@ -135,6 +135,8 @@ export async function ladeGutscheine() {
   liste.innerHTML = _gutscheine.length
     ? _gutscheine.map(zeile).join('')
     : `<div class="voucher-leer" data-i18n="vouchers.empty">${t('vouchers.empty')}</div>`;
+  // Summe, „alle abfragen“ und Export haben ohne Gutscheine nichts zu tun.
+  document.querySelectorAll('[data-nur-mit-gutscheinen]').forEach(e => { /** @type {HTMLElement} */ (e).hidden = !_gutscheine.length; });
 
   // Die Summe. Nur wenn alle dieselbe Währung haben — sonst stünde dort eine
   // Zahl, die nichts bedeutet. Gemischte Währungen zusammenzuzählen wäre
@@ -164,7 +166,7 @@ export function gutscheinBearbeiten(id) {
   _bearbeitet = g.id;
   el('v-number').value = g.number;
   el('v-pin').value    = g.pin || '';
-  el('v-amount').value = g.amount;
+  el('v-amount').value = betragFuerFeld(g.amount);
   const cur = el('v-currency'); if (cur) cur.value = g.currency;
   el('vouchers-form-title').textContent = tRaw('vouchers.edit');
   el('v-cancel').style.display = '';
@@ -192,7 +194,9 @@ export function gutscheinAbbrechen() {
 export async function gutscheinSpeichern() {
   const number   = el('v-number').value.trim();
   const pin      = el('v-pin').value.trim();
-  const amount   = el('v-amount').value.trim();
+  const betrag   = betragAusFeld('v-amount');
+  if (!betrag.ok) return;
+  const amount   = betrag.wert ?? '';
   const currency = el('v-currency')?.value || 'CHF';
   const datei    = el('v-pdf')?.files?.[0] || null;
 
@@ -215,7 +219,7 @@ export async function gutscheinSpeichern() {
     // PDF Gelesene überschreiben — mit nichts.
     if (number)   form.append('number', number);
     if (pin)      form.append('pin', pin);
-    if (amount)   form.append('amount', amount);
+    if (amount !== '') form.append('amount', String(amount));
     if (currency) form.append('currency', currency);
     let r, d;
     try {
@@ -231,7 +235,7 @@ export async function gutscheinSpeichern() {
       const g = d?.gelesen || {};
       if (g.number && !number)     el('v-number').value = g.number;
       if (g.pin && !pin)           el('v-pin').value = g.pin;
-      if (g.amount != null && !amount) el('v-amount').value = g.amount;
+      if (g.amount != null && amount === '') el('v-amount').value = betragFuerFeld(g.amount);
       if (g.currency && el('v-currency')) el('v-currency').value = g.currency;
       toast(tRaw('vouchers.pdf_incomplete'), 'error');
       return;

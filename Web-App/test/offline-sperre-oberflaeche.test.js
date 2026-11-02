@@ -8,6 +8,9 @@
  *      Hinzufügen gesperrt“
  *   B  MutationObserver nicht gestartet → rot: „neu gezeichnete Knöpfe auch“
  *   C  schreibenSperren(false) beim Zurückkommen entfernt → rot: „online: wieder frei“
+ *   D  (02.11.) alte Einzelliste statt schreibt() (nur bp/bd und fünf
+ *      Namensmuster, #rb-hinweis ausgenommen) → rot: „alle schreibenden
+ *      Bedienelemente“ (Importieren, Schlüssel eintragen, Datei-Wahl, Bearbeiten)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,6 +32,23 @@ test('offline: schreibende Knöpfe gesperrt', async (t) => {
       assert.equal(filter.disabled, false, 'Lesen bleibt möglich');
       assert.match(d.getElementById('offline-band').textContent, /gesperrt/);
     });
+    await t.test('alle schreibenden Bedienelemente, Lesen bleibt frei', async () => {
+      const import_ = d.querySelector('#tab-gallery .import-menue > summary');
+      assert.equal(import_.getAttribute('aria-disabled'), 'true', 'Importieren');
+      import_.click();
+      assert.equal(import_.parentElement.open, false, 'Importieren öffnet trotzdem');
+      assert.equal(d.querySelector('#rb-hinweis .btn.bp').disabled, true, 'Schlüssel eintragen');
+      assert.equal(d.querySelector('#rb-hinweis .hinweis-zu').disabled, false, 'Hinweis schliessen');
+      const dateien = [...d.querySelectorAll('input[type=file]')];
+      assert.ok(dateien.length >= 3 && dateien.every(f => f.disabled), 'Datei-Wahl');
+      const div = d.createElement('div');
+      div.innerHTML = '<button class="v-btn" data-click="gutscheinBearbeiten">B</button><button class="v-btn" data-click="gutscheinKopieren">K</button>';
+      d.body.appendChild(div);
+      await takt(10);
+      assert.deepEqual([...div.querySelectorAll('button')].map(k => k.disabled), [true, false]);
+      for (const sel of ['.ntab[data-tab="finance"]', '#btn-umenu', '.umenu-item[data-arg="profil"]'])
+        assert.equal(d.querySelector(sel).disabled, false, sel);
+    });
     await t.test('neu gezeichnete Knöpfe auch', async () => {
       const div = d.createElement('div');
       div.innerHTML = '<button class="btn bp" data-click="speichereAlarm">Speichern</button>';
@@ -42,6 +62,7 @@ test('offline: schreibende Knöpfe gesperrt', async (t) => {
       await takt(10);
       assert.equal(hinzu.disabled, false);
       assert.equal(hinzu.hasAttribute('aria-describedby'), false);
+      assert.equal(d.querySelector('#tab-gallery .import-menue > summary').hasAttribute('aria-disabled'), false);
       assert.equal(d.getElementById('offline-band').hidden, true);
     });
   } finally { w.close(); }

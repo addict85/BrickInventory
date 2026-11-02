@@ -238,7 +238,7 @@ export function setnummerFeldGueltig(id, wert) {
  */
 export function leerZustand(o) {
   const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
-  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h3>${esc(o.titel)}</h3>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
+  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2>${esc(o.titel)}</h2>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
 }
 
 /** Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer. */
@@ -750,23 +750,38 @@ export function zeigeVerbindung(erreichbar) {
 }
 
 // Ohne Verbindung scheitert jede Änderung. Statt erst nach dem Klick eine
-// Meldung zu zeigen, sind die schreibenden Knöpfe gesperrt und nennen per
-// aria-describedby das Band als Grund. Neu gezeichnete Knöpfe fängt ein
-// Beobachter, solange die Verbindung fehlt.
-const SCHREIBEND = 'button.bp, button.bd, [data-click="oeffneErfassen"], button[data-click*="speicher" i], button[data-click*="save" i], '
-  + 'button[data-click*="loesch" i], button[data-click*="delete" i], button[data-click*="import" i], button[data-click*="hinzufueg" i]';
-const NICHT_SPERREN = '#login-screen, #rb-hinweis, .toast, [data-dialog-zu]';
+// Meldung zu zeigen, sind die schreibenden Bedienelemente gesperrt und nennen
+// per aria-describedby das Band als Grund. Eine Regel statt einer Liste:
+// Hauptknöpfe, Datei-Wahl, Import-Menüs und jede Handlung, deren Name schreibt.
+const BEDIENT = 'button, input[type=file], .import-menue > summary';
+const IMMER_SCHREIBEND = 'button.bp, button.bd, input[type=file], .import-menue > summary';
+const SCHREIB_VERBEN = /speicher|save|loesch|delete|import|hinzufueg|add|anleg|erfass|uebernehm|eintrag|abfrag|aktualis|refresh|sync|hochlad|upload|rotier|widerruf|einlad|verknuepf|aendere|bearbeit|entfern|wiederherst|restore|generier|erzeug|verschieb|qty|menge|alarm/i;
+const NICHT_SPERREN = '#login-screen, .toast, [data-dialog-zu], .hinweis-zu';
+/** @param {Element} k */
+function schreibt(k) {
+  if (k.closest(NICHT_SPERREN)) return false;
+  if (k.matches(IMMER_SCHREIBEND)) return true;
+  return SCHREIB_VERBEN.test(`${k.getAttribute('data-click') || ''} ${k.getAttribute('data-submit') || ''}`);
+}
 /** @type {MutationObserver|null} */
 let _sperrBeobachter = null;
 /** @param {Element|Document} wurzel */
 function sperreIn(wurzel) {
-  const selbst = wurzel instanceof Element && wurzel.matches(SCHREIBEND) ? [wurzel] : [];
-  /** @type {HTMLButtonElement[]} */ ([...selbst, ...wurzel.querySelectorAll(SCHREIBEND)]).forEach(k => {
-    if (k.disabled || k.closest(NICHT_SPERREN)) return;
-    k.disabled = true; k.dataset.offlineGesperrt = '1';
+  const selbst = wurzel instanceof Element && wurzel.matches(BEDIENT) ? [wurzel] : [];
+  /** @type {HTMLButtonElement[]} */ ([...selbst, ...wurzel.querySelectorAll(BEDIENT)]).forEach(k => {
+    if (k.disabled || k.dataset.offlineGesperrt || !schreibt(k)) return;
+    if (k.tagName === 'SUMMARY') { k.setAttribute('aria-disabled', 'true'); k.parentElement?.removeAttribute('open'); }
+    else k.disabled = true;
+    k.dataset.offlineGesperrt = '1';
     k.setAttribute('aria-describedby', ((k.getAttribute('aria-describedby') || '') + ' offline-band').trim());
   });
 }
+// Ein <summary> kennt kein disabled: Klick und Tastatur öffnen es sonst trotzdem.
+if (typeof document !== 'undefined')
+  document.addEventListener('click', e => {
+    const t = /** @type {Element} */ (e.target);
+    if (t?.closest?.('summary[data-offline-gesperrt]')) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
 /** @param {boolean} an */
 function schreibenSperren(an) {
   if (typeof document === 'undefined') return;
@@ -781,7 +796,8 @@ function schreibenSperren(an) {
   }
   _sperrBeobachter?.disconnect(); _sperrBeobachter = null;
   /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('[data-offline-gesperrt]')).forEach(k => {
-    k.disabled = false; delete k.dataset.offlineGesperrt;
+    if (k.tagName === 'SUMMARY') k.removeAttribute('aria-disabled'); else k.disabled = false;
+    delete k.dataset.offlineGesperrt;
     const rest = (k.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== 'offline-band');
     if (rest.length) k.setAttribute('aria-describedby', rest.join(' ')); else k.removeAttribute('aria-describedby');
   });
@@ -853,6 +869,59 @@ export function fmtGeld(v, cur){
   return Number(v) === 0 ? new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(0) : fmtN(v, cur);
 }
 /**
+ * Ein Betrag aus einem Eingabefeld. Komma und Punkt sind beide Dezimalzeichen,
+ * Leerzeichen und ' sind Tausendertrenner; ein einzelnes Trennzeichen mit genau
+ * drei Ziffern danach gilt als Tausender, wenn die Sprache es so schreibt
+ * („1.234“ de-DE). Leer → null; keine Zahl → NaN, damit der Aufrufer am Feld
+ * meldet, statt „149,95“ still zu 149 zu kürzen.
+ * @param {unknown} roh
+ * @returns {number|null}
+ */
+export function leseBetrag(roh) {
+  const s = String(roh ?? '').replace(/[\s  '’]/g, '').replace(/^[€$£]|[€$£]$/g, '');
+  if (!s) return null;
+  if (!/^[\d.,]*\d[\d.,]*$/.test(s)) return NaN;
+  const trenner = s.match(/[.,]/g) || [];
+  const letztes = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+  let dezimal = trenner.length ? s[letztes] : null;
+  if (new Set(trenner).size === 1 && trenner.length > 1) dezimal = null;
+  if (trenner.length === 1) {
+    const gruppe = new Intl.NumberFormat(locale()).formatToParts(1000).find(p => p.type === 'group')?.value;
+    if (trenner[0] === gruppe && /^\d{3}$/.test(s.slice(letztes + 1)) && !/^0[.,]/.test(s)) dezimal = null;
+  }
+  const ganz = dezimal ? s.slice(0, letztes) : s, nach = dezimal ? s.slice(letztes + 1) : '';
+  if (/[.,]/.test(nach) || (dezimal && ganz.includes(dezimal))) return NaN;
+  const gruppen = ganz.split(/[.,]/);
+  if (gruppen.length > 1 && (!/^\d{1,3}$/.test(gruppen[0]) || gruppen.slice(1).some(g => !/^\d{3}$/.test(g)))) return NaN;
+  return Number((gruppen.join('') || '0') + (nach ? '.' + nach : ''));
+}
+
+/** Ein Betrag für ein Eingabefeld in der Schreibweise der Sprache („129,99“ de-DE), ohne Tausender. */
+export function betragFuerFeld(v) {
+  if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '';
+  return new Intl.NumberFormat(locale(), { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(v));
+}
+
+/**
+ * Liest ein Geldfeld; ist der Inhalt keine Zahl (oder negativ), steht die
+ * Meldung am Feld und `ok` ist false — gesendet wird dann nichts.
+ * @param {string|HTMLInputElement} feld  ID oder Element
+ * @returns {{ ok: boolean, wert: number|null }}
+ */
+export function betragAusFeld(feld) {
+  const el = typeof feld === 'string' ? G(feld) : feld;
+  if (!el) return { ok: true, wert: null };
+  const wert = leseBetrag(el.value);
+  if (wert !== null && !(wert >= 0)) {
+    if (el.id) feldFehler(el.id, tRaw('common.amount_invalid', { wert: el.value.trim() }));
+    else toast(tRaw('common.amount_invalid', { wert: el.value.trim() }), 'error');
+    return { ok: false, wert: null };
+  }
+  if (el.id && G(el.id + '-fehler')) feldFehler(el.id, '');
+  return { ok: true, wert };
+}
+
+/**
  * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit
  * sie neben den Beträgen aus fmtN() nicht in einer zweiten Schreibweise steht.
  * @param {number|string} v  Prozentwert (51.1, nicht 0.511)
@@ -876,14 +945,14 @@ export function fmtBig(n){
  * Ein Datum überall gleich: „05.01.2024“ (de), „05/01/2024“ (en). Vorher
  * stand je Stelle toLocaleDateString() („5.1.2024“) neben eigenen Formen.
  * @param {string|number|Date|null|undefined} v
- * @param {'tag'|'zeit'|'tagzeit'} [art]
+ * @param {'tag'|'zeit'|'tagzeit'|'lang'} [art]  lang: „1. Juni 2026“
  */
 export function fmtDatum(v, art = 'tag'){
   if (v === null || v === undefined || v === '') return '';
   const d = v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
   if (isNaN(d.getTime())) return '';
   const tag = { day: '2-digit', month: '2-digit', year: 'numeric' }, zeit = { hour: '2-digit', minute: '2-digit' };
-  const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : tag;
+  const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : art === 'lang' ? { day: 'numeric', month: 'long', year: 'numeric' } : tag;
   return new Intl.DateTimeFormat(locale(), /** @type {Intl.DateTimeFormatOptions} */ (o)).format(d);
 }
 
@@ -1204,6 +1273,9 @@ async function checkRegistrationEnabled(){
     const d = await fetch('/api/v1/auth/registration-status').then(r=>r.json());
     const wrap = G('link-register-wrap');
     if(wrap) wrap.style.display = d.enabled ? '' : 'none';
+    // Nur Wege anbieten, die der Server kann; fehlt die Angabe (älterer Server), bleibt alles wie es war.
+    if (d.passkey === false && G('btn-passkey')) G('btn-passkey').hidden = true;
+    if (G('link-forgot')) G('link-forgot').hidden = d.passwort_vergessen === false;
   } catch(_){}
 }
 

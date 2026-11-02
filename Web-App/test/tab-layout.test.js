@@ -47,7 +47,7 @@ test('die Reiterköpfe enthalten keine Filter-Bedienelemente mehr', () => {
   // zurückwandert, stünde wieder VOR der Erfassung.
   for (const [name, , filter] of REITER) {
     const kopfStart = html.indexOf(filter) >= 0 ? html.lastIndexOf('<div class="ph"', html.indexOf(filter)) : -1;
-    const kopfEnde  = kopfStart >= 0 ? html.indexOf('</div>', html.indexOf('</h2>', kopfStart)) : -1;
+    const kopfEnde  = kopfStart >= 0 ? html.indexOf('</div>', html.indexOf('</h1>', kopfStart)) : -1;
     const kopf = kopfStart >= 0 ? html.slice(kopfStart, kopfEnde) : '';
     assert.ok(!kopf.includes(filter),
       `${name}: ${filter} steht wieder im Reiterkopf statt unter der Erfassen-Box`);
@@ -95,7 +95,7 @@ test('der Katalogtitel steht allein, die Suche darunter', () => {
   assert.ok(suche < liste, 'die Suche steht über der Liste');
   // Der Kopf trägt nur noch den Titel.
   const kopfStart = html.lastIndexOf('<div class="ph"', titel);
-  const kopfEnde = html.indexOf('</div>', html.indexOf('</h2>', kopfStart));
+  const kopfEnde = html.indexOf('</div>', html.indexOf('</h1>', kopfStart));
   assert.ok(!html.slice(kopfStart, kopfEnde).includes('id="cat-search"'),
     'die Katalogsuche steht wieder im Reiterkopf');
 });

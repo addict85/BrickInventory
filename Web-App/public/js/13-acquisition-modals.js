@@ -16,7 +16,7 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast } from './01-core.js';
+import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
 import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
@@ -34,6 +34,7 @@ export function openAcqModal(sn) {
   G('acq-modal-sub').textContent = sn + (curSet?.name ? ' – ' + curSet.name : '');
   G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('common.loading')}</div>`;
   G('set-modal').classList.remove('open');
+  _gespeichert.clear();
   G('acq-modal').classList.add('open');
   loadAcqModal(sn);
 }
@@ -99,61 +100,78 @@ function setzeMitFokus(ziel, html) {
   if (stelle >= 0) felder()[stelle]?.focus({ preventScroll: true });
 }
 
+/** JJJJ-MM-TT im lokalen Kalender für <input type="date">. */
+function isoTag(v) {
+  const d = v ? new Date(v) : null;
+  return d && !isNaN(d.getTime()) ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
+}
+
+/**
+ * Datumsfeld mit dem Datum daneben in der Sprache der Oberfläche: Das Feld
+ * selbst zeigt die Form des Browsers („06/01/2026“), nicht die der App.
+ */
+function datumFeld(attrs, iso, textId) {
+  return `<span class="acq-datum"><input class="acq-feld" type="date" value="${iso}" aria-label="${esc(tRaw('detail.added'))}"
+      aria-describedby="${textId}" ${attrs} />
+    <span class="acq-datum-text" id="${textId}">${esc(fmtDatum(iso, 'lang'))}</span></span>`;
+}
+
+/** Zeilen, deren letzte Änderung gespeichert ist; die Marke übersteht das Neuzeichnen. */
+const _gespeichert = new Set();
+function gespeichertMarke(id) {
+  return `<span class="acq-ok" id="acq-ok-${id}" role="status"${_gespeichert.has(String(id)) ? '' : ' hidden'}>${ico('ok')}<span>${esc(tRaw('settings.saved'))}</span></span>`;
+}
+function zeigeGespeichert(id) {
+  _gespeichert.add(String(id));
+  const el = G(`acq-ok-${id}`);
+  if (el) el.hidden = false;
+}
+
 export function renderAcqModalBody(sn, acqs, totals) {
   if (!acqs.length) {
     G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`;
     return;
   }
-  const th = s => `<th data-stil="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px">${s}</th>`;
-  let html = `<div class="tw"><table class="dt" data-stil="width:100%;border-collapse:collapse;font-size:var(--fs-3)">
+  let html = `<div class="tw"><table class="dt acq-tabelle">
     <thead>
-      <tr data-stil="border-bottom:2px solid var(--bdr)">
-        ${th(t('detail.qty'))}
-        ${th(t('detail.added'))}
-        <th data-stil="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px;text-align:center">${t('common.condition')}</th>
-        <th data-stil="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px;text-align:right">${t('detail.purchase_price')}</th>
-        ${_householdMembers.length > 1 ? th(t('household.owner')) : ''}
-        <th data-stil="width:32px"></th>
+      <tr>
+        <th>${t('detail.qty')}</th>
+        <th>${t('detail.added')}</th>
+        <th>${t('common.condition')}</th>
+        <th class="zahl">${t('detail.purchase_price')}</th>
+        ${_householdMembers.length > 1 ? `<th>${t('household.owner')}</th>` : ''}
+        <th><span class="vh">${t('common.actions')}</span></th>
       </tr>
     </thead>
     <tbody>`;
 
   acqs.forEach(a => {
-    const _dt = a.created_at ? new Date(a.created_at) : null;
-    const dateIso = _dt ? `${_dt.getFullYear()}-${String(_dt.getMonth()+1).padStart(2,'0')}-${String(_dt.getDate()).padStart(2,'0')}` : '';
-    const priceVal = a.purchase_price != null ? parseFloat(a.purchase_price) : '';
-    html += `<tr data-stil="border-bottom:1px solid var(--bdr)" id="acq-row-${a.id}">
-      <td data-stil="padding:6px 6px">
-        <input inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
+    const dateIso = isoTag(a.created_at);
+    html += `<tr id="acq-row-${a.id}">
+      <td>
+        <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
-          data-keydown="blurOnEnter"
-          data-stil="width:48px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
+          data-keydown="blurOnEnter" />
       </td>
-      <td data-stil="padding:6px 8px;white-space:nowrap">
-        <input type="date" value="${dateIso}" aria-label="${esc(tRaw('detail.added'))}"
-          data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"
-          data-stil="border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
-      </td>
-      <td data-stil="padding:6px 4px;text-align:center">
-        <select aria-label="${esc(tRaw('common.condition'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="cond" data-val="1"
-          data-stil="font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+      <td>${datumFeld(`data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"`, dateIso, `acq-datum-${a.id}`)}</td>
+      <td>
+        <select class="acq-feld" aria-label="${esc(tRaw('common.condition'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="cond" data-val="1">
           <option value="N" ${a.condition!=='U'?'selected':''}>${t('common.condition_new')}</option>
           <option value="U" ${a.condition==='U'?'selected':''}>${t('common.condition_used')}</option>
         </select>
       </td>
-      <td data-stil="padding:6px 8px;text-align:right">
-        <input type="text" inputmode="decimal" value="${priceVal}" aria-label="${esc(tRaw('detail.purchase_price'))}"
+      <td class="zahl">
+        <input class="acq-feld acq-preis" id="acq-preis-${a.id}" type="text" inputmode="decimal" autocomplete="off" value="${esc(betragFuerFeld(a.purchase_price))}" aria-label="${esc(tRaw('detail.purchase_price'))}"
           data-blur="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="price" data-val="1"
-          data-keydown="blurOnEnter"
-          data-stil="width:84px;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
+          data-keydown="blurOnEnter" />
       </td>
-      ${_householdMembers.length > 1 ? `<td data-stil="padding:6px 4px">
-        <select aria-label="${esc(tRaw('household.owner'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="owner" data-val="1"
-          data-stil="font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+      ${_householdMembers.length > 1 ? `<td>
+        <select class="acq-feld" aria-label="${esc(tRaw('household.owner'))}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="owner" data-val="1">
           ${_householdMembers.map(m => `<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${esc(m.username)}</option>`).join('')}
         </select>
       </td>` : ''}
-      <td data-stil="padding:6px 4px;text-align:center">
+      <td class="acq-aktion">
+        ${gespeichertMarke(a.id)}
         <button class="acq-loeschen" data-click="acqDelete"${echt()} data-arg="${esc(sn)}" data-arg2="${a.id}"
           title="${t('gallery.delete.title')}" aria-label="${t('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
@@ -174,7 +192,9 @@ export function renderAcqModalBody(sn, acqs, totals) {
 async function acqSave(sn, id, field, value) {
   const body = {};
   if (field === 'price') {
-    body.purchase_price = value === '' ? null : parseFloat(value);
+    const preis = betragAusFeld(`acq-preis-${id}`);
+    if (!preis.ok) return;
+    body.purchase_price = preis.wert;
   } else if (field === 'qty') {
     body.quantity = Math.max(1, parseInt(value) || 1);
   } else if (field === 'date') {
@@ -211,6 +231,8 @@ async function acqSave(sn, id, field, value) {
     if (field === 'date') loadAcqModal(sn); // abgelehnte Eingabe auf gespeicherten Wert zurücksetzen
     return;
   }
+  zeigeGespeichert(id);
+  if (field === 'price') { const f = G(`acq-preis-${id}`); if (f && f !== document.activeElement) f.value = betragFuerFeld(body.purchase_price); }
   // Marktpreis-Zeilen neu holen.
   //
   // Wird erstmals ein Kaufpreis in einem Zustand erfasst, entsteht dafür eine
@@ -407,14 +429,14 @@ export async function openManDetail(type, id, colorId) {
     ? ad.totals.quantity : item.quantity;
   rows.push(detailZeile(t('detail.qty'), `
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-    <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" value="${totalQty}" data-stil="width:46px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
+    <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" value="${totalQty}" data-stil="width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
   `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
 
   // BrickLink-Nr (minifigs only, editable)
   if (type === 'fig') {
     rows.push(detailZeile('BrickLink-Nr.', `
-      <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="${esc(tRaw('figs.bl_placeholder'))}" aria-label="${esc(tRaw('figs.bl_number'))}" data-stil="width:110px;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:2px 6px"
+      <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="${esc(tRaw('figs.bl_placeholder'))}" aria-label="${esc(tRaw('figs.bl_number'))}" data-stil="width:9em;max-width:100%;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:2px 6px"
         data-blur="saveManualFigBl" data-arg="${esc(id)}" data-arg2="${item?.user_id||''}" />
     `));
   }
@@ -900,6 +922,7 @@ function openManAcqModal() {
   G('acq-modal-sub').textContent = title;
   G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('common.loading')}</div>`;
   G('man-detail-modal').classList.remove('open');
+  _gespeichert.clear();
   G('acq-modal').classList.add('open');
   // Override close to return to man-detail-modal
   _acqModalSn = null;
@@ -956,56 +979,46 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
     G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`;
     return;
   }
-  const th = s => `<th data-stil="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px">${s}</th>`;
-  let html = `<div class="tw"><table class="dt" data-stil="width:100%;border-collapse:collapse;font-size:var(--fs-3)">
-    <thead><tr data-stil="border-bottom:2px solid var(--bdr)">
-      ${th(t('detail.qty'))}${th(t('detail.added'))}
-      <th data-stil="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px;text-align:center">${t('common.condition')}</th>
-      <th data-stil="padding:6px 8px;font-weight:600;color:var(--mut);font-size:var(--fs-1);text-transform:uppercase;letter-spacing:.4px;text-align:right">${t('figs.price_label')}</th>
-      ${_householdMembers.length > 1 ? th(t('household.owner')) : ''}
-      <th data-stil="width:32px"></th>
+  let html = `<div class="tw"><table class="dt acq-tabelle">
+    <thead><tr>
+      <th>${t('detail.qty')}</th><th>${t('detail.added')}</th>
+      <th>${t('common.condition')}</th>
+      <th class="zahl">${t('figs.price_label')}</th>
+      ${_householdMembers.length > 1 ? `<th>${t('household.owner')}</th>` : ''}
+      <th><span class="vh">${t('common.actions')}</span></th>
     </tr></thead><tbody>`;
 
   acqs.forEach(a => {
-    const _dt = a.created_at ? new Date(a.created_at) : null;
-    const dateIso = _dt ? `${_dt.getFullYear()}-${String(_dt.getMonth()+1).padStart(2,'0')}-${String(_dt.getDate()).padStart(2,'0')}` : '';
-    const priceVal = a.unit_price != null ? parseFloat(a.unit_price) : '';
-    // Use single-quoted string args to avoid breaking HTML double-quote attribute delimiters
+    const dateIso = isoTag(a.created_at);
     const t_ = type, i_ = id, c_ = colorId, ai_ = a.id;
-    html += `<tr data-stil="border-bottom:1px solid var(--bdr)">
-      <td data-stil="padding:6px 6px">
-        <input inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
-          data-blur="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="qty" data-val="1"
-          data-keydown="blurOnEnter"
-          data-stil="width:48px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);font-weight:700;background:var(--sur);color:var(--txt)" />
+    const args = `data-arg="${esc(t_)}" data-arg2="${esc(i_)}" data-arg3="${esc(c_)}" data-arg4="${ai_}"`;
+    html += `<tr id="acq-row-${ai_}">
+      <td>
+        <input class="acq-feld acq-menge" inputmode="numeric" type="number" min="1" value="${a.quantity}" aria-label="${esc(tRaw('detail.qty'))}"
+          data-blur="manAcqSave" ${args} data-arg5="qty" data-val="1"
+          data-keydown="blurOnEnter" />
       </td>
-      <td data-stil="padding:6px 8px;white-space:nowrap">
-        <input type="date" value="${dateIso}" aria-label="${esc(tRaw('detail.added'))}"
-          data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="date" data-val="1"
-          data-stil="border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;font-size:var(--fs-2);background:var(--sur);color:var(--txt)" />
-      </td>
-      <td data-stil="padding:6px 4px;text-align:center">
-        <select data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="cond" data-val="1"
-          data-stil="font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+      <td>${datumFeld(`data-change="manAcqSave" ${args} data-arg5="date" data-val="1"`, dateIso, `acq-datum-${ai_}`)}</td>
+      <td>
+        <select class="acq-feld" aria-label="${esc(tRaw('common.condition'))}" data-change="manAcqSave" ${args} data-arg5="cond" data-val="1">
           <option value="N" ${a.condition!=='U'?'selected':''}>${t('common.condition_new')}</option>
           <option value="U" ${a.condition==='U'?'selected':''}>${t('common.condition_used')}</option>
         </select>
       </td>
-      <td data-stil="padding:6px 8px;text-align:right">
-        <input type="text" inputmode="decimal" value="${priceVal}" aria-label="${esc(tRaw('detail.purchase_price'))}"
-          data-blur="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="price" data-val="1"
-          data-keydown="blurOnEnter"
-          data-stil="width:84px;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:4px 8px;font-size:var(--fs-3);font-weight:600;background:var(--sur);color:var(--txt)" />
+      <td class="zahl">
+        <input class="acq-feld acq-preis" id="acq-preis-${ai_}" type="text" inputmode="decimal" autocomplete="off" value="${esc(betragFuerFeld(a.unit_price))}" aria-label="${esc(tRaw('detail.purchase_price'))}"
+          data-blur="manAcqSave" ${args} data-arg5="price" data-val="1"
+          data-keydown="blurOnEnter" />
       </td>
-      ${_householdMembers.length > 1 ? `<td data-stil="padding:6px 4px">
-        <select data-change="manAcqSave" data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}" data-arg5="owner" data-val="1"
-          data-stil="font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;padding:3px 6px;background:var(--sur);color:var(--txt)">
+      ${_householdMembers.length > 1 ? `<td>
+        <select class="acq-feld" aria-label="${esc(tRaw('household.owner'))}" data-change="manAcqSave" ${args} data-arg5="owner" data-val="1">
           ${_householdMembers.map(m => `<option value="${m.id}"${m.id === (a.owner_user_id ?? _acqOwnerId) ? ' selected' : ''}>${esc(m.username)}</option>`).join('')}
         </select>
       </td>` : ''}
-      <td data-stil="padding:6px 4px;text-align:center">
-        <button data-click="manAcqDelete"${echt()} data-arg="${esc(t_)}" data-arg2="${i_}" data-arg3="${c_}" data-arg4="${ai_}"
-          data-stil="background:none;border:none;cursor:pointer;font-size:var(--fs-4);color:var(--r500);padding:2px 4px;border-radius:4px">${ico('loeschen')}</button>
+      <td class="acq-aktion">
+        ${gespeichertMarke(ai_)}
+        <button class="acq-loeschen" data-click="manAcqDelete"${echt()} ${args}
+          title="${t('gallery.delete.title')}" aria-label="${t('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
     </tr>`;
   });
@@ -1021,7 +1034,11 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
       ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions/${acqId}`
       : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions/${acqId}`;
     const body = {};
-    if (field==='price') body.unit_price = value===''?null:parseFloat(value);
+    if (field==='price') {
+      const preis = betragAusFeld(`acq-preis-${acqId}`);
+      if (!preis.ok) return;
+      body.unit_price = preis.wert;
+    }
     else if (field==='qty') body.quantity = Math.max(1,parseInt(value)||1);
     else if (field==='date') body.date = value;
     else if (field==='owner') {
@@ -1039,6 +1056,7 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
       if (field==='date' || field==='owner') await loadManAcqModal(type, id, colorId);
       return;
     }
+    zeigeGespeichert(acqId);
     if (field==='owner') {
       // Danach stimmt fast nichts mehr auf dem Schirm: Mengen, Summen,
       // Besitzer-Plaketten. Lieber neu laden als vier Stellen nachziehen.
