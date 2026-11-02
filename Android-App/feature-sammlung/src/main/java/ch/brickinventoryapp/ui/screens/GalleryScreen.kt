@@ -381,7 +381,6 @@ fun SetCard(
     preis: KachelPreis? = null,
     waehrung: String = "EUR",
 ) {
-    var showMenu by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
     // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
@@ -417,10 +416,12 @@ fun SetCard(
                 // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im
                 // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
                 // daneben gezeichnet, weil die Card sie abschnitte.
-                if (isBrick) BrickStudCap(
-                    mass = NoppenMass.Stein,
-                    verlauf = SteinKantenVerlauf,
-                )
+                // Auf der schmalen Telefonkachel eine schlankere Kante: 22 dp nahmen dort dem Bild
+                // sichtbar Platz; ab Tabletbreite die volle Höhe wie im Web.
+                if (isBrick) BoxWithConstraints {
+                    BrickStudCap(mass = NoppenMass.Stein, verlauf = SteinKantenVerlauf,
+                        height = if (maxWidth < 240.dp) 12.dp else null)
+                }
                 // Der Steindeckel des Designs "noppe" — Position modulo sechs,
                 // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
                 // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
@@ -491,22 +492,14 @@ fun SetCard(
                                     style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             }
                         }
-                        Box {
-                            // Im Glanz-Design auf eigener Fläche, damit ⋮ auf jedem Bild lesbar bleibt.
-                            IconButton(onClick = { showMenu = true },
-                                modifier = if (istGlanz) Modifier.padding(Abstaende.haar)
-                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)
-                                    else Modifier) {
-                                Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            DropdownMenu(showMenu, { showMenu = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                                    onClick = { showMenu = false; deleting = true },
-                                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                                )
-                            }
+                        // Ein Menü mit nur „Löschen“ war ein Tipp zu viel: direkt der Knopf, die
+                        // Rückfrage danach bleibt. In jedem Design auf eigener runder Fläche,
+                        // damit das Symbol auf jedem Bild lesbar ist.
+                        IconButton(onClick = { deleting = true },
+                            modifier = Modifier.padding(Abstaende.haar)
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)) {
+                            Icon(Icons.Default.DeleteOutline, stringResource(R.string.cd_set_delete, set.name ?: set.setNumber),
+                                Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

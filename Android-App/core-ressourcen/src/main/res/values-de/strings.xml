@@ -555,7 +555,6 @@
     <string name="cd_search_clear">Suche leeren</string>
     <string name="cd_password_show">Passwort anzeigen</string>
     <string name="cd_password_hide">Passwort verbergen</string>
-    <string name="cd_set_menu">Weitere Aktionen für dieses Set</string>
     <string name="cd_qty_increase">Menge erhöhen</string>
     <string name="cd_qty_decrease">Menge verringern</string>
     <string name="cd_edit_cache_ttl">Speicherdauer bearbeiten</string>
@@ -891,6 +890,7 @@
     <string name="common_retry">Erneut versuchen</string>
     <string name="common_no_results">Nichts gefunden</string>
     <string name="common_no_results_hint">Suche oder Filter lockern.</string>
+    <string name="cd_set_delete">%1$s löschen</string>
     <string name="settings_hell_fest">Dieses Design ist immer dunkel; Hell und Dunkel wirken hier nicht.</string>
     <string name="vouchers_cd_delete">Gutschein %1$s löschen</string>
     <string name="vouchers_cd_edit">Gutschein %1$s bearbeiten</string>

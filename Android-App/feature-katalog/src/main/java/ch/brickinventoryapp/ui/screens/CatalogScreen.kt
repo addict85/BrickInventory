@@ -474,10 +474,12 @@ fun CatalogSetCard(
                 // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im
                 // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
                 // daneben gezeichnet, weil die Card sie abschnitte.
-                if (isBrick) BrickStudCap(
-                    mass = NoppenMass.Stein,
-                    verlauf = SteinKantenVerlauf,
-                )
+                // Auf der schmalen Telefonkachel eine schlankere Kante: 22 dp nahmen dort dem Bild
+                // sichtbar Platz; ab Tabletbreite die volle Höhe wie im Web.
+                if (isBrick) BoxWithConstraints {
+                    BrickStudCap(mass = NoppenMass.Stein, verlauf = SteinKantenVerlauf,
+                        height = if (maxWidth < 240.dp) 12.dp else null)
+                }
                 // Der Steindeckel des Designs "noppe" — Position modulo sechs,
                 // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
                 // Bauform wie beim Stein-Design, nur hoeher und in wechselnder

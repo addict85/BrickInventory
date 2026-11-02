@@ -162,7 +162,11 @@ fun PartsScreen(
     Column(Modifier.fillMaxSize()) {
         // Suche und „Filter“: Konto, Lagerort, Ersatzteile, Farbe, Kategorie
         // und die Ansicht stehen im Blatt, die Kennzahlen rollen mit dem Raster.
-        SucheMitFilter(
+        val teileGefiltert = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
+            lagerModus, partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter) > 0
+        val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, partsState.partsFehler, teileGefiltert)
+        // Im Fehlerzustand weder Suche noch Filter — ohne Liste gibt es nichts zu suchen.
+        if (anzeige != Ladeanzeige.FEHLER) SucheMitFilter(
             wert = searchQuery,
             onWert = { searchQuery = it; onSearch(it) },
             platzhalter = stringResource(R.string.parts_search_placeholder),
@@ -172,9 +176,6 @@ fun PartsScreen(
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.teileOfflineStand)
-        val teileGefiltert = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
-            lagerModus, partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter) > 0
-        val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, partsState.partsFehler, teileGefiltert)
         if (anzeige == Ladeanzeige.LAEDT) {
             SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(110.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {

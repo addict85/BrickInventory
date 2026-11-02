@@ -98,9 +98,13 @@ fun MinifigsScreen(
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die
-        // Kennzahlen rollen mit dem Raster.
-        SucheMitFilter(
+        // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
+        // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
+        val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
+        val anzeige = ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)
+        // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die Kennzahlen rollen mit
+        // dem Raster. Im Fehlerzustand nicht — ohne Liste gibt es nichts zu suchen.
+        if (anzeige != Ladeanzeige.FEHLER) SucheMitFilter(
             wert = search,
             onWert = { search = it; vm.setMinifigsQuery(it) },
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
@@ -109,10 +113,7 @@ fun MinifigsScreen(
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.figurenOfflineStand)
-        // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
-        // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
-        val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
-        when (ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)) {
+        when (anzeige) {
             Ladeanzeige.LAEDT ->
                 SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(140.dp), kachelHoehe = 196.dp)
             Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh, partsState.minifigsFehlerKlasse) }

@@ -568,7 +568,6 @@
     <string name="cd_search_clear">Clear search</string>
     <string name="cd_password_show">Show password</string>
     <string name="cd_password_hide">Hide password</string>
-    <string name="cd_set_menu">More actions for this set</string>
     <string name="cd_qty_increase">Increase quantity</string>
     <string name="cd_qty_decrease">Decrease quantity</string>
     <string name="cd_edit_cache_ttl">Edit cache duration</string>
@@ -910,6 +909,7 @@
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="cd_set_delete">Delete %1$s</string>
     <string name="settings_hell_fest">This design is always dark; light and dark have no effect here.</string>
     <string name="vouchers_cd_delete">Delete voucher %1$s</string>
     <string name="vouchers_cd_edit">Edit voucher %1$s</string>
