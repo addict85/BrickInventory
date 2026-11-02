@@ -135,4 +135,22 @@ class GutscheinViewModelTest {
         assertNull(vm.state.value.guthabenLaeuft)
         assertEquals("t${R.string.vouchers_balance_alle_fertig}", kanal.fluss.value)
     }
+
+    // Gegenprobe (02.11.2026 gemessen): `|| d.grund == "konto"` im ViewModel
+    // gestrichen → rot, auch /vouchers/2/guthaben wurde abgefragt (2 statt 1).
+    @Test
+    fun `Kontogrenze bricht den Durchgang ab`() {
+        server.enqueue(antwort(zweiKarten))
+        vm.ladeGutscheine()
+        warteBis("Liste") { vm.state.value.gutscheine.size == 2 }
+
+        server.enqueue(antwort("""{"success":false,"code":"zu_viele_anfragen","error":"Zu viele Abfragen","grund":"konto","wartenSek":1800}""", 429))
+        server.enqueue(antwort(zweiKarten))
+        vm.frageAlleGuthabenAb()
+        // Liste, eine Abfrage, dann das Neuladen im finally – keine zweite Karte.
+        warteBis("neu geladen") { server.requestCount >= 3 }
+        Thread.sleep(300)
+        val pfade = List(server.requestCount) { server.takeRequest().path.orEmpty() }
+        assertEquals("nach der Kontogrenze keine zweite Karte: $pfade", 1, pfade.count { "guthaben" in it })
+    }
 }

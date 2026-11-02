@@ -114,7 +114,7 @@ class GutscheineRepository @Inject constructor(
             g.copy(number = if (g.number.length > 4) "…" + g.number.takeLast(4) else g.number, pin = null)
 
         /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */
-        private val GUTHABEN_GESPERRT = setOf("guthaben_abstand", "guthaben_botschutz")
+        private val GUTHABEN_GESPERRT = setOf("guthaben_abstand", "guthaben_botschutz", "zu_viele_anfragen")
     }
 
     /** Leer heisst „nicht mitschicken" — siehe die Begruendung bei ausPdf(). */
