@@ -913,6 +913,7 @@
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="detail_pnl_tile">Gain/loss</string>
     <string name="chart_change_max">%1$s overall</string>
     <string name="chart_change_year">%1$s this year</string>
     <string name="chart_change_month">%1$s this month</string>

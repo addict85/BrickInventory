@@ -17,6 +17,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -37,6 +38,7 @@ import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.ui.screens.AcquisitionSummarySection
 import ch.brickinventoryapp.ui.screens.MerklisteScreen
 import ch.brickinventoryapp.ui.screens.SetCard
+import ch.brickinventoryapp.ui.screens.SetDetailScreen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.fmtProzent
@@ -65,6 +67,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   tablet-umschalter-oben          Umschalter auch auf dem Tablet in der App-Leiste → rot „Tablet …“
  *   fehlerhinweis-roher-satz        der Satz der Datenschicht auch bei OFFLINE → rot „Fehlerhinweis …“
  *   merkliste-leer-ohne-knoepfe     leere Merkliste ohne Knöpfe → rot „leere Merkliste …“
+ *   detail-ohne-wertkacheln         Set-Detail ohne Wert-Kacheln → rot „Set-Detail zeigt Marktwert …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -166,6 +169,35 @@ class OberflaechenRegelnTest {
         zeige { FehlerHinweis("Serverfehler (500)", {}, Fehlerklasse.SERVER) }
         compose.onNodeWithText(ctx.getString(R.string.fehler_server_titel)).fetchSemanticsNode()
         compose.onNodeWithText("Serverfehler (500)").fetchSemanticsNode()
+    }
+
+    /** Antworten des Testservers kommen über den Hauptlooper; ihn selbst treiben. */
+    private fun warte(name: String, fertig: () -> Boolean) {
+        val ende = System.nanoTime() + 10_000_000_000L
+        while (!fertig()) {
+            check(System.nanoTime() < ende) { "$name nach 10 s nicht geladen" }
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `Set-Detail zeigt Marktwert, Kaufpreis und G&V oben im klassischen Design`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.setDetail().also { it.ladeAlles() }
+            zeige {
+                SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
+                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
+            }
+            warte("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.setPriceLoading } }
+            compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
+            compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true).assertIsDisplayed()
+            compose.onAllNodesWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)[0].assertIsDisplayed()
+        } finally {
+            welt.close()
+        }
     }
 
     @Test
