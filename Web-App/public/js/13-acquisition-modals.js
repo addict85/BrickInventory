@@ -615,7 +615,7 @@ export async function openSetItemDetail(type, id, colorId) {
   // dieser Baum als `(n||0).toLocaleString(locale())`; genau so steht es auf
   // der Teilekachel (03-parts.js), und der Dialog zeigt jetzt dasselbe.
   zeilen.push(detailZeile(t('setitem.total_qty'),
-    `<span data-stil="font-family:var(--mono);font-weight:600">${(item?.total_quantity || 0).toLocaleString(locale())}×</span>`));
+    `<span data-stil="font-family:var(--mono);font-weight:600">×${(item?.total_quantity || 0).toLocaleString(locale())}</span>`));
 
   if (type === 'part' && item?.color_name) {
     const punkt = item.color_hex

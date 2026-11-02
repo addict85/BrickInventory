@@ -277,7 +277,7 @@ export function renderFigs(list, target) {
                      : `<span class="bild-ph part-img" role="img" aria-label="${esc(f.fig_name || f.fig_number)}">${platzhalterInhalt('figur')}</span>`}
             <div class="part-num">${esc(f.fig_number)}</div>
             <div class="part-name">${esc(f.fig_name)||'—'}</div>
-            <div class="part-qty">${f.total_quantity||f.quantity}×</div>
+            <div class="part-qty">×${f.total_quantity||f.quantity}</div>
             ${condBadge}
             ${besitzer}
             ${erfasst ? `<div data-stil="font-size:var(--fs-0);color:var(--mut)">${erfasst}</div>` : ''}

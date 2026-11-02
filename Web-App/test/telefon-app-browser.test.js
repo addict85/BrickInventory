@@ -287,7 +287,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     const [d] = await b.auswerten(DIAGRAMMSCHRIFT('#m-sparkline-content'));
     assert.ok(d.kleinste >= 11, `kleinste Beschriftung ${d.kleinste.toFixed(1)} px`);
     assert.equal(d.rolle, 'img');
-    assert.match(d.name, /Preisverlauf, .+ bis .+: Neu zuletzt/);
+    assert.match(d.name, /Preisverlauf, .+ bis .+: Neuware zuletzt/);
     // Set-Detail: Löschen steht hinter „Weitere Aktionen“, der Preisalarm in
     // einer eigenen Zeile über die volle Breite.
     const sichtbar = (sel) => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;

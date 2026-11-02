@@ -1,7 +1,7 @@
 import { registerActions } from './00-registry.js';
 import { esc } from './00-escapen.js';
 import { resetScopeModes } from './14-scope.js';
-import { I18N, LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
+import { LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
 import { setAllSets, bindTabs, loadGallery, loadStats } from './02-gallery.js';
 import { plInit, resetPartsList } from './08-init.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
@@ -1296,7 +1296,8 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
       applyTheme(d.settings.app_theme);
       // Server language wins (explicit user choice), update localStorage too
       const srvLang = d.settings.language;
-      if (srvLang && I18N[srvLang]) {
+      // Auch eine noch nicht geladene Sprache: applyLang lädt sie nach.
+      if (srvLang === 'de' || srvLang === 'en') {
         if (srvLang !== LANG) applyLang(srvLang, false);
         localStorage.setItem('bim_lang', srvLang);
       }

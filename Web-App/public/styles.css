@@ -799,7 +799,7 @@ html::-webkit-scrollbar{width:0;height:0}
     @media (hover:hover){.apk-btn:hover{background:var(--s100);border-color:var(--b600)}}
     .apk-btn-txt{display:flex;flex-direction:column;line-height:1.15;text-align:left}
     .apk-btn-txt small{font-size:var(--fs-0);letter-spacing:.06em;text-transform:uppercase;
-                       color:var(--mut)}
+                       color:var(--s600)}
     .apk-btn-txt strong{font-size:var(--fs-4);font-weight:600}
 
     /* ── Preisalarm: scharf oder unscharf ────────────────────────────────────
@@ -1118,9 +1118,9 @@ a{color:var(--b600);text-underline-offset:2px}
 
 /* ── Konto (Profil): begrenzte Breite, eine Beschriftungsgrösse ─────────── */
 #tab-profil .ssec{max-width:52rem}
-.profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.75rem 1rem}
+.profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:.75rem 1rem}
 .profil-raster .fg{min-width:0}
-.profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(12rem,1fr))}
+.profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr))}
 #tab-profil .btn{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4);min-height:38px}
 .email-status{font-size:var(--fs-1);margin-left:4px}
 .email-ok{color:var(--g700)}

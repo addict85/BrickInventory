@@ -354,7 +354,7 @@ function partsCard(p){
     <div class="part-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
     <div class="part-name">${esc(p.part_name)||'—'}</div>
     <div class="part-color"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div>
-    <div class="part-qty">${(p.total_quantity||0).toLocaleString(locale())}×</div>
+    <div class="part-qty">×${(p.total_quantity||0).toLocaleString(locale())}</div>
     ${ersatzteilPlakette(p)}
   </div>`;
 }

@@ -176,6 +176,8 @@
 
   /* Kennzahl-Kacheln: Zahl in einer Zeile */
   .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
+  /* Bei grosser Schrift bricht eine lange Beschriftung um, statt über den Rand zu ragen. */
+  .btn { white-space: normal; text-align: center; }
   input, select, textarea, .btn {
     font-size: max(16px, 1rem);   /* < 16px lässt iOS beim Fokus hineinzoomen; mit grosser Schrift wächst es mit */
     min-height: 44px;
@@ -312,7 +314,7 @@
   .fin-fuss-wert { font-size: var(--fs-3); }
   .dt-fin tfoot { display: block; }
   /* Der Grund der Summenzeile liegt auf der ganzen Zeile, nicht nur hinter den Zahlen. */
-  .dt-fin tfoot tr { display: flex; justify-content: space-between; align-items: flex-end; gap: .75rem;
+  .dt-fin tfoot tr { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: .75rem;
                      background: var(--b50); border: none; border-radius: 8px; padding: .5rem .7rem; }
   .dt-fin tfoot td, .dt-summe tfoot td { background: transparent !important; }
   .dt-summe tfoot tr { background: var(--b50); }
@@ -377,7 +379,7 @@
   .ntab .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden;
                      clip-path: inset(50%); white-space: nowrap; }
   .ntab .ico { width: 28px; height: 28px; }
-  .ntab { padding-top: 10px; padding-bottom: 10px; }
+  .ntab { padding-top: 10px; padding-bottom: 10px; min-height: 44px; }
 }
 
 
