@@ -84,6 +84,8 @@ services:
       PGDATABASE: brickinventory
       PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
+      # Leserolle brickinventory_lesen für pgweb; leer = Rolle ohne Anmeldung.
+      PGWEB_DB_PASSWORD: ${PGWEB_DB_PASSWORD:-}
     volumes:
       - ./postgres/app-rolle.sh:/rolle/app-rolle.sh:ro
     networks:
@@ -324,10 +326,11 @@ services:
   # Werkzeug, das man dreimal im Jahr braucht, soll nicht dauerhaft mitlaufen.
   #
   # ⚠️  SICHERHEIT — der wichtigste Punkt an diesem Dienst:
-  # Wer pgweb erreicht und anmeldet, liest die ganze Datenbank: alle Konten,
-  # alle Sitzungen, alle Daten. Deshalb eine Anmeldung (PGWEB_USER, Vorgabe
-  # „pgweb", und PGWEB_PASSWORD in .env — ohne Passwort startet der Dienst
-  # nicht) und zusätzlich:
+  # Wer pgweb erreicht und anmeldet, liest fast die ganze Datenbank: alle
+  # Konten und Daten, nur Passwort-Hashes, Tokens, Sitzungen und Schlüssel
+  # nicht (Rolle brickinventory_lesen, postgres/app-rolle.sh). Deshalb eine
+  # Anmeldung (PGWEB_USER, Vorgabe „pgweb", PGWEB_PASSWORD und
+  # PGWEB_DB_PASSWORD in .env — ohne beide startet der Dienst nicht) und:
   #   • Die Portangabe beginnt mit 127.0.0.1 — damit ist der Dienst NUR auf dem
   #     Server selbst erreichbar, nicht aus dem Netz. Ein blosses "8081:8081"
   #     würde ihn an alle Schnittstellen binden und wäre je nach Router von
@@ -351,24 +354,27 @@ services:
       db-rolle:
         condition: service_completed_successfully
     environment:
-      # Die Rolle der App, nicht der Superuser: --readonly lässt sich per SET
-      # TRANSACTION umgehen, COPY … PROGRAM soll trotzdem nie gehen.
-      PGWEB_DATABASE_URL: postgres://brickinventory_app:${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}@postgres:5432/brickinventory?sslmode=disable
+      # Eine Leserolle, weder Superuser noch App: --readonly lässt sich per SET
+      # TRANSACTION umgehen; die Rolle hat trotzdem nur SELECT ohne Geheimnisse.
+      # Neue Tabellen sieht sie nach dem nächsten Lauf von db-rolle.
+      PGWEB_DB_PASSWORD: ${PGWEB_DB_PASSWORD:-}
+      PGWEB_DATABASE_URL: postgres://brickinventory_lesen:${PGWEB_DB_PASSWORD:-}@postgres:5432/brickinventory?sslmode=disable
       # HTTP-Basic-Anmeldung von pgweb. Ohne PGWEB_PASSWORD startet der Dienst
       # nicht (Prüfung unten); als :? stünde es hier, verlangte Compose es aber
       # auch für jedes `docker compose up` ohne Profil.
       PGWEB_AUTH_USER: ${PGWEB_USER:-pgweb}
       PGWEB_AUTH_PASS: ${PGWEB_PASSWORD:-}
-    # --readonly erlaubt ausschliesslich lesende Abfragen. Zum Nachsehen ist
-    # das die richtige Voreinstellung; für Reparaturen `--readonly` streichen
-    # und den Dienst neu starten. Lieber bewusst freischalten als versehentlich
-    # ein UPDATE ohne WHERE absetzen.
+    # --readonly zusätzlich zur Leserolle; Reparaturen mit psql als App-Rolle.
     entrypoint:
       - /bin/sh
       - -c
       - |
         if [ -z "$$PGWEB_AUTH_PASS" ]; then
           echo "pgweb: PGWEB_PASSWORD in .env setzen (Anmeldung im Browser) - siehe README." >&2
+          exit 1
+        fi
+        if [ -z "$$PGWEB_DB_PASSWORD" ]; then
+          echo "pgweb: PGWEB_DB_PASSWORD in .env setzen (Leserolle der Datenbank) - siehe UPGRADE.md." >&2
           exit 1
         fi
         exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly

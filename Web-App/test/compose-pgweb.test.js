@@ -184,7 +184,7 @@ test('Caddy: interne CA, Wurzel in der Kette, eigene Anfragekennung, /ca.crt im 
 
 test('pgweb ist per Digest festgelegt, kein Dienst hat ein Ersatz-Datenbankpasswort', () => {
   assert.match(leseDienst(compose, 'pgweb'), /^\s*image:\s*\S+@sha256:[0-9a-f]{64}\s*$/m, 'pgweb ist nicht per Digest festgelegt');
-  assert.doesNotMatch(compose, /DB_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
+  assert.doesNotMatch(compose, /\$\{DB_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
   assert.doesNotMatch(compose, /DB_APP_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
 });
 
@@ -192,7 +192,7 @@ test('pgweb ist per Digest festgelegt, kein Dienst hat ein Ersatz-Datenbankpassw
 // → rot „jobs kennt das Passwort des Superusers“; bei jobs die Abhängigkeit
 // wieder auf postgres → rot „jobs wartet nicht auf db-rolle“; im Dienst db-rolle
 // ein anderer Digest → rot „db-rolle nimmt ein anderes Postgres-Image“.
-test('nur postgres und db-rolle kennen den Superuser, App, Jobs und pgweb die App-Rolle', () => {
+test('nur postgres und db-rolle kennen den Superuser, App und Jobs die App-Rolle, pgweb die Leserolle', () => {
   const dienste = ['postgres', 'db-rolle', 'app', 'jobs', 'pgweb'];
   const mitSuperuser = dienste.filter(d => /\$\{DB_PASSWORD:\?/.test(leseDienst(compose, d)));
   assert.deepEqual(mitSuperuser, ['postgres', 'db-rolle']);
@@ -202,7 +202,10 @@ test('nur postgres und db-rolle kennen den Superuser, App, Jobs und pgweb die Ap
     assert.match(block, /^\s*PGUSER:\s*brickinventory_app\s*$/m, `${d} verbindet sich nicht als App-Rolle`);
     assert.match(block, /^\s*PGPASSWORD:\s*\$\{DB_APP_PASSWORD:\?/m, `${d}: PGPASSWORD nicht aus DB_APP_PASSWORD`);
   }
-  assert.match(leseDienst(compose, 'pgweb'), /PGWEB_DATABASE_URL: postgres:\/\/brickinventory_app:\$\{DB_APP_PASSWORD:\?/);
+  assert.match(leseDienst(compose, 'pgweb'), /PGWEB_DATABASE_URL: postgres:\/\/brickinventory_lesen:\$\{PGWEB_DB_PASSWORD:-\}@/);
+  assert.doesNotMatch(leseDienst(compose, 'pgweb'), /DB_APP_PASSWORD/, 'pgweb kennt das Passwort der App-Rolle');
+  assert.match(leseDienst(compose, 'db-rolle'), /^\s*PGWEB_DB_PASSWORD:\s*\$\{PGWEB_DB_PASSWORD:-\}\s*$/m,
+    'db-rolle setzt das Passwort der Leserolle nicht');
   for (const d of ['app', 'jobs', 'pgweb'])
     assert.match(leseDienst(compose, d), /depends_on:\s*\n\s*db-rolle:\s*\n\s*condition: service_completed_successfully/,
       `${d} wartet nicht auf db-rolle`);
@@ -220,6 +223,8 @@ test('nur postgres und db-rolle kennen den Superuser, App, Jobs und pgweb die Ap
 
 // Gegenproben (01.11.2026 gemessen, je einzeln): die Passwortprüfung im
 // entrypoint gestrichen → rot „ohne PGWEB_PASSWORD startet pgweb nicht“;
+// (02.11.2026) die Prüfung auf PGWEB_DB_PASSWORD gestrichen → rot „… ohne
+// PGWEB_DB_PASSWORD startet pgweb nicht“;
 // `--readonly` gestrichen → rot „… nur lesend“; PGWEB_AUTH_PASS nicht mehr aus
 // PGWEB_PASSWORD → rot „die Anmeldung kommt aus .env“.
 test('ohne PGWEB_PASSWORD startet pgweb nicht, mit Passwort nur lesend', () => {
@@ -234,12 +239,15 @@ test('ohne PGWEB_PASSWORD startet pgweb nicht, mit Passwort nur lesend', () => {
   // Wie Compose es übergibt ($$ → $); pgweb selbst durch ein Echo ersetzt.
   const skript = rumpf.join('\n').replace(/\$\$/g, '$');
   assert.match(skript, /exec \/usr\/bin\/pgweb /);
-  const lauf = (pass) => spawnSync('sh', ['-c', skript.replace('exec /usr/bin/pgweb', 'echo PGWEB')],
-    { encoding: 'utf8', env: { PATH: process.env.PATH, PGWEB_AUTH_USER: 'pgweb', PGWEB_AUTH_PASS: pass } });
+  const lauf = (pass, dbPass = 'lesen') => spawnSync('sh', ['-c', skript.replace('exec /usr/bin/pgweb', 'echo PGWEB')],
+    { encoding: 'utf8', env: { PATH: process.env.PATH, PGWEB_AUTH_USER: 'pgweb', PGWEB_AUTH_PASS: pass, PGWEB_DB_PASSWORD: dbPass } });
   const ohne = lauf('');
   assert.notEqual(ohne.status, 0, 'ohne PGWEB_PASSWORD startet pgweb nicht');
   assert.match(ohne.stderr, /PGWEB_PASSWORD/);
   assert.doesNotMatch(ohne.stdout, /PGWEB/);
+  const ohneDb = lauf('geheim', '');
+  assert.notEqual(ohneDb.status, 0, 'ohne PGWEB_DB_PASSWORD startet pgweb nicht');
+  assert.match(ohneDb.stderr, /PGWEB_DB_PASSWORD/);
   const mit = lauf('geheim');
   assert.equal(mit.status, 0, mit.stderr);
   assert.match(mit.stdout, /^PGWEB .*--readonly/m, 'pgweb startet nur lesend');
