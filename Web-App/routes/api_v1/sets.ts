@@ -28,7 +28,7 @@ import { sendeFehler, dateiFehler } from '../../src/infra/fehlerTexte';
 import { setTeileAnreichern } from '../../src/auftraege/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,
          setGehoertKonto, anleitungMerken, anleitungLoeschen, setCsvImportStarten, setCsvImportAbbrechen } from '../../src/sets/dienst';
-import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt } from '../../src/katalog/instructions';
+import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitungNeuLadenErlaubt, anzahlAnleitungen } from '../../src/katalog/instructions';
 import { importPartsForSet } from '../../src/katalog/partsImport';
 import { registerSse } from '../../src/infra/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
@@ -423,16 +423,17 @@ router.post('/sets/:setNumber/parts', requireToken, async (req: LoggedInRequest,
 });
 
 // ── Anleitungen ─────────────────────────────────────────────────────────────
-// Neu laden einmal je Set und Tag (Verwalter immer): Die Anleitungen sind
-// geteilt, und jeder Abruf kostet Kontingent der Quellen.
+// Die Anleitungen sind geteilt: Ersetzen darf nur der Verwalter (ein leerer
+// Abruf löschte sie sonst für alle). Andere holen, was fehlt, einmal je Set und Tag.
 router.post('/sets/:setNumber/instructions', requireToken, async (req, res: Antwort<'POST /api/v1/sets/:setNumber/instructions'>) => {
   const sn = normalisiereSetNummer(pfadParam(req, 'setNumber'));
   if (!moeglicheSetNummer(sn)) return sendeFehler(req, res, 400, 'setnummer_ungueltig');
-  if (!istVerwalter(req)) {
+  if (istVerwalter(req)) await loescheAnleitungen(sn);
+  else {
     if (!(await findSetInScope(angemeldeteNutzerId(req), sn))) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
+    if (await anzahlAnleitungen(sn) > 0) return sendeFehler(req, res, 403, 'nur_admins');
     if (!(await anleitungNeuLadenErlaubt(sn))) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: 24 * 60 });
   }
-  await loescheAnleitungen(sn);
   await downloadSetInstructions(sn).catch(logAndContinue('sets:downloadSetInstructions'));
   const instrs = await anleitungenZuSet(sn);
   res.json({ success: true, instructions: instrs, count: instrs.length });

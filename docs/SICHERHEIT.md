@@ -129,7 +129,8 @@ den Commits, nicht hier.
   `bildcache-quelle-db`.
 - Setnummer für den Bild-Job nur aus einer reinen Rebrickable-Setadresse:
   `routes/imgProxy.ts` — `bildcache-quelle-db`.
-- Geteilte Anleitungen neu laden: Verwalter, sonst einmal je Set und Tag:
+- Geteilte Anleitungen ersetzen (löschen und neu holen) nur der Verwalter;
+  wer das Set hat, holt nur fehlende, einmal je Set und Tag:
   `routes/api_v1/sets.ts` — `anleitung-neu-laden-db`.
 
 ### Uploads (4)

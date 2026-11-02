@@ -866,3 +866,8 @@ Was sich für Nutzer und Clients ändert:
   Teilschlüssel des Datenschlüssels. Der erste Start löscht alle Einträge im
   alten Format (Meldung `[idempotenz] … gelöscht`); eine Wiederholung über das
   Update hinweg läuft dann ein zweites Mal statt die alte Antwort zu bekommen.
+- **Anleitungen neu laden**: `POST /api/v1/sets/:sn/instructions` ersetzt
+  vorhandene geteilte Anleitungen nur noch für Verwalter. Andere Konten holen
+  damit nur fehlende (einmal je Set und Tag); sind schon welche da, antwortet
+  der Server mit 403 `nur_admins`, und die Weboberfläche zeigt den Knopf
+  „Neu laden“ dann nur Verwaltern.
