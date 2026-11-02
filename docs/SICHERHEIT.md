@@ -190,6 +190,11 @@ den Commits, nicht hier.
   `public/js/11-actions.js`, `public/js/00-registry.js` — `aktionen-schutz`.
 
 ### Protokoll und Kontingente
+- Guthaben-Abfrage bei lego.com: zuerst höchstens 20 je Konto und Stunde
+  (429 `zu_viele_anfragen`, `grund: konto`), dann eine je 30 s über alle
+  Konten; die Pause nach dem Bot-Schutz löst nur eine Abfrage aus, die beide
+  Grenzen passiert hat: `src/gutscheine/gutscheinGuthabenSchranke.ts` —
+  `gutschein-guthaben-db`.
 - `X-Request-Id` nur aus `[A-Za-z0-9._:-]{1,64}`, sonst eigene Kennung;
   Caddy setzt je Anfrage eine neue: `utils/protokoll.ts` — `protokoll`.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;

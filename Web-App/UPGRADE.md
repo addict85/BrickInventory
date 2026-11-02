@@ -874,3 +874,8 @@ Was sich für Nutzer und Clients ändert:
 - **PDF-Teileliste**: `POST /api/v1/sets/partslist-pdf` prüft `parts` jetzt
   nach Schema (höchstens 5000 Posten, `quantity` 1–9999, Feldlängen) und
   antwortet sonst mit 400 `eingabe_ungueltig` (Feld in `feld`).
+- **Guthaben-Abfrage je Konto begrenzt**: höchstens 20 Abfragen je Konto und
+  Stunde, geprüft vor der Grenze für alle (eine je 30 s). Darüber antwortet
+  `POST /api/v1/vouchers/:id/guthaben` mit 429, `code: zu_viele_anfragen`,
+  `grund: konto` und `wartenSek`; die Weboberfläche bricht den Durchgang über
+  alle Karten dann ab wie beim Bot-Schutz.
