@@ -87,7 +87,8 @@ class SetDetailViewModel @Inject constructor(
             _setDetailState.update { it.copy(setDetailLoading = true, setDetailFehler = null) }
             when (val r = sets.getSetDetail(setNumber)) {
                 is Result.Success -> _setDetailState.update { it.copy(setDetail = r.data.set?.alsAnsicht(), setDetailLoading = false) }
-                is Result.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldung(r)) }
+                is Result.Error -> _setDetailState.update { it.copy(setDetailLoading = false, setDetailFehler = meldung(r),
+                    setDetailFehlerKlasse = ch.brickinventoryapp.ui.fehlerklasse(r)) }
             }
         }
     }

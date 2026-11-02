@@ -124,7 +124,8 @@ fun SetDetailScreen(
             val fehler = detailState.setDetailFehler
             if (fehler != null && !detailState.setDetailLoading) {
                 ch.brickinventoryapp.ui.components.ZustandsHinweis(Modifier.padding(padding)) {
-                    ch.brickinventoryapp.ui.components.FehlerHinweis(fehler) { vm.loadSetDetail(setNumber) }
+                    ch.brickinventoryapp.ui.components.FehlerHinweis(fehler, { vm.loadSetDetail(setNumber) },
+                        detailState.setDetailFehlerKlasse)
                 }
             } else ch.brickinventoryapp.ui.components.LadeKreis(Modifier.padding(padding))
             return@Scaffold

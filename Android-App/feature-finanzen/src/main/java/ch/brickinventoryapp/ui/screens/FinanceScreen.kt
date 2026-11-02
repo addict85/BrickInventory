@@ -84,6 +84,7 @@ fun FinanceScreen(
             anzeige = ladeanzeige(hatInhalt = false, laedt = isLoading, fehler = financeState.valuationFehler, gefiltert = false),
             fehler = financeState.valuationFehler,
             onErneut = onRefresh,
+            fehlerKlasse = financeState.valuationFehlerKlasse,
             laedt = {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {

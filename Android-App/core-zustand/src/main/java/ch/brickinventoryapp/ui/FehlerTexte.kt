@@ -27,6 +27,18 @@ fun fehlerTextId(art: Fehlerart?): Int = when (art) {
 }
 
 /**
+ * Die Klasse eines Ladefehlers für Symbol, Überschrift und Rat (Fehlerklasse). Ein 401
+ * zählt als Anmeldung, auch wenn die Datenschicht keine Art kennt; ein HTTP-Code ab
+ * 500 als Server, auch wenn der Server einen eigenen Satz mitschickt.
+ */
+fun fehlerklasse(f: ch.brickinventoryapp.data.repository.Result.Error): Fehlerklasse = when {
+    f.unauthorized || f.art == Fehlerart.NICHT_ANGEMELDET || f.art == Fehlerart.SITZUNG_ABGELAUFEN -> Fehlerklasse.ANMELDUNG
+    f.art == Fehlerart.NETZ || f.art == Fehlerart.ZEIT || f.art == Fehlerart.VERBINDUNG_BEENDET -> Fehlerklasse.OFFLINE
+    f.art == Fehlerart.SERVER || f.art == Fehlerart.LEERE_ANTWORT || (f.httpCode ?: 0) >= 500 -> Fehlerklasse.SERVER
+    else -> Fehlerklasse.UNBEKANNT
+}
+
+/**
  * Braucht der Text zu dieser Ursache einen Platzhalter? Nur [Fehlerart.SERVER]
  * trägt einen (`%1$d` für den HTTP-Code). Ohne die Unterscheidung müsste
  * `meldung()` raten — und `getString()` wirft bei einem fehlenden Argument nicht

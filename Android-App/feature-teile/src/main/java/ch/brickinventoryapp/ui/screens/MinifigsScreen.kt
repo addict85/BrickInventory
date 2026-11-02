@@ -115,7 +115,7 @@ fun MinifigsScreen(
         when (ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)) {
             Ladeanzeige.LAEDT ->
                 SkelettRaster(GridCells.Adaptive(140.dp), kachelHoehe = 196.dp)
-            Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh) }
+            Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh, partsState.minifigsFehlerKlasse) }
             Ladeanzeige.LEER -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
                     Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { FigurenKennzahlen(minifigStats) }

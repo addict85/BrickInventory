@@ -95,7 +95,8 @@ class MerklisteViewModel @Inject constructor(
                 is Result.Success ->
                     _merklisteState.update { it.copy(merkposten = r.data.merkposten.map { m -> m.alsAnsicht() }, laedt = false) }
                 is Result.Error -> {
-                    _merklisteState.update { it.copy(laedt = false, fehler = meldung(r)) }
+                    _merklisteState.update { it.copy(laedt = false, fehler = meldung(r),
+                        fehlerKlasse = ch.brickinventoryapp.ui.fehlerklasse(r)) }
                     _snackbar.value = meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) }
                 }
             }

@@ -13,6 +13,7 @@ import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.Ladezustand
+import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
@@ -87,6 +88,12 @@ fun MerklisteScreen(
     var sucheInput by remember(zustand.query) { mutableStateOf(zustand.query) }
     var sortMenueOffen by rememberSaveable { mutableStateOf(false) }
 
+    // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die Liste,
+    // „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
+    val gefiltert = zustand.query.isNotBlank() ||
+        zustand.zustandFilter.isNotBlank() ||
+        scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
+    val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
 
@@ -148,17 +155,28 @@ fun MerklisteScreen(
             }
 
             Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
-                // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die
-                // Liste, „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
-                val gefiltert = zustand.query.isNotBlank() ||
-                    zustand.zustandFilter.isNotBlank() ||
-                    scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
                 Ladezustand(
-                    anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert),
+                    anzeige = anzeige,
                     fehler = zustand.fehler,
                     onErneut = { vm.ladeMerkliste() },
-                    leer = { HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty)) },
+                    // Wie die leere Galerie: sagen, wozu die Liste da ist, und beide Wege
+                    // zum ersten Eintrag anbieten — dieselben wie die Knöpfe unten rechts.
+                    leer = {
+                        HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
+                            stringResource(R.string.wanted_empty_hint))
+                        Button(onClick = { maskeOffen = true }, shape = Formen.knopf) {
+                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(Abstaende.klein))
+                            Text(stringResource(R.string.wanted_add_first))
+                        }
+                        OutlinedButton(onClick = { onScan() }, shape = Formen.knopf) {
+                            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(Abstaende.klein))
+                            Text(stringResource(R.string.gallery_scan_barcode))
+                        }
+                    },
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
+                    fehlerKlasse = zustand.fehlerKlasse,
                 ) {
                     LazyColumn(
                         // Auf dem Tablet mittig statt über die ganze Breite: Name links,
@@ -183,8 +201,8 @@ fun MerklisteScreen(
         // ── Zwei Knöpfe, wie in der Galerie ──
         //
         // Dieselbe Anordnung und Grössenstaffelung: Der kleine scannt, der grosse öffnet
-        // die Maske.
-        Column(
+        // die Maske. Im Fehlerzustand nicht, wie in der Galerie.
+        if (anzeige != Ladeanzeige.FEHLER) Column(
             modifier = Modifier.align(Alignment.BottomEnd)
                 .padding(end = Abstaende.gross, bottom = Abstaende.gross),
             horizontalAlignment = Alignment.End,

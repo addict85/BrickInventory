@@ -161,7 +161,8 @@ internal class Teile(
                     }
                 }
                 is Result.Error -> {
-                    _state.update { it.copy(partsLoading = false, partsFehler = beschreibeFehler(r)) }
+                    _state.update { it.copy(partsLoading = false, partsFehler = beschreibeFehler(r),
+                        partsFehlerKlasse = fehlerklasse(r)) }
                     meldeFehler(r)
                 }
             }
@@ -250,7 +251,8 @@ internal class Teile(
                 }
                 is Result.Error -> {
                     meldeFehler(r)
-                    _state.update { it.copy(minifigsLoading = false, minifigsFehler = beschreibeFehler(r)) }
+                    _state.update { it.copy(minifigsLoading = false, minifigsFehler = beschreibeFehler(r),
+                        minifigsFehlerKlasse = fehlerklasse(r)) }
                 }
             }
         }

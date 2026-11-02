@@ -83,7 +83,8 @@ internal class Galerie(
                         galleryLoading = false, offlineStand = r.stand)
                 }
                 is Result.Error -> {
-                    _state.update { it.copy(galleryLoading = false, galleryFehler = beschreibeFehler(r)) }
+                    _state.update { it.copy(galleryLoading = false, galleryFehler = beschreibeFehler(r),
+                        galleryFehlerKlasse = fehlerklasse(r)) }
                     meldeFehler(r)
                 }
             }

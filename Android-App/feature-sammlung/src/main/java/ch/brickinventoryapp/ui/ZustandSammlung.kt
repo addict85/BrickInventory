@@ -33,6 +33,8 @@ data class GalleryUiState(
      * Erfolg. Ohne das sah ein Ladefehler aus wie eine leere Sammlung.
      */
     val galleryFehler: String? = null,
+    /** Wofür der Fehler steht — Symbol und Rat im Fehlerzustand. */
+    val galleryFehlerKlasse: Fehlerklasse? = null,
     /** Liste aus dem Plattenspeicher statt vom Server: Zeitpunkt der Ablage, sonst null. */
     val offlineStand: Long? = null,
     val stats: KennzahlenAnsicht? = null,
@@ -47,6 +49,7 @@ data class SetDetailUiState(
     val setDetailLoading: Boolean = false,
     /** Ohne Detail und ohne Vorschau aus der Galerie bliebe sonst der Kringel stehen. */
     val setDetailFehler: String? = null,
+    val setDetailFehlerKlasse: Fehlerklasse? = null,
     val setPrice: SetPreisAnsicht? = null,
     val setPriceLoading: Boolean = false,
     // Die ganze Antwort statt einzelner Felder: Sie trägt seit der

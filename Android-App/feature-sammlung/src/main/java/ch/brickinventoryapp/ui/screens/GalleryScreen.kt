@@ -168,6 +168,7 @@ fun GalleryScreen(
         }.collect { nah -> if (nah) onLoadMore() }
     }
 
+    val anzeige = galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
 
@@ -182,20 +183,17 @@ fun GalleryScreen(
             )
 
             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
-            PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-                when (galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())) {
+            // Der Kringel des Ziehens nur über einer Liste: Beim ersten Laden zeigt das
+            // Skelett schon, dass etwas kommt, zwei Ladeanzeigen übereinander wirkten unruhig.
+            PullToRefreshBox(isRefreshing = isLoading && anzeige == GalerieAnzeige.LISTE, onRefresh = onRefresh,
+                             modifier = Modifier.fillMaxSize()) {
+                when (anzeige) {
                     GalerieAnzeige.LAEDT -> SkelettRaster(GridCells.Adaptive(160.dp), kachelHoehe = 272.dp)
                     // Fehler und leere Sammlung sehen verschieden aus und bieten
                     // Verschiedenes an: hier den Grund und einen neuen Versuch.
                     GalerieAnzeige.FEHLER -> GalerieHinweis {
-                        LeerSymbol(Icons.Default.CloudOff)
-                        Text(stringResource(R.string.gallery_load_failed), fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.Center)
-                        Text(galerie.galleryFehler.orEmpty(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center)
-                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.common_retry)) }
+                        ch.brickinventoryapp.ui.components.FehlerHinweis(galerie.galleryFehler, onRefresh,
+                            galerie.galleryFehlerKlasse)
                     }
                     GalerieAnzeige.LEER -> GalerieHinweis {
                         Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
@@ -256,8 +254,9 @@ fun GalleryScreen(
             }
         }
 
-        // FAB overlay — bottom end of Box
-        Column(
+        // Erfassen und Scannen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört
+        // der Blick dem Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
+        if (anzeige != GalerieAnzeige.FEHLER) Column(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = Abstaende.gross, bottom = Abstaende.gross),

@@ -178,7 +178,7 @@ fun PartsScreen(
         if (anzeige == Ladeanzeige.LAEDT) {
             SkelettRaster(GridCells.Adaptive(110.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
-            ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh) }
+            ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh, partsState.partsFehlerKlasse) }
         } else if (anzeige != Ladeanzeige.LISTE) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 // Die Kennzahlen meinen die ganze Sammlung — auch bei einer Suche ohne Treffer.
