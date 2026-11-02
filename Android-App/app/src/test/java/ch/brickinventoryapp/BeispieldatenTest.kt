@@ -35,6 +35,9 @@ import org.junit.Test
  * Gegenproben (01.11.2026, kotlinc): im Detailpreis avg_price 799 statt 812.5 →
  * rot „die Beispiele sind stimmig“; „chart“ aus der Wertentwicklung entfernt →
  * ebenso rot (es blieben die Schweizer Achsentexte des Servers stehen).
+ * Gegenproben (02.11.2026, kotlinc): bei den Figuren wieder "name" statt
+ * "fig_name" → rot „Teile und Figuren tragen echte Namen“; den Pfad
+ * /api/v1/minifigs/stats entfernt → ebenso rot (keine Kennzahlen).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BeispieldatenTest {
@@ -68,6 +71,18 @@ class BeispieldatenTest {
         TestApi.warteBis("Detail") { detail.setDetailState.value.setDetail != null }
         assertEquals("Millennium Falcon", detail.setDetailState.value.setDetail?.name)
         assertTrue(finanzen.financeState.value.valuation!!.sets.isNotEmpty())
+    }
+
+    /** Die Fotos von Teilen und Figuren zeigen Namen und Kennzahlen, nicht „Name unbekannt“. */
+    @Test
+    fun `Teile und Figuren tragen echte Namen`() {
+        val teile = welt.teile().also { it.loadParts(); it.loadMinifigs() }
+        TestApi.warteBis("Teile und Figuren") { teile.partsState.value.let {
+            it.parts.isNotEmpty() && it.minifigs.isNotEmpty() && it.minifigStats.types > 0 } }
+        val z = teile.partsState.value
+        assertTrue(z.parts.toString(), z.parts.all { !it.partName.isNullOrBlank() })
+        assertTrue(z.minifigs.toString(), z.minifigs.all { !it.figName.isNullOrBlank() })
+        assertTrue("Ein Name ist lang genug zum Kürzen", z.minifigs.any { (it.figName?.length ?: 0) > 30 })
     }
 
     /**
@@ -118,15 +133,19 @@ object Beispiele {
                      "x":["2026-10-27","2026-10-28","2026-10-29"]}}""",
         "/api/v1/finance/parts-valuation" to """{"success":true,"currency":"CHF","parts":[],"total_value":"0.00"}""",
         "/api/v1/finance/minifigs-valuation" to """{"success":true,"currency":"CHF","figs":[],"total_value":"0.00"}""",
-        // Ein Teil ohne Namen und eine Figur ohne Namen: So sieht man „Name unbekannt“.
+        // Echte, lange Namen wie im Katalog: Ein Foto voller „Name unbekannt“ zeigte
+        // weder Umbruch noch Kürzung.
         "/api/v1/parts" to """{"success":true,"total":3,"parts":[
-            {"part_number":"3001","color_id":5,"name":"Brick 2 x 4","color_name":"Red","quantity":12},
-            {"part_number":"3003","color_id":1,"name":"Brick 2 x 2","color_name":"Blue","quantity":30},
-            {"part_number":"6141","color_id":4,"color_name":"Red","quantity":40}]}""",
+            {"part_number":"3001","color_id":5,"part_name":"Brick 2 x 4","color_name":"Red","quantity":12},
+            {"part_number":"3039","color_id":1,"part_name":"Slope 45 2 x 2 with Bottom Pin","color_name":"Blue","quantity":30},
+            {"part_number":"4073","color_id":4,"part_name":"Plate Round 1 x 1 with Solid Stud","color_name":"Trans-Clear","quantity":40}]}""",
         "/api/v1/parts/manual" to """{"success":true,"parts":[]}""",
-        "/api/v1/parts/stats" to """{"success":true,"stats":{"unique_parts":3,"unique_colors":2,"total_parts":42,"manual_parts":40}}""",
-        "/api/v1/minifigs" to """{"success":true,"figs":[{"fig_number":"sw0001","name":"Luke Skywalker","quantity":1},
-            {"fig_number":"sw0002","quantity":1}]}""",
+        "/api/v1/parts/stats" to """{"success":true,"stats":{"unique_parts":3,"unique_colors":3,"total_parts":82,"manual_parts":0}}""",
+        "/api/v1/minifigs" to """{"success":true,"figs":[
+            {"fig_number":"sw0001","fig_name":"Luke Skywalker (Pilot Suit, White Helmet)","quantity":2},
+            {"fig_number":"sw0002","fig_name":"Han Solo (Brown Legs with Holster Pattern)","quantity":1}]}""",
+        "/api/v1/minifigs/manual" to """{"success":true,"figs":[]}""",
+        "/api/v1/minifigs/stats" to """{"success":true,"stats":{"types":2,"total_quantity":3,"manual":0}}""",
         // Drei Fälle der Merkliste: mit Preis und Alarm, ohne Preis („Preis folgt“), schon vorhanden.
         "/api/v1/wanted" to """{"success":true,"merkposten":[
             {"set_number":"10305-1","name":"Lion Knights' Castle","year":2022,"condition":"N","user_id":1,
@@ -147,9 +166,9 @@ object Beispiele {
     )
 
     /** Ein eigener Server je Test; [close] räumt ihn wieder ab. */
-    class Welt : AutoCloseable {
+    class Welt(texte: ch.brickinventoryapp.ui.viewmodel.Texte = NummernTexte) : AutoCloseable {
         val pfade = PfadServer(*ANTWORTEN)
-        val t = TestDienste(pfade.server).also { d -> d.sitzung.aendere { it.copy(currency = "CHF") } }
+        val t = TestDienste(pfade.server, texte).also { d -> d.sitzung.aendere { it.copy(currency = "CHF") } }
 
         fun galerie() = t.merke(GalerieViewModel(t.dienste, SetsRepository(t.api, t.cache),
             FinanzenRepository(t.api, t.cache), SavedStateHandle()))

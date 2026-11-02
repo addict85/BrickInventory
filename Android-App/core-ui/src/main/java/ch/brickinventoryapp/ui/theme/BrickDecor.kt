@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -181,10 +182,26 @@ fun NoppenReihe(
  */
 val LichtStreifen = Brush.linearGradient(
     0.20f to Color.White.copy(alpha = 0.00f),
-    0.36f to Color.White.copy(alpha = 0.85f),
-    0.44f to Color.White.copy(alpha = 0.25f),
+    0.36f to Color.White.copy(alpha = 0.55f),
+    0.44f to Color.White.copy(alpha = 0.15f),
     0.56f to Color.White.copy(alpha = 0.00f),
 )
+
+/**
+ * Im Dunkeln nur ein Hauch: Ein heller Streifen von 0,85 Deckkraft auf dunklem
+ * Bildfeld leuchtete wie ein Scheinwerfer und lag unter Menü und Mengenplakette.
+ */
+private val LichtStreifenDunkel = Brush.linearGradient(
+    0.20f to Color.White.copy(alpha = 0.00f),
+    0.36f to Color.White.copy(alpha = 0.10f),
+    0.44f to Color.White.copy(alpha = 0.03f),
+    0.56f to Color.White.copy(alpha = 0.00f),
+)
+
+/** Der Lichtstreifen passend zur Helligkeit der Fläche. */
+@Composable
+fun lichtStreifen(): Brush =
+    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) LichtStreifenDunkel else LichtStreifen
 
 /**
  * Farbige Wert-Kachel für die Set-Details (z. B. "Aktueller Wert" in Petrol,

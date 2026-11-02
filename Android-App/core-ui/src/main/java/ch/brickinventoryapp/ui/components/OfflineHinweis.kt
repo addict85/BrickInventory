@@ -39,7 +39,7 @@ fun OfflineHinweis(stand: Long?, modifier: Modifier = Modifier) {
     ) {
         Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.size(16.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(stringResource(R.string.offline_stand, fmtStand(stand)),
+        Text(stringResource(R.string.offline_stand, fmtStand(stand, ch.brickinventoryapp.util.appNumberLocale())),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

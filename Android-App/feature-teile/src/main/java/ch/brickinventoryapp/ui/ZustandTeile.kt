@@ -51,6 +51,7 @@ data class PartsUiState(
     val partsLoading: Boolean = false,
     /** Warum die Teile nicht kamen; null, solange nichts scheiterte. */
     val partsFehler: String? = null,
+    val partsFehlerKlasse: Fehlerklasse? = null,
     /** Teileliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val teileOfflineStand: Long? = null,
     val minifigs: List<FigurAnsicht> = emptyList(),
@@ -60,6 +61,7 @@ data class PartsUiState(
     val minifigStats: FigurenKennzahlenAnsicht = FigurenKennzahlenAnsicht(),
     val minifigsLoading: Boolean = false,
     val minifigsFehler: String? = null,
+    val minifigsFehlerKlasse: Fehlerklasse? = null,
     /** Figurenliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
     val figurenOfflineStand: Long? = null,
     /**

@@ -36,6 +36,7 @@ import ch.brickinventoryapp.ui.screens.FinanceScreen
 import ch.brickinventoryapp.ui.screens.GalleryScreen
 import ch.brickinventoryapp.ui.screens.LoginScreen
 import ch.brickinventoryapp.ui.screens.MerklisteScreen
+import ch.brickinventoryapp.ui.screens.PartsScreen
 import ch.brickinventoryapp.ui.screens.SetDetailScreen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
@@ -56,9 +57,10 @@ import java.util.Locale
 
 /**
  * Was BildschirmFotoTest nicht abdeckt, je einmal statt im vollen Raster (die
- * Laufzeit wächst mit jedem Bild): die drei übrigen Designs, Deutsch (de-CH),
+ * Laufzeit wächst mit jedem Bild): die drei übrigen Designs, Englisch (en-GB),
  * Schrift 130 % und 200 %, das Gerüst mit App-Leiste, Schublade und Kontomenü,
- * zwei Dialoge sowie Lade-, Fehler- und Leerzustand. Namen wie dort:
+ * zwei Dialoge sowie Lade-, Fehler- und Leerzustand. Wie dort auf Deutsch (de-CH),
+ * wo nicht `-en` im Namen steht. Namen wie dort:
  * `<bildschirm>[-variante]_<design>_<hell|dunkel>_<gerät>.png`.
  *
  * Gegenprobe wie bei BildschirmFotoTest erst mit eingecheckten Referenzen möglich
@@ -70,10 +72,15 @@ import java.util.Locale
 @Config(sdk = [35])
 class BildschirmFotoVariantenTest {
 
+    private companion object {
+        const val DEUTSCH = "de-rCH"
+        const val ENGLISCH = "en-rGB"
+    }
+
     @get:Rule
     val compose = createComposeRule()
 
-    private val welt = Beispiele.Welt()
+    private val welt = Beispiele.Welt(KontextTexte())
     private val bilder = coil3.ImageLoader.Builder(ApplicationProvider.getApplicationContext()).build()
     private val vorher = Locale.getDefault()
 
@@ -106,7 +113,7 @@ class BildschirmFotoVariantenTest {
      */
     private fun zeige(
         name: String, design: String = "classic", dunkel: Boolean = false, geraet: String = "telefon",
-        sprache: String? = null, schrift: Float = 1f, bereit: () -> Boolean = { true }, zustand: () -> Any? = { null },
+        sprache: String? = DEUTSCH, schrift: Float = 1f, bereit: () -> Boolean = { true }, zustand: () -> Any? = { null },
         warten: Boolean = true, inhalt: @Composable () -> Unit,
     ) {
         val maske = if (geraet == "tablet") "w1280dp-h800dp-land-xhdpi" else "w411dp-h891dp-port-xxhdpi"
@@ -154,7 +161,7 @@ class BildschirmFotoVariantenTest {
         SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder, onBack = {}, onDelete = {})
 
     private fun galerieFoto(name: String, design: String = "classic", dunkel: Boolean = false,
-                            sprache: String? = null, schrift: Float = 1f) {
+                            sprache: String? = DEUTSCH, schrift: Float = 1f) {
         val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
         zeige(name, design, dunkel, sprache = sprache, schrift = schrift, bereit = galerieFertig(vm),
             zustand = { vm.galleryState.value }) { Galerie(vm) }
@@ -162,7 +169,7 @@ class BildschirmFotoVariantenTest {
     }
 
     private fun detailFoto(name: String, design: String = "classic", dunkel: Boolean = false,
-                           sprache: String? = null, schrift: Float = 1f) {
+                           sprache: String? = DEUTSCH, schrift: Float = 1f) {
         val vm = welt.setDetail().also { it.ladeAlles() }
         zeige(name, design, dunkel, sprache = sprache, schrift = schrift, bereit = detailFertig(vm),
             zustand = { vm.setDetailState.value }) { Detail(vm) }
@@ -193,18 +200,20 @@ class BildschirmFotoVariantenTest {
     @Test fun detailHochglanzDunkel() = detailFoto("set-detail", "hochglanz", dunkel = true)
     @Test fun detailWerkbank() = detailFoto("set-detail", "werkbank")
 
-    // ── Deutsch (de-CH): Texte, Zahlen, Beträge und Achsen ──
+    // ── Englisch (en-GB): Texte, Zahlen, Beträge und Achsen ──
 
-    @Test fun galerieDeutsch() = galerieFoto("galerie-de-ch", sprache = "de-rCH")
-    @Test fun detailDeutsch() = detailFoto("set-detail-de-ch", sprache = "de-rCH")
+    @Test fun galerieEnglisch() = galerieFoto("galerie-en", sprache = ENGLISCH)
+    @Test fun detailEnglisch() = detailFoto("set-detail-en", sprache = ENGLISCH)
 
     @Test
-    fun finanzenDeutsch() {
+    fun finanzenEnglisch() = finanzenFoto("finanzen-en", sprache = ENGLISCH)
+
+    private fun finanzenFoto(name: String, sprache: String? = DEUTSCH, schrift: Float = 1f) {
         val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-        zeige("finanzen-de-ch", sprache = "de-rCH", bereit = { vm.financeState.value.let { it.valuation != null &&
+        zeige(name, sprache = sprache, schrift = schrift, bereit = { vm.financeState.value.let { it.valuation != null &&
             it.pnl != null && it.historyPoints.isNotEmpty() && !it.valuationLoading && !it.historyLoading } },
             zustand = { vm.financeState.value }) { FinanceScreen(vm = vm, imageLoader = bilder) }
-        foto("finanzen-de-ch")
+        foto(name)
     }
 
     // ── Grosse Schrift: 130 % und 200 % ──
@@ -215,6 +224,31 @@ class BildschirmFotoVariantenTest {
     @Test fun galerieSchrift200() = galerieFoto("galerie-schrift200", schrift = 2.0f)
     @Test fun detailSchrift130() = detailFoto("set-detail-schrift130", schrift = 1.3f)
     @Test fun detailSchrift200() = detailFoto("set-detail-schrift200", schrift = 2.0f)
+    @Test fun finanzenSchrift200() = finanzenFoto("finanzen-schrift200", schrift = 2.0f)
+
+    @Test
+    fun merklisteSchrift200() {
+        val vm = welt.merkliste().also { it.ladeMerkliste() }
+        zeige("merkliste-schrift200", schrift = 2.0f, bereit = { vm.merklisteState.value.merkposten.isNotEmpty() },
+            zustand = { vm.merklisteState.value }) {
+            MerklisteScreen(vm = vm, imageLoader = bilder, onScan = {}, onOeffnen = { _, _ -> })
+        }
+        foto("merkliste-schrift200")
+    }
+
+    @Test
+    fun teileSchrift200() {
+        val vm = welt.teile().also { it.loadParts() }
+        zeige("teile-schrift200", schrift = 2.0f, bereit = { vm.partsState.value.parts.isNotEmpty() },
+            zustand = { vm.partsState.value }) { PartsScreen(vm = vm, imageLoader = bilder) }
+        foto("teile-schrift200")
+    }
+
+    @Test
+    fun gutscheineSchrift200() {
+        zeige("gutscheine-schrift200", schrift = 2.0f) { Gutscheine() }
+        foto("gutscheine-schrift200")
+    }
 
     // ── Gerüst: App-Leiste mit Reitern, Schublade „Mehr“, Kontomenü ──
 
@@ -223,15 +257,15 @@ class BildschirmFotoVariantenTest {
         val nav = rememberNavController()
         val reiter = remember {
             listOf<Triple<Screen, @Composable () -> Unit, String>>(
-                Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Collection"),
-                Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, null) }, "Parts list"),
-                Triple(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finance"),
-                Triple(Screen.Wanted, { Icon(Icons.Default.StarBorder, null) }, "Wanted"),
-                Triple(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Catalog"),
+                Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, null) }, "Bauliste"),
+                Triple(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
+                Triple(Screen.Wanted, { Icon(Icons.Default.StarBorder, null) }, "Merkliste"),
+                Triple(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
             )
         }
         MainScaffold(
-            title = "Collection", navController = nav, bottomNavItems = reiter,
+            title = "Sammlung", navController = nav, bottomNavItems = reiter,
             snackbarHostState = remember { SnackbarHostState() },
             csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
             onCsvAbbrechen = {}, onLogout = {}, serverUrl = "", isAdmin = true, onTabAngetippt = {},
@@ -255,7 +289,7 @@ class BildschirmFotoVariantenTest {
     fun geruestSchublade() {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
         zeige("geruest-schublade", dunkel = true, bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) { Geruest(galerie) }
-        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithContentDescription("Mehr").performClick()
         compose.waitForIdle()
         foto("geruest-schublade", dunkel = true)
     }
@@ -264,7 +298,7 @@ class BildschirmFotoVariantenTest {
     fun geruestKontomenue() {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
         zeige("geruest-kontomenue", bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) { Geruest(galerie) }
-        compose.onNodeWithContentDescription("Account").performClick()
+        compose.onNodeWithContentDescription("Konto").performClick()
         compose.waitForIdle()
         // Das Menü ist ein eigenes Fenster; das Foto zeigt es allein.
         compose.onNode(androidx.compose.ui.test.isPopup()).captureRoboImage(pfad("geruest-kontomenue", "classic", false, "telefon"))
@@ -276,7 +310,7 @@ class BildschirmFotoVariantenTest {
     fun dialogSetLoeschen() {
         val vm = welt.setDetail().also { it.ladeAlles() }
         zeige("dialog-set-loeschen", design = "noppe", bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
-        compose.onNodeWithContentDescription("Delete").performClick()
+        compose.onNodeWithContentDescription("Löschen").performClick()
         compose.waitForIdle()
         compose.onNode(isDialog()).captureRoboImage(pfad("dialog-set-loeschen", "noppe", false, "telefon"))
     }
@@ -291,7 +325,7 @@ class BildschirmFotoVariantenTest {
         // Der Dialog fokussiert sein erstes Feld; der blinkende Cursor lässt
         // Compose nie ruhig werden. Darum die Uhr anhalten und gezielt vorstellen.
         compose.mainClock.autoAdvance = false
-        compose.onNodeWithContentDescription("Add a wanted item").performClick()
+        compose.onNodeWithContentDescription("Merkposten hinzufügen").performClick()
         // Das Dialogfenster entsteht über den Hauptlooper, nicht über die Compose-Uhr.
         repeat(3) {
             compose.mainClock.advanceTimeBy(200)

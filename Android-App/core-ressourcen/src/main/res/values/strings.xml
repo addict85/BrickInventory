@@ -111,7 +111,7 @@
     <string name="setup_server_url">Server URL</string>
     <string name="setup_url_label">URL of the BrickInventory Manager webapp</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
-    <string name="setup_url_supporting">e.g. https://brick.fritz.box or https://brick.example.com – without https:// the app adds it</string>
+    <string name="setup_url_supporting">e.g. brick.fritz.box or brick.example.com – https:// may be omitted</string>
     <string name="api_app_zu_alt">This app is too old for the server. Please update the app (Settings → Update).</string>
     <string name="api_server_zu_alt">The server is older than this app. Some functions may be missing — please update the server.</string>
     <string name="setup_continue">Continue</string>
@@ -122,14 +122,13 @@
     <string name="gallery_stat_sets">Sets</string>
     <string name="gallery_stat_units">Copies</string>
     <string name="gallery_stat_parts">Parts</string>
-    <string name="gallery_stat_minifigs">Minifigs</string>
+    <string name="gallery_stat_minifigs">Minifigures</string>
     <string name="gallery_stat_instructions">Instructions</string>
     <string name="gallery_search_placeholder">Search sets…</string>
     <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
     <string name="gallery_add_first">Add your first set</string>
-    <string name="gallery_load_failed">Your collection could not be loaded</string>
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
@@ -163,7 +162,7 @@
     <string name="minifigs_no_results">No results</string>
     <string name="minifigs_add">Add minifigure</string>
     <string name="minifigs_add_title">Add minifigure</string>
-    <string name="minifigs_fig_number">Figure number</string>
+    <string name="minifigs_fig_number">Minifigure number</string>
     <string name="minifigs_fig_number_placeholder">e.g. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink no. (optional)</string>
     <string name="minifigs_bl_number_placeholder">e.g. sw0001 — for market price</string>
@@ -251,11 +250,11 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Add sets and generate a parts list</string>
+    <string name="partslist_empty_hint">Collects the parts of one or more sets — for rebuilding or ordering what is missing.</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
-        <item quantity="one">%1$d×  ·  %2$d type</item>
-        <item quantity="other">%1$d×  ·  %2$d types</item>
+        <item quantity="one">×%1$d  ·  %2$d type</item>
+        <item quantity="other">×%1$d  ·  %2$d types</item>
     </plurals>
     <string name="partslist_rb_prefix">RB: %1$s</string>
     <!-- ══════════════ Finance screen ══════════════ -->
@@ -265,13 +264,13 @@
     <string name="finance_price_error">Price error</string>
     <string name="finance_no_sets">No sets</string>
     <string name="finance_load_prompt">→ Load prices</string>
-    <string name="finance_total_pnl">Total P&amp;L  %1$s</string>
+    <string name="finance_total_pnl">%1$s vs. purchase price</string>
     <string name="finance_parts_extra">incl. parts &amp; minifigures: %1$s</string>
     <plurals name="finance_fremde_waehrung">
         <item quantity="one">%1$d purchase price in another currency not included</item>
         <item quantity="other">%1$d purchase prices in another currency not included</item>
     </plurals>
-    <string name="finance_avg_label">Ø Average</string>
+    <string name="finance_avg_label">Ø sets</string>
     <string name="finance_min_label">Min</string>
     <string name="finance_max_label">Max</string>
     <string name="finance_filter_all">All</string>
@@ -287,7 +286,7 @@
     <string name="finance_total_manual_parts">Manually added parts</string>
     <string name="finance_total_manual_minifigs">Manually added minifigures</string>
     <string name="finance_grand_total">Total</string>
-    <string name="finance_market_avg">Ø Market price</string>
+    <string name="finance_market_avg">Collection market value</string>
 
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Types</string>
@@ -340,11 +339,11 @@
     <!-- ══════════════ Set detail screen ══════════════ -->
     <string name="detail_year">Year</string>
     <string name="detail_pieces">Pieces</string>
-    <string name="detail_minifigs">Minifigs</string>
+    <string name="detail_minifigs">Minifigures</string>
     <string name="detail_theme">Theme</string>
     <string name="detail_section_details">Set details</string>
     <string name="detail_part_number">Part no.</string>
-    <string name="detail_fig_number">Fig. no.</string>
+    <string name="detail_fig_number">Minifigure no.</string>
     <string name="detail_color">Color</string>
     <string name="detail_section_item">Details</string>
     <string name="detail_set_number">Set number</string>
@@ -355,7 +354,6 @@
     <string name="detail_instruction_default">Instruction</string>
     <string name="detail_close">Close</string>
     <string name="detail_price_low">Low</string>
-    <string name="detail_price_current">Current</string>
     <string name="detail_price_high">High</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
@@ -367,10 +365,9 @@
     <string name="nav_gallery">Gallery</string>
     <string name="nav_parts">Parts</string>
     <string name="nav_minifigs">Minifigures</string>
-    <string name="nav_minifigs_short">Minifigs</string>
     <string name="name_unknown">Name unknown</string>
     <string name="parts_breakdown">%1$s from sets · %2$s loose</string>
-    <string name="nav_partslist">Parts list</string>
+    <string name="nav_partslist">Build list</string>
     <string name="nav_finance">Finance</string>
     <string name="nav_comparison">Comparison</string>
     <string name="nav_settings">Settings</string>
@@ -379,7 +376,7 @@
     <string name="nav_group_manage">Manage inventory</string>
     <string name="nav_group_server">Server</string>
     <string name="nav_monitoring">Background work</string>
-    <string name="main_barcode_add_partslist">Add to parts list?</string>
+    <string name="main_barcode_add_partslist">Add to the build list?</string>
     <string name="main_barcode_add_set">Add set?</string>
     <!-- Shown when the set number was guessed, not matched: the EAN could not be
          resolved and only a plausible candidate remains, or the number was read by
@@ -388,7 +385,7 @@
     <string name="main_barcode_unsure">Not certain — please check image and name</string>
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
-    <string name="main_barcode_figs">Figures</string>
+    <string name="main_barcode_figs">Minifigures</string>
     <string name="main_account">Account</string>
     <string name="main_menu_monitoring">Background work</string>
     <string name="main_menu_logout">Log out</string>
@@ -453,7 +450,7 @@
     <string name="notif_pdf_done_tap">PDF ready – tap to open</string>
     <string name="notif_pdf_failed">PDF export failed: %1$s</string>
     <string name="notif_pdf_channel_name">PDF export progress</string>
-    <string name="notif_pdf_channel_desc">Shows the progress of the parts-list PDF export</string>
+    <string name="notif_pdf_channel_desc">Shows the progress of the build-list PDF export</string>
 
     <!-- PDF-Export-Statustexte (PdfExportManager) -->
     <string name="pdfexp_no_data">No export data available</string>
@@ -787,7 +784,7 @@
     <string name="wanted_add_submit">Add to wanted list</string>
     <string name="wanted_search">Search the wanted list…</string>
     <string name="wanted_no_results">No wanted items found</string>
-    <string name="wanted_empty">Nothing on the wanted list yet.</string>
+    <string name="wanted_empty">Your wanted list is empty</string>
     <string name="wanted_owned">Already owned</string>
     <string name="wanted_alert_below">Alert below %1$s</string>
     <string name="wanted_alert_above">Alert above %1$s</string>
@@ -916,6 +913,19 @@
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="chart_change_max">%1$s overall</string>
+    <string name="chart_change_year">%1$s this year</string>
+    <string name="chart_change_month">%1$s this month</string>
+    <string name="chart_change_week">%1$s this week</string>
+    <string name="finance_range_label">Sets at lowest and highest market price</string>
+    <string name="wanted_add_first">Add a set to the list</string>
+    <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
+    <string name="fehler_anmeldung_text">Your session has expired.</string>
+    <string name="fehler_anmeldung_titel">Please sign in again</string>
+    <string name="fehler_server_text">Your data is safe. Try again in a moment.</string>
+    <string name="fehler_server_titel">The server reported an error</string>
+    <string name="fehler_offline_text">Check Wi-Fi or mobile data, then try again.</string>
+    <string name="fehler_offline_titel">No connection to the server</string>
     <string name="widget_titel">Collection</string>
     <string name="widget_wert">Value</string>
     <string name="widget_heute">Today</string>
@@ -924,7 +934,7 @@
     <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
     <string name="art_nacharbeit">Follow-up after adding a set</string>
     <string name="art_bilder">Images of a set</string>
-    <string name="art_pdf">PDF parts list</string>
+    <string name="art_pdf">PDF build list</string>
     <string name="art_csv_import">CSV import of sets</string>
     <string name="art_wechselkurse">Exchange rates (ECB)</string>
     <string name="art_anleitung">Load instructions</string>

@@ -1,7 +1,9 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.repository.Fehlerart
+import ch.brickinventoryapp.ui.Fehlerklasse
 import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
+import ch.brickinventoryapp.ui.fehlerklasse
 import ch.brickinventoryapp.ui.fehlerTextId
 import org.junit.Test
 
@@ -64,5 +66,29 @@ class FehlerTexteTest {
             assert(!fehlerTextBrauchtCode(it)) { "$it braucht keinen Code" }
         }
         assert(!fehlerTextBrauchtCode(null))
+    }
+
+    /**
+     * Jede Art landet in der Klasse, deren Rat zu ihr passt; ein 401 und ein 5xx
+     * auch ohne Art. Gegenprobe (02.11.2026, kotlinc): `f.unauthorized ||` aus
+     * fehlerklasse() gestrichen → rot (401 ohne Art ergab UNBEKANNT); ZEIT aus dem
+     * OFFLINE-Zweig genommen → rot.
+     */
+    @Test
+    fun `jede Fehlerart hat eine passende Klasse`() {
+        fun fehler(art: Fehlerart?, code: Int? = null, abgemeldet: Boolean = false) =
+            ch.brickinventoryapp.data.repository.Result.Error("", unauthorized = abgemeldet, art = art, httpCode = code)
+        val erwartet = mapOf(
+            Fehlerart.NETZ to Fehlerklasse.OFFLINE, Fehlerart.ZEIT to Fehlerklasse.OFFLINE,
+            Fehlerart.VERBINDUNG_BEENDET to Fehlerklasse.OFFLINE, Fehlerart.SERVER to Fehlerklasse.SERVER,
+            Fehlerart.LEERE_ANTWORT to Fehlerklasse.SERVER, Fehlerart.NICHT_ANGEMELDET to Fehlerklasse.ANMELDUNG,
+            Fehlerart.SITZUNG_ABGELAUFEN to Fehlerklasse.ANMELDUNG, Fehlerart.KLARTEXT to Fehlerklasse.UNBEKANNT,
+            Fehlerart.UNBEKANNT to Fehlerklasse.UNBEKANNT,
+        )
+        assert(erwartet.keys == Fehlerart.entries.toSet()) { "neue Fehlerart ohne Klasse" }
+        erwartet.forEach { (art, k) -> assert(fehlerklasse(fehler(art)) == k) { "$art ergab ${fehlerklasse(fehler(art))}" } }
+        assert(fehlerklasse(fehler(null, 401, abgemeldet = true)) == Fehlerklasse.ANMELDUNG)
+        assert(fehlerklasse(fehler(null, 503)) == Fehlerklasse.SERVER)
+        assert(fehlerklasse(fehler(null, 409)) == Fehlerklasse.UNBEKANNT)
     }
 }

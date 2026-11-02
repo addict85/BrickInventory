@@ -28,7 +28,7 @@ import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PortfolioChart(
     points: List<DiagrammPunkt>,
@@ -51,20 +51,29 @@ fun PortfolioChart(
     // links und unten richtet sich unten nach der gemessenen Beschriftung.
     val achsenStil = MaterialTheme.typography.labelSmall.copy(color = mutedColor)
 
-    Card(Modifier.fillMaxWidth()) {
+    // Die Fläche der übrigen Karten: Auf dem grauen Kartenton der Vorgabe hätte die
+    // Achsenschrift weniger Kontrast als überall sonst.
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(Abstaende.gross)) {
 
-            // Header
-            Row(Modifier.fillMaxWidth(),
+            // Titel und Veränderung; bei grosser Schrift rückt die Plakette darunter.
+            FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
+                verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 Text(stringResource(R.string.chart_portfolio_value),
                     fontWeight = FontWeight.SemiBold,
                     style = MaterialTheme.typography.titleSmall)
                 if (periodChangePct != null) {
                     val pos = periodChangePct >= 0
                     val bg  = if (pos) LocalStatusFarben.current.erfolg else LocalStatusFarben.current.fehler
-                    val lbl = fmtProzent(periodChangePct)
+                    // Mit Zeitraum: „+1.3 %“ allein stand neben „G&V +14.2 %“ darunter und
+                    // sagte nicht, dass es nur um diese Woche geht.
+                    val lbl = stringResource(when (selectedPeriod) {
+                        "month" -> R.string.chart_change_month
+                        "year" -> R.string.chart_change_year
+                        "max" -> R.string.chart_change_max
+                        else -> R.string.chart_change_week
+                    }, fmtProzent(periodChangePct))
                     Surface(shape = Formen.chip, color = bg.copy(alpha = 0.12f)) {
                         Text(lbl, Modifier.padding(horizontal = Abstaende.klein, vertical = 3.dp),
                             color = bg, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
@@ -121,18 +130,25 @@ fun PortfolioChart(
                                     Offset((xd+3f).coerceAtMost(padL+iw), y), 0.8f)
                                 xd += 6f
                             }
-                            // Y label right-aligned
+                            // Rechtsbündig und nie unter die Grundlinie: Die unterste
+                            // Beschriftung ragte sonst in die Zeile der Daten darunter.
                             val m = yMasse[i]
-                            drawText(m, topLeft = Offset(padL - m.size.width - 4f, y - m.size.height/2f))
+                            val oben = (y - m.size.height / 2f).coerceIn(0f, padT + ih - m.size.height)
+                            drawText(m, topLeft = Offset(padL - m.size.width - 4f, oben))
                         }
 
-                        // X labels from server (empty string = no label)
+                        // Die Daten unter der Fläche, nie links neben ihr: Die erste steht
+                        // bündig am Anfang, die letzte am Ende, damit keine in die Spalte
+                        // der Beträge links ragt.
                         points.forEachIndexed { i, p ->
                             if (p.xLabel.isEmpty()) return@forEachIndexed
                             val m = measurer.measure(p.xLabel, achsenStil)
-                            drawText(m, topLeft = Offset(
-                                (xOf(i) - m.size.width/2f).coerceIn(0f, w - m.size.width.toFloat()),
-                                h - padB + 5f))
+                            val links = when (i) {
+                                0 -> padL
+                                n - 1 -> padL + iw - m.size.width
+                                else -> xOf(i) - m.size.width / 2f
+                            }.coerceIn(padL, (w - m.size.width).coerceAtLeast(padL))
+                            drawText(m, topLeft = Offset(links, h - padB + 5f))
                         }
 
                         // Gradient fill
@@ -171,8 +187,8 @@ fun PortfolioChart(
 
             Spacer(Modifier.height(10.dp))
 
-            // Period selector
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Zeitraum — umbrechend, damit „Monat“ bei 200 % nicht hinausgeschoben wird.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 listOf(
                     "week" to stringResource(R.string.chart_period_week),
                     "month" to stringResource(R.string.chart_period_month),

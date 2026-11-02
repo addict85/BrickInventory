@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import ch.brickinventoryapp.ui.theme.linksBis
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -106,7 +108,32 @@ fun MainScaffold(
                 MehrSchublade(navController, isAdmin) { schubladenScope.launch { schublade.close() } }
             },
         ) {
+        // Auf breiten Fenstern steht die Seitenleiste über die volle Höhe links, App-Leiste
+        // und Inhalt rechts daneben — wie Material es für Tablets vorsieht. Vorher lag
+        // der Umschalter Sets | Teile | Minifiguren in der App-Leiste ÜBER der Leiste und
+        // las sich wie eine vierte Ebene.
+        Row(Modifier.fillMaxSize()) {
+        if (art == Navigationsart.SEITENLEISTE) {
+            NavigationRail(
+                containerColor = MaterialTheme.colorScheme.surface,
+                header = {
+                    IconButton(onClick = oeffneSchublade) {
+                        Icon(Icons.Default.Menu, stringResource(R.string.nav_more))
+                    }
+                },
+            ) {
+                bottomNavItems.forEach { (screen, icon, label) ->
+                    NavigationRailItem(
+                        selected = istGewaehlt(screen),
+                        onClick = { reiterWaehlen(screen) },
+                        icon = icon,
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+        }
         Scaffold(
+            modifier = Modifier.weight(1f),
             topBar = {
               Column {
                 TopAppBar(
@@ -185,11 +212,11 @@ fun MainScaffold(
                         }
                     }
                 )
-                if (currentDest?.route?.let { it in SAMMLUNG } == true) {
-                    SammlungUmschalter(currentDest?.route) { ziel ->
+                if (art == Navigationsart.LEISTE_UNTEN && currentDest?.route?.let { it in SAMMLUNG } == true) {
+                    SammlungUmschalter(currentDest?.route, onWahl = { ziel ->
                         onTabAngetippt(ziel)
                         navController.zuReiter(ziel.route)
-                    }
+                    })
                 }
               }
             },
@@ -217,29 +244,15 @@ fun MainScaffold(
             // Webapp), sobald ein Import läuft — egal von wo er gestartet wurde.
             val csvImport by csvImportState.collectAsStateWithLifecycle()
             Row(Modifier.fillMaxSize().padding(padding)) {
-                if (art == Navigationsart.SEITENLEISTE) {
-                    // Die Ränder hat das Scaffold schon abgezogen; eigene Insets
-                    // der Seitenleiste rückten sie ein zweites Mal ein.
-                    NavigationRail(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        windowInsets = WindowInsets(0, 0, 0, 0),
-                        header = {
-                            IconButton(onClick = oeffneSchublade) {
-                                Icon(Icons.Default.Menu, stringResource(R.string.nav_more))
-                            }
-                        },
-                    ) {
-                        bottomNavItems.forEach { (screen, icon, label) ->
-                            NavigationRailItem(
-                                selected = istGewaehlt(screen),
-                                onClick = { reiterWaehlen(screen) },
-                                icon = icon,
-                                label = { Text(label, style = MaterialTheme.typography.labelSmall) }
-                            )
-                        }
-                    }
-                }
                 Column(Modifier.weight(1f).fillMaxHeight()) {
+                    // Auf dem Tablet gehört der Umschalter zum Inhalt: linksbündig über
+                    // Suchfeld und Raster, auf deren Lesebreite begrenzt.
+                    if (art == Navigationsart.SEITENLEISTE && currentDest?.route?.let { it in SAMMLUNG } == true) {
+                        SammlungUmschalter(currentDest?.route, onWahl = { ziel ->
+                            onTabAngetippt(ziel)
+                            navController.zuReiter(ziel.route)
+                        }, modifier = Modifier.linksBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste))
+                    }
                     ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
                     if (csvImport.running) {
                         CsvImportBanner(
@@ -251,6 +264,7 @@ fun MainScaffold(
                     Box(Modifier.fillMaxSize()) { content() }
                 }
             }
+        }
         }
         }
     }
@@ -395,14 +409,14 @@ private fun androidx.navigation.NavController.zuReiter(route: String) =
 /** Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SammlungUmschalter(aktuell: String?, onWahl: (Screen) -> Unit) {
+private fun SammlungUmschalter(aktuell: String?, onWahl: (Screen) -> Unit, modifier: Modifier = Modifier) {
     val ziele = listOf(
         Screen.Gallery to R.string.gallery_stat_sets,
         Screen.Parts to R.string.nav_parts,
-        Screen.Minifigs to R.string.nav_minifigs_short,
+        Screen.Minifigs to R.string.nav_minifigs,
     )
     SingleChoiceSegmentedButtonRow(
-        Modifier
+        modifier
             .fillMaxWidth()
             .padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.mittel, vertical = ch.brickinventoryapp.ui.theme.Abstaende.winzig)
     ) {
@@ -411,7 +425,7 @@ private fun SammlungUmschalter(aktuell: String?, onWahl: (Screen) -> Unit) {
                 selected = aktuell == screen.route,
                 onClick = { onWahl(screen) },
                 shape = SegmentedButtonDefaults.itemShape(index = i, count = ziele.size),
-            ) { Text(stringResource(text)) }
+            ) { Text(stringResource(text), maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
     }
 }

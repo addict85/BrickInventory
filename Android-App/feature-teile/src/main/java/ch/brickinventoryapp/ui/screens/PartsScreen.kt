@@ -178,7 +178,7 @@ fun PartsScreen(
         if (anzeige == Ladeanzeige.LAEDT) {
             SkelettRaster(GridCells.Adaptive(110.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
-            ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh) }
+            ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh, partsState.partsFehlerKlasse) }
         } else if (anzeige != Ladeanzeige.LISTE) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
                 // Die Kennzahlen meinen die ganze Sammlung — auch bei einer Suche ohne Treffer.
@@ -332,7 +332,7 @@ fun PartsScreen(
 /** Die Kennzahlen der Teile — erste Zeile des Rasters, sie rollt mit. */
 @Composable
 private fun TeileKennzahlen(stats: TeileKennzahlenAnsicht) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+    KennzahlenReihe {
         GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.uniqueParts), stringResource(R.string.parts_stat_types))
         GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.uniqueColors), stringResource(R.string.parts_stat_colors))
         GalleryStatChip(ch.brickinventoryapp.util.fmtInt(stats.teileGesamt), stringResource(R.string.parts_stat_total),

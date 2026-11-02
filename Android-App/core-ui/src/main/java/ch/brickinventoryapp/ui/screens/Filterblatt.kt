@@ -5,6 +5,7 @@ import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -16,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -40,6 +41,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.ui.theme.linksBis
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -60,20 +62,33 @@ fun SucheMitFilter(
     onFilter: () -> Unit,
 ) {
     // Auf dem Tablet nicht über die ganze Breite: Ein Suchfeld von 1900 px ist keines mehr.
-    Row(Modifier.mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste), verticalAlignment = Alignment.CenterVertically) {
-        Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
-        FilterKnopf(aktiveFilter, onFilter, Modifier.padding(end = 14.dp))
+    // Linksbündig wie Kennzahlen und Raster darunter, die ebenfalls links beginnen.
+    BoxWithConstraints(Modifier.linksBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste)) {
+        // Wenig Platz oder grosse Schrift: Der Filter wird zum Symbol, damit dem
+        // Suchfeld genug Breite für seinen Platzhalter bleibt.
+        val nurSymbol = maxWidth < 360.dp || ch.brickinventoryapp.ui.components.grosseSchrift()
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
+            FilterKnopf(aktiveFilter, onFilter, nurSymbol, Modifier.padding(end = 14.dp))
+        }
     }
 }
 
 @Composable
-private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, modifier: Modifier = Modifier) {
     val zustand = if (aktiv > 0) pluralStringResource(R.plurals.filter_active, aktiv, aktiv) else ""
     BadgedBox(
         badge = { if (aktiv > 0) Badge { Text(aktiv.toString()) } },
         modifier = modifier,
     ) {
-        OutlinedButton(
+        if (nurSymbol) {
+            OutlinedIconButton(
+                onClick = onClick,
+                modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
+            ) {
+                Icon(Icons.Default.FilterList, stringResource(R.string.filter_button))
+            }
+        } else OutlinedButton(
             onClick = onClick,
             shape = Formen.knopf,
             modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },

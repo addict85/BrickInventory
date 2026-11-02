@@ -367,7 +367,7 @@ fun ManualItemDetailScreen(
                         }
                         chart?.takeIf { it.values.isNotEmpty() }?.let {
                             Spacer(Modifier.height(Abstaende.klein))
-                            PriceChart(it)
+                            PriceChart(it, currency)
                         }
                     }
                 }

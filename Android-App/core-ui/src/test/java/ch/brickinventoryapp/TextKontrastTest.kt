@@ -3,7 +3,9 @@ package ch.brickinventoryapp
 import androidx.compose.material3.ColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import ch.brickinventoryapp.ui.theme.ChartColors
 import ch.brickinventoryapp.ui.theme.StatusFarben
+import ch.brickinventoryapp.ui.theme.diagrammFarben
 import ch.brickinventoryapp.ui.theme.farbschema
 import ch.brickinventoryapp.ui.theme.hatDunkleFassung
 import ch.brickinventoryapp.ui.theme.statusFarbenFuer
@@ -22,17 +24,42 @@ import org.junit.Test
  *      der dritte rot mit noppe 0,03 und noppe/dunkel 0,13.
  *   B  brick.onSurfaceVariant zurück auf #6B7785 → rot (3,91 auf background)
  *   C  noppe.primary zurück auf NoppeRot → rot: „Hauptfarbe zu nah …“ (0,13)
+ *
+ * Diagrammfarben (02.11.2026, thema.py gegen Compose Desktop):
+ *   D  in diagrammFarben() gedaempft wieder fest #94A3B8 → rot „Diagrammschrift …“
+ *      mit classic 2,56 auf surface und 2,07 auf surfaceContainerHighest
  */
 class TextKontrastTest {
 
     private val designs = listOf("classic", "brick", "werkbank", "farbfaecher", "noppe", "hochglanz")
 
-    private data class Fassung(val name: String, val s: ColorScheme, val status: StatusFarben)
+    private data class Fassung(val name: String, val s: ColorScheme, val status: StatusFarben, val diagramm: ChartColors)
 
-    private val fassungen: List<Fassung> = designs.map { Fassung(it, farbschema(it), statusFarbenFuer(it)) } +
-        designs.filter { hatDunkleFassung(it) }.map {
-            Fassung("$it/dunkel", farbschema(it, dunkel = true), statusFarbenFuer(it, dunkel = true))
+    private val fassungen: List<Fassung> = designs.map {
+        Fassung(it, farbschema(it), statusFarbenFuer(it), diagrammFarben(it, false, farbschema(it)))
+    } + designs.filter { hatDunkleFassung(it) }.map {
+        val s = farbschema(it, dunkel = true)
+        Fassung("$it/dunkel", s, statusFarbenFuer(it, dunkel = true), diagrammFarben(it, true, s))
+    }
+
+    /**
+     * Achsen und Hinweise im Diagramm sind Schrift: 4,5:1 auf jeder Fläche, auf der
+     * eine Karte liegen kann. Die Linien sind Grafik und brauchen 3:1 (WCAG 1.4.11);
+     * die Gebraucht-Linie fehlt hier, weil ihr Ton aus tokens.css der Webapp kommt
+     * (noppe #FF7A00: 2,6:1) und nur dort geändert werden kann.
+     */
+    @Test
+    fun `Diagrammschrift und Linien sind lesbar`() {
+        val fehler = fassungen.flatMap { f ->
+            val s = f.s; val d = f.diagramm
+            val flaechen = listOf("surface" to s.surface, "background" to s.background,
+                "surfaceContainerHighest" to s.surfaceContainerHighest)
+            flaechen.mapNotNull { (n, fl) -> k(d.gedaempft, fl).takeIf { it < 4.5 }?.let { "${f.name}.gedaempft/$n %.2f".format(it) } } +
+                listOf("linie" to d.linie, "neu" to d.new).mapNotNull { (n, c) ->
+                    k(c, s.surface).takeIf { it < Kontrast.RAHMEN }?.let { "${f.name}.$n/surface %.2f".format(it) } }
         }
+        assertTrue("Diagrammschrift oder -linie zu schwach: $fehler", fehler.isEmpty())
+    }
 
     /** Schrift auf Fläche, so wie Material3 die Rollen paart; dazu Schrift in Haupt-, Fehler- und Gewinnfarbe. */
     private fun textPaare(f: Fassung): Map<String, Pair<Color, Color>> {

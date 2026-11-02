@@ -60,12 +60,12 @@ class MengePlaketteTest {
      * wirklich benutzen. Ohne das zweite koennte eine der beiden wieder eine
      * eigene Kachel bauen, und der Test bliebe still.
      */
-    // Gegenprobe (30.10.2026, gemessen): mengeManuell() auf "$menge×" gestellt →
-    // rot „manuell erfasst steht das Zeichen VOR der Zahl …“.
+    // Gegenproben (02.11.2026, kotlinc): mengeAusSet() zurück auf "$menge×" → rot;
+    // mengeManuell() auf "$menge×" → rot.
     @Test
-    fun `manuell erfasst steht das Zeichen VOR der Zahl, aus einem Set dahinter`() {
+    fun `die Menge steht ueberall als Zeichen vor der Zahl`() {
         assertEquals("×3", mengeManuell(3))
-        assertEquals("3×", mengeAusSet(3))
+        assertEquals("×3", mengeAusSet(3))
     }
 
     /**

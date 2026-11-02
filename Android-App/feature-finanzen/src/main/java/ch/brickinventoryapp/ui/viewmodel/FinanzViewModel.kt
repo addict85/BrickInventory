@@ -54,7 +54,8 @@ class FinanzViewModel @Inject constructor(
                     dienste.sitzung.aendere { it.copy(currency = r.data.currency) }
                 }
                 is Result.Error -> {
-                    _financeState.update { it.copy(valuationLoading = false, valuationFehler = meldung(r)) }
+                    _financeState.update { it.copy(valuationLoading = false, valuationFehler = meldung(r),
+                        valuationFehlerKlasse = ch.brickinventoryapp.ui.fehlerklasse(r)) }
                     _snackbar.value = meldungFuerSnackbar(r)
                 }
             }

@@ -128,7 +128,7 @@ fun SetItemDetailDialog(
                         }
                         SetItemZeile(
                             stringResource(R.string.setitem_total_qty),
-                            "${kopf?.totalQuantity ?: 0}×")
+                            ch.brickinventoryapp.ui.mengeAusSet(kopf?.totalQuantity ?: 0))
                         kopf?.colorName?.let {
                             SetItemZeile(stringResource(R.string.setitem_color), it)
                         }

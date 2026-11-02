@@ -19,6 +19,7 @@ data class FinanceUiState(
     val valuationLoading: Boolean = false,
     /** Warum die Bewertung nicht kam; ohne sie zeigte der Reiter „keine Preisdaten“. */
     val valuationFehler: String? = null,
+    val valuationFehlerKlasse: Fehlerklasse? = null,
     val historyLoading: Boolean = false,
     val historyPeriodChangePct: Double? = null,
     val historyPoints: List<DiagrammPunkt> = emptyList(),
