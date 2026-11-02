@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -70,6 +71,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   merkliste-leer-ohne-knoepfe     leere Merkliste ohne Knöpfe → rot „leere Merkliste …“
  *   detail-ohne-wertkacheln         Set-Detail ohne Wert-Kacheln → rot „Set-Detail zeigt Marktwert …“
  *   galerie-zwei-knoepfe            Scannen wieder als zweiter schwebender Knopf → rot „Galerie hat einen …“
+ *   telefon-kontomenue              Kontosymbol wieder in der App-Leiste → rot „Telefon navigiert ohne …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -145,7 +147,7 @@ class OberflaechenRegelnTest {
                 title = "Sammlung", navController = nav, bottomNavItems = reiter,
                 snackbarHostState = remember { SnackbarHostState() },
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-                onCsvAbbrechen = {}, onLogout = {}, serverUrl = "", onTabAngetippt = {},
+                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
             ) {
                 NavHost(nav, startDestination = Screen.Gallery.route) { composable(Screen.Gallery.route) { } }
             }
@@ -157,6 +159,37 @@ class OberflaechenRegelnTest {
         val reiterRechts = (0 until 2).map { leiste[it].fetchSemanticsNode().boundsInRoot }.minBy { it.left }.right
         assertTrue("Der Umschalter beginnt rechts der Seitenleiste",
             compose.onNodeWithText(teile).fetchSemanticsNode().boundsInRoot.left >= reiterRechts)
+    }
+
+    @Test
+    fun `Telefon navigiert ohne Schublade und Kontomenue, Mehr sammelt den Rest`() {
+        zeige {
+            val nav = rememberNavController()
+            val reiter = remember {
+                listOf<Triple<Screen, @Composable () -> Unit, String>>(
+                    Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Triple(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, ctx.getString(R.string.nav_more)))
+            }
+            MainScaffold(
+                title = "Sammlung", navController = nav, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+            ) {
+                NavHost(nav, startDestination = Screen.Gallery.route) {
+                    composable(Screen.Gallery.route) { }
+                    composable(Screen.Mehr.route) { MehrBildschirm(nav, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
+                }
+            }
+        }
+        // Keine zweite und dritte Ebene in der App-Leiste.
+        compose.onAllNodesWithContentDescription(ctx.getString(R.string.konto_title)).assertCountEquals(0)
+        compose.onAllNodesWithContentDescription(ctx.getString(R.string.nav_more)).assertCountEquals(0)
+        compose.onNodeWithText(ctx.getString(R.string.nav_more)).performClick()
+        compose.waitForIdle()
+        // Einstellungen und Gutscheine stehen auf derselben Seite, jedes genau einmal.
+        compose.onAllNodesWithText(ctx.getString(R.string.nav_settings)).assertCountEquals(1)
+        compose.onAllNodesWithText(ctx.getString(R.string.vouchers_title)).assertCountEquals(1)
     }
 
     @Test

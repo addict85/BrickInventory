@@ -386,7 +386,6 @@
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Minifigures</string>
-    <string name="main_account">Account</string>
     <string name="main_menu_monitoring">Background work</string>
     <string name="main_menu_logout">Log out</string>
     <string name="main_menu_change_server">Change server</string>
@@ -913,6 +912,8 @@
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="nav_group_account">Account and app</string>
+    <string name="nav_group_tools">Tools</string>
     <string name="detail_pnl_tile">Gain/loss</string>
     <string name="chart_change_max">%1$s overall</string>
     <string name="chart_change_year">%1$s this year</string>

@@ -2,7 +2,6 @@ package ch.brickinventoryapp
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.*
@@ -117,22 +116,22 @@ fun BrickInventoryManagerApp(
     // Nav-Labels hier auflösen (direkt im @Composable-Scope, nicht im remember-Lambda)
     val labelCollection = stringResource(R.string.nav_collection)
     val labelCatalog    = stringResource(R.string.nav_catalog)
-    val labelPartslist  = stringResource(R.string.nav_partslist)
     val labelFinance    = stringResource(R.string.nav_finance)
     val labelWanted     = stringResource(R.string.nav_wanted)
+    val labelMore       = stringResource(R.string.nav_more)
 
-    // Die fünf Ziele der Webapp — Material sieht höchstens fünf Reiter vor. Der
-    // Vergleich steht im Konto-Menü (MainScaffold), Teile und Minifiguren im
-    // Umschalter der Sammlung. Symbole ohne Beschreibung: Die Beschriftung steht
-    // daneben, sonst liest TalkBack doppelt.
-    val bottomNavItems = remember(labelCollection, labelCatalog, labelPartslist, labelFinance, labelWanted) {
+    // Vier Bestandsziele und „Mehr“ — Material sieht höchstens fünf vor. Teileliste,
+    // Vergleich, Gutscheine, Verwaltung und Konto stehen gruppiert auf „Mehr“
+    // (MehrBildschirm), Teile und Minifiguren im Umschalter der Sammlung. Symbole ohne
+    // Beschreibung: Die Beschriftung steht daneben, sonst liest TalkBack doppelt.
+    val bottomNavItems = remember(labelCollection, labelCatalog, labelFinance, labelWanted, labelMore) {
         buildList<Triple<Screen, @Composable () -> Unit, String>> {
             add(Triple(Screen.Gallery,   { Icon(Icons.Default.ViewInAr, null) },               labelCollection))
-            add(Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, null) },     labelPartslist))
             add(Triple(Screen.Finance,   { Icon(Icons.AutoMirrored.Filled.ShowChart, null) },     labelFinance))
             // Merkliste vor dem Katalog, wie in der Webapp.
             add(Triple(Screen.Wanted,    { Icon(Icons.Default.BookmarkBorder, null) },             labelWanted))
             add(Triple(Screen.Catalog,   { Icon(Icons.AutoMirrored.Filled.MenuBook, null) },      labelCatalog))
+            add(Triple(Screen.Mehr,      { Icon(Icons.Default.MoreHoriz, null) },                 labelMore))
         }
     }
 

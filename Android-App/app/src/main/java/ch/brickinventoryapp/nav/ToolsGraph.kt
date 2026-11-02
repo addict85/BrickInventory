@@ -175,6 +175,22 @@ fun NavGraphBuilder.toolsGraph(
                 )
             }
         }
+        composable(Screen.Mehr.route) {
+            val state by vm.state.collectAsStateWithLifecycle()
+            val selbstUpdate: ch.brickinventoryapp.ui.viewmodel.UpdateViewModel = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel()
+            val update by selbstUpdate.updateState.collectAsStateWithLifecycle()
+            ReiterGeruest(stringResource(R.string.nav_more), vm, navController, bottomNavItems, snackbarHostState) {
+                MehrBildschirm(
+                    navController = navController,
+                    isAdmin = state.isAdmin,
+                    updateVerfuegbar = update.neuereFassung != null,
+                    onAbmelden = {
+                        vm.logout()
+                        navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } }
+                    },
+                )
+            }
+        }
         composable(Screen.Settings.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
@@ -191,8 +207,8 @@ fun NavGraphBuilder.toolsGraph(
                     vm = hiltViewModel<EinstellungenViewModel>(),
                     onLogout = { vm.logout(); navController.navigate(Screen.Login.route) { popUpTo(0) { inclusive = true } } },
                     onServerWechseln = { navController.navigate(Screen.Setup.route) },
-                    // Die Rubriken führen nicht von hier weiter, sondern stehen in der Konto-Klappe
-                    // (MainScaffold.kt).
+                    // Die Rubriken führen nicht von hier weiter, sondern stehen auf „Mehr“
+                    // (MehrBildschirm.kt).
                     scrollState = settingsScrollState,
                 )
             }

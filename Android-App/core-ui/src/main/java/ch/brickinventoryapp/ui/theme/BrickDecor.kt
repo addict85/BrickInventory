@@ -202,37 +202,3 @@ private val LichtStreifenDunkel = Brush.linearGradient(
 @Composable
 fun lichtStreifen(): Brush =
     if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) LichtStreifenDunkel else LichtStreifen
-
-/**
- * Farbige Wert-Kachel für die Set-Details (z. B. "Aktueller Wert" in Petrol,
- * "Kaufpreis" in Schiefer) — Label oben, großer Wert darunter.
- */
-@Composable
-fun BrickStatTile(
-    label: String,
-    value: String,
-    container: Color,
-    onContainer: Color,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(container)
-            .padding(horizontal = 16.dp, vertical = 14.dp)
-    ) {
-        Column {
-            Text(
-                label,
-                color = onContainer,
-                style = MaterialTheme.typography.labelMedium
-            )
-            Text(
-                value,
-                color = onContainer,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}

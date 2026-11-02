@@ -59,7 +59,6 @@ import ch.brickinventoryapp.ui.PriceChartMath
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalChartColors
-import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue

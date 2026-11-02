@@ -2,7 +2,7 @@ package ch.brickinventoryapp
 
 import android.os.Looper
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
@@ -58,7 +59,7 @@ import java.util.Locale
 /**
  * Was BildschirmFotoTest nicht abdeckt, je einmal statt im vollen Raster (die
  * Laufzeit wächst mit jedem Bild): die drei übrigen Designs, Englisch (en-GB),
- * Schrift 130 % und 200 %, das Gerüst mit App-Leiste, Schublade und Kontomenü,
+ * Schrift 130 % und 200 %, das Gerüst mit App-Leiste und der Seite „Mehr“,
  * zwei Dialoge sowie Lade-, Fehler- und Leerzustand. Wie dort auf Deutsch (de-CH),
  * wo nicht `-en` im Namen steht. Namen wie dort:
  * `<bildschirm>[-variante]_<design>_<hell|dunkel>_<gerät>.png`.
@@ -109,7 +110,7 @@ class BildschirmFotoVariantenTest {
 
     /**
      * Zeigt [inhalt] und wartet auf die Daten; das Foto nimmt der Aufrufer, damit
-     * er vorher tippen (Schublade, Dialog) oder die Uhr anhalten kann (Laden).
+     * er vorher tippen (Mehr, Dialog) oder die Uhr anhalten kann (Laden).
      */
     private fun zeige(
         name: String, design: String = "classic", dunkel: Boolean = false, geraet: String = "telefon",
@@ -250,7 +251,7 @@ class BildschirmFotoVariantenTest {
         foto("gutscheine-schrift200")
     }
 
-    // ── Gerüst: App-Leiste mit Reitern, Schublade „Mehr“, Kontomenü ──
+    // ── Gerüst: App-Leiste mit vier Bestandszielen und „Mehr“ ──
 
     @Composable
     private fun Geruest(galerie: ch.brickinventoryapp.ui.viewmodel.GalerieViewModel) {
@@ -258,20 +259,23 @@ class BildschirmFotoVariantenTest {
         val reiter = remember {
             listOf<Triple<Screen, @Composable () -> Unit, String>>(
                 Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
-                Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, null) }, "Bauliste"),
                 Triple(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, "Finanzen"),
                 Triple(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, "Merkliste"),
                 Triple(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, "Katalog"),
+                Triple(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
             )
         }
         MainScaffold(
             title = "Sammlung", navController = nav, bottomNavItems = reiter,
             snackbarHostState = remember { SnackbarHostState() },
             csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
-            onCsvAbbrechen = {}, onLogout = {}, serverUrl = "", isAdmin = true, onTabAngetippt = {},
+            onCsvAbbrechen = {}, serverUrl = "", updateVerfuegbar = true, onTabAngetippt = {},
         ) {
             NavHost(nav, startDestination = Screen.Gallery.route) {
                 composable(Screen.Gallery.route) { Galerie(galerie) }
+                composable(Screen.Mehr.route) {
+                    MehrBildschirm(navController = nav, isAdmin = true, updateVerfuegbar = true, onAbmelden = {})
+                }
             }
         }
     }
@@ -285,24 +289,17 @@ class BildschirmFotoVariantenTest {
     @Test fun geruestTelefon() = geruestFoto("telefon")
     @Test fun geruestTablet() = geruestFoto("tablet")
 
-    @Test
-    fun geruestSchublade() {
+    /** Die Seite „Mehr“: alle übrigen Ziele gruppiert, mit dem Punkt für eine neue Version. */
+    private fun mehrFoto(geraet: String, dunkel: Boolean) {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
-        zeige("geruest-schublade", dunkel = true, bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) { Geruest(galerie) }
-        compose.onNodeWithContentDescription("Mehr").performClick()
+        zeige("mehr", dunkel = dunkel, geraet = geraet, bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) { Geruest(galerie) }
+        compose.onNodeWithText("Mehr").performClick()
         compose.waitForIdle()
-        foto("geruest-schublade", dunkel = true)
+        foto("mehr", dunkel = dunkel, geraet = geraet)
     }
 
-    @Test
-    fun geruestKontomenue() {
-        val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
-        zeige("geruest-kontomenue", bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) { Geruest(galerie) }
-        compose.onNodeWithContentDescription("Konto").performClick()
-        compose.waitForIdle()
-        // Das Menü ist ein eigenes Fenster; das Foto zeigt es allein.
-        compose.onNode(androidx.compose.ui.test.isPopup()).captureRoboImage(pfad("geruest-kontomenue", "classic", false, "telefon"))
-    }
+    @Test fun mehrTelefon() = mehrFoto("telefon", dunkel = true)
+    @Test fun mehrTablet() = mehrFoto("tablet", dunkel = false)
 
     // ── Dialoge ──
 

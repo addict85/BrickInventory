@@ -51,7 +51,7 @@ fun ScanKnopf(onClick: () -> Unit, modifier: Modifier = Modifier, beschreibung: 
         modifier = modifier,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-    ) { Icon(BarcodeSymbol, beschreibung) }
+    ) { Icon(BarcodeSymbol, contentDescription = beschreibung) }
 }
 
 /**

@@ -38,8 +38,8 @@ import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
 /**
  * Die Einstellungen — wenige Karten statt eines Stapels: Anzeige & Preise (jede
- * Wahl gilt sofort), Server und Aktualisierung. Die Rubriken mit eigener Seite liegen in der Konto-Klappe
- * (MainScaffold.kt) und in EinstellungenUnterseiten.kt.
+ * Wahl gilt sofort), Server und Aktualisierung. Die Rubriken mit eigener Seite liegen auf „Mehr“
+ * (MehrBildschirm.kt) und in EinstellungenUnterseiten.kt.
  */
 @Composable
 fun SettingsScreen(
@@ -92,7 +92,7 @@ fun SettingsScreen(
     ) {
         // Hier steht nur, was eine Einstellung im engeren Sinn ist: Anzeige & Preise,
         // Server, Update-Prüfung. Die Rubriken mit eigener Seite liegen in der
-        // Konto-Klappe, einen Tipper näher.
+        // Seite „Mehr“, einen Tipper näher.
         //
         // ── 2. Anzeige & Preise ──
         SettingsCard(title = stringResource(R.string.settings_group_display),

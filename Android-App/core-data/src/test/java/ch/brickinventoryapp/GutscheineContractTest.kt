@@ -203,21 +203,18 @@ class GutscheineContractTest {
      * „in der Android-App sollten die Punkte unter Einstellungen eine ebene
      * nach aussen wandern wo heute Einstellungen und Abmelden und Monitoring
      * zu finden sind." Die Liste ist damit ganz aus den Einstellungen heraus
-     * und sitzt in der Konto-Klappe (MainScaffold.kt).
+     * und sitzt seit dem 02.11. auf der Seite „Mehr“ (MehrBildschirm.kt).
      *
-     * Die Zusicherung ist DIESELBE geblieben — „ohne Suchen erreichbar" —,
-     * nur ihr Ort ist zum zweiten Mal umgezogen: erste Karte, erste Zeile,
-     * jetzt erster Eintrag der Klappe. Geprueft wird weiterhin die
-     * REIHENFOLGE und nicht bloss das Vorkommen: Eine Pruefung auf Vorkommen
-     * waere auch an letzter Stelle gruen.
+     * Die Zusicherung ist DIESELBE geblieben — „ohne Suchen erreichbar" —:
+     * erster Eintrag der Seite. Geprueft wird die REIHENFOLGE und nicht bloss
+     * das Vorkommen: Eine Pruefung auf Vorkommen waere auch an letzter Stelle gruen.
      */
     @Test
-    fun `die Gutscheine stehen ganz oben im Konto-Menue`() {
-        val rumpf = code(lies("MainScaffold.kt"))
-            .substringAfter("DropdownMenu(showLogoutMenu")
-        val erste = Regex("""MenuZiel\(R\.string\.(\w+)""").find(rumpf)?.groupValues?.get(1)
+    fun `die Gutscheine stehen ganz oben auf der Seite Mehr`() {
+        val rumpf = code(lies("MehrBildschirm.kt")).substringAfter("fun MehrBildschirm(")
+        val erste = Regex("""MehrEintrag\(R\.string\.(\w+)""").find(rumpf)?.groupValues?.get(1)
         assert(erste == "vouchers_title") {
-            "Der erste Eintrag der Konto-Klappe fuehrt zu $erste statt zu den " +
+            "Der erste Eintrag der Seite Mehr fuehrt zu $erste statt zu den " +
                 "GUTSCHEINEN — dann muss Marco fuer seine Karten wieder suchen."
         }
     }
@@ -226,7 +223,7 @@ class GutscheineContractTest {
      * Die Rubriken liegen NICHT mehr in den Einstellungen.
      *
      * Die Gegenrichtung zur Zusicherung darueber. Ohne sie waere beides
-     * gleichzeitig gruen: die Eintraege in der Klappe UND eine vergessene
+     * gleichzeitig gruen: die Eintraege auf „Mehr“ UND eine vergessene
      * Kopie im Einstellungsbildschirm. Zwei Wege zu derselben Seite sieht man
      * im Quelltext nicht, wohl aber auf dem Bildschirm — und hier gibt es
      * keinen Emulator, in dem das auffiele.
@@ -238,7 +235,7 @@ class GutscheineContractTest {
                              "Screen.Haushalt", "Screen.CsvImport", "Screen.Konto")) {
             assert(!einst.contains(route)) {
                 "SettingsScreen.kt fuehrt noch selbst zu $route — dann gibt es die " +
-                    "Rubrik zweimal, in der Klappe und in den Einstellungen."
+                    "Rubrik zweimal, auf „Mehr“ und in den Einstellungen."
             }
         }
         assert(!einst.contains("EinstellungsBereich")) {

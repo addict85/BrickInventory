@@ -46,7 +46,7 @@ import org.robolectric.annotation.GraphicsMode
  * in src/test/bildschirmfotos, vergleicht die CI gegen sie (verifyRoborazziDebug),
  * sonst nimmt sie auf; eingecheckt werden sie per Workflow (bildschirmfotos=true).
  *
- * Die Gutscheine stehen als eigene Seite in der Schublade; fotografiert wird ihr
+ * Die Gutscheine stehen als eigene Seite unter „Mehr“; fotografiert wird ihr
  * Baustein (GutscheineCard), weil die Seite ihr ViewModel über Hilt holt.
  *
  * Gegenprobe: Ein Foto, das nichts vergleicht, kann nicht rot werden. Sie ist
