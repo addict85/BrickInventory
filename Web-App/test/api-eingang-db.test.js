@@ -36,6 +36,7 @@ const ERWARTET_OFFEN = new Map([
   ['POST /api/v1/auth/qr-login',         'Anmeldung per QR-Code'],
   ['GET /api/v1/auth/registration-status', 'Ob Registrierung offen ist — vor dem Konto'],
   ['POST /api/v1/auth/forgot-password',  'Wer sein Passwort vergisst, kann sich nicht anmelden'],
+  ['POST /api/v1/auth/bestaetigung-erneut', 'Ein unbestätigtes Konto kann sich nicht anmelden'],
   ['POST /api/v1/auth/reset-password',   'Dasselbe, zweiter Schritt'],
   ['POST /api/v1/auth/passkey/anmelden/optionen', 'Die Anmeldung mit Passkey beginnt vor jedem Konto'],
   ['GET /api/v1/settings/theme',         'Das Design des Login-Bildschirms, vor jeder Anmeldung'],

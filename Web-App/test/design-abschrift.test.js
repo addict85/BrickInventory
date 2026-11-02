@@ -258,6 +258,6 @@ test('ohne Android-App schreibt der Erzeuger nur das Web-CSS', () => {
     const r = spawnSync(process.execPath, [skript], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     assert.equal(fs.readFileSync(path.join(tmp, 'Web-App', 'public', 'tokens.css'), 'utf8'), baueCss(DATEN));
-    assert.equal(fs.existsSync(path.join(tmp, 'Android-App')), false);
+    assert.deepEqual(fs.readdirSync(tmp).sort(), ['Web-App', 'shared'], 'der Erzeuger legt den Android-Ordner an');
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
