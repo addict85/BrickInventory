@@ -91,7 +91,7 @@ def main():
     ordner = sys.argv[1] if len(sys.argv) > 1 else 'gegenproben'
     projekt = os.path.dirname(os.path.abspath(ordner))
     wurzel = git(projekt, 'rev-parse', '--show-toplevel').stdout.strip()
-    gradle = shlex.split(os.environ.get('GEGENPROBE_GRADLE', './gradlew --no-daemon'))
+    gradle = shlex.split(os.environ.get('GEGENPROBE_GRADLE', './gradlew --no-daemon -Pksp.incremental=false'))
     patches = sorted(glob.glob(os.path.join(ordner, '*.patch')))
     if not patches:
         print(f'Keine Gegenproben unter {ordner}/ — ohne sie prüft dieser Schritt nichts.')

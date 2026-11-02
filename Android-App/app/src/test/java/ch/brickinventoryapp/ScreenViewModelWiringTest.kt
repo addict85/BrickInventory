@@ -168,16 +168,16 @@ class ScreenViewModelWiringTest {
     }
 
     /**
-     * Die untere Leiste: genau die fünf Ziele der Webapp in deren Folge
-     * (Merkliste vor Katalog). Material sieht höchstens fünf Reiter vor; der
-     * Vergleich steht im Konto-Menü (ErreichbareRoutenTest prüft den Weg).
+     * Die untere Leiste: die Bestandsziele der Webapp in deren Folge
+     * (Merkliste vor Katalog) und „Mehr“. Material sieht höchstens fünf Reiter vor;
+     * Bauliste und Vergleich stehen auf „Mehr“ (ErreichbareRoutenTest prüft den Weg).
      */
     @Test
-    fun `die Leiste folgt der Webapp mit fuenf Zielen`() {
+    fun `die Leiste hat vier Bestandsziele und Mehr`() {
         val src = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt"))
         val ziele = Regex("""add\(Triple\(Screen\.(\w+)""").findAll(src).map { it.groupValues[1] }.toList()
-        assert(ziele == listOf("Gallery", "PartsList", "Finance", "Wanted", "Catalog")) {
-            "Die Leiste zeigt $ziele — erwartet: die fünf Ziele der Webapp"
+        assert(ziele == listOf("Gallery", "Finance", "Wanted", "Catalog", "Mehr")) {
+            "Die Leiste zeigt $ziele — erwartet: vier Bestandsziele der Webapp und „Mehr“"
         }
     }
 }

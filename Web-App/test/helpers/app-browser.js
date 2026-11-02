@@ -178,9 +178,8 @@ async function starteApp(t, opt = {}) {
   await bis(`document.getElementById('app')?.style.display === 'block' || getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet', 300);
   // Am Telefon steht der Name nur im Menü; geprüft wird deshalb das Kontoschild selbst.
   await bis(`(document.getElementById('ubadge')?.textContent || '').includes(${JSON.stringify(NAME)})`, 'Kontoname im Kontoschild');
-  // Der Start ist erst entschieden, wenn die App ohne Rebrickable-Schlüssel auf
-  // die Einstellungen gesprungen ist oder die Sammlung geladen hat. Vorher
-  // könnte dieser Sprung einen Reiterwechsel des Tests überholen.
+  // Der Start ist erst entschieden, wenn die Sammlung geladen hat; vorher
+  // könnte ihr Aufbau einen Reiterwechsel des Tests überholen.
   await bis(`(() => {
     if (document.querySelector('.ntab[data-tab="settings"]')?.classList.contains('active')) return true;
     const g = document.getElementById('gallery');

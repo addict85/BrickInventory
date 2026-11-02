@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 
 /**
@@ -54,6 +55,9 @@ fun Unterseite(
                 .fillMaxSize()
                 .padding(innen)
                 .verticalScroll(rememberScrollState())
+                // Auf dem Tablet mittig auf Lesebreite: Eine Zeile über 1200 dp liest sich
+                // nicht mehr in einem Zug.
+                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste)
                 .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.gross),
         ) { inhalt() }

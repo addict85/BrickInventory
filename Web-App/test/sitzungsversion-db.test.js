@@ -100,7 +100,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
       const a = await anmelden('sv_nutzer');
       const b = await anmelden('sv_nutzer');
       const altB = await zeile(b);
-      const r = await ruf('/api/v1/settings/sessions/andere-beenden', a, { method: 'POST' });
+      const r = await ruf('/api/v1/settings/sessions/andere-beenden', a, { method: 'POST', body: JSON.stringify({ password: PW }) });
       assert.equal(r.status, 200, await r.text());
       await zurueckschreiben(altB);
       assert.equal(await angemeldet(b), false, 'das andere Fenster bleibt draussen');

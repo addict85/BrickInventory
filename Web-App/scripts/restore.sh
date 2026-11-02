@@ -13,7 +13,7 @@
 # Dieses Skript:
 #   1. prüft die Endmarke des Dumps, BEVOR es irgendetwas anfasst
 #   2. fragt einmal nach (der Restore ÜBERSCHREIBT den aktuellen Stand)
-#   3. spielt den Dump mit ON_ERROR_STOP=1 ein — jeder Fehler bricht ab
+#   3. spielt den Dump als App-Rolle in einer Transaktion ein (ON_ERROR_STOP=1)
 #   4. entpackt optional data/ (Bilder, Anleitungen — die liegen NICHT in der DB)
 #   5. startet den App-Container neu
 #
@@ -25,7 +25,7 @@ set -eu
 
 DB_SERVICE="${DB_SERVICE:-postgres}"
 APP_SERVICE="${APP_SERVICE:-app}"
-DB_USER="${PGUSER:-brickinventory}"
+DB_APP_USER="${DB_APP_USER:-brickinventory_app}"
 DB_NAME="${PGDATABASE:-brickinventory}"
 
 DUMP="${1:-}"
@@ -54,11 +54,21 @@ printf '[restore] Datenbank %s wird mit dem Stand aus %s ÜBERSCHRIEBEN. Fortfah
 read -r antwort
 [ "$antwort" = "ja" ] || { echo "[restore] Abgebrochen."; exit 1; }
 
-# 3. Einspielen — ON_ERROR_STOP=1 ist der Unterschied zwischen „es sah gut
-#    aus" und „es IST gut": jeder SQL-Fehler bricht mit Exit != 0 ab.
+# 3. Als App-Rolle einspielen: Funktionen, Prüfregeln und Trigger im Dump
+#    gehören ihr und liefen als Superuser mit dessen Rechten. Besitzerangaben
+#    und DROP/COMMENT der Erweiterung (gehört evtl. dem Superuser) fallen weg,
+#    ausserhalb der COPY-Daten. -1 mit ON_ERROR_STOP: ganz oder gar nicht.
+echo "[restore] Rolle der App wird vorbereitet …"
+docker compose run --rm "${ROLLEN_SERVICE:-db-rolle}"
 echo "[restore] Datenbank wird eingespielt …"
-gunzip -c "$DUMP" | docker compose exec -T "$DB_SERVICE" \
-  psql -v ON_ERROR_STOP=1 -q -U "$DB_USER" "$DB_NAME"
+gunzip -c "$DUMP" | awk '
+  daten { if ($0 == "\\.") daten = 0; print; next }
+  /^COPY .* FROM stdin;$/ { daten = 1; print; next }
+  /^ALTER [A-Z ]+ [^\047;]+ OWNER TO [^\047;]+;$/ { next }
+  /^DROP EXTENSION IF EXISTS [a-z_"]+;$/ { next }
+  /^COMMENT ON EXTENSION [a-z_"]+ IS \047[^\047]*\047;$/ { next }
+  { print }' | docker compose exec -T "$DB_SERVICE" \
+  psql -v ON_ERROR_STOP=1 -q -1 -U "$DB_APP_USER" "$DB_NAME"
 echo "[restore] Datenbank eingespielt."
 
 # 4. Laufzeitdaten (Bilder, Anleitungen) — optional, aber ohne sie zeigen
@@ -83,7 +93,12 @@ if [ ! -f schluessel/datenschluessel ] && [ ! -f data/.datenschluessel ]; then
   [ "$antwort" = "ja" ] || { echo "[restore] Ohne Neustart beendet."; exit 1; }
 fi
 
-# 5. App neu starten, damit sie sauber gegen den neuen Stand initialisiert.
+# 5. db-rolle noch einmal: Die eingespielten Tabellen bekommen die Rechte der
+#    Leserolle (pgweb).
+echo "[restore] Rolle der App wird nachgerichtet …"
+docker compose run --rm "${ROLLEN_SERVICE:-db-rolle}"
+
+# 6. App neu starten, damit sie sauber gegen den neuen Stand initialisiert.
 echo "[restore] App-Container wird neu gestartet …"
 docker compose restart "$APP_SERVICE"
 echo "[restore] fertig."

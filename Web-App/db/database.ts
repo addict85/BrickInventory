@@ -132,6 +132,10 @@ function getPoolStats() {
 }
 
 /** Für /api/v1/health/ready: eine Abfrage ohne Tabelle, die nur die Verbindung prüft. */
+async function alsSuperuserVerbunden(): Promise<boolean> {
+  return !!(await get<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user'))?.s;
+}
+
 async function datenbankAntwortet(): Promise<boolean> {
   return pool.query('SELECT 1').then(() => true, (e: unknown) => { meldeUndWeiter('health:ready', e); return false; });
 }
@@ -410,4 +414,4 @@ async function eigeneVerbindung() {
   return c;
 }
 
-export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, datenbankAntwortet, eigeneVerbindung };
+export { pool, all, get, run, exec, transaction, initSchema, initSchemaOnce, getPoolStats, datenbankAntwortet, alsSuperuserVerbunden, eigeneVerbindung };

@@ -78,7 +78,7 @@ class IconButtonLabelTest {
         val en = java.io.File(Quellen.res, "values/strings.xml").readText()
         val de = java.io.File(Quellen.res, "values-de/strings.xml").readText()
         val namen = listOf(
-            "cd_search_clear", "cd_password_show", "cd_password_hide", "cd_set_menu",
+            "cd_search_clear", "cd_password_show", "cd_password_hide", "cd_set_delete",
             "cd_qty_increase", "cd_qty_decrease", "cd_edit_cache_ttl", "cd_edit_limits",
         )
         for (name in namen) {

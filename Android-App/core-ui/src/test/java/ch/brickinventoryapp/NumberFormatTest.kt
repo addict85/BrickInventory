@@ -175,4 +175,23 @@ class NumberFormatTest {
             "de-AT", zahlenLocale(de, java.util.Locale.forLanguageTag("de-AT")).toLanguageTag())
         assertEquals("en-GB", zahlenLocale(java.util.Locale.forLanguageTag("en"), java.util.Locale.forLanguageTag("de-DE")).toLanguageTag())
     }
+
+    /**
+     * Wie Intl im Web: „CHF 812.50“ mit festem Leerzeichen, nie „CHF812.50“.
+     * Gegenprobe (02.11.2026, kotlinc): mitWaehrungsAbstand() in fmtMoney entfernt →
+     * rot (en-GB ergab „CHF812.50“).
+     */
+    @Test
+    fun `Waehrungscode und Betrag stehen mit festem Leerzeichen`() {
+        mitGeraet("en-GB") {
+            assertEquals("CHF\u00A0812.50", fmtMoney(812.5, "CHF"))
+            assertEquals("-CHF\u00A012.00", fmtMoney(-12.0, "CHF"))
+            assertEquals("€812.50", fmtMoney(812.5, "EUR"))
+        }
+        mitGeraet("de-CH") {
+            val s = fmtMoney(812.5, "CHF")
+            assertEquals("CHF\u00A0812.50", s.replace(' ', '\u00A0'))
+            assert(!s.contains("\u00A0\u00A0") && !s.contains("  ")) { "doppelter Abstand: $s" }
+        }
+    }
 }

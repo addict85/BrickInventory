@@ -259,23 +259,15 @@ class SelbstUpdateTest {
     }
 
     @Test
-    fun `das Manifest erlaubt das Installieren und gibt nur update-- frei`() {
+    fun `das Manifest erlaubt das Installieren, das Update-Verzeichnis gibt kein Provider frei`() {
         val manifest = Quellen.manifest.readText()
         assert(manifest.contains("android.permission.REQUEST_INSTALL_PACKAGES")) {
             "Ohne die Berechtigung kann die App den Installer nicht oeffnen"
         }
+        // Das APK geht per PackageInstaller-Sitzung ans System; eine Freigabe über
+        // den FileProvider gäbe es jeder App, die eine URI zugespielt bekommt.
         val pfade = java.io.File(Quellen.res, "xml/file_paths.xml").readText()
-        assert(pfade.contains("""<files-path name="update_internal" path="update/" />""")) {
-            "Der FileProvider gibt das Update-Verzeichnis nicht frei — dann wirft " +
-                "getUriForFile eine IllegalArgumentException"
-        }
-        // NUR intern: Ein APK im externen Bereich waere fuer jede App mit
-        // Speicherzugriff lesbar UND beschreibbar — und ein beschreibbares APK,
-        // das wir gleich zur Installation weiterreichen, ist genau die Luecke,
-        // die ein Selbst-Updater nicht haben darf.
-        assert(!pfade.contains("""external-files-path name="update""")) {
-            "Das Update-Verzeichnis ist auch extern freigegeben"
-        }
+        assert(!pfade.contains("path=\"update")) { "Das Update-Verzeichnis ist über den FileProvider freigegeben" }
     }
 
     @Test

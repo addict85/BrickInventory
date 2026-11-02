@@ -23,6 +23,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -47,12 +49,18 @@ fun SkelettRaster(
     abstand: Dp = 10.dp,
 ) {
     val laedt = stringResource(R.string.common_loading)
-    // Ein Puls für alle Kacheln: Laufen sie gleich, liest es sich als eine Fläche.
-    val puls by rememberInfiniteTransition(label = "skelett").animateFloat(
-        initialValue = 0.45f, targetValue = 0.9f,
-        animationSpec = infiniteRepeatable(tween(900, easing = LinearEasing), RepeatMode.Reverse),
-        label = "skelett-puls",
+    // Ein Schimmer für alle Kacheln: Läuft er über alle gleich, liest es sich als eine
+    // Fläche, die lädt. Der Ton kommt aus skelettTon (Theme.kt), damit die Kacheln
+    // sich in jedem Design vom Hintergrund abheben.
+    val weg by rememberInfiniteTransition(label = "skelett").animateFloat(
+        initialValue = -600f, targetValue = 1800f,
+        animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart),
+        label = "skelett-schimmer",
     )
+    val grund = ch.brickinventoryapp.ui.theme.skelettTon(MaterialTheme.colorScheme)
+    val licht = ch.brickinventoryapp.ui.theme.skelettTon(MaterialTheme.colorScheme, 0.04f)
+    val schimmer = Brush.linearGradient(listOf(grund, licht, grund),
+        start = Offset(weg, 0f), end = Offset(weg + 600f, 600f))
     LazyVerticalGrid(
         columns = spalten,
         modifier = modifier.fillMaxSize().semantics { contentDescription = laedt },
@@ -63,8 +71,7 @@ fun SkelettRaster(
     ) {
         items(anzahl, key = { "skelett-$it" }) {
             Box(
-                Modifier.fillMaxWidth().height(kachelHoehe).alpha(puls).clip(Formen.leiste)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                Modifier.fillMaxWidth().height(kachelHoehe).clip(Formen.leiste).background(schimmer)
             )
         }
     }

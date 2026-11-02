@@ -11,6 +11,7 @@ import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.TeileRepository
 import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.ui.Fehlerklasse
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import ch.brickinventoryapp.ui.viewmodel.FinanzViewModel
@@ -45,6 +46,9 @@ import org.junit.Test
  *   D  Teile: `partsFehler = beschreibeFehler(r)` entfernt → rot „Teile und Figuren …“
  *   E  SetDetailViewModel: `setDetailFehler = meldung(r)` entfernt → rot „das Set-Detail …“
  *   F  GutscheinViewModel: `fehler = texte.meldung(r)` entfernt → rot „die Gutscheine …“
+ * Gegenproben (02.11.2026, kotlinc): in FinanzViewModel `valuationFehlerKlasse = …`
+ *   entfernt → rot „die Bewertung …“; in Teile.kt `minifigsFehlerKlasse = …`
+ *   entfernt → rot „Teile und Figuren …“.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FehlerZustandTest {
@@ -82,6 +86,7 @@ class FehlerZustandTest {
         vm.ladeMerkliste()
         TestApi.warteBis("Fehler") { vm.merklisteState.value.fehler != null }
         assertEquals("fehler", vm.merklisteState.value.fehler)
+        assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.merklisteState.value.fehlerKlasse)
 
         pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}"""
         vm.ladeMerkliste()
@@ -94,6 +99,7 @@ class FehlerZustandTest {
         val vm = t.merke(FinanzViewModel(t.dienste, FinanzenRepository(t.api, t.cache), SavedStateHandle()))
         vm.loadValuation()
         TestApi.warteBis("Fehler") { vm.financeState.value.valuationFehler != null }
+        assertEquals(Fehlerklasse.SERVER, vm.financeState.value.valuationFehlerKlasse)
 
         pfade.antworten["/api/v1/finance/valuation"] = """{"success":true,"currency":"CHF"}"""
         vm.loadValuation()
@@ -109,6 +115,8 @@ class FehlerZustandTest {
         vm.loadMinifigs()
         TestApi.warteBis("Figurenfehler") { vm.partsState.value.minifigsFehler != null }
         assertEquals("fehler", vm.partsState.value.partsFehler)
+        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.partsFehlerKlasse)
+        assertEquals(Fehlerklasse.SERVER, vm.partsState.value.minifigsFehlerKlasse)
     }
 
     @Test
@@ -119,6 +127,7 @@ class FehlerZustandTest {
         vm.loadSetDetail("75192-1")
         TestApi.warteBis("Fehler") { vm.setDetailState.value.setDetailFehler != null }
         assertEquals(false, vm.setDetailState.value.setDetailLoading)
+        assertEquals(Fehlerklasse.SERVER, vm.setDetailState.value.setDetailFehlerKlasse)
     }
 
     @Test

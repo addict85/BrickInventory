@@ -1,0 +1,89 @@
+package ch.brickinventoryapp
+
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
+import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.AnmeldeFormular
+import ch.brickinventoryapp.ui.components.Sichtschutz
+import ch.brickinventoryapp.ui.screens.LoginScreen
+import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/**
+ * Die Anmeldung schützt vor überlagerten Fenstern (Tapjacking auf Anmelden und
+ * Passkey) und, solange das Passwort sichtbar ist, vor Bildschirmfotos und dem
+ * Vorschaubild der App-Übersicht (FLAG_SECURE). Der Wunsch „Vorschau verbergen“
+ * bleibt bestehen, wenn das Passwort wieder verdeckt wird.
+ *
+ * Gegenproben (Robolectric, nur in der CI messbar; Job `gegenproben`):
+ *   (a) Ueberdeckungsschutz() aus LoginScreen entfernt → rot „die Anmeldung ist
+ *       vor Ueberlagerung geschuetzt …“ (gegenproben/anmeldung-ohne-ueberdeckungsschutz.patch)
+ *   (b) Sichtschutz() für das sichtbare Passwort entfernt → rot „ein sichtbares
+ *       Passwort …“ (gegenproben/passwort-ohne-sichtschutz.patch)
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class AnmeldeSchutzTest {
+
+    @get:Rule
+    val compose = createAndroidComposeRule<ComponentActivity>()
+
+    private val ctx get() = compose.activity
+    private fun geschuetzt() = (ctx.window.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE) != 0
+
+    private fun zeige(vorschauVerbergen: Boolean = false) {
+        val global = mutableStateOf(vorschauVerbergen)
+        compose.setContent {
+            BrickInventoryManagerTheme {
+                if (global.value) Sichtschutz()
+                LoginScreen(
+                    serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
+                    formular = AnmeldeFormular.ANMELDEN, registrierungOffen = false, kontoLaeuft = false,
+                    kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
+                    onFormular = {}, onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+                    onPasskey = {},
+                )
+            }
+        }
+        compose.waitForIdle()
+    }
+
+    @Test
+    fun `die Anmeldung ist vor Ueberlagerung geschuetzt, auch der Passkey-Knopf`() {
+        zeige()
+        assertTrue("Berührungen durch ein fremdes Fenster kämen an", ctx.window.decorView.filterTouchesWhenObscured)
+    }
+
+    @Test
+    fun `ein sichtbares Passwort kommt in kein Bildschirmfoto`() {
+        zeige()
+        assertFalse("Ohne sichtbares Passwort braucht es keinen Sichtschutz", geschuetzt())
+        compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_show)).performClick()
+        compose.waitForIdle()
+        assertTrue("Das sichtbare Passwort ist nicht geschützt", geschuetzt())
+        compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_hide)).performClick()
+        compose.waitForIdle()
+        assertFalse("Nach dem Verdecken bleibt der Schutz stehen", geschuetzt())
+    }
+
+    @Test
+    fun `Vorschau verbergen bleibt, wenn das Passwort wieder verdeckt wird`() {
+        zeige(vorschauVerbergen = true)
+        assertTrue(geschuetzt())
+        compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_show)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.cd_password_hide)).performClick()
+        compose.waitForIdle()
+        assertTrue("Der Wunsch des Nutzers ging mit dem Passwort verloren", geschuetzt())
+    }
+}

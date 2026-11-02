@@ -14,10 +14,12 @@ import java.util.Locale
  * Schweizer Form des Servers („03.10“, „CHF 1'234“).
  *
  * Gegenproben (01.11.2026, modbau/kotlinc):
- *   A  lokaleAchse gibt `punkte` unverändert zurück → rot: „englisch Monat vor Tag“,
- *      „deutsch mit Monatsnamen“, „Monatsaufloesung zeigt Monat und Jahr“
- *   B  Muster "d. MMM" auch für Englisch → rot: „englisch Monat vor Tag“ („3. Oct“)
+ *   A  lokaleAchse gibt `punkte` unverändert zurück → rot: die beiden Tagesfälle
+ *      und „Monatsaufloesung zeigt Monat und Jahr“
  *   C  maximumFractionDigits = 2 in lokaleWerte → rot: „y-Achse ganze Beträge …“
+ * Gegenproben (02.11.2026, kotlinc): Tagesbeschriftung wieder "MMM d" → rot
+ * „englisch Tag vor Monat wie jedes Datum“; mitWaehrungsAbstand in lokaleWerte
+ * entfernt → rot „y-Achse ganze Beträge …“ („CHF1,234“).
  */
 class DiagrammAchsenTest {
 
@@ -29,15 +31,15 @@ class DiagrammAchsenTest {
     private val tage = listOf("2026-10-03", "2026-10-04", "2026-10-05")
 
     @Test
-    fun `englisch Monat vor Tag`() {
+    fun `englisch Tag vor Monat wie jedes Datum`() {
         val l = lokaleAchse(punkte, tage, Locale.forLanguageTag("en-GB")).map { it.xLabel }
-        assertEquals(listOf("Oct 3", "", "Oct 5"), l)
+        assertEquals(listOf("03/10", "", "05/10"), l)
     }
 
     @Test
-    fun `deutsch mit Monatsnamen`() {
+    fun `deutsch mit Punkten wie jedes Datum`() {
         val l = lokaleAchse(punkte, tage, Locale.forLanguageTag("de-CH")).map { it.xLabel }
-        assertEquals(listOf("3. Okt.", "", "5. Okt."), l)
+        assertEquals(listOf("03.10.", "", "05.10."), l)
     }
 
     @Test
@@ -57,6 +59,7 @@ class DiagrammAchsenTest {
         val achse = listOf(DiagrammAchse("CHF 1'234", 1234.0, 0.0), DiagrammAchse("CHF 2'000", 2000.4, 1.0))
         val en = lokaleWerte(achse, "CHF", Locale.forLanguageTag("en-GB")).map { it.label }
         assertTrue(en.toString(), en[0].contains("1,234") && en[1].contains("2,000") && en.none { "." in it })
+        assertEquals("CHF\u00A01,234", en[0])
         val de = lokaleWerte(achse, "CHF", Locale.forLanguageTag("de-CH")).map { it.label }
         assertTrue(de.toString(), de[0].contains("1’234") || de[0].contains("1'234"))
     }

@@ -1,6 +1,8 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.DatumJahr
 import ch.brickinventoryapp.util.fmtDatum
+import ch.brickinventoryapp.util.fmtStand
 import ch.brickinventoryapp.util.fmtUhrzeit
 import org.junit.Test
 
@@ -12,8 +14,36 @@ import org.junit.Test
  * "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" (MinifigsScreen). Die zweite Fassung fiel bei
  * jedem Zeitstempel OHNE Millisekunden still auf null zurueck — dann stand gar
  * kein Datum da. Genau das prueft der erste Fall unten mit.
+ *
+ * Gegenproben (02.11.2026, kotlinc): in fmtDatum den Zweig `locale.language !=
+ * "en"` immer genommen → rot „je Sprache eine Form wie im Web“; im en-Zweig `DatumJahr.OHNE`
+ * wie VOLL behandelt → ebenso rot; in fmtStand das Datum wieder fest als
+ * dd.MM.yyyy → rot „der Stand folgt derselben Form“.
  */
 class DatumFormatTest {
+
+    private val DE = java.util.Locale.forLanguageTag("de-CH")
+
+    /** Wie Intl.DateTimeFormat mit 2-stelligem Tag und Monat in der Webapp (fmtDatum). */
+    @Test
+    fun `je Sprache eine Form wie im Web`() {
+        val tag = "2026-08-01T10:00:00Z"
+        assert(fmtDatum(tag, DE) == "01.08.2026") { fmtDatum(tag, DE).toString() }
+        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-GB")) == "01/08/2026")
+        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-US")) == "08/01/2026")
+        assert(fmtDatum(tag, DE, DatumJahr.OHNE) == "01.08.") { fmtDatum(tag, DE, DatumJahr.OHNE).toString() }
+        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-GB"), DatumJahr.OHNE) == "01/08")
+    }
+
+    @Test
+    fun `der Stand folgt derselben Form`() {
+        val utc = java.time.ZoneOffset.UTC
+        val millis = java.time.Instant.parse("2026-08-01T09:05:00Z").toEpochMilli()
+        assert(fmtStand(millis, java.util.Locale.forLanguageTag("en-GB"), utc) == "01/08/2026 09:05") {
+            fmtStand(millis, java.util.Locale.forLanguageTag("en-GB"), utc)
+        }
+        assert(fmtStand(millis, DE, utc) == "01.08.2026 09:05")
+    }
 
     @Test
     fun `Zeitstempel mit und ohne Millisekunden ergeben dasselbe Datum`() {
@@ -24,15 +54,15 @@ class DatumFormatTest {
             "2026-09-03T15:00:32+02:00",  // mit Zonenversatz
             "2026-09-03",                 // nur der Tag
         )) {
-            assert(fmtDatum(eingabe) == erwartet) {
-                "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe)}, erwartet $erwartet"
+            assert(fmtDatum(eingabe, DE) == erwartet) {
+                "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe, DE)}, erwartet $erwartet"
             }
         }
     }
 
     @Test
     fun `zweistelliges Jahr auf Wunsch`() {
-        assert(fmtDatum("2026-09-03", zweistelligesJahr = true) == "03.09.26")
+        assert(fmtDatum("2026-09-03", DE, DatumJahr.KURZ) == "03.09.26")
     }
 
     /**
@@ -93,8 +123,8 @@ class DatumFormatTest {
     @Test
     fun `unbrauchbare Eingaben ergeben null, nicht Unsinn`() {
         for (eingabe in listOf(null, "", "morgen", "2026-9-3", "03.09.2026")) {
-            assert(fmtDatum(eingabe) == null) {
-                "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe)}, erwartet null"
+            assert(fmtDatum(eingabe, DE) == null) {
+                "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe, DE)}, erwartet null"
             }
         }
     }

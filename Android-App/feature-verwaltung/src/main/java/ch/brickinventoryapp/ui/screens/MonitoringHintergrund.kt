@@ -29,7 +29,6 @@ import ch.brickinventoryapp.ui.model.AuftragAnsicht
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
-import ch.brickinventoryapp.util.fmtDatum
 import kotlinx.coroutines.launch
 
 /**
@@ -60,7 +59,7 @@ internal fun HintergrundSection(mon: MonitoringViewModel, onSnack: (String) -> U
             if (ansicht == null) return@Column
             for (p in ansicht.pausen) {
                 Text(stringResource(R.string.hintergrund_pause, auftragsArtText(p.art)?.let { stringResource(it) } ?: p.art,
-                    fmtDatum(p.bis) ?: "—", p.grund), style = MaterialTheme.typography.bodySmall)
+                    ch.brickinventoryapp.util.fmtTag(p.bis) ?: "—", p.grund), style = MaterialTheme.typography.bodySmall)
             }
             if (ansicht.bildbedarf > 0) Text(pluralStringResource(R.plurals.hintergrund_bildbedarf,
                 ansicht.bildbedarf, ansicht.bildbedarf), style = MaterialTheme.typography.bodySmall)
@@ -100,7 +99,7 @@ private fun AuftragZeile(a: AuftragAnsicht, onAbbrechen: () -> Unit, onWiederhol
             Text(kopf, style = MaterialTheme.typography.bodyMedium)
             a.faelligAb?.let { zeit ->
                 Text(stringResource(if (a.geplant) R.string.hintergrund_geplant else R.string.hintergrund_faellig,
-                    fmtDatum(zeit) ?: zeit), style = MaterialTheme.typography.labelSmall,
+                    ch.brickinventoryapp.util.fmtTag(zeit) ?: zeit), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             a.fehler?.let { Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error) }

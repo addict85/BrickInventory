@@ -115,4 +115,23 @@ class DunkelTokensTest {
         assertTrue("Die Noppen heben sich von der Karte ab", k(d.noppen, karte) >= Kontrast.RAHMEN)
         assertTrue("Schrift auf der Schieferkachel lesbar", k(d.aufSchiefer, d.schiefer) >= 4.5)
     }
+
+    /**
+     * Ein Akzent je Design: Gewählte Chips und der kleine Knopf (secondaryContainer)
+     * stehen im Farbton der Hauptfarbe — classic zeigte dunkel Bernstein neben Blau.
+     * Nur brick hat auch hell eine sandfarbene Zweitfläche und darf sie behalten.
+     * Gegenprobe (02.11.2026, kotlinc): classic wieder auf a100/a-schrift → rot.
+     */
+    @Test
+    fun `im Dunkeln traegt classic einen Akzent`() {
+        fun farbton(argb: Long): Float {
+            val c = argb.toInt()
+            val hsb = java.awt.Color.RGBtoHSB((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, null)
+            return hsb[0] * 360f
+        }
+        val r = dunkleRollen("classic")
+        val abstand = kotlin.math.abs(farbton(r.secondaryContainer) - farbton(r.primary)).let { minOf(it, 360f - it) }
+        assertTrue("classic dunkel: Zweitfläche %.0f° neben der Hauptfarbe".format(abstand), abstand < 30f)
+        assertTrue("lesbar", k(r.onSecondaryContainer, r.secondaryContainer) >= 4.5)
+    }
 }

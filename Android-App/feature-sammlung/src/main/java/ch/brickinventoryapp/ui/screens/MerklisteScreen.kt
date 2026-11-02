@@ -13,13 +13,13 @@ import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.Ladezustand
+import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -87,8 +87,15 @@ fun MerklisteScreen(
     var sucheInput by remember(zustand.query) { mutableStateOf(zustand.query) }
     var sortMenueOffen by rememberSaveable { mutableStateOf(false) }
 
+    // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die Liste,
+    // „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
+    val gefiltert = zustand.query.isNotBlank() ||
+        zustand.zustandFilter.isNotBlank() ||
+        scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
+    val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
+        // Kopf und Liste auf derselben Lesebreite, damit sie auf dem Tablet fluchten.
+        Column(Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste)) {
 
             ScopeFilterZeile(
                 members  = blick.householdMembers,
@@ -96,13 +103,22 @@ fun MerklisteScreen(
                 onSelect = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE, it) },
             )
 
-            Suchfeld(
-                wert = sucheInput,
-                onWert = { sucheInput = it; vm.setzeMerklisteSuche(it) },
-                platzhalter = stringResource(R.string.wanted_search),
-            )
+            // Scannen neben der Suche wie in der Galerie: unten schwebt nur EIN Knopf. Im
+            // Fehlerzustand weder Suche noch Filter — es gibt nichts zu durchsuchen.
+            if (anzeige != Ladeanzeige.FEHLER) Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Suchfeld(
+                    wert = sucheInput,
+                    onWert = { sucheInput = it; vm.setzeMerklisteSuche(it) },
+                    platzhalter = stringResource(R.string.wanted_search),
+                    modifier = Modifier.weight(1f),
+                )
+                ch.brickinventoryapp.ui.components.ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
+            }
 
-            LazyRow(
+            if (anzeige != Ladeanzeige.FEHLER) LazyRow(
                 contentPadding = PaddingValues(horizontal = Abstaende.rand),
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig),
                 modifier = Modifier.padding(bottom = Abstaende.klein),
@@ -131,7 +147,7 @@ fun MerklisteScreen(
                         }
                     }
                 }
-                // Drei Chips statt ZustandsWahl(): Dort gibt es nur „neu" und
+                // Drei Chips statt Zustandszeile(): Dort gibt es nur „neu" und
                 // „gebraucht", weil ein ERFASSTER Merkposten sich entscheiden
                 // muss. Ein Filter hat immer eine dritte Antwort — „beide" —,
                 // und die ist hier die Vorgabe.
@@ -147,27 +163,36 @@ fun MerklisteScreen(
                 }
             }
 
-            Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
-                // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die
-                // Liste, „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
-                val gefiltert = zustand.query.isNotBlank() ||
-                    zustand.zustandFilter.isNotBlank() ||
-                    scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
+            Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.rand)) {
                 Ladezustand(
-                    anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert),
+                    anzeige = anzeige,
                     fehler = zustand.fehler,
                     onErneut = { vm.ladeMerkliste() },
-                    leer = { HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty)) },
+                    // Wie die leere Galerie: sagen, wozu die Liste da ist, und beide Wege
+                    // zum ersten Eintrag anbieten — dieselben wie die Knöpfe unten rechts.
+                    leer = {
+                        HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
+                            stringResource(R.string.wanted_empty_hint))
+                        Button(onClick = { maskeOffen = true }, shape = Formen.knopf) {
+                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(Abstaende.klein))
+                            Text(stringResource(R.string.wanted_add_first))
+                        }
+                        OutlinedButton(onClick = { onScan() }, shape = Formen.knopf) {
+                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(Abstaende.klein))
+                            Text(stringResource(R.string.gallery_scan_barcode))
+                        }
+                    },
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
+                    fehlerKlasse = zustand.fehlerKlasse,
                 ) {
                     LazyColumn(
-                        // Auf dem Tablet mittig statt über die ganze Breite: Name links,
-                        // Preis rechts lagen dort eine Armlänge auseinander.
-                        modifier = Modifier.mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste),
+                        // Die Lesebreite setzt die Spalte darüber, für Kopf und Liste zugleich.
+                        modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                        // Platz fuer die Knoepfe: Ohne ihn verdeckt der grosse die
-                        // letzte Zeile — dieselbe Vorsorge wie in der Galerie.
-                        contentPadding = PaddingValues(bottom = Abstaende.riesig + Abstaende.riesig),
+                        // Platz für den Erfassen-Knopf: Ohne ihn verdeckt er die letzte Zeile.
+                        contentPadding = PaddingValues(bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                     ) {
                         items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
                             Bewegt {
@@ -180,29 +205,11 @@ fun MerklisteScreen(
             }
         }
 
-        // ── Zwei Knöpfe, wie in der Galerie ──
-        //
-        // Dieselbe Anordnung und Grössenstaffelung: Der kleine scannt, der grosse öffnet
-        // die Maske.
-        Column(
-            modifier = Modifier.align(Alignment.BottomEnd)
-                .padding(end = Abstaende.gross, bottom = Abstaende.gross),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        ) {
-            SmallFloatingActionButton(
-                onClick = { onScan() },
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                shape = Formen.leiste,
-            ) { Icon(Icons.Default.QrCodeScanner, stringResource(R.string.gallery_scan_barcode)) }
-            FloatingActionButton(
-                onClick = { maskeOffen = true },
-                containerColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                contentColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
-                shape = Formen.fab,
-            ) { Icon(Icons.Default.Add, stringResource(R.string.wanted_add_title)) }
-        }
+        // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand nicht.
+        if (anzeige != Ladeanzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+            stringResource(R.string.wanted_add_title), { maskeOffen = true },
+            Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+        )
     }
 
     if (maskeOffen) {
@@ -267,7 +274,8 @@ internal fun UebernahmeDialog(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                ZustandsWahl(zustand) { zustand = it }
+                // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
+                Zustandszeile(zustand, { zustand = it })
                 // Lagerort wie bei jeder anderen Erfassung.
                 LagerortErfassung(lagerort, lagerorte, { lagerort = it })
             }
@@ -327,7 +335,8 @@ private fun MerkpostenErfassenDialog(
                     keyboardOptions = NumericInput.ganzzahlTastatur(),
                     modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
                 )
-                ZustandsWahl(zustand) { zustand = it }
+                // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
+                Zustandszeile(zustand, { zustand = it })
                 // Derselbe Waehler wie beim Erfassen eines Sets. Bei einem
                 // Einzelkonto blendet er sich selbst aus (members.size < 2).
                 OwnerPicker(householdMembers, besitzer, { besitzer = it })
@@ -348,17 +357,9 @@ private fun MerkpostenErfassenDialog(
     )
 }
 
-/** Neu oder gebraucht — zwei Knoepfe statt einer Auswahlliste, wie im Baum ueblich. */
-@Composable
-internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        AuswahlChip(selected = gewaehlt == "N", onClick = { onWahl("N") },
-                   label = { Text(stringResource(R.string.condition_new)) })
-        AuswahlChip(selected = gewaehlt == "U", onClick = { onWahl("U") },
-                   label = { Text(stringResource(R.string.condition_used)) })
-    }
-}
 
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MerkpostenZeile(
     w: MerkpostenAnsicht, serverUrl: String, imageLoader: coil3.ImageLoader,
@@ -399,8 +400,9 @@ private fun MerkpostenZeile(
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                verticalAlignment = Alignment.CenterVertically) {
+            // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 w.alarm?.let { a ->
                     InfoPlakette(
                         stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
@@ -418,7 +420,8 @@ private fun MerkpostenZeile(
                 // Preisjob seit dem Eintragen noch nicht da — das sagt der Text, ein Strich sagte nichts.
                 val preis = w.marktpreis
                 if (preis != null) {
-                    Text(ch.brickinventoryapp.util.fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold)
+                    Text(ch.brickinventoryapp.util.fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold,
+                         maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
                 } else {
                     Text(stringResource(R.string.wanted_price_pending), style = MaterialTheme.typography.bodySmall,
                          color = MaterialTheme.colorScheme.onSurfaceVariant)

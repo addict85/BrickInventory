@@ -381,7 +381,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   const adm = require('./helpers/sources').adminQuelle();
   assert.doesNotMatch(adm, /renderMoveBox|moveSetToAccount/,
     'Das ganze Set darf nicht mehr auf einmal verschoben werden');
-  const ownerCols = (adm.match(/_householdMembers\.length > 1 \? th\(t\('household\.owner'\)\) : ''/g) || []).length;
+  const ownerCols = (adm.match(/_householdMembers\.length > 1 \? `<th>\$\{t\('household\.owner'\)\}<\/th>` : ''/g) || []).length;
   assert.equal(ownerCols, 2,
     'Eigentümer-Spalte fehlt in einem der beiden Kaufpreis-Dialoge');
 });

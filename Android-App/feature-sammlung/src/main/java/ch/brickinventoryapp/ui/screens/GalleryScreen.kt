@@ -45,7 +45,7 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
 import ch.brickinventoryapp.ui.theme.LocalIstGlanz
-import ch.brickinventoryapp.ui.theme.LichtStreifen
+import androidx.compose.foundation.shape.CircleShape
 import ch.brickinventoryapp.ui.theme.steinTon
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.NoppenReihe
@@ -168,34 +168,35 @@ fun GalleryScreen(
         }.collect { nah -> if (nah) onLoadMore() }
     }
 
+    val anzeige = galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
 
             // Suche und ein Knopf für alles andere: Konto, Lagerort, Thema und
-            // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster.
-            SucheMitFilter(
+            // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster. Scannen
+            // sitzt daneben, damit unten nur EIN Knopf schwebt. Im Fehlerzustand nicht:
+            // Ohne Sammlung gibt es nichts zu suchen.
+            if (anzeige != GalerieAnzeige.FEHLER) SucheMitFilter(
                 wert = searchInput,
                 onWert = { searchInput = it; onQueryChange(it) },
                 platzhalter = stringResource(R.string.gallery_search_placeholder),
                 aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme, sort),
                 onFilter = { zeigeFilter = true },
+                onScannen = onScanBarcode,
             )
 
             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
-            PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
-                when (galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())) {
-                    GalerieAnzeige.LAEDT -> SkelettRaster(GridCells.Adaptive(160.dp), kachelHoehe = 272.dp)
+            // Der Kringel des Ziehens nur über einer Liste: Beim ersten Laden zeigt das
+            // Skelett schon, dass etwas kommt, zwei Ladeanzeigen übereinander wirkten unruhig.
+            PullToRefreshBox(isRefreshing = isLoading && anzeige == GalerieAnzeige.LISTE, onRefresh = onRefresh,
+                             modifier = Modifier.fillMaxSize()) {
+                when (anzeige) {
+                    GalerieAnzeige.LAEDT -> SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 272.dp)
                     // Fehler und leere Sammlung sehen verschieden aus und bieten
                     // Verschiedenes an: hier den Grund und einen neuen Versuch.
                     GalerieAnzeige.FEHLER -> GalerieHinweis {
-                        LeerSymbol(Icons.Default.CloudOff)
-                        Text(stringResource(R.string.gallery_load_failed), fontWeight = FontWeight.SemiBold,
-                            textAlign = TextAlign.Center)
-                        Text(galerie.galleryFehler.orEmpty(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center)
-                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.common_retry)) }
+                        ch.brickinventoryapp.ui.components.FehlerHinweis(galerie.galleryFehler, onRefresh,
+                            galerie.galleryFehlerKlasse)
                     }
                     GalerieAnzeige.LEER -> GalerieHinweis {
                         Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
@@ -211,7 +212,7 @@ fun GalleryScreen(
                             Text(stringResource(R.string.gallery_add_first))
                         }
                         OutlinedButton(onClick = onScanBarcode, shape = Formen.knopf) {
-                            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(18.dp))
+                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.gallery_scan_barcode))
                         }
@@ -223,9 +224,10 @@ fun GalleryScreen(
                         Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
                     }
                     GalerieAnzeige.LISTE -> LazyVerticalGrid(
-                        columns = GridCells.Adaptive(160.dp),
+                        columns = ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp),
                         state = gridState,
-                        contentPadding = PaddingValues(Abstaende.mittel),
+                        contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
+                            bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -256,27 +258,12 @@ fun GalleryScreen(
             }
         }
 
-        // FAB overlay — bottom end of Box
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = Abstaende.gross, bottom = Abstaende.gross),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            SmallFloatingActionButton(
-                onClick = onScanBarcode,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                shape = Formen.leiste
-            ) { Icon(Icons.Default.QrCodeScanner, stringResource(R.string.gallery_scan_barcode)) }
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                contentColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
-                shape = Formen.fab
-            ) { Icon(Icons.Default.Add, stringResource(R.string.gallery_add_set)) }
-        }
+        // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
+        // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
+        if (anzeige != GalerieAnzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+            stringResource(R.string.gallery_add_set), { showAddDialog = true },
+            Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+        )
     }
 
     if (zeigeFilter) {
@@ -302,23 +289,24 @@ fun GalleryScreen(
     }
 }
 
-/** Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. */
+/**
+ * Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. Sie brechen
+ * um statt seitlich zu rollen: Eine abgeschnittene fünfte Kachel ohne Hinweis
+ * übersah man, und bei grosser Schrift war schon die dritte halb weg.
+ */
 @Composable
 private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    KennzahlenReihe {
         // fmtInt() statt "%,d" mit anschliessendem Ersetzen des Kommas: Die
         // Webapp formatiert dieselben Kennzahlen mit toLocaleString(locale()).
-        item { GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets)) }
-        item { GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units)) }
-        item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts),
-            teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln)) }
+        GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets))
+        GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units))
+        GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts),
+            teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln))
         // Alle Kennzahlen immer, auch mit 0: Eine Reihe, deren Chips je nach Bestand
         // kommen und gehen, liest sich nicht gleich; 0 Figuren ist auch eine Auskunft.
-        item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
-        item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
+        GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs))
+        GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions))
     }
 }
 
@@ -379,7 +367,7 @@ private fun GalerieHinweis(inhalt: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SetCard(
     set: SetAnsicht,
@@ -393,7 +381,6 @@ fun SetCard(
     preis: KachelPreis? = null,
     waehrung: String = "EUR",
 ) {
-    var showMenu by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
     // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
@@ -429,10 +416,12 @@ fun SetCard(
                 // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im
                 // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
                 // daneben gezeichnet, weil die Card sie abschnitte.
-                if (isBrick) BrickStudCap(
-                    mass = NoppenMass.Stein,
-                    verlauf = SteinKantenVerlauf,
-                )
+                // Auf der schmalen Telefonkachel eine schlankere Kante: 22 dp nahmen dort dem Bild
+                // sichtbar Platz; ab Tabletbreite die volle Höhe wie im Web.
+                if (isBrick) BoxWithConstraints {
+                    BrickStudCap(mass = NoppenMass.Stein, verlauf = SteinKantenVerlauf,
+                        height = if (maxWidth < 240.dp) 12.dp else null)
+                }
                 // Der Steindeckel des Designs "noppe" — Position modulo sechs,
                 // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
                 // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
@@ -477,6 +466,9 @@ fun SetCard(
                             Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))
                         }
                     }
+                    // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
+                    // Menü, damit die Bedienelemente auf eigener Fläche stehen (lichtStreifen()).
+                    if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
                     // Column statt Box: Eine Box stapelt, die Besitzer-Etiketten verdeckten die
                     // Zustandsplaketten. Untereinander bleibt beides lesbar.
                     Column(Modifier.align(Alignment.BottomStart).padding(6.dp),
@@ -500,25 +492,16 @@ fun SetCard(
                                     style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             }
                         }
-                        Box {
-                            IconButton(onClick = { showMenu = true }) {
-                                Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            DropdownMenu(showMenu, { showMenu = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                                    onClick = { showMenu = false; deleting = true },
-                                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                                )
-                            }
+                        // Ein Menü mit nur „Löschen“ war ein Tipp zu viel: direkt der Knopf, die
+                        // Rückfrage danach bleibt. In jedem Design auf eigener runder Fläche,
+                        // damit das Symbol auf jedem Bild lesbar ist.
+                        IconButton(onClick = { deleting = true },
+                            modifier = Modifier.padding(Abstaende.haar)
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)) {
+                            Icon(Icons.Default.DeleteOutline, stringResource(R.string.cd_set_delete, set.name ?: set.setNumber),
+                                Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie
-                    // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
-                    // Kachel: Ein weisser Schleier ueber weissem Text ist kein
-                    // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
-                    if (istGlanz) Box(Modifier.matchParentSize().background(LichtStreifen))
                 }
                 Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
@@ -535,15 +518,19 @@ fun SetCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    // FlowRow und je eine Zeile: Reicht die Breite nicht für beide, rückt die
+                    // Prozentzahl unter den Betrag, statt Zeichen für Zeichen umzubrechen.
                     val betrag = kachelBetrag(set, preis)
-                    if (betrag != null) Row(verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.align(Alignment.CenterVertically))
                         val pct = preis?.pnlPct
                         if (pct != null) Text(fmtProzent(pct),
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                            color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error)
+                            color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error,
+                            maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
                     }
                 }
             }

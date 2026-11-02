@@ -87,6 +87,17 @@ export function skelettKacheln(anzahl, text, art = 'set') {
 }
 
 /**
+ * Platzhalterzeilen für Listen und Detailansichten (Merkliste, Set-Detail),
+ * wie skelettKacheln für Raster.
+ * @param {number} anzahl
+ * @param {string} text bereits übersetzt
+ */
+export function skelettZeilen(anzahl, text) {
+  const zeile = '<div class="skelett-listenzeile" aria-hidden="true"><div class="skelett-bild"></div><div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div></div>';
+  return `<div class="skelett-liste" role="status" aria-busy="true"><span class="vh">${text}</span>${zeile.repeat(anzahl)}</div>`;
+}
+
+/**
  * Ein Wert, der fehlen darf — sonst steht in der Zeile ein leeres Feld.
  *
  * Die Aufrufer schrieben dafür `${x || '—'}` oder `${x ?? '–'}`, mit zwei
@@ -110,7 +121,7 @@ export function textOderStrich(wert) {
 export function fehlerZustand(o) {
   const arg = o.arg ? ` data-arg="${esc(o.arg)}"` : '';
   return `<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>` +
-    `<h3>${esc(tRaw('liste.fehler_titel'))}</h3><p>${esc(o.grund || tRaw('common.unknown_error'))}</p>` +
+    `<h2>${esc(tRaw('liste.fehler_titel'))}</h2><p>${esc(o.grund || tRaw('common.unknown_error'))}</p>` +
     `<button type="button" class="btn bp" data-click="${esc(o.erneut)}"${arg}>${ico('aktualisieren')}<span>${esc(tRaw('liste.erneut'))}</span></button></div>`;
 }
 

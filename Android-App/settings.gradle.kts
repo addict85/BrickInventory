@@ -9,7 +9,9 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google()
+        // Wie oben: google() nur für Googles Gruppen; alles andere kommt allein aus
+        // mavenCentral, kein gleichnamiges Paket rutscht über den zweiten Weg herein.
+        google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
         mavenCentral()
     }
 }

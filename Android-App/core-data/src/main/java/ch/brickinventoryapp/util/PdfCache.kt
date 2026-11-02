@@ -49,10 +49,13 @@ const val PDF_VERTRAULICH_ORDNER = "pdf_vertraulich"
  * Wo der Betrachter ein PDF ablegt. Anleitungen bleiben im Zwischenspeicher
  * (wieder öffnen, fortsetzen); ein vertrauliches PDF kommt in einen eigenen
  * Ordner, den das Aufräumen des Zwischenspeichers nicht sieht und der beim
- * Verlassen, Abmelden und Start geleert wird.
+ * Verlassen, Abmelden und Start geleert wird. Der Name ist SHA-256 der Adresse:
+ * Bei 32 Bit (hashCode) teilen sich zwei Adressen leicht eine Datei, und der
+ * Betrachter zeigte das PDF der anderen — bei Gutscheinen fremde Nummer und PIN.
  */
 fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File {
-    val name = "pdfview_${pdfUrl.hashCode()}.pdf"
+    val hash = java.security.MessageDigest.getInstance("SHA-256").digest(pdfUrl.toByteArray())
+    val name = "pdfview_${hash.joinToString("") { "%02x".format(it) }}.pdf"
     return if (vertraulich) File(File(cacheDir, PDF_VERTRAULICH_ORDNER), name) else File(cacheDir, name)
 }
 
@@ -75,4 +78,15 @@ fun raeumeVertraulichePdfsAuf(cacheDir: File) {
 internal fun teilelistenAblage(intern: File, extern: File?): File {
     extern?.let { File(it, "pdf/teileliste.pdf").delete() }
     return File(File(intern, "pdf").apply { mkdirs() }, "teileliste.pdf")
+}
+
+/**
+ * Beim Abmelden: Teileliste (Inventar) und geteilte PDFs in beiden Wurzeln, dazu ein
+ * geladenes Update. Der Cache allein genügte nicht — filesDir überlebt das Abmelden,
+ * und der nächste Nutzer auf dem Gerät öffnete sonst das Inventar des vorigen.
+ */
+fun raeumeKontoDateienAuf(intern: File, extern: File?) {
+    File(intern, "pdf").deleteRecursively()
+    File(intern, UPDATE_ORDNER).deleteRecursively()
+    extern?.let { File(it, "pdf").deleteRecursively() }
 }

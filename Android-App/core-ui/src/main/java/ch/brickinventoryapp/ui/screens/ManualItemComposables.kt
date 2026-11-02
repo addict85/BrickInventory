@@ -55,55 +55,73 @@ fun AcquisitionSummarySection(
     currency: String,
     onEditPrices: () -> Unit
 ) {
+    // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
+    // „CHF 700.00“ so wenig Breite, dass der Betrag Ziffer für Ziffer umbrach.
+    val untereinander = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val ausrichtung = if (untereinander) Alignment.Start else Alignment.End
+    val kaeufe: @Composable () -> Unit = {
+        Column(horizontalAlignment = ausrichtung) {
+            if (acquisitions.isEmpty()) {
+                Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else {
+                acquisitions.forEach { acq -> KaufZeile(acq, currency) }
+            }
+            Spacer(Modifier.height(Abstaende.winzig))
+            OutlinedButton(onClick = onEditPrices,
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
+                modifier = Modifier.heightIn(min = 28.dp)) {
+                Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
+                Spacer(Modifier.width(Abstaende.winzig))
+                Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
+        val bezeichnung: @Composable () -> Unit = {
             Text(
                 stringResource(R.string.detail_purchase_price),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Abstaende.haar)
             )
-            Column(horizontalAlignment = Alignment.End) {
-                if (acquisitions.isEmpty()) {
-                    Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    acquisitions.forEach { acq ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("×${acq.quantity}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            ConditionBadge(acq.condition)
-                            // Ohne Betrag sagt die Zeile, dass keiner erfasst ist; sonst stand „×2 Neu“ allein da.
-                            val preis = acq.effectivePrice
-                            if (preis != null) {
-                                Text(fmtMoney(preis, currency),
-                                    fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                            } else {
-                                Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-                Spacer(Modifier.height(Abstaende.winzig))
-                OutlinedButton(onClick = onEditPrices,
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
-                    modifier = Modifier.heightIn(min = 28.dp)) {
-                    Icon(Icons.Default.Edit, null, Modifier.size(14.dp))
-                    Spacer(Modifier.width(Abstaende.winzig))
-                    Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
-                }
-            }
+        }
+        if (untereinander) {
+            bezeichnung()
+            kaeufe()
+        } else Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            bezeichnung()
+            kaeufe()
         }
         HorizontalDivider()
+    }
+}
+
+/**
+ * Ein Kauf: Menge, Zustand, Betrag. FlowRow, damit der Betrag bei wenig Platz als
+ * Ganzes in die nächste Zeile rückt; er selbst bricht nie um.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun KaufZeile(acq: KaufAnsicht, currency: String) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        val mitte = Modifier.align(Alignment.CenterVertically)
+        Text(ch.brickinventoryapp.ui.mengeManuell(acq.quantity), style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = mitte)
+        Box(mitte) { ConditionBadge(acq.condition) }
+        // Ohne Betrag sagt die Zeile, dass keiner erfasst ist; sonst stand „×2 Neu“ allein da.
+        val preis = acq.effectivePrice
+        if (preis != null) {
+            Text(fmtMoney(preis, currency), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1, softWrap = false, modifier = mitte)
+        } else {
+            Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = mitte)
+        }
     }
 }
 

@@ -24,6 +24,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -60,23 +61,17 @@ fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsValuation:
                 elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
             ) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                        Text(stringResource(R.string.finance_total_sets), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(fmtPrice(summen.sets.toPlainString()), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                        Text(stringResource(R.string.finance_total_manual_parts), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(fmtPrice(summen.teile.toPlainString()), style = MaterialTheme.typography.bodySmall)
-                    }
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                        Text(stringResource(R.string.finance_total_manual_minifigs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(fmtPrice(summen.figuren.toPlainString()), style = MaterialTheme.typography.bodySmall)
-                    }
+                    val klein = MaterialTheme.typography.bodySmall
+                    BezeichnungUndWert(stringResource(R.string.finance_total_sets), fmtPrice(summen.sets.toPlainString()),
+                        stil = klein, wertGewicht = FontWeight.Normal)
+                    BezeichnungUndWert(stringResource(R.string.finance_total_manual_parts), fmtPrice(summen.teile.toPlainString()),
+                        stil = klein, wertGewicht = FontWeight.Normal)
+                    BezeichnungUndWert(stringResource(R.string.finance_total_manual_minifigs), fmtPrice(summen.figuren.toPlainString()),
+                        stil = klein, wertGewicht = FontWeight.Normal)
                     HorizontalDivider()
-                    Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween) {
-                        Text(stringResource(R.string.finance_grand_total), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                        Text(fmtPrice(summen.gesamt.toPlainString()), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-                    }
+                    BezeichnungUndWert(stringResource(R.string.finance_grand_total), fmtPrice(summen.gesamt.toPlainString()),
+                        stil = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                        bezeichnungFarbe = MaterialTheme.colorScheme.onSurface, wertGewicht = FontWeight.Bold)
                 }
             }
         }
@@ -211,7 +206,7 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
                     Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary)
                     if (rowQty > 1)
-                        Text("×$rowQty", style = MaterialTheme.typography.labelSmall,
+                        Text(ch.brickinventoryapp.ui.mengeManuell(rowQty), style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     // Zustand dieser Erfassung — bei mehreren Karten
                     // desselben Sets das einzige Unterscheidungsmerkmal.
@@ -226,13 +221,15 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
                 // Erfassungen steht hier nichts: Die Zahlen stehen dann je Kaufpreis darunter,
                 // eine Summe daneben wäre eine zweite Darstellung derselben Werte.
                 Column(horizontalAlignment = Alignment.End) {
+                    // Ohne Marktpreis ein Wort statt eines Strichs in der Preisfarbe: Der
+                    // blaue Strich sah aus wie ein Wert.
                     when {
-                        set.noPrice || set.error != null ->
-                            Text("—", color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                style = MaterialTheme.typography.bodyMedium)
+                        set.noPrice || set.error != null || zeile.wert == null ->
+                            Text(stringResource(R.string.detail_price_none_yet), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall)
                         else -> Text(priceStr, fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.bodyMedium)
+                            style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
                     }
                     rowPurchase?.let {
                         Text(
@@ -303,33 +300,42 @@ private fun KategorieChip(
 }
 
 /** Die Kennzahl-Karten über der Liste. */
+@OptIn(ExperimentalLayoutApi::class)
 fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuation: TeileBewertungAnsicht?, figsValuation: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?, fmtPrice: (String?) -> String) {
     item {
+        // Im Dunkeln primaryContainer statt primary: Das helle primary der dunklen
+        // Fassungen (Stein: Hellblau) war als ganze Kachel grell.
+        val dunkel = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+        val flaeche = if (dunkel) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary
+        val auf = if (dunkel) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onPrimary
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = Formen.chip,
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+            colors = CardDefaults.cardColors(containerColor = flaeche, contentColor = auf),
             elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch)
         ) {
             Column(Modifier.padding(20.dp)) {
                 Text(
                     stringResource(R.string.finance_market_avg),
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    color = auf,
                     style = MaterialTheme.typography.labelMedium
                 )
                 Spacer(Modifier.height(6.dp))
                 // totals.avg statt qtyAvg: Marktpreis ist avg_price, der mengengewichtete
                 // Schnitt liegt systematisch darunter (gleiche Umstellung wie in der Webapp).
                 val summen = finanzSummen(valuation, partsValuation, figsValuation, pnl)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // FlowRow: Bei grosser Schrift rückt die Gewinn-Plakette unter den Betrag,
+                // statt ihn zu quetschen.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         if (summen.gesamt.signum() > 0) fmtPrice(summen.gesamt.toPlainString())
                         else if (valuation.sets.any { it.error != null }) stringResource(R.string.finance_price_error)
                         else if (valuation.sets.isEmpty()) stringResource(R.string.finance_no_sets)
                         else stringResource(R.string.finance_load_prompt),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = auf,
                         fontWeight = FontWeight.ExtraBold,
-                        style = MaterialTheme.typography.headlineMedium
+                        style = MaterialTheme.typography.headlineMedium,
+                        modifier = Modifier.align(Alignment.CenterVertically)
                     )
                     val pnlPct = pnl?.totals?.pnlProzent
                     if (pnlPct != null) {
@@ -340,6 +346,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                             shape = Formen.chip,
                             color = MaterialTheme.colorScheme.surface,
                             contentColor = if (pnlPct < 0) status.fehler else status.erfolg,
+                            modifier = Modifier.align(Alignment.CenterVertically),
                         ) {
                             Text(
                                 stringResource(R.string.finance_total_pnl, fmtProzent(pnlPct)),
@@ -354,7 +361,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                     Spacer(Modifier.height(Abstaende.winzig))
                     Text(
                         stringResource(R.string.finance_parts_extra, fmtPrice(summen.teileUndFiguren.toPlainString())),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = auf,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -364,17 +371,25 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                     Spacer(Modifier.height(Abstaende.winzig))
                     Text(
                         pluralStringResource(R.plurals.finance_fremde_waehrung, fremde, fremde),
-                        color = MaterialTheme.colorScheme.onPrimary,
+                        color = auf,
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
                 Spacer(Modifier.height(Abstaende.gross))
-                HorizontalDivider(color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f))
+                HorizontalDivider(color = auf.copy(alpha = 0.2f))
                 Spacer(Modifier.height(Abstaende.mittel))
-                Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
-                    PriceColumn(stringResource(R.string.finance_min_label), fmtPrice(valuation.totals.min))
-                    PriceColumn(stringResource(R.string.finance_avg_label), fmtPrice(valuation.totals.avg))
-                    PriceColumn(stringResource(R.string.finance_max_label), fmtPrice(valuation.totals.max))
+                // Die Spanne der Sets zu Tiefst- und Höchstpreis. Der Schnitt nur, wenn er
+                // vom Betrag oben abweicht (Teile und Figuren dazu) — sonst stand dieselbe
+                // Zahl zweimal da.
+                Text(stringResource(R.string.finance_range_label), color = auf,
+                    style = MaterialTheme.typography.labelMedium)
+                Spacer(Modifier.height(Abstaende.winzig))
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround,
+                        verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    PriceColumn(stringResource(R.string.finance_min_label), fmtPrice(valuation.totals.min), auf)
+                    if (summen.teileUndFiguren.signum() > 0)
+                        PriceColumn(stringResource(R.string.finance_avg_label), fmtPrice(valuation.totals.avg), auf)
+                    PriceColumn(stringResource(R.string.finance_max_label), fmtPrice(valuation.totals.max), auf)
                 }
             }
         }

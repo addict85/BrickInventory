@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eingabe } from '../validate';
+import { eingabe, GROESSTE_ID } from '../validate';
 import { KontoName, type Route, zeit, ganz } from './grund';
 import { BrickLinkRef, CsvImportErgebnis, GenericResponse, MinifigsResponse, PartsResponse, InDenPapierkorb } from './gemeinsam';
 
@@ -141,6 +141,24 @@ export const SetsResponse = z.looseObject({
 
 export const AnleitungenGeladen = z.looseObject({ success: z.literal(true), count: ganz, instructions: z.array(Instruction) });
 export const PdfAuftrag = z.looseObject({ success: z.literal(true), jobId: z.string() });
+
+const textOderNull = (max: number) => z.string().max(max).nullish();
+/** Der Job zeichnet jede Zeile und lädt Bilder nach: Zahl und Grösse begrenzt. */
+export const PdfEingabe = z.object({
+  sets: z.array(z.object({ set_number: z.string().trim().min(1).max(32), name: textOderNull(500) })).max(1000).optional(),
+  parts: z.array(z.object({
+    part_number: z.string().trim().min(1).max(64),
+    bl_part_number: textOderNull(64),
+    part_name: textOderNull(500),
+    color_name: textOderNull(100),
+    color_hex: z.string().regex(/^#?[0-9A-Fa-f]{0,8}$/).nullish(),
+    color_id: z.number().int().min(-1).max(GROESSTE_ID).nullish(),
+    quantity: z.union([z.number().int().min(1).max(9999), z.string().regex(/^[1-9]\d{0,3}$/)]),
+    is_fig: z.union([z.boolean(), z.number()]).nullish(),
+    image_url: textOderNull(2048),
+    image_local: textOderNull(512),
+  })).max(5000).optional(),
+});
 /** Der Stand eines PDF-Auftrags; die App fragt ihn ab, bis er fertig ist. */
 export const PdfStand = z.looseObject({
   success: z.literal(true), status: z.string(), error: z.string().nullable().optional(),
@@ -175,7 +193,7 @@ export const routen = {
   'POST /api/v1/sets/import/csv': { antwort: CsvImportErgebnis },
   'POST /api/v1/alerts/import/csv': { antwort: CsvImportErgebnis },
   'POST /api/v1/sets/:setNumber/instructions': { antwort: AnleitungenGeladen },
-  'POST /api/v1/sets/partslist-pdf': { antwort: PdfAuftrag },
+  'POST /api/v1/sets/partslist-pdf': { antwort: PdfAuftrag, eingabe: PdfEingabe },
   'GET /api/v1/sets/partslist-pdf/status/:jobId': { antwort: PdfStand },
   'GET /api/v1/sets/partslist-pdf/download/:jobId': { art: 'pdf' },
   'GET /api/v1/sets/partslist-pdf/stream/:jobId': { art: 'strom' },

@@ -41,12 +41,13 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Bildschirmfotos der Hauptbildschirme mit Beispieldaten (Beispiele), je in
- * drei Designs, hell und dunkel, auf Telefon und Tablet. Liegen Referenzbilder
+ * drei Designs, hell und dunkel, auf Telefon und Tablet, auf Deutsch (de-CH) wie
+ * die meisten Nutzer; Englisch fotografiert BildschirmFotoVariantenTest. Liegen Referenzbilder
  * in src/test/bildschirmfotos, vergleicht die CI gegen sie (verifyRoborazziDebug),
  * sonst nimmt sie auf; eingecheckt werden sie per Workflow (bildschirmfotos=true).
  *
- * Die Einstellungen selbst holen AppViewModel und UpdateViewModel über Hilt;
- * hier steht deshalb ihr Baustein mit Inhalt (Gutscheine).
+ * Die Gutscheine stehen als eigene Seite unter „Mehr“; fotografiert wird ihr
+ * Baustein (GutscheineCard), weil die Seite ihr ViewModel über Hilt holt.
  *
  * Gegenprobe: Ein Foto, das nichts vergleicht, kann nicht rot werden. Sie ist
  * erst mit eingecheckten Referenzen möglich (eine Farbe in Theme.kt ändern →
@@ -75,11 +76,15 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @get:Rule
     val compose = createComposeRule()
 
-    private val welt = Beispiele.Welt()
-    private val bilder = coil3.ImageLoader.Builder(ApplicationProvider.getApplicationContext()).build()
+    private val welt = Beispiele.Welt(KontextTexte())
+    private val bilder = Beispielbilder.loader(ApplicationProvider.getApplicationContext())
+    private val vorher = java.util.Locale.getDefault()
 
     @After
-    fun zu() = welt.close()
+    fun zu() {
+        java.util.Locale.setDefault(vorher)
+        welt.close()
+    }
 
     /**
      * Die Daten kommen vor dem Bildschirm. Ihre Abrufe kehren über den
@@ -105,7 +110,8 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
 
     private fun foto(name: String, bereit: () -> Boolean = { true }, zustand: () -> Any? = { null },
                      inhalt: @Composable () -> Unit) {
-        RuntimeEnvironment.setQualifiers(GERAETE.getValue(geraet))
+        RuntimeEnvironment.setQualifiers("de-rCH-" + GERAETE.getValue(geraet))
+        java.util.Locale.setDefault(java.util.Locale.forLanguageTag("de-CH"))
         bereitstellen(name, bereit, zustand)
         compose.setContent {
             BrickInventoryManagerTheme(theme = design, dunkel = dunkel) {
@@ -207,18 +213,41 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     }
 
     @Test
-    fun einstellungen() {
-        val gutscheine = GutscheinUiState(gutscheine = listOf(
-            Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF").alsAnsicht(),
-            Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = "CHF").alsAnsicht()))
-        foto("einstellungen") {
-            androidx.compose.foundation.layout.Column {
-                GutscheineCard(
-                    zustand = gutscheine, onFeld = { _, _, _, _ -> }, onPinSchalten = {}, onBearbeiten = {},
-                    onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {}, onKopieren = { _, _ -> },
-                    onGuthaben = {}, onExportieren = {}, onGuthabenAlle = {}, onGuthabenAbbrechen = {}, onErneut = {},
-                )
-            }
-        }
+    fun gutscheine() {
+        foto("gutscheine") { Gutscheine() }
     }
+}
+
+/** Zwei Gutscheine, einer mit PIN und Guthabenstand, einer ohne — die beiden Zeilenformen. */
+@Composable
+internal fun Gutscheine() {
+    val gutscheine = GutscheinUiState(gutscheine = listOf(
+        Gutschein(id = 1, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF").alsAnsicht(),
+        Gutschein(id = 2, number = "6061 9876 5432", amount = 20.0, currency = "CHF").alsAnsicht()))
+    androidx.compose.foundation.layout.Column {
+        GutscheineCard(
+            zustand = gutscheine, onFeld = { _, _, _, _ -> }, onPinSchalten = {}, onBearbeiten = {},
+            onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {}, onKopieren = { _, _ -> },
+            onGuthaben = {}, onExportieren = {}, onGuthabenAlle = {}, onGuthabenAbbrechen = {}, onErneut = {},
+        )
+    }
+}
+
+/**
+ * Texte der ViewModels aus den echten Ressourcen, damit ein Foto „Serverfehler (500)“
+ * zeigt statt des Platzhalters „fehler“ der JVM-Tests (NummernTexte).
+ */
+internal class KontextTexte(
+    private val ctx: android.content.Context = ApplicationProvider.getApplicationContext(),
+) : ch.brickinventoryapp.ui.viewmodel.Texte {
+    override fun text(id: Int, vararg args: Any?): String =
+        if (args.isEmpty()) ctx.getString(id) else ctx.getString(id, *args)
+    override fun menge(id: Int, anzahl: Int, vararg args: Any?): String =
+        ctx.resources.getQuantityString(id, anzahl, *args)
+    override fun meldung(fehler: ch.brickinventoryapp.data.repository.Result.Error): String {
+        if (fehler.message.isNotBlank()) return fehler.message
+        val id = ch.brickinventoryapp.ui.fehlerTextId(fehler.art)
+        return if (ch.brickinventoryapp.ui.fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0) else text(id)
+    }
+    override fun angemeldet() = true
 }

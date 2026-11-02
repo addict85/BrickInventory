@@ -33,7 +33,6 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
-import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
@@ -208,30 +207,16 @@ fun ManualItemDetailScreen(
                 }
             }
 
-            // ── Stein-Design: prominente Wert-Kacheln, wie im Set-Detail ───────
-            if (isBrick) {
-                item {
-                    fun fmt(v: Double?) = if (v == null) "—"
-                        else ch.brickinventoryapp.util.fmtMoney(v, currency)
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        BrickStatTile(
-                            label = stringResource(R.string.detail_section_market),
-                            value = fmt(fig?.avgPrice ?: part?.avgPrice),
-                            container = Petrol, onContainer = Color.White,
-                            modifier = Modifier.weight(1f)
-                        )
-                        BrickStatTile(
-                            label = stringResource(R.string.detail_purchase_price),
-                            value = fmt(fig?.purchasePrice ?: part?.purchasePrice),
-                            container = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.schiefer,
-                            onContainer = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.aufSchiefer,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
+            // ── Wert-Kacheln wie im Set-Detail, in jedem Design ───────────────
+            item {
+                fun fmt(v: Double?) = if (v == null) "—"
+                    else ch.brickinventoryapp.util.fmtMoney(v, currency)
+                WertKacheln(
+                    markt = fmt(fig?.avgPrice ?: part?.avgPrice),
+                    kauf = fmt(fig?.purchasePrice ?: part?.purchasePrice),
+                    pnl = fig?.pnlProzent ?: part?.pnlProzent,
+                    modifier = Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
+                )
             }
 
             // ── Details: Menge und Kaufpreise ──────────────────────────────────
@@ -367,7 +352,7 @@ fun ManualItemDetailScreen(
                         }
                         chart?.takeIf { it.values.isNotEmpty() }?.let {
                             Spacer(Modifier.height(Abstaende.klein))
-                            PriceChart(it)
+                            PriceChart(it, currency)
                         }
                     }
                 }

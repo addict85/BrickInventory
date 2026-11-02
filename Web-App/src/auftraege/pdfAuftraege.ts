@@ -75,7 +75,7 @@ export async function cleanOldPdfJobs() {
 }
 
 /** Daran hängt die Wartezeit (etwa ein Bild je Sekunde). */
-async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Array<{ image_local?: string; image_url?: string }>) {
+async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Array<{ image_local?: string | null | undefined; image_url?: string | null | undefined }>) {
   let fehlend = parts.filter(p => !p.image_local && p.image_url).length;
   const nummern = new Set<string>();
   for (const s of sets || []) {
@@ -94,7 +94,7 @@ async function fehlendeBilder(sets: Array<{ set_number?: unknown }>, parts: Arra
 
 /** Laufen schon MAX_JOBS_PRO_BENUTZER, gibt es keine Kennung, sondern deren Zahl. */
 export async function pdfAuftragStarten(uid: number, sets: Array<{ set_number?: unknown }>,
-                                        parts: Array<{ image_local?: string; image_url?: string }>)
+                                        parts: Array<{ image_local?: string | null | undefined; image_url?: string | null | undefined }>)
   : Promise<{ jobId: string } | { laufend: number }> {
   const laufend = await laufendeAuftraege(uid, PDF_JOB_TTL);
   if (laufend >= MAX_JOBS_PRO_BENUTZER) return { laufend };

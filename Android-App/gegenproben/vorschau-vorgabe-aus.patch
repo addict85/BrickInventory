@@ -1,0 +1,18 @@
+Gegenprobe: Die Vorschau in der App-Übersicht ist ohne Wahl wieder sichtbar
+Modul: app
+Test: ch.brickinventoryapp.GeraeteSchutzTest
+Rot: eine neue Installation verbirgt die Vorschau
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
+index 45a9413..4657372 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
+@@ -464,7 +464,7 @@ class PreferencesManager @Inject constructor(
+      * an: Die Übersicht zeigt Bestand, Preise und Konto jedem, der das Telefon kurz
+      * in der Hand hat. Wer Bildschirmfotos braucht, schaltet es aus.
+      */
+-    fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, true)
++    fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, false)
+     fun setzeVorschauVerbergen(an: Boolean) {
+         designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
+     }

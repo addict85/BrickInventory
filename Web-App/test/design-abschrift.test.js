@@ -239,3 +239,25 @@ test('jede Herkunftsangabe in Theme.kt stimmt', () => {
     'falsche Token. Ein Kommentar, der seinem Wert widerspricht, ist schlimmer ' +
     'als keiner.');
 });
+
+// Der Bau (`npm run build`) ruft den Erzeuger auf; in einem Checkout ohne
+// Android-App (Docker-Bau, Teil-Klon) darf er daran nicht scheitern.
+// Gegenprobe (02.11.2026 gemessen): die Ordnerprüfung im Erzeuger entfernt →
+// rot (ENOENT beim Schreiben von DesignTokens.kt, Exit 1).
+test('ohne Android-App schreibt der Erzeuger nur das Web-CSS', () => {
+  const { spawnSync } = require('node:child_process');
+  const os = require('node:os');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tokens-'));
+  try {
+    fs.mkdirSync(path.join(tmp, 'shared'));
+    fs.mkdirSync(path.join(tmp, 'Web-App', 'scripts'), { recursive: true });
+    fs.mkdirSync(path.join(tmp, 'Web-App', 'public'));
+    fs.copyFileSync(QUELLE, path.join(tmp, 'shared', 'design-tokens.json'));
+    const skript = path.join(tmp, 'Web-App', 'scripts', 'generate-design-tokens.js');
+    fs.copyFileSync(path.join(__dirname, '..', 'scripts', 'generate-design-tokens.js'), skript);
+    const r = spawnSync(process.execPath, [skript], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(fs.readFileSync(path.join(tmp, 'Web-App', 'public', 'tokens.css'), 'utf8'), baueCss(DATEN));
+    assert.deepEqual(fs.readdirSync(tmp).sort(), ['Web-App', 'shared'], 'der Erzeuger legt den Android-Ordner an');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});

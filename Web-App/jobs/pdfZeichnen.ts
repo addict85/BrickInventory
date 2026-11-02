@@ -59,7 +59,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
   }
   function newPage() { addFooter(); seite++; doc.addPage(); doc.y = 40; }
 
-  doc.fontSize(18).font('Helvetica-Bold').text('Teileliste', { align: 'left' });
+  doc.fontSize(18).font('Helvetica-Bold').text('Bauliste', { align: 'left' });
   doc.fontSize(10).font('Helvetica').fillColor('#64748b').text(`Sets: ${sets.map(s => s.set_number).join(', ')}`, { align: 'left' });
   doc.moveDown(0.5);
   const totalQty = parts.reduce((s, p) => s + (parseInt(String(p.quantity)) || 0), 0);

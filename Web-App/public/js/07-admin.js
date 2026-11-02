@@ -1,8 +1,8 @@
 import { echt, registerActions } from './00-registry.js';
-import { detailZeile, oderStrich } from './01-bausteine.js';
+import { detailZeile, oderStrich, skelettZeilen } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fmtDatum, ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
+import { fmtDatum, ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache, leseBetrag, betragFuerFeld } from './01-core.js';
 import { initStorageSelects } from './02-gallery.js';
 import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
 import { diagrammLeer, loadFinance } from './04-finance.js';
@@ -742,7 +742,7 @@ export function alarmBlock(sn, praefix = 'm') {
         <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
         <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
       </select>
-      <input inputmode="decimal" type="number" id="${p}-alert-val" class="alarm-feld" min="0" step="0.01" placeholder="—" aria-label="${esc(tRaw('detail.alert_price'))}"
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" placeholder="—" aria-label="${esc(tRaw('detail.alert_price'))}"
              data-input="alarmGetippt" data-arg="${escJs(sn)}"
              data-change="speichereAlarm" />
       <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
@@ -897,7 +897,7 @@ export async function ladeAlarm(sn) {
   if (!dir || !val) return;
   const a = (d?.alerts || []).find(x => x.condition === alarmZustand());
   dir.value = a?.richtung || 'unter';
-  val.value = a ? String(a.schwelle) : '';
+  val.value = a ? betragFuerFeld(a.schwelle) : '';
   zeigeAlarmMerker(a);
 }
 
@@ -1004,7 +1004,7 @@ export function speichereAlarm(sn) {
  * eine Schwelle bei 2 — und die meldet sofort.
  */
 async function sendeAlarm(sn, richtung, roh) {
-  const zahl = parseFloat(String(roh).replace(',', '.'));
+  const zahl = leseBetrag(roh);
   const loeschen = !(zahl > 0);
   const cond = alarmZustand();
   const d = loeschen
@@ -1116,12 +1116,23 @@ export async function ladeLagerorte() {
   initStorageSelects(orte);
 }
 
+let _detailLauf = 0;
 export async function openModal(sn){
+  const lauf = ++_detailLauf;
+  // Der Dialog steht sofort da, mit Platzhalter: Bei langsamem Netz geschah
+  // sonst bis zur Antwort nichts, und ein zweiter Tipp öffnete ihn doppelt.
+  G('m-tit').textContent = sn; G('m-untertit').textContent = '';
+  const bild = G('m-img'); bild.src = '/assets/set-placeholder.svg';
+  G('m-det').innerHTML = skelettZeilen(4, t('common.loading'));
+  G('m-instr').innerHTML = '';
+  G('set-modal').classList.add('open');
   const [d, ad] = await Promise.all([
     api('GET',`/v1/sets/${sn}`),
     api('GET',`/v1/sets/${sn}/acquisitions`).catch(()=>null)
   ]);
-  if(!d?.success){toast(tRaw('settings.error'),'error');return;}
+  // Inzwischen geschlossen oder ein anderes Set geöffnet: nichts mehr zeichnen.
+  if (lauf !== _detailLauf || !G('set-modal').classList.contains('open')) return;
+  if(!d?.success){ G('set-modal').classList.remove('open'); toast(tRaw('settings.error'),'error'); return; }
   set_curSet(d.set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent=curSet.name||curSet.set_number;
@@ -1143,7 +1154,7 @@ export async function openModal(sn){
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
       <button class="btn bs btn-sm" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:46px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
+      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
       <button class="btn bs btn-sm" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
     `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
@@ -1160,7 +1171,7 @@ export async function openModal(sn){
     ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
     ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
     ${qtyRow}
-    ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" data-stil="padding:1px 6px;font-size:var(--fs-1);margin-left:4px">${PARTS_ICON_SVG}</button>`)}
+    ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button type="button" class="btn bs btn-sm teile-neu" data-click="reimportParts" data-arg="${escJs(sn)}">${PARTS_ICON_SVG}<span>${t('detail.reimport_parts')}</span></button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',

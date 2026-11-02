@@ -12,7 +12,8 @@ import java.util.Locale
  * Achsenbeschriftung der Wertentwicklung in der Sprache der App. Der Server
  * wählt, WELCHE Punkte beschriftet werden, schreibt den Text aber fest in
  * Schweizer Form („03.10“, „CHF 1'234“); aus dem ISO-Tag derselben Antwort
- * (chart.x) entsteht hier „3. Okt.“ bzw. „Oct 3“.
+ * (chart.x) entsteht hier „03.10.“ bzw. „03/10“ — dieselbe Form wie jedes andere
+ * Datum der App (fmtDatum), nur ohne Jahr.
  */
 
 /** Monatsauflösung erkennt man an der Form „MM/YY“, die der Server dann schreibt. */
@@ -21,12 +22,8 @@ private val MONATLICH = Regex("""\d{2}/\d{2}""")
 /** Kurzes Datum für die x-Achse, oder null, wenn [iso] kein Tag ist. */
 fun achsenDatum(iso: String, monatlich: Boolean, locale: Locale): String? {
     val tag = runCatching { LocalDate.parse(iso.take(10)) }.getOrNull() ?: return null
-    val muster = when {
-        monatlich -> "MMM yy"
-        locale.language == "en" -> "MMM d"
-        else -> "d. MMM"
-    }
-    return DateTimeFormatter.ofPattern(muster, locale).format(tag)
+    if (!monatlich) return ch.brickinventoryapp.util.fmtDatum(iso, locale, ch.brickinventoryapp.util.DatumJahr.OHNE)
+    return DateTimeFormatter.ofPattern("MMM yy", locale).format(tag)
 }
 
 /**
@@ -50,5 +47,5 @@ fun lokaleWerte(achse: List<DiagrammAchse>, waehrung: String, locale: Locale): L
             minimumFractionDigits = 0
         }
     }.getOrNull() ?: return achse
-    return achse.map { it.copy(label = nf.format(it.value)) }
+    return achse.map { it.copy(label = ch.brickinventoryapp.util.mitWaehrungsAbstand(nf.format(it.value))) }
 }

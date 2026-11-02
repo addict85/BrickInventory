@@ -26,7 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.util.fmtInt
-import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -99,9 +98,13 @@ fun MinifigsScreen(
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die
-        // Kennzahlen rollen mit dem Raster.
-        SucheMitFilter(
+        // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
+        // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
+        val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
+        val anzeige = ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)
+        // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die Kennzahlen rollen mit
+        // dem Raster. Im Fehlerzustand nicht — ohne Liste gibt es nichts zu suchen.
+        if (anzeige != Ladeanzeige.FEHLER) SucheMitFilter(
             wert = search,
             onWert = { search = it; vm.setMinifigsQuery(it) },
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
@@ -110,13 +113,10 @@ fun MinifigsScreen(
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.figurenOfflineStand)
-        // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
-        // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
-        val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
-        when (ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)) {
+        when (anzeige) {
             Ladeanzeige.LAEDT ->
-                SkelettRaster(GridCells.Adaptive(140.dp), kachelHoehe = 196.dp)
-            Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh) }
+                SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(140.dp), kachelHoehe = 196.dp)
+            Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh, partsState.minifigsFehlerKlasse) }
             Ladeanzeige.LEER -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                 if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
                     Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { FigurenKennzahlen(minifigStats) }
@@ -137,9 +137,11 @@ fun MinifigsScreen(
             }
             Ladeanzeige.LISTE -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(140.dp),
+                    columns = ch.brickinventoryapp.ui.components.LesbareSpalten(140.dp),
                     state = gridState,
-                    contentPadding = PaddingValues(Abstaende.mittel),
+                    // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
+                    contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
+                        end = Abstaende.mittel, bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -192,13 +194,10 @@ fun MinifigsScreen(
         }
     }
 
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = Formen.fab,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)
-        ) { Icon(Icons.Default.Add, stringResource(R.string.minifigs_add)) }
+        ch.brickinventoryapp.ui.components.ErfassenFab(
+            stringResource(R.string.minifigs_add), { showAddDialog = true },
+            Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+        )
     }
 
     if (zeigeFilter) {
@@ -233,7 +232,7 @@ fun MinifigsScreen(
 /** Die Kennzahlen der Minifiguren — erste Zeile des Rasters, sie rollt mit. */
 @Composable
 private fun FigurenKennzahlen(minifigStats: FigurenKennzahlenAnsicht) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+    KennzahlenReihe {
         // Zahlen vom Server (getMinifigStats): Aus der Liste gerechnet fehlten
         // die manuell erfassten Figuren, die hier ausgefiltert sind.
         GalleryStatChip(fmtInt(minifigStats.types), stringResource(R.string.minifigs_stat_types))
@@ -430,7 +429,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     Text(figName,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
                 } else {
                     Text(stringResource(R.string.name_unknown), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -438,7 +437,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 // Gemeinsamer Helfer (util/DatumFormat.kt): Er kommt auch mit Zeitstempeln ohne
                 // Millisekunden zurecht.
                 val dateLabel = remember(fig.setAddedAt) {
-                    fmtDatum(fig.setAddedAt, zweistelligesJahr = true)
+                    ch.brickinventoryapp.util.fmtTag(fig.setAddedAt, ch.brickinventoryapp.util.DatumJahr.KURZ)
                 }
                 if (dateLabel != null)
                     Text(dateLabel, style = MaterialTheme.typography.labelSmall,
@@ -465,7 +464,7 @@ fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoad
         name = fig.figName,
         menge = fig.totalQuantity ?: fig.quantity,
         imageLoader = imageLoader,
-        zweiteZeile = fmtDatum(fig.setAddedAt),
+        zweiteZeile = ch.brickinventoryapp.util.fmtTag(fig.setAddedAt),
         onBildFehler = onFehler,
         onClick = onClick,
     )

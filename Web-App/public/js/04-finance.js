@@ -281,7 +281,7 @@ export async function loadFinance(){
   // Die vierte Spalte war ein reiner Platzhalter, damit die Preisspalten an
   // derselben Stelle wie in der Sets-Tabelle beginnen. Sie trägt jetzt dasselbe
   // wie dort: das Erfassungsdatum der Zeile.
-  const pmTableHead = `<thead><tr><th></th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead>`;
+  const pmTableHead = `<thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead>`;
   // Die Summen liefert der Server (`total_value`) — Android liest sie seit jeher
   // von dort. Hier wurde stattdessen über `display_value` addiert; heute kommt
   // dasselbe heraus, aber sobald der Server Zeilen ohne Preis anders behandelt,
@@ -290,12 +290,12 @@ export async function loadFinance(){
   const figsTotal  = parseFloat(figsVal?.total_value || 0);
   const pmFoot = (kauf, total) => `<tfoot><tr><td colspan="4" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(kauf, total, cur, 1)}<td colspan="2"></td></tr></tfoot>`;
   const partsSectionHtml = partsItems.length ? `
-    <div class="tw abstand-o-125" data-fin-art="parts">
+    <div class="tw abstand-o-125" data-fin-art="parts" tabindex="0" role="region" aria-label="${esc(t('parts.manual_section'))}">
       <div class="ctitle fin-abschnitt">${ico('teil')} ${t('parts.manual_section')}</div>
       <table class="dt dt-fin">${pmColgroup}${pmTableHead}<tbody>${partsRows}</tbody>${pmFoot(einstand.parts, partsTotal)}</table>
     </div>` : '';
   const figsSectionHtml = figsItems.length ? `
-    <div class="tw abstand-o-125" data-fin-art="figs">
+    <div class="tw abstand-o-125" data-fin-art="figs" tabindex="0" role="region" aria-label="${esc(t('finance.figs_section'))}">
       <div class="ctitle fin-abschnitt">${ico('figur')} ${t('finance.figs_section')}</div>
       <table class="dt dt-fin">${pmColgroup}${pmTableHead}<tbody>${figsRows}</tbody>${pmFoot(einstand.figs, figsTotal)}</table>
     </div>` : '';
@@ -385,7 +385,7 @@ export async function loadFinance(){
   const grandTotalHtml = `
     <div class="tw abstand-o-125">
       <table class="dt dt-summe">
-        <thead><tr><th></th><th>${t('finance.stat.purchase')}</th><th>${t('finance.grand.value')}</th></tr></thead>
+        <thead><tr><th><span class="vh">${t('finance.bereich')}</span></th><th>${t('finance.stat.purchase')}</th><th>${t('finance.grand.value')}</th></tr></thead>
         <tbody>
           ${summenZeile(t('finance.filter.sets'), einstand.sets, setsQtyAvg)}
           ${summenZeile(t('finance.grand.parts'), einstand.parts, partsTotal)}
@@ -394,7 +394,7 @@ export async function loadFinance(){
         <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal)}</tfoot>
       </table>
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-250"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-40"></colgroup><thead><tr><th></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-250"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-40"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
   // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
   // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
   // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine

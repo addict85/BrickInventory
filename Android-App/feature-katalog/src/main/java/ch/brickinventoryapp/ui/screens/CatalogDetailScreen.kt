@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
@@ -200,7 +201,7 @@ fun CatalogDetailScreen(
                         shape = Formen.leiste,
                         contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
                     ) {
-                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Icon(Icons.Default.BookmarkAdd, null, Modifier.size(18.dp))
                         Spacer(Modifier.width(Abstaende.winzig))
                         Text(stringResource(R.string.wanted_add_submit),
                             maxLines = 1, overflow = TextOverflow.Ellipsis,

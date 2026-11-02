@@ -6,6 +6,8 @@ import ch.brickinventoryapp.util.PinVertrauen
 import ch.brickinventoryapp.util.WahlVertrauen
 import ch.brickinventoryapp.util.ZertifikatUngeklaert
 import ch.brickinventoryapp.util.ZertifikatsFrage
+import ch.brickinventoryapp.util.bestaetigtFingerabdruck
+import ch.brickinventoryapp.util.fingerabdruckAnfang
 import ch.brickinventoryapp.util.fingerabdruckLesbar
 import ch.brickinventoryapp.util.passtZumPin
 import ch.brickinventoryapp.util.pinSchluessel
@@ -63,9 +65,22 @@ import javax.net.ssl.X509ExtendedTrustManager
  *   J  in ZertifikatsFrage.bestaetige() die Bedingung für GEAENDERT entfernt →
  *      rot „ein geaenderter Schluessel gilt erst mit abgeschriebenem …“
  *   K  bestaetigtFingerabdruck() mit `>= 4` statt `>= 16` → rot „ein
- *      geaenderter Schluessel …“ (vier getippte Zeichen genügten)
+ *      geaenderter Schluessel …“ (vier getippte Zeichen genügten); am 02.11.2026
+ *      FINGERABDRUCK_ABTIPPEN = 16 statt 24 → rot dort („16 Zeichen (64 Bit) …“)
  *   L  in bestaetige() wieder nur GEAENDERT prüfen (`f.art == GEAENDERT &&`)
  *      → rot „ohne bekannte CA genuegt ein Tipp nicht …“
+ *   M  (02.11.2026) die Zeile `if (pin != null && oeffentlich && pin in
+ *      systemWurzeln) return` entfernt → rot „ein oeffentlicher Pin uebersteht
+ *      …“ („Neue Wurzel, öffentlich gültig“), „eine oeffentliche CA …“, „ein
+ *      geaenderter Schluessel …“
+ *   N  dort ohne `&& pin in systemWurzeln` → rot „ein oeffentlicher Pin …“
+ *      („Eine eigene CA bleibt an ihren Schlüssel gebunden“) und „ein anderer
+ *      Schluessel unter dem gemerkten Pin …“
+ *   O  `ueberNutzerCa -> NUTZER_CA` wieder ERSTKONTAKT → rot „ueber eine
+ *      Nutzer-CA genuegt …“ („Ein Tipp genügt nicht“) und „Nutzer-CAs gelten …“
+ *   P  in checkServerTrusted ohne Socket `if (!passtZumPin(chain, pin))` →
+ *      `if (pin.isEmpty())` → rot „ohne Host faellt ein gepinnter Server …“
+ *   Q  fingerabdruckAnfang() ohne `.take(11)` → rot „der gezeigte Anfang …“
  */
 class ZertifikatPinTest {
 
@@ -127,8 +142,8 @@ class ZertifikatPinTest {
         assertTrue("Nach der Bestätigung gilt der Pin", hole(system(ROOT)))
     }
 
-    /** Die letzten 16 Hex-Zeichen, wie sie jemand aus der Webapp abschreibt. */
-    private fun abgeschrieben() = fingerabdruckLesbar(frage.offen.value!!.fingerabdruck).takeLast(23)
+    /** Die letzten 24 Hex-Zeichen, wie sie jemand aus der Webapp abschreibt. */
+    private fun abgeschrieben() = fingerabdruckLesbar(frage.offen.value!!.fingerabdruck).takeLast(35)
 
     @Test
     fun `nach der Bestaetigung gilt der Pin auch ohne bekannte CA`() {
@@ -236,11 +251,13 @@ class ZertifikatPinTest {
 
         assertFalse("Ein Tipp genügt nicht", frage.bestaetige(pins))
         assertFalse("Vier Zeichen genügen nicht", frage.bestaetige(pins, hex.takeLast(5)))
+        assertFalse("16 Zeichen (64 Bit) genügen nicht", frage.bestaetige(pins, hex.takeLast(23)))
+        assertFalse("23 Zeichen genügen nicht", frage.bestaetige(pins, hex.replace(":", "").takeLast(23)))
         assertFalse("Falsche Zeichen", frage.bestaetige(pins, "00:11:22:33:44:55:66:77"))
         assertEquals("Der alte Pin bleibt", spkiFingerabdruck(zert(FREMD)), pins.pin(eigener()))
         assertEquals("Die Frage bleibt offen", f, frage.offen.value)
 
-        assertTrue(frage.bestaetige(pins, hex.takeLast(23).lowercase()))
+        assertTrue(frage.bestaetige(pins, hex.takeLast(35).lowercase()))
         assertNull(frage.offen.value)
         assertTrue(hole(system(ROOT)))
     }
@@ -304,7 +321,72 @@ class ZertifikatPinTest {
         assertNull(frage.offen.value)
 
         assertFalse("Auch mit Nutzer-CA geht ohne Pin nichts hinaus", hole(mitNutzerCa, fremd = system(FREMD)))
-        assertEquals("Für den eigenen Server zählt die Nutzer-CA", ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
+        assertEquals("Für den eigenen Server zählt die Nutzer-CA", ZertifikatUngeklaert.Art.NUTZER_CA, frage.offen.value?.art)
+    }
+
+    /** Nutzer-CA ist ROOT: Wer sie einschleust, soll nicht mit einem Tipp durchkommen. */
+    @Test
+    fun `ueber eine Nutzer-CA genuegt beim ersten Kontakt kein Tipp`() {
+        starte()
+        val mitNutzerCa = WahlVertrauen(system = system(FREMD), mitNutzer = lazy { system(ROOT) }, nutzerErlaubt = { true })
+        assertFalse(hole(mitNutzerCa, fremd = system(FREMD)))
+        assertEquals(spkiFingerabdruck(zert(ROOT)), frage.offen.value!!.fingerabdruck)
+        assertFalse("Ein Tipp genügt nicht", frage.bestaetige(pins))
+        assertNull(pins.pin(eigener()))
+        assertTrue(frage.bestaetige(pins, abgeschrieben()))
+        assertTrue("Danach gilt die gepinnte Nutzer-CA", hole(mitNutzerCa, fremd = system(FREMD)))
+    }
+
+    /**
+     * Die CA wechselt ihre Wurzel (Let's Encrypt ISRG X1 → X2): Der bestätigte Host
+     * bleibt gültig, solange das System die neue Kette annimmt. Ein Pin auf eine
+     * eigene CA deckt dagegen keine fremde öffentliche Kette.
+     */
+    @Test
+    fun `ein oeffentlicher Pin uebersteht den Wechsel der Wurzel, ein eigener nicht`() {
+        starte(OEFF_BLATT_A_KEY, listOf(OEFF_BLATT_A, OEFF_ZW_A))
+        assertFalse(hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
+        assertEquals(ZertifikatUngeklaert.Art.ERSTKONTAKT, frage.offen.value?.art)
+        assertTrue(frage.bestaetige(pins))
+
+        val pin = pins.pin(eigener())!!
+        server.shutdown()
+        server = MockWebServer()
+        starte(OEFF2_BLATT_KEY, listOf(OEFF2_BLATT))
+        pins.merkePin(eigener(), pin)
+        assertTrue("Neue Wurzel, öffentlich gültig", hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
+        assertNull("Keine Warnung beim Wurzelwechsel", frage.offen.value)
+        assertFalse("Ohne System-Gültigkeit kein Durchlass", hole(system(OEFF_WURZEL)))
+        assertEquals(ZertifikatUngeklaert.Art.GEAENDERT, frage.offen.value?.art)
+
+        frage.verwerfen()
+        pins.merkePin(eigener(), spkiFingerabdruck(zert(ERNEUERT_WURZEL)))
+        assertFalse("Eine eigene CA bleibt an ihren Schlüssel gebunden", hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
+        assertEquals(ZertifikatUngeklaert.Art.GEAENDERT, frage.offen.value?.art)
+        assertEquals("Nur die eine gültige Anfrage kam an", 1, server.requestCount)
+    }
+
+    /** Die Fassung ohne Socket kennt den Host nicht; ein Pin des eigenen Servers gilt trotzdem. */
+    @Test
+    fun `ohne Host faellt ein gepinnter Server nicht auf die System-CAs zurueck`() {
+        val tm = PinVertrauen(system(FREMD), pins, eigenerServer = { "nas:8443" }, frage = frage, fremdeHosts = system(FREMD))
+        tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA")
+        pins.merkePin("nas:8443", spkiFingerabdruck(zert(INTER)))
+        val abgelehnt = runCatching { tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA") }.isFailure
+        assertTrue("Eine System-CA ersetzt den Pin nicht", abgelehnt)
+        tm.checkServerTrusted(arrayOf(zert(LEAF), zert(INTER)), "ECDHE_ECDSA")
+    }
+
+    /** Der Dialog zeigt vor dem Abtippen nur den Anfang; das Abzutippende steht nicht da. */
+    @Test
+    fun `der gezeigte Anfang verraet nichts vom abzutippenden Teil`() {
+        val fp = spkiFingerabdruck(zert(ERNEUERT_WURZEL))
+        val anfang = fingerabdruckAnfang(fp)
+        assertTrue(anfang, anfang.startsWith("8E:04:B3:9F"))
+        val gezeigt = anfang.uppercase().filter { it in "0123456789ABCDEF" }
+        assertEquals(8, gezeigt.length)
+        assertFalse(ERNEUERT_WURZEL_HEX.replace(":", "").takeLast(24).contains(gezeigt))
+        assertFalse("Der Anfang allein bestätigt nichts", bestaetigtFingerabdruck(anfang, fp))
     }
 
     @Test
@@ -360,6 +442,10 @@ class ZertifikatPinTest {
         const val OEFF_BLATT_A_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgHVYb+/H8EyhvizzUS3y9TAt7FlkQtQTQ67/8+ih/YaihRANCAASOpGFJ/GekpbxJWldr609pG3pWXCrYKa2WsGaazUsOLCHRbmeivSOaYgB/4MrYGsqkCDN21M+zKXGZOMgamd7O"
         const val OEFF_BLATT_B = "MIIBxjCCAWygAwIBAgIUMZo/EI4H/XOHp4BTSLv9bt1IR58wCgYIKoZIzj0EAwIwGzEZMBcGA1UEAwwQWndpc2NoZW5zdGVsbGUgYjAgFw0yNjExMDExNTU3MDdaGA8yMTI2MTAwODE1NTcwN1owFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2E8WBySJmiIWknMzbepPni3bP68iZpP3c2WwBCqoEMZb8ppgaIFnfP4x8FfQwxmbblOfnAK9qIpIMMOKcqJLhKOBkjCBjzAMBgNVHRMBAf8EAjAAMA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcDATAaBgNVHREEEzARgglsb2NhbGhvc3SHBH8AAAEwHQYDVR0OBBYEFG5BwbuRc8QPiyQocRkuaHnm7J03MB8GA1UdIwQYMBaAFD+g/sw4Ni1an0bLOzoy0M8GYkgwMAoGCCqGSM49BAMCA0gAMEUCIQCvJtbBc2pqUGlh8evmznKK1G/O8iW531jJlET2gYW5KwIgDINFCTJgae8SPreE2VipqiyzSncwBRglIT3Sw1EcC6M="
         const val OEFF_BLATT_B_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg7LsVCGLBPHR5qR7tBe+zQWeT/RemLJNrPJ7SFpGNHwyhRANCAATYTxYHJImaIhaSczNt6k+eLds/ryJmk/dzZbAEKqgQxlvymmBogWd8/jHwV9DDGZtuU5+cAr2oikgww4pyokuE"
+        /** Eine zweite öffentliche Wurzel mit Blatt, für den Wurzelwechsel (openssl, 02.11.2026). */
+        const val OEFF2_WURZEL = "MIIBqDCCAU2gAwIBAgIUeQfiSvXaOs9VQ7JOTGuYq9+9io8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAgMR4wHAYDVQQDDBVPZWZmZW50bGljaGUgV3VyemVsIDIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARXPBIUHUcx0gndNtCFWOsc9VK1UCPYVdTt/elmdGtOr+QqU+2kj82x5bM5PwwxyeTMI0l/0m7+IhRHasjTD3wAo2MwYTAdBgNVHQ4EFgQUNiOkY9V+q2qKkLNO3YzYDvJSMtgwHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSQAwRgIhAOtFyStygsxuZ82WUpQfgs4yEc9yd5SHXzEeM5gxXWiHAiEAxq1QdZDQEZLbpSZkktaMa/gUng+ruXUCb7bbSSw+VW4="
+        const val OEFF2_BLATT = "MIIByjCCAXGgAwIBAgIUBZldxIW8pDuyAwDmNEUH+CvVA/8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkco4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQU0+JHa2fUKgS1c8Qpf2MPvkf10x0wHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwCgYIKoZIzj0EAwIDRwAwRAIgaI3NXaJqaJPF9F3F5MA/uHYXmLEMDGlz2rerz62IXIACIGGccRCorHmF04MB3oFogbyx7s3cjhOWNIM2PivVGTsj"
+        const val OEFF2_BLATT_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkJUGxWpt9r1Mxq/Kodx7mWejKYEWCr0nz2zAkQCUrm2hRANCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkc"
         const val FREMD ="MIIBmDCCAT6gAwIBAgIUBpLM0+8DZR9WqDw7DqtrEKH9KDswCgYIKoZIzj0EAwIwFDESMBAGA1UEAwwJbG9jYWxob3N0MCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATSAfTFPtfDF3dy0bcjX8dCElM9oKs2NYwoZEyfWsb5EIpbYtqP7F6JCLbrsb7GVytdEqsatNJDifymfYNnIJPjo2wwajAdBgNVHQ4EFgQU5NOS8aVLD/bPQjWQ5foWE5AcTIQwHwYDVR0jBBgwFoAU5NOS8aVLD/bPQjWQ5foWE5AcTIQwGgYDVR0RBBMwEYIJbG9jYWxob3N0hwR/AAABMAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwIDSAAwRQIgD2hCTe+02K17PzDfV7EgrTEgIV1C99ShlLSwHZsc1IICIQCknNnfSKSNOc+Kilyyna8ag4H9A8XH9kfcAia1XVWbDg=="
     }
 }

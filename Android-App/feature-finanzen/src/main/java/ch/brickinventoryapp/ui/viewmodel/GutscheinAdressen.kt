@@ -13,9 +13,15 @@ fun gutscheinExportAdresse(serverUrl: String): String =
 
 /**
  * Zeigt der Betrachter Nummer und PIN eines Gutscheins? Dann gilt derselbe
- * Sichtschutz wie auf der Gutscheinseite (ui/components/Sichtschutz.kt).
+ * Sichtschutz wie auf der Gutscheinseite (ui/components/Sichtschutz.kt). Am
+ * Pfad, nicht als Teilstring: Express nimmt `/API/v1/Vouchers` und `%76ouchers`
+ * genauso; was sich nicht lesen lässt, gilt als vertraulich.
  */
-fun zeigtGutscheine(pdfUrl: String): Boolean = "/api/v1/vouchers/" in pdfUrl
+fun zeigtGutscheine(pdfUrl: String): Boolean {
+    val pfad = runCatching { java.net.URI(pdfUrl.trim()).path }.getOrNull() ?: return true
+    val teile = pfad.split('/').filter { it.isNotEmpty() }.map { it.lowercase() }
+    return teile.windowed(3).any { it == listOf("api", "v1", "vouchers") }
+}
 
 /**
  * Bietet der Betrachter „Herunterladen“ an? Nicht für Gutscheine: Der Knopf legt

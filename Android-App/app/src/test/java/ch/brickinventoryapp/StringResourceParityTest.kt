@@ -285,6 +285,22 @@ class StringResourceParityTest {
         assert(alt.isEmpty()) { "Noch „Monitoring“ in: ${alt.keys}" }
     }
 
+    /**
+     * Schweizer Schreibung und ein Wort je Sache: kein „ß“, keine Abkürzung „ggü.“, die
+     * App-Version heisst „Version“ (nicht „Fassung“), und die Überschrift der Anmeldung
+     * ist nicht derselbe Text wie ihr Knopf.
+     * Gegenprobe (02.11.2026, kotlinc): scanner_close wieder „Schließen“ → rot.
+     */
+    @Test
+    fun `deutsche Texte in Schweizer Schreibung und eindeutig`() {
+        val de = texte("values-de/strings.xml")
+        val falsch = de.filterValues { "ß" in it || "ggü." in it || Regex("""\bFassung\b""").containsMatchIn(it) }
+        assert(falsch.isEmpty()) { "Nicht in Schweizer Schreibung oder mit altem Begriff: ${falsch.keys}" }
+        for (t in listOf(de, texte("values/strings.xml"))) {
+            assert(t["login_title"] != t["login_button"]) { "Überschrift und Knopf der Anmeldung gleich: ${t["login_title"]}" }
+        }
+    }
+
     @Test
     fun `kein zweiter Name fuer einen common-Text`() {
         val en = texte("values/strings.xml")

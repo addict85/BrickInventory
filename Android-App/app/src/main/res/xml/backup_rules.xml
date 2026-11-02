@@ -5,9 +5,9 @@
     <exclude domain="file" path="datastore" />
     <exclude domain="database" path="bestand.db" />
     <exclude domain="sharedpref" path="widget.xml" />
+    <exclude domain="sharedpref" path="design_spiegel.xml" />
     <exclude domain="file" path="vorschau" />
     <exclude domain="file" path="pdf" />
-    <exclude domain="file" path="export" />
     <exclude domain="file" path="update" />
     <exclude domain="external" path="pdf" />
 </full-backup-content>

@@ -251,7 +251,9 @@ class GutscheinViewModel @Inject constructor(
                                     fehler++
                                     erledigt = true
                                     _snackbar.value = d.error ?: texte.text(R.string.err_generic)
-                                    if (d.grund == "botschutz") return@launch
+                                    // Bot-Schutz gilt für alle, die Kontogrenze für dieses Konto:
+                                    // Weitere Karten liefen in dieselbe Absage.
+                                    if (d.grund == "botschutz" || d.grund == "konto") return@launch
                                 }
                             }
                             is Result.Error -> {

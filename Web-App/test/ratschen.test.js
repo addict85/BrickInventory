@@ -173,7 +173,8 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // 30.10.2026: 92 — acht Dateien prüfen jetzt Verhalten (Erfassungen, Summen,
   // Mengen-Echo, Preisverlauf, Figurenschätzung, LISTEN/NOTIFY, CSV, Katalogbilder).
   // 30.10.2026: 90 — der Start des Job-Prozesses wird ausgeführt statt gelesen.
-  const SCHRANKE = 88;
+  // 02.11.2026: 87 — workflow-ort führt das Skript des Sicherheitslaufs aus.
+  const SCHRANKE = 87;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -276,9 +277,9 @@ test('der Kommentaranteil im Server sinkt, nie steigt', () => {
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gemessen 35,9 % in test/*.js und test/helpers/; Schranke 35,9.
+  // den Commit. Gemessen 34,4 % in test/*.js und test/helpers/; Schranke 34,4.
   // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
-  const SCHRANKE = 35.9;
+  const SCHRANKE = 34.4;
   const dateien = [
     ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
     ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),

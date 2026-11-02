@@ -16,8 +16,8 @@ export const FEHLER = {
   token_rotation_noetig:       { de: 'Dieser Zugang muss zuerst getauscht werden (POST /api/v1/auth/token-rotieren).',
                                  en: 'This access token must be rotated first (POST /api/v1/auth/token-rotieren).' },
   passkey_ungueltig:           { de: 'Der Passkey wurde nicht angenommen.', en: 'The passkey was not accepted.' },
-  passkey_ohne_domain:         { de: 'Passkeys brauchen eine Adresse mit Domänennamen in APP_BASE_URL (keine IP-Adresse).',
-                                 en: 'Passkeys need an address with a domain name in APP_BASE_URL (not an IP address).' },
+  passkey_ohne_domain:         { de: 'Passkeys sind auf diesem Server nicht eingerichtet. Bitte mit Passwort anmelden.',
+                                 en: 'Passkeys are not set up on this server. Please sign in with your password.' },
   unbegrenzt_nur_https:        { de: '„Unbegrenzt“ gibt es nur, wenn der Server über HTTPS erreichbar ist (APP_BASE_URL mit https://).',
                                  en: '“Unlimited” is only available when the server is reached via HTTPS (APP_BASE_URL with https://).' },
   token_nicht_ausgestellt:     { de: 'Anmeldung fehlgeschlagen: Token konnte nicht ausgestellt werden.',
@@ -76,8 +76,8 @@ export const FEHLER = {
   passwort_wechsel_noetig:     { de: 'Bitte zuerst das Startpasswort ändern.', en: 'Please change the initial password first.' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {
-    de: 'Passwort-Zurücksetzen per E-Mail ist auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt). Bitte den Verwalter fragen.',
-    en: 'Password reset by email is not set up on this server (APP_BASE_URL is missing). Please ask the administrator.' },
+    de: 'Passwort-Zurücksetzen per E-Mail ist auf diesem Server nicht eingerichtet. Bitte wende dich an die Person, die ihn betreibt.',
+    en: 'Password reset by email is not set up on this server. Please contact the person who runs it.' },
   token_passwort_erforderlich: { de: 'Token und Passwort erforderlich.',
                                  en: 'Token and password are required.' },
   eigenes_konto_passwort:      { de: 'Für das eigene Konto bitte „Passwort ändern" benutzen.',
@@ -87,6 +87,12 @@ export const FEHLER = {
   benutzer_nicht_gefunden:     { de: 'Benutzer nicht gefunden', en: 'User not found' },
   eigenes_konto_deaktivieren:  { de: 'Das eigene Konto lässt sich nicht deaktivieren.',
                                  en: 'You cannot deactivate your own account.' },
+  bestaetigung_nicht_eingerichtet: { de: 'Bestätigungs-Mails sind auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt). Bitte den Verwalter fragen.',
+                                 en: 'Confirmation e-mails are not set up on this server (APP_BASE_URL is missing). Please ask the administrator.' },
+  bestaetigung_gesendet:       { de: 'Falls zu dieser Adresse ein unbestätigtes Konto gehört, ist ein neuer Link unterwegs.',
+                                 en: 'If an unconfirmed account belongs to this address, a new link is on its way.' },
+  eigener_zweiter_faktor:      { de: 'Den eigenen zweiten Faktor unter Sicherheit mit Code abschalten.',
+                                 en: 'Turn off your own second factor under Security, with a code.' },
   benutzer_nicht_gefunden_oder_eigenes: { de: 'Benutzer nicht gefunden oder eigener Account',
                                  en: 'User not found, or it is your own account' },
 
@@ -205,6 +211,8 @@ export const FEHLER = {
                                  en: 'Invalid PIN (digits only, 3–10 characters)' },
   betrag_ungueltig:            { de: 'Ungültiger Betrag', en: 'Invalid amount' },
   waehrung_ungueltig:          { de: 'Ungültige Währung', en: 'Invalid currency' },
+  waehrung_geteiltes_unterkonto: { de: 'Ein Unterkonto gehört auch zu einem anderen Haushalt mit anderer Währung. Erst die Verknüpfung lösen, dann die Währung ändern.',
+                                 en: 'A sub-account also belongs to another household with a different currency. Unlink it first, then change the currency.' },
   waehrung_nur_hauptkonto:     { de: 'Die Währung gilt für den ganzen Haushalt; ändern kann sie nur das Hauptkonto.',
                                  en: 'The currency applies to the whole household; only the main account can change it.' },
   gutschein_existiert:         { de: 'Diesen Gutschein gibt es bereits.',
@@ -263,9 +271,9 @@ export const FEHLER = {
   // Aus dem Land wird eine Adresse gebaut; was nicht auf der Liste steht, wird
   // nicht gefragt.
   guthaben_land_ungueltig:     { de: 'Das eingestellte Ausgabeland ist unbekannt. '
-                                   + 'Bitte in den Einstellungen bei den Gutscheinen wählen.',
+                                   + 'Bitte unter Menü → Gutscheine wählen.',
                                  en: 'The configured card country is unknown. '
-                                   + 'Please choose one in the voucher settings.' },
+                                   + 'Please choose one under Menu → Vouchers.' },
 
   // ── BrickLink-Wanted-Liste ───────────────────────────────────────────────
   // „keine Wanted-Liste" ist eine andere Auskunft als „0 Posten". Unlesbare
@@ -306,7 +314,7 @@ export const FEHLER = {
   unbekannte_aufgabe:          { de: 'Unbekannte Aufgabe: {aufgabe}', en: 'Unknown task: {aufgabe}' },
   smtp_nicht_konfiguriert:     { de: 'SMTP nicht konfiguriert (Host oder Benutzername fehlt)',
                                  en: 'SMTP is not configured (host or username missing)' },
-  smtp_zertifikat:             { de: 'Zertifikat des Mailservers nicht bestätigt ({grund}). In Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.',
+  smtp_zertifikat:             { de: 'Zertifikat des Mailservers nicht bestätigt ({grund}). Unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.',
                                  en: 'Mail server certificate not confirmed ({grund}). Enter the certificate (PEM) or its SHA-256 fingerprint under Settings → Email.' },
   smtp_fehler:                 { de: 'SMTP-Verbindung fehlgeschlagen: {grund}', en: 'SMTP connection failed: {grund}' },
   keine_ziel_email:            { de: 'Keine Ziel-E-Mail-Adresse angegeben. Bitte eine E-Mail-Adresse eingeben.',

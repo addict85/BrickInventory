@@ -89,7 +89,11 @@ export async function openPdfViewer(url, title) {
       disableStream: false,
       disableRange: false,      // Byte-Range-Requests nutzen
       rangeChunkSize: 262144,   // 256 KB
-      withCredentials: true     // Session-Cookie (same-origin) mitsenden
+      withCredentials: true,    // Session-Cookie (same-origin) mitsenden
+      // Ein PDF kommt auch von fremden Quellen: kein eval für Schriften (ab
+      // PDF.js 5 ohnehin entfallen, die CSP verbietet es) und kein Skript im PDF.
+      isEvalSupported: false,
+      enableScripting: false
     });
     _pdfDoc = await task.promise;
     if (loading) loading.style.display = 'none';

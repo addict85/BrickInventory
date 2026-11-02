@@ -19,7 +19,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -368,9 +367,9 @@ internal fun GeraeteCard(
                             }
                             Text(
                                 stringResource(R.string.tokens_row_hint,
-                                    fmtDatum(g.angelegt) ?: "—",
-                                    fmtDatum(g.zuletztBenutzt) ?: stringResource(R.string.tokens_unused),
-                                    g.laeuftAb?.let { fmtDatum(it) ?: "—" } ?: stringResource(R.string.tokens_never)),
+                                    ch.brickinventoryapp.util.fmtTag(g.angelegt) ?: "—",
+                                    ch.brickinventoryapp.util.fmtTag(g.zuletztBenutzt) ?: stringResource(R.string.tokens_unused),
+                                    g.laeuftAb?.let { ch.brickinventoryapp.util.fmtTag(it) ?: "—" } ?: stringResource(R.string.tokens_never)),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }

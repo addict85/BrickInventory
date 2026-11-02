@@ -57,7 +57,6 @@ import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.runtime.mutableIntStateOf
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.Petrol
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -216,76 +215,29 @@ fun LazyListScope.setDetailInstructionsSection(
         }
 }
 
-/** Marktpreis, Kaufpreis, Gewinn/Verlust und der Preisverlauf. */
 /**
- * `fmtPrice`, `fmtDate` und `serverUrl` kommen als Parameter aus
- * SetDetailScreen(), damit die Währung an einer Stelle aufgelöst wird.
+ * Marktpreis je Zustand und Verlauf. Die grosse Preiszeile steht nicht mehr hier: Markt-,
+ * Kaufpreis und G&V stehen in jedem Design in den Wert-Kacheln oben, eine Zeile hier
+ * wiederholte sie mit einer Prozentangabe aus dem Gesamtvergleich über den Zeilen je Zustand.
  */
-fun LazyListScope.setDetailPriceSection(set: SetAnsicht, detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, pnlPct: Double?, currency: String, isBrick: Boolean, fmtPrice: (Double?) -> String) {
-    // ── Price section ──────────────────────────────────────────────────
+fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: String) {
     if (price != null && !price.noPrice || detailState.setPriceLoading) {
         item {
             SectionCard(title = stringResource(R.string.detail_section_market)) {
                 if (detailState.setPriceLoading && price == null) {
                     PreisLaedtZeile()
                 } else if (price != null && !price.noPrice) {
-                    // Die grosse Preiszeile nur ohne die Wert-Kacheln: Im Stein-Design stehen
-                    // Markt- und Kaufpreis schon in den Kacheln oben, und ihre Prozentangabe
-                    // (Gesamtvergleich) stünde über den Zeilen je Zustand. Im klassischen Design
-                    // gibt es die Kacheln nicht, dort bleibt sie.
-                    val zeigeGrossePreiszeile = !isBrick
-                    if (zeigeGrossePreiszeile) {
-                        Text(
-                            fmtPrice(price.avgPrice ?: price.qtyAvgPrice),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        val pct = pnlPct
-                        if (pct != null) {
-                            Spacer(Modifier.height(Abstaende.winzig))
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                                PnlBadge(pct)
-                                // Mengengewichtet über die Erfassungen — dieselbe Grösse, gegen die
-                                // die Prozentangabe daneben rechnet.
-                                val shownPurchase = set.anzeigeKaufpreis
-                                if (shownPurchase != null) {
-                                    Text(
-                                        stringResource(R.string.finance_purchase_short, fmtPrice(shownPurchase)),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // ── Marktpreis je Zustand ────────────────────────
-                    // Wer ein Exemplar neu und eines gebraucht besitzt,
-                    // braucht beide Zahlen — der Server liefert je
-                    // Zustand eine Zeile, aber nur dort, wo auch ein
-                    // Kaufpreis erfasst ist.
+                    // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen
+                    // Zustand stünden Preis und G&V der Wert-Kacheln oben gleich noch einmal da.
                     history?.byCondition?.let { byCond ->
-                        if (byCond.present().isNotEmpty()) {
-                            // Trennlinie nur, wenn oben etwas steht,
-                            // von dem zu trennen wäre.
-                            if (zeigeGrossePreiszeile) {
-                                Spacer(Modifier.height(Abstaende.klein))
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                Spacer(Modifier.height(Abstaende.winzig))
-                            }
-                            MarketPriceByCondition(byCond, currency)
-                        }
+                        if (byCond.present().size > 1) MarketPriceByCondition(byCond, currency)
                     }
-
-                    // ── Verlauf: eine Linie je Zustand ──
-                    //
-                    // Preis und Verlauf sind zwei Abrufe; der Hinweis verhindert, dass das Diagramm
-                    // später kommentarlos in die Karte springt.
+                    // Preis und Verlauf sind zwei Abrufe; der Hinweis verhindert, dass das
+                    // Diagramm später kommentarlos in die Karte springt.
                     val chart = history?.chart
                     if (chart != null && chart.values.isNotEmpty()) {
                         Spacer(Modifier.height(Abstaende.klein))
-                        PriceChart(chart)
+                        PriceChart(chart, currency)
                     } else if (detailState.priceHistoryLoading) {
                         Spacer(Modifier.height(Abstaende.klein))
                         PreisLaedtZeile()
@@ -294,7 +246,6 @@ fun LazyListScope.setDetailPriceSection(set: SetAnsicht, detailState: SetDetailU
             }
         }
     }
-
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
@@ -313,12 +264,28 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
             LaunchedEffect(setNumber, set.owners) {
                 vm.loadLagerortVorrat(set.owners.map { it.id })
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
+            // Bei grosser Schrift steht das Feld unter der Bezeichnung in voller Breite:
+            // 180 dp neben „Lagerort“ reichten bei 200 % nicht einmal für den Platzhalter.
+            val lagerBezeichnung: @Composable () -> Unit = {
                 Text(stringResource(R.string.detail_storage),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium)
+            }
+            if (ch.brickinventoryapp.ui.components.grosseSchrift()) {
+                Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+                       verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                    lagerBezeichnung()
+                    LagerortFeld(
+                        wert = set.storage ?: "",
+                        vorrat = lagerZustand.vorrat.map { it.name },
+                        onWert = { vm.setzeSetLagerort(setNumber, it) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                lagerBezeichnung()
                 LagerortFeld(
                     wert = set.storage ?: "",
                     vorrat = lagerZustand.vorrat.map { it.name },
@@ -352,7 +319,8 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                         onClick = { if (qty > 1) { qty--; vm.aendereMengeUm(set.setNumber, -1) } },
                         shape = Formen.etikett
                     ) {
-                        Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp))
+                        Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
+                            Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     }
                     Text(
                         "$qty",
@@ -365,7 +333,8 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                         onClick = { qty++; vm.aendereMengeUm(set.setNumber, 1) },
                         shape = Formen.etikett
                     ) {
-                        Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp))
+                        Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
+                            Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     }
                 }
             }
@@ -385,36 +354,17 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
 
 }
 
-/** Die prominenten Wert-Kacheln des Stein-Designs. */
-fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, isBrick: Boolean, fmtPrice: (Double?) -> String) {
-    // ── Stein-Design: prominente Wert-Kacheln (wie im Mockup) ──────────
-    if (isBrick) {
-        item {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                BrickStatTile(
-                    label = stringResource(R.string.detail_section_market),
-                    // avg_price zuerst: Marktpreis ist seit der Preisumstellung der
-                    // einfache Schnitt, nicht der mengengewichtete (der liegt darunter).
-                    value = fmtPrice(price?.avgPrice ?: price?.qtyAvgPrice),
-                    container = Petrol,
-                    onContainer = Color.White,
-                    modifier = Modifier.weight(1f)
-                )
-                BrickStatTile(
-                    label = stringResource(R.string.detail_purchase_price),
-                    // Mengengewichtet, wie in der Webapp.
-                    value = fmtPrice(set.anzeigeKaufpreis),
-                    container = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.schiefer,
-                    onContainer = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.aufSchiefer,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
+/** Wert-Kacheln über den Angaben — in jedem Design (WertKacheln, core-ui). */
+fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, pnlPct: Double?, fmtPrice: (Double?) -> String) {
+    item(key = "wertkacheln") {
+        WertKacheln(
+            // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
+            markt = fmtPrice(price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }),
+            kauf = fmtPrice(set.anzeigeKaufpreis),
+            pnl = pnlPct,
+            modifier = Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
+        )
     }
-
 }
 
 /** Kennzahl-Chips: Jahr, Teile, Minifiguren, Thema. */
@@ -547,19 +497,12 @@ fun LazyListScope.setDetailAlarmSection(
             // hier gespeichert, legte schon das Umschalten einen Alarm im
             // neuen Zustand an. Dass `alarm` oben am Zustand haengt, erledigt
             // das Laden von selbst: Die Liste traegt beide.
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                AuswahlChip(
-                    selected = zustand == "N",
-                    onClick = { zustand = "N" },
-                    label = { Text(stringResource(R.string.condition_new), style = MaterialTheme.typography.labelMedium) },
-                )
-                AuswahlChip(
-                    selected = zustand == "U",
-                    onClick = { zustand = "U" },
-                    label = { Text(stringResource(R.string.condition_used), style = MaterialTheme.typography.labelMedium) },
-                )
-            }
+            ch.brickinventoryapp.ui.components.SegmentWahl(
+                optionen = listOf("N" to stringResource(R.string.condition_new), "U" to stringResource(R.string.condition_used)),
+                gewaehlt = zustand,
+                onWahl = { zustand = it },
+            )
+            Spacer(Modifier.height(Abstaende.klein))
             // Schluessel ist der Alarm selbst: Kommt einer vom Server (geladen
             // oder gerade gespeichert), soll das Feld ihn zeigen statt den
             // alten Text zu behalten.
@@ -570,23 +513,16 @@ fun LazyListScope.setDetailAlarmSection(
                 mutableStateOf(alarm?.let { if (it.schwelle > 0) it.schwelle.toString() else "" } ?: "")
             }
 
-            // Zwei Chips statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
+            // Segmente statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
             // Aufklappen lesbar. Die Richtung geht nur mit, wenn eine Schwelle dasteht — sonst
             // liefe der Aufruf auf ein Löschen hinaus.
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                AuswahlChip(
-                    selected = richtung == "unter",
-                    onClick = { richtung = "unter"
-                        if (schwelle.isNotBlank()) onSetze(setNumber, "unter", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_chip_below), style = MaterialTheme.typography.labelMedium) },
-                )
-                AuswahlChip(
-                    selected = richtung == "ueber",
-                    onClick = { richtung = "ueber"
-                        if (schwelle.isNotBlank()) onSetze(setNumber, "ueber", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_chip_above), style = MaterialTheme.typography.labelMedium) },
-                )
-            }
+            ch.brickinventoryapp.ui.components.SegmentWahl(
+                optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
+                                  "ueber" to stringResource(R.string.detail_alert_chip_above)),
+                gewaehlt = richtung,
+                onWahl = { neu -> richtung = neu
+                    if (schwelle.isNotBlank()) onSetze(setNumber, neu, schwelle, zustand) },
+            )
             // Unter den Chips in voller Breite: neben ihnen blieb bei grosser Schrift kein Platz.
             // Gespeichert wird nach der Ruhezeit im ViewModel (ein Aufruf, nicht je Taste); die
             // Zeile darunter bestätigt, was der Server angenommen hat.

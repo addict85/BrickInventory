@@ -15,7 +15,7 @@ import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
 import { passwortMangel } from '../src/infra/passwortRegel';
-import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail } from '../src/infra/mailer';
+import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail, mailEingerichtet } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
 import { setUserSetting } from '../src/konto/settings';
 import { registrierungOffen } from '../src/konto/settings';
@@ -34,6 +34,8 @@ import type { Antwort } from '../src/infra/vertrag';
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
 const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
+// Feste Obergrenze ab Anmeldung; der Tausch erbt sie (legeNachfolgerAn), die App meldet dann ab.
+const APP_HOECHSTDAUER_TAGE = 180;
 
 /** Das Label steht in der Geräteliste; ohne Grenze lägen dort beliebig lange Zeilen. */
 const LABEL_MAX = 100;
@@ -70,7 +72,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
   let token: string | null = null;
   // Die Webapp nur mit httpOnly-Cookie: Ein Token wäre per Skript auslesbar.
   if (mitToken) try {
-    token = await createToken(uid, tokenLabel(label, 'webapp-session'), dauerhaft, null,
+    token = await createToken(uid, tokenLabel(label, 'webapp-session'), dauerhaft, dauerhaft ? APP_HOECHSTDAUER_TAGE : null,
                               { scope: tokenScope(scope), ip: req.ip });
   } catch (e) {
     console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
@@ -321,11 +323,10 @@ router.put('/users/:id/aktiv', requireAdmin, async (req, res: Antwort<'PUT /api/
 router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
   const { password } = req.body || {};
   const targetId = parseInt(pfadParam(req, 'id'));
-
-  const mangel = passwortMangel(password);
-  if (mangel) return sendeFehler(req, res, 400, mangel);
   if (!targetId || targetId === nutzerId(req))
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
+  const mangel = passwortMangel(password, (await K.kontoKurz(targetId))?.username);
+  if (mangel) return sendeFehler(req, res, 400, mangel);
 
   // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
   // eine offene Verwaltersitzung allein genügt dafür nicht.
@@ -363,7 +364,8 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
   if (!await bestaetigeMitFaktor(req, res, uid, String(current), req.body?.code)) return;
   // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
-  const mangel = passwortMangel(newPassword, req.session?.username);
+  // Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt.
+  const mangel = passwortMangel(newPassword, (await K.kontoKurz(uid))?.username);
   if (mangel) return sendeFehler(req, res, 400, mangel);
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
   await K.aendereEigenesPasswort(uid, newPassword, { passkeysWiderrufen: req.body?.passkeys_widerrufen === true });
@@ -438,6 +440,7 @@ router.post('/zweiter-faktor/codes', requireLogin, async (req, res: Antwort<'POS
 router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res: Antwort<'DELETE /api/v1/auth/users/:id/zweiter-faktor'>) => {
   const id = parseInt(pfadParam(req, 'id'));
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
   if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
   await zf.schalteAb(id);
   await protokolliere(angemeldeteNutzerId(req), id, 'zweiter_faktor_entfernt');
@@ -503,8 +506,10 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
     user: { id: user.id, username: user.username }, token_info: await tokenAngaben(bearerToken) });
 });
 
+// Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann.
 router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
-  res.json({ enabled: await registrierungOffen() });
+  res.json({ enabled: await registrierungOffen(), passkey: !!P.vertrauenspartei(),
+             passwort_vergessen: !!basisUrl() && await mailEingerichtet() });
 });
 
 router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/register'>) => {
@@ -567,6 +572,28 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
 });
 
 const RUECKSETZ_GUELTIG_MIN = 60, RUECKSETZ_PAUSE_MIN = 15, RUECKSETZ_MINDESTDAUER_MS = 400;
+
+// Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
+router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/bestaetigung-erneut'>) => {
+  const { email } = req.body ?? {};
+  if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
+  if (!basisUrl()) {
+    hinweisOhneBasisUrl('bestaetigung-erneut', 'Bestätigungs-Mails werden nicht versendet.');
+    return sendeFehler(req, res, 503, 'bestaetigung_nicht_eingerichtet');
+  }
+  const beginn = Date.now();
+  const gedrosselt = await zielGedrosselt('bestaetigung-ziel', String(email), 3, 60 * 60 * 1000);
+  const token = crypto.randomBytes(32).toString('hex');
+  const konto = gedrosselt ? null : await K.erneuereEmailTokenWennFrei(String(email), hashToken(token), 24, RUECKSETZ_PAUSE_MIN);
+  if (konto) {
+    getSetting(konto.id, 'language', 'de')
+      .catch(() => 'de')
+      .then((lang: unknown) => sendVerificationMail(konto.email, token, getBaseUrl()!, String(lang ?? 'de')))
+      .catch(logAndContinue('bestaetigung-erneut:mailversand'));
+  }
+  await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));
+  res.json({ success: true, message: fehlerText('bestaetigung_gesendet', antwortSprache(req)) });
+});
 
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {
   const { email } = req.body;

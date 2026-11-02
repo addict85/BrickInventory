@@ -121,6 +121,14 @@ class AppViewModel @Inject constructor(
         _systemfarben.value = an
     }
 
+    /** Je Gerät: FLAG_SECURE für die ganze App (MainActivity), über den Zähler von Sichtschutz. */
+    private val _vorschauVerbergen = MutableStateFlow(prefs.vorschauVerbergen())
+    val vorschauVerbergen: StateFlow<Boolean> = _vorschauVerbergen.asStateFlow()
+    fun setVorschauVerbergen(an: Boolean) {
+        prefs.setzeVorschauVerbergen(an)
+        _vorschauVerbergen.value = an
+    }
+
     /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. Ohne bekannte CA oder geändert nur mit [eingabe]. */
     fun zertifikatVertrauen(eingabe: String? = null): Boolean {
         if (!zertifikatsFrage.bestaetige(prefs, eingabe)) return false
@@ -154,6 +162,11 @@ class AppViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .collect { (url, token) ->
                     sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank(), authToken = token) }
+                    if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
+                        _snackbar.value = texte.text(R.string.vm_anmeldung_zu_alt)
+                        logout()
+                        return@collect
+                    }
                     // Eine alte http-Adresse führt in die Einrichtung (startZiel); Abrufe
                     // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
                     if (token.isNotBlank() && url.isNotBlank() &&
@@ -237,6 +250,7 @@ class AppViewModel @Inject constructor(
             repo.clearCache()
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }
+                runCatching { ch.brickinventoryapp.util.raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null)) }
                 // Bilder des Kontos liegen auch hier: HTTP-Zwischenspeicher und Vorschau-Ablage.
                 runCatching { bildHttpClient.cache?.evictAll() }
                 runCatching { vorschau.leeren() }

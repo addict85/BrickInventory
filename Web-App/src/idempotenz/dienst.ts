@@ -1,9 +1,8 @@
 /** Geht die Antwort an den Offline-Ausgang der App verloren, wiederholt er mit
  * demselben Schlüssel und bekommt die gespeicherte Antwort — ohne zweite
  * Wirkung. Derselbe Schlüssel mit anderem Inhalt ist ein Fehler des Clients. */
-import crypto from 'crypto';
 import * as repo from './repository';
-import { verschluessele, entschluessele, istVerschluesselt, kontext, umschluesseln } from '../infra/geheimnis';
+import { verschluessele, entschluessele, istVerschluesselt, kontext, umschluesseln, suchwert } from '../infra/geheimnis';
 
 /** Die App wiederholt innerhalb von Stunden, nicht Tagen. */
 export const FRIST_STUNDEN = 24;
@@ -15,8 +14,22 @@ export const antwortKontext = (uid: number, schluessel: string) => kontext('idem
 
 export const SCHLUESSEL_MUSTER = /^[A-Za-z0-9._:-]{1,100}$/;
 
+/** Liegt 24 h in der Tabelle: ohne Passwörter und Codes, der Rest als HMAC, der sich
+ * ohne Datenschlüssel nicht durchprobieren lässt. `h1:` trennt ihn vom alten SHA-256. */
+const GEHEIM = /pass|secret|geheim|token|_key$|^key$|^current$|code$|^pin$|_pin$/i;
+const ABDRUCK = 'h1:';
+function ohneGeheimnisse(wert: unknown): unknown {
+  if (Array.isArray(wert)) return wert.map(ohneGeheimnisse);
+  if (wert === null || typeof wert !== 'object') return wert;
+  return Object.fromEntries(Object.entries(wert).map(([k, v]) => [k, GEHEIM.test(k) ? '*' : ohneGeheimnisse(v)]));
+}
+
 export function fingerabdruck(methode: string, pfad: string, rumpf: unknown): string {
-  return crypto.createHash('sha256').update(`${methode} ${pfad}\n${JSON.stringify(rumpf ?? null)}`).digest('hex');
+  return ABDRUCK + suchwert('idempotenz', `${methode} ${pfad}\n${JSON.stringify(ohneGeheimnisse(rumpf ?? null))}`);
+}
+
+export function alteAbdrueckeLoeschen(): Promise<number> {
+  return repo.loescheAndereAbdruecke(ABDRUCK);
 }
 
 export type Ausgang =

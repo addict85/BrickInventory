@@ -1,0 +1,18 @@
+Gegenprobe: Kaufpreis auch bei grosser Schrift neben seiner Bezeichnung
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Kaufpreis bei 200 Prozent
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/ManualItemComposables.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/ManualItemComposables.kt
+index 82c2aa9..8f702b4 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/ManualItemComposables.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/ManualItemComposables.kt
+@@ -57,7 +57,7 @@ fun AcquisitionSummarySection(
+ ) {
+     // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
+     // „CHF 700.00“ so wenig Breite, dass der Betrag Ziffer für Ziffer umbrach.
+-    val untereinander = ch.brickinventoryapp.ui.components.grosseSchrift()
++    val untereinander = false
+     val ausrichtung = if (untereinander) Alignment.Start else Alignment.End
+     val kaeufe: @Composable () -> Unit = {
+         Column(horizontalAlignment = ausrichtung) {

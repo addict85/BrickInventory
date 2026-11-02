@@ -13,8 +13,8 @@
  * ── Es geht NICHTS nach draussen ────────────────────────────────────────────
  *
  * Die Route kann keinen Abruf injiziert bekommen — sie ruft die Schranke, und
- * die den Client, und der nimmt `globalThis.fetch`. Genau das wird hier
- * ersetzt: Jeder Aufruf wird protokolliert, und die Zusicherungen messen
+ * die den Client. Dessen Abruf wird hier ersetzt (`_ersetzeAbruf`; den echten
+ * Weg prüft gutschein-guthaben-abruf): Jeder Aufruf wird protokolliert, und die Zusicherungen messen
  * daran, WIE OFT hinausgerufen wurde. Ohne diesen Ersatz ginge Marcos echte
  * Kartennummer an lego.com.
  *
@@ -77,18 +77,14 @@ function guthaben(cent, waehrung = 'CHF', text = null) {
   } } } } });
 }
 
-const echterFetch = globalThis.fetch;
-globalThis.fetch = async (url, init) => {
+G._ersetzeAbruf(async (url) => {
   const s = String(url);
-  // Die Aufrufe des TESTS an den eigenen Testserver gehen durch — nur
-  // lego.com wird abgefangen.
-  if (!s.includes('lego.com')) return echterFetch(url, init);
   protokoll.push(s);
   if (s.includes('/gift-cards/balance')) return antwort({ text: '<html></html>' });
   if (s.includes('/Login')) return antwort({ kekse: [`gqauth=${jwt(3600)}; Path=/`] });
   return naechsteAntwort ?? guthaben(25000);
-};
-test.after(() => { globalThis.fetch = echterFetch; });
+});
+test.after(() => { G._ersetzeAbruf(null); });
 
 /** Die Zahl der Abfragen an den Guthaben-Endpunkt (nicht Seite/Login). */
 const abfragen = () => protokoll.filter(u => u.includes('giftCardBalanceQuery')).length;
@@ -367,5 +363,41 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async (t) => {
       'Ein gescheiterter Aufruf muss den Platz verbrauchen — sonst liesse sich ' +
       'die Grenze durch wiederholtes Scheitern beliebig oft umgehen.');
     assert.equal(abfragen(), vorher);
+  });
+
+  // Gegenproben (02.11.2026 gemessen): die Prüfung kontoStand() aus belegePlatz()
+  // entfernt → rot (200 statt 429); zaehleKonto() entfernt → rot („eine Abfrage
+  // zählt für ihr Konto“); die Kontoprüfung NACH die Sperre gelegt → rot (grund
+  // „botschutz“ statt „konto“).
+  await t.test('12. die Grenze je Konto greift vor der für alle und vor dem Bot-Schutz', async () => {
+    const zaehler = async (uid) => (await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1',
+      [`guthaben-konto|${uid}`]))?.count ?? 0;
+    await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'guthaben-konto|%'");
+    await schrankeFrei();
+    naechsteAntwort = guthaben(1000);
+    assert.equal((await abfrage(srv.base, MIT_PIN)).status, 200);
+    assert.equal(await zaehler(HAUPT), 1, 'eine Abfrage zählt für ihr Konto');
+
+    await db.run('UPDATE rate_limit_attempts SET count = $2 WHERE key = $1', [`guthaben-konto|${HAUPT}`, S.KONTO_JE_STUNDE]);
+    await schrankeFrei();
+    await db.run(`UPDATE gutschein_guthaben_schranke SET sperre_bis = NOW() + INTERVAL '10 minutes' WHERE id = 1`);
+    const vorher = abfragen();
+    const r = await abfrage(srv.base, MIT_PIN);
+    const d = await r.json();
+    assert.equal(r.status, 429, JSON.stringify(d));
+    assert.equal(d.grund, 'konto');
+    assert.equal(d.code, 'zu_viele_anfragen');
+    assert.ok(d.wartenSek > 0 && d.wartenSek <= 3600, String(d.wartenSek));
+    assert.equal(abfragen(), vorher, 'trotz Grenze ging eine Abfrage hinaus');
+
+    await schrankeFrei();
+    naechsteAntwort = antwort({ status: 403, text: 'Bot' });
+    assert.equal((await abfrage(srv.base, MIT_PIN)).status, 429);
+    const s = await db.get('SELECT letzter_abruf, sperre_bis FROM gutschein_guthaben_schranke WHERE id = 1');
+    assert.deepEqual(s, { letzter_abruf: null, sperre_bis: null }, 'das gesperrte Konto belegt den Platz oder löst die Pause aus');
+    naechsteAntwort = guthaben(9900);
+    const fremd = await abfrage(fremdSrv.base, FREMDER);
+    assert.equal(fremd.status, 200, 'ein anderes Konto wird von der Grenze des ersten aufgehalten');
+    await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'guthaben-konto|%'");
   });
 });

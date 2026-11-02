@@ -18,7 +18,7 @@ function zeile(e) {
     <span aria-hidden="true">${ico(ICON[e.art] || 'loeschen')}</span>
     <span class="pk-name"><span class="pk-nr">${esc(e.nummer)}</span>
       ${e.bezeichnung ? ' · ' + esc(e.bezeichnung) : ''}
-      ${e.anzahl > 1 ? ` · ${e.anzahl}×` : ''}</span>
+      ${e.anzahl > 1 ? ` · ×${e.anzahl}` : ''}</span>
     <span class="pk-frist">${esc(tRaw('trash.until', { datum: frist }))}</span>
     <button class="btn bs btn-sm" data-click="papierkorbWiederherstellen" data-arg="${e.id}">${t('trash.restore')}</button>
     <button class="btn bd btn-sm" data-click="papierkorbEndgueltig"${echt()} data-arg="${e.id}">${t('trash.delete_final')}</button>

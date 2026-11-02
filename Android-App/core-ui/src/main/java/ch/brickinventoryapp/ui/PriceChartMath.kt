@@ -47,16 +47,19 @@ object PriceChartMath {
      * Die Beschreibung des Diagramms je gezeichneter Linie — eine Zeichenfläche
      * hat sonst keine Semantik, und TalkBack übersprang den Preisverlauf.
      */
-    fun zusammenfassung(lines: List<ChartLine>): List<LinienZusammenfassung> = lines.map { l ->
+    fun zusammenfassung(
+        lines: List<ChartLine>,
+        locale: java.util.Locale = ch.brickinventoryapp.util.appNumberLocale(),
+    ): List<LinienZusammenfassung> = lines.map { l ->
         val erst = l.points.minBy { it.day }
         val letzt = l.points.maxBy { it.day }
-        LinienZusammenfassung(l.condition, tagText(erst.day), tagText(letzt.day), erst.value, letzt.value,
+        LinienZusammenfassung(l.condition, tagText(erst.day, locale), tagText(letzt.day, locale), erst.value, letzt.value,
             l.points.minOf { it.value }, l.points.maxOf { it.value })
     }
 
-    /** Tage seit 1970 → "31.1.2026", dieselbe Schreibweise wie formatDay(). */
-    fun tagText(day: Long): String =
-        java.time.LocalDate.ofEpochDay(day).let { "${it.dayOfMonth}.${it.monthValue}.${it.year}" }
+    /** Tage seit 1970 → „31.01.2026“ bzw. „31/01/2026“, dieselbe Schreibweise wie formatDay(). */
+    fun tagText(day: Long, locale: java.util.Locale): String =
+        formatDay(java.time.LocalDate.ofEpochDay(day).toString(), locale)
 
     /**
      * ISO-Tag ("2026-01-31") in Tage seit 1970. Bewusst ohne java.time-Parsing
@@ -114,14 +117,13 @@ object PriceChartMath {
     fun yTicks(b: ChartBounds): List<Double> =
         listOf(b.minValue, (b.minValue + b.maxValue) / 2, b.maxValue)
 
-    /** "2026-01-31" → "31.1.2026"; unbrauchbare Eingaben bleiben unverändert. */
-    fun formatDay(iso: String): String {
-        val p = iso.take(10).split("-")
-        if (p.size != 3) return iso
-        val d = p[2].toIntOrNull() ?: return iso
-        val m = p[1].toIntOrNull() ?: return iso
-        return "$d.$m.${p[0]}"
-    }
+    /**
+     * "2026-01-31" → „31.01.2026“ (de) bzw. „31/01/2026“ (en) — über fmtDatum, damit
+     * die Achse dieselbe Form zeigt wie das Erfassungsdatum darüber. Unbrauchbare
+     * Eingaben bleiben unverändert.
+     */
+    fun formatDay(iso: String, locale: java.util.Locale = ch.brickinventoryapp.util.appNumberLocale()): String =
+        ch.brickinventoryapp.util.fmtDatum(iso, locale) ?: iso
 
     /** Erster und letzter Tag der gemeinsamen Achse (für die Randbeschriftung). */
     fun axisRange(chart: PreisDiagrammAnsicht?): Pair<String, String>? {

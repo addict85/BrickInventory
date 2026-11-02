@@ -48,22 +48,35 @@ class KeystoreTokenTresor : TokenVerschluesselung {
         (ks.getEntry(ALIAS, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
 
         val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
-        gen.init(
-            KeyGenParameterSpec.Builder(
-                ALIAS,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(256)
-                // KEINE Nutzerauthentifizierung verlangt: Das Token wird auch
-                // gebraucht, während der Bildschirm gesperrt ist (Hintergrund-
-                // Abrufe). Eine Bindung an die Displaysperre würde die App bei
-                // gesperrtem Gerät abmelden.
-                .build()
-        )
+        // StrongBox (eigener Sicherheitschip) wo vorhanden: Der Schlüssel bleibt
+        // auch bei einer kompromittierten TEE im Chip. Ohne Chip wirft generateKey,
+        // dann gilt der Keystore wie bisher. Ein bestehender Schlüssel bleibt, wo er
+        // ist. Der Chip ist langsam; entschlüsselt wird nur bei neuem Geheimtext.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            try {
+                gen.init(spezifikation().setIsStrongBoxBacked(true).build())
+                return gen.generateKey()
+            } catch (_: java.security.ProviderException) {
+                // StrongBoxUnavailableException ist eine davon; weiter ohne Chip.
+            }
+        }
+        gen.init(spezifikation().build())
         return gen.generateKey()
     }
+
+    /**
+     * Weder Nutzerauthentifizierung noch setUnlockedDeviceRequired: Preisalarm,
+     * Widget und Ausgang senden mit dem Token im Hintergrund, auch bei gesperrtem
+     * Gerät. Ein gesperrter Schlüssel liesse sie scheitern, und ein unlesbarer
+     * Token heisst hier „abgemeldet“ (siehe oben) — die App meldete sich selbst ab.
+     */
+    private fun spezifikation() = KeyGenParameterSpec.Builder(
+        ALIAS,
+        KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+    )
+        .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+        .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+        .setKeySize(256)
 
     override fun verschluessle(klartext: String): String {
         val c = Cipher.getInstance(TRANSFORMATION)

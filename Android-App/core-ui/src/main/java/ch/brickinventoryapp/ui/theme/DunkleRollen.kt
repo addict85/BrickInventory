@@ -36,11 +36,19 @@ data class DunkleRollen(
 
 fun dunkleRollen(design: String): DunkleRollen {
     fun t(name: String) = argb(dunkelToken(design, name) ?: error("Token --$name fehlt in der dunklen Fassung"))
+    // Gewählte Chips und der kleine Knopf tragen secondaryContainer. Bernstein dafür hat
+    // nur „brick“ auch hell (Sand); classic mischte im Dunkeln sonst Bernstein und Blau,
+    // Fächer und Noppe sind hell neutral und bleiben es hier.
+    val (zweitFlaeche, aufZweitFlaeche) = when (design) {
+        "brick" -> t("a100") to t("a-schrift")
+        "classic" -> t("b50") to t("b700")
+        else -> t("s200") to t("txt")
+    }
     return DunkleRollen(
         primary = t("b600"), onPrimary = t("auf-primaer"),
         primaryContainer = t("b50"), onPrimaryContainer = t("b700"),
         secondary = t("b700"), onSecondary = t("auf-primaer"),
-        secondaryContainer = t("a100"), onSecondaryContainer = t("a-schrift"),
+        secondaryContainer = zweitFlaeche, onSecondaryContainer = aufZweitFlaeche,
         tertiary = t("a500"), onTertiary = t("auf-primaer"),
         tertiaryContainer = t("a100"), onTertiaryContainer = t("a-schrift"),
         background = t("bg"), surface = t("sur"), surfaceVariant = t("s200"),

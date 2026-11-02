@@ -66,6 +66,24 @@ const BOESE = {
   }, ['data', 'schluessel']),
 };
 
+// db-rolle vorher (Rolle und Besitz für das Einspielen als App) und danach.
+// Gegenprobe (02.11.2026 gemessen): einen der beiden Aufrufe von db-rolle
+// entfernt → rot.
+test('nach dem Einspielen richtet db-rolle die Rolle der App nach, dann startet die App', () => {
+  const lauf = path.join(tmp, 'lauf-rolle');
+  fs.mkdirSync(path.join(lauf, 'schluessel'), { recursive: true });
+  fs.writeFileSync(path.join(lauf, 'schluessel', 'datenschluessel'), 'k');
+  const bin = path.join(tmp, 'bin-rolle');
+  fs.mkdirSync(bin);
+  const protokoll = path.join(tmp, 'docker.log');
+  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "$*" >> '${protokoll}'\ncat > /dev/null\n`, { mode: 0o755 });
+  const r = spawnSync('sh', [RESTORE, DUMP], { cwd: lauf, input: 'ja\n', encoding: 'utf8',
+    env: { ...process.env, PATH: `${bin}:/usr/bin:/bin` } });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const aufrufe = fs.readFileSync(protokoll, 'utf8').trim().split('\n').map(z => z.split(' ').slice(0, 4).join(' '));
+  assert.deepEqual(aufrufe, ['compose run --rm db-rolle', 'compose exec -T postgres', 'compose run --rm db-rolle', 'compose restart app']);
+});
+
 for (const [fall, bauen] of Object.entries(BOESE)) {
   test(`abgewiesen: ${fall}`, () => {
     const tar = bauen();

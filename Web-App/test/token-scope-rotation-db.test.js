@@ -21,6 +21,10 @@
  *      „Migration 0080: …“
  *   I  in zugaengeDesKontos() `ersetzt_durch IS NULL` entfernt → rot:
  *      „Geräteliste: …“ (das getauschte Gerät stand doppelt da)
+ *   J  (02.11.2026) in /login wieder `null` statt APP_HOECHSTDAUER_TAGE → rot:
+ *      „App-Anmeldung: feste Höchstdauer …“ (hard_expires_at null)
+ *   K  (02.11.2026) in legeNachfolgerAn() hard_expires_at auf NOW() + 180
+ *      Tage gesetzt → rot: dieselbe Prüfung („der Tausch verlängert …“)
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  */
@@ -185,6 +189,22 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     assert.equal((await ruf('/auth/me', { token: a })).status, 401, 'Nach Nutzung des neuen ist der alte weg');
     assert.equal((await ruf('/auth/token-rotieren', { method: 'POST', token: a })).status, 401);
     assert.equal((await ruf('/auth/token-rotieren', { method: 'POST', token: 'f'.repeat(64) })).status, 401);
+  });
+
+  await t.test('App-Anmeldung: feste Höchstdauer 180 Tage, die der Tausch nicht verlängert', async () => {
+    const a = (await anmelden({ never_expires: true, label: 'Höchstdauer' })).body.token;
+    const z = await zeile(a);
+    assert.ok(z.hard_expires_at && Math.abs(tageBis(z.hard_expires_at) - 180) < 0.01,
+      `feste Frist 180 Tage, gemessen: ${z.hard_expires_at}`);
+    assert.ok(Math.abs(tageBis(z.expires_at) - 90) < 0.01, 'die Gleitfrist bleibt daneben');
+    // 170 Tage nach der Anmeldung: Ein Tausch erbt die zehn restlichen Tage.
+    await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() + INTERVAL '10 days' WHERE token = $1`, [auth.hashToken(a)]);
+    auth.leereTokenCache();
+    const r = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const n = await zeile(r.body.token);
+    assert.ok(Math.abs(tageBis(n.hard_expires_at) - 10) < 0.01, `der Tausch verlängert die Höchstdauer: ${n.hard_expires_at}`);
+    assert.ok(tageBis(r.body.token_info.expires_at) <= 10.01, 'die Antwort nennt das frühere Ende');
   });
 
   await t.test('unbegrenzt nur über HTTPS, und dann mit Rotationspflicht', async () => {

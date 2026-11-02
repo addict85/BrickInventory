@@ -40,6 +40,9 @@ fun AuswahlChip(
         trailingIcon = trailingIcon,
         border = FilterChipDefaults.filterChipBorder(
             enabled = enabled, selected = selected,
+            // outline statt outlineVariant: Der Rand eines ungewählten Chips ist seine einzige
+            // Grenze und braucht 3:1 zur Fläche; outlineVariant lag bei 1,1–1,2:1.
+            borderColor = MaterialTheme.colorScheme.outline,
             selectedBorderColor = MaterialTheme.colorScheme.primary, selectedBorderWidth = 1.dp,
         ),
     )

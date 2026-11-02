@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Vergleicht zwei verification-metadata.xml und schreibt eine Markdown-Übersicht:
-neue, entfernte und Komponenten mit geänderter Prüfsumme oder geändertem Schlüssel.
+neue, entfernte und Komponenten mit geänderter Prüfsumme oder geändertem Schlüssel,
+dazu neu vertraute PGP-Schlüssel (Gruppen-Regex zuerst und hervorgehoben).
 
 Aufruf: pruefsummen-vergleich.py <alt.xml> <neu.xml>
 
@@ -28,6 +29,33 @@ def lies(pfad):
             teile[a.get("name")] = (sha.get("value") if sha is not None else None, tuple(schluessel))
         ergebnis[f"{k.get('group')}:{k.get('name')}:{k.get('version')}"] = teile
     return ergebnis
+
+
+def vertrauen(pfad):
+    """{(schlüssel, gruppe, name, fassung, regex)} aus <trusted-keys>; fehlt die Datei, leer.
+    Ein Schlüssel mit Gruppen-Regex deckt jedes künftige Paket der Gruppe ab."""
+    try:
+        wurzel = ET.parse(pfad).getroot()
+    except (OSError, ET.ParseError):
+        return set()
+    eintraege = set()
+    for k in wurzel.iter(f"{NS}trusted-key"):
+        for t in [k] + k.findall(f"{NS}trusting"):
+            if t.get("group") is not None:
+                eintraege.add((k.get("id"), t.get("group"), t.get("name") or "", t.get("version") or "",
+                               t.get("regex") == "true"))
+    return eintraege
+
+
+def vertrauen_markdown(alt, neu):
+    dazu = sorted(neu - alt)
+    if not dazu:
+        return ""
+    z = [f"### Neu vertraute Schlüssel ({len(dazu)}) — bitte ansehen", "",
+         "| Schlüssel | Gruppe | Name | Fassung | Gruppen-Regex |", "|---|---|---|---|---|"]
+    z += [f"| `{s}` | `{g.replace('|', chr(92) + '|')}` | {n or '*'} | {v or '*'} | {'**JA — gilt für jedes Paket der Gruppe**' if r else 'nein'} |"
+          for s, g, n, v, r in sorted(dazu, key=lambda e: (not e[4], e[1], e[0]))]
+    return "\n".join(z + [""])
 
 
 def vergleiche(alt, neu):
@@ -62,3 +90,4 @@ def markdown(neu_k, weg_k, geaendert):
 
 if __name__ == "__main__":
     print(markdown(*vergleiche(lies(sys.argv[1]), lies(sys.argv[2]))))
+    print(vertrauen_markdown(vertrauen(sys.argv[1]), vertrauen(sys.argv[2])))

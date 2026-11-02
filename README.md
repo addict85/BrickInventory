@@ -97,6 +97,9 @@ Vor dem ersten Start lohnen zwei weitere Werte in einer `.env` neben
   alten Beispielpasswort `brickinventory_secret` verweigert der Server den
   Start. Eine bestehende Datenbank behält ihr Passwort; dann den bisherigen
   Wert eintragen (oder ändern, siehe `Web-App/UPGRADE.md`).
+- `DB_APP_PASSWORD` — Pflicht, ein anderer Wert als `DB_PASSWORD`: Die App
+  verbindet sich mit einer eigenen Rolle ohne Superuser-Rechte
+  (`Web-App/UPGRADE.md`, Abschnitt 29).
 - `APP_BIND=127.0.0.1` — wenn ein Reverse-Proxy (Caddy, nginx, Traefik) davor
   steht. Port 3000 ist dann nur noch auf dem Rechner selbst erreichbar und
   nicht am Proxy vorbei im ganzen Netz.

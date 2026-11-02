@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText} from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -349,17 +349,18 @@ async function revokeOtherTokens() {
   const d = await tokenRuf('/tokens');
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   const andere = d.tokens.filter(tk => !tk.aktuell);
-  if (!await confirmDelete(tRaw('tokens.revoke_others.title'),
-                           tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden')) return;
+  const password = await bestaetigeMitPasswort(tRaw('tokens.revoke_others.title'),
+                                               tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden');
+  if (password === null) return;
+  // Zuerst die übrigen Browser: Dort prüft der Server das Passwort.
+  const s = await api('POST', '/v1/settings/sessions/andere-beenden', { password });
+  if (!s.success) { toast(s.error || t('settings.error'), 'error'); return; }
   let weg = 0;
   for (const tk of andere) {
     const r = await tokenRuf('/tokens/' + encodeURIComponent(tk.token_id), 'DELETE');
     weg += r.deleted || 0;
   }
-  // Dazu die übrigen Browser — sie melden sich per Sitzung an, nicht per Token.
-  const s = await api('POST', '/v1/settings/sessions/andere-beenden');
-  toast(tRaw('tokens.revoked_n', { n: weg + (s.deleted || 0) }),
-        weg === andere.length && s.success ? 'success' : 'error');
+  toast(tRaw('tokens.revoked_n', { n: weg + (s.deleted || 0) }), weg === andere.length ? 'success' : 'error');
   loadTokens();
 }
 
@@ -399,9 +400,14 @@ function zeigeDesignWahl(d) {
   const vorgabeName = tRaw(NAMEN[d.vorgabe] || NAMEN.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
   sel.value = d.eigenes || '';
-  // Werkbank hat keine helle Fassung; ohne Hinweis wirkt „Darstellung: hell“ kaputt.
+  // Ein Satz zum gewählten Design: Namen wie „Noppe“ und „Hochglanz“ sagen allein
+  // nicht, wie es aussieht. Werkbank hat keine helle Fassung; das steht dabei.
   const hinweis = G('design-hinweis');
-  if (hinweis) hinweis.textContent = window.__bimNurDunkel?.(d.eigenes || d.vorgabe) ? tRaw('settings.werkbank_hint') : '';
+  const aktiv = d.eigenes || d.vorgabe || 'classic';
+  const BESCHREIBUNG = { classic: 'settings.theme_desc.classic', brick: 'settings.theme_desc.brick', werkbank: 'settings.theme_desc.werkbank',
+    farbfaecher: 'settings.theme_desc.farbfaecher', noppe: 'settings.theme_desc.noppe', hochglanz: 'settings.theme_desc.hochglanz' };
+  if (hinweis) hinweis.textContent = [BESCHREIBUNG[aktiv] ? tRaw(BESCHREIBUNG[aktiv]) : '',
+    window.__bimNurDunkel?.(aktiv) ? tRaw('settings.werkbank_hint') : ''].filter(Boolean).join(' ');
 }
 
 async function setzeEigenesDesign() {
@@ -711,7 +717,7 @@ export async function loadUsers(){
         ${nutzerKnopf(u, 'bs', 'toggleAktiv', u.is_active === false ? 'ok' : 'pause',
             u.is_active === false ? 'users.action.activate' : 'users.action.deactivate',
             u.is_active === false ? 'users.action.activate_title' : 'users.action.deactivate_title', u.is_active === false ? 0 : 1)}
-        ${u.zweiter_faktor ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
+        ${u.zweiter_faktor && u.id !== ME?.id ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
         ${nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username)}
       </div></td></tr>`).join('')
   }</tbody></table></div>`;
@@ -888,10 +894,10 @@ export async function ladeAlarmUebersicht() {
         <div data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(a.name || '')}</div>
       </div>
       <span data-stil="font-size:var(--fs-1);white-space:nowrap">${esc(richtung)}</span>
-      <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
+      <input inputmode="decimal" type="text" autocomplete="off" value="${esc(betragFuerFeld(a.schwelle))}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
              data-click="stopEvent"
-             data-stil="width:90px;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
+             data-stil="width:7em;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
       <span data-stil="font-size:var(--fs-1);color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
       <div data-stil="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">
         ${marke}
@@ -911,7 +917,7 @@ function alarmSchluessel(s) {
 }
 
 async function aendereAlarmSchwelle(schluessel, wert) {
-  const schwelle = parseFloat(String(wert).replace(',', '.'));
+  const schwelle = leseBetrag(wert);
   // Kein stilles Zurueckschreiben bei Unsinn: Wer 0 oder Text eingibt, soll
   // sehen, dass nichts passiert ist, statt spaeter einen Alarm zu suchen, den
   // es nicht gibt.

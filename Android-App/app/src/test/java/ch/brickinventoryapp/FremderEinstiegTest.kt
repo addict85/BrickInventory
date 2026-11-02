@@ -49,6 +49,8 @@ import org.robolectric.shadows.ShadowDialog
  *       Start …“ (gegenproben/start-behaelt-extras.patch)
  *   (f) fremdeAngabenEntfernen() lässt die Extras stehen → rot „ohne Extras
  *       navigiert …“ und „ein fremder Start …“ (gegenproben/extras-bleiben.patch)
+ *   (g) teilelistenAuswahl() gibt die Ansicht ohne createChooser zurück → rot
+ *       „die Teileliste geht nur ueber die Auswahl …“ (gegenproben/teileliste-ohne-auswahl.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -148,6 +150,17 @@ class FremderEinstiegTest {
         assertNull("Extras bei onNewIntent", probe.get().neu?.extras)
         assertNull("Daten bei onNewIntent", probe.get().neu?.data)
         assertTrue("MainActivity entfernt nicht", NurLauncherStart::class.java.isAssignableFrom(MainActivity::class.java))
+    }
+
+    @Test
+    fun `die Teileliste geht nur ueber die Auswahl des Systems hinaus`() {
+        val datei = java.io.File(ctx.filesDir, "pdf/teileliste.pdf").apply { parentFile!!.mkdirs(); writeText("Inventar") }
+        val auswahl = ch.brickinventoryapp.service.teilelistenAuswahl(ctx, datei, "Teileliste")
+        assertEquals("Ohne Auswahl bekäme die Standard-App das Inventar", Intent.ACTION_CHOOSER, auswahl.action)
+        val ziel = androidx.core.content.IntentCompat.getParcelableExtra(auswahl, Intent.EXTRA_INTENT, Intent::class.java)!!
+        assertEquals(Intent.ACTION_VIEW, ziel.action)
+        assertEquals("content", ziel.data?.scheme)
+        assertTrue("Ohne Leserecht öffnet keine App die Datei", (ziel.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0)
     }
 }
 

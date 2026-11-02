@@ -101,6 +101,19 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     await db.run('DELETE FROM users WHERE username = $1', [`regel_vw_${process.pid}`]);
   });
 
+  // Gegenproben (02.11.2026 gemessen): in /change-password wieder
+  // req.session?.username → rot (200 für den eigenen Namen); in
+  // /users/:id/password wieder ohne Namen → rot (200 für den Namen des Ziels).
+  await t.test('der Benutzername ist kein Passwort, auch ohne Namen in der Sitzung', async () => {
+    const app = testServer(_req, { sitzung: { userId: chef, isAdmin: true }, routen: { '/api/v1/auth': 'routes/auth.js' }, t });
+    const setze = (methode, pfad, rumpf) => fetch(`${app.base}/api/v1/auth${pfad}`, { method: methode,
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify(rumpf) })
+      .then(async r => `${r.status} ${(await r.json()).code ?? ''}`);
+    assert.equal(await setze('POST', '/change-password', { current: PASS, newPassword: CHEF.toUpperCase() }), '400 passwort_zu_haeufig');
+    assert.equal(await setze('PUT', `/users/${ziel}/password`, { password: ZIEL, admin_password: PASS }), '400 passwort_zu_haeufig');
+    assert.ok(bcrypt.compareSync(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash));
+  });
+
   await t.test('ein schwaches ADMIN_PASSWORD wird nicht übernommen', async () => {
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');

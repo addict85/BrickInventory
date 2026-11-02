@@ -105,8 +105,10 @@ class ServerWaechter(
         if (mitToken && original.header("Authorization") == null) {
             reqBuilder.header("Authorization", "Bearer $token")
         }
-        // Dienste, die den Kopf selbst setzen (SSE, PDF-Export), lesen denselben Token.
-        if (!tokenGehoertHierher && token.isNotBlank() && original.header("Authorization") == "Bearer $token") {
+        // Selbst gesetzte Köpfe (Tausch, SSE, PDF) können einen älteren Token tragen
+        // als den jetzigen — etwa den des vorigen Servers bei einem Tausch, der den
+        // Wechsel überdauert. Darum gilt hier dieselbe Regel wie für mitToken.
+        if (original.header("Authorization") != null && !mitToken) {
             reqBuilder.removeHeader("Authorization")
         }
         if (unserServer) {
@@ -135,14 +137,14 @@ class ServerWaechter(
         if (rotierbar && antwort.code == 401) {
             val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
             val gesendet = ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim().orEmpty()
-            if (code == "token_rotation_noetig") rotation!!.noetig(gesendet)?.let { neu ->
+            if (code == "token_rotation_noetig") rotation.noetig(gesendet)?.let { neu ->
                 // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
                 antwort.close()
                 val wieder = ausgehend.newBuilder().header("Authorization", "Bearer $neu").build()
                 antwort = chain.proceed(wieder)
             }
         } else if (rotierbar && antwort.header("X-Token-Rotation") == "faellig") {
-            ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation!!.faellig(it) }
+            ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation.faellig(it) }
         }
 
         if ((antwort.code == 401 || antwort.code == 403) && tokenMitgeschickt && unserServer) {

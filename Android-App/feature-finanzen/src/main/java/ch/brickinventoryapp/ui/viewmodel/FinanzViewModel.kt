@@ -8,9 +8,6 @@ import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.FinanceUiState
-import ch.brickinventoryapp.ui.lokaleAchse
-import ch.brickinventoryapp.ui.lokaleWerte
-import ch.brickinventoryapp.util.appNumberLocale
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,7 +51,8 @@ class FinanzViewModel @Inject constructor(
                     dienste.sitzung.aendere { it.copy(currency = r.data.currency) }
                 }
                 is Result.Error -> {
-                    _financeState.update { it.copy(valuationLoading = false, valuationFehler = meldung(r)) }
+                    _financeState.update { it.copy(valuationLoading = false, valuationFehler = meldung(r),
+                        valuationFehlerKlasse = ch.brickinventoryapp.ui.fehlerklasse(r)) }
                     _snackbar.value = meldungFuerSnackbar(r)
                 }
             }
@@ -71,15 +69,16 @@ class FinanzViewModel @Inject constructor(
         gemerkt[ZEITRAUM] = period
         viewModelScope.launch {
             _financeState.update { it.copy(historyLoading = true, historyPeriod = period,
-                historyPoints = emptyList(), historyYAxis = emptyList(), historyPeriodChangePct = null) }
+                historyPoints = emptyList(), historyYAxis = emptyList(), historyTage = emptyList(),
+                historyPeriodChangePct = null) }
             when (val r = finanzen.getPortfolioHistory(period, scopeFor(ScopeFilter.View.FINANCE))) {
                 is Result.Success -> _financeState.update { it.copy(
                     historyLoading         = false,
                     historyPeriodChangePct = r.data.periodChangePct,
-                    historyPoints          = lokaleAchse(r.data.points.map { it.alsAnsicht() },
-                                                         r.data.chart?.x.orEmpty(), appNumberLocale()),
-                    historyYAxis           = lokaleWerte(r.data.yAxis.map { it.alsAnsicht() },
-                                                         r.data.currency, appNumberLocale())) }
+                    historyPoints          = r.data.points.map { it.alsAnsicht() },
+                    historyYAxis           = r.data.yAxis.map { it.alsAnsicht() },
+                    historyTage            = r.data.chart?.x.orEmpty(),
+                    historyWaehrung        = r.data.currency) }
                 is Result.Error -> _financeState.update { it.copy(historyLoading = false) }
             }
         }

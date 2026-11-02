@@ -90,6 +90,8 @@ export const RegisterResponse = z.looseObject({
 
 export const RegistrationStatusResponse = z.looseObject({
   enabled: z.boolean(),
+  passkey: z.boolean().optional(),
+  passwort_vergessen: z.boolean().optional(),
 });
 
 export const TokenRotation = z.looseObject({
@@ -194,6 +196,7 @@ export const routen = {
   'POST /api/v1/auth/logout': { antwort: GenericResponse },
   'POST /api/v1/auth/register': { antwort: RegisterResponse, eingabe: Registrierung },
   'POST /api/v1/auth/forgot-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
+  'POST /api/v1/auth/bestaetigung-erneut': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
   'PUT /api/v1/auth/profile': { antwort: ProfilGespeichert, eingabe: ProfilAenderung },
   'POST /api/v1/auth/change-password': { antwort: GenericResponse, eingabe: z.looseObject({ current: txt(PASSWORT), newPassword: txt(PASSWORT), code }) },
   'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, eingabe: NurPasswort },

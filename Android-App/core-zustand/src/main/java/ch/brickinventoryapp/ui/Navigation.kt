@@ -25,6 +25,8 @@ sealed class Screen(val route: String) {
     object Minifigs : Screen("minifigs")
     object PartsList : Screen("partslist")
     object Settings : Screen("settings")
+    /** Alles, was kein Bestandsreiter ist — das fünfte Ziel der unteren Leiste. */
+    object Mehr : Screen("mehr")
 
     // ── Die Unterseiten der Einstellungen ──
     //

@@ -192,6 +192,11 @@ def main() -> int:
     fehlend = [(n, w) for n, w in sorted(benutzt.items())
                if re.search(rb'(?<![a-z0-9_])' + n.encode() + rb'(?![a-z0-9_])', arsc) is None]
     print(f'  {len(benutzt)} benutzte Strings geprueft, {len(fehlend)} fehlen im APK')
+    if fehlend:
+        # Unterscheidet entfernte von umbenannten Ressourcen (Namen verschleiert).
+        print(f'  resources.arsc: {len(arsc)} Byte, verschleierte Namen: '
+              f'{"ja" if b"obfuscated" in arsc else "nein"}, '
+              f'Beispiel vorhanden: {[n for n in list(benutzt)[:400] if (n, benutzt[n]) not in fehlend][:5]}')
     for name, woher in fehlend:
         schlimm.append(
             f'R.string.{name} wird in {woher} benutzt, steht aber nicht in '

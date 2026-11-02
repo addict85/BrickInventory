@@ -3,7 +3,6 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.util.fmtDatum
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.foundation.layout.*
@@ -79,7 +78,7 @@ fun SetDetailScreen(
 
     // Gemeinsamer Helfer (util/DatumFormat.kt) — dieselbe Umwandlung stand in
     // MinifigsScreen in einer zweiten, abweichenden Fassung.
-    fun fmtDate(iso: String?) = fmtDatum(iso) ?: iso ?: "—"
+    fun fmtDate(iso: String?) = ch.brickinventoryapp.util.fmtTag(iso) ?: iso ?: "—"
 
     val isBrick = LocalIsBrickTheme.current
     Scaffold(
@@ -125,7 +124,8 @@ fun SetDetailScreen(
             val fehler = detailState.setDetailFehler
             if (fehler != null && !detailState.setDetailLoading) {
                 ch.brickinventoryapp.ui.components.ZustandsHinweis(Modifier.padding(padding)) {
-                    ch.brickinventoryapp.ui.components.FehlerHinweis(fehler) { vm.loadSetDetail(setNumber) }
+                    ch.brickinventoryapp.ui.components.FehlerHinweis(fehler, { vm.loadSetDetail(setNumber) },
+                        detailState.setDetailFehlerKlasse)
                 }
             } else ch.brickinventoryapp.ui.components.LadeKreis(Modifier.padding(padding))
             return@Scaffold
@@ -159,14 +159,14 @@ fun SetDetailScreen(
         val kopf: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailHeroImage(set, imageUrl, imageLoader, detailRetryState, detailScope) { showImageZoom = true }
             setDetailStatChips(set)
-            setDetailValueTiles(set, price, isBrick, ::fmtPrice)
+            setDetailValueTiles(set, price, pnlPct, ::fmtPrice)
         }
         val angaben: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailDetailsSection(set, setNumber, vm, acquisitions, currency, ::fmtDate, onNavigateToAcqMgmt)
             setDetailAlarmSection(setNumber, detailState.preisalarme, currency, vm::setzePreisalarm)
         }
         val preise: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-            setDetailPriceSection(set, detailState, price, history, pnlPct, currency, isBrick, ::fmtPrice)
+            setDetailPriceSection(detailState, price, history, currency)
         }
         val anleitungen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailInstructionsSection(
@@ -177,7 +177,8 @@ fun SetDetailScreen(
         }
         // Ab „expanded“ zwei Spalten — Bild und Preise links, Angaben, Alarm und
         // Anleitungen rechts: Einspaltig lagen Bezeichnung und Wert einer Zeile auf dem
-        // Tablet eine Armlänge auseinander.
+        // Tablet eine Armlänge auseinander. Einspaltig kommen die Preise vor den Angaben:
+        // Der Wert ist die erste Frage an ein Set, nicht das Erfassungsdatum.
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val rand = PaddingValues(bottom = Abstaende.sehrGross)
             if (zweiSpaltig(maxWidth.value)) {
@@ -186,7 +187,7 @@ fun SetDetailScreen(
                     LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand) { angaben(); anleitungen() }
                 }
             } else {
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = rand) { kopf(); angaben(); preise(); anleitungen() }
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = rand) { kopf(); preise(); angaben(); anleitungen() }
             }
         }
 

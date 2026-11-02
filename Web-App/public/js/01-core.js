@@ -1,7 +1,7 @@
 import { registerActions } from './00-registry.js';
 import { esc } from './00-escapen.js';
 import { resetScopeModes } from './14-scope.js';
-import { I18N, LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
+import { LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
 import { setAllSets, bindTabs, loadGallery, loadStats } from './02-gallery.js';
 import { plInit, resetPartsList } from './08-init.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
@@ -238,7 +238,7 @@ export function setnummerFeldGueltig(id, wert) {
  */
 export function leerZustand(o) {
   const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
-  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h3>${esc(o.titel)}</h3>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
+  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2>${esc(o.titel)}</h2>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
 }
 
 /** Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer. */
@@ -702,6 +702,31 @@ export function fehlerMeldung(e) {
   return text || tRaw('common.unknown_error');
 }
 
+// ── Hinweis „Rebrickable-Schlüssel fehlt“ ───────────────────────────────────
+const RB_HINWEIS_WEG = 'bim_rb_hinweis_weg';
+/** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab.
+ * Schliesst man ihn mit „Später“, kommt das Band (22-einrichtung.js). */
+export function rbHinweisZeigen() {
+  const band = G('rb-hinweis');
+  if (!band || !ME?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
+  if (String(_settingsCache?.rebrickable_api_key || '').trim()) return;
+  try { if (sessionStorage.getItem(RB_HINWEIS_WEG)) return; } catch (_) { /* ohne Speicher: zeigen */ }
+  band.hidden = false;
+}
+export function rbHinweisVerbergen() { const b = G('rb-hinweis'); if (b) b.hidden = true; }
+function rbHinweisOeffnen() {
+  rbHinweisVerbergen();
+  document.querySelector('.ntab[data-tab="settings"]')?.click();
+  /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
+  G('rb-key')?.focus();
+}
+/** Wegklicken gilt für die Sitzung; der Fokus geht an den Seiteninhalt statt ins Leere. */
+function rbHinweisWeg() {
+  rbHinweisVerbergen();
+  try { sessionStorage.setItem(RB_HINWEIS_WEG, '1'); } catch (_) { /* dann eben bis zum Neuladen */ }
+  G('inhalt')?.focus({ preventScroll: true });
+}
+
 // ── Verbindung ──────────────────────────────────────────────────────────────
 // Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es
 // einer ist und von wann — sonst hält man alte Zahlen für aktuell.
@@ -714,11 +739,68 @@ export function zeigeVerbindung(erreichbar) {
   if (!band) return;
   if (erreichbar) {
     if (_offline) toast(tRaw('net.back'), 'success');
+    if (_offline) schreibenSperren(false);
     _offline = false; band.hidden = true; return;
   }
   _offline = true;
-  band.textContent = _letzteAntwort ? tRaw('net.offline_since', { zeit: fmtDatum(_letzteAntwort, 'tagzeit') }) : tRaw('net.offline');
+  band.textContent = (_letzteAntwort ? tRaw('net.offline_since', { zeit: fmtDatum(_letzteAntwort, 'tagzeit') }) : tRaw('net.offline'))
+    + ' ' + tRaw('net.offline_gesperrt');
   band.hidden = false;
+  schreibenSperren(true);
+}
+
+// Ohne Verbindung scheitert jede Änderung. Statt erst nach dem Klick eine
+// Meldung zu zeigen, sind die schreibenden Bedienelemente gesperrt und nennen
+// per aria-describedby das Band als Grund. Eine Regel statt einer Liste:
+// Hauptknöpfe, Datei-Wahl, Import-Menüs und jede Handlung, deren Name schreibt.
+const BEDIENT = 'button, input[type=file], .import-menue > summary';
+const IMMER_SCHREIBEND = 'button.bp, button.bd, input[type=file], .import-menue > summary';
+const SCHREIB_VERBEN = /speicher|save|loesch|delete|import|hinzufueg|add|anleg|erfass|uebernehm|eintrag|abfrag|aktualis|refresh|sync|hochlad|upload|rotier|widerruf|einlad|verknuepf|aendere|bearbeit|entfern|wiederherst|restore|generier|erzeug|verschieb|qty|menge|alarm/i;
+const NICHT_SPERREN = '#login-screen, .toast, [data-dialog-zu], .hinweis-zu';
+/** @param {Element} k */
+function schreibt(k) {
+  if (k.closest(NICHT_SPERREN)) return false;
+  if (k.matches(IMMER_SCHREIBEND)) return true;
+  return SCHREIB_VERBEN.test(`${k.getAttribute('data-click') || ''} ${k.getAttribute('data-submit') || ''}`);
+}
+/** @type {MutationObserver|null} */
+let _sperrBeobachter = null;
+/** @param {Element|Document} wurzel */
+function sperreIn(wurzel) {
+  const selbst = wurzel instanceof Element && wurzel.matches(BEDIENT) ? [wurzel] : [];
+  /** @type {HTMLButtonElement[]} */ ([...selbst, ...wurzel.querySelectorAll(BEDIENT)]).forEach(k => {
+    if (k.disabled || k.dataset.offlineGesperrt || !schreibt(k)) return;
+    if (k.tagName === 'SUMMARY') { k.setAttribute('aria-disabled', 'true'); k.parentElement?.removeAttribute('open'); }
+    else k.disabled = true;
+    k.dataset.offlineGesperrt = '1';
+    k.setAttribute('aria-describedby', ((k.getAttribute('aria-describedby') || '') + ' offline-band').trim());
+  });
+}
+// Ein <summary> kennt kein disabled: Klick und Tastatur öffnen es sonst trotzdem.
+if (typeof document !== 'undefined')
+  document.addEventListener('click', e => {
+    const t = /** @type {Element} */ (e.target);
+    if (t?.closest?.('summary[data-offline-gesperrt]')) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+/** @param {boolean} an */
+function schreibenSperren(an) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.toggleAttribute('data-offline', an);
+  if (an) {
+    sperreIn(document);
+    if (!_sperrBeobachter && typeof MutationObserver !== 'undefined') {
+      _sperrBeobachter = new MutationObserver(m => { for (const x of m) for (const n of x.addedNodes) if (n.nodeType === 1) sperreIn(/** @type {Element} */ (n)); });
+      _sperrBeobachter.observe(document.body, { childList: true, subtree: true });
+    }
+    return;
+  }
+  _sperrBeobachter?.disconnect(); _sperrBeobachter = null;
+  /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('[data-offline-gesperrt]')).forEach(k => {
+    if (k.tagName === 'SUMMARY') k.removeAttribute('aria-disabled'); else k.disabled = false;
+    delete k.dataset.offlineGesperrt;
+    const rest = (k.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== 'offline-band');
+    if (rest.length) k.setAttribute('aria-describedby', rest.join(' ')); else k.removeAttribute('aria-describedby');
+  });
 }
 if (typeof window !== 'undefined') {
   window.addEventListener('offline', () => zeigeVerbindung(false));
@@ -787,6 +869,59 @@ export function fmtGeld(v, cur){
   return Number(v) === 0 ? new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(0) : fmtN(v, cur);
 }
 /**
+ * Ein Betrag aus einem Eingabefeld. Komma und Punkt sind beide Dezimalzeichen,
+ * Leerzeichen und ' sind Tausendertrenner; ein einzelnes Trennzeichen mit genau
+ * drei Ziffern danach gilt als Tausender, wenn die Sprache es so schreibt
+ * („1.234“ de-DE). Leer → null; keine Zahl → NaN, damit der Aufrufer am Feld
+ * meldet, statt „149,95“ still zu 149 zu kürzen.
+ * @param {unknown} roh
+ * @returns {number|null}
+ */
+export function leseBetrag(roh) {
+  const s = String(roh ?? '').replace(/[\s  '’]/g, '').replace(/^[€$£]|[€$£]$/g, '');
+  if (!s) return null;
+  if (!/^[\d.,]*\d[\d.,]*$/.test(s)) return NaN;
+  const trenner = s.match(/[.,]/g) || [];
+  const letztes = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+  let dezimal = trenner.length ? s[letztes] : null;
+  if (new Set(trenner).size === 1 && trenner.length > 1) dezimal = null;
+  if (trenner.length === 1) {
+    const gruppe = new Intl.NumberFormat(locale()).formatToParts(1000).find(p => p.type === 'group')?.value;
+    if (trenner[0] === gruppe && /^\d{3}$/.test(s.slice(letztes + 1)) && !/^0[.,]/.test(s)) dezimal = null;
+  }
+  const ganz = dezimal ? s.slice(0, letztes) : s, nach = dezimal ? s.slice(letztes + 1) : '';
+  if (/[.,]/.test(nach) || (dezimal && ganz.includes(dezimal))) return NaN;
+  const gruppen = ganz.split(/[.,]/);
+  if (gruppen.length > 1 && (!/^\d{1,3}$/.test(gruppen[0]) || gruppen.slice(1).some(g => !/^\d{3}$/.test(g)))) return NaN;
+  return Number((gruppen.join('') || '0') + (nach ? '.' + nach : ''));
+}
+
+/** Ein Betrag für ein Eingabefeld in der Schreibweise der Sprache („129,99“ de-DE), ohne Tausender. */
+export function betragFuerFeld(v) {
+  if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '';
+  return new Intl.NumberFormat(locale(), { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(v));
+}
+
+/**
+ * Liest ein Geldfeld; ist der Inhalt keine Zahl (oder negativ), steht die
+ * Meldung am Feld und `ok` ist false — gesendet wird dann nichts.
+ * @param {string|HTMLInputElement} feld  ID oder Element
+ * @returns {{ ok: boolean, wert: number|null }}
+ */
+export function betragAusFeld(feld) {
+  const el = typeof feld === 'string' ? G(feld) : feld;
+  if (!el) return { ok: true, wert: null };
+  const wert = leseBetrag(el.value);
+  if (wert !== null && !(wert >= 0)) {
+    if (el.id) feldFehler(el.id, tRaw('common.amount_invalid', { wert: el.value.trim() }));
+    else toast(tRaw('common.amount_invalid', { wert: el.value.trim() }), 'error');
+    return { ok: false, wert: null };
+  }
+  if (el.id && G(el.id + '-fehler')) feldFehler(el.id, '');
+  return { ok: true, wert };
+}
+
+/**
  * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit
  * sie neben den Beträgen aus fmtN() nicht in einer zweiten Schreibweise steht.
  * @param {number|string} v  Prozentwert (51.1, nicht 0.511)
@@ -810,14 +945,14 @@ export function fmtBig(n){
  * Ein Datum überall gleich: „05.01.2024“ (de), „05/01/2024“ (en). Vorher
  * stand je Stelle toLocaleDateString() („5.1.2024“) neben eigenen Formen.
  * @param {string|number|Date|null|undefined} v
- * @param {'tag'|'zeit'|'tagzeit'} [art]
+ * @param {'tag'|'zeit'|'tagzeit'|'lang'} [art]  lang: „1. Juni 2026“
  */
 export function fmtDatum(v, art = 'tag'){
   if (v === null || v === undefined || v === '') return '';
   const d = v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
   if (isNaN(d.getTime())) return '';
   const tag = { day: '2-digit', month: '2-digit', year: 'numeric' }, zeit = { hour: '2-digit', minute: '2-digit' };
-  const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : tag;
+  const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : art === 'lang' ? { day: 'numeric', month: 'long', year: 'numeric' } : tag;
   return new Intl.DateTimeFormat(locale(), /** @type {Intl.DateTimeFormatOptions} */ (o)).format(d);
 }
 
@@ -844,6 +979,38 @@ function showPanel(name){
 
 // Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig);
 // die Anwendung käme sonst mit lauter Fehlern hoch.
+/**
+ * Fehler eines Formulars an die betroffenen Felder binden: aria-invalid
+ * markiert das Feld, aria-describedby lässt Vorleser die Meldung beim Feld
+ * nennen, und der Fokus springt in das erste, damit man gleich korrigiert.
+ * Ohne Text verschwinden Meldung und Markierungen.
+ * @param {HTMLElement} box  das Meldungsfeld (role=alert)
+ * @param {string} text
+ * @param {string[]} [felder] IDs der betroffenen Felder
+ */
+export function formularFehler(box, text, felder = []) {
+  box.textContent = text; box.style.display = text ? 'block' : 'none';
+  box.parentElement?.querySelectorAll('[aria-invalid="true"]').forEach(f => feldGueltig(f, box.id));
+  const ziele = /** @type {HTMLElement[]} */ (felder.map(id => G(id)).filter(Boolean));
+  for (const f of ziele) {
+    f.setAttribute('aria-invalid', 'true');
+    const ids = new Set((f.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean)); ids.add(box.id);
+    f.setAttribute('aria-describedby', [...ids].join(' '));
+  }
+  if (text && ziele[0]) ziele[0].focus();
+}
+/** @param {Element} f @param {string} boxId */
+function feldGueltig(f, boxId) {
+  f.removeAttribute('aria-invalid');
+  const rest = (f.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== boxId);
+  if (rest.length) f.setAttribute('aria-describedby', rest.join(' ')); else f.removeAttribute('aria-describedby');
+}
+// Wer im markierten Feld tippt, korrigiert: Die Markierung geht, die Meldung bleibt stehen.
+if (typeof document !== 'undefined') document.addEventListener('input', (ev) => {
+  const f = ev.target instanceof Element ? ev.target : null;
+  if (f?.getAttribute('aria-invalid') === 'true') f.removeAttribute('aria-invalid');
+});
+
 function zeigePflichtwechsel(){
   G('login-screen').style.display='flex'; G('app').style.display='none';
   showPanel('pflichtwechsel');
@@ -851,12 +1018,13 @@ function zeigePflichtwechsel(){
 function oeffneApp(){ if(ME?.mustChangePassword) zeigePflichtwechsel(); else showApp(); }
 G('btn-pflicht')?.addEventListener('click', async () => {
   const alt=G('pflicht-alt').value, neu=G('pflicht-neu').value, err=G('pflicht-err');
-  err.style.display='none';
-  const fehler = passwortRegelText(neu) || (neu!==G('pflicht-wdh').value ? tRaw('settings.password.mismatch') : '');
-  if(fehler){ err.textContent=fehler; err.style.display='block'; return; }
+  formularFehler(err, '');
+  const regel = passwortRegelText(neu);
+  if(regel){ formularFehler(err, regel, ['pflicht-neu']); return; }
+  if(neu!==G('pflicht-wdh').value){ formularFehler(err, tRaw('settings.password.mismatch'), ['pflicht-wdh']); return; }
   const d=await mitZweitemFaktor(z => api('POST','/v1/auth/change-password',{ current: alt, newPassword: neu, ...z }));
   if(!d) return;
-  if(!d.success){ err.textContent=d.error||tRaw('settings.error'); err.style.display='block'; return; }
+  if(!d.success){ formularFehler(err, d.error||tRaw('settings.error'), ['pflicht-alt']); return; }
   location.reload();
 });
 
@@ -885,15 +1053,15 @@ G('btn-register')?.addEventListener('click', async () => {
   const u=G('reg-user').value.trim(), e=G('reg-email').value.trim();
   const p=G('reg-pass').value, p2=G('reg-pass2').value;
   const err=G('reg-err');
-  err.style.display='none';
-  if(!u||!e||!p){ err.textContent=tRaw('register.req_fields'); err.style.display='block'; return; }
+  formularFehler(err, '');
+  if(!u||!e||!p){ formularFehler(err, tRaw('register.req_fields'), [!u&&'reg-user', !e&&'reg-email', !p&&'reg-pass'].filter(Boolean)); return; }
   // Reihenfolge: zu kurz VOR ungleich — dieselbe wie in der App
   // (LoginScreen.kt). Deren Kommentar behauptete schon vorher „dieselben drei
   // Pruefungen wie im Web-Formular, und in derselben Reihenfolge"; wahr war
   // daran bis hierher weder das eine noch das andere, weil die Webapp die
   // Laenge gar nicht prueft.
-  if(passwortRegelText(p)){ err.textContent=passwortRegelText(p); err.style.display='block'; return; }
-  if(p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
+  if(passwortRegelText(p)){ formularFehler(err, passwortRegelText(p), ['reg-pass']); return; }
+  if(p!==p2){ formularFehler(err, tRaw('settings.password.mismatch'), ['reg-pass2']); return; }
   const btn=G('btn-register'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/register',{
     username:u, email:e, first_name:G('reg-first').value.trim()||null,
@@ -906,19 +1074,19 @@ G('btn-register')?.addEventListener('click', async () => {
     G('reg-success').style.display='block';
     G('reg-success').textContent = d.message;
     if(d.console_mode) G('reg-success').textContent += t('register.console_hint');
-  } else { err.textContent=d.error||t('settings.error'); err.style.display='block'; }
+  } else { formularFehler(err, d.error||tRaw('settings.error')); }
 });
 
 // Forgot password
 G('btn-forgot')?.addEventListener('click', async () => {
   const email=G('forgot-email').value.trim();
   const err=G('forgot-err');
-  err.style.display='none';
-  if(!email){ err.textContent=tRaw('register.email_required'); err.style.display='block'; return; }
+  formularFehler(err, '');
+  if(!email){ formularFehler(err, tRaw('register.email_required'), ['forgot-email']); return; }
   const btn=G('btn-forgot'); const frei=knopfBesetzt(btn);
   const d=await api('POST','/v1/auth/forgot-password',{email});
   frei();
-  if(d && d.success===false){ err.textContent=d.error||tRaw('common.network_error'); err.style.display='block'; return; }
+  if(d && d.success===false){ formularFehler(err, d.error||tRaw('common.network_error'), ['forgot-email']); return; }
   G('forgot-form').style.display='none';
   G('forgot-success').style.display='block';
   G('forgot-success').textContent = d.message || 'Falls die E-Mail existiert, wurde ein Link gesendet.';
@@ -928,10 +1096,10 @@ G('btn-forgot')?.addEventListener('click', async () => {
 G('btn-reset')?.addEventListener('click', async () => {
   const p=G('reset-pass').value, p2=G('reset-pass2').value;
   const err=G('reset-err');
-  err.style.display='none';
-  if(!p||p!==p2){ err.textContent=tRaw('settings.password.mismatch'); err.style.display='block'; return; }
-  if(passwortRegelText(p)){ err.textContent=passwortRegelText(p); err.style.display='block'; return; }
-  if(!_resetToken){ err.textContent=tRaw('reset.invalid_token'); err.style.display='block'; return; }
+  formularFehler(err, '');
+  if(!p||p!==p2){ formularFehler(err, tRaw('settings.password.mismatch'), [p ? 'reset-pass2' : 'reset-pass']); return; }
+  if(passwortRegelText(p)){ formularFehler(err, passwortRegelText(p), ['reset-pass']); return; }
+  if(!_resetToken){ formularFehler(err, tRaw('reset.invalid_token')); return; }
   const btn=G('btn-reset'); btn.disabled=true; btn.textContent=tRaw('reset.saving');
   const d=await api('POST','/v1/auth/reset-password',{token:_resetToken,password:p});
   btn.disabled=false; btn.textContent=tRaw('reset.button');
@@ -940,7 +1108,7 @@ G('btn-reset')?.addEventListener('click', async () => {
     G('reset-success').style.display='block';
     G('reset-success').textContent=tRaw('reset.done');
     setTimeout(()=>showPanel('login'),2000);
-  } else { err.textContent=d.error||t('settings.error'); err.style.display='block'; }
+  } else { formularFehler(err, d.error||tRaw('settings.error')); }
 });
 
 // ── AUTH ──────────────────────────────────────────────
@@ -1105,6 +1273,9 @@ async function checkRegistrationEnabled(){
     const d = await fetch('/api/v1/auth/registration-status').then(r=>r.json());
     const wrap = G('link-register-wrap');
     if(wrap) wrap.style.display = d.enabled ? '' : 'none';
+    // Nur Wege anbieten, die der Server kann; fehlt die Angabe (älterer Server), bleibt alles wie es war.
+    if (d.passkey === false && G('btn-passkey')) G('btn-passkey').hidden = true;
+    if (G('link-forgot')) G('link-forgot').hidden = d.passwort_vergessen === false;
   } catch(_){}
 }
 
@@ -1197,7 +1368,8 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
       applyTheme(d.settings.app_theme);
       // Server language wins (explicit user choice), update localStorage too
       const srvLang = d.settings.language;
-      if (srvLang && I18N[srvLang]) {
+      // Auch eine noch nicht geladene Sprache: applyLang lädt sie nach.
+      if (srvLang === 'de' || srvLang === 'en') {
         if (srvLang !== LANG) applyLang(srvLang, false);
         localStorage.setItem('bim_lang', srvLang);
       }
@@ -1211,21 +1383,12 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   if(ME.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
   if(ME.isAdmin){ document.querySelectorAll('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
   else { ['bl-ck','bl-cs','bl-tok','bl-ts','rb-key','bs-key','lim-rb','lim-bl','lim-bs'].forEach(id=>{const el=G(id);if(el){el.disabled=true;if(el.type!=='number')el.placeholder=tRaw('settings.admins_only_ph')}}); G('btn-sav-bl').disabled=true; G('btn-sav-rb').disabled=true; G('btn-sav-bs').disabled=true; }
-  // Admin: check if API keys are set, redirect to settings if not
-  // Re-use the already-fetched cache (populated above); if not ready yet, wait briefly
+  // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in
+  // die Einstellungen bei jeder Anmeldung nimmt dem Verwalter seine Startseite.
+  // Ein Band weist einmal je Sitzung darauf hin.
   if(ME.isAdmin) {
     const checkRbKey = () => {
-      const s = _settingsCache || {};
-      const hasRbKey = s.rebrickable_api_key && s.rebrickable_api_key.trim();
-      if(!hasRbKey) {
-        const ntab = document.querySelector('.ntab[data-tab="settings"]');
-        if(ntab) ntab.click();
-        /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
-        // Der Einrichtungsassistent fragt genau diesen Schlüssel ab; über ihm
-        // wäre der Hinweis doppelt. Öffnet er später, räumt er ihn weg.
-        if (!G('einrichtung-modal')?.classList.contains('open')) toast(tRaw('rb_key.missing'),'info').dataset.art = 'rb-schluessel';
-        return;
-      }
+      rbHinweisZeigen();
       loadGallery();
     };
     if(_settingsCache) checkRbKey();
@@ -1247,7 +1410,7 @@ async function doLogin(){
     G('lc-zeile').style.display=''; G('lc').value=''; G('lc').focus();
     // Hat das Konto Passkeys, geht einer statt des Codes (js/23-passkeys.js).
     G('lc-passkey').hidden=!d.passkey;
-    G('lerr').textContent=d.error||''; G('lerr').style.display=code?'block':'none';
+    formularFehler(G('lerr'), code ? (d.error||'') : '', code ? ['lc'] : []);
     return;
   }
   G('lc-zeile').style.display='none'; G('lc').value='';
@@ -1255,7 +1418,8 @@ async function doLogin(){
     // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
-    oeffneApp(); } else { const err=d.error||t('settings.error'); G('lerr').textContent=err; G('lerr').style.display='block'; if(d.unverified){ G('lerr').innerHTML=err+' <a href="#" data-click="showPanel" data-arg="login" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
+    formularFehler(G('lerr'), '');
+    oeffneApp(); } else { const err=d.error||tRaw('settings.error'); formularFehler(G('lerr'), err, ['lp','lu']); if(d.code==='anmeldedaten_ungueltig'){ G('lerr').innerHTML=esc(err)+' <a href="#" data-click="bestaetigungErneut" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
@@ -1289,8 +1453,16 @@ G('btn-logout').onclick=async()=>{
 // gibToggle meldet js/01-fortschritt.js an, openLogViewer js/01-monitor.js,
 // closePdfViewer/printPdfViewer js/12-pdfviewer.js — der Handler gehört zu dem
 // Modul, das ihn umsetzt.
+// Ohne Auskunft über das Konto: Der Server antwortet für jede Adresse gleich.
+async function bestaetigungErneut(){
+  const email=G('lu').value.trim();
+  if(!email.includes('@')){ toast(tRaw('auth.resend_need_email'),'info'); G('lu').focus(); return; }
+  const d=await api('POST','/v1/auth/bestaetigung-erneut',{email});
+  toast(d.message||d.error||tRaw('settings.error'), d.success?'success':'error');
+}
+
 registerActions({
-  showPanel,
+  showPanel, rbHinweisOeffnen, rbHinweisWeg, bestaetigungErneut,
 });
 
 /**

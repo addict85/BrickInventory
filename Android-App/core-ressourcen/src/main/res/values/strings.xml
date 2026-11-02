@@ -38,7 +38,7 @@
     <string name="settings_language_de">German</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
-    <string name="login_title">Sign in</string>
+    <string name="login_title">Welcome back</string>
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
@@ -48,6 +48,8 @@
     <string name="login_passkey_statt_code">Use a passkey instead of the code</string>
     <string name="login_passkey_keiner">There is no passkey for this server on this device.</string>
     <string name="login_passkey_fehler">The passkey could not be requested.</string>
+    <string name="login_passkey_rpid_fehlt">The server did not say which domain the passkey belongs to. Cancelled for your security; sign in with your password.</string>
+    <string name="login_passkey_rpid_fremd">The server asks for a passkey for a domain other than %1$s. Cancelled for your security: check the server address or sign in with your password.</string>
     <string name="settings_nutzer_ca">Trust user-installed certificate authorities (risk)</string>
     <string name="settings_nutzer_ca_hint">Only for the connection to your server, never for updates. Risk: an authority installed by a user – for example by your employer or by malware – can issue certificates for any server and so read the traffic. Only turn this on if you installed the authority yourself for your server.</string>
     <string name="nutzer_ca_frage_titel">Trust user-installed authorities?</string>
@@ -111,7 +113,7 @@
     <string name="setup_server_url">Server URL</string>
     <string name="setup_url_label">URL of the BrickInventory Manager webapp</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
-    <string name="setup_url_supporting">e.g. https://brick.fritz.box or https://brick.example.com – without https:// the app adds it</string>
+    <string name="setup_url_supporting">e.g. brick.fritz.box or brick.example.com – https:// may be omitted</string>
     <string name="api_app_zu_alt">This app is too old for the server. Please update the app (Settings → Update).</string>
     <string name="api_server_zu_alt">The server is older than this app. Some functions may be missing — please update the server.</string>
     <string name="setup_continue">Continue</string>
@@ -122,14 +124,13 @@
     <string name="gallery_stat_sets">Sets</string>
     <string name="gallery_stat_units">Copies</string>
     <string name="gallery_stat_parts">Parts</string>
-    <string name="gallery_stat_minifigs">Minifigs</string>
+    <string name="gallery_stat_minifigs">Minifigures</string>
     <string name="gallery_stat_instructions">Instructions</string>
-    <string name="gallery_search_placeholder">Search sets…</string>
+    <string name="gallery_search_placeholder">Search…</string>
     <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
     <string name="gallery_add_first">Add your first set</string>
-    <string name="gallery_load_failed">Your collection could not be loaded</string>
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
@@ -153,9 +154,9 @@
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
     <string name="minifigs_stat_types">Types</string>
-    <string name="minifigs_stat_total">Total</string>
+    <string name="minifigs_stat_total">Figures in total</string>
     <string name="minifigs_stat_manual">Manual</string>
-    <string name="minifigs_search_placeholder">Search minifigures…</string>
+    <string name="minifigs_search_placeholder">Search…</string>
     <string name="minifigs_manual_section">Manually added minifigures</string>
     <string name="minifigs_sets_section">From sets</string>
     <string name="minifigs_none">No minifigures</string>
@@ -163,7 +164,7 @@
     <string name="minifigs_no_results">No results</string>
     <string name="minifigs_add">Add minifigure</string>
     <string name="minifigs_add_title">Add minifigure</string>
-    <string name="minifigs_fig_number">Figure number</string>
+    <string name="minifigs_fig_number">Minifigure number</string>
     <string name="minifigs_fig_number_placeholder">e.g. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink no. (optional)</string>
     <string name="minifigs_bl_number_placeholder">e.g. sw0001 — for market price</string>
@@ -210,6 +211,7 @@
     <string name="detail_alert">Price alert</string>
     <string name="alert_channel_name">Price alerts</string>
     <string name="alert_channel_desc">Tells you when a set crosses one of your thresholds.</string>
+    <string name="alert_gesperrt">A set crossed one of your thresholds.</string>
     <string name="alert_notify">Notify me on this device</string>
     <string name="alert_notify_hint">Checks hourly in the background. Without it you only get the e-mail.</string>
     <string name="alert_schedule_failed">Price alert could not be scheduled: %1$s</string>
@@ -250,11 +252,11 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Add sets and generate a parts list</string>
+    <string name="partslist_empty_hint">Collects the parts of one or more sets — for rebuilding or ordering what is missing.</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
-        <item quantity="one">%1$d×  ·  %2$d type</item>
-        <item quantity="other">%1$d×  ·  %2$d types</item>
+        <item quantity="one">×%1$d  ·  %2$d type</item>
+        <item quantity="other">×%1$d  ·  %2$d types</item>
     </plurals>
     <string name="partslist_rb_prefix">RB: %1$s</string>
     <!-- ══════════════ Finance screen ══════════════ -->
@@ -264,15 +266,15 @@
     <string name="finance_price_error">Price error</string>
     <string name="finance_no_sets">No sets</string>
     <string name="finance_load_prompt">→ Load prices</string>
-    <string name="finance_total_pnl">Total P&amp;L  %1$s</string>
+    <string name="finance_total_pnl">%1$s vs. purchase price</string>
     <string name="finance_parts_extra">incl. parts &amp; minifigures: %1$s</string>
     <plurals name="finance_fremde_waehrung">
         <item quantity="one">%1$d purchase price in another currency not included</item>
         <item quantity="other">%1$d purchase prices in another currency not included</item>
     </plurals>
-    <string name="finance_avg_label">Ø Average</string>
-    <string name="finance_min_label">Min</string>
-    <string name="finance_max_label">Max</string>
+    <string name="finance_avg_label">All at average price</string>
+    <string name="finance_min_label">All at lowest price</string>
+    <string name="finance_max_label">All at highest price</string>
     <string name="finance_filter_all">All</string>
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Parts</string>
@@ -286,12 +288,12 @@
     <string name="finance_total_manual_parts">Manually added parts</string>
     <string name="finance_total_manual_minifigs">Manually added minifigures</string>
     <string name="finance_grand_total">Total</string>
-    <string name="finance_market_avg">Ø Market price</string>
+    <string name="finance_market_avg">Collection market value</string>
 
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Types</string>
     <string name="parts_stat_colors">Colors</string>
-    <string name="parts_stat_total">Total</string>
+    <string name="parts_stat_total">Pieces in total</string>
     <string name="parts_manual_section">Manually added parts</string>
     <string name="parts_sets_section">From sets</string>
     <string name="parts_none">No parts</string>
@@ -339,11 +341,11 @@
     <!-- ══════════════ Set detail screen ══════════════ -->
     <string name="detail_year">Year</string>
     <string name="detail_pieces">Pieces</string>
-    <string name="detail_minifigs">Minifigs</string>
+    <string name="detail_minifigs">Minifigures</string>
     <string name="detail_theme">Theme</string>
     <string name="detail_section_details">Set details</string>
     <string name="detail_part_number">Part no.</string>
-    <string name="detail_fig_number">Fig. no.</string>
+    <string name="detail_fig_number">Minifigure no.</string>
     <string name="detail_color">Color</string>
     <string name="detail_section_item">Details</string>
     <string name="detail_set_number">Set number</string>
@@ -354,7 +356,6 @@
     <string name="detail_instruction_default">Instruction</string>
     <string name="detail_close">Close</string>
     <string name="detail_price_low">Low</string>
-    <string name="detail_price_current">Current</string>
     <string name="detail_price_high">High</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
@@ -366,10 +367,9 @@
     <string name="nav_gallery">Gallery</string>
     <string name="nav_parts">Parts</string>
     <string name="nav_minifigs">Minifigures</string>
-    <string name="nav_minifigs_short">Minifigs</string>
     <string name="name_unknown">Name unknown</string>
     <string name="parts_breakdown">%1$s from sets · %2$s loose</string>
-    <string name="nav_partslist">Parts list</string>
+    <string name="nav_partslist">Build list</string>
     <string name="nav_finance">Finance</string>
     <string name="nav_comparison">Comparison</string>
     <string name="nav_settings">Settings</string>
@@ -378,7 +378,7 @@
     <string name="nav_group_manage">Manage inventory</string>
     <string name="nav_group_server">Server</string>
     <string name="nav_monitoring">Background work</string>
-    <string name="main_barcode_add_partslist">Add to parts list?</string>
+    <string name="main_barcode_add_partslist">Add to the build list?</string>
     <string name="main_barcode_add_set">Add set?</string>
     <!-- Shown when the set number was guessed, not matched: the EAN could not be
          resolved and only a plausible candidate remains, or the number was read by
@@ -387,8 +387,7 @@
     <string name="main_barcode_unsure">Not certain — please check image and name</string>
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
-    <string name="main_barcode_figs">Figures</string>
-    <string name="main_account">Account</string>
+    <string name="main_barcode_figs">Minifigures</string>
     <string name="main_menu_monitoring">Background work</string>
     <string name="main_menu_logout">Log out</string>
     <string name="main_menu_change_server">Change server</string>
@@ -398,7 +397,7 @@
     <string name="vm_barcode_not_found">No set found for barcode %1$s</string>
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
-    <string name="parts_search_placeholder">Search parts…</string>
+    <string name="parts_search_placeholder">Search…</string>
     <string name="parts_spare_tag">Spare</string>
     <!-- Detail dialog for parts/minifigs FROM SETS: no market price,
          quantity read-only, instead the sets that use it. -->
@@ -437,6 +436,7 @@
     <string name="vm_set_added">%1$s added!</string>
     <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalog is reachable.</string>
     <string name="vm_error">Error: %1$s</string>
+    <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
     <string name="vm_session_expired">Session expired — please log in again</string>
     <string name="vm_rechte_entzogen">Your administrator rights no longer apply — the administration areas are hidden.</string>
 
@@ -452,12 +452,13 @@
     <string name="notif_pdf_done_tap">PDF ready – tap to open</string>
     <string name="notif_pdf_failed">PDF export failed: %1$s</string>
     <string name="notif_pdf_channel_name">PDF export progress</string>
-    <string name="notif_pdf_channel_desc">Shows the progress of the parts-list PDF export</string>
+    <string name="notif_pdf_channel_desc">Shows the progress of the build-list PDF export</string>
 
     <!-- PDF-Export-Statustexte (PdfExportManager) -->
     <string name="pdfexp_no_data">No export data available</string>
     <string name="pdfexp_starting">Starting export…</string>
     <string name="pdfexp_unknown_error">Unknown error</string>
+    <string name="pdfexp_oeffnen_mit">Open parts list with</string>
     <string name="pdfexp_loading_images">Loading images…</string>
     <string name="pdfexp_creating_eta">Creating PDF… ~%1$ds left</string>
     <string name="pdfexp_almost_done">PDF almost done…</string>
@@ -498,7 +499,7 @@
     </plurals>
     <!-- Katalog -->
     <string name="nav_catalog">Catalog</string>
-    <string name="catalog_search_placeholder">Set number / name…</string>
+    <string name="catalog_search_placeholder">Number or name…</string>
     <string name="catalog_filter_theme">Theme</string>
     <string name="catalog_filter_year">Year</string>
     <string name="catalog_all_themes">All themes</string>
@@ -570,7 +571,6 @@
     <string name="cd_search_clear">Clear search</string>
     <string name="cd_password_show">Show password</string>
     <string name="cd_password_hide">Hide password</string>
-    <string name="cd_set_menu">More actions for this set</string>
     <string name="cd_qty_increase">Increase quantity</string>
     <string name="cd_qty_decrease">Decrease quantity</string>
     <string name="cd_edit_cache_ttl">Edit cache duration</string>
@@ -783,9 +783,9 @@
     <string name="nav_wanted">Wanted</string>
     <string name="wanted_add_title">Add a wanted item</string>
     <string name="wanted_add_submit">Add to wanted list</string>
-    <string name="wanted_search">Search the wanted list…</string>
+    <string name="wanted_search">Search…</string>
     <string name="wanted_no_results">No wanted items found</string>
-    <string name="wanted_empty">Nothing on the wanted list yet.</string>
+    <string name="wanted_empty">Your wanted list is empty</string>
     <string name="wanted_owned">Already owned</string>
     <string name="wanted_alert_below">Alert below %1$s</string>
     <string name="wanted_alert_above">Alert above %1$s</string>
@@ -827,7 +827,6 @@
     <string name="vouchers_pick_pdf">Choose PDF</string>
     <string name="vouchers_pdf_chosen">File selected</string>
     <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.</string>
-    <string name="vouchers_pdf_open">Open PDF</string>
     <string name="vouchers_export">Export all vouchers as PDF</string>
     <string name="vouchers_pin_show">Show PIN</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
@@ -840,7 +839,6 @@
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
-    <string name="vouchers_balance_one">Query balance</string>
     <!-- Alle Platzhalter sind %s und nicht %d, auch wo Zahlen eingesetzt
          werden: Android-Lint meldet „%d followed by words" als
          PluralsCandidate, und der Baum zaehlt die Lint-Befunde. Gezaehlt wird
@@ -887,29 +885,57 @@
     <string name="setup_klartext_abgelehnt">http is not supported. Please enter the server\'s https address.</string>
     <string name="settings_systemfarben">System colors (Material You)</string>
     <string name="settings_systemfarben_hint">Colors from your wallpaper instead of the design\'s colors. Shapes and fonts stay.</string>
+    <string name="settings_vorschau_verbergen">Hide preview in the app overview</string>
+    <string name="settings_vorschau_verbergen_hint">No preview in the recent apps overview and no screenshots of the app. Applies to this device.</string>
     <string name="zert_titel_erstkontakt">Trust this server?</string>
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
     <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. Compare the fingerprint character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
-    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. That is why one tap is not enough here: copy the last 16 characters of the fingerprint from the web app (Settings → Server certificate) – not from this screen. Scanning the web app\'s QR code is easier, it carries the fingerprint.</string>
-    <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself.</string>
+    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. That is why one tap is not enough here: copy the last 24 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier, it carries the fingerprint.</string>
+    <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the new fingerprint is shown only by the web app (Settings → Server certificate); copy its last 24 characters from there.</string>
     <string name="zert_fingerabdruck">Fingerprint (SHA-256 of the public key)</string>
-    <string name="zert_jetzt">Shown now (new)</string>
     <string name="zert_bisher">Previously confirmed</string>
     <string name="zert_vertrauen">Trust this certificate</string>
     <string name="zert_vertrauen_neu">Accept the new certificate</string>
     <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
-    <string name="zert_geaendert_eingabe">Last 16 characters of the new fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
+    <string name="zert_geaendert_eingabe">Last 24 characters of the new fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
-    <string name="zert_unbekannt_eingabe">Last 16 characters of the fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
-    <string name="zert_eingabe_falsch">That does not match the fingerprint shown.</string>
-    <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself – the web app then shows the new fingerprint under Settings → Server certificate; copy its last 16 characters below.</string>
+    <string name="zert_unbekannt_eingabe">Last 24 characters of the fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
+    <string name="zert_eingabe_falsch">That does not match this server\'s fingerprint.</string>
+    <string name="zert_beginnt_mit">Fingerprint starts with (for orientation only)</string>
+    <string name="zert_text_nutzer_ca">The certificate of %1$s is valid only through an authority installed on this device. That may be your own – or one that someone with access to the device slipped in. That is why one tap is not enough here: copy the last 24 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier.</string>
+    <string name="zert_titel_nutzer_ca">Certificate from an installed authority</string>
+    <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself – the web app then shows the new fingerprint under Settings → Server certificate; copy its last 24 characters below.</string>
     <string name="setup_qr_pin_uebernehmen">Accept the new certificate and log in</string>
     <string name="setup_qr_pin_wechsel_abgelehnt">The QR code names a different certificate than the confirmed one. Nothing was changed.</string>
     <string name="common_load_failed">Could not be loaded</string>
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="cd_set_delete">Delete %1$s</string>
+    <string name="settings_hell_fest">This design is always dark; light and dark have no effect here.</string>
+    <string name="vouchers_cd_delete">Delete voucher %1$s</string>
+    <string name="vouchers_cd_edit">Edit voucher %1$s</string>
+    <string name="vouchers_cd_pdf">Open PDF of voucher %1$s</string>
+    <string name="vouchers_cd_balance">Check balance of voucher %1$s</string>
+    <string name="vouchers_cd_copy_pin">Copy PIN of voucher %1$s</string>
+    <string name="vouchers_cd_copy_number">Copy number %1$s</string>
+    <string name="nav_group_account">Account and app</string>
+    <string name="nav_group_tools">Tools</string>
+    <string name="detail_pnl_tile">Gain/loss</string>
+    <string name="chart_change_max">%1$s overall</string>
+    <string name="chart_change_year">%1$s this year</string>
+    <string name="chart_change_month">%1$s this month</string>
+    <string name="chart_change_week">%1$s this week</string>
+    <string name="finance_range_label">Value of your sets today, from lowest to highest market price</string>
+    <string name="wanted_add_first">Add a set to the list</string>
+    <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
+    <string name="fehler_anmeldung_text">Your session has expired.</string>
+    <string name="fehler_anmeldung_titel">Please sign in again</string>
+    <string name="fehler_server_text">Your data is safe. Try again in a moment.</string>
+    <string name="fehler_server_titel">The server reported an error</string>
+    <string name="fehler_offline_text">Check Wi-Fi or mobile data, then try again.</string>
+    <string name="fehler_offline_titel">No connection to the server</string>
     <string name="widget_titel">Collection</string>
     <string name="widget_wert">Value</string>
     <string name="widget_heute">Today</string>
@@ -918,7 +944,7 @@
     <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
     <string name="art_nacharbeit">Follow-up after adding a set</string>
     <string name="art_bilder">Images of a set</string>
-    <string name="art_pdf">PDF parts list</string>
+    <string name="art_pdf">PDF build list</string>
     <string name="art_csv_import">CSV import of sets</string>
     <string name="art_wechselkurse">Exchange rates (ECB)</string>
     <string name="art_anleitung">Load instructions</string>

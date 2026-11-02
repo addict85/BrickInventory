@@ -18,6 +18,19 @@ import kotlinx.coroutines.*
 import javax.inject.Inject
 
 /**
+ * Die Teileliste öffnen, immer über die Auswahl des Systems: Sie trägt das ganze
+ * Inventar, und eine App, die sich als Standard für PDFs eingetragen hat, bekäme
+ * sie sonst unbemerkt samt Leserecht.
+ */
+fun teilelistenAuswahl(ctx: Context, datei: java.io.File, titel: String): Intent {
+    val ansicht = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", datei), "application/pdf")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    return Intent.createChooser(ansicht, titel).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+}
+
+/**
  * Foreground-Service für den PDF-Export der Teileliste.
  * Ersetzt den früheren WakeLock-Ansatz im ViewModel: Der Export überlebt
  * damit auch, wenn die Activity vom System beendet wird oder das Gerät
@@ -100,11 +113,7 @@ class PdfExportService : Service() {
     }
 
     private fun openPdfIntent(done: PdfExportState.Done): PendingIntent {
-        val uri = FileProvider.getUriForFile(this, "$packageName.provider", done.file)
-        val view = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/pdf")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+        val view = teilelistenAuswahl(this, done.file, loc.getString(R.string.pdfexp_oeffnen_mit))
         return PendingIntent.getActivity(
             this, 0, view,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE

@@ -10,6 +10,9 @@
  *      ist zu" (die Anzeige meldet enabled: true)
  *   C  globalerWertGueltig() liefert immer true → rot: „das Formular nimmt nur
  *      0 oder 1" (200, "false" gespeichert) und „der Import ebenso"
+ *   D  (02.11.) passkey/passwort_vergessen fest true → rot: „Anmeldewege
+ *      nur, wenn der Server sie kann" (ohne APP_BASE_URL true); nur
+ *      basisUrl() ohne mailEingerichtet() → rot (ohne SMTP true)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -35,13 +38,13 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async (t) =>
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
 
   const CHEF = `reg_chef_${process.pid}`, PASS = 'Chef-Passwort-1', NEU = `reg_neu_${process.pid}`;
-  const vorher = await db.all("SELECT key, value FROM global_settings WHERE key IN ('registration_enabled', 'smtp_secure')");
+  const vorher = await db.all("SELECT key, value FROM global_settings WHERE key IN ('registration_enabled', 'smtp_secure', 'smtp_host', 'smtp_user')");
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NEU]]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
     VALUES ($1, $2, true, true, true) RETURNING id`, [CHEF, bcrypt.hashSync(PASS, 4)])).id;
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%'");
   t.after(async () => {
-    await db.run("DELETE FROM global_settings WHERE key IN ('registration_enabled', 'smtp_secure')");
+    await db.run("DELETE FROM global_settings WHERE key IN ('registration_enabled', 'smtp_secure', 'smtp_host', 'smtp_user')");
     for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NEU]]);
     await db.pool.end().catch(() => {});
@@ -63,7 +66,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async (t) =>
   for (const [fall, wert] of [['ohne Zeile bleibt sie zu', null], ['"false" ist zu', 'false'], ['"0" ist zu', '0']]) {
     await t.test(fall, async () => {
       await setze(wert);
-      assert.deepEqual((await rufe('GET', '/auth/registration-status')).body, { enabled: false });
+      assert.equal((await rufe('GET', '/auth/registration-status')).body.enabled, false);
       const r = await registriere();
       assert.equal(r.status, 403, JSON.stringify(r.body));
       assert.equal(r.body.code, 'registrierung_deaktiviert');
@@ -71,9 +74,24 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async (t) =>
     });
   }
 
+  await t.test('Anmeldewege nur, wenn der Server sie kann', async () => {
+    const alt = process.env.APP_BASE_URL;
+    t.after(() => { if (alt === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = alt; });
+    const wege = async () => { const b = (await rufe('GET', '/auth/registration-status')).body; return [b.passkey, b.passwort_vergessen]; };
+    await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user')");
+    delete process.env.APP_BASE_URL;
+    assert.deepEqual(await wege(), [false, false], 'ohne Adresse');
+    process.env.APP_BASE_URL = 'http://192.168.1.20:3000';
+    assert.deepEqual(await wege(), [false, false], 'IP-Adresse, ohne Mail');
+    process.env.APP_BASE_URL = 'https://inventar.example.org';
+    assert.deepEqual(await wege(), [true, false], 'Domäne, ohne Mail');
+    await db.run("INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.example.org'), ('smtp_user', 'inventar')");
+    assert.deepEqual(await wege(), [true, true], 'Domäne und Mail');
+  });
+
   await t.test('"1" öffnet sie', async () => {
     await setze('1');
-    assert.deepEqual((await rufe('GET', '/auth/registration-status')).body, { enabled: true });
+    assert.equal((await rufe('GET', '/auth/registration-status')).body.enabled, true);
     const r = await registriere();
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(await db.get('SELECT id FROM users WHERE username = $1', [NEU]));

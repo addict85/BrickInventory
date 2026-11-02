@@ -254,6 +254,7 @@ const C = {
   'GET /api/v1/settings/theme': 'nur-v1',
   'POST /api/v1/auth/change-password': 'nur-v1',
   'POST /api/v1/auth/forgot-password': 'nur-v1',
+  'POST /api/v1/auth/bestaetigung-erneut': 'nur-v1',
   'POST /api/v1/auth/register': 'nur-v1',
   'POST /api/v1/minifigs/import/csv': 'nur-v1',
   // „Kann ich das bauen?“ (Nachtrag 174) — beide Oberflaechen rufen ihn,

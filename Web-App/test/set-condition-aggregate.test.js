@@ -736,8 +736,8 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   // änderte: Wer eine tote Zweitfassung entfernt, senkt die Zahl. Geprüft wird
   // deshalb jetzt die REGEL — jeder ausgehende Aufruf trägt family: 4 —
   // unabhängig davon, wie viele es gerade sind.
-  // Seit src/infra/abruf.ts ruft nur er https.get (test/umleitungen.test.js);
-  // die Regel gilt damit an genau dieser Stelle.
+  // Seit src/infra/abruf.ts ruft nur er https.get und (für POST) https.request
+  // (test/umleitungen.test.js); die Regel gilt damit an genau diesen Stellen.
   const ohne = [];
   let gefunden = 0;
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/abruf.ts'), 'utf8'));
@@ -745,7 +745,7 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
     gefunden++;
     if (!/family:\s*4/.test(m[1])) ohne.push(m[0].slice(0, 70));
   }
-  assert.equal(gefunden, 1, `${gefunden} Aufrufe in abruf.ts erkannt — das Muster greift nicht mehr`);
+  assert.equal(gefunden, 2, `${gefunden} Aufrufe in abruf.ts erkannt — das Muster greift nicht mehr`);
   assert.deepEqual(ohne, [], `ausgehende Aufrufe ohne family: 4:\n  ${ohne.join('\n  ')}`);
 });
 

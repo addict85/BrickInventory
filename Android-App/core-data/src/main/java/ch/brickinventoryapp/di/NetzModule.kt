@@ -148,34 +148,12 @@ object NetzModule {
                     }
                 }
             }
-            // Browserähnliche Kennung für Bildanfragen an fremde Hosts (Rebrickable-CDN).
-            // Cloudflare kann den OkHttp-User-Agent dauerhaft blockieren oder mit einer
-            // HTML-Challenge beantworten, die Coil nicht als Bild lesen kann — ein Wiederholen
-            // hilft dagegen nicht. Der eigene Server bekommt keine besonderen Kopfzeilen.
-            .addInterceptor { chain ->
-                val req = chain.request()
-                val host = req.url.host
-                val isOwnServer = host == "localhost" ||
-                    NetworkPolicy.isSameOrigin(req.url, prefs.serverUrlState.value ?: "")
-                if (isOwnServer) {
-                    chain.proceed(req)
-                } else {
-                    chain.proceed(
-                        req.newBuilder()
-                            .header(
-                                "User-Agent",
-                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                            )
-                            .header("Referer", "https://rebrickable.com/")
-                            // Kein "image/avif": Damit lieferte das CDN AVIF, und nicht jedes Gerät
-                            // hat einen AV1-Decoder („Failed to create image decoder …
-                            // 'unimplemented'“). JPEG, PNG und WebP kann jedes Android.
-                            .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
-                            .build()
-                    )
-                }
-            }
+            // Nur eigener Server und die Bild-CDNs (util/BildHosts.kt); Umleitungen prüft
+            // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
+            .addInterceptor(ch.brickinventoryapp.util.BildHostWaechter { url ->
+                ch.brickinventoryapp.util.istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
+            })
+            .followRedirects(false)
             // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln verhungern: Dies ist
             // der eine ImageLoader der App. Bei 3 Verbindungen je Host warteten Kacheln, Coil
             // brach sie beim Vorbeirollen ab, und sie blieben leer. 6 je Host, 12 gesamt

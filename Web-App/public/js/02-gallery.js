@@ -1,7 +1,7 @@
 import { skelettKacheln, listeLadefehler } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -58,13 +58,6 @@ function markiereGruppe(tab){
   // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
   const sammlung = document.querySelector('.ntab[data-tab="gallery"]');
   sammlung?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
-  // Am Telefon steht in der Leiste, welche Ansicht der Sammlung offen ist.
-  const unter = sammlung?.querySelector('.tab-unter');
-  if (unter) {
-    const schluessel = { parts: 'nav.parts', minifigs: 'nav.minifigs' }[tab];
-    if (schluessel) { unter.setAttribute('data-i18n', schluessel); unter.textContent = tRaw(schluessel); }
-    else { unter.removeAttribute('data-i18n'); unter.textContent = ''; }
-  }
   // Die drei Knöpfe wechseln die Ansicht; die offene ist die aktuelle Seite.
   document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b => {
     if (b.dataset.arg === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
@@ -88,10 +81,32 @@ export function filterUmschalten(){
   this.setAttribute('aria-expanded', String(offen));
 }
 
+/** Wer kein Verwalter ist, sieht im Reiter Einstellungen einen Satz statt einer leeren Seite. */
+function zeigeEinstellungsZugriff(){
+  const f = G('einst-kein-zugriff');
+  if (!f) return;
+  f.hidden = !!ME?.isAdmin;
+  f.innerHTML = ME?.isAdmin ? '' : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') });
+}
+
 /** Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü. */
 export function oeffneReiter(name){
+  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
   menueSchliessen();
   document.querySelector(`.ntab[data-tab="${name}"]`)?.click();
+  if (ausMenue) fokusAufTitel(G('tab-'+name));
+}
+
+/**
+ * Nach einer Wahl im Menü steht der Fokus auf einem nun verborgenen Eintrag
+ * und fiele an den Seitenanfang; die Überschrift der neuen Seite ist der Ort,
+ * an dem Tastatur und Bildschirmleser weitermachen.
+ */
+function fokusAufTitel(flaeche){
+  const titel = /** @type {HTMLElement|null} */ (flaeche?.querySelector('.ptitle') ?? null);
+  if (!titel) { G('btn-umenu')?.focus(); return; }
+  if (!titel.hasAttribute('tabindex')) titel.setAttribute('tabindex', '-1');
+  titel.focus({ preventScroll: true });
 }
 
 export function bindTabs(){
@@ -133,7 +148,7 @@ export function bindTabs(){
       // frueher hier alles mitgeladen wurde, holt jetzt die jeweilige Sicht
       // beim Oeffnen (siehe oeffneSicht unten). Wer die API-Schluessel
       // nachsieht, braucht keine Gutscheinliste.
-      if(tab==='settings')     { loadSettings(); if(ME?.isAdmin) loadApiLimits(); }
+      if(tab==='settings')     { zeigeEinstellungsZugriff(); loadSettings(); if(ME?.isAdmin) loadApiLimits(); }
       if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); if(jobPollTimer) clearTimeout(jobPollTimer); pollJobStatus(); }
       if(tab!=='monitor' && _monitorTimer) { clearInterval(_monitorTimer); set_monitorTimer(null); if(jobPollTimer){clearTimeout(jobPollTimer);set_jobPollTimer(null);} }
     });
@@ -186,6 +201,7 @@ export function oeffneSicht(name){
   if(!SICHTEN[name]) return;
   const flaeche = G('tab-'+name);
   if(!flaeche) return;
+  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
   document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   flaeche.classList.add('active');
@@ -199,6 +215,7 @@ export function oeffneSicht(name){
   // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige
   // gerollt war, und man sieht die Mitte einer fremden Seite.
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (ausMenue) fokusAufTitel(flaeche);
   SICHTEN[name]();
 }
 
@@ -213,26 +230,55 @@ function zeigeSeitenname(flaeche, imKopf){
   document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';
 }
 
-function menueSchliessen(){
+function menueSchliessen(fokusZurueck = false){
   const pop = G('umenu-pop');
+  const drin = !!pop && pop.contains(document.activeElement);
   if(pop) pop.style.display = 'none';
   const knopf = G('btn-umenu');
   if(knopf) knopf.setAttribute('aria-expanded','false');
+  if(knopf && fokusZurueck && drin) knopf.focus();
+}
+
+/** Die sichtbaren Einträge; `admin-only` ist für andere Konten ausgeblendet. */
+function menueEintraege(){
+  return /** @type {HTMLElement[]} */ ([...(G('umenu-pop')?.querySelectorAll('[role="menuitem"]') ?? [])])
+    .filter(e => e.style.display !== 'none');
+}
+
+/** Öffnet das Menü und setzt den Fokus auf den ersten (oder letzten) Eintrag. */
+function menueOeffnen(letzter = false){
+  const pop = G('umenu-pop');
+  if(!pop) return;
+  pop.style.display = 'block';
+  G('btn-umenu')?.setAttribute('aria-expanded','true');
+  const e = menueEintraege();
+  (letzter ? e[e.length - 1] : e[0])?.focus();
 }
 
 /** Das Menü auf- und zuklappen. */
 export function benutzerMenue(){
   const pop = G('umenu-pop');
   if(!pop) return;
-  const offen = pop.style.display !== 'none';
-  if(offen){ menueSchliessen(); return; }
-  pop.style.display = 'block';
-  G('btn-umenu')?.setAttribute('aria-expanded','true');
+  if(pop.style.display !== 'none'){ menueSchliessen(); return; }
+  menueOeffnen();
 }
 
-// Zuklappen, wenn jemand daneben tippt oder Escape drückt. Beides gehört zu
-// einem Menü wie der Knopf selbst — ein Aufklapper, der nur über denselben
-// Knopf wieder zugeht, fühlt sich klemmend an.
+// Tastatur nach dem APG-Muster „Menu Button": Ein Bildschirmleser kündigt
+// role=menu an, und Nutzer erwarten dann Pfeiltasten statt Tab.
+document.addEventListener('keydown', (ev) => {
+  const ziel = ev.target instanceof Element ? ev.target : null;
+  if(ziel?.id === 'btn-umenu' && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')){
+    ev.preventDefault(); menueOeffnen(ev.key === 'ArrowUp'); return;
+  }
+  if(!ziel?.closest('#umenu-pop')) return;
+  const e = menueEintraege(), i = e.indexOf(/** @type {HTMLElement} */ (ziel));
+  const nach = { ArrowDown: (i + 1) % e.length, ArrowUp: (i - 1 + e.length) % e.length, Home: 0, End: e.length - 1 }[ev.key];
+  if(nach !== undefined){ ev.preventDefault(); e[nach]?.focus(); return; }
+  if(ev.key === 'Tab') menueSchliessen();
+});
+
+// Zuklappen, wenn jemand daneben tippt oder Escape drückt. Escape bringt den
+// Fokus zurück auf den Menüknopf, sonst fiele er auf den Seitenanfang.
 document.addEventListener('click', (ev) => {
   const pop = G('umenu-pop');
   if(!pop || pop.style.display === 'none') return;
@@ -240,7 +286,7 @@ document.addEventListener('click', (ev) => {
   menueSchliessen();
 });
 document.addEventListener('keydown', (ev) => {
-  if(ev.key === 'Escape') { menueSchliessen(); importMenuesSchliessen(null, true); }
+  if(ev.key === 'Escape') { menueSchliessen(true); importMenuesSchliessen(null, true); }
 });
 
 /** Offene Import-Menüs schliessen, ausser dem, in dem `ausser` liegt. */
@@ -914,6 +960,7 @@ export function renderGallery(){
     c.innerHTML = gefiltert
       ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
                       knopf: zuruecksetzenKnopf('gallery') })
+      // Ohne eigenen Knopf: „Set hinzufügen“ steht direkt darüber in der Erfassen-Leiste.
       : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint'),
                       knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
@@ -1093,14 +1140,14 @@ export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('o
 
 async function doAddSet(){
   const num=G('add-num').value.trim(), qty=parseInt(G('add-qty').value)||1;
-  const priceVal = G('add-price')?.value;
-  const purchase_price = (priceVal != null && String(priceVal).trim() !== '' && !isNaN(parseFloat(priceVal))) ? parseFloat(priceVal) : null;
+  const preis = betragAusFeld('add-price');
+  const purchase_price = preis.wert;
   const condition = G('add-condition')?.value || 'N';
   // Zielkonto nur mitschicken, wenn die Auswahl überhaupt sichtbar ist. Ohne
   // Haushalt schickt die Webapp gar nichts, und der Server bleibt beim
   // eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
-  if(!setnummerFeldGueltig('add-num', num)) return;
+  if(!setnummerFeldGueltig('add-num', num) || !preis.ok) return;
   showProgress(t('gallery.adding_set',{num}), false);
   try{
     await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
@@ -1448,7 +1495,7 @@ export function renderInstructions(instr, sn) {
   G('m-instr').innerHTML = `
     <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:12px 0 7px">
       ${t('instr.section_title')} ${instr.length ? `(${instr.length})` : ''}
-      <button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>
+      ${ME?.isAdmin || !instr.some(i => !i.is_manual) ? `<button data-click="redownloadInstr" data-arg="${escJs(sn)}" class="btn bs btn-sm" data-stil="margin-left:8px;font-size:var(--fs-0);padding:3px 8px">${t('instr.reload')}</button>` : ''}
     </div>
     ${items || `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('instr.none_auto')}</div>`}
     ${uploadForm}`;

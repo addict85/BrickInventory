@@ -90,10 +90,10 @@ class ErreichbareRoutenTest {
     }
 
     /**
-     * Der Server gehoert zu den Einstellungen, nicht ins Konto-Menue.
+     * Der Server gehoert zu den Einstellungen, nicht auf „Mehr“.
      *
      * Marcos Entscheidung: Die Serveradresse ist eine Einstellung wie Waehrung
-     * und Sprache — etwas, das man einmal setzt. Im Konto-Menue stand sie neben
+     * und Sprache — etwas, das man einmal setzt. Im alten Kontomenue stand sie neben
      * „Abmelden", also neben einer Handlung an der laufenden Sitzung.
      *
      * Die Regel oben (jeder Bildschirm erreichbar) bliebe auch dann gruen, wenn
@@ -113,7 +113,8 @@ class ErreichbareRoutenTest {
             "MainScaffold.kt navigiert wieder selbst zu Screen.Setup. Der Serverwechsel soll " +
                 "an EINER Stelle stehen — in den Einstellungen; zwei Wege dorthin sind zwei " +
                 "Stellen, die auseinanderlaufen koennen.",
-            !geruest.contains("navigate(Screen.Setup.route)")
+            !geruest.contains("navigate(Screen.Setup.route)") &&
+                !Quellen.ohneKommentare(Quellen.lies("MehrBildschirm.kt")).contains("Screen.Setup")
         )
     }
 
@@ -122,23 +123,26 @@ class ErreichbareRoutenTest {
      *
      * Die Regel oben ist allgemein und wuerde auch dann gruen, wenn jemand die
      * Einstellungen ueber irgendeinen anderen Bildschirm erreichbar machte. Der
-     * Ort ist aber eine Entscheidung: Das Konto-Menue oben rechts ist die
-     * Stelle fuer alles, was kein Bestandsreiter ist — dort steht schon die
-     * Ueberwachung. Ein Umzug soll auffallen und bewusst geschehen.
+     * Ort ist aber eine Entscheidung: Die Seite „Mehr“ ist die Stelle fuer alles,
+     * was kein Bestandsreiter ist — EIN Ort, nicht Schublade und Kontomenue
+     * nebeneinander. Ein Umzug soll auffallen und bewusst geschehen.
      */
     @Test
-    fun `die Einstellungen haengen im Konto-Menue`() {
-        val geruest = Quellen.ohneKommentare(Quellen.lies("MainScaffold.kt"))
+    fun `die Einstellungen stehen auf der Seite Mehr`() {
+        val mehr = Quellen.ohneKommentare(Quellen.lies("MehrBildschirm.kt"))
         assertTrue(
-            "MainScaffold.kt navigiert nicht zu Screen.Settings — dann sind Waehrung, Sprache, " +
+            "MehrBildschirm.kt navigiert nicht zu Screen.Settings — dann sind Waehrung, Sprache, " +
                 "Haushalt, Konto und die Update-Pruefung wieder unerreichbar.",
-            geruest.contains("navigate(Screen.Settings.route)")
+            mehr.contains("navigate(Screen.Settings.route)")
         )
         assertTrue(
-            "Der Menuepunkt traegt nicht R.string.nav_settings. Derselbe Text wie die " +
+            "Der Eintrag traegt nicht R.string.nav_settings. Derselbe Text wie die " +
                 "Ueberschrift des Bildschirms ist Absicht: Zwei Schluessel fuer dasselbe Wort " +
-                "sind zwei Stellen, an denen Menue und Ziel auseinanderlaufen koennen.",
-            geruest.contains("R.string.nav_settings")
+                "sind zwei Stellen, an denen Eintrag und Ziel auseinanderlaufen koennen.",
+            mehr.contains("R.string.nav_settings")
         )
+        val geruest = Quellen.ohneKommentare(Quellen.lies("MainScaffold.kt"))
+        assertTrue("MainScaffold.kt fuehrt wieder selbst zu den Einstellungen — dann gibt es zwei Orte.",
+            !geruest.contains("navigate(Screen.Settings.route)"))
     }
 }

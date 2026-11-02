@@ -85,7 +85,9 @@ router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Logg
   res.json({ success: true, deleted: geloescht });
 });
 
+// Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
 router.post('/settings/sessions/andere-beenden', requireLogin, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
+  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
   const { beendet, version } = await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID);
   req.session.sitzungsVersion = version;
   res.json({ success: true, deleted: beendet });

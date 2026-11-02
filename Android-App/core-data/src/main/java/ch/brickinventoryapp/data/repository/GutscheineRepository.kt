@@ -47,7 +47,7 @@ class GutscheineRepository @Inject constructor(
         val antwort = api.frageGuthabenAb(id)
         if (antwort.isSuccessful) return@safeCall antwort
         val roh = antwort.errorBody()?.string()
-        if (Fehlerrumpf.lies(roh).code !in GUTHABEN_GESPERRT) {
+        if (Fehlerrumpf.lies(roh).code !in GUTHABEN_GESPERRT && !istKontogrenze(roh)) {
             // Der Rumpf ist gelesen; safeCall bekommt ihn neu, sonst fehlte ihm der Satz.
             return@safeCall retrofit2.Response.error(antwort.code(),
                 (roh ?: "").toResponseBody("application/json".toMediaType()))
@@ -115,6 +115,12 @@ class GutscheineRepository @Inject constructor(
 
         /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */
         private val GUTHABEN_GESPERRT = setOf("guthaben_abstand", "guthaben_botschutz")
+
+        /** Die Grenze je Konto teilt den Code mit der allgemeinen Drossel; nur `grund` unterscheidet. */
+        private fun istKontogrenze(roh: String?): Boolean = runCatching {
+            val o = org.json.JSONObject(roh ?: return false)
+            o.optString("code") == "zu_viele_anfragen" && o.optString("grund") == "konto"
+        }.getOrDefault(false)
     }
 
     /** Leer heisst „nicht mitschicken" — siehe die Begruendung bei ausPdf(). */

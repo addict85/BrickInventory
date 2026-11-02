@@ -1,39 +1,71 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
-  "enabledManagers": ["gradle", "gradle-wrapper"],
+  "extends": [
+    "config:recommended"
+  ],
+  "enabledManagers": [
+    "gradle",
+    "gradle-wrapper",
+    "npm"
+  ],
   "timezone": "Europe/Zurich",
-  "schedule": ["before 6am on monday"],
+  "schedule": [
+    "before 6am on monday"
+  ],
   "prConcurrentLimit": 3,
-  "labels": ["abhaengigkeiten"],
+  "labels": [
+    "abhaengigkeiten"
+  ],
   "packageRules": [
     {
+      "description": "Neue Fassungen erst nach drei Tagen: Ein gekapertes Paket fällt meist in dieser Zeit auf und wird zurückgezogen, bevor ein PR es vorschlägt.",
+      "matchManagers": [
+        "npm",
+        "gradle",
+        "gradle-wrapper"
+      ],
+      "minimumReleaseAge": "3 days"
+    },
+    {
       "description": "Patch- und Minor-Sprünge zusammenfassen: einzeln erzeugen sie mehr PRs, als jemand durchsieht, und genau dann wird pauschal zugestimmt.",
-      "matchUpdateTypes": ["patch", "minor"],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
       "groupName": "kleine Sprünge",
       "automerge": false
     },
     {
       "description": "Grosse Sprünge einzeln: Coil 3, OkHttp 5 und Navigation 3 sind Umbauten, keine Aktualisierungen.",
-      "matchUpdateTypes": ["major"],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "groupName": null,
       "automerge": false
     },
     {
       "description": "DataStore einzeln und von Hand prüfen: Ob die native Bibliothek 16-KB-ausgerichtet ist, misst die CI am fertigen APK (tools/apk-ausrichtung.py); app/build.gradle.kts nagelt die Fassung per force fest, beides muss mitziehen.",
-      "matchPackageNames": ["androidx.datastore:datastore-preferences"],
+      "matchPackageNames": [
+        "androidx.datastore:datastore-preferences"
+      ],
       "groupName": null,
       "automerge": false
     },
     {
       "description": "graphics-path hängt am selben 16-KB-Thema und wird bewusst direkt statt transitiv gezogen.",
-      "matchPackageNames": ["androidx.graphics:graphics-path"],
+      "matchPackageNames": [
+        "androidx.graphics:graphics-path"
+      ],
       "enabled": false
     },
     {
       "description": "ML Kit Texterkennung ist FEST EINGEBAUT (com.google.mlkit statt play-services). Ein Wechsel des Artefakts wäre eine Produktentscheidung, kein Update.",
-      "matchPackageNames": ["com.google.mlkit:text-recognition"],
-      "matchUpdateTypes": ["major"],
+      "matchPackageNames": [
+        "com.google.mlkit:text-recognition"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
       "enabled": false
     },
     {
@@ -45,10 +77,81 @@
         "org.jetbrains.kotlin.plugin.compose"
       ],
       "groupName": "Toolchain (AGP + Kotlin + KSP)"
+    },
+    {
+      "description": "Web-App: Laufzeitabhängigkeiten (patch/minor) gemeinsam; die CI prüft sie ohnehin zusammen.",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchDepTypes": [
+        "dependencies"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Web-App Laufzeit (patch/minor)"
+    },
+    {
+      "description": "Web-App: Werkzeuge (patch/minor) gemeinsam; ein Fehler dort trifft nur den Bau.",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchDepTypes": [
+        "devDependencies"
+      ],
+      "matchUpdateTypes": [
+        "patch",
+        "minor"
+      ],
+      "groupName": "Web-App Werkzeuge (patch/minor)"
+    },
+    {
+      "description": "Web-App: Hauptversionen einzeln und erst nach Freigabe im Dashboard; jimp 1.x und express 5 brachen bewusst die API.",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "addLabels": [
+        "breaking"
+      ],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "esbuild steht zusätzlich in scripts/build-*.js als npx-Rückfall; test/build-tooling.test.js meldet, wenn beide auseinanderlaufen.",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchPackageNames": [
+        "esbuild"
+      ],
+      "addLabels": [
+        "build-pinned"
+      ],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "pdfjs-dist wird beim Bauen nach public/vendor/pdfjs/ kopiert: nach dem Update `npm run build:frontend` laufen lassen und die Kopie einchecken (test/pdfjs-fassung.test.js).",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchPackageNames": [
+        "pdfjs-dist"
+      ],
+      "groupName": null,
+      "addLabels": [
+        "vendored"
+      ]
     }
   ],
   "vulnerabilityAlerts": {
-    "labels": ["sicherheit"],
-    "schedule": ["at any time"]
+    "labels": [
+      "sicherheit"
+    ],
+    "schedule": [
+      "at any time"
+    ]
   }
 }

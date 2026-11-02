@@ -146,9 +146,11 @@ class PriceChartMathTest {
 
     @Test
     fun `Datumsformat und Achsenraender`() {
-        assertEquals("31.1.2026", PriceChartMath.formatDay("2026-01-31"))
-        assertEquals("31.1.2026", PriceChartMath.formatDay("2026-01-31T10:00:00Z"))
-        assertEquals("kaputt", PriceChartMath.formatDay("kaputt"))
+        val de = java.util.Locale.forLanguageTag("de-CH")
+        assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31", de))
+        assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31T10:00:00Z", de))
+        assertEquals("31/01/2026", PriceChartMath.formatDay("2026-01-31", java.util.Locale.forLanguageTag("en-GB")))
+        assertEquals("kaputt", PriceChartMath.formatDay("kaputt", de))
         val range = PriceChartMath.axisRange(
             PreisDiagrammAnsicht(x = listOf("2026-01-01", "2026-02-01", "2026-03-01")))
         assertEquals("2026-01-01" to "2026-03-01", range)
@@ -164,12 +166,12 @@ class PriceChartMathTest {
             ),
             x = listOf("2026-01-01", "2026-02-01", "2026-03-01")
         )
-        val z = PriceChartMath.zusammenfassung(PriceChartMath.buildLines(chart)).associateBy { it.zustand }
+        val z = PriceChartMath.zusammenfassung(PriceChartMath.buildLines(chart), java.util.Locale.forLanguageTag("de-CH")).associateBy { it.zustand }
         val neu = z.getValue("N")
-        assertEquals(listOf("1.1.2026", "1.3.2026"), listOf(neu.von, neu.bis))
+        assertEquals(listOf("01.01.2026", "01.03.2026"), listOf(neu.von, neu.bis))
         assertEquals(listOf(100.0, 120.0, 90.0, 120.0), listOf(neu.anfang, neu.ende, neu.tief, neu.hoch))
         val gebraucht = z.getValue("U")
-        assertEquals("Die aufgefüllte Null zählt nicht", "1.2.2026", gebraucht.von)
+        assertEquals("Die aufgefüllte Null zählt nicht", "01.02.2026", gebraucht.von)
         assertEquals(70.0, gebraucht.tief, 0.0)
     }
 

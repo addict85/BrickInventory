@@ -140,6 +140,40 @@ const LAYOUT = (telefon) => `(() => {
     const k = kontrast(ueber({ ...ic, a: ic.a * deckkraft(e) }, g), g);
     if (k < 2.995) funde.push('Sinnbild ' + k.toFixed(2) + ':1: ' + name(e));
   }
+  // 6. Knopfgrenze: Ein Knopf hebt sich mit Rand oder Fläche 3:1 von der
+  //    Umgebung ab. Segmente einer Gruppe (Ansicht, Sammlungswahl) zählen über
+  //    den Rand der Gruppe; ihr aktiver Zustand wird unter 7. gemessen.
+  const grenze = (e) => { const s = getComputedStyle(e), u = umgebung(e); if (!u) return null;
+    const f = rgba(s.backgroundColor); let best = f && f.a > 0 ? kontrast(ueber(f, u), u) : 1;
+    for (const seite of ['Top', 'Right', 'Bottom', 'Left']) {
+      if (parseFloat(s['border' + seite + 'Width']) < 1 || s['border' + seite + 'Style'] === 'none') continue;
+      const r = rgba(s['border' + seite + 'Color']); if (r && r.a > 0) best = Math.max(best, kontrast(ueber(r, u), u)); }
+    return best; };
+  const KNOPF = '.btn, .period-btn, .ubadge-knopf, .v-btn, .vtgl, .sammlung-wahl';
+  for (const e of wurzel.querySelectorAll(KNOPF)) {
+    if (!sichtbar(e) || e.closest(':disabled, [aria-disabled="true"]') || e.matches(':disabled')) continue;
+    const k = grenze(e); if (k === null) continue;
+    if (k < 2.995) funde.push('Knopfgrenze ' + k.toFixed(2) + ':1: ' + name(e));
+  }
+  // 7. Aktiver Zustand: Das aktive Element unterscheidet sich vom inaktiven
+  //    Nachbarn mit 3:1 — als Fläche gegen Fläche oder als Rand (≥ 2 px)
+  //    gegen die Fläche, auf der er liegt.
+  const AKTIV = '.vb.active, .sammlung-wahl [aria-current="page"], .period-btn.active, .ntab.active, .einst-nav a[aria-current]';
+  for (const e of wurzel.querySelectorAll(AKTIV)) {
+    if (!sichtbar(e)) continue;
+    const nachbar = [...e.parentElement.children].find(x => x !== e && x.tagName === e.tagName && !x.matches(AKTIV) && sichtbar(x));
+    if (!nachbar) continue;
+    const u = umgebung(e); if (!u) continue;
+    const fa = rgba(getComputedStyle(e).backgroundColor), fi = rgba(getComputedStyle(nachbar).backgroundColor);
+    const a = fa && fa.a > 0 ? ueber(fa, u) : u, i = fi && fi.a > 0 ? ueber(fi, u) : u;
+    let best = kontrast(a, i);
+    const s = getComputedStyle(e);
+    for (const seite of ['Top', 'Right', 'Bottom', 'Left']) {
+      if (parseFloat(s['border' + seite + 'Width']) < 1.9 || s['border' + seite + 'Style'] === 'none') continue;
+      const r = rgba(s['border' + seite + 'Color']); if (r && r.a > 0) best = Math.max(best, kontrast(ueber(r, u), i));
+    }
+    if (best < 2.995) funde.push('aktiver Zustand ' + best.toFixed(2) + ':1: ' + name(e));
+  }
   return [...new Set(funde)];
 })()`;
 

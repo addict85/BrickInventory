@@ -111,8 +111,10 @@ dem Bau-Job bekommt und keinen Projektcode ausführt (kein Checkout, kein
 Gradle; `zipalign`/`apksigner` aus dem SDK des Runners). Auf `main` läuft er in
 der Environment `release`; nur dort gehören die vier Secrets `KEYSTORE_BASE64`,
 `KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` hin (GitHub → Settings →
-Environments → `release`: Deployment-Branch nur `main`, Pflichtprüfer). Fehlen
-sie auf `main`, wird der Lauf rot und nichts veröffentlicht. Danach prüft der
+Environments → `release`: Deployment-Branch nur `main`, Pflichtprüfer). Nur der
+Schritt *Release-Schlüssel bereitstellen* nennt sie, und er läuft nur dort;
+gleichnamige Repository-Secrets fände GitHub trotzdem, sie gehören gelöscht.
+Fehlen sie auf `main`, wird der Lauf rot und nichts veröffentlicht. Danach prüft der
 Job `apk-pruefen` das signierte APK (R8, 16-KB-Ausrichtung), erst dann
 veröffentlicht `release` — ebenfalls in der Environment `release`, also erst
 nach der Freigabe eines Prüfers. Siehe *Release signieren*.
@@ -277,6 +279,19 @@ automatisch zusammen:
 ```
 
 Danach `./gradlew --version` — schlägt es fehl, stimmt die Zeile nicht.
+
+#### Prüfsummen der Abhängigkeiten
+
+`gradle/verification-metadata.xml` hält SHA-256 und PGP-Schlüssel jeder
+Abhängigkeit fest. Nach einem Versionssprung unter *Actions → Android-App → Run
+workflow* den Zweig wählen und `pruefsummen` ankreuzen. Der Lauf legt einen
+Zweig `pruefsummen/<Lauf>` und einen Pull-Request an; dessen Text listet neue
+Komponenten, geänderte Prüfsummen und neu vertraute Schlüssel — solche mit
+Gruppen-Regex zuerst, denn sie gelten für jedes künftige Paket der Gruppe.
+Dafür einmalig *Settings → Actions → General → Allow GitHub Actions to create
+and approve pull requests* einschalten; sonst bleibt nur der Zweig, und der
+Pull-Request wird von Hand gestellt. Die CI des Zweigs startet nicht von selbst
+(Pull-Request schliessen und wieder öffnen).
 
 ### Was NICHT automatisch aktualisiert werden sollte
 

@@ -30,7 +30,7 @@
 /* ── Tablet ──────────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
 
-  main { padding: 1rem; }
+  main:not(#login-screen) { padding: 1rem; }
 
   /* Zweispaltige Bereiche zusammenklappen */
   .sgrid2,
@@ -44,11 +44,13 @@
 @media (max-width: 640px) {
 
   /* ─ Grundgerüst ─────────────────────────────────────────────────────── */
-  main { padding: .75rem 16px 5rem; }         /* 16 px Rand; unten Luft für den Daumen */
+  main:not(#login-screen) { padding: .75rem 16px 5rem; }         /* 16 px Rand; unten Luft für den Daumen */
 
+  /* Bei grosser Schrift wächst der Kopf und bricht um, statt Namen zu kürzen. */
   header {
-    padding: 0 .75rem;
-    height: 52px;
+    padding: 4px .75rem;
+    height: auto;
+    min-height: 52px;
     gap: .5rem;
   }
   header .logo span,
@@ -73,9 +75,9 @@
   .erfassen-leiste .import-menue { flex: 0 0 auto; position: static; }
   .import-klappe { left: 0; right: 0; min-width: 0; }
 
-  /* Kachel: Jahr und Thema in einer Zeile, die Plaketten darunter. */
+  /* Kachel: Jahr und Thema umbrechend, die Plaketten darunter. */
   .smeta { flex-direction: column; align-items: flex-start; gap: 4px; }
-  .smeta > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .smeta > span { max-width: 100%; }
 
   /* Filter hinter einem Knopf: Suche und Ansicht bleiben, die Auswahlfelder
      klappen auf. Vorher belegten fünf Felder den halben Bildschirm. */
@@ -88,9 +90,14 @@
   .hstats             { display: none; }
   /* Kopfzeile: Name und Importleiste geben nach, das Benutzermenü nie. */
   header .logo        { min-width: 0; flex: 0 1 auto; }
-  header .logo .marke  { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  header .logo .marke, header .logo .kopf-sicht { min-width: 0; white-space: normal; overflow: visible;
+    text-overflow: clip; overflow-wrap: anywhere; line-height: 1.15; }
+  /* Die Marke bricht am <wbr> („Brick / Inventory“), der Seitenname silbenweise. */
+  header .logo .kopf-sicht { hyphens: auto; }
   .hright             { min-width: 0; flex: 1 1 auto; justify-content: flex-end; gap: .5rem; }
   .umenu              { flex: 0 0 auto; }
+  /* Die Klappe endet über der unteren Leiste (bei grosser Schrift zwei Reihen). */
+  .umenu-pop          { max-height: calc(100dvh - 9rem); }
   #global-import-bar  { min-width: 0 !important; max-width: none !important; flex: 1 1 60px; }
 
   /* ─ Navigation ──────────────────────────────────────────────────────── */
@@ -119,12 +126,9 @@
     margin: -1px 0 0;
   }
   .ntab .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .ntab .ico { width: 22px; height: 22px; }
+  .ntab .ico { width: 1.375rem; height: 1.375rem; }
   .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); color: var(--b600); }
-  /* Fünf Ziele passen in die Leiste: Teile und Minifiguren laufen über
-     „Sammlung“, und deren Beschriftung nennt die offene Ansicht. */
-  .ntab .tab-unter:not(:empty) { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .ntab:has(.tab-unter:not(:empty)) .tab-label { display: none; }
+
   .sammlung-wahl { display: flex; width: 100%; }
   .sammlung-wahl button { flex: 1 1 0; justify-content: center; padding: 8px 4px; }
 
@@ -132,9 +136,10 @@
   .card, .sc, .ssec  { padding: 1rem .85rem; border-radius: 12px; }
   .ptitle            { font-size: var(--fs-5); }
 
-  .sgrid       { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .7rem; }
-  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: .6rem; }
-  .man-grid    { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .6rem; }
+  /* Zwei Spalten ab etwa 360 px, darunter und bei grosser Schrift eine. */
+  .sgrid       { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: .7rem; }
+  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.75rem), 1fr)); gap: .6rem; }
+  .man-grid    { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: .6rem; }
   /* minmax(0, …) statt 1fr: Eine Spalte darf schmaler werden als ihre längste
      Zahl, die dann umbricht — sonst schob „Gesamtwert“ die Kachel über den Rand. */
   .fgrid       { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
@@ -176,8 +181,11 @@
 
   /* Kennzahl-Kacheln: Zahl in einer Zeile */
   .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
+  /* Bei grosser Schrift bricht eine lange Beschriftung um, statt über den Rand zu ragen. */
+  .btn { white-space: normal; text-align: center; }
   input, select, textarea, .btn {
     font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
+    font-size: max(16px, 1rem);   /* … und mit grosser Schrift wächst es mit */
     min-height: 44px;
   }
   /* 44 px ist das Mass für einen Fingertipp (Apple HIG, WCAG 2.5.5). Die
@@ -249,7 +257,6 @@
     padding: .5rem .7rem;
     margin-bottom: .6rem;
   }
-  .dt tr:hover td { background: none; }
 
   .dt td {
     display: flex;
@@ -277,6 +284,9 @@
   .dt td[data-label=""]::before,
   .dt td:not([data-label])::before { content: none; }
   .dt td[data-label=""] { justify-content: flex-end; }
+  /* Kaufpreis-Karten: Wird es eng (grosse Schrift), steht das Feld unter seiner Beschriftung. */
+  .acq-tabelle td { flex-wrap: wrap; gap: .25rem 1rem; }
+  .acq-tabelle td > * { margin-left: auto; }
 
   /* Finanzen: eine kompakte Zeile je Eintrag — Bild, Name, Wert, G&V. Alles
      Weitere steht in der Detailansicht, die das Antippen öffnet. Zehn Felder
@@ -312,7 +322,7 @@
   .fin-fuss-wert { font-size: var(--fs-3); }
   .dt-fin tfoot { display: block; }
   /* Der Grund der Summenzeile liegt auf der ganzen Zeile, nicht nur hinter den Zahlen. */
-  .dt-fin tfoot tr { display: flex; justify-content: space-between; align-items: flex-end; gap: .75rem;
+  .dt-fin tfoot tr { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: .75rem;
                      background: var(--b50); border: none; border-radius: 8px; padding: .5rem .7rem; }
   .dt-fin tfoot td, .dt-summe tfoot td { background: transparent !important; }
   .dt-summe tfoot tr { background: var(--b50); }
@@ -353,7 +363,8 @@
   .prog-steps { flex-wrap: wrap; gap: .4rem; }
 
   /* ─ Toasts über die volle Breite ────────────────────────────────────── */
-  #toasts { left: .6rem; right: .6rem; bottom: calc(68px + env(safe-area-inset-bottom)); }
+  /* Oben statt über der Leiste: Unten liegen die Felder der Dialoge (Blätter). */
+  #toasts { left: .6rem; right: .6rem; top: calc(56px + env(safe-area-inset-top)); bottom: auto; }
   .toast  { width: auto; }
 
   /* ─ Login-, Registrierungs- und Startup-Screen ──────────────────────── */
@@ -370,14 +381,44 @@
 }
 
 
+/* Fünf Beschriftungen brauchen je rund 3,9 em; em misst hier die Schrift-
+   grösse des Browsers. Darunter zwei Reihen zu drei Zielen mit etwas kleinerer
+   Schrift: Die Namen bleiben lesbar, statt nur Symbole zu zeigen. */
+@media (max-width: 19.5em) {
+  nav:not(.einst-nav) { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-around; }
+  .ntab { padding: 4px 2px; min-height: 44px; gap: 1px; }
+  .ntab .ico { width: .8rem; height: .8rem; }
+  .ntab .tab-label { font-size: var(--fs-0); line-height: 1.15; white-space: normal; overflow: visible;
+                     text-overflow: clip; overflow-wrap: anywhere; text-align: center; }
+}
+
+
+/* Sehr schmal (320 px bei 200 %): Felder, Auswahllisten und lange Zeilen geben nach,
+   statt über den Rand zu ragen. */
+@media (max-width: 19.5em) {
+  main select, main input:not([type=checkbox]):not([type=radio]) { max-width: 100%; min-width: 0; }
+  main .fg, main :is(.zeile, .sform, .ssec) > *, .diagramm-werte > *, .apk-btn, .apk-btn-txt { min-width: 0; max-width: 100%; }
+  #tab-lagerorte .sgrid2 { grid-template-columns: minmax(0, 1fr) !important; }
+  main .btn { white-space: normal; max-width: 100%; }
+  .voucher-row, .voucher-actions { flex-wrap: wrap; }
+  .empty.leer :is(h2, p, .btn), .dt-summe td { overflow-wrap: anywhere; hyphens: auto; max-width: 100%; min-width: 0; }
+  .diagramm-werte > *, .apk-btn-txt, #household-state, #tab-haushalt .text-mittel { overflow-wrap: anywhere; white-space: normal; }
+}
+
+/* Als Karte hebt sich die Tabellenzeile beim Überfahren nicht farbig ab. */
+@media (max-width: 640px) and (hover: hover) {
+  .dt tr:hover td { background: none; }
+}
+
+
 /* ── Kleines Telefon ─────────────────────────────────────────────────────── */
 @media (max-width: 420px) {
   .fgrid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 380px) {
-  .sgrid      { grid-template-columns: 1fr 1fr; gap: .5rem; }
-  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+  .sgrid      { gap: .5rem; }
+  .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6rem), 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
   .ntab       { font-size: var(--fs-0); }
   /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
@@ -395,8 +436,8 @@
 
   /* Kennzahlen (alle Designs) kompakt in zwei Spalten: untereinander füllten
      sie den ersten Bildschirm; eine rollende Reihe versteckte die Hälfte. */
-  .brick-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-bottom: var(--sp-4); }
-  .brick-stats:has(> :nth-child(3):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .brick-stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: .5rem; margin-bottom: var(--sp-4); }
+  .brick-stats:has(> :nth-child(3):last-child) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr)); }
   .bstat { padding: 8px 12px; }
   .bstat .bstat-v { font-size: var(--fs-5); }
   [data-theme="brick"] .bstat { padding: 8px 12px; }

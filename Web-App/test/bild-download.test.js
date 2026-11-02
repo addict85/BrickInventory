@@ -8,6 +8,8 @@
  *   B  bildTypErlaubt-Prüfung entfernt            → rot: „SVG gespeichert"
  *   C  dateiTeil() in downloadImage umgangen      → rot: „Pfad aus der Teilenummer"
  *   D  Grössengrenze entfernt                     → rot: „übergrosses Bild gespeichert"
+ *   E  in bildEndung Object.hasOwn durch `in` ersetzt (02.11. gemessen)
+ *                                                 → rot: „constructor als Endung übernommen"
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,6 +59,8 @@ test('die Bausteine', () => {
   assert.equal(bd.bildEndung(`${CDN}/300121.PNG?x=1`), 'png');
   assert.equal(bd.bildEndung('https://cdn.rebrickable.com/a/b.html'), 'jpg', 'Endung aus der Adresse übernommen');
   assert.equal(bd.bildEndung('https://cdn.rebrickable.com/a/b.svg'), 'jpg');
+  for (const geerbt of ['constructor', 'tostring', '__proto__'])
+    assert.equal(bd.bildEndung(`https://cdn.rebrickable.com/a/b.${geerbt}`), 'jpg', `${geerbt} als Endung übernommen`);
   assert.ok(bd.bildTypErlaubt('image/jpeg; charset=binary'));
   for (const typ of ['image/svg+xml', 'text/html', '', undefined])
     assert.equal(bd.bildTypErlaubt(typ), false, `${typ} als Bild erlaubt`);

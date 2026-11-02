@@ -822,3 +822,130 @@ Was sich für Nutzer und Clients ändert:
 - **Image von Hand bauen** (Workflow `Web-App`, `workflow_dispatch`): Der
   zusätzliche Tag muss die Docker-Tag-Form haben (Buchstaben, Ziffern,
   `_ . -`, höchstens 128 Zeichen), sonst bricht der Lauf ab.
+
+## 29. Runde 5 – Sicherheit
+
+- **Updates der Container-Images**: Dependabot schlägt jetzt auch neue Digests
+  für Postgres, Caddy und pgweb in `compose.yaml` vor (wöchentlich). Ein
+  solcher PR ist wie ein Update zu behandeln: lesen, mergen, auf dem Server
+  `docker compose pull && docker compose up -d`. Der Sicherheitslauf meldet
+  zusätzlich, wenn ein festgenagelter Digest hinter seinem Tag zurückliegt.
+- **Eigene Datenbankrolle der App (Pflichtschritt)**: Bisher verband sich die
+  App als `brickinventory`, und das ist der Superuser der Datenbank (wer die
+  App übernimmt, könnte per `COPY … TO PROGRAM` Befehle im Datenbank-Container
+  ausführen). Neu verbinden sich App, Jobs und pgweb als `brickinventory_app`
+  ohne Superuser-Rechte; die Rolle besitzt Datenbank, Tabellen, Sequenzen,
+  Sichten und Funktionen, die Migrationen laufen also weiter. Umstellung:
+  1. In `.env` ein zweites, anderes Passwort eintragen:
+     `echo "DB_APP_PASSWORD=$(openssl rand -hex 24)" >> .env`
+     (ohne den Wert bricht `docker compose up` mit einer Meldung ab).
+  2. Wie gewohnt aktualisieren: `docker compose up -d --build`. Der neue,
+     einmalige Dienst `db-rolle` startet nach der Datenbank, legt die Rolle an
+     (oder setzt ihr Passwort und entzieht zu viele Rechte), übergibt ihr alle
+     Objekte im Schema `public` und endet; erst danach starten App und Jobs.
+     Daten werden dabei nicht verändert, nur Eigentümer.
+  3. Prüfen: `docker compose logs db-rolle` endet mit „Rolle brickinventory_app
+     ohne Superuser-Rechte besitzt die Datenbank“, und `docker compose logs app`
+     zeigt keine Warnung „Die App verbindet sich als Superuser“.
+
+  Neue Installationen bekommen die Rolle schon beim Anlegen der Datenbank
+  (`postgres/app-rolle.sh` in `docker-entrypoint-initdb.d`). Sicherungen
+  (`scripts/backup.sh`) laufen weiter als Superuser; `scripts/restore.sh`
+  richtet nach dem Einspielen `db-rolle` erneut ein, damit auch ein älterer
+  Dump wieder der App gehört. Rückweg: die alte `compose.yaml` verbindet sich
+  wieder als Superuser und darf alles; die Rolle kann bleiben. Wer
+  `DB_APP_PASSWORD` ändert, startet einfach `docker compose up -d` neu.
+  Ohne Docker (eigenes PostgreSQL): das Skript einmal mit dem Superuser
+  ausführen, z. B. `PGHOST=… PGUSER=postgres PGDATABASE=brickinventory
+  DB_APP_PASSWORD=… sh postgres/app-rolle.sh` (psql ab 15), danach die App mit
+  `PGUSER=brickinventory_app` starten.
+- **Idempotenz ohne Passwörter**: Der Fingerabdruck einer Anfrage mit
+  `Idempotency-Key` (24 h in der Tabelle `idempotenz`) war ein SHA-256 über
+  den ganzen Rumpf, Passwörter eingeschlossen. Jetzt fehlen Passwort-, Code-,
+  PIN-, Token- und Schlüsselfelder darin, und der Rest ist ein HMAC mit einem
+  Teilschlüssel des Datenschlüssels. Der erste Start löscht alle Einträge im
+  alten Format (Meldung `[idempotenz] … gelöscht`); eine Wiederholung über das
+  Update hinweg läuft dann ein zweites Mal statt die alte Antwort zu bekommen.
+- **Anleitungen neu laden**: `POST /api/v1/sets/:sn/instructions` ersetzt
+  vorhandene geteilte Anleitungen nur noch für Verwalter. Andere Konten holen
+  damit nur fehlende (einmal je Set und Tag); sind schon welche da, antwortet
+  der Server mit 403 `nur_admins`, und die Weboberfläche zeigt den Knopf
+  „Neu laden“ dann nur Verwaltern.
+- **PDF-Teileliste**: `POST /api/v1/sets/partslist-pdf` prüft `parts` jetzt
+  nach Schema (höchstens 5000 Posten, `quantity` 1–9999, Feldlängen) und
+  antwortet sonst mit 400 `eingabe_ungueltig` (Feld in `feld`).
+- **Guthaben-Abfrage je Konto begrenzt**: höchstens 20 Abfragen je Konto und
+  Stunde, geprüft vor der Grenze für alle (eine je 30 s). Darüber antwortet
+  `POST /api/v1/vouchers/:id/guthaben` mit 429, `code: zu_viele_anfragen`,
+  `grund: konto` und `wartenSek`; die Weboberfläche bricht den Durchgang über
+  alle Karten dann ab wie beim Bot-Schutz.
+- **Andere Sitzungen beenden nur mit Passwort**:
+  `POST /api/v1/settings/sessions/andere-beenden` verlangt im Rumpf
+  `password` (das eigene Passwort). Falsch oder fehlend: 400
+  `aktuelles_passwort_falsch`, nach fünf Fehlversuchen 429. Die
+  Weboberfläche fragt beim Knopf „Alle anderen abmelden“ danach.
+- **Entrypoint**: Die Unterordner von `./data` legt der Container jetzt als
+  `brickinv` an, nicht mehr als root. Gehört `./data` einem anderen Nutzer und
+  ist `BRICKINV_CHOWN=never` gesetzt (SMB/CIFS), muss die Einhängung dem
+  Nutzer `brickinv` des Images gehören; sonst steht im Log eine WARNUNG. Der
+  Reparaturschritt (`BRICKINV_CHOWN=auto/always`) ändert nur noch fremde
+  Einträge und bleibt im Datenträger.
+
+## 30. Runde 6 – Sicherheit
+
+- **db-rolle gehärtet** (`postgres/app-rolle.sh`): Die App-Rolle besitzt die
+  Datenbank und konnte über `ALTER DATABASE … SET search_path` eigene
+  Funktionen in die Superuser-Sitzung von `db-rolle` schieben. Das Skript
+  setzt jetzt beim Verbinden `search_path=pg_catalog,pg_temp` und
+  `role=none`, ruft nur `pg_catalog.`-Funktionen und setzt zuerst
+  `ALTER DATABASE brickinventory RESET ALL` sowie
+  `ALTER ROLE brickinventory_app [IN DATABASE …] RESET ALL`. **Folge:**
+  Eigene Einstellungen per `ALTER DATABASE … SET` oder an der App-Rolle gehen
+  bei jedem `docker compose up` verloren; dauerhafte Einstellungen gehören in
+  `command:` des Dienstes `postgres` oder an den Superuser. Sind in der
+  Datenbank Event-Trigger aktiv, bricht `db-rolle` mit einer Meldung ab
+  (vorher prüfen und deaktivieren: `ALTER EVENT TRIGGER … DISABLE`).
+  Für eigene `psql`-Sitzungen als Superuser:
+  `docker compose exec -e PGOPTIONS='-c search_path=pg_catalog,pg_temp' postgres psql -U brickinventory`.
+- **pgweb mit eigener Leserolle**: Neu in `.env`:
+  `PGWEB_DB_PASSWORD=$(openssl rand -hex 24)` (anders als `DB_PASSWORD` und
+  `DB_APP_PASSWORD`). `db-rolle` legt `brickinventory_lesen` an: nur `SELECT`,
+  ohne die Tabellen `api_tokens`, `qr_login_tokens`, `user_sessions`,
+  `webauthn_challenges`, `zweiter_faktor_codes`, `account_link_invites` und
+  ohne die Spalten `users.password_hash/verification_token/reset_token`,
+  `zweiter_faktor.geheimnis`, `user_settings.value`, `global_settings.value`,
+  `vouchers.pin`, `idempotenz.antwort`. pgweb kennt `DB_APP_PASSWORD` nicht
+  mehr; ohne `PGWEB_DB_PASSWORD` startet es nicht. Ein `SELECT *` auf
+  `users` scheitert dort deshalb – Spalten einzeln nennen. Reparaturen mit
+  `psql` als App-Rolle statt über pgweb. Neue Tabellen sieht pgweb nach dem
+  nächsten Lauf von `db-rolle` (`docker compose --profile tools up -d pgweb`
+  startet ihn mit).
+- **restore.sh spielt als App-Rolle ein**: Erst `db-rolle`, dann der Dump als
+  `brickinventory_app` in **einer** Transaktion (`psql -1`; ein Fehler lässt
+  den alten Stand stehen), dann noch einmal `db-rolle`. Besitzerzeilen
+  (`ALTER … OWNER TO …`) und `DROP/COMMENT ON EXTENSION` werden ausserhalb der
+  Daten herausgefiltert; auch Dumps von vor der App-Rolle gehen so. Andere
+  App-Rolle: `DB_APP_USER=… ./scripts/restore.sh …`.
+- **Anmeldung**: Gesperrte und unbestätigte Konten bekommen dieselbe 401
+  `anmeldedaten_ungueltig` wie ein falsches Passwort (vorher 403
+  `konto_deaktiviert` / `email_nicht_bestaetigt` mit `unverified: true`).
+  Neu: `POST /api/v1/auth/bestaetigung-erneut` `{ email }` schickt einen neuen
+  Bestätigungslink (höchstens einer je 15 min, Antwort immer gleich). Die
+  Anmeldemaske bietet ihn bei 401 an.
+- **Zweiter Faktor**: `DELETE /api/v1/auth/users/:id/zweiter-faktor` lehnt
+  das eigene Konto mit 400 `eigener_zweiter_faktor` ab; abschalten geht dort
+  unter Sicherheit mit Passwort und Code.
+- **Haushaltswährung**: Ein Wechsel gilt nur noch für das eigene Konto und
+  seine Unterkonten abwärts. Hängt ein Unterkonto zusätzlich an einem fremden
+  Hauptkonto mit anderer Währung, antwortet der Wechsel mit 409
+  `waehrung_geteiltes_unterkonto`; erst die Verknüpfung lösen.
+- **App-Token mit Höchstdauer**: Ein Token aus `POST /api/v1/auth/login` mit
+  `never_expires: true` (die App) trägt jetzt neben der Gleitfrist (90 Tage
+  ungenutzt) eine feste Grenze von 180 Tagen ab Anmeldung
+  (`hard_expires_at`); `token-rotieren` erbt sie, verlängert sie also nicht.
+  Danach meldet sich die App neu an. Bestehende Tokens behalten ihre Fristen;
+  QR-Zugänge folgen weiter der beim Erzeugen gewählten Laufzeit. Die Antwort
+  des Tauschs nennt in `token_info.expires_at` das frühere der beiden Enden.
+- **Abhängigkeiten**: `oauth` und `@types/oauth` entfernt (ungenutzt).
+  Renovate schlägt npm- und Gradle-Fassungen erst drei Tage nach Erscheinen
+  vor. `npm run build` läuft auch ohne den Ordner `Android-App/`.

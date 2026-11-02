@@ -12,6 +12,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -58,7 +59,6 @@ import ch.brickinventoryapp.ui.PriceChartMath
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalChartColors
-import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
@@ -118,26 +118,7 @@ fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 fun DetailRow2(label: String, value: String) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 5.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.End
-        )
-    }
+    BezeichnungUndWert(label, value, Modifier.padding(vertical = 5.dp))
 }
 
 /**
@@ -145,8 +126,9 @@ fun DetailRow2(label: String, value: String) {
  * ui/PriceChartMath.kt. Farben aus dem Design (LocalChartColors), dieselben wie die
  * Zustands-Plaketten und --chart-new/--chart-used im Web.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PriceChart(chart: PreisDiagrammAnsicht) {
+fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     val lines  = remember(chart) { PriceChartMath.buildLines(chart) }
     val bounds = remember(lines) { PriceChartMath.bounds(lines) } ?: return
     if (lines.isEmpty()) return
@@ -157,24 +139,18 @@ fun PriceChart(chart: PreisDiagrammAnsicht) {
     fun colorFor(cond: String) = if (cond == "U") chartColors.used else chartColors.new
     fun labelFor(cond: String) = if (cond == "U") labelUsed else labelNew
 
-    // Kennzahlen über BEIDE Reihen — dieselbe Skala, dieselben Eckwerte.
-    // "Aktuell" ist der jüngste Punkt über beide Linien hinweg; bei einem Set,
-    // das nur gebraucht erfasst ist, steht dort also der Gebrauchtpreis.
-    val allPoints = lines.flatMap { it.points }
-    val allValues = allPoints.map { it.value }
-    val latest    = allPoints.maxByOrNull { it.day }?.value ?: return
-    Row(
+    // Tief und Hoch über BEIDE Reihen — dieselbe Skala. Kein „Aktuell“: Den heutigen
+    // Preis zeigt jede Karte schon darüber, er stand sonst dreimal da. Mit Währung,
+    // weil die Achse dieses Diagramms keine Beträge trägt.
+    val allValues = lines.flatMap { it.points }.map { it.value }
+    FlowRow(
         Modifier.fillMaxWidth().padding(bottom = Abstaende.klein),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        // Ohne Währung: Die drei Kennzahlen stehen als Gruppe unter dem
-        // Diagramm, dessen Beschriftung die Währung bereits nennt.
         PriceStatCell(stringResource(R.string.detail_price_low),
-            ch.brickinventoryapp.util.fmtAmount(allValues.min()))
-        PriceStatCell(stringResource(R.string.detail_price_current),
-            ch.brickinventoryapp.util.fmtAmount(latest))
+            ch.brickinventoryapp.util.fmtMoney(allValues.min(), waehrung))
         PriceStatCell(stringResource(R.string.detail_price_high),
-            ch.brickinventoryapp.util.fmtAmount(allValues.max()))
+            ch.brickinventoryapp.util.fmtMoney(allValues.max(), waehrung))
     }
 
     val gridColor = MaterialTheme.colorScheme.outlineVariant
@@ -286,17 +262,16 @@ fun MarketPriceByCondition(
     val labelUsed = stringResource(R.string.condition_used)
     val marketLabel = stringResource(R.string.detail_section_market)
 
+    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
     Column(Modifier.fillMaxWidth()) {
         rows.forEach { (cond, data) ->
             val label = if (cond == "U") labelUsed else labelNew
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("$marketLabel ($label)",
+            val bezeichnung: @Composable (Modifier) -> Unit = { m ->
+                Text("$marketLabel ($label)", modifier = m,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            val wert: @Composable () -> Unit = {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     // Der Preis in Schriftfarbe statt primary: In „noppe“ war primary Rot, ein Preis
@@ -304,13 +279,25 @@ fun MarketPriceByCondition(
                     val markt = data.marketPrice
                     if (markt != null) {
                         Text(ch.brickinventoryapp.util.fmtMoney(markt, currency),
-                            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1, softWrap = false)
                     } else {
                         Text(stringResource(R.string.detail_price_none_yet), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     data.pnlPct?.let { PnlBadge(it) }
                 }
+            }
+            // Wie BezeichnungUndWert: bei grosser Schrift untereinander.
+            if (gross) Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig)) {
+                bezeichnung(Modifier)
+                wert()
+            } else Row(
+                Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                bezeichnung(Modifier.weight(1f))
+                wert()
             }
         }
     }
@@ -355,8 +342,56 @@ fun PnlBadge(pct: Double) {
 @Composable
 fun PriceStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+        Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * Marktwert, Kaufpreis und G&V oben auf jeder Detailseite, in jedem Design: Die Frage
+ * „was ist es wert?“ beantwortet die Seite zuerst. Bei grosser Schrift untereinander,
+ * damit kein Betrag zeichenweise umbricht.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = Modifier) {
+    val farben = MaterialTheme.colorScheme
+    val brick = LocalIsBrickTheme.current
+    val dekor = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current
+    val status = LocalStatusFarben.current
+    FlowRow(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        maxItemsInEachRow = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 1 else 3,
+    ) {
+        WertKachel(stringResource(R.string.detail_section_market), markt,
+            if (brick) Petrol else farben.primaryContainer, if (brick) Color.White else farben.onPrimaryContainer,
+            Modifier.weight(1f))
+        WertKachel(stringResource(R.string.detail_purchase_price), kauf,
+            if (brick) dekor.schiefer else farben.surfaceContainerHigh, if (brick) dekor.aufSchiefer else farben.onSurface,
+            Modifier.weight(1f))
+        // Die Statusfarben halten 4,5:1 nur auf surface — deshalb diese Fläche mit Rand.
+        WertKachel(stringResource(R.string.detail_pnl_tile), pnl?.let { fmtProzent(it) } ?: "—",
+            farben.surface,
+            when { pnl == null -> farben.onSurfaceVariant; pnl < 0 -> status.fehler; else -> status.erfolg },
+            Modifier.weight(1f), rand = farben.outline)
+    }
+}
+
+/** Eine Kachel der Wertreihe: Bezeichnung klein, Betrag gross. */
+@Composable
+private fun WertKachel(label: String, wert: String, flaeche: Color, schrift: Color, modifier: Modifier = Modifier, rand: Color? = null) {
+    Column(
+        modifier
+            .clip(Formen.leiste)
+            .background(flaeche)
+            .then(if (rand != null) Modifier.border(1.dp, rand, Formen.leiste) else Modifier)
+            .padding(Abstaende.mittel)
+            .semantics(mergeDescendants = true) {},
+    ) {
+        Text(label, color = schrift, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(wert, color = schrift, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
     }
 }

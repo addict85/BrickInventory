@@ -36,6 +36,10 @@ import java.io.File
  *      Gutschein-PDF laesst sich nicht herunterladen …“
  *   E  (01.11.2026) im PdfViewerScreen `if (speicherbar)` um den Knopf entfernt
  *      → rot „Betrachter, Abmelden und Start räumen auf“ (Knopf ungeschützt)
+ *   F  (02.11.2026) in pdfAblage() wieder `pdfUrl.hashCode()` als Name → rot
+ *      „der Dateiname haengt an der ganzen Adresse …“
+ *   G  (02.11.2026) zeigtGutscheine() wieder `"/api/v1/vouchers/" in pdfUrl` →
+ *      rot „Gutscheine erkennt der Pfad …“
  */
 class GutscheinPdfAblageTest {
 
@@ -53,8 +57,27 @@ class GutscheinPdfAblageTest {
         val g = pdfAblage(cache, gutschein, zeigtGutscheine(gutschein))
         val a = pdfAblage(cache, anleitung, zeigtGutscheine(anleitung))
         assertEquals(File(cache, PDF_VERTRAULICH_ORDNER), g.parentFile)
-        // Die Anleitung behält ihren Namen: Ein schon geladener Zwischenspeicher bleibt gültig.
-        assertEquals(File(cache, "pdfview_${anleitung.hashCode()}.pdf"), a)
+        assertEquals(cache, a.parentFile)
+    }
+
+    /** Zwei Adressen mit gleichem hashCode() teilten sich sonst eine Datei. */
+    @Test
+    fun `der Dateiname haengt an der ganzen Adresse, nicht an 32 Bit`() {
+        val x = "https://brick.example/api/v1/vouchers/Aa/pdf"
+        val y = "https://brick.example/api/v1/vouchers/BB/pdf"
+        assertEquals("Die Probe braucht zwei Adressen mit gleichem hashCode()", x.hashCode(), y.hashCode())
+        assertTrue(pdfAblage(cache, x, true) != pdfAblage(cache, y, true))
+        assertEquals("pdfview_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.pdf", pdfAblage(cache, "", false).name)
+    }
+
+    @Test
+    fun `Gutscheine erkennt der Pfad, auch in anderer Schreibweise`() {
+        assertTrue(zeigtGutscheine("https://brick.example/API/v1/Vouchers/7/pdf"))
+        assertTrue(zeigtGutscheine("https://brick.example/api/v1/%76ouchers/7/pdf"))
+        assertTrue(zeigtGutscheine("https://brick.example/brick/api//v1/vouchers/export/pdf"))
+        assertTrue("Was sich nicht lesen lässt, gilt als vertraulich", zeigtGutscheine("https://brick example/x y"))
+        assertFalse(zeigtGutscheine(anleitung))
+        assertFalse("Die Abfrage ist kein Pfad", zeigtGutscheine("$anleitung?von=/api/v1/vouchers/7"))
     }
 
     @Test
@@ -95,6 +118,8 @@ class GutscheinPdfAblageTest {
             Regex("""if \(speicherbar\) \{\s*IconButton\(onClick = \{ savePdfToDownloads\(""").containsMatchIn(betrachter))
         val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt")), "fun logout(")
         assertTrue("Abmelden lässt Gutschein-PDFs liegen", abmelden.contains("raeumeVertraulichePdfsAuf("))
+        assertTrue("Abmelden lässt Teileliste und Update in filesDir liegen",
+            abmelden.contains("raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null))"))
         assertTrue("Der Start räumt Reste nicht weg",
             Quellen.lies("BrickInventoryApp.kt").contains("raeumeVertraulichePdfsAuf(cacheDir)"))
     }

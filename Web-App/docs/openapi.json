@@ -1029,6 +1029,51 @@
         }
       }
     },
+    "/api/v1/auth/bestaetigung-erneut": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgotPasswordResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/change-password": {
       "post": {
         "tags": [
@@ -5836,6 +5881,161 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sets": {
+                    "maxItems": 1000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "set_number": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 32
+                        },
+                        "name": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "set_number"
+                      ]
+                    }
+                  },
+                  "parts": {
+                    "maxItems": 5000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "part_number": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "bl_part_number": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 64
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "part_name": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "color_name": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "color_hex": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^#?[0-9A-Fa-f]{0,8}$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "color_id": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -1,
+                              "maximum": 2147483647
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "quantity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 9999
+                            },
+                            {
+                              "type": "string",
+                              "pattern": "^[1-9]\\d{0,3}$"
+                            }
+                          ]
+                        },
+                        "is_fig": {
+                          "type": [
+                            "boolean",
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "image_url": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2048
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "image_local": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 512
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "part_number",
+                        "quantity"
+                      ]
+                    }
+                  }
                 }
               }
             }
@@ -13660,6 +13860,158 @@
         ],
         "additionalProperties": {}
       },
+      "PdfEingabe": {
+        "type": "object",
+        "properties": {
+          "sets": {
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "set_number": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "name": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "set_number"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "parts": {
+            "maxItems": 5000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "part_number": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "bl_part_number": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 64
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "part_name": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "color_name": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "color_hex": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^#?[0-9A-Fa-f]{0,8}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "color_id": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -1,
+                      "maximum": 2147483647
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "quantity": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9999
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^[1-9]\\d{0,3}$"
+                    }
+                  ]
+                },
+                "is_fig": {
+                  "type": [
+                    "boolean",
+                    "number",
+                    "null"
+                  ]
+                },
+                "image_url": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 2048
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "image_local": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 512
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "part_number",
+                "quantity"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
       "PdfStand": {
         "type": "object",
         "properties": {
@@ -14992,6 +15344,12 @@
         "type": "object",
         "properties": {
           "enabled": {
+            "type": "boolean"
+          },
+          "passkey": {
+            "type": "boolean"
+          },
+          "passwort_vergessen": {
             "type": "boolean"
           }
         },

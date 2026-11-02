@@ -436,7 +436,7 @@ function zeile(p, i) {
     <td data-stil="font-size:var(--fs-1)">${ausgang}${
       grund ? `<div data-stil="color:var(--mut);font-size:var(--fs-1)">${grund}</div>` : ''}</td>
     <td><input type="text" value="${esc(korr.rbId ?? '')}" placeholder="${
-      esc(tRaw('wanted.rb_id_ph'))}" data-stil="width:104px;font-size:var(--fs-1);padding:2px 4px;
+      esc(tRaw('wanted.rb_id_ph'))}" data-stil="width:8em;max-width:100%;font-size:var(--fs-1);padding:2px 4px;
       border:1px solid var(--feldrand);border-radius:5px"
       data-change="wantedKorrekturNummer" data-i="${i}" /></td>
     <td><select data-change="wantedKorrekturFarbe" data-i="${i}"

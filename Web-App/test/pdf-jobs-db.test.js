@@ -18,6 +18,12 @@
  * Auftrag steht (Migration 0083) am 30.10.2026 wiederholt: in erledigt()
  * (src/auftraege/auftraege.ts) meldeStand() entfernt → rot: derselbe Test.
  *
+ * Gegenproben zur Teileliste (am 02.11.2026 gemessen), je rot: „die
+ * Teileliste wird geprüft …“: `eingabe: PdfEingabe` aus dem Vertrag
+ * gestrichen; in der Route wieder `req.body` statt PdfEingabe.parse()
+ * („unbekannte Felder gehen in den Auftrag“); `.max(5000)` gestrichen
+ * („zu viele Posten“ bekam 200).
+ *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  * Ohne DB: skip.
  */
@@ -72,7 +78,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
 
   const app = express();
   // Den Rumpf liest wie im Betrieb der Parser des Servers, nicht der Router.
-  app.use(express.json());
+  app.use(express.json({ limit: '4mb' }));   // wie server.ts für diese Route
   app.use('/api/v1', pdf.default || pdf);
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
@@ -178,6 +184,39 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async (t) => 
       ctrl.abort();
       assert.match(text, /"done"/, `kein Ende im Strom: ${text}`);
       assert.ok(Date.now() - start < 5000, `erst nach ${Date.now() - start} ms`);
+    });
+
+    await t.test('die Teileliste wird geprüft, bevor ein Auftrag entsteht', async () => {
+      await db.run(`DELETE FROM auftraege WHERE art = 'pdf'`);
+      const starte = (rumpf) => fetch(`${basis}/api/v1/sets/partslist-pdf`, { method: 'POST',
+        headers: { Authorization: `Bearer ${tokA}`, 'content-type': 'application/json' }, body: JSON.stringify(rumpf) })
+        .then(async r => ({ status: r.status, body: await r.json() }));
+      const teil = (mehr = {}) => ({ part_number: '3001', quantity: 2, color_id: 5, color_hex: 'C91A09', ...mehr });
+      const falsch = {
+        'zu viele Posten': { parts: Array.from({ length: 5001 }, () => teil()) },
+        'Menge 0': { parts: [teil({ quantity: 0 })] },
+        'Menge 10000': { parts: [teil({ quantity: 10000 })] },
+        'Menge als Unsinn': { parts: [teil({ quantity: '2; DROP' })] },
+        'zu lange Teilenummer': { parts: [teil({ part_number: 'x'.repeat(65) })] },
+        'zu langer Name': { parts: [teil({ part_name: 'n'.repeat(501) })] },
+        'Farbe als Text': { parts: [teil({ color_hex: 'red);evil' })] },
+        'parts kein Array': { parts: 'alles' },
+        'Teil ohne Nummer': { parts: [{ quantity: 1 }] },
+      };
+      for (const [fall, rumpf] of Object.entries(falsch)) {
+        const r = await starte(rumpf);
+        assert.equal(r.status, 400, `${fall}: ${JSON.stringify(r.body).slice(0, 200)}`);
+        assert.equal(r.body.code, 'eingabe_ungueltig', fall);
+      }
+      assert.equal((await db.get(`SELECT count(*)::int n FROM auftraege WHERE art = 'pdf'`)).n, 0, 'ein Auftrag trotz 400');
+
+      const ok = await starte({ sets: [{ set_number: '10001-1', name: 'Probe' }],
+        parts: [teil({ quantity: '12', boese: 'x'.repeat(10000) }), ...Array.from({ length: 4999 }, () => teil())] });
+      assert.equal(ok.status, 200, JSON.stringify(ok.body));
+      const nutzlast = (await db.get(`SELECT nutzlast FROM auftraege WHERE art = 'pdf'`)).nutzlast;
+      assert.equal(nutzlast.parts.length, 5000);
+      assert.equal(nutzlast.parts[0].quantity, '12');
+      assert.ok(!('boese' in nutzlast.parts[0]), 'unbekannte Felder gehen in den Auftrag');
     });
 
     await t.test('die Auftragskennung kommt aus kryptografischem Zufall', () => {

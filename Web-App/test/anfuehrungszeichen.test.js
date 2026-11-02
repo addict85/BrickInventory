@@ -21,7 +21,7 @@ async function suche(sprache) {
   feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
   await warte(() => /xyzxyz/.test(o.d.getElementById('gallery').textContent), 3000);
   await takt(20);
-  const text = o.d.querySelector('#gallery .leer h3')?.textContent || o.d.getElementById('gallery').textContent;
+  const text = o.d.querySelector('#gallery .leer h2')?.textContent || o.d.getElementById('gallery').textContent;
   return { o, text: text.trim() };
 }
 
