@@ -296,7 +296,7 @@
   <rect x="29" y="86" width="42" height="5" rx="1" fill="#e5e7eb"/>
   <rect x="80" y="78" width="16" height="13" rx="2" fill="#f5a800"/>
   <text x="88" y="88" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="9" fill="#3b2600">6+</text>
-</svg><p class="marke">BrickInventory <span>Manager</span></p><span class="kopf-sicht" id="kopf-sicht" hidden></span></div>
+</svg><p class="marke">Brick<wbr>Inventory <span>Manager</span></p><span class="kopf-sicht" id="kopf-sicht" hidden></span></div>
     <div class="hright">
       <!-- Inline CSV import progress -->
       <div id="global-import-bar" class="import-leiste" data-stil="display:none">
@@ -792,7 +792,7 @@
         <h1 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Bauliste</span></h1>
         <p class="ptitle-unter" data-i18n="pl.subtitle">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</p>
         <div class="zeile mittig luecke-05 umbruch">
-        <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" data-stil="width:140px;flex-shrink:0" aria-label="Set-Nr." />
+        <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" data-stil="width:9em;max-width:100%;flex-shrink:0" aria-label="Set-Nr." />
         <button class="btn bp fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
         <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" disabled data-i18n="pl.generate" data-ico="werkzeug">Erstellen</button>
         <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
@@ -1670,7 +1670,7 @@
             <div class="fg"><label for="ap-qty-inline" data-i18n="parts.color_label">Farbe</label>
               <div class="zeile luecke-6 mittig">
                 <div id="ap-color-dot" data-stil="width:20px;height:20px;border-radius:50%;background:var(--s200);border:1px solid var(--bdr);flex-shrink:0"></div>
-                <select id="ap-color-select" aria-label="Farbe" data-i18n="parts.color_label" data-i18n-attr="aria-label" data-stil="height:38px;padding:.45rem .7rem;flex:1" data-change="updateColorDot">
+                <select id="ap-color-select" aria-label="Farbe" data-i18n="parts.color_label" data-i18n-attr="aria-label" data-stil="height:max(38px,2.6em);padding:.45rem .7rem;flex:1" data-change="updateColorDot">
                   <option value="" data-i18n="parts.add.no_color">Keine Farbe</option>
                 </select>
               </div>

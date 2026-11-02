@@ -892,7 +892,7 @@ export async function ladeAlarmUebersicht() {
       <input inputmode="decimal" type="text" autocomplete="off" value="${esc(betragFuerFeld(a.schwelle))}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
              data-click="stopEvent"
-             data-stil="width:90px;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
+             data-stil="width:7em;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
       <span data-stil="font-size:var(--fs-1);color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
       <div data-stil="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">
         ${marke}

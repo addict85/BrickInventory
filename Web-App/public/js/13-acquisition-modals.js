@@ -429,14 +429,14 @@ export async function openManDetail(type, id, colorId) {
     ? ad.totals.quantity : item.quantity;
   rows.push(detailZeile(t('detail.qty'), `
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-    <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" value="${totalQty}" data-stil="width:46px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
+    <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" value="${totalQty}" data-stil="width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
   `, { wertStil: 'display:flex;align-items:center;gap:6px' }));
 
   // BrickLink-Nr (minifigs only, editable)
   if (type === 'fig') {
     rows.push(detailZeile('BrickLink-Nr.', `
-      <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="${esc(tRaw('figs.bl_placeholder'))}" aria-label="${esc(tRaw('figs.bl_number'))}" data-stil="width:110px;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:2px 6px"
+      <input type="text" value="${esc(item.bl_fig_number||'')}" placeholder="${esc(tRaw('figs.bl_placeholder'))}" aria-label="${esc(tRaw('figs.bl_number'))}" data-stil="width:9em;max-width:100%;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:2px 6px"
         data-blur="saveManualFigBl" data-arg="${esc(id)}" data-arg2="${item?.user_id||''}" />
     `));
   }
