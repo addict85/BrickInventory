@@ -22,6 +22,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
@@ -72,6 +73,9 @@ import ch.brickinventoryapp.ressourcen.R
  *   detail-ohne-wertkacheln         Set-Detail ohne Wert-Kacheln → rot „Set-Detail zeigt Marktwert …“
  *   galerie-zwei-knoepfe            Scannen wieder als zweiter schwebender Knopf → rot „Galerie hat einen …“
  *   telefon-kontomenue              Kontosymbol wieder in der App-Leiste → rot „Telefon navigiert ohne …“
+ *   teile-raster-fest               Teileraster wieder fest 110 dp → rot „Teile bei 200 Prozent …“
+ *   finanzen-einspaltig             Finanzen auch auf dem Tablet einspaltig → rot „Finanzen stehen auf dem Tablet …“
+ *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -263,6 +267,58 @@ class OberflaechenRegelnTest {
         } finally {
             welt.close()
         }
+    }
+
+    @Test
+    fun `Teile bei 200 Prozent kuerzen keinen Namen`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.teile().also { it.loadParts() }
+            zeige(schrift = 2f) {
+                ch.brickinventoryapp.ui.screens.PartsScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
+            }
+            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            val namen = vm.partsState.value.parts.mapNotNull { it.partName }
+            assertTrue(namen.size >= 3)
+            for (name in namen) {
+                val ergebnis = mutableListOf<TextLayoutResult>()
+                compose.onNodeWithText(name, useUnmergedTree = true).fetchSemanticsNode()
+                    .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
+                assertTrue("$name ist abgeschnitten", !ergebnis.single().hasVisualOverflow)
+            }
+        } finally {
+            welt.close()
+        }
+    }
+
+    @Test
+    fun `Finanzen stehen auf dem Tablet in zwei Spalten`() {
+        RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
+            zeige { ch.brickinventoryapp.ui.screens.FinanceScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.historyLoading } }
+            val verlauf = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)
+                .fetchSemanticsNode().boundsInRoot
+            val falcon = compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("Die Zeilen stehen rechts neben dem Verlauf ($verlauf / $falcon)",
+                falcon.left > verlauf.right)
+        } finally {
+            welt.close()
+        }
+    }
+
+    @Test
+    fun `Gutschein-Knoepfe nennen die Nummer und der PIN hat 48 dp`() {
+        zeige { Gutscheine() }
+        val nummer = ch.brickinventoryapp.util.inVierergruppen("6061 2345 6789")
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, nummer)).fetchSemanticsNode()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_edit, nummer)).fetchSemanticsNode()
+        val pin = compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, nummer))
+            .fetchSemanticsNode().boundsInRoot
+        val dichte = ctx.resources.displayMetrics.density
+        assertTrue("PIN-Zeile nur ${pin.height / dichte} dp hoch", pin.height / dichte >= 47.5f)
     }
 
     @Test

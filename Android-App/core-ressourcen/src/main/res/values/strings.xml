@@ -825,7 +825,6 @@
     <string name="vouchers_pick_pdf">Choose PDF</string>
     <string name="vouchers_pdf_chosen">File selected</string>
     <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.</string>
-    <string name="vouchers_pdf_open">Open PDF</string>
     <string name="vouchers_export">Export all vouchers as PDF</string>
     <string name="vouchers_pin_show">Show PIN</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
@@ -838,7 +837,6 @@
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
-    <string name="vouchers_balance_one">Query balance</string>
     <!-- Alle Platzhalter sind %s und nicht %d, auch wo Zahlen eingesetzt
          werden: Android-Lint meldet „%d followed by words" als
          PluralsCandidate, und der Baum zaehlt die Lint-Befunde. Gezaehlt wird
@@ -912,6 +910,12 @@
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="vouchers_cd_delete">Delete voucher %1$s</string>
+    <string name="vouchers_cd_edit">Edit voucher %1$s</string>
+    <string name="vouchers_cd_pdf">Open PDF of voucher %1$s</string>
+    <string name="vouchers_cd_balance">Check balance of voucher %1$s</string>
+    <string name="vouchers_cd_copy_pin">Copy PIN of voucher %1$s</string>
+    <string name="vouchers_cd_copy_number">Copy number %1$s</string>
     <string name="nav_group_account">Account and app</string>
     <string name="nav_group_tools">Tools</string>
     <string name="detail_pnl_tile">Gain/loss</string>
