@@ -1,5 +1,5 @@
 import { echt, registerActions } from './00-registry.js';
-import { detailZeile, oderStrich } from './01-bausteine.js';
+import { detailZeile, oderStrich, skelettZeilen } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { fmtDatum, ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache, leseBetrag, betragFuerFeld } from './01-core.js';
@@ -1116,12 +1116,23 @@ export async function ladeLagerorte() {
   initStorageSelects(orte);
 }
 
+let _detailLauf = 0;
 export async function openModal(sn){
+  const lauf = ++_detailLauf;
+  // Der Dialog steht sofort da, mit Platzhalter: Bei langsamem Netz geschah
+  // sonst bis zur Antwort nichts, und ein zweiter Tipp öffnete ihn doppelt.
+  G('m-tit').textContent = sn; G('m-untertit').textContent = '';
+  const bild = G('m-img'); bild.src = '/assets/set-placeholder.svg';
+  G('m-det').innerHTML = skelettZeilen(4, t('common.loading'));
+  G('m-instr').innerHTML = '';
+  G('set-modal').classList.add('open');
   const [d, ad] = await Promise.all([
     api('GET',`/v1/sets/${sn}`),
     api('GET',`/v1/sets/${sn}/acquisitions`).catch(()=>null)
   ]);
-  if(!d?.success){toast(tRaw('settings.error'),'error');return;}
+  // Inzwischen geschlossen oder ein anderes Set geöffnet: nichts mehr zeichnen.
+  if (lauf !== _detailLauf || !G('set-modal').classList.contains('open')) return;
+  if(!d?.success){ G('set-modal').classList.remove('open'); toast(tRaw('settings.error'),'error'); return; }
   set_curSet(d.set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent=curSet.name||curSet.set_number;

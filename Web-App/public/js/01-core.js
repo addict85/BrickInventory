@@ -238,7 +238,7 @@ export function setnummerFeldGueltig(id, wert) {
  */
 export function leerZustand(o) {
   const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
-  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h3>${esc(o.titel)}</h3>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
+  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2>${esc(o.titel)}</h2>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
 }
 
 /** Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer. */

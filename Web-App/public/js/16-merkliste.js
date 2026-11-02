@@ -1,7 +1,7 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
-import { detailZeile, listeLadefehler } from './01-bausteine.js';
+import { detailZeile, listeLadefehler, skelettZeilen } from './01-bausteine.js';
 import { alarmBlock, diagrammBreite, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
 import { addScopeParam } from './14-scope.js';
@@ -181,6 +181,7 @@ export async function ladeMerkliste() {
   // Schreibweise wie bei der Galerie, und test/frontend-api-paths.test.js
   // liest den Pfad aus genau dieser Zeile — mit dem Fragezeichen im Rueckgabe-
   // wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
+  if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) ziel.innerHTML = skelettZeilen(4, t('common.loading'));
   const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
   if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) return;
   _merkposten = d.merkposten || [];

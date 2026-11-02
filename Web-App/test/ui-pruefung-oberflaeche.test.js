@@ -115,9 +115,9 @@ test('Teile-Suche ohne Treffer: „Keine Treffer für …“ mit Knopf, der die 
     feld.value = 'xyz';
     feld.dispatchEvent(new w.Event('input', { bubbles: true }));
     await warte(() => /xyz/.test(text(d.querySelector('#tab-parts .leer'))), 3000);
-    assert.equal(text(d.querySelector('#tab-parts .leer h3')), 'Keine Treffer für „xyz“');
+    assert.equal(text(d.querySelector('#tab-parts .leer h2')), 'Keine Treffer für „xyz“');
     d.querySelector('#tab-parts .leer [data-click="filterZuruecksetzen"]').click();
-    await warte(() => text(d.querySelector('#tab-parts .leer h3')) === 'Noch keine Teile', 3000);
+    await warte(() => text(d.querySelector('#tab-parts .leer h2')) === 'Noch keine Teile', 3000);
     assert.equal(feld.value, '');
   } finally { w.close(); }
 });
