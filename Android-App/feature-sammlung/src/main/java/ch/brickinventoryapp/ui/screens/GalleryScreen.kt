@@ -301,23 +301,24 @@ fun GalleryScreen(
     }
 }
 
-/** Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. */
+/**
+ * Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. Sie brechen
+ * um statt seitlich zu rollen: Eine abgeschnittene fünfte Kachel ohne Hinweis
+ * übersah man, und bei grosser Schrift war schon die dritte halb weg.
+ */
 @Composable
 private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    KennzahlenReihe {
         // fmtInt() statt "%,d" mit anschliessendem Ersetzen des Kommas: Die
         // Webapp formatiert dieselben Kennzahlen mit toLocaleString(locale()).
-        item { GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets)) }
-        item { GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units)) }
-        item { GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts),
-            teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln)) }
+        GalleryStatChip(fmtInt(stats.totalSets), stringResource(R.string.gallery_stat_sets))
+        GalleryStatChip(fmtInt(stats.totalQuantity), stringResource(R.string.gallery_stat_units))
+        GalleryStatChip(fmtInt(stats.totalParts), stringResource(R.string.gallery_stat_parts),
+            teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln))
         // Alle Kennzahlen immer, auch mit 0: Eine Reihe, deren Chips je nach Bestand
         // kommen und gehen, liest sich nicht gleich; 0 Figuren ist auch eine Auskunft.
-        item { GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs)) }
-        item { GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions)) }
+        GalleryStatChip(fmtInt(stats.totalMinifigs), stringResource(R.string.gallery_stat_minifigs))
+        GalleryStatChip(fmtInt(stats.totalInstructions), stringResource(R.string.gallery_stat_instructions))
     }
 }
 
@@ -378,7 +379,7 @@ private fun GalerieHinweis(inhalt: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun SetCard(
     set: SetAnsicht,
@@ -534,15 +535,19 @@ fun SetCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    // FlowRow und je eine Zeile: Reicht die Breite nicht für beide, rückt die
+                    // Prozentzahl unter den Betrag, statt Zeichen für Zeichen umzubrechen.
                     val betrag = kachelBetrag(set, preis)
-                    if (betrag != null) Row(verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
+                            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.align(Alignment.CenterVertically))
                         val pct = preis?.pnlPct
                         if (pct != null) Text(fmtProzent(pct),
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                            color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error)
+                            color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error,
+                            maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
                     }
                 }
             }

@@ -208,7 +208,7 @@ fun ManualFinanceRow(
                 Text(blId, style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary)
                 if (quantity > 1)
-                    Text("×$quantity", style = MaterialTheme.typography.labelSmall,
+                    Text(ch.brickinventoryapp.ui.mengeManuell(quantity), style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Bei mehreren Zeilen desselben Eintrags ist die Plakette das
                 // einzige Unterscheidungsmerkmal.
@@ -220,7 +220,7 @@ fun ManualFinanceRow(
             Column(horizontalAlignment = Alignment.End) {
                 Text(priceStr, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodyMedium)
+                    style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
                 // Dieselbe Stelle und dieselbe Beschriftung wie in der
                 // Set-Zeile (FinanceSections.kt) — beide Tabellen sollen
                 // gleich aussehen, und in der Webapp tun sie es.
@@ -251,14 +251,8 @@ fun ManualFinanceRow(
 
 @Composable
 fun SubtotalRow(label: String, value: String) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig, vertical = Abstaende.winzig),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-    }
+    BezeichnungUndWert(label, value, Modifier.padding(horizontal = Abstaende.winzig, vertical = Abstaende.winzig),
+        stil = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
 }
 
 @Composable

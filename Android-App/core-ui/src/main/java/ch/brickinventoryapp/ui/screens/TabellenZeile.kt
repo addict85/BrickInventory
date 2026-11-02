@@ -181,7 +181,9 @@ fun Suchfeld(
     OutlinedTextField(
         value = wert,
         onValueChange = onWert,
-        placeholder = { Text(platzhalter) },
+        // Eine Zeile: Ein umbrechender Platzhalter machte das Feld doppelt so hoch
+        // wie den Filterknopf daneben.
+        placeholder = { Text(platzhalter, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
         trailingIcon = {
             if (wert.isNotEmpty()) {

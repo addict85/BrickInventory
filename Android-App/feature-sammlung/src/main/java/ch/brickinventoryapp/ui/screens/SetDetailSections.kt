@@ -265,8 +265,10 @@ fun LazyListScope.setDetailPriceSection(set: SetAnsicht, detailState: SetDetailU
                     // braucht beide Zahlen — der Server liefert je
                     // Zustand eine Zeile, aber nur dort, wo auch ein
                     // Kaufpreis erfasst ist.
+                    // Je Zustand nur, wenn es mehr sagt als die grosse Zeile: Bei einem einzigen
+                    // Zustand stand derselbe Preis samt Prozent sonst gleich darunter noch einmal.
                     history?.byCondition?.let { byCond ->
-                        if (byCond.present().isNotEmpty()) {
+                        if (byCond.present().size > 1 || (byCond.present().isNotEmpty() && !zeigeGrossePreiszeile)) {
                             // Trennlinie nur, wenn oben etwas steht,
                             // von dem zu trennen wäre.
                             if (zeigeGrossePreiszeile) {
@@ -313,12 +315,28 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
             LaunchedEffect(setNumber, set.owners) {
                 vm.loadLagerortVorrat(set.owners.map { it.id })
             }
-            Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
+            // Bei grosser Schrift steht das Feld unter der Bezeichnung in voller Breite:
+            // 180 dp neben „Lagerort“ reichten bei 200 % nicht einmal für den Platzhalter.
+            val lagerBezeichnung: @Composable () -> Unit = {
                 Text(stringResource(R.string.detail_storage),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium)
+            }
+            if (ch.brickinventoryapp.ui.components.grosseSchrift()) {
+                Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+                       verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                    lagerBezeichnung()
+                    LagerortFeld(
+                        wert = set.storage ?: "",
+                        vorrat = lagerZustand.vorrat.map { it.name },
+                        onWert = { vm.setzeSetLagerort(setNumber, it) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                lagerBezeichnung()
                 LagerortFeld(
                     wert = set.storage ?: "",
                     vorrat = lagerZustand.vorrat.map { it.name },
@@ -352,7 +370,8 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                         onClick = { if (qty > 1) { qty--; vm.aendereMengeUm(set.setNumber, -1) } },
                         shape = Formen.etikett
                     ) {
-                        Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp))
+                        Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
+                            Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     }
                     Text(
                         "$qty",
@@ -365,7 +384,8 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                         onClick = { qty++; vm.aendereMengeUm(set.setNumber, 1) },
                         shape = Formen.etikett
                     ) {
-                        Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp))
+                        Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
+                            Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     }
                 }
             }
@@ -547,19 +567,12 @@ fun LazyListScope.setDetailAlarmSection(
             // hier gespeichert, legte schon das Umschalten einen Alarm im
             // neuen Zustand an. Dass `alarm` oben am Zustand haengt, erledigt
             // das Laden von selbst: Die Liste traegt beide.
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                AuswahlChip(
-                    selected = zustand == "N",
-                    onClick = { zustand = "N" },
-                    label = { Text(stringResource(R.string.condition_new), style = MaterialTheme.typography.labelMedium) },
-                )
-                AuswahlChip(
-                    selected = zustand == "U",
-                    onClick = { zustand = "U" },
-                    label = { Text(stringResource(R.string.condition_used), style = MaterialTheme.typography.labelMedium) },
-                )
-            }
+            ch.brickinventoryapp.ui.components.SegmentWahl(
+                optionen = listOf("N" to stringResource(R.string.condition_new), "U" to stringResource(R.string.condition_used)),
+                gewaehlt = zustand,
+                onWahl = { zustand = it },
+            )
+            Spacer(Modifier.height(Abstaende.klein))
             // Schluessel ist der Alarm selbst: Kommt einer vom Server (geladen
             // oder gerade gespeichert), soll das Feld ihn zeigen statt den
             // alten Text zu behalten.
@@ -570,23 +583,16 @@ fun LazyListScope.setDetailAlarmSection(
                 mutableStateOf(alarm?.let { if (it.schwelle > 0) it.schwelle.toString() else "" } ?: "")
             }
 
-            // Zwei Chips statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
+            // Segmente statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
             // Aufklappen lesbar. Die Richtung geht nur mit, wenn eine Schwelle dasteht — sonst
             // liefe der Aufruf auf ein Löschen hinaus.
-            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                AuswahlChip(
-                    selected = richtung == "unter",
-                    onClick = { richtung = "unter"
-                        if (schwelle.isNotBlank()) onSetze(setNumber, "unter", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_chip_below), style = MaterialTheme.typography.labelMedium) },
-                )
-                AuswahlChip(
-                    selected = richtung == "ueber",
-                    onClick = { richtung = "ueber"
-                        if (schwelle.isNotBlank()) onSetze(setNumber, "ueber", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_chip_above), style = MaterialTheme.typography.labelMedium) },
-                )
-            }
+            ch.brickinventoryapp.ui.components.SegmentWahl(
+                optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
+                                  "ueber" to stringResource(R.string.detail_alert_chip_above)),
+                gewaehlt = richtung,
+                onWahl = { neu -> richtung = neu
+                    if (schwelle.isNotBlank()) onSetze(setNumber, neu, schwelle, zustand) },
+            )
             // Unter den Chips in voller Breite: neben ihnen blieb bei grosser Schrift kein Platz.
             // Gespeichert wird nach der Ruhezeit im ViewModel (ein Aufruf, nicht je Taste); die
             // Zeile darunter bestätigt, was der Server angenommen hat.

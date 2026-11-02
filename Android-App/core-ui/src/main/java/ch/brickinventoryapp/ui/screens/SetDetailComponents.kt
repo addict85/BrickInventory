@@ -118,26 +118,7 @@ fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 fun DetailRow2(label: String, value: String) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .padding(vertical = 5.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.End
-        )
-    }
+    BezeichnungUndWert(label, value, Modifier.padding(vertical = 5.dp))
 }
 
 /**
@@ -145,6 +126,7 @@ fun DetailRow2(label: String, value: String) {
  * ui/PriceChartMath.kt. Farben aus dem Design (LocalChartColors), dieselben wie die
  * Zustands-Plaketten und --chart-new/--chart-used im Web.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     val lines  = remember(chart) { PriceChartMath.buildLines(chart) }
@@ -157,22 +139,16 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     fun colorFor(cond: String) = if (cond == "U") chartColors.used else chartColors.new
     fun labelFor(cond: String) = if (cond == "U") labelUsed else labelNew
 
-    // Kennzahlen über BEIDE Reihen — dieselbe Skala, dieselben Eckwerte.
-    // "Aktuell" ist der jüngste Punkt über beide Linien hinweg; bei einem Set,
-    // das nur gebraucht erfasst ist, steht dort also der Gebrauchtpreis.
-    val allPoints = lines.flatMap { it.points }
-    val allValues = allPoints.map { it.value }
-    val latest    = allPoints.maxByOrNull { it.day }?.value ?: return
-    Row(
+    // Tief und Hoch über BEIDE Reihen — dieselbe Skala. Kein „Aktuell“: Den heutigen
+    // Preis zeigt jede Karte schon darüber, er stand sonst dreimal da. Mit Währung,
+    // weil die Achse dieses Diagramms keine Beträge trägt.
+    val allValues = lines.flatMap { it.points }.map { it.value }
+    FlowRow(
         Modifier.fillMaxWidth().padding(bottom = Abstaende.klein),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        // Mit Währung: Die Achse dieses Diagramms trägt keine Beträge, und eine
-        // nackte Zahl neben „CHF 812.50“ darüber liest sich wie eine andere Grösse.
         PriceStatCell(stringResource(R.string.detail_price_low),
             ch.brickinventoryapp.util.fmtMoney(allValues.min(), waehrung))
-        PriceStatCell(stringResource(R.string.detail_price_current),
-            ch.brickinventoryapp.util.fmtMoney(latest, waehrung))
         PriceStatCell(stringResource(R.string.detail_price_high),
             ch.brickinventoryapp.util.fmtMoney(allValues.max(), waehrung))
     }
@@ -286,17 +262,16 @@ fun MarketPriceByCondition(
     val labelUsed = stringResource(R.string.condition_used)
     val marketLabel = stringResource(R.string.detail_section_market)
 
+    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
     Column(Modifier.fillMaxWidth()) {
         rows.forEach { (cond, data) ->
             val label = if (cond == "U") labelUsed else labelNew
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("$marketLabel ($label)",
+            val bezeichnung: @Composable (Modifier) -> Unit = { m ->
+                Text("$marketLabel ($label)", modifier = m,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            val wert: @Composable () -> Unit = {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     // Der Preis in Schriftfarbe statt primary: In „noppe“ war primary Rot, ein Preis
@@ -304,13 +279,25 @@ fun MarketPriceByCondition(
                     val markt = data.marketPrice
                     if (markt != null) {
                         Text(ch.brickinventoryapp.util.fmtMoney(markt, currency),
-                            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                            fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1, softWrap = false)
                     } else {
                         Text(stringResource(R.string.detail_price_none_yet), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     data.pnlPct?.let { PnlBadge(it) }
                 }
+            }
+            // Wie BezeichnungUndWert: bei grosser Schrift untereinander.
+            if (gross) Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig)) {
+                bezeichnung(Modifier)
+                wert()
+            } else Row(
+                Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                bezeichnung(Modifier.weight(1f))
+                wert()
             }
         }
     }
@@ -355,7 +342,7 @@ fun PnlBadge(pct: Double) {
 @Composable
 fun PriceStatCell(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+        Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }

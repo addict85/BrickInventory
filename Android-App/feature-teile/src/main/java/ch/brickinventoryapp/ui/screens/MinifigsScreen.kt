@@ -232,7 +232,7 @@ fun MinifigsScreen(
 /** Die Kennzahlen der Minifiguren — erste Zeile des Rasters, sie rollt mit. */
 @Composable
 private fun FigurenKennzahlen(minifigStats: FigurenKennzahlenAnsicht) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+    KennzahlenReihe {
         // Zahlen vom Server (getMinifigStats): Aus der Liste gerechnet fehlten
         // die manuell erfassten Figuren, die hier ausgefiltert sind.
         GalleryStatChip(fmtInt(minifigStats.types), stringResource(R.string.minifigs_stat_types))

@@ -11,7 +11,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,6 +30,30 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
+
+/**
+ * Genau eine von zwei oder drei gleichrangigen Möglichkeiten (Neu | Gebraucht,
+ * Fällt unter | Steigt über): Material sieht dafür die Segmentschaltfläche vor —
+ * zwei Chips nebeneinander lasen sich wie zwei Filter, die man beide setzen kann.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> SegmentWahl(
+    optionen: List<Pair<T, String>>,
+    gewaehlt: T,
+    onWahl: (T) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
+        optionen.forEachIndexed { i, (wert, text) ->
+            SegmentedButton(
+                selected = wert == gewaehlt,
+                onClick = { onWahl(wert) },
+                shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
+            ) { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        }
+    }
+}
 
 /**
  * Eine Wahl aus wenigen Möglichkeiten als Chips: Vorgelesen als Radiogruppe

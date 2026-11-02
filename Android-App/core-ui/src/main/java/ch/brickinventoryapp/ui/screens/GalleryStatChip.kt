@@ -38,6 +38,21 @@ fun GalleryStatChip(value: String, label: String, detail: String? = null) {
 }
 
 /**
+ * Die Reihe der Kennzahlen über Sets, Teilen und Figuren — eine Fassung, damit alle
+ * drei gleich umbrechen. FlowRow statt seitlichem Rollen: Eine angeschnittene Kachel
+ * am Rand sagte nicht, dass rechts noch etwas kommt.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun KennzahlenReihe(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit) {
+    FlowRow(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(ch.brickinventoryapp.ui.theme.Abstaende.klein),
+        verticalArrangement = Arrangement.spacedBy(ch.brickinventoryapp.ui.theme.Abstaende.klein),
+    ) { inhalt() }
+}
+
+/**
  * „144 aus Sets · 250 einzeln“ unter der Teilezahl, wie in der Webapp — nur wenn
  * es einzeln erfasste Teile gibt; sonst wäre die Zeile die Zahl darüber noch einmal.
  */

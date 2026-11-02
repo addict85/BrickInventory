@@ -19,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 
@@ -64,7 +65,8 @@ fun LagerortFeld(
                 if (it.length <= 60) { text = it; offen = true; onWert(it) }
             },
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.detail_storage_ph), style = MaterialTheme.typography.bodySmall) },
+            placeholder = { Text(stringResource(R.string.detail_storage_ph), style = MaterialTheme.typography.bodySmall,
+                maxLines = 1, overflow = TextOverflow.Ellipsis) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen)
             },

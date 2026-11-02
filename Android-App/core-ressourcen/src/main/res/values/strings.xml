@@ -252,8 +252,8 @@
     <string name="partslist_empty_hint">Add sets and generate a parts list</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
-        <item quantity="one">%1$d×  ·  %2$d type</item>
-        <item quantity="other">%1$d×  ·  %2$d types</item>
+        <item quantity="one">×%1$d  ·  %2$d type</item>
+        <item quantity="other">×%1$d  ·  %2$d types</item>
     </plurals>
     <string name="partslist_rb_prefix">RB: %1$s</string>
     <!-- ══════════════ Finance screen ══════════════ -->
@@ -263,13 +263,13 @@
     <string name="finance_price_error">Price error</string>
     <string name="finance_no_sets">No sets</string>
     <string name="finance_load_prompt">→ Load prices</string>
-    <string name="finance_total_pnl">Total P&amp;L  %1$s</string>
+    <string name="finance_total_pnl">%1$s vs. purchase price</string>
     <string name="finance_parts_extra">incl. parts &amp; minifigures: %1$s</string>
     <plurals name="finance_fremde_waehrung">
         <item quantity="one">%1$d purchase price in another currency not included</item>
         <item quantity="other">%1$d purchase prices in another currency not included</item>
     </plurals>
-    <string name="finance_avg_label">Ø Average</string>
+    <string name="finance_avg_label">Ø sets</string>
     <string name="finance_min_label">Min</string>
     <string name="finance_max_label">Max</string>
     <string name="finance_filter_all">All</string>
@@ -285,7 +285,7 @@
     <string name="finance_total_manual_parts">Manually added parts</string>
     <string name="finance_total_manual_minifigs">Manually added minifigures</string>
     <string name="finance_grand_total">Total</string>
-    <string name="finance_market_avg">Ø Market price</string>
+    <string name="finance_market_avg">Collection market value</string>
 
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Types</string>
@@ -353,7 +353,6 @@
     <string name="detail_instruction_default">Instruction</string>
     <string name="detail_close">Close</string>
     <string name="detail_price_low">Low</string>
-    <string name="detail_price_current">Current</string>
     <string name="detail_price_high">High</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
@@ -908,6 +907,11 @@
     <string name="common_load_failed">Could not be loaded</string>
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
+    <string name="chart_change_max">%1$s overall</string>
+    <string name="chart_change_year">%1$s this year</string>
+    <string name="chart_change_month">%1$s this month</string>
+    <string name="chart_change_week">%1$s this week</string>
+    <string name="finance_range_label">Sets at lowest and highest market price</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
     <string name="wanted_add_first">Add a set to the list</string>
     <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>

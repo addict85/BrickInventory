@@ -21,6 +21,13 @@ object Lesebreite {
     val liste = 840.dp
 }
 
+/**
+ * Volle Breite bis [max], darüber linksbündig: Für Bedienelemente über einem Raster,
+ * das selbst links beginnt — mittig stünden sie versetzt zu den Kacheln darunter.
+ */
+fun Modifier.linksBis(max: Dp): Modifier =
+    fillMaxWidth().wrapContentWidth(Alignment.Start).widthIn(max = max).fillMaxWidth()
+
 /** Volle Breite bis [max], darüber mittig. */
 fun Modifier.mittigBis(max: Dp): Modifier =
     fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = max).fillMaxWidth()

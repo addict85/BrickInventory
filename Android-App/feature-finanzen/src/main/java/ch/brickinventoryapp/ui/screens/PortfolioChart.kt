@@ -66,7 +66,14 @@ fun PortfolioChart(
                 if (periodChangePct != null) {
                     val pos = periodChangePct >= 0
                     val bg  = if (pos) LocalStatusFarben.current.erfolg else LocalStatusFarben.current.fehler
-                    val lbl = fmtProzent(periodChangePct)
+                    // Mit Zeitraum: „+1.3 %“ allein stand neben „G&V +14.2 %“ darunter und
+                    // sagte nicht, dass es nur um diese Woche geht.
+                    val lbl = stringResource(when (selectedPeriod) {
+                        "month" -> R.string.chart_change_month
+                        "year" -> R.string.chart_change_year
+                        "max" -> R.string.chart_change_max
+                        else -> R.string.chart_change_week
+                    }, fmtProzent(periodChangePct))
                     Surface(shape = Formen.chip, color = bg.copy(alpha = 0.12f)) {
                         Text(lbl, Modifier.padding(horizontal = Abstaende.klein, vertical = 3.dp),
                             color = bg, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)

@@ -537,7 +537,7 @@ fun PartListRow(
         Surface(color = if (part.isFig) MaterialTheme.colorScheme.tertiaryContainer
                         else MaterialTheme.colorScheme.primaryContainer,
                 shape = MaterialTheme.shapes.small) {
-            Text("${part.quantity}×", Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
+            Text(ch.brickinventoryapp.ui.mengeAusSet(part.quantity), Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
                 fontWeight = FontWeight.Bold,
                 color = if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer
                         else MaterialTheme.colorScheme.onPrimaryContainer)
