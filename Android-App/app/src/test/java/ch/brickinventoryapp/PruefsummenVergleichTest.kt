@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit
  * Gegenproben (30.10.2026, gemessen): in vergleiche() `sa != sn` durch `False`
  * ersetzt → rot „eine geänderte Prüfsumme bei gleicher Fassung fällt auf“;
  * neu_k und weg_k vertauscht → rot „neue und entfernte Komponenten …“.
+ * (02.11.2026, gemessen) in vertrauen_markdown() `dazu = []` → rot „ein neu
+ * vertrauter Schluessel …“; Sortierung ohne `not` (Regex zuletzt) → ebenso rot.
  */
 class PruefsummenVergleichTest {
 
@@ -42,6 +44,27 @@ class PruefsummenVergleichTest {
         val text = vergleiche(alt, neu)
         assertTrue(text, text.contains("| 1 | 1 | 1 |"))
         assertTrue(text, text.contains("| `c.kippt:x:2.0` | `x-2.0.jar` | Prüfsumme |"))
+    }
+
+    private fun schluessel(vararg eintraege: String): File = File.createTempFile("vertrauen", ".xml").apply {
+        deleteOnExit()
+        writeText("""<?xml version="1.0" encoding="UTF-8"?>
+<verification-metadata xmlns="https://schema.gradle.org/dependency-verification"><configuration><trusted-keys>
+${eintraege.joinToString("\n")}
+</trusted-keys></configuration><components/></verification-metadata>""")
+    }
+
+    @Test
+    fun `ein neu vertrauter Schluessel mit Gruppen-Regex steht hervorgehoben vorn`() {
+        val bisher = """<trusted-key id="AAAA" group="org.alt"/>"""
+        val text = vergleiche(schluessel(bisher), schluessel(bisher,
+            """<trusted-key id="BBBB" group="org.einzeln" name="x" version="1.0"/>""",
+            """<trusted-key id="CCCC"><trusting group="^com[.]neu($|([.].*))" regex="true"/></trusted-key>"""))
+        assertTrue(text, text.contains("### Neu vertraute Schlüssel (2)"))
+        val regex = text.indexOf("| `CCCC` | `^com[.]neu($\\|([.].*))` | * | * | **JA")
+        val einzeln = text.indexOf("| `BBBB` | `org.einzeln` | x | 1.0 | nein |")
+        assertTrue(text, regex in 0 until einzeln)
+        assertTrue("Der alte Schlüssel ist nicht neu", !text.contains("`AAAA`"))
     }
 
     @Test

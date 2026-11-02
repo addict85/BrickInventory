@@ -136,6 +136,21 @@ fun SettingsScreen(
                 }
             }
 
+            // Je Gerät, Vorgabe aus: Wer die Übersicht anderen zeigt, will keine Vorschau.
+            val vorschauVerbergen by app.vorschauVerbergen.collectAsStateWithLifecycle()
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .toggleable(value = vorschauVerbergen, role = Role.Switch, onValueChange = { app.setVorschauVerbergen(it) }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_vorschau_verbergen), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_vorschau_verbergen_hint), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = vorschauVerbergen, onCheckedChange = null)
+            }
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             // Währung und Preisgrundlage gehen zusammen an den Server (ein Endpunkt).

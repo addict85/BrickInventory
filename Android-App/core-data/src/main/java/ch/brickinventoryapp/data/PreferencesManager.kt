@@ -54,6 +54,7 @@ class PreferencesManager @Inject constructor(
         const val NUTZER_CA_AUS_ANGEWANDT = "nutzer_ca_aus_angewandt"
         const val PIN_PRAEFIX = "pin:"
         const val SYSTEMFARBEN = "systemfarben"
+        const val VORSCHAU_VERBERGEN = "vorschau_verbergen"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -413,6 +414,12 @@ class PreferencesManager @Inject constructor(
     fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)
     fun setzeSystemfarben(an: Boolean) {
         designSpiegel.edit { putBoolean(SYSTEMFARBEN, an) }
+    }
+
+    /** Kein Vorschaubild in der App-Übersicht, keine Bildschirmfotos; je Gerät, Vorgabe aus. */
+    fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, false)
+    fun setzeVorschauVerbergen(an: Boolean) {
+        designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
     }
 
 

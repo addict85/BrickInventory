@@ -21,6 +21,8 @@ import java.io.File
  *      der Kernmodule: core-data hängt an [core-ui]“
  *   D  include(":feature-verwaltung") aus settings.gradle.kts gestrichen → rot
  *      „jeder Modulordner ist eingebunden“
+ *   E  (02.11.2026) in dependencyResolutionManagement wieder `google()` → rot
+ *      „google() liefert nur Googles Gruppen“ (Ohne Inhaltsfilter)
  */
 class ModulgrenzenTest {
 
@@ -100,5 +102,16 @@ class ModulgrenzenTest {
         val app = hauptAbhaengigkeiten(module().getValue("app"))
         val bereiche = module().keys.filter { it.startsWith("feature-") }.toSet()
         assertEquals("ein Bereich ohne die App wäre toter Code", bereiche, app.filter { it.startsWith("feature-") }.toSet())
+    }
+
+    /** Plugins wie Abhängigkeiten: google() nur für Googles Gruppen, sonst mavenCentral. */
+    @Test
+    fun `google() liefert nur Googles Gruppen`() {
+        val settings = File(projekt, "settings.gradle.kts").readText().lines()
+            .filterNot { it.trim().startsWith("//") }.joinToString("\n")
+        val google = Regex("""\bgoogle\b[^\n]*""").findAll(settings).map { it.value }.toList()
+        assertEquals("pluginManagement und dependencyResolutionManagement: $google", 2, google.size)
+        for (z in google) assertTrue("Ohne Inhaltsfilter: $z", z.startsWith("google { content {") &&
+            listOf("com\\\\.android.*", "com\\\\.google.*", "androidx.*").all { z.contains("includeGroupByRegex(\"$it\")") })
     }
 }

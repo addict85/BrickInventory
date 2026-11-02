@@ -210,6 +210,7 @@
     <string name="detail_alert">Price alert</string>
     <string name="alert_channel_name">Price alerts</string>
     <string name="alert_channel_desc">Tells you when a set crosses one of your thresholds.</string>
+    <string name="alert_gesperrt">A set crossed one of your thresholds.</string>
     <string name="alert_notify">Notify me on this device</string>
     <string name="alert_notify_hint">Checks hourly in the background. Without it you only get the e-mail.</string>
     <string name="alert_schedule_failed">Price alert could not be scheduled: %1$s</string>
@@ -458,6 +459,7 @@
     <string name="pdfexp_no_data">No export data available</string>
     <string name="pdfexp_starting">Starting export…</string>
     <string name="pdfexp_unknown_error">Unknown error</string>
+    <string name="pdfexp_oeffnen_mit">Open parts list with</string>
     <string name="pdfexp_loading_images">Loading images…</string>
     <string name="pdfexp_creating_eta">Creating PDF… ~%1$ds left</string>
     <string name="pdfexp_almost_done">PDF almost done…</string>
@@ -887,14 +889,15 @@
     <string name="setup_klartext_abgelehnt">http is not supported. Please enter the server\'s https address.</string>
     <string name="settings_systemfarben">System colors (Material You)</string>
     <string name="settings_systemfarben_hint">Colors from your wallpaper instead of the design\'s colors. Shapes and fonts stay.</string>
+    <string name="settings_vorschau_verbergen">Hide preview in the app overview</string>
+    <string name="settings_vorschau_verbergen_hint">No preview in the recent apps overview and no screenshots of the app. Applies to this device.</string>
     <string name="zert_titel_erstkontakt">Trust this server?</string>
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
     <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. Compare the fingerprint character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
-    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. That is why one tap is not enough here: copy the last 16 characters of the fingerprint from the web app (Settings → Server certificate) – not from this screen. Scanning the web app\'s QR code is easier, it carries the fingerprint.</string>
-    <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself.</string>
+    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. That is why one tap is not enough here: copy the last 16 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier, it carries the fingerprint.</string>
+    <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the new fingerprint is shown only by the web app (Settings → Server certificate); copy its last 16 characters from there.</string>
     <string name="zert_fingerabdruck">Fingerprint (SHA-256 of the public key)</string>
-    <string name="zert_jetzt">Shown now (new)</string>
     <string name="zert_bisher">Previously confirmed</string>
     <string name="zert_vertrauen">Trust this certificate</string>
     <string name="zert_vertrauen_neu">Accept the new certificate</string>
@@ -902,7 +905,10 @@
     <string name="zert_geaendert_eingabe">Last 16 characters of the new fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
     <string name="zert_unbekannt_eingabe">Last 16 characters of the fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
-    <string name="zert_eingabe_falsch">That does not match the fingerprint shown.</string>
+    <string name="zert_eingabe_falsch">That does not match this server\'s fingerprint.</string>
+    <string name="zert_beginnt_mit">Fingerprint starts with (for orientation only)</string>
+    <string name="zert_text_nutzer_ca">The certificate of %1$s is valid only through an authority installed on this device. That may be your own – or one that someone with access to the device slipped in. That is why one tap is not enough here: copy the last 16 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier.</string>
+    <string name="zert_titel_nutzer_ca">Certificate from an installed authority</string>
     <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself – the web app then shows the new fingerprint under Settings → Server certificate; copy its last 16 characters below.</string>
     <string name="setup_qr_pin_uebernehmen">Accept the new certificate and log in</string>
     <string name="setup_qr_pin_wechsel_abgelehnt">The QR code names a different certificate than the confirmed one. Nothing was changed.</string>

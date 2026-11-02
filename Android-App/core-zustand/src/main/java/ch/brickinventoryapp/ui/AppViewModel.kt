@@ -121,6 +121,14 @@ class AppViewModel @Inject constructor(
         _systemfarben.value = an
     }
 
+    /** Je Gerät: FLAG_SECURE für die ganze App (MainActivity), über den Zähler von Sichtschutz. */
+    private val _vorschauVerbergen = MutableStateFlow(prefs.vorschauVerbergen())
+    val vorschauVerbergen: StateFlow<Boolean> = _vorschauVerbergen.asStateFlow()
+    fun setVorschauVerbergen(an: Boolean) {
+        prefs.setzeVorschauVerbergen(an)
+        _vorschauVerbergen.value = an
+    }
+
     /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. Ohne bekannte CA oder geändert nur mit [eingabe]. */
     fun zertifikatVertrauen(eingabe: String? = null): Boolean {
         if (!zertifikatsFrage.bestaetige(prefs, eingabe)) return false
@@ -237,6 +245,7 @@ class AppViewModel @Inject constructor(
             repo.clearCache()
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }
+                runCatching { ch.brickinventoryapp.util.raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null)) }
                 // Bilder des Kontos liegen auch hier: HTTP-Zwischenspeicher und Vorschau-Ablage.
                 runCatching { bildHttpClient.cache?.evictAll() }
                 runCatching { vorschau.leeren() }

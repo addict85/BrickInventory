@@ -131,6 +131,28 @@ class PreisalarmWorker(
          * Zusammenfassung: Man will ohne die App zu öffnen wissen, welcher Alarm gefallen
          * ist.
          */
+        /**
+         * Auf dem gesperrten Bildschirm nur „Preisalarm“: Set und Preis verrieten jedem,
+         * der das Telefon sieht, was im Regal steht und was es wert ist.
+         */
+        fun meldung(context: Context, text: String, tippen: PendingIntent?): android.app.Notification {
+            val oeffentlich = NotificationCompat.Builder(context, KANAL)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(context.getString(R.string.detail_alert))
+                .setContentText(context.getString(R.string.alert_gesperrt))
+                .build()
+            return NotificationCompat.Builder(context, KANAL)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle(context.getString(R.string.detail_alert))
+                .setContentText(text)
+                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                .setPublicVersion(oeffentlich)
+                .setGroup(KANAL)
+                .setAutoCancel(true)
+                .setContentIntent(tippen)
+                .build()
+        }
+
         fun zeige(context: Context, meldungen: List<ch.brickinventoryapp.data.model.Preisalarm>) {
             if (meldungen.isEmpty()) return
             // Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung.
@@ -178,14 +200,7 @@ class PreisalarmWorker(
                     // Intent vollstaendig, also gibt es nichts zu ergaenzen.
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 )
-                val n = NotificationCompat.Builder(context, KANAL)
-                    .setSmallIcon(android.R.drawable.ic_dialog_info)
-                    .setContentTitle(context.getString(R.string.detail_alert))
-                    .setContentText(Alarmabholung.text(a, unter, ueber))
-                    .setGroup(KANAL)
-                    .setAutoCancel(true)
-                    .setContentIntent(tippen)
-                    .build()
+                val n = meldung(context, Alarmabholung.text(a, unter, ueber), tippen)
                 // Die Setnummer als ID: Zwei Meldungen zum selben Set
                 // ueberschreiben sich, statt sich zu stapeln.
                 nm.notify(KANAL + a.setNumber + a.condition, i + 1, n)

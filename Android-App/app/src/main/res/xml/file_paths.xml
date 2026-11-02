@@ -1,42 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  FileProvider-Freigabe — bewusst NUR die zwei Ausgabe-Unterverzeichnisse
-  pdf/ und export/.
-
-  Vorher standen hier cache-path, files-path und external-files-path jeweils
-  mit path=".": die kompletten Wurzelverzeichnisse waren über die
-  Provider-Authority erreichbar — inklusive des API-Caches (api-1/, das
-  Inventar im Klartext-JSON) und des Bild-Caches. Geteilt wird über den
-  Provider aber nur das exportierte Teilelisten-PDF (PdfExportManager legt
-  es in <files>/pdf/ ab, PdfExportService und TeilelisteViewModel reichen es
-  per ACTION_VIEW weiter).
-
-  export/ kam mit der BrickLink-Wunschliste dazu (PartsListFeature.
-  exportPartsBricklink legt bricklink-wanted.xml dort ab und reicht sie per
-  ACTION_SEND weiter). Ein EIGENES Verzeichnis und nicht pdf/, damit an der
-  Freigabe ablesbar bleibt, was sie hergibt — und damit ein künftiger Export
-  nicht stillschweigend im PDF-Ordner landet.
-
-  pdf/ in beiden Wurzeln: intern die Teileliste (sie trägt das Inventar),
-  extern nur, was der PDF-Betrachter unter Android 8/9 zum Teilen ablegt —
-  Anleitungen, keine Gutscheine.
+  FileProvider-Freigabe: nur pdf/, sonst nichts — nie cache-path oder files-path
+  mit ".", dort lägen API-Cache (Inventar) und Bild-Cache offen. Intern die
+  Teileliste (PdfExportManager), extern, was der PDF-Betrachter unter Android 8/9
+  zum Teilen ablegt — Anleitungen, keine Gutscheine. Das Update geht über eine
+  PackageInstaller-Sitzung und braucht keine Freigabe.
 -->
 <paths>
     <external-files-path name="pdf_external" path="pdf/" />
     <files-path name="pdf_internal" path="pdf/" />
-    <external-files-path name="export_external" path="export/" />
-    <files-path name="export_internal" path="export/" />
-    <!--
-      update/ ist das dritte EIGENE Verzeichnis, aus demselben Grund wie
-      export/: An der Freigabe soll ablesbar bleiben, was sie hergibt. Hier
-      liegt das heruntergeladene APK, und nur der Installer bekommt es zu
-      sehen (ACTION_VIEW mit FLAG_GRANT_READ_URI_PERMISSION).
-
-      Nur INTERN, ohne external-files-path: Ein APK im externen Bereich waere
-      fuer jede App mit Speicherzugriff lesbar UND beschreibbar — und ein
-      beschreibbares APK, das wir gleich zur Installation weiterreichen, ist
-      genau die Luecke, die ein Selbst-Updater nicht haben darf. filesDir ist
-      der App vorbehalten.
-    -->
-    <files-path name="update_internal" path="update/" />
 </paths>
