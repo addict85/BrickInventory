@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, ico, G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
+import { fmtDatum, ico, G, TRASH_ICON_SVG, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
@@ -164,7 +164,7 @@ export function gutscheinBearbeiten(id) {
   _bearbeitet = g.id;
   el('v-number').value = g.number;
   el('v-pin').value    = g.pin || '';
-  el('v-amount').value = g.amount;
+  el('v-amount').value = betragFuerFeld(g.amount);
   const cur = el('v-currency'); if (cur) cur.value = g.currency;
   el('vouchers-form-title').textContent = tRaw('vouchers.edit');
   el('v-cancel').style.display = '';
@@ -192,7 +192,9 @@ export function gutscheinAbbrechen() {
 export async function gutscheinSpeichern() {
   const number   = el('v-number').value.trim();
   const pin      = el('v-pin').value.trim();
-  const amount   = el('v-amount').value.trim();
+  const betrag   = betragAusFeld('v-amount');
+  if (!betrag.ok) return;
+  const amount   = betrag.wert ?? '';
   const currency = el('v-currency')?.value || 'CHF';
   const datei    = el('v-pdf')?.files?.[0] || null;
 
@@ -215,7 +217,7 @@ export async function gutscheinSpeichern() {
     // PDF Gelesene überschreiben — mit nichts.
     if (number)   form.append('number', number);
     if (pin)      form.append('pin', pin);
-    if (amount)   form.append('amount', amount);
+    if (amount !== '') form.append('amount', String(amount));
     if (currency) form.append('currency', currency);
     let r, d;
     try {
@@ -231,7 +233,7 @@ export async function gutscheinSpeichern() {
       const g = d?.gelesen || {};
       if (g.number && !number)     el('v-number').value = g.number;
       if (g.pin && !pin)           el('v-pin').value = g.pin;
-      if (g.amount != null && !amount) el('v-amount').value = g.amount;
+      if (g.amount != null && amount === '') el('v-amount').value = betragFuerFeld(g.amount);
       if (g.currency && el('v-currency')) el('v-currency').value = g.currency;
       toast(tRaw('vouchers.pdf_incomplete'), 'error');
       return;

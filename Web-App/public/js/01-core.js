@@ -853,6 +853,59 @@ export function fmtGeld(v, cur){
   return Number(v) === 0 ? new Intl.NumberFormat(locale(),{style:'currency',currency:cur||CURRENCY||'EUR',minimumFractionDigits:2}).format(0) : fmtN(v, cur);
 }
 /**
+ * Ein Betrag aus einem Eingabefeld. Komma und Punkt sind beide Dezimalzeichen,
+ * Leerzeichen und ' sind Tausendertrenner; ein einzelnes Trennzeichen mit genau
+ * drei Ziffern danach gilt als Tausender, wenn die Sprache es so schreibt
+ * („1.234“ de-DE). Leer → null; keine Zahl → NaN, damit der Aufrufer am Feld
+ * meldet, statt „149,95“ still zu 149 zu kürzen.
+ * @param {unknown} roh
+ * @returns {number|null}
+ */
+export function leseBetrag(roh) {
+  const s = String(roh ?? '').replace(/[\s  '’]/g, '').replace(/^[€$£]|[€$£]$/g, '');
+  if (!s) return null;
+  if (!/^[\d.,]*\d[\d.,]*$/.test(s)) return NaN;
+  const trenner = s.match(/[.,]/g) || [];
+  const letztes = Math.max(s.lastIndexOf(','), s.lastIndexOf('.'));
+  let dezimal = trenner.length ? s[letztes] : null;
+  if (new Set(trenner).size === 1 && trenner.length > 1) dezimal = null;
+  if (trenner.length === 1) {
+    const gruppe = new Intl.NumberFormat(locale()).formatToParts(1000).find(p => p.type === 'group')?.value;
+    if (trenner[0] === gruppe && /^\d{3}$/.test(s.slice(letztes + 1)) && !/^0[.,]/.test(s)) dezimal = null;
+  }
+  const ganz = dezimal ? s.slice(0, letztes) : s, nach = dezimal ? s.slice(letztes + 1) : '';
+  if (/[.,]/.test(nach) || (dezimal && ganz.includes(dezimal))) return NaN;
+  const gruppen = ganz.split(/[.,]/);
+  if (gruppen.length > 1 && (!/^\d{1,3}$/.test(gruppen[0]) || gruppen.slice(1).some(g => !/^\d{3}$/.test(g)))) return NaN;
+  return Number((gruppen.join('') || '0') + (nach ? '.' + nach : ''));
+}
+
+/** Ein Betrag für ein Eingabefeld in der Schreibweise der Sprache („129,99“ de-DE), ohne Tausender. */
+export function betragFuerFeld(v) {
+  if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '';
+  return new Intl.NumberFormat(locale(), { useGrouping: false, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(v));
+}
+
+/**
+ * Liest ein Geldfeld; ist der Inhalt keine Zahl (oder negativ), steht die
+ * Meldung am Feld und `ok` ist false — gesendet wird dann nichts.
+ * @param {string|HTMLInputElement} feld  ID oder Element
+ * @returns {{ ok: boolean, wert: number|null }}
+ */
+export function betragAusFeld(feld) {
+  const el = typeof feld === 'string' ? G(feld) : feld;
+  if (!el) return { ok: true, wert: null };
+  const wert = leseBetrag(el.value);
+  if (wert !== null && !(wert >= 0)) {
+    if (el.id) feldFehler(el.id, tRaw('common.amount_invalid', { wert: el.value.trim() }));
+    else toast(tRaw('common.amount_invalid', { wert: el.value.trim() }), 'error');
+    return { ok: false, wert: null };
+  }
+  if (el.id && G(el.id + '-fehler')) feldFehler(el.id, '');
+  return { ok: true, wert };
+}
+
+/**
  * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit
  * sie neben den Beträgen aus fmtN() nicht in einer zweiten Schreibweise steht.
  * @param {number|string} v  Prozentwert (51.1, nicht 0.511)
@@ -876,14 +929,14 @@ export function fmtBig(n){
  * Ein Datum überall gleich: „05.01.2024“ (de), „05/01/2024“ (en). Vorher
  * stand je Stelle toLocaleDateString() („5.1.2024“) neben eigenen Formen.
  * @param {string|number|Date|null|undefined} v
- * @param {'tag'|'zeit'|'tagzeit'} [art]
+ * @param {'tag'|'zeit'|'tagzeit'|'lang'} [art]  lang: „1. Juni 2026“
  */
 export function fmtDatum(v, art = 'tag'){
   if (v === null || v === undefined || v === '') return '';
   const d = v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
   if (isNaN(d.getTime())) return '';
   const tag = { day: '2-digit', month: '2-digit', year: 'numeric' }, zeit = { hour: '2-digit', minute: '2-digit' };
-  const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : tag;
+  const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : art === 'lang' ? { day: 'numeric', month: 'long', year: 'numeric' } : tag;
   return new Intl.DateTimeFormat(locale(), /** @type {Intl.DateTimeFormatOptions} */ (o)).format(d);
 }
 

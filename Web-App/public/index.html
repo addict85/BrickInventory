@@ -1253,7 +1253,7 @@
             <div class="sgrid2 luecke-075">
               <div class="fg">
                 <label for="v-amount" data-i18n="vouchers.amount">Betrag</label>
-                <input type="number" id="v-amount" step="0.01" min="0" inputmode="decimal" />
+                <input type="text" autocomplete="off" id="v-amount" inputmode="decimal" />
               </div>
               <div class="fg">
                 <label for="v-currency" data-i18n="settings.currency">Währung</label>
@@ -1676,7 +1676,7 @@
               </div>
             </div>
             <div class="fg"><label data-i18n="parts.add.qty">Anzahl</label><input class="hoehe-38" inputmode="numeric" type="number" id="ap-qty-inline" value="1" min="1" /></div>
-            <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (optional)</label><input class="hoehe-38" inputmode="decimal" type="number" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" /></div>
+            <div class="fg"><label for="ap-price-inline" data-i18n="parts.add.price">Kaufpreis/Stk (optional)</label><input class="hoehe-38" inputmode="decimal" type="text" autocomplete="off" id="ap-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" /></div>
             <div class="fg"><label for="ap-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="ap-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg max-150" id="ap-owner-box" data-stil="display:none"><label for="ap-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="ap-owner"></select></div><div class="fg max-220" id="ap-storage-box"><span class="feld-titel" id="ap-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="ap-storage-slot"></span></div>
             <div class="fg unten-buendig"><button class="btn bp voll-breit hoehe-38" id="btn-add-part" data-i18n="gallery.add.submit">Hinzufügen</button></div>
@@ -1697,7 +1697,7 @@
           <div class="fg"><label for="af-qty-inline" data-i18n="figs.qty_label">Anzahl</label>
             <input class="hoehe-38" inputmode="numeric" type="number" id="af-qty-inline" value="1" min="1" /></div>
           <div class="fg"><label for="af-price-inline" data-i18n="figs.price_label">Kaufpreis/Stk (opt.)</label>
-            <input class="hoehe-38" inputmode="decimal" type="number" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" step="0.01" /></div>
+            <input class="hoehe-38" inputmode="decimal" type="text" autocomplete="off" id="af-price-inline" placeholder="Leer = Marktpreis" data-i18n="parts.add.price_placeholder" data-i18n-attr="placeholder" /></div>
           <div class="fg"><label for="af-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt hoehe-38" id="af-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg max-150" id="af-owner-box" data-stil="display:none"><label for="af-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt hoehe-38" id="af-owner"></select></div><div class="fg max-220" id="af-storage-box"><span class="feld-titel" id="af-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="af-storage-slot"></span></div>
           <div class="fg unten-buendig">
@@ -1716,7 +1716,7 @@
     <div class="erfassen-raster">
       <div class="fg"><label for="add-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="add-num" data-erstfokus placeholder="z. B. 75192" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
       <div class="fg"><label for="add-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="add-qty" value="1" min="1" /></div>
-      <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="add-price" placeholder="z. B. 79,99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" step="0.01" min="0" /></div>
+      <div class="fg"><label for="add-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="add-price" placeholder="z. B. 79,99" data-i18n="gallery.add.price_ph" data-i18n-attr="placeholder" /></div>
       <div class="fg"><label for="add-condition" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="add-condition"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
       <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
@@ -1847,7 +1847,7 @@
     </div>
     <div data-stil="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px">
       <div class="fg max-82"><label for="mk-take-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="mk-take-qty" value="1" min="1" /></div>
-      <div class="fg max-120"><label for="mk-take-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="mk-take-price" step="0.01" min="0" placeholder="—" /></div>
+      <div class="fg max-120"><label for="mk-take-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="mk-take-price" placeholder="—" /></div>
       <div class="fg max-110"><label for="mk-take-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-take-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div><div class="fg max-220" id="mk-take-storage-box"><span class="feld-titel" id="mk-take-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="mk-take-storage-slot"></span></div>
     </div>
     <div class="mfooter">
@@ -1872,7 +1872,7 @@
       <div class="zeile luecke-8 unten umbruch">
         <div class="fg max-150" id="cat-m-owner-box" data-stil="display:none"><label for="cat-m-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="cat-m-owner"></select></div><div class="fg max-220" id="cat-m-storage-box"><span class="feld-titel" id="cat-m-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="cat-m-storage-slot"></span></div>
         <div class="fg max-74"><label for="cat-m-qty" data-i18n="gallery.add.qty">Anzahl</label><input inputmode="numeric" type="number" id="cat-m-qty" value="1" min="1" /></div>
-        <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="number" id="cat-m-price" step="0.01" min="0" placeholder="—" /></div>
+        <div class="fg max-110"><label for="cat-m-price" data-i18n="gallery.add.price">Kaufpreis (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-price" placeholder="—" /></div>
         <div class="fg max-110"><label for="cat-m-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="cat-m-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
       </div>
       <!--
@@ -1886,7 +1886,7 @@
       -->
       <div class="zeile luecke-8 unten umbruch">
         <div class="fg max-120"><label for="cat-m-alert-dir" data-i18n="detail.alert">Preisalarm</label><select class="auswahl-kompakt" id="cat-m-alert-dir"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
-        <div class="fg max-110"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (optional)</label><input inputmode="decimal" type="number" id="cat-m-alert-val" step="0.01" min="0" placeholder="—" /></div>
+        <div class="fg max-110"><label for="cat-m-alert-val" data-i18n="wanted.threshold">Schwelle (optional)</label><input inputmode="decimal" type="text" autocomplete="off" id="cat-m-alert-val" placeholder="—" /></div>
       </div>
       <!-- Marcos Vorgabe: BrickLink eine Zeile hoeher, die beiden
            Erfassungsknoepfe nebeneinander. Bis hierher standen alle drei in

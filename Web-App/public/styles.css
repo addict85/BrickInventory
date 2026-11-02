@@ -476,6 +476,18 @@
     /* Papierkorb statt ✕: Das Symbol erbt die Farbe über currentColor und
        richtet sich nach der Schriftgrösse des Knopfes. */
     .delbtn svg{width:14px;height:14px}
+    /* Kaufpreis-Tabellen: Breiten in em, damit die Felder mit der Schrift wachsen. */
+    .acq-tabelle th{padding:6px 8px;font-weight:600;font-size:var(--fs-1)}
+    .acq-tabelle td{padding:6px}
+    .acq-tabelle .zahl{text-align:right}
+    .acq-feld{border:1px solid var(--feldrand);border-radius:6px;padding:4px 6px;font-size:var(--fs-3);background:var(--sur);color:var(--txt);max-width:100%}
+    .acq-menge{width:4.5em;text-align:center;font-weight:700}
+    .acq-preis{width:7em;text-align:right;font-weight:600}
+    .acq-datum{display:inline-flex;flex-direction:column;gap:2px}
+    .acq-datum-text{font-size:var(--fs-1);color:var(--mut)}
+    .acq-aktion{text-align:right;white-space:nowrap}
+    .acq-ok{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-1);font-weight:600;color:var(--gewinn,var(--g700));margin-right:6px}
+    .acq-ok[hidden]{display:none}
     .acq-loeschen{background:none;border:none;cursor:pointer;color:var(--r700);min-width:32px;min-height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
     @media (hover:hover){.acq-loeschen:hover{background:var(--r100)}}
 

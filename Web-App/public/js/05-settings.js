@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText} from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -889,7 +889,7 @@ export async function ladeAlarmUebersicht() {
         <div data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(a.name || '')}</div>
       </div>
       <span data-stil="font-size:var(--fs-1);white-space:nowrap">${esc(richtung)}</span>
-      <input inputmode="decimal" type="number" step="0.01" min="0.01" value="${a.schwelle}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
+      <input inputmode="decimal" type="text" autocomplete="off" value="${esc(betragFuerFeld(a.schwelle))}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
              data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
              data-click="stopEvent"
              data-stil="width:90px;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
@@ -912,7 +912,7 @@ function alarmSchluessel(s) {
 }
 
 async function aendereAlarmSchwelle(schluessel, wert) {
-  const schwelle = parseFloat(String(wert).replace(',', '.'));
+  const schwelle = leseBetrag(wert);
   // Kein stilles Zurueckschreiben bei Unsinn: Wer 0 oder Text eingibt, soll
   // sehen, dass nichts passiert ist, statt spaeter einen Alarm zu suchen, den
   // es nicht gibt.

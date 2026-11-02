@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
 import { detailZeile, listeLadefehler } from './01-bausteine.js';
 import { alarmBlock, diagrammBreite, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
@@ -248,9 +248,8 @@ export async function katalogAufMerkliste() {
     // in price_alerts, gehört demselben Schlüssel und ist genau derselbe
     // Alarm, den das Set-Detail setzt. Ein zweiter Weg, eine Schwelle zu
     // speichern, wäre eine zweite Wahrheit.
-    const roh = (G('cat-m-alert-val')?.value || '').trim();
-    const schwelle = parseFloat(roh.replace(',', '.'));
-    if (roh && !isNaN(schwelle) && schwelle > 0) {
+    const schwelle = leseBetrag(G('cat-m-alert-val')?.value);
+    if (schwelle > 0) {
       await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
         richtung:  G('cat-m-alert-dir')?.value || 'unter',
         schwelle,
@@ -323,8 +322,8 @@ export function schliesseUebernahme() {
 export async function bestaetigeUebernahme() {
   if (!_uebernahme) return;
   const { set_number, condition, owner_user_id } = zerlege(_uebernahme);
-  const roh = (G('mk-take-price').value || '').trim();
-  const preis = parseFloat(roh.replace(',', '.'));
+  const preis = betragAusFeld('mk-take-price');
+  if (!preis.ok) return;
   const frei = knopfBesetzt(G('mk-take-ok'));
   try {
     const d = await api('POST',
@@ -334,7 +333,7 @@ export async function bestaetigeUebernahme() {
         quantity:  parseInt(G('mk-take-qty').value) || 1,
         // Leer heisst „kein Kaufpreis" — der Server setzt dann den
         // Marktpreis ein, genau wie auf dem normalen Erfassungsweg.
-        purchase_price: roh && !isNaN(preis) ? preis : undefined,
+        purchase_price: preis.wert ?? undefined,
         condition: G('mk-take-cond').value,
         storage: selectedStorage('mk-take-storage'),
       });

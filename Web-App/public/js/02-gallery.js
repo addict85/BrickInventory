@@ -1,7 +1,7 @@
 import { skelettKacheln, listeLadefehler } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -1131,14 +1131,14 @@ export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('o
 
 async function doAddSet(){
   const num=G('add-num').value.trim(), qty=parseInt(G('add-qty').value)||1;
-  const priceVal = G('add-price')?.value;
-  const purchase_price = (priceVal != null && String(priceVal).trim() !== '' && !isNaN(parseFloat(priceVal))) ? parseFloat(priceVal) : null;
+  const preis = betragAusFeld('add-price');
+  const purchase_price = preis.wert;
   const condition = G('add-condition')?.value || 'N';
   // Zielkonto nur mitschicken, wenn die Auswahl überhaupt sichtbar ist. Ohne
   // Haushalt schickt die Webapp gar nichts, und der Server bleibt beim
   // eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
-  if(!setnummerFeldGueltig('add-num', num)) return;
+  if(!setnummerFeldGueltig('add-num', num) || !preis.ok) return;
   showProgress(t('gallery.adding_set',{num}), false);
   try{
     await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{

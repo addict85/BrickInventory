@@ -2,7 +2,7 @@ import { echt, registerActions } from './00-registry.js';
 import { detailZeile, oderStrich } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fmtDatum, ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache} from './01-core.js';
+import { fmtDatum, ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache, leseBetrag, betragFuerFeld } from './01-core.js';
 import { initStorageSelects } from './02-gallery.js';
 import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
 import { diagrammLeer, loadFinance } from './04-finance.js';
@@ -742,7 +742,7 @@ export function alarmBlock(sn, praefix = 'm') {
         <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
         <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
       </select>
-      <input inputmode="decimal" type="number" id="${p}-alert-val" class="alarm-feld" min="0" step="0.01" placeholder="—" aria-label="${esc(tRaw('detail.alert_price'))}"
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" placeholder="—" aria-label="${esc(tRaw('detail.alert_price'))}"
              data-input="alarmGetippt" data-arg="${escJs(sn)}"
              data-change="speichereAlarm" />
       <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
@@ -897,7 +897,7 @@ export async function ladeAlarm(sn) {
   if (!dir || !val) return;
   const a = (d?.alerts || []).find(x => x.condition === alarmZustand());
   dir.value = a?.richtung || 'unter';
-  val.value = a ? String(a.schwelle) : '';
+  val.value = a ? betragFuerFeld(a.schwelle) : '';
   zeigeAlarmMerker(a);
 }
 
@@ -1004,7 +1004,7 @@ export function speichereAlarm(sn) {
  * eine Schwelle bei 2 — und die meldet sofort.
  */
 async function sendeAlarm(sn, richtung, roh) {
-  const zahl = parseFloat(String(roh).replace(',', '.'));
+  const zahl = leseBetrag(roh);
   const loeschen = !(zahl > 0);
   const cond = alarmZustand();
   const d = loeschen
