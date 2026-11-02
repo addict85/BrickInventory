@@ -349,17 +349,18 @@ async function revokeOtherTokens() {
   const d = await tokenRuf('/tokens');
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   const andere = d.tokens.filter(tk => !tk.aktuell);
-  if (!await confirmDelete(tRaw('tokens.revoke_others.title'),
-                           tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden')) return;
+  const password = await bestaetigeMitPasswort(tRaw('tokens.revoke_others.title'),
+                                               tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden');
+  if (password === null) return;
+  // Zuerst die übrigen Browser: Dort prüft der Server das Passwort.
+  const s = await api('POST', '/v1/settings/sessions/andere-beenden', { password });
+  if (!s.success) { toast(s.error || t('settings.error'), 'error'); return; }
   let weg = 0;
   for (const tk of andere) {
     const r = await tokenRuf('/tokens/' + encodeURIComponent(tk.token_id), 'DELETE');
     weg += r.deleted || 0;
   }
-  // Dazu die übrigen Browser — sie melden sich per Sitzung an, nicht per Token.
-  const s = await api('POST', '/v1/settings/sessions/andere-beenden');
-  toast(tRaw('tokens.revoked_n', { n: weg + (s.deleted || 0) }),
-        weg === andere.length && s.success ? 'success' : 'error');
+  toast(tRaw('tokens.revoked_n', { n: weg + (s.deleted || 0) }), weg === andere.length ? 'success' : 'error');
   loadTokens();
 }
 

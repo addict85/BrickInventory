@@ -46,6 +46,8 @@ den Commits, nicht hier.
   und als Nicht-root nur die vom Entrypoint kopierte Wurzel.
 
 ### Anmeldung und Sitzung (2, 3)
+- „Andere Sitzungen beenden“ verlangt das Passwort: Eine erbeutete Sitzung
+  sperrt den Inhaber nicht aus — `web-ohne-token-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
   `utils/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
 - Sitzung: `httpOnly`, `sameSite=lax`, `secure` hinter TLS, Leerlauf- und

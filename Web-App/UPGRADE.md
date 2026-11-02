@@ -879,3 +879,8 @@ Was sich für Nutzer und Clients ändert:
   `POST /api/v1/vouchers/:id/guthaben` mit 429, `code: zu_viele_anfragen`,
   `grund: konto` und `wartenSek`; die Weboberfläche bricht den Durchgang über
   alle Karten dann ab wie beim Bot-Schutz.
+- **Andere Sitzungen beenden nur mit Passwort**:
+  `POST /api/v1/settings/sessions/andere-beenden` verlangt im Rumpf
+  `password` (das eigene Passwort). Falsch oder fehlend: 400
+  `aktuelles_passwort_falsch`, nach fünf Fehlversuchen 429. Die
+  Weboberfläche fragt beim Knopf „Alle anderen abmelden“ danach.

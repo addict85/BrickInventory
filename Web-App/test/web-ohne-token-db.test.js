@@ -8,6 +8,8 @@
  *      dazu die beiden folgenden (die Zählungen stimmen danach nicht mehr)
  *   B  in /sessions/andere-beenden `AND sid <> $2` entfernt → rot: „die eigene
  *      Sitzung bleibt" (die eigene war mit beendet)
+ *   C  (02.11.2026) in /sessions/andere-beenden bestaetigePasswort() entfernt
+ *      → rot: „die eigene Sitzung bleibt" (200 statt 400 mit falschem Passwort)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -91,7 +93,10 @@ test('Browser ohne Token', { concurrency: 1 }, async (t) => {
   await t.test('die eigene Sitzung bleibt', async () => {
     await anmelden({ ohne_token: true });            // ein zweiter Browser
     assert.equal(await sitzungen(), 3, 'Vorbedingung: drei Sitzungen (zwei Browser und die App-Anmeldung)');
-    const r = await ruf('/settings/sessions/andere-beenden', { method: 'POST', cookie: eigene });
+    const ohne = await ruf('/settings/sessions/andere-beenden', { method: 'POST', cookie: eigene, body: { password: 'falsch-1234' } });
+    assert.deepEqual([ohne.status, ohne.body?.code], [400, 'aktuelles_passwort_falsch']);
+    assert.equal(await sitzungen(), 3, 'ohne richtiges Passwort wurden Sitzungen beendet');
+    const r = await ruf('/settings/sessions/andere-beenden', { method: 'POST', cookie: eigene, body: { password: PASS } });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.deleted, 2);
     assert.equal(await sitzungen(), 1);
