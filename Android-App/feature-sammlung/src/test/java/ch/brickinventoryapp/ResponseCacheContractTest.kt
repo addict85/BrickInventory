@@ -258,43 +258,14 @@ class ImageRequestHeadersTest {
         return f.readText()
     }
 
+    /** Was der Wächter tut, prüft BildHostWaechterTest (core-data); hier nur, dass er drin ist. */
     @Test
-    fun `Bildanfragen an fremde Hosts tragen eine Browser-Kennung`() {
+    fun `der Bild-Client laeuft ueber den Host-Waechter und folgt keiner Umleitung selbst`() {
         val src = Quellen.di()
-        val raw = src.substring(src.indexOf("fun provideImageOkHttpClient"))
-        // Kommentare ausblenden: Der Erklärtext nennt "image/avif" selbst
-        // (als Beispiel, was NICHT mehr gesendet werden soll) und würde die
-        // Prüfung sonst verfälschen.
-        // Nur ganze Kommentarzeilen ausblenden — ein naives Abschneiden ab
-        // "//" träfe auch "https://" innerhalb der Kopfzeilen-Werte.
-        val fn = raw.lines().joinToString("\n") { line ->
-            if (line.trim().startsWith("//")) "" else line
-        }
-
-        assert(fn.contains("Chrome/120.0.0.0 Safari/537.36")) {
-            "Der browserähnliche User-Agent fehlt"
-        }
-        assert(fn.contains("\"Referer\", \"https://rebrickable.com/\"")) {
-            "Referer fehlt — ohne ihn bleibt die Anfrage als Nicht-Browser erkennbar"
-        }
-        // Regression: "image/avif" in Accept liess das CDN AVIF-Dateien
-        // ausliefern. Nicht jedes Android-Gerät hat trotz ausreichendem
-        // API-Level einen AV1-Decoder — Ergebnis war
-        // "Failed to create image decoder with message 'unimplemented'"
-        // statt eines angezeigten Bildes.
-        assert(!fn.contains("image/avif")) {
-            "image/avif darf nicht mehr im Accept-Header stehen — nicht jedes " +
-            "Gerät kann es dekodieren, auch wenn die API-Stufe es erlaubt"
-        }
-        assert(fn.contains("\"Accept\", \"image/webp")) {
-            "Ein Accept-Header muss weiterhin gesetzt sein, nur ohne avif"
-        }
-        assert(fn.contains("isOwnServer")) {
-            "Die Unterscheidung eigener Server vs. externe CDN fehlt"
-        }
-        // Reihenfolge der Builder-Aufrufe ist für OkHttp unerheblich (Dispatcher
-        // und Interceptor sind unabhängige Einstellungen) — nur PRÜFEN, dass
-        // beide tatsächlich in derselben Funktion konfiguriert werden.
+        val fn = src.substring(src.indexOf("fun provideImageOkHttpClient")).lines()
+            .joinToString("\n") { line -> if (line.trim().startsWith("//")) "" else line }
+        assert(fn.contains("BildHostWaechter")) { "Der Bild-Client lädt ohne Host-Wächter" }
+        assert(fn.contains(".followRedirects(false)")) { "OkHttp folgte Umleitungen am Wächter vorbei" }
         assert(fn.contains("maxRequestsPerHost")) {
             "Die Nebenläufigkeits-Drosselung aus der vorigen Runde darf nicht verloren gegangen sein"
         }
