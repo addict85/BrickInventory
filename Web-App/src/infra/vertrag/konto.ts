@@ -90,6 +90,8 @@ export const RegisterResponse = z.looseObject({
 
 export const RegistrationStatusResponse = z.looseObject({
   enabled: z.boolean(),
+  passkey: z.boolean().optional(),
+  passwort_vergessen: z.boolean().optional(),
 });
 
 export const TokenRotation = z.looseObject({

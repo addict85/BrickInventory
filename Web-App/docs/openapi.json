@@ -15300,6 +15300,12 @@
         "properties": {
           "enabled": {
             "type": "boolean"
+          },
+          "passkey": {
+            "type": "boolean"
+          },
+          "passwort_vergessen": {
+            "type": "boolean"
           }
         },
         "required": [

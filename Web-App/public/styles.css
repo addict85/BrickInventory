@@ -281,7 +281,7 @@
        125-Prozent-Zoom sind davon noch 1024 nutzbare Pixel uebrig, und dann
        passt es nicht mehr. Deshalb ZWEI Aenderungen: hier die Inhaltsbreite,
        und weiter unten schmalere Reiter fuer mittlere Fenster. */
-    main{max-width:1720px;margin:0 auto;padding:var(--sp-6) var(--sp-6)}
+    main:not(#login-screen){max-width:1720px;margin:0 auto;padding:var(--sp-6) var(--sp-6)}
     .tab{display:none}.tab.active{display:block}
     .ph{margin-bottom:var(--sp-5);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-3)}
     .fehler-kasten{flex-basis:100%;font-size:var(--fs-2)}

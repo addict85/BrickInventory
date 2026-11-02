@@ -30,7 +30,7 @@
 /* ── Tablet ──────────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
 
-  main { padding: 1rem; }
+  main:not(#login-screen) { padding: 1rem; }
 
   /* Zweispaltige Bereiche zusammenklappen */
   .sgrid2,
@@ -44,7 +44,7 @@
 @media (max-width: 640px) {
 
   /* ─ Grundgerüst ─────────────────────────────────────────────────────── */
-  main { padding: .75rem 16px 5rem; }         /* 16 px Rand; unten Luft für den Daumen */
+  main:not(#login-screen) { padding: .75rem 16px 5rem; }         /* 16 px Rand; unten Luft für den Daumen */
 
   /* Bei grosser Schrift wächst der Kopf und bricht um, statt Namen zu kürzen. */
   header {

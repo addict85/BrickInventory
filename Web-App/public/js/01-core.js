@@ -1257,6 +1257,9 @@ async function checkRegistrationEnabled(){
     const d = await fetch('/api/v1/auth/registration-status').then(r=>r.json());
     const wrap = G('link-register-wrap');
     if(wrap) wrap.style.display = d.enabled ? '' : 'none';
+    // Nur Wege anbieten, die der Server kann; fehlt die Angabe (älterer Server), bleibt alles wie es war.
+    if (d.passkey === false && G('btn-passkey')) G('btn-passkey').hidden = true;
+    if (G('link-forgot')) G('link-forgot').hidden = d.passwort_vergessen === false;
   } catch(_){}
 }
 
