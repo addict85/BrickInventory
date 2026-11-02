@@ -19,7 +19,7 @@ export function bildEndung(adresse: string): string {
   let pfad = '';
   try { pfad = new URL(adresse).pathname; } catch { return 'jpg'; }
   const e = (pfad.split('.').pop() ?? '').toLowerCase();
-  return e in ENDUNG_ZU_TYP ? e : 'jpg';
+  return Object.hasOwn(ENDUNG_ZU_TYP, e) ? e : 'jpg';
 }
 
 export function bildTypErlaubt(contentType: string | undefined): boolean {
