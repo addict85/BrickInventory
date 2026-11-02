@@ -868,6 +868,8 @@
     <string name="setup_klartext_abgelehnt">http wird nicht unterstützt. Bitte die https-Adresse des Servers eintragen.</string>
     <string name="settings_systemfarben">Systemfarben (Material You)</string>
     <string name="settings_systemfarben_hint">Farben aus dem Hintergrundbild statt der Farben des Designs. Formen und Schrift bleiben.</string>
+    <string name="settings_vorschau_verbergen">Vorschau in der App-Übersicht verbergen</string>
+    <string name="settings_vorschau_verbergen_hint">Kein Vorschaubild in der App-Übersicht und keine Bildschirmfotos der App. Gilt für dieses Gerät.</string>
     <string name="zert_titel_erstkontakt">Diesem Server vertrauen?</string>
     <string name="zert_titel_unbekannt">Unbekanntes Zertifikat</string>
     <string name="zert_titel_geaendert">Das Zertifikat des Servers hat sich geändert</string>

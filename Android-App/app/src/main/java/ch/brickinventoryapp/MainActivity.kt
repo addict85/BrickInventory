@@ -135,6 +135,10 @@ class MainActivity : NurLauncherStart() {
             val theme by vm.appTheme.collectAsStateWithLifecycle()
             val helligkeit by vm.helligkeit.collectAsStateWithLifecycle()
             val systemfarben by vm.systemfarben.collectAsStateWithLifecycle()
+            // Über den Zähler von Sichtschutz, damit ein Bildschirm, der ihn selbst
+            // setzt, beim Verlassen den Wunsch des Nutzers nicht aufhebt.
+            val vorschauVerbergen by vm.vorschauVerbergen.collectAsStateWithLifecycle()
+            if (vorschauVerbergen) ch.brickinventoryapp.ui.components.Sichtschutz()
             val sicht = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
                 // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.

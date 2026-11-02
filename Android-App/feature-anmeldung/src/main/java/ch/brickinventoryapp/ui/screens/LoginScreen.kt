@@ -68,6 +68,10 @@ fun LoginScreen(
     var showPw   by rememberSaveable { mutableStateOf(false) }
     var code     by remember { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
+    // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey; ein
+    // sichtbares Passwort gehört in kein Bildschirmfoto und keine Aufnahme.
+    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+    if (showPw && formular == AnmeldeFormular.ANMELDEN) ch.brickinventoryapp.ui.components.Sichtschutz()
 
     // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
     // läge der Anmeldeknopf sonst unerreichbar unter dem Rand.
