@@ -11,8 +11,7 @@ import { konfig } from '../src/infra/konfig';
 
 /** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers. */
 export async function warneBeiSuperuser(): Promise<boolean> {
-  const z = await db.get<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user');
-  if (!konfig().produktion || !z?.s) return false;
+  if (!konfig().produktion || !await db.alsSuperuserVerbunden()) return false;
   console.warn('⚠️  [datenbank] Die App verbindet sich als Superuser. Eigene Rolle: UPGRADE.md, Abschnitt 29.');
   return true;
 }

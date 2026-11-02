@@ -45,8 +45,8 @@ test('die ausgelieferten Dateien sind die des Pakets', (t) => {
 // Fassung brächte ihn zurück (die CSP verböte ihn, isEvalSupported auch).
 // Gegenprobe (02.11.2026 gemessen): `new Function("x")` an eine Kopie gehängt → rot.
 test('die ausgelieferten PDF.js-Dateien enthalten weder eval noch new Function', () => {
-  for (const d of ['pdf.min.mjs', 'pdf.worker.min.mjs']) {
-    const text = fs.readFileSync(path.join(ROOT, 'public', 'vendor', 'pdfjs', d), 'utf8');
+  for (const d of [path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.min.mjs'), path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.worker.min.mjs')]) {
+    const text = fs.readFileSync(d, 'utf8');
     assert.ok(text.length > 100_000, `${d} ist leer`);
     assert.doesNotMatch(text, /\beval\s*\(|\bnew\s+Function\s*\(/, d);
   }

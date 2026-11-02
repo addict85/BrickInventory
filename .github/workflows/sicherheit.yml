@@ -133,7 +133,7 @@ jobs:
       - name: Festgenagelte Images lesen
         id: lesen
         run: |
-          sed -n 's/^[[:space:]]*image:[[:space:]]*\([^[:space:]#]*@sha512:[0-9a-f]\{64\}\).*/\1/p' Web-App/compose.yaml | sort -u > images.txt
+          sed -n 's/^[[:space:]]*image:[[:space:]]*\([^[:space:]#]*@sha256:[0-9a-f]\{64\}\).*/\1/p' Web-App/compose.yaml | sort -u > images.txt
           [ -s images.txt ] || { echo "::error title=compose.yaml::Kein Image per Digest gefunden."; exit 1; }
           echo "images=$(jq -R . images.txt | jq -sc .)" >> "$GITHUB_OUTPUT"
       # Meldet einen Tag, der weitergezogen ist, ohne dass ein Dependabot-PR kam.
