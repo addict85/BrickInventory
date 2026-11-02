@@ -81,8 +81,7 @@ function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
       if (!u.startsWith('https://') || !hostErlaubt(u, o.hosts))
         return abbrechen(new AbrufFehler('adresse', `Adresse nicht erlaubt: ${adresseKurz(u)}`));
       try {
-        const ruf = o.methode === 'POST' ? https.request : https.get;
-        req = ruf(u, { method: o.methode ?? 'GET', family: 4, headers: kopf, ...(o.agent ? { agent: o.agent } : {}) }, r => {
+        const beiAntwort = (r: IncomingMessage) => {
           if (erledigt) { r.resume?.(); return; }
           const status = r.statusCode ?? 0;
           if (UMLEITUNG.has(status) && (o.umleitungen ?? UMLEITUNGS_GRENZE) > 0 && (o.methode ?? 'GET') === 'GET') {
@@ -101,7 +100,10 @@ function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
           antwort = r;
           erledigt = true;
           fertig({ antwort: r, url: u, frist, abbrechen });
-        });
+        };
+        req = o.methode === 'POST'
+          ? https.request(u, { method: 'POST', family: 4, headers: kopf, ...(o.agent ? { agent: o.agent } : {}) }, beiAntwort)
+          : https.get(u, { family: 4, headers: kopf, ...(o.agent ? { agent: o.agent } : {}) }, beiAntwort);
         req.on('error', (e: Error) => abbrechen(e instanceof AbrufFehler ? e
           : new AbrufFehler('netz', `${(e as NodeJS.ErrnoException).code || e.message}: ${adresseKurz(u)}`, e)));
         if (o.methode === 'POST') req.end(o.rumpf);
