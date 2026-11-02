@@ -396,6 +396,9 @@ data class DashboardStats(
     @SerialName("total_instructions") val totalInstructions: Int,
     @SerialName("total_parts") val totalParts: Int,
     @SerialName("total_minifigs") val totalMinifigs: Int,
+    // Die Aufschlüsselung von total_parts; ältere Server liefern sie nicht.
+    @SerialName("set_parts") val setParts: Int? = null,
+    @SerialName("manual_parts") val manualParts: Int? = null,
 )
 
 @Serializable
@@ -423,5 +426,7 @@ data class PortfolioHistoryResponse(
     val points: List<ChartPoint> = emptyList(),
     @SerialName("y_axis") val yAxis: List<ChartYAxis> = emptyList(),
     @SerialName("period_change_pct") val periodChangePct: Double? = null,
-    @SerialName("purchase_total") val purchaseTotal: String? = null
+    @SerialName("purchase_total") val purchaseTotal: String? = null,
+    // Dieselbe Reihe als ISO-Tage (chart.x); daraus beschriftet die App die Achse in ihrer Sprache.
+    val chart: PriceChartData? = null,
 )

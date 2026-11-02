@@ -26,9 +26,8 @@
       Ohne diese Zeile erklaert die CAMERA-Erlaubnis `android.hardware.camera`
       IMPLIZIT als erforderlich — und damit faellt die App auf Geraeten ohne
       Kamera aus dem Raster (ChromeOS-Geraete, manche Tablets). Lint meldet das
-      als PermissionImpliesUnsupportedChromeOsHardware, Stufe ERROR; gesehen hat
-      es niemand, weil `abortOnError = false` steht und der Bericht in einer
-      Ablage liegt, die aus der Entwicklungsumgebung nicht erreichbar ist.
+      als PermissionImpliesUnsupportedChromeOsHardware, Stufe ERROR — seit
+      `abortOnError = true` (app/build.gradle.kts) bricht der Bau daran ab.
 
       `required="false"` ist hier nicht der Trick, mit dem man die Pruefung
       ruhigstellt, sondern die Wahrheit ueber die App: Bestand, Preise, Listen
@@ -57,6 +56,15 @@
       fuehrt der Knopf in den Einstellungen, wenn die Erlaubnis fehlt.
     -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- Nur um zu sehen, ob es eine Authenticator-App gibt (zweiter Faktor,
+         EinstellungenKonto.kt); sonst bleibt der Schlüssel zum Kopieren. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="otpauth" />
+        </intent>
+    </queries>
 
     <!--
       tools:targetApi="33" fuer localeConfig und enableOnBackInvokedCallback:
@@ -229,6 +237,12 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/sammlungs_widget" />
         </receiver>
+
+        <!-- Antwort der Installer-Sitzung des Selbst-Updates (util/AppUpdate.kt):
+             nur über unsere PendingIntent erreichbar, darum nicht exportiert. -->
+        <receiver
+            android:name="ch.brickinventoryapp.util.InstallationsEmpfaenger"
+            android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

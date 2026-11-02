@@ -8,6 +8,9 @@ import ch.brickinventoryapp.data.repository.FinanzenRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.FinanceUiState
+import ch.brickinventoryapp.ui.lokaleAchse
+import ch.brickinventoryapp.ui.lokaleWerte
+import ch.brickinventoryapp.util.appNumberLocale
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,8 +76,10 @@ class FinanzViewModel @Inject constructor(
                 is Result.Success -> _financeState.update { it.copy(
                     historyLoading         = false,
                     historyPeriodChangePct = r.data.periodChangePct,
-                    historyPoints          = r.data.points.map { it.alsAnsicht() },
-                    historyYAxis           = r.data.yAxis.map { it.alsAnsicht() }) }
+                    historyPoints          = lokaleAchse(r.data.points.map { it.alsAnsicht() },
+                                                         r.data.chart?.x.orEmpty(), appNumberLocale()),
+                    historyYAxis           = lokaleWerte(r.data.yAxis.map { it.alsAnsicht() },
+                                                         r.data.currency, appNumberLocale())) }
                 is Result.Error -> _financeState.update { it.copy(historyLoading = false) }
             }
         }

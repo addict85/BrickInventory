@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
+import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -21,7 +23,6 @@ import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.passwortZuKurz
 import ch.brickinventoryapp.ui.theme.Abstaende
-import kotlinx.coroutines.launch
 
 /**
  * Das eigene Konto: Profil und Passwort. Über /auth/profile und
@@ -34,8 +35,8 @@ internal fun KontoCard(
     // Gültigkeitsbereiche, UiStateFieldsTest bestimmt den Typ aber je Name und Datei
     // und hielte die Felder für fehlend.
     kontoZustand: ch.brickinventoryapp.ui.KontoUiState,
-    onSpeichern: (String, String, String, String, String?) -> Unit,
-    onPasswort: (String, String) -> Unit,
+    onSpeichern: (String, String, String, String, String?, String?) -> Unit,
+    onPasswort: (String, String, String?) -> Unit,
     onMeldungWeg: () -> Unit,
 ) {
     val profil = kontoZustand.profil
@@ -47,9 +48,13 @@ internal fun KontoCard(
     var email        by remember(profil) { mutableStateOf(profil?.email.orEmpty()) }
     var vorname      by remember(profil) { mutableStateOf(profil?.firstName.orEmpty()) }
     var nachname     by remember(profil) { mutableStateOf(profil?.lastName.orEmpty()) }
-    var pwAktuell    by rememberSaveable { mutableStateOf("") }
+    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
+    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    var pwAktuell    by remember { mutableStateOf("") }
     var pwFuerEmail  by remember(profil) { mutableStateOf("") }
-    var pwNeu        by rememberSaveable { mutableStateOf("") }
+    var pwNeu        by remember { mutableStateOf("") }
+    var faktorCode   by remember { mutableStateOf("") }
+    val code = faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }
 
     val emailNeu = profil != null && !email.trim().equals(profil.email.orEmpty(), ignoreCase = true)
     val geaendert = profil != null && (
@@ -69,6 +74,8 @@ internal fun KontoCard(
             Text(kontoZustand.fehler, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
+        // Erst nachdem der Server ihn verlangt hat; gilt für E-Mail und Passwort.
+        if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
 
         if (profil != null) {
             val tippen: (String) -> Unit = { onMeldungWeg() }
@@ -111,7 +118,7 @@ internal fun KontoCard(
                     modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf)
             }
             Button(
-                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }) },
+                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }, code) },
                 enabled = geaendert && !kontoZustand.speichert && (!emailNeu || pwFuerEmail.isNotEmpty()),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
@@ -146,7 +153,7 @@ internal fun KontoCard(
                 modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
             OutlinedButton(
-                onClick = { onPasswort(pwAktuell, pwNeu) },
+                onClick = { onPasswort(pwAktuell, pwNeu, code) },
                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
@@ -154,12 +161,32 @@ internal fun KontoCard(
     }
 }
 
+/** Der Code des zweiten Faktors, den der Server für Passwort und E-Mail verlangt. */
+@Composable
+internal fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
+    OutlinedTextField(
+        value = code, onValueChange = { onCode(it.take(24)) },
+        label = { Text(stringResource(R.string.login_code)) },
+        supportingText = { Text(stringResource(R.string.login_code_hint)) },
+        modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
+}
+
 /**
  * Zweiter Faktor: einrichten, abschalten, neue Wiederherstellungscodes.
  *
  * Auf dem Telefon braucht es keinen QR-Code: Der otpauth-Link oeffnet die
- * Authenticator-App direkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
+ * Authenticator-App. Immer über die Auswahl des Systems: Der Link trägt das
+ * Geheimnis, und eine App, die sich als Standard dafür eingetragen hat, bekäme es
+ * sonst unbemerkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
  */
+/** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
+private fun oeffneMitAuswahl(ctx: android.content.Context, uri: String, titel: String): Boolean {
+    val ansicht = android.content.Intent(android.content.Intent.ACTION_VIEW, uri.toUri())
+    if (ansicht.resolveActivity(ctx.packageManager) == null) return false
+    return runCatching { ctx.startActivity(android.content.Intent.createChooser(ansicht, titel)) }.isSuccess
+}
+
 @Composable
 internal fun ZweiterFaktorCard(
     zfZustand: ch.brickinventoryapp.ui.ZweiterFaktorUiState,
@@ -169,18 +196,15 @@ internal fun ZweiterFaktorCard(
     onAbschalten: (String, String) -> Unit,
     onZurueck: () -> Unit,
 ) {
-    var zfPasswort by rememberSaveable { mutableStateOf("") }
-    var zfCode     by rememberSaveable { mutableStateOf("") }
+    // Passwörter nur in remember, siehe oben.
+    var zfPasswort by remember { mutableStateOf("") }
+    var zfCode     by remember { mutableStateOf("") }
     var ohneApp    by rememberSaveable { mutableStateOf(false) }
-    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
-    val clipboard = androidx.compose.ui.platform.LocalClipboard.current
-    val kopierBereich = rememberCoroutineScope()
+    val auswahlTitel = stringResource(R.string.zf_open_app)
+    val kontext = androidx.compose.ui.platform.LocalContext.current
     val schluesselEtikett = stringResource(R.string.app_name)
     val kopieren: (String) -> Unit = { text ->
-        kopierBereich.launch {
-            clipboard.setClipEntry(
-                androidx.compose.ui.platform.ClipEntry(ch.brickinventoryapp.util.geheimerClip(schluesselEtikett, text)))
-        }
+        ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, schluesselEtikett, text)
     }
     // Felder leeren, sobald ein Schritt gelungen ist — sonst stuende das
     // Passwort beim naechsten Schritt noch da.
@@ -205,7 +229,7 @@ internal fun ZweiterFaktorCard(
         }
         val codeFeld: @Composable (String) -> Unit = { beschriftung ->
             OutlinedTextField(
-                value = zfCode, onValueChange = { zfCode = it.take(12) },
+                value = zfCode, onValueChange = { zfCode = it.take(24) },
                 label = { Text(beschriftung) },
                 modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
@@ -231,8 +255,8 @@ internal fun ZweiterFaktorCard(
                 Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodySmall)
                 Button(
                     onClick = {
-                        val uri = zfZustand.otpauth
-                        ohneApp = uri == null || runCatching { uriHandler.openUri(uri) }.isFailure
+                        val uri = ch.brickinventoryapp.util.otpauthAdresse(zfZustand.otpauth)
+                        ohneApp = uri == null || !oeffneMitAuswahl(kontext, uri, auswahlTitel)
                     },
                     modifier = Modifier.fillMaxWidth(), shape = Formen.knopf
                 ) { Text(stringResource(R.string.zf_open_app)) }
@@ -437,14 +461,14 @@ internal fun DesignCard(design: ch.brickinventoryapp.ui.DesignWahl?, onWahl: (St
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
             val vorgabe = namen[design.vorgabe]?.let { stringResource(it) } ?: design.vorgabe
-            FilterChip(
+            AuswahlChip(
                 selected = design.eigenes == null,
                 onClick = { if (design.eigenes != null) onWahl("") },
                 label = { Text(stringResource(R.string.konto_design_vorgabe, vorgabe), style = MaterialTheme.typography.labelMedium) },
                 shape = Formen.chip,
             )
             for ((wert, text) in ch.brickinventoryapp.ui.DESIGN_NAMEN) {
-                FilterChip(
+                AuswahlChip(
                     selected = design.eigenes == wert,
                     onClick = { if (design.eigenes != wert) onWahl(wert) },
                     label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },

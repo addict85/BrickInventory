@@ -22,6 +22,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const https = require('node:https');
 const { EventEmitter } = require('node:events');
+const { Readable } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -30,14 +31,11 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 
 // @ts-ignore — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
-https.get = (_opts, cb) => {
+https.get = (_url, _opts, cb) => {
   const req = new EventEmitter();
   setImmediate(() => {
-    const res = Object.assign(new EventEmitter(), { statusCode: 200 });
-    cb(res);
-    res.emit('data', JSON.stringify({ meta: { code: 200 },
-      data: { avg_price: '20.00', qty_avg_price: '19.00', min_price: '15', max_price: '25', total_quantity: '4' } }));
-    res.emit('end');
+    cb(Object.assign(Readable.from([JSON.stringify({ meta: { code: 200 },
+      data: { avg_price: '20.00', qty_avg_price: '19.00', min_price: '15', max_price: '25', total_quantity: '4' } })]), { statusCode: 200, headers: {} }));
   });
   return req;
 };

@@ -78,6 +78,7 @@ jobs:
       bauen: ${{ steps.p.outputs.bauen }}
       sha: ${{ steps.p.outputs.sha }}
       kurz: ${{ steps.p.outputs.kurz }}
+      tag: ${{ steps.p.outputs.tag }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -89,7 +90,16 @@ jobs:
         env:
           EREIGNIS: ${{ github.event_name }}
           ERGEBNIS: ${{ github.event.workflow_run.conclusion }}
+          # Nur über env, nie eingesetzt: Eine zweite Zeile im Tag stünde sonst
+          # als weiterer Eintrag in tags/build-args. Erlaubt ist die Docker-Tag-Form.
+          TAG_EINGABE: ${{ inputs.tag }}
+        shell: bash
         run: |
+          if [ -n "$TAG_EINGABE" ] && ! [[ "$TAG_EINGABE" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
+            echo "::error::Ungültiger Tag (erlaubt: Buchstaben, Ziffern, _ . -, höchstens 128 Zeichen, einzeilig)."
+            exit 1
+          fi
+          echo "tag=$TAG_EINGABE" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           echo "kurz=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
           if [ "$EREIGNIS" = "workflow_dispatch" ]; then
@@ -168,7 +178,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           # Die Version im Server (dist/version.json): der angegebene Tag, sonst der Commit.
           build-args: |
-            APP_VERSION=${{ inputs.tag != '' && inputs.tag || format('sha-{0}', needs.pruefen.outputs.kurz) }}
+            APP_VERSION=${{ needs.pruefen.outputs.tag != '' && needs.pruefen.outputs.tag || format('sha-{0}', needs.pruefen.outputs.kurz) }}
           # push-by-digest: ohne Tag hochladen. Der Tag entsteht erst im
           # merge-Job, sonst wuerde die zweite Architektur die erste
           # ueberschreiben statt sich dazuzustellen.
@@ -267,7 +277,7 @@ jobs:
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=sha-${{ needs.pruefen.outputs.kurz }}
-            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+            type=raw,value=${{ needs.pruefen.outputs.tag }},enable=${{ needs.pruefen.outputs.tag != '' }}
 
       - name: Multi-Arch-Manifest erzeugen und pushen
         working-directory: /tmp/digests

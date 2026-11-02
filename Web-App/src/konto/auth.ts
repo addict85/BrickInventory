@@ -13,6 +13,7 @@ import { ausTabelle } from '../infra/validate';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
 import type { TokenScope } from './repository/zugaenge';
+import { erhoeheSitzungsVersion } from './sitzungsVersion';
 
 export type { TokenScope };
 
@@ -210,6 +211,14 @@ export const passwortZuKurz = passwortRegel.passwortZuKurz;
 
 export const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
 
+/** Ein Name ist Freitext, aber kein Träger für Adressen oder Zeilenumbrüche:
+ * Er steht in Oberflächen und Exporten, wo ein Link wie vom Server aussähe. */
+export function nameGueltig(v: unknown): boolean {
+  if (v === undefined || v === null || v === '') return true;
+  const s = String(v);
+  return s.length <= 100 && !/[\p{Cc}\u2028\u2029]/u.test(s) && !/:\/\/|www\.|https?:/i.test(s);
+}
+
 /** Bewusst grob: Die Adresse wird ohnehin gegen die Datenbank geprüft, und
  * strengere Muster lehnen regelmässig gültige Adressen ab. */
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -397,15 +406,18 @@ export async function deleteToken(token: string): Promise<void> {
 /** In user_sessions, wo der Session-Store wirklich liegt.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#revokeallsessions */
 export async function revokeAllSessions(userId: number): Promise<void> {
+  await erhoeheSitzungsVersion(userId);
   await repo.loescheSitzungenDesKontos(userId);
 }
 
 /** Nach dem Einschalten des zweiten Faktors: Wer schon drin war, soll nicht
  * mit einem alten Token oder einer alten Sitzung drinbleiben. */
-export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<void> {
+export async function beendeAndereZugaenge(userId: number, aktuellerToken: string | null, sitzungsId: string | null): Promise<number> {
   await repo.loescheTokensDesKontos(userId, aktuellerToken ? hashToken(aktuellerToken) : null);
   leereTokenCache();
+  const version = await erhoeheSitzungsVersion(userId);
   await repo.loescheSitzungenDesKontos(userId, sitzungsId);
+  return version;
 }
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer

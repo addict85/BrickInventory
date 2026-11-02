@@ -395,7 +395,7 @@ function zeile(p, i) {
     `<input data-change="wantedKorrekturWert" data-feld="${name}" data-i="${i}"
        value="${esc(wert)}" ${extra}
        data-breite-px="${breit}"
-       data-stil="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--bdr);border-radius:5px;text-align:right" />`;
+       data-stil="font-size:var(--fs-1);padding:2px 4px;border:1px solid var(--feldrand);border-radius:5px;text-align:right" />`;
   const mengeZelle = feld('menge', korr.menge ?? p.menge, 'type="number" min="1" step="1"');
   // Der Preis je Stück. Leer heisst „keiner" — dann holt der Import den
   // Marktpreis, wie bei MAXPRICE=-1 in der Datei.
@@ -408,7 +408,7 @@ function zeile(p, i) {
   const wahl = (w, text) =>
     `<option value="${w}"${zustandJetzt === w ? ' selected' : ''}>${esc(text)}</option>`;
   const zustandWahl = `<select data-change="wantedKorrekturWert" data-feld="zustand" data-i="${i}"
-      data-stil="font-size:var(--fs-1);padding:2px;border:1px solid var(--bdr);border-radius:5px">
+      data-stil="font-size:var(--fs-1);padding:2px;border:1px solid var(--feldrand);border-radius:5px">
       ${wahl('', tRaw('wanted.cond_default_opt'))}
       ${wahl('N', tRaw('common.condition_new'))}
       ${wahl('U', tRaw('common.condition_used'))}
@@ -437,10 +437,10 @@ function zeile(p, i) {
       grund ? `<div data-stil="color:var(--mut);font-size:var(--fs-1)">${grund}</div>` : ''}</td>
     <td><input type="text" value="${esc(korr.rbId ?? '')}" placeholder="${
       esc(tRaw('wanted.rb_id_ph'))}" data-stil="width:104px;font-size:var(--fs-1);padding:2px 4px;
-      border:1px solid var(--bdr);border-radius:5px"
+      border:1px solid var(--feldrand);border-radius:5px"
       data-change="wantedKorrekturNummer" data-i="${i}" /></td>
     <td><select data-change="wantedKorrekturFarbe" data-i="${i}"
-      data-stil="max-width:140px;font-size:var(--fs-1);padding:2px;border:1px solid var(--bdr);border-radius:5px">
+      data-stil="max-width:140px;font-size:var(--fs-1);padding:2px;border:1px solid var(--feldrand);border-radius:5px">
       <option value="">${esc(tRaw('wanted.keep'))}</option></select></td>
   </tr>`;
 }

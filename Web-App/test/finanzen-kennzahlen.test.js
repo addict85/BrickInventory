@@ -79,8 +79,10 @@ test('mit Marktpreisen: Gesamtwert und G&V', async () => {
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none');
     assert.match(text(d.getElementById('fin-total-pnl')), /11\.3/);
     // Betrag aus denselben Posten wie die Prozentzahl: 700 − 629, nicht 700 − 1097.93.
-    assert.match(zahl(text(d.getElementById('fin-pnl-sub'))), /^\+.*71\.00$/,
+    // Dahinter steht, wogegen gerechnet ist; das Prozent im Diagramm rechnet gegen den Zeitraum.
+    assert.match(zahl(text(d.getElementById('fin-pnl-sub'))), /^\+[^0-9]*71\.00[^0-9]*$/,
       `Betrag passt nicht zur Prozentzahl: ${text(d.getElementById('fin-pnl-sub'))}`);
+    assert.match(text(d.getElementById('fin-pnl-sub')), /gegenüber dem Einstand/);
   } finally { w.close(); }
 });
 

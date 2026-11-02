@@ -1,15 +1,17 @@
 
-import { konfig } from '../src/infra/konfig';
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/infra/sitzungsKeks';
 import { protokolliere } from '../src/verwaltung/dienst';
 const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS } from '../src/konto/auth';
-import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode } from '../src/konto/http/anmeldung';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
+import { zielGedrosselt } from '../src/konto/zielDrossel';
+import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode, bestaetigeMitFaktor } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
+import { bestaetigeEinrichtungGebremst } from '../src/konto/passwortBestaetigung';
+import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
 import { passwortMangel } from '../src/infra/passwortRegel';
@@ -61,6 +63,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
     userId:   uid,
     username: user.username,
     isAdmin:  user.is_admin,
+    mussPasswortAendern: user.must_change_password === true,
   });
   // Ein Token, den die Datenbank nie sah, liefe im SSE-Kanal in ein 401.
   const dauerhaft = never_expires === true;
@@ -134,7 +137,7 @@ router.get('/me', async (req, res: Antwort<'GET /api/v1/auth/me'>) => {
     if (req.session?.userId) {
       const user = await K.kontoKurz(req.session.userId);
       if (user) return res.json({ success: true, loggedIn: true,
-        user: { id: user.id, username: user.username, is_admin: user.is_admin } });
+        user: { id: user.id, username: user.username, is_admin: user.is_admin, mustChangePassword: user.must_change_password } });
     }
     const p = token ? await pruefeToken(token, { ip: req.ip }) : { nutzer: null };
     const u = p.nutzer;
@@ -143,7 +146,7 @@ router.get('/me', async (req, res: Antwort<'GET /api/v1/auth/me'>) => {
       if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
       // is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false.
       return res.json({ success: true, loggedIn: true,
-        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1 },
+        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1, mustChangePassword: u.muss_passwort_aendern === true },
         token_expires: u.expires_at, token_last_used: u.last_used,
         token_info: { scope: u.scope, expires_at: u.expires_at, hard_expires_at: u.hard_expires_at ?? null,
                       never_expires: u.never_expires === true, rotiert_am: u.rotiert_am,
@@ -204,6 +207,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
   // Benutzername eintragen, und der Login sucht „username ODER email".
   if (username !== undefined && !USERNAME_RE.test(String(username || '')))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
+  if (!nameGueltig(first_name) || !nameGueltig(last_name)) return sendeFehler(req, res, 400, 'name_ungueltig');
 
   // Case-insensitiv und auch gegen die E-Mail-Spalte, weil der Login mit LOWER()
   // beide Felder vergleicht.
@@ -219,7 +223,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
     // Über die neue Adresse liesse sich danach das Passwort zurücksetzen —
     // wer kurz eine fremde Sitzung hat, übernähme so das Konto.
     if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-    if (!await bestaetigePasswort(req, res, user.id, String(password_current))) return;
+    if (!await bestaetigeMitFaktor(req, res, user.id, String(password_current), req.body?.code)) return;
   }
 
   const felder: Record<string, unknown> = {};
@@ -229,7 +233,8 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
   if (emailChanged) {
     const token   = crypto.randomBytes(32).toString('hex');
     felder.email = email;
-    felder.email_verified = user.is_admin;
+    // Auch für Verwalter: Ob die Adresse dem Inhaber gehört, zeigt erst der Link.
+    felder.email_verified = false;
     // Nur der Hash in die DB, der Klartext geht ausschliesslich per Mail hinaus.
     felder.verification_token = hashToken(token);
     felder.token_expires = new Date(Date.now() + 24*60*60*1000);
@@ -238,8 +243,8 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(() => 'de'));
-    const basis = getBaseUrl(req);
-    if (basis) emailSent = await sendVerificationMail(email, first_name || username || user.username, token, basis, lang)
+    const basis = getBaseUrl();
+    if (basis) emailSent = await sendVerificationMail(email, token, basis, lang)
       .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));
     // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
     if (user.email) await sendEmailGeaendertMail(user.email, user.username, email, lang)
@@ -271,6 +276,8 @@ router.post('/users', requireAdmin, async (req, res: Antwort<'POST /api/v1/auth/
   // Verwalter anlegen.
   const verwalter = angemeldeteNutzerId(req);
   if (!await bestaetigePasswort(req, res, verwalter, req.body?.admin_password)) return;
+  // Wie bei der Registrierung auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
+  if (await K.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
   const neu = await K.legeKontoAn(username, password, alsVerwalter).catch(alsDoppelt('benutzername_vergeben'));
   if (neu === null) return sendeFehler(req, res, 409, 'benutzername_vergeben');
   await protokolliere(verwalter, neu, 'konto_angelegt');
@@ -349,45 +356,32 @@ router.delete('/users/:id', requireAdmin, async (req, res: Antwort<'DELETE /api/
   res.json({ success: true });
 });
 
-// LoggedInRequest statt `userId!`: Der Typ bindet die Zusicherung an die
-// Middleware (types/augmentations.d.ts).
 router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/auth/change-password'>) => {
   const { current, newPassword } = req.body;
   if (!current || !newPassword) return sendeFehler(req, res, 400, 'alle_felder_erforderlich');
-  // Über den gemeinsamen Helfer, weil hier auch die App stehen kann.
   const uid = nutzerId(req);
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
-  if (!await bestaetigePasswort(req, res, uid, String(current))) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, String(current), req.body?.code)) return;
   // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
   const mangel = passwortMangel(newPassword, req.session?.username);
   if (mangel) return sendeFehler(req, res, 400, mangel);
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
-  await K.aendereEigenesPasswort(uid, newPassword);
+  await K.aendereEigenesPasswort(uid, newPassword, { passkeysWiderrufen: req.body?.passkeys_widerrufen === true });
+  hinweisNebenher(uid, 'passwort_geaendert');
   if (req.session?.userId) {
-    const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin };
+    const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin, mussPasswortAendern: false };
     await establishSession(req, _self);
   }
   res.json({ success: true });
 });
 
 
-/** Ohne APP_BASE_URL in Produktion KEINE Adresse: Ein Link aus dem Host-Kopf
- * liesse sich auf eine fremde Seite lenken. Ausserhalb des Betriebs gibt es
- * keinen Angreifer. */
-function getBaseUrl(req: Request): string | null {
+/** Nie aus Kopfzeilen: Ein Link aus Host oder X-Forwarded-Host liesse sich auf
+ * eine fremde Seite lenken — auch ein „Testserver" steht oft im Netz. */
+function getBaseUrl(): string | null {
   const basis = basisUrl();
-  if (basis) return basis;
-  if (konfig().produktion) {
-    hinweisOhneBasisUrl('auth', 'Links in E-Mails werden nicht verschickt.');
-    return null;
-  }
-  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host  = req.headers['x-forwarded-host'] || req.headers.host || 'localhost:3000';
-  return `${proto}://${host}`;
-}
-
-function resetLinkMoeglich(): boolean {
-  return !!basisUrl() || !konfig().produktion;
+  if (!basis) hinweisOhneBasisUrl('auth', 'Links in E-Mails werden nicht verschickt.');
+  return basis;
 }
 
 // Der QR-Code trägt nur eine einmalige Nonce (SHA-256 in qr_login_tokens),
@@ -412,13 +406,16 @@ router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res: Antwort
   res.json({ success: true, geheimnis, otpauth: zf.otpauthAdresse(geheimnis, u?.username ?? String(uid)) });
 });
 
+// Auch mit App-Token (die Android-App richtet so ein): Wer Token und Passwort
+// hat, könnte ebenso das Passwort wechseln; eine Sitzungspflicht schützte nichts.
 router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/bestaetigen'>) => {
   const uid = angemeldeteNutzerId(req);
-  const codes = await zf.bestaetigeEinrichtung(uid, String(req.body?.code ?? ''));
-  if (!codes) return sendeFehler(req, res, 400, 'zweiter_faktor_falsch');
+  const codes = await bestaetigeEinrichtungGebremst(uid, req.body?.code);
+  if (!Array.isArray(codes)) return sendeFehler(req, res, codes.status, codes.code, codes.vars);
   const kopf = String(req.headers.authorization || '');
-  await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
+  const version = await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
     req.session?.userId ? req.sessionID : null);
+  if (req.session?.userId) req.session.sitzungsVersion = version;
   res.json({ success: true, codes });
 });
 
@@ -524,12 +521,16 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     return sendeFehler(req, res, 400, 'email_ungueltig');
   if (!USERNAME_RE.test(username))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
+  if (!nameGueltig(first_name) || !nameGueltig(last_name)) return sendeFehler(req, res, 400, 'name_ungueltig');
+  // Zählt jeden Versuch, ob es die Adresse gibt oder nicht: Die Absage verrät nichts.
+  const ziel = await zielGedrosselt('register-ziel', email, 3, 60 * 60 * 1000);
+  if (ziel) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: ziel.waitMin });
 
   // Vergebene Adresse oder vergebener Name: dieselbe Antwort wie bei Erfolg, sonst liesse
   // sich abfragen, wer ein Konto hat. Die Rückmeldung geht per Mail an die Adresse.
   const inhaber = await K.kontoMitEmail(email);
   const nameVergeben = !inhaber && await K.nameVergeben(username, 0);
-  const basis = getBaseUrl(req);
+  const basis = getBaseUrl();
   let result: { success: boolean; mode: string };
   if (inhaber) {
     await K.rechneWieRegistrierung(password);
@@ -538,7 +539,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       : { success: false, mode: 'ohne_basis' };
   } else if (nameVergeben) {
     await K.rechneWieRegistrierung(password);
-    result = basis ? await sendBenutzernameVergebenMail(email, username, lang, basis) : { success: false, mode: 'ohne_basis' };
+    result = basis ? await sendBenutzernameVergebenMail(email, lang, basis) : { success: false, mode: 'ohne_basis' };
   } else {
     const token  = crypto.randomBytes(32).toString('hex');
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -549,7 +550,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
     // Sprache startet.
     if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
-    result = basis ? await sendVerificationMail(email, first_name || username, token, basis, lang)
+    result = basis ? await sendVerificationMail(email, token, basis, lang)
       : { success: false, mode: 'ohne_basis' };
   }
 
@@ -565,37 +566,35 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     });
 });
 
+const RUECKSETZ_GUELTIG_MIN = 60, RUECKSETZ_PAUSE_MIN = 15, RUECKSETZ_MINDESTDAUER_MS = 400;
+
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {
   const { email } = req.body;
   if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
-  // Ohne feste Adresse käme der Link aus dem Host-Header — wer den fälscht,
-  // bekäme den Reset-Code des Opfers. Vor der Nutzersuche, damit die Antwort
-  // nichts über die E-Mail verrät.
-  if (!resetLinkMoeglich()) {
+  // Vor der Nutzersuche, damit die Absage nichts über die Adresse verrät.
+  if (!basisUrl()) {
     hinweisOhneBasisUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
     return sendeFehler(req, res, 503, 'passwort_reset_nicht_eingerichtet');
   }
-  // LOWER auf beiden Seiten wie bei jeder E-Mail-Suche; sonst bekäme eine anders
-  // geschriebene Adresse still nie eine Mail.
-  const user = await K.aktivesKontoNachEmail(email);
-  // Immer Erfolg, damit sich keine E-Mail-Adressen abfragen lassen.
-  if (!user) return res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
-
-  const token   = crypto.randomBytes(32).toString('hex');
-  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-  await K.setzeRuecksetzToken(user.id, hashToken(token), expires);
-
-  // NICHT awaiten: Die Dauer des SMTP-Versands verriete sonst, ob die Adresse
-  // existiert. Auch die Sprache wird deshalb erst in der Kette geholt.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password-2
-  getSetting(user.id, 'language', 'de')
-    .catch(() => 'de')
-    .then((lang: unknown) => sendPasswordResetMail(
-      // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch
-      // als Unicode-Variante (Kelvin-K, „İ") und kann ein fremdes Postfach sein.
-      user.email ?? '', user.first_name || user.username, token, getBaseUrl(req)!, String(lang ?? 'de')))
-    .catch((e: any) => console.error('[forgot-password] Mailversand fehlgeschlagen:', e?.message));
-
+  // Immer dieselbe Antwort nach derselben Mindestdauer: Weder Inhalt noch Zeit
+  // verraten, ob es die Adresse gibt.
+  const beginn = Date.now();
+  // Über der Grenze still keine Mail: Eine Absage verriete, dass jemand die Adresse bedrängt.
+  const gedrosselt = await zielGedrosselt('forgot-ziel', String(email), 3, 60 * 60 * 1000);
+  const user = gedrosselt ? null : await K.aktivesKontoNachEmail(email);
+  const token = crypto.randomBytes(32).toString('hex');
+  // Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach.
+  if (user && await K.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN)) {
+    // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
+    // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password-2
+    getSetting(user.id, 'language', 'de')
+      .catch(() => 'de')
+      // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
+      .then((lang: unknown) => sendPasswordResetMail(
+        user.email ?? '', token, getBaseUrl()!, String(lang ?? 'de')))
+      .catch(logAndContinue('forgot-password:mailversand'));
+  }
+  await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));
   res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
 });
 
@@ -607,6 +606,7 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   const user = await K.kontoNachRuecksetzToken(hashToken(token));
   if (!user) return sendeFehler(req, res, 400, 'token_ungueltig');
   await K.setzePasswortZurueck(user.id, password);
+  hinweisNebenher(user.id, 'passwort_zurueckgesetzt');
   res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
 });
 
@@ -626,7 +626,9 @@ router.get('/passkeys', requireLoginOrToken, async (req, res: Antwort<'GET /api/
 router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req, res: Antwort<'POST /api/v1/auth/passkey/registrieren/optionen'>) => {
   if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const uid = angemeldeteNutzerId(req);
-  if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
+  // Ein Passkey ersetzt den Code; ohne Code hier umginge das Passwort allein den zweiten Faktor.
+  const zusatz = await zf.istAktiv(uid) ? { zweiterFaktor: req.body?.code } : {};
+  if (!await bestaetigePasswort(req, res, uid, req.body?.password, zusatz)) return;
   const konto = await K.kontoKurz(uid);
   const optionen = await P.registrierungsOptionen(uid, konto?.username ?? String(uid));
   if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
@@ -637,6 +639,7 @@ router.post('/passkey/registrieren', requireLoginOrToken, async (req, res: Antwo
   if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const neu = await P.registrierungPruefen(angemeldeteNutzerId(req), req.body?.antwort, passkeyName(req.body?.name));
   if (!neu) return sendeFehler(req, res, 400, 'passkey_ungueltig');
+  hinweisNebenher(angemeldeteNutzerId(req), 'passkey_neu', neu.name);
   res.json({ success: true, passkey: neu });
 });
 
@@ -644,7 +647,7 @@ router.delete('/passkeys/:id', requireLoginOrToken, async (req, res: Antwort<'DE
   const uid = angemeldeteNutzerId(req);
   const id = parseInt(pfadParam(req, 'id'));
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-  if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password, req.body?.code)) return;
   res.json({ success: true, deleted: await P.loeschePasskey(uid, id) ? 1 : 0 });
 });
 

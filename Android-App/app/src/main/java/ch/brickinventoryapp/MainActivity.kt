@@ -3,7 +3,8 @@ package ch.brickinventoryapp
 import android.app.Application
 import android.os.Bundle
 import kotlinx.coroutines.flow.first
-import androidx.activity.ComponentActivity
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -59,7 +60,7 @@ import javax.inject.Inject
 
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : NurLauncherStart() {
     private val vm: AppViewModel by viewModels()
 
     // Hier gehalten und nicht ueber hiltViewModel() geholt: Katalogliste und
@@ -71,6 +72,8 @@ class MainActivity : ComponentActivity() {
     // Ebenso: Eine Guthabenabfrage über alle Karten soll weiterlaufen, wenn
     // man die Gutschein-Seite verlässt.
     private val gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel by viewModels()
+    // Nur für die Maske „Startpasswort ersetzen“, die über allem liegt.
+    private val startKontoVm: ch.brickinventoryapp.ui.viewmodel.KontoViewModel by viewModels()
 
     // ImageLoader als Hilt-Singleton aus NetzModule — eine Instanz je Prozess statt je
     // Activity: Sonst verlöre jede Drehung den Memory-Cache, und zwei
@@ -81,9 +84,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var meldungseingang: ch.brickinventoryapp.ui.Meldungseingang
 
     /**
-     * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Die
-     * Extras des Intents werden bewusst nicht gelesen: Diese Activity ist
-     * exportiert, jede App koennte sie mit beliebigen Extras starten.
+     * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Das
+     * Ziel liegt im Meldungseingang; NurLauncherStart hat Extras und Daten des
+     * Intents schon entfernt, denn jede App kann diese Activity starten.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -109,6 +112,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Ein abgelaufenes Geheimnis lässt sich ab Android 10 erst mit Fokus aus der Zwischenablage nehmen. */
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) ch.brickinventoryapp.util.GeheimeZwischenablage.pruefe(this)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Vor super.onCreate(): Das Startbild ersetzt das Fenster-Theme, bis
         // Compose das erste Bild gezeichnet hat — kein weisses Aufblitzen.
@@ -124,15 +133,29 @@ class MainActivity : ComponentActivity() {
             // jeder Zustandsänderung die Wurzel der Composition invalidiert
             // und darüber die ganze App rekomponiert.
             val theme by vm.appTheme.collectAsStateWithLifecycle()
-            val dunkel by vm.dunkelNachSystem.collectAsStateWithLifecycle()
+            val helligkeit by vm.helligkeit.collectAsStateWithLifecycle()
             val systemfarben by vm.systemfarben.collectAsStateWithLifecycle()
-            val sicht = darstellung(theme, dunkel, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
+            val sicht = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
                 // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.
                 CompositionLocalProvider(
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                 ) {
                     BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
+                    // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
+                    val startpasswort by vm.passwortPflicht.noetig.collectAsStateWithLifecycle()
+                    // Startwert false: Die Maske erscheint erst mit beiden Zuständen,
+                    // und StateFlow.value in der Komposition verbietet Lint.
+                    val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
+                        .collectAsStateWithLifecycle(false)
+                    if (startpasswort && angemeldet) {
+                        val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
+                        ch.brickinventoryapp.ui.screens.StartpasswortMaske(
+                            kontoZustand = kontoZustand,
+                            onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) { vm.logout() } },
+                            onAbmelden = { vm.logout() },
+                        )
+                    }
                     // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.
                     val zertifikat by vm.zertifikatsFrage.offen.collectAsStateWithLifecycle()
                     val nutzerCa by vm.nutzerCa.an.collectAsStateWithLifecycle()

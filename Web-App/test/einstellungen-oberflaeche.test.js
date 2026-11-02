@@ -32,7 +32,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const NUTZER = { '/v1/auth/users': { success: true, users: [
   { id: 1, username: 'anna', is_admin: true, is_active: true, created_at: '2026-10-01T00:00:00Z' },
@@ -78,12 +78,12 @@ test('Admin-Rechte entziehen schickt is_admin:false', async () => {
     await reiter(w, 'settings');
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 2);
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="1"]').click();
-    await takt(20);
+    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
     // Fremde Konten ändern verlangt das eigene Passwort (Verwaltungsprotokoll).
     assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'Die Passwortabfrage fehlt');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
-    await takt(20);
+    await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/1/admin')));
     const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/1/admin'));
     assert.ok(put, 'Kein Aufruf zum Rollenwechsel');
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
@@ -99,10 +99,11 @@ test('Deaktivieren und Aktivieren schicken is_active mit dem Passwort', async ()
     assert.match(ben.textContent, /Deaktiviert/);
     for (const [id, soll] of [[1, false], [2, true]]) {
       d.querySelector(`#users-tbl [data-click="toggleAktiv"][data-arg="${id}"]`).click();
-      await takt(20);
+      assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
       d.getElementById('cd-pw').value = 'mein-passwort';
       d.getElementById('cd-confirm').click();
-      await takt(20);
+      await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes(`/v1/auth/users/${id}/aktiv`)));
+      await warte(() => d.getElementById('confirm-modal').style.display !== 'flex');
       const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes(`/v1/auth/users/${id}/aktiv`));
       assert.ok(put, `Kein Aufruf für Konto ${id}`);
       assert.deepEqual(JSON.parse(put.body), { is_active: soll, admin_password: 'mein-passwort' });
@@ -121,15 +122,20 @@ test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', asy
     assert.equal(d.getElementById('smtp-tls-fp').value, 'AB:CD');
     d.getElementById('smtp-tls-ca').value = '-----BEGIN CERTIFICATE-----';
     d.getElementById('btn-sav-smtp').click();
-    await takt(20);
+    // Der Dialog leert das Passwortfeld beim Öffnen: erst eintragen, wenn er offen ist.
+    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Passwortdialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
-    await takt(20);
-    const post = aufrufe.find(a => a.method === 'POST' && a.url.endsWith('/v1/settings'));
+    const istPost = a => a.method === 'POST' && a.url.endsWith('/v1/settings');
+    await warte(() => aufrufe.some(istPost));
+    const post = aufrufe.find(istPost);
     assert.ok(post, 'Nicht gespeichert');
     const body = JSON.parse(post.body);
     assert.deepEqual([body.smtp_tls_fingerprint, body.smtp_tls_ca, body.smtp_insecure_tls],
       ['AB:CD', '-----BEGIN CERTIFICATE-----', undefined]);
+    // Der Hinweis verschwindet erst nach der Antwort aufs Speichern; unter Last
+    // dauert das länger als ein fester Takt.
+    await warte(() => d.getElementById('smtp-tls-altlast').style.display === 'none');
     assert.equal(d.getElementById('smtp-tls-altlast').style.display, 'none');
   } finally { w.close(); }
 });

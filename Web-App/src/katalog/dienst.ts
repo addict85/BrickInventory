@@ -1,6 +1,7 @@
 import * as repo from './repository/katalogSuche';
 import { meldeUndLiefere } from '../infra/httpError';
 import { resolveIfExists } from './bilder/images';
+import { setBildSichtbar, dateiStamm } from './bilder/bildBlickfeld';
 import { resolveOne, resolveViaApi } from './bricklinkLink';
 import { fuerSet } from '../finanzen/preisvergleich';
 import { downloadSetImage } from './bilder/setImages';
@@ -99,8 +100,10 @@ export async function jahrVerteilung(f: KatalogFilter, absteigend: boolean) {
   return repo.setsJeJahrGefiltert(await waehle({ q: f.q, themeId: f.themeId }), absteigend);
 }
 
-/** Egal welches Konto es geholt hat. */
-const lokalesBild = (sn: string) => resolveIfExists(`/images/sets/${String(sn).replace(/[^a-z0-9-]/gi, '_')}.jpg`);
+/** Nur im eigenen Blickfeld: Die Bildroute liefert fremde Set-Bilder nicht aus,
+ * der Client nimmt dann image_url über den Proxy. */
+const lokalesBild = async (uid: number, sn: string) =>
+  await setBildSichtbar(uid, sn) ? resolveIfExists(`/images/sets/${dateiStamm(sn)}.jpg`) : null;
 
 export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
   const wahl = await waehle(f);
@@ -109,7 +112,8 @@ export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: un
   const tree = await getThemeTree();
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
   return { total, page, pages: Math.max(1, Math.ceil(total / limit)),
-    sets: sets.map(s => ({ ...s, image_local: lokalesBild(s.set_number), theme_name: tree.pathName.get(s.theme_id) || null })) };
+    sets: await Promise.all(sets.map(async s => ({ ...s, image_local: await lokalesBild(userId, s.set_number),
+      theme_name: tree.pathName.get(s.theme_id) || null }))) };
 }
 
 export async function katalogSet(userId: number, roh: string) {
@@ -123,9 +127,10 @@ export async function katalogSet(userId: number, roh: string) {
   // Geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.
   let bricklink = await resolveOne(set.set_number);
   if (!bricklink.resolved) bricklink = await resolveViaApi(set.set_number).catch(meldeUndLiefere('katalog:bricklink', bricklink));
-  let image_local = lokalesBild(set.set_number);
+  const sichtbar = await setBildSichtbar(userId, set.set_number);
+  let image_local = sichtbar ? resolveIfExists(`/images/sets/${dateiStamm(set.set_number)}.jpg`) : null;
   // Jetzt dauerhaft ablegen; die Vorschau macht der Bild-Job.
-  if (!image_local && set.image_url) {
+  if (sichtbar && !image_local && set.image_url) {
     image_local = await downloadSetImage(set.image_url, set.set_number).catch(meldeUndLiefere('katalog:downloadSetImage', null));
     if (image_local) nacharbeit().bildVormerken(String(set.image_url || ''), set.set_number);
   }

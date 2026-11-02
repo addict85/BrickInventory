@@ -81,13 +81,15 @@ fun NavGraphBuilder.authGraph(
                 },
                 // Erst nach der Bestätigung im Einrichtungsbildschirm; die Anmeldung
                 // springt nach Erfolg in die Galerie.
-                onQrScanned = { qr ->
+                onQrScanned = { qr, pinEingabe ->
                     anmeldungVm.loginWithQrToken(qr.url, qr.token,
-                        abmelden = { vm.logout().join() }, fingerabdruck = qr.fingerabdruck)
+                        abmelden = { vm.logout().join() }, fingerabdruck = qr.fingerabdruck,
+                        pinWechselEingabe = pinEingabe)
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Setup.route) { inclusive = true }
                     }
-                }
+                },
+                bisherigerPin = anmeldungVm::bisherigerPin,
             )
         }
         composable(Screen.Login.route) {

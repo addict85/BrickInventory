@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
+import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -107,7 +109,7 @@ fun MerklisteScreen(
             ) {
                 item {
                     Box {
-                        FilterChip(
+                        AuswahlChip(
                             selected = zustand.sortierung != MERKLISTE_DEFAULT_SORT,
                             onClick = { sortMenueOffen = true },
                             label = { Text(gallerySortLabel(zustand.sortierung), style = MaterialTheme.typography.labelMedium) },
@@ -136,7 +138,7 @@ fun MerklisteScreen(
                 items(listOf("" to R.string.filter_condition_all,
                              "N" to R.string.condition_new,
                              "U" to R.string.condition_used)) { (wert, text) ->
-                    FilterChip(
+                    AuswahlChip(
                         selected = zustand.zustandFilter == wert,
                         onClick = { vm.setzeMerklisteZustand(wert) },
                         label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
@@ -159,6 +161,9 @@ fun MerklisteScreen(
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
                 ) {
                     LazyColumn(
+                        // Auf dem Tablet mittig statt über die ganze Breite: Name links,
+                        // Preis rechts lagen dort eine Armlänge auseinander.
+                        modifier = Modifier.mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         // Platz fuer die Knoepfe: Ohne ihn verdeckt der grosse die
                         // letzte Zeile — dieselbe Vorsorge wie in der Galerie.
@@ -347,9 +352,9 @@ private fun MerkpostenErfassenDialog(
 @Composable
 internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        FilterChip(selected = gewaehlt == "N", onClick = { onWahl("N") },
+        AuswahlChip(selected = gewaehlt == "N", onClick = { onWahl("N") },
                    label = { Text(stringResource(R.string.condition_new)) })
-        FilterChip(selected = gewaehlt == "U", onClick = { onWahl("U") },
+        AuswahlChip(selected = gewaehlt == "U", onClick = { onWahl("U") },
                    label = { Text(stringResource(R.string.condition_used)) })
     }
 }
@@ -366,10 +371,15 @@ private fun MerkpostenZeile(
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
+                // Ohne Bild oder beim Fehler das Logo wie in der Galerie, statt eines leeren Flecks.
+                val ersatz = androidx.compose.ui.res.painterResource(R.drawable.ic_logo)
                 coil3.compose.AsyncImage(
                     model = resolveThumbUrl(serverUrl, w.imageLocal, w.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,
+                    placeholder = ersatz,
+                    error = ersatz,
+                    fallback = ersatz,
                     modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross),
                 )
                 Column(Modifier.weight(1f)) {
@@ -392,32 +402,27 @@ private fun MerkpostenZeile(
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 w.alarm?.let { a ->
-                    AssistChip(onClick = {}, leadingIcon = {
-                        Icon(if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
-                            null, Modifier.size(AssistChipDefaults.IconSize))
-                    }, label = {
-                        Text(stringResource(if (a.richtung == "ueber") R.string.detail_alert_above
-                                            else R.string.detail_alert_below) +
-                             " ${a.schwelle}")
-                    })
+                    InfoPlakette(
+                        stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
+                                       ch.brickinventoryapp.util.fmtMoney(a.schwelle, w.waehrung)),
+                        icon = if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
+                    )
                 }
                 // „Habe ich das inzwischen?" meint das BLICKFELD: Beim
                 // Grossvater heisst „ich habe es" auch „der Enkel hat es".
-                if (w.owned) {
-                    AssistChip(onClick = {},
-                        label = { Text(stringResource(R.string.wanted_owned)) })
-                }
+                if (w.owned) InfoPlakette(stringResource(R.string.wanted_owned), icon = Icons.Default.Check)
                 Spacer(Modifier.weight(1f))
                 // ── Marktpreis statt Knopf ──
                 //
-                // In die Galerie übernommen wird im Merkposten-Detail. Ein Strich, solange kein
-                // Preis im Cache liegt — der Preisjob war seit dem Eintragen noch nicht da.
-                Text(
-                    w.marktpreis?.let { ch.brickinventoryapp.util.fmtMoney(it, w.waehrung) } ?: "—",
-                    fontWeight = FontWeight.Bold,
-                    color = if (w.marktpreis == null) MaterialTheme.colorScheme.onSurfaceVariant
-                            else MaterialTheme.colorScheme.onSurface,
-                )
+                // In die Galerie übernommen wird im Merkposten-Detail. Ohne Preis im Cache war der
+                // Preisjob seit dem Eintragen noch nicht da — das sagt der Text, ein Strich sagte nichts.
+                val preis = w.marktpreis
+                if (preis != null) {
+                    Text(ch.brickinventoryapp.util.fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold)
+                } else {
+                    Text(stringResource(R.string.wanted_price_pending), style = MaterialTheme.typography.bodySmall,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }

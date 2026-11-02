@@ -671,3 +671,154 @@ QR-Codes gelten weiter. Wer `compose.yaml` angepasst hat: Die Zeile
   Antwort wie eine erfolgreiche Registrierung; die angegebene Adresse bekommt
   eine Mail „Benutzername schon vergeben". So lässt sich ohne Postfach nicht
   mehr abfragen, welche Konten es gibt.
+
+## 25. Konto und Anmeldung gehärtet
+
+**Vor dem Update prüfen — Benutzernamen**: Migration 0090 legt einen
+eindeutigen Index auf `lower(username)`. Gibt es zwei Konten, deren Namen
+sich nur in Gross-/Kleinschreibung unterscheiden, bricht der Start mit den
+Namen ab; geändert wird nichts. Vorher nachsehen:
+
+```
+docker compose exec postgres psql -U brickinventory -c \
+  "SELECT lower(username), string_agg(username || ' (id ' || id || ')', ', ')
+     FROM users GROUP BY 1 HAVING COUNT(*) > 1"
+```
+
+Je Paar eines umbenennen (`UPDATE users SET username = '…' WHERE id = …`),
+dann starten.
+
+**`APP_BASE_URL` ist Pflicht für Links in Mails** — auch ausserhalb von
+`NODE_ENV=production`. Ohne sie wird die Adresse nicht mehr aus `Host` oder
+`X-Forwarded-Host` abgeleitet: Bestätigungs- und Rücksetzmails gehen ohne
+Link bzw. gar nicht, der Start warnt. `compose.yaml` setzt sie schon
+(`https://${BRICK_HOST}`). Der Hinweis in §2 („ohne sie stammt der Host aus
+dem Request-Header") gilt nicht mehr.
+
+Was sich für Nutzer und Clients ändert:
+
+- **Zweiter Faktor**: Ein neuer Passkey (`POST /auth/passkey/registrieren/optionen`,
+  Feld `code`) und das Einlösen einer Haushaltseinladung
+  (`POST /settings/household/redeem`, Feld `faktor_code`) verlangen bei
+  aktivem TOTP zusätzlich einen Code. Das Bestätigen der TOTP-Einrichtung
+  zählt falsche Codes wie jede andere Prüfung (Sperre nach fünf).
+- **Wiederherstellungscodes** sind jetzt 16 Zeichen (`xxxx-xxxx-xxxx-xxxx`).
+  Bestehende zehnstellige Codes gelten weiter, bis sie verbraucht sind;
+  empfohlen ist, im Konto einmal „Neue Codes" zu erzeugen. Codefelder in Web
+  und App nehmen 24 Zeichen an.
+- **Passwort zurücksetzen** (per Mail) widerruft zusätzlich alle Passkeys.
+  Der Passwortwechsel im Profil beendet wie bisher alle Sitzungen und
+  Tokens; Passkeys nur, wenn „Auch alle Passkeys entfernen" angekreuzt ist
+  (`passkeys_widerrufen: true`).
+- **Hinweis-Mails** bei neuem Passkey, Passwortwechsel und -rücksetzung —
+  nur mit eingerichtetem Mailserver, ohne Link. Sie nennen die Hauptkonten,
+  die die Sammlung sehen.
+- **Passwort vergessen**: höchstens ein Link je Konto und 15 Minuten; jede
+  Antwort dauert mindestens 400 ms.
+- **Startpasswort**: Solange `must_change_password` gesetzt ist, antwortet
+  die API ausser auf `change-password` und `logout` mit 403
+  `passwort_wechsel_noetig`; die Weboberfläche zeigt dann die Maske zum
+  Wechseln. `GET /auth/me` meldet `user.mustChangePassword`.
+- **Verwalter legt Konto an**: Ein Name, der sich nur in der Schreibweise
+  von einem bestehenden unterscheidet, ergibt 409 `benutzername_vergeben`.
+- **„Alle meine Daten löschen"** (`DELETE /api/v1/bestand`) verlangt
+  `password`.
+- **Protokoll**: Mailadressen erscheinen in `app_logs` nur noch maskiert
+  (`m…@example.org`); voll nur mit `MAIL_KONSOLE_MIT_TOKEN=1` (Entwicklung).
+
+## 26. Abrufe nach aussen, Bild-Proxy und Eingabeprüfung
+
+- **Bild-Proxy-Cache neu geschlüsselt**: Bei `cdn.rebrickable.com`,
+  `images.brickset.com` und `img.bricklink.com` zählt der Anfrageteil
+  (Zeitstempel) nicht mehr. Bestehende Einträge unter `data/img_proxy_cache/`
+  werden dadurch einmal neu geholt; die alten fallen nach 30 Tagen oder über
+  den Deckel weg. Wer sofort Platz will: Ordner leeren, er füllt sich wieder.
+- **Neue Variablen** (`.env.example`):
+  `BILD_CACHE_MAX_MB` (Vorgabe 2048) deckelt den Cache, älteste Nutzung zuerst;
+  `BILD_ABRUFE_JE_MINUTE` (Vorgabe 240) begrenzt CDN-Abrufe je Konto, darüber
+  antwortet der Proxy 429 (Cache-Treffer zählen nicht).
+- **Antworten des Bild-Proxys** tragen `Cache-Control: private`; ein geteilter
+  Zwischenspeicher vor Caddy hält sie nicht mehr.
+- **Eingaben** werden im Betrieb gegen den API-Vertrag geprüft: Ein Feld mit
+  falschem Typ, zu langem Text oder ein wiederholter Abfrageparameter ergibt
+  400 mit `code: "eingabe_ungueltig"` statt eines 500. Grenzen der Kontofelder:
+  Vor-/Nachname 100, E-Mail 254, Benutzername 64 Zeichen.
+- **HSTS** setzt der Server nur noch bei `req.secure`, also hinter dem in
+  `TRUST_PROXY` genannten Proxy oder bei direktem TLS. Wer ohne
+  `NODE_ENV=production` hinter Caddy betreibt, bekommt die Kopfzeile von der
+  App nicht mehr (Caddy kann sie selbst setzen).
+- **Image**: `.env`, `.env.*` und `backups/` gehören nicht mehr zum
+  Build-Kontext; `backups/` steht in `.gitignore`.
+- **PDF.js** kommt aus `pdfjs-dist` (exakte Fassung in `package.json`). Nach
+  einem Update `npm run build:frontend` laufen lassen; das kopiert die Dateien
+  nach `public/vendor/pdfjs/`.
+
+## 27. Runde 4 – Daten: Blickfeld, Mails, Fehlertexte
+
+- **Set-Bilder und Anleitungen nur im eigenen Blickfeld.** `/images/sets/…`
+  liefert nur Bilder zu Sets in Bestand, Merkliste oder Preisalarmen des
+  eigenen Haushalts aus, `/data/instructions/…` nur Anleitungen zu Sets im
+  Bestand; alles andere antwortet 404 wie eine fehlende Datei. Teile- und
+  Figurenbilder bleiben für jedes Konto offen. Katalog, `/sets/info` und
+  `/sets/barcode` nennen `image_local` für fremde Sets nicht mehr; Web und App
+  nehmen dann `image_url` über den Bild-Proxy. An Clients ändert sich nichts.
+  Ein Verwalter sieht fremde Set-Bilder ebenfalls nicht mehr über `/images/`.
+- **Mails**: Bestätigungs-, Rücksetz- und „Benutzername vergeben“-Mail grüssen
+  ohne Namen („Hallo,“). Vor-/Nachname dürfen keine Steuerzeichen und keine
+  Webadressen enthalten (400 `name_ungueltig`). Ohne SMTP zeigt die Konsole
+  den Link, den der Server erzeugt hat, nicht mehr die erste URL im Text.
+- **Neue Drosseln**: Registrierung 3/h und „Passwort vergessen“ 3/h je
+  Zieladresse (zusätzlich zu 5/h je IP); Teile-Import 30/h je Konto;
+  Währungswechsel 5/h je Konto. Die Zähler stehen wie die übrigen in
+  `rate_limit_attempts` (Schlüssel `register-ziel|…`, `forgot-ziel|…`,
+  `teile-import|…`, `waehrung|…`; Adressen nur als Hash).
+- **Haushaltswährung**: Nur das Hauptkonto ändert sie; ein Unterkonto bekommt
+  403 `waehrung_nur_hauptkonto`. Ein Konfig-Import eines Unterkontos mit
+  anderer Währung scheitert daran ebenso.
+- **Teile-Import** (`POST /api/v1/sets/:setNumber/parts`) nur für Sets im
+  Blickfeld (sonst 404 `set_nicht_gefunden`).
+- **Fehlertexte**: Erfassungsstrom und CSV-/XML-Importe melden unbekannte
+  Fehler als `interner_fehler`; die Einzelheiten stehen im Protokoll
+  (`[weiter-trotz-fehler] …`).
+- **PDF-Teileliste**: Der Auftrag nimmt jetzt wirklich grössere Listen an
+  (bis 4 MB, vorher griff trotz anderslautender Angabe die allgemeine Grenze
+  von 256 KB). Ein vorgeschalteter Proxy mit kleinerem `max body` muss für
+  `/api/v1/sets/partslist-pdf` mindestens 4 MB erlauben (Caddy begrenzt nicht).
+
+## 28. Runde 4 – Härtung
+
+- **Migration 0091** legt `users.sitzungs_version` an (läuft beim Start von
+  selbst). Bestehende Browser-Sitzungen bleiben gültig. Wer Zugänge beendet
+  (Passwort setzen/ändern/zurücksetzen, Sperren, Rollenwechsel, Konto löschen,
+  „andere Sitzungen beenden“, zweiten Faktor einschalten), erhöht die Version;
+  alte Sitzungen des Kontos enden dann sicher, auch wenn eine gleichzeitige
+  Anfrage sie zurückschreibt.
+- **pgweb verlangt eine Anmeldung**: `PGWEB_PASSWORD` (und optional
+  `PGWEB_USER`, Vorgabe `pgweb`) in `.env` setzen, sonst startet
+  `docker compose --profile tools up -d pgweb` nicht (Meldung in
+  `docker compose logs pgweb`). Der Browser fragt dann nach Benutzer und
+  Passwort. Für den normalen Betrieb ohne Profil ändert sich nichts.
+- **Zweiter Faktor für heikle Änderungen**: Bei aktivem TOTP verlangen
+  `POST /api/v1/auth/change-password`, `DELETE /api/v1/auth/passkeys/:id` und
+  `PUT /api/v1/auth/profile` mit neuer E-Mail zusätzlich `code` (TOTP oder
+  Wiederherstellungscode). Ohne `code`: 400 `zweiter_faktor_noetig`; falsch:
+  400 `zweiter_faktor_falsch`. Die Weboberfläche fragt nach. Ältere Fassungen
+  der Android-App können das Passwort eines Kontos mit zweitem Faktor erst
+  nach ihrem Update wieder ändern.
+- **Verwalter-E-Mail**: Eine neue Adresse des Verwalters gilt erst nach dem
+  Bestätigungslink als bestätigt (wie bei allen Konten). Die Anmeldung des
+  Verwalters hängt nicht daran.
+- **Drosseln je Adresse**: IPv6-Clients aus demselben /64 teilen sich die
+  Grenzen (Registrieren, Passwort vergessen, QR-Anmeldung, Anmeldung …) –
+  viele Geräte hinter einem IPv6-Anschluss zählen also gemeinsam, wie hinter
+  einer IPv4-Adresse.
+- **Abrufe nach aussen**: Hosts werden exakt geprüft; Adressen mit eigenem
+  Port oder `benutzer@` werden abgelehnt. Unterdomänen sind nur noch für
+  `lego.com` erlaubt (Anleitungs-PDFs). Gespeicherte Bildadressen anderer
+  Unterdomänen (etwa ein altes `m.rebrickable.com`) lädt der Proxy nicht mehr.
+- **Wiederherstellen**: `scripts/restore.sh` prüft das data-Archiv vorher
+  (`scripts/archiv-pruefen.sh`): nur Dateien und Ordner unter `data/`, keine
+  Verknüpfungen, kein `..`. Archive von `scripts/backup.sh` erfüllen das.
+- **Image von Hand bauen** (Workflow `Web-App`, `workflow_dispatch`): Der
+  zusätzliche Tag muss die Docker-Tag-Form haben (Buchstaben, Ziffern,
+  `_ . -`, höchstens 128 Zeichen), sonst bricht der Lauf ab.

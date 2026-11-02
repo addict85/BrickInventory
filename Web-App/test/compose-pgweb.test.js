@@ -2,7 +2,7 @@
  * pgweb ist optional, nur lokal erreichbar und startet nicht von selbst mit.
  *
  * ── Warum es diesen Test gibt (Nachtrag 54) ─────────────────────────────────
- * pgweb bringt KEINE Anmeldung mit. Wer die Seite erreicht, hat vollen Zugriff
+ * Wer pgweb erreicht und sich anmeldet (PGWEB_PASSWORD), hat vollen Zugriff
  * auf die Datenbank — alle Konten, alle Sitzungen, alle Daten — und kann sie
  * ändern. Der Dienst ist damit die einzige Stelle im ganzen Aufbau, an der eine
  * einzige geänderte Zeile in compose.yaml die komplette Installation offenlegt:
@@ -22,6 +22,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -59,7 +60,7 @@ test('pgweb hört NUR auf 127.0.0.1', () => {
   assert.ok(ports.length > 0, 'pgweb veröffentlicht keinen Port — dann ist er nicht erreichbar');
   for (const p of ports) {
     assert.ok(p.startsWith('127.0.0.1:'),
-      `Portangabe "${p}" bindet an ALLE Schnittstellen. pgweb hat keine Anmeldung — ` +
+      `Portangabe "${p}" bindet an ALLE Schnittstellen. pgweb gibt die ganze Datenbank heraus — ` +
       'damit stünde die ganze Datenbank offen. Zugriff von aussen gehört durch einen ' +
       'SSH-Tunnel, nicht durch eine offene Bindung');
   }
@@ -184,4 +185,31 @@ test('pgweb ist per Digest festgelegt, kein Dienst hat ein Ersatz-Datenbankpassw
   assert.match(leseDienst(compose, 'pgweb'), /^\s*image:\s*\S+@sha256:[0-9a-f]{64}\s*$/m, 'pgweb ist nicht per Digest festgelegt');
   assert.doesNotMatch(compose, /DB_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
   assert.equal([...compose.matchAll(/\$\{DB_PASSWORD:\?/g)].length, 4, 'postgres, app, jobs und pgweb verlangen DB_PASSWORD');
+});
+
+// Gegenproben (01.11.2026 gemessen, je einzeln): die Passwortprüfung im
+// entrypoint gestrichen → rot „ohne PGWEB_PASSWORD startet pgweb nicht“;
+// `--readonly` gestrichen → rot „… nur lesend“; PGWEB_AUTH_PASS nicht mehr aus
+// PGWEB_PASSWORD → rot „die Anmeldung kommt aus .env“.
+test('ohne PGWEB_PASSWORD startet pgweb nicht, mit Passwort nur lesend', () => {
+  const block = leseDienst(compose, 'pgweb');
+  assert.match(block, /^\s*PGWEB_AUTH_PASS:\s*\$\{PGWEB_PASSWORD:-\}\s*$/m, 'die Anmeldung kommt aus .env');
+  assert.match(block, /^\s*PGWEB_AUTH_USER:\s*\$\{PGWEB_USER:-pgweb\}\s*$/m);
+  const z = block.split('\n');
+  const i = z.findIndex(l => /^\s+- \|\s*$/.test(l));
+  assert.ok(i > 0, 'entrypoint-Skript von pgweb nicht gefunden');
+  const rumpf = [];
+  for (const l of z.slice(i + 1)) { if (!/^ {8}/.test(l)) break; rumpf.push(l.slice(8)); }
+  // Wie Compose es übergibt ($$ → $); pgweb selbst durch ein Echo ersetzt.
+  const skript = rumpf.join('\n').replace(/\$\$/g, '$');
+  assert.match(skript, /exec \/usr\/bin\/pgweb /);
+  const lauf = (pass) => spawnSync('sh', ['-c', skript.replace('exec /usr/bin/pgweb', 'echo PGWEB')],
+    { encoding: 'utf8', env: { PATH: process.env.PATH, PGWEB_AUTH_USER: 'pgweb', PGWEB_AUTH_PASS: pass } });
+  const ohne = lauf('');
+  assert.notEqual(ohne.status, 0, 'ohne PGWEB_PASSWORD startet pgweb nicht');
+  assert.match(ohne.stderr, /PGWEB_PASSWORD/);
+  assert.doesNotMatch(ohne.stdout, /PGWEB/);
+  const mit = lauf('geheim');
+  assert.equal(mit.status, 0, mit.stderr);
+  assert.match(mit.stdout, /^PGWEB .*--readonly/m, 'pgweb startet nur lesend');
 });

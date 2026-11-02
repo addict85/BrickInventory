@@ -10,8 +10,11 @@ import ch.brickinventoryapp.util.UPDATE_JSON_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_VERSION_URL
 import ch.brickinventoryapp.util.UpdateBeschreibung
+import ch.brickinventoryapp.util.apkFassung
 import ch.brickinventoryapp.util.darfInstallieren
-import ch.brickinventoryapp.util.installationsAbsicht
+import ch.brickinventoryapp.util.fassungPasst
+import ch.brickinventoryapp.util.Installationsmeldung
+import ch.brickinventoryapp.util.installiere
 import ch.brickinventoryapp.util.istErlaubteApkAdresse
 import ch.brickinventoryapp.util.istNeuer
 import ch.brickinventoryapp.util.signaturPasst
@@ -63,6 +66,13 @@ class UpdateViewModel @Inject constructor(
             prefs.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
                 .filter { abgemeldet -> abgemeldet }
                 .collect { _state.value = UpdateUiState() }
+        }
+        // Die Installer-Sitzung antwortet an einen Empfänger, nicht hierher (util/AppUpdate.kt).
+        viewModelScope.launch {
+            Installationsmeldung.fehler.filter { it != null }.collect { grund ->
+                Installationsmeldung.fehler.value = null
+                _state.update { it.copy(fehler = texte.text(R.string.update_installation_fehlgeschlagen, grund)) }
+            }
         }
     }
 
@@ -205,6 +215,13 @@ class UpdateViewModel @Inject constructor(
                     }
                     return@launch
                 }
+                if (!fassungPasst(withContext(Dispatchers.IO) { apkFassung(ctx, ziel) }, fassung.versionCode, this@UpdateViewModel.fassung.code)) {
+                    ziel.delete()
+                    _state.update {
+                        it.copy(fortschritt = null, fehler = texte.text(R.string.update_fassung_falsch))
+                    }
+                    return@launch
+                }
                 if (!darfInstallieren(ctx)) {
                     _state.update {
                         it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = true)
@@ -232,7 +249,8 @@ class UpdateViewModel @Inject constructor(
      */
     fun starteInstallation() {
         val datei = updateDatei(ctx)
-        if (!datei.isFile || !signaturPasst(ctx, datei)) {
+        val gemeldet = _state.value.neuereFassung?.versionCode ?: 0
+        if (!datei.isFile || !signaturPasst(ctx, datei) || !fassungPasst(apkFassung(ctx, datei), gemeldet, fassung.code)) {
             datei.delete()
             _state.update {
                 it.copy(bereitZurInstallation = false, fehler = texte.text(R.string.update_signatur_falsch))
@@ -243,10 +261,12 @@ class UpdateViewModel @Inject constructor(
             _state.update { it.copy(erlaubnisFehlt = true) }
             return
         }
-        runCatching { ctx.startActivity(installationsAbsicht(ctx, datei)) }
-            .onFailure {
-                _state.update { s -> s.copy(fehler = texte.text(R.string.update_installer_fehlt)) }
-            }
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) { runCatching { installiere(ctx, datei) } }
+                .onFailure {
+                    _state.update { s -> s.copy(fehler = texte.text(R.string.update_installer_fehlt)) }
+                }
+        }
     }
 }
 

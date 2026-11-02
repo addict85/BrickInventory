@@ -111,6 +111,20 @@
   start();
   if (!started) document.addEventListener('DOMContentLoaded', start);
 
+  // ── 3. Rollende Abschnittsleiste der Einstellungen ──────────────────────
+  // Am Telefon rollt sie seitwärts; ohne Hinweis am Rand sah niemand die
+  // Abschnitte dahinter. data-mehr sagt dem CSS, auf welcher Seite noch etwas liegt.
+  function randHinweis(nav) {
+    const rechts = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2;
+    const links = nav.scrollLeft > 2;
+    nav.dataset.mehr = (links ? 'l' : '') + (rechts ? 'r' : '');
+  }
+  const einstNav = document.querySelector('.einst-nav');
+  if (einstNav) {
+    einstNav.addEventListener('scroll', () => randHinweis(einstNav), { passive: true });
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => randHinweis(einstNav)).observe(einstNav);
+  }
+
   // Für Tests und für Code, der Tabellen ausserhalb des Observers erzeugt.
   window.__bimLabelTables = labelAll;
 })();

@@ -16,3 +16,10 @@ fun gutscheinExportAdresse(serverUrl: String): String =
  * Sichtschutz wie auf der Gutscheinseite (ui/components/Sichtschutz.kt).
  */
 fun zeigtGutscheine(pdfUrl: String): Boolean = "/api/v1/vouchers/" in pdfUrl
+
+/**
+ * Bietet der Betrachter „Herunterladen“ an? Nicht für Gutscheine: Der Knopf legt
+ * die Datei in den öffentlichen Download-Ordner, den jede App mit Speicherzugriff
+ * liest und der das Abmelden überlebt — für Nummer und PIN der falsche Ort.
+ */
+fun pdfDarfGespeichertWerden(pdfUrl: String): Boolean = !zeigtGutscheine(pdfUrl)

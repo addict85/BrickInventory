@@ -127,7 +127,8 @@ test('3. und jeder Aufrufer gibt sie mit', () => {
       rest = rest.slice(i + name.length + 1);
       if (!args || args.length < 2) continue;      // der Import, kein Aufruf
       geprueft++;
-      assert.ok(args.length >= 5,
+      // Vier seit beide Mails ohne Namen grüssen: Adresse, Token, Basis, Sprache.
+      assert.ok(args.length >= 4,
         `${name}() wird mit ${args.length} Argumenten gerufen — die Sprache fehlt:\n  ${args.join(' | ')}`);
     }
   }

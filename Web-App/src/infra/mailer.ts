@@ -69,25 +69,33 @@ async function getFrom() {
 
 /** Ohne Token, ausser mit MAIL_KONSOLE_MIT_TOKEN=1: Die Konsole landet in
  * app_logs, und ein Reset-Link ist ein Zugang zum Konto. NODE_ENV taugt dafür
- * nicht — „development" steht schnell auf einem echten Server. */
-export function linkFuerKonsole(text?: string, schalter = konfig().mailKonsoleMitToken ? '1' : undefined): string | null {
-  const url = (text || '').match(/https?:\/\/\S+/)?.[0];
+ * nicht — „development" steht schnell auf einem echten Server. Der Link kommt
+ * vom Absender, nicht aus dem Text: Dort kann eine Eingabe eine fremde URL vorschieben. */
+export function linkFuerKonsole(link?: string, schalter = konfig().mailKonsoleMitToken ? '1' : undefined): string | null {
+  const url = link && /^https?:\/\/\S+$/.test(link) ? link : null;
   if (!url) return null;
   return schalter === '1' ? url : url.replace(/([?&]token=)[^&#\s]+/g, '$1…');
 }
 
+/** Die Konsole landet in app_logs, das jeder Verwalter liest; voll nur mit dem Entwicklerschalter wie die Links. */
+export function maskiereAdresse(adresse: string, voll = konfig().mailKonsoleMitToken): string {
+  if (voll) return adresse;
+  const at = adresse.lastIndexOf('@');
+  return at < 1 ? '…' : `${adresse[0]}…${adresse.slice(at)}`;
+}
+
 /** Ohne SMTP auf der Konsole; `html` und `text` optional, weil die Konsole
  * nur `text` liest. */
-export async function sendMail({ to, subject, html, text }: {
-  to: string; subject: string; html?: string; text?: string;
+export async function sendMail({ to, subject, html, text, link: echterLink }: {
+  to: string; subject: string; html?: string; text?: string; link?: string;
 }) {
   const transporter = await getTransporter();
   const from = await getFrom();
   if (!transporter) {
-    const link = linkFuerKonsole(text);
+    const link = linkFuerKonsole(echterLink);
     console.log('\n══════════════════════════════════════════════════');
     console.log('📧  E-Mail (SMTP nicht konfiguriert):');
-    console.log(`    An:      ${to}`);
+    console.log(`    An:      ${maskiereAdresse(to)}`);
     console.log(`    Betreff: ${subject}`);
     if (link) console.log(`    Link:    ${link}`);
     console.log('══════════════════════════════════════════════════\n');
@@ -95,11 +103,11 @@ export async function sendMail({ to, subject, html, text }: {
   }
   try {
     const info = await transporter.sendMail({ from, to, subject, text, html });
-    console.log(`📧 E-Mail gesendet an ${to}: ${info.messageId}`);
+    console.log(`📧 E-Mail gesendet an ${maskiereAdresse(to)}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
     const { text } = smtpFehlertext(e);
-    console.error(`📧 SMTP Fehler (${to}):`, text);
+    console.error(`📧 SMTP Fehler (${maskiereAdresse(to)}):`, text);
     return { success: false, error: text, mode: 'smtp' };
   }
 }
@@ -310,16 +318,18 @@ const DIVIDER = `<table role="presentation" cellspacing="0" cellpadding="0" bord
   <tr><td style="height:1px;background:#e2e8f0;font-size:0;line-height:0">&nbsp;</td></tr>
 </table>`;
 
-export async function sendVerificationMail(to: string, username: string, token: string, baseUrl: string, lang = 'de') {
+/** Ohne Namen: Die Adresse ist unbestätigt, und Name wie Benutzername wählt,
+ * wer registriert — eine Anrede daraus trüge fremden Text in eine Mail des Servers. */
+export async function sendVerificationMail(to: string, token: string, baseUrl: string, lang = 'de') {
   // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
   const theme = await getMailTheme();
   const url = `${baseUrl}/verify?token=${token}`;
   const L = lang === 'en' ? {
     subject: 'BrickInventory Manager — Confirm your email',
-    text: `Hello ${username},\n\nplease confirm your email address:\n${url}\n\nThe link is valid for 24 hours.\n\nBrickInventory Manager`,
+    text: `Hello,\n\nplease confirm your email address:\n${url}\n\nThe link is valid for 24 hours.\n\nBrickInventory Manager`,
     title: 'Confirm email',
-    preheader: `Please confirm your email address, ${username}.`,
-    greetHtml: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
+    preheader: 'Please confirm your email address.',
+    greetHtml: `<p style="margin:0 0 8px">Hello,</p>
        <p style="margin:0 0 20px">welcome to BrickInventory Manager! Please confirm your email address to activate your account.</p>`,
     btn: '✓  Confirm email',
     note: `<p style="margin:0;font-size:13px;color:#6b7280">
@@ -328,10 +338,10 @@ export async function sendVerificationMail(to: string, username: string, token: 
        </p>`,
   } : {
     subject: 'BrickInventory Manager — E-Mail bestätigen',
-    text: `Hallo ${username},\n\nbitte bestätige deine E-Mail-Adresse:\n${url}\n\nDer Link ist 24 Stunden gültig.\n\nBrickInventory Manager`,
+    text: `Hallo,\n\nbitte bestätige deine E-Mail-Adresse:\n${url}\n\nDer Link ist 24 Stunden gültig.\n\nBrickInventory Manager`,
     title: 'E-Mail bestätigen',
-    preheader: `Bitte bestätige deine E-Mail-Adresse, ${username}.`,
-    greetHtml: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
+    preheader: 'Bitte bestätige deine E-Mail-Adresse.',
+    greetHtml: `<p style="margin:0 0 8px">Hallo,</p>
        <p style="margin:0 0 20px">willkommen bei BrickInventory Manager! Bitte bestätige deine E-Mail-Adresse um dein Konto zu aktivieren.</p>`,
     btn: '✓  E-Mail bestätigen',
     note: `<p style="margin:0;font-size:13px;color:#6b7280">
@@ -343,6 +353,7 @@ export async function sendVerificationMail(to: string, username: string, token: 
     to,
     subject: L.subject,
     text: L.text,
+    link: url,
     html: emailTemplate(
       L.title,
       L.preheader,
@@ -399,35 +410,36 @@ export async function sendRegistrierungsVersuchMail(to: string, username: string
 }
 
 /** Die Registrierung antwortet bei vergebenem Namen wie bei Erfolg; nur die
- * angegebene Adresse erfährt, dass es ihn schon gibt. */
-export async function sendBenutzernameVergebenMail(to: string, username: string, lang = 'de', basis = '') {
+ * angegebene Adresse erfährt, dass es ihn schon gibt. Ohne den Namen selbst:
+ * Ihn wählt, wer registriert, und die Adresse ist unbestätigt. */
+export async function sendBenutzernameVergebenMail(to: string, lang = 'de', basis = '') {
   const theme = await getMailTheme();
   const L = lang === 'en' ? {
     subject: 'BrickInventory Manager — Username already taken',
     title: 'Username taken',
     text: `Hello,
 
-someone tried to register the account “${username}” with this email address. That username already exists; no account was created.
+someone tried to register an account with this email address under a username that already exists; no account was created.
 
 If this was you, register again with a different username: ${basis}
 
 BrickInventory Manager`,
-    html: `<p style="margin:0 0 16px">someone tried to register the account <strong>${esc(username)}</strong> with this email address. That username already exists; no account was created.</p>`,
+    html: `<p style="margin:0 0 16px">someone tried to register an account with this email address under a username that already exists; no account was created.</p>`,
     note: 'If this was you, register again with a different username.',
   } : {
     subject: 'BrickInventory Manager — Benutzername schon vergeben',
     title: 'Benutzername vergeben',
     text: `Hallo,
 
-mit dieser E-Mail-Adresse wollte jemand das Konto „${username}“ anlegen. Diesen Benutzernamen gibt es schon; angelegt wurde nichts.
+mit dieser E-Mail-Adresse wollte jemand ein Konto unter einem Benutzernamen anlegen, den es schon gibt; angelegt wurde nichts.
 
 Warst du das, registriere dich mit einem anderen Benutzernamen: ${basis}
 
 BrickInventory Manager`,
-    html: `<p style="margin:0 0 16px">mit dieser E-Mail-Adresse wollte jemand das Konto <strong>${esc(username)}</strong> anlegen. Diesen Benutzernamen gibt es schon; angelegt wurde nichts.</p>`,
+    html: `<p style="margin:0 0 16px">mit dieser E-Mail-Adresse wollte jemand ein Konto unter einem Benutzernamen anlegen, den es schon gibt; angelegt wurde nichts.</p>`,
     note: 'Warst du das, registriere dich mit einem anderen Benutzernamen.',
   };
-  return sendMail({ to, subject: L.subject, text: L.text,
+  return sendMail({ to, subject: L.subject, text: L.text, ...(basis ? { link: basis } : {}),
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
@@ -454,19 +466,52 @@ export async function sendHaushaltVerknuepftMail(to: string, username: string, h
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });
 }
 
+/** Ohne Mailserver gibt es keinen Hinweis: Die Konsole erreicht den Inhaber nicht. */
+export async function mailEingerichtet(): Promise<boolean> {
+  return !!(await getSetting('smtp_host')) && !!(await getSetting('smtp_user'));
+}
+
+export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt';
+
+/** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
+ * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
+export async function sendKontoHinweisMail(to: string, username: string, art: KontoHinweis,
+                                           o: { lang?: string; passkey?: string; haushalt?: string[] } = {}) {
+  const theme = await getMailTheme();
+  const en = o.lang === 'en';
+  const was = {
+    passkey_neu: en ? `a new passkey (“${o.passkey ?? ''}”) was added to your account.`
+                    : `deinem Konto wurde ein neuer Passkey („${o.passkey ?? ''}“) hinzugefügt.`,
+    passwort_geaendert: en ? 'the password of your account was changed.' : 'das Passwort deines Kontos wurde geändert.',
+    passwort_zurueckgesetzt: en ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
+                                : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.',
+  }[art];
+  const subject = en ? 'BrickInventory Manager — Change to your account' : 'BrickInventory Manager — Änderung an deinem Konto';
+  const haushalt = o.haushalt?.length
+    ? (en ? `These accounts can see and change your collection: ${o.haushalt.join(', ')}.`
+          : `Diese Konten sehen und ändern deine Sammlung: ${o.haushalt.join(', ')}.`) : '';
+  const note = en
+    ? 'If this was not you, reset your password via “Forgot password”, check Settings → Account and Household — or ask the administrator.'
+    : 'Warst du das nicht, setze dein Passwort über „Passwort vergessen“ zurück und prüfe Einstellungen → Konto und Haushalt — oder wende dich an den Verwalter.';
+  const hallo = en ? 'Hello' : 'Hallo';
+  const text = `${hallo} ${username},\n\n${was}\n${haushalt ? `\n${haushalt}\n` : ''}\n${note}\n\nBrickInventory Manager`;
+  const html = `<p style="margin:0 0 8px">${hallo} <strong>${esc(username)}</strong>,</p>
+       <p style="margin:0 0 16px">${esc(was)}</p>${haushalt ? `<p style="margin:0 0 16px">${esc(haushalt)}</p>` : ''}`;
+  return sendMail({ to, subject, text, html: emailTemplate(en ? 'Account changed' : 'Konto geändert', subject, `${html}${infoBox(note, theme)}`, theme) });
+}
+
 // In der Sprache des Kontos, wie die übrigen Mails.
 // Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#sendpasswordresetmail
-export async function sendPasswordResetMail(to: string, username: string, token: string,
-                                     baseUrl: string, lang = 'de') {
+export async function sendPasswordResetMail(to: string, token: string, baseUrl: string, lang = 'de') {
   const theme = await getMailTheme();
   const url = `${baseUrl}/reset-password?token=${token}`;
   const de = lang !== 'en';
   const L = de ? {
     subject: 'BrickInventory Manager — Passwort zurücksetzen',
-    text: `Hallo ${username},\n\nPasswort zurücksetzen:\n${url}\n\nGültig 1 Stunde.\n\nBrickInventory Manager`,
+    text: `Hallo,\n\nPasswort zurücksetzen:\n${url}\n\nGültig 1 Stunde.\n\nBrickInventory Manager`,
     title: 'Passwort zurücksetzen',
     preheader: 'Setze dein Passwort für BrickInventory Manager zurück.',
-    greetHtml: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
+    greetHtml: `<p style="margin:0 0 8px">Hallo,</p>
        <p style="margin:0 0 20px">du hast eine Passwort-Rücksetzung angefordert. Klicke auf den Button um ein neues Passwort zu setzen.</p>`,
     btn: '🔑  Passwort zurücksetzen',
     box: 'Der Link ist <strong>1 Stunde</strong> gültig und kann nur einmal verwendet werden.',
@@ -474,10 +519,10 @@ export async function sendPasswordResetMail(to: string, username: string, token:
            Dein Passwort bleibt unverändert.`,
   } : {
     subject: 'BrickInventory Manager — Reset your password',
-    text: `Hello ${username},\n\nReset your password:\n${url}\n\nValid for 1 hour.\n\nBrickInventory Manager`,
+    text: `Hello,\n\nReset your password:\n${url}\n\nValid for 1 hour.\n\nBrickInventory Manager`,
     title: 'Reset password',
     preheader: 'Reset your BrickInventory Manager password.',
-    greetHtml: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
+    greetHtml: `<p style="margin:0 0 8px">Hello,</p>
        <p style="margin:0 0 20px">you asked to reset your password. Click the button to choose a new one.</p>`,
     btn: '🔑  Reset password',
     box: 'The link is valid for <strong>1 hour</strong> and can only be used once.',
@@ -488,6 +533,7 @@ export async function sendPasswordResetMail(to: string, username: string, token:
     to,
     subject: L.subject,
     text: L.text,
+    link: url,
     html: emailTemplate(
       L.title,
       L.preheader,
@@ -518,7 +564,7 @@ export interface AlarmMailDaten {
 }
 
 // Ausführlich: docs/begruendungen/src/infra/mailer.ts.md#bauealarmmail
-export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string }> {
+export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: string; text: string; html: string; link?: string }> {
   const theme = await getMailTheme();
   const de = d.lang !== 'en';
   const geld = (n: number) => `${d.waehrung} ${n.toFixed(2)}`;
@@ -585,6 +631,7 @@ export async function baueAlarmMail(d: AlarmMailDaten): Promise<{ subject: strin
   return {
     subject,
     text,
+    ...(url ? { link: url } : {}),
     html: emailTemplate(
       de ? 'Preisalarm' : 'Price alert',
       de ? `${d.setNumber} liegt ${richtung} ${geld(d.schwelle)}.`

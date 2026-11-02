@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import androidx.compose.foundation.verticalScroll
+import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.foundation.rememberScrollState
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.Image
@@ -61,9 +62,11 @@ fun LoginScreen(
     onPasskeyStattCode: (String, String) -> Unit = { _, _ -> },
 ) {
     var username by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
+    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    var password by remember { mutableStateOf("") }
     var showPw   by rememberSaveable { mutableStateOf(false) }
-    var code     by rememberSaveable { mutableStateOf("") }
+    var code     by remember { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
 
     // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
@@ -74,7 +77,7 @@ fun LoginScreen(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
                 .padding(horizontal = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -266,7 +269,7 @@ private fun AnmeldeFelder(
     if (codeNoetig) {
         val absenden = { if (username.isNotBlank() && password.isNotBlank() && code.isNotBlank()) onLogin(username, password, code) }
         OutlinedTextField(
-            value = code, onValueChange = { onCode(it.take(12)) },
+            value = code, onValueChange = { onCode(it.take(24)) },
             label = { Text(stringResource(R.string.login_code)) },
             supportingText = { Text(stringResource(R.string.login_code_hint)) },
             leadingIcon = { Icon(Icons.Default.Key, null) },
@@ -341,8 +344,9 @@ private fun RegistrierFelder(
     var email    by rememberSaveable { mutableStateOf("") }
     var vorname  by rememberSaveable { mutableStateOf("") }
     var nachname by rememberSaveable { mutableStateOf("") }
-    var pw1      by rememberSaveable { mutableStateOf("") }
-    var pw2      by rememberSaveable { mutableStateOf("") }
+    // Passwörter nur in remember, siehe oben.
+    var pw1      by remember { mutableStateOf("") }
+    var pw2      by remember { mutableStateOf("") }
     // Was HIER schiefgeht, bevor ueberhaupt gesendet wird. Getrennt vom
     // Serverfehler, sonst ueberschreibt das eine das andere.
     var eigenerFehler by rememberSaveable { mutableStateOf<String?>(null) }

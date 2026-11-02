@@ -50,6 +50,8 @@ import java.util.concurrent.atomic.AtomicInteger
  *   L  (31.10.2026) rechteEntzogen() bei jedem 403 → rot „ein 403 nur_admins …“
  *   M  (31.10.2026) BESTAETIGUNG_NOETIG nicht beachtet (jeder 401 meldet ab) →
  *      rot „eine falsche Passwortbestaetigung meldet nicht ab“
+ *   N  (01.11.2026) im Wächter die Zeile für PASSWORT_WECHSEL_NOETIG entfernt →
+ *      rot „ein 403 passwort_wechsel_noetig verlangt das neue Passwort …“
  */
 class ServerWaechterTest {
 
@@ -58,6 +60,7 @@ class ServerWaechterTest {
     private val codes = Collections.synchronizedMap(mutableMapOf<String, Int>())
     private val abgelaufen = AtomicInteger()
     private val entzogen = AtomicInteger()
+    private val wechsel = AtomicInteger()
     /** Rumpf je Pfad für Antworten mit Fehlercode. */
     private val ruempfe = Collections.synchronizedMap(mutableMapOf<String, String>())
 
@@ -91,7 +94,8 @@ class ServerWaechterTest {
 
     private fun client(lage: Zugangslage, api: Boolean = true, entwicklung: Boolean = true) = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, api, entwicklung, sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
-            eigeneKoepfe = { _, ziel -> ziel.header("Accept-Language", "de") }, rechteEntzogen = { entzogen.incrementAndGet() }))
+            eigeneKoepfe = { _, ziel -> ziel.header("Accept-Language", "de") }, rechteEntzogen = { entzogen.incrementAndGet() },
+            passwortWechselNoetig = { wechsel.incrementAndGet() }))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     private fun hole(c: OkHttpClient, url: String): Int =
@@ -246,6 +250,20 @@ class ServerWaechterTest {
 
         hole(client(Lage(basis(), tokens = ArrayDeque(listOf("")))), "http://localhost:3000/api/v1/admin/jobs")
         assertEquals("Ohne Token sagt ein 403 nichts über dieses Konto", 1, entzogen.get())
+    }
+
+    @Test
+    fun `ein 403 passwort_wechsel_noetig verlangt das neue Passwort, ohne abzumelden`() {
+        codes["/api/v1/sets"] = 403
+        ruempfe["/api/v1/sets"] = """{"success":false,"code":"passwort_wechsel_noetig","error":"Bitte zuerst das Startpasswort ändern."}"""
+        codes["/api/v1/admin/jobs"] = 403
+        ruempfe["/api/v1/admin/jobs"] = """{"success":false,"code":"nur_admins"}"""
+        val c = client(Lage(basis()))
+        assertEquals(403, hole(c, "http://localhost:3000/api/v1/sets"))
+        assertEquals(1, wechsel.get())
+        hole(c, "http://localhost:3000/api/v1/admin/jobs")
+        assertEquals("Ein anderes 403 verlangt keinen Wechsel", 1, wechsel.get())
+        assertEquals("Kein Abmelden", 0, abgelaufen.get())
     }
 
     @Test

@@ -117,6 +117,27 @@ test('die Host-Pruefung faellt nicht auf einen angehaengten Namen herein', () =>
 });
 
 /**
+ * Port, Userinfo und Eimer-Unterdomänen.
+ *
+ * Gegenproben (01.11.2026 gemessen, je einzeln):
+ *   `u.hostname === h` statt `u.host === h` → rot bei „:22"
+ *   Userinfo-Prüfung entfernt → rot bei „evil.com@"
+ *   zusätzlich `u.host.endsWith('.' + h)` (alter Suffix) → rot bei „x.bdpinstructions"
+ */
+test('Hostprüfung: nur Standardport, keine Userinfo, Eimer exakt', () => {
+  for (const gut of ['https://cdn.rebrickable.com/x', 'https://cdn.rebrickable.com:443/x',
+                     'https://www.lego.com/cdn/a.pdf', 'https://assets.lego.com/a.pdf'])
+    assert.ok(hostErlaubt(gut, ERLAUBTE_DOWNLOAD_HOSTS), `${gut} muss erlaubt sein`);
+  for (const boese of ['https://cdn.rebrickable.com:22/', 'https://cdn.rebrickable.com:8443/x'])
+    assert.ok(!hostErlaubt(boese, ERLAUBTE_BILD_HOSTS), `${boese}: fremder Port`);
+  for (const boese of ['https://evil.com@cdn.rebrickable.com/', 'https://a:b@cdn.rebrickable.com/'])
+    assert.ok(!hostErlaubt(boese, ERLAUBTE_BILD_HOSTS), `${boese}: Userinfo`);
+  for (const boese of ['https://x.bdpinstructions.s3.amazonaws.com/a.pdf',
+                       'https://x.cdn.rebrickable.com/a.png'])
+    assert.ok(!hostErlaubt(boese, ERLAUBTE_DOWNLOAD_HOSTS), `${boese}: Unterdomäne`);
+});
+
+/**
  * Die Anleitungen der BrickLink Designer Programme.
  *
  * ── Marcos Serverprotokoll ─────────────────────────────────────────────────
@@ -156,27 +177,22 @@ test('der BDP-Eimer darf geholt werden — aber nur er', () => {
     'liefert an den Browser aus, und das ist eine andere Frage');
 });
 
-test('die beiden Stellen benutzen die Regel wirklich', () => {
-  const rb = ohneKommentare(read('clients/rebrickable.ts'));
-
-  // ── httpsGetRobust ────────────────────────────────────────────────────────
-  assert.match(rb, /naechsteUmleitung\(u, res\.headers\.location, kopf\)/,
-    'httpsGetRobust folgt wieder von Hand — dann wandert der API-Schluessel mit');
-  assert.match(rb, /\+\+umleitungen > UMLEITUNGS_GRENZE/,
-    'Ohne eigenen Zaehler laeuft eine Umleitungsschleife unbegrenzt: `attempts` ' +
-    'wird nur bei 429, Timeout und ECONNRESET geprueft');
-  // Der Kopf muss DURCHGEREICHT werden, nicht aus dem aeusseren `headers`
-  // gelesen — sonst ist das Abwerfen wirkungslos, weil beim naechsten Anlauf
-  // wieder das Original steht.
-  assert.doesNotMatch(rb, /\.\.\.headers \} \}, res =>/,
-    'Der Anlauf muss den GEFILTERTEN Kopf benutzen, nicht den urspruenglichen');
-  assert.match(rb, /\.\.\.kopf \} \}, res =>/,
-    'httpsGetRobust schickt nicht mehr den durchgereichten Kopf');
-
-  // ── downloadFile ──────────────────────────────────────────────────────────
-  assert.match(rb, /hostErlaubt\(url, ERLAUBTE_DOWNLOAD_HOSTS\)/,
-    'downloadFile prueft die Ausgangsadresse nicht mehr');
-  assert.match(rb, /naechsteUmleitung\(u, res\.headers\.location, kopf, ERLAUBTE_DOWNLOAD_HOSTS\)/,
+test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
+  // Struktur, kein Verhalten: Das Verhalten des Helfers prüft
+  // test/abruf-helfer.test.js gegen einen echten TLS-Server.
+  const fremd = [];
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) { if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(n)) lauf(p); continue; }
+      if (!n.endsWith('.ts') || p.endsWith(path.join('src', 'infra', 'abruf.ts'))) continue;
+      if (/\bhttps?\.(get|request)\(|\bfetch\(/.test(ohneKommentare(fs.readFileSync(p, 'utf8')))) fremd.push(path.relative(ROOT, p));
+    }
+  })(ROOT);
+  assert.deepEqual(fremd, [], 'eigener Abrufweg an Hostliste, Umleitungs- und Grössengrenze vorbei');
+  assert.match(ohneKommentare(read('src/infra/abruf.ts')), /naechsteUmleitung\(u, r\.headers\?\.location, kopf, o\.hosts\)/,
+    'der Helfer prüft die Umleitungsziele nicht gegen die Hostliste');
+  assert.match(ohneKommentare(read('clients/rebrickable.ts')), /hosts: ERLAUBTE_DOWNLOAD_HOSTS/,
     'downloadFile prueft die Umleitungsziele nicht mehr — die Datei wird ausgeliefert');
 
   // ── Und die Liste steht nur noch an EINER Stelle ──────────────────────────

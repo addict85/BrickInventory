@@ -26,6 +26,8 @@ export const DashboardStats = z.looseObject({
   total_pieces: z.number().int(),
   total_instructions: z.number().int(),
   total_parts: z.number().int(),
+  set_parts: z.number().int().optional(),
+  manual_parts: z.number().int().optional(),
   total_minifigs: z.number().int(),
 });
 

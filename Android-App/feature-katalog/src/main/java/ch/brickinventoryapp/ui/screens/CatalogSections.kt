@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 /**
  * Die Abschnitte der Katalogseite: Suchfeld, Filterzeile (Thema, Jahr, Sortierung)
  * und Trefferliste neben dem Raster. Anders als bei SetDetail und Finance
@@ -47,7 +48,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
         modifier = Modifier.padding(bottom = 6.dp)
     ) {
         item {
-            FilterChip(
+            AuswahlChip(
                 selected = state.themeId != null,
                 onClick = { showThemeSheet.value = true },
                 label = {
@@ -60,7 +61,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
             )
         }
         item {
-            FilterChip(
+            AuswahlChip(
                 selected = state.year != null,
                 onClick = { showYearSheet.value = true },
                 label = { Text(state.year?.toString() ?: stringResource(R.string.catalog_filter_year), style = MaterialTheme.typography.labelMedium) },
@@ -70,7 +71,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
         }
         item {
             Box {
-                FilterChip(
+                AuswahlChip(
                     selected = state.sort != "year_desc",
                     onClick = { showSortMenu.value = true },
                     label = { Text(sortLabel(state.sort), style = MaterialTheme.typography.labelMedium) },

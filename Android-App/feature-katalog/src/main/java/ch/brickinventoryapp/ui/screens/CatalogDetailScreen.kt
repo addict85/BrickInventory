@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
-import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -32,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
@@ -174,8 +173,7 @@ fun CatalogDetailScreen(
                     onClick = {
                         // Nicht still schlucken: Ist kein Browser da oder scheitert der Aufruf,
                         // passierte sonst beim Tippen nichts.
-                        try { ctx.startActivity(Intent(Intent.ACTION_VIEW, blUrl.toUri())) }
-                        catch (_: Exception) {
+                        if (!ch.brickinventoryapp.util.oeffneExtern(ctx, blUrl)) {
                             android.widget.Toast.makeText(ctx, keineAppText,
                                 android.widget.Toast.LENGTH_SHORT).show()
                         }
@@ -391,10 +389,10 @@ private fun MerkpostenDialog(
                      style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalAlignment = Alignment.CenterVertically) {
-                    FilterChip(selected = richtung == "unter", onClick = { richtung = "unter" },
-                               label = { Text(stringResource(R.string.detail_alert_below)) })
-                    FilterChip(selected = richtung == "ueber", onClick = { richtung = "ueber" },
-                               label = { Text(stringResource(R.string.detail_alert_above)) })
+                    AuswahlChip(selected = richtung == "unter", onClick = { richtung = "unter" },
+                               label = { Text(stringResource(R.string.detail_alert_chip_below)) })
+                    AuswahlChip(selected = richtung == "ueber", onClick = { richtung = "ueber" },
+                               label = { Text(stringResource(R.string.detail_alert_chip_above)) })
                 }
                 // Eine Schwelle ist ein Preis — dieselbe Eingaberegel und
                 // dieselbe Tastatur wie ueberall (util/NumericInput.kt).

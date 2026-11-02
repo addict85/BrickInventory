@@ -1,9 +1,9 @@
 import { ladeAnzeige, skelettKacheln, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-core.js';
+import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
-import { allSets } from './02-gallery.js';
+import { allSets, teileAufschluesselung } from './02-gallery.js';
 import { loadManualParts, manualPartsCache, renderManualParts } from './06-minifigs.js';
 
 // ═══ Teile-Inventar (Liste, Suche, Filter) ═══
@@ -28,7 +28,10 @@ async function loadPartsStats(){
   const d=await api('GET','/v1/parts/stats'+scopeQuery('parts'));
   if(!d.success) return;
   const s=d.stats;
-  G('ps-total').textContent=fmtBig(s.total_parts||0);
+  // Wie die Kachel der Sammlung: Teile aus Sets und einzeln erfasste zusammen.
+  const einzeln=s.manual_parts||0;
+  G('ps-total').textContent=fmtBig((s.total_parts||0)+einzeln);
+  G('ps-total-sub').textContent=teileAufschluesselung(s.total_parts||0, einzeln);
   G('ps-unique').textContent=fmtBig(s.unique_parts||0);
   G('ps-colors').textContent=s.unique_colors||0;
 }
@@ -94,10 +97,22 @@ export function teileLeerAbgleichen(manuelleLeer){
   if (_setTeileLeer !== true) return;
   const main = G('parts-main');
   if (_manuelleLeer === false) { main.innerHTML = ''; return; }
-  const gefiltert = !!(activeColor || activeCat || G('parts-search')?.value.trim() || G('parts-spare')?.value);
-  main.innerHTML = leerZustand({ ico: 'teil', titel: tRaw('parts.none_found'),
-    text: gefiltert ? tRaw('common.filter_no_match') : tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
-    knopf: gefiltert ? null : { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
+  const q = G('parts-search')?.value.trim() || '';
+  const gefiltert = !!(activeColor || activeCat || q || G('parts-spare')?.value);
+  // Wie in allen Listen: „Noch keine …“ ohne Filter, sonst „Keine Treffer“.
+  main.innerHTML = gefiltert
+    ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'),
+                    knopf: zuruecksetzenKnopf('parts') })
+    : leerZustand({ ico: 'teil', titel: tRaw('parts.empty'),
+                    text: tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
+                    knopf: { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
+}
+
+/** Suche, Ersatzteil-, Farb- und Kategoriefilter leeren (Knopf im Leerzustand). */
+export function teileFilterZuruecksetzen(){
+  activeColor = null; activeCat = null;
+  for (const id of ['parts-search', 'parts-spare', 'parts-color', 'parts-cat']) { const el = G(id); if (el) el.value = ''; }
+  teileFilterGeaendert();
 }
 // esc / escJs / escUrl / escHex liegen jetzt zentral in 01-core.js — sie wurden
 // hier definiert, aber auch von 02-gallery.js und 04-finance.js benutzt, also
@@ -253,7 +268,7 @@ function appendParts(parts){
   for (const p of parts){
     // Gruppiert wird über den ENGLISCHEN Namen — er ist der stabile Schlüssel
     // aus der Datenbank. Übersetzt wird erst die Überschrift beim Zeichnen.
-    const key = p.color_name || 'Unbekannt';
+    const key = p.color_name || tRaw('common.unknown');
     const last = groups[groups.length - 1];
     if (last && last.color === key) last.parts.push(p);
     else groups.push({ color: key, hex: p.color_hex, parts: [p] });

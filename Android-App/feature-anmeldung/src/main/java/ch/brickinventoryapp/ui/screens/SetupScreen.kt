@@ -44,6 +44,13 @@ import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.bestaetigtFingerabdruck
+import ch.brickinventoryapp.util.fingerabdruckLesbar
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import ch.brickinventoryapp.ui.theme.mittigBis
+import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ui.QrLoginPayload
 import ch.brickinventoryapp.ui.parseQrPayload
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -56,8 +63,11 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String) -> Unit,
-    onQrScanned: ((QrLoginPayload) -> Unit)? = null,
+    /** Zweiter Wert: bei abweichendem Pin der abgeschriebene neue Fingerabdruck, sonst null. */
+    onQrScanned: ((QrLoginPayload, String?) -> Unit)? = null,
     entwicklung: Boolean = NetworkPolicy.entwicklung,
+    /** Der gemerkte Pin für Adresse und Fingerabdruck des Codes, wenn er abweicht. */
+    bisherigerPin: (url: String, fingerabdruck: String?) -> String? = { _, _ -> null },
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
@@ -93,25 +103,57 @@ fun SetupScreen(
 
     qrVorschlag?.let { vorschlag ->
         val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
+        // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
+        val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
+        // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
+        var eingabe by remember(vorschlag) { mutableStateOf("") }
+        var falsch by remember(vorschlag) { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { qrVorschlag = null },
-            title = { Text(stringResource(R.string.setup_qr_titel)) },
+            title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
             text = {
                 // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
                 ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-                Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Text(stringResource(R.string.setup_qr_text, vorschlag.url))
-                    if (vorschlag.fingerabdruck != null) Text(stringResource(R.string.setup_qr_pin),
+                    val fp = vorschlag.fingerabdruck
+                    if (bisher != null && fp != null) {
+                        Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
+                        Text(fingerabdruckLesbar(bisher), fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.zert_jetzt), style = MaterialTheme.typography.labelMedium)
+                        Text(fingerabdruckLesbar(fp), fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                        OutlinedTextField(
+                            value = eingabe,
+                            onValueChange = { eingabe = it; falsch = false },
+                            label = { Text(stringResource(R.string.zert_geaendert_eingabe)) },
+                            isError = falsch,
+                            supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else if (fp != null) Text(stringResource(R.string.setup_qr_pin),
                         style = MaterialTheme.typography.bodySmall)
                     if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                 }
             },
             confirmButton = {
-                TextButton(enabled = !qrGesperrt, onClick = {
-                    qrVorschlag = null
-                    url = vorschlag.url
-                    onQrScanned?.invoke(vorschlag)
-                }) { Text(stringResource(R.string.setup_qr_uebernehmen)) }
+                TextButton(enabled = !qrGesperrt && (bisher == null || eingabe.isNotBlank()), onClick = {
+                    val fp = vorschlag.fingerabdruck
+                    if (bisher != null && (fp == null || !bestaetigtFingerabdruck(eingabe, fp))) {
+                        falsch = true
+                    } else {
+                        qrVorschlag = null
+                        url = vorschlag.url
+                        onQrScanned?.invoke(vorschlag, eingabe.takeIf { bisher != null })
+                    }
+                }) {
+                    Text(stringResource(if (bisher != null) R.string.setup_qr_pin_uebernehmen else R.string.setup_qr_uebernehmen),
+                        color = if (bisher != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)
+                }
             },
             dismissButton = {
                 TextButton(onClick = { qrVorschlag = null }) { Text(stringResource(R.string.common_cancel)) }
@@ -119,13 +161,21 @@ fun SetupScreen(
         )
     }
 
+    // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
+    // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
     Column(
-        modifier = Modifier.fillMaxSize().padding(Abstaende.riesig),
+        modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+            .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular).padding(Abstaende.riesig),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(80.dp)) {
+            // Auf surface statt primary: Der rote Stein des Logos verschwand auf manchem
+            // primary (noppe dunkel 1,2:1); auf surface steht er in jedem Design.
+            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                modifier = Modifier.size(80.dp)) {
                 Box(contentAlignment = Alignment.Center) {
                     androidx.compose.foundation.Image(
                         painter = androidx.compose.ui.res.painterResource(ch.brickinventoryapp.ressourcen.R.drawable.ic_logo),
@@ -156,10 +206,12 @@ fun SetupScreen(
 
         Spacer(Modifier.height(Abstaende.riesig))
 
-        // QR scan option
-        FilledTonalButton(
+        // QR scan option — mit Rand: Die Tonfläche lag im hellen Grunddesign 1,01:1 auf dem
+        // Hintergrund und war als Knopf nicht zu erkennen.
+        OutlinedButton(
             onClick = { scanError = null; showScanner = true },
-            modifier = Modifier.fillMaxWidth()
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
         ) {
             Icon(Icons.Default.QrCodeScanner, null, Modifier.size(20.dp))
             Spacer(Modifier.width(Abstaende.klein))
@@ -219,15 +271,19 @@ fun SetupScreen(
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }
         }
-        Spacer(Modifier.height(Abstaende.gross))
-        Text(
-            // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
-            // (app/build.gradle.kts), ein fest eingetragener Stand veraltet unbemerkt.
-            stringResource(R.string.setup_build, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
+        // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
+        // (app/build.gradle.kts). Ohne Namen (Vorschau, Test) bliebe nur „Build “ stehen.
+        val fassung = ch.brickinventoryapp.ui.components.LocalAppFassung.current.name
+        if (fassung.isNotBlank()) {
+            Spacer(Modifier.height(Abstaende.gross))
+            Text(
+                stringResource(R.string.setup_build, fassung),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+        }
+    }
     }
 }
 

@@ -46,6 +46,7 @@ class PreferencesManager @Inject constructor(
 
         const val DESIGN_SPIEGEL_DATEI = "design_spiegel"
         const val DUNKEL_NACH_SYSTEM = "dunkel_nach_system"
+        const val HELLIGKEIT = "helligkeit"
         const val APP_THEME_SPIEGEL = "app_theme"
         const val SPRACHE_SPIEGEL = "sprache"
         const val NUTZER_CA = "nutzer_ca"
@@ -365,12 +366,15 @@ class PreferencesManager @Inject constructor(
         designSpiegel.getString(APP_THEME_SPIEGEL, null) ?: "classic"
 
     /**
-     * „Dunkel, wenn das System dunkel ist“ — je Gerät. Im Spiegel, weil es wie das
-     * Design schon das erste Bild bestimmt; ohne gespeicherte Wahl folgt die App dem
-     * System (dunkelNachSystemGilt).
+     * System, Hell oder Dunkel — je Gerät. Im Spiegel, weil es wie das Design schon
+     * das erste Bild bestimmt; ohne neue Wahl gilt die frühere „dunkel nach System“.
      */
-    fun dunkelNachSystem(): Boolean = ch.brickinventoryapp.ui.theme.dunkelNachSystemGilt(
+    fun helligkeit(): String = ch.brickinventoryapp.ui.theme.helligkeitGilt(
+        designSpiegel.getString(HELLIGKEIT, null),
         if (designSpiegel.contains(DUNKEL_NACH_SYSTEM)) designSpiegel.getBoolean(DUNKEL_NACH_SYSTEM, true) else null)
+    fun setzeHelligkeit(wahl: String) {
+        designSpiegel.edit { putString(HELLIGKEIT, wahl) }
+    }
     /**
      * Vertrauen die Clients des eigenen Servers auch nutzerinstallierten CAs
      * (util/ServerVertrauen.kt)? Je Gerät und synchron: Gefragt wird bei jedem
@@ -394,10 +398,16 @@ class PreferencesManager @Inject constructor(
 
     // Pins je Host und Port (util/ServerVertrauen.kt). apply genügt: Der Speicher
     // gilt sofort für den nächsten Handshake, nur die Platte folgt nach.
-    override fun pin(schluessel: String): String? = designSpiegel.getString(PIN_PRAEFIX + schluessel, null)
+    // Der vorgehaltene Pin (Anmeldeablage.halteVor) geht vor und lebt nur im Speicher.
+    override fun pin(schluessel: String): String? = vorgehalten[schluessel] ?: gemerkterPin(schluessel)
+    override fun gemerkterPin(schluessel: String): String? = designSpiegel.getString(PIN_PRAEFIX + schluessel, null)
     override fun merkePin(schluessel: String, fingerabdruck: String) {
         designSpiegel.edit { putString(PIN_PRAEFIX + schluessel, fingerabdruck) }
+        vorgehalten.remove(schluessel)
     }
+    override fun halteVor(schluessel: String, fingerabdruck: String) { vorgehalten[schluessel] = fingerabdruck }
+    override fun vergissVorgehaltenen(schluessel: String) { vorgehalten.remove(schluessel) }
+    private val vorgehalten = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */
     fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)
@@ -405,9 +415,7 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit { putBoolean(SYSTEMFARBEN, an) }
     }
 
-    fun setzeDunkelNachSystem(an: Boolean) {
-        designSpiegel.edit { putBoolean(DUNKEL_NACH_SYSTEM, an) }
-    }
+
     suspend fun clearSession() {
         _authTokenState.value = ""
         _tokenHerkunftState.value = null

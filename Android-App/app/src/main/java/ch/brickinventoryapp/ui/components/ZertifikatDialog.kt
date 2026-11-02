@@ -10,6 +10,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -23,16 +32,21 @@ import ch.brickinventoryapp.util.fingerabdruckLesbar
 /**
  * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der
  * Fingerabdruck steht in derselben Schreibweise da wie in der Webapp, damit man
- * ihn vergleichen kann; ein geänderter Schlüssel nennt den bisherigen und den neuen.
+ * ihn vergleichen kann. Ohne bekannte CA oder bei geändertem Schlüssel gilt er erst,
+ * wenn man ihn aus einer zweiten Quelle abschreibt — dort prüft sonst niemand die
+ * Kette, und ein einzelner Tipp wird zur Gewohnheit, die ein Angreifer nutzt.
+ * [onVertrauen] bekommt die Eingabe und sagt, ob sie passte.
  */
 @Composable
 fun ZertifikatDialog(
     frage: ZertifikatUngeklaert,
     nutzerCaAn: Boolean,
-    onVertrauen: () -> Unit,
+    onVertrauen: (eingabe: String?) -> Boolean,
     onNutzerCa: () -> Unit,
     onAbbrechen: () -> Unit,
 ) {
+    var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
+    var falsch by remember(frage.fingerabdruck) { mutableStateOf(false) }
     val host = frage.schluessel.substringBeforeLast(':')
     val (titel, text) = when (frage.art) {
         ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to R.string.zert_text_erstkontakt
@@ -40,6 +54,7 @@ fun ZertifikatDialog(
         ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
     }
     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
+    val abschreiben = frage.art != ZertifikatUngeklaert.Art.ERSTKONTAKT
     AlertDialog(
         onDismissRequest = onAbbrechen,
         title = { Text(stringResource(titel), modifier = Modifier.semantics { heading() }) },
@@ -58,6 +73,19 @@ fun ZertifikatDialog(
                 Text(fingerabdruckLesbar(frage.fingerabdruck), fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
+                if (abschreiben) {
+                    OutlinedTextField(
+                        value = eingabe,
+                        onValueChange = { eingabe = it; falsch = false },
+                        label = { Text(stringResource(if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
+                        isError = falsch,
+                        supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
+                }
                 // Die einzige Stelle, an der nach Nutzer-CAs gefragt wird: beim Fehler,
                 // mit Erklärung. Den Fingerabdruck bestätigt man danach trotzdem einmal.
                 if (frage.art == ZertifikatUngeklaert.Art.UNBEKANNTE_CA && !nutzerCaAn) {
@@ -67,7 +95,8 @@ fun ZertifikatDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = onVertrauen,
+                onClick = { falsch = !onVertrauen(eingabe.takeIf { abschreiben }) },
+                enabled = !abschreiben || eingabe.isNotBlank(),
                 colors = if (geaendert) ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                          else ButtonDefaults.textButtonColors(),
             ) { Text(stringResource(if (geaendert) R.string.zert_vertrauen_neu else R.string.zert_vertrauen)) }

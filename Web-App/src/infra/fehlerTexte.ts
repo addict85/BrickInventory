@@ -49,6 +49,8 @@ export const FEHLER = {
   benutzername_ungueltig:      { de: 'Benutzername darf nur Buchstaben, Zahlen und _.- enthalten (3–32 Zeichen).',
                                  en: 'A username may contain only letters, digits and _.- (3–32 characters).' },
   email_ungueltig:             { de: 'Ungültige E-Mail-Adresse.', en: 'Invalid email address.' },
+  name_ungueltig:              { de: 'Vor- und Nachname: höchstens 100 Zeichen, ohne Steuerzeichen und ohne Webadressen.',
+                                 en: 'First and last name: at most 100 characters, without control characters or web addresses.' },
   email_erforderlich:          { de: 'E-Mail erforderlich.', en: 'Email address required.' },
   passwort_zu_kurz:            { de: 'Passwort muss mindestens 8 Zeichen lang sein.',
                                  en: 'The password must be at least 8 characters long.' },
@@ -71,6 +73,7 @@ export const FEHLER = {
   import_zeile_unterbrochen:   { de: 'Der Server wurde während dieses Sets neu gestartet — bitte die Menge prüfen.',
                                  en: 'The server restarted while importing this set — please check the quantity.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
+  passwort_wechsel_noetig:     { de: 'Bitte zuerst das Startpasswort ändern.', en: 'Please change the initial password first.' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {
     de: 'Passwort-Zurücksetzen per E-Mail ist auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt). Bitte den Verwalter fragen.',
@@ -177,6 +180,7 @@ export const FEHLER = {
   anfrage_json_ungueltig:      { de: 'Die Anfrage ist kein gültiges JSON', en: 'The request body is not valid JSON' },
   anfrage_zu_gross:            { de: 'Die Anfrage ist zu gross', en: 'The request is too large' },
   anfrage_unlesbar:            { de: 'Die Anfrage ist nicht lesbar', en: 'The request cannot be read' },
+  interner_fehler:             { de: 'Interner Fehler — Einzelheiten stehen im Protokoll.', en: 'Internal error — see the server log for details.' },
   csv_parse_fehler:            { de: 'CSV Parse Fehler: {grund}', en: 'CSV parse error: {grund}' },
   kein_import_laeuft:          { de: 'Kein Import läuft', en: 'No import is running' },
 
@@ -201,6 +205,8 @@ export const FEHLER = {
                                  en: 'Invalid PIN (digits only, 3–10 characters)' },
   betrag_ungueltig:            { de: 'Ungültiger Betrag', en: 'Invalid amount' },
   waehrung_ungueltig:          { de: 'Ungültige Währung', en: 'Invalid currency' },
+  waehrung_nur_hauptkonto:     { de: 'Die Währung gilt für den ganzen Haushalt; ändern kann sie nur das Hauptkonto.',
+                                 en: 'The currency applies to the whole household; only the main account can change it.' },
   gutschein_existiert:         { de: 'Diesen Gutschein gibt es bereits.',
                                  en: 'This voucher already exists.' },
   nur_pdf:                     { de: 'Nur PDF-Dateien', en: 'PDF files only' },
@@ -272,6 +278,7 @@ export const FEHLER = {
                                  en: 'This is not a BrickLink wanted list '
                                    + '(no <INVENTORY> in the file).' },
   id_ungueltig:                { de: 'Ungültige ID', en: 'Invalid ID' },
+  eingabe_ungueltig:           { de: 'Ungültige Eingabe im Feld „{feld}“', en: 'Invalid input in field “{feld}”' },
 
   // ── Betrieb und Verwaltung ───────────────────────────────────────────────
   nicht_gefunden:              { de: 'Nicht gefunden', en: 'Not found' },

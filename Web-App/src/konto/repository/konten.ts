@@ -1,6 +1,6 @@
 import * as db from '../../../db/database';
 
-export type KontoKurz = { id: number; username: string; is_admin: boolean };
+export type KontoKurz = { id: number; username: string; is_admin: boolean; must_change_password: boolean };
 
 export interface Konto {
   id: number; username: string; email: string | null; first_name: string | null; last_name: string | null;
@@ -11,7 +11,7 @@ export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'l
 export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & { zweiter_faktor: boolean };
 
 export function kontoKurz(id: number): Promise<KontoKurz | undefined> {
-  return db.get('SELECT id, username, is_admin FROM users WHERE id = $1', [id]);
+  return db.get('SELECT id, username, is_admin, must_change_password FROM users WHERE id = $1', [id]);
 }
 
 export function kontoVoll(id: number): Promise<Konto | undefined> {
@@ -113,7 +113,7 @@ export function loeseQrTokenEin(hash: string): Promise<{ user_id: number; token_
      RETURNING user_id, token_days`, [hash]);
 }
 
-export function kontoMitEmail(email: string): Promise<KontoKurz & { email: string } | undefined> {
+export function kontoMitEmail(email: string): Promise<Omit<KontoKurz, 'must_change_password'> & { email: string } | undefined> {
   return db.get('SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
 }
 
@@ -132,8 +132,15 @@ export function aktivesKontoNachEmail(email: string): Promise<Konto | undefined>
   return db.get<Konto>('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active', [email]);
 }
 
-export async function setzeRuecksetzToken(id: number, hash: string, bis: Date): Promise<void> {
-  await db.run('UPDATE users SET reset_token=$1, reset_token_expires=$2 WHERE id=$3', [hash, bis, id]);
+/** Der Zeitpunkt des letzten Links ergibt sich aus seinem Ablauf; die Bedingung
+ * im UPDATE lässt auch bei gleichzeitigen Anfragen nur eine durch.
+ * @returns false, wenn der letzte Link jünger als `pauseMin` ist */
+export async function setzeRuecksetzTokenWennFrei(id: number, hash: string, gueltigMin: number, pauseMin: number): Promise<boolean> {
+  return !!(await db.run(
+    `UPDATE users SET reset_token = $1, reset_token_expires = NOW() + make_interval(mins => $2::int)
+      WHERE id = $3 AND (reset_token_expires IS NULL
+                         OR reset_token_expires < NOW() + make_interval(mins => $2::int - $4::int))`,
+    [hash, gueltigMin, id, pauseMin])).changes;
 }
 
 export function kontoNachRuecksetzToken(hash: string): Promise<{ id: number } | undefined> {
@@ -174,7 +181,7 @@ export async function zugaengeLoeschen(uid: number, praefix: string): Promise<nu
   return (await db.run("DELETE FROM api_tokens WHERE user_id = $1 AND token LIKE $2 ESCAPE '\\'", [uid, praefix + '%'])).changes;
 }
 
-export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<number> {
+export async function loescheAndereSitzungen(uid: number, eigeneSid: string): Promise<number> {
   return (await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid <> $2", [String(uid), eigeneSid])).changes;
 }
 

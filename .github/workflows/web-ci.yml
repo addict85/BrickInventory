@@ -417,6 +417,18 @@ jobs:
               exit 1
             }
           done
+          # pdfjs-dist ist devDependency, wird aber an den Browser ausgeliefert
+          # (public/vendor/pdfjs/): Sein Befund zählt wie ein Laufzeitpaket.
+          npm audit --json --fetch-timeout=60000 > "$RUNNER_TEMP/audit-voll.json" 2>/dev/null || true
+          node -e '
+            let r; try { r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); }
+            catch { console.log("::warning title=npm audit (pdfjs-dist)::keine auswertbare Antwort"); process.exit(0); }
+            const v = (r.vulnerabilities || {})["pdfjs-dist"];
+            if (v && (v.severity === "high" || v.severity === "critical")) {
+              console.log("::error title=Schwachstelle (" + v.severity + ")::pdfjs-dist (public/vendor/pdfjs)");
+              process.exit(1);
+            }
+          ' "$RUNNER_TEMP/audit-voll.json" || exit 1
           node -e '
             const r = JSON.parse(require("fs").readFileSync(process.env.BERICHT, "utf8"));
             const m = r.metadata.vulnerabilities;

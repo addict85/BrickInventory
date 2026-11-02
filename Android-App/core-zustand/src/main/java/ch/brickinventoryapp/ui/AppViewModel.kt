@@ -57,6 +57,8 @@ class AppViewModel @Inject constructor(
     // Der PdfViewer leitet seinen Download-Client hiervon ab, damit Token,
     // Klartext-Verbot und 401-Meldung auch dort gelten.
     @param:Named("api") val apiHttpClient: okhttp3.OkHttpClient,
+    // Nur für seinen Zwischenspeicher: Beim Abmelden geleert wie Coils eigene Caches.
+    @param:Named("image") private val bildHttpClient: okhttp3.OkHttpClient,
     // Beim Abmelden mit geleert: Die Vorschaubilder gehören zum Konto.
     private val imageLoader: coil3.ImageLoader,
     private val sitzung: Sitzung,
@@ -67,6 +69,8 @@ class AppViewModel @Inject constructor(
     val zertifikatsFrage: ch.brickinventoryapp.util.ZertifikatsFrage,
     ausgangsmelder: Ausgangsmelder,
     private val abmeldehaken: Abmeldehaken,
+    /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
+    val passwortPflicht: ch.brickinventoryapp.data.PasswortPflicht,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -94,12 +98,12 @@ class AppViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, sitzung.state.value.appTheme)
 
-    /** Je Gerät: die dunkle Fassung des Designs, solange das System dunkel ist (ui/theme/Darstellung.kt). */
-    private val _dunkelNachSystem = MutableStateFlow(prefs.dunkelNachSystem())
-    val dunkelNachSystem: StateFlow<Boolean> = _dunkelNachSystem.asStateFlow()
-    fun setDunkelNachSystem(an: Boolean) {
-        prefs.setzeDunkelNachSystem(an)
-        _dunkelNachSystem.value = an
+    /** Je Gerät: System, Hell oder Dunkel (ui/theme/Darstellung.kt). */
+    private val _helligkeit = MutableStateFlow(prefs.helligkeit())
+    val helligkeit: StateFlow<String> = _helligkeit.asStateFlow()
+    fun setHelligkeit(wahl: String) {
+        prefs.setzeHelligkeit(wahl)
+        _helligkeit.value = wahl
     }
 
     /** Je Gerät: auch nutzerinstallierte CAs für den eigenen Server; an nur nach Bestätigung. */
@@ -117,10 +121,11 @@ class AppViewModel @Inject constructor(
         _systemfarben.value = an
     }
 
-    /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. */
-    fun zertifikatVertrauen() {
-        zertifikatsFrage.bestaetige(prefs)
+    /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. Ohne bekannte CA oder geändert nur mit [eingabe]. */
+    fun zertifikatVertrauen(eingabe: String? = null): Boolean {
+        if (!zertifikatsFrage.bestaetige(prefs, eingabe)) return false
         apiHttpClient.connectionPool.evictAll()
+        return true
     }
 
     private val _csvImportState = MutableStateFlow(CsvImportUiState())
@@ -219,16 +224,22 @@ class AppViewModel @Inject constructor(
      * Abmelden räumt alles weg, was zum Konto gehört — auch API- und
      * Bild-Cache, sonst sähe der nächste Nutzer auf dem Gerät fremde Daten.
      * Die Bereichs-ViewModels leeren sich auf [Sitzung.abgemeldet]. Der Job lässt
-     * einen Serverwechsel warten, bis alles weg ist.
+     * einen Serverwechsel warten, bis alles weg ist. Zuerst entwertet der Server
+     * den Token (kurz begrenzt) — beim Wechsel ist das noch der alte Server.
      */
     @OptIn(coil3.annotation.ExperimentalCoilApi::class)
     fun logout(): Job {
         csvWatchJob?.cancel(); csvWatchJob = null
         return viewModelScope.launch {
+            if (sitzung.state.value.isLoggedIn) repo.konto.abmeldenAmServer()
             prefs.clearSession()
+            passwortPflicht.erledigt()
             repo.clearCache()
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }
+                // Bilder des Kontos liegen auch hier: HTTP-Zwischenspeicher und Vorschau-Ablage.
+                runCatching { bildHttpClient.cache?.evictAll() }
+                runCatching { vorschau.leeren() }
             }
             // Speicher zuerst, sonst schreibt Coil beim nächsten Treffer wieder auf die Platte.
             try {

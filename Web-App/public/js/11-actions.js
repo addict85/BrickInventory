@@ -1,4 +1,4 @@
-import { registerActions, resolveAction } from './00-registry.js';
+import { istVertraut, registerActions, resolveAction } from './00-registry.js';
 import { G, bildPlatzhalter, fullUrl, setLang } from './01-core.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
@@ -37,11 +37,45 @@ import { merkpostenLoeschen } from './16-merkliste.js';
 (function () {
   'use strict';
 
-  /** Ereignisse, die per Delegation am document abgefangen werden. */
-  const DELEGATED = ['click', 'change', 'input', 'blur', 'keydown', 'mouseenter', 'mouseleave'];
+  /** Ereignisse, die per Delegation am document abgefangen werden. Kein
+   * mouseenter/mouseleave: Ein Überfahren mit der Maus ist keine Absicht, und
+   * eingeschleustes Markup löste damit Aktionen ohne Klick aus. */
+  const DELEGATED = ['click', 'change', 'input', 'blur', 'keydown'];
 
-  /** blur, mouseenter und mouseleave steigen nicht auf — die brauchen Capture. */
-  const NEEDS_CAPTURE = new Set(['blur', 'mouseenter', 'mouseleave', 'error', 'load']);
+  /** blur steigt nicht auf — braucht Capture. */
+  const NEEDS_CAPTURE = new Set(['blur', 'error', 'load']);
+
+  // Ausser click nimmt jedes Ereignis nur die Handler, die das Markup dafür
+  // wirklich nutzt; test/aktionen-schutz.test.js gleicht die Liste ab.
+  const NUR = {
+    change: new Set(['acqSave', 'aendereAlarmSchwelle', 'autosaveSet', 'benenneLagerortUm',
+      'gutscheinDateiGewaehlt', 'gutscheinLandSpeichern', 'importAlarmeCsv', 'importConfig', 'importFigsCsv',
+      'importMerklisteCsv', 'importPartsCsv', 'ladeMerkliste', 'lagerortGewaehlt', 'manAcqSave',
+      'manQtySave', 'merkpostenInhaberGewaehlt', 'onScopeChange', 'onStorageChange',
+      'plFuelleBestand', 'renderFigsAll', 'renderGallery', 'saveJobMinutes', 'saveJobTime',
+      'saveRegEnabled', 'setCatFilter', 'setColorFilter', 'setLangFromEl', 'setzeDunkel',
+      'setzeEigenesDesign', 'speichereAlarm', 'speichereSetLagerort', 'speichereTeilFarbe',
+      'speichereTeilLagerort', 'startSetCsvImport', 'updateColorDot', 'uploadInstr',
+      'wantedKorrekturFarbe', 'wantedKorrekturNummer', 'wantedKorrekturWert',
+      'wantedXmlGewaehlt', 'wechsleAlarmZustand']),
+    input: new Set(['alarmGetippt', 'filterFigs']),
+    blur: new Set(['acqSave', 'lagerortGetippt', 'manAcqSave', 'saveManualFigBl']),
+    keydown: new Set(['blurOnEnter', 'lagerortTaste']),
+  };
+
+  // Löschen, Konto, Zugänge, Verwaltung: nur von Elementen, die unser Code
+  // erzeugt hat (istVertraut), nie aus eingeschleustem Markup.
+  const GEFAEHRLICH = new Set([
+    'delSet', 'delSetStop', 'delInstr', 'acqDelete', 'manAcqDelete', 'deleteManualFig',
+    'deleteManualFigStop', 'deleteManualPartStop', 'merkpostenLoeschen', 'merkpostenLoeschenStop',
+    'merkpostenDetailLoeschen', 'gutscheinLoeschen', 'loescheAlarm', 'loescheLagerort',
+    'papierkorbEndgueltig', 'papierkorbLeeren', 'deleteBricksetQueueEntry',
+    'revokeToken', 'revokeOtherTokens', 'passkeyHinzufuegen', 'passkeyLoeschen',
+    'zfEinrichten', 'zfNeueCodes', 'zfAbschalten', 'zfZuruecksetzen',
+    'createHouseholdInvite', 'redeemHouseholdInvite', 'unlinkHousehold', 'unlinkFromParent',
+    'delUser', 'toggleAdmin', 'toggleAktiv', 'openRpw', 'saveRegEnabled', 'importConfig',
+    'auftragAbbrechen', 'auftragsArtLeeren',
+  ]);
 
   function attrFor(type) { return 'data-' + type; }
 
@@ -66,6 +100,9 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     const el = ev.target?.closest?.(`[${attrFor(type)}]`);
     if (!el) return;
     const name = el.getAttribute(attrFor(type));
+    if ((NUR[type] && !NUR[type].has(name)) || (GEFAEHRLICH.has(name) && !istVertraut(el))) {
+      console.warn('[actions] abgewiesen:', type, name); return;
+    }
     const fn = resolve(name);
     if (!fn) { console.warn('[actions] unbekannter Handler:', name); return; }
 

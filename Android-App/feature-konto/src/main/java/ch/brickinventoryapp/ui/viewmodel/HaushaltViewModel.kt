@@ -4,6 +4,7 @@ import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.HouseholdUiState
@@ -26,12 +27,14 @@ import javax.inject.Inject
 class HaushaltViewModel @Inject constructor(
     dienste: AppDienste,
     private val haushalt: HaushaltRepository,
+    private val konto: KontoRepository,
 ) : BereichsViewModel(dienste) {
 
     private val _householdState = MutableStateFlow(HouseholdUiState())
     val householdState: StateFlow<HouseholdUiState> = _householdState.asStateFlow()
 
     fun loadHouseholdStatus() {
+        pruefeZweitenFaktor()
         viewModelScope.launch {
             _householdState.update { it.copy(isLoading = true, message = null) }
             when (val r = haushalt.getHousehold()) {
@@ -56,20 +59,31 @@ class HaushaltViewModel @Inject constructor(
     /**
      * Der Server verlangt zum Einlösen das aktuelle Passwort des eigenen
      * Kontos, denn die Verknüpfung öffnet den eigenen Bestand einem anderen
-     * Konto. Bei Erfolg lädt der Status neu.
+     * Konto; bei aktivem zweitem Faktor auch dessen Code. Bei Erfolg lädt der
+     * Status neu.
      */
-    fun redeemHouseholdInvite(code: String, passwort: String) {
+    fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null) {
         viewModelScope.launch {
-            _householdState.update { it.copy(isLoading = true, message = null, passwortFalsch = false) }
-            when (val r = haushalt.redeemHouseholdInvite(code.trim(), passwort)) {
+            _householdState.update { it.copy(isLoading = true, message = null, passwortFalsch = false, faktorFalsch = false) }
+            when (val r = haushalt.redeemHouseholdInvite(code.trim(), passwort, faktorCode)) {
                 is Result.Success -> {
                     _householdState.update { it.copy(isLoading = false, message = r.data.error,
                         eingeloest = if (r.data.success) it.eingeloest + 1 else it.eingeloest) }
                     if (r.data.success) kontenGeaendert(bestand = false)
                 }
+                // Kennt die App den zweiten Faktor noch nicht, zeigt erst diese Antwort das Codefeld.
                 is Result.Error -> _householdState.update { it.copy(isLoading = false,
-                    passwortFalsch = r.code == PASSWORT_FALSCH, message = einloeseFehler(r)) }
+                    passwortFalsch = r.code == PASSWORT_FALSCH, faktorFalsch = r.code == FAKTOR_FALSCH,
+                    faktorNoetig = it.faktorNoetig || r.code == FAKTOR_FALSCH, message = einloeseFehler(r)) }
             }
+        }
+    }
+
+    /** Vor dem Einlösen: Fehlt das Codefeld, kostete der erste Versuch einen Fehlversuch. */
+    private fun pruefeZweitenFaktor() {
+        viewModelScope.launch {
+            val r = konto.zweiterFaktorStand()
+            if (r is Result.Success && r.data.aktiv) _householdState.update { it.copy(faktorNoetig = true) }
         }
     }
 
@@ -79,6 +93,7 @@ class HaushaltViewModel @Inject constructor(
      */
     private fun einloeseFehler(r: Result.Error): String = when {
         r.code == PASSWORT_FALSCH -> text(R.string.household_redeem_password_wrong)
+        r.code == FAKTOR_FALSCH -> text(R.string.household_redeem_code_wrong)
         r.code == "zu_viele_fehlversuche" || r.httpCode == 429 ->
             r.message.ifBlank { text(R.string.household_redeem_locked) }
         else -> meldung(r)
@@ -118,5 +133,6 @@ class HaushaltViewModel @Inject constructor(
 
     private companion object {
         const val PASSWORT_FALSCH = "aktuelles_passwort_falsch"
+        const val FAKTOR_FALSCH = "zweiter_faktor_falsch"
     }
 }

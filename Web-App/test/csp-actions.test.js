@@ -335,9 +335,9 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // Der Papierkorb auf der Kachel ist ein Mausweg und für Hilfstechnik
   // verborgen (sonst steckte ein Knopf im Knopf); Löschen per Tastatur geht
   // über den Detail-Dialog. Ein title sagt der Maus, was er tut.
-  assert.match(gallery, /<span class="delbtn" data-click="delSetStop" aria-hidden="true"[^>]*title=/, 'Set-Kachel: Papierkorb nicht verborgen');
+  assert.match(gallery, /<span class="delbtn" data-click="delSetStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/, 'Set-Kachel: Papierkorb nicht verborgen');
   const figs = fs.readFileSync(path.join(PUB, 'js', '06-minifigs.js'), 'utf8');
-  assert.match(figs, /<span class="delbtn" data-click="deleteManualFigStop" aria-hidden="true"[^>]*title=/,
+  assert.match(figs, /<span class="delbtn" data-click="deleteManualFigStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/,
     'Minifiguren-Kachel: Papierkorb nicht verborgen');
 
   // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit

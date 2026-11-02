@@ -6,6 +6,7 @@ import { safeDataPath } from '../src/infra/datenPfad';
 
 import { requireLoginOrToken, angemeldeteNutzerId } from '../src/konto/http/anmeldung';
 import { scopeIds } from '../src/haushalt/haushalt';
+import { anleitungFreigegeben } from '../src/katalog/bilder/bildBlickfeld';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 const router = express.Router();
@@ -30,10 +31,12 @@ router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardReque
   liefereDatei(res, filePath);
 });
 
-// Geteilte Anleitungen gehören niemandem; angemeldet genügt.
+// Geteilt abgelegt, aber unter der Setnummer: nur zu Sets im eigenen Blickfeld,
+// sonst dieselbe 404 wie für eine fehlende Datei.
 router.get('/data/instructions/*pfad', requireLoginOrToken, async (req: WildcardRequest, res: Response) => {
-  const filePath = safeDataPath('instructions', req.params.pfad.filter(Boolean));
-  if (!filePath) return res.status(404).send('Datei nicht gefunden');
+  const segmente = req.params.pfad.filter(Boolean);
+  const filePath = safeDataPath('instructions', segmente);
+  if (!filePath || !await anleitungFreigegeben(angemeldeteNutzerId(req), segmente)) return res.status(404).send('Datei nicht gefunden');
   liefereDatei(res, filePath);
 });
 

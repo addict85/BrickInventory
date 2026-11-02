@@ -855,10 +855,12 @@ CREATE TABLE users (
   reset_token_expires timestamp with time zone,
   must_change_password boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
+  sitzungs_version integer NOT NULL DEFAULT 0,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_username_key UNIQUE (username)
 );
 CREATE UNIQUE INDEX users_email_lower ON users USING btree (lower(email));
+CREATE UNIQUE INDEX users_username_lower ON users USING btree (lower(username));
 
 CREATE TABLE verwaltungsprotokoll (
   id integer NOT NULL DEFAULT nextval('verwaltungsprotokoll_id_seq'::regclass),

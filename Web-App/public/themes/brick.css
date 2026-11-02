@@ -250,9 +250,16 @@
 }
 [data-theme="brick"] .bstat .bstat-l{font-size:.82rem;color:inherit;text-transform:none;letter-spacing:0}
 [data-theme="brick"] .bstat .bstat-v{font-size:1.7rem;font-weight:800;margin-top:2px;line-height:1.1;color:inherit}
+[data-theme="brick"] .bstat .bstat-s{color:inherit}
 [data-theme="brick"] .bstat-slate{background:var(--b600)}
-/* Dunkel ist die Markenfarbe hell; weisse Schrift darauf läge unter 3:1. */
-[data-theme="brick"][data-dunkel] .bstat-slate{color:var(--auf-primaer)}
+/* Dunkel leuchteten die hellen Markenflächen aus dem Raum; dort getönte
+   dunkle Kacheln mit Rand, die Farbe tragen die Noppen. */
+[data-theme="brick"][data-dunkel] .bstat{background:var(--b100);color:var(--txt);border:1px solid var(--b300)}
+[data-theme="brick"][data-dunkel] .bstat-petrol{background:#17313a;border-color:#2d5a66}
+[data-theme="brick"][data-dunkel] .bstat-light{background:var(--s200);border-color:var(--s300)}
+[data-theme="brick"][data-dunkel] .bstat::before{background-color:var(--b500)}
+[data-theme="brick"][data-dunkel] .bstat-petrol::before{background-color:#5aa3b5}
+[data-theme="brick"][data-dunkel] .bstat-light::before{background-color:var(--s400)}
 [data-theme="brick"] .bstat-petrol{background:var(--brick-petrol)}
 [data-theme="brick"] .bstat-light{background:var(--brick-slate-lt);color:#20303f}
 
@@ -316,7 +323,7 @@
 [data-theme="brick"] .lcard input,
 [data-theme="brick"] .lcard select{
   background:var(--sur);
-  border:1px solid var(--b200);
+  border:1px solid var(--feldrand);
   border-radius:10px;
 }
 [data-theme="brick"] .lcard input:focus,

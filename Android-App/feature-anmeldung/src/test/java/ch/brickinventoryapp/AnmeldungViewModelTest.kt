@@ -41,7 +41,19 @@ import org.junit.Test
  *   H  (01.11.2026) in loginWithQrToken() die Prüfung entfernt → rot „ein
  *      QR-Code mit http-Adresse …“ (Adresse gespeichert, qr-login gerufen)
  *   I  (30.10.2026) merkePin() in loginWithQrToken() nach qrLogin() → rot „ein
- *      QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage“
+ *      QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage“ (Test seit O–Q
+ *      umgeschrieben: vorgehalten statt gemerkt)
+ *   O  in loginWithQrToken() wieder merkePin() statt halteVor() vor qrLogin() →
+ *      rot „ein gescheiterter QR-Code hinterlaesst keinen Pin“ und „… haelt den
+ *      Pin … vor“
+ *   P  die Prüfung bisherigerPin() vor dem Start entfernt → rot „ein QR-Code
+ *      mit anderem Schluessel ersetzt den Pin nie still“
+ *   R  (01.11.2026) die Prüfung bestaetigtFingerabdruck() in loginWithQrToken()
+ *      durch `pinWechselEingabe == null` ersetzt (jede Eingabe genügt) → rot
+ *      „ein QR-Code mit anderem Schluessel ersetzt den Pin nie still“ (falsch
+ *      abgeschriebener Wert angenommen)
+ *   Q  das finally mit vergissVorgehaltenen() entfernt → rot „ein gescheiterter
+ *      QR-Code hinterlaesst keinen Pin“ (Zeitüberschreitung, nichts vergessen)
  *   J  (30.10.2026) LoginRequest wieder mit festem neverExpires = true → rot
  *      „ein Token ohne Ablauf nur ueber https“ (http-Teil)
  *   K  (31.10.2026) PasskeyAnmeldung mit mitToken = false → rot „mit Passkey
@@ -63,7 +75,13 @@ class AnmeldungViewModelTest {
         override suspend fun saveServerUrl(url: String) { this.url = url; protokoll += "url:$url" }
         override suspend fun saveAuthToken(token: String) { protokoll += "token:$token" }
         override suspend fun saveUsername(name: String) { protokoll += "name:$name" }
-        override fun merkePin(schluessel: String, fingerabdruck: String) { protokoll += "pin:$schluessel=$fingerabdruck" }
+        val pins = java.util.concurrent.ConcurrentHashMap<String, String>()
+        override fun merkePin(schluessel: String, fingerabdruck: String) {
+            pins[schluessel] = fingerabdruck; protokoll += "pin:$schluessel=$fingerabdruck"
+        }
+        override fun gemerkterPin(schluessel: String): String? = pins[schluessel]
+        override fun halteVor(schluessel: String, fingerabdruck: String) { protokoll += "vor:$schluessel=$fingerabdruck" }
+        override fun vergissVorgehaltenen(schluessel: String) { protokoll += "vergiss:$schluessel" }
     }
 
     private lateinit var pfade: PfadServer
@@ -156,14 +174,62 @@ class AnmeldungViewModelTest {
         assertEquals("Derselbe Server: keine Abmeldung", "url:https://server", ablage.protokoll.first())
     }
 
+    private val fp = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 7 })
+    private val fpAlt = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 9 })
+
     @Test
-    fun `ein QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage`() {
-        val fp = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 7 })
+    fun `ein QR-Code mit Fingerabdruck haelt den Pin fuer die erste Anfrage vor und merkt ihn erst danach`() {
         pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
         val vm = vm()
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
+        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn && ablage.protokoll.any { it.startsWith("vergiss:") } }
+        val p = ablage.protokoll.toList()
+        assertEquals("vor:brick.example.org:443=$fp", p.first())
+        assertTrue("Gemerkt nach der Adresse, vor dem Token: $p",
+            p.indexOf("url:https://brick.example.org") < p.indexOf("pin:brick.example.org:443=$fp") &&
+                p.indexOf("pin:brick.example.org:443=$fp") < p.indexOf("token:abc"))
+        assertEquals(fp, ablage.pins["brick.example.org:443"])
+    }
+
+    @Test
+    fun `ein gescheiterter QR-Code hinterlaesst keinen Pin`() {
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
+        val vm = vm()
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
+        TestApi.warteBis("Antwort") { ablage.protokoll.any { it.startsWith("vergiss:") } }
+        assertTrue(pfade.anfragenAn("qr-login").isNotEmpty())
+        assertTrue("Nichts dauerhaft: ${ablage.protokoll}", ablage.pins.isEmpty())
+        assertEquals("vergiss:brick.example.org:443", ablage.protokoll.last())
+        assertFalse(t.sitzung.state.value.isLoggedIn)
+    }
+
+    @Test
+    fun `ein QR-Code mit anderem Schluessel ersetzt den Pin nie still`() {
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        ablage.pins["brick.example.org:443"] = fpAlt
+        val vm = vm()
+        assertEquals("Der Bildschirm bekommt den bisherigen", fpAlt, vm.bisherigerPin("brick.example.org", fp))
+        assertNull("Derselbe ist kein Wechsel", vm.bisherigerPin("https://brick.example.org/", fpAlt))
+
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
+        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.loginError)
+        Thread.sleep(100)
+        assertTrue("Ohne Bestätigung nichts: ${ablage.protokoll}", ablage.protokoll.isEmpty())
+        assertTrue(pfade.anfragenAn("qr-login").isEmpty())
+        assertEquals(fpAlt, ablage.pins["brick.example.org:443"])
+
+        // Ein Tipp mit falsch abgeschriebenem Wert genügt ebenso wenig.
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
+            pinWechselEingabe = "09:09:09:09:09:09:09:09")
+        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.loginError)
+        Thread.sleep(100)
+        assertTrue("Falsch abgeschrieben: nichts", pfade.anfragenAn("qr-login").isEmpty())
+
+        // Die letzten 16 Hex-Zeichen des neuen Fingerabdrucks, wie aus der Webapp abgeschrieben.
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
+            pinWechselEingabe = "07:07:07:07:07:07:07:07")
         TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
-        assertEquals("pin:brick.example.org:443=$fp", ablage.protokoll.first())
+        assertEquals("Nach Bestätigung und Anmeldung gilt der neue", fp, ablage.pins["brick.example.org:443"])
     }
 
     @Test

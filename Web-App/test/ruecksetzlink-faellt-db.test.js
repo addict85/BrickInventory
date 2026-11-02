@@ -40,7 +40,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
     const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
       VALUES ($1, $2, 'x', true, true) RETURNING id`, [name, `${name}@example.org`])).id;
     const token = crypto.randomBytes(32).toString('hex');
-    await K.setzeRuecksetzToken(uid, hashToken(token), new Date(Date.now() + 3600_000));
+    assert.ok(await K.setzeRuecksetzTokenWennFrei(uid, hashToken(token), 60, 15));
     await wechsel(uid);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
     const r = await fetch(`${base}/api/v1/auth/reset-password`, { method: 'POST', headers: { 'content-type': 'application/json' },

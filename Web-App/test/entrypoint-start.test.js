@@ -135,3 +135,25 @@ test('chown als root folgt keinem Symlink', () => {
   assert.ok(aufrufe.length >= 3, `nur ${aufrufe.length} chown gefunden`);
   assert.deepEqual(aufrufe.filter(z => !/\bchown (-R )?-h\b/.test(z)), []);
 });
+
+// Gegenprobe (01.11.2026 gemessen): setzeMarke wieder mit `printf … > "$MARKE"`
+// als root → rot: „die Marke schreibt nicht durch einen Symlink“.
+test('die Marke schreibt nicht durch einen Symlink', (t) => {
+  const os = require('node:os');
+  const { spawnSync } = require('node:child_process');
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-marke-'));
+  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const fremd = path.join(ordner, 'fremd'), marke = path.join(ordner, '.eigentuemer');
+  fs.writeFileSync(fremd, 'unberuehrt');
+  fs.symlinkSync(fremd, marke);
+  const fn = ep.slice(ep.indexOf('setzeMarke() {'), ep.indexOf('case "${BRICKINV_CHOWN'));
+  // su-exec gibt es nur im Image; hier wechselt es den Nutzer nicht.
+  fs.mkdirSync(path.join(ordner, 'bin'));
+  fs.writeFileSync(path.join(ordner, 'bin', 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
+  const r = spawnSync('sh', ['-c', `${fn}\nsetzeMarke`],
+    { env: { PATH: `${path.join(ordner, 'bin')}:${process.env.PATH}`, MARKE: marke, ZIEL_UID: '1234' }, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(fs.readFileSync(fremd, 'utf8'), 'unberuehrt');
+  assert.equal(fs.lstatSync(marke).isSymbolicLink(), false);
+  assert.equal(fs.readFileSync(marke, 'utf8'), '1234');
+});

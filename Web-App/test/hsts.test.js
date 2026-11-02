@@ -96,17 +96,15 @@ test('sie wird NUR ueber eine verschluesselte Verbindung gesetzt', () => {
     'LAN-Betrieb ueber http, und der Browser sperrt ihn dauerhaft aus.');
 });
 
-test('beide Wege, die Verschluesselung zu erkennen, werden geprueft', () => {
-  // req.secure greift hinter dem Reverse-Proxy nur mit `trust proxy` — und das
-  // steht in dieser Datei nur unter NODE_ENV === 'production'. Der Kopf
-  // x-forwarded-proto greift auch ohne. Einer allein waere eine Regel mit
-  // einer Luecke, die niemand sieht.
+test('verschluesselt heisst req.secure, nicht ein roher Kopf', () => {
+  // X-Forwarded-Proto kann jeder Client selbst schicken; nur hinter einem
+  // vertrauten Proxy (trust proxy, src/infra/proxyVertrauen.ts) macht Express
+  // daraus req.secure. Sonst setzte ein gefälschter Kopf HSTS im LAN-Betrieb.
+  // Gegenprobe (01.11.2026): `|| req.headers['x-forwarded-proto'] === 'https'`
+  // wieder angehängt → rot.
   const m = /const ueberTls = ([^;]+);/.exec(server);
   assert.ok(m, 'Die Erkennung der verschluesselten Verbindung ist weg');
-  assert.match(m[1], /req\.secure/, 'req.secure wird nicht mehr geprueft');
-  assert.match(m[1], /x-forwarded-proto'\] === 'https'/,
-    'x-forwarded-proto wird nicht mehr geprueft — hinter einem Reverse-Proxy ' +
-    'ohne `trust proxy` bliebe HSTS dann stumm');
+  assert.equal(m[1].trim(), 'req.secure');
 });
 
 test('die Kopfzeile laesst sich abstellen', () => {

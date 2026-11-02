@@ -162,12 +162,12 @@ test('ein 404 darf der Browser sich merken', () => {
   // sich die Antwort merken darf — beides gilt unverändert.
   assert.match(px, /function sendePlatzhalter\(res(: \w+)?\)/,
     'Kein gemeinsamer Weg für ein fehlendes Bild');
-  assert.match(px, /sendePlatzhalter[\s\S]{0,600}Cache-Control', 'public, max-age=3600/,
+  assert.match(px, /sendePlatzhalter[\s\S]{0,600}Cache-Control', 'private, max-age=3600/,
     'Die Antwort trägt keinen Cache-Hinweis — der Browser fragt jedes Mal neu');
   // Beide Wege müssen ihn benutzen: der Treffer im Merker und die Absage vom CDN.
   assert.match(px, /istBekanntFehlend\(cacheKey\)\) return sendePlatzhalter\(res\)/,
     'Der Merker-Treffer antwortet ohne Cache-Hinweis');
-  assert.match(px, /statusCode === 404 \? sendePlatzhalter\(res\)/,
+  assert.match(px, /r\.status === 404 \? sendePlatzhalter\(res\)/,
     'Die Absage vom CDN antwortet ohne Cache-Hinweis');
   // 403 (Drosselung) darf NICHT zwischengespeichert werden — dasselbe Argument
   // wie beim serverseitigen Merker.

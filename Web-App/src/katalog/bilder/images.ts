@@ -76,9 +76,27 @@ export function resolveIfExists(publicRelPath: string) {
   return exists ? resolveImageLocal(publicRelPath) : null;
 }
 
+/** Diese CDNs liefern dasselbe Bild ohne Anfrageteil; dort steht nur ein
+ * Zeitstempel. Mit ihm im Schlüssel legte jede Variante eine neue Datei an.
+ * www.bricklink.com braucht ihn (getPic.asp?…), dort wird er nur sortiert. */
+const OHNE_ANFRAGETEIL = ['cdn.rebrickable.com', 'images.brickset.com', 'img.bricklink.com'];
+
+/** Die Adresse, die der Proxy holt und nach der er ablegt; null, wenn unlesbar. */
+export function proxyAdresse(url: string): string | null {
+  let u: URL;
+  try { u = new URL(url); } catch { return null; }
+  u.hash = '';
+  if (OHNE_ANFRAGETEIL.some(h => u.hostname === h || u.hostname.endsWith('.' + h))) u.search = '';
+  else u.searchParams.sort();
+  return u.href;
+}
+
+export function proxyCacheSchluessel(url: string): string {
+  return crypto.createHash('sha1').update(proxyAdresse(url) ?? url).digest('hex');
+}
+
 // Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#proxycachepathfor
 export function proxyCachePathFor(url: string): string | null {
   if (!url) return null;
-  return path.join(APP_ROOT, 'data', 'img_proxy_cache',
-    crypto.createHash('sha1').update(url).digest('hex'));
+  return path.join(APP_ROOT, 'data', 'img_proxy_cache', proxyCacheSchluessel(url));
 }

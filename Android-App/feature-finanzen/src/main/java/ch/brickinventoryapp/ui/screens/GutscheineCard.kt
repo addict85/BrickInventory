@@ -27,6 +27,8 @@ import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.fmtDatum
+import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.inVierergruppen
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil, möglichst einfach erreichbar
@@ -310,7 +312,7 @@ private fun GutscheinZeile(
         // Vierergruppen nicht annimmt. `clickable` auf dem Text statt eines eigenen Knopfs
         // je Zeile; die Fläche geht über die volle Breite.
         Text(
-            g.number.chunked(4).joinToString(" "),
+            inVierergruppen(g.number),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             modifier = Modifier
@@ -320,7 +322,7 @@ private fun GutscheinZeile(
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "%.2f %s".format(g.amount, g.currency),
+                fmtMoney(g.amount, g.currency),
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
             )

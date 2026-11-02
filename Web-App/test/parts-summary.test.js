@@ -85,7 +85,7 @@ test('set_number und storage gehen bewusst an der Zusammenfassung vorbei', () =>
 });
 
 // ── Integrationstest (nur mit DB) ──────────────────────────────────────────
-let db, H, PS, skip = null;
+let db, H, PS, S, skip = null;
 try {
   // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
@@ -94,6 +94,7 @@ const _req = require('./helpers/sources').buildAndRequire();
   db = _req('db/database.js');
   H  = require('./helpers/sources').handlerModul(_req);
   PS = _req('src/teile/partsSummary.js');
+  S  = _req('src/bestand/kennzahlen.js');
 } catch (e) { skip = e.message; }
 
 test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht',
@@ -341,11 +342,18 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   assert.deepEqual(ausLive, ausSummary,
     'Die beiden Wege zählen Verschiedenes. Aus der Zusammenfassung: ' +
     `${JSON.stringify(ausSummary)}, live: ${JSON.stringify(ausLive)}. ` +
-    'Das manuell erfasste Teil (Menge 11) gehört in keine der beiden Zahlen.');
+    'Das manuell erfasste Teil (Menge 11) gehört in keine der Set-Zahlen.');
 
   // Und der Inhalt stimmt auch: EIN Set-Teil, Menge 3 — das manuelle zählt nicht.
   assert.equal(ausSummary.unique_parts, 1, 'Das manuelle Teil wurde mitgezählt');
   assert.equal(ausSummary.total_parts, 3, 'Die Menge des manuellen Teils steckt in der Summe');
+  // Getrennt ausgewiesen: Der Teile-Reiter zählt beide zusammen, wie die
+  // Kachel der Sammlung (/v1/stats). Gegenprobe (01.11.2026): manual_parts in
+  // kennzahlen() fest auf 0 → rot „Die einzeln erfassten Teile fehlen …“.
+  assert.equal(ausSummary.manual_parts, 11, 'Die einzeln erfassten Teile fehlen in der Aufschlüsselung');
+  const gesamt = await S.getStats([U]);
+  assert.deepEqual([gesamt.total_parts, gesamt.set_parts, gesamt.manual_parts], [14, 3, 11],
+    'Die Kachel der Sammlung zeigt nicht dieselbe Summe wie der Teile-Reiter');
 
   await db.run('DELETE FROM parts WHERE user_id=$1', [U]);
   await db.run('DELETE FROM set_acquisitions WHERE user_id=$1', [U]);

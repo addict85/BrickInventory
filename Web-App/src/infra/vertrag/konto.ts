@@ -59,7 +59,7 @@ export const LoginResponse = z.looseObject({
 export const MeResponse = z.looseObject({
   success: z.boolean(),
   loggedIn: z.boolean(),
-  user: User.nullable().optional(),
+  user: User.extend({ mustChangePassword: z.boolean().optional() }).nullable().optional(),
   token_expires: zeit.nullable().optional(),
   token_last_used: zeit.nullable().optional(),
   token_info: TokenInfo.nullable().optional(),
@@ -167,39 +167,55 @@ export const Geloescht = z.looseObject({ success: z.literal(true), deleted: ganz
 export const QrLoginResponse = LoginResponse.extend({ username: z.string(), isAdmin: z.literal(false), userId: ganz });
 export const ProfilGespeichert = GenericResponse.extend({ emailChanged: z.boolean().optional(), emailSent: z.boolean().optional() });
 
+/** Eingaben der Kontorouten: Typ und Länge; die Regeln (USERNAME_RE, Passwort)
+ * prüft weiter die Route. Freitext ist begrenzt, die Spalten sind `text`;
+ * `label` fehlt, weil tokenLabel() jeden Wert kürzt oder ersetzt. */
+const txt = (n: number) => z.string().max(n).optional();
+const txtLeer = (n: number) => z.string().max(n).nullable().optional();
+const PASSWORT = 1024;
+const code = z.union([z.string().max(64), z.number()]).nullable().optional();
+const Verwalter = { admin_password: txt(PASSWORT) };
+const Anmeldedaten = z.looseObject({ username: txt(254), password: txt(PASSWORT), code, ohne_token: z.boolean().optional(),
+  never_expires: z.boolean().optional(), scope: txt(20), passkey: z.record(z.string(), z.unknown()).nullable().optional() });
+const Registrierung = z.looseObject({ username: txt(64), email: txt(254), first_name: txtLeer(100), last_name: txtLeer(100),
+  password: txt(PASSWORT), language: txt(10) });
+const ProfilAenderung = z.looseObject({ username: txt(64), email: txtLeer(254), first_name: txtLeer(100), last_name: txtLeer(100),
+  password_current: txt(PASSWORT), code });
+const NurPasswort = z.looseObject({ password: txt(PASSWORT), code });
+
 export const routen = {
   'GET /api/v1/auth/registration-status': { antwort: RegistrationStatusResponse },
   'GET /api/v1/auth/profile': { antwort: ProfilResponse },
   'GET /api/v1/auth/zweiter-faktor': { antwort: ZweiterFaktorStand },
   'GET /api/v1/auth/me': { antwort: MeResponse },
   'GET /api/v1/settings/tokens': { antwort: TokensResponse },
-  'POST /api/v1/auth/login': { antwort: LoginResponse },
-  'POST /api/v1/auth/qr-login': { antwort: QrLoginResponse },
+  'POST /api/v1/auth/login': { antwort: LoginResponse, eingabe: Anmeldedaten },
+  'POST /api/v1/auth/qr-login': { antwort: QrLoginResponse, eingabe: z.looseObject({ token: txt(200) }) },
   'POST /api/v1/auth/logout': { antwort: GenericResponse },
-  'POST /api/v1/auth/register': { antwort: RegisterResponse },
-  'POST /api/v1/auth/forgot-password': { antwort: ForgotPasswordResponse },
-  'PUT /api/v1/auth/profile': { antwort: ProfilGespeichert },
-  'POST /api/v1/auth/change-password': { antwort: GenericResponse },
-  'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung },
-  'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes },
-  'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse },
-  'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes },
+  'POST /api/v1/auth/register': { antwort: RegisterResponse, eingabe: Registrierung },
+  'POST /api/v1/auth/forgot-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
+  'PUT /api/v1/auth/profile': { antwort: ProfilGespeichert, eingabe: ProfilAenderung },
+  'POST /api/v1/auth/change-password': { antwort: GenericResponse, eingabe: z.looseObject({ current: txt(PASSWORT), newPassword: txt(PASSWORT), code }) },
+  'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, eingabe: NurPasswort },
+  'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurPasswort },
+  'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse, eingabe: NurPasswort },
+  'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes, eingabe: NurPasswort },
   'DELETE /api/v1/settings/tokens/:tokenId': { antwort: TokenWiderruf },
   'POST /api/v1/auth/token-rotieren': { antwort: TokenRotation },
   'GET /api/v1/auth/users': { antwort: KontenListe },
-  'POST /api/v1/auth/users': { antwort: Erfolg, eingabe: z.looseObject({ is_admin: eingabe.schalter('is_admin', false) }) },
-  'PUT /api/v1/auth/users/:id/admin': { antwort: Erfolg, eingabe: z.looseObject({ is_admin: eingabe.schalter('is_admin') }) },
-  'PUT /api/v1/auth/users/:id/aktiv': { antwort: KontoAktiv, eingabe: z.looseObject({ is_active: eingabe.schalter('is_active') }) },
-  'PUT /api/v1/auth/users/:id/password': { antwort: Erfolg },
+  'POST /api/v1/auth/users': { antwort: Erfolg, eingabe: z.looseObject({ is_admin: eingabe.schalter('is_admin', false), username: txt(64), password: txt(PASSWORT), ...Verwalter }) },
+  'PUT /api/v1/auth/users/:id/admin': { antwort: Erfolg, eingabe: z.looseObject({ is_admin: eingabe.schalter('is_admin'), ...Verwalter }) },
+  'PUT /api/v1/auth/users/:id/aktiv': { antwort: KontoAktiv, eingabe: z.looseObject({ is_active: eingabe.schalter('is_active'), ...Verwalter }) },
+  'PUT /api/v1/auth/users/:id/password': { antwort: Erfolg, eingabe: z.looseObject({ password: txt(PASSWORT), ...Verwalter }) },
   'DELETE /api/v1/auth/users/:id': { antwort: Erfolg },
   'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: Erfolg },
-  'POST /api/v1/auth/token-create': { antwort: TokenErstellt },
-  'POST /api/v1/auth/qr-token': { antwort: QrToken },
-  'POST /api/v1/auth/reset-password': { antwort: ForgotPasswordResponse },
+  'POST /api/v1/auth/token-create': { antwort: TokenErstellt, eingabe: z.looseObject({ password: txt(PASSWORT), scope: txt(20) }) },
+  'POST /api/v1/auth/qr-token': { antwort: QrToken, eingabe: z.looseObject({ password: txt(PASSWORT) }) },
+  'POST /api/v1/auth/reset-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ token: txt(200), password: txt(PASSWORT) }) },
   'GET /api/v1/auth/passkeys': { antwort: PasskeyListe },
-  'DELETE /api/v1/auth/passkeys/:id': { antwort: Geloescht },
+  'DELETE /api/v1/auth/passkeys/:id': { antwort: Geloescht, eingabe: NurPasswort },
   'POST /api/v1/auth/passkey/registrieren/optionen': { antwort: PasskeyOptionen },
-  'POST /api/v1/auth/passkey/registrieren': { antwort: PasskeyAngelegt },
+  'POST /api/v1/auth/passkey/registrieren': { antwort: PasskeyAngelegt, eingabe: z.looseObject({ name: txtLeer(100) }) },
   'POST /api/v1/auth/passkey/anmelden/optionen': { antwort: PasskeyOptionen },
   'POST /api/v1/auth/passkey/anmelden': { antwort: PasskeyAnmeldung },
   'POST /api/v1/settings/sessions/andere-beenden': { antwort: Geloescht },

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.ui.theme.LocalChartColors
@@ -178,7 +179,7 @@ fun PortfolioChart(
                     "year" to stringResource(R.string.chart_period_year),
                     "max" to stringResource(R.string.chart_period_max)
                 ).forEach { (p, label) ->
-                    FilterChip(
+                    AuswahlChip(
                         selected  = selectedPeriod == p,
                         onClick   = { onPeriodChange(p) },
                         label     = { Text(label, style = MaterialTheme.typography.labelSmall) },

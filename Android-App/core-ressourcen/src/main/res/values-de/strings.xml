@@ -104,7 +104,7 @@
 
     <!-- ══════════════ Gallery screen ══════════════ -->
     <string name="gallery_stat_sets">Sets</string>
-    <string name="gallery_stat_units">Einheiten</string>
+    <string name="gallery_stat_units">Exemplare</string>
     <string name="gallery_stat_parts">Teile</string>
     <string name="gallery_stat_minifigs">Minifiguren</string>
     <string name="gallery_stat_instructions">Anleitungen</string>
@@ -199,8 +199,15 @@
     <string name="alert_schedule_failed">Preisalarm konnte nicht eingeplant werden: %1$s</string>
     <string name="detail_alert_below">fällt unter</string>
     <string name="detail_alert_above">steigt über</string>
+    <string name="detail_alert_chip_below">Fällt unter</string>
+    <string name="detail_alert_chip_above">Steigt über</string>
     <string name="detail_alert_armed">scharf</string>
     <string name="detail_alert_fired">gemeldet — wieder scharf, sobald der Preis zurückkehrt</string>
+    <string name="detail_alert_threshold">Schwelle (%1$s)</string>
+    <string name="detail_alert_hint">Wird nach dem Tippen gespeichert</string>
+    <string name="detail_alert_saved">Gespeichert: Preis %1$s %2$s · %3$s</string>
+    <string name="detail_price_none_yet">noch kein Preis</string>
+    <string name="detail_purchase_none">nicht erfasst</string>
     <string name="detail_storage_ph">z. B. Kiste 3</string>
     <string name="filter_condition_all">Alle Zustände</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
@@ -249,6 +256,8 @@
         <item quantity="other">%1$d Kaufpreise in anderer Währung nicht eingerechnet</item>
     </plurals>
     <string name="finance_avg_label">Ø Durchschnitt</string>
+    <string name="finance_min_label">Min.</string>
+    <string name="finance_max_label">Max.</string>
     <string name="finance_filter_all">Alle</string>
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Teile</string>
@@ -337,17 +346,24 @@
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
     <string name="settings_dark_label">Darstellung auf diesem Gerät</string>
-    <string name="settings_dark_server">Design des Servers</string>
-    <string name="settings_dark_system">Dunkel nach System</string>
+    <string name="settings_hell_system">System</string>
+    <string name="settings_hell_hell">Hell</string>
+    <string name="settings_hell_dunkel">Dunkel</string>
     <string name="nav_collection">Sammlung</string>
     <string name="nav_gallery">Galerie</string>
     <string name="nav_parts">Teile</string>
     <string name="nav_minifigs">Minifiguren</string>
-    <string name="nav_minifigs_short">Minifig.</string>
+    <string name="nav_minifigs_short">Figuren</string>
+    <string name="name_unknown">Name unbekannt</string>
+    <string name="parts_breakdown">%1$s aus Sets · %2$s einzeln</string>
     <string name="nav_partslist">Teileliste</string>
     <string name="nav_finance">Finanzen</string>
     <string name="nav_comparison">Vergleich</string>
     <string name="nav_settings">Einstellungen</string>
+    <string name="nav_more">Mehr</string>
+    <string name="nav_group_prices">Preise und Gutscheine</string>
+    <string name="nav_group_manage">Bestand verwalten</string>
+    <string name="nav_group_server">Server</string>
     <string name="nav_monitoring">Hintergrundarbeiten</string>
     <string name="main_barcode_add_partslist">Zur Teileliste hinzufügen?</string>
     <string name="main_barcode_add_set">Set hinzufügen?</string>
@@ -460,7 +476,7 @@
     <string name="monitoring_theme_brick">Stein</string>
     <string name="monitoring_theme_werkbank">Werkbank (dunkel)</string>
     <string name="monitoring_theme_farbfaecher">Farbfächer</string>
-    <string name="monitoring_theme_noppe">Noppe</string>
+    <string name="monitoring_theme_noppe">Noppe (bunte Steine)</string>
     <string name="monitoring_theme_hochglanz">Hochglanz</string>
     <string name="monitoring_catalog_images">Katalogbilder einreihen</string>
     <string name="monitoring_redownload_missing">Fehlende Bilder neu laden</string>
@@ -524,6 +540,8 @@
     <string name="household_redeem_submit">Verknüpfen</string>
     <string name="household_redeem_password">Passwort dieses Kontos</string>
     <string name="household_redeem_password_wrong">Das Passwort stimmt nicht. Gib das Passwort des Kontos ein, mit dem du angemeldet bist.</string>
+    <string name="household_redeem_code">Code aus der Authenticator-App oder Wiederherstellungscode</string>
+    <string name="household_redeem_code_wrong">Der Code stimmt nicht oder ist abgelaufen.</string>
     <string name="household_redeem_locked">Zu viele Fehlversuche. Bitte versuche es später erneut.</string>
     <string name="household_unlink">Verknüpfung lösen</string>
     <string name="household_remove">Entfernen</string>
@@ -600,7 +618,7 @@
     <string name="tokens_reload">Aktualisieren</string>
     <string name="tokens_current">dieses Gerät</string>
     <string name="login_full_access">Mit Verwalterrechten anmelden</string>
-    <string name="login_full_access_hint">Nur für die Verwaltung auf diesem Gerät. Ohne Häkchen arbeitet die App ohne Verwalterrechte.</string>
+    <string name="login_full_access_hint">Nur nötig, um auf diesem Gerät Konten, Designs oder den Server zu verwalten. Zum Sammeln braucht es das nicht.</string>
     <string name="tokens_full_access">Vollzugriff</string>
     <string name="tokens_already_gone">Dieses Gerät war schon abgemeldet.</string>
     <string name="tokens_never">nie</string>
@@ -658,6 +676,10 @@
     <string name="konto_password_hint">Alle Zugänge dieses Kontos werden verworfen — auch diese App. Du musst dich danach neu anmelden.</string>
     <string name="konto_password_changed">Passwort geändert. Bitte melde dich neu an.</string>
     <string name="konto_password_button">Passwort ändern</string>
+    <string name="startpasswort_titel">Startpasswort ersetzen</string>
+    <string name="startpasswort_text">Dieses Konto meldet sich noch mit dem Startpasswort an, mit dem es angelegt wurde. Wähle zuerst ein eigenes Passwort. Danach meldest du dich mit dem neuen an.</string>
+    <string name="startpasswort_wiederholen">Neues Passwort wiederholen</string>
+    <string name="startpasswort_verschieden">Die beiden Eingaben unterscheiden sich.</string>
     <string name="konto_design_hint">Gilt für dieses Konto auf allen Geräten.</string>
     <string name="konto_design_vorgabe">Vorgabe: %1$s</string>
 
@@ -724,18 +746,20 @@
     <string name="update_dialog_text">Fassung %1$s liegt bereit. Installiert ist %2$s.</string>
     <string name="update_dialog_now">Jetzt aktualisieren</string>
     <string name="update_dialog_later">Später</string>
-    <string name="update_available">Fassung %1$s ist verfuegbar</string>
+    <string name="update_available">Fassung %1$s ist verfügbar</string>
     <string name="update_installed">Installiert: %1$s</string>
     <string name="update_download">Herunterladen</string>
     <string name="update_downloading">Wird geladen … %1$d%%</string>
     <string name="update_install">Installieren</string>
-    <string name="update_permission_needed">Android braucht dafuer einmalig deine Erlaubnis, Apps aus dieser Quelle zu installieren. Ohne deine Bestaetigung wird nichts installiert.</string>
+    <string name="update_permission_needed">Android braucht dafür einmalig deine Erlaubnis, Apps aus dieser Quelle zu installieren. Ohne deine Bestätigung wird nichts installiert.</string>
     <string name="update_permission_grant">Erlaubnis erteilen</string>
     <string name="update_pruefung_fehlgeschlagen">Die Suche nach einem Update ist fehlgeschlagen — keine Verbindung zu GitHub.</string>
-    <string name="update_laden_fehlgeschlagen">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde geloescht.</string>
-    <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schluessel signiert wie diese und wurde geloescht. Installiert wurde nichts.</string>
+    <string name="update_laden_fehlgeschlagen">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde gelöscht.</string>
+    <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schlüssel signiert wie diese und wurde gelöscht. Installiert wurde nichts.</string>
+    <string name="update_fassung_falsch">Die geladene App trägt eine andere Fassung als angekündigt und wurde gelöscht. Installiert wurde nichts.</string>
     <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
-    <string name="update_installer_fehlt">Auf diesem Geraet kann keine App Pakete installieren.</string>
+    <string name="update_installer_fehlt">Die Installation liess sich nicht starten.</string>
+    <string name="update_installation_fehlgeschlagen">Die Installation ist gescheitert: %1$s</string>
 
     <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
     <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>
@@ -748,7 +772,10 @@
     <string name="wanted_search">Merkliste durchsuchen…</string>
     <string name="wanted_no_results">Keine Merkposten gefunden</string>
     <string name="wanted_empty">Noch keine Merkposten.</string>
-    <string name="wanted_owned">schon vorhanden</string>
+    <string name="wanted_owned">Schon vorhanden</string>
+    <string name="wanted_alert_below">Alarm unter %1$s</string>
+    <string name="wanted_alert_above">Alarm über %1$s</string>
+    <string name="wanted_price_pending">Preis folgt</string>
     <string name="wanted_added">Auf die Merkliste gesetzt</string>
     <string name="wanted_already">Stand schon auf der Merkliste</string>
     <string name="wanted_deleted">Von der Merkliste genommen</string>
@@ -845,7 +872,7 @@
     <string name="zert_titel_unbekannt">Unbekanntes Zertifikat</string>
     <string name="zert_titel_geaendert">Das Zertifikat des Servers hat sich geändert</string>
     <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Vergleiche den Fingerabdruck Zeichen für Zeichen mit dem, den die Webapp unter Einstellungen → Server-Zertifikat zeigt. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
-    <string name="zert_text_unbekannt">Das Zertifikat von %1$s stammt von keiner bekannten Stelle – es ist selbst ausgestellt oder kommt von einer eigenen Zertifizierungsstelle. Für einen Server zu Hause ist das üblich, es kann aber auch jemand dazwischen sein. Nur vertrauen, wenn der Fingerabdruck mit dem übereinstimmt, den die Webapp unter Einstellungen → Server-Zertifikat zeigt.</string>
+    <string name="zert_text_unbekannt">Das Zertifikat von %1$s stammt von keiner bekannten Stelle – es ist selbst ausgestellt oder kommt von einer eigenen Zertifizierungsstelle. Für einen Server zu Hause ist das üblich, es kann aber auch jemand dazwischen sein. Darum genügt hier kein Tipp: Schreibe die letzten 16 Zeichen des Fingerabdrucks aus der Webapp (Einstellungen → Server-Zertifikat) ab – nicht von diesem Bildschirm. Einfacher geht es mit dem QR-Code der Webapp, er trägt den Fingerabdruck mit.</string>
     <string name="zert_text_geaendert">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast.</string>
     <string name="zert_fingerabdruck">Fingerabdruck (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_jetzt">Jetzt gezeigt (neu)</string>
@@ -853,6 +880,13 @@
     <string name="zert_vertrauen">Diesem Zertifikat vertrauen</string>
     <string name="zert_vertrauen_neu">Neues Zertifikat annehmen</string>
     <string name="zert_nutzer_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
+    <string name="zert_geaendert_eingabe">Die letzten 16 Zeichen des neuen Fingerabdrucks, abgeschrieben aus der Webapp (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Webapp scannen.</string>
+    <string name="zert_unbekannt_eingabe">Die letzten 16 Zeichen des Fingerabdrucks, abgeschrieben aus der Webapp (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="zert_eingabe_falsch">Das passt nicht zum gezeigten Fingerabdruck.</string>
+    <string name="setup_qr_pin_geaendert">Dieser Code nennt ein anderes Zertifikat als das für diesen Server bestätigte. Nur fortfahren, wenn du den Server selbst umgestellt hast – dann zeigt die Webapp unter Einstellungen → Server-Zertifikat den neuen Fingerabdruck; schreibe seine letzten 16 Zeichen unten ab.</string>
+    <string name="setup_qr_pin_uebernehmen">Neues Zertifikat annehmen und anmelden</string>
+    <string name="setup_qr_pin_wechsel_abgelehnt">Der QR-Code nennt ein anderes Zertifikat als das bestätigte. Es wurde nichts geändert.</string>
     <string name="common_load_failed">Konnte nicht geladen werden</string>
     <string name="common_retry">Erneut versuchen</string>
     <string name="common_no_results">Nichts gefunden</string>

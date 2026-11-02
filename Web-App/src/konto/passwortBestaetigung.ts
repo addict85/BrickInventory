@@ -39,3 +39,18 @@ export async function pruefeCodeBestaetigung(uid: number, code: unknown): Promis
   await bestaetigungGelungen(uid);
   return null;
 }
+
+/** Das Bestätigen der Einrichtung prüft ebenfalls einen Code; ohne Bremse
+ * liesse er sich in einer übernommenen Sitzung beliebig oft raten.
+ * @returns die Wiederherstellungscodes oder die Absage */
+export async function bestaetigeEinrichtungGebremst(uid: number, code: unknown): Promise<string[] | BestaetigungsAbsage> {
+  const gesperrt = await bestaetigungGesperrt(uid);
+  if (gesperrt) return { status: 429, ...gesperrt };
+  const codes = await zf.bestaetigeEinrichtung(uid, String(code ?? ''));
+  if (!codes) {
+    await bestaetigungFehlgeschlagen(uid);
+    return { status: 400, code: 'zweiter_faktor_falsch' };
+  }
+  await bestaetigungGelungen(uid);
+  return codes;
+}

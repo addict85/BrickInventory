@@ -11,6 +11,12 @@
  *      „falscher Typ: 415 mit Code“ (500 statt 415)
  *   C  im fileFilter der Anleitungen wieder `new Error('Nur PDF, JPG oder
  *      PNG')` → rot: „falscher Typ: 415 mit Code“ (500 statt 415)
+ * Gegenproben (01.11.2026 gemessen):
+ *   D  der pfadgenaue Parser in server.ts entfernt (Stand vorher: Limit nur im
+ *      PDF-Router, hinter dem allgemeinen) → rot: „die Teileliste des
+ *      PDF-Auftrags darf grösser sein“ (413 statt 200)
+ *   E  sein Limit auf alle Pfade (app.use statt app.post auf den Pfad) → rot:
+ *      „… andere Routen nicht“ (200 statt 413)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -44,6 +50,7 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async (t) =
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
   const token = await _req('src/konto/auth.js').createToken(uid, 'Prüfung', true);
   t.after(async () => {
+    await db.run("DELETE FROM auftraege WHERE art = 'pdf' AND user_id = $1", [uid]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -93,5 +100,27 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async (t) =
       gutschein: { status: 415, code: 'nur_pdf', json: true },
       anleitung: { status: 415, code: 'datei_typ_falsch', json: true },
     });
+  });
+
+  const json = async (pfad, rumpf) => {
+    const r = await fetch(`http://127.0.0.1:${port}/api/v1${pfad}`, { method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(rumpf) });
+    const j = await r.json().catch(() => null);
+    return { status: r.status, code: j?.code ?? null };
+  };
+  // Etwa 1 MB: 3000 Posten in der Form, die Web und App schicken.
+  const teile = Array.from({ length: 3000 }, (_, i) => ({ part_number: `3001-${i}`, bl_part_number: `3001-${i}`,
+    part_name: 'Brick 2 x 4 '.repeat(14), color_name: 'Bright Red', color_hex: 'C91A09', color_id: 4, quantity: 2,
+    image_url: `https://cdn.rebrickable.com/media/parts/elements/${300121 + i}.jpg`, image_local: null, is_fig: false }));
+
+  await t.test('die Teileliste des PDF-Auftrags darf grösser sein als 256 KB', async () => {
+    assert.ok(JSON.stringify({ parts: teile }).length > 900 * 1024);
+    assert.deepEqual(await json('/sets/partslist-pdf', { sets: [{ set_number: SN }], parts: teile }), { status: 200, code: null });
+    const riesig = Array.from({ length: 4 }, () => teile).flat();
+    assert.equal((await json('/sets/partslist-pdf', { sets: [], parts: riesig })).status, 413, 'über 4 MB bleibt zu gross');
+  });
+
+  await t.test('… andere Routen nicht', async () => {
+    assert.deepEqual(await json('/settings', { currency: 'EUR', ballast: teile }), { status: 413, code: 'anfrage_zu_gross' });
   });
 });

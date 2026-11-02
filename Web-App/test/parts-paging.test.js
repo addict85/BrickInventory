@@ -240,7 +240,7 @@ test('fehlende CDN-Bilder werden nicht endlos nachgefragt', () => {
     'Ohne Negativ-Cache geht bei jedem Seitenaufruf ein Roundtrip für ein 404-Bild raus');
   // Nur 404: Ein 403 kommt beim CDN auch als Drosselung vor und darf nicht
   // für Minuten ausgesperrt werden (siehe „nur 404 wird negativ gecacht").
-  assert.match(server, /if \(r\.statusCode === 404\) \{/, '404 muss gemerkt werden');
+  assert.match(server, /if \(r\.status === 404\) \{/, '404 muss gemerkt werden');
 });
 
 test('Argumente aus data-arg werden als Zeichenkette behandelt', () => {

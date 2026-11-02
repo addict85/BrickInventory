@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.AuswahlChip
 /**
  * Die Abschnitte der Set-Detailseite. Erweiterungen auf LazyListScope und keine
  * Composables, weil sie Einträge in die LazyColumn der Seite eintragen; die
@@ -11,7 +12,6 @@ import ch.brickinventoryapp.ui.model.PreisverlaufAnsicht
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.ui.model.SetPreisAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
-import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -60,7 +60,6 @@ import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.Petrol
 import androidx.compose.material.icons.filled.*
-import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -103,7 +102,8 @@ fun LazyListScope.setDetailInstructionsSection(
                             // Backstack, als Text unter der Anleitung und im Zugriffsprotokoll. Der
                             // In-App-Betrachter lädt über den geteilten Client, der den
                             // Authorization-Kopf setzt (di/ServerClient.kt).
-                            val openUrl = instr.localPath?.let { "$serverUrl$it" } ?: instr.url
+                            val eigene = instr.localPath?.let { ch.brickinventoryapp.util.eigeneAdresse(serverUrl, it) }
+                            val openUrl = eigene ?: instr.url
 
                             if (idx > 0) HorizontalDivider(
                                 Modifier.padding(vertical = Abstaende.winzig),
@@ -114,16 +114,13 @@ fun LazyListScope.setDetailInstructionsSection(
                             // Handlung. Der Papierkorb liegt neben, nicht in der antippbaren Zeile,
                             // damit ein Fehlgriff nicht löscht.
                             val oeffneAnleitung: () -> Unit = {
-                                if (instr.localPath != null) {
-                                    onOpenPdf(openUrl, instr.description ?: "")
-                                } else {
+                                if (eigene != null) {
+                                    onOpenPdf(eigene, instr.description ?: "")
+                                } else if (!ch.brickinventoryapp.util.oeffneExtern(ctx, instr.url)) {
                                     // Rückmeldung statt Stille, siehe CatalogDetailScreen.
-                                    try { ctx.startActivity(Intent(Intent.ACTION_VIEW, openUrl.toUri())) }
-                                    catch (_: Exception) {
-                                        android.widget.Toast.makeText(ctx,
-                                            keineAppText,
-                                            android.widget.Toast.LENGTH_SHORT).show()
-                                    }
+                                    android.widget.Toast.makeText(ctx,
+                                        keineAppText,
+                                        android.widget.Toast.LENGTH_SHORT).show()
                                 }
                             }
                             Row(
@@ -306,7 +303,8 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
             DetailRow2(stringResource(R.string.detail_set_number), setNumber)
-            DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
+            // Ohne Datum keine Zeile: „Hinzugefügt —“ sagt nichts.
+            if (!set.addedAt.isNullOrBlank()) DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
             // ── Lagerort ──
             //
             // Auswahlfeld mit der Möglichkeit, neue Orte zu erfassen. Die Liste gehört dem
@@ -551,12 +549,12 @@ fun LazyListScope.setDetailAlarmSection(
             // das Laden von selbst: Die Liste traegt beide.
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                FilterChip(
+                AuswahlChip(
                     selected = zustand == "N",
                     onClick = { zustand = "N" },
                     label = { Text(stringResource(R.string.condition_new), style = MaterialTheme.typography.labelMedium) },
                 )
-                FilterChip(
+                AuswahlChip(
                     selected = zustand == "U",
                     onClick = { zustand = "U" },
                     label = { Text(stringResource(R.string.condition_used), style = MaterialTheme.typography.labelMedium) },
@@ -572,51 +570,49 @@ fun LazyListScope.setDetailAlarmSection(
                 mutableStateOf(alarm?.let { if (it.schwelle > 0) it.schwelle.toString() else "" } ?: "")
             }
 
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                // Zwei Chips statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
-                // Aufklappen lesbar. Die Richtung geht nur mit, wenn eine Schwelle dasteht — sonst
-                // liefe der Aufruf auf ein Löschen hinaus.
-                FilterChip(
+            // Zwei Chips statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
+            // Aufklappen lesbar. Die Richtung geht nur mit, wenn eine Schwelle dasteht — sonst
+            // liefe der Aufruf auf ein Löschen hinaus.
+            Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                AuswahlChip(
                     selected = richtung == "unter",
                     onClick = { richtung = "unter"
                         if (schwelle.isNotBlank()) onSetze(setNumber, "unter", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_below), style = MaterialTheme.typography.labelMedium) },
+                    label = { Text(stringResource(R.string.detail_alert_chip_below), style = MaterialTheme.typography.labelMedium) },
                 )
-                FilterChip(
+                AuswahlChip(
                     selected = richtung == "ueber",
                     onClick = { richtung = "ueber"
                         if (schwelle.isNotBlank()) onSetze(setNumber, "ueber", schwelle, zustand) },
-                    label = { Text(stringResource(R.string.detail_alert_above), style = MaterialTheme.typography.labelMedium) },
-                )
-                OutlinedTextField(
-                    value = schwelle,
-                    // Der getippte Text geht unverändert an setzePreisalarm(); die Umrechnung steht
-                    // an einer Stelle (Alarmeingabe.zahl). Der Filter lässt nur Ziffern und ein
-                    // Trennzeichen herein, denn ein unlesbarer Wert hiesse hier Löschen.
-                    onValueChange = { roh ->
-                        val g = NumericInput.price(roh)
-                        schwelle = g; onSetze(setNumber, richtung, g, zustand)
-                    },
-                    singleLine = true,
-                    placeholder = { Text(currency, style = MaterialTheme.typography.bodySmall) },
-                    keyboardOptions = NumericInput.preisTastatur(),
-                    modifier = Modifier.weight(1f),
+                    label = { Text(stringResource(R.string.detail_alert_chip_above), style = MaterialTheme.typography.labelMedium) },
                 )
             }
-            // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der
-            // Unterschied zwischen „der Alarm steht" und „der Alarm hat
-            // gefeuert" — sonst fragt man sich, warum keine Mail mehr kommt.
-            if (alarm != null) {
-                Text(
-                    stringResource(
-                        if (alarm.ausgeloest) R.string.detail_alert_fired
-                        else R.string.detail_alert_armed
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            // Unter den Chips in voller Breite: neben ihnen blieb bei grosser Schrift kein Platz.
+            // Gespeichert wird nach der Ruhezeit im ViewModel (ein Aufruf, nicht je Taste); die
+            // Zeile darunter bestätigt, was der Server angenommen hat.
+            OutlinedTextField(
+                value = schwelle,
+                onValueChange = { roh ->
+                    val g = NumericInput.price(roh)
+                    schwelle = g; onSetze(setNumber, richtung, g, zustand)
+                },
+                singleLine = true,
+                label = { Text(stringResource(R.string.detail_alert_threshold, currency)) },
+                supportingText = {
+                    Text(
+                        if (alarm == null) stringResource(R.string.detail_alert_hint)
+                        // Der Merker sagt, ob schon gemeldet wurde — sonst fragt man sich, warum keine Mail mehr kommt.
+                        else stringResource(
+                            R.string.detail_alert_saved,
+                            stringResource(if (alarm.richtung == "ueber") R.string.detail_alert_above else R.string.detail_alert_below),
+                            ch.brickinventoryapp.util.fmtMoney(alarm.schwelle, currency),
+                            stringResource(if (alarm.ausgeloest) R.string.detail_alert_fired else R.string.detail_alert_armed),
+                        )
+                    )
+                },
+                keyboardOptions = NumericInput.preisTastatur(),
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

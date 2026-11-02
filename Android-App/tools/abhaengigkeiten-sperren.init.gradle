@@ -1,0 +1,20 @@
+// Nur für den Sicherheitslauf (sicherheit.yml, Job android-abhaengigkeiten):
+// schreibt gradle.lockfile je Modul, damit Trivy die Laufzeit-Abhängigkeiten
+// der App sieht. Der Bau selbst bleibt ohne Locking; aufgelöst wird nur, was
+// auch das Release auflöst, also deckt verification-metadata.xml alles ab.
+allprojects {
+    dependencyLocking {
+        lockAllConfigurations()
+    }
+    tasks.register('abhaengigkeitenSperren') {
+        notCompatibleWithConfigurationCache('löst Konfigurationen zur Ausführungszeit auf')
+        doLast {
+            ['releaseRuntimeClasspath', 'runtimeClasspath'].each { name ->
+                def konfiguration = project.configurations.findByName(name)
+                if (konfiguration != null && konfiguration.canBeResolved) {
+                    konfiguration.resolve()
+                }
+            }
+        }
+    }
+}

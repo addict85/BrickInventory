@@ -10,17 +10,21 @@ data class Darstellung(val design: String, val dunkel: Boolean, val systemfarben
 const val SYSTEMFARBEN_AB_SDK = 31
 
 /**
- * Dunkel, wenn das Gerät „dunkel nach System“ will und das System dunkel ist —
- * dann die dunkle Fassung DESSELBEN Designs wie im Web (data-dunkel), nicht ein
- * anderes Design. Werkbank ist schon dunkel und bleibt, wie es ist. Systemfarben
- * haben immer eine dunkle Fassung; unter Android 12 gibt es sie nicht, dann gilt das Design.
+ * [helligkeit] (Helligkeit.SYSTEM/HELL/DUNKEL) entscheidet, ob die dunkle Fassung
+ * DESSELBEN Designs gilt wie im Web (data-dunkel), nicht ein anderes Design.
+ * Werkbank ist schon dunkel und bleibt, wie es ist. Systemfarben haben immer eine
+ * dunkle Fassung; unter Android 12 gibt es sie nicht, dann gilt das Design.
  */
 fun darstellung(
-    design: String, dunkelNachSystem: Boolean, systemDunkel: Boolean,
+    design: String, helligkeit: String, systemDunkel: Boolean,
     systemfarben: Boolean = false, sdk: Int = 0,
 ): Darstellung {
     val dynamisch = systemfarben && sdk >= SYSTEMFARBEN_AB_SDK
-    val dunkel = dunkelNachSystem && systemDunkel && (dynamisch || hatDunkleFassung(design))
-    return Darstellung(design, dunkel, dynamisch)
+    val gewuenscht = when (helligkeit) {
+        Helligkeit.DUNKEL -> true
+        Helligkeit.HELL -> false
+        else -> systemDunkel
+    }
+    return Darstellung(design, gewuenscht && (dynamisch || hatDunkleFassung(design)), dynamisch)
 }
 

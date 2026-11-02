@@ -13,3 +13,9 @@ fun navigationsart(fensterbreiteDp: Float): Navigationsart =
 
 /** Untergrenze der Breitenklasse „medium" laut Material Design. */
 const val MITTLERE_BREITE_DP = 600f
+
+/** Untergrenze der Breitenklasse „expanded" laut Material Design. */
+const val GROSSE_BREITE_DP = 840f
+
+/** Ab „expanded" verteilt sich eine Detailseite auf zwei Spalten. */
+fun zweiSpaltig(fensterbreiteDp: Float): Boolean = fensterbreiteDp >= GROSSE_BREITE_DP

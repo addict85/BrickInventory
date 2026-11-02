@@ -195,7 +195,7 @@
     width: 44px !important; height: 44px !important; min-height: 0; margin: -11px !important;
     padding: 0; border: 0; border-radius: 0; cursor: pointer;
     background: linear-gradient(var(--sur), var(--sur)) center / 18px 18px no-repeat,
-                linear-gradient(var(--s400), var(--s400)) center / 22px 22px no-repeat;
+                linear-gradient(var(--feldrand), var(--feldrand)) center / 22px 22px no-repeat;
   }
   input[type="checkbox"]:checked {
     background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 16px 16px no-repeat,
@@ -207,6 +207,8 @@
      Schlüsseln in Einstellungen und Einrichtung. */
   .ca { top: 4px; right: 4px; z-index: 2; }
   .delbtn { width: 44px; height: 44px; }
+  /* Tabellenzeilen, die einen Dialog öffnen (Sets eines Teils), sind Tippziele. */
+  tr[tabindex="0"] > td { height: 44px; }
   /* Platz für den 44-px-Knopf, damit er weder Bild noch Preis verdeckt. */
   .man-tile:has(> .ca) { padding-top: 52px; }
   .mk-zeile { padding-right: 56px; }
@@ -378,6 +380,8 @@
   .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .fgrid      { grid-template-columns: 1fr; }
   .ntab       { font-size: var(--fs-0); }
+  /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
+  .ntab       { padding-left: 0; padding-right: 0; letter-spacing: -.02em; word-spacing: 0; }
 }
 
 

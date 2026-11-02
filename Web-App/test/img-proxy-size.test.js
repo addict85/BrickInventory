@@ -40,8 +40,9 @@ test('die Cache-Grenze deckt hochauflösende Katalogbilder ab', () => {
 });
 
 test('der Abbruch wird protokolliert, nicht verschwiegen', () => {
-  const fenster = code.slice(code.indexOf('PROXY_CACHE_MAX_BYTES && !aborted'));
-  const block = fenster.slice(0, 800);
+  const i = code.indexOf('const verwirf = ');
+  assert.ok(i > 0 && /bytes > PROXY_CACHE_MAX_BYTES\) \{ verwirf\(/.test(code), 'der Abbruch läuft nicht über verwirf()');
+  const block = code.slice(i, i + 800);
   assert.ok(/console\.error/.test(block),
     'ein übergrosses Bild muss eine Spur hinterlassen — sonst ist der Fall ohne ' +
     'Netzwerk-Protokoll des Nutzers nicht auffindbar');
@@ -70,7 +71,7 @@ test('beide Bildgrenzen sind gleich gross — Proxy UND lokaler Download', () =>
 
 test('der lokale Download bricht nicht mehr still ab', () => {
   const setsSrc = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
-  const i = setsSrc.indexOf('gelesen > SET_IMG_MAX_BYTES');
+  const i = setsSrc.indexOf("e.grund === 'zu-gross'");
   assert.ok(i > 0, 'die Grössenprüfung im Download fehlt');
   assert.ok(/console\.error/.test(setsSrc.slice(i, i + 500)),
     'ein übergrosses Bild muss eine Spur hinterlassen — vorher verschwand es wortlos');

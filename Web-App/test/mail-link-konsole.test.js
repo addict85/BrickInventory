@@ -17,7 +17,8 @@ const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 const { linkFuerKonsole } = _req('src/infra/mailer.js');
 
-const TEXT = 'Hallo,\n\nhier zurücksetzen:\nhttps://lego.example.org/reset?token=abcdef0123456789\n\nGruss';
+// Der Absender reicht den Link selbst; aus dem Text gesucht wird nicht mehr.
+const TEXT = 'https://lego.example.org/reset?token=abcdef0123456789';
 
 test('ohne Schalter ohne Token', () => {
   const link = linkFuerKonsole(TEXT, undefined);
@@ -42,7 +43,8 @@ test('mit MAIL_KONSOLE_MIT_TOKEN=1 vollständig — dann ist die Konsole der Pos
   assert.equal(linkFuerKonsole(TEXT, 'ja'), 'https://lego.example.org/reset?token=…', 'nur „1" schaltet');
 });
 
-test('ohne Link nichts', () => {
+test('ohne Link nichts — auch keiner aus Fliesstext', () => {
   assert.equal(linkFuerKonsole('nur Text', undefined), null);
+  assert.equal(linkFuerKonsole('Hallo https://boese.example/x', '1'), null);
   assert.equal(linkFuerKonsole(undefined, '1'), null);
 });

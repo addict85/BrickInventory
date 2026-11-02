@@ -1,5 +1,5 @@
 import { skelettKacheln, listeLadefehler } from './01-bausteine.js';
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
@@ -7,10 +7,10 @@ import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
          LAGER_VIEWS, addLagerParam, lagerModus, setLagerModus } from './14-scope.js';
 import { setScrollLabel } from './15-scrollbar.js';
-import { loadParts } from './03-parts.js';
+import { loadParts, teileFilterZuruecksetzen } from './03-parts.js';
 import { loadFinance } from './04-finance.js';
 import { loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens, ladeTls, ladeAlarmUebersicht, ladeLagerortVerwaltung } from './05-settings.js';
-import { loadBrickColors, loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
+import { figurenFilterZuruecksetzen, loadBrickColors, loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
 import { ladeGutscheine } from './17-gutscheine.js';
 import { geloeschtMitRueckgaengig, ladePapierkorb } from './20-papierkorb.js';
 import { ladeZweitenFaktor } from './21-zweiter-faktor.js';
@@ -65,8 +65,10 @@ function markiereGruppe(tab){
     if (schluessel) { unter.setAttribute('data-i18n', schluessel); unter.textContent = tRaw(schluessel); }
     else { unter.removeAttribute('data-i18n'); unter.textContent = ''; }
   }
-  document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b =>
-    b.setAttribute('aria-selected', String(b.dataset.arg === tab)));
+  // Die drei Knöpfe wechseln die Ansicht; die offene ist die aktuelle Seite.
+  document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b => {
+    if (b.dataset.arg === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
   // Vorleseprogramme erfahren so, welcher Reiter offen ist.
   // „Sammlung“ gilt nur dann als aktuelle Seite, wenn der eigene Reiter der
   // Ansicht nicht zu sehen ist (am Telefon).
@@ -278,9 +280,16 @@ export async function loadStats(){
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung.
     G('bstat-sets').textContent     = d.stats.total_sets;
     G('bstat-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
+    G('bstat-parts-sub').textContent = teileAufschluesselung(d.stats.set_parts, d.stats.manual_parts);
     G('bstat-minifigs').textContent = fmtBig(d.stats.total_minifigs || 0);
     G('bstat-instr').textContent    = d.stats.total_instructions;
   }
+}
+
+/** „144 aus Sets · 250 einzeln“ — leer, solange nur eine der beiden Quellen etwas hat. */
+export function teileAufschluesselung(ausSets, einzeln) {
+  if (!ausSets || !einzeln) return '';
+  return t('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
 }
 
 // ── PROGRESS OVERLAY ─────────────────────────────────
@@ -593,6 +602,8 @@ function filterZuruecksetzen(ansicht) {
     loadGallery();
   } else if (ansicht === 'merkliste') merklisteZuruecksetzen();
   else if (ansicht === 'catalog') katalogZuruecksetzen();
+  else if (ansicht === 'parts') teileFilterZuruecksetzen();
+  else if (ansicht === 'minifigs') figurenFilterZuruecksetzen();
 }
 
 export function onStorageChange(view) {
@@ -901,9 +912,9 @@ export function renderGallery(){
   const gefiltert = !!(q || G('gtheme')?.value || lagerModus('gallery'));
   if(!list.length){
     c.innerHTML = gefiltert
-      ? leerZustand({ ico: 'suche', titel: q ? tRaw('gallery.no_results', { query: q }) : tRaw('gallery.no_results_filter'),
+      ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
                       knopf: zuruecksetzenKnopf('gallery') })
-      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'),
+      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint'),
                       knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
   }
@@ -911,7 +922,7 @@ export function renderGallery(){
     c.innerHTML=`<div class="sgrid">${list.map(gridCard).join('')}</div>`;
     observeLazyImages(c);
   } else {
-    c.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>${t('col.image_th')}</th><th>Nr.</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.theme')}</th><th>${t('detail.pieces')}</th><th>${t('detail.minifigs')}</th><th>${t('detail.qty')}</th><th>${t('detail.added')}</th><th>${t('detail.instructions')}</th><th><span class="vh">${t('detail.reimport_parts')}</span></th><th><span class="vh">${t('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow).join('')}</tbody></table></div>`;
+    c.innerHTML=`<div class="tw"><table class="dt"><thead><tr><th>${t('col.image_th')}</th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th>${t('detail.theme')}</th><th>${t('detail.pieces')}</th><th>${t('detail.minifigs')}</th><th>${t('detail.qty')}</th><th>${t('detail.created')}</th><th>${t('detail.instructions')}</th><th><span class="vh">${t('detail.reimport_parts')}</span></th><th><span class="vh">${t('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow).join('')}</tbody></table></div>`;
     observeLazyImages(c);   // fehlte für die Listenansicht komplett
   }
 }
@@ -932,12 +943,27 @@ export function updateGalleryPrices(){
   document.querySelectorAll('[data-price-for]').forEach(el => {
     const s = bySet.get(el.dataset.priceFor);
     if (!s) return;
-    const kauf = s.avg_purchase_price ?? s.max_purchase_price;
-    const priceStr = s._price ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : '');
-    const pnl = pnlBadge(s._pnl_pct, kauf);
-    el.innerHTML = `<span class="preis">${priceStr}</span>${pnl}`;
-    el.hidden = !(priceStr || pnl);
+    const inhalt = preisZeile(s);
+    el.innerHTML = inhalt;
+    el.hidden = !inhalt;
   });
+}
+
+/**
+ * Preis und Prozent der Kachel mit Beschriftung: Ohne sie war nicht zu sehen,
+ * ob der Betrag Markt- oder Kaufpreis ist und wogegen das Prozent rechnet.
+ * Ohne geladenen Marktpreis steht der mengengewichtete Kaufpreis da.
+ */
+function preisZeile(s){
+  const kauf = s.avg_purchase_price ?? s.max_purchase_price;
+  const markt = !!s._price;
+  const betrag = markt ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : '');
+  const pnl = pnlBadge(s._pnl_pct, kauf);
+  if (!betrag && !pnl) return '';
+  const art = betrag ? `<span class="preis-art">${t(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span> ` : '';
+  const pct = pnl && !istGeschenk(kauf)
+    ? `<span title="${esc(tRaw('gallery.card.pnl_hint'))}"><span class="vh">${t('gallery.card.pnl_hint')}: </span>${pnl}</span>` : pnl;
+  return `<span>${art}<span class="preis">${betrag}</span></span>${pct}`;
 }
 
 /**
@@ -996,8 +1022,8 @@ export function condBadges(item) {
     ? item.conditions
     : [item?.condition === 'U' ? 'U' : 'N'];
   return list.map(c => c === 'U'
-    ? `<span class="cond-badge cond-used">${t('common.condition_used')}</span>`
-    : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`
+    ? `<span class="cond-badge cond-used"><span class="vh">${t('common.condition')}: </span>${t('common.condition_used')}</span>`
+    : `<span class="cond-badge cond-new"><span class="vh">${t('common.condition')}: </span>${t('common.condition_badge_new')}</span>`
   ).join('');
 }
 
@@ -1012,9 +1038,7 @@ function gridCard(s){
   // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis. Vorher stand
   // hier max_purchase_price — bei 2x100 und 1x160 zeigte die Kachel 160 statt
   // der tatsächlichen 120.
-  const fallbackPurchase = s.avg_purchase_price ?? s.max_purchase_price;
-  const priceStr = s._price ? fmtN(s._price, CURRENCY) : (fallbackPurchase!=null ? fmtGeld(fallbackPurchase, CURRENCY) : '');
-  const pnl = pnlBadge(s._pnl_pct, fallbackPurchase);
+  const preis = preisZeile(s);
   // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import
   // für alle Sets derselbe Tag und sagte nichts.
   const kaufFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
@@ -1023,11 +1047,11 @@ function gridCard(s){
   const condBadge = condBadges(s);
   // Kein aria-label: Der Name kommt aus dem Inhalt, sonst fehlte dem Vorleser, was sichtbar dasteht.
   return `<div class="sc" tabindex="0" role="button" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <div class="ca"><span class="delbtn" data-click="delSetStop" aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</span></div>
+    <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
       <div class="snum">${esc(s.set_number)}</div>
-      <div class="sname">${esc(s.name)||'Unbekannt'}</div>
+      <div class="sname">${esc(s.name)||t('common.unknown')}</div>
       <div class="smeta">
         <span class="smeta-text"${s.theme ? ` title="${esc(s.theme)}"` : ''}>${s.year||'—'}${s.theme?' · '+esc(s.theme):''}</span>
         <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
@@ -1037,8 +1061,8 @@ function gridCard(s){
           ${ownerBadges(s)}
         </div>
       </div>
-      <div class="price-badge" data-price-for="${esc(s.set_number)}"${priceStr||pnl ? '' : ' hidden'}><span class="preis">${priceStr}</span>${pnl}</div>
-      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span class="vh">${esc(t('gallery.card.bought'))} </span>${kaufFmt}</div>` : ''}
+      <div class="price-badge" data-price-for="${esc(s.set_number)}"${preis ? '' : ' hidden'}>${preis}</div>
+      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span>${t('detail.added')}</span> ${kaufFmt}</div>` : ''}
     </div>
   </div>`;
 }
@@ -1054,7 +1078,7 @@ function tableRow(s){
     <td data-stil="font-size:var(--fs-1);color:var(--mut)">${addedFmt}</td>
     <td>${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:'—'}</td>
     <td data-click="stopEvent"><button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.reimport_parts'))}" aria-label="${esc(t('detail.reimport_parts'))}">${PARTS_ICON_SVG}</button></td>
-    <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet" data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
+    <td data-click="stopEvent"><button class="btn bd btn-sm" data-click="delSet"${echt()} data-arg="${escJs(s.set_number)}" title="${esc(t('detail.delete'))}" aria-label="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</button></td>
   </tr>`;
 }
 
@@ -1402,7 +1426,7 @@ export function renderInstructions(instr, sn) {
     return `<div class="ii" id="instr-${i.id}">
       ${link}
       ${isUpload ? `<span class="lv" data-stil="background:var(--p100);color:var(--p600)">${t('instr.badge_manual')}</span>` : isLocal ? `<span class="lc">${ico('speichern')}</span>` : `<span class="lv">${ico('globus')}</span>`}
-      ${isUpload ? `<button data-click="delInstr" data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" data-stil="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${t('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
+      ${isUpload ? `<button data-click="delInstr"${echt()} data-arg="${esc(sn)}" data-arg2="${i.id}" title="${t('instr.delete_tooltip')}" data-stil="background:none;border:none;cursor:pointer;color:var(--s400);font-size:var(--fs-3);padding:0 2px" aria-label="${t('instr.delete_tooltip')}">${ico('schliessen')}</button>` : ''}
     </div>`;
   }).join('');
 
@@ -1413,12 +1437,12 @@ export function renderInstructions(instr, sn) {
         <div data-stil="flex:1;min-width:140px">
           <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" data-stil="font-size:var(--fs-2);padding:6px 10px" />
         </div>
-        <label class="btn bs btn-sm" data-stil="cursor:pointer">
-          ${t('instr.choose_file')}
-          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" data-stil="display:none" data-change="uploadInstr" data-arg="${escJs(sn)}" />
+        <label class="btn bs btn-sm zeiger">
+          ${ico('datei')} ${t('instr.choose_file')}
+          <input type="file" id="instr-file" accept=".pdf,.jpg,.jpeg,.png" class="datei-versteckt" data-change="uploadInstr" data-arg="${escJs(sn)}" />
         </label>
       </div>
-      <div id="instr-upload-status" data-stil="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
+      <div id="instr-upload-status" role="status" data-stil="font-size:var(--fs-1);margin-top:6px;color:var(--mut)"></div>
     </div>`;
 
   G('m-instr').innerHTML = `

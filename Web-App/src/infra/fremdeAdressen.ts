@@ -11,15 +11,23 @@ export const ERLAUBTE_BILD_HOSTS = [
 
 // Ausführlich: docs/begruendungen/src/infra/fremdeAdressen.ts.md#erlaubte-download-hosts
 export const ERLAUBTE_DOWNLOAD_HOSTS = [
-  ...ERLAUBTE_BILD_HOSTS, 'lego.com', 'bdpinstructions.s3.amazonaws.com',
+  ...ERLAUBTE_BILD_HOSTS, 'lego.com', '*.lego.com', 'bdpinstructions.s3.amazonaws.com',
 ];
 
-/** @returns false, wenn die Adresse nicht parsebar ist — im Zweifel NICHT holen
- * Ausführlich: docs/begruendungen/src/infra/fremdeAdressen.ts.md#hosterlaubt */
+/** JSON- und Seitenabrufe: Rebrickable, Anleitungsbilder, EAN-Suche. */
+export const ERLAUBTE_API_HOSTS = ['rebrickable.com', 'lego.brickinstructions.com', 'api.upcitemdb.com'];
+
+/** Exakter Host samt Port (`u.host` lässt den Standardport weg); Subdomains nur
+ * bei ausdrücklichem „*."-Eintrag, denn ein S3-Eimer „x.bdpinstructions" gehört
+ * nicht dem Eimer „bdpinstructions". „evil@host" und „host:22" sehen erlaubt
+ * aus, zielen aber woandershin. Unparsebar heisst: NICHT holen. */
 export function hostErlaubt(url: string, liste: readonly string[]): boolean {
-  let host: string;
-  try { host = new URL(url).hostname; } catch { return false; }
-  return liste.some(h => host === h || host.endsWith('.' + h));
+  let u: URL;
+  try { u = new URL(url); } catch { return false; }
+  if (u.username !== '' || u.password !== '') return false;
+  return liste.some(h => h.startsWith('*.')
+    ? u.port === '' && u.hostname.endsWith(h.slice(1))
+    : u.host === h);
 }
 
 export const UMLEITUNGS_GRENZE = 5;

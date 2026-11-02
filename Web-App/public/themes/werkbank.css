@@ -107,7 +107,7 @@
 [data-theme="werkbank"] input,
 [data-theme="werkbank"] select,
 [data-theme="werkbank"] textarea{
-  background:#2a241c;color:var(--txt);border-color:var(--s300);
+  background:#2a241c;color:var(--txt);border-color:var(--feldrand);
 }
 [data-theme="werkbank"] input::placeholder,
 [data-theme="werkbank"] textarea::placeholder{color:var(--mut)}

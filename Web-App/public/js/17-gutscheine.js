@@ -1,4 +1,4 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, ico, G, TRASH_ICON_SVG, api, esc, fmtN, toast } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
@@ -60,12 +60,18 @@ const KOPIE_ICON_SVG =
   '<rect x="9" y="9" width="13" height="13" rx="2"/>' +
   '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
 
+/** „6123-4567-8901“ und „612345678901“ → „6123 4567 8901“. */
+export function gruppiereNummer(roh) {
+  return String(roh ?? '').replace(/[\s-]/g, '').replace(/(.{4})(?=.)/g, '$1 ');
+}
+
 function zeile(g) {
   const pinOffen = _sichtbar.has(g.id);
   // Die Nummer in Vierergruppen: 19 Ziffern am Stück sind beim Abtippen an
-  // der Kasse nicht zu lesen, und genau dafür ist sie da. Kopiert wird
+  // der Kasse nicht zu lesen, und genau dafür ist sie da. Erst die eigenen
+  // Trenner weg, sonst zählen sie mit („6123 -456 7-89“). Kopiert wird
   // trotzdem die ROHE Nummer — mit Leerzeichen nimmt sie kein Bezahlfeld an.
-  const nummer = String(g.number).replace(/(.{4})/g, '$1 ').trim();
+  const nummer = gruppiereNummer(g.number);
   return `
     <div class="voucher-row" data-id="${g.id}">
       <div class="voucher-main">
@@ -110,10 +116,10 @@ function zeile(g) {
           <button class="v-btn" data-click="gutscheinPdfOeffnen" data-arg="${g.id}"
                   title="${tRaw('vouchers.pdf_open')}"
                   aria-label="${tRaw('vouchers.pdf_open')}">${ico('datei')}</button>`
-        : `<span class="voucher-nopdf" title="${tRaw('vouchers.no_pdf')}">—</span>`}
+        : `<span class="voucher-nopdf" title="${tRaw('vouchers.no_pdf')}"><span aria-hidden="true">—</span><span class="vh">${t('vouchers.no_pdf')}</span></span>`}
         <button class="v-btn" data-click="gutscheinBearbeiten" data-arg="${g.id}"
                 title="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
-        <button class="delbtn" data-click="gutscheinLoeschen" data-arg="${g.id}"
+        <button class="delbtn" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
                 title="${tRaw('vouchers.delete_title')}">${TRASH_ICON_SVG}</button>
       </div>
     </div>`;
@@ -145,7 +151,7 @@ export async function ladeGutscheine() {
 function formularLeeren() {
   _bearbeitet = null;
   for (const id of ['v-number', 'v-pin', 'v-amount']) { const e = el(id); if (e) e.value = ''; }
-  const datei = el('v-pdf'); if (datei) datei.value = '';
+  const datei = el('v-pdf'); if (datei) { datei.value = ''; gutscheinDateiGewaehlt.call(datei); }
   const titel = el('vouchers-form-title');
   if (titel) titel.textContent = tRaw('vouchers.add');
   const abbrechen = el('v-cancel');
@@ -578,7 +584,16 @@ export async function gutscheinLandSpeichern() {
     d?.success ? 'success' : 'error');
 }
 
+/** Der Name der gewählten Datei neben dem Knopf — das native Feld zeigte ihn selbst. */
+function gutscheinDateiGewaehlt() {
+  const name = el('v-pdf-name');
+  if (!name) return;
+  const datei = this?.files?.[0];
+  name.textContent = datei ? datei.name : tRaw('vouchers.pdf_none');
+}
+
 registerActions({
+  gutscheinDateiGewaehlt,
   gutscheineExportieren,
   ladeGutscheine,
   gutscheinSpeichern,

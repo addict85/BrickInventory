@@ -83,7 +83,8 @@ const DIAGRAMMSCHRIFT = (wurzel) => `(() => {
 const KLEINES = `(() => {
   const sichtbar = e => { const q = e.getBoundingClientRect(); return q.width > 0 && q.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
   const klein = [...document.querySelectorAll('button, a[href], input:not([type=hidden]), select, [role=button], label.btn')]
-    .filter(sichtbar).filter(e => !e.closest('.vh'))
+    // Ein verstecktes Dateifeld wird über sein Knopf-Label getippt; gemessen wird das Label.
+    .filter(sichtbar).filter(e => !e.closest('.vh') && !e.matches('.datei-versteckt'))
     .map(e => { const q = e.getBoundingClientRect(); return [e, Math.round(q.width), Math.round(q.height)]; })
     .filter(([, w, h]) => w < 44 || h < 44)
     .map(([e, w, h]) => e.tagName.toLowerCase() + (e.className ? '.' + String(e.className).trim().replace(/\\s+/g, '.') : '') + ' ' + w + '×' + h);

@@ -1,4 +1,4 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { detailZeile, oderStrich } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
@@ -32,12 +32,26 @@ export function bestaetigeMitPasswort(title, msg, icon) {
   return dialogOeffnen(title, msg, icon, true);
 }
 
-function dialogOeffnen(title, msg, icon, mitPasswort) {
+/** Bei aktivem zweitem Faktor verlangt der Server für heikle Änderungen den
+ * Code (zweiter_faktor_noetig); dann einmal fragen und mit `code` wiederholen.
+ * @param {(zusatz: object) => Promise<any>} ruf
+ * @returns die Antwort, oder null, wenn der Dialog abgebrochen wurde */
+export async function mitZweitemFaktor(ruf) {
+  const d = await ruf({});
+  if (d?.code !== 'zweiter_faktor_noetig') return d;
+  const code = await dialogOeffnen(tRaw('zf.title'), tRaw('zf.code_noetig'), 'schloss', false, true);
+  return code === null ? null : ruf({ code: code.trim() });
+}
+
+function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
     const pwWrap = G('cd-pw-wrap'), pw = G('cd-pw');
+    const codeWrap = G('cd-code-wrap'), codeFeld = G('cd-code');
     if (pwWrap) pwWrap.hidden = !mitPasswort;
+    if (codeWrap) codeWrap.hidden = !mitCode;
     if (pw) pw.value = '';
+    if (codeFeld) codeFeld.value = '';
     G('cd-title').textContent = title || t('common.delete_title');
     G('cd-msg').textContent   = msg   || t('common.delete_text');
     G('cd-icon').innerHTML  = ico(icon || 'loeschen');
@@ -45,15 +59,17 @@ function dialogOeffnen(title, msg, icon, mitPasswort) {
     const btnYes = G('cd-confirm');
     const btnNo  = G('cd-cancel');
     if (mitPasswort) setTimeout(() => pw?.focus(), 0);
+    else if (mitCode) setTimeout(() => codeFeld?.focus(), 0);
     function cleanup(result) {
       if (pw) pw.value = '';
+      if (codeFeld) codeFeld.value = '';
       modal.style.display = 'none';
       btnYes.onclick = null;
       btnNo.onclick  = null;
       modal.onclick  = null;
       resolve(result);
     }
-    const wert = () => (mitPasswort ? (pw?.value || '') : '');
+    const wert = () => (mitPasswort ? (pw?.value || '') : mitCode ? (codeFeld?.value || '') : '');
     btnYes.onclick = () => { const w = wert(); cleanup(w); };
     btnNo.onclick  = () => cleanup(null);
     modal.onclick  = e => { if (e.target === modal) cleanup(null); };
@@ -1127,7 +1143,7 @@ export async function openModal(sn){
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
       <button class="btn bs btn-sm" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:46px;text-align:center;border:1px solid var(--bdr);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
+      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:46px;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
       <button class="btn bs btn-sm" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
     `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
@@ -1146,7 +1162,7 @@ export async function openModal(sn){
     ${qtyRow}
     ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button class="btn bs btn-sm" data-click="reimportParts" data-arg="${escJs(sn)}" title="${t('detail.reimport_parts')}" data-stil="padding:1px 6px;font-size:var(--fs-1);margin-left:4px">${PARTS_ICON_SVG}</button>`)}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
-    ${detailZeile(t('detail.added'), `${ico('kalender')} ${addedFmt}`)}
+    ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
@@ -1205,7 +1221,7 @@ export async function openModal(sn){
     // Beide Zustände in EINEM Diagramm — siehe priceChartSVG().
     el.innerHTML = ph.success
       ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el))
-      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
+      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`;
   });
 
 }
@@ -1395,7 +1411,7 @@ export async function loadBricksetQueue() {
             <button class="btn bs btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
               data-click="retryBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('aktualisieren')}</button>
             <button class="btn bd btn-sm" data-stil="padding:2px 8px;font-size:var(--fs-1)"
-              data-click="deleteBricksetQueueEntry" data-arg="${esc(e.set_number)}" data-self="1">${ico('loeschen')}</button>
+              data-click="deleteBricksetQueueEntry"${echt()} data-arg="${esc(e.set_number)}" data-self="1">${ico('loeschen')}</button>
           </div>
         </div>`).join('')}
     </div>`;

@@ -14,6 +14,8 @@ data class KontoUiState(
     val speichert: Boolean = false,
     val meldung: String? = null,
     val fehler: String? = null,
+    /** Der Server verlangt den zweiten Faktor (zweiter_faktor_noetig): Codefeld zeigen. */
+    val codeNoetig: Boolean = false,
     /** Null, solange nicht geladen oder der Server kein Design je Konto kennt. */
     val design: DesignWahl? = null,
 )
@@ -59,6 +61,10 @@ data class HouseholdUiState(
     val passwortFalsch: Boolean = false,
     /** Zählt gelungene Einlösungen — daran leert die Ansicht ihre Felder. */
     val eingeloest: Int = 0,
+    /** Der zweite Faktor ist aktiv (oder der Server verlangte seinen Code): Codefeld zeigen. */
+    val faktorNoetig: Boolean = false,
+    /** Der Code des zweiten Faktors war falsch; das Feld zeigt es an. */
+    val faktorFalsch: Boolean = false,
 )
 
 /**

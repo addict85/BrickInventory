@@ -1,4 +1,4 @@
-import { registerActions } from './00-registry.js';
+import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf } from './01-core.js';
 import { detailZeile, listeLadefehler } from './01-bausteine.js';
@@ -130,7 +130,7 @@ function zeile(w) {
          erste Entwurf gescheitert — dieselbe Falle wie in
          src/teile/abfragen.ts, wo derselbe Hinweis steht. -->
     <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
-      <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop" aria-hidden="true" data-arg="${arg}"
+      <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
            title="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</span></div>
       ${bild}
       <div class="mk-text">
@@ -195,7 +195,7 @@ export async function ladeMerkliste() {
   ziel.innerHTML = _merkposten.length
     ? _merkposten.map(zeile).join('')
     : (gefiltert
-      ? leerZustand({ ico: 'suche', titel: tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') })
+      ? leerZustand({ ico: 'suche', titel: G('mks')?.value.trim() ? tRaw('common.no_hits', { query: G('mks').value.trim() }) : tRaw('wanted.no_results'), knopf: zuruecksetzenKnopf('merkliste') })
       : leerZustand({ ico: 'merkliste', titel: tRaw('wanted.empty'), text: tRaw('wanted.empty_hint') }));
 }
 
@@ -436,7 +436,7 @@ export async function oeffneMerkpostenDetail(arg) {
     if (_detail !== arg) return;
     G('mk-m-sparkline-content').innerHTML = ph?.success
       ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(G('mk-m-sparkline-content')))
-      : `<span class="text-mut schrift-1">${esc(tRaw('detail.no_history'))}</span>`;
+      : `<span class="text-mut schrift-1">${esc(tRaw(ph?.networkError ? 'chart.offline' : 'detail.no_history'))}</span>`;
   }).catch(() => {});
 }
 

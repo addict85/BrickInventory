@@ -1,6 +1,6 @@
 /** RFC 6238 (TOTP, SHA-1, 6 Stellen, 30 s): die Form, die jede
  * Authenticator-App versteht. Ohne Fremdpaket, mit node:crypto. */
-import { verschluessele, entschluessele, kontext } from '../infra/geheimnis';
+import { verschluessele, entschluessele, kontext, suchwert } from '../infra/geheimnis';
 import crypto from 'crypto';
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
@@ -70,18 +70,23 @@ export function otpauthAdresse(geheimnis: string, konto: string): string {
 function normiereCode(code: string): string {
   return code.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
-const hashCode = (code: string) => crypto.createHash('sha256').update(normiereCode(code)).digest('hex');
+/** HMAC mit eigenem Teilschlüssel und an das Konto gebunden: Ein Abzug der
+ * Tabelle allein lässt sich nicht durchprobieren. */
+const hashCode = (uid: number, code: string) => suchwert('zweiter-faktor-code', `${uid}:${normiereCode(code)}`);
+/** Codes vor dem 01.11.2026: 10 Zeichen (50 Bit), ungesalzenes SHA-256. Sie gelten
+ * weiter, bis sie verbraucht oder ersetzt sind: Ein Zwang zum Neuerzeugen sperrte aus, wer sie nur auf Papier hat. */
+const ALT_LAENGE = 10;
+const alterHash = (code: string) => crypto.createHash('sha256').update(normiereCode(code)).digest('hex');
 
+/** 16 Zeichen Base32 = 80 Bit, in Vierergruppen zum Abschreiben. */
 function neueWiederherstellungscodes(): string[] {
-  return Array.from({ length: CODES_ANZAHL }, () => {
-    const roh = base32(crypto.randomBytes(7)).slice(0, 10).toLowerCase();
-    return `${roh.slice(0, 5)}-${roh.slice(5)}`;
-  });
+  return Array.from({ length: CODES_ANZAHL }, () =>
+    base32(crypto.randomBytes(10)).toLowerCase().match(/.{4}/g)!.join('-'));
 }
 
 async function codesErsetzen(tx: DbSchnittstelle, uid: number): Promise<string[]> {
   const codes = neueWiederherstellungscodes();
-  await repo.ersetzeCodes(tx, uid, codes.map(hashCode));
+  await repo.ersetzeCodes(tx, uid, codes.map(c => hashCode(uid, c)));
   return codes;
 }
 
@@ -121,7 +126,9 @@ export async function pruefeCode(uid: number, code: unknown): Promise<'totp' | '
     if (schritt === null) return null;
     return await repo.verbraucheSchritt(uid, schritt) ? 'totp' : null;
   }
-  return await repo.verbraucheCode(uid, hashCode(eingabe)) ? 'wiederherstellung' : null;
+  if (await repo.verbraucheCode(uid, hashCode(uid, eingabe))) return 'wiederherstellung';
+  if (normiereCode(eingabe).length !== ALT_LAENGE) return null;
+  return await repo.verbraucheCode(uid, alterHash(eingabe)) ? 'wiederherstellung' : null;
 }
 
 export function schalteAb(uid: number): Promise<void> {

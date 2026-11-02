@@ -12,6 +12,7 @@ import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.AnmeldeUiState
 import ch.brickinventoryapp.ui.qrFehler
 import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.bestaetigtFingerabdruck
 import ch.brickinventoryapp.util.pinSchluessel
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.model.LoginResponse
@@ -149,34 +150,59 @@ class AnmeldungViewModel @Inject constructor(
 
     /**
      * Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem
-     * Code. Trägt er einen Fingerabdruck, gilt der Pin schon für die erste Anfrage.
-     * Ein Code mit http-Adresse wird nicht übernommen, auch wenn die Oberfläche ihn
-     * durchliesse.
+     * Code. Sein Fingerabdruck gilt schon für die erste Anfrage, gemerkt wird er aber
+     * erst nach gelungener Anmeldung. Ein anderer als der gemerkte nur, wenn
+     * [pinWechselEingabe] ihn aus einer zweiten Quelle bestätigt: Ein Code kann von
+     * jedem stammen, ein Tipp genügte sonst für einen fremden Schlüssel. Ein Code
+     * mit http-Adresse wird nicht übernommen, auch wenn die Oberfläche ihn durchliesse.
      */
     fun loginWithQrToken(
         serverUrl: String, token: String,
         abmelden: suspend () -> Unit = {}, fingerabdruck: String? = null,
+        pinWechselEingabe: String? = null,
     ) {
         val neu = NetworkPolicy.normalisiere(serverUrl)
         if (NetworkPolicy.adressfehler(neu, NetworkPolicy.entwicklung) != null) {
             _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(R.string.setup_qr_klartext_abgelehnt)) }
             return
         }
+        val schluessel = if (fingerabdruck != null) pinSchluessel(neu) else null
+        if (schluessel != null && fingerabdruck != null && bisherigerPin(neu, fingerabdruck) != null &&
+            !bestaetigtFingerabdruck(pinWechselEingabe, fingerabdruck)) {
+            _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(R.string.setup_qr_pin_wechsel_abgelehnt)) }
+            return
+        }
         viewModelScope.launch {
             _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
-            if (fingerabdruck != null) pinSchluessel(neu)?.let { ablage.merkePin(it, fingerabdruck) }
-            richteEin(neu, abmelden)
-            when (val r = konto.qrLogin(token)) {
-                is Result.Success -> {
-                    val neuesToken = r.data.token
-                    if (r.data.success && neuesToken != null) {
-                        angemeldet(neuesToken, r.data.user?.username ?: "", r.data.verwalter)
-                        _anmeldeState.update { it.copy(loginLaeuft = false) }
-                    } else qrGescheitert(r.data.error ?: text(R.string.err_qr_login_failed))
+            if (schluessel != null && fingerabdruck != null) ablage.halteVor(schluessel, fingerabdruck)
+            try {
+                richteEin(neu, abmelden)
+                when (val r = konto.qrLogin(token)) {
+                    is Result.Success -> {
+                        val neuesToken = r.data.token
+                        if (r.data.success && neuesToken != null) {
+                            if (schluessel != null && fingerabdruck != null) ablage.merkePin(schluessel, fingerabdruck)
+                            angemeldet(neuesToken, r.data.user?.username ?: "", r.data.verwalter)
+                            _anmeldeState.update { it.copy(loginLaeuft = false) }
+                        } else qrGescheitert(r.data.error ?: text(R.string.err_qr_login_failed))
+                    }
+                    is Result.Error -> qrGescheitert(meldung(r))
                 }
-                is Result.Error -> qrGescheitert(meldung(r))
+            } finally {
+                // Nach merkePin ein No-op; sonst bleibt nichts vom Code zurück.
+                if (schluessel != null) ablage.vergissVorgehaltenen(schluessel)
             }
         }
+    }
+
+    /**
+     * Der gemerkte Pin für die Adresse, wenn er von [fingerabdruck] abweicht —
+     * dann fragt der Einrichtungsbildschirm nach (bisher/neu), bevor er anmeldet.
+     */
+    fun bisherigerPin(serverUrl: String, fingerabdruck: String?): String? {
+        if (fingerabdruck == null) return null
+        val schluessel = pinSchluessel(NetworkPolicy.normalisiere(serverUrl)) ?: return null
+        return ablage.gemerkterPin(schluessel)?.takeIf { it != fingerabdruck }
     }
 
     /** Ein zweiter QR-Anlauf nach einer gelungenen Anmeldung ist kein Fehler (siehe qrFehler). */

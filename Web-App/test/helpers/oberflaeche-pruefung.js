@@ -4,9 +4,12 @@
  * Abschnitte der Einstellungen, die Seiten hinter dem Menü und die
  * wichtigsten Dialoge. Je Zustand:
  *   - axe-core: kein Verstoss der Stufe serious oder critical;
- *   - Layout (layout-messung.js): kein waagrechter Überlauf, am Telefon jedes
- *     Tippziel ≥ 44 × 44 px, keine überlappenden Bedienelemente, kein
- *     abgeschnittener Text ohne „…“, Text und Platzhalter ≥ 4,5:1 (gross 3:1).
+ *   - Layout (layout-messung.js): kein waagrechter Überlauf, jedes Tippziel
+ *     ≥ 44 × 44 px am Telefon und ≥ 24 × 24 px am Rechner, keine überlappenden
+ *     Bedienelemente, kein abgeschnittener Text ohne „…“, Text und Platzhalter
+ *     ≥ 4,5:1 (gross 3:1), Feldgrenzen und Sinnbild-Knöpfe ≥ 3:1;
+ *   - in jedem Dialog: Tab erreicht jedes Bedienelement, jede Klickfläche
+ *     nimmt den Fokus, und der Fokus bleibt im Dialog.
  * Gemessen werden Eigenschaften statt Bilder: Pixelvergleiche hingen an den
  * Schriften der Maschine. Je Design und Gerät eine Testdatei, damit jede
  * unter der Zeitgrenze einer Datei (60 s) bleibt.
@@ -19,12 +22,18 @@
  *   D  Papierkorb der Set-Kachel wieder <button tabindex="-1"> → „Sammlung“
  *      (axe nested-interactive)
  *   E  Telefonregel des Import-Menüs entfernt → „Import-Menü“ (Überlauf)
+ * Gegenproben (01.11.2026, je einzeln, gemessen an classic/rechner):
+ *   F  `summary` aus FOKUSSIERBAR (01-dialoge.js) → „Set-Detail“ („Weitere
+ *      Aktionen“ nicht per Tab erreichbar)
+ *   G  Dateifeld der Anleitungen wieder display:none → „Set-Detail“ (Knopf ohne Tastatur)
+ *   H  --feldrand wieder var(--bdr) → fast jede Ansicht (Feldgrenze 1,18:1)
+ *   I  .btn ohne min-height 24px → „Hintergrundarbeiten“, „Set-Detail“ u. a. (21–23 px)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { starteApp, warte } = require('./app-browser');
 const { musterSammlung } = require('./bestand');
-const { AXE_LAUF, LAYOUT } = require('./layout-messung');
+const { AXE_LAUF, LAYOUT, tabPruefung } = require('./layout-messung');
 
 const GERAETE = { rechner: [1280, 900, false], telefon: [390, 844, true] };
 
@@ -48,7 +57,11 @@ const ANSICHTEN = [
   ['Set hinzufügen', [reiter('gallery'), klick('button[data-click="oeffneErfassen"][data-arg="set"]')]],
   ['Set-Detail', [reiter('gallery'), klick('#gallery [data-click="openModal"]')]],
   ['Kaufpreise', [reiter('gallery'), klick('#gallery [data-click="openModal"]'), klick('#set-modal [data-click="openAcqModal"]')]],
+  ['Teil hinzufügen', [reiter('parts'), klick('button[data-click="oeffneErfassen"][data-arg="part"]')]],
+  ['Minifigur hinzufügen', [reiter('minifigs'), klick('button[data-click="oeffneErfassen"][data-arg="fig"]')]],
   ['Teil-Detail', [reiter('parts'), klick('.man-tile[data-click="openManDetail"]')]],
+  ['Teil aus Set', [reiter('parts'), klick('.part-card[data-click="openSetItemDetail"]')]],
+  ['Merkposten-Detail', [reiter('wanted'), klick('.mk-zeile[data-click="oeffneMerkpostenDetail"]')]],
   ['Löschen bestätigen', [reiter('parts'), klick('.man-tile .delbtn')]],
 ];
 
@@ -92,6 +105,7 @@ function pruefeOberflaeche(design, geraet) {
         for (const f of await b.auswerten(LAYOUT(mobil))) funde.push(`${wo}: ${f}`);
         for (const f of await b.auswerten(AXE_LAUF)) funde.push(`${wo}: axe ${f}`);
       }
+      for (const f of await tabPruefung(b)) funde.push(`Tastatur: ${f}`);
       await t.test(ansicht, () => assert.deepEqual(funde, []));
     }
     await b.auswerten(SCHLIESSEN);

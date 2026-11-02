@@ -1,22 +1,16 @@
-// ── Warum diese Datei nicht mehr in routes/ liegt ────────────
-//
-// Sie enthält KEINE einzige Route und wird nirgends als Router montiert — sie
-// ist ein reiner API-Client. In routes/ zu liegen war ein Erbstück, hatte aber
-// Folgen: Wer sie importierte, importierte scheinbar einen Router, und die
-// Kreise, die daraus entstanden, wurden mit späten `require()` umgangen.
-//
+// Ein API-Client, kein Router: Deshalb liegt er nicht unter routes/.
 import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../src/katalog/rateLimiter';
 import { KEINE_FARBE } from '../src/infra/validate';
 
-import https from 'https';
+import { pipeline } from 'stream/promises';
+import { holeHttps, oeffneHttps, AbrufFehler } from '../src/infra/abruf';
 import path from 'path';
 import fs from 'fs';
 import { rebrickableBackgroundLimiter } from '../src/katalog/rateLimiter';
 import { fehlertext, meldeUndLiefere } from '../src/infra/httpError';
 import { mitVersion } from '../src/sets/setNummer';
 import { getGlobalSetting } from '../src/konto/settings';
-import { ERLAUBTE_DOWNLOAD_HOSTS, hostErlaubt, naechsteUmleitung,
-         UMLEITUNGS_GRENZE, pfadSegment } from '../src/infra/fremdeAdressen';
+import { ERLAUBTE_DOWNLOAD_HOSTS, ERLAUBTE_API_HOSTS, pfadSegment } from '../src/infra/fremdeAdressen';
 
 const BASE = 'https://rebrickable.com/api/v3';
 
@@ -65,65 +59,31 @@ async function rebrickableJson(pfad: string): Promise<any> {
   try { return JSON.parse(r.body); } catch (e) { return meldeUndLiefere(`rebrickable:${pfad}`, null)(e); }
 }
 
-function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeoutMs = 60000): Promise<{ status: number; body: string; buffer: Buffer }> {
-  return new Promise((resolve, reject) => {
-    let attempts = 0;
-    // Umleitungen zaehlen EIGENS, nicht ueber `attempts`.
-    //
-    // `attempts` zaehlt jeden Anlauf mit und wird nur bei 429, Timeout und
-    // ECONNRESET geprueft — beim Umleiten sah es niemand an. Eine Schleife
-    // A -> B -> A lief damit unbegrenzt weiter, und ausloesen konnte das der
-    // fremde Server ganz allein.
-    let umleitungen = 0;
-    const attempt = (u: string, kopf: Record<string, string>) => {
-      attempts++;
-      let parsed; try { parsed = new URL(u); } catch (e) { return reject(new Error('Invalid URL: ' + u)); }
-      if (parsed.protocol !== 'https:') return reject(new Error('Nur https: ' + u));
-      const req = https.get({ hostname: parsed.hostname, path: parsed.pathname + parsed.search,
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', ...kopf } }, res => {
-        req.setTimeout(0);
-        if (res.statusCode === 301 || res.statusCode === 302) {
-          res.resume();
-          // Neun der zwoelf Aufrufer dieser Funktion schicken
-          // `Authorization: key <REBRICKABLE_API_KEY>`. Bis hierher wurde der
-          // Kopf beim Folgen unveraendert weitergereicht — eine Umleitung auf
-          // einen fremden Host bekam damit den Schluessel, und eine Umleitung …
-          // Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#httpsgetrobust
-          if (++umleitungen > UMLEITUNGS_GRENZE) return reject(new Error(
-            `Mehr als ${UMLEITUNGS_GRENZE} Umleitungen: ${u.substring(0, 120)}`));
-          const weiter = naechsteUmleitung(u, res.headers.location, kopf);
-          // Eine Umleitung ohne Location-Kopfzeile, auf http oder auf ein
-          // anderes Schema ist nicht befolgbar. Vorher lief `undefined` in
-          // attempt() und kam als "Invalid URL: undefined" heraus — richtig
-          // abgewiesen, aber mit einer Meldung, die auf die falsche Ursache
-          // zeigt.
-          if (!weiter) return reject(new Error(
-            `Umleitung ${res.statusCode} nicht befolgbar (fehlend, kein https, oder unlesbar): ${u.substring(0, 120)}`));
-          return attempt(weiter.url, weiter.kopfzeilen);
-        }
-        if (res.statusCode === 429) {
-          let body429 = '';
-          res.on('data', d => body429 += d);
-          res.on('end', () => {
-            const wait = parseThrottleWait(body429);
-            console.log(`[rebrickable] 429 throttled, waiting ${wait}ms...`);
-            rebrickableLimiter.throttle(wait);
-            if (attempts < 3) return setTimeout(() => attempt(u, kopf), wait);
-            resolve({ status:429, body:'', buffer:Buffer.alloc(0) });
-          });
-          return;
-        }
-        if (res.statusCode === 403) { res.resume(); return resolve({ status:403, body:'', buffer:Buffer.alloc(0) }); }
-        const chunks: any[] = [];
-        res.on('data', d => chunks.push(d));
-        res.on('end', () => { const buffer = Buffer.concat(chunks); resolve({ status: res.statusCode ?? 0, body: buffer.toString('utf-8'), buffer }); });
-        res.on('error', err => { if (attempts < 3) setTimeout(() => attempt(u, kopf), 1000); else reject(err); });
-      });
-      req.setTimeout(timeoutMs, () => { req.destroy(); if (attempts < 2) { setTimeout(() => attempt(u, kopf), 1000); } else reject(new Error(`Timeout: ${u.substring(0,120)}`)); });
-      req.on('error', (err: NodeJS.ErrnoException) => { if (err.code === 'ECONNRESET' && attempts < 3) setTimeout(() => attempt(u, kopf), 1500); else reject(err); });
-    };
-    attempt(url, headers);
-  });
+/** Antworten der Rebrickable-API sind seitenweise; 32 MB fasst jede Seite reichlich. */
+const API_MAX_BYTES = 32 * 1024 * 1024;
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+/** Drei Anläufe bei 429 und Netzfehlern; 403 heisst bei Rebrickable „unbekannt". */
+async function httpsGetRobust(url: string, headers: Record<string, string> = {}, timeoutMs = 60000): Promise<{ status: number; body: string; buffer: Buffer }> {
+  for (let versuch = 1; ; versuch++) {
+    let r;
+    try {
+      r = await holeHttps(url, { hosts: ERLAUBTE_API_HOSTS, maxBytes: API_MAX_BYTES, zeitlimitMs: timeoutMs,
+        kopfzeilen: { 'User-Agent': BROWSER_UA, ...headers } });
+    } catch (e) {
+      if (e instanceof AbrufFehler && e.isTransient && versuch < 3) { await sleep(1500); continue; }
+      throw e;
+    }
+    if (r.status === 429) {
+      const wait = parseThrottleWait(r.koerper.toString('utf-8'));
+      console.log(`[rebrickable] 429 throttled, waiting ${wait}ms...`);
+      rebrickableLimiter.throttle(wait);
+      if (versuch < 3) { await sleep(wait); continue; }
+      return { status: 429, body: '', buffer: Buffer.alloc(0) };
+    }
+    if (r.status === 403) return { status: 403, body: '', buffer: Buffer.alloc(0) };
+    return { status: r.status, body: r.koerper.toString('utf-8'), buffer: r.koerper };
+  }
 }
 
 async function rbGet(apiPath: string, params: Record<string, string | number> = {}) {
@@ -222,63 +182,27 @@ export const DOWNLOAD_MAX_BYTES = 300 * 1024 * 1024;
 async function downloadFile(url: string, destPath: string, maxBytes = DOWNLOAD_MAX_BYTES) {
   if (fs.existsSync(destPath)) return true;
   fs.mkdirSync(path.dirname(destPath), { recursive: true });
-  // Warum der Host hier geprueft wird, und zwar bei JEDEM Sprung
-  // Was diese Funktion holt, landet unter data/instructions/ bzw. im
-  // Bild-Cache — und von dort liefert der Server es an jeden angemeldeten
-  // Nutzer aus. Ein ungeprueftes Umleitungsziel wie http://127.0.0.1:5432/ …
-  // Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#downloadfile
-  // Nur https: Im Klartext könnte jeder auf dem Weg die Datei austauschen.
-  if (!url.startsWith('https://') || !hostErlaubt(url, ERLAUBTE_DOWNLOAD_HOSTS)) {
-    console.warn(`[download] Adresse nicht in der Liste erlaubter Hosts: ${url.substring(0, 120)}`);
+  // Was hier landet, liefert der Server an jedes Konto aus: deshalb die
+  // Hostliste bei jedem Sprung, nicht nur bei der ersten Adresse.
+  let antwort;
+  try {
+    antwort = await oeffneHttps(url, { hosts: ERLAUBTE_DOWNLOAD_HOSTS, maxBytes, zeitlimitMs: 10 * 60_000,
+      kopfzeilen: { 'User-Agent': BROWSER_UA, 'Referer': 'https://rebrickable.com/',
+                    'Accept': 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8' } });
+  } catch (e) {
+    console.warn(`[download] ${fehlertext(e)}`);
     return false;
   }
-  return new Promise(resolve => {
-    const kopfBasis: Record<string, string> = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Referer':    'https://rebrickable.com/',
-      'Accept':     'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-    };
-    const attempt = (u: string, kopf: Record<string, string>, redirects = 0) => {
-      if (redirects > UMLEITUNGS_GRENZE) return resolve(false);
-      let parsed; try { parsed = new URL(u); } catch (_) { return resolve(false); }
-      if (parsed.protocol !== 'https:') return resolve(false);
-      const req = https.get(u, { family: 4, headers: kopf }, res => {
-        if (res.statusCode===301||res.statusCode===302) {
-          res.resume();
-          // Dieselbe Regel wie in httpsGetRobust — hier zusaetzlich mit der
-          // Host-Liste, aus dem Grund im Block ueber dieser Funktion.
-          const weiter = naechsteUmleitung(u, res.headers.location, kopf, ERLAUBTE_DOWNLOAD_HOSTS);
-          if (!weiter) return resolve(false);
-          return attempt(weiter.url, weiter.kopfzeilen, redirects + 1);
-        }
-        if (res.statusCode !== 200) { res.resume(); return resolve(false); }
-        if (Number(res.headers['content-length']) > maxBytes) { res.destroy(); return resolve(false); }
-        // Stream directly to file — avoids buffering large PDFs in memory
-        const out = fs.createWriteStream(destPath);
-        let size = 0, zuGross = false;
-        res.on('data', chunk => {
-          size += chunk.length;
-          if (size > maxBytes && !zuGross) {
-            zuGross = true;
-            console.warn(`[download] Abgebrochen nach ${maxBytes} Byte: ${u.substring(0, 120)}`);
-            res.unpipe(out); res.destroy(); out.destroy();
-            fs.unlink(destPath, () => {}); resolve(false);
-          }
-        });
-        res.pipe(out);
-        out.on('finish', () => {
-          if (zuGross) return;
-          if (size < 100) { fs.unlink(destPath, () => {}); return resolve(false); }
-          resolve(true);
-        });
-        out.on('error', () => { fs.unlink(destPath, () => {}); resolve(false); });
-        res.on('error',  () => { fs.unlink(destPath, () => {}); resolve(false); });
-      });
-      req.setTimeout(60000, () => { req.destroy(); resolve(false); });
-      req.on('error', () => resolve(false));
-    };
-    attempt(url, kopfBasis);
-  });
+  if (antwort.status !== 200) { antwort.verwerfen(); return false; }
+  try {
+    await pipeline(antwort.strom(), fs.createWriteStream(destPath));
+  } catch (e) {
+    console.warn(`[download] Abgebrochen: ${fehlertext(e)}`);
+    await fs.promises.rm(destPath, { force: true });
+    return false;
+  }
+  if ((await fs.promises.stat(destPath)).size < 100) { await fs.promises.rm(destPath, { force: true }); return false; }
+  return true;
 }
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }

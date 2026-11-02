@@ -34,7 +34,7 @@ const mailerPfad = require.resolve(path.join(require('./helpers/sources').DIST, 
 const echt = _req('src/infra/mailer.js');
 require.cache[mailerPfad].exports = Object.assign({}, echt, {
   sendEmailGeaendertMail: async (an, name, neu) => { gesendet.push({ an, name, neu }); return { success: true }; },
-  sendVerificationMail: async (an, name, token, basis) => { bestaetigt.push(basis); return { success: true }; },
+  sendVerificationMail: async (an, token, basis) => { bestaetigt.push(basis); return { success: true }; },
 });
 
 const db = _req('db/database.js');

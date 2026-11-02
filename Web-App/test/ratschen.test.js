@@ -139,7 +139,8 @@ test('any wird weniger, nie mehr', () => {
   // 31.10.2026: 232 (Parameter der Repositories typisiert).
   // 31.10.2026: 221 (Anreicherung und Bewertung ohne any-Karten und any-Fänge).
   // 01.11.2026: 220 (SMTP-Test liefert seinen Fehlercode typisiert).
-  const SCHRANKE = 220;
+  // 01.11.2026: 206 (Merklisten-CSV-Import fängt ohne any).
+  const SCHRANKE = 206;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -172,7 +173,7 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // 30.10.2026: 92 — acht Dateien prüfen jetzt Verhalten (Erfassungen, Summen,
   // Mengen-Echo, Preisverlauf, Figurenschätzung, LISTEN/NOTIFY, CSV, Katalogbilder).
   // 30.10.2026: 90 — der Start des Job-Prozesses wird ausgeführt statt gelesen.
-  const SCHRANKE = 90;
+  const SCHRANKE = 88;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();

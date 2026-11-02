@@ -100,6 +100,17 @@ export function vorDem(s: string, trenner: string): string {
   return s.split(trenner)[0] ?? '';
 }
 
+/** Für Ströme und Sammelberichte ohne Statuscode: Ein Fachfehler nennt Code und
+ * Satz, alles andere (SQL, Dateipfade, Fremd-APIs) nur das Protokoll. */
+export function oeffentlicherFehler(e: unknown, kontext: string, req?: { headers?: Record<string, any> }): { error: string; code: FehlerCode } {
+  const code = fehlerCode(e);
+  if (code && code in FEHLER) {
+    return { code: code as FehlerCode, error: fehlerText(code as FehlerCode, antwortSprache(req), (e as { vars?: Record<string, string | number> }).vars) };
+  }
+  meldeUndWeiter(kontext, e);
+  return { code: 'interner_fehler', error: fehlerText('interner_fehler', antwortSprache(req)) };
+}
+
 /** Express 5 reicht auch abgelehnte Promises hierher; ein try/catch je Route
  * braucht es nicht. */
 export function fehlerAntwort(e: unknown, req: Request, res: Response, _next: NextFunction): void {

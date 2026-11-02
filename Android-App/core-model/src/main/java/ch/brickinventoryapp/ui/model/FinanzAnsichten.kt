@@ -18,14 +18,19 @@ data class KennzahlenAnsicht(
     val totalInstructions: Int,
     val totalParts: Int,
     val totalMinifigs: Int,
+    val teileAusSets: Int? = null,
+    val teileEinzeln: Int? = null,
 )
 
+/** total_parts ist hier schon die Summe; set_parts fehlt bei älteren Servern, dann aus der Differenz. */
 fun DashboardStats.alsAnsicht() = KennzahlenAnsicht(
     totalSets = totalSets,
     totalQuantity = totalQuantity,
     totalInstructions = totalInstructions,
     totalParts = totalParts,
     totalMinifigs = totalMinifigs,
+    teileAusSets = setParts ?: manualParts?.let { totalParts - it },
+    teileEinzeln = manualParts,
 )
 
 data class TeileBewertungAnsicht(
