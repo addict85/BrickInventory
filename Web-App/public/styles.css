@@ -168,6 +168,8 @@
                 background:var(--sur);color:var(--txt);border:0;
                 border-radius:8px;cursor:pointer;
                 padding:.5rem .7rem;font-size:var(--fs-3)}
+    /* Ohne Trennwörterbuch bleibt ein langes Wort ganz; es bricht dann im Wort. */
+    .umenu-item>span{min-width:0;overflow-wrap:anywhere}
     @media (hover:hover){.umenu-item:hover{background:var(--b50,var(--s100))}}
     /* Der Strich trennt die sieben Sichten von der einen Handlung darunter.
        `border:0` zuerst: ein <hr> bringt von sich aus einen Rahmen mit, und

@@ -17,6 +17,8 @@
  *      gespeichert“ (149)
  *   E  #login-screen [hidden]-Regel entfernt → rot: „Anmeldemaske ohne
  *      Passkey …“ (a[href] und .btn hoben hidden auf)
+ *   F  .umenu-item>span ohne overflow-wrap:anywhere → rot: „Benutzermenü“ bei 320
+ *      und 390 px („Hintergrundarbeiten“ ragt aus dem Knopf; 02.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -80,6 +82,9 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
     await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
 
     await t.test(`${breite} px: Benutzermenü`, async () => {
+      // Ohne Silbentrennungs-Wörterbuch (so im CI-Chrome) bleibt „Hintergrundarbeiten“
+      // ein Stück; hyphens: manual (CSSOM, die CSP sperrt <style>) stellt diesen schlechtesten Fall überall her.
+      await b.auswerten(`document.querySelectorAll('.umenu-item').forEach(e => e.style.setProperty('hyphens', 'manual', 'important')); true`);
       await b.auswerten(`document.getElementById('btn-umenu').click(); true`);
       await warte(200);
       assert.deepEqual(await b.auswerten(MESSEN('#umenu-pop')), []);
