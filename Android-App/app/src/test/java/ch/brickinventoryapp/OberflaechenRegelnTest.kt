@@ -294,7 +294,11 @@ class OberflaechenRegelnTest {
                 compose.onNodeWithText(name, useUnmergedTree = true).fetchSemanticsNode()
                     .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
                 val text = ergebnis.single()
-                assertTrue("$name ist abgeschnitten (${text.lineCount} Zeilen)",
+                assertTrue("$name ist abgeschnitten (${text.lineCount} Zeilen, Grenzen " +
+                    "${text.layoutInput.constraints}, Grösse ${text.size}, Zeilenende " +
+                    "${text.getLineEnd(0, visibleEnd = true)}/${name.length}, Auslassung " +
+                    "${text.isLineEllipsized(text.lineCount - 1)}, Breite ${text.didOverflowWidth}, " +
+                    "Stil ${text.layoutInput.style.fontSize}, maxLines ${text.layoutInput.maxLines})",
                     !text.isLineEllipsized(text.lineCount - 1) && !text.didOverflowWidth)
             }
         } finally {
