@@ -90,8 +90,22 @@ export function filterUmschalten(){
 
 /** Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü. */
 export function oeffneReiter(name){
+  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
   menueSchliessen();
   document.querySelector(`.ntab[data-tab="${name}"]`)?.click();
+  if (ausMenue) fokusAufTitel(G('tab-'+name));
+}
+
+/**
+ * Nach einer Wahl im Menü steht der Fokus auf einem nun verborgenen Eintrag
+ * und fiele an den Seitenanfang; die Überschrift der neuen Seite ist der Ort,
+ * an dem Tastatur und Bildschirmleser weitermachen.
+ */
+function fokusAufTitel(flaeche){
+  const titel = /** @type {HTMLElement|null} */ (flaeche?.querySelector('.ptitle') ?? null);
+  if (!titel) { G('btn-umenu')?.focus(); return; }
+  if (!titel.hasAttribute('tabindex')) titel.setAttribute('tabindex', '-1');
+  titel.focus({ preventScroll: true });
 }
 
 export function bindTabs(){
@@ -186,6 +200,7 @@ export function oeffneSicht(name){
   if(!SICHTEN[name]) return;
   const flaeche = G('tab-'+name);
   if(!flaeche) return;
+  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
   document.querySelectorAll('.ntab').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
   flaeche.classList.add('active');
@@ -199,6 +214,7 @@ export function oeffneSicht(name){
   // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige
   // gerollt war, und man sieht die Mitte einer fremden Seite.
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (ausMenue) fokusAufTitel(flaeche);
   SICHTEN[name]();
 }
 
@@ -213,26 +229,55 @@ function zeigeSeitenname(flaeche, imKopf){
   document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';
 }
 
-function menueSchliessen(){
+function menueSchliessen(fokusZurueck = false){
   const pop = G('umenu-pop');
+  const drin = !!pop && pop.contains(document.activeElement);
   if(pop) pop.style.display = 'none';
   const knopf = G('btn-umenu');
   if(knopf) knopf.setAttribute('aria-expanded','false');
+  if(knopf && fokusZurueck && drin) knopf.focus();
+}
+
+/** Die sichtbaren Einträge; `admin-only` ist für andere Konten ausgeblendet. */
+function menueEintraege(){
+  return /** @type {HTMLElement[]} */ ([...(G('umenu-pop')?.querySelectorAll('[role="menuitem"]') ?? [])])
+    .filter(e => e.style.display !== 'none');
+}
+
+/** Öffnet das Menü und setzt den Fokus auf den ersten (oder letzten) Eintrag. */
+function menueOeffnen(letzter = false){
+  const pop = G('umenu-pop');
+  if(!pop) return;
+  pop.style.display = 'block';
+  G('btn-umenu')?.setAttribute('aria-expanded','true');
+  const e = menueEintraege();
+  (letzter ? e[e.length - 1] : e[0])?.focus();
 }
 
 /** Das Menü auf- und zuklappen. */
 export function benutzerMenue(){
   const pop = G('umenu-pop');
   if(!pop) return;
-  const offen = pop.style.display !== 'none';
-  if(offen){ menueSchliessen(); return; }
-  pop.style.display = 'block';
-  G('btn-umenu')?.setAttribute('aria-expanded','true');
+  if(pop.style.display !== 'none'){ menueSchliessen(); return; }
+  menueOeffnen();
 }
 
-// Zuklappen, wenn jemand daneben tippt oder Escape drückt. Beides gehört zu
-// einem Menü wie der Knopf selbst — ein Aufklapper, der nur über denselben
-// Knopf wieder zugeht, fühlt sich klemmend an.
+// Tastatur nach dem APG-Muster „Menu Button": Ein Bildschirmleser kündigt
+// role=menu an, und Nutzer erwarten dann Pfeiltasten statt Tab.
+document.addEventListener('keydown', (ev) => {
+  const ziel = ev.target instanceof Element ? ev.target : null;
+  if(ziel?.id === 'btn-umenu' && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')){
+    ev.preventDefault(); menueOeffnen(ev.key === 'ArrowUp'); return;
+  }
+  if(!ziel?.closest('#umenu-pop')) return;
+  const e = menueEintraege(), i = e.indexOf(/** @type {HTMLElement} */ (ziel));
+  const nach = { ArrowDown: (i + 1) % e.length, ArrowUp: (i - 1 + e.length) % e.length, Home: 0, End: e.length - 1 }[ev.key];
+  if(nach !== undefined){ ev.preventDefault(); e[nach]?.focus(); return; }
+  if(ev.key === 'Tab') menueSchliessen();
+});
+
+// Zuklappen, wenn jemand daneben tippt oder Escape drückt. Escape bringt den
+// Fokus zurück auf den Menüknopf, sonst fiele er auf den Seitenanfang.
 document.addEventListener('click', (ev) => {
   const pop = G('umenu-pop');
   if(!pop || pop.style.display === 'none') return;
@@ -240,7 +285,7 @@ document.addEventListener('click', (ev) => {
   menueSchliessen();
 });
 document.addEventListener('keydown', (ev) => {
-  if(ev.key === 'Escape') { menueSchliessen(); importMenuesSchliessen(null, true); }
+  if(ev.key === 'Escape') { menueSchliessen(true); importMenuesSchliessen(null, true); }
 });
 
 /** Offene Import-Menüs schliessen, ausser dem, in dem `ausser` liegt. */

@@ -24,8 +24,8 @@
  *   D  teileLeerAbgleichen wieder mit `_manuelleLeer ? 'none' : ''` → rot:
  *      „keine leere Box“
  *   E  die Prüfung `!u.email` in loadProfile entfernt → rot: „ohne E-Mail“
- *   F  die Prüfung auf den offenen Assistenten in checkRbKey entfernt → rot:
- *      „kein Hinweis über dem Assistenten“
+ *   F  die Prüfung auf den offenen Assistenten in rbHinweisZeigen entfernt
+ *      → rot: „kein Hinweis über dem Assistenten“ (02.11.2026 erneut gemessen)
  *   G  in setzeEigenesDesign applyTheme() entfernt → rot: „eigenes Design“
  *      (data-theme blieb classic)
  */
@@ -133,6 +133,7 @@ test('kein Hinweis zum Rebrickable-Schlüssel über dem Einrichtungsassistenten'
     assert.ok(d.getElementById('einrichtung-modal').classList.contains('open'), 'der Assistent ist zu');
     const hinweise = [...d.querySelectorAll('#toasts .toast')].map(t => t.textContent).filter(t => /Rebrickable/.test(t));
     assert.deepEqual(hinweise, []);
+    assert.equal(d.getElementById('rb-hinweis').hidden, true, 'Hinweisband über dem Assistenten');
   } finally { w.close(); }
 });
 

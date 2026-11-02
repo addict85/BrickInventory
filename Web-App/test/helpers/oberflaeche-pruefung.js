@@ -81,7 +81,7 @@ function pruefeOberflaeche(design, geraet) {
     const { b } = app;
     const [w, h, mobil] = GERAETE[geraet];
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
-    // Ohne Rebrickable-Schlüssel springt die App nach dem Start in die Einstellungen.
+    // Ohne Rebrickable-Schlüssel öffnet nach dem Start der Einrichtungsassistent.
     await warte(1000);
     await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
     const bild = () => b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);

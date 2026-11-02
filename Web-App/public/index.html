@@ -342,19 +342,19 @@
                   aria-haspopup="true" aria-expanded="false"
                   aria-controls="umenu-pop"><svg class="ico ubadge-ico" aria-hidden="true"><use href="#i-profil"/></svg><span class="ubadge-name" id="ubadge">—</span><span class="ubadge-striche" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-menue"/></svg></span><span class="vh" data-i18n="menu.open">Menü</span></button>
           <div class="umenu-pop" id="umenu-pop" role="menu" data-stil="display:none">
-            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="profil">
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="profil">
                     <svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg><span data-i18n="settings.group.profile">Konto</span></button>
-            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="gutscheine">
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="gutscheine">
                     <svg class="ico" aria-hidden="true"><use href="#i-gutschein"/></svg><span data-i18n="vouchers.group">Gutscheine</span></button>
-            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="alarme">
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="alarme">
                     <svg class="ico" aria-hidden="true"><use href="#i-alarm"/></svg><span data-i18n="alerts.group">Preisalarme</span></button>
-            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="lagerorte">
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="lagerorte">
                     <svg class="ico" aria-hidden="true"><use href="#i-lagerort"/></svg><span data-i18n="storage.group">Lagerorte</span></button>
-            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="haushalt">
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="haushalt">
                     <svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg><span data-i18n="household.group">Haushalt</span></button>
-            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="daten">
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="daten">
                     <svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg><span data-i18n="settings.data_export">Daten und Papierkorb</span></button>
-            <button class="umenu-item" role="menuitem" data-click="oeffneSicht" data-arg="app">
+            <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="app">
                     <svg class="ico" aria-hidden="true"><use href="#i-app"/></svg><span data-i18n="menu.app">Android-App</span></button>
             <!-- Abmelden steht abgesetzt, nicht als achter Punkt in einer
                  Reihe: Die sieben darueber wechseln die Sicht, dieses hier
@@ -364,10 +364,10 @@
                  der Liste weggeschnitten. (Die Pruefung streift Kommentare
                  inzwischen ab, denn dieser Text hier enthielt den Tag
                  ausgeschrieben und hat GENAU DAS ausgeloest.) -->
-            <button class="umenu-item admin-only" role="menuitem" data-stil="display:none" data-click="oeffneReiter" data-arg="settings"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg><span data-i18n="nav.settings">Einstellungen</span></button>
-            <button class="umenu-item admin-only" role="menuitem" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hintergrundarbeiten</span></button>
+            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="settings"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg><span data-i18n="nav.settings">Einstellungen</span></button>
+            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hintergrundarbeiten</span></button>
             <hr class="umenu-trenner">
-            <button class="umenu-item umenu-abmelden" role="menuitem" id="btn-logout"><svg class="ico" aria-hidden="true"><use href="#i-abmelden"/></svg><span data-i18n="settings.logout">Abmelden</span></button>
+            <button class="umenu-item umenu-abmelden" role="menuitem" tabindex="-1" id="btn-logout"><svg class="ico" aria-hidden="true"><use href="#i-abmelden"/></svg><span data-i18n="settings.logout">Abmelden</span></button>
           </div>
         </div>
 
@@ -389,6 +389,12 @@
   </nav>
 
   <div class="offline-band" id="offline-band" role="status" hidden></div>
+  <div class="hinweis-band" id="rb-hinweis" role="region" aria-labelledby="rb-hinweis-text" hidden>
+    <svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>
+    <span id="rb-hinweis-text" data-i18n="rb_key.banner">Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.</span>
+    <button type="button" class="btn bp btn-sm" data-click="rbHinweisOeffnen" data-i18n="rb_key.banner_link">Schlüssel eintragen</button>
+    <button type="button" class="btn bs btn-sm hinweis-zu" data-click="rbHinweisWeg" aria-label="Hinweis ausblenden" data-i18n="rb_key.banner_close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
+  </div>
   <main id="inhalt" tabindex="-1">
 
     <!-- ══ GALERIE ══ -->

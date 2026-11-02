@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, toast, passwortRegelText } from './01-core.js';
+import { ico, G, api, toast, passwortRegelText, rbHinweisVerbergen } from './01-core.js';
 import { oeffneErfassen } from './02-gallery.js';
 import { mitZweitemFaktor } from './07-admin.js';
 
@@ -41,7 +41,7 @@ export async function pruefeEinrichtung() {
   for (const [q, ok] of Object.entries(d.quellen || {})) setzeStand(q, ok);
   zeige();
   G('einrichtung-modal').classList.add('open');
-  document.querySelectorAll('#toasts [data-art="rb-schluessel"]').forEach(el => el.remove());
+  rbHinweisVerbergen();
 }
 
 function schliessen() { G('einrichtung-modal').classList.remove('open'); }

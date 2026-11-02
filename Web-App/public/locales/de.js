@@ -227,7 +227,9 @@ window.I18N_DE = {
   'toast.error': 'Fehler',
   'csv.warnings': 'Warnungen',
   'csv.errors': 'Fehler',
-  'rb_key.missing': 'Bitte zuerst den Rebrickable-API-Schlüssel in den Einstellungen hinterlegen.',
+  'rb_key.banner': 'Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.',
+  'rb_key.banner_link': 'Schlüssel eintragen',
+  'rb_key.banner_close': 'Hinweis ausblenden',
   'gallery.title': 'Meine Sammlung',
   'settings.logout': 'Abmelden',
 

@@ -702,6 +702,29 @@ export function fehlerMeldung(e) {
   return text || tRaw('common.unknown_error');
 }
 
+// ── Hinweis „Rebrickable-Schlüssel fehlt“ ───────────────────────────────────
+const RB_HINWEIS_WEG = 'bim_rb_hinweis_weg';
+/** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab. */
+function rbHinweisZeigen() {
+  const band = G('rb-hinweis');
+  if (!band || G('einrichtung-modal')?.classList.contains('open')) return;
+  try { if (sessionStorage.getItem(RB_HINWEIS_WEG)) return; } catch (_) { /* ohne Speicher: zeigen */ }
+  band.hidden = false;
+}
+export function rbHinweisVerbergen() { const b = G('rb-hinweis'); if (b) b.hidden = true; }
+function rbHinweisOeffnen() {
+  rbHinweisVerbergen();
+  document.querySelector('.ntab[data-tab="settings"]')?.click();
+  /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
+  G('rb-key')?.focus();
+}
+/** Wegklicken gilt für die Sitzung; der Fokus geht an den Seiteninhalt statt ins Leere. */
+function rbHinweisWeg() {
+  rbHinweisVerbergen();
+  try { sessionStorage.setItem(RB_HINWEIS_WEG, '1'); } catch (_) { /* dann eben bis zum Neuladen */ }
+  G('inhalt')?.focus({ preventScroll: true });
+}
+
 // ── Verbindung ──────────────────────────────────────────────────────────────
 // Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es
 // einer ist und von wann — sonst hält man alte Zahlen für aktuell.
@@ -1211,21 +1234,13 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   if(ME.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
   if(ME.isAdmin){ document.querySelectorAll('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
   else { ['bl-ck','bl-cs','bl-tok','bl-ts','rb-key','bs-key','lim-rb','lim-bl','lim-bs'].forEach(id=>{const el=G(id);if(el){el.disabled=true;if(el.type!=='number')el.placeholder=tRaw('settings.admins_only_ph')}}); G('btn-sav-bl').disabled=true; G('btn-sav-rb').disabled=true; G('btn-sav-bs').disabled=true; }
-  // Admin: check if API keys are set, redirect to settings if not
-  // Re-use the already-fetched cache (populated above); if not ready yet, wait briefly
+  // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in
+  // die Einstellungen bei jeder Anmeldung nimmt dem Verwalter seine Startseite.
+  // Ein Band weist einmal je Sitzung darauf hin.
   if(ME.isAdmin) {
     const checkRbKey = () => {
       const s = _settingsCache || {};
-      const hasRbKey = s.rebrickable_api_key && s.rebrickable_api_key.trim();
-      if(!hasRbKey) {
-        const ntab = document.querySelector('.ntab[data-tab="settings"]');
-        if(ntab) ntab.click();
-        /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
-        // Der Einrichtungsassistent fragt genau diesen Schlüssel ab; über ihm
-        // wäre der Hinweis doppelt. Öffnet er später, räumt er ihn weg.
-        if (!G('einrichtung-modal')?.classList.contains('open')) toast(tRaw('rb_key.missing'),'info').dataset.art = 'rb-schluessel';
-        return;
-      }
+      if(!(s.rebrickable_api_key && s.rebrickable_api_key.trim())) rbHinweisZeigen();
       loadGallery();
     };
     if(_settingsCache) checkRbKey();
@@ -1290,7 +1305,7 @@ G('btn-logout').onclick=async()=>{
 // closePdfViewer/printPdfViewer js/12-pdfviewer.js — der Handler gehört zu dem
 // Modul, das ihn umsetzt.
 registerActions({
-  showPanel,
+  showPanel, rbHinweisOeffnen, rbHinweisWeg,
 });
 
 /**

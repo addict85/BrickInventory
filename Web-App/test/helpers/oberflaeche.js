@@ -64,7 +64,7 @@ async function warte(bedingung, ms = 3000) {
 
 /**
  * @param {object} [antworten]  Pfad → Antwort (Objekt oder Funktion(url))
- * @param {object} [opt]        { angemeldet = true, sprache = 'de', browserSprache }
+ * @param {object} [opt]        { angemeldet = true, sprache = 'de', browserSprache, vorher(w) }
  */
 async function oeffneOberflaeche(antworten = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
@@ -91,6 +91,7 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
   w.IntersectionObserver = class { observe() {} unobserve() {} disconnect() {} };
   // Die Wörterbücher lädt index.html als eigene <script>-Tags.
   for (const l of ['de', 'en']) w.eval(fs.readFileSync(path.join(ROOT, 'public', 'locales', l + '.js'), 'utf8'));
+  if (opt.vorher) opt.vorher(w);
   w.eval(BUNDLE);
   if (w.document.readyState === 'loading')
     await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
