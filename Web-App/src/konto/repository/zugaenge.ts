@@ -101,7 +101,7 @@ export function legeNachfolgerAn(tx: DbSchnittstelle, neu: string, alt: string, 
      VALUES ($1, $2, $3, $4, NOW(),
              CASE WHEN $5 AND $6::timestamptz IS NOT NULL THEN NOW() + make_interval(days => $7) ELSE $6::timestamptz END,
              $5, $8, $9, $10, $11, NOW(), $12)
-     RETURNING expires_at, hard_expires_at, rotiert_am`,
+     RETURNING LEAST(expires_at, hard_expires_at) AS expires_at, hard_expires_at, rotiert_am`,
     [neu, z.user_id, z.label, z.created_at, z.sliding, z.expires_at, leerlaufTage,
      z.hard_expires_at, z.never_expires, z.scope, bereich, alt]);
 }

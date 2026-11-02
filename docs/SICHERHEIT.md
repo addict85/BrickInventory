@@ -70,6 +70,8 @@ den Commits, nicht hier.
   `src/konto/sitzungsVersion.ts` — `sitzungsversion-db`.
 - Drosseln je Adresse zählen ein IPv6-/64 als eine Adresse, IPv4 in IPv6 als
   IPv4: `drosselAdresse` in `src/konto/loginLimiter.ts` — `drossel-ipv6-db`.
+- App-Anmeldung: Token mit fester Höchstdauer 180 Tage ab Anmeldung, die der
+  Tausch erbt — `token-scope-rotation-db`.
 - Tokens mit Scope: `app` hat nie Verwalterrechte, QR-Codes geben nur `app`;
   Verwalterrouten verlangen Sitzung oder Scope `voll`. Gleitender Ablauf
   (90 Tage), Tausch über `/auth/token-rotieren` mit 5 min Überlappung;

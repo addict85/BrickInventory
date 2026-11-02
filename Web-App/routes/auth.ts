@@ -34,6 +34,8 @@ import type { Antwort } from '../src/infra/vertrag';
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#requirelogin
 const requireLogin = requireLoginOrToken;
 const requireAdmin = requireApiAdmin;
+// Feste Obergrenze ab Anmeldung; der Tausch erbt sie (legeNachfolgerAn), die App meldet dann ab.
+const APP_HOECHSTDAUER_TAGE = 180;
 
 /** Das Label steht in der Geräteliste; ohne Grenze lägen dort beliebig lange Zeilen. */
 const LABEL_MAX = 100;
@@ -70,7 +72,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
   let token: string | null = null;
   // Die Webapp nur mit httpOnly-Cookie: Ein Token wäre per Skript auslesbar.
   if (mitToken) try {
-    token = await createToken(uid, tokenLabel(label, 'webapp-session'), dauerhaft, null,
+    token = await createToken(uid, tokenLabel(label, 'webapp-session'), dauerhaft, dauerhaft ? APP_HOECHSTDAUER_TAGE : null,
                               { scope: tokenScope(scope), ip: req.ip });
   } catch (e) {
     console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));

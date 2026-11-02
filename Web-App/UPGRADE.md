@@ -939,6 +939,13 @@ Was sich für Nutzer und Clients ändert:
   seine Unterkonten abwärts. Hängt ein Unterkonto zusätzlich an einem fremden
   Hauptkonto mit anderer Währung, antwortet der Wechsel mit 409
   `waehrung_geteiltes_unterkonto`; erst die Verknüpfung lösen.
+- **App-Token mit Höchstdauer**: Ein Token aus `POST /api/v1/auth/login` mit
+  `never_expires: true` (die App) trägt jetzt neben der Gleitfrist (90 Tage
+  ungenutzt) eine feste Grenze von 180 Tagen ab Anmeldung
+  (`hard_expires_at`); `token-rotieren` erbt sie, verlängert sie also nicht.
+  Danach meldet sich die App neu an. Bestehende Tokens behalten ihre Fristen;
+  QR-Zugänge folgen weiter der beim Erzeugen gewählten Laufzeit. Die Antwort
+  des Tauschs nennt in `token_info.expires_at` das frühere der beiden Enden.
 - **Abhängigkeiten**: `oauth` und `@types/oauth` entfernt (ungenutzt).
   Renovate schlägt npm- und Gradle-Fassungen erst drei Tage nach Erscheinen
   vor. `npm run build` läuft auch ohne den Ordner `Android-App/`.
