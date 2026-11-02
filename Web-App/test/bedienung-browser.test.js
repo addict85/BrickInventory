@@ -97,6 +97,10 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
   // Anmeldemaske: abmelden, dann jedes Design hell und dunkel messen.
   await b.auswerten(`document.getElementById('btn-logout').click(); true`);
   await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Anmeldemaske');
+  // Der Testserver hat keine Domäne in APP_BASE_URL und blendet Passkey und
+  // „Passwort vergessen?“ aus; gemessen wird die volle Maske.
+  await bis(`document.getElementById('link-forgot').hidden`, 'Anmeldewege abgefragt');
+  await b.auswerten(`document.getElementById('btn-passkey').hidden = false; document.getElementById('link-forgot').hidden = false; true`);
   for (const design of ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz']) {
     await t.test(`Anmeldemaske ${design}`, async () => {
       const funde = [];

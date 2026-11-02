@@ -29,7 +29,7 @@ test('Gutscheinnummer: erst Trenner weg, dann Vierergruppen; ohne PDF steht es i
     await sicht(w, 'gutscheine');
     await warte(() => d.querySelector('.voucher-num'));
     assert.equal(text(d.querySelector('.voucher-num')), '6123 4567 8901');
-    assert.equal(text(d.querySelector('.voucher-nopdf .vh')), 'Kein PDF hinterlegt');
+    assert.equal(text(d.querySelector('.voucher-nopdf')), 'kein PDF');
   } finally { w.close(); }
 });
 

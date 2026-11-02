@@ -60,7 +60,8 @@ test('public/js: die Typprüfung (checkJs) meldet weniger, nie mehr', () => {
   // und den window-Feldern (test/helpers/fenster.d.ts) 184.
   // Gegenprobe: `@returns {HTMLInputElement}` an G() entfernt → rot (459).
   // 01.11.2026: 183 (Zeitraum-Knöpfe lesen dataset einmal).
-  const SCHRANKE = 183;
+  // 02.11.2026: 182 (Gutschein-Betrag über betragFuerFeld).
+  const SCHRANKE = 182;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'browser-typen-'));
   try {
     fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({

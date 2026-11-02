@@ -385,10 +385,10 @@
    grösse des Browsers. Darunter zwei Reihen zu drei Zielen mit etwas kleinerer
    Schrift: Die Namen bleiben lesbar, statt nur Symbole zu zeigen. */
 @media (max-width: 19.5em) {
-  nav:not(.einst-nav) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  nav:not(.einst-nav) { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-around; }
   .ntab { padding: 4px 2px; min-height: 44px; gap: 1px; }
   .ntab .ico { width: .8rem; height: .8rem; }
-  .ntab .tab-label { font-size: .6rem; line-height: 1.15; white-space: normal; overflow: visible;
+  .ntab .tab-label { font-size: var(--fs-0); line-height: 1.15; white-space: normal; overflow: visible;
                      text-overflow: clip; overflow-wrap: anywhere; text-align: center; }
 }
 

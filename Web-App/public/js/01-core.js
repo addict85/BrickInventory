@@ -770,7 +770,7 @@ function sperreIn(wurzel) {
   const selbst = wurzel instanceof Element && wurzel.matches(BEDIENT) ? [wurzel] : [];
   /** @type {HTMLButtonElement[]} */ ([...selbst, ...wurzel.querySelectorAll(BEDIENT)]).forEach(k => {
     if (k.disabled || k.dataset.offlineGesperrt || !schreibt(k)) return;
-    if (k.matches('summary')) { k.setAttribute('aria-disabled', 'true'); k.parentElement?.removeAttribute('open'); }
+    if (k.tagName === 'SUMMARY') { k.setAttribute('aria-disabled', 'true'); k.parentElement?.removeAttribute('open'); }
     else k.disabled = true;
     k.dataset.offlineGesperrt = '1';
     k.setAttribute('aria-describedby', ((k.getAttribute('aria-describedby') || '') + ' offline-band').trim());
@@ -796,7 +796,7 @@ function schreibenSperren(an) {
   }
   _sperrBeobachter?.disconnect(); _sperrBeobachter = null;
   /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('[data-offline-gesperrt]')).forEach(k => {
-    if (k.matches('summary')) k.removeAttribute('aria-disabled'); else k.disabled = false;
+    if (k.tagName === 'SUMMARY') k.removeAttribute('aria-disabled'); else k.disabled = false;
     delete k.dataset.offlineGesperrt;
     const rest = (k.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== 'offline-band');
     if (rest.length) k.setAttribute('aria-describedby', rest.join(' ')); else k.removeAttribute('aria-describedby');
