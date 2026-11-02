@@ -110,7 +110,9 @@ fun LoginScreen(
             // Server chip
             AssistChip(
                 onClick = onChangeServer,
-                label = { Text(serverUrl, maxLines = 1, style = MaterialTheme.typography.labelMedium) },
+                // Eine Zeile mit Auslassung: Bei 200 % Schrift lief die Adresse sonst aus dem Chip.
+                label = { Text(serverUrl, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.labelMedium) },
                 leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(14.dp)) },
                 trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(12.dp)) },
                 shape = Formen.chip

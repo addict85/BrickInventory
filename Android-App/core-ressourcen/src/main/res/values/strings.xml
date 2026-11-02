@@ -38,7 +38,7 @@
     <string name="settings_language_de">German</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
-    <string name="login_title">Sign in</string>
+    <string name="login_title">Welcome back</string>
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
@@ -124,7 +124,7 @@
     <string name="gallery_stat_parts">Parts</string>
     <string name="gallery_stat_minifigs">Minifigures</string>
     <string name="gallery_stat_instructions">Instructions</string>
-    <string name="gallery_search_placeholder">Search sets…</string>
+    <string name="gallery_search_placeholder">Search…</string>
     <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
@@ -154,7 +154,7 @@
     <string name="minifigs_stat_types">Types</string>
     <string name="minifigs_stat_total">Total</string>
     <string name="minifigs_stat_manual">Manual</string>
-    <string name="minifigs_search_placeholder">Search minifigures…</string>
+    <string name="minifigs_search_placeholder">Search…</string>
     <string name="minifigs_manual_section">Manually added minifigures</string>
     <string name="minifigs_sets_section">From sets</string>
     <string name="minifigs_none">No minifigures</string>
@@ -395,7 +395,7 @@
     <string name="vm_barcode_not_found">No set found for barcode %1$s</string>
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
-    <string name="parts_search_placeholder">Search parts…</string>
+    <string name="parts_search_placeholder">Search…</string>
     <string name="parts_spare_tag">Spare</string>
     <!-- Detail dialog for parts/minifigs FROM SETS: no market price,
          quantity read-only, instead the sets that use it. -->
@@ -496,7 +496,7 @@
     </plurals>
     <!-- Katalog -->
     <string name="nav_catalog">Catalog</string>
-    <string name="catalog_search_placeholder">Set number / name…</string>
+    <string name="catalog_search_placeholder">Number or name…</string>
     <string name="catalog_filter_theme">Theme</string>
     <string name="catalog_filter_year">Year</string>
     <string name="catalog_all_themes">All themes</string>
@@ -781,7 +781,7 @@
     <string name="nav_wanted">Wanted</string>
     <string name="wanted_add_title">Add a wanted item</string>
     <string name="wanted_add_submit">Add to wanted list</string>
-    <string name="wanted_search">Search the wanted list…</string>
+    <string name="wanted_search">Search…</string>
     <string name="wanted_no_results">No wanted items found</string>
     <string name="wanted_empty">Your wanted list is empty</string>
     <string name="wanted_owned">Already owned</string>
