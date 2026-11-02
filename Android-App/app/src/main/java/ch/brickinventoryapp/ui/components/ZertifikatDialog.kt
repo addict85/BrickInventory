@@ -27,14 +27,15 @@ import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.ZertifikatUngeklaert
+import ch.brickinventoryapp.util.fingerabdruckAnfang
 import ch.brickinventoryapp.util.fingerabdruckLesbar
 
 /**
  * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der
  * Fingerabdruck steht in derselben Schreibweise da wie in der Webapp, damit man
- * ihn vergleichen kann. Ohne bekannte CA oder bei geändertem Schlüssel gilt er erst,
- * wenn man ihn aus einer zweiten Quelle abschreibt — dort prüft sonst niemand die
- * Kette, und ein einzelner Tipp wird zur Gewohnheit, die ein Angreifer nutzt.
+ * ihn vergleichen kann. Ohne öffentliche CA oder bei geändertem Schlüssel gilt er erst,
+ * wenn man ihn aus einer zweiten Quelle abschreibt, und steht hier nur angefangen da —
+ * dort prüft sonst niemand die Kette, und ein Tipp wird zur Gewohnheit eines Angreifers.
  * [onVertrauen] bekommt die Eingabe und sagt, ob sie passte.
  */
 @Composable
@@ -51,6 +52,7 @@ fun ZertifikatDialog(
     val (titel, text) = when (frage.art) {
         ZertifikatUngeklaert.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to R.string.zert_text_erstkontakt
         ZertifikatUngeklaert.Art.UNBEKANNTE_CA -> R.string.zert_titel_unbekannt to R.string.zert_text_unbekannt
+        ZertifikatUngeklaert.Art.NUTZER_CA -> R.string.zert_titel_nutzer_ca to R.string.zert_text_nutzer_ca
         ZertifikatUngeklaert.Art.GEAENDERT -> R.string.zert_titel_geaendert to R.string.zert_text_geaendert
     }
     val geaendert = frage.art == ZertifikatUngeklaert.Art.GEAENDERT
@@ -68,9 +70,12 @@ fun ZertifikatDialog(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Text(stringResource(if (geaendert) R.string.zert_jetzt else R.string.zert_fingerabdruck),
+                // Was abzutippen ist, steht nicht da: Sonst schriebe man es vom Bildschirm
+                // eines Angreifers ab statt aus der Webapp. Der Anfang zeigt nur, welche Zeile.
+                Text(stringResource(if (abschreiben) R.string.zert_beginnt_mit else R.string.zert_fingerabdruck),
                     style = MaterialTheme.typography.labelMedium)
-                Text(fingerabdruckLesbar(frage.fingerabdruck), fontFamily = FontFamily.Monospace,
+                Text(if (abschreiben) fingerabdruckAnfang(frage.fingerabdruck) else fingerabdruckLesbar(frage.fingerabdruck),
+                    fontFamily = FontFamily.Monospace,
                     style = MaterialTheme.typography.bodySmall,
                     color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                 if (abschreiben) {
@@ -87,7 +92,7 @@ fun ZertifikatDialog(
                     Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
                 }
                 // Die einzige Stelle, an der nach Nutzer-CAs gefragt wird: beim Fehler,
-                // mit Erklärung. Den Fingerabdruck bestätigt man danach trotzdem einmal.
+                // mit Erklärung. Danach fragt der Dialog erneut (NUTZER_CA), wieder zum Abtippen.
                 if (frage.art == ZertifikatUngeklaert.Art.UNBEKANNTE_CA && !nutzerCaAn) {
                     TextButton(onClick = onNutzerCa) { Text(stringResource(R.string.zert_nutzer_ca)) }
                 }

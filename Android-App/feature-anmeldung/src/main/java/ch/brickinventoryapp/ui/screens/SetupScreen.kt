@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.bestaetigtFingerabdruck
+import ch.brickinventoryapp.util.fingerabdruckAnfang
 import ch.brickinventoryapp.util.fingerabdruckLesbar
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.rememberScrollState
@@ -122,8 +123,10 @@ fun SetupScreen(
                         Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
                         Text(fingerabdruckLesbar(bisher), fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(stringResource(R.string.zert_jetzt), style = MaterialTheme.typography.labelMedium)
-                        Text(fingerabdruckLesbar(fp), fontFamily = FontFamily.Monospace,
+                        // Wie ZertifikatDialog: Den neuen Wert nennt der Code selbst, abgetippt
+                        // wird er aus der Webapp; hier steht nur sein Anfang.
+                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                         OutlinedTextField(
                             value = eingabe,

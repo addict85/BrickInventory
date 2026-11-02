@@ -70,6 +70,14 @@ fun istFingerabdruck(text: String?): Boolean =
     text != null && runCatching { Base64.getDecoder().decode(text.trim()).size == 32 }.getOrDefault(false)
 
 /**
+ * Was der Dialog vor dem Abtippen zeigt: nur die ersten 8 Hex-Zeichen, zur
+ * Orientierung, welche Zeile in der Webapp gemeint ist. Abgetippt werden die
+ * letzten 16 ([bestaetigtFingerabdruck]); stünden sie hier, schriebe man sie vom
+ * Bildschirm des Angreifers ab statt aus der zweiten Quelle.
+ */
+fun fingerabdruckAnfang(fp: String): String = fingerabdruckLesbar(fp).take(11) + " …"
+
+/**
  * Für die Anzeige: Hex in Paaren mit Doppelpunkt, genau wie die Webapp ihn unter
  * „Server-Zertifikat“ zeigt (`fp_hex`). Gleiche Schreibweise heisst: Zeichen für
  * Zeichen vergleichbar, ohne umzurechnen.
@@ -107,6 +115,11 @@ class ZertifikatUngeklaert(
         ERSTKONTAKT,
         /** Keine bekannte Stelle hat das Zertifikat ausgestellt (selbst ausgestellt, interne CA). */
         UNBEKANNTE_CA,
+        /**
+         * Gültig nur über eine nutzerinstallierte CA (Schalter an). Abzutippen wie
+         * [UNBEKANNTE_CA]: Eine solche CA schleust ein, wer das Gerät kurz hat.
+         */
+        NUTZER_CA,
         /** Der Server zeigt einen anderen Schlüssel als den gemerkten. */
         GEAENDERT,
     }
@@ -156,7 +169,9 @@ class ZertifikatsFrage @Inject constructor() {
  * das System kennt, die Wurzel aus dem Vertrauensspeicher ([anker]) — das oberste
  * gesendete Zertifikat wäre bei öffentlichen CAs eine Zwischenstelle, und die
  * wechselt (Let's Encrypt). Sonst das oberste der Kette, bei Caddy mit
- * `sign_with_root` die Wurzel wie im QR-Code und in der Webapp.
+ * `sign_with_root` die Wurzel wie im QR-Code und in der Webapp. Ein Pin auf eine
+ * System-Wurzel deckt jede öffentlich gültige Kette des Hosts — eine eigene CA
+ * bleibt an ihren Schlüssel gebunden.
  */
 // Das Pinning braucht ihn: Er prüft die Kette per PKIX bis zum Pin bzw. über
 // WahlVertrauen und lehnt ab, was der Nutzer nicht bestätigt hat.
@@ -182,17 +197,33 @@ class PinVertrauen(
         if (schluessel == null || chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
         val pin = pins.pin(schluessel)
         if (pin != null && passtZumPin(chain, pin)) return
-        val kettenOk = runCatching { mit(kette) }.isSuccess
-        val wurzel = if (kettenOk) anker(chain, kette.acceptedIssuers) else null
+        // Öffentlich heisst: allein mit den System-CAs, nie über eine Nutzer-CA.
+        val oeffentlich = runCatching { mit(fremdeHosts) }.isSuccess
+        // Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel:
+        // Wechselt die CA ihre Wurzel (Let's Encrypt X1 → X2), fragt die App nicht neu.
+        if (pin != null && oeffentlich && pin in systemWurzeln) return
+        val ueberNutzerCa = !oeffentlich && runCatching { mit(kette) }.isSuccess
+        val wurzel = when {
+            oeffentlich -> anker(chain, fremdeHosts.acceptedIssuers)
+            ueberNutzerCa -> anker(chain, kette.acceptedIssuers)
+            else -> null
+        }
         val fp = spkiFingerabdruck(wurzel ?: chain.last())
         if (pin != null) {
-            // Gepinnt ist die Wurzel des Systems: Die Kette hat das System eben bis zu ihr geprüft.
-            if (wurzel != null && fp == pin) return
+            // Gepinnte Nutzer-CA: Die Kette hat eben bis zu ihr gegolten.
+            if (ueberNutzerCa && wurzel != null && fp == pin) return
             throw gemeldet(ZertifikatUngeklaert(schluessel, fp, ZertifikatUngeklaert.Art.GEAENDERT, erwartet = pin))
         }
-        throw gemeldet(ZertifikatUngeklaert(schluessel, fp,
-            if (kettenOk) ZertifikatUngeklaert.Art.ERSTKONTAKT else ZertifikatUngeklaert.Art.UNBEKANNTE_CA))
+        val art = when {
+            oeffentlich -> ZertifikatUngeklaert.Art.ERSTKONTAKT
+            ueberNutzerCa -> ZertifikatUngeklaert.Art.NUTZER_CA
+            else -> ZertifikatUngeklaert.Art.UNBEKANNTE_CA
+        }
+        throw gemeldet(ZertifikatUngeklaert(schluessel, fp, art))
     }
+
+    /** Fingerabdrücke der System-Wurzeln: Ein Pin auf eine davon heisst „öffentlich gültig“. */
+    private val systemWurzeln: Set<String> by lazy { fremdeHosts.acceptedIssuers.map(::spkiFingerabdruck).toSet() }
 
     private fun gemeldet(f: ZertifikatUngeklaert): ZertifikatUngeklaert = f.also { frage.melde(it) }
 
@@ -204,9 +235,14 @@ class PinVertrauen(
     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String, engine: SSLEngine?) =
         pruefe(chain, schluessel(engine?.handshakeSession)) { it.checkServerTrusted(chain, authType, engine) }
 
-    // Ohne Socket kein Host: nur System-CAs, kein Pin. Android ruft die Fassung mit Socket.
-    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) =
-        fremdeHosts.checkServerTrusted(chain, authType)
+    // Ohne Socket kein Host (Android ruft die Fassung mit Socket). Hat der eigene
+    // Server einen Pin, gilt er auch hier: Sonst genügte eine System-CA, wo der Pin
+    // eine bestimmte Stelle verlangt.
+    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
+        val pin = eigenerServer()?.let(pins::pin)
+        if (pin == null || pin in systemWurzeln) return fremdeHosts.checkServerTrusted(chain, authType)
+        if (!passtZumPin(chain, pin)) throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
+    }
 
     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket?) =
         kette.checkClientTrusted(chain, authType, socket)
