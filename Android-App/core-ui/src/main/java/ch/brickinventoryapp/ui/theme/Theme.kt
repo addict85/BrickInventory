@@ -354,6 +354,13 @@ internal fun statusFarbenFuer(theme: String, dunkel: Boolean = false): StatusFar
 }
 
 /**
+ * Grundton der Ladekacheln (Skelett.kt), gemessen am Hintergrund statt an surface:
+ * surfaceVariant und selbst surfaceContainerHighest lagen in den hellen Designs nur
+ * 1,03–1,18:1 über background, die Kacheln waren kaum zu sehen.
+ */
+fun skelettTon(s: ColorScheme, anteil: Float = 0.12f): Color = lerp(s.background, s.onSurface, anteil)
+
+/**
  * Belegt die Rollen, die die Paletten oben nicht nennen, aus deren eigenen Farben.
  *
  * Material3 füllt fehlende Rollen mit seiner lila Grundpalette. Dialoge, Menüs,
