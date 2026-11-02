@@ -18,6 +18,14 @@ val ERLAUBTE_BILD_HOSTS = setOf(
 fun istErlaubterBildHost(url: HttpUrl): Boolean = url.isHttps && url.port == 443 && url.host in ERLAUBTE_BILD_HOSTS
 
 /**
+ * Der eigene Server für den Bild-Client. localhost nur im Debug-Build ([entwicklung]):
+ * Im Release-Build könnten Bild-Adressen aus einer Server-Antwort sonst Dienste
+ * auf dem Gerät selbst ansprechen, an der Liste der erlaubten Hosts vorbei.
+ */
+fun istEigenerBildServer(url: HttpUrl, serverUrl: String, entwicklung: Boolean): Boolean =
+    (entwicklung && url.host == "localhost") || NetworkPolicy.isSameOrigin(url, serverUrl)
+
+/**
  * Wohin der Bild-Client darf: Der eigene Server bekommt die Anfrage unverändert, die
  * Bild-CDNs mit browserähnlicher Kennung (Cloudflare blockt OkHttp sonst), jeder
  * andere Host nichts — auch nicht über eine Umleitung. Darum folgt dieser Wächter
