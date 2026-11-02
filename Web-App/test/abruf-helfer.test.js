@@ -89,6 +89,15 @@ test('relative Umleitung wird gegen die Ausgangsadresse aufgelöst', async () =>
   assert.equal(r.koerper.length, BILD.length);
 });
 
+// Gegenprobe (02.11.2026 gemessen): in abruf.ts die Bedingung „nur GET folgt“
+// entfernt → rot (der POST landet als GET auf /bild.jpg, Status 200).
+test('ein POST folgt keiner Umleitung', async () => {
+  const vorher = gesehen.length;
+  const r = await holeHttps(`${basis()}/relativ`, opt({ methode: 'POST', rumpf: '{"a":1}' }));
+  assert.equal(r.status, 302);
+  assert.deepEqual(gesehen.slice(vorher).map(g => g.pfad), ['/relativ']);
+});
+
 test('http-Umleitung, fehlendes und unlesbares Ziel werden abgewiesen', async () => {
   for (const pfad of ['/http', '/ohne-ziel', '/kaputt'])
     assert.equal(await grund(holeHttps(`${basis()}${pfad}`, opt())), 'umleitung', pfad);

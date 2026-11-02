@@ -13,8 +13,8 @@
  * ── Es geht NICHTS nach draussen ────────────────────────────────────────────
  *
  * Die Route kann keinen Abruf injiziert bekommen — sie ruft die Schranke, und
- * die den Client, und der nimmt `globalThis.fetch`. Genau das wird hier
- * ersetzt: Jeder Aufruf wird protokolliert, und die Zusicherungen messen
+ * die den Client. Dessen Abruf wird hier ersetzt (`_ersetzeAbruf`; den echten
+ * Weg prüft gutschein-guthaben-abruf): Jeder Aufruf wird protokolliert, und die Zusicherungen messen
  * daran, WIE OFT hinausgerufen wurde. Ohne diesen Ersatz ginge Marcos echte
  * Kartennummer an lego.com.
  *
@@ -77,18 +77,14 @@ function guthaben(cent, waehrung = 'CHF', text = null) {
   } } } } });
 }
 
-const echterFetch = globalThis.fetch;
-globalThis.fetch = async (url, init) => {
+G._ersetzeAbruf(async (url) => {
   const s = String(url);
-  // Die Aufrufe des TESTS an den eigenen Testserver gehen durch — nur
-  // lego.com wird abgefangen.
-  if (!s.includes('lego.com')) return echterFetch(url, init);
   protokoll.push(s);
   if (s.includes('/gift-cards/balance')) return antwort({ text: '<html></html>' });
   if (s.includes('/Login')) return antwort({ kekse: [`gqauth=${jwt(3600)}; Path=/`] });
   return naechsteAntwort ?? guthaben(25000);
-};
-test.after(() => { globalThis.fetch = echterFetch; });
+});
+test.after(() => { G._ersetzeAbruf(null); });
 
 /** Die Zahl der Abfragen an den Guthaben-Endpunkt (nicht Seite/Login). */
 const abfragen = () => protokoll.filter(u => u.includes('giftCardBalanceQuery')).length;

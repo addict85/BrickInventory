@@ -1,6 +1,6 @@
 /** Der eine Weg nach draussen. Ein Wurf aus einem Antwort-Rückruf ist eine
  * uncaughtException und beendet den Server; deshalb ruft nur diese Datei
- * https.get, und jeder Fehler wird hier zur Ablehnung. */
+ * https.request, und jeder Fehler wird hier zur Ablehnung. */
 import https from 'https';
 import { PassThrough, type Readable } from 'stream';
 import type { IncomingHttpHeaders, IncomingMessage, ClientRequest } from 'http';
@@ -29,6 +29,9 @@ export interface AbrufOptionen {
   kopfzeilen?: Record<string, string>;
   umleitungen?: number;
   agent?: https.Agent;
+  /** POST folgt keiner Umleitung: Ein 303 hiesse GET, ein 307 sendete den Rumpf weiter. */
+  methode?: 'GET' | 'POST';
+  rumpf?: string;
 }
 
 export interface AbrufKopf {
@@ -78,10 +81,10 @@ function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
       if (!u.startsWith('https://') || !hostErlaubt(u, o.hosts))
         return abbrechen(new AbrufFehler('adresse', `Adresse nicht erlaubt: ${adresseKurz(u)}`));
       try {
-        req = https.get(u, { family: 4, headers: kopf, ...(o.agent ? { agent: o.agent } : {}) }, r => {
+        req = https.request(u, { method: o.methode ?? 'GET', family: 4, headers: kopf, ...(o.agent ? { agent: o.agent } : {}) }, r => {
           if (erledigt) { r.resume?.(); return; }
           const status = r.statusCode ?? 0;
-          if (UMLEITUNG.has(status) && (o.umleitungen ?? UMLEITUNGS_GRENZE) > 0) {
+          if (UMLEITUNG.has(status) && (o.umleitungen ?? UMLEITUNGS_GRENZE) > 0 && (o.methode ?? 'GET') === 'GET') {
             r.resume?.();
             if (rest <= 0) return abbrechen(new AbrufFehler('umleitung', `Zu viele Umleitungen: ${adresseKurz(start)}`));
             const weiter = naechsteUmleitung(u, r.headers?.location, kopf, o.hosts);
@@ -100,6 +103,7 @@ function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
         });
         req.on('error', (e: Error) => abbrechen(e instanceof AbrufFehler ? e
           : new AbrufFehler('netz', `${(e as NodeJS.ErrnoException).code || e.message}: ${adresseKurz(u)}`, e)));
+        req.end(o.rumpf);
       } catch (e) {
         abbrechen(new AbrufFehler('adresse', `Abruf nicht möglich: ${adresseKurz(u)}`, e));
       }

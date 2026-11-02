@@ -141,6 +141,9 @@ den Commits, nicht hier.
   Gutscheine: `utils/gutscheinDateien.ts` — `konto-dateien-db`.
 
 ### Abrufe nach aussen (SSRF, 5)
+- Die Guthaben-Abfrage bei lego.com geht über `src/infra/abruf.ts`: nur
+  `www.lego.com`, auch nach einer Umleitung; ein POST folgt keiner; Antworten
+  höchstens 4 MB (Seite) bzw. 512 KB (Abfrage), 20 s — `gutschein-guthaben-abruf`.
 - Ein Weg nach draussen: `src/infra/abruf.ts` (`holeHttps`, `oeffneHttps`).
   Nur https, Host-Liste für Start und jeden Sprung, relative `Location`
   aufgelöst, höchstens 5 Umleitungen, Byte-Grenze (angesagt und gezählt),
