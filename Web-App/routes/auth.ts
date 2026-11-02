@@ -321,11 +321,10 @@ router.put('/users/:id/aktiv', requireAdmin, async (req, res: Antwort<'PUT /api/
 router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
   const { password } = req.body || {};
   const targetId = parseInt(pfadParam(req, 'id'));
-
-  const mangel = passwortMangel(password);
-  if (mangel) return sendeFehler(req, res, 400, mangel);
   if (!targetId || targetId === nutzerId(req))
     return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
+  const mangel = passwortMangel(password, (await K.kontoKurz(targetId))?.username);
+  if (mangel) return sendeFehler(req, res, 400, mangel);
 
   // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
   // eine offene Verwaltersitzung allein genügt dafür nicht.
@@ -363,7 +362,8 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
   if (!await bestaetigeMitFaktor(req, res, uid, String(current), req.body?.code)) return;
   // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
-  const mangel = passwortMangel(newPassword, req.session?.username);
+  // Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt.
+  const mangel = passwortMangel(newPassword, (await K.kontoKurz(uid))?.username);
   if (mangel) return sendeFehler(req, res, 400, mangel);
   // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
   await K.aendereEigenesPasswort(uid, newPassword, { passkeysWiderrufen: req.body?.passkeys_widerrufen === true });

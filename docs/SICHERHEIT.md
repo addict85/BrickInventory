@@ -46,6 +46,8 @@ den Commits, nicht hier.
   und als Nicht-root nur die vom Entrypoint kopierte Wurzel.
 
 ### Anmeldung und Sitzung (2, 3)
+- „Passwort ≠ Benutzername“ gilt auch beim Ändern mit App-Token und beim
+  Setzen durch den Verwalter (Name aus der Tabelle) — `passwort-regel-db`.
 - „Andere Sitzungen beenden“ verlangt das Passwort: Eine erbeutete Sitzung
   sperrt den Inhaber nicht aus — `web-ohne-token-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
