@@ -64,6 +64,13 @@ import org.junit.Test
  *      „der zweite Faktor nimmt den Passkey …“ (Knopf fehlt)
  *   N  (31.10.2026) passkeyStattCode() reicht den Passkey nicht an login() →
  *      rot „der zweite Faktor nimmt den Passkey …“ (kein passkey im Rumpf)
+ *   S  (02.11.2026) in holePasskey() RpIdBefund.FREMD durchgelassen → rot
+ *      „Optionen fuer eine fremde Domain …“ und „Optionen ohne rpId … zweiten Faktor“
+ *   T  RpIdBefund.FEHLT durchgelassen → rot „Optionen ohne rpId …“
+ *   U  pruefeRpId() mit ignoreCase und Unterdomänen (`host.endsWith("." + rpId)`)
+ *      → rot „Optionen fuer eine fremde Domain …“
+ *   V  die Prüfung der Adresse nach dem Dialog entfernt → rot „wechselt die
+ *      Adresse waehrend des Passkey-Dialogs …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnmeldungViewModelTest {
@@ -341,6 +348,7 @@ class AnmeldungViewModelTest {
     @Test
     fun `ein abgebrochener Passkey-Dialog sendet nichts und meldet keinen Fehler`() {
         pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionenRumpf
+        ablage.url = "https://brick.example.org"
         val vm = vm()
         vm.passkeyAnmelden(FakePasskey(PasskeyErgebnis.Abgebrochen))
         TestApi.warteBis("Optionen geholt") { pfade.anfragenAn("optionen").isNotEmpty() && !vm.anmeldeState.value.loginLaeuft }
@@ -352,6 +360,7 @@ class AnmeldungViewModelTest {
     @Test
     fun `ohne Passkey auf dem Geraet oder ohne Domain sagt die Anmeldung warum`() {
         pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionenRumpf
+        ablage.url = "https://brick.example.org"
         val vm = vm()
         vm.passkeyAnmelden(FakePasskey(PasskeyErgebnis.KeinPasskey))
         TestApi.warteBis("Satz") { vm.anmeldeState.value.loginError != null }
@@ -371,6 +380,7 @@ class AnmeldungViewModelTest {
         pfade.antworten["/api/v1/auth/login"] = """{"success":false,"zweiter_faktor":true,"passkey":true,"error":"Code fehlt"}"""
         pfade.codes["/api/v1/auth/login"] = 401
         pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = optionenRumpf
+        ablage.url = "https://brick.example.org"
         val vm = vm()
         vm.login("marco", "geheim")
         TestApi.warteBis("Codefeld") { vm.anmeldeState.value.codeNoetig }
@@ -385,5 +395,55 @@ class AnmeldungViewModelTest {
         val rumpf = pfade.koerper[pfade.anfragen.lastIndexOf("POST /api/v1/auth/login")]
         assertTrue(rumpf, "\"passkey\":{\"id\":\"pk1\"" in rumpf && "\"password\":\"geheim\"" in rumpf && "\"code\"" !in rumpf)
         assertFalse(vm.anmeldeState.value.passkeyStattCode)
+    }
+
+
+    /** Optionen mit [rpId] (null: ohne Feld) für die Adresse https://brick.example.org. */
+    private fun fremdeOptionen(rpId: String?): FakePasskey {
+        val feld = rpId?.let { ",\"rpId\":\"$it\"" } ?: ""
+        pfade.antworten["/api/v1/auth/passkey/anmelden/optionen"] = """{"success":true,"optionen":{"challenge":"ch-1"$feld}}"""
+        ablage.url = "https://brick.example.org"
+        return FakePasskey(passkeyAntwort)
+    }
+
+    @Test
+    fun `Optionen fuer eine fremde Domain gehen nie an den Credential Manager`() {
+        for (fremd in listOf("opfer.example", "example.org", "evil.brick.example.org", "BRICK.EXAMPLE.ORG")) {
+            val fake = fremdeOptionen(fremd)
+            val vm = vm()
+            vm.passkeyAnmelden(fake)
+            TestApi.warteBis("abgelehnt $fremd") { vm.anmeldeState.value.loginError != null }
+            assertEquals(fremd, "t${R.string.login_passkey_rpid_fremd}", vm.anmeldeState.value.loginError)
+            assertTrue("$fremd erreichte den Credential Manager", fake.optionen.isEmpty())
+            assertFalse(vm.anmeldeState.value.loginLaeuft)
+        }
+        assertTrue(pfade.anfragen.toString(), pfade.anfragen.none { it == "POST /api/v1/auth/passkey/anmelden" })
+        assertFalse(t.sitzung.state.value.isLoggedIn)
+    }
+
+    @Test
+    fun `Optionen ohne rpId gehen nie an den Credential Manager, auch nicht beim zweiten Faktor`() {
+        val fake = fremdeOptionen(null)
+        val vm = vm()
+        vm.passkeyAnmelden(fake)
+        TestApi.warteBis("abgelehnt") { vm.anmeldeState.value.loginError != null }
+        assertEquals("t${R.string.login_passkey_rpid_fehlt}", vm.anmeldeState.value.loginError)
+
+        val zweiter = fremdeOptionen("opfer.example")
+        vm.passkeyStattCode("marco", "geheim", zweiter)
+        TestApi.warteBis("abgelehnt") { vm.anmeldeState.value.loginError == "t${R.string.login_passkey_rpid_fremd}" }
+        assertTrue(fake.optionen.isEmpty() && zweiter.optionen.isEmpty())
+        assertTrue(pfade.anfragen.toString(), pfade.anfragen.none { it.startsWith("POST /api/v1/auth/login") })
+    }
+
+    @Test
+    fun `wechselt die Adresse waehrend des Passkey-Dialogs, geht die Antwort nirgends hin`() {
+        fremdeOptionen("brick.example.org")
+        val wechsel = PasskeyAbfrage { ablage.url = "https://anders.example"; passkeyAntwort }
+        val vm = vm()
+        vm.passkeyAnmelden(wechsel)
+        TestApi.warteBis("abgelehnt") { vm.anmeldeState.value.loginError != null }
+        assertEquals("t${R.string.login_passkey_fehler}", vm.anmeldeState.value.loginError)
+        assertTrue(pfade.anfragen.toString(), pfade.anfragen.none { it == "POST /api/v1/auth/passkey/anmelden" })
     }
 }

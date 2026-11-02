@@ -32,6 +32,8 @@
     <string name="login_passkey_statt_code">Passkey statt Code verwenden</string>
     <string name="login_passkey_keiner">Auf diesem Gerät ist kein Passkey für diesen Server gespeichert.</string>
     <string name="login_passkey_fehler">Der Passkey konnte nicht abgefragt werden.</string>
+    <string name="login_passkey_rpid_fehlt">Der Server hat nicht gesagt, für welche Domain der Passkey gilt. Aus Sicherheitsgründen wurde abgebrochen; melde dich mit Passwort an.</string>
+    <string name="login_passkey_rpid_fremd">Der Server verlangt einen Passkey für eine andere Domain als %1$s. Aus Sicherheitsgründen wurde abgebrochen: Prüfe die Server-Adresse oder melde dich mit Passwort an.</string>
     <string name="settings_nutzer_ca">Nutzer-Zertifizierungsstellen vertrauen (Risiko)</string>
     <string name="settings_nutzer_ca_hint">Nur für die Verbindung zu deinem Server, nie für Updates. Risiko: Eine vom Nutzer installierte Zertifizierungsstelle – etwa von der Firma oder von Schadsoftware – kann Zertifikate für jeden Server ausstellen und so den Verkehr mitlesen. Nur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
     <string name="nutzer_ca_frage_titel">Nutzer-Zertifizierungsstellen vertrauen?</string>

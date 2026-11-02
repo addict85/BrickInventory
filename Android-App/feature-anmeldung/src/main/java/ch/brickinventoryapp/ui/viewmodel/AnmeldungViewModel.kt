@@ -14,6 +14,9 @@ import ch.brickinventoryapp.ui.qrFehler
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.bestaetigtFingerabdruck
 import ch.brickinventoryapp.util.pinSchluessel
+import ch.brickinventoryapp.util.RpIdBefund
+import ch.brickinventoryapp.util.hostVon
+import ch.brickinventoryapp.util.pruefeRpId
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.model.LoginResponse
 import ch.brickinventoryapp.data.model.PASSKEY_ANMELDEN
@@ -122,14 +125,28 @@ class AnmeldungViewModel @Inject constructor(
         }
     }
 
-    /** null, wenn es nicht weitergeht; der Zustand sagt dann schon, warum. */
+    /**
+     * null, wenn es nicht weitergeht; der Zustand sagt dann schon, warum. Die
+     * rpId muss der Host der eingerichteten Adresse sein (util/PasskeyHerkunft),
+     * und die Adresse darf sich bis zur Antwort nicht ändern: Sonst ginge die
+     * Signatur an einen anderen Server als den, dessen Optionen geprüft wurden.
+     */
     private suspend fun holePasskey(zweck: String, abfrage: PasskeyAbfrage): JsonObject? {
         _anmeldeState.update { it.copy(loginLaeuft = true, loginError = null) }
+        val adresse = ablage.serverUrlJetzt()
         val optionen = when (val o = konto.passkeyOptionen(zweck)) {
             is Result.Success -> o.data.optionen ?: return passkeyGescheitert(o.data.error ?: text(R.string.login_passkey_fehler))
             is Result.Error -> return passkeyGescheitert(meldung(o))
         }
-        return when (val e = abfrage.hole(optionen.toString())) {
+        if (ablage.serverUrlJetzt() != adresse) return passkeyGescheitert(text(R.string.login_passkey_fehler))
+        when (pruefeRpId(optionen, adresse)) {
+            RpIdBefund.PASST -> Unit
+            RpIdBefund.FEHLT -> return passkeyGescheitert(text(R.string.login_passkey_rpid_fehlt))
+            RpIdBefund.FREMD -> return passkeyGescheitert(text(R.string.login_passkey_rpid_fremd, hostVon(adresse)))
+        }
+        val ergebnis = abfrage.hole(optionen.toString())
+        if (ablage.serverUrlJetzt() != adresse) return passkeyGescheitert(text(R.string.login_passkey_fehler))
+        return when (val e = ergebnis) {
             is PasskeyErgebnis.Antwort -> runCatching { ApiJson.parseToJsonElement(e.json).jsonObject }.getOrNull()
                 ?: passkeyGescheitert(text(R.string.login_passkey_fehler))
             PasskeyErgebnis.Abgebrochen -> passkeyGescheitert(null)

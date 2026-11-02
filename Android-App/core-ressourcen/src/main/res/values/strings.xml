@@ -48,6 +48,8 @@
     <string name="login_passkey_statt_code">Use a passkey instead of the code</string>
     <string name="login_passkey_keiner">There is no passkey for this server on this device.</string>
     <string name="login_passkey_fehler">The passkey could not be requested.</string>
+    <string name="login_passkey_rpid_fehlt">The server did not say which domain the passkey belongs to. Cancelled for your security; sign in with your password.</string>
+    <string name="login_passkey_rpid_fremd">The server asks for a passkey for a domain other than %1$s. Cancelled for your security: check the server address or sign in with your password.</string>
     <string name="settings_nutzer_ca">Trust user-installed certificate authorities (risk)</string>
     <string name="settings_nutzer_ca_hint">Only for the connection to your server, never for updates. Risk: an authority installed by a user – for example by your employer or by malware – can issue certificates for any server and so read the traffic. Only turn this on if you installed the authority yourself for your server.</string>
     <string name="nutzer_ca_frage_titel">Trust user-installed authorities?</string>
