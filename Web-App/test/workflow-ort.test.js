@@ -303,12 +303,17 @@ test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklass
 
 // Renovate liest nur die renovate.json im Wurzelverzeichnis; Web-App/renovate.json
 // stand dort lange ohne Wirkung. Gegenproben (02.11.2026 gemessen): `npm` aus
-// enabledManagers gestrichen → rot; eine leere Web-App/renovate.json angelegt → rot.
+// enabledManagers gestrichen → rot; eine leere Web-App/renovate.json angelegt → rot;
+// minimumReleaseAge gestrichen → rot (npm und gradle ohne Wartezeit).
 test('Renovate pflegt npm der Web-App aus der Wurzel-Konfiguration', () => {
   const konf = JSON.parse(fs.readFileSync(path.join(WURZEL, 'renovate.json'), 'utf8'));
   assert.ok(konf.enabledManagers.includes('npm'), 'Die npm-Pakete der Web-App hält niemand aktuell');
   assert.ok(konf.packageRules.some(r => r.matchManagers?.includes('npm') && r.matchPackageNames?.includes('pdfjs-dist')),
     'Die Regel für die eingecheckte PDF.js-Kopie fehlt');
+  for (const m of ['npm', 'gradle']) {
+    assert.ok(konf.packageRules.some(r => r.matchManagers?.includes(m) && !r.matchPackageNames && /^[1-9]\d* days?$/.test(r.minimumReleaseAge ?? '')),
+      `${m}: neue Fassungen ohne Wartezeit`);
+  }
   const daneben = [];
   (function lauf(dir) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {

@@ -18,6 +18,15 @@
   ],
   "packageRules": [
     {
+      "description": "Neue Fassungen erst nach drei Tagen: Ein gekapertes Paket fällt meist in dieser Zeit auf und wird zurückgezogen, bevor ein PR es vorschlägt.",
+      "matchManagers": [
+        "npm",
+        "gradle",
+        "gradle-wrapper"
+      ],
+      "minimumReleaseAge": "3 days"
+    },
+    {
       "description": "Patch- und Minor-Sprünge zusammenfassen: einzeln erzeugen sie mehr PRs, als jemand durchsieht, und genau dann wird pauschal zugestimmt.",
       "matchUpdateTypes": [
         "patch",
