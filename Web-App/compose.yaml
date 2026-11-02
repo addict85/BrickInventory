@@ -36,6 +36,8 @@ services:
       # bestehende Datenbank behält ihr Passwort; das alte Beispielpasswort
       # weist der Server beim Start ab (UPGRADE.md, Abschnitt 13).
       POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
+      # Für postgres/app-rolle.sh beim Anlegen einer neuen Datenbank.
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
     command: postgres -c max_connections=200 -c shared_buffers=128MB
     # Der Entrypoint des Images läuft als root: Er legt $PGDATA an (chmod 700),
     # richtet die Eigentümer per find/chown und wechselt mit gosu zu postgres.
@@ -48,12 +50,42 @@ services:
       # Neuer Pfad UND neues Verzeichnis: ./pgdata (Version 16) bleibt liegen,
       # damit ein Rückfall auf die alte compose.yaml jederzeit möglich ist.
       - ./pgdata18:/var/lib/postgresql
+      - ./postgres/app-rolle.sh:/docker-entrypoint-initdb.d/10-app-rolle.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U brickinventory -d brickinventory"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 15s
+    networks:
+      - brickinventory-net
+
+  # ── Datenbankrolle der App ───────────────────────────────────────────────────
+  # `brickinventory` ist der Superuser der Datenbank. App, Jobs und pgweb
+  # verbinden sich als `brickinventory_app` ohne Superuser-Rechte, der Datenbank
+  # und Tabellen gehören. Dieser Dienst legt die Rolle bei jedem `up` an bzw.
+  # richtet sie nach und endet dann (UPGRADE.md, Abschnitt 29).
+  db-rolle:
+    image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
+    container_name: brickinventory-db-rolle
+    restart: "no"
+    user: postgres
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["sh", "/rolle/app-rolle.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: brickinventory
+      PGDATABASE: brickinventory
+      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
+    volumes:
+      - ./postgres/app-rolle.sh:/rolle/app-rolle.sh:ro
     networks:
       - brickinventory-net
 
@@ -79,8 +111,8 @@ services:
     tmpfs:
       - /tmp
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-rolle:
+        condition: service_completed_successfully
     # Kein veröffentlichter Port: Von aussen geht es nur über Caddy (HTTPS).
     #
     # BEWUSSTE AUSNAHME Klartext (z. B. ohne Namen/IP für Caddy, zum Testen):
@@ -147,10 +179,12 @@ services:
       ROLLE: web
 
       # ── Datenbank-Verbindung ─────────────────────────────────────────────────
+      # Die eigene Rolle ohne Superuser-Rechte (Dienst db-rolle oben); das
+      # Passwort des Superusers bekommt die App nicht.
       # PGHOST:     postgres
       # PGPORT:     5432
-      # PGUSER:     brickinventory
-      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
+      PGUSER:     brickinventory_app
+      PGPASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
       # PGDATABASE: brickinventory
 
       # ── DB-Verbindungspool ───────────────────────────────────────────────────
@@ -194,8 +228,8 @@ services:
     tmpfs:
       - /tmp
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-rolle:
+        condition: service_completed_successfully
     # Bilder, Anleitungen, PDFs und der Datenschlüssel liegen dort, wo auch
     # `app` sie sucht.
     volumes:
@@ -204,7 +238,8 @@ services:
     environment:
       ROLLE: jobs
       DATA_KEY_FILE: /app/schluessel/datenschluessel
-      PGPASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}
+      PGUSER: brickinventory_app
+      PGPASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
       # Für Links in Mails (Preisalarm), die der Job-Prozess verschickt.
       APP_BASE_URL: ${APP_BASE_URL:-https://${BRICK_HOST}}
       # Wer bei `app` DATA_KEY, TZ, ERFASSUNG_ZEITZONE oder PG_* setzt, setzt
@@ -313,13 +348,12 @@ services:
     profiles: ["tools"]
     restart: "no"          # bewusst nicht "unless-stopped": Werkzeug auf Zeit
     depends_on:
-      postgres:
-        condition: service_healthy
+      db-rolle:
+        condition: service_completed_successfully
     environment:
-      # Dieselben Zugangsdaten wie oben beim Dienst `postgres`. Wer sie dort
-      # ändert, muss sie hier mitändern — der Verbindungsstring ist die einzige
-      # Stelle, an der pgweb sie erfährt.
-      PGWEB_DATABASE_URL: postgres://brickinventory:${DB_PASSWORD:?DB_PASSWORD in .env setzen - siehe UPGRADE.md}@postgres:5432/brickinventory?sslmode=disable
+      # Die Rolle der App, nicht der Superuser: --readonly lässt sich per SET
+      # TRANSACTION umgehen, COPY … PROGRAM soll trotzdem nie gehen.
+      PGWEB_DATABASE_URL: postgres://brickinventory_app:${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}@postgres:5432/brickinventory?sslmode=disable
       # HTTP-Basic-Anmeldung von pgweb. Ohne PGWEB_PASSWORD startet der Dienst
       # nicht (Prüfung unten); als :? stünde es hier, verlangte Compose es aber
       # auch für jedes `docker compose up` ohne Profil.

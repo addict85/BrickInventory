@@ -830,3 +830,32 @@ Was sich für Nutzer und Clients ändert:
   solcher PR ist wie ein Update zu behandeln: lesen, mergen, auf dem Server
   `docker compose pull && docker compose up -d`. Der Sicherheitslauf meldet
   zusätzlich, wenn ein festgenagelter Digest hinter seinem Tag zurückliegt.
+- **Eigene Datenbankrolle der App (Pflichtschritt)**: Bisher verband sich die
+  App als `brickinventory`, und das ist der Superuser der Datenbank (wer die
+  App übernimmt, könnte per `COPY … TO PROGRAM` Befehle im Datenbank-Container
+  ausführen). Neu verbinden sich App, Jobs und pgweb als `brickinventory_app`
+  ohne Superuser-Rechte; die Rolle besitzt Datenbank, Tabellen, Sequenzen,
+  Sichten und Funktionen, die Migrationen laufen also weiter. Umstellung:
+  1. In `.env` ein zweites, anderes Passwort eintragen:
+     `echo "DB_APP_PASSWORD=$(openssl rand -hex 24)" >> .env`
+     (ohne den Wert bricht `docker compose up` mit einer Meldung ab).
+  2. Wie gewohnt aktualisieren: `docker compose up -d --build`. Der neue,
+     einmalige Dienst `db-rolle` startet nach der Datenbank, legt die Rolle an
+     (oder setzt ihr Passwort und entzieht zu viele Rechte), übergibt ihr alle
+     Objekte im Schema `public` und endet; erst danach starten App und Jobs.
+     Daten werden dabei nicht verändert, nur Eigentümer.
+  3. Prüfen: `docker compose logs db-rolle` endet mit „Rolle brickinventory_app
+     ohne Superuser-Rechte besitzt die Datenbank“, und `docker compose logs app`
+     zeigt keine Warnung „Die App verbindet sich als Superuser“.
+
+  Neue Installationen bekommen die Rolle schon beim Anlegen der Datenbank
+  (`postgres/app-rolle.sh` in `docker-entrypoint-initdb.d`). Sicherungen
+  (`scripts/backup.sh`) laufen weiter als Superuser; `scripts/restore.sh`
+  richtet nach dem Einspielen `db-rolle` erneut ein, damit auch ein älterer
+  Dump wieder der App gehört. Rückweg: die alte `compose.yaml` verbindet sich
+  wieder als Superuser und darf alles; die Rolle kann bleiben. Wer
+  `DB_APP_PASSWORD` ändert, startet einfach `docker compose up -d` neu.
+  Ohne Docker (eigenes PostgreSQL): das Skript einmal mit dem Superuser
+  ausführen, z. B. `PGHOST=… PGUSER=postgres PGDATABASE=brickinventory
+  DB_APP_PASSWORD=… sh postgres/app-rolle.sh` (psql ab 15), danach die App mit
+  `PGUSER=brickinventory_app` starten.

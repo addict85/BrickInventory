@@ -223,7 +223,13 @@ den Commits, nicht hier.
 
 ## Betrieb
 
-- `DB_PASSWORD` und `BRICK_HOST` sind Pflicht; Klartext nur als bewusste
+- Die App, die Jobs und pgweb verbinden sich als `brickinventory_app` ohne
+  Superuser-, CREATEROLE- oder CREATEDB-Recht und ohne Mitgliedschaft in
+  `pg_execute_server_program` & Co.; die Rolle besitzt Datenbank, Tabellen und
+  Funktionen (Migrationen). Den Superuser kennen nur Postgres und der
+  einmalige Dienst `db-rolle` (`postgres/app-rolle.sh`). Läuft die App doch als
+  Superuser, warnt der Start — `db-rolle-db`, `compose-pgweb`.
+- `DB_PASSWORD`, `DB_APP_PASSWORD` und `BRICK_HOST` sind Pflicht; Klartext nur als bewusste
   Ausnahme (Port 3000 in `compose.yaml` einkommentieren, `COOKIE_SECURE=0`).
 - `caddy/data/` mitsichern und wie ein Passwort behandeln (Schlüssel der CA).
 - pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur lesend und nur mit
