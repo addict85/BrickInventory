@@ -50,6 +50,11 @@ den Commits, nicht hier.
   Setzen durch den Verwalter (Name aus der Tabelle) — `passwort-regel-db`.
 - „Andere Sitzungen beenden“ verlangt das Passwort: Eine erbeutete Sitzung
   sperrt den Inhaber nicht aus — `web-ohne-token-db`.
+- Kein Passwort-Orakel: Ein gesperrtes oder unbestätigtes Konto bekommt bei
+  richtigem Passwort dieselbe 401 `anmeldedaten_ungueltig` wie bei falschem
+  (gezählt als Fehlversuch). Einen neuen Bestätigungslink gibt
+  `POST /auth/bestaetigung-erneut` mit gleicher Antwort und Dauer für jede
+  Adresse — `konto-deaktivieren-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
   `utils/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
 - Sitzung: `httpOnly`, `sameSite=lax`, `secure` hinter TLS, Leerlauf- und
@@ -78,6 +83,8 @@ den Commits, nicht hier.
   einer Haushaltseinladung verlangen bei aktivem TOTP auch den Code; jede
   Code-Prüfung (auch das Bestätigen der Einrichtung) läuft über die
   Konto-Bremse — `passkeys-db`, `haushalt-beitreten-db`, `zweiter-faktor-db`.
+  Den Notausgang des Verwalters (`DELETE /auth/users/:id/zweiter-faktor`)
+  gibt es nur für fremde Konten (eigenes: 400 `eigener_zweiter_faktor`).
   Ebenso Passwortwechsel, Passkey löschen und neue E-Mail (`code`; fehlt er,
   400 `zweiter_faktor_noetig` ohne Zählung) — `zweiter-faktor-heikel-db`.
   Eine neue E-Mail gilt auch beim Verwalter erst nach dem Link als bestätigt.
@@ -124,7 +131,9 @@ den Commits, nicht hier.
 - Teile-Import (`POST /sets/:setNumber/parts`) nur für Sets im Blickfeld, für
   deren Besitzer: `routes/api_v1/sets.ts` — `teile-import-besitz-db`.
 - Die Haushaltswährung stellt nur das Hauptkonto (Unterkonto: 403
-  `waehrung_nur_hauptkonto`): `src/konto/settings.ts` — `haushalt-waehrung-db`.
+  `waehrung_nur_hauptkonto`) und nur für seinen Haushalt abwärts; hängt ein
+  Unterkonto auch an einem fremden Hauptkonto mit anderer Währung: 409
+  `waehrung_geteiltes_unterkonto`: `src/konto/settings.ts` — `haushalt-waehrung-db`.
 - Gutscheine nie über den Haushalt, auch nicht für Verwalter — `gutscheine-db`.
 
 ### Gemeinsame Daten (3)
@@ -223,7 +232,8 @@ den Commits, nicht hier.
 - Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-pgweb`.
   Dependabot schlägt neue Fassungen vor: Actions, Dockerfiles und die Dienste
   in `compose.yaml` (`docker-compose`); npm und Gradle über Renovate
-  (`renovate.json` im Wurzelverzeichnis).
+  (`renovate.json` im Wurzelverzeichnis), frühestens drei Tage nach
+  Erscheinen (`minimumReleaseAge`).
 - `npm ci` aus dem Lockfile; `npm audit --omit=dev` (web-ci.yml).
 - PDF.js lädt ohne eval (`isEvalSupported: false`) und ohne Skripte im PDF;
   die ausgelieferten Dateien enthalten weder `eval(` noch `new Function(` —
@@ -247,17 +257,30 @@ den Commits, nicht hier.
 
 ## Betrieb
 
-- Die App, die Jobs und pgweb verbinden sich als `brickinventory_app` ohne
+- App und Jobs verbinden sich als `brickinventory_app` ohne
   Superuser-, CREATEROLE- oder CREATEDB-Recht und ohne Mitgliedschaft in
   `pg_execute_server_program` & Co.; die Rolle besitzt Datenbank, Tabellen und
   Funktionen (Migrationen). Den Superuser kennen nur Postgres und der
   einmalige Dienst `db-rolle` (`postgres/app-rolle.sh`). Läuft die App doch als
   Superuser, warnt der Start — `db-rolle-db`, `compose-pgweb`.
+- `db-rolle` läuft als Superuser in einer Datenbank, die der App-Rolle gehört.
+  Deshalb fester `search_path=pg_catalog,pg_temp` und `role=none` schon beim
+  Verbinden (PGOPTIONS), nur `pg_catalog.`-Funktionen, zuerst
+  `ALTER DATABASE … RESET ALL` und `ALTER ROLE <app> … RESET ALL`; bei aktiven
+  Event-Triggern bricht es ab — `db-rolle-db` (stellt den Angriff mit eigenem
+  `set_config` und Operator nach). Wer selbst als Superuser `psql` in dieser
+  Datenbank öffnet, setzt `PGOPTIONS='-c search_path=pg_catalog,pg_temp'`.
+- `scripts/restore.sh` spielt den Dump als App-Rolle ein, in einer
+  Transaktion; Funktionen und Prüfregeln aus dem Dump laufen nie als
+  Superuser — `backup-restore-db`.
 - `DB_PASSWORD`, `DB_APP_PASSWORD` und `BRICK_HOST` sind Pflicht; Klartext nur als bewusste
   Ausnahme (Port 3000 in `compose.yaml` einkommentieren, `COOKIE_SECURE=0`).
 - `caddy/data/` mitsichern und wie ein Passwort behandeln (Schlüssel der CA).
-- pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur lesend und nur mit
-  Anmeldung (`PGWEB_PASSWORD`, sonst startet er nicht) — `compose-pgweb`.
+- pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur mit Anmeldung
+  (`PGWEB_PASSWORD`) und als Leserolle `brickinventory_lesen`
+  (`PGWEB_DB_PASSWORD`): nur `SELECT`, ohne Tokens, Sitzungen, Passwort-Hashes,
+  TOTP-Geheimnisse, Einstellungswerte und Gutschein-PINs — `compose-pgweb`,
+  `db-rolle-db`.
 - `scripts/restore.sh` entpackt ein data-Archiv nur, wenn es aus Dateien und
   Ordnern unter `data/` besteht (`scripts/archiv-pruefen.sh`) — `restore-archiv`.
 - Container ohne Capabilities ausser den nötigen, `read_only`, `no-new-privileges`.

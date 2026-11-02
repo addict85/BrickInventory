@@ -890,3 +890,55 @@ Was sich für Nutzer und Clients ändert:
   Nutzer `brickinv` des Images gehören; sonst steht im Log eine WARNUNG. Der
   Reparaturschritt (`BRICKINV_CHOWN=auto/always`) ändert nur noch fremde
   Einträge und bleibt im Datenträger.
+
+## 30. Runde 6 – Sicherheit
+
+- **db-rolle gehärtet** (`postgres/app-rolle.sh`): Die App-Rolle besitzt die
+  Datenbank und konnte über `ALTER DATABASE … SET search_path` eigene
+  Funktionen in die Superuser-Sitzung von `db-rolle` schieben. Das Skript
+  setzt jetzt beim Verbinden `search_path=pg_catalog,pg_temp` und
+  `role=none`, ruft nur `pg_catalog.`-Funktionen und setzt zuerst
+  `ALTER DATABASE brickinventory RESET ALL` sowie
+  `ALTER ROLE brickinventory_app [IN DATABASE …] RESET ALL`. **Folge:**
+  Eigene Einstellungen per `ALTER DATABASE … SET` oder an der App-Rolle gehen
+  bei jedem `docker compose up` verloren; dauerhafte Einstellungen gehören in
+  `command:` des Dienstes `postgres` oder an den Superuser. Sind in der
+  Datenbank Event-Trigger aktiv, bricht `db-rolle` mit einer Meldung ab
+  (vorher prüfen und deaktivieren: `ALTER EVENT TRIGGER … DISABLE`).
+  Für eigene `psql`-Sitzungen als Superuser:
+  `docker compose exec -e PGOPTIONS='-c search_path=pg_catalog,pg_temp' postgres psql -U brickinventory`.
+- **pgweb mit eigener Leserolle**: Neu in `.env`:
+  `PGWEB_DB_PASSWORD=$(openssl rand -hex 24)` (anders als `DB_PASSWORD` und
+  `DB_APP_PASSWORD`). `db-rolle` legt `brickinventory_lesen` an: nur `SELECT`,
+  ohne die Tabellen `api_tokens`, `qr_login_tokens`, `user_sessions`,
+  `webauthn_challenges`, `zweiter_faktor_codes`, `account_link_invites` und
+  ohne die Spalten `users.password_hash/verification_token/reset_token`,
+  `zweiter_faktor.geheimnis`, `user_settings.value`, `global_settings.value`,
+  `vouchers.pin`, `idempotenz.antwort`. pgweb kennt `DB_APP_PASSWORD` nicht
+  mehr; ohne `PGWEB_DB_PASSWORD` startet es nicht. Ein `SELECT *` auf
+  `users` scheitert dort deshalb – Spalten einzeln nennen. Reparaturen mit
+  `psql` als App-Rolle statt über pgweb. Neue Tabellen sieht pgweb nach dem
+  nächsten Lauf von `db-rolle` (`docker compose --profile tools up -d pgweb`
+  startet ihn mit).
+- **restore.sh spielt als App-Rolle ein**: Erst `db-rolle`, dann der Dump als
+  `brickinventory_app` in **einer** Transaktion (`psql -1`; ein Fehler lässt
+  den alten Stand stehen), dann noch einmal `db-rolle`. Besitzerzeilen
+  (`ALTER … OWNER TO …`) und `DROP/COMMENT ON EXTENSION` werden ausserhalb der
+  Daten herausgefiltert; auch Dumps von vor der App-Rolle gehen so. Andere
+  App-Rolle: `DB_APP_USER=… ./scripts/restore.sh …`.
+- **Anmeldung**: Gesperrte und unbestätigte Konten bekommen dieselbe 401
+  `anmeldedaten_ungueltig` wie ein falsches Passwort (vorher 403
+  `konto_deaktiviert` / `email_nicht_bestaetigt` mit `unverified: true`).
+  Neu: `POST /api/v1/auth/bestaetigung-erneut` `{ email }` schickt einen neuen
+  Bestätigungslink (höchstens einer je 15 min, Antwort immer gleich). Die
+  Anmeldemaske bietet ihn bei 401 an.
+- **Zweiter Faktor**: `DELETE /api/v1/auth/users/:id/zweiter-faktor` lehnt
+  das eigene Konto mit 400 `eigener_zweiter_faktor` ab; abschalten geht dort
+  unter Sicherheit mit Passwort und Code.
+- **Haushaltswährung**: Ein Wechsel gilt nur noch für das eigene Konto und
+  seine Unterkonten abwärts. Hängt ein Unterkonto zusätzlich an einem fremden
+  Hauptkonto mit anderer Währung, antwortet der Wechsel mit 409
+  `waehrung_geteiltes_unterkonto`; erst die Verknüpfung lösen.
+- **Abhängigkeiten**: `oauth` und `@types/oauth` entfernt (ungenutzt).
+  Renovate schlägt npm- und Gradle-Fassungen erst drei Tage nach Erscheinen
+  vor. `npm run build` läuft auch ohne den Ordner `Android-App/`.
