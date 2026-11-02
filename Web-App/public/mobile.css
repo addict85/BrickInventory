@@ -249,7 +249,7 @@
     padding: .5rem .7rem;
     margin-bottom: .6rem;
   }
-  .dt tr:hover td { background: none; }
+  @media (hover:hover){.dt tr:hover td{ background: none; }}
 
   .dt td {
     display: flex;
@@ -353,7 +353,8 @@
   .prog-steps { flex-wrap: wrap; gap: .4rem; }
 
   /* ─ Toasts über die volle Breite ────────────────────────────────────── */
-  #toasts { left: .6rem; right: .6rem; bottom: calc(68px + env(safe-area-inset-bottom)); }
+  /* Oben statt über der Leiste: Unten liegen die Felder der Dialoge (Blätter). */
+  #toasts { left: .6rem; right: .6rem; top: calc(56px + env(safe-area-inset-top)); bottom: auto; }
   .toast  { width: auto; }
 
   /* ─ Login-, Registrierungs- und Startup-Screen ──────────────────────── */

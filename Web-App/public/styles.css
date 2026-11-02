@@ -53,6 +53,8 @@
          für ein Feld, das man finden muss (WCAG 1.4.11 verlangt 3:1). Aus Text
          und Fläche gemischt, damit jedes Design hell und dunkel mitzieht. */
       --feldrand:color-mix(in srgb,var(--txt) 62%,var(--sur));
+      /* Rand von Knöpfen und Umschaltern: dieselbe 3:1-Grenze wie bei Feldern. */
+      --bedienrand:var(--feldrand);
       /* Hintergrund von Login- und Startup-Screen. Eigene Variable, weil beide
          Screens vor dem Login stehen und trotzdem dem globalen Design folgen
          sollen — vorher war hier #fff hartkodiert und kein Theme kam daran vorbei. */
@@ -162,7 +164,7 @@
                 background:var(--sur);color:var(--txt);border:0;
                 border-radius:8px;cursor:pointer;
                 padding:.5rem .7rem;font-size:var(--fs-3)}
-    .umenu-item:hover{background:var(--b50,var(--s100))}
+    @media (hover:hover){.umenu-item:hover{background:var(--b50,var(--s100))}}
     /* Der Strich trennt die sieben Sichten von der einen Handlung darunter.
        `border:0` zuerst: ein <hr> bringt von sich aus einen Rahmen mit, und
        mit beidem gaebe es zwei Striche uebereinander. */
@@ -191,7 +193,7 @@
        veraltete Fassung im Zwischenspeicher, eine Datei, die nicht
        mitausgeliefert wurde, ein Design, das die Variable nicht kennt. */
     .umenu-abmelden{background:var(--sur);color:var(--r700,#b91c1c)}
-    .umenu-abmelden:hover{background:var(--r100,var(--s100))}
+    @media (hover:hover){.umenu-abmelden:hover{background:var(--r100,var(--s100))}}
     .umenu-item:focus-visible{outline:2px solid var(--fokus,var(--b700));outline-offset:-2px}
     /* Der Namenszug ist jetzt der Menüknopf (Marcos Nachzug vom 17.10.).
        `.ubadge` bleibt der Name der Plakette, obwohl darunter ein <button>
@@ -205,10 +207,10 @@
        eigene Schriftfamilie, eigene Schriftgröße. `font:inherit` würde auch
        das `font-weight:600` und die `.75rem` von oben überschreiben, deshalb
        nur die Familie. */
-    .ubadge-knopf{display:inline-flex;align-items:center;gap:7px;border:0;
+    .ubadge-knopf{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--bedienrand);box-sizing:border-box;
                   font-family:inherit;line-height:1.5;cursor:pointer;
                   max-width:min(14rem,28vw)}
-    .ubadge-knopf:hover{filter:brightness(.96)}
+    @media (hover:hover){.ubadge-knopf:hover{filter:brightness(.96)}}
     .ubadge-knopf.aktiv{box-shadow:0 0 0 2px var(--b600)}
     .ubadge-knopf:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:2px}
     /* Ein langer Benutzername kürzt sich, die Striche bleiben: Sie stehen in
@@ -223,7 +225,7 @@
     nav{background:var(--sur);border-bottom:1px solid var(--bdr);display:flex;padding:0 1rem;overflow-x:auto;position:sticky;top:58px;z-index:99;scrollbar-width:none;-ms-overflow-style:none}
     nav::-webkit-scrollbar{display:none}
     .ntab{background:none;border:0;border-bottom:2px solid transparent;font-family:inherit;padding:12px 13px;cursor:pointer;font-size:var(--fs-3);font-weight:600;color:var(--mut);border-bottom:2px solid transparent;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap;margin-bottom:-1px}
-    .ntab:hover{color:var(--txt)}
+    @media (hover:hover){.ntab:hover{color:var(--txt)}}
     .ntab.active{color:var(--b600);border-bottom-color:var(--b600)}
     /* Die Verwalterseiten haben einen Reiter, aber keinen Platz in der Leiste:
        erreichbar über das Menü. Teile und Minifiguren wechselt der Umschalter
@@ -251,13 +253,13 @@
     .import-menue[open] .import-pfeil{transform:rotate(180deg)}
     .import-klappe{position:absolute;top:calc(100% + 4px);left:0;z-index:60;min-width:17rem;background:var(--sur);color:var(--txt);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--sh2);padding:6px}
     .import-eintrag{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border-radius:8px;color:var(--txt);text-decoration:none;font-size:var(--fs-3);font-weight:500}
-    .import-eintrag:hover{background:var(--bg)}
+    @media (hover:hover){.import-eintrag:hover{background:var(--bg)}}
     .import-eintrag .ico,.import-eintrag svg{width:18px;height:18px;flex:0 0 auto}
 
     /* Umschalter der Sammlung: Sets | Teile | Minifiguren */
-    .sammlung-wahl{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bdr);border-radius:10px}
-    .sammlung-wahl button{display:inline-flex;align-items:center;gap:6px;border:0;background:none;color:var(--s600);font:inherit;font-size:var(--fs-3);font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
-    .sammlung-wahl button[aria-current="page"]{background:var(--sur);color:var(--b600);box-shadow:var(--sh0)}
+    .sammlung-wahl{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bedienrand);border-radius:10px}
+    .sammlung-wahl button{display:inline-flex;align-items:center;gap:6px;border:2px solid transparent;background:none;color:var(--s600);font:inherit;font-size:var(--fs-3);font-weight:600;padding:6px 12px;border-radius:8px;cursor:pointer}
+    .sammlung-wahl button[aria-current="page"]{background:var(--sur);color:var(--b600);box-shadow:var(--sh0);border-color:var(--b600)}
     .sammlung-wahl button:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:1px}
     /* Mittlere Fenster: schmalere Reiter, damit alle neun auf EINE Zeile
        passen, statt seitlich wegzuscrollen. Unterhalb von 640px uebernimmt
@@ -342,12 +344,12 @@
     select.alarm-feld,input.alarm-feld{width:auto;padding:3px 8px;font-size:var(--fs-2);border:1px solid var(--feldrand);border-radius:6px;background:var(--sur);color:var(--txt)}
     input.alarm-feld[type=number]{width:84px;text-align:right}
     input[type=file]{background:var(--b50);border:2px dashed var(--b200);color:var(--txt);padding:14px;border-radius:8px;width:100%;cursor:pointer;font-size:var(--fs-3)}
-    input[type=file]:hover{border-color:var(--b400)}
+    @media (hover:hover){input[type=file]:hover{border-color:var(--b400)}}
 
     .btn{padding:var(--sp-2) var(--sp-4);border-radius:8px;font-family:var(--font);font-weight:600;font-size:var(--fs-3);cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
-    .bp{background:var(--b600);color:var(--auf-primaer,#fff);box-shadow:0 1px 3px rgba(37,99,235,.3)}.bp:hover{background:var(--b700)}
-    .bs{background:var(--sur);color:var(--txt);border:1.5px solid var(--bdr)}.bs:hover{background:var(--s100)}
-    .bd{background:var(--sur);color:var(--r700);border:1.5px solid var(--r100)}.bd:hover{background:var(--r100)}
+    .bp{background:var(--b600);color:var(--auf-primaer,#fff);box-shadow:0 1px 3px rgba(37,99,235,.3)}@media (hover:hover){.bp:hover{background:var(--b700)}}
+    .bs{background:var(--sur);color:var(--txt);border:1.5px solid var(--bedienrand)}@media (hover:hover){.bs:hover{background:var(--s100)}}
+    .bd{background:var(--sur);color:var(--r700);border:1.5px solid currentColor}@media (hover:hover){.bd:hover{background:var(--r100)}}
     .btn-sm{padding:5px 11px;font-size:var(--fs-1)}
     /* Zielgrösse am Rechner mindestens 24 × 24 px (WCAG 2.5.8): Kleine Knöpfe
        mit Innenabstand 1–3 px, Häkchen-Beschriftungen und Verweise in Hinweis-
@@ -406,14 +408,14 @@
     @media(max-width:700px){.add2{grid-template-columns:1fr}}
     .gctrl{display:flex;gap:10px;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap}
     .si{flex:1;min-width:180px}
-    .vtgl{display:flex;background:var(--s100);border:1px solid var(--bdr);border-radius:8px;padding:3px;gap:2px}
-    .vb{padding:5px 10px;cursor:pointer;background:none;border:none;color:var(--mut);font-size:var(--fs-4);border-radius:6px;transition:all .15s}
-    .vb.active{background:var(--sur);color:var(--b600);box-shadow:var(--sh0)}
+    .vtgl{display:flex;background:var(--s100);border:1px solid var(--bedienrand);border-radius:8px;padding:3px;gap:2px}
+    .vb{padding:3px 8px;cursor:pointer;background:none;border:2px solid transparent;color:var(--mut);font-size:var(--fs-4);border-radius:6px;transition:all .15s}
+    .vb.active{background:var(--sur);color:var(--b600);box-shadow:var(--sh0);border-color:var(--b600)}
     /* Spaltenbreite in rem: Bei grosser Schrift werden die Kacheln breiter statt
        ihren Text zu zerhacken; min(100%,…) lässt eine Spalte nie überlaufen. */
     .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,11.5rem),1fr));gap:var(--sp-4)}
     .sc{background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);overflow:hidden;transition:transform .18s,box-shadow .18s,border-color .18s;cursor:pointer;position:relative;box-shadow:var(--sh0)}
-    .sc:hover{transform:translateY(-3px);box-shadow:var(--sh1);border-color:var(--b300)}
+    @media (hover:hover){.sc:hover{transform:translateY(-3px);box-shadow:var(--sh1);border-color:var(--b300)}}
     .sci{width:100%;aspect-ratio:1;background:var(--s50);display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--bdr)}
     .sci img{width:100%;height:100%;object-fit:contain;padding:8px}
     /* Dunkel: ein dunkles Grau statt einer hellen Fläche, die in jeder Kachel
@@ -440,8 +442,8 @@
     .diagramm-leer{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;padding:1.5rem 1rem;color:var(--mut);font-size:var(--fs-2)}
     .diagramm-leer strong{color:var(--txt);font-weight:600}
     .pnl-zeitraum{margin-left:6px;font-size:var(--fs-1);color:var(--mut)}
-    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--bdr);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
-    .period-btn:hover{border-color:var(--b400);color:var(--b600)}
+    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--bedienrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
+    @media (hover:hover){.period-btn:hover{border-color:var(--b400);color:var(--b600)}}
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
     .snum{white-space:nowrap;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600);font-weight:500;margin-bottom:2px}
     .sname{font-size:var(--fs-2);font-weight:600;line-height:1.3;margin-bottom:6px}
@@ -460,7 +462,7 @@
        drei Verhalten. */
     /* .mk-zeile dazu (24.09.): Die Merklisten-Zeile ist keine Kachel, soll den
        Papierkorb aber genauso zeigen — „analog den Kacheln bei den Sets". */
-    .sc:hover .ca, .man-tile:hover .ca, .mk-zeile:hover .ca{opacity:1}
+    @media (hover:hover){.sc:hover .ca,.man-tile:hover .ca,.mk-zeile:hover .ca{opacity:1}}
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
@@ -469,13 +471,13 @@
        Überfahren der Kachel (.ca opacity). Ein dauerhaft rotes Feld zog den
        Blick stärker auf sich als das Set selbst. Rot bleibt der Bestätigung
        vorbehalten — beim Überfahren des Knopfes zeigt er, was er tut. */
-    .delbtn:hover{background:var(--s500);color:var(--sur);border-color:var(--s500)}
+    @media (hover:hover){.delbtn:hover{background:var(--s500);color:var(--sur);border-color:var(--s500)}}
     .delbtn:focus-visible{outline:2px solid var(--s500);outline-offset:1px}
     /* Papierkorb statt ✕: Das Symbol erbt die Farbe über currentColor und
        richtet sich nach der Schriftgrösse des Knopfes. */
     .delbtn svg{width:14px;height:14px}
     .acq-loeschen{background:none;border:none;cursor:pointer;color:var(--r700);min-width:32px;min-height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
-    .acq-loeschen:hover{background:var(--r100)}
+    @media (hover:hover){.acq-loeschen:hover{background:var(--r100)}}
 
     /* DATA TABLE */
     .tw{overflow-x:auto}
@@ -488,7 +490,7 @@
     .dt{width:100%;border-collapse:collapse}
     .dt th{text-align:left;padding:10px 13px;font-size:var(--fs-1);font-weight:700;color:var(--mut);border-bottom:1.5px solid var(--bdr);background:var(--s50)}
     .dt td{padding:10px 13px;border-bottom:1px solid var(--bdr);font-size:var(--fs-3);vertical-align:middle}
-    .dt tr:hover td{background:var(--b50)}
+    @media (hover:hover){.dt tr:hover td{background:var(--b50)}}
     .dt img{width:38px;height:38px;object-fit:contain;background:var(--s100);border-radius:6px}
 
     /* FINANCE */
@@ -539,7 +541,7 @@
     .pstat .l{font-size:var(--fs-0);color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
     .parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,8.125rem),1fr));gap:.85rem}
     .part-card{background:var(--sur);border:1.5px solid var(--bdr);border-radius:8px;padding:.85rem;text-align:center;box-shadow:var(--sh0);transition:border-color .15s}
-    .part-card:hover{border-color:var(--b300)}
+    @media (hover:hover){.part-card:hover{border-color:var(--b300)}}
     .part-img{width:70px;height:70px;object-fit:contain;background:var(--s50);border-radius:6px;margin:0 auto 8px}
     /* Lazy load fade-in */
     img[loading=lazy]{opacity:0;transition:opacity .25s ease}
@@ -687,7 +689,7 @@
     .il{margin-top:1rem}
     .ii{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s50);border:1px solid var(--bdr);border-radius:7px;margin-bottom:5px;font-size:var(--fs-2)}
     .ii a{color:var(--b600);font-weight:600;text-decoration:none;flex:1}
-    .ii a:hover{text-decoration:underline}
+    @media (hover:hover){.ii a:hover{text-decoration:underline}}
 
     /* TOAST */
     #toasts{position:fixed;bottom:1.25rem;right:1.25rem;display:flex;flex-direction:column;gap:7px;z-index:9999}
@@ -698,7 +700,7 @@
     .toast.error{border-left:3px solid var(--r500)}
     .toast.info{border-left:3px solid var(--b500)}
     .toast-aktion{margin-left:auto;background:none;border:1px solid var(--bdr);border-radius:6px;padding:3px 10px;font:inherit;font-weight:600;color:var(--b500);cursor:pointer;white-space:nowrap}
-    .toast-aktion:hover{background:var(--b50)}
+    @media (hover:hover){.toast-aktion:hover{background:var(--b50)}}
     @keyframes tIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
     .spin{width:28px;height:28px;border:3px solid var(--s200);border-top-color:var(--b500);border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
     @keyframes sp{to{transform:rotate(360deg)}}
@@ -761,7 +763,7 @@ html::-webkit-scrollbar{width:0;height:0}
   position:absolute;right:3px;width:8px;min-height:32px;border-radius:4px;
   background:var(--s400);cursor:grab;transition:background .15s,width .15s;
 }
-#app-scrollbar:hover #app-scrollbar-thumb{background:var(--s600);width:10px;right:2px}
+@media (hover:hover){#app-scrollbar:hover #app-scrollbar-thumb{background:var(--s600);width:10px;right:2px}}
 #app-scrollbar.dragging #app-scrollbar-thumb{background:var(--p600);cursor:grabbing}
 /* Etikett (im Katalog das Jahr) — nur beim Ziehen. */
 #app-scrollbar-label{
@@ -779,7 +781,7 @@ html::-webkit-scrollbar{width:0;height:0}
     /* Ersetzt die früheren onmouseenter/onmouseleave-Attribute, die
        this.style.background gesetzt haben — Hover gehört ins Stylesheet, und
        Inline-Handler hätten 'unsafe-inline' in der CSP nötig gemacht. */
-    .hover-row:hover{background:var(--s100)}
+    @media (hover:hover){.hover-row:hover{background:var(--s100)}}
 
     /* ── Download-Knopf für die Android-App ───────────────────────────────────
        Die vertraute Form eines Store-Knopfs: Symbol links, zwei Zeilen rechts,
@@ -794,7 +796,7 @@ html::-webkit-scrollbar{width:0;height:0}
              padding:.5rem .95rem;border-radius:10px;text-decoration:none;
              border:1px solid var(--bdr);background:var(--sur);color:var(--txt);
              transition:background .15s ease,border-color .15s ease}
-    .apk-btn:hover{background:var(--s100);border-color:var(--b600)}
+    @media (hover:hover){.apk-btn:hover{background:var(--s100);border-color:var(--b600)}}
     .apk-btn-txt{display:flex;flex-direction:column;line-height:1.15;text-align:left}
     .apk-btn-txt small{font-size:var(--fs-0);letter-spacing:.06em;text-transform:uppercase;
                        color:var(--mut)}
@@ -853,11 +855,11 @@ html::-webkit-scrollbar{width:0;height:0}
     .voucher-pin code{font-size:var(--fs-2);letter-spacing:.08em}
     .voucher-nopdf{color:var(--mut);font-size:var(--fs-2);padding:0 .35rem}
     .voucher-actions{display:flex;align-items:center;gap:.3rem;margin-left:auto}
-    .v-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bdr);
+    .v-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bedienrand);
            cursor:pointer;background:transparent;color:var(--txt);font-size:var(--fs-2);
            display:flex;align-items:center;justify-content:center;
            transition:background .15s,border-color .15s}
-    .v-btn:hover{background:var(--s200);border-color:var(--p500)}
+    @media (hover:hover){.v-btn:hover{background:var(--s200);border-color:var(--p500)}}
     .voucher-total-row{display:flex;justify-content:space-between;
                        align-items:baseline;margin-top:.5rem;font-size:var(--fs-2)}
     /* „Noch keine Gutscheine" und die Fehlermeldung der Liste. `mut` war hier
@@ -905,7 +907,7 @@ html::-webkit-scrollbar{width:0;height:0}
     /* Knöpfe und Felder in der Textschrift und mit ihrem Wortabstand — der Browser setzt
        für sie beides zurück (Arial, word-spacing:normal). */
     button,input,select,textarea{font-family:inherit;word-spacing:inherit}
-    a.btn,a.btn:hover{text-decoration:none}
+    a.btn{text-decoration:none}@media (hover:hover){a.btn:hover{text-decoration:none}}
     .period-btn{min-height:32px;padding:5px 14px}
 
     /* Nur am Handy sichtbar (mobile.css) */
@@ -943,6 +945,15 @@ html::-webkit-scrollbar{width:0;height:0}
 .btn.knopf-breit{width:100%;justify-content:center;padding:11px}
 .voll-breit{width:100%}
 select.w-auto,input.w-auto,.fg select.w-auto,.w-auto{width:auto}
+/* Häkchen selbst 24 × 24 px (WCAG 2.5.8), nicht nur über die Beschriftung;
+   nach .w-auto, das sonst die Breite auf das Browsermass zurücksetzt. */
+input[type="checkbox"]{width:24px;height:24px;margin:0;flex:none;accent-color:var(--b600)}
+/* Ein Fehler am Feld ist auch ohne Vorleser sichtbar: roter Rand, doppelt. */
+:root input[aria-invalid="true"],:root select[aria-invalid="true"],:root textarea[aria-invalid="true"]{border-color:var(--r700);box-shadow:0 0 0 1px var(--r700)}
+/* Set-Ansicht: „Teile neu importieren“ steht neben der Teilezahl. */
+.teile-neu{margin-left:6px}
+/* Ohne Verbindung kein Löschen auf der Kachel (siehe schreibenSperren). */
+html[data-offline] .delbtn{display:none}
 input.suchfeld{width:220px}
 .hoehe-38,.fg .hoehe-38{height:38px}
 .min-100{min-width:100px}
@@ -981,6 +992,9 @@ input.suchfeld{width:220px}
 #global-settings-grid{grid-template-columns:minmax(170px,210px) minmax(0,1fr);align-items:start}
 #global-settings-grid > .einst-nav{grid-column:1;grid-row:1 / span 20;flex-direction:column;align-items:stretch;position:sticky;top:1rem}
 #global-settings-grid > .einst-nav a{justify-content:flex-start}
+/* Die Abschnittsleiste ist auch ein <nav>: Die Leistenfarbe der Designs (Rot,
+   Schwarzlack) gehört nur der Hauptnavigation. */
+:root[data-theme] nav.einst-nav{background:none;background-image:none;border:0;box-shadow:none}
 #global-settings-grid > .einst-nav a[aria-current="page"]{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
 #global-settings-grid > .ssec{grid-column:2}
 #global-settings-grid > .ssec:not(.einst-aktiv){display:none !important}
@@ -1029,8 +1043,8 @@ select.auswahl-mini,.fg select.auswahl-mini{font-size:var(--fs-1);padding:3px 6p
    Ohne eigene Regel standen Links in Browserblau (#0000EE) — auch im
    Dunkelmodus. Knöpfe als Link (.btn) behalten ihre Farbe. */
 a{color:var(--b600);text-underline-offset:2px}
-a:hover{text-decoration:underline}
-a.btn:hover{text-decoration:none}
+@media (hover:hover){a:hover{text-decoration:underline}}
+@media (hover:hover){a.btn:hover{text-decoration:none}}
 
 /* ── Fehler, Verbindung, Laden ──────────────────────────────────────────── */
 .fehler-zustand .leer-ico .ico{color:var(--a-schrift)}
@@ -1156,7 +1170,9 @@ a.btn:hover{text-decoration:none}
 .start-flaeche{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:1.5rem}
 .start-marke{display:flex;align-items:center;gap:12px;margin-bottom:.5rem}
 .start-titel{font-size:var(--fs-6);font-weight:800;color:var(--txt)}
-.start-fuss{color:var(--mut);font-size:var(--fs-0);margin-top:1.5rem;text-align:center;opacity:.75;letter-spacing:.03em}
+.start-fuss{color:var(--mut);font-size:var(--fs-0);margin-top:1.5rem;text-align:center;letter-spacing:.03em}
+/* Die Verweise unter der Anmeldung sind eigene Ziele, kein Fliesstext: 24 px hoch. */
+#login-screen .lcard a[href]{display:inline-flex;align-items:center;min-height:24px}
 .fortschritt-zeile{display:flex;justify-content:space-between;font-size:var(--fs-1);color:var(--s500)}
 .balken{background:var(--s200);border-radius:999px;height:8px;overflow:hidden;margin-bottom:.3rem}
 .fortschritt-titel{font-size:var(--fs-2);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem}

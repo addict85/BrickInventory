@@ -155,7 +155,8 @@
   border:2.5px solid var(--ink);border-radius:9px;
 }
 [data-theme="noppe"][data-dunkel] nav .ntab,[data-theme="hochglanz"][data-dunkel] nav .ntab{color:#ffd9db}
-[data-theme="noppe"][data-dunkel] nav .ntab.active,[data-theme="hochglanz"][data-dunkel] nav .ntab.active{color:var(--txt)}
+/* Dunkel ist die Tintenkante unsichtbar; ein heller Rand hebt den aktiven Reiter 3:1 ab. */
+[data-theme="noppe"][data-dunkel] nav .ntab.active,[data-theme="hochglanz"][data-dunkel] nav .ntab.active{color:var(--txt);border-color:#fff}
 
 /* ── Flaechen ───────────────────────────────────────────────────────────── */
 [data-theme="noppe"] .card,[data-theme="hochglanz"] .card,
@@ -217,8 +218,8 @@
    Farbe braucht. Beim Druecken wandert der Knopf auf den Schatten — dieselbe
    Bewegung wie bei einem Stein, den man aufsetzt. */
 [data-theme="noppe"] .btn,[data-theme="hochglanz"] .btn{
-  border:2.5px solid var(--ink);border-radius:10px;
-  box-shadow:0 3px 0 var(--ink);font-weight:800;
+  border:2.5px solid var(--bedienrand);border-radius:10px;
+  box-shadow:0 3px 0 var(--bedienrand);font-weight:800;
 }
 [data-theme="noppe"] .btn:active,[data-theme="hochglanz"] .btn:active{transform:translateY(3px);box-shadow:none}
 [data-theme="noppe"] .btn.bp,[data-theme="hochglanz"] .btn.bp{background:var(--b600);color:var(--auf-primaer,#fff)}

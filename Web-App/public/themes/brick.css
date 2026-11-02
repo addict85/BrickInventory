@@ -89,7 +89,7 @@
   background:#7fa3c9;border-radius:9px;padding:6px;box-sizing:content-box;
   filter:hue-rotate(200deg) saturate(.55) brightness(1.05);
 }
-[data-theme="brick"] header .ubadge{background:rgba(255,255,255,.16);color:#fff}
+[data-theme="brick"] header .ubadge{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.8)}
 [data-theme="brick"] header .abadge{background:var(--brick-petrol);color:#fff}
 /* ── Hier stand eine Regel fuer #btn-logout, und sie war der Fehler ────────
 
@@ -132,7 +132,7 @@
   background:#fff;color:#4a5763;border:1.5px solid #d4dde7;border-bottom:1.5px solid #d4dde7;
   border-radius:11px;padding:9px 16px;margin:0;font-weight:600;
 }
-[data-theme="brick"] .ntab:hover{background:#f2f6fa}
+@media (hover:hover){[data-theme="brick"] .ntab:hover{background:#f2f6fa}}
 /* Dunkel: Grundplatte und Pillen auf den dunklen Flächen statt fest hell. */
 [data-theme="brick"][data-dunkel] #app,[data-theme="brick"][data-dunkel] .lcard{background:var(--s100)}
 [data-theme="brick"][data-dunkel] .ntab{background:var(--sur);color:var(--txt);border-color:var(--bdr)}
@@ -179,7 +179,7 @@
 [data-theme="brick"] .bp{
   background:var(--brick-petrol);box-shadow:0 2px 0 var(--brick-petrol-dk);color:#fff;
 }
-[data-theme="brick"] .bp:hover{background:#3a7080;box-shadow:0 1px 0 var(--brick-petrol-dk)}
+@media (hover:hover){[data-theme="brick"] .bp:hover{background:#3a7080;box-shadow:0 1px 0 var(--brick-petrol-dk)}}
 
 /* ── Panels/Karten etwas klobiger ────────────────────────────────────────── */
 [data-theme="brick"] .card,[data-theme="brick"] .fstat,
@@ -234,11 +234,10 @@
 [data-theme="brick"] .sc .delbtn{
   background:#fff;border-color:#fff;color:var(--b600);
 }
-[data-theme="brick"] .sc .delbtn:hover{
+@media (hover:hover){[data-theme="brick"] .sc .delbtn:hover{
   background:#fff;border-color:#fff;color:var(--r500);
-}
-[data-theme="brick"][data-dunkel] .sc .delbtn,
-[data-theme="brick"][data-dunkel] .sc .delbtn:hover{background:var(--sur);border-color:var(--bdr)}
+}}
+[data-theme="brick"][data-dunkel] .sc .delbtn{background:var(--sur);border-color:var(--bdr)}@media (hover:hover){[data-theme="brick"][data-dunkel] .sc .delbtn:hover{background:var(--sur);border-color:var(--bdr)}}
 [data-theme="brick"] .qbadge{background:var(--b600);color:var(--auf-primaer,#fff);border-radius:7px}
 /* Zustands-Plaketten: Neu = Salbeigrün, Gebraucht = Sand (wie im Mockup) */
 [data-theme="brick"] .cond-new{background:#e2eaf3;color:#3d6a8f}
@@ -336,7 +335,9 @@
   background:var(--b600);
   box-shadow:inset 0 -3px 0 rgba(0,0,0,.18);
 }
-[data-theme="brick"] .lcard .bp:hover{background:var(--b700)}
+@media (hover:hover){[data-theme="brick"] .lcard .bp:hover{background:var(--b700)}}
+/* Dunkel ist --b600 hell: Die Schrift darauf ist dann dunkel (--auf-primaer). */
+[data-theme="brick"][data-dunkel] .lcard .bp{color:var(--auf-primaer)}
 [data-theme="brick"] .lcard a{color:var(--b600)}
 
 /* Startup-Screen: Fortschrittsanzeige in der Primärfarbe des Designs */
