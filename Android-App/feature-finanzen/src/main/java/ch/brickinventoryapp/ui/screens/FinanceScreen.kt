@@ -274,11 +274,9 @@ fun SubtotalRow(label: String, value: String) {
 }
 
 @Composable
-fun PriceColumn(label: String, value: String) {
+fun PriceColumn(label: String, value: String, farbe: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimary)
-        Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = farbe)
+        Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, color = farbe)
     }
 }
