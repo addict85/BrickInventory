@@ -236,6 +236,12 @@ if (require.main === module) {
     { datei: ZIEL_DUNKEL_KT, inhalt: baueKotlinDunkel(daten) },
   ];
   for (const { datei, inhalt } of ausgaben) {
+    // Ein Checkout nur der Web-App (Docker-Bau, Teil-Klon) hat keine
+    // Android-App; deren Tokens pflegt dann der vollständige Checkout.
+    if (!fs.existsSync(path.dirname(datei))) {
+      console.log(`[design-tokens] übersprungen, Ordner fehlt: ${path.relative(WURZEL, path.dirname(datei))}`);
+      continue;
+    }
     fs.writeFileSync(datei, inhalt);
     console.log(`[design-tokens] ${path.relative(WURZEL, datei)}`);
   }
