@@ -136,7 +136,7 @@
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
     <string name="minifigs_stat_types">Typen</string>
-    <string name="minifigs_stat_total">Gesamt</string>
+    <string name="minifigs_stat_total">Figuren gesamt</string>
     <string name="minifigs_stat_manual">Manuell</string>
     <string name="minifigs_search_placeholder">Suchen…</string>
     <string name="minifigs_manual_section">Manuell erfasste Minifiguren</string>
@@ -255,9 +255,9 @@
         <item quantity="one">%1$d Kaufpreis in anderer Währung nicht eingerechnet</item>
         <item quantity="other">%1$d Kaufpreise in anderer Währung nicht eingerechnet</item>
     </plurals>
-    <string name="finance_avg_label">Ø Sets</string>
-    <string name="finance_min_label">Min.</string>
-    <string name="finance_max_label">Max.</string>
+    <string name="finance_avg_label">Alle zum Durchschnitt</string>
+    <string name="finance_min_label">Alle zum Tiefstpreis</string>
+    <string name="finance_max_label">Alle zum Höchstpreis</string>
     <string name="finance_filter_all">Alle</string>
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Teile</string>
@@ -276,7 +276,7 @@
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Typen</string>
     <string name="parts_stat_colors">Farben</string>
-    <string name="parts_stat_total">Gesamt</string>
+    <string name="parts_stat_total">Stück gesamt</string>
     <string name="parts_manual_section">Manuell erfasste Teile</string>
     <string name="parts_sets_section">Aus Sets</string>
     <string name="parts_none">Keine Teile</string>
@@ -904,7 +904,7 @@
     <string name="chart_change_year">%1$s dieses Jahr</string>
     <string name="chart_change_month">%1$s diesen Monat</string>
     <string name="chart_change_week">%1$s diese Woche</string>
-    <string name="finance_range_label">Sets zum tiefsten und höchsten Marktpreis</string>
+    <string name="finance_range_label">Wert der Sets heute, vom tiefsten bis zum höchsten Marktpreis</string>
     <string name="wanted_add_first">Set merken</string>
     <string name="wanted_empty_hint">Merke dir Sets, die du noch kaufen willst. Die App zeigt ihren Marktpreis und meldet sich auf Wunsch, wenn er sich ändert.</string>
     <string name="fehler_anmeldung_text">Deine Sitzung ist abgelaufen.</string>

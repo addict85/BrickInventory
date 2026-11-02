@@ -42,6 +42,8 @@ import org.junit.Test
  * „jede Finanzzeile trägt …“ (wert=null); im FinanzViewModel die Punkte wieder beim
  * Laden mit Locale.getDefault() übersetzt → rot „die Finanzachse wird erst beim
  * Zeichnen formatiert“ ([10/27, , 10/29]) und „die Beispiele sind stimmig“.
+ * Gegenprobe (02.11.2026, kotlinc): bei den Teilen wieder "quantity" statt
+ * "total_quantity" → rot „die Teilekacheln ergeben die Gesamtzahl“ (82 gegen 0).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BeispieldatenTest {
@@ -135,6 +137,18 @@ class BeispieldatenTest {
     }
 
     /**
+     * Die Mengen der Teilekacheln ergeben die Kennzahl „Stück gesamt“ — ein Foto mit
+     * „82“ oben und „×1“ an jeder Kachel sah aus wie ein Rechenfehler.
+     */
+    @Test
+    fun `die Teilekacheln ergeben die Gesamtzahl`() {
+        val teile = welt.teile().also { it.loadParts() }
+        TestApi.warteBis("Teile") { teile.partsState.value.let { it.parts.isNotEmpty() && it.partsStats != null } }
+        val z = teile.partsState.value
+        assertEquals(z.partsStats!!.teileGesamt, z.parts.sumOf { it.totalQuantity })
+    }
+
+    /**
      * Das Finanzfoto zeigt den Normalfall: jede Set-Zeile mit Marktwert, Kaufpreis,
      * Zustand und G&V, und die Zeilen ergeben zusammen die Kopfkachel.
      */
@@ -191,9 +205,9 @@ object Beispiele {
         // Echte, lange Namen wie im Katalog: Ein Foto voller „Name unbekannt“ zeigte
         // weder Umbruch noch Kürzung.
         "/api/v1/parts" to """{"success":true,"total":3,"parts":[
-            {"part_number":"3001","color_id":5,"part_name":"Brick 2 x 4","color_name":"Red","quantity":12},
-            {"part_number":"3039","color_id":1,"part_name":"Slope 45 2 x 2 with Bottom Pin","color_name":"Blue","quantity":30},
-            {"part_number":"4073","color_id":4,"part_name":"Plate Round 1 x 1 with Solid Stud","color_name":"Trans-Clear","quantity":40}]}""",
+            {"part_number":"3001","color_id":5,"part_name":"Brick 2 x 4","color_name":"Red","total_quantity":12},
+            {"part_number":"3039","color_id":1,"part_name":"Slope 45 2 x 2 with Bottom Pin","color_name":"Blue","total_quantity":30},
+            {"part_number":"4073","color_id":4,"part_name":"Plate Round 1 x 1 with Solid Stud","color_name":"Trans-Clear","total_quantity":40}]}""",
         "/api/v1/parts/manual" to """{"success":true,"parts":[]}""",
         "/api/v1/parts/stats" to """{"success":true,"stats":{"unique_parts":3,"unique_colors":3,"total_parts":82,"manual_parts":0}}""",
         "/api/v1/minifigs" to """{"success":true,"figs":[

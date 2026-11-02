@@ -152,7 +152,7 @@
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
     <string name="minifigs_stat_types">Types</string>
-    <string name="minifigs_stat_total">Total</string>
+    <string name="minifigs_stat_total">Figures in total</string>
     <string name="minifigs_stat_manual">Manual</string>
     <string name="minifigs_search_placeholder">Search…</string>
     <string name="minifigs_manual_section">Manually added minifigures</string>
@@ -270,9 +270,9 @@
         <item quantity="one">%1$d purchase price in another currency not included</item>
         <item quantity="other">%1$d purchase prices in another currency not included</item>
     </plurals>
-    <string name="finance_avg_label">Ø sets</string>
-    <string name="finance_min_label">Min</string>
-    <string name="finance_max_label">Max</string>
+    <string name="finance_avg_label">All at average price</string>
+    <string name="finance_min_label">All at lowest price</string>
+    <string name="finance_max_label">All at highest price</string>
     <string name="finance_filter_all">All</string>
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Parts</string>
@@ -291,7 +291,7 @@
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Types</string>
     <string name="parts_stat_colors">Colors</string>
-    <string name="parts_stat_total">Total</string>
+    <string name="parts_stat_total">Pieces in total</string>
     <string name="parts_manual_section">Manually added parts</string>
     <string name="parts_sets_section">From sets</string>
     <string name="parts_none">No parts</string>
@@ -923,7 +923,7 @@
     <string name="chart_change_year">%1$s this year</string>
     <string name="chart_change_month">%1$s this month</string>
     <string name="chart_change_week">%1$s this week</string>
-    <string name="finance_range_label">Sets at lowest and highest market price</string>
+    <string name="finance_range_label">Value of your sets today, from lowest to highest market price</string>
     <string name="wanted_add_first">Add a set to the list</string>
     <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
     <string name="fehler_anmeldung_text">Your session has expired.</string>
