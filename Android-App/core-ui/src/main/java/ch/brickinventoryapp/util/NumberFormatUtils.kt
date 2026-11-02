@@ -50,11 +50,22 @@ fun fmtMoney(amount: Double, currencyCode: String?): String {
         nf.currency = Currency.getInstance(currencyCode ?: "EUR")
         nf.minimumFractionDigits = 2
         nf.maximumFractionDigits = 2
-        nf.format(amount)
+        mitWaehrungsAbstand(nf.format(amount))
     } catch (_: Exception) {
-        "${currencyCode.orEmpty()} ${fmtAmount(amount)}".trim()
+        "${currencyCode.orEmpty()}\u00A0${fmtAmount(amount)}".trim()
     }
 }
+
+/**
+ * Ein Code aus Buchstaben („CHF“) klebt in en-GB am Betrag („CHF812.50“), Intl im
+ * Web schreibt „CHF 812.50“. Ein festes Leerzeichen dazwischen, damit beide gleich
+ * aussehen und die Zeile nicht zwischen Code und Zahl umbricht. Symbole wie € bleiben.
+ */
+fun mitWaehrungsAbstand(text: String): String =
+    text.replace(Regex("""(?<=\p{L})(?=[-−]?\d)|(?<=\d)(?=\p{L})"""), "\u00A0")
+
+/** Ein Tag aus der Serverantwort in der Form der App-Sprache — siehe fmtDatum. */
+fun fmtTag(iso: String?, jahr: DatumJahr = DatumJahr.VOLL): String? = fmtDatum(iso, appNumberLocale(), jahr)
 
 /**
  * Eine Gutscheinnummer zum Ablesen: erst die Trennzeichen des Herausgebers weg,

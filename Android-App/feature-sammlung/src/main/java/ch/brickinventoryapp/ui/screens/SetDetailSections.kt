@@ -285,7 +285,7 @@ fun LazyListScope.setDetailPriceSection(set: SetAnsicht, detailState: SetDetailU
                     val chart = history?.chart
                     if (chart != null && chart.values.isNotEmpty()) {
                         Spacer(Modifier.height(Abstaende.klein))
-                        PriceChart(chart)
+                        PriceChart(chart, currency)
                     } else if (detailState.priceHistoryLoading) {
                         Spacer(Modifier.height(Abstaende.klein))
                         PreisLaedtZeile()

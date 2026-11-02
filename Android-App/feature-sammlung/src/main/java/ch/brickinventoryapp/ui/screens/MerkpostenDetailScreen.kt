@@ -145,7 +145,7 @@ fun MerkpostenDetailScreen(
                             stringResource(if (merkposten.condition == "U") R.string.condition_used
                                            else R.string.condition_new))
                         CatalogDetailRow(stringResource(R.string.wanted_since),
-                            ch.brickinventoryapp.util.fmtDatum(merkposten.createdAt) ?: "—")
+                            ch.brickinventoryapp.util.fmtTag(merkposten.createdAt) ?: "—")
 
                         // ── Der Inhaber, änderbar ──
                         //
@@ -185,7 +185,7 @@ fun MerkpostenDetailScreen(
                         val chart = detail.historie?.chart
                         if (chart != null && chart.values.isNotEmpty()) {
                             Spacer(Modifier.height(Abstaende.klein))
-                            PriceChart(chart)
+                            PriceChart(chart, appState.currency)
                         } else if (detail.laedt) {
                             Spacer(Modifier.height(Abstaende.klein))
                             PreisLaedtZeile()

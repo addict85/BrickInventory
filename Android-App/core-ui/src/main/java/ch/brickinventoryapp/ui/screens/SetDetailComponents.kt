@@ -146,7 +146,7 @@ fun DetailRow2(label: String, value: String) {
  * Zustands-Plaketten und --chart-new/--chart-used im Web.
  */
 @Composable
-fun PriceChart(chart: PreisDiagrammAnsicht) {
+fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     val lines  = remember(chart) { PriceChartMath.buildLines(chart) }
     val bounds = remember(lines) { PriceChartMath.bounds(lines) } ?: return
     if (lines.isEmpty()) return
@@ -167,14 +167,14 @@ fun PriceChart(chart: PreisDiagrammAnsicht) {
         Modifier.fillMaxWidth().padding(bottom = Abstaende.klein),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        // Ohne Währung: Die drei Kennzahlen stehen als Gruppe unter dem
-        // Diagramm, dessen Beschriftung die Währung bereits nennt.
+        // Mit Währung: Die Achse dieses Diagramms trägt keine Beträge, und eine
+        // nackte Zahl neben „CHF 812.50“ darüber liest sich wie eine andere Grösse.
         PriceStatCell(stringResource(R.string.detail_price_low),
-            ch.brickinventoryapp.util.fmtAmount(allValues.min()))
+            ch.brickinventoryapp.util.fmtMoney(allValues.min(), waehrung))
         PriceStatCell(stringResource(R.string.detail_price_current),
-            ch.brickinventoryapp.util.fmtAmount(latest))
+            ch.brickinventoryapp.util.fmtMoney(latest, waehrung))
         PriceStatCell(stringResource(R.string.detail_price_high),
-            ch.brickinventoryapp.util.fmtAmount(allValues.max()))
+            ch.brickinventoryapp.util.fmtMoney(allValues.max(), waehrung))
     }
 
     val gridColor = MaterialTheme.colorScheme.outlineVariant

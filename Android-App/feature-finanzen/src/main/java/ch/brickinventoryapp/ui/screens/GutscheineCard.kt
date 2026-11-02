@@ -26,7 +26,7 @@ import ch.brickinventoryapp.ui.model.GutscheinAnsicht
 import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.NumericInput
-import ch.brickinventoryapp.util.fmtDatum
+import ch.brickinventoryapp.util.fmtTag
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.inVierergruppen
 
@@ -184,7 +184,7 @@ fun GutscheineCard(
                 Text(stringResource(R.string.vouchers_total),
                      style = MaterialTheme.typography.bodySmall,
                      color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("${summe.first.toPlainString()} ${summe.second}",
+                Text(fmtMoney(summe.first.toDouble(), summe.second),
                      style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             }
         }
@@ -330,7 +330,7 @@ private fun GutscheinZeile(
             // Der Stand der Guthaben-Abfrage im Wort, nicht in einer Farbe (FarbeAlleinTest).
             // `if` statt `?.let { stringResource(…) }`: stringResource ist @Composable, und in
             // einer fremden Lambda hinge es am Einbetten durch den Compose-Compiler.
-            val stand = fmtDatum(g.guthabenGeprueftAm)
+            val stand = fmtTag(g.guthabenGeprueftAm)
             Text(
                 if (stand != null) stringResource(R.string.vouchers_balance_as_of, stand)
                 else stringResource(R.string.vouchers_balance_never),

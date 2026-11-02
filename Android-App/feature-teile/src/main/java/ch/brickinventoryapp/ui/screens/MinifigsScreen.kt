@@ -26,7 +26,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.util.fmtInt
-import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -438,7 +437,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 // Gemeinsamer Helfer (util/DatumFormat.kt): Er kommt auch mit Zeitstempeln ohne
                 // Millisekunden zurecht.
                 val dateLabel = remember(fig.setAddedAt) {
-                    fmtDatum(fig.setAddedAt, zweistelligesJahr = true)
+                    ch.brickinventoryapp.util.fmtTag(fig.setAddedAt, ch.brickinventoryapp.util.DatumJahr.KURZ)
                 }
                 if (dateLabel != null)
                     Text(dateLabel, style = MaterialTheme.typography.labelSmall,
@@ -465,7 +464,7 @@ fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoad
         name = fig.figName,
         menge = fig.totalQuantity ?: fig.quantity,
         imageLoader = imageLoader,
-        zweiteZeile = fmtDatum(fig.setAddedAt),
+        zweiteZeile = ch.brickinventoryapp.util.fmtTag(fig.setAddedAt),
         onBildFehler = onFehler,
         onClick = onClick,
     )

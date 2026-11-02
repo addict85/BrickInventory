@@ -2,27 +2,32 @@ package ch.brickinventoryapp.util
 
 /**
  * ISO-Datum aus einer Serverantwort als kurzes Datum — eine Fassung für alle
- * Bildschirme, damit dasselbe Datum überall gleich aussieht.
- *
- * Ohne SimpleDateFormat: Gebraucht wird der Tag, und die ersten zehn Zeichen eines
- * ISO-Zeitstempels sind das Datum, gleich ob danach Millisekunden, ein Versatz
- * oder nichts folgt — kein Format, das nicht passen kann. Bewusst ohne
- * Zeitzonen-Umrechnung: Das Erfassungsdatum ist ein Kalendertag, und eine
- * Verschiebung um Stunden machte daraus den Vortag.
+ * Bildschirme und dieselbe Form wie fmtDatum() der Webapp (Intl, 2-stellig):
+ * de „03.09.2026“, en „03/09/2026“, en-US „09/03/2026“. Ohne Zeitzonen-Umrechnung,
+ * weil ein Erfassungsdatum ein Kalendertag ist und Stunden daraus den Vortag machten.
  *
  * @param iso z. B. "2026-09-03T15:00:32.194Z" oder "2026-09-03"
- * @param zweistelligesJahr true für "03.09.26", false für "03.09.2026"
+ * @param locale die Zahlen-Locale der App (appNumberLocale() in core-ui)
+ * @param jahr [DatumJahr.VOLL], [DatumJahr.KURZ] („03.09.26“) oder [DatumJahr.OHNE] („03.09.“)
  * @return das formatierte Datum, oder null wenn nichts Brauchbares dasteht
  */
-fun fmtDatum(iso: String?, zweistelligesJahr: Boolean = false): String? {
+fun fmtDatum(iso: String?, locale: java.util.Locale, jahr: DatumJahr = DatumJahr.VOLL): String? {
     val tag = iso?.take(10) ?: return null
     val teile = tag.split("-")
     if (teile.size != 3) return null
-    val (jahr, monat, tagImMonat) = teile
-    if (jahr.length != 4 || monat.length != 2 || tagImMonat.length != 2) return null
-    if (!jahr.all { it.isDigit() } || !monat.all { it.isDigit() } || !tagImMonat.all { it.isDigit() }) return null
-    return "$tagImMonat.$monat.${if (zweistelligesJahr) jahr.takeLast(2) else jahr}"
+    val (j, m, t) = teile
+    if (j.length != 4 || m.length != 2 || t.length != 2) return null
+    if (!(j + m + t).all { it.isDigit() }) return null
+    val jj = when (jahr) { DatumJahr.VOLL -> j; DatumJahr.KURZ -> j.takeLast(2); DatumJahr.OHNE -> "" }
+    return when {
+        locale.language != "en" -> if (jahr == DatumJahr.OHNE) "$t.$m." else "$t.$m.$jj"
+        locale.country == "US" -> if (jahr == DatumJahr.OHNE) "$m/$t" else "$m/$t/$jj"
+        else -> if (jahr == DatumJahr.OHNE) "$t/$m" else "$t/$m/$jj"
+    }
 }
+
+/** Wie viel vom Jahr [fmtDatum] zeigt. */
+enum class DatumJahr { VOLL, KURZ, OHNE }
 
 /**
  * ISO-Zeitstempel aus einer Serverantwort als Uhrzeit — HH:MM:SS, für das
@@ -53,7 +58,8 @@ fun fmtUhrzeit(iso: String?): String? {
  * liest — wie [fmtUhrzeit]. Tag und Uhrzeit, weil „Stand von 14:03" ohne Tag
  * nicht sagt, ob es von heute ist.
  */
-fun fmtStand(millis: Long, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String =
-    java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
-        .withZone(zone)
-        .format(java.time.Instant.ofEpochMilli(millis))
+fun fmtStand(millis: Long, locale: java.util.Locale, zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String {
+    val zeit = java.time.Instant.ofEpochMilli(millis).atZone(zone)
+    return fmtDatum(zeit.toLocalDate().toString(), locale) + " " +
+        java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(zeit)
+}
