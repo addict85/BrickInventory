@@ -95,7 +95,7 @@
     <string name="setup_server_url">Server-URL</string>
     <string name="setup_url_label">URL der BrickInventory Manager Webapp</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
-    <string name="setup_url_supporting">z.B. https://brick.fritz.box oder https://brick.example.com – ohne https:// davor ergänzt die App es</string>
+    <string name="setup_url_supporting">z. B. brick.fritz.box oder brick.example.com – https:// darf fehlen</string>
     <string name="api_app_zu_alt">Diese App ist zu alt für den Server. Bitte die App aktualisieren (Einstellungen → Aktualisierung).</string>
     <string name="api_server_zu_alt">Der Server ist älter als diese App. Manches fehlt womöglich — bitte den Server aktualisieren.</string>
     <string name="setup_continue">Weiter</string>
@@ -887,12 +887,12 @@
     <string name="common_load_failed">Konnte nicht geladen werden</string>
     <string name="common_retry">Erneut versuchen</string>
     <string name="common_no_results">Nichts gefunden</string>
+    <string name="common_no_results_hint">Suche oder Filter lockern.</string>
     <string name="chart_change_max">%1$s insgesamt</string>
     <string name="chart_change_year">%1$s dieses Jahr</string>
     <string name="chart_change_month">%1$s diesen Monat</string>
     <string name="chart_change_week">%1$s diese Woche</string>
     <string name="finance_range_label">Sets zum tiefsten und höchsten Marktpreis</string>
-    <string name="common_no_results_hint">Suche oder Filter lockern.</string>
     <string name="wanted_add_first">Set merken</string>
     <string name="wanted_empty_hint">Merke dir Sets, die du noch kaufen willst. Die App zeigt ihren Marktpreis und meldet sich auf Wunsch, wenn er sich ändert.</string>
     <string name="fehler_anmeldung_text">Deine Sitzung ist abgelaufen.</string>
