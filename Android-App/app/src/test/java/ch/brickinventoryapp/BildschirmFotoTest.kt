@@ -77,7 +77,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     val compose = createComposeRule()
 
     private val welt = Beispiele.Welt(KontextTexte())
-    private val bilder = coil3.ImageLoader.Builder(ApplicationProvider.getApplicationContext()).build()
+    private val bilder = Beispielbilder.loader(ApplicationProvider.getApplicationContext())
     private val vorher = java.util.Locale.getDefault()
 
     @After

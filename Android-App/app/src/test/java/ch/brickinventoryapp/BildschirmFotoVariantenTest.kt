@@ -37,6 +37,7 @@ import ch.brickinventoryapp.ui.screens.FinanceScreen
 import ch.brickinventoryapp.ui.screens.GalleryScreen
 import ch.brickinventoryapp.ui.screens.LoginScreen
 import ch.brickinventoryapp.ui.screens.MerklisteScreen
+import ch.brickinventoryapp.ui.screens.MinifigsScreen
 import ch.brickinventoryapp.ui.screens.PartsScreen
 import ch.brickinventoryapp.ui.screens.SetDetailScreen
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -82,7 +83,7 @@ class BildschirmFotoVariantenTest {
     val compose = createComposeRule()
 
     private val welt = Beispiele.Welt(KontextTexte())
-    private val bilder = coil3.ImageLoader.Builder(ApplicationProvider.getApplicationContext()).build()
+    private val bilder = Beispielbilder.loader(ApplicationProvider.getApplicationContext())
     private val vorher = Locale.getDefault()
 
     @After
@@ -243,6 +244,15 @@ class BildschirmFotoVariantenTest {
         zeige("teile-schrift200", schrift = 2.0f, bereit = { vm.partsState.value.parts.isNotEmpty() },
             zustand = { vm.partsState.value }) { PartsScreen(vm = vm, imageLoader = bilder) }
         foto("teile-schrift200")
+    }
+
+    /** Das Figurenraster wächst mit der Schrift (LesbareSpalten): lange Namen ganz lesbar. */
+    @Test
+    fun figurenSchrift200() {
+        val vm = welt.teile().also { it.loadMinifigs() }
+        zeige("figuren-schrift200", schrift = 2.0f, bereit = { vm.partsState.value.minifigs.isNotEmpty() },
+            zustand = { vm.partsState.value }) { MinifigsScreen(vm = vm, imageLoader = bilder) }
+        foto("figuren-schrift200")
     }
 
     @Test
