@@ -121,9 +121,7 @@
   .ntab .tab-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .ntab .ico { width: 22px; height: 22px; }
   .ntab.active, .ntab.gruppe-aktiv { border-top-color: var(--b600); color: var(--b600); }
-  /* Die Leiste misst ihre eigene Breite: Passen fünf Beschriftungen nicht
-     mehr (grosse Schrift, schmales Gerät), bleibt nur das Symbol. */
-  nav:has(> .ntab) { container: leiste / inline-size; }
+
   .sammlung-wahl { display: flex; width: 100%; }
   .sammlung-wahl button { flex: 1 1 0; justify-content: center; padding: 8px 4px; }
 
@@ -179,7 +177,8 @@
   /* Bei grosser Schrift bricht eine lange Beschriftung um, statt über den Rand zu ragen. */
   .btn { white-space: normal; text-align: center; }
   input, select, textarea, .btn {
-    font-size: max(16px, 1rem);   /* < 16px lässt iOS beim Fokus hineinzoomen; mit grosser Schrift wächst es mit */
+    font-size: 16px;              /* < 16px lässt iOS beim Fokus hineinzoomen */
+    font-size: max(16px, 1rem);   /* … und mit grosser Schrift wächst es mit */
     min-height: 44px;
   }
   /* 44 px ist das Mass für einen Fingertipp (Apple HIG, WCAG 2.5.5). Die
@@ -251,7 +250,6 @@
     padding: .5rem .7rem;
     margin-bottom: .6rem;
   }
-  @media (hover:hover){.dt tr:hover td{ background: none; }}
 
   .dt td {
     display: flex;
@@ -373,13 +371,20 @@
 }
 
 
-/* Fünf Beschriftungen brauchen je rund 3,9 rem. Darunter stehen nur die
-   Symbole da; der Name bleibt für Vorleser im Knopf (visuell verborgen). */
-@container leiste (max-width: 19.5rem) {
+/* Fünf Beschriftungen brauchen je rund 3,9 em; em misst hier die Schrift-
+   grösse des Browsers. Darunter stehen nur die Symbole da; der Name bleibt
+   für Vorleser im Knopf (visuell verborgen). */
+@media (max-width: 19.5em) {
   .ntab .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden;
                      clip-path: inset(50%); white-space: nowrap; }
   .ntab .ico { width: 28px; height: 28px; }
   .ntab { padding-top: 10px; padding-bottom: 10px; min-height: 44px; }
+}
+
+
+/* Als Karte hebt sich die Tabellenzeile beim Überfahren nicht farbig ab. */
+@media (max-width: 640px) and (hover: hover) {
+  .dt tr:hover td { background: none; }
 }
 
 

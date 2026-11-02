@@ -16,7 +16,8 @@
  *   B  white-space:nowrap an .snum entfernt, zusammen mit A (allein bricht
  *      in einer Spalte nichts) → rot: „390 px, 200 %“ (Set-Nummer auf zwei
  *      Zeilen, zusätzlich zu den Funden von A)
- *   C  @container leiste wirkungslos (max-width: 1px) → rot: „390 px, 200 %“
+ *   C  Symbolmodus der Leiste wirkungslos (@media max-width: 1px statt 19.5em)
+ *      → rot: „390 px, 200 %“
  *      und „320 px, 200 %“ (Leiste: Beschriftung abgeschnitten)
  *   D  .bstat-l wieder overflow-wrap:anywhere und .brick-stats wieder
  *      repeat(2, minmax(0, 1fr)) → rot: „390 px, 200 %“ und „320 px, 200 %“

@@ -462,7 +462,7 @@
        drei Verhalten. */
     /* .mk-zeile dazu (24.09.): Die Merklisten-Zeile ist keine Kachel, soll den
        Papierkorb aber genauso zeigen — „analog den Kacheln bei den Sets". */
-    @media (hover:hover){.sc:hover .ca,.man-tile:hover .ca,.mk-zeile:hover .ca{opacity:1}}
+    @media (hover:hover){.sc:hover .ca, .man-tile:hover .ca, .mk-zeile:hover .ca{opacity:1}}
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
