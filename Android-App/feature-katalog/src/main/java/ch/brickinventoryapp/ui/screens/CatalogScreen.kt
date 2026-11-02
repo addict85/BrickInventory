@@ -48,7 +48,7 @@ import ch.brickinventoryapp.ui.theme.NoppenMass
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
 import ch.brickinventoryapp.ui.theme.LocalIstGlanz
-import ch.brickinventoryapp.ui.theme.LichtStreifen
+
 import ch.brickinventoryapp.ui.theme.steinTon
 import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
 import ch.brickinventoryapp.ui.theme.faecherTon
@@ -530,7 +530,7 @@ fun CatalogSetCard(
                     // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
                     // Kachel: Ein weisser Schleier ueber weissem Text ist kein
                     // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
-                    if (istGlanz) Box(Modifier.matchParentSize().background(LichtStreifen))
+                    if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
                 }
                 Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
                     Text(set.setNumber, style = MaterialTheme.typography.labelSmall,

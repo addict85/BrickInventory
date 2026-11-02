@@ -45,7 +45,7 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
 import ch.brickinventoryapp.ui.theme.LocalIstGlanz
-import ch.brickinventoryapp.ui.theme.LichtStreifen
+import androidx.compose.foundation.shape.CircleShape
 import ch.brickinventoryapp.ui.theme.steinTon
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.NoppenReihe
@@ -477,6 +477,9 @@ fun SetCard(
                             Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))
                         }
                     }
+                    // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
+                    // Menü, damit die Bedienelemente auf eigener Fläche stehen (lichtStreifen()).
+                    if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
                     // Column statt Box: Eine Box stapelt, die Besitzer-Etiketten verdeckten die
                     // Zustandsplaketten. Untereinander bleibt beides lesbar.
                     Column(Modifier.align(Alignment.BottomStart).padding(6.dp),
@@ -501,7 +504,11 @@ fun SetCard(
                             }
                         }
                         Box {
-                            IconButton(onClick = { showMenu = true }) {
+                            // Im Glanz-Design auf eigener Fläche, damit ⋮ auf jedem Bild lesbar bleibt.
+                            IconButton(onClick = { showMenu = true },
+                                modifier = if (istGlanz) Modifier.padding(Abstaende.haar)
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)
+                                    else Modifier) {
                                 Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(20.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
@@ -514,11 +521,6 @@ fun SetCard(
                             }
                         }
                     }
-                    // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie
-                    // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
-                    // Kachel: Ein weisser Schleier ueber weissem Text ist kein
-                    // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
-                    if (istGlanz) Box(Modifier.matchParentSize().background(LichtStreifen))
                 }
                 Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
