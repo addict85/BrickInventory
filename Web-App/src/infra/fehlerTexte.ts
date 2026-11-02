@@ -211,6 +211,8 @@ export const FEHLER = {
                                  en: 'Invalid PIN (digits only, 3–10 characters)' },
   betrag_ungueltig:            { de: 'Ungültiger Betrag', en: 'Invalid amount' },
   waehrung_ungueltig:          { de: 'Ungültige Währung', en: 'Invalid currency' },
+  waehrung_geteiltes_unterkonto: { de: 'Ein Unterkonto gehört auch zu einem anderen Haushalt mit anderer Währung. Erst die Verknüpfung lösen, dann die Währung ändern.',
+                                 en: 'A sub-account also belongs to another household with a different currency. Unlink it first, then change the currency.' },
   waehrung_nur_hauptkonto:     { de: 'Die Währung gilt für den ganzen Haushalt; ändern kann sie nur das Hauptkonto.',
                                  en: 'The currency applies to the whole household; only the main account can change it.' },
   gutschein_existiert:         { de: 'Diesen Gutschein gibt es bereits.',

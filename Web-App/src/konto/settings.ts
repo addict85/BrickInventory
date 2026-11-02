@@ -65,7 +65,13 @@ async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
       const takt = await zaehleAnfrage('waehrung', `konto:${userId}`, 60 * 60 * 1000);
       if (takt.count > 5) fehlerWerfen('zu_viele_anfragen', 429, { minuten: takt.waitMin });
     }
-    if (!unterkonto) await repo.setzeWaehrungFuer(tx, await repo.verbundeneKonten(tx, userId), waehrung);
+    if (unterkonto) return alt;
+    const haushalt = await repo.eigenerHaushalt(tx, userId);
+    if ((await repo.fremdGeteilt(tx, haushalt, waehrung)).length) {
+      if (alt !== waehrung) fehlerWerfen('waehrung_geteiltes_unterkonto', 409);
+      return alt;
+    }
+    await repo.setzeWaehrungFuer(tx, haushalt, waehrung);
     return alt;
   });
   if (vorher !== waehrung) {

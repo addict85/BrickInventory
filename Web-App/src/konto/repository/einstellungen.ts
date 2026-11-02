@@ -52,14 +52,24 @@ export async function ersetzeGlobalenWert(key: string, alt: string, neu: string 
   return (r.changes ?? 0) > 0;
 }
 
-export async function verbundeneKonten(tx: DbSchnittstelle, userId: number): Promise<number[]> {
+/** Nur abwärts (Haupt- → Unterkonto): Über ein geteiltes Unterkonto hinauf
+ * erreichte man sonst fremde Hauptkonten. */
+export async function eigenerHaushalt(tx: DbSchnittstelle, userId: number): Promise<number[]> {
   const rows = await tx.all<{ id: number }>(`
-    WITH RECURSIVE verbund(id) AS (
+    WITH RECURSIVE baum(id) AS (
       SELECT $1::int
       UNION
-      SELECT CASE WHEN l.main_user_id = v.id THEN l.sub_user_id ELSE l.main_user_id END
-        FROM account_links l JOIN verbund v ON v.id IN (l.main_user_id, l.sub_user_id))
-    SELECT id FROM verbund`, [userId]);
+      SELECT l.sub_user_id FROM account_links l JOIN baum b ON l.main_user_id = b.id)
+    SELECT id FROM baum`, [userId]);
+  return rows.map(r => r.id);
+}
+
+/** Unterkonten in `ids`, die auch an einem Hauptkonto ausserhalb hängen, das eine andere Währung führt. */
+export async function fremdGeteilt(tx: DbSchnittstelle, ids: number[], waehrung: string): Promise<number[]> {
+  const rows = await tx.all<{ id: number }>(`
+    SELECT DISTINCT l.sub_user_id AS id FROM account_links l
+     WHERE l.sub_user_id = ANY($1::int[]) AND NOT l.main_user_id = ANY($1::int[])
+       AND konto_waehrung(l.main_user_id) <> $2`, [ids, waehrung]);
   return rows.map(r => r.id);
 }
 
