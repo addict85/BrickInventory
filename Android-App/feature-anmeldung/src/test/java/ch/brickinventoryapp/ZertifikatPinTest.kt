@@ -65,7 +65,8 @@ import javax.net.ssl.X509ExtendedTrustManager
  *   J  in ZertifikatsFrage.bestaetige() die Bedingung für GEAENDERT entfernt →
  *      rot „ein geaenderter Schluessel gilt erst mit abgeschriebenem …“
  *   K  bestaetigtFingerabdruck() mit `>= 4` statt `>= 16` → rot „ein
- *      geaenderter Schluessel …“ (vier getippte Zeichen genügten)
+ *      geaenderter Schluessel …“ (vier getippte Zeichen genügten); am 02.11.2026
+ *      FINGERABDRUCK_ABTIPPEN = 16 statt 24 → rot dort („16 Zeichen (64 Bit) …“)
  *   L  in bestaetige() wieder nur GEAENDERT prüfen (`f.art == GEAENDERT &&`)
  *      → rot „ohne bekannte CA genuegt ein Tipp nicht …“
  *   M  (02.11.2026) die Zeile `if (pin != null && oeffentlich && pin in
@@ -141,8 +142,8 @@ class ZertifikatPinTest {
         assertTrue("Nach der Bestätigung gilt der Pin", hole(system(ROOT)))
     }
 
-    /** Die letzten 16 Hex-Zeichen, wie sie jemand aus der Webapp abschreibt. */
-    private fun abgeschrieben() = fingerabdruckLesbar(frage.offen.value!!.fingerabdruck).takeLast(23)
+    /** Die letzten 24 Hex-Zeichen, wie sie jemand aus der Webapp abschreibt. */
+    private fun abgeschrieben() = fingerabdruckLesbar(frage.offen.value!!.fingerabdruck).takeLast(35)
 
     @Test
     fun `nach der Bestaetigung gilt der Pin auch ohne bekannte CA`() {
@@ -250,11 +251,13 @@ class ZertifikatPinTest {
 
         assertFalse("Ein Tipp genügt nicht", frage.bestaetige(pins))
         assertFalse("Vier Zeichen genügen nicht", frage.bestaetige(pins, hex.takeLast(5)))
+        assertFalse("16 Zeichen (64 Bit) genügen nicht", frage.bestaetige(pins, hex.takeLast(23)))
+        assertFalse("23 Zeichen genügen nicht", frage.bestaetige(pins, hex.replace(":", "").takeLast(23)))
         assertFalse("Falsche Zeichen", frage.bestaetige(pins, "00:11:22:33:44:55:66:77"))
         assertEquals("Der alte Pin bleibt", spkiFingerabdruck(zert(FREMD)), pins.pin(eigener()))
         assertEquals("Die Frage bleibt offen", f, frage.offen.value)
 
-        assertTrue(frage.bestaetige(pins, hex.takeLast(23).lowercase()))
+        assertTrue(frage.bestaetige(pins, hex.takeLast(35).lowercase()))
         assertNull(frage.offen.value)
         assertTrue(hole(system(ROOT)))
     }
@@ -382,7 +385,7 @@ class ZertifikatPinTest {
         assertTrue(anfang, anfang.startsWith("8E:04:B3:9F"))
         val gezeigt = anfang.uppercase().filter { it in "0123456789ABCDEF" }
         assertEquals(8, gezeigt.length)
-        assertFalse(ERNEUERT_WURZEL_HEX.replace(":", "").takeLast(16).contains(gezeigt))
+        assertFalse(ERNEUERT_WURZEL_HEX.replace(":", "").takeLast(24).contains(gezeigt))
         assertFalse("Der Anfang allein bestätigt nichts", bestaetigtFingerabdruck(anfang, fp))
     }
 

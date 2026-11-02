@@ -71,6 +71,8 @@ import org.junit.Test
  *      → rot „Optionen fuer eine fremde Domain …“
  *   V  die Prüfung der Adresse nach dem Dialog entfernt → rot „wechselt die
  *      Adresse waehrend des Passkey-Dialogs …“
+ *   W  FINGERABDRUCK_ABTIPPEN = 16 → rot „ein QR-Code mit anderem Schluessel
+ *      ersetzt den Pin nie still“ (16 Zeichen angenommen)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnmeldungViewModelTest {
@@ -227,14 +229,19 @@ class AnmeldungViewModelTest {
 
         // Ein Tipp mit falsch abgeschriebenem Wert genügt ebenso wenig.
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
-            pinWechselEingabe = "09:09:09:09:09:09:09:09")
+            pinWechselEingabe = "09:09:09:09:09:09:09:09:09:09:09:09")
         assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.loginError)
         Thread.sleep(100)
         assertTrue("Falsch abgeschrieben: nichts", pfade.anfragenAn("qr-login").isEmpty())
 
-        // Die letzten 16 Hex-Zeichen des neuen Fingerabdrucks, wie aus der Webapp abgeschrieben.
+        // 16 Zeichen (64 Bit) genügen nicht mehr.
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
             pinWechselEingabe = "07:07:07:07:07:07:07:07")
+        assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.loginError)
+
+        // Die letzten 24 Hex-Zeichen des neuen Fingerabdrucks, wie aus der Webapp abgeschrieben.
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
+            pinWechselEingabe = "07:07:07:07:07:07:07:07:07:07:07:07")
         TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
         assertEquals("Nach Bestätigung und Anmeldung gilt der neue", fp, ablage.pins["brick.example.org:443"])
     }
