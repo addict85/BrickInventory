@@ -12,7 +12,9 @@ allprojects {
             ['releaseRuntimeClasspath', 'runtimeClasspath'].each { name ->
                 def konfiguration = project.configurations.findByName(name)
                 if (konfiguration != null && konfiguration.canBeResolved) {
-                    konfiguration.resolve()
+                    // Nur der Graph: Für die Sperrdatei reicht er, und Artefakte
+                    // reiner Ressourcenmodule (core-ressourcen) sind mehrdeutig.
+                    konfiguration.incoming.resolutionResult.allDependencies
                 }
             }
         }
