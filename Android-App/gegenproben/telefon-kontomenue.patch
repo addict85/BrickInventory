@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Telefon navigiert ohne Schublade
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index b44358a..56595c4 100644
+index a83e4df..f64a2c7 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 @@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
@@ -26,4 +26,4 @@ index b44358a..56595c4 100644
 +                    },
                  )
                  if (art == Navigationsart.LEISTE_UNTEN && currentDest?.route?.let { it in SAMMLUNG } == true) {
-                     SammlungUmschalter(currentDest?.route, onWahl = { ziel ->
+                     SammlungUmschalter(currentDest.route, onWahl = { ziel ->

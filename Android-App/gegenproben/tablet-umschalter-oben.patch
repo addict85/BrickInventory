@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Tablet hat den Umschalter
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index b44358a..9b92c38 100644
+index a83e4df..fba6093 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 @@ -135,7 +135,7 @@ fun MainScaffold(
@@ -13,6 +13,6 @@ index b44358a..9b92c38 100644
                  )
 -                if (art == Navigationsart.LEISTE_UNTEN && currentDest?.route?.let { it in SAMMLUNG } == true) {
 +                if (currentDest?.route?.let { it in SAMMLUNG } == true) {
-                     SammlungUmschalter(currentDest?.route, onWahl = { ziel ->
+                     SammlungUmschalter(currentDest.route, onWahl = { ziel ->
                          onTabAngetippt(ziel)
                          navController.zuReiter(ziel.route)
