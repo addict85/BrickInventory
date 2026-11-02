@@ -209,12 +209,11 @@ fun SetupScreen(
 
         Spacer(Modifier.height(Abstaende.riesig))
 
-        // QR scan option — mit Rand: Die Tonfläche lag im hellen Grunddesign 1,01:1 auf dem
-        // Hintergrund und war als Knopf nicht zu erkennen.
-        OutlinedButton(
+        // Der QR-Code ist der empfohlene Weg (Adresse und Zertifikat in einem Schritt) und
+        // deshalb die gefüllte Hauptaktion; die Eingabe von Hand darunter ist der Ausweg.
+        Button(
             onClick = { scanError = null; showScanner = true },
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
             Icon(Icons.Default.QrCodeScanner, null, Modifier.size(20.dp))
             Spacer(Modifier.width(Abstaende.klein))
@@ -238,7 +237,13 @@ fun SetupScreen(
 
         Spacer(Modifier.height(Abstaende.gross))
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        // Die Karte auf surface mit Rand: Der graue Vorgabeton lag grau auf dem grauen
+        // Hintergrund und verschwamm mit ihm.
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        ) {
             Column(Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.primary)
@@ -267,10 +272,10 @@ fun SetupScreen(
                     isError = fehler != null,
                 )
                 Spacer(Modifier.height(Abstaende.gross))
-                Button(
+                // Tonal: Neben dem gefüllten QR-Knopf oben gibt es nur EINE Hauptaktion.
+                FilledTonalButton(
                     onClick = ::save, modifier = Modifier.fillMaxWidth(),
                     enabled = url.isNotBlank() && fehler == null,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }
         }
