@@ -1,5 +1,6 @@
 // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthaben.ts.md#abschnitt
 import { hostErlaubt } from '../infra/fremdeAdressen';
+import { holeHttps } from '../infra/abruf';
 
 /** Aus dem Prototyp übernommen, nicht geraten — der Teil, den niemand herleiten kann. */
 const ENDPUNKT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';
@@ -45,6 +46,18 @@ export type Abruf = (url: string, init?: Record<string, unknown>) => Promise<{
   json: () => Promise<unknown>;
   headers: { getSetCookie?: () => string[] };
 }>;
+
+/** Über abruf.ts: auch nach einer Umleitung nur www.lego.com, Zeit und Grösse begrenzt. */
+const legoAbruf: Abruf = async (url, init = {}) => {
+  const methode = init.method === 'POST' ? 'POST' : 'GET';
+  const r = await holeHttps(url, { hosts: ERLAUBTE_GUTHABEN_HOSTS, methode, zeitlimitMs: 20_000,
+    maxBytes: methode === 'POST' ? 512 * 1024 : 4 * 1024 * 1024,
+    kopfzeilen: (init.headers ?? {}) as Record<string, string>,
+    ...(typeof init.body === 'string' ? { rumpf: init.body } : {}) });
+  const text = r.koerper.toString('utf8'), kekse = r.kopf['set-cookie'] ?? [];
+  return { ok: r.status >= 200 && r.status < 300, status: r.status, text: async () => text,
+           json: async () => JSON.parse(text) as unknown, headers: { getSetCookie: () => [...kekse] } };
+};
 
 /** Der Token ist abgelaufen oder die Karte/PIN stimmt nicht. */
 export class NichtAngemeldet extends Error {}
@@ -136,7 +149,6 @@ async function baueSitzung(abruf: Abruf, locale: string): Promise<Sitzung> {
       accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
       'accept-language': `${locale},de;q=0.9,en;q=0.8`,
     },
-    redirect: 'follow',
   });
   if (!s.ok) {
     if (istBotSchutz(s.status)) {
@@ -200,6 +212,10 @@ async function sitzung(abruf: Abruf, locale: string, frisch = false): Promise<Si
 }
 
 export function vergesseSitzungen(): void { sitzungen.clear(); }
+
+/** Für Tests der Route, die keinen Abruf durchreichen kann. */
+let ersatz: Abruf | null = null;
+export function _ersetzeAbruf(a: Abruf | null): void { ersatz = a; }
 
 async function frageAb(
   abruf: Abruf, nummer: string, pin: string, locale: string, s: Sitzung,
@@ -268,8 +284,7 @@ export async function holeGuthaben(
   nummer: string, pin: string, opt: { locale?: string; abruf?: Abruf } = {},
 ): Promise<Guthaben> {
   const locale = opt.locale || LAND_STANDARD;
-  const abruf = opt.abruf ?? (globalThis.fetch as unknown as Abruf);
-  if (!abruf) throw new Error('Kein fetch verfügbar');
+  const abruf = opt.abruf ?? ersatz ?? legoAbruf;
 
   const warImVorrat = sitzungen.has(locale);
   try {

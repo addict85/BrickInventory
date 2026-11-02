@@ -13,12 +13,13 @@ Vollständige Node.js Webapp zur Verwaltung deiner Klemmbaustein-Sammlung.
 ## Docker (empfohlen)
 
 ```bash
-cp .env.example .env    # SESSION_SECRET, DB_PASSWORD und BRICK_HOST eintragen
+cp .env.example .env    # SESSION_SECRET, DB_PASSWORD, DB_APP_PASSWORD und BRICK_HOST eintragen
 docker compose up -d --build
 # → https://<BRICK_HOST>   (Port 80 leitet auf HTTPS um)
 ```
 
-Pflicht in `.env`: `SESSION_SECRET`, `DB_PASSWORD` und `BRICK_HOST` — der
+Pflicht in `.env`: `SESSION_SECRET`, `DB_PASSWORD` (Superuser der Datenbank),
+`DB_APP_PASSWORD` (Rolle der App, ein anderer Wert) und `BRICK_HOST` — der
 Name oder die IP-Adresse, unter der Geräte den Server erreichen.
 
 ### HTTPS mit eigener CA (Caddy)
@@ -62,10 +63,15 @@ Für eine **neue** Installation vor dem ersten Start eine Datei `.env` neben
 `compose.yaml` anlegen:
 ```
 DB_PASSWORD=mein-sicheres-passwort
+DB_APP_PASSWORD=ein-anderes-passwort
 ```
-`compose.yaml` gibt es an die Datenbank, die App und pgweb weiter; ohne
-`DB_PASSWORD` bricht `docker compose up` ab. Eine **bestehende** Datenbank
-behält ihr Passwort aus dem ersten Start; dort den bisherigen Wert eintragen.
+`DB_PASSWORD` gehört dem Superuser `brickinventory`; nur die Datenbank und der
+Dienst `db-rolle` bekommen es. App, Jobs und pgweb verbinden sich als
+`brickinventory_app` ohne Superuser-Rechte mit `DB_APP_PASSWORD`; `db-rolle`
+legt die Rolle bei jedem `docker compose up` an und übergibt ihr die Tabellen.
+Fehlt einer der Werte, bricht `docker compose up` ab. Eine **bestehende**
+Datenbank behält ihr Passwort aus dem ersten Start; dort den bisherigen Wert
+für `DB_PASSWORD` eintragen.
 
 Läuft die Datenbank noch mit dem alten Beispielpasswort `brickinventory_secret`,
 verweigert der Server in Produktion den Start. Ändern: `docker compose exec

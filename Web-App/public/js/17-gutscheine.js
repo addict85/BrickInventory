@@ -484,7 +484,7 @@ async function eineAbfrage(id) {
   if (d?.grund === 'abstand' && Number(d.wartenSek) > 0) {
     return { art: 'abstand', wartenSek: Number(d.wartenSek) };
   }
-  if (d?.grund === 'botschutz') {
+  if (d?.grund === 'botschutz' || d?.grund === 'konto') {
     return { art: 'botschutz', fehler: d.error || tRaw('settings.error') };
   }
   return { art: 'fehler', fehler: d?.error || tRaw('settings.error') };

@@ -1,5 +1,7 @@
-# Actions stehen per Commit-SHA, Basis-Images per Digest fest. Beides veraltet
+# Actions stehen per Commit-SHA, Images per Digest fest. Beides veraltet
 # sonst still; Dependabot schlägt die neuen Werte wöchentlich als PR vor.
+# `docker` liest die Dockerfiles, `docker-compose` die Dienste in compose.yaml
+# (Postgres, Caddy, pgweb).
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -7,6 +9,10 @@ updates:
     schedule:
       interval: weekly
   - package-ecosystem: docker
+    directory: /Web-App
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker-compose
     directory: /Web-App
     schedule:
       interval: weekly

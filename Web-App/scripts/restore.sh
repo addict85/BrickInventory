@@ -83,7 +83,12 @@ if [ ! -f schluessel/datenschluessel ] && [ ! -f data/.datenschluessel ]; then
   [ "$antwort" = "ja" ] || { echo "[restore] Ohne Neustart beendet."; exit 1; }
 fi
 
-# 5. App neu starten, damit sie sauber gegen den neuen Stand initialisiert.
+# 5. Ein Dump von vor der eigenen App-Rolle legt alles dem Superuser zurück;
+#    db-rolle übergibt es wieder, sonst scheitern die Migrationen der App.
+echo "[restore] Rolle der App wird nachgerichtet …"
+docker compose run --rm "${ROLLEN_SERVICE:-db-rolle}"
+
+# 6. App neu starten, damit sie sauber gegen den neuen Stand initialisiert.
 echo "[restore] App-Container wird neu gestartet …"
 docker compose restart "$APP_SERVICE"
 echo "[restore] fertig."

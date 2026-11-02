@@ -46,6 +46,10 @@ den Commits, nicht hier.
   und als Nicht-root nur die vom Entrypoint kopierte Wurzel.
 
 ### Anmeldung und Sitzung (2, 3)
+- „Passwort ≠ Benutzername“ gilt auch beim Ändern mit App-Token und beim
+  Setzen durch den Verwalter (Name aus der Tabelle) — `passwort-regel-db`.
+- „Andere Sitzungen beenden“ verlangt das Passwort: Eine erbeutete Sitzung
+  sperrt den Inhaber nicht aus — `web-ohne-token-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
   `utils/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
 - Sitzung: `httpOnly`, `sameSite=lax`, `secure` hinter TLS, Leerlauf- und
@@ -129,7 +133,8 @@ den Commits, nicht hier.
   `bildcache-quelle-db`.
 - Setnummer für den Bild-Job nur aus einer reinen Rebrickable-Setadresse:
   `routes/imgProxy.ts` — `bildcache-quelle-db`.
-- Geteilte Anleitungen neu laden: Verwalter, sonst einmal je Set und Tag:
+- Geteilte Anleitungen ersetzen (löschen und neu holen) nur der Verwalter;
+  wer das Set hat, holt nur fehlende, einmal je Set und Tag:
   `routes/api_v1/sets.ts` — `anleitung-neu-laden-db`.
 
 ### Uploads (4)
@@ -140,6 +145,9 @@ den Commits, nicht hier.
   Gutscheine: `utils/gutscheinDateien.ts` — `konto-dateien-db`.
 
 ### Abrufe nach aussen (SSRF, 5)
+- Die Guthaben-Abfrage bei lego.com geht über `src/infra/abruf.ts`: nur
+  `www.lego.com`, auch nach einer Umleitung; ein POST folgt keiner; Antworten
+  höchstens 4 MB (Seite) bzw. 512 KB (Abfrage), 20 s — `gutschein-guthaben-abruf`.
 - Ein Weg nach draussen: `src/infra/abruf.ts` (`holeHttps`, `oeffneHttps`).
   Nur https, Host-Liste für Start und jeden Sprung, relative `Location`
   aufgelöst, höchstens 5 Umleitungen, Byte-Grenze (angesagt und gezählt),
@@ -159,6 +167,9 @@ den Commits, nicht hier.
 - Nummern als kodiertes Pfadsegment (`pfadSegment`) — `fremde-pfade-db`.
 
 ### Eingaben (2, 3)
+- Teileliste des PDF-Auftrags nach Schema (`PdfEingabe`): höchstens 5000
+  Posten, Feldlängen, Menge 1–9999; nur bekannte Felder gehen in den Auftrag
+  — `pdf-jobs-db`.
 - Rumpf und Abfrage im Betrieb gegen den API-Vertrag, unmittelbar vor der
   Route (`eingabePruefen` in `src/infra/vertrag/pruefen.ts`): falscher Typ,
   zu langer Text oder wiederholter Abfrageparameter ergeben 400
@@ -183,6 +194,11 @@ den Commits, nicht hier.
   `public/js/11-actions.js`, `public/js/00-registry.js` — `aktionen-schutz`.
 
 ### Protokoll und Kontingente
+- Guthaben-Abfrage bei lego.com: zuerst höchstens 20 je Konto und Stunde
+  (429 `zu_viele_anfragen`, `grund: konto`), dann eine je 30 s über alle
+  Konten; die Pause nach dem Bot-Schutz löst nur eine Abfrage aus, die beide
+  Grenzen passiert hat: `src/gutscheine/gutscheinGuthabenSchranke.ts` —
+  `gutschein-guthaben-db`.
 - `X-Request-Id` nur aus `[A-Za-z0-9._:-]{1,64}`, sonst eigene Kennung;
   Caddy setzt je Anfrage eine neue: `utils/protokoll.ts` — `protokoll`.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;
@@ -196,28 +212,48 @@ den Commits, nicht hier.
   allgemeinen Parser): `server.ts` — `upload-grenzen-db`.
 
 ### Ruhende Daten
+- Der Fingerabdruck eines `Idempotency-Key` enthält keine Passwort-, Code-,
+  PIN- oder Schlüsselfelder und ist ein HMAC mit eigenem Teilschlüssel des
+  Datenschlüssels — `idempotenz-geheim-db`.
 - Geheimnisse und Gutschein-PDFs mit dem Datenschlüssel: `utils/geheimnis.ts`
   — `geheimnisse-verschluesselt-db`, `konto-dateien-db`.
 - Mail-Links ohne Token in den Protokollen: `utils/mailer.ts`.
 
 ### Lieferkette (5)
 - Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-pgweb`.
+  Dependabot schlägt neue Fassungen vor: Actions, Dockerfiles und die Dienste
+  in `compose.yaml` (`docker-compose`); npm und Gradle über Renovate
+  (`renovate.json` im Wurzelverzeichnis).
 - `npm ci` aus dem Lockfile; `npm audit --omit=dev` (web-ci.yml).
+- PDF.js lädt ohne eval (`isEvalSupported: false`) und ohne Skripte im PDF;
+  die ausgelieferten Dateien enthalten weder `eval(` noch `new Function(` —
+  `pdf-zoom`, `pdfjs-fassung`.
 - PDF.js als `pdfjs-dist` mit exakter Fassung; `public/vendor/pdfjs/` ist eine
   beim Bauen geschriebene, byte-gleiche Kopie — `pdfjs-fassung`. Als
   devDependency fehlt es in `npm audit --omit=dev`; web-ci.yml prüft es
   deshalb zusätzlich im vollen `npm audit`.
 - Build-Kontext ohne `.env`, `backups/`, `schluessel/`, `data/` — `dockerfile`.
-- Der Entrypoint schreibt seine Marke unter `/app/data` nicht als root und
-  folgt keinem Symlink des Dienstes — `entrypoint-start`.
+- Der Entrypoint richtet als root nur `/app/data` selbst (`chown -h`); die
+  Unterordner legt er als `brickinv` an, die Marke schreibt er als
+  `brickinv`, und der Reparaturschritt (`find -xdev … -exec chown -h`) folgt
+  keinem Symlink des Dienstes und bleibt im Datenträger — `entrypoint-start`.
 - `docker-publish.yml`: Der Tag beim Handstart nur über `env` und in
   Docker-Tag-Form, sonst Abbruch — `workflow-tag`.
 - `.github/workflows/sicherheit.yml`: CodeQL (TypeScript, Kotlin), Trivy
-  (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver.
+  (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver. Die
+  Images aus `compose.yaml` (Caddy, Postgres, pgweb) liest der Lauf aus der
+  Datei, prüft sie mit Trivy (Bericht) und meldet einen Digest, der hinter
+  seinem Tag zurückliegt.
 
 ## Betrieb
 
-- `DB_PASSWORD` und `BRICK_HOST` sind Pflicht; Klartext nur als bewusste
+- Die App, die Jobs und pgweb verbinden sich als `brickinventory_app` ohne
+  Superuser-, CREATEROLE- oder CREATEDB-Recht und ohne Mitgliedschaft in
+  `pg_execute_server_program` & Co.; die Rolle besitzt Datenbank, Tabellen und
+  Funktionen (Migrationen). Den Superuser kennen nur Postgres und der
+  einmalige Dienst `db-rolle` (`postgres/app-rolle.sh`). Läuft die App doch als
+  Superuser, warnt der Start — `db-rolle-db`, `compose-pgweb`.
+- `DB_PASSWORD`, `DB_APP_PASSWORD` und `BRICK_HOST` sind Pflicht; Klartext nur als bewusste
   Ausnahme (Port 3000 in `compose.yaml` einkommentieren, `COOKIE_SECURE=0`).
 - `caddy/data/` mitsichern und wie ein Passwort behandeln (Schlüssel der CA).
 - pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur lesend und nur mit
@@ -272,4 +308,6 @@ den Commits, nicht hier.
   erscheinen geteilte Anleitungen eines selbst erfassten Sets sofort, wenn sie
   schon jemand geladen hatte.
 - **Bilder der Container** (`postgres`, `caddy`, `pgweb`, ZAP) sind per Digest
-  fest und veralten damit; Renovate (`renovate.json`) schlägt neue Fassungen vor.
+  fest und veralten damit; Dependabot schlägt neue Fassungen vor (ZAP und die
+  Dienst-Container der Workflows nicht). Trivy meldet Lücken der drei
+  Betriebs-Images vorerst nur, ohne den Lauf rot zu machen.

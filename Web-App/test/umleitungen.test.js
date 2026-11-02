@@ -179,14 +179,15 @@ test('der BDP-Eimer darf geholt werden — aber nur er', () => {
 
 test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
   // Struktur, kein Verhalten: Das Verhalten des Helfers prüft
-  // test/abruf-helfer.test.js gegen einen echten TLS-Server.
+  // test/abruf-helfer.test.js gegen einen echten TLS-Server. Gegenprobe
+  // (02.11.2026 gemessen): globalThis.fetch zurück in gutscheinGuthaben.ts → rot.
   const fremd = [];
   (function lauf(d) {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) { if (!['node_modules', 'dist', 'test', 'public', 'scripts', '.git'].includes(n)) lauf(p); continue; }
       if (!n.endsWith('.ts') || p.endsWith(path.join('src', 'infra', 'abruf.ts'))) continue;
-      if (/\bhttps?\.(get|request)\(|\bfetch\(/.test(ohneKommentare(fs.readFileSync(p, 'utf8')))) fremd.push(path.relative(ROOT, p));
+      if (/\bhttps?\.(get|request)\(|\bfetch\(|\bglobalThis\.fetch\b/.test(ohneKommentare(fs.readFileSync(p, 'utf8')))) fremd.push(path.relative(ROOT, p));
     }
   })(ROOT);
   assert.deepEqual(fremd, [], 'eigener Abrufweg an Hostliste, Umleitungs- und Grössengrenze vorbei');

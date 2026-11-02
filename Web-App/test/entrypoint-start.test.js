@@ -42,20 +42,17 @@ test('der Eigentuemerwechsel laeuft nicht bei jedem Start', () => {
   // vorkommen, aber nie unbedingt: Jede Inode-Aenderung ist auf einer SD-Karte
   // oder einem Netzlaufwerk ein eigener Schreibvorgang, und data/images/ fuellt
   // sich mit jedem Set-, Teile- und Minifigurenbild.
-  const rekursiv = [...ep.matchAll(/^\s*chown -R /gm)];
+  const rekursiv = [...ep.matchAll(/^\s*(chown -R |find \/app\/data -xdev ! -uid "\$ZIEL_UID" -exec chown )/gm)];
   assert.ok(rekursiv.length > 0, 'Der Reparaturschritt fehlt ganz — ein frisch ' +
     'eingehaengter Datentraeger waere dann nie zu retten');
   for (const m of rekursiv) {
-    // Jedes `chown -R` muss eingerueckt stehen, also in einem Zweig. Auf
-    // Spaltenposition 0 waere es wieder unbedingt.
-    assert.notEqual(m[0], 'chown -R ',
-      'Ein `chown -R` steht unbedingt am Zeilenanfang. Damit laeuft es bei ' +
-      'JEDEM Start ueber alle Bilder — genau der Fehler, der fuenf Minuten ' +
-      'Stille verursacht hat.');
+    // Eingerückt, also in einer Funktion oder einem Zweig; am Zeilenanfang
+    // liefe er bei JEDEM Start über alle Bilder.
+    assert.match(m[0], /^\s+/, 'Der Reparaturschritt steht unbedingt am Zeilenanfang.');
   }
   // Die Suche haelt beim ERSTEN Treffer an: im Normalfall ein Durchlauf ohne
   // einen einzigen Schreibvorgang.
-  assert.match(ep, /find \/app\/data ! -uid "\$ZIEL_UID" -print -quit/,
+  assert.match(ep, /find \/app\/data -xdev ! -uid "\$ZIEL_UID" -print -quit/,
     'Die Vorabsuche fehlt oder laeuft ohne -quit durch — dann kostet sie den ' +
     'ganzen Baum, statt beim ersten Fund abzubrechen');
 });
@@ -72,11 +69,13 @@ test('wer es anders braucht, kann es stellen', () => {
     'Umgebung, ob ein Start Minuten kostet');
 });
 
-test('die angelegten Verzeichnisse gehoeren trotzdem immer dem Dienst', () => {
-  // Sie entstehen als root. Ohne diesen Schritt koennte der Server nach
-  // BRICKINV_CHOWN=never nichts hineinschreiben — die Ersparnis waere dann
-  // ein kaputter Container.
-  const flach = ep.slice(ep.search(/chown (-h )?brickinv:brickinv/));
+// Gegenprobe (02.11.2026 gemessen): `su-exec brickinv` vor mkdir gestrichen → rot.
+test('die angelegten Verzeichnisse legt der Dienst selbst an, nicht root', () => {
+  // So gehören sie ihm auch nach BRICKINV_CHOWN=never, und ein Symlink des
+  // Dienstes unter /app/data führt kein mkdir von root nach aussen.
+  const code = ep.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
+  assert.deepEqual([...code.matchAll(/^.*\bmkdir\b.*$/gm)].map(m => m[0].trim()), ['su-exec brickinv mkdir -p \\']);
+  const flach = code.slice(code.indexOf('su-exec brickinv mkdir -p'));
   for (const ordner of ['/app/data', '/app/data/instructions', '/app/data/uploads',
                         '/app/data/images/sets', '/app/data/images/parts',
                         '/app/data/images/minifigs']) {
@@ -105,7 +104,7 @@ test('ein normaler Start geht gar nicht erst durch die Dateien', () => {
     'Datenbestand, auch wenn nichts zu tun ist');
   // Sie muss VOR der Suche gelesen werden, sonst spart sie nichts.
   const markeGelesen = ep.indexOf('cat "$MARKE"');
-  const gesucht = ep.indexOf('find /app/data ! -uid');
+  const gesucht = ep.indexOf('find /app/data -xdev ! -uid "$ZIEL_UID" -print');
   assert.ok(markeGelesen > 0 && markeGelesen < gesucht,
     'Die Marke wird erst nach der Suche gelesen. Dann ist die Suche schon ' +
     'gelaufen, und die Marke spart nichts.');
@@ -134,6 +133,34 @@ test('chown als root folgt keinem Symlink', () => {
   const aufrufe = [...ep.matchAll(/\bchown\b[^\n]*/g)].map(m => m[0]);
   assert.ok(aufrufe.length >= 3, `nur ${aufrufe.length} chown gefunden`);
   assert.deepEqual(aufrufe.filter(z => !/\bchown (-R )?-h\b/.test(z)), []);
+});
+
+// Gegenproben (02.11.2026 gemessen): in berichtige() `find -L` → rot (die Datei
+// hinter dem Symlink wird umgeschrieben); `-xdev` gestrichen → rot (fehlt im Aufruf).
+test('der Reparaturschritt folgt keinem Symlink und bleibt im Datenträger', (t) => {
+  const os = require('node:os');
+  const { spawnSync } = require('node:child_process');
+  const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-chown-'));
+  t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
+  const daten = path.join(ordner, 'data'), aussen = path.join(ordner, 'aussen');
+  fs.mkdirSync(path.join(daten, 'images'), { recursive: true });
+  fs.mkdirSync(aussen);
+  fs.writeFileSync(path.join(daten, 'images', 'bild.jpg'), 'x');
+  fs.writeFileSync(path.join(aussen, 'passwd'), 'root');
+  fs.symlinkSync(aussen, path.join(daten, 'verweis'));
+  const bin = path.join(ordner, 'bin'), protokoll = path.join(ordner, 'chown.log');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'chown'), `#!/bin/sh\nfor a in "$@"; do echo "$a"; done >> '${protokoll}'\n`, { mode: 0o755 });
+  const fn = ep.slice(ep.indexOf('berichtige() {'), ep.indexOf('setzeMarke() {')).replaceAll('/app/data', daten);
+  assert.match(fn, /find \S+ -xdev /, 'find bleibt nicht im Datenträger');
+  const r = spawnSync('sh', ['-c', `${fn}\nberichtige`],
+    { env: { PATH: `${bin}:${process.env.PATH}`, ZIEL_UID: '424242' }, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const geaendert = fs.readFileSync(protokoll, 'utf8').split('\n').filter(Boolean);
+  assert.ok(geaendert.includes(path.join(daten, 'images', 'bild.jpg')), geaendert.join('\n'));
+  assert.ok(geaendert.includes(path.join(daten, 'verweis')), 'der Symlink selbst gehört dem Dienst');
+  assert.equal(geaendert.filter(z => z.startsWith(aussen)).length, 0, 'root ändert eine Datei hinter dem Symlink');
+  assert.ok(geaendert.includes('-h'));
 });
 
 // Gegenprobe (01.11.2026 gemessen): setzeMarke wieder mit `printf … > "$MARKE"`

@@ -10,8 +10,12 @@ export const ABSTAND_SEK = 30;
 
 export const BOTSCHUTZ_PAUSE_MIN = 30;
 
+/** Vor der Grenze für alle: Ein Konto allein belegt den Platz je 30 s nicht
+ * dauerhaft und löst den Bot-Schutz nicht beliebig oft für alle aus. */
+export const KONTO_JE_STUNDE = 20;
+
 export interface Gesperrt {
-  grund: 'abstand' | 'botschutz';
+  grund: 'konto' | 'abstand' | 'botschutz';
   wartenSek: number;
 }
 
@@ -21,7 +25,7 @@ export type Abfrage =
 
 /** In der Datenbank, damit die Grenze über alle Prozesse gilt.
  * Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthabenSchranke.ts.md#belegeplatz */
-export async function belegePlatz(): Promise<{ frei: true } | ({ frei: false } & Gesperrt)> {
+export async function belegePlatz(uid: number): Promise<{ frei: true } | ({ frei: false } & Gesperrt)> {
   return db.transaction(async (tx) => {
     // Falls eine ältere Sicherung die Zeile nicht hat. NULL heisst „noch nie" —
     // ein Datum wäre eine Behauptung.
@@ -33,6 +37,10 @@ export async function belegePlatz(): Promise<{ frei: true } | ({ frei: false } &
     // NULL (= noch nie) kommt als NaN zurück und bedeutet „kein Rest".
     const rest = (w: unknown) => { const n = Number(w); return Number.isFinite(n) ? n : 0; };
 
+    const konto = await repo.kontoStand(tx, uid);
+    if (rest(konto?.anzahl) >= KONTO_JE_STUNDE)
+      return { frei: false as const, grund: 'konto' as const, wartenSek: Math.max(1, rest(konto?.warten_sek)) };
+
     // Die Sperre zuerst: Wer sie meldet, soll nicht „noch 12 Sekunden" hören,
     // wenn es 20 Minuten sind.
     const sperre = rest(z?.sperre_sek);
@@ -42,6 +50,7 @@ export async function belegePlatz(): Promise<{ frei: true } | ({ frei: false } &
     if (abstand > 0) return { frei: false as const, grund: 'abstand' as const, wartenSek: abstand };
 
     await repo.merkeAbruf(tx);
+    await repo.zaehleKonto(tx, uid);
     return { frei: true as const };
   });
 }
@@ -58,9 +67,9 @@ export async function vergesseSchranke(): Promise<void> {
 
 // Ausführlich: docs/begruendungen/src/gutscheine/gutscheinGuthabenSchranke.ts.md#frageguthabenab
 export async function frageGuthabenAb(
-  nummer: string, pin: string, opt: { locale?: string; abruf?: Abruf } = {},
+  uid: number, nummer: string, pin: string, opt: { locale?: string; abruf?: Abruf } = {},
 ): Promise<Abfrage> {
-  const platz = await belegePlatz();
+  const platz = await belegePlatz(uid);
   if (!platz.frei) {
     return { art: 'gesperrt', grund: platz.grund, wartenSek: platz.wartenSek };
   }

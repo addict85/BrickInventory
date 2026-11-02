@@ -292,14 +292,13 @@ router.post('/vouchers/:id/guthaben', requireToken, async (req: AuthedRequest, r
   const land = String(await getGlobalSetting('gutschein_land', LAND_STANDARD) || LAND_STANDARD);
   if (!landErlaubt(land)) return sendeFehler(req, res, 400, 'guthaben_land_ungueltig');
 
-  const ergebnis = await frageGuthabenAb(alt.number, alt.pin, { locale: land });
+  const ergebnis = await frageGuthabenAb(req.apiUser.user_id, alt.number, alt.pin, { locale: land });
 
   if (ergebnis.art === 'gesperrt') {
-    const botschutz = ergebnis.grund === 'botschutz';
-    const code: FehlerCode = botschutz ? 'guthaben_botschutz' : 'guthaben_abstand';
-    const vars = botschutz
-      ? { min: Math.ceil(ergebnis.wartenSek / 60) }
-      : { sek: ABSTAND_SEK, warten: ergebnis.wartenSek };
+    const min = Math.ceil(ergebnis.wartenSek / 60);
+    const [code, vars]: [FehlerCode, Record<string, number>] = ergebnis.grund === 'konto' ? ['zu_viele_anfragen', { minuten: min }]
+      : ergebnis.grund === 'botschutz' ? ['guthaben_botschutz', { min }]
+      : ['guthaben_abstand', { sek: ABSTAND_SEK, warten: ergebnis.wartenSek }];
     // Eigenes json(): `wartenSek` muss mit, danach taktet sich die Oberfläche.
     return res.status(429).json({
       success: false, code, error: fehlerText(code, antwortSprache(req), vars),

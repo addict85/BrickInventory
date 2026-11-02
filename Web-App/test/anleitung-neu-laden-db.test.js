@@ -1,9 +1,7 @@
 /**
- * Geteilte Anleitungen neu laden darf nur, wer das Set im Haushalt hat.
- *
- * POST /sets/:sn/instructions löscht die geteilten Anleitungen des Sets und
- * holt sie neu. Vorher konnte das jedes Konto für jedes Set — die Anleitung
- * war dann für alle weg, bis die Quellen wieder antworteten.
+ * Geteilte Anleitungen ersetzen (löschen und neu holen) darf nur der
+ * Verwalter; wer das Set im Haushalt hat, holt nur fehlende. Sonst war eine
+ * Anleitung für alle weg, wenn die Quellen beim Neuladen nichts lieferten.
  *
  * Gegenprobe (am 27.10. gemessen): die Prüfung auf findSetInScope entfernt →
  * rot: „ein fremdes Konto" (200, die Anleitung war gelöscht).
@@ -14,6 +12,10 @@
  *      am selben Tag“
  *   B  die Prüfung moeglicheSetNummer() entfernt → rot: „eine Nummer mit
  *      Pfadteilen“ (404 statt 400)
+ * Gegenproben (am 02.11.2026 gemessen):
+ *   C  die Prüfung auf anzahlAnleitungen() entfernt → rot: „wer das Set hat,
+ *      ersetzt keine geteilte Anleitung“ (200 statt 403)
+ *   D  loescheAnleitungen() wieder für alle → rot: „ein fremdes Konto“ und C
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -82,23 +84,24 @@ test('Anleitungen neu laden', { concurrency: 1 }, async (t) => {
     assert.ok(await vorhanden(), 'Die geteilte Anleitung ist weg, obwohl das Konto das Set nicht hat');
   });
 
-  await t.test('wer das Set hat', async () => {
+  await t.test('wer das Set hat, ersetzt keine geteilte Anleitung', async () => {
     await anleitung();
-    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 200);
-    assert.ok(!await vorhanden(), 'Vorbedingung des Neuladens: die alte Zeile ist entfernt');
+    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 403);
+    assert.ok(await vorhanden(), 'die geteilte Anleitung ist für alle weg');
   });
 
-  await t.test('ein zweites Neuladen am selben Tag', async () => {
-    await anleitung();
+  await t.test('wer das Set hat, holt eine fehlende einmal am Tag', async () => {
+    await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]);
+    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 200);
     assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 429);
-    assert.ok(await vorhanden(), 'die Anleitung ist trotz Drossel gelöscht');
     await db.run(`UPDATE rate_limit_attempts SET first_at = NOW() - INTERVAL '25 hours' WHERE key = $1`, [`anleitung-neu|${SET}`]);
     assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 200, 'nach einem Tag geht es wieder');
   });
 
-  await t.test('der Verwalter', async () => {
+  await t.test('der Verwalter ersetzt', async () => {
     await anleitung();
     assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 200);
+    assert.ok(!await vorhanden(), 'der Verwalter hat die alte Zeile nicht ersetzt');
     await anleitung();
     assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 200, 'den Verwalter hält die Drossel nicht');
   });

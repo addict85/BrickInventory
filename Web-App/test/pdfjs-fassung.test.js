@@ -41,6 +41,17 @@ test('die ausgelieferten Dateien sind die des Pakets', (t) => {
       .equals(fs.readFileSync(path.join(installiert, 'build', d))), `${d} weicht von pdfjs-dist ${fassung} ab`);
 });
 
+// Ab PDF.js 5 gibt es den eval-Pfad für Schriften nicht mehr; eine ältere
+// Fassung brächte ihn zurück (die CSP verböte ihn, isEvalSupported auch).
+// Gegenprobe (02.11.2026 gemessen): `new Function("x")` an eine Kopie gehängt → rot.
+test('die ausgelieferten PDF.js-Dateien enthalten weder eval noch new Function', () => {
+  for (const d of [path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.min.mjs'), path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.worker.min.mjs')]) {
+    const text = fs.readFileSync(d, 'utf8');
+    assert.ok(text.length > 100_000, `${d} ist leer`);
+    assert.doesNotMatch(text, /\beval\s*\(|\bnew\s+Function\s*\(/, d);
+  }
+});
+
 test('das Kopierskript legt die Dateien ab und zieht die Fassung nach', (t) => {
   if (!fs.existsSync(installiert)) return t.skip('pdfjs-dist nicht installiert (npm ci)');
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-pdfjs-'));

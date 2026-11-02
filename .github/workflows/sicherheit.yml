@@ -1,5 +1,6 @@
-# Sicherheitsprüfungen: CodeQL (Web und App), Trivy (Abhängigkeiten und
-# Image) und ein ZAP-Baseline-Lauf gegen einen hier gestarteten Server.
+# Sicherheitsprüfungen: CodeQL (Web und App), Trivy (Abhängigkeiten, eigenes
+# Image und die Images aus compose.yaml) und ein ZAP-Baseline-Lauf gegen einen
+# hier gestarteten Server.
 # `npm audit --omit=dev` läuft als eigener Schritt in web-ci.yml.
 #
 # Jede Prüfung ist ein eigener Job: Ein Befund in einem Teil soll die
@@ -113,6 +114,70 @@ jobs:
           exit-code: '1'
           # Trivy ist vom ersten Schritt schon eingerichtet.
           skip-setup-trivy: true
+
+  # ── Fremde Images aus compose.yaml ────────────────────────────────────────
+  # Die Liste kommt aus compose.yaml, damit Dependabot (docker-compose) die
+  # einzige Stelle pflegt. Vorerst ein Bericht wie bei den Android-Abhängigkeiten:
+  # Eine Lücke in Caddy, Postgres oder pgweb beheben wir mit dem nächsten Digest,
+  # nicht im eigenen Code.
+  compose-images:
+    name: Images aus compose.yaml
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      images: ${{ steps.lesen.outputs.images }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Festgenagelte Images lesen
+        id: lesen
+        run: |
+          sed -n 's/^[[:space:]]*image:[[:space:]]*\([^[:space:]#]*@sha256:[0-9a-f]\{64\}\).*/\1/p' Web-App/compose.yaml | sort -u > images.txt
+          [ -s images.txt ] || { echo "::error title=compose.yaml::Kein Image per Digest gefunden."; exit 1; }
+          echo "images=$(jq -R . images.txt | jq -sc .)" >> "$GITHUB_OUTPUT"
+      # Meldet einen Tag, der weitergezogen ist, ohne dass ein Dependabot-PR kam.
+      - name: Digests gegen die aktuellen Tags
+        run: |
+          while read -r ref; do
+            tag=${ref%@*}; fest=${ref#*@}
+            aktuell=$(docker buildx imagetools inspect "$tag" --format '{{json .Manifest}}' | jq -r .digest) || {
+              echo "::warning title=Digest unbekannt::$tag liess sich nicht abfragen."; continue; }
+            if [ "$aktuell" = "$fest" ]; then echo "$tag: aktuell"
+            else echo "::warning title=Digest veraltet::$tag steht auf $fest, der Tag zeigt auf $aktuell."; fi
+          done < images.txt
+
+  trivy-compose:
+    name: Trivy (${{ matrix.image }}, nur Bericht)
+    needs: compose-images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJSON(needs.compose-images.outputs.images) }}
+    steps:
+      - name: Bekannte Lücken
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ matrix.image }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          format: table
+          output: trivy-image.txt
+          exit-code: '0'
+      - name: Bericht
+        if: always()
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          [ -f trivy-image.txt ] || exit 0
+          { echo "## $IMAGE (Trivy)"; echo '```'; cat trivy-image.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          if grep -qE 'Total: [1-9]' trivy-image.txt; then
+            echo "::warning title=Lücken in ${IMAGE%%@*}::Trivy meldet behebbare Lücken ab high, siehe Zusammenfassung."
+          fi
 
   zap:
     name: ZAP-Baseline

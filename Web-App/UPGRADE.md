@@ -822,3 +822,71 @@ Was sich für Nutzer und Clients ändert:
 - **Image von Hand bauen** (Workflow `Web-App`, `workflow_dispatch`): Der
   zusätzliche Tag muss die Docker-Tag-Form haben (Buchstaben, Ziffern,
   `_ . -`, höchstens 128 Zeichen), sonst bricht der Lauf ab.
+
+## 29. Runde 5 – Sicherheit
+
+- **Updates der Container-Images**: Dependabot schlägt jetzt auch neue Digests
+  für Postgres, Caddy und pgweb in `compose.yaml` vor (wöchentlich). Ein
+  solcher PR ist wie ein Update zu behandeln: lesen, mergen, auf dem Server
+  `docker compose pull && docker compose up -d`. Der Sicherheitslauf meldet
+  zusätzlich, wenn ein festgenagelter Digest hinter seinem Tag zurückliegt.
+- **Eigene Datenbankrolle der App (Pflichtschritt)**: Bisher verband sich die
+  App als `brickinventory`, und das ist der Superuser der Datenbank (wer die
+  App übernimmt, könnte per `COPY … TO PROGRAM` Befehle im Datenbank-Container
+  ausführen). Neu verbinden sich App, Jobs und pgweb als `brickinventory_app`
+  ohne Superuser-Rechte; die Rolle besitzt Datenbank, Tabellen, Sequenzen,
+  Sichten und Funktionen, die Migrationen laufen also weiter. Umstellung:
+  1. In `.env` ein zweites, anderes Passwort eintragen:
+     `echo "DB_APP_PASSWORD=$(openssl rand -hex 24)" >> .env`
+     (ohne den Wert bricht `docker compose up` mit einer Meldung ab).
+  2. Wie gewohnt aktualisieren: `docker compose up -d --build`. Der neue,
+     einmalige Dienst `db-rolle` startet nach der Datenbank, legt die Rolle an
+     (oder setzt ihr Passwort und entzieht zu viele Rechte), übergibt ihr alle
+     Objekte im Schema `public` und endet; erst danach starten App und Jobs.
+     Daten werden dabei nicht verändert, nur Eigentümer.
+  3. Prüfen: `docker compose logs db-rolle` endet mit „Rolle brickinventory_app
+     ohne Superuser-Rechte besitzt die Datenbank“, und `docker compose logs app`
+     zeigt keine Warnung „Die App verbindet sich als Superuser“.
+
+  Neue Installationen bekommen die Rolle schon beim Anlegen der Datenbank
+  (`postgres/app-rolle.sh` in `docker-entrypoint-initdb.d`). Sicherungen
+  (`scripts/backup.sh`) laufen weiter als Superuser; `scripts/restore.sh`
+  richtet nach dem Einspielen `db-rolle` erneut ein, damit auch ein älterer
+  Dump wieder der App gehört. Rückweg: die alte `compose.yaml` verbindet sich
+  wieder als Superuser und darf alles; die Rolle kann bleiben. Wer
+  `DB_APP_PASSWORD` ändert, startet einfach `docker compose up -d` neu.
+  Ohne Docker (eigenes PostgreSQL): das Skript einmal mit dem Superuser
+  ausführen, z. B. `PGHOST=… PGUSER=postgres PGDATABASE=brickinventory
+  DB_APP_PASSWORD=… sh postgres/app-rolle.sh` (psql ab 15), danach die App mit
+  `PGUSER=brickinventory_app` starten.
+- **Idempotenz ohne Passwörter**: Der Fingerabdruck einer Anfrage mit
+  `Idempotency-Key` (24 h in der Tabelle `idempotenz`) war ein SHA-256 über
+  den ganzen Rumpf, Passwörter eingeschlossen. Jetzt fehlen Passwort-, Code-,
+  PIN-, Token- und Schlüsselfelder darin, und der Rest ist ein HMAC mit einem
+  Teilschlüssel des Datenschlüssels. Der erste Start löscht alle Einträge im
+  alten Format (Meldung `[idempotenz] … gelöscht`); eine Wiederholung über das
+  Update hinweg läuft dann ein zweites Mal statt die alte Antwort zu bekommen.
+- **Anleitungen neu laden**: `POST /api/v1/sets/:sn/instructions` ersetzt
+  vorhandene geteilte Anleitungen nur noch für Verwalter. Andere Konten holen
+  damit nur fehlende (einmal je Set und Tag); sind schon welche da, antwortet
+  der Server mit 403 `nur_admins`, und die Weboberfläche zeigt den Knopf
+  „Neu laden“ dann nur Verwaltern.
+- **PDF-Teileliste**: `POST /api/v1/sets/partslist-pdf` prüft `parts` jetzt
+  nach Schema (höchstens 5000 Posten, `quantity` 1–9999, Feldlängen) und
+  antwortet sonst mit 400 `eingabe_ungueltig` (Feld in `feld`).
+- **Guthaben-Abfrage je Konto begrenzt**: höchstens 20 Abfragen je Konto und
+  Stunde, geprüft vor der Grenze für alle (eine je 30 s). Darüber antwortet
+  `POST /api/v1/vouchers/:id/guthaben` mit 429, `code: zu_viele_anfragen`,
+  `grund: konto` und `wartenSek`; die Weboberfläche bricht den Durchgang über
+  alle Karten dann ab wie beim Bot-Schutz.
+- **Andere Sitzungen beenden nur mit Passwort**:
+  `POST /api/v1/settings/sessions/andere-beenden` verlangt im Rumpf
+  `password` (das eigene Passwort). Falsch oder fehlend: 400
+  `aktuelles_passwort_falsch`, nach fünf Fehlversuchen 429. Die
+  Weboberfläche fragt beim Knopf „Alle anderen abmelden“ danach.
+- **Entrypoint**: Die Unterordner von `./data` legt der Container jetzt als
+  `brickinv` an, nicht mehr als root. Gehört `./data` einem anderen Nutzer und
+  ist `BRICKINV_CHOWN=never` gesetzt (SMB/CIFS), muss die Einhängung dem
+  Nutzer `brickinv` des Images gehören; sonst steht im Log eine WARNUNG. Der
+  Reparaturschritt (`BRICKINV_CHOWN=auto/always`) ändert nur noch fremde
+  Einträge und bleibt im Datenträger.
