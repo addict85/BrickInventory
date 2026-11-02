@@ -20,7 +20,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -95,7 +94,8 @@ fun MerklisteScreen(
         scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
     val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize()) {
+        // Kopf und Liste auf derselben Lesebreite, damit sie auf dem Tablet fluchten.
+        Column(Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste)) {
 
             ScopeFilterZeile(
                 members  = blick.householdMembers,
@@ -103,13 +103,22 @@ fun MerklisteScreen(
                 onSelect = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE, it) },
             )
 
-            Suchfeld(
-                wert = sucheInput,
-                onWert = { sucheInput = it; vm.setzeMerklisteSuche(it) },
-                platzhalter = stringResource(R.string.wanted_search),
-            )
+            // Scannen neben der Suche wie in der Galerie: unten schwebt nur EIN Knopf. Im
+            // Fehlerzustand weder Suche noch Filter — es gibt nichts zu durchsuchen.
+            if (anzeige != Ladeanzeige.FEHLER) Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Suchfeld(
+                    wert = sucheInput,
+                    onWert = { sucheInput = it; vm.setzeMerklisteSuche(it) },
+                    platzhalter = stringResource(R.string.wanted_search),
+                    modifier = Modifier.weight(1f),
+                )
+                ch.brickinventoryapp.ui.components.ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
+            }
 
-            LazyRow(
+            if (anzeige != Ladeanzeige.FEHLER) LazyRow(
                 contentPadding = PaddingValues(horizontal = Abstaende.rand),
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig),
                 modifier = Modifier.padding(bottom = Abstaende.klein),
@@ -154,7 +163,7 @@ fun MerklisteScreen(
                 }
             }
 
-            Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.mittel)) {
+            Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.rand)) {
                 Ladezustand(
                     anzeige = anzeige,
                     fehler = zustand.fehler,
@@ -170,7 +179,7 @@ fun MerklisteScreen(
                             Text(stringResource(R.string.wanted_add_first))
                         }
                         OutlinedButton(onClick = { onScan() }, shape = Formen.knopf) {
-                            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(18.dp))
+                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.gallery_scan_barcode))
                         }
@@ -179,13 +188,11 @@ fun MerklisteScreen(
                     fehlerKlasse = zustand.fehlerKlasse,
                 ) {
                     LazyColumn(
-                        // Auf dem Tablet mittig statt über die ganze Breite: Name links,
-                        // Preis rechts lagen dort eine Armlänge auseinander.
-                        modifier = Modifier.mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste),
+                        // Die Lesebreite setzt die Spalte darüber, für Kopf und Liste zugleich.
+                        modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                        // Platz fuer die Knoepfe: Ohne ihn verdeckt der grosse die
-                        // letzte Zeile — dieselbe Vorsorge wie in der Galerie.
-                        contentPadding = PaddingValues(bottom = Abstaende.riesig + Abstaende.riesig),
+                        // Platz für den Erfassen-Knopf: Ohne ihn verdeckt er die letzte Zeile.
+                        contentPadding = PaddingValues(bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                     ) {
                         items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
                             Bewegt {
@@ -198,29 +205,11 @@ fun MerklisteScreen(
             }
         }
 
-        // ── Zwei Knöpfe, wie in der Galerie ──
-        //
-        // Dieselbe Anordnung und Grössenstaffelung: Der kleine scannt, der grosse öffnet
-        // die Maske. Im Fehlerzustand nicht, wie in der Galerie.
-        if (anzeige != Ladeanzeige.FEHLER) Column(
-            modifier = Modifier.align(Alignment.BottomEnd)
-                .padding(end = Abstaende.gross, bottom = Abstaende.gross),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        ) {
-            SmallFloatingActionButton(
-                onClick = { onScan() },
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                shape = Formen.leiste,
-            ) { Icon(Icons.Default.QrCodeScanner, stringResource(R.string.gallery_scan_barcode)) }
-            FloatingActionButton(
-                onClick = { maskeOffen = true },
-                containerColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                contentColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
-                shape = Formen.fab,
-            ) { Icon(Icons.Default.Add, stringResource(R.string.wanted_add_title)) }
-        }
+        // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand nicht.
+        if (anzeige != Ladeanzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+            stringResource(R.string.wanted_add_title), { maskeOffen = true },
+            Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+        )
     }
 
     if (maskeOffen) {

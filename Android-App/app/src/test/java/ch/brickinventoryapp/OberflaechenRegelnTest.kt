@@ -19,6 +19,7 @@ import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.text.TextLayoutResult
@@ -68,6 +69,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   fehlerhinweis-roher-satz        der Satz der Datenschicht auch bei OFFLINE → rot „Fehlerhinweis …“
  *   merkliste-leer-ohne-knoepfe     leere Merkliste ohne Knöpfe → rot „leere Merkliste …“
  *   detail-ohne-wertkacheln         Set-Detail ohne Wert-Kacheln → rot „Set-Detail zeigt Marktwert …“
+ *   galerie-zwei-knoepfe            Scannen wieder als zweiter schwebender Knopf → rot „Galerie hat einen …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -195,6 +197,36 @@ class OberflaechenRegelnTest {
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
             compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true).assertIsDisplayed()
             compose.onAllNodesWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)[0].assertIsDisplayed()
+        } finally {
+            welt.close()
+        }
+    }
+
+    @Test
+    fun `Galerie hat einen schwebenden Knopf und Scannen neben der Suche`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.galerie().also { it.loadSets() }
+            val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
+                ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
+                ch.brickinventoryapp.data.repository.KatalogRepository(welt.t.api, welt.t.cache),
+                object : ch.brickinventoryapp.data.SetAnleger {
+                    override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+                                         ownerUserId: Int?, storage: String?) =
+                        kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
+                }))
+            zeige {
+                ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
+                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
+            }
+            warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
+            val scan = compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode))
+            scan.assertCountEquals(1)
+            compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_add_set)).assertCountEquals(1)
+            val suche = compose.onNode(androidx.compose.ui.test.hasSetTextAction())
+                .fetchSemanticsNode().boundsInRoot
+            val knopf = scan[0].fetchSemanticsNode().boundsInRoot
+            assertTrue("Scannen steht in der Zeile der Suche", knopf.top < suche.bottom && knopf.bottom > suche.top)
         } finally {
             welt.close()
         }

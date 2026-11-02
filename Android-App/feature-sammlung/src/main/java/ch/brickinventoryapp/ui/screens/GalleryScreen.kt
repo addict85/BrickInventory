@@ -173,13 +173,16 @@ fun GalleryScreen(
         Column(Modifier.fillMaxSize()) {
 
             // Suche und ein Knopf für alles andere: Konto, Lagerort, Thema und
-            // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster.
-            SucheMitFilter(
+            // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster. Scannen
+            // sitzt daneben, damit unten nur EIN Knopf schwebt. Im Fehlerzustand nicht:
+            // Ohne Sammlung gibt es nichts zu suchen.
+            if (anzeige != GalerieAnzeige.FEHLER) SucheMitFilter(
                 wert = searchInput,
                 onWert = { searchInput = it; onQueryChange(it) },
                 platzhalter = stringResource(R.string.gallery_search_placeholder),
                 aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme, sort),
                 onFilter = { zeigeFilter = true },
+                onScannen = onScanBarcode,
             )
 
             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
@@ -209,7 +212,7 @@ fun GalleryScreen(
                             Text(stringResource(R.string.gallery_add_first))
                         }
                         OutlinedButton(onClick = onScanBarcode, shape = Formen.knopf) {
-                            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(18.dp))
+                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.gallery_scan_barcode))
                         }
@@ -223,7 +226,8 @@ fun GalleryScreen(
                     GalerieAnzeige.LISTE -> LazyVerticalGrid(
                         columns = GridCells.Adaptive(160.dp),
                         state = gridState,
-                        contentPadding = PaddingValues(Abstaende.mittel),
+                        contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
+                            bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -254,28 +258,12 @@ fun GalleryScreen(
             }
         }
 
-        // Erfassen und Scannen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört
-        // der Blick dem Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
-        if (anzeige != GalerieAnzeige.FEHLER) Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = Abstaende.gross, bottom = Abstaende.gross),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            SmallFloatingActionButton(
-                onClick = onScanBarcode,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                shape = Formen.leiste
-            ) { Icon(Icons.Default.QrCodeScanner, stringResource(R.string.gallery_scan_barcode)) }
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                contentColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
-                shape = Formen.fab
-            ) { Icon(Icons.Default.Add, stringResource(R.string.gallery_add_set)) }
-        }
+        // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
+        // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
+        if (anzeige != GalerieAnzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+            stringResource(R.string.gallery_add_set), { showAddDialog = true },
+            Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+        )
     }
 
     if (zeigeFilter) {

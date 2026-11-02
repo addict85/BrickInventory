@@ -8,7 +8,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -134,7 +133,7 @@ fun ComparisonScreen() {
                         shape = Formen.knopf,
                         contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.klein)
                     ) {
-                        Icon(Icons.Default.QrCodeScanner, null, Modifier.size(16.dp))
+                        Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(if (scannedBarcode != null) stringResource(R.string.comparison_scan_new) else stringResource(R.string.comparison_scan))
                     }

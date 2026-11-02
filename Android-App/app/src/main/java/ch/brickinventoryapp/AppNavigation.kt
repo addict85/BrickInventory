@@ -131,7 +131,7 @@ fun BrickInventoryManagerApp(
             add(Triple(Screen.PartsList, { Icon(Icons.AutoMirrored.Filled.ListAlt, null) },     labelPartslist))
             add(Triple(Screen.Finance,   { Icon(Icons.AutoMirrored.Filled.ShowChart, null) },     labelFinance))
             // Merkliste vor dem Katalog, wie in der Webapp.
-            add(Triple(Screen.Wanted,    { Icon(Icons.Default.StarBorder, null) },                 labelWanted))
+            add(Triple(Screen.Wanted,    { Icon(Icons.Default.BookmarkBorder, null) },             labelWanted))
             add(Triple(Screen.Catalog,   { Icon(Icons.AutoMirrored.Filled.MenuBook, null) },      labelCatalog))
         }
     }

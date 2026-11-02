@@ -196,7 +196,9 @@ fun PartsScreen(
                 LazyVerticalGrid(
                     state = gridState,
                     columns = GridCells.Adaptive(110.dp),
-                    contentPadding = PaddingValues(Abstaende.mittel),
+                    // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
+                    contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
+                        end = Abstaende.mittel, bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
@@ -258,13 +260,10 @@ fun PartsScreen(
         }
     }
 
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = Formen.fab,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)
-        ) { Icon(Icons.Default.Add, stringResource(R.string.parts_add)) }
+        ch.brickinventoryapp.ui.components.ErfassenFab(
+            stringResource(R.string.parts_add), { showAddDialog = true },
+            Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+        )
     }
 
     if (zeigeFilter) {
