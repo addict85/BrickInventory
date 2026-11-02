@@ -301,6 +301,26 @@ test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklass
   for (const k of PFLICHT) assert.ok(klassen.has(k), `${k} braucht eine Gegenprobe`);
 });
 
+// Renovate liest nur die renovate.json im Wurzelverzeichnis; Web-App/renovate.json
+// stand dort lange ohne Wirkung. Gegenproben (02.11.2026 gemessen): `npm` aus
+// enabledManagers gestrichen → rot; eine leere Web-App/renovate.json angelegt → rot.
+test('Renovate pflegt npm der Web-App aus der Wurzel-Konfiguration', () => {
+  const konf = JSON.parse(fs.readFileSync(path.join(WURZEL, 'renovate.json'), 'utf8'));
+  assert.ok(konf.enabledManagers.includes('npm'), 'Die npm-Pakete der Web-App hält niemand aktuell');
+  assert.ok(konf.packageRules.some(r => r.matchManagers?.includes('npm') && r.matchPackageNames?.includes('pdfjs-dist')),
+    'Die Regel für die eingecheckte PDF.js-Kopie fehlt');
+  const daneben = [];
+  (function lauf(dir) {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (['node_modules', '.git', '.claude', 'build', '.gradle', 'dist'].includes(e.name)) continue;
+      const voll = path.join(dir, e.name);
+      if (e.isDirectory()) lauf(voll);
+      else if (/^renovate\.json5?$|^\.renovaterc/.test(e.name) && dir !== WURZEL) daneben.push(path.relative(WURZEL, voll));
+    }
+  })(WURZEL);
+  assert.deepEqual(daneben, [], 'Diese Renovate-Dateien liest niemand');
+});
+
 /** Der `run:`-Block des Schritts mit `id: <id>`, ohne Einrückung. */
 function schrittSkript(yml, id) {
   const z = yml.split('\n');
