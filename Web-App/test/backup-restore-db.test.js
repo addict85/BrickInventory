@@ -337,3 +337,118 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', (t)
   assert.equal(fs.readFileSync(path.join(tresor, 'datenschluessel'), 'utf8'), schluessel, 'schluessel/datenschluessel fehlt am getrennten Ort');
   assert.doesNotMatch(r.stderr, /Datenordner|keine Schlüsseldatei/);
 });
+
+/**
+ * restore.sh mit echter Datenbank: `docker` ist ein Stellvertreter, der psql
+ * und postgres/app-rolle.sh gegen die Test-DB aufruft. Der Dump stammt wie bei
+ * backup.sh vom Superuser und enthält eine Prüfregel, deren Funktion der
+ * App-Rolle gehört; als Superuser eingespielt, legte sie eine Superuser-Rolle an.
+ *
+ * Gegenproben (02.11.2026 gemessen):
+ *   A  restore.sh spielt wieder als Superuser ein (`-U "$DB_APP_USER"` durch
+ *      `-U tester` ersetzt) → rot: „Code der App-Rolle lief als Superuser“
+ *   B  die Zeile mit `OWNER TO` im awk-Filter entfernt → rot: „ein Dump von
+ *      vor der App-Rolle“ (must be able to SET ROLE)
+ */
+test('restore.sh spielt als App-Rolle ein', { timeout: 240_000 }, async (t) => {
+  const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
+  const basis = new URL(process.env.TEST_DB_BASIS || process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest');
+  const admin = new Client({ connectionString: basis.toString() });
+  try { await admin.connect(); } catch (e) {
+    if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber die Test-DB ist nicht erreichbar: ${e.message}`);
+    t.skip('Test-DB nicht erreichbar'); return;
+  }
+  const su = (await admin.query('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rows[0]?.rolsuper;
+  if (!su || !klient('pg_dump')) {
+    await admin.end();
+    if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber kein Superuser oder kein pg_dump');
+    t.skip('kein Superuser oder pg_dump'); return;
+  }
+  const name = `${decodeURIComponent(basis.pathname.slice(1))}_rst_${process.pid}`.toLowerCase();
+  const [ziel, alt, APP, LESEN, BOESE] = [name, `${name}_alt`, `${name}_app`, `${name}_lesen`, `${name}_boese`];
+  const id = (s) => `"${s}"`;
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'restore-rolle-'));
+  t.after(async () => {
+    for (const d of [ziel, alt]) await admin.query(`DROP DATABASE IF EXISTS ${id(d)} WITH (FORCE)`).catch(() => {});
+    for (const r of [APP, LESEN, BOESE]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
+    await admin.end();
+    fs.rmSync(tmp, { recursive: true, force: true });
+  });
+  const suNutzer = decodeURIComponent(basis.username), suPw = decodeURIComponent(basis.password);
+  const umgebung = { ...process.env, PGHOST: basis.hostname, PGPORT: basis.port || '5432', PGUSER: suNutzer,
+    PGPASSWORD: suPw, PGDATABASE: ziel, DB_APP_USER: APP, DB_APP_PASSWORD: `app-${process.pid}`,
+    DB_LESEN_USER: LESEN, PGWEB_DB_PASSWORD: '' };
+  const dbUrl = (db, nutzer = suNutzer, pw = suPw) => {
+    const u = new URL(basis); u.pathname = '/' + db; u.username = nutzer; u.password = pw; return u.toString();
+  };
+  const schema = (url) => spawnSync(process.execPath, ['-e',
+    "const db = require('./dist/db/database.js'); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })"],
+  { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: url } });
+  const rolle = () => spawnSync('sh', [path.join(ROOT, 'postgres', 'app-rolle.sh')], { encoding: 'utf8', env: umgebung });
+
+  await admin.query(`CREATE DATABASE ${id(ziel)}`);
+  assert.equal(rolle().status, 0);
+  const s = schema(dbUrl(ziel, APP, umgebung.DB_APP_PASSWORD));
+  assert.equal(s.status, 0, s.stderr);
+  const app = new Client({ connectionString: dbUrl(ziel, APP, umgebung.DB_APP_PASSWORD) });
+  await app.connect();
+  try {
+    await app.query(`INSERT INTO users (username, password_hash) VALUES ('rueckspiel', 'x')`);
+    await app.query(`CREATE FUNCTION public.falle(int) RETURNS boolean LANGUAGE plpgsql AS $f$
+      BEGIN EXECUTE 'CREATE ROLE ${id(BOESE)} SUPERUSER'; RETURN true;
+      EXCEPTION WHEN insufficient_privilege OR duplicate_object THEN RETURN true; END $f$`);
+    await app.query(`CREATE TABLE public.falle (x int CHECK (public.falle(x)))`);
+    await app.query(`INSERT INTO public.falle VALUES (1)`);
+  } finally { await app.end(); }
+  assert.equal((await admin.query('SELECT 1 FROM pg_roles WHERE rolname = $1', [BOESE])).rowCount, 0, 'Vorbedingung');
+
+  const bin = path.join(tmp, 'bin');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(tmp, 'pgpass'), `*:*:*:${APP}:${umgebung.DB_APP_PASSWORD}\n*:*:*:${suNutzer}:${suPw}\n`, { mode: 0o600 });
+  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh
+case "$2" in
+  exec) shift 5; unset PGPASSWORD; PGPASSFILE='${path.join(tmp, 'pgpass')}' exec psql "$@" ;;
+  run) exec sh '${path.join(ROOT, 'postgres', 'app-rolle.sh')}' ;;
+esac
+`, { mode: 0o755 });
+  fs.mkdirSync(path.join(tmp, 'schluessel'));
+  fs.writeFileSync(path.join(tmp, 'schluessel', 'datenschluessel'), 'k');
+  const zurueck = (dump) => spawnSync('sh', [path.join(ROOT, 'scripts', 'restore.sh'), dump], { cwd: tmp, input: 'ja\n',
+    encoding: 'utf8', env: { ...umgebung, PATH: `${bin}:${process.env.PATH}` } });
+  const sichern = (db, datei) => {
+    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', datei, dbUrl(db)], { stdio: 'pipe' });
+    execFileSync('gzip', [datei]);
+    return `${datei}.gz`;
+  };
+
+  await t.test('Code der App-Rolle läuft beim Einspielen nicht als Superuser', async () => {
+    const r = zurueck(sichern(ziel, path.join(tmp, 'db.sql')));
+    assert.deepEqual((await admin.query('SELECT rolname FROM pg_roles WHERE rolname = $1', [BOESE])).rows, [],
+      'Code der App-Rolle lief als Superuser');
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const c = new Client({ connectionString: dbUrl(ziel) });
+    await c.connect();
+    try {
+      assert.equal((await c.query(`SELECT count(*)::int AS n FROM users WHERE username = 'rueckspiel'`)).rows[0].n, 1);
+      assert.equal((await c.query(`SELECT pg_get_userbyid(relowner) AS e FROM pg_class WHERE oid = 'public.falle'::regclass`)).rows[0].e, APP);
+    } finally { await c.end(); }
+  });
+
+  await t.test('ein Dump von vor der App-Rolle (alles gehört dem Superuser)', async () => {
+    await admin.query(`CREATE DATABASE ${id(alt)}`);
+    const a = schema(dbUrl(alt));
+    assert.equal(a.status, 0, a.stderr);
+    const dump = sichern(alt, path.join(tmp, 'alt.sql'));
+    assert.match(execFileSync('gunzip', ['-c', dump], { encoding: 'utf8' }), new RegExp(`OWNER TO ${suNutzer};`), 'Vorbedingung');
+    const r = zurueck(dump);
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    const c = new Client({ connectionString: dbUrl(ziel) });
+    await c.connect();
+    try {
+      assert.equal((await c.query(`SELECT count(*)::int AS n FROM users WHERE username = 'admin'`)).rows[0].n, 1);
+      assert.deepEqual((await c.query(`SELECT DISTINCT pg_get_userbyid(relowner) AS e FROM pg_class
+        WHERE relnamespace = 'public'::regnamespace AND relkind IN ('r', 'S', 'v')
+          AND NOT EXISTS (SELECT FROM pg_depend d WHERE d.objid = pg_class.oid AND d.deptype = 'e')`)).rows, [{ e: APP }]);
+    } finally { await c.end(); }
+  });
+});

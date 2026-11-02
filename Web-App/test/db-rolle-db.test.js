@@ -16,6 +16,15 @@
  *      Passwort wird abgewiesen“
  *   E  in warneBeiSuperuser() rolsuper nicht mehr beachtet → rot:
  *      „bestehende Installation“ (der Start warnt auch als App-Rolle)
+ *   F  PGOPTIONS und `SET search_path` entfernt → rot: „die App-Rolle schiebt
+ *      dem Superuser nichts unter“ (Operator der App-Rolle legt eine
+ *      Superuser-Rolle an)
+ *   G  `ALTER DATABASE … RESET ALL` entfernt → rot: dieselbe Prüfung
+ *      (search_path der Datenbank bleibt für spätere Superuser-Sitzungen)
+ *   H  `-c role=none` und `SET ROLE NONE` entfernt → rot: dieselbe Prüfung
+ *      („untergeschobenes SET role“: die Sitzung läuft als App-Rolle)
+ *   I  `password_hash` aus der Sperrliste der Leserolle gestrichen → rot:
+ *      „die Leserolle sieht keine Geheimnisse“
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
@@ -33,6 +42,9 @@ require('./helpers/sources').buildAndRequire();
 
 const praefix = `${decodeURIComponent(BASIS.pathname.slice(1))}_rolle_${process.pid}`;
 const ROLLE = `${praefix}_app`.toLowerCase();
+const LESEN = `${praefix}_lesen`.toLowerCase();
+const BOESE = `${praefix}_boese`.toLowerCase();
+const LESEN_PW = `lesen-${process.pid}-geheim`;
 const PASSWORT = `app-${process.pid}-geheim`;
 const id = (s) => `"${s.replace(/"/g, '""')}"`;
 const url = (db, nutzer, pw) => {
@@ -45,7 +57,7 @@ function rolleEinrichten(db, mehr = {}) {
   return spawnSync('sh', [SKRIPT], { encoding: 'utf8', env: { ...process.env,
     PGHOST: BASIS.hostname, PGPORT: BASIS.port || '5432', PGUSER: decodeURIComponent(BASIS.username),
     PGPASSWORD: decodeURIComponent(BASIS.password), PGDATABASE: db,
-    DB_APP_USER: ROLLE, DB_APP_PASSWORD: PASSWORT, ...mehr } });
+    DB_APP_USER: ROLLE, DB_APP_PASSWORD: PASSWORT, DB_LESEN_USER: LESEN, PGWEB_DB_PASSWORD: LESEN_PW, ...mehr } });
 }
 
 /** Schema und Migrationen in einem eigenen Prozess, wie beim Start. */
@@ -90,7 +102,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
   const alt = `${praefix}_alt`, neu = `${praefix}_neu`;
   t.after(async () => {
     for (const db of [alt, neu]) await admin.query(`DROP DATABASE IF EXISTS ${id(db)} WITH (FORCE)`).catch(() => {});
-    await admin.query(`DROP ROLE IF EXISTS ${id(ROLLE)}`).catch(() => {});
+    for (const r of [ROLLE, LESEN, BOESE]) await admin.query(`DROP ROLE IF EXISTS ${id(r)}`).catch(() => {});
     await admin.end();
   });
 
@@ -144,6 +156,70 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
       assert.ok((await c.query("SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm'")).rowCount, 'pg_trgm fehlt');
     } finally { await c.end(); }
     assert.equal((await rechteDerRolle(admin)).rolsuper, false);
+  });
+
+  await t.test('die App-Rolle schiebt dem Superuser nichts unter', async () => {
+    const app = new Client({ connectionString: url(neu, ROLLE, PASSWORT) });
+    await app.connect();
+    try {
+      // Jede Funktion legt eine Superuser-Rolle an, sobald ein Superuser sie ausführt.
+      const nutzlast = `IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${BOESE}') THEN
+        EXECUTE 'CREATE ROLE ${id(BOESE)} SUPERUSER'; END IF;`;
+      await app.query(`CREATE SCHEMA boese`);
+      await app.query(`CREATE FUNCTION boese.set_config(text, text, boolean) RETURNS text LANGUAGE plpgsql AS
+        $f$ BEGIN ${nutzlast} RETURN pg_catalog.set_config($1, $2, $3); END $f$`);
+      await app.query(`CREATE FUNCTION boese.current_setting(text) RETURNS text LANGUAGE plpgsql AS
+        $f$ BEGIN ${nutzlast} RETURN pg_catalog.current_setting($1); END $f$`);
+      await app.query(`CREATE FUNCTION boese.gleich(text, name) RETURNS boolean LANGUAGE plpgsql AS
+        $f$ BEGIN ${nutzlast} RETURN $1 OPERATOR(pg_catalog.=) $2; END $f$`);
+      await app.query(`CREATE OPERATOR boese.= (LEFTARG = text, RIGHTARG = name, FUNCTION = boese.gleich)`);
+      await app.query(`ALTER DATABASE ${id(neu)} SET search_path = boese, pg_catalog, public`);
+      await app.query(`ALTER ROLE ${id(ROLLE)} IN DATABASE ${id(neu)} SET search_path = boese, pg_catalog`);
+    } finally { await app.end(); }
+    const r = rolleEinrichten(neu);
+    assert.deepEqual((await admin.query('SELECT rolname FROM pg_roles WHERE rolname = $1', [BOESE])).rows, [],
+      'Code der App-Rolle lief als Superuser');
+    assert.equal(r.status, 0, r.stderr);
+    assert.deepEqual((await admin.query(
+      'SELECT setconfig FROM pg_db_role_setting s JOIN pg_database d ON d.oid = s.setdatabase WHERE d.datname = $1', [neu])).rows, [],
+      'Einstellungen der App-Rolle an der Datenbank bleiben stehen');
+
+    const app2 = new Client({ connectionString: url(neu, ROLLE, PASSWORT) });
+    await app2.connect();
+    try { await app2.query(`ALTER DATABASE ${id(neu)} SET role = ${id(ROLLE)}`); } finally { await app2.end(); }
+    const r2 = rolleEinrichten(neu);
+    assert.equal(r2.status, 0, `untergeschobenes SET role: ${r2.stderr}`);
+    assert.equal((await rechteDerRolle(admin)).rolsuper, false);
+  });
+
+  await t.test('die Leserolle sieht keine Geheimnisse', async () => {
+    const c = new Client({ connectionString: url(neu) });
+    await c.connect();
+    try {
+      await c.query(`INSERT INTO users (username, password_hash, reset_token) VALUES ('leseprobe', '$2b$10$geheim', 'rt')`);
+      await c.query(`INSERT INTO api_tokens (token, user_id) SELECT 'tok', id FROM users WHERE username = 'leseprobe'`);
+    } finally { await c.end(); }
+    assert.equal(rolleEinrichten(neu).status, 0, 'Rechte für neue Tabellen');
+    const l = new Client({ connectionString: url(neu, LESEN, LESEN_PW) });
+    await l.connect();
+    try {
+      assert.deepEqual((await l.query(`SELECT username, is_admin FROM users WHERE username = 'leseprobe'`)).rows, [{ username: 'leseprobe', is_admin: false }]);
+      for (const sql of ['SELECT password_hash FROM users', 'SELECT reset_token FROM users', 'SELECT * FROM users',
+        'SELECT token FROM api_tokens', 'SELECT sid FROM user_sessions', 'SELECT geheimnis FROM zweiter_faktor',
+        'SELECT value FROM global_settings'])
+        await assert.rejects(l.query(sql), /permission denied/, sql);
+      await assert.rejects(l.query(`UPDATE users SET is_admin = true`), /read-only|permission denied/);
+      await l.query('SET TRANSACTION READ WRITE').catch(() => {});
+      await assert.rejects(l.query(`CREATE TABLE public.probe (x int)`), /permission denied|read-only/);
+      await assert.rejects(l.query(`COPY (SELECT 1) TO PROGRAM 'true'`), /permission denied|must be superuser|read-only/);
+    } finally { await l.end(); }
+    const ohne = rolleEinrichten(neu, { PGWEB_DB_PASSWORD: '' });
+    assert.equal(ohne.status, 0, ohne.stderr);
+    assert.equal((await admin.query('SELECT rolcanlogin FROM pg_roles WHERE rolname = $1', [LESEN])).rows[0].rolcanlogin, false,
+      'ohne PGWEB_DB_PASSWORD meldet sich die Leserolle nicht an');
+    const gleich = rolleEinrichten(neu, { PGWEB_DB_PASSWORD: PASSWORT });
+    assert.notEqual(gleich.status, 0);
+    assert.match(gleich.stderr, /PGWEB_DB_PASSWORD muss sich/);
   });
 
   await t.test('ein gleiches Passwort wird abgewiesen', () => {
