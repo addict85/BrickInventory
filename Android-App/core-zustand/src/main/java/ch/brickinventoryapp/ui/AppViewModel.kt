@@ -162,6 +162,11 @@ class AppViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .collect { (url, token) ->
                     sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank(), authToken = token) }
+                    if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
+                        _snackbar.value = texte.text(R.string.vm_anmeldung_zu_alt)
+                        logout()
+                        return@collect
+                    }
                     // Eine alte http-Adresse führt in die Einrichtung (startZiel); Abrufe
                     // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
                     if (token.isNotBlank() && url.isNotBlank() &&

@@ -437,6 +437,7 @@
     <string name="vm_set_added">%1$s added!</string>
     <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalog is reachable.</string>
     <string name="vm_error">Error: %1$s</string>
+    <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
     <string name="vm_session_expired">Session expired — please log in again</string>
     <string name="vm_rechte_entzogen">Your administrator rights no longer apply — the administration areas are hidden.</string>
 

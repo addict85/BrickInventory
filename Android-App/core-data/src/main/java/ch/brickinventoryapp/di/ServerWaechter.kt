@@ -105,8 +105,10 @@ class ServerWaechter(
         if (mitToken && original.header("Authorization") == null) {
             reqBuilder.header("Authorization", "Bearer $token")
         }
-        // Dienste, die den Kopf selbst setzen (SSE, PDF-Export), lesen denselben Token.
-        if (!tokenGehoertHierher && token.isNotBlank() && original.header("Authorization") == "Bearer $token") {
+        // Selbst gesetzte Köpfe (Tausch, SSE, PDF) können einen älteren Token tragen
+        // als den jetzigen — etwa den des vorigen Servers bei einem Tausch, der den
+        // Wechsel überdauert. Darum gilt hier dieselbe Regel wie für mitToken.
+        if (original.header("Authorization") != null && !mitToken) {
             reqBuilder.removeHeader("Authorization")
         }
         if (unserServer) {

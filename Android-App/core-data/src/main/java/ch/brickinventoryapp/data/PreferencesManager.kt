@@ -6,6 +6,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ch.brickinventoryapp.util.TokenVerschluesselung
@@ -18,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -78,6 +80,8 @@ class PreferencesManager @Inject constructor(
         val AUTH_TOKEN_ENC = stringPreferencesKey("auth_token_enc")
         /** Der Server, der den Token ausgab (NetworkPolicy.herkunft); nur dorthin geht er. */
         val TOKEN_HERKUNFT = stringPreferencesKey("token_herkunft")
+        /** Wann mit Passwort, Passkey oder QR angemeldet wurde; ein Tausch ändert es nicht. */
+        val ANGEMELDET_AM = longPreferencesKey("angemeldet_am")
         val USERNAME     = stringPreferencesKey("username")
         val CURRENCY     = stringPreferencesKey("currency")
         // "system" (folgt der OS-Sprache), "en" oder "de"
@@ -120,11 +124,9 @@ class PreferencesManager @Inject constructor(
      * Klartext — sonst wäre jede ältere Installation nach dem Update abgemeldet.
      * Umgeschrieben wird in uebernehmeAltesToken(); ein Lesepfad schreibt nicht.
      */
-    val authToken: Flow<String> = context.dataStore.data.map { prefs ->
-        prefs[AUTH_TOKEN_ENC]?.let { tresor.entschluessle(it) }
-            ?: prefs[AUTH_TOKEN]
-            ?: ""
-    }
+    val authToken: Flow<String> = context.dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] to prefs[AUTH_TOKEN] }
+        .distinctUntilChanged()
+        .map { (geheim, alt) -> geheim?.let { tresor.entschluessle(it) } ?: alt ?: "" }
     val username:  Flow<String> = context.dataStore.data.map { it[USERNAME]   ?: "" }
     val currency:  Flow<String> = context.dataStore.data.map { it[CURRENCY]   ?: "EUR" }
     val language:  Flow<String> = context.dataStore.data.map { it[LANGUAGE]   ?: "system" }
@@ -251,25 +253,36 @@ class PreferencesManager @Inject constructor(
         }
         // Zuerst in den Speicher, dann auf die Platte (siehe serverUrlState).
         // Ein anderer Server beendet die Sitzung: Der Token gehört dem alten.
-        val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
-        val anderer = tokenJetzt().isNotBlank() &&
-            !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(herkunft, normalized)
-        if (anderer) { _authTokenState.value = ""; _tokenHerkunftState.value = null }
-        _serverUrlState.value = normalized
-        context.dataStore.edit {
-            it[SERVER_URL] = normalized
-            if (anderer) { it.remove(AUTH_TOKEN); it.remove(AUTH_TOKEN_ENC); it.remove(TOKEN_HERKUNFT); it.remove(USERNAME) }
+        val neueHerkunft = { !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(serverUrlJetzt(), normalized) }
+        tokenSchranke.schreibe(neueSitzung = { neueHerkunft() }) {
+            val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
+            val anderer = tokenJetzt().isNotBlank() &&
+                !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(herkunft, normalized)
+            if (anderer) { _authTokenState.value = ""; _tokenHerkunftState.value = null }
+            _serverUrlState.value = normalized
+            context.dataStore.edit {
+                it[SERVER_URL] = normalized
+                if (anderer) {
+                    it.remove(AUTH_TOKEN); it.remove(AUTH_TOKEN_ENC); it.remove(TOKEN_HERKUNFT); it.remove(USERNAME)
+                    it.remove(ANGEMELDET_AM)
+                }
+            }
         }
     }
     /**
      * Token ablegen, nur noch verschlüsselt. Der alte Klartext-Eintrag wird im selben
      * Zug entfernt — sonst bliebe er auslesbar, und die Verschlüsselung wäre Zierde.
      */
-    override suspend fun saveAuthToken(token: String) {
-        // ZUERST in den Speicher: Der Aufrufer feuert unmittelbar nach dieser
-        // Funktion die ersten Anfragen, und der Interceptor liest den Wert
-        // synchron. Die ausfuehrliche Begruendung steht ueber authTokenState.
-        val herkunft = ch.brickinventoryapp.util.NetworkPolicy.herkunft(serverUrlJetzt())
+    override suspend fun saveAuthToken(token: String) = tokenSchranke.schreibe {
+        schreibeToken(token, ch.brickinventoryapp.util.NetworkPolicy.herkunft(serverUrlJetzt()), angemeldetAm = System.currentTimeMillis())
+    }
+
+    /**
+     * ZUERST in den Speicher: Der Aufrufer feuert unmittelbar danach die ersten
+     * Anfragen, und der Interceptor liest den Wert synchron. [angemeldetAm] nur
+     * bei einer Anmeldung: Ein Tausch verlängert die Höchstdauer nicht.
+     */
+    private suspend fun schreibeToken(token: String, herkunft: String?, angemeldetAm: Long?) {
         _tokenHerkunftState.value = herkunft
         _authTokenState.value = token
         val geheim = tresor.verschluessle(token)
@@ -277,7 +290,37 @@ class PreferencesManager @Inject constructor(
             it[AUTH_TOKEN_ENC] = geheim
             it.remove(AUTH_TOKEN)
             if (herkunft != null) it[TOKEN_HERKUNFT] = herkunft else it.remove(TOKEN_HERKUNFT)
+            if (angemeldetAm != null) it[ANGEMELDET_AM] = angemeldetAm
         }
+    }
+
+    /** Sperre und Generation für alle Schreibungen des Tokens (data/TokenTausch). */
+    private val tokenSchranke = TokenSchranke()
+
+    /** Für den Tausch: Herkunft wie im Wächter — ohne Bindung die eingetragene Adresse. */
+    suspend fun tokenStand(): TokenStand {
+        val herkunft = _tokenHerkunftState.value ?: context.dataStore.data.first()[TOKEN_HERKUNFT]
+            ?: ch.brickinventoryapp.util.NetworkPolicy.herkunft(serverUrlJetzt())
+        return TokenStand(tokenJetzt(), herkunft, tokenSchranke.generation)
+    }
+
+    /** Den getauschten Token nur ablegen, wenn seit Beginn des Tauschs nichts anderes geschah. */
+    suspend fun ersetzeGetauschtenToken(vorher: TokenStand, neu: String, anfrageHerkunft: String?): Boolean =
+        tokenSchranke.ersetzeFalls(vorher, anfrageHerkunft, ::tokenStand) {
+            schreibeToken(neu, anfrageHerkunft, angemeldetAm = null)
+        }
+
+    /**
+     * Ist die Anmeldung älter als [TOKEN_HOECHSTDAUER_TAGE]? Eine Anmeldung aus
+     * einer Fassung ohne Datum beginnt jetzt zu zählen, statt sofort abzumelden.
+     */
+    suspend fun anmeldungAbgelaufen(jetzt: Long = System.currentTimeMillis()): Boolean {
+        val am = context.dataStore.data.first()[ANGEMELDET_AM]
+        if (am == null) {
+            if (tokenJetzt().isNotBlank()) context.dataStore.edit { it[ANGEMELDET_AM] = jetzt }
+            return false
+        }
+        return anmeldungUeberfaellig(am, jetzt)
     }
 
     /**
@@ -423,7 +466,7 @@ class PreferencesManager @Inject constructor(
     }
 
 
-    suspend fun clearSession() {
+    suspend fun clearSession() = tokenSchranke.schreibe {
         _authTokenState.value = ""
         _tokenHerkunftState.value = null
         context.dataStore.edit {
@@ -433,6 +476,7 @@ class PreferencesManager @Inject constructor(
             it.remove(AUTH_TOKEN_ENC)
             it.remove(TOKEN_HERKUNFT)
             it.remove(USERNAME)
+            it.remove(ANGEMELDET_AM)
         }
     }
 }

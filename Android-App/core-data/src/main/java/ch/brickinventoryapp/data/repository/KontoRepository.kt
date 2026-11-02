@@ -111,9 +111,19 @@ class KontoRepository @Inject constructor(
     /**
      * Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenTausch).
      * Synchron auf einem IO-Faden, am Dispatcher von OkHttp vorbei (KontoApi.tokenRotieren).
+     * Die Herkunft kommt aus der Anfrage, die tatsächlich ging: Nur an sie ist der neue Token gebunden.
      */
-    suspend fun tokenRotieren(alterToken: String): Result<TokenRotation> =
-        safeCall { kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { api.tokenRotieren("Bearer $alterToken").execute() } }
+    suspend fun tokenRotieren(alterToken: String): Result<ch.brickinventoryapp.data.GetauschterToken> {
+        var herkunft: String? = null
+        val r = safeCall {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { api.tokenRotieren("Bearer $alterToken").execute() }
+                .also { herkunft = ch.brickinventoryapp.util.NetworkPolicy.herkunft(it.raw().request.url.toString()) }
+        }
+        return when (r) {
+            is Result.Success -> Result.Success(ch.brickinventoryapp.data.GetauschterToken(r.data, herkunft), stand = r.stand, gepuffert = r.gepuffert)
+            is Result.Error -> r
+        }
+    }
 
     /**
      * Den Token am Server entwerten, bevor er lokal verschwindet — sonst bliebe er
