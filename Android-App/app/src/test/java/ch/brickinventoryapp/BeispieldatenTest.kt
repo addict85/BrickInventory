@@ -38,6 +38,8 @@ import org.junit.Test
  * Gegenproben (02.11.2026, kotlinc): bei den Figuren wieder "name" statt
  * "fig_name" → rot „Teile und Figuren tragen echte Namen“; den Pfad
  * /api/v1/minifigs/stats entfernt → ebenso rot (keine Kennzahlen).
+ * Gegenproben (02.11.2026, kotlinc): beim Falcon jedes "wert_gesamt" entfernt → rot
+ * „jede Finanzzeile trägt …“ (wert=null).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class BeispieldatenTest {
@@ -103,6 +105,22 @@ class BeispieldatenTest {
         val beschriftet = finanzen.financeState.value.historyPoints.map { it.xLabel }.filter { it.isNotBlank() }
         assertTrue(beschriftet.toString(), beschriftet.size == 2 && beschriftet.none { it in setOf("Mo", "Di", "Mi", "27.10") })
     }
+
+    /**
+     * Das Finanzfoto zeigt den Normalfall: jede Set-Zeile mit Marktwert, Kaufpreis,
+     * Zustand und G&V, und die Zeilen ergeben zusammen die Kopfkachel.
+     */
+    @Test
+    fun `jede Finanzzeile trägt Preis, Kaufpreis, Zustand und G&V`() {
+        val finanzen = welt.finanzen().also { it.loadValuation() }
+        TestApi.warteBis("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
+        val z = finanzen.financeState.value
+        val zeilen = ch.brickinventoryapp.ui.setZeilen(z.valuation!!.sets).map { it.second }
+        assertEquals(2, zeilen.size)
+        assertTrue(zeilen.toString(), zeilen.all { it.wert != null && it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
+        val kopf = ch.brickinventoryapp.ui.finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
+        assertEquals(0, kopf.compareTo(zeilen.sumOf { java.math.BigDecimal.valueOf(it.wert!!) }))
+    }
 }
 
 /** Ein Testserver mit Beispielantworten und die ViewModels dagegen. */
@@ -120,10 +138,19 @@ object Beispiele {
         "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"1500.00","current":"1712.40","pnl_prozent":14.2},"sets":[
             {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1},
             {"set_number":"10294-1","quantity":2,"current_price":449.95,"baseline_price":400,"pnl_pct":"12.5","kachel_preis":449.95,"kachel_pnl_pct":12.5}]}""",
+        // Wie der Server (finanzen/rechnung/bewertung.ts): wert_gesamt, Kaufpreis, G&V und
+        // je Erfassung eine Zeile mit Zustand. Ohne wert_gesamt zeigt jede Zeile „noch
+        // kein Preis“ unter einer gefüllten Kopfkachel.
         "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[
-            {"set_number":"75192-1","name":"Millennium Falcon","quantity":1,"avg_price":812.5,"qty_avg_price":812.5},
-            {"set_number":"10294-1","name":"Titanic","quantity":2,"avg_price":449.95,"qty_avg_price":449.95}],
-            "totals":{"min":"1500.00","avg":"1712.40","max":"1900.00","qty_avg":"1712.40"}}""",
+            {"set_number":"75192-1","name":"Millennium Falcon","quantity":1,"avg_price":812.5,"qty_avg_price":812.5,
+             "min_price":760.0,"max_price":880.0,"total_avg":"812.50","wert_gesamt":812.5,"purchase_price":700.0,"pnl_prozent":16.1,
+             "acquisitions":[{"id":1,"condition":"N","quantity":1,"purchase_price":700.0,"avg_price":812.5,
+                              "total_avg":"812.50","wert_gesamt":812.5,"pnl_prozent":16.1}]},
+            {"set_number":"10294-1","name":"Titanic","quantity":2,"avg_price":449.95,"qty_avg_price":449.95,
+             "min_price":420.0,"max_price":480.0,"total_avg":"899.90","wert_gesamt":899.9,"purchase_price":400.0,"pnl_prozent":12.5,
+             "acquisitions":[{"id":2,"condition":"N","quantity":2,"purchase_price":400.0,"avg_price":449.95,
+                              "total_avg":"899.90","wert_gesamt":899.9,"pnl_prozent":12.5}]}],
+            "totals":{"min":"1600.00","avg":"1712.40","max":"1840.00","qty_avg":"1712.40"}}""",
         // Wie der Server: x_label in Schweizer Form, chart.x mit den ISO-Tagen derselben Punkte.
         "/api/v1/finance/portfolio-history" to """{"success":true,"currency":"CHF","period":"week","points":[
             {"x_label":"27.10","value":1690.0,"y_frac":0.2},{"x_label":"","value":1701.0,"y_frac":0.5},{"x_label":"29.10","value":1712.4,"y_frac":0.9}],
