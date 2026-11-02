@@ -147,7 +147,7 @@ fun MerklisteScreen(
                         }
                     }
                 }
-                // Drei Chips statt ZustandsWahl(): Dort gibt es nur „neu" und
+                // Drei Chips statt Zustandszeile(): Dort gibt es nur „neu" und
                 // „gebraucht", weil ein ERFASSTER Merkposten sich entscheiden
                 // muss. Ein Filter hat immer eine dritte Antwort — „beide" —,
                 // und die ist hier die Vorgabe.
@@ -274,7 +274,8 @@ internal fun UebernahmeDialog(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                ZustandsWahl(zustand) { zustand = it }
+                // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
+                Zustandszeile(zustand, { zustand = it })
                 // Lagerort wie bei jeder anderen Erfassung.
                 LagerortErfassung(lagerort, lagerorte, { lagerort = it })
             }
@@ -334,7 +335,8 @@ private fun MerkpostenErfassenDialog(
                     keyboardOptions = NumericInput.ganzzahlTastatur(),
                     modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
                 )
-                ZustandsWahl(zustand) { zustand = it }
+                // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
+                Zustandszeile(zustand, { zustand = it })
                 // Derselbe Waehler wie beim Erfassen eines Sets. Bei einem
                 // Einzelkonto blendet er sich selbst aus (members.size < 2).
                 OwnerPicker(householdMembers, besitzer, { besitzer = it })
@@ -355,16 +357,7 @@ private fun MerkpostenErfassenDialog(
     )
 }
 
-/** Neu oder gebraucht — zwei Knoepfe statt einer Auswahlliste, wie im Baum ueblich. */
-@Composable
-internal fun ZustandsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        AuswahlChip(selected = gewaehlt == "N", onClick = { onWahl("N") },
-                   label = { Text(stringResource(R.string.condition_new)) })
-        AuswahlChip(selected = gewaehlt == "U", onClick = { onWahl("U") },
-                   label = { Text(stringResource(R.string.condition_used)) })
-    }
-}
+
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
