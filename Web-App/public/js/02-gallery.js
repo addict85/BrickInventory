@@ -81,6 +81,14 @@ export function filterUmschalten(){
   this.setAttribute('aria-expanded', String(offen));
 }
 
+/** Wer kein Verwalter ist, sieht im Reiter Einstellungen einen Satz statt einer leeren Seite. */
+function zeigeEinstellungsZugriff(){
+  const f = G('einst-kein-zugriff');
+  if (!f) return;
+  f.hidden = !!ME?.isAdmin;
+  f.innerHTML = ME?.isAdmin ? '' : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') });
+}
+
 /** Einen Reiter öffnen — aus dem Umschalter der Sammlung oder dem Menü. */
 export function oeffneReiter(name){
   const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
@@ -140,7 +148,7 @@ export function bindTabs(){
       // frueher hier alles mitgeladen wurde, holt jetzt die jeweilige Sicht
       // beim Oeffnen (siehe oeffneSicht unten). Wer die API-Schluessel
       // nachsieht, braucht keine Gutscheinliste.
-      if(tab==='settings')     { loadSettings(); if(ME?.isAdmin) loadApiLimits(); }
+      if(tab==='settings')     { zeigeEinstellungsZugriff(); loadSettings(); if(ME?.isAdmin) loadApiLimits(); }
       if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); if(jobPollTimer) clearTimeout(jobPollTimer); pollJobStatus(); }
       if(tab!=='monitor' && _monitorTimer) { clearInterval(_monitorTimer); set_monitorTimer(null); if(jobPollTimer){clearTimeout(jobPollTimer);set_jobPollTimer(null);} }
     });
@@ -953,7 +961,8 @@ export function renderGallery(){
       ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
                       knopf: zuruecksetzenKnopf('gallery') })
       // Ohne eigenen Knopf: „Set hinzufügen“ steht direkt darüber in der Erfassen-Leiste.
-      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint') });
+      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint'),
+                      knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
   }
   if(curView==='grid'){

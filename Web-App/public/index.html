@@ -870,6 +870,7 @@
          waere, ist schlimmer als keiner. -->
     <div class="tab" id="tab-settings">
       <div class="ph"><h1 class="ptitle" data-tab-title="settings"><span class="ptitle-icon"></span><span data-i18n="settings.title">Einstellungen</span></h1></div>
+      <div id="einst-kein-zugriff" hidden></div>
 
 
       <!-- ── GLOBALE EINSTELLUNGEN (nur Admins) ─────────────────────────── -->
@@ -1185,7 +1186,7 @@
           </div>
 
           <div id="vouchers-list" class="voucher-list"></div>
-          <div class="voucher-total-row">
+          <div class="voucher-total-row" data-nur-mit-gutscheinen>
             <span class="farbe-mut" data-i18n="vouchers.total">Summe</span>
             <strong id="vouchers-total"></strong>
           </div>
@@ -1203,7 +1204,7 @@
                bei mehreren Karten dauert es Minuten, und ein Knopf, der nur
                ausgegraut waere, liesse niemanden wissen, ob noch etwas
                passiert. -->
-          <div class="zeile luecke-8 mittig umbruch abstand-o-075">
+          <div class="zeile luecke-8 mittig umbruch abstand-o-075" data-nur-mit-gutscheinen>
             <button class="btn bs" type="button" data-click="guthabenAlleAbfragen"
                     data-i18n="vouchers.balance_all" data-ico="aktualisieren">Guthaben aller Karten abfragen</button>
             <span class="text-mittel" id="vouchers-balance-status" role="status"></span>
@@ -1230,7 +1231,7 @@
                (siehe ExportBefund in utils/gutscheinPdfSchreiben.ts); was
                wirklich nicht ersetzt werden konnte, sagt weiterhin die
                Meldung. -->
-          <div class="zeile luecke-8 mittig umbruch abstand-o-075">
+          <div class="zeile luecke-8 mittig umbruch abstand-o-075" data-nur-mit-gutscheinen>
             <button class="btn bs" type="button" data-click="gutscheineExportieren"
                     data-i18n="vouchers.export" data-ico="datei">Alle Gutscheine als PDF exportieren</button>
           </div>

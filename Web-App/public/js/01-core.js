@@ -750,23 +750,38 @@ export function zeigeVerbindung(erreichbar) {
 }
 
 // Ohne Verbindung scheitert jede Änderung. Statt erst nach dem Klick eine
-// Meldung zu zeigen, sind die schreibenden Knöpfe gesperrt und nennen per
-// aria-describedby das Band als Grund. Neu gezeichnete Knöpfe fängt ein
-// Beobachter, solange die Verbindung fehlt.
-const SCHREIBEND = 'button.bp, button.bd, [data-click="oeffneErfassen"], button[data-click*="speicher" i], button[data-click*="save" i], '
-  + 'button[data-click*="loesch" i], button[data-click*="delete" i], button[data-click*="import" i], button[data-click*="hinzufueg" i]';
-const NICHT_SPERREN = '#login-screen, #rb-hinweis, .toast, [data-dialog-zu]';
+// Meldung zu zeigen, sind die schreibenden Bedienelemente gesperrt und nennen
+// per aria-describedby das Band als Grund. Eine Regel statt einer Liste:
+// Hauptknöpfe, Datei-Wahl, Import-Menüs und jede Handlung, deren Name schreibt.
+const BEDIENT = 'button, input[type=file], .import-menue > summary';
+const IMMER_SCHREIBEND = 'button.bp, button.bd, input[type=file], .import-menue > summary';
+const SCHREIB_VERBEN = /speicher|save|loesch|delete|import|hinzufueg|add|anleg|erfass|uebernehm|eintrag|abfrag|aktualis|refresh|sync|hochlad|upload|rotier|widerruf|einlad|verknuepf|aendere|bearbeit|entfern|wiederherst|restore|generier|erzeug|verschieb|qty|menge|alarm/i;
+const NICHT_SPERREN = '#login-screen, .toast, [data-dialog-zu], .hinweis-zu';
+/** @param {Element} k */
+function schreibt(k) {
+  if (k.closest(NICHT_SPERREN)) return false;
+  if (k.matches(IMMER_SCHREIBEND)) return true;
+  return SCHREIB_VERBEN.test(`${k.getAttribute('data-click') || ''} ${k.getAttribute('data-submit') || ''}`);
+}
 /** @type {MutationObserver|null} */
 let _sperrBeobachter = null;
 /** @param {Element|Document} wurzel */
 function sperreIn(wurzel) {
-  const selbst = wurzel instanceof Element && wurzel.matches(SCHREIBEND) ? [wurzel] : [];
-  /** @type {HTMLButtonElement[]} */ ([...selbst, ...wurzel.querySelectorAll(SCHREIBEND)]).forEach(k => {
-    if (k.disabled || k.closest(NICHT_SPERREN)) return;
-    k.disabled = true; k.dataset.offlineGesperrt = '1';
+  const selbst = wurzel instanceof Element && wurzel.matches(BEDIENT) ? [wurzel] : [];
+  /** @type {HTMLButtonElement[]} */ ([...selbst, ...wurzel.querySelectorAll(BEDIENT)]).forEach(k => {
+    if (k.disabled || k.dataset.offlineGesperrt || !schreibt(k)) return;
+    if (k.matches('summary')) { k.setAttribute('aria-disabled', 'true'); k.parentElement?.removeAttribute('open'); }
+    else k.disabled = true;
+    k.dataset.offlineGesperrt = '1';
     k.setAttribute('aria-describedby', ((k.getAttribute('aria-describedby') || '') + ' offline-band').trim());
   });
 }
+// Ein <summary> kennt kein disabled: Klick und Tastatur öffnen es sonst trotzdem.
+if (typeof document !== 'undefined')
+  document.addEventListener('click', e => {
+    const t = /** @type {Element} */ (e.target);
+    if (t?.closest?.('summary[data-offline-gesperrt]')) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
 /** @param {boolean} an */
 function schreibenSperren(an) {
   if (typeof document === 'undefined') return;
@@ -781,7 +796,8 @@ function schreibenSperren(an) {
   }
   _sperrBeobachter?.disconnect(); _sperrBeobachter = null;
   /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('[data-offline-gesperrt]')).forEach(k => {
-    k.disabled = false; delete k.dataset.offlineGesperrt;
+    if (k.matches('summary')) k.removeAttribute('aria-disabled'); else k.disabled = false;
+    delete k.dataset.offlineGesperrt;
     const rest = (k.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== 'offline-band');
     if (rest.length) k.setAttribute('aria-describedby', rest.join(' ')); else k.removeAttribute('aria-describedby');
   });

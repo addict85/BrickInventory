@@ -872,9 +872,11 @@ html::-webkit-scrollbar{width:0;height:0}
     .voucher-pin-label{color:var(--mut);text-transform:uppercase;
                        letter-spacing:.5px;font-size:var(--fs-0)}
     .voucher-pin code{font-size:var(--fs-2);letter-spacing:.08em}
-    .voucher-nopdf{color:var(--mut);font-size:var(--fs-2);padding:0 .35rem}
+    .voucher-nopdf{color:var(--mut);font-size:var(--fs-1);padding:0 .35rem;white-space:nowrap}
+    .v-btn.v-btn-gefahr{color:var(--r700)}
+    [data-nur-mit-gutscheinen][hidden]{display:none}
     .voucher-actions{display:flex;align-items:center;gap:.3rem;margin-left:auto}
-    .v-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--bedienrand);
+    .v-btn{width:1.625rem;height:1.625rem;border-radius:6px;border:1px solid var(--bedienrand);
            cursor:pointer;background:transparent;color:var(--txt);font-size:var(--fs-2);
            display:flex;align-items:center;justify-content:center;
            transition:background .15s,border-color .15s}
@@ -973,6 +975,7 @@ input[type="checkbox"]{width:24px;height:24px;margin:0;flex:none;accent-color:va
 .teile-neu{margin-left:6px}
 /* Ohne Verbindung kein Löschen auf der Kachel (siehe schreibenSperren). */
 html[data-offline] .delbtn{display:none}
+html[data-offline] summary[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
 input.suchfeld{width:220px}
 .hoehe-38,.fg .hoehe-38{height:max(38px,2.6em)}
 .min-100{min-width:min(100px,100%)}
@@ -1076,12 +1079,18 @@ a{color:var(--b600);text-underline-offset:2px}
 .offline-band{position:sticky;top:0;z-index:120;display:flex;justify-content:center;gap:8px;padding:8px 16px;
   background:var(--a100);color:var(--a-schrift);border-bottom:1px solid var(--bdr);font-size:var(--fs-2);font-weight:600;text-align:center}
 .offline-band[hidden]{display:none}
-.hinweis-band{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 16px;
-  background:var(--b50);color:var(--txt);border-bottom:1px solid var(--bdr);font-size:var(--fs-3)}
+/* Kompakt in einer Zeile; schmal steht der Knopf unter dem Text, das Schliessen bleibt oben rechts. */
+.hinweis-band{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:4px 10px;padding:6px 16px;
+  background:var(--b50);color:var(--txt);border-bottom:1px solid var(--bdr);font-size:var(--fs-2)}
 .hinweis-band[hidden]{display:none}
-.hinweis-band > .ico{color:var(--b700);flex:none}
-.hinweis-band > span{flex:1 1 14rem;min-width:0}
-.hinweis-band .hinweis-zu{margin-left:auto}
+.hinweis-band > .ico{color:var(--b700)}
+@media (max-width:640px){
+  .hinweis-band{grid-template-columns:auto minmax(0,1fr) auto}
+  .hinweis-band > .btn.bp{grid-column:2;grid-row:2;justify-self:start}
+  .hinweis-band .hinweis-zu{grid-column:3;grid-row:1}
+}
+/* Der Schlüssel betrifft Sammlung und Katalog; auf anderen Seiten wäre das Band nur Lärm. */
+body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #rb-hinweis{display:none}
 .loading.klein{padding:1rem;font-size:var(--fs-2);gap:6px}
 .loading.klein .spin{width:18px;height:18px;border-width:2px}
 .diagramm-fehler{display:block;padding:.5rem;color:var(--r700);font-size:var(--fs-2)}
@@ -1141,7 +1150,7 @@ a{color:var(--b600);text-underline-offset:2px}
 .feld-titel{font-size:var(--fs-1);font-weight:600;color:var(--s600)}
 
 /* ── Konto (Profil): begrenzte Breite, eine Beschriftungsgrösse ─────────── */
-#tab-profil .ssec{max-width:52rem}
+#tab-profil .ssec,#tab-gutscheine .ssec,#tab-lagerorte .ssec,#tab-alarme .ssec,#tab-haushalt .ssec,#tab-app .ssec{max-width:52rem}
 .profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:.75rem 1rem}
 .profil-raster .fg{min-width:0}
 .profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr))}
@@ -1221,3 +1230,7 @@ a{color:var(--b600);text-underline-offset:2px}
 @media (hover:none) and (pointer:coarse){ #tab-gallery .sc .ca{display:none} }
 /* Warnhinweis neben einem Ergebnis: Rand in der Bernsteinfarbe jedes Designs, Text in Grundfarbe für vollen Kontrast. */
 .hinweis-warnung{color:var(--txt);font-weight:600;border-left:3px solid var(--chart-used);padding-left:8px;margin-top:6px}
+/* Leere Liste: „hinzufügen“ steht im Leerzustand, wo der Blick ist – nicht doppelt in der Leiste. */
+.tab:has(.empty.leer [data-click="oeffneErfassen"]) .erfassen-leiste > [data-click="oeffneErfassen"]{display:none}
+/* Die weisse QR-Fläche erst, wenn ein Code darin steht. */
+#qr-code:empty{display:none !important}

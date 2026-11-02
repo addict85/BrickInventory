@@ -400,9 +400,14 @@ function zeigeDesignWahl(d) {
   const vorgabeName = tRaw(NAMEN[d.vorgabe] || NAMEN.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
   sel.value = d.eigenes || '';
-  // Werkbank hat keine helle Fassung; ohne Hinweis wirkt „Darstellung: hell“ kaputt.
+  // Ein Satz zum gewählten Design: Namen wie „Noppe“ und „Hochglanz“ sagen allein
+  // nicht, wie es aussieht. Werkbank hat keine helle Fassung; das steht dabei.
   const hinweis = G('design-hinweis');
-  if (hinweis) hinweis.textContent = window.__bimNurDunkel?.(d.eigenes || d.vorgabe) ? tRaw('settings.werkbank_hint') : '';
+  const aktiv = d.eigenes || d.vorgabe || 'classic';
+  const BESCHREIBUNG = { classic: 'settings.theme_desc.classic', brick: 'settings.theme_desc.brick', werkbank: 'settings.theme_desc.werkbank',
+    farbfaecher: 'settings.theme_desc.farbfaecher', noppe: 'settings.theme_desc.noppe', hochglanz: 'settings.theme_desc.hochglanz' };
+  if (hinweis) hinweis.textContent = [BESCHREIBUNG[aktiv] ? tRaw(BESCHREIBUNG[aktiv]) : '',
+    window.__bimNurDunkel?.(aktiv) ? tRaw('settings.werkbank_hint') : ''].filter(Boolean).join(' ');
 }
 
 async function setzeEigenesDesign() {

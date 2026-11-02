@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, ico, G, TRASH_ICON_SVG, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
+import { fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
@@ -116,11 +116,11 @@ function zeile(g) {
           <button class="v-btn" data-click="gutscheinPdfOeffnen" data-arg="${g.id}"
                   title="${tRaw('vouchers.pdf_open')}"
                   aria-label="${tRaw('vouchers.pdf_open')}">${ico('datei')}</button>`
-        : `<span class="voucher-nopdf" title="${tRaw('vouchers.no_pdf')}"><span aria-hidden="true">—</span><span class="vh">${t('vouchers.no_pdf')}</span></span>`}
+        : `<span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}
         <button class="v-btn" data-click="gutscheinBearbeiten" data-arg="${g.id}"
-                title="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
-        <button class="delbtn" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
-                title="${tRaw('vouchers.delete_title')}">${TRASH_ICON_SVG}</button>
+                title="${tRaw('vouchers.edit_title')}" aria-label="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
+        <button class="v-btn v-btn-gefahr" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
+                title="${tRaw('vouchers.delete_title')}" aria-label="${tRaw('vouchers.delete_title')}">${ico('loeschen')}</button>
       </div>
     </div>`;
 }
@@ -135,6 +135,8 @@ export async function ladeGutscheine() {
   liste.innerHTML = _gutscheine.length
     ? _gutscheine.map(zeile).join('')
     : `<div class="voucher-leer" data-i18n="vouchers.empty">${t('vouchers.empty')}</div>`;
+  // Summe, „alle abfragen“ und Export haben ohne Gutscheine nichts zu tun.
+  document.querySelectorAll('[data-nur-mit-gutscheinen]').forEach(e => { /** @type {HTMLElement} */ (e).hidden = !_gutscheine.length; });
 
   // Die Summe. Nur wenn alle dieselbe Währung haben — sonst stünde dort eine
   // Zahl, die nichts bedeutet. Gemischte Währungen zusammenzuzählen wäre
