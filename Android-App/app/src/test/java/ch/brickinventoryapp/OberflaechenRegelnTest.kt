@@ -287,19 +287,17 @@ class OberflaechenRegelnTest {
                 // Die Kachel ist mit der Schrift gewachsen (110 dp × 2) …
                 val kachel = compose.onNode(hasText(name) and hasClickAction()).fetchSemanticsNode().boundsInRoot
                 assertTrue("Kachel von $name nur ${kachel.width / dichte} dp breit", kachel.width / dichte >= 200f)
-                // … und der Name steht ganz da: keine Auslassung in der letzten Zeile, kein
-                // Wort breiter als die Kachel. (hasVisualOverflow zählt auch die Höhe mit,
-                // die der Semantik-Abruf mit anderen Grenzen rechnet als das Zeichnen.)
+                // … und der Name steht ganz da: Die letzte sichtbare Zeile endet mit dem
+                // letzten Zeichen, ohne Auslassung. didOverflowWidth taugt nicht: Robolectric
+                // meldet es bei 342 px Text unter 1119 px Grenze, ganz in einer Zeile.
                 val ergebnis = mutableListOf<TextLayoutResult>()
                 compose.onNodeWithText(name, useUnmergedTree = true).fetchSemanticsNode()
                     .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
                 val text = ergebnis.single()
-                assertTrue("$name ist abgeschnitten (${text.lineCount} Zeilen, Grenzen " +
-                    "${text.layoutInput.constraints}, Grösse ${text.size}, Zeilenende " +
-                    "${text.getLineEnd(0, visibleEnd = true)}/${name.length}, Auslassung " +
-                    "${text.isLineEllipsized(text.lineCount - 1)}, Breite ${text.didOverflowWidth}, " +
-                    "Stil ${text.layoutInput.style.fontSize}, maxLines ${text.layoutInput.maxLines})",
-                    !text.isLineEllipsized(text.lineCount - 1) && !text.didOverflowWidth)
+                val letzte = text.lineCount - 1
+                assertTrue("$name ist abgeschnitten (${text.lineCount} Zeilen, sichtbar bis " +
+                    "${text.getLineEnd(letzte, visibleEnd = true)}/${name.length})",
+                    !text.isLineEllipsized(letzte) && text.getLineEnd(letzte, visibleEnd = true) == name.length)
             }
         } finally {
             welt.close()
