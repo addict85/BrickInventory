@@ -12,6 +12,7 @@ import { listen, unlisten } from '../../db/pgNotify';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
+import { PdfEingabe } from '../../src/infra/vertrag/sets';
 const router = vertragsRouter();
 
 type PdfJobStatus = { status?: string | undefined; error?: string | null; etaSeconds?: number | null; missingImages?: number | null };
@@ -32,7 +33,7 @@ async function pdfJobReadFor(id: string, userId: number) {
 }
 router.post('/sets/partslist-pdf', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/sets/partslist-pdf'>) => {
   const uid = req.apiUser.user_id;
-  const { sets = [], parts = [] } = req.body;
+  const { sets = [], parts = [] } = PdfEingabe.parse(req.body ?? {});
   if (!parts.length) return sendeFehler(req, res, 400, 'keine_teile');
 
   const r = await pdfAuftragStarten(uid, sets, parts);

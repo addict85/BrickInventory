@@ -160,6 +160,9 @@ den Commits, nicht hier.
 - Nummern als kodiertes Pfadsegment (`pfadSegment`) — `fremde-pfade-db`.
 
 ### Eingaben (2, 3)
+- Teileliste des PDF-Auftrags nach Schema (`PdfEingabe`): höchstens 5000
+  Posten, Feldlängen, Menge 1–9999; nur bekannte Felder gehen in den Auftrag
+  — `pdf-jobs-db`.
 - Rumpf und Abfrage im Betrieb gegen den API-Vertrag, unmittelbar vor der
   Route (`eingabePruefen` in `src/infra/vertrag/pruefen.ts`): falscher Typ,
   zu langer Text oder wiederholter Abfrageparameter ergeben 400

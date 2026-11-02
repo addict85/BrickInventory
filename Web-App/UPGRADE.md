@@ -871,3 +871,6 @@ Was sich für Nutzer und Clients ändert:
   damit nur fehlende (einmal je Set und Tag); sind schon welche da, antwortet
   der Server mit 403 `nur_admins`, und die Weboberfläche zeigt den Knopf
   „Neu laden“ dann nur Verwaltern.
+- **PDF-Teileliste**: `POST /api/v1/sets/partslist-pdf` prüft `parts` jetzt
+  nach Schema (höchstens 5000 Posten, `quantity` 1–9999, Feldlängen) und
+  antwortet sonst mit 400 `eingabe_ungueltig` (Feld in `feld`).
