@@ -5,7 +5,7 @@ import { initImageQueue } from '../jobs/imageQueue';
 import { kopienVerschluesseln, nummernNachverschluesseln } from '../src/gutscheine/dienst';
 import { verschluesseleGutscheinAltbestand } from '../src/gutscheine/gutscheinDateien';
 import { verschluesseleAltbestand } from '../src/konto/geheimnisAltbestand';
-import { antwortenUmschluesseln } from '../src/idempotenz/dienst';
+import { antwortenUmschluesseln, alteAbdrueckeLoeschen } from '../src/idempotenz/dienst';
 import { datenSchluessel } from '../src/infra/geheimnis';
 import { konfig } from '../src/infra/konfig';
 
@@ -33,6 +33,8 @@ export async function bereiteDatenbankVor(): Promise<void> {
   const n = await nummernNachverschluesseln() + await kopienVerschluesseln() + await verschluesseleAltbestand()
     + await antwortenUmschluesseln() + await verschluesseleGutscheinAltbestand();
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
+  const alt = await alteAbdrueckeLoeschen();
+  if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
   await initImageMisses().catch(logAndContinue('db:image_misses'));
   await initImageQueue().catch(logAndContinue('db:image_wanted'));
 }

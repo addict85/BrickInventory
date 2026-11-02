@@ -14,6 +14,12 @@
  *   E  /auth/zweiter-faktor/codes aus GEHEIME_ANTWORTEN → rot: „jede
  *      schreibende Route …" (die Route steht in der Liste der fehlenden)
  *
+ * Gegenproben zum Fingerabdruck (02.11.2026 gemessen), je rot: „der
+ * Fingerabdruck verrät das Passwort nicht“:
+ *   F  ohneGeheimnisse() lässt Passwortfelder stehen
+ *   G  suchwert() durch den blossen Text ersetzt (kein HMAC)
+ *   H  alteAbdrueckeLoeschen() löscht nichts
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -111,6 +117,28 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async (
     assert.equal(geheimnis.entschluessele(z.antwort, _req('src/idempotenz/dienst.js').antwortKontext(uid, 'p-1')), '{"success":true}');
     const nochmal = await post('/auth/profile', 'p-1', { first_name: 'Erika' }, 'PUT');
     assert.deepEqual(nochmal, { status: 200, replay: 'true', body: { success: true } });
+  });
+
+  await t.test('der Fingerabdruck verrät das Passwort nicht', async () => {
+    const dienst = _req('src/idempotenz/dienst.js');
+    const pfad = '/api/v1/auth/zweiter-faktor/einrichten';
+    const alt = require('node:crypto').createHash('sha256').update(`POST ${pfad}\n${JSON.stringify({ password: PASS })}`).digest('hex');
+    assert.deepEqual(await fundstellen(alt), [], 'der SHA-256 des Rumpfs mit Passwort liegt in der Tabelle');
+    assert.match((await db.get("SELECT anfrage FROM idempotenz WHERE user_id = $1 AND schluessel = 'zf-1'", [uid])).anfrage, /^h1:[0-9a-f]{64}$/);
+    const abdruck = (rumpf) => dienst.fingerabdruck('POST', pfad, rumpf);
+    assert.equal(abdruck({ password: 'a', current: 'b', admin_password: 'c', code: '1', faktor_code: '2', pin: '3', x: 1 }),
+      abdruck({ password: 'z', current: 'y', admin_password: 'w', code: '9', faktor_code: '8', pin: '7', x: 1 }));
+    assert.notEqual(abdruck({ password: 'a', x: 1 }), abdruck({ password: 'a', x: 2 }), 'der übrige Inhalt zählt weiter');
+    const vorher = abdruck({ x: 1 });
+    process.env.DATA_KEY = Buffer.alloc(32, 8).toString('base64');
+    geheimnis._vergissSchluessel();
+    try { assert.notEqual(abdruck({ x: 1 }), vorher, 'ohne Datenschlüssel nachrechenbar'); }
+    finally { process.env.DATA_KEY = Buffer.alloc(32, 7).toString('base64'); geheimnis._vergissSchluessel(); }
+
+    await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status) VALUES ($1, 'sha-1', $2, 200)`, [uid, alt]);
+    assert.ok(await dienst.alteAbdrueckeLoeschen() >= 1);
+    const uebrig = (await db.all('SELECT schluessel FROM idempotenz WHERE user_id = $1 ORDER BY 1', [uid])).map(z => z.schluessel);
+    assert.ok(!uebrig.includes('sha-1') && uebrig.includes('zf-1'), uebrig.join(', '));
   });
 
   await t.test('die Migration entfernt Klartext und die Wiederholung wird abgesagt', async () => {

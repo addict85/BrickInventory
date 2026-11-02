@@ -196,6 +196,9 @@ den Commits, nicht hier.
   allgemeinen Parser): `server.ts` — `upload-grenzen-db`.
 
 ### Ruhende Daten
+- Der Fingerabdruck eines `Idempotency-Key` enthält keine Passwort-, Code-,
+  PIN- oder Schlüsselfelder und ist ein HMAC mit eigenem Teilschlüssel des
+  Datenschlüssels — `idempotenz-geheim-db`.
 - Geheimnisse und Gutschein-PDFs mit dem Datenschlüssel: `utils/geheimnis.ts`
   — `geheimnisse-verschluesselt-db`, `konto-dateien-db`.
 - Mail-Links ohne Token in den Protokollen: `utils/mailer.ts`.

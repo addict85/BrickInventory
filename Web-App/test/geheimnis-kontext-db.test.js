@@ -148,8 +148,9 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async (t) 
     await db.run("UPDATE global_settings SET value = $1 WHERE key = 'smtp_pass'", [alsV1('Smtp-Alt-2')]);
     const totp = zf.base32(crypto.randomBytes(20));
     await db.run('INSERT INTO zweiter_faktor (user_id, geheimnis, aktiv) VALUES ($1, $2, true)', [b, alsV1(totp)]);
-    await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort) VALUES ($1, 'alt-1', 'abdruck', 200, $2)`,
-      [a, alsV1('{"alt":true}')]);
+    const abdruck = idem.fingerabdruck('PUT', '/api/v1/x', { alt: true });
+    await db.run(`INSERT INTO idempotenz (user_id, schluessel, anfrage, status, antwort) VALUES ($1, 'alt-1', $2, 200, $3)`,
+      [a, abdruck, alsV1('{"alt":true}')]);
     const pdf = path.join(dateien.VOUCHER_DIR, String(a), `${id}.pdf`);
     fs.mkdirSync(path.dirname(pdf), { recursive: true });
     fs.writeFileSync(pdf, Buffer.concat([Buffer.from('BIENC1\n'), roh1(PDF)]));
@@ -163,7 +164,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async (t) 
     assert.equal(await settings.getGlobalSetting('smtp_pass'), 'Smtp-Alt-2');
     assert.match((await db.get('SELECT geheimnis FROM zweiter_faktor WHERE user_id = $1', [b])).geheimnis, /^v2:/);
     assert.equal(await zf.pruefeCode(b, zf.hotp(zf.ausBase32(totp), zf.zeitschritt())), 'totp');
-    assert.deepEqual(await idem.beginne(a, 'alt-1', 'abdruck'), { art: 'wiederholung', status: 200, antwort: '{"alt":true}' });
+    assert.deepEqual(await idem.beginne(a, 'alt-1', abdruck), { art: 'wiederholung', status: 200, antwort: '{"alt":true}' });
     assert.equal(fs.readFileSync(pdf).subarray(0, 7).toString('latin1'), 'BIENC2\n');
     assert.ok((await dateien.liesGutscheinPdf(pdf)).equals(PDF));
   });

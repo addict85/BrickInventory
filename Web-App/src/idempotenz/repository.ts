@@ -27,6 +27,10 @@ export async function loescheLaufenden(uid: number, schluessel: string): Promise
   await db.run('DELETE FROM idempotenz WHERE user_id = $1 AND schluessel = $2 AND status IS NULL', [uid, schluessel]);
 }
 
+export async function loescheAndereAbdruecke(praefix: string): Promise<number> {
+  return (await db.run("DELETE FROM idempotenz WHERE anfrage NOT LIKE $1 || '%'", [praefix])).changes || 0;
+}
+
 export async function loescheAelterAls(stunden: number): Promise<number> {
   return (await db.run('DELETE FROM idempotenz WHERE angelegt < NOW() - make_interval(hours => $1)', [stunden])).changes || 0;
 }

@@ -859,3 +859,10 @@ Was sich für Nutzer und Clients ändert:
   ausführen, z. B. `PGHOST=… PGUSER=postgres PGDATABASE=brickinventory
   DB_APP_PASSWORD=… sh postgres/app-rolle.sh` (psql ab 15), danach die App mit
   `PGUSER=brickinventory_app` starten.
+- **Idempotenz ohne Passwörter**: Der Fingerabdruck einer Anfrage mit
+  `Idempotency-Key` (24 h in der Tabelle `idempotenz`) war ein SHA-256 über
+  den ganzen Rumpf, Passwörter eingeschlossen. Jetzt fehlen Passwort-, Code-,
+  PIN-, Token- und Schlüsselfelder darin, und der Rest ist ein HMAC mit einem
+  Teilschlüssel des Datenschlüssels. Der erste Start löscht alle Einträge im
+  alten Format (Meldung `[idempotenz] … gelöscht`); eine Wiederholung über das
+  Update hinweg läuft dann ein zweites Mal statt die alte Antwort zu bekommen.
