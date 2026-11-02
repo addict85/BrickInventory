@@ -41,6 +41,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { androidDateien } = require('./helpers/android');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 
 const WURZEL = path.join(__dirname, '..', '..');
 const ECHTER_ORT = path.join(WURZEL, '.github', 'workflows');
@@ -298,4 +299,40 @@ test('der Gegenproben-Job misst jede Patch-Gegenprobe gegen eine echte Testklass
     klassen.add(voll.split('.').pop());
   }
   for (const k of PFLICHT) assert.ok(klassen.has(k), `${k} braucht eine Gegenprobe`);
+});
+
+/** Der `run:`-Block des Schritts mit `id: <id>`, ohne Einrückung. */
+function schrittSkript(yml, id) {
+  const z = yml.split('\n');
+  const i = z.findIndex(l => l.trim() === `id: ${id}`);
+  const r = z.findIndex((l, j) => j > i && /^\s+run: \|\s*$/.test(l));
+  const tief = z[r + 1]?.match(/^\s*/)?.[0].length ?? 0;
+  const ende = z.findIndex((l, j) => j > r && l.trim() && (l.match(/^\s*/)?.[0].length ?? 0) < tief);
+  return z.slice(r + 1, ende < 0 ? undefined : ende).map(l => l.slice(tief)).join('\n');
+}
+
+// Gegenproben (02.11.2026 gemessen): im sed-Muster `@sha256` durch `@sha512`
+// ersetzt → rot (Exit 1, „Kein Image per Digest gefunden“); den Eintrag
+// `docker-compose` aus dependabot.yml gestrichen → rot „… ohne Update-Pfad“;
+// `matrix.image` im Trivy-Job durch ein festes Image ersetzt → rot.
+test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy', () => {
+  const yml = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
+  const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'compose-images-'));
+  fs.mkdirSync(path.join(ort, 'Web-App'));
+  fs.copyFileSync(path.join(WURZEL, 'Web-App', 'compose.yaml'), path.join(ort, 'Web-App', 'compose.yaml'));
+  const ausgabe = path.join(ort, 'ausgabe');
+  const r = spawnSync('bash', ['-e', '-c', schrittSkript(yml, 'lesen')],
+    { cwd: ort, env: { ...process.env, GITHUB_OUTPUT: ausgabe }, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const images = JSON.parse(fs.readFileSync(ausgabe, 'utf8').match(/^images=(.*)$/m)?.[1] ?? '[]');
+  fs.rmSync(ort, { recursive: true, force: true });
+  assert.deepEqual(images.map(i => i.split(':')[0]).sort(), ['caddy', 'postgres', 'sosedoff/pgweb']);
+  assert.ok(images.every(i => /@sha256:[0-9a-f]{64}$/.test(i)), images.join(', '));
+
+  const trivy = yml.slice(yml.indexOf('\n  trivy-compose:'), yml.indexOf('\n  zap:'));
+  assert.match(trivy, /matrix:\s*\n\s*image: \$\{\{ fromJSON\(needs\.compose-images\.outputs\.images\) \}\}/);
+  assert.match(trivy, /image-ref: \$\{\{ matrix\.image \}\}/);
+  const dependabot = fs.readFileSync(path.join(WURZEL, '.github', 'dependabot.yml'), 'utf8');
+  assert.match(dependabot, /package-ecosystem: docker-compose\n\s+directory: \/Web-App\n/,
+    'Die Images in compose.yaml stehen ohne Update-Pfad fest');
 });

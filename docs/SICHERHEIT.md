@@ -202,6 +202,9 @@ den Commits, nicht hier.
 
 ### Lieferkette (5)
 - Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-pgweb`.
+  Dependabot schlägt neue Fassungen vor: Actions, Dockerfiles und die Dienste
+  in `compose.yaml` (`docker-compose`); npm und Gradle über Renovate
+  (`renovate.json` im Wurzelverzeichnis).
 - `npm ci` aus dem Lockfile; `npm audit --omit=dev` (web-ci.yml).
 - PDF.js als `pdfjs-dist` mit exakter Fassung; `public/vendor/pdfjs/` ist eine
   beim Bauen geschriebene, byte-gleiche Kopie — `pdfjs-fassung`. Als
@@ -213,7 +216,10 @@ den Commits, nicht hier.
 - `docker-publish.yml`: Der Tag beim Handstart nur über `env` und in
   Docker-Tag-Form, sonst Abbruch — `workflow-tag`.
 - `.github/workflows/sicherheit.yml`: CodeQL (TypeScript, Kotlin), Trivy
-  (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver.
+  (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver. Die
+  Images aus `compose.yaml` (Caddy, Postgres, pgweb) liest der Lauf aus der
+  Datei, prüft sie mit Trivy (Bericht) und meldet einen Digest, der hinter
+  seinem Tag zurückliegt.
 
 ## Betrieb
 
@@ -272,4 +278,6 @@ den Commits, nicht hier.
   erscheinen geteilte Anleitungen eines selbst erfassten Sets sofort, wenn sie
   schon jemand geladen hatte.
 - **Bilder der Container** (`postgres`, `caddy`, `pgweb`, ZAP) sind per Digest
-  fest und veralten damit; Renovate (`renovate.json`) schlägt neue Fassungen vor.
+  fest und veralten damit; Dependabot schlägt neue Fassungen vor (ZAP und die
+  Dienst-Container der Workflows nicht). Trivy meldet Lücken der drei
+  Betriebs-Images vorerst nur, ohne den Lauf rot zu machen.

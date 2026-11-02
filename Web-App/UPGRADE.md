@@ -822,3 +822,11 @@ Was sich für Nutzer und Clients ändert:
 - **Image von Hand bauen** (Workflow `Web-App`, `workflow_dispatch`): Der
   zusätzliche Tag muss die Docker-Tag-Form haben (Buchstaben, Ziffern,
   `_ . -`, höchstens 128 Zeichen), sonst bricht der Lauf ab.
+
+## 29. Runde 5 – Sicherheit
+
+- **Updates der Container-Images**: Dependabot schlägt jetzt auch neue Digests
+  für Postgres, Caddy und pgweb in `compose.yaml` vor (wöchentlich). Ein
+  solcher PR ist wie ein Update zu behandeln: lesen, mergen, auf dem Server
+  `docker compose pull && docker compose up -d`. Der Sicherheitslauf meldet
+  zusätzlich, wenn ein festgenagelter Digest hinter seinem Tag zurückliegt.
