@@ -58,13 +58,6 @@ function markiereGruppe(tab){
   // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
   const sammlung = document.querySelector('.ntab[data-tab="gallery"]');
   sammlung?.classList.toggle('gruppe-aktiv', SAMMLUNG.includes(tab));
-  // Am Telefon steht in der Leiste, welche Ansicht der Sammlung offen ist.
-  const unter = sammlung?.querySelector('.tab-unter');
-  if (unter) {
-    const schluessel = { parts: 'nav.parts', minifigs: 'nav.minifigs' }[tab];
-    if (schluessel) { unter.setAttribute('data-i18n', schluessel); unter.textContent = tRaw(schluessel); }
-    else { unter.removeAttribute('data-i18n'); unter.textContent = ''; }
-  }
   // Die drei Knöpfe wechseln die Ansicht; die offene ist die aktuelle Seite.
   document.querySelectorAll('.sammlung-wahl [data-arg]').forEach(b => {
     if (b.dataset.arg === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');

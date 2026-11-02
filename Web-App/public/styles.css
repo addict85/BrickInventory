@@ -232,7 +232,6 @@
     .ntab.ntab-unter{display:none!important}
     .ntab.ntab-sammlung{display:none}
     .ntab.gruppe-aktiv{color:var(--b600);border-bottom-color:var(--b600)}
-    .ntab .tab-unter{display:none}
     /* nav rollt waagrecht und schneidet alles ab, was hinausragt — der
        Fokusring liegt deshalb innen. */
     .ntab:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:-3px;border-radius:6px}
@@ -410,7 +409,9 @@
     .vtgl{display:flex;background:var(--s100);border:1px solid var(--bdr);border-radius:8px;padding:3px;gap:2px}
     .vb{padding:5px 10px;cursor:pointer;background:none;border:none;color:var(--mut);font-size:var(--fs-4);border-radius:6px;transition:all .15s}
     .vb.active{background:var(--sur);color:var(--b600);box-shadow:var(--sh0)}
-    .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:var(--sp-4)}
+    /* Spaltenbreite in rem: Bei grosser Schrift werden die Kacheln breiter statt
+       ihren Text zu zerhacken; min(100%,…) lässt eine Spalte nie überlaufen. */
+    .sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,11.5rem),1fr));gap:var(--sp-4)}
     .sc{background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);overflow:hidden;transition:transform .18s,box-shadow .18s,border-color .18s;cursor:pointer;position:relative;box-shadow:var(--sh0)}
     .sc:hover{transform:translateY(-3px);box-shadow:var(--sh1);border-color:var(--b300)}
     .sci{width:100%;aspect-ratio:1;background:var(--s50);display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:1px solid var(--bdr)}
@@ -429,7 +430,7 @@
        Markup (stabiler Anker für updateGalleryPrices) und nur leer ausgeblendet. */
     .price-badge[hidden]{display:none}
     .price-badge .preis-art{color:var(--mut);font-weight:500}
-    .price-badge{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:.35rem;padding:.2rem .4rem;background:var(--s50);border-radius:5px;font-size:var(--fs-1)}
+    .price-badge{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:2px 6px;margin-top:.35rem;padding:.2rem .4rem;background:var(--s50);border-radius:5px;font-size:var(--fs-1)}
     .pnl-geschenk{color:var(--txt);font-weight:600}
     /* Bezugslinie und Achsenbruch nehmen dem Fadenkreuz keine Zeigerereignisse weg. */
     .einstand-linie,.achsenbruch{pointer-events:none}
@@ -442,11 +443,11 @@
     .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--bdr);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
     .period-btn:hover{border-color:var(--b400);color:var(--b600)}
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
-    .snum{font-family:var(--mono);font-size:var(--fs-1);color:var(--b600);font-weight:500;margin-bottom:2px}
+    .snum{white-space:nowrap;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600);font-weight:500;margin-bottom:2px}
     .sname{font-size:var(--fs-2);font-weight:600;line-height:1.3;margin-bottom:6px}
-    .smeta{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:var(--fs-1);color:var(--mut)}
+    .smeta{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;font-size:var(--fs-1);color:var(--mut)}
     /* Lange Themennamen enden mit „…“; der volle Name steht im title. */
-    .smeta-text{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .smeta-text{flex:1 1 auto;min-width:0;overflow-wrap:break-word}
     .smeta > div{flex:0 0 auto}
     .qbadge{background:var(--b100);color:var(--b700);font-weight:700;font-size:var(--fs-0);padding:2px 7px;border-radius:999px}
     .ibadge{background:var(--g100);color:var(--g700);font-weight:600;font-size:var(--fs-0);padding:2px 5px;border-radius:999px}
@@ -527,16 +528,16 @@
     /* Rand aus einem Token: Ein schwarzer Punkt auf dunklem Grund braucht einen hellen Ring. */
     .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid var(--farbpunkt-rand);flex-shrink:0}
     /* Kennzahlen: in jedem Design dieselbe Reihe Kacheln über dem Inhalt. */
-    .brick-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:0 0 var(--sp-5)}
+    .brick-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,8.75rem),1fr));gap:12px;margin:0 0 var(--sp-5)}
     .bstat{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:12px 16px;box-shadow:var(--sh0);min-width:0}
-    .bstat .bstat-l{overflow-wrap:anywhere;font-size:var(--fs-1);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+    .bstat .bstat-l{overflow-wrap:break-word;hyphens:auto;font-size:var(--fs-1);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
     .bstat .bstat-s{font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     .bstat .bstat-v{font-variant-numeric:tabular-nums;font-size:var(--fs-6);font-weight:700;line-height:1.2;margin-top:2px;color:var(--txt)}
     .parts-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1.25rem}
     .pstat{background:var(--sur);border:1px solid var(--bdr);border-radius:8px;padding:.85rem 1rem;text-align:center;box-shadow:var(--sh0)}
     .pstat .v{font-variant-numeric:tabular-nums;font-size:var(--fs-5);font-weight:600;color:var(--preis,var(--b600))}
     .pstat .l{font-size:var(--fs-0);color:var(--mut);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
-    .parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.85rem}
+    .parts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,8.125rem),1fr));gap:.85rem}
     .part-card{background:var(--sur);border:1.5px solid var(--bdr);border-radius:8px;padding:.85rem;text-align:center;box-shadow:var(--sh0);transition:border-color .15s}
     .part-card:hover{border-color:var(--b300)}
     .part-img{width:70px;height:70px;object-fit:contain;background:var(--s50);border-radius:6px;margin:0 auto 8px}
@@ -562,11 +563,11 @@
     /* Teile aus Sets: EIN Raster über alle Farben. Die Farbe steht als Kachel
        vor ihren Teilen, statt je Farbe eine Zeile zu beginnen — sonst ergaben
        zwölf Teile in zwölf Farben zwölf fast leere Zeilen. */
-    .parts-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.85rem}
+    .parts-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,8.125rem),1fr));gap:.85rem}
     .parts-list > .parts-group,.parts-list .parts-grid{display:contents}
     .parts-list .group-hd{flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;margin:0;padding:.6rem .7rem;border:1.5px solid var(--bdr);border-radius:var(--rad);background:var(--s50)}
     /* Manuell erfasste Teile/Minifiguren — einheitliche editierbare Tiles */
-    .man-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:.85rem}
+    .man-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,11.25rem),1fr));gap:.85rem}
     .man-tile{background:var(--sur);border:1.5px solid var(--bdr);border-radius:10px;padding:.9rem;box-shadow:var(--sh0);position:relative}
     .man-tile-del{position:absolute;top:6px;right:6px}
     .man-tile-img{width:64px;height:64px;object-fit:contain;background:var(--s50);border-radius:6px;margin:0 auto 8px;display:block}
@@ -994,7 +995,7 @@ input.suchfeld{width:220px}
   #global-settings-grid > .ssec{grid-column:1}
 }
 .ssec{scroll-margin-top:72px}
-.kachel-datum{font-size:var(--fs-1);color:var(--mut);margin-top:.2rem}
+.kachel-datum{display:flex;flex-wrap:wrap;align-items:center;gap:0 .3em;font-size:var(--fs-1);color:var(--mut);margin-top:.2rem}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}
 .zeiger{cursor:pointer}
 /* Bis js/00-stile.js den Stil gesetzt hat (und data-stil entfernt), bleibt Verborgenes verborgen. */
