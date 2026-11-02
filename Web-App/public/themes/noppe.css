@@ -254,3 +254,11 @@
 [data-theme="noppe"] .cond-used,[data-theme="hochglanz"] .cond-used{
   background:var(--chart-used);color:var(--ink);border:2px solid var(--ink);font-weight:800;
 }
+
+/* ── Finanzen: Marktwert in der Farbe seiner Kurve ──────────────────────────
+   --b50 ist hier ein Rosa; die hervorgehobene Kachel sah damit nach Verlust
+   aus. Die Kachel bleibt weiss und trägt oben die Linienfarbe des Diagramms,
+   so gehören Zahl und Kurve sichtbar zusammen. */
+[data-theme="noppe"] .fstat.hi,[data-theme="hochglanz"] .fstat.hi{
+  background:var(--sur);border-color:var(--bdr);border-top:6px solid var(--chart-new);
+}

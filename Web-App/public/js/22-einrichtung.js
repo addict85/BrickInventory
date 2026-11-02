@@ -1,6 +1,6 @@
 import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, toast, passwortRegelText, rbHinweisVerbergen } from './01-core.js';
+import { ico, G, api, toast, passwortRegelText, rbHinweisVerbergen, rbHinweisZeigen } from './01-core.js';
 import { oeffneErfassen } from './02-gallery.js';
 import { mitZweitemFaktor } from './07-admin.js';
 
@@ -52,7 +52,11 @@ async function abschliessen() {
   if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');
 }
 
-export function einrichtungSpaeter() { schliessen(); }
+export function einrichtungSpaeter() {
+  schliessen();
+  // Im Assistenten gespeichert, steht der Haken; der Zwischenspeicher weiss es noch nicht.
+  if (!G('ew-stand-rebrickable')?.innerHTML) rbHinweisZeigen();
+}
 
 export function einrichtungZurueck() {
   if (_jetzt > 0) { _jetzt--; zeige(); }

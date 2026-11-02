@@ -704,10 +704,12 @@ export function fehlerMeldung(e) {
 
 // ── Hinweis „Rebrickable-Schlüssel fehlt“ ───────────────────────────────────
 const RB_HINWEIS_WEG = 'bim_rb_hinweis_weg';
-/** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab. */
-function rbHinweisZeigen() {
+/** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab.
+ * Schliesst man ihn mit „Später“, kommt das Band (22-einrichtung.js). */
+export function rbHinweisZeigen() {
   const band = G('rb-hinweis');
-  if (!band || G('einrichtung-modal')?.classList.contains('open')) return;
+  if (!band || !ME?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
+  if (String(_settingsCache?.rebrickable_api_key || '').trim()) return;
   try { if (sessionStorage.getItem(RB_HINWEIS_WEG)) return; } catch (_) { /* ohne Speicher: zeigen */ }
   band.hidden = false;
 }
@@ -1313,8 +1315,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // Ein Band weist einmal je Sitzung darauf hin.
   if(ME.isAdmin) {
     const checkRbKey = () => {
-      const s = _settingsCache || {};
-      if(!(s.rebrickable_api_key && s.rebrickable_api_key.trim())) rbHinweisZeigen();
+      rbHinweisZeigen();
       loadGallery();
     };
     if(_settingsCache) checkRbKey();

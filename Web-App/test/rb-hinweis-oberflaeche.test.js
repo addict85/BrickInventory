@@ -10,6 +10,8 @@
  *   C  sessionStorage-Prüfung in rbHinweisZeigen entfernt → rot: „weggeklickt
  *      bleibt es weg“
  *   D  rbHinweisOeffnen ohne Klick auf den Abschnitt → rot: „Link führt zum Feld“
+ *   E  einrichtungSpaeter ohne rbHinweisZeigen() → rot: „nach „Später“ im
+ *      Assistenten erscheint das Band“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -63,6 +65,19 @@ test('weggeklickt bleibt es weg — für die Sitzung', async () => {
     await takt(800);
     assert.equal(zweit.d.getElementById('rb-hinweis').hidden, true);
   } finally { zweit.w.close(); }
+});
+
+test('nach „Später“ im Assistenten erscheint das Band', async () => {
+  const { w, d } = await oeffneOberflaeche({ ...OHNE_SCHLUESSEL,
+    '/v1/settings/einrichtung': { success: true, offen: true, passwort_aendern: false, quellen: { rebrickable: false } } });
+  try {
+    await warte(() => d.getElementById('einrichtung-modal').classList.contains('open'));
+    await takt(700);
+    assert.equal(d.getElementById('rb-hinweis').hidden, true, 'Band über dem Assistenten');
+    d.querySelector('#einrichtung-modal [data-click="einrichtungSpaeter"]').click();
+    await takt(20);
+    assert.equal(d.getElementById('rb-hinweis').hidden, false);
+  } finally { w.close(); }
 });
 
 test('mit Schlüssel kein Band', async () => {
