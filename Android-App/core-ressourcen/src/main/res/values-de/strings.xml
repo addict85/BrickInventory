@@ -146,7 +146,7 @@
     <string name="minifigs_no_results">Keine Treffer</string>
     <string name="minifigs_add">Minifigur hinzufügen</string>
     <string name="minifigs_add_title">Minifigur erfassen</string>
-    <string name="minifigs_fig_number">Figur-Nummer</string>
+    <string name="minifigs_fig_number">Minifigur-Nummer</string>
     <string name="minifigs_fig_number_placeholder">z.B. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink-Nr. (optional)</string>
     <string name="minifigs_bl_number_placeholder">z.B. sw0001 — für Marktpreis</string>
@@ -233,7 +233,7 @@
         <item quantity="other">%1$d verschiedene</item>
     </plurals>
     <string name="partslist_owned_error">Der eigene Bestand liess sich nicht laden.</string>
-    <string name="partslist_empty_hint">Sets hinzufügen und Teileliste erstellen</string>
+    <string name="partslist_empty_hint">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
     <plurals name="partslist_group_summary">
         <item quantity="one">×%1$d  ·  %2$d Typ</item>
@@ -327,7 +327,7 @@
     <string name="detail_theme">Thema</string>
     <string name="detail_section_details">Set-Details</string>
     <string name="detail_part_number">Teile-Nr.</string>
-    <string name="detail_fig_number">Figuren-Nr.</string>
+    <string name="detail_fig_number">Minifigur-Nr.</string>
     <string name="detail_color">Farbe</string>
     <string name="detail_section_item">Details</string>
     <string name="detail_set_number">Setnummer</string>
@@ -351,10 +351,9 @@
     <string name="nav_gallery">Galerie</string>
     <string name="nav_parts">Teile</string>
     <string name="nav_minifigs">Minifiguren</string>
-    <string name="nav_minifigs_short">Figuren</string>
     <string name="name_unknown">Name unbekannt</string>
     <string name="parts_breakdown">%1$s aus Sets · %2$s einzeln</string>
-    <string name="nav_partslist">Teileliste</string>
+    <string name="nav_partslist">Bauliste</string>
     <string name="nav_finance">Finanzen</string>
     <string name="nav_comparison">Vergleich</string>
     <string name="nav_settings">Einstellungen</string>
@@ -363,12 +362,12 @@
     <string name="nav_group_manage">Bestand verwalten</string>
     <string name="nav_group_server">Server</string>
     <string name="nav_monitoring">Hintergrundarbeiten</string>
-    <string name="main_barcode_add_partslist">Zur Teileliste hinzufügen?</string>
+    <string name="main_barcode_add_partslist">Zur Bauliste hinzufügen?</string>
     <string name="main_barcode_add_set">Set hinzufügen?</string>
     <string name="main_barcode_unsure">Nicht sicher erkannt — bitte Bild und Namen prüfen</string>
     <string name="main_barcode_year">Jahr</string>
     <string name="main_barcode_pieces">Teile</string>
-    <string name="main_barcode_figs">Figuren</string>
+    <string name="main_barcode_figs">Minifiguren</string>
     <string name="main_account">Konto</string>
     <string name="main_menu_monitoring">Hintergrundarbeiten</string>
     <string name="main_menu_logout">Abmelden</string>
@@ -432,7 +431,7 @@
     <string name="notif_pdf_done_tap">PDF bereit – tippen zum Öffnen</string>
     <string name="notif_pdf_failed">PDF-Export fehlgeschlagen: %1$s</string>
     <string name="notif_pdf_channel_name">PDF-Export Fortschritt</string>
-    <string name="notif_pdf_channel_desc">Zeigt den Fortschritt des Teilelisten-PDF-Exports</string>
+    <string name="notif_pdf_channel_desc">Zeigt den Fortschritt des Bauliste-PDF-Exports</string>
 
     <!-- PDF-Export-Statustexte (PdfExportManager) -->
     <string name="pdfexp_no_data">Keine Exportdaten vorhanden</string>
@@ -910,7 +909,7 @@
     <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
     <string name="art_nacharbeit">Nacharbeit nach dem Erfassen</string>
     <string name="art_bilder">Bilder eines Sets</string>
-    <string name="art_pdf">PDF-Teileliste</string>
+    <string name="art_pdf">PDF-Bauliste</string>
     <string name="art_csv_import">CSV-Import von Sets</string>
     <string name="art_wechselkurse">Wechselkurse (EZB)</string>
     <string name="art_anleitung">Anleitung laden</string>

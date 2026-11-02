@@ -122,7 +122,7 @@
     <string name="gallery_stat_sets">Sets</string>
     <string name="gallery_stat_units">Copies</string>
     <string name="gallery_stat_parts">Parts</string>
-    <string name="gallery_stat_minifigs">Minifigs</string>
+    <string name="gallery_stat_minifigs">Minifigures</string>
     <string name="gallery_stat_instructions">Instructions</string>
     <string name="gallery_search_placeholder">Search sets…</string>
     <string name="gallery_all">All</string>
@@ -162,7 +162,7 @@
     <string name="minifigs_no_results">No results</string>
     <string name="minifigs_add">Add minifigure</string>
     <string name="minifigs_add_title">Add minifigure</string>
-    <string name="minifigs_fig_number">Figure number</string>
+    <string name="minifigs_fig_number">Minifigure number</string>
     <string name="minifigs_fig_number_placeholder">e.g. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink no. (optional)</string>
     <string name="minifigs_bl_number_placeholder">e.g. sw0001 — for market price</string>
@@ -249,7 +249,7 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Add sets and generate a parts list</string>
+    <string name="partslist_empty_hint">Collects the parts of one or more sets — for rebuilding or ordering what is missing.</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
         <item quantity="one">×%1$d  ·  %2$d type</item>
@@ -338,11 +338,11 @@
     <!-- ══════════════ Set detail screen ══════════════ -->
     <string name="detail_year">Year</string>
     <string name="detail_pieces">Pieces</string>
-    <string name="detail_minifigs">Minifigs</string>
+    <string name="detail_minifigs">Minifigures</string>
     <string name="detail_theme">Theme</string>
     <string name="detail_section_details">Set details</string>
     <string name="detail_part_number">Part no.</string>
-    <string name="detail_fig_number">Fig. no.</string>
+    <string name="detail_fig_number">Minifigure no.</string>
     <string name="detail_color">Color</string>
     <string name="detail_section_item">Details</string>
     <string name="detail_set_number">Set number</string>
@@ -364,10 +364,9 @@
     <string name="nav_gallery">Gallery</string>
     <string name="nav_parts">Parts</string>
     <string name="nav_minifigs">Minifigures</string>
-    <string name="nav_minifigs_short">Minifigs</string>
     <string name="name_unknown">Name unknown</string>
     <string name="parts_breakdown">%1$s from sets · %2$s loose</string>
-    <string name="nav_partslist">Parts list</string>
+    <string name="nav_partslist">Build list</string>
     <string name="nav_finance">Finance</string>
     <string name="nav_comparison">Comparison</string>
     <string name="nav_settings">Settings</string>
@@ -376,7 +375,7 @@
     <string name="nav_group_manage">Manage inventory</string>
     <string name="nav_group_server">Server</string>
     <string name="nav_monitoring">Background work</string>
-    <string name="main_barcode_add_partslist">Add to parts list?</string>
+    <string name="main_barcode_add_partslist">Add to the build list?</string>
     <string name="main_barcode_add_set">Add set?</string>
     <!-- Shown when the set number was guessed, not matched: the EAN could not be
          resolved and only a plausible candidate remains, or the number was read by
@@ -385,7 +384,7 @@
     <string name="main_barcode_unsure">Not certain — please check image and name</string>
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
-    <string name="main_barcode_figs">Figures</string>
+    <string name="main_barcode_figs">Minifigures</string>
     <string name="main_account">Account</string>
     <string name="main_menu_monitoring">Background work</string>
     <string name="main_menu_logout">Log out</string>
@@ -450,7 +449,7 @@
     <string name="notif_pdf_done_tap">PDF ready – tap to open</string>
     <string name="notif_pdf_failed">PDF export failed: %1$s</string>
     <string name="notif_pdf_channel_name">PDF export progress</string>
-    <string name="notif_pdf_channel_desc">Shows the progress of the parts-list PDF export</string>
+    <string name="notif_pdf_channel_desc">Shows the progress of the build-list PDF export</string>
 
     <!-- PDF-Export-Statustexte (PdfExportManager) -->
     <string name="pdfexp_no_data">No export data available</string>
@@ -929,7 +928,7 @@
     <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
     <string name="art_nacharbeit">Follow-up after adding a set</string>
     <string name="art_bilder">Images of a set</string>
-    <string name="art_pdf">PDF parts list</string>
+    <string name="art_pdf">PDF build list</string>
     <string name="art_csv_import">CSV import of sets</string>
     <string name="art_wechselkurse">Exchange rates (ECB)</string>
     <string name="art_anleitung">Load instructions</string>
