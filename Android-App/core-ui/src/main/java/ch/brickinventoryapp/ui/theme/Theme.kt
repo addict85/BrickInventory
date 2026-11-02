@@ -117,14 +117,15 @@ private val BrickBlueColors = lightColorScheme(
  * Farben der Verlaufslinien aus dem Design, wie --chart-new/--chart-used im Web. Im
  * Stein-Design Salbeigrün und Sand, dieselben Farben wie die Zustands-Plaketten,
  * als Vollton, weil die Container auf weissem Grund kaum zu sehen wären. Die
- * Vorgaben von [linie], [raster] und [gedaempft] sind die klassischen Werte.
+ * Vorgaben von [linie] und [raster] sind die klassischen Werte; [gedaempft] ist
+ * Schrift (Achsen, Hinweise) und kommt deshalb aus [diagrammFarben].
  */
 data class ChartColors(
     val new: Color,
     val used: Color,
     val linie: Color = Color(0xFF2563EB),
     val raster: Color = Color(0xFFE2E8F0),
-    val gedaempft: Color = Color(0xFF94A3B8),
+    val gedaempft: Color = Color(0xFF56616E),
 )
 
 // Die vier Chart*-Farben stehen in DesignTokens.kt (erzeugt, siehe oben) —
@@ -383,6 +384,32 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
 }
 
 /**
+ * Diagrammfarben eines Designs zu seinem Farbschema [s]. Die Achsenschrift
+ * ([ChartColors.gedaempft]) ist onSurfaceVariant: Das frühere Schiefergrau #94A3B8
+ * erreichte auf Weiss nur 2,1:1, und Schrift muss 4,5:1 schaffen wie jede andere.
+ */
+internal fun diagrammFarben(theme: String, dunkel: Boolean, s: ColorScheme): ChartColors {
+    val gedaempft = s.onSurfaceVariant
+    return if (dunkel && hatDunkleFassung(theme)) dunkleRollen(theme).let {
+        ChartColors(Color(it.chartNeu), Color(it.chartGebraucht), linie = Color(it.chartNeu),
+            raster = Color(it.chartRaster), gedaempft = gedaempft)
+    } else when (theme) {
+        "brick" -> ChartColors(ChartNewBrick, ChartUsedBrick,
+            linie = ChartNewBrick, raster = Color(0xFFE0DACE), gedaempft = gedaempft)
+        // Auf dunklem Grund muss das Raster HELLER als der Grund sein, nicht
+        // dunkler — sonst verschwindet es.
+        "werkbank" -> ChartColors(ChartNewWerkbank, ChartUsedWerkbank,
+            linie = ChartNewWerkbank, raster = Color(0xFF262D36), gedaempft = gedaempft)
+        // Fächer und Noppe färben Themen bzw. Kacheln, NICHT Zustände: Neu bleibt
+        // blau, Gebraucht bernstein/orange, damit sich die Farbsysteme nicht verwechseln.
+        "farbfaecher" -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher, gedaempft = gedaempft)
+        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe,
+            raster = Color(0xFFE4E8EF), gedaempft = gedaempft)
+        else -> ChartColors(ChartNewClassic, ChartUsedClassic, gedaempft = gedaempft)
+    }
+}
+
+/**
  * [systemfarben]: Material You — Farben vom System, Formen und Schrift vom
  * Design. Die Diagramme nehmen dann die Rollen des Schemas, damit ihre Farben
  * zur Fläche passen; die Statusfarben bleiben, weil Gewinn grün bleiben muss.
@@ -400,27 +427,7 @@ fun BrickInventoryManagerTheme(
     }
     val chartColors = if (dynamisch) ChartColors(colors.primary, colors.tertiary, linie = colors.primary,
         raster = colors.outlineVariant, gedaempft = colors.onSurfaceVariant)
-    else if (dunkel && hatDunkleFassung(theme)) dunkleRollen(theme).let {
-        ChartColors(Color(it.chartNeu), Color(it.chartGebraucht), linie = Color(it.chartNeu),
-            raster = Color(it.chartRaster), gedaempft = Color(it.chartGedaempft))
-    } else when (theme) {
-        "brick" -> ChartColors(ChartNewBrick, ChartUsedBrick,
-            linie = ChartNewBrick, raster = Color(0xFFE0DACE), gedaempft = Color(0xFF8C8577))
-        // Auf dunklem Grund muss das Raster HELLER als der Grund sein, nicht
-        // dunkler — sonst verschwindet es.
-        "werkbank" -> ChartColors(ChartNewWerkbank, ChartUsedWerkbank,
-            linie = ChartNewWerkbank, raster = Color(0xFF262D36), gedaempft = Color(0xFF6F7986))
-        // Der Faecher faerbt Themen, NICHT Zustaende: Neu bleibt blau,
-        // Gebraucht bernstein. Zwei Farbsysteme nebeneinander duerfen sich
-        // nicht verwechseln lassen.
-        "farbfaecher" -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher)
-        // Dieselbe Regel wie beim Faecher: Der Steindeckel faerbt die KACHEL,
-        // nicht den Zustand. Neu bleibt blau, Gebraucht orange — zwei
-        // Farbsysteme nebeneinander duerfen sich nicht verwechseln lassen.
-        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe,
-            raster = Color(0xFFE4E8EF), gedaempft = Color(0xFF6A7280))
-        else -> ChartColors(ChartNewClassic, ChartUsedClassic)
-    }
+    else diagrammFarben(theme, dunkel, colors)
     // Dunkle Systemfarben unter einem Design ohne dunkle Fassung: die dunklen
     // Statusfarben von classic, sonst stünde Dunkelgrün auf dunklem Grund.
     val statusFarben = if (dynamisch && dunkel && !hatDunkleFassung(theme)) statusFarbenFuer("classic", true)

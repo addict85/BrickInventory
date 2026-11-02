@@ -51,7 +51,9 @@ fun PortfolioChart(
     // links und unten richtet sich unten nach der gemessenen Beschriftung.
     val achsenStil = MaterialTheme.typography.labelSmall.copy(color = mutedColor)
 
-    Card(Modifier.fillMaxWidth()) {
+    // Die Fläche der übrigen Karten: Auf dem grauen Kartenton der Vorgabe hätte die
+    // Achsenschrift weniger Kontrast als überall sonst.
+    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(Abstaende.gross)) {
 
             // Header
@@ -121,18 +123,25 @@ fun PortfolioChart(
                                     Offset((xd+3f).coerceAtMost(padL+iw), y), 0.8f)
                                 xd += 6f
                             }
-                            // Y label right-aligned
+                            // Rechtsbündig und nie unter die Grundlinie: Die unterste
+                            // Beschriftung ragte sonst in die Zeile der Daten darunter.
                             val m = yMasse[i]
-                            drawText(m, topLeft = Offset(padL - m.size.width - 4f, y - m.size.height/2f))
+                            val oben = (y - m.size.height / 2f).coerceIn(0f, padT + ih - m.size.height)
+                            drawText(m, topLeft = Offset(padL - m.size.width - 4f, oben))
                         }
 
-                        // X labels from server (empty string = no label)
+                        // Die Daten unter der Fläche, nie links neben ihr: Die erste steht
+                        // bündig am Anfang, die letzte am Ende, damit keine in die Spalte
+                        // der Beträge links ragt.
                         points.forEachIndexed { i, p ->
                             if (p.xLabel.isEmpty()) return@forEachIndexed
                             val m = measurer.measure(p.xLabel, achsenStil)
-                            drawText(m, topLeft = Offset(
-                                (xOf(i) - m.size.width/2f).coerceIn(0f, w - m.size.width.toFloat()),
-                                h - padB + 5f))
+                            val links = when (i) {
+                                0 -> padL
+                                n - 1 -> padL + iw - m.size.width
+                                else -> xOf(i) - m.size.width / 2f
+                            }.coerceIn(padL, (w - m.size.width).coerceAtLeast(padL))
+                            drawText(m, topLeft = Offset(links, h - padB + 5f))
                         }
 
                         // Gradient fill
