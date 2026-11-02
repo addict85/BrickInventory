@@ -438,6 +438,7 @@ router.post('/zweiter-faktor/codes', requireLogin, async (req, res: Antwort<'POS
 router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res: Antwort<'DELETE /api/v1/auth/users/:id/zweiter-faktor'>) => {
   const id = parseInt(pfadParam(req, 'id'));
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
   if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
   await zf.schalteAb(id);
   await protokolliere(angemeldeteNutzerId(req), id, 'zweiter_faktor_entfernt');

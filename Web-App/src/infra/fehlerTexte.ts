@@ -87,6 +87,8 @@ export const FEHLER = {
   benutzer_nicht_gefunden:     { de: 'Benutzer nicht gefunden', en: 'User not found' },
   eigenes_konto_deaktivieren:  { de: 'Das eigene Konto lässt sich nicht deaktivieren.',
                                  en: 'You cannot deactivate your own account.' },
+  eigener_zweiter_faktor:      { de: 'Den eigenen zweiten Faktor unter Sicherheit mit Code abschalten.',
+                                 en: 'Turn off your own second factor under Security, with a code.' },
   benutzer_nicht_gefunden_oder_eigenes: { de: 'Benutzer nicht gefunden oder eigener Account',
                                  en: 'User not found, or it is your own account' },
 

@@ -712,7 +712,7 @@ export async function loadUsers(){
         ${nutzerKnopf(u, 'bs', 'toggleAktiv', u.is_active === false ? 'ok' : 'pause',
             u.is_active === false ? 'users.action.activate' : 'users.action.deactivate',
             u.is_active === false ? 'users.action.activate_title' : 'users.action.deactivate_title', u.is_active === false ? 0 : 1)}
-        ${u.zweiter_faktor ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
+        ${u.zweiter_faktor && u.id !== ME?.id ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
         ${nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username)}
       </div></td></tr>`).join('')
   }</tbody></table></div>`;

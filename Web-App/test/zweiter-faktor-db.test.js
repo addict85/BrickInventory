@@ -17,6 +17,8 @@
  *      „alter Code gilt nicht mehr"
  *   I  (01.11.) /zweiter-faktor/bestaetigen wieder direkt über zf.bestaetigeEinrichtung →
  *      rot: „Einrichtungscode beliebig oft ratbar"
+ *   J  (02.11.) in DELETE /users/:id/zweiter-faktor die Prüfung aufs eigene Konto
+ *      entfernt → rot: „eigener Faktor nur mit Passwort entfernt"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -71,8 +73,8 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
 
   const NAME = `zf_${process.pid}`, PASS = 'richtigesPasswort1';
-  const SPERRE = `zf_sperre_${process.pid}`, BREMSE = `zf_bremse_${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE, BREMSE]]);
+  const SPERRE = `zf_sperre_${process.pid}`, BREMSE = `zf_bremse_${process.pid}`, VERWALTER = `zf_verw_${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE, BREMSE, VERWALTER]]);
   for (const n of [NAME, SPERRE, BREMSE])
     await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)',
       [n, await bcrypt.hash(PASS, 4)]);
@@ -190,8 +192,30 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     for (let i = 0; i < 5; i++) await ruf('/zweiter-faktor/bestaetigen', { code: String(300000 + i) }, tB);
     const spaet = await ruf('/zweiter-faktor/bestaetigen', { code: await codeFuer(BREMSE) }, tB);
     assert.equal(spaet.status, 429, `Einrichtungscode beliebig oft ratbar: ${spaet.status}`);
+
+    // Der Notausgang des Verwalters gilt nur fremden Konten: Für das eigene
+    // genügte sonst eine offene Sitzung samt Passwort, ganz ohne Code.
+    await db.run('INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
+      [VERWALTER, await bcrypt.hash(PASS, 4)]);
+    await einrichten(VERWALTER);
+    const sitzung = await fetch(`${basis}/login`, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ username: VERWALTER, password: PASS, code: await codeFuer(VERWALTER), ohne_token: true }) });
+    assert.equal(sitzung.status, 200);
+    const keks = (sitzung.headers.get('set-cookie') || '').split(';')[0];
+    const idV = (await db.get('SELECT id FROM users WHERE username = $1', [VERWALTER])).id;
+    const idS = (await db.get('SELECT id FROM users WHERE username = $1', [SPERRE])).id;
+    const entfernen = async (id) => {
+      const r = await fetch(`${basis}/users/${id}/zweiter-faktor`, { method: 'DELETE',
+        headers: { 'content-type': 'application/json', cookie: keks }, body: JSON.stringify({ admin_password: PASS }) });
+      return { status: r.status, body: await r.json().catch(() => null) };
+    };
+    const eigen = await entfernen(idV);
+    assert.deepEqual([eigen.status, eigen.body?.code], [400, 'eigener_zweiter_faktor'], 'eigener Faktor nur mit Passwort entfernt');
+    assert.equal(await zf.istAktiv(idV), true);
+    assert.equal((await entfernen(idS)).status, 200, 'fremder Faktor lässt sich nicht mehr entfernen');
+    assert.equal(await zf.istAktiv(idS), false);
   } finally {
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE, BREMSE]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SPERRE, BREMSE, VERWALTER]]).catch(() => {});
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%zf_%${process.pid}%`]).catch(() => {});
     await db.pool.end().catch(() => {});
   }
