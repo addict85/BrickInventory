@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Tablet hat den Umschalter
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 1c032df..9000581 100644
+index b44358a..9b92c38 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -212,7 +212,7 @@ fun MainScaffold(
-                         }
-                     }
+@@ -135,7 +135,7 @@ fun MainScaffold(
+                         actionIconContentColor = if (isBrick) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                     ),
                  )
 -                if (art == Navigationsart.LEISTE_UNTEN && currentDest?.route?.let { it in SAMMLUNG } == true) {
 +                if (currentDest?.route?.let { it in SAMMLUNG } == true) {
