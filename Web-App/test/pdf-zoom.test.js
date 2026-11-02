@@ -142,9 +142,11 @@ async function werkbank(umbau) {
   // ausdruecklich freigegeben werden — so laesst sich der Fall bauen, in dem
   // waehrend eines laufenden Renders gezoomt wird.
   const offeneRender = [];
+  const optionen = [];
   let anhalten = false;
   w.pdfjsLib = {
-    getDocument() {
+    getDocument(o) {
+      optionen.push(o);
       return { promise: Promise.resolve({
         numPages: SEITEN,
         getPage() { return Promise.resolve({
@@ -173,7 +175,7 @@ async function werkbank(umbau) {
   await warte(40);
 
   return {
-    w, behaelter, aktionen, warte, beobachtet, offeneRender,
+    w, behaelter, aktionen, warte, beobachtet, offeneRender, optionen,
     set anhalten(v) { anhalten = v; },
     set sichtbar(v) { sichtbareSeiten = new Set(v); },
     faktor: () => parseFloat(w.document.getElementById('pdf-viewer-zoom').textContent) / 100,
@@ -185,6 +187,15 @@ async function werkbank(umbau) {
     }
   };
 }
+
+// Gegenprobe (02.11.2026 gemessen): isEvalSupported in 12-pdfviewer.js
+// gestrichen → rot.
+test('PDF.js lädt ohne eval und ohne Skripte im PDF', async () => {
+  const b = await werkbank();
+  assert.equal(b.optionen.length, 1);
+  assert.equal(b.optionen[0].isEvalSupported, false);
+  assert.equal(b.optionen[0].enableScripting, false);
+});
 
 test('Zoom im PDF-Betrachter', async (t) => {
 

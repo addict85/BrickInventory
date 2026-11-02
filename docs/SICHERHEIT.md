@@ -225,6 +225,9 @@ den Commits, nicht hier.
   in `compose.yaml` (`docker-compose`); npm und Gradle über Renovate
   (`renovate.json` im Wurzelverzeichnis).
 - `npm ci` aus dem Lockfile; `npm audit --omit=dev` (web-ci.yml).
+- PDF.js lädt ohne eval (`isEvalSupported: false`) und ohne Skripte im PDF;
+  die ausgelieferten Dateien enthalten weder `eval(` noch `new Function(` —
+  `pdf-zoom`, `pdfjs-fassung`.
 - PDF.js als `pdfjs-dist` mit exakter Fassung; `public/vendor/pdfjs/` ist eine
   beim Bauen geschriebene, byte-gleiche Kopie — `pdfjs-fassung`. Als
   devDependency fehlt es in `npm audit --omit=dev`; web-ci.yml prüft es
