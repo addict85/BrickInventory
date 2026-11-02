@@ -38,7 +38,7 @@
     <string name="settings_language_de">German</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
-    <string name="login_title">Sign in</string>
+    <string name="login_title">Welcome back</string>
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
@@ -126,7 +126,7 @@
     <string name="gallery_stat_parts">Parts</string>
     <string name="gallery_stat_minifigs">Minifigures</string>
     <string name="gallery_stat_instructions">Instructions</string>
-    <string name="gallery_search_placeholder">Search sets…</string>
+    <string name="gallery_search_placeholder">Search…</string>
     <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
@@ -154,9 +154,9 @@
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
     <string name="minifigs_stat_types">Types</string>
-    <string name="minifigs_stat_total">Total</string>
+    <string name="minifigs_stat_total">Figures in total</string>
     <string name="minifigs_stat_manual">Manual</string>
-    <string name="minifigs_search_placeholder">Search minifigures…</string>
+    <string name="minifigs_search_placeholder">Search…</string>
     <string name="minifigs_manual_section">Manually added minifigures</string>
     <string name="minifigs_sets_section">From sets</string>
     <string name="minifigs_none">No minifigures</string>
@@ -272,9 +272,9 @@
         <item quantity="one">%1$d purchase price in another currency not included</item>
         <item quantity="other">%1$d purchase prices in another currency not included</item>
     </plurals>
-    <string name="finance_avg_label">Ø sets</string>
-    <string name="finance_min_label">Min</string>
-    <string name="finance_max_label">Max</string>
+    <string name="finance_avg_label">All at average price</string>
+    <string name="finance_min_label">All at lowest price</string>
+    <string name="finance_max_label">All at highest price</string>
     <string name="finance_filter_all">All</string>
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Parts</string>
@@ -293,7 +293,7 @@
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Types</string>
     <string name="parts_stat_colors">Colors</string>
-    <string name="parts_stat_total">Total</string>
+    <string name="parts_stat_total">Pieces in total</string>
     <string name="parts_manual_section">Manually added parts</string>
     <string name="parts_sets_section">From sets</string>
     <string name="parts_none">No parts</string>
@@ -388,7 +388,6 @@
     <string name="main_barcode_year">Year</string>
     <string name="main_barcode_pieces">Pieces</string>
     <string name="main_barcode_figs">Minifigures</string>
-    <string name="main_account">Account</string>
     <string name="main_menu_monitoring">Background work</string>
     <string name="main_menu_logout">Log out</string>
     <string name="main_menu_change_server">Change server</string>
@@ -398,7 +397,7 @@
     <string name="vm_barcode_not_found">No set found for barcode %1$s</string>
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
-    <string name="parts_search_placeholder">Search parts…</string>
+    <string name="parts_search_placeholder">Search…</string>
     <string name="parts_spare_tag">Spare</string>
     <!-- Detail dialog for parts/minifigs FROM SETS: no market price,
          quantity read-only, instead the sets that use it. -->
@@ -500,7 +499,7 @@
     </plurals>
     <!-- Katalog -->
     <string name="nav_catalog">Catalog</string>
-    <string name="catalog_search_placeholder">Set number / name…</string>
+    <string name="catalog_search_placeholder">Number or name…</string>
     <string name="catalog_filter_theme">Theme</string>
     <string name="catalog_filter_year">Year</string>
     <string name="catalog_all_themes">All themes</string>
@@ -572,7 +571,6 @@
     <string name="cd_search_clear">Clear search</string>
     <string name="cd_password_show">Show password</string>
     <string name="cd_password_hide">Hide password</string>
-    <string name="cd_set_menu">More actions for this set</string>
     <string name="cd_qty_increase">Increase quantity</string>
     <string name="cd_qty_decrease">Decrease quantity</string>
     <string name="cd_edit_cache_ttl">Edit cache duration</string>
@@ -785,7 +783,7 @@
     <string name="nav_wanted">Wanted</string>
     <string name="wanted_add_title">Add a wanted item</string>
     <string name="wanted_add_submit">Add to wanted list</string>
-    <string name="wanted_search">Search the wanted list…</string>
+    <string name="wanted_search">Search…</string>
     <string name="wanted_no_results">No wanted items found</string>
     <string name="wanted_empty">Your wanted list is empty</string>
     <string name="wanted_owned">Already owned</string>
@@ -829,7 +827,6 @@
     <string name="vouchers_pick_pdf">Choose PDF</string>
     <string name="vouchers_pdf_chosen">File selected</string>
     <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.</string>
-    <string name="vouchers_pdf_open">Open PDF</string>
     <string name="vouchers_export">Export all vouchers as PDF</string>
     <string name="vouchers_pin_show">Show PIN</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
@@ -842,7 +839,6 @@
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
-    <string name="vouchers_balance_one">Query balance</string>
     <!-- Alle Platzhalter sind %s und nicht %d, auch wo Zahlen eingesetzt
          werden: Android-Lint meldet „%d followed by words" als
          PluralsCandidate, und der Baum zaehlt die Lint-Befunde. Gezaehlt wird
@@ -916,11 +912,22 @@
     <string name="common_retry">Try again</string>
     <string name="common_no_results">Nothing found</string>
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
+    <string name="cd_set_delete">Delete %1$s</string>
+    <string name="settings_hell_fest">This design is always dark; light and dark have no effect here.</string>
+    <string name="vouchers_cd_delete">Delete voucher %1$s</string>
+    <string name="vouchers_cd_edit">Edit voucher %1$s</string>
+    <string name="vouchers_cd_pdf">Open PDF of voucher %1$s</string>
+    <string name="vouchers_cd_balance">Check balance of voucher %1$s</string>
+    <string name="vouchers_cd_copy_pin">Copy PIN of voucher %1$s</string>
+    <string name="vouchers_cd_copy_number">Copy number %1$s</string>
+    <string name="nav_group_account">Account and app</string>
+    <string name="nav_group_tools">Tools</string>
+    <string name="detail_pnl_tile">Gain/loss</string>
     <string name="chart_change_max">%1$s overall</string>
     <string name="chart_change_year">%1$s this year</string>
     <string name="chart_change_month">%1$s this month</string>
     <string name="chart_change_week">%1$s this week</string>
-    <string name="finance_range_label">Sets at lowest and highest market price</string>
+    <string name="finance_range_label">Value of your sets today, from lowest to highest market price</string>
     <string name="wanted_add_first">Add a set to the list</string>
     <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
     <string name="fehler_anmeldung_text">Your session has expired.</string>

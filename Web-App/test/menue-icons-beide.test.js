@@ -67,8 +67,8 @@ const lies = p => fs.readFileSync(p, 'utf8');
  * App, `sinnbild` das, was beide zeigen sollen, und `glyph`/`vektor` die
  * vereinbarten Zeichen.
  *
- * Einstellungen und Monitoring stehen in der App IM Menü, in der Webapp als
- * REITER. Sie sind trotzdem hier, denn Marcos Frage gilt dem, was man oben
+ * Einstellungen und Monitoring stehen in der App auf der Seite „Mehr“, in der
+ * Webapp als REITER. Sie sind trotzdem hier, denn Marcos Frage gilt dem, was man oben
  * rechts sieht — und ein Zahnrad soll in beiden Oberflächen ein Zahnrad sein.
  */
 const ZUORDNUNG = [
@@ -89,6 +89,7 @@ const NUR_WEB = {
 };
 const NUR_APP = {
   'nav_comparison': 'In der Webapp ein eigener Reiter; die untere Leiste der App hat nur Platz für fünf.',
+  'nav_partslist': 'In der Webapp ein eigener Reiter; in der App steht die Bauliste auf „Mehr“.',
 };
 
 /** Webapp: Schlüssel → Symbol-ID jedes Menüeintrags, aus dem Markup. */
@@ -103,18 +104,13 @@ function webMenue() {
   }));
 }
 
-/** App: R.string-Schlüssel → Symbol, in der Reihenfolge der Klappe. */
+/** App: R.string-Schlüssel → Symbol, in der Reihenfolge der Seite „Mehr“. */
 function appMenue() {
-  const kt = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'MainScaffold.kt'))
-    .split('DropdownMenu(showLogoutMenu')[1];
-  assert.ok(kt, 'Die Konto-Klappe ist nicht mehr zu finden.');
-  const aus = [...kt.matchAll(/MenuZiel\(R\.string\.(\w+),\s*([\w.]+)\)/g)]
+  const kt = lies(path.join(APP, 'java', 'ch', 'brickinventoryapp', 'MehrBildschirm.kt'))
+    .split('fun MehrBildschirm(')[1];
+  assert.ok(kt, 'Die Seite „Mehr“ ist nicht mehr zu finden.');
+  return [...kt.matchAll(/MehrEintrag\(R\.string\.(\w+),\s*([\w.]+)[,)]/g)]
     .map(m => ({ schluessel: m[1], symbol: m[2] }));
-  // Die drei älteren Einträge sind ausgeschriebene DropdownMenuItem.
-  for (const m of kt.matchAll(/stringResource\(R\.string\.(\w+)\)\)\s*\}[\s\S]{0,900}?leadingIcon\s*=\s*\{\s*Icon\(([\w.]+),/g)) {
-    aus.push({ schluessel: m[1], symbol: m[2] });
-  }
-  return aus;
 }
 
 test('jeder Menüeintrag ist zugeordnet — auf beiden Seiten', () => {
@@ -122,7 +118,7 @@ test('jeder Menüeintrag ist zugeordnet — auf beiden Seiten', () => {
   const app = appMenue();
   // Selbstbeweis: Findet die Ableitung nichts, wären die Schleifen still grün.
   assert.equal(web.length, 10, `${web.length} Web-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
-  assert.equal(app.length, 10, `${app.length} App-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
+  assert.equal(app.length, 11, `${app.length} App-Einträge abgeleitet statt elf — greift die Ableitung noch?`);
 
   const webZu = new Set(ZUORDNUNG.map(z => z.web));
   const appZu = new Set(ZUORDNUNG.map(z => z.app));

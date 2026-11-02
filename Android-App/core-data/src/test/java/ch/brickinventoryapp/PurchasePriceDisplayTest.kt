@@ -102,40 +102,15 @@ class PurchasePriceDisplayTest {
 
     @Test
     fun `die Marktpreis-Karte wiederholt die Wert-Kacheln nicht`() {
-        // ── Marcos Befund ───────────────────────────────────────────────────
-        // „Der blau markierte Wert in der Android-App auf der Detailseite kann
-        // entfernt werden. Dieser bietet keinen Mehrwert."
-        //
-        // Im Stein-Design steht der Marktpreis schon in der Kachel oben und der
-        // Kaufpreis in der daneben. Die grosse Zeile in der Marktpreis-Karte
-        // wiederholte beide — und ihre Prozentangabe stammte aus dem
-        // GESAMTvergleich, während die Zeilen darunter je Zustand rechnen. Bei
-        // einem Set mit einem neuen und einem gebrauchten Exemplar standen so
-        // drei Prozentzahlen untereinander, von denen die oberste eine andere
-        // Frage beantwortete als die beiden darunter.
-        //
-        // Geprüft wird die REGEL, nicht das Aussehen: Wo die Kacheln stehen,
-        // steht die Zeile nicht. Im klassischen Design gibt es die Kacheln
-        // nicht — dort bleibt sie, sonst verschwände der Marktpreis von der
-        // Seite. Genau diese Kopplung soll nicht unbemerkt verlorengehen.
-        // SetDetailScreen.kt wurde aufgeteilt; die Kacheln und Karten stehen
-        // in SetDetailSections.kt. Beide zusammen sind die Detailansicht.
+        // Markt-, Kaufpreis und G&V stehen in jedem Design in den Wert-Kacheln oben. Eine
+        // grosse Preiszeile in der Marktpreis-Karte wiederholte sie, mit einer
+        // Prozentangabe aus dem Gesamtvergleich über den Zeilen je Zustand. Beide
+        // Detailseiten (Set und manueller Eintrag) halten sich gleich daran.
         val d = code(read("ui/screens/SetDetailScreen.kt") + "\n" + read("ui/screens/SetDetailSections.kt"))
-        assert(d.contains("val zeigeGrossePreiszeile = !isBrick")) {
-            "Die grosse Preiszeile hängt nicht mehr am Design — entweder wiederholt sie " +
-                "die Kacheln wieder, oder sie ist im klassischen Design mit verschwunden"
-        }
-        // Die Kacheln selbst müssen es bleiben, sonst zeigt das Stein-Design
-        // gar keinen Marktpreis mehr.
-        assert(d.contains("BrickStatTile(")) { "Die Wert-Kacheln fehlen" }
-
-        // Die Zwillingsansicht für Teile und Minifiguren kommt seit jeher ohne
-        // diese Zeile aus — sie geht direkt zu den Zeilen je Zustand. Beide
-        // Detailseiten sollen sich gleich verhalten.
         val m = code(read("ui/screens/ManualItemDetailScreen.kt"))
-        assert(!m.contains("headlineSmall")) {
-            "Die Ansicht für manuelle Einträge hat eine grosse Preiszeile bekommen — " +
-                "dann laufen die beiden Detailseiten wieder auseinander"
+        for ((name, src) in listOf("Set-Detail" to d, "manueller Eintrag" to m)) {
+            assert(src.contains("WertKacheln(")) { "$name: Die Wert-Kacheln fehlen" }
+            assert(!src.contains("headlineSmall")) { "$name: wieder eine grosse Preiszeile neben den Kacheln" }
         }
     }
 }

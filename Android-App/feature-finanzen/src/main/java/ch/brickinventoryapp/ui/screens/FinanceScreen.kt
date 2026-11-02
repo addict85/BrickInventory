@@ -58,8 +58,19 @@ fun FinanceScreen(
     val historyLoading = financeState.historyLoading
     val historyPeriod = financeState.historyPeriod
     val historyPeriodChangePct = financeState.historyPeriodChangePct
-    val historyPoints = financeState.historyPoints
-    val historyYAxis = financeState.historyYAxis
+    // Achsen in der Sprache der Anzeige: Die Konfiguration ist der Schlüssel, damit ein
+    // Sprachwechsel neu formatiert, ohne neu zu laden.
+    val konfig = androidx.compose.ui.platform.LocalConfiguration.current
+    val zahlen = remember(konfig) {
+        ch.brickinventoryapp.util.zahlenLocale(konfig.locales[0], java.util.Locale.getDefault())
+    }
+    val historyPoints = remember(financeState.historyPoints, financeState.historyTage, zahlen) {
+        lokaleAchse(financeState.historyPoints, financeState.historyTage, zahlen)
+    }
+    val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen) {
+        val w = financeState.historyWaehrung ?: valuation?.currency
+        if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen)
+    }
     val partsValuation = financeState.partsValuation
     val figsValuation = financeState.figsValuation
     val pnl = financeState.pnl
@@ -116,34 +127,22 @@ fun FinanceScreen(
     val showFigs  = financeState.zeigt("figs")
 
     PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
-        LazyColumn(
-            state = listState,
-            contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten.
-            // Er gilt für ALLE Zahlen dieses Reiters: Kurve, Kacheln, Sets,
-            // Teile und Minifiguren entstehen aus derselben ID-Liste.
+      BoxWithConstraints(Modifier.fillMaxSize()) {
+        val rand = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel)
+        val abstand = Arrangement.spacedBy(10.dp)
+        // Überblick: Kontofilter, Verlauf, Kopfkachel und Summe.
+        val ueberblick: androidx.compose.foundation.lazy.LazyListScope.(mitSumme: Boolean) -> Unit = { mitSumme ->
+            // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten. Er gilt für
+            // ALLE Zahlen dieses Reiters: Kurve, Kacheln, Sets, Teile und Minifiguren.
             if (householdMembers.size > 1) {
                 item {
                     // Rechtsbündig, nur in diesem Reiter: Galerie, Teile und Minifiguren bleiben
-                    // linksbündig, weil dort Suchfeld und Filterleiste daneben stehen. Der Chip
-                    // füllt die Zeile nicht, also entscheidet die Row: `Arrangement.End` schiebt
-                    // ihn nach rechts, fillMaxWidth gibt der Ausrichtung den Spielraum.
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        ScopeFilterChip(
-                            members = householdMembers,
-                            current = scopeMode,
-                            onSelect = onScopeChange,
-                        )
+                    // linksbündig, weil dort Suchfeld und Filterleiste daneben stehen.
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        ScopeFilterChip(members = householdMembers, current = scopeMode, onSelect = onScopeChange)
                     }
                 }
             }
-
-            // Portfolio chart
             item {
                 PortfolioChart(
                     points = historyPoints, yAxis = historyYAxis,
@@ -152,9 +151,11 @@ fun FinanceScreen(
                     onPeriodChange = onPeriodChange
                 )
             }
-
-            // Totals hero card
             financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+            if (mitSumme) financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+        }
+        // Die Zeilen: Filter, Sets, Teile, Minifiguren.
+        val zeilen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             financeCategoryFilter(
                 aktive = kategorien,
                 onUmschalten = { vm.finanzKategorieUmschalten(it) },
@@ -163,8 +164,25 @@ fun FinanceScreen(
             financeSetRows(valuation, showSets, serverUrl, imageLoader, ::fmtWert, onSetClick)
             financePartRows(partsValuation, showParts, serverUrl, imageLoader, ::fmtPrice, ::fmtWert, onManualClick)
             financeFigRows(figsValuation, showFigs, serverUrl, imageLoader, ::fmtPrice, ::fmtWert, onManualClick)
-            financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
         }
+        // Ab Tabletbreite zwei Spalten wie die Set-Detailseite: links der Überblick, rechts
+        // die Zeilen. Einspaltig lagen Betrag und Bezeichnung einer Zeile eine Armlänge auseinander.
+        if (zweiSpaltig(maxWidth.value)) {
+            Row(Modifier.fillMaxSize()) {
+                LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand, verticalArrangement = abstand) {
+                    ueberblick(true)
+                }
+                LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = listState, contentPadding = rand,
+                    verticalArrangement = abstand) { zeilen() }
+            }
+        } else {
+            LazyColumn(state = listState, contentPadding = rand, verticalArrangement = abstand) {
+                ueberblick(false)
+                zeilen()
+                financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+            }
+        }
+      }
     }
 }
 
@@ -256,11 +274,9 @@ fun SubtotalRow(label: String, value: String) {
 }
 
 @Composable
-fun PriceColumn(label: String, value: String) {
+fun PriceColumn(label: String, value: String, farbe: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimary)
-        Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimary)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = farbe)
+        Text(value, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium, color = farbe)
     }
 }

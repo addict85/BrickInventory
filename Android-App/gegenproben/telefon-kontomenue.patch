@@ -1,0 +1,29 @@
+Gegenprobe: Kontosymbol wieder in der App-Leiste
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Telefon navigiert ohne Schublade
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
+index b44358a..56595c4 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
+@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
+ import androidx.compose.foundation.layout.Arrangement
+ import androidx.compose.foundation.layout.Column
+ import androidx.compose.material3.*
++import androidx.compose.material.icons.filled.AccountCircle
+ import androidx.compose.runtime.*
+ import androidx.compose.ui.Alignment
+ import androidx.compose.ui.Modifier
+@@ -134,6 +135,11 @@ fun MainScaffold(
+                         titleContentColor = if (isBrick) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+                         actionIconContentColor = if (isBrick) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                     ),
++                    actions = {
++                        IconButton(onClick = {}) {
++                            Icon(androidx.compose.material.icons.Icons.Default.AccountCircle, stringResource(R.string.konto_title))
++                        }
++                    },
+                 )
+                 if (art == Navigationsart.LEISTE_UNTEN && currentDest?.route?.let { it in SAMMLUNG } == true) {
+                     SammlungUmschalter(currentDest?.route, onWahl = { ziel ->

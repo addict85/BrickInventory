@@ -12,6 +12,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -58,7 +59,6 @@ import ch.brickinventoryapp.ui.PriceChartMath
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.LocalChartColors
-import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
@@ -345,5 +345,53 @@ fun PriceStatCell(label: String, value: String) {
         Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
         Text(label, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * Marktwert, Kaufpreis und G&V oben auf jeder Detailseite, in jedem Design: Die Frage
+ * „was ist es wert?“ beantwortet die Seite zuerst. Bei grosser Schrift untereinander,
+ * damit kein Betrag zeichenweise umbricht.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = Modifier) {
+    val farben = MaterialTheme.colorScheme
+    val brick = LocalIsBrickTheme.current
+    val dekor = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current
+    val status = LocalStatusFarben.current
+    FlowRow(
+        modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        maxItemsInEachRow = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 1 else 3,
+    ) {
+        WertKachel(stringResource(R.string.detail_section_market), markt,
+            if (brick) Petrol else farben.primaryContainer, if (brick) Color.White else farben.onPrimaryContainer,
+            Modifier.weight(1f))
+        WertKachel(stringResource(R.string.detail_purchase_price), kauf,
+            if (brick) dekor.schiefer else farben.surfaceContainerHigh, if (brick) dekor.aufSchiefer else farben.onSurface,
+            Modifier.weight(1f))
+        // Die Statusfarben halten 4,5:1 nur auf surface — deshalb diese Fläche mit Rand.
+        WertKachel(stringResource(R.string.detail_pnl_tile), pnl?.let { fmtProzent(it) } ?: "—",
+            farben.surface,
+            when { pnl == null -> farben.onSurfaceVariant; pnl < 0 -> status.fehler; else -> status.erfolg },
+            Modifier.weight(1f), rand = farben.outline)
+    }
+}
+
+/** Eine Kachel der Wertreihe: Bezeichnung klein, Betrag gross. */
+@Composable
+private fun WertKachel(label: String, wert: String, flaeche: Color, schrift: Color, modifier: Modifier = Modifier, rand: Color? = null) {
+    Column(
+        modifier
+            .clip(Formen.leiste)
+            .background(flaeche)
+            .then(if (rand != null) Modifier.border(1.dp, rand, Formen.leiste) else Modifier)
+            .padding(Abstaende.mittel)
+            .semantics(mergeDescendants = true) {},
+    ) {
+        Text(label, color = schrift, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(wert, color = schrift, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
     }
 }

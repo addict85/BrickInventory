@@ -4,7 +4,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Refresh
@@ -71,6 +74,12 @@ fun GutscheineCard(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
     SettingsCard(title = stringResource(R.string.vouchers_title), icon = Icons.Default.Redeem) {
+      BoxWithConstraints {
+        // Ab Tabletbreite Liste links, Formular rechts wie die Set-Detailseite: untereinander
+        // stand das Formular auf voller Breite unter einer langen Liste.
+        val breit = maxWidth >= 720.dp
+        val spalte = Arrangement.spacedBy(Abstaende.klein)
+        val liste: @Composable ColumnScope.() -> Unit = {
 
         // ── Guthaben aller Karten abfragen ──
         //
@@ -182,8 +191,8 @@ fun GutscheineCard(
                 wertGewicht = FontWeight.Bold)
         }
 
-        HorizontalDivider(Modifier.padding(vertical = Abstaende.mittel))
-
+        }
+        val formular: @Composable ColumnScope.() -> Unit = {
         Text(
             stringResource(if (zustand.bearbeitet != null) R.string.vouchers_edit else R.string.vouchers_add),
             style = MaterialTheme.typography.labelSmall,
@@ -274,6 +283,16 @@ fun GutscheineCard(
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
         }
+        }
+        if (breit) Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
+            Column(Modifier.weight(1f), verticalArrangement = spalte, content = liste)
+            Column(Modifier.weight(1f), verticalArrangement = spalte, content = formular)
+        } else Column(verticalArrangement = spalte) {
+            liste()
+            HorizontalDivider(Modifier.padding(vertical = Abstaende.mittel))
+            formular()
+        }
+      }
     }
 }
 
@@ -302,17 +321,13 @@ private fun GutscheinZeile(
     Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein),
            verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
         // Antippen kopiert Nummer oder PIN — die rohe Nummer, weil ein Bezahlfeld die
-        // Vierergruppen nicht annimmt. `clickable` auf dem Text statt eines eigenen Knopfs
-        // je Zeile; die Fläche geht über die volle Breite.
-        Text(
-            inVierergruppen(g.number),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(role = Role.Button) { onKopieren(g.number, true) }
-                .padding(vertical = Abstaende.winzig),
-        )
+        // Vierergruppen nicht annimmt. Die ganze Zeile ist die Fläche (mindestens 48 dp
+        // hoch), das Kopiersymbol sagt, was ein Tipp tut.
+        val nummer = inVierergruppen(g.number)
+        KopierZeile(stringResource(R.string.vouchers_cd_copy_number, nummer), { onKopieren(g.number, true) }) {
+            Text(nummer, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f))
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 fmtMoney(g.amount, g.currency),
@@ -332,18 +347,16 @@ private fun GutscheinZeile(
             )
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.vouchers_pin) + ": " +
-                    (g.pin?.let { if (pinSichtbar) it else "••••" } ?: "–"),
-                style = MaterialTheme.typography.bodySmall,
-                // Der PIN ist auch VERDECKT antippbar: Kopieren heisst nicht
-                // ansehen, und wer ihn einfuegen will, muss ihn dafuer nicht
-                // erst aufdecken.
-                modifier = g.pin?.let { pin ->
-                    Modifier.clickable(role = Role.Button) { onKopieren(pin, false) }
-                            .padding(vertical = Abstaende.winzig)
-                } ?: Modifier,
-            )
+            val pinText = stringResource(R.string.vouchers_pin) + ": " +
+                (g.pin?.let { if (pinSichtbar) it else "••••" } ?: "–")
+            // Der PIN ist auch VERDECKT antippbar: Kopieren heisst nicht ansehen, und wer
+            // ihn einfügen will, muss ihn dafür nicht erst aufdecken.
+            val pin = g.pin
+            if (pin != null) {
+                KopierZeile(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(pin, false) }) {
+                    Text(pinText, style = MaterialTheme.typography.bodySmall)
+                }
+            } else Text(pinText, style = MaterialTheme.typography.bodySmall)
             // Ohne `Modifier.size(...)`: IconButton bringt von sich aus
             // 48 dp Antippflaeche mit (minimumInteractiveComponentSize). Sie
             // kleiner zu zeichnen waere ein Eintrag in TouchTargetSizeTest —
@@ -353,7 +366,6 @@ private fun GutscheinZeile(
                     Icon(
                         if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                         stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show),
-                        Modifier.size(18.dp),
                     )
                 }
             } else Spacer(Modifier.size(LEERE_STELLE))
@@ -367,11 +379,9 @@ private fun GutscheinZeile(
                 // Beschriftung innerhalb von zehn Zeilen findet.
                 IconButton(onClick = onGuthaben, enabled = !guthabenLaeuft) {
                     if (guthabenLaeuft) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     } else {
-                        Icon(Icons.Default.Refresh,
-                             stringResource(R.string.vouchers_balance_one),
-                             Modifier.size(18.dp))
+                        Icon(Icons.Default.Refresh, stringResource(R.string.vouchers_cd_balance, nummer))
                     }
                 }
             } else Spacer(Modifier.size(LEERE_STELLE))
@@ -379,15 +389,14 @@ private fun GutscheinZeile(
             // jeder Zeile an derselben Stelle.
             if (g.hatPdf) {
                 IconButton(onClick = onPdfOeffnen) {
-                    Icon(Icons.Default.PictureAsPdf, stringResource(R.string.vouchers_pdf_open),
-                         Modifier.size(18.dp))
+                    Icon(Icons.Default.PictureAsPdf, stringResource(R.string.vouchers_cd_pdf, nummer))
                 }
             } else Spacer(Modifier.size(LEERE_STELLE))
             IconButton(onClick = onBearbeiten) {
-                Icon(Icons.Default.Edit, stringResource(R.string.common_edit), Modifier.size(18.dp))
+                Icon(Icons.Default.Edit, stringResource(R.string.vouchers_cd_edit, nummer))
             }
             IconButton(onClick = { loeschFrage = true }) {
-                Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(18.dp))
+                Icon(Icons.Default.Delete, stringResource(R.string.vouchers_cd_delete, nummer))
             }
         }
     }
@@ -410,6 +419,25 @@ private fun GutscheinZeile(
                 }
             },
         )
+    }
+}
+
+/**
+ * Eine antippbare Zeile, die etwas kopiert: mindestens 48 dp hoch, mit sichtbarem
+ * Kopiersymbol am Ende. Die Beschreibung nennt, WAS kopiert wird.
+ */
+@Composable
+private fun KopierZeile(beschreibung: String, onKopieren: () -> Unit, inhalt: @Composable RowScope.() -> Unit) {
+    Row(
+        Modifier.heightIn(min = 48.dp)
+            .clickable(role = Role.Button, onClickLabel = beschreibung, onClick = onKopieren)
+            .semantics(mergeDescendants = true) { contentDescription = beschreibung }
+            .padding(end = Abstaende.klein),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+    ) {
+        inhalt()
+        Icon(Icons.Default.ContentCopy, null, tint = MaterialTheme.colorScheme.primary)
     }
 }
 

@@ -173,13 +173,16 @@ fun GalleryScreen(
         Column(Modifier.fillMaxSize()) {
 
             // Suche und ein Knopf für alles andere: Konto, Lagerort, Thema und
-            // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster.
-            SucheMitFilter(
+            // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster. Scannen
+            // sitzt daneben, damit unten nur EIN Knopf schwebt. Im Fehlerzustand nicht:
+            // Ohne Sammlung gibt es nichts zu suchen.
+            if (anzeige != GalerieAnzeige.FEHLER) SucheMitFilter(
                 wert = searchInput,
                 onWert = { searchInput = it; onQueryChange(it) },
                 platzhalter = stringResource(R.string.gallery_search_placeholder),
                 aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme, sort),
                 onFilter = { zeigeFilter = true },
+                onScannen = onScanBarcode,
             )
 
             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
@@ -188,7 +191,7 @@ fun GalleryScreen(
             PullToRefreshBox(isRefreshing = isLoading && anzeige == GalerieAnzeige.LISTE, onRefresh = onRefresh,
                              modifier = Modifier.fillMaxSize()) {
                 when (anzeige) {
-                    GalerieAnzeige.LAEDT -> SkelettRaster(GridCells.Adaptive(160.dp), kachelHoehe = 272.dp)
+                    GalerieAnzeige.LAEDT -> SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 272.dp)
                     // Fehler und leere Sammlung sehen verschieden aus und bieten
                     // Verschiedenes an: hier den Grund und einen neuen Versuch.
                     GalerieAnzeige.FEHLER -> GalerieHinweis {
@@ -209,7 +212,7 @@ fun GalleryScreen(
                             Text(stringResource(R.string.gallery_add_first))
                         }
                         OutlinedButton(onClick = onScanBarcode, shape = Formen.knopf) {
-                            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(18.dp))
+                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.gallery_scan_barcode))
                         }
@@ -221,9 +224,10 @@ fun GalleryScreen(
                         Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
                     }
                     GalerieAnzeige.LISTE -> LazyVerticalGrid(
-                        columns = GridCells.Adaptive(160.dp),
+                        columns = ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp),
                         state = gridState,
-                        contentPadding = PaddingValues(Abstaende.mittel),
+                        contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
+                            bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -254,28 +258,12 @@ fun GalleryScreen(
             }
         }
 
-        // Erfassen und Scannen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört
-        // der Blick dem Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
-        if (anzeige != GalerieAnzeige.FEHLER) Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = Abstaende.gross, bottom = Abstaende.gross),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            SmallFloatingActionButton(
-                onClick = onScanBarcode,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                shape = Formen.leiste
-            ) { Icon(Icons.Default.QrCodeScanner, stringResource(R.string.gallery_scan_barcode)) }
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
-                contentColor = if (LocalIsBrickTheme.current) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
-                shape = Formen.fab
-            ) { Icon(Icons.Default.Add, stringResource(R.string.gallery_add_set)) }
-        }
+        // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
+        // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
+        if (anzeige != GalerieAnzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+            stringResource(R.string.gallery_add_set), { showAddDialog = true },
+            Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+        )
     }
 
     if (zeigeFilter) {
@@ -393,7 +381,6 @@ fun SetCard(
     preis: KachelPreis? = null,
     waehrung: String = "EUR",
 ) {
-    var showMenu by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
     // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
@@ -429,10 +416,12 @@ fun SetCard(
                 // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im
                 // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
                 // daneben gezeichnet, weil die Card sie abschnitte.
-                if (isBrick) BrickStudCap(
-                    mass = NoppenMass.Stein,
-                    verlauf = SteinKantenVerlauf,
-                )
+                // Auf der schmalen Telefonkachel eine schlankere Kante: 22 dp nahmen dort dem Bild
+                // sichtbar Platz; ab Tabletbreite die volle Höhe wie im Web.
+                if (isBrick) BoxWithConstraints {
+                    BrickStudCap(mass = NoppenMass.Stein, verlauf = SteinKantenVerlauf,
+                        height = if (maxWidth < 240.dp) 12.dp else null)
+                }
                 // Der Steindeckel des Designs "noppe" — Position modulo sechs,
                 // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
                 // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
@@ -503,22 +492,14 @@ fun SetCard(
                                     style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                             }
                         }
-                        Box {
-                            // Im Glanz-Design auf eigener Fläche, damit ⋮ auf jedem Bild lesbar bleibt.
-                            IconButton(onClick = { showMenu = true },
-                                modifier = if (istGlanz) Modifier.padding(Abstaende.haar)
-                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)
-                                    else Modifier) {
-                                Icon(Icons.Default.MoreVert, stringResource(R.string.cd_set_menu), Modifier.size(20.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            DropdownMenu(showMenu, { showMenu = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error) },
-                                    onClick = { showMenu = false; deleting = true },
-                                    leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
-                                )
-                            }
+                        // Ein Menü mit nur „Löschen“ war ein Tipp zu viel: direkt der Knopf, die
+                        // Rückfrage danach bleibt. In jedem Design auf eigener runder Fläche,
+                        // damit das Symbol auf jedem Bild lesbar ist.
+                        IconButton(onClick = { deleting = true },
+                            modifier = Modifier.padding(Abstaende.haar)
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)) {
+                            Icon(Icons.Default.DeleteOutline, stringResource(R.string.cd_set_delete, set.name ?: set.setNumber),
+                                Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

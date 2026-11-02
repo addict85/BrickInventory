@@ -57,7 +57,6 @@ import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.runtime.mutableIntStateOf
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.theme.BrickStatTile
 import ch.brickinventoryapp.ui.theme.Petrol
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -216,74 +215,25 @@ fun LazyListScope.setDetailInstructionsSection(
         }
 }
 
-/** Marktpreis, Kaufpreis, Gewinn/Verlust und der Preisverlauf. */
 /**
- * `fmtPrice`, `fmtDate` und `serverUrl` kommen als Parameter aus
- * SetDetailScreen(), damit die Währung an einer Stelle aufgelöst wird.
+ * Marktpreis je Zustand und Verlauf. Die grosse Preiszeile steht nicht mehr hier: Markt-,
+ * Kaufpreis und G&V stehen in jedem Design in den Wert-Kacheln oben, eine Zeile hier
+ * wiederholte sie mit einer Prozentangabe aus dem Gesamtvergleich über den Zeilen je Zustand.
  */
-fun LazyListScope.setDetailPriceSection(set: SetAnsicht, detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, pnlPct: Double?, currency: String, isBrick: Boolean, fmtPrice: (Double?) -> String) {
-    // ── Price section ──────────────────────────────────────────────────
+fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: String) {
     if (price != null && !price.noPrice || detailState.setPriceLoading) {
         item {
             SectionCard(title = stringResource(R.string.detail_section_market)) {
                 if (detailState.setPriceLoading && price == null) {
                     PreisLaedtZeile()
                 } else if (price != null && !price.noPrice) {
-                    // Die grosse Preiszeile nur ohne die Wert-Kacheln: Im Stein-Design stehen
-                    // Markt- und Kaufpreis schon in den Kacheln oben, und ihre Prozentangabe
-                    // (Gesamtvergleich) stünde über den Zeilen je Zustand. Im klassischen Design
-                    // gibt es die Kacheln nicht, dort bleibt sie.
-                    val zeigeGrossePreiszeile = !isBrick
-                    if (zeigeGrossePreiszeile) {
-                        Text(
-                            fmtPrice(price.avgPrice ?: price.qtyAvgPrice),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        val pct = pnlPct
-                        if (pct != null) {
-                            Spacer(Modifier.height(Abstaende.winzig))
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                                PnlBadge(pct)
-                                // Mengengewichtet über die Erfassungen — dieselbe Grösse, gegen die
-                                // die Prozentangabe daneben rechnet.
-                                val shownPurchase = set.anzeigeKaufpreis
-                                if (shownPurchase != null) {
-                                    Text(
-                                        stringResource(R.string.finance_purchase_short, fmtPrice(shownPurchase)),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // ── Marktpreis je Zustand ────────────────────────
-                    // Wer ein Exemplar neu und eines gebraucht besitzt,
-                    // braucht beide Zahlen — der Server liefert je
-                    // Zustand eine Zeile, aber nur dort, wo auch ein
-                    // Kaufpreis erfasst ist.
-                    // Je Zustand nur, wenn es mehr sagt als die grosse Zeile: Bei einem einzigen
-                    // Zustand stand derselbe Preis samt Prozent sonst gleich darunter noch einmal.
+                    // Je Zustand eine Zeile — wer ein Exemplar neu und eines gebraucht
+                    // besitzt, braucht beide Zahlen.
                     history?.byCondition?.let { byCond ->
-                        if (byCond.present().size > 1 || (byCond.present().isNotEmpty() && !zeigeGrossePreiszeile)) {
-                            // Trennlinie nur, wenn oben etwas steht,
-                            // von dem zu trennen wäre.
-                            if (zeigeGrossePreiszeile) {
-                                Spacer(Modifier.height(Abstaende.klein))
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                Spacer(Modifier.height(Abstaende.winzig))
-                            }
-                            MarketPriceByCondition(byCond, currency)
-                        }
+                        if (byCond.present().isNotEmpty()) MarketPriceByCondition(byCond, currency)
                     }
-
-                    // ── Verlauf: eine Linie je Zustand ──
-                    //
-                    // Preis und Verlauf sind zwei Abrufe; der Hinweis verhindert, dass das Diagramm
-                    // später kommentarlos in die Karte springt.
+                    // Preis und Verlauf sind zwei Abrufe; der Hinweis verhindert, dass das
+                    // Diagramm später kommentarlos in die Karte springt.
                     val chart = history?.chart
                     if (chart != null && chart.values.isNotEmpty()) {
                         Spacer(Modifier.height(Abstaende.klein))
@@ -296,7 +246,6 @@ fun LazyListScope.setDetailPriceSection(set: SetAnsicht, detailState: SetDetailU
             }
         }
     }
-
 }
 
 /** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
@@ -405,36 +354,17 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
 
 }
 
-/** Die prominenten Wert-Kacheln des Stein-Designs. */
-fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, isBrick: Boolean, fmtPrice: (Double?) -> String) {
-    // ── Stein-Design: prominente Wert-Kacheln (wie im Mockup) ──────────
-    if (isBrick) {
-        item {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                BrickStatTile(
-                    label = stringResource(R.string.detail_section_market),
-                    // avg_price zuerst: Marktpreis ist seit der Preisumstellung der
-                    // einfache Schnitt, nicht der mengengewichtete (der liegt darunter).
-                    value = fmtPrice(price?.avgPrice ?: price?.qtyAvgPrice),
-                    container = Petrol,
-                    onContainer = Color.White,
-                    modifier = Modifier.weight(1f)
-                )
-                BrickStatTile(
-                    label = stringResource(R.string.detail_purchase_price),
-                    // Mengengewichtet, wie in der Webapp.
-                    value = fmtPrice(set.anzeigeKaufpreis),
-                    container = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.schiefer,
-                    onContainer = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.aufSchiefer,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
+/** Wert-Kacheln über den Angaben — in jedem Design (WertKacheln, core-ui). */
+fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPreisAnsicht?, pnlPct: Double?, fmtPrice: (Double?) -> String) {
+    item(key = "wertkacheln") {
+        WertKacheln(
+            // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
+            markt = fmtPrice(price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }),
+            kauf = fmtPrice(set.anzeigeKaufpreis),
+            pnl = pnlPct,
+            modifier = Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel),
+        )
     }
-
 }
 
 /** Kennzahl-Chips: Jahr, Teile, Minifiguren, Thema. */

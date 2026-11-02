@@ -4,10 +4,10 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: leere Merkliste
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
-index 93ab16f..35df309 100644
+index df3c45f..8dfb792 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
-@@ -167,7 +167,7 @@ fun MerklisteScreen(
+@@ -176,7 +176,7 @@ fun MerklisteScreen(
                          Button(onClick = { maskeOffen = true }, shape = Formen.knopf) {
                              Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                              Spacer(Modifier.width(Abstaende.klein))
@@ -15,4 +15,4 @@ index 93ab16f..35df309 100644
 +                            Text(stringResource(R.string.wanted_add_title))
                          }
                          OutlinedButton(onClick = { onScan() }, shape = Formen.knopf) {
-                             Icon(Icons.Default.QrCodeScanner, null, Modifier.size(18.dp))
+                             Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))

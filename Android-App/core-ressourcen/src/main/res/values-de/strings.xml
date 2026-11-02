@@ -22,7 +22,7 @@
     <string name="settings_language_de">Deutsch</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
-    <string name="login_title">Anmelden</string>
+    <string name="login_title">Willkommen zurück</string>
     <string name="login_username">Benutzername</string>
     <string name="login_password">Passwort</string>
     <string name="login_button">Anmelden</string>
@@ -87,7 +87,7 @@
     <string name="scanner_torch_on">Licht ein</string>
     <string name="scanner_camera_needed">Kamerazugriff benötigt</string>
     <string name="scanner_allow">Erlauben</string>
-    <string name="scanner_close">Schließen</string>
+    <string name="scanner_close">Schliessen</string>
 
     <!-- ══════════════ Setup screen ══════════════ -->
     <string name="setup_invalid_qr">Ungültiger QR-Code — bitte BrickInventory QR-Code verwenden</string>
@@ -110,7 +110,7 @@
     <string name="gallery_stat_parts">Teile</string>
     <string name="gallery_stat_minifigs">Minifiguren</string>
     <string name="gallery_stat_instructions">Anleitungen</string>
-    <string name="gallery_search_placeholder">Sets suchen…</string>
+    <string name="gallery_search_placeholder">Suchen…</string>
     <string name="gallery_all">Alle</string>
     <string name="gallery_no_sets">Keine Sets vorhanden</string>
     <string name="gallery_empty_hint">Erfasse dein erstes Set über die Setnummer oder scanne den Barcode auf der Schachtel.</string>
@@ -138,9 +138,9 @@
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
     <string name="minifigs_stat_types">Typen</string>
-    <string name="minifigs_stat_total">Gesamt</string>
+    <string name="minifigs_stat_total">Figuren gesamt</string>
     <string name="minifigs_stat_manual">Manuell</string>
-    <string name="minifigs_search_placeholder">Minifiguren suchen…</string>
+    <string name="minifigs_search_placeholder">Suchen…</string>
     <string name="minifigs_manual_section">Manuell erfasste Minifiguren</string>
     <string name="minifigs_sets_section">Aus Sets</string>
     <string name="minifigs_none">Keine Minifiguren</string>
@@ -251,15 +251,15 @@
     <string name="finance_price_error">Preisfehler</string>
     <string name="finance_no_sets">Keine Sets</string>
     <string name="finance_load_prompt">→ Preise laden</string>
-    <string name="finance_total_pnl">%1$s ggü. Kaufpreis</string>
+    <string name="finance_total_pnl">%1$s gegenüber Kaufpreis</string>
     <string name="finance_parts_extra">davon Teile &amp; Minifiguren: %1$s</string>
     <plurals name="finance_fremde_waehrung">
         <item quantity="one">%1$d Kaufpreis in anderer Währung nicht eingerechnet</item>
         <item quantity="other">%1$d Kaufpreise in anderer Währung nicht eingerechnet</item>
     </plurals>
-    <string name="finance_avg_label">Ø Sets</string>
-    <string name="finance_min_label">Min.</string>
-    <string name="finance_max_label">Max.</string>
+    <string name="finance_avg_label">Alle zum Durchschnitt</string>
+    <string name="finance_min_label">Alle zum Tiefstpreis</string>
+    <string name="finance_max_label">Alle zum Höchstpreis</string>
     <string name="finance_filter_all">Alle</string>
     <string name="finance_filter_sets">Sets</string>
     <string name="finance_filter_parts">Teile</string>
@@ -278,7 +278,7 @@
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Typen</string>
     <string name="parts_stat_colors">Farben</string>
-    <string name="parts_stat_total">Gesamt</string>
+    <string name="parts_stat_total">Stück gesamt</string>
     <string name="parts_manual_section">Manuell erfasste Teile</string>
     <string name="parts_sets_section">Aus Sets</string>
     <string name="parts_none">Keine Teile</string>
@@ -371,7 +371,6 @@
     <string name="main_barcode_year">Jahr</string>
     <string name="main_barcode_pieces">Teile</string>
     <string name="main_barcode_figs">Minifiguren</string>
-    <string name="main_account">Konto</string>
     <string name="main_menu_monitoring">Hintergrundarbeiten</string>
     <string name="main_menu_logout">Abmelden</string>
     <string name="main_menu_change_server">Server ändern</string>
@@ -381,7 +380,7 @@
     <string name="vm_barcode_not_found">Kein Set für Barcode %1$s gefunden</string>
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
-    <string name="parts_search_placeholder">Teile suchen…</string>
+    <string name="parts_search_placeholder">Suchen…</string>
     <string name="parts_spare_tag">Ersatzteil</string>
     <string name="setitem_used_in">Verwendet in</string>
     <string name="setitem_used_in_none">In keinem Set gefunden</string>
@@ -491,7 +490,7 @@
     </plurals>
     <!-- Katalog -->
     <string name="nav_catalog">Katalog</string>
-    <string name="catalog_search_placeholder">Setnummer / Name…</string>
+    <string name="catalog_search_placeholder">Nummer oder Name…</string>
     <string name="catalog_filter_theme">Thema</string>
     <string name="catalog_filter_year">Jahr</string>
     <string name="catalog_all_themes">Alle Themen</string>
@@ -559,7 +558,6 @@
     <string name="cd_search_clear">Suche leeren</string>
     <string name="cd_password_show">Passwort anzeigen</string>
     <string name="cd_password_hide">Passwort verbergen</string>
-    <string name="cd_set_menu">Weitere Aktionen für dieses Set</string>
     <string name="cd_qty_increase">Menge erhöhen</string>
     <string name="cd_qty_decrease">Menge verringern</string>
     <string name="cd_edit_cache_ttl">Speicherdauer bearbeiten</string>
@@ -744,11 +742,11 @@
     <string name="update_title">Aktualisierung</string>
     <string name="update_check">Nach Update suchen</string>
     <string name="update_current">Aktuell (%1$s)</string>
-    <string name="update_dialog_title">Neue Fassung verfügbar</string>
-    <string name="update_dialog_text">Fassung %1$s liegt bereit. Installiert ist %2$s.</string>
+    <string name="update_dialog_title">Neue Version verfügbar</string>
+    <string name="update_dialog_text">Version %1$s liegt bereit. Installiert ist %2$s.</string>
     <string name="update_dialog_now">Jetzt aktualisieren</string>
     <string name="update_dialog_later">Später</string>
-    <string name="update_available">Fassung %1$s ist verfügbar</string>
+    <string name="update_available">Version %1$s ist verfügbar</string>
     <string name="update_installed">Installiert: %1$s</string>
     <string name="update_download">Herunterladen</string>
     <string name="update_downloading">Wird geladen … %1$d%%</string>
@@ -758,7 +756,7 @@
     <string name="update_pruefung_fehlgeschlagen">Die Suche nach einem Update ist fehlgeschlagen — keine Verbindung zu GitHub.</string>
     <string name="update_laden_fehlgeschlagen">Das Herunterladen ist fehlgeschlagen. Die halbe Datei wurde gelöscht.</string>
     <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schlüssel signiert wie diese und wurde gelöscht. Installiert wurde nichts.</string>
-    <string name="update_fassung_falsch">Die geladene App trägt eine andere Fassung als angekündigt und wurde gelöscht. Installiert wurde nichts.</string>
+    <string name="update_fassung_falsch">Die geladene App trägt eine andere Version als angekündigt und wurde gelöscht. Installiert wurde nichts.</string>
     <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
     <string name="update_installer_fehlt">Die Installation liess sich nicht starten.</string>
     <string name="update_installation_fehlgeschlagen">Die Installation ist gescheitert: %1$s</string>
@@ -771,7 +769,7 @@
     <string name="nav_wanted">Merkliste</string>
     <string name="wanted_add_title">Merkposten hinzufügen</string>
     <string name="wanted_add_submit">Auf die Merkliste</string>
-    <string name="wanted_search">Merkliste durchsuchen…</string>
+    <string name="wanted_search">Suchen…</string>
     <string name="wanted_no_results">Keine Merkposten gefunden</string>
     <string name="wanted_empty">Deine Merkliste ist leer</string>
     <string name="wanted_owned">Schon vorhanden</string>
@@ -815,7 +813,6 @@
     <string name="vouchers_pick_pdf">PDF wählen</string>
     <string name="vouchers_pdf_chosen">Datei gewählt</string>
     <string name="vouchers_pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</string>
-    <string name="vouchers_pdf_open">PDF öffnen</string>
     <string name="vouchers_export">Alle Gutscheine als PDF exportieren</string>
     <string name="vouchers_pin_show">PIN anzeigen</string>
     <string name="vouchers_pin_hide">PIN verbergen</string>
@@ -828,7 +825,6 @@
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
-    <string name="vouchers_balance_one">Guthaben abfragen</string>
     <string name="vouchers_balance_all">Guthaben aller Karten abfragen</string>
     <string name="vouchers_balance_progress">Karte %1$s von %2$s (%3$s)</string>
     <string name="vouchers_balance_wait">noch %1$s s bis zur nächsten Abfrage (%2$s)</string>
@@ -863,7 +859,7 @@
     </plurals>
     <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
     <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App nimmt nur dieses an.</string>
-    <string name="setup_altbestand_text">Gespeichert ist %1$s – eine unverschlüsselte Adresse. Diese Fassung verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.\n\nSo geht es weiter:\n1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und hier oben scannen.\n2. Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.\n\nDanach meldest du dich einmal neu an.</string>
+    <string name="setup_altbestand_text">Gespeichert ist %1$s – eine unverschlüsselte Adresse. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.\n\nSo geht es weiter:\n1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und hier oben scannen.\n2. Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.\n\nDanach meldest du dich einmal neu an.</string>
     <string name="setup_altbestand_titel">Nur noch verschlüsselte Verbindungen</string>
     <string name="setup_qr_klartext_abgelehnt">Dieser QR-Code nennt eine unverschlüsselte Adresse (http). Die App verbindet sich nur über https: Den Server auf https umstellen (README, „HTTPS mit eigener CA“) und den Code danach neu erzeugen.</string>
     <string name="setup_url_unlesbar">Diese Adresse lässt sich nicht lesen. Beispiel: https://brick.fritz.box</string>
@@ -897,11 +893,22 @@
     <string name="common_retry">Erneut versuchen</string>
     <string name="common_no_results">Nichts gefunden</string>
     <string name="common_no_results_hint">Suche oder Filter lockern.</string>
+    <string name="cd_set_delete">%1$s löschen</string>
+    <string name="settings_hell_fest">Dieses Design ist immer dunkel; Hell und Dunkel wirken hier nicht.</string>
+    <string name="vouchers_cd_delete">Gutschein %1$s löschen</string>
+    <string name="vouchers_cd_edit">Gutschein %1$s bearbeiten</string>
+    <string name="vouchers_cd_pdf">PDF von Gutschein %1$s öffnen</string>
+    <string name="vouchers_cd_balance">Guthaben von Gutschein %1$s abfragen</string>
+    <string name="vouchers_cd_copy_pin">PIN von Gutschein %1$s kopieren</string>
+    <string name="vouchers_cd_copy_number">Nummer %1$s kopieren</string>
+    <string name="nav_group_account">Konto und App</string>
+    <string name="nav_group_tools">Werkzeuge</string>
+    <string name="detail_pnl_tile">Gewinn/Verlust</string>
     <string name="chart_change_max">%1$s insgesamt</string>
     <string name="chart_change_year">%1$s dieses Jahr</string>
     <string name="chart_change_month">%1$s diesen Monat</string>
     <string name="chart_change_week">%1$s diese Woche</string>
-    <string name="finance_range_label">Sets zum tiefsten und höchsten Marktpreis</string>
+    <string name="finance_range_label">Wert der Sets heute, vom tiefsten bis zum höchsten Marktpreis</string>
     <string name="wanted_add_first">Set merken</string>
     <string name="wanted_empty_hint">Merke dir Sets, die du noch kaufen willst. Die App zeigt ihren Marktpreis und meldet sich auf Wunsch, wenn er sich ändert.</string>
     <string name="fehler_anmeldung_text">Deine Sitzung ist abgelaufen.</string>

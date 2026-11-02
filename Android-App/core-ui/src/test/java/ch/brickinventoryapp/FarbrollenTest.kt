@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.ui.theme.farbschema
 import ch.brickinventoryapp.ui.theme.hatDunkleFassung
+import ch.brickinventoryapp.ui.theme.skelettTon
 import ch.brickinventoryapp.ui.theme.statusFarbenFuer
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -108,6 +109,26 @@ class FarbrollenTest {
             if (leise >= Kontrast.verhaeltnis(rahmen, s.surface.toArgb())) fehler += "$d.outlineVariant"
         }
         assertTrue("Zu schwache Rahmen: $fehler", fehler.isEmpty())
+    }
+
+    /**
+     * Das Ladeskelett (Skelett.kt) zeichnet skelettTon auf background.
+     * Gegenprobe (02.11.2026, thema.py): in skelettTon surfaceVariant zurückgegeben →
+     * rot „Ladekacheln heben sich …“ (classic 1,05, brick 1,03, farbfaecher 1,05, noppe 1,07).
+     */
+    @Test
+    fun `Ladekacheln heben sich vom Hintergrund ab`() {
+        val fehler = mutableListOf<String>()
+        for (f in fassungen) {
+            val k = Kontrast.verhaeltnis(skelettTon(f.schema).toArgb(), f.schema.background.toArgb())
+            if (k < SKELETT_KONTRAST) fehler += "${f.name} %.2f".format(k)
+        }
+        assertTrue("Ladekacheln zu blass: $fehler", fehler.isEmpty())
+    }
+
+    private companion object {
+        /** Keine Textgrenze, aber sichtbar: deutlich über den gemessenen 1,05:1. */
+        const val SKELETT_KONTRAST = 1.2
     }
 
     @Test

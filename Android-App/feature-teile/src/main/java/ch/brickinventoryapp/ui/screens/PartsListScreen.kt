@@ -199,11 +199,10 @@ fun PartsListScreen(
                             }
                         }
                     )
-                    FloatingActionButton(
-                        onClick = onScanBarcode,
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.size(48.dp)
-                    ) { Icon(Icons.Default.QrCodeScanner, stringResource(R.string.partslist_scan), Modifier.size(22.dp)) }
+                    // Derselbe Scan-Knopf wie neben jeder Suche; ein schwebender Knopf mitten
+                    // in einer Zeile sah aus wie der eine Hauptknopf des Bildschirms.
+                    ch.brickinventoryapp.ui.components.ScanKnopf(onScanBarcode,
+                        beschreibung = stringResource(R.string.partslist_scan))
                     Button(
                         onClick = { if (setInput.isNotBlank()) addSet(setInput) },
                         enabled = setInput.isNotBlank(),

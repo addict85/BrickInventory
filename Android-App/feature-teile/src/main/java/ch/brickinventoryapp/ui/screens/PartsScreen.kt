@@ -162,7 +162,11 @@ fun PartsScreen(
     Column(Modifier.fillMaxSize()) {
         // Suche und „Filter“: Konto, Lagerort, Ersatzteile, Farbe, Kategorie
         // und die Ansicht stehen im Blatt, die Kennzahlen rollen mit dem Raster.
-        SucheMitFilter(
+        val teileGefiltert = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
+            lagerModus, partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter) > 0
+        val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, partsState.partsFehler, teileGefiltert)
+        // Im Fehlerzustand weder Suche noch Filter — ohne Liste gibt es nichts zu suchen.
+        if (anzeige != Ladeanzeige.FEHLER) SucheMitFilter(
             wert = searchQuery,
             onWert = { searchQuery = it; onSearch(it) },
             platzhalter = stringResource(R.string.parts_search_placeholder),
@@ -172,11 +176,8 @@ fun PartsScreen(
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.teileOfflineStand)
-        val teileGefiltert = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
-            lagerModus, partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter) > 0
-        val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, partsState.partsFehler, teileGefiltert)
         if (anzeige == Ladeanzeige.LAEDT) {
-            SkelettRaster(GridCells.Adaptive(110.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
+            SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(110.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
             ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh, partsState.partsFehlerKlasse) }
         } else if (anzeige != Ladeanzeige.LISTE) {
@@ -195,8 +196,10 @@ fun PartsScreen(
             PullToRefreshBox(isRefreshing = isLoading && parts.isNotEmpty(), onRefresh = onRefresh) {
                 LazyVerticalGrid(
                     state = gridState,
-                    columns = GridCells.Adaptive(110.dp),
-                    contentPadding = PaddingValues(Abstaende.mittel),
+                    columns = ch.brickinventoryapp.ui.components.LesbareSpalten(110.dp),
+                    // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
+                    contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
+                        end = Abstaende.mittel, bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
@@ -258,13 +261,10 @@ fun PartsScreen(
         }
     }
 
-        FloatingActionButton(
-            onClick = { showAddDialog = true },
-            containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = Formen.fab,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp)
-        ) { Icon(Icons.Default.Add, stringResource(R.string.parts_add)) }
+        ch.brickinventoryapp.ui.components.ErfassenFab(
+            stringResource(R.string.parts_add), { showAddDialog = true },
+            Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+        )
     }
 
     if (zeigeFilter) {
@@ -440,7 +440,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 Text(part.partName ?: stringResource(R.string.name_unknown),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
                 part.colorName?.let {
                     Text(it, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)

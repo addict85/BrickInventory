@@ -1,0 +1,18 @@
+Gegenprobe: Finanzen auch auf dem Tablet einspaltig
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Finanzen stehen auf dem Tablet
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt
+index f959433..0b28219 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/FinanceScreen.kt
+@@ -167,7 +167,7 @@ fun FinanceScreen(
+         }
+         // Ab Tabletbreite zwei Spalten wie die Set-Detailseite: links der Überblick, rechts
+         // die Zeilen. Einspaltig lagen Betrag und Bezeichnung einer Zeile eine Armlänge auseinander.
+-        if (zweiSpaltig(maxWidth.value)) {
++        if (false && zweiSpaltig(maxWidth.value)) {
+             Row(Modifier.fillMaxSize()) {
+                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand, verticalArrangement = abstand) {
+                     ueberblick(true)

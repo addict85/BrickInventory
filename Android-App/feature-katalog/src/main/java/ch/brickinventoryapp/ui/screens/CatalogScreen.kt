@@ -209,7 +209,7 @@ fun CatalogScreen(
             when {
                 // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
                 state.isLoading && state.total == 0 -> SkelettRaster(
-                    GridCells.Adaptive(160.dp), kachelHoehe = 200.dp,
+                    ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 200.dp,
                     innenabstand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
                                                  bottom = Abstaende.mittel, end = 30.dp),
                 )
@@ -229,7 +229,7 @@ fun CatalogScreen(
                 else -> Box(Modifier.fillMaxSize()) {
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = GridCells.Adaptive(160.dp),
+                        columns = ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp),
                         contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel, end = 30.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -474,10 +474,12 @@ fun CatalogSetCard(
                 // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im
                 // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
                 // daneben gezeichnet, weil die Card sie abschnitte.
-                if (isBrick) BrickStudCap(
-                    mass = NoppenMass.Stein,
-                    verlauf = SteinKantenVerlauf,
-                )
+                // Auf der schmalen Telefonkachel eine schlankere Kante: 22 dp nahmen dort dem Bild
+                // sichtbar Platz; ab Tabletbreite die volle Höhe wie im Web.
+                if (isBrick) BoxWithConstraints {
+                    BrickStudCap(mass = NoppenMass.Stein, verlauf = SteinKantenVerlauf,
+                        height = if (maxWidth < 240.dp) 12.dp else null)
+                }
                 // Der Steindeckel des Designs "noppe" — Position modulo sechs,
                 // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
                 // Bauform wie beim Stein-Design, nur hoeher und in wechselnder

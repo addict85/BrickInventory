@@ -60,6 +60,8 @@ fun SucheMitFilter(
     platzhalter: String,
     aktiveFilter: Int,
     onFilter: () -> Unit,
+    /** Scannen als Symbol neben dem Filter; null = kein Scanner auf diesem Bildschirm. */
+    onScannen: (() -> Unit)? = null,
 ) {
     // Auf dem Tablet nicht über die ganze Breite: Ein Suchfeld von 1900 px ist keines mehr.
     // Linksbündig wie Kennzahlen und Raster darunter, die ebenfalls links beginnen.
@@ -69,7 +71,8 @@ fun SucheMitFilter(
         val nurSymbol = maxWidth < 360.dp || ch.brickinventoryapp.ui.components.grosseSchrift()
         Row(verticalAlignment = Alignment.CenterVertically) {
             Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
-            FilterKnopf(aktiveFilter, onFilter, nurSymbol, Modifier.padding(end = 14.dp))
+            FilterKnopf(aktiveFilter, onFilter, nurSymbol, Modifier.padding(end = if (onScannen != null) Abstaende.winzig else 14.dp))
+            if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen, Modifier.padding(end = 14.dp))
         }
     }
 }
@@ -77,6 +80,8 @@ fun SucheMitFilter(
 @Composable
 private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, modifier: Modifier = Modifier) {
     val zustand = if (aktiv > 0) pluralStringResource(R.plurals.filter_active, aktiv, aktiv) else ""
+    // outline statt der Vorgabe outlineVariant (1,1–1,2:1): Der Rand ist die Grenze des Knopfs.
+    val rand = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     BadgedBox(
         badge = { if (aktiv > 0) Badge { Text(aktiv.toString()) } },
         modifier = modifier,
@@ -85,6 +90,7 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, mod
             OutlinedIconButton(
                 onClick = onClick,
                 modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
+                border = rand,
             ) {
                 Icon(Icons.Default.FilterList, stringResource(R.string.filter_button))
             }
@@ -92,6 +98,7 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, mod
             onClick = onClick,
             shape = Formen.knopf,
             modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
+            border = rand,
         ) {
             Icon(Icons.Default.FilterList, null, Modifier.size(18.dp))
             Spacer(Modifier.width(Abstaende.winzig))
