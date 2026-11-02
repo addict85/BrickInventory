@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.BildHostWaechter
 import ch.brickinventoryapp.util.istErlaubterBildHost
+import ch.brickinventoryapp.util.istEigenerBildServer
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -32,6 +33,8 @@ import org.junit.Test
  *      `url.isHttps && url.port == 443` → rot „nur genau diese Hosts …“
  *   D  den Zweig `eigenerServer(r.url) -> r` entfernt → rot „der eigene Server
  *      bekommt die Anfrage unveraendert“ und beide Umleitungstests
+ *   E  istEigenerBildServer() ohne `entwicklung &&` → rot „localhost gilt nur
+ *      im Debug-Build als eigener Server“ (200 statt 403)
  */
 class BildHostWaechterTest {
 
@@ -112,5 +115,25 @@ class BildHostWaechterTest {
         assertFalse(istErlaubterBildHost("https://cdn.rebrickable.com:8443/a.png".toHttpUrl()))
         assertFalse(istErlaubterBildHost("https://x.cdn.rebrickable.com/a.png".toHttpUrl()))
         assertFalse(istErlaubterBildHost("https://cdn.rebrickable.com.evil.example/a.png".toHttpUrl()))
+    }
+
+    /** Derselbe Wächter, wie NetzModule ihn baut, im Release- und im Debug-Build. */
+    private fun mitRegel(entwicklung: Boolean) = OkHttpClient.Builder()
+        .addInterceptor(BildHostWaechter { istEigenerBildServer(it, "https://brick.example.org", entwicklung) })
+        .addInterceptor(cdnAttrappe)
+        .followRedirects(false)
+        .build()
+
+    @Test
+    fun `localhost gilt nur im Debug-Build als eigener Server`() {
+        val ziel = "http://localhost:${server.port}/images/a.jpg"
+        server.enqueue(MockResponse().setBody("bild"))
+        val release = mitRegel(entwicklung = false).newCall(Request.Builder().url(ziel).build()).execute().use { it.code }
+        assertEquals("Release-Build: localhost ist ein fremder Host", 403, release)
+        assertEquals(0, server.requestCount)
+        val debug = mitRegel(entwicklung = true).newCall(Request.Builder().url(ziel).build()).execute().use { it.code }
+        assertEquals(200, debug)
+        assertEquals(1, server.requestCount)
+        assertTrue(istEigenerBildServer("https://brick.example.org/images/a.jpg".toHttpUrl(), "https://brick.example.org", false))
     }
 }

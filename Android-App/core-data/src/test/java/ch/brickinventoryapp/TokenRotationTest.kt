@@ -1,6 +1,10 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.TokenSchranke
+import ch.brickinventoryapp.data.TokenStand
 import ch.brickinventoryapp.data.TokenTausch
+import ch.brickinventoryapp.data.Tauschergebnis
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.repository.KontoRepository
@@ -16,6 +20,7 @@ import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
@@ -38,6 +43,14 @@ import java.util.concurrent.TimeUnit
  *      rot „gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht“
  *      (Zeitüberschreitung: beide Plätze warten auf den Tausch, der Tausch auf
  *      einen Platz)
+ * Gegenproben (02.11.2026, gemessen mit kotlinc lokal):
+ *   D  in TokenTausch die Prüfung `stand() != vorher` vor der Wiederholung
+ *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (SPAETER)
+ *   E  im Wächter wieder die alte Regel (Kopf nur weg, wenn er der jetzige Token
+ *      ist) → rot „ein selbst gesetzter alter Token geht nach dem Serverwechsel …“
+ *   F  in KontoRepository.tokenRotieren() eine feste fremde Herkunft statt der
+ *      Anfrage-URL → rot „ein abgewiesener alter Token wird getauscht …“,
+ *      „gleichzeitig abgewiesene …“, „die Kopfzeile tauscht …“ (nichts gespeichert)
  */
 class TokenRotationTest {
 
@@ -46,12 +59,28 @@ class TokenRotationTest {
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-rot-${System.nanoTime()}")
     @Volatile private var gespeichert = "alt"
     @Volatile private var abgelaufen = 0
+    /** Gesetzt: Der Tausch antwortet so (etwa 503), statt zu tauschen. */
+    @Volatile private var rotationStumm: (() -> MockResponse)? = null
 
+    /** Gesetzt nach einem Serverwechsel im Test; sonst der Testserver. */
+    @Volatile private var umgezogen: String? = null
+    private fun adresse() = umgezogen ?: server.url("/").toString().trimEnd('/')
     private val lage = object : Zugangslage {
-        override fun serverUrl() = server.url("/").toString().trimEnd('/')
+        override fun serverUrl() = adresse()
         override fun token() = gespeichert
         override fun tokenHerkunft(): String? = null
     }
+    private val schranke = TokenSchranke()
+
+    /** Wie PreferencesManager.tokenStand(): ohne Bindung gilt die eingetragene Adresse. */
+    private fun stand() = TokenStand(gespeichert, NetworkPolicy.herkunft(adresse()), schranke.generation)
+
+    private fun tauschFuer(k: () -> KontoRepository, speichern: (String) -> Unit) = TokenTausch(
+        stand = { stand() },
+        ersetze = { vorher, neu, h -> schranke.ersetzeFalls(vorher, h, { stand() }) { speichern(neu) } },
+        rotiere = { k().tokenRotieren(it) },
+        pausen = listOf(50, 50, 50),
+    )
 
     init {
         server.dispatcher = object : Dispatcher() {
@@ -60,6 +89,7 @@ class TokenRotationTest {
                 val bearer = request.getHeader("Authorization")?.removePrefix("Bearer ")
                 ereignisse += "$pfad $bearer"
                 return when {
+                    pfad == "/api/v1/auth/token-rotieren" && rotationStumm != null -> rotationStumm!!.invoke()
                     pfad == "/api/v1/auth/token-rotieren" -> MockResponse().setBody(
                         """{"success":true,"token":"neu","token_info":{"scope":"app","never_expires":true,
                            "rotation_faellig":false},"alt_gueltig_bis":"2026-10-30T12:05:00Z","ueberlappung_sek":300}""")
@@ -75,17 +105,13 @@ class TokenRotationTest {
     }
 
     private lateinit var konto: KontoRepository
-    private val tausch = TokenTausch(
-        token = { gespeichert },
-        speichere = { ereignisse += "speichere $it"; gespeichert = it },
-        rotiere = { konto.tokenRotieren(it) },
-    )
+    private val tausch = tauschFuer({ konto }) { ereignisse += "speichere $it"; gespeichert = it }
     private val client = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = tausch))
         .readTimeout(2, TimeUnit.SECONDS).build()
 
     init {
-        konto = KontoRepository(Retrofit.Builder().baseUrl(server.url("/")).client(client)
+        konto = KontoRepository(Retrofit.Builder().baseUrl(ch.brickinventoryapp.di.PLATZHALTER_BASIS).client(client)
             .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
             .build().create(KontoApi::class.java), ResponseCache { dir })
     }
@@ -114,7 +140,7 @@ class TokenRotationTest {
     fun `gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht`() {
         val plaetze = okhttp3.Dispatcher().apply { maxRequestsPerHost = 2 }
         lateinit var k: KontoRepository
-        val t = TokenTausch(token = { gespeichert }, speichere = { gespeichert = it }, rotiere = { k.tokenRotieren(it) })
+        val t = tauschFuer({ k }) { gespeichert = it }
         val c = OkHttpClient.Builder().dispatcher(plaetze)
             .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = t))
             .readTimeout(2, TimeUnit.SECONDS).build()
@@ -141,5 +167,61 @@ class TokenRotationTest {
         Thread.sleep(100)
         assertEquals(1, ereignisse.count { it.startsWith("/api/v1/auth/token-rotieren") })
         assertEquals("speichere neu", ereignisse.last { it.startsWith("speichere") })
+    }
+
+    /**
+     * Die Antwort auf den Tausch geht verloren, und währenddessen wechselt die App den Server
+     * (saveServerUrl: Token weg, neue Adresse). Der alte Token darf den neuen
+     * Server nie erreichen — weder über eine Wiederholung noch im selbst gesetzten Kopf.
+     */
+    @Test
+    fun `ein Serverwechsel waehrend der Wiederholung schickt den alten Token nicht zum neuen Server`() {
+        val neuer = MockWebServer()
+        val dort: MutableList<String?> = Collections.synchronizedList(mutableListOf())
+        neuer.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                dort += request.getHeader("Authorization")
+                return MockResponse().setResponseCode(503)
+            }
+        }
+        neuer.start()
+        try {
+            rotationStumm = {
+                kotlinx.coroutines.runBlocking {
+                    schranke.schreibe { gespeichert = ""; umgezogen = neuer.url("/").toString().trimEnd('/') }
+                }
+                MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_AFTER_REQUEST)
+            }
+            val ergebnis = kotlinx.coroutines.runBlocking { tausch.tausche("alt") }
+            assertEquals(Tauschergebnis.VERWORFEN, ergebnis)
+            assertTrue(ereignisse.any { it.startsWith("/api/v1/auth/token-rotieren alt") })
+            assertEquals("Der neue Server sah: $dort", 0, dort.size)
+            assertEquals("", gespeichert)
+        } finally {
+            neuer.shutdown()
+        }
+    }
+
+    /** Dasselbe ohne die Prüfung im Tausch: Dann hält der Wächter den Kopf zurück. */
+    @Test
+    fun `ein selbst gesetzter alter Token geht nach dem Serverwechsel ohne Kopf hinaus`() {
+        val neuer = MockWebServer()
+        val dort: MutableList<String?> = Collections.synchronizedList(mutableListOf())
+        neuer.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                dort += request.getHeader("Authorization")
+                return MockResponse().setResponseCode(401).setBody("""{"success":false,"code":"token_ungueltig"}""")
+            }
+        }
+        neuer.start()
+        try {
+            gespeichert = ""
+            umgezogen = neuer.url("/").toString().trimEnd('/')
+            val r = kotlinx.coroutines.runBlocking { konto.tokenRotieren("alt") }
+            assertTrue(r is ch.brickinventoryapp.data.repository.Result.Error)
+            assertEquals(listOf<String?>(null), dort.toList())
+        } finally {
+            neuer.shutdown()
+        }
     }
 }

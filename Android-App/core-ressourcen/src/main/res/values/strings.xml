@@ -48,6 +48,8 @@
     <string name="login_passkey_statt_code">Use a passkey instead of the code</string>
     <string name="login_passkey_keiner">There is no passkey for this server on this device.</string>
     <string name="login_passkey_fehler">The passkey could not be requested.</string>
+    <string name="login_passkey_rpid_fehlt">The server did not say which domain the passkey belongs to. Cancelled for your security; sign in with your password.</string>
+    <string name="login_passkey_rpid_fremd">The server asks for a passkey for a domain other than %1$s. Cancelled for your security: check the server address or sign in with your password.</string>
     <string name="settings_nutzer_ca">Trust user-installed certificate authorities (risk)</string>
     <string name="settings_nutzer_ca_hint">Only for the connection to your server, never for updates. Risk: an authority installed by a user – for example by your employer or by malware – can issue certificates for any server and so read the traffic. Only turn this on if you installed the authority yourself for your server.</string>
     <string name="nutzer_ca_frage_titel">Trust user-installed authorities?</string>
@@ -435,6 +437,7 @@
     <string name="vm_set_added">%1$s added!</string>
     <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalog is reachable.</string>
     <string name="vm_error">Error: %1$s</string>
+    <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
     <string name="vm_session_expired">Session expired — please log in again</string>
     <string name="vm_rechte_entzogen">Your administrator rights no longer apply — the administration areas are hidden.</string>
 
@@ -892,21 +895,21 @@
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>
     <string name="zert_text_erstkontakt">This is the first encrypted connection to %1$s. Compare the fingerprint character by character with the one the web app shows under Settings → Server certificate. Only after your yes does the app remember it, and from then on it accepts only certificates that match it.</string>
-    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. That is why one tap is not enough here: copy the last 16 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier, it carries the fingerprint.</string>
-    <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the new fingerprint is shown only by the web app (Settings → Server certificate); copy its last 16 characters from there.</string>
+    <string name="zert_text_unbekannt">The certificate of %1$s was not issued by a known authority – it is self-issued or comes from your own authority. That is normal for a server at home, but it could also be someone in between. That is why one tap is not enough here: copy the last 24 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier, it carries the fingerprint.</string>
+    <string name="zert_text_geaendert">%1$s shows a different certificate than the one you confirmed. That happens when the server gets a new key – or when someone is listening in between. Nothing has been sent. Only accept it if you changed the server yourself: the new fingerprint is shown only by the web app (Settings → Server certificate); copy its last 24 characters from there.</string>
     <string name="zert_fingerabdruck">Fingerprint (SHA-256 of the public key)</string>
     <string name="zert_bisher">Previously confirmed</string>
     <string name="zert_vertrauen">Trust this certificate</string>
     <string name="zert_vertrauen_neu">Accept the new certificate</string>
     <string name="zert_nutzer_ca">Use an authority installed on this device instead</string>
-    <string name="zert_geaendert_eingabe">Last 16 characters of the new fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
+    <string name="zert_geaendert_eingabe">Last 24 characters of the new fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_geaendert_qr">Alternatively, scan a new QR code from the web app.</string>
-    <string name="zert_unbekannt_eingabe">Last 16 characters of the fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
+    <string name="zert_unbekannt_eingabe">Last 24 characters of the fingerprint, copied from the web app (Settings → Server certificate) or from your browser\'s certificate details (public key SHA-256)</string>
     <string name="zert_eingabe_falsch">That does not match this server\'s fingerprint.</string>
     <string name="zert_beginnt_mit">Fingerprint starts with (for orientation only)</string>
-    <string name="zert_text_nutzer_ca">The certificate of %1$s is valid only through an authority installed on this device. That may be your own – or one that someone with access to the device slipped in. That is why one tap is not enough here: copy the last 16 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier.</string>
+    <string name="zert_text_nutzer_ca">The certificate of %1$s is valid only through an authority installed on this device. That may be your own – or one that someone with access to the device slipped in. That is why one tap is not enough here: copy the last 24 characters of the fingerprint from the web app (Settings → Server certificate); this screen only shows its beginning. Scanning the web app\'s QR code is easier.</string>
     <string name="zert_titel_nutzer_ca">Certificate from an installed authority</string>
-    <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself – the web app then shows the new fingerprint under Settings → Server certificate; copy its last 16 characters below.</string>
+    <string name="setup_qr_pin_geaendert">This code names a different certificate than the one confirmed for this server. Continue only if you changed the server yourself – the web app then shows the new fingerprint under Settings → Server certificate; copy its last 24 characters below.</string>
     <string name="setup_qr_pin_uebernehmen">Accept the new certificate and log in</string>
     <string name="setup_qr_pin_wechsel_abgelehnt">The QR code names a different certificate than the confirmed one. Nothing was changed.</string>
     <string name="common_load_failed">Could not be loaded</string>

@@ -83,6 +83,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          # Der Bau führt Gradle-Plugins und Testcode aus; ein in .git/config
+          # abgelegter Token wäre für jeden davon lesbar. Gebraucht wird er nicht.
+          persist-credentials: false
 
       # JDK 17 — passt zu sourceCompatibility/targetCompatibility und jvmTarget
       # im app/build.gradle.kts. Verlangt AGP eine neuere Fassung, steht das

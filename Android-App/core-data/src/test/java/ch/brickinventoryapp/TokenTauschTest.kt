@@ -1,7 +1,11 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.data.GetauschterToken
+import ch.brickinventoryapp.data.TokenSchranke
+import ch.brickinventoryapp.data.TokenStand
 import ch.brickinventoryapp.data.TokenTausch
 import ch.brickinventoryapp.data.Tauschergebnis
+import ch.brickinventoryapp.data.anmeldungUeberfaellig
 import ch.brickinventoryapp.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Result
@@ -10,11 +14,15 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Der Tausch eines Tokens: speichern vor benutzen, nur einer zugleich, und bei
- * verlorener Antwort ein zweiter Versuch mit dem ALTEN Token.
+ * Der Tausch eines Tokens: speichern vor benutzen, nur einer zugleich, bei
+ * verlorener Antwort ein zweiter Versuch mit dem ALTEN Token — und nichts
+ * speichern, wenn inzwischen abgemeldet oder der Server gewechselt wurde. Die
+ * Ablage hier benutzt dieselbe [TokenSchranke] wie der PreferencesManager.
  *
  * Gegenproben (30.10.2026, gemessen):
  *   A  in TokenTausch `speichere(neu)` hinter das `return` verlegt (nicht
@@ -24,21 +32,51 @@ import org.junit.Test
  *   C  bei einem transienten Fehler sofort SPAETER statt erneut → rot „eine
  *      verlorene Antwort wird mit dem alten Token wiederholt“
  *   D  den 401-Zweig entfernt → rot „gilt der alte nicht mehr, muss neu gekoppelt werden“
+ * Gegenproben (02.11.2026, gemessen mit kotlinc lokal):
+ *   E  in tauscheGesperrt() die Prüfung `stand() != vorher` vor der Wiederholung
+ *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (der alte
+ *      Token ging noch dreimal hinaus)
+ *   F  in TokenSchranke.ersetzeFalls() `|| jetzt() != vorher` entfernt → rot
+ *      „Abmelden waehrend des Tauschs …“ und „… auch wenn derselbe Token zurueckkommt“
+ *   G  dort `anfrageHerkunft != vorher.herkunft` entfernt → rot „ein Token von
+ *      einer anderen Herkunft wird nicht gespeichert“
+ *   H  in TokenSchranke.schreibe() `generation++` entfernt → rot „… auch wenn
+ *      derselbe Token zurueckkommt“
+ *   I  anmeldungUeberfaellig() mit `TOKEN_HOECHSTDAUER_TAGE * 24 * 60 * 1000`
+ *      (Minuten statt Stunden) → rot „nach 180 Tagen ist die Anmeldung ueberfaellig …“
  */
 class TokenTauschTest {
 
     private class Welt {
         var gespeichert = "alt"
+        var herkunft: String? = HIER
+        var antwortHerkunft: String? = HIER
+        val schranke = TokenSchranke()
         val protokoll = mutableListOf<String>()
         var antworten: MutableList<Result<TokenRotation>> = mutableListOf()
         var bremse: CompletableDeferred<Unit>? = null
+        /** Läuft in jedem Aufruf des Servers, nach der Bremse. */
+        var beimRotieren: suspend () -> Unit = {}
+
+        fun stand() = TokenStand(gespeichert, herkunft, schranke.generation)
+
+        /** Wie PreferencesManager.clearSession() und saveServerUrl() mit anderem Server. */
+        suspend fun abmelden() = schranke.schreibe { gespeichert = ""; herkunft = null }
+        suspend fun anmelden(token: String, bei: String) = schranke.schreibe { gespeichert = token; herkunft = bei }
+
         val tausch = TokenTausch(
-            token = { gespeichert },
-            speichere = { protokoll += "speichere $it"; gespeichert = it },
+            stand = { stand() },
+            ersetze = { vorher, neu, h ->
+                schranke.ersetzeFalls(vorher, h, { stand() }) { protokoll += "speichere $neu"; gespeichert = neu; herkunft = h }
+            },
             rotiere = { alt ->
                 protokoll += "rotiere $alt"
                 bremse?.await()
-                antworten.removeFirstOrNull() ?: Result.Success(TokenRotation(success = true, token = "neu"))
+                beimRotieren()
+                when (val r = antworten.removeFirstOrNull() ?: Result.Success(TokenRotation(success = true, token = "neu"))) {
+                    is Result.Success -> Result.Success(GetauschterToken(r.data, antwortHerkunft))
+                    is Result.Error -> r
+                }
             },
             pausen = listOf(1, 1, 1),
         )
@@ -52,6 +90,7 @@ class TokenTauschTest {
         assertEquals(Tauschergebnis.GETAUSCHT, w.tausch.tausche("alt"))
         assertEquals(listOf("rotiere alt", "speichere neu"), w.protokoll)
         assertEquals("neu", w.gespeichert)
+        assertEquals(HIER, w.herkunft)
     }
 
     @Test
@@ -85,5 +124,59 @@ class TokenTauschTest {
         assertEquals(Tauschergebnis.SPAETER, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
         assertEquals(4, w.protokoll.count { it == "rotiere alt" })
+    }
+
+    @Test
+    fun `ein Serverwechsel waehrend der Wiederholung bricht den Tausch ab`() = runTest {
+        val w = Welt().apply { antworten = MutableList(10) { verloren } }
+        w.beimRotieren = { if (w.herkunft == HIER) w.abmelden() }
+        assertEquals(Tauschergebnis.VERWORFEN, w.tausch.tausche("alt"))
+        assertEquals("Der alte Token ging nach dem Wechsel nochmals hinaus", listOf("rotiere alt"), w.protokoll)
+        assertEquals("", w.gespeichert)
+    }
+
+    @Test
+    fun `Abmelden waehrend des Tauschs verwirft den neuen Token`() = runTest {
+        val w = Welt().apply { bremse = CompletableDeferred() }
+        val tausch = async { w.tausch.tausche("alt") }
+        repeat(5) { yield() }
+        w.abmelden()
+        w.bremse!!.complete(Unit)
+        assertEquals(Tauschergebnis.VERWORFEN, tausch.await())
+        assertEquals("Nach dem Abmelden ist niemand angemeldet", "", w.gespeichert)
+        assertFalse(w.protokoll.toString(), w.protokoll.any { it.startsWith("speichere") })
+        assertEquals(null, w.tausch.noetig("alt"))
+    }
+
+    @Test
+    fun `ein Tausch, der eine Abmeldung ueberdauert, speichert nicht, auch wenn derselbe Token zurueckkommt`() = runTest {
+        val w = Welt()
+        w.beimRotieren = { w.abmelden(); w.anmelden("alt", HIER) }
+        assertEquals(Tauschergebnis.VERWORFEN, w.tausch.tausche("alt"))
+        assertEquals("alt", w.gespeichert)
+    }
+
+    @Test
+    fun `ein Token von einer anderen Herkunft wird nicht gespeichert`() = runTest {
+        val w = Welt().apply { antwortHerkunft = "https://anders.example:443" }
+        assertEquals(Tauschergebnis.VERWORFEN, w.tausch.tausche("alt"))
+        assertEquals("alt", w.gespeichert)
+        w.antwortHerkunft = null
+        assertEquals(Tauschergebnis.VERWORFEN, w.tausch.tausche("alt"))
+        assertEquals("alt", w.gespeichert)
+    }
+
+    @Test
+    fun `nach 180 Tagen ist die Anmeldung ueberfaellig, vorher nicht`() {
+        val tag = 24L * 60 * 60 * 1000
+        val am = 1_700_000_000_000L
+        assertFalse(anmeldungUeberfaellig(am, am + 179 * tag))
+        assertFalse(anmeldungUeberfaellig(am, am + 180 * tag))
+        assertTrue(anmeldungUeberfaellig(am, am + 180 * tag + 1))
+        assertFalse("Eine zurückgestellte Uhr meldet nicht ab", anmeldungUeberfaellig(am, am - tag))
+    }
+
+    private companion object {
+        const val HIER = "https://brick.example:443"
     }
 }

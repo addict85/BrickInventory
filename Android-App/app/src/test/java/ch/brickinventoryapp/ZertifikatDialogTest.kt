@@ -59,14 +59,14 @@ class ZertifikatDialogTest {
     @Test
     fun `wer abtippt, sieht den abzutippenden Teil nicht`() {
         zeige(ZertifikatUngeklaert.Art.GEAENDERT, erwartet = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=")
-        assertEquals("Die letzten 16 Zeichen stehen da", 0, gezeigt(hex.takeLast(23)))
+        assertEquals("Die letzten 24 Zeichen stehen da", 0, gezeigt(hex.takeLast(35)))
         assertEquals("Der Anfang fehlt", 1, gezeigt(hex.take(11)))
     }
 
     @Test
     fun `ohne bekannte CA steht nur der Anfang da`() {
         zeige(ZertifikatUngeklaert.Art.UNBEKANNTE_CA)
-        assertEquals(0, gezeigt(hex.takeLast(23)))
+        assertEquals(0, gezeigt(hex.takeLast(35)))
         assertEquals(1, gezeigt(hex.take(11)))
     }
 
@@ -80,9 +80,9 @@ class ZertifikatDialogTest {
     @Test
     fun `ueber eine Nutzer-CA genuegt kein Tipp, die Eingabe ist blind`() {
         zeige(ZertifikatUngeklaert.Art.NUTZER_CA)
-        assertEquals(0, gezeigt(hex.takeLast(23)))
+        assertEquals(0, gezeigt(hex.takeLast(35)))
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsNotEnabled()
-        compose.onNode(hasSetTextAction()).performTextInput(hex.takeLast(23))
+        compose.onNode(hasSetTextAction()).performTextInput(hex.takeLast(35))
         compose.onNodeWithText(ctx.getString(R.string.zert_vertrauen)).assertIsEnabled()
     }
 }

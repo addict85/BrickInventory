@@ -151,7 +151,7 @@ object NetzModule {
             // Nur eigener Server und die Bild-CDNs (util/BildHosts.kt); Umleitungen prüft
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
             .addInterceptor(ch.brickinventoryapp.util.BildHostWaechter { url ->
-                url.host == "localhost" || NetworkPolicy.isSameOrigin(url, prefs.serverUrlState.value ?: "")
+                ch.brickinventoryapp.util.istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
             })
             .followRedirects(false)
             // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln verhungern: Dies ist

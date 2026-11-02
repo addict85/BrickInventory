@@ -72,7 +72,7 @@ fun istFingerabdruck(text: String?): Boolean =
 /**
  * Was der Dialog vor dem Abtippen zeigt: nur die ersten 8 Hex-Zeichen, zur
  * Orientierung, welche Zeile in der Webapp gemeint ist. Abgetippt werden die
- * letzten 16 ([bestaetigtFingerabdruck]); stünden sie hier, schriebe man sie vom
+ * letzten 24 ([bestaetigtFingerabdruck]); stünden sie hier, schriebe man sie vom
  * Bildschirm des Angreifers ab statt aus der zweiten Quelle.
  */
 fun fingerabdruckAnfang(fp: String): String = fingerabdruckLesbar(fp).take(11) + " …"
@@ -287,16 +287,19 @@ fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509
 
 /**
  * Hat jemand den Fingerabdruck aus einer zweiten Quelle abgeschrieben (Webapp,
- * Zertifikatsanzeige des Browsers)? Ganz oder mindestens die letzten 16
- * Hex-Zeichen: genug, dass kein passender fremder Schlüssel zu finden ist, und
- * kurz genug zum Tippen. Doppelpunkte, Leerzeichen und Gross-/Kleinschreibung
- * zählen nicht; Base64 wie im QR-Code nur vollständig.
+ * Zertifikatsanzeige des Browsers)? Ganz oder mindestens die letzten
+ * [FINGERABDRUCK_ABTIPPEN] Hex-Zeichen: 96 Bit — einen Schlüssel mit passendem
+ * Ende zu erzeugen, kostet auch mit viel Rechenzeit zu viel; 64 Bit lägen in
+ * Reichweite. Doppelpunkte, Leerzeichen und Gross-/Kleinschreibung zählen
+ * nicht; Base64 wie im QR-Code nur vollständig.
  */
+const val FINGERABDRUCK_ABTIPPEN = 24
+
 fun bestaetigtFingerabdruck(eingabe: String?, fp: String): Boolean {
     val roh = eingabe?.trim().orEmpty()
     if (roh.isEmpty()) return false
     if (roh == fp) return true
     val hex = fingerabdruckLesbar(fp).replace(":", "")
     val getippt = roh.uppercase().filter { it.isLetterOrDigit() }
-    return getippt.length >= 16 && getippt.all { it in "0123456789ABCDEF" } && hex.endsWith(getippt)
+    return getippt.length >= FINGERABDRUCK_ABTIPPEN && getippt.all { it in "0123456789ABCDEF" } && hex.endsWith(getippt)
 }

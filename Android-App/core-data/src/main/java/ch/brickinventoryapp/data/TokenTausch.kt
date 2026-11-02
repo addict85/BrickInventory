@@ -11,8 +11,55 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** Wie ein Tausch ausging. */
-enum class Tauschergebnis { GETAUSCHT, SCHON_GETAUSCHT, SPAETER, NEU_KOPPELN }
+/**
+ * Wie ein Tausch ausging. VERWORFEN: Während des Tauschs wurde abgemeldet, neu
+ * angemeldet oder der Server gewechselt; der neue Token gehört nicht mehr hierher.
+ */
+enum class Tauschergebnis { GETAUSCHT, SCHON_GETAUSCHT, SPAETER, NEU_KOPPELN, VERWORFEN }
+
+/** Was der Tausch vom Speicher sieht; [generation] zählt Anmelden, Abmelden und Serverwechsel. */
+data class TokenStand(val token: String, val herkunft: String?, val generation: Long)
+
+/** Der neue Token und die Herkunft der Anfrage, die ihn brachte (nach Umschreiben und Umleitung). */
+data class GetauschterToken(val rotation: TokenRotation, val herkunft: String?)
+
+/**
+ * Sperre und Generation für jede Schreibung des Tokens. Ein Tausch kann bis zu
+ * einer halben Minute wiederholen; speichert er danach blind, landet der Token
+ * des alten Kontos oder Servers in der neuen Sitzung. Darum speichert er nur,
+ * wenn Token, Herkunft und Generation noch dieselben sind — unter derselben
+ * Sperre, unter der Anmelden, Abmelden und Serverwechsel schreiben.
+ */
+class TokenSchranke {
+    private val sperre = Mutex()
+    @Volatile var generation: Long = 0
+        private set
+
+    /** Für Anmelden, Abmelden, Serverwechsel: [neueSitzung] beendet laufende Tausche. */
+    suspend fun <T> schreibe(neueSitzung: suspend () -> Boolean = { true }, block: suspend () -> T): T =
+        sperre.withLock {
+            if (neueSitzung()) generation++
+            block()
+        }
+
+    /** Schreibt nur, wenn [jetzt] noch [vorher] ist und der Token von dessen Herkunft kam. */
+    suspend fun ersetzeFalls(vorher: TokenStand, anfrageHerkunft: String?, jetzt: suspend () -> TokenStand,
+                             speichere: suspend () -> Unit): Boolean = sperre.withLock {
+        if (anfrageHerkunft == null || anfrageHerkunft != vorher.herkunft || jetzt() != vorher) return@withLock false
+        speichere()
+        true
+    }
+}
+
+/**
+ * Höchstdauer einer Anmeldung: Der Server kennt für App-Token nur die Gleitfrist
+ * (TOKEN_IDLE_DAYS), und Tausch und Nutzung verlängern sie ohne Ende. Danach meldet
+ * die App ab und entwertet den Token am Server; die Kette eines kopierten Tokens endet mit.
+ */
+const val TOKEN_HOECHSTDAUER_TAGE = 180L
+
+fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
+    jetzt - angemeldetAm > TOKEN_HOECHSTDAUER_TAGE * 24 * 60 * 60 * 1000
 
 /**
  * Tauscht den Token, wenn der Server es verlangt (Kopfzeile `X-Token-Rotation:
@@ -22,13 +69,13 @@ enum class Tauschergebnis { GETAUSCHT, SCHON_GETAUSCHT, SPAETER, NEU_KOPPELN }
  *
  * Nur ein Tausch zugleich (Sperre): Sehen mehrere Anfragen die Kopfzeile, tauscht
  * die erste; die übrigen finden danach einen anderen Token vor und tun nichts.
- * Geht die Antwort verloren, gilt der alte Token serverseitig noch 5 min — so
- * lange wird mit ihm erneut getauscht, danach hilft nur neues Koppeln.
+ * Geht die Antwort verloren, wird mit dem alten Token wiederholt — aber nur,
+ * solange die Sitzung dieselbe ist ([TokenSchranke]).
  */
 class TokenTausch(
-    private val token: suspend () -> String,
-    private val speichere: suspend (String) -> Unit,
-    private val rotiere: suspend (alterToken: String) -> Result<TokenRotation>,
+    private val stand: suspend () -> TokenStand,
+    private val ersetze: suspend (vorher: TokenStand, neu: String, anfrageHerkunft: String?) -> Boolean,
+    private val rotiere: suspend (alterToken: String) -> Result<GetauschterToken>,
     private val uhr: () -> Long = System::currentTimeMillis,
     private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
     private val hintergrund: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
@@ -47,22 +94,25 @@ class TokenTausch(
      */
     override fun noetig(alterToken: String): String? = runBlocking {
         when (tausche(alterToken)) {
-            Tauschergebnis.GETAUSCHT, Tauschergebnis.SCHON_GETAUSCHT -> token().takeIf { it != alterToken }
-            Tauschergebnis.SPAETER, Tauschergebnis.NEU_KOPPELN -> null
+            Tauschergebnis.GETAUSCHT, Tauschergebnis.SCHON_GETAUSCHT ->
+                stand().token.takeIf { it != alterToken && it.isNotBlank() }
+            Tauschergebnis.SPAETER, Tauschergebnis.NEU_KOPPELN, Tauschergebnis.VERWORFEN -> null
         }
     }
 
     suspend fun tausche(alterToken: String): Tauschergebnis = sperre.withLock { tauscheGesperrt(alterToken) }
 
     private suspend fun tauscheGesperrt(alterToken: String): Tauschergebnis {
-        if (token() != alterToken) return Tauschergebnis.SCHON_GETAUSCHT
+        val vorher = stand()
+        if (vorher.token != alterToken) return Tauschergebnis.SCHON_GETAUSCHT
         val beginn = uhr()
         for (versuch in 0..pausen.size) {
+            // Abgemeldet oder anderer Server: Der alte Token geht nicht noch einmal hinaus.
+            if (versuch > 0 && stand() != vorher) return Tauschergebnis.VERWORFEN
             when (val r = rotiere(alterToken)) {
                 is Result.Success -> {
-                    val neu = r.data.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
-                    speichere(neu)
-                    return Tauschergebnis.GETAUSCHT
+                    val neu = r.data.rotation.token?.takeIf { it.isNotBlank() } ?: return Tauschergebnis.SPAETER
+                    return if (ersetze(vorher, neu, r.data.herkunft)) Tauschergebnis.GETAUSCHT else Tauschergebnis.VERWORFEN
                 }
                 is Result.Error -> {
                     // 401: Der alte Token gilt nicht mehr (Überlappung vorbei, widerrufen).

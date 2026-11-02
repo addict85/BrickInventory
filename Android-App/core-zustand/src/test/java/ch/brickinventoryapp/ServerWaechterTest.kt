@@ -52,6 +52,10 @@ import java.util.concurrent.atomic.AtomicInteger
  *      rot „eine falsche Passwortbestaetigung meldet nicht ab“
  *   N  (01.11.2026) im Wächter die Zeile für PASSWORT_WECHSEL_NOETIG entfernt →
  *      rot „ein 403 passwort_wechsel_noetig verlangt das neue Passwort …“
+ *   O  (02.11.2026) wieder die alte Regel (selbst gesetzter Kopf nur weg, wenn er
+ *      der jetzige Token ist) → rot „ein selbst gesetzter Kopf mit einem aelteren
+ *      Token …“ und „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
+ *   P  nur `!tokenGehoertHierher` statt `!mitToken` → rot „nach dem Abmelden …“
  */
 class ServerWaechterTest {
 
@@ -148,6 +152,27 @@ class ServerWaechterTest {
         client(lage).newCall(Request.Builder().url(basis() + "/api/v1/csv")
             .header("Authorization", "Bearer $TOKEN").build()).execute().close()
         assertNull(anfragenAn("/api/v1/csv").single().second)
+    }
+
+    /** Ein Tausch, der den Serverwechsel überdauert, trägt den Token des alten Servers. */
+    @Test
+    fun `ein selbst gesetzter Kopf mit einem aelteren Token faellt bei fremder Herkunft weg`() {
+        val lage = Lage(basis(), herkunft = "http://anderer.example:3000")
+        client(lage).newCall(Request.Builder().url("http://localhost:3000/api/v1/auth/token-rotieren")
+            .header("Authorization", "Bearer vom-alten-server").build()).execute().close()
+        assertNull(anfragenAn("/token-rotieren").single().second)
+    }
+
+    @Test
+    fun `nach dem Abmelden geht kein selbst gesetzter Kopf hinaus, an die eigene Herkunft gebunden schon`() {
+        client(Lage(basis(), tokens = ArrayDeque(listOf("")))).newCall(Request.Builder().url(basis() + "/api/v1/csv")
+            .header("Authorization", "Bearer alt").build()).execute().close()
+        assertNull("Abgemeldet: kein Token", anfragenAn("/api/v1/csv").single().second)
+
+        val eigene = ch.brickinventoryapp.util.NetworkPolicy.herkunft(basis())
+        client(Lage(basis(), herkunft = eigene)).newCall(Request.Builder().url(basis() + "/api/v1/pdf")
+            .header("Authorization", "Bearer alt").build()).execute().close()
+        assertEquals("Bearer alt", anfragenAn("/api/v1/pdf").single().second)
     }
 
     @Test
