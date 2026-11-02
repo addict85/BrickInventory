@@ -4,6 +4,7 @@
  * überlappen nicht, Felder im Erfassen- und Kaufpreis-Dialog sind hoch genug
  * für ihre Schrift und ragen nicht hinaus. Dazu der Weg einer Geldeingabe bis
  * in die Datenbank: „149,95“ im Kaufpreis-Dialog wird 149.95 gespeichert.
+ * Zuletzt die Anmeldemaske: Was der Server nicht kann, steht nicht da.
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  .umenu-pop wieder min-width:14rem ohne max-width → rot: „Benutzermenü“
@@ -14,6 +15,8 @@
  *      und 390 px (Feld zu niedrig für seine Schrift)
  *   D  in acqSave() wieder parseFloat(value) → rot: „149,95 wird 149.95
  *      gespeichert“ (149)
+ *   E  #login-screen [hidden]-Regel entfernt → rot: „Anmeldemaske ohne
+ *      Passkey …“ (a[href] und .btn hoben hidden auf)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -125,5 +128,13 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
     assert.equal(Number(zeile.purchase_price), 149.95);
     // Angezeigt in der Form der Sprache: de-DE „149,95“, de-CH „149.95“.
     assert.match(await b.auswerten(`document.getElementById('acq-preis-${id}').value`), /^149[.,]95$/);
+  });
+
+  // Der Testserver hat weder APP_BASE_URL noch SMTP: Beide Wege fehlen auf der Maske.
+  await t.test('Anmeldemaske ohne Passkey und „Passwort vergessen?“', async () => {
+    await zu();
+    await b.auswerten(`document.getElementById('btn-logout').click(); true`);
+    await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none' && document.getElementById('link-forgot').hidden`, 'Anmeldemaske');
+    assert.deepEqual(await b.auswerten(`['btn-passkey', 'link-forgot'].map(id => document.getElementById(id).getClientRects().length)`), [0, 0]);
   });
 });

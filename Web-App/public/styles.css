@@ -446,8 +446,8 @@
     .diagramm-leer{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;padding:1.5rem 1rem;color:var(--mut);font-size:var(--fs-2)}
     .diagramm-leer strong{color:var(--txt);font-weight:600}
     .pnl-zeitraum{margin-left:6px;font-size:var(--fs-1);color:var(--mut)}
-    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--bedienrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
-    @media (hover:hover){.period-btn:hover{border-color:var(--b400);color:var(--b600)}}
+    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--feldrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
+    @media (hover:hover){.period-btn:hover{border-color:var(--b600);color:var(--b600)}}
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
     .snum{white-space:nowrap;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600);font-weight:500;margin-bottom:2px}
     .sname{font-size:var(--fs-2);font-weight:600;line-height:1.3;margin-bottom:6px}
@@ -488,7 +488,7 @@
     .acq-tabelle input.acq-menge{width:5.5em;text-align:center;font-weight:700}
     .acq-tabelle input.acq-preis{width:7em;text-align:right;font-weight:600}
     .acq-datum{display:inline-flex;flex-direction:column;gap:2px;min-width:0;max-width:100%}
-    .acq-datum-text{font-size:var(--fs-1);color:var(--mut)}
+    .acq-datum-text{font-size:var(--fs-1);color:var(--txt)}
     .acq-aktion{text-align:right;white-space:nowrap}
     .acq-ok{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-1);font-weight:600;color:var(--gewinn,var(--g700));margin-right:6px}
     .acq-ok[hidden]{display:none}
@@ -1186,7 +1186,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .dialog-titel-mitte{margin:0 0 .5rem;font-size:var(--fs-4);font-weight:700}
 .dialog-text-mitte{margin:0 0 1.5rem;font-size:var(--fs-3);color:var(--mut);line-height:1.55}
 .max-1360{max-width:1360px}
-.max-17rem{max-width:17rem}
+.max-17rem{max-width:min(17rem,100%)}
 .max-74{max-width:74px}
 .max-130-rechts{max-width:130px;justify-content:flex-end}
 .relativ{position:relative}
@@ -1208,6 +1208,8 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .start-fuss{color:var(--mut);font-size:var(--fs-0);margin-top:1.5rem;text-align:center;letter-spacing:.03em}
 /* Die Verweise unter der Anmeldung sind eigene Ziele, kein Fliesstext: 24 px hoch. */
 #login-screen .lcard a[href]{display:inline-flex;align-items:center;min-height:24px}
+/* Verborgene Anmeldewege (Passkey, Passwort vergessen) bleiben verborgen, auch gegen .btn und a[href]. */
+#login-screen [hidden]{display:none !important}
 .fortschritt-zeile{display:flex;justify-content:space-between;font-size:var(--fs-1);color:var(--s500)}
 .balken{background:var(--s200);border-radius:999px;height:8px;overflow:hidden;margin-bottom:.3rem}
 .fortschritt-titel{font-size:var(--fs-2);font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:.4rem}

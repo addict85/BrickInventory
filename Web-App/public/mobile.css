@@ -393,6 +393,18 @@
 }
 
 
+/* Sehr schmal (320 px bei 200 %): Felder, Auswahllisten und lange Zeilen geben nach,
+   statt über den Rand zu ragen. */
+@media (max-width: 19.5em) {
+  main select, main input:not([type=checkbox]):not([type=radio]) { max-width: 100%; min-width: 0; }
+  main .fg, main :is(.zeile, .sform, .ssec) > *, .diagramm-werte > *, .apk-btn, .apk-btn-txt { min-width: 0; max-width: 100%; }
+  #tab-lagerorte .sgrid2 { grid-template-columns: minmax(0, 1fr) !important; }
+  main .btn { white-space: normal; max-width: 100%; }
+  .voucher-row, .voucher-actions { flex-wrap: wrap; }
+  .empty.leer :is(h2, p, .btn), .dt-summe td { overflow-wrap: anywhere; hyphens: auto; max-width: 100%; min-width: 0; }
+  .diagramm-werte > *, .apk-btn-txt, #household-state, #tab-haushalt .text-mittel { overflow-wrap: anywhere; white-space: normal; }
+}
+
 /* Als Karte hebt sich die Tabellenzeile beim Überfahren nicht farbig ab. */
 @media (max-width: 640px) and (hover: hover) {
   .dt tr:hover td { background: none; }
