@@ -459,8 +459,12 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit { putBoolean(SYSTEMFARBEN, an) }
     }
 
-    /** Kein Vorschaubild in der App-Übersicht, keine Bildschirmfotos; je Gerät, Vorgabe aus. */
-    fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, false)
+    /**
+     * Kein Vorschaubild in der App-Übersicht, keine Bildschirmfotos; je Gerät. Vorgabe
+     * an: Die Übersicht zeigt Bestand, Preise und Konto jedem, der das Telefon kurz
+     * in der Hand hat. Wer Bildschirmfotos braucht, schaltet es aus.
+     */
+    fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, true)
     fun setzeVorschauVerbergen(an: Boolean) {
         designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
     }

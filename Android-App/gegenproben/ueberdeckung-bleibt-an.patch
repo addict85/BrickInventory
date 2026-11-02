@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.FremderEinstiegTest
 Rot: ein geschuetzter Bildschirm schuetzt die Activity nur
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
-index cf833a7..2598a4f 100644
+index 25cd631..42be452 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ueberdeckungsschutz.kt
-@@ -25,7 +25,6 @@ fun Ueberdeckungsschutz() {
+@@ -33,7 +33,6 @@ fun Ueberdeckungsschutz() {
          onDispose {
              val rest = anzahl() - 1
              ziel.setTag(R.id.ueberdeckung_anzahl, rest)
 -            if (rest <= 0) ziel.filterTouchesWhenObscured = false
+             if (rest <= 0) fenster?.let(TeilweiseVerdecktFilter::entferne)
          }
      }
- }
