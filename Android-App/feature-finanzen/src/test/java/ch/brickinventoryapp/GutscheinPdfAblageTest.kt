@@ -95,6 +95,8 @@ class GutscheinPdfAblageTest {
             Regex("""if \(speicherbar\) \{\s*IconButton\(onClick = \{ savePdfToDownloads\(""").containsMatchIn(betrachter))
         val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt")), "fun logout(")
         assertTrue("Abmelden lässt Gutschein-PDFs liegen", abmelden.contains("raeumeVertraulichePdfsAuf("))
+        assertTrue("Abmelden lässt Teileliste und Update in filesDir liegen",
+            abmelden.contains("raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null))"))
         assertTrue("Der Start räumt Reste nicht weg",
             Quellen.lies("BrickInventoryApp.kt").contains("raeumeVertraulichePdfsAuf(cacheDir)"))
     }

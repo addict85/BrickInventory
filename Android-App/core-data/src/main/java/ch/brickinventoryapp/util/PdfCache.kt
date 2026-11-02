@@ -76,3 +76,14 @@ internal fun teilelistenAblage(intern: File, extern: File?): File {
     extern?.let { File(it, "pdf/teileliste.pdf").delete() }
     return File(File(intern, "pdf").apply { mkdirs() }, "teileliste.pdf")
 }
+
+/**
+ * Beim Abmelden: Teileliste (Inventar) und geteilte PDFs in beiden Wurzeln, dazu ein
+ * geladenes Update. Der Cache allein genügte nicht — filesDir überlebt das Abmelden,
+ * und der nächste Nutzer auf dem Gerät öffnete sonst das Inventar des vorigen.
+ */
+fun raeumeKontoDateienAuf(intern: File, extern: File?) {
+    File(intern, "pdf").deleteRecursively()
+    File(intern, UPDATE_ORDNER).deleteRecursively()
+    extern?.let { File(it, "pdf").deleteRecursively() }
+}
