@@ -863,7 +863,7 @@ html::-webkit-scrollbar{width:0;height:0}
        unterschiedlich breit und sind beim Abtippen schlechter zu verfolgen. */
     .voucher-num{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
                  font-size:var(--fs-3);font-variant-numeric:tabular-nums;
-                 word-break:break-all}
+                 overflow-wrap:anywhere}
     .voucher-meta{font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     .voucher-amount{font-weight:600;color:var(--txt)}
     /* Der Stand der Guthaben-Abfrage. Eigene Zeile und KEINE eigene
@@ -1301,7 +1301,7 @@ p.mon-leise{margin:0 0 .35rem}
 .voucher-land{margin-bottom:1rem}
 .voucher-land-hinweis{margin-top:.35rem;max-width:70ch}
 .voucher-felder{margin-bottom:.75rem}
-.voucher-abweichung{display:inline-block;margin-left:.4rem;padding:0 6px;border-radius:999px;border:1px solid var(--chart-used,var(--a500));color:var(--txt);font-size:var(--fs-0)}
+.voucher-abweichung{display:block;width:fit-content;max-width:100%;margin:2px 0;padding:0 6px;border-radius:6px;border:1px solid var(--chart-used,var(--a500));color:var(--txt);font-size:var(--fs-0)}
 .voucher-abweichung-hinweis{margin-top:.25rem;color:var(--a-schrift)}
 .voucher-actions .btn{flex:0 0 auto}
 .v-text{display:inline-flex;align-items:center;gap:6px}
@@ -1387,3 +1387,6 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .mon-plan input.mon-zeit{width:5em}
 .mon-plan input.mon-minuten{width:4.5em}
 .hinweis-band .hinweis-zu{flex:none}
+
+/* Ein Sinnbild aus data-ico klebt sonst am Text, wo der Behälter keinen Abstand setzt. */
+[data-ico]:not(.btn):not(.stit) > .ico + .ico-text{margin-left:.35em}

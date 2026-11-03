@@ -71,7 +71,7 @@ window.I18N_DE = {
   'nav.finance': 'Finanzen',
   'nav.partslist': 'Bauliste',
   'nav.settings': 'Einstellungen',
-  'nav.monitoring': 'Hintergrundarbeiten',
+  'nav.monitoring': 'Hintergrund­arbeiten',
 
   // Gallery
   'gallery.search': 'Sets suchen…',
@@ -724,7 +724,7 @@ window.I18N_DE = {
   'wanted.topped_up': 'aufgestockt',
   'settings.data_zip_hint': 'Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Eingelesen wird jede Datei über „Importieren“ auf ihrer eigenen Seite.',
   'settings.data_zip_btn': 'Sets, Teile, Minifiguren, Merkliste & Alarme exportieren (ZIP)',
-  'monitor.title': 'Hintergrundarbeiten',
+  'monitor.title': 'Hintergrund­arbeiten',
   'monitor.parts_lists': 'Baulisten',
   'settings.clear_price_cache': 'Preis-Cache leeren',
   'header.sets': 'Sets',
