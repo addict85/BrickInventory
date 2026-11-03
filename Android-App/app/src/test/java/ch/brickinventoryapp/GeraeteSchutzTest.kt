@@ -45,6 +45,8 @@ import org.robolectric.annotation.Config
  *       (gegenproben/verwaltung-ohne-geraetesperre.patch)
  *   (d) saveServerUrl() ruft die Hörer nicht → rot „ein anderer Server bricht
  *       laufende Aufrufe ab …“ (gegenproben/serverwechsel-ohne-abbruch.patch)
+ *   (e) saveServerUrl() vergleicht beim Token nur die Herkunft → rot „ein anderer
+ *       Pfad auf demselben Host verwirft den Token“ (gegenproben/pfadwechsel-behaelt-token.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -125,9 +127,12 @@ class GeraeteSchutzTest {
         compose.onNodeWithText("Verwalteraktion").assertExists()
     }
 
-    /** Die Verdrahtung für M1 (pruef6): Die Server-Clients hören hier mit (di/ServerClient.folgtDemServer). */
+    /**
+     * Die Verdrahtung für M1 (pruef6): Die Server-Clients hören hier mit (di/ServerClient.folgtDemServer).
+     * Seit sec7 N2 ist ein anderer Pfad auf demselben Host ein anderer Server.
+     */
     @Test
-    fun `ein anderer Server bricht laufende Aufrufe ab, dieselbe Herkunft nicht`() {
+    fun `ein anderer Server bricht laufende Aufrufe ab, derselbe nicht`() {
         val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {
             override fun verschluessle(klartext: String) = klartext
             override fun entschluessle(gespeichert: String) = gespeichert
@@ -137,15 +142,34 @@ class GeraeteSchutzTest {
         prefs.beimServerwechsel { abgebrochen++ }
         prefs.beimNutzerCaWechsel { nutzerCa++ }
         kotlinx.coroutines.runBlocking {
-            prefs.saveServerUrl("https://alt.example")
-            abgebrochen = 0
             prefs.saveServerUrl("https://alt.example/brick")
-            assertEquals("Dieselbe Herkunft bricht nichts ab", 0, abgebrochen)
+            abgebrochen = 0
+            prefs.saveServerUrl("https://ALT.example:443/brick/")
+            assertEquals("Derselbe Server bricht nichts ab", 0, abgebrochen)
+            prefs.saveServerUrl("https://alt.example/andere")
+            assertEquals("Ein anderer Pfad ist eine andere Anwendung", 1, abgebrochen)
             prefs.saveServerUrl("https://neu.example")
-            assertEquals(1, abgebrochen)
+            assertEquals(2, abgebrochen)
         }
         prefs.setzeNutzerCa(true)
         assertEquals("Der TLS-Kontext wird nach dem Umschalten neu gebaut", 1, nutzerCa)
+    }
+
+    /** sec7 N2: Der Token hält nur die Herkunft; den Pfad trägt die bisherige Adresse bei. */
+    @Test
+    fun `ein anderer Pfad auf demselben Host verwirft den Token`() {
+        val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {
+            override fun verschluessle(klartext: String) = klartext
+            override fun entschluessle(gespeichert: String) = gespeichert
+        })
+        kotlinx.coroutines.runBlocking {
+            prefs.saveServerUrl("https://geteilt.example/brick")
+            prefs.saveAuthToken("token-brick")
+            prefs.saveServerUrl("https://geteilt.example/brick/")
+            assertEquals("Derselbe Server behält den Token", "token-brick", prefs.tokenJetzt())
+            prefs.saveServerUrl("https://geteilt.example/andere-app")
+            assertEquals("", prefs.tokenJetzt())
+        }
     }
 
     @Test

@@ -665,7 +665,14 @@ jobs:
           name: apk-signiert
           path: Android-App/app/build/outputs
 
+      # Das Release-Zertifikat steht fest in tools/release-zertifikat.sha256: Ein
+      # ausgetauschter Schlüssel in der Environment fiele sonst erst auf, wenn
+      # Updates scheitern, und eine Neuinstallation nähme ihn still an. Ein
+      # Probe-signiertes APK muss genau an dieser Prüfung scheitern (Rückgabe 1);
+      # so läuft sie bei jedem Bau gegen eine echte Ausgabe von apksigner.
       - name: APK prüfen
+        env:
+          ECHT: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') }}
         run: |
           set -euo pipefail
           cd app/build/outputs/apk/release
@@ -673,6 +680,36 @@ jobs:
           WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
           "$WERKZEUGE/apksigner" verify --print-certs BrickInventory.apk > "$RUNNER_TEMP/zertifikat.txt"
           head -3 "$RUNNER_TEMP/zertifikat.txt"
+          cd "$GITHUB_WORKSPACE/Android-App"
+          ERGEBNIS=0
+          python3 tools/release-pruefen.py zertifikat "$RUNNER_TEMP/zertifikat.txt" tools/release-zertifikat.sha256 || ERGEBNIS=$?
+          if [ "$ECHT" = "true" ] && [ "$ERGEBNIS" != 0 ]; then
+            echo "::error::Das APK ist nicht mit dem hinterlegten Release-Zertifikat signiert (tools/release-zertifikat.sha256). Nichts wird veröffentlicht."
+            exit 1
+          fi
+          if [ "$ECHT" != "true" ] && [ "$ERGEBNIS" != 1 ]; then
+            echo "::error::Das Probe-signierte APK muss am Release-Zertifikat scheitern, die Prüfung gab $ERGEBNIS zurück."
+            exit 1
+          fi
+
+      # Ein Etikett auf einem älteren Commit von main brächte einen älteren Stand
+      # als „neustes APK“ zu jeder Neuinstallation. versionCode zählt die Commits.
+      - name: versionCode über dem veröffentlichten
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          V_CODE=$(jq -r '.elements[0].versionCode' app/build/outputs/apk/release/output-metadata.json)
+          ALT=-
+          if gh release view apk-neuste --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version.json -O "$RUNNER_TEMP/version-alt.json"
+            ALT="$RUNNER_TEMP/version-alt.json"
+          fi
+          if ! python3 tools/release-pruefen.py fassung "$ALT" "$V_CODE" "$GITHUB_SHA"; then
+            echo "::error::versionCode $V_CODE liegt nicht über dem veröffentlichten APK. Nichts wird veröffentlicht."
+            exit 1
+          fi
 
       # ── Das fertige APK gegen R8 prüfen ─────────────────────────────────────
       #
@@ -718,6 +755,11 @@ jobs:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
     environment: release
     runs-on: ubuntu-latest
+    # Zwei Etiketten zugleich: Sonst prüften beide gegen dieselbe alte Fassung,
+    # und das ältere könnte nach dem neueren hochladen.
+    concurrency:
+      group: apk-neuste
+      cancel-in-progress: false
     permissions:
       contents: write
       id-token: write
@@ -790,7 +832,36 @@ jobs:
           Direkter Download (immer die neuste Fassung, kein Zip):
           $LINK"
 
+          # Vor dem Hochladen, nicht danach: Die Werte bestimmen, ob überhaupt
+          # hochgeladen wird.
+          META=app/build/outputs/apk/release/output-metadata.json
+          if [ ! -f "$META" ]; then
+            echo "::error::$META fehlt — ohne die Werte von AGP koennte hier nur geraten werden."
+            exit 1
+          fi
+          V_CODE=$(jq -r '.elements[0].versionCode' "$META")
+          V_NAME=$(jq -r '.elements[0].versionName' "$META")
+          if ! printf '%s' "$V_CODE" | grep -Eq '^[0-9]+$'; then
+            echo "::error::versionCode aus $META ist \"$V_CODE\" — keine Zahl."
+            exit 1
+          fi
+          if [ -z "$V_NAME" ] || [ "$V_NAME" = null ]; then
+            echo "::error::versionName aus $META ist leer."
+            exit 1
+          fi
+
+          # Dieselbe Regel wie im Job apk-pruefen (tools/release-pruefen.py fassung),
+          # hier unter der concurrency-Gruppe unmittelbar vor dem Hochladen. Ohne
+          # Werkzeug aus dem Repository: Dieser Job hat Schreibrecht.
           if gh release view "$ETIKETT" >/dev/null 2>&1; then
+            gh release download "$ETIKETT" -p version.json -O "$RUNNER_TEMP/version-alt.json"
+            ALT_CODE=$(jq -r '.versionCode' "$RUNNER_TEMP/version-alt.json")
+            ALT_COMMIT=$(jq -r '.commit' "$RUNNER_TEMP/version-alt.json")
+            if ! printf '%s' "$ALT_CODE" | grep -Eq '^[0-9]+$' || [ "$V_CODE" -lt "$ALT_CODE" ] ||
+               { [ "$V_CODE" -eq "$ALT_CODE" ] && [ "$ALT_COMMIT" != "$GITHUB_SHA" ]; }; then
+              echo "::error::versionCode $V_CODE folgt nicht auf das veröffentlichte $ALT_CODE ($ALT_COMMIT). Nichts wird veröffentlicht."
+              exit 1
+            fi
             gh release edit "$ETIKETT" --notes "$TEXT"
           else
             gh release create "$ETIKETT" --title "BrickInventory — neustes APK" --notes "$TEXT"
@@ -810,22 +881,7 @@ jobs:
           # zweite Wahrheit: Sie liefe Minuten spaeter als die im Build und
           # koennte einen Wert melden, den kein APK traegt — die App boete dann
           # ein Update an, das nach der Installation immer noch „veraltet" ist.
-          META=app/build/outputs/apk/release/output-metadata.json
-          if [ ! -f "$META" ]; then
-            echo "::error::$META fehlt — ohne die Werte von AGP koennte hier nur geraten werden."
-            exit 1
-          fi
-          V_CODE=$(jq -r '.elements[0].versionCode' "$META")
-          V_NAME=$(jq -r '.elements[0].versionName' "$META")
-          if ! printf '%s' "$V_CODE" | grep -Eq '^[0-9]+$'; then
-            echo "::error::versionCode aus $META ist \"$V_CODE\" — keine Zahl."
-            exit 1
-          fi
-          if [ -z "$V_NAME" ] || [ "$V_NAME" = null ]; then
-            echo "::error::versionName aus $META ist leer."
-            exit 1
-          fi
-
+          #
           # Das Feld heisst `commit` und nicht mehr `sha`.
           #
           # Drin stand immer schon $GITHUB_SHA — der Git-Commit, aus dem gebaut
