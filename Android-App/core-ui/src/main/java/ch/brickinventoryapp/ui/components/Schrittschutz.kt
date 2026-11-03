@@ -89,6 +89,8 @@ class GeraeteSchrittschutz(
  */
 @Composable
 fun Schrittsperre(grund: String, inhalt: @Composable () -> Unit) {
+    // Eine Seite hinter der Gerätesperre ist heikel: kein untergeschobener Tipp (sec8 H8).
+    Ueberdeckungsschutz()
     val schutz = LocalSchrittschutz.current
     var entsperrt by remember { mutableStateOf(false) }
     val frage = { schutz.bestaetige(grund) { entsperrt = true } }
