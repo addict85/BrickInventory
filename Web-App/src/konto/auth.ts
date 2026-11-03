@@ -6,6 +6,7 @@ import { konfig } from '../infra/konfig';
 import * as db from '../../db/database';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import { bcryptSchranke, BcryptUeberlast } from './bcryptSchranke';
 import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
@@ -301,7 +302,13 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
 
   const user = await repo.kontoZurAnmeldung(name);
   // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen.
-  const passtDasPasswort = await bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH);
+  let passtDasPasswort: boolean;
+  try { passtDasPasswort = await bcryptSchranke.mit(() => bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH)); }
+  catch (e) {
+    if (!(e instanceof BcryptUeberlast)) throw e;
+    await gibAnmeldeplatzFrei(ip, name);
+    return absage(503, 'server_ausgelastet');
+  }
   // Gesperrt oder unbestätigt wie falsches Passwort: Eine eigene Absage verriete, dass es stimmte.
   if (!user || !passtDasPasswort || assertLoginAllowed(user)) {
     await recordLoginFailure(ip, name);

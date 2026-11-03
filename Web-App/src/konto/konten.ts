@@ -1,6 +1,7 @@
 /** Jeder Weg, der ein Passwort ändert, beendet danach alle Zugänge — an einer
  * Stelle, damit kein Weg den Schritt vergisst. */
 import bcrypt from 'bcryptjs';
+import { bcryptSchranke } from './bcryptSchranke';
 import * as repo from './repository/konten';
 import * as passkeyRepo from './repository/passkeys';
 import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
@@ -22,7 +23,7 @@ export async function profil(id: number) {
   return repo.profilZeile(id);
 }
 
-const hashe = (passwort: unknown) => bcrypt.hash(String(passwort), BCRYPT_ROUNDS);
+const hashe = (passwort: unknown) => bcryptSchranke.mit(() => bcrypt.hash(String(passwort), BCRYPT_ROUNDS));
 
 async function zugaengeBeenden(uid: number): Promise<void> {
   await revokeAllTokens(uid);
