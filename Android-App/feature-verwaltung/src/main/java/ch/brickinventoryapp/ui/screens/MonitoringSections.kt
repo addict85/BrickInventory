@@ -74,7 +74,7 @@ internal fun BricksetQueueRow(
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                     FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
-                        Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(14.dp))
+                        Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
                     }
                     FilledTonalIconButton(
                         onClick = { onDelete(entry.setNumber) },
@@ -82,7 +82,7 @@ internal fun BricksetQueueRow(
                             containerColor = MaterialTheme.colorScheme.errorContainer
                         )
                     ) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(14.dp),
+                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)),
                             tint = MaterialTheme.colorScheme.onErrorContainer)
                     }
                 }
@@ -339,7 +339,6 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                                     editingTtl = false
                                 }
                             },
-                            shape = Formen.kachel,
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                         ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
                         IconButton(onClick = { editingTtl = false }) {
@@ -354,7 +353,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                         Text(stringResource(R.string.monitoring_cache_ttl_hours, cacheTtl), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                         FilledTonalIconButton(
                             onClick = { editingTtl = true },
-                        ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(14.dp)) }
+                        ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
                     }
                 }
             }
@@ -369,12 +368,10 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
             ) {
                 OutlinedButton(
                     onClick = { leerenAlles = false; zeigeLeerenFrage = true },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                 ) { Text(stringResource(R.string.monitoring_cache_clear_prices), style = MaterialTheme.typography.labelMedium) }
                 OutlinedButton(
                     onClick = { leerenAlles = true; zeigeLeerenFrage = true },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                 ) { Text(stringResource(R.string.monitoring_cache_clear_all), style = MaterialTheme.typography.labelMedium) }
             }
@@ -417,7 +414,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                     letterSpacing = 0.8.sp)
                 FilledTonalIconButton(
                     onClick = { editingLimits = !editingLimits },
-                ) { Icon(if (editingLimits) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(14.dp)) }
+                ) { Icon(if (editingLimits) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
             }
 
             cacheStats?.rateLimits?.let { rl ->
@@ -439,10 +436,9 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(vertical = Abstaende.klein)
                 ) {
-                    Icon(Icons.Default.Save, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Save, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.monitoring_limits_save), style = MaterialTheme.typography.bodyMedium)
                 }
@@ -713,7 +709,6 @@ fun ZeitplanZeile(
                             bearbeiten = false
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                 ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
                 IconButton(onClick = { bearbeiten = false }) {
@@ -730,7 +725,7 @@ fun ZeitplanZeile(
                 )
                 FilledTonalIconButton(
                     onClick = { bearbeiten = true },
-                ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(14.dp)) }
+                ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
             }
         }
     }

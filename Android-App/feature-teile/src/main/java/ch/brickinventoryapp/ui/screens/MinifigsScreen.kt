@@ -316,13 +316,13 @@ fun AddMinifigDialog(
                     value = figNumber, onValueChange = { figNumber = it },
                     label = { Text(stringResource(R.string.minifigs_fig_number)) }, placeholder = { Text(stringResource(R.string.minifigs_fig_number_placeholder)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
+                    shape = Formen.feld
                 )
                 OutlinedTextField(
                     value = blFigNumber, onValueChange = { blFigNumber = it },
                     label = { Text(stringResource(R.string.minifigs_bl_number)) }, placeholder = { Text(stringResource(R.string.minifigs_bl_number_placeholder)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
+                    shape = Formen.feld
                 )
                 Text(
                     stringResource(R.string.minifigs_bl_hint),

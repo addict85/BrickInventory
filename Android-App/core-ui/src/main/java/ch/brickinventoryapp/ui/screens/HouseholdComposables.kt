@@ -106,7 +106,7 @@ fun LagerortFilterChip(
                     style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
             },
             trailingIcon = {
-                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(18.dp))
+                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             },
             shape = Formen.kachel,
         )
@@ -231,10 +231,10 @@ fun OwnerPicker(
     val current = members.firstOrNull { it.id == selected } ?: members.first()
 
     Box(modifier) {
-        OutlinedButton(onClick = { open = true }, shape = Formen.kachel) {
+        OutlinedButton(onClick = { open = true }) {
             Text(stringResource(R.string.household_for_account) + ": " + current.username,
                 style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp))
+            Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             members.forEach { m ->

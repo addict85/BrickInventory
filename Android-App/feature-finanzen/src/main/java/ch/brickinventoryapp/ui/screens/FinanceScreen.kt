@@ -107,8 +107,8 @@ fun FinanceScreen(
             leer = {
                 LeerSymbol(Icons.Default.Savings, 48.dp)
                 Text(stringResource(R.string.finance_no_data), fontWeight = FontWeight.SemiBold)
-                Button(onClick = onRefresh, shape = Formen.knopf) {
-                    Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
+                Button(onClick = onRefresh) {
+                    Icon(Icons.Default.Refresh, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.finance_load_prices))
                 }

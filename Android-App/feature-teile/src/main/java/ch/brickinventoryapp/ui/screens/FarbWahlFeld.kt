@@ -88,7 +88,7 @@ fun FarbWahlFeld(
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
             singleLine = true,
             textStyle = MaterialTheme.typography.bodySmall,
-            shape = Formen.knopf,
+            shape = Formen.feld,
         )
         ExposedDropdownMenu(expanded = offen && farben.isNotEmpty(), onDismissRequest = { offen = false }) {
             wahl.forEach { c ->

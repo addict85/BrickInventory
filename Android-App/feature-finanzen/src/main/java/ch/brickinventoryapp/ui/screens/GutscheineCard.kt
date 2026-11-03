@@ -116,7 +116,7 @@ fun GutscheineCard(
         FlowRow(verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Button(onClick = { neu = true }) {
-                Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_add))
             }
@@ -126,7 +126,7 @@ fun GutscheineCard(
             ) {
                 // Kreisel an der Stelle des Symbols, nicht der Beschriftung (KnopfBreiteTest).
                 if (lauf != null) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                else Icon(Icons.Default.Sync, null, Modifier.size(18.dp))
+                else Icon(Icons.Default.Sync, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_balance_all))
             }
@@ -138,7 +138,7 @@ fun GutscheineCard(
             // Ohne Gutscheine aus: Der Server antwortete mit 404, ein Betrachter mit
             // Fehlermeldung wäre der umständlichste Weg zu „du hast noch keine“.
             OutlinedButton(onClick = { geschuetzt(onExportieren) }, enabled = zustand.gutscheine.isNotEmpty()) {
-                Icon(Icons.Default.PictureAsPdf, null, Modifier.size(18.dp))
+                Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_export))
             }
@@ -326,7 +326,7 @@ private fun GutscheinFormularBlatt(
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedButton(onClick = onPdfWaehlen) {
-                    Icon(Icons.Default.UploadFile, null, Modifier.size(18.dp))
+                    Icon(Icons.Default.UploadFile, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.vouchers_pick_pdf))
                 }
@@ -486,7 +486,7 @@ private fun KopierZeile(
     ) {
         inhalt()
         // Dieselbe Grösse an Nummer und PIN (vorher 24 und 18 dp).
-        Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        Icon(Icons.Default.ContentCopy, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
     }
 }
 

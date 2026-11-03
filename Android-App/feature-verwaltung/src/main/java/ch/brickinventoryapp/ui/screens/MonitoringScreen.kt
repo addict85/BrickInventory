@@ -213,7 +213,7 @@ private fun JobCard(
                     modifier = Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                    Icon(statusIcon, null, Modifier.size(14.dp), tint = statusColor)
+                    Icon(statusIcon, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)), tint = statusColor)
                     Text(job.status, color = statusColor,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -257,11 +257,10 @@ private fun JobCard(
                             } else { csvMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Sync, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Sync, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(csvMsg ?: stringResource(R.string.monitoring_sync_now), style = MaterialTheme.typography.labelMedium)
                 }
@@ -280,11 +279,10 @@ private fun JobCard(
                             } else { priceMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Refresh, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Refresh, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(priceMsg ?: stringResource(R.string.monitoring_price_update), style = MaterialTheme.typography.labelMedium)
                 }
@@ -303,11 +301,10 @@ private fun JobCard(
                             } else { redlMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Download, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(redlMsg ?: stringResource(R.string.monitoring_redownload_missing), style = MaterialTheme.typography.labelMedium)
                 }
@@ -326,11 +323,10 @@ private fun JobCard(
                             } else { katMsg = null; onSnack(startErrorMsg) }
                         }
                     },
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Download, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(katMsg ?: stringResource(R.string.monitoring_catalog_images), style = MaterialTheme.typography.labelMedium)
                 }
@@ -339,11 +335,10 @@ private fun JobCard(
             if (jobKey == "instrQueue") {
                 FilledTonalButton(
                     onClick = onReimport,
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Download, null, Modifier.size(16.dp))
+                    Icon(Icons.Default.Download, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(reimportMsg ?: stringResource(R.string.monitoring_import_missing_instr), style = MaterialTheme.typography.labelMedium)
                 }
@@ -352,7 +347,6 @@ private fun JobCard(
             if (jobKey == "bricksetRetry" && job.total > 0) {
                 FilledTonalButton(
                     onClick = onToggleQueue,
-                    shape = Formen.kachel,
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {

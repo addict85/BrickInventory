@@ -54,7 +54,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
                     Text(selectedThemeName ?: stringResource(R.string.catalog_filter_theme),
                         style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(16.dp)) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp))) },
                 modifier = Modifier.widthIn(max = 180.dp),
             )
         }
@@ -63,7 +63,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
                 selected = state.year != null,
                 onClick = { showYearSheet.value = true },
                 label = { Text(state.year?.toString() ?: stringResource(R.string.catalog_filter_year), style = MaterialTheme.typography.labelMedium) },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(16.dp)) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp))) },
             )
         }
     }

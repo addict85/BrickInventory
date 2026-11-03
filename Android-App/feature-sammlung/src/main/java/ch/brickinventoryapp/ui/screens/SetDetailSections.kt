@@ -201,10 +201,9 @@ fun LazyListScope.setDetailInstructionsSection(
                         // Ansehen häufiger ist; volle Breite wie die übrigen Aktionen der Karte.
                         OutlinedButton(
                             onClick = onAnleitungWaehlen,
-                            modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein),
-                            shape = Formen.knopf
+                            modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein)
                         ) {
-                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.instr_upload))
                         }

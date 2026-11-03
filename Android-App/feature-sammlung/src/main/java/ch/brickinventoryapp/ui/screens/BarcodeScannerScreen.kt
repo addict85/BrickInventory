@@ -137,7 +137,7 @@ fun BarcodeScannerScreen(
                         Modifier
                             .fillMaxWidth(0.88f)
                             .aspectRatio(1.8f)
-                            .border(2.dp, borderColor, Formen.knopf)
+                            .border(2.dp, borderColor, Formen.feld)
                     ) {
                         // Corner accents
                         val accent = borderColor

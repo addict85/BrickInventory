@@ -123,7 +123,7 @@ fun <T> WahlChips(
                 Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (an) Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                    if (an) Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     Text(text, style = MaterialTheme.typography.labelLarge)
                 }
             }
@@ -165,7 +165,7 @@ fun SortierMenue(
                     text = { Text(text) },
                     onClick = { offen = false; if (wert != gewaehlt) onWahl(wert) },
                     leadingIcon = {
-                        if (wert == gewaehlt) Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                        if (wert == gewaehlt) Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                         else Spacer(Modifier.size(18.dp))
                     },
                     modifier = Modifier.semantics { selected = wert == gewaehlt },

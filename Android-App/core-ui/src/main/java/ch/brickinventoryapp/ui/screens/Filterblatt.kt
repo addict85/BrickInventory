@@ -68,9 +68,10 @@ fun SucheMitFilter(
     // So breit wie das Raster darunter (Lesebreite.kt): Endete die Leiste bei 840 dp,
     // stand sie auf dem Tablet mitten über den Kacheln.
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // Wenig Platz oder grosse Schrift: Der Filter wird zum Symbol, damit dem
-        // Suchfeld genug Breite für seinen Platzhalter bleibt.
-        val nurSymbol = maxWidth < 360.dp || ch.brickinventoryapp.ui.components.grosseSchrift()
+        // Auf dem Telefon immer als Symbol: Neben „Filter“ mit Text, Sortieren und
+        // Scannen blieb dem Suchfeld bei 411 dp nur „Such…“. Die Zahl am Symbol
+        // sagt weiter, wie viele Filter wirken.
+        val nurSymbol = maxWidth < FILTER_TEXT_AB || ch.brickinventoryapp.ui.components.grosseSchrift()
         Row(verticalAlignment = Alignment.CenterVertically) {
             Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
             val folgt = onScannen != null || sortierung != null
@@ -80,6 +81,9 @@ fun SucheMitFilter(
         }
     }
 }
+
+/** Ab dieser Breite (Tablet, Querformat) trägt der Filterknopf seinen Namen. */
+private val FILTER_TEXT_AB = 600.dp
 
 @Composable
 private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, modifier: Modifier = Modifier) {
@@ -100,11 +104,10 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, mod
             }
         } else OutlinedButton(
             onClick = onClick,
-            shape = Formen.knopf,
             modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
             border = rand,
         ) {
-            Icon(Icons.Default.FilterList, null, Modifier.size(18.dp))
+            Icon(Icons.Default.FilterList, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.winzig))
             Text(stringResource(R.string.filter_button))
         }

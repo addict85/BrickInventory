@@ -102,4 +102,36 @@ class DesignTokensTest {
                 "mindestens ein Design die Farben eines anderen"
         }
     }
+
+    /**
+     * Eine Knopfform für die ganze App: die Pille der Material-Vorgabe. Im Ablauf
+     * Einrichten → Anmelden wechselte sie sonst von Bildschirm zu Bildschirm (12 dp,
+     * 14 dp, Pille). Gegenprobe: `shape = Formen.feld` am Knopf in LoginScreen.LadeKnopf
+     * → rot mit „LoginScreen.kt“ (Gegenprobe knopf-mit-eigener-form).
+     */
+    @Test
+    fun `Knoepfe tragen alle dieselbe Form`() {
+        val aufruf = Regex("""\b(Button|OutlinedButton|FilledTonalButton|ElevatedButton|TextButton)\(""")
+        val fehler = mutableListOf<String>()
+        for (datei in Quellen.alle()) {
+            val s = Quellen.ohneKommentare(datei.readText())
+            for (m in aufruf.findAll(s)) {
+                // Die Argumentliste bis zur passenden Klammer; der Inhalt (Lambda) folgt danach.
+                var tiefe = 0
+                var ende = m.range.last
+                while (ende < s.length) {
+                    if (s[ende] == '(') tiefe++ else if (s[ende] == ')' && --tiefe == 0) break
+                    ende++
+                }
+                val argumente = s.substring(m.range.last, minOf(ende + 1, s.length))
+                if (Regex("""\bshape\s*=""").containsMatchIn(argumente)) {
+                    fehler += "${datei.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}  ${m.value}"
+                }
+            }
+        }
+        assert(fehler.isEmpty()) {
+            "Knöpfe mit eigener Form (${fehler.size}):\n  " + fehler.joinToString("\n  ") +
+                "\nKnöpfe tragen die Vorgabe des Themas; Formen.feld gilt nur für Eingabefelder."
+        }
+    }
 }

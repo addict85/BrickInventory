@@ -76,7 +76,7 @@ fun ErfassenDialog(
         title = { Text(titel) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel), content = inhalt) },
         confirmButton = {
-            Button(onClick = onBestaetigen, enabled = bestaetigenAn, shape = Formen.knopf) { Text(bestaetigen) }
+            Button(onClick = onBestaetigen, enabled = bestaetigenAn) { Text(bestaetigen) }
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
@@ -142,7 +142,7 @@ fun PasswortRueckfrage(
             value = passwort, onValueChange = { passwort = it },
             label = { Text(stringResource(R.string.konto_password_current)) },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
         if (codeNoetig) ZweiterFaktorCodeFeld(code) { code = it }
         if (fehler != null) {
@@ -158,6 +158,6 @@ fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
         value = code, onValueChange = { onCode(it.take(24)) },
         label = { Text(stringResource(R.string.login_code)) },
         supportingText = { Text(stringResource(R.string.login_code_hint)) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+        modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
 }

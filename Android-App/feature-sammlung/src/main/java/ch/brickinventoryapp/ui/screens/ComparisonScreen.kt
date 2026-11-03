@@ -96,7 +96,7 @@ fun ComparisonScreen() {
                         if (searchText.isNotBlank()) scannedBarcode = null
                     },
                     placeholder = { Text(stringResource(R.string.comparison_search_placeholder)) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
+                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp))) },
                     trailingIcon = {
                         // `cd_search_clear` statt `comparison_clear`: Letzteres heisst „Löschen“ /
                         // „Clear“, und TalkBack sagte am Suche-leeren-Knopf das Wort für „Bestand
@@ -121,19 +121,17 @@ fun ComparisonScreen() {
                     Button(
                         onClick = { triggerSearch() },
                         modifier = Modifier.weight(1f),
-                        enabled = searchText.isNotBlank() || scannedBarcode != null,
-                        shape = Formen.knopf
+                        enabled = searchText.isNotBlank() || scannedBarcode != null
                     ) {
-                        Icon(Icons.Default.OpenInBrowser, null, Modifier.size(16.dp))
+                        Icon(Icons.Default.OpenInBrowser, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.comparison_search), fontWeight = FontWeight.SemiBold)
                     }
                     FilledTonalButton(
                         onClick = { showScanner = true },
-                        shape = Formen.knopf,
                         contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.klein)
                     ) {
-                        Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(16.dp))
+                        Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                         Spacer(Modifier.width(6.dp))
                         Text(if (scannedBarcode != null) stringResource(R.string.comparison_scan_new) else stringResource(R.string.comparison_scan))
                     }

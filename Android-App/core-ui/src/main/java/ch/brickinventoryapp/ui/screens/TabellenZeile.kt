@@ -174,7 +174,7 @@ fun Suchfeld(
         // Eine Zeile: Ein umbrechender Platzhalter machte das Feld doppelt so hoch
         // wie den Filterknopf daneben.
         placeholder = { Text(platzhalter, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(20.dp)) },
+        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp))) },
         trailingIcon = {
             if (wert.isNotEmpty()) {
                 IconButton(onClick = { onWert("") }) {

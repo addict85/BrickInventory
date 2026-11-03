@@ -221,13 +221,13 @@ fun GalleryScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center)
                         // Derselbe Dialog wie der Plus-Knopf — kein zweiter Erfassungsweg.
-                        Button(onClick = { showAddDialog = true }, shape = Formen.knopf) {
-                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Button(onClick = { showAddDialog = true }) {
+                            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.gallery_add_first))
                         }
-                        OutlinedButton(onClick = onScanBarcode, shape = Formen.knopf) {
-                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
+                        OutlinedButton(onClick = onScanBarcode) {
+                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.gallery_scan_barcode))
                         }
@@ -610,7 +610,7 @@ fun AddSetDialog(
             label = { Text(stringResource(R.string.gallery_set_number)) },
             supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
             modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
-            shape = Formen.knopf,
+            shape = Formen.feld,
             keyboardOptions = NumericInput.ganzzahlTastatur()
         )
         OutlinedTextField(
@@ -618,7 +618,7 @@ fun AddSetDialog(
             onValueChange = { quantity = NumericInput.quantity(it) },
             label = { Text(stringResource(R.string.common_quantity)) },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
-            shape = Formen.knopf,
+            shape = Formen.feld,
             keyboardOptions = NumericInput.ganzzahlTastatur()
         )
         OutlinedTextField(
@@ -627,7 +627,7 @@ fun AddSetDialog(
             label = { Text(stringResource(R.string.gallery_purchase_price)) },
             placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
-            shape = Formen.knopf,
+            shape = Formen.feld,
             keyboardOptions = NumericInput.preisTastatur(),
             keyboardActions = KeyboardActions(onDone = { keyboard?.hide(); submit() })
         )

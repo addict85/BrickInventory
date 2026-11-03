@@ -37,7 +37,7 @@ fun OfflineHinweis(stand: Long?, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.size(16.dp),
+        Icon(Icons.Default.CloudOff, contentDescription = null, modifier = Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
             tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(stringResource(R.string.offline_stand, fmtStand(stand, ch.brickinventoryapp.util.appNumberLocale())),
             style = MaterialTheme.typography.labelMedium,
@@ -59,7 +59,7 @@ fun AusgangLeiste(anzahl: Int, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp),
+        Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
             tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(pluralStringResource(R.plurals.offline_ausgang, anzahl, anzahl),
             style = MaterialTheme.typography.labelMedium,

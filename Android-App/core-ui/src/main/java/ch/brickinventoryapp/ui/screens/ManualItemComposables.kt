@@ -195,7 +195,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (icon != null) Icon(icon, null, Modifier.size(16.dp))
+            if (icon != null) Icon(icon, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
             Text(text, style = MaterialTheme.typography.labelMedium)
         }
     }
@@ -258,7 +258,7 @@ fun ErfassungsFelder(
         value = anzahl, onValueChange = { onAnzahl(NumericInput.quantity(it)) },
         label = { Text(stringResource(R.string.common_quantity)) },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
+        shape = Formen.feld,
         keyboardOptions = NumericInput.ganzzahlTastatur(),
     )
     OutlinedTextField(
@@ -266,7 +266,7 @@ fun ErfassungsFelder(
         label = { Text(stringResource(R.string.common_unit_price)) },
         placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
+        shape = Formen.feld,
         keyboardOptions = NumericInput.preisTastatur(),
     )
     Zustandszeile(zustand = zustand, onZustand = onZustand)

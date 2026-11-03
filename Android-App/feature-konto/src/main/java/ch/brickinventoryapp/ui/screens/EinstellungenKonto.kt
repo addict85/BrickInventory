@@ -83,7 +83,7 @@ internal fun KontoCard(
                 value = benutzername,
                 onValueChange = { benutzername = it; tippen(it) },
                 label = { Text(stringResource(R.string.login_username)) },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf)
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld)
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it; tippen(it) },
@@ -95,17 +95,17 @@ internal fun KontoCard(
                     { Text(stringResource(R.string.konto_email_unverified)) }
                 } else null,
                 isError = !profil.emailBestaetigt,
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedTextField(
                     value = vorname, onValueChange = { vorname = it; tippen(it) },
                     label = { Text(stringResource(R.string.register_first_name)) },
-                    modifier = Modifier.weight(1f), singleLine = true, shape = Formen.knopf)
+                    modifier = Modifier.weight(1f), singleLine = true, shape = Formen.feld)
                 OutlinedTextField(
                     value = nachname, onValueChange = { nachname = it; tippen(it) },
                     label = { Text(stringResource(R.string.register_last_name)) },
-                    modifier = Modifier.weight(1f), singleLine = true, shape = Formen.knopf)
+                    modifier = Modifier.weight(1f), singleLine = true, shape = Formen.feld)
             }
             // Über eine neue Adresse liesse sich das Passwort zurücksetzen —
             // darum fragt der Server dann nach dem aktuellen.
@@ -115,12 +115,12 @@ internal fun KontoCard(
                     label = { Text(stringResource(R.string.konto_email_password)) },
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf)
+                    modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld)
             }
             Button(
                 onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }, code) },
                 enabled = geaendert && !kontoZustand.speichert && (!emailNeu || pwFuerEmail.isNotEmpty()),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
 
             HorizontalDivider(Modifier.padding(vertical = Abstaende.mittel),
@@ -137,7 +137,7 @@ internal fun KontoCard(
                 value = pwAktuell, onValueChange = { pwAktuell = it },
                 label = { Text(stringResource(R.string.konto_password_current)) },
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
             OutlinedTextField(
                 value = pwNeu, onValueChange = { pwNeu = it },
@@ -150,12 +150,12 @@ internal fun KontoCard(
                     { Text(stringResource(R.string.register_password_short)) }
                 } else null,
                 isError = pwNeu.isNotEmpty() && passwortZuKurz(pwNeu),
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
             OutlinedButton(
                 onClick = { onPasswort(pwAktuell, pwNeu, code) },
                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
+                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
         }
     }
@@ -217,14 +217,14 @@ internal fun ZweiterFaktorCard(
                 value = zfPasswort, onValueChange = { zfPasswort = it },
                 label = { Text(stringResource(R.string.konto_password_current)) },
                 visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
         }
         val codeFeld: @Composable (String) -> Unit = { beschriftung ->
             OutlinedTextField(
                 value = zfCode, onValueChange = { zfCode = it.take(24) },
                 label = { Text(beschriftung) },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
         }
 
@@ -237,9 +237,8 @@ internal fun ZweiterFaktorCard(
                 Text(zfZustand.codes.joinToString("\n"),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) },
-                        shape = Formen.knopf) { Text(stringResource(R.string.zf_copy)) }
-                    Button(onClick = onZurueck, shape = Formen.knopf) { Text(stringResource(R.string.zf_codes_done)) }
+                    OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) }) { Text(stringResource(R.string.zf_copy)) }
+                    Button(onClick = onZurueck) { Text(stringResource(R.string.zf_codes_done)) }
                 }
             }
             // 2. Einrichtung laeuft: Schluessel in die App, Code bestaetigen.
@@ -251,7 +250,7 @@ internal fun ZweiterFaktorCard(
                         val uri = ch.brickinventoryapp.util.otpauthAdresse(zfZustand.otpauth)
                         ohneApp = uri == null || !oeffneMitAuswahl(kontext, uri, auswahlTitel)
                     },
-                    modifier = Modifier.fillMaxWidth(), shape = Formen.knopf
+                    modifier = Modifier.fillMaxWidth()
                 ) { Text(stringResource(R.string.zf_open_app)) }
                 if (ohneApp) {
                     Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodySmall,
@@ -259,14 +258,13 @@ internal fun ZweiterFaktorCard(
                 }
                 Text(zfZustand.geheimnis.chunked(4).joinToString(" "),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
-                OutlinedButton(onClick = { kopieren(zfZustand.geheimnis) }, shape = Formen.knopf) {
+                OutlinedButton(onClick = { kopieren(zfZustand.geheimnis) }) {
                     Text(stringResource(R.string.zf_copy_key))
                 }
                 codeFeld(stringResource(R.string.zf_confirm_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Button(onClick = { onBestaetigen(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.laedt,
-                        shape = Formen.knopf) { Text(stringResource(R.string.zf_confirm)) }
-                    OutlinedButton(onClick = onZurueck, shape = Formen.knopf) { Text(stringResource(R.string.common_cancel)) }
+                    Button(onClick = { onBestaetigen(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.laedt) { Text(stringResource(R.string.zf_confirm)) }
+                    OutlinedButton(onClick = onZurueck) { Text(stringResource(R.string.common_cancel)) }
                 }
             }
             // 3. Aktiv: neue Codes oder abschalten.
@@ -276,18 +274,16 @@ internal fun ZweiterFaktorCard(
                 passwortFeld()
                 codeFeld(stringResource(R.string.login_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.laedt,
-                        shape = Formen.knopf) { Text(stringResource(R.string.zf_new_codes)) }
+                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.laedt) { Text(stringResource(R.string.zf_new_codes)) }
                     OutlinedButton(onClick = { onAbschalten(zfPasswort, zfCode) },
-                        enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt,
-                        shape = Formen.knopf) { Text(stringResource(R.string.zf_disable)) }
+                        enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt) { Text(stringResource(R.string.zf_disable)) }
                 }
             }
             // 4. Nicht eingerichtet.
             zfZustand.aktiv == false -> {
                 passwortFeld()
                 Button(onClick = { schutz.bestaetige(codesGrund) { onEinrichten(zfPasswort) } }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
                 ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
             }
         }
@@ -378,7 +374,7 @@ internal fun GeraeteCard(
         }
 
         Row(Modifier.padding(top = Abstaende.mittel), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            OutlinedButton(onClick = onReload, shape = Formen.knopf) {
+            OutlinedButton(onClick = onReload) {
                 Text(stringResource(R.string.tokens_reload))
             }
             // Nur anbieten, wenn es wirklich andere gibt — ein Knopf, der
@@ -386,7 +382,6 @@ internal fun GeraeteCard(
             if (zustand.geraete.count { !it.aktuell } > 0) {
                 OutlinedButton(
                     onClick = { fragtAlle = true },
-                    shape = Formen.knopf,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                 ) { Text(stringResource(R.string.tokens_revoke_others)) }
             }

@@ -232,11 +232,10 @@ fun SettingsScreen(
         OutlinedButton(
             onClick = { fragtAbmelden = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            shape = Formen.knopf,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f))
         ) {
-            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Filled.Logout, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.settings_logout), fontWeight = FontWeight.SemiBold)
         }
@@ -276,7 +275,7 @@ private fun ServerCard(
         )
         Spacer(Modifier.height(Abstaende.klein))
         OutlinedButton(onClick = onWechseln) {
-            Icon(Icons.Default.Cloud, null, modifier = Modifier.size(18.dp))
+            Icon(Icons.Default.Cloud, null, modifier = Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.main_menu_change_server))
         }

@@ -236,7 +236,7 @@ fun ManualItemDetailScreen(
                                     }
                                 },
                                 shape = Formen.etikett
-                            ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(14.dp)) }
+                            ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
                             Text("$qty", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
                             FilledTonalIconButton(
@@ -246,7 +246,7 @@ fun ManualItemDetailScreen(
                                     else teile.updatePart(id, colorId, qty, part?.unitPrice, part?.condition, owner = part?.userId)
                                 },
                                 shape = Formen.etikett
-                            ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(14.dp)) }
+                            ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
                         }
                     }
 

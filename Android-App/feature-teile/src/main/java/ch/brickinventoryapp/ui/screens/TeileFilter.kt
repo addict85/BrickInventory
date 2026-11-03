@@ -99,7 +99,7 @@ fun TeileFilterZeile(
                         ?: stringResource(R.string.parts_filter_color),
                         style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp))) },
             )
         }
         if (kategorien.isNotEmpty()) {
@@ -111,7 +111,7 @@ fun TeileFilterZeile(
                         ?: stringResource(R.string.parts_filter_category),
                         style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(18.dp)) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp))) },
             )
         }
     }

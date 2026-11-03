@@ -97,7 +97,7 @@ fun AddPartDialog(
                     value = partNumber, onValueChange = { partNumber = it },
                     label = { Text(stringResource(R.string.parts_part_number)) }, placeholder = { Text(stringResource(R.string.parts_part_number_placeholder)) },
                     modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf
+                    shape = Formen.feld
                 )
                 ExposedDropdownMenuBox(
                     expanded = colorMenuExpanded,
@@ -120,7 +120,7 @@ fun AddPartDialog(
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = colorMenuExpanded) },
                         modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
                         singleLine = true,
-                        shape = Formen.knopf
+                        shape = Formen.feld
                     )
                     ExposedDropdownMenu(expanded = colorMenuExpanded, onDismissRequest = { colorMenuExpanded = false }) {
                         DropdownMenuItem(

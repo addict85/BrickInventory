@@ -37,7 +37,7 @@ fun SettingsCard(
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 modifier = Modifier.padding(bottom = Abstaende.mittel)
             ) {
-                Icon(icon, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                Icon(icon, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
                 Text(title.uppercase(),
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,

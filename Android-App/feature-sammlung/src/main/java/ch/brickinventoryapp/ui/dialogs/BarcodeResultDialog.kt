@@ -108,7 +108,7 @@ AlertDialog(
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Warning, null, Modifier.size(20.dp),
+                        Icon(Icons.Default.Warning, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp)),
                             tint = MaterialTheme.colorScheme.onErrorContainer)
                         Text(
                             stringResource(R.string.main_barcode_unsure),
@@ -145,18 +145,18 @@ AlertDialog(
             HorizontalDivider()
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 if (barcodeState.year != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.CalendarMonth, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.CalendarMonth, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text("${barcodeState.year}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.main_barcode_year), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (barcodeState.pieces != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(18.dp), tint = Color.Unspecified)
+                    Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = Color.Unspecified)
                     Text(ch.brickinventoryapp.util.fmtInt(barcodeState.pieces!!), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     Text(stringResource(R.string.main_barcode_pieces), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 if (barcodeState.minifigs != null && barcodeState.minifigs!! > 0)
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.Person, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.Person, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${barcodeState.minifigs}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.main_barcode_figs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -231,7 +231,7 @@ AlertDialog(
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.barcode_add))
             } else {
-                Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.barcode_add))
             }

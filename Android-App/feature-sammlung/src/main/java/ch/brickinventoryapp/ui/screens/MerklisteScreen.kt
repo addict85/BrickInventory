@@ -158,13 +158,13 @@ fun MerklisteScreen(
                     leer = {
                         HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
                             stringResource(R.string.wanted_empty_hint))
-                        Button(onClick = { maskeOffen = true }, shape = Formen.knopf) {
-                            Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Button(onClick = { maskeOffen = true }) {
+                            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.wanted_add_first))
                         }
-                        OutlinedButton(onClick = { onScan() }, shape = Formen.knopf) {
-                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(18.dp))
+                        OutlinedButton(onClick = { onScan() }) {
+                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.gallery_scan_barcode))
                         }
@@ -349,7 +349,7 @@ private fun MerkpostenErfassenDialog(
             // Fokus, und der Dialog fokussiert das Feld sofort.
             supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
             singleLine = true,
-            shape = Formen.knopf,
+            shape = Formen.feld,
             // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
             // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
             // Regel dazu steht in NumericInputTest.

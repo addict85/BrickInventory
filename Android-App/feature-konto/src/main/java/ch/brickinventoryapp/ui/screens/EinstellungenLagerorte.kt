@@ -62,8 +62,8 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
         }
     }
 
-    Button(onClick = { neu = true }, shape = Formen.knopf) {
-        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+    Button(onClick = { neu = true }) {
+        Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.storage_add_button))
     }

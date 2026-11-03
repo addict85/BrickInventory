@@ -174,10 +174,9 @@ fun CatalogDetailScreen(
                                 android.widget.Toast.LENGTH_SHORT).show()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = Formen.leiste
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.ShoppingCart, null, Modifier.size(18.dp))
+                    Icon(Icons.Default.ShoppingCart, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(blLabel))
                 }
@@ -193,10 +192,9 @@ fun CatalogDetailScreen(
                     OutlinedButton(
                         onClick = { showWishDialog = true },
                         modifier = Modifier.weight(1f),
-                        shape = Formen.leiste,
                         contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
                     ) {
-                        Icon(Icons.Default.BookmarkAdd, null, Modifier.size(18.dp))
+                        Icon(Icons.Default.BookmarkAdd, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                         Spacer(Modifier.width(Abstaende.winzig))
                         Text(stringResource(R.string.wanted_add_submit),
                             maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -205,10 +203,9 @@ fun CatalogDetailScreen(
                     Button(
                         onClick = { showAddDialog = true },
                         modifier = Modifier.weight(1f),
-                        shape = Formen.leiste,
                         contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
                     ) {
-                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                         Spacer(Modifier.width(Abstaende.winzig))
                         Text(stringResource(if (detail.owned) R.string.catalog_add_again
                                             else R.string.catalog_add_to_gallery),
@@ -219,10 +216,9 @@ fun CatalogDetailScreen(
                 if (detail.owned) {
                     OutlinedButton(
                         onClick = { onOpenInGallery(detail.setNumber) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = Formen.leiste
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                        Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.catalog_open_in_gallery))
                     }

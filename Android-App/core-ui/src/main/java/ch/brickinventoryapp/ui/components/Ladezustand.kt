@@ -121,7 +121,7 @@ fun FehlerHinweis(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse? =
             Text(fehler, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         }
-        Button(onClick = onErneut, shape = Formen.knopf) { Text(stringResource(R.string.common_retry)) }
+        Button(onClick = onErneut) { Text(stringResource(R.string.common_retry)) }
     }
 }
 

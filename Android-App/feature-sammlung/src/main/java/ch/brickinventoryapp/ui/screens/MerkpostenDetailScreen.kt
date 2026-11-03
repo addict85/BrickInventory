@@ -231,7 +231,6 @@ fun MerkpostenDetailScreen(
                                         }
                                     },
                                     modifier = Modifier.weight(1f),
-                                    shape = Formen.leiste,
                                     contentPadding = PaddingValues(
                                         horizontal = Abstaende.klein, vertical = Abstaende.klein),
                                 ) {
@@ -250,9 +249,8 @@ fun MerkpostenDetailScreen(
                     Button(
                         onClick = { uebernahmeOffen = true },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = Formen.leiste,
                     ) {
-                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                        Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                         Spacer(Modifier.width(Abstaende.winzig))
                         Text(stringResource(R.string.wanted_take))
                     }

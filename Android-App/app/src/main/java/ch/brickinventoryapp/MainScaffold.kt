@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -105,7 +106,7 @@ fun MainScaffold(
                         selected = istGewaehlt(screen),
                         onClick = { reiterWaehlen(screen) },
                         icon = { Symbol(screen, icon) },
-                        label = { Text(label, style = MaterialTheme.typography.labelSmall) }
+                        label = { ReiterBeschriftung(label) }
                     )
                 }
             }
@@ -158,7 +159,7 @@ fun MainScaffold(
                         bottomNavItems.forEach { (screen, icon, label) ->
                             NavigationBarItem(
                                 icon = { Symbol(screen, icon) },
-                                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                label = { ReiterBeschriftung(label) },
                                 selected = istGewaehlt(screen),
                                 onClick = { reiterWaehlen(screen) }
                             )
@@ -234,6 +235,26 @@ fun ReiterGeruest(
         content = content
     )
 }
+
+/**
+ * Beschriftung eines Ziels in Leiste und Seitenleiste: immer eine Zeile. Bei 200 %
+ * brach „Samm|lung“ mitten im Wort; reicht die Breite nicht, wird die Schrift
+ * schrittweise kleiner, wie Android es in der eigenen Systemleiste hält.
+ */
+@Composable
+private fun ReiterBeschriftung(text: String) {
+    val farbe = LocalContentColor.current
+    val stil = MaterialTheme.typography.labelSmall
+    androidx.compose.foundation.text.BasicText(
+        // Ellipsis als Massstab: Die Grösse passt, wenn nichts ausgelassen wird.
+        text, style = stil, color = { farbe }, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(
+            minFontSize = REITER_SCHRIFT_MIN, maxFontSize = stil.fontSize, stepSize = 0.5.sp),
+    )
+}
+
+/** Kleiner wird keine Beschriftung; bei 200 % sind das noch 14 dp, gut lesbar. */
+private val REITER_SCHRIFT_MIN = 7.sp
 
 /** Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel. */
 private val SAMMLUNG = setOf(Screen.Gallery.route, Screen.Parts.route, Screen.Minifigs.route)

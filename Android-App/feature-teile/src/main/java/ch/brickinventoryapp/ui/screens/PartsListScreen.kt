@@ -196,7 +196,7 @@ fun PartsListScreen(
                         shape = MaterialTheme.shapes.large,
                         trailingIcon = {
                             if (setInput.isNotBlank()) IconButton(onClick = { setInput = "" }) {
-                                Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear), Modifier.size(18.dp))
+                                Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                             }
                         }
                     )
@@ -222,7 +222,7 @@ fun PartsListScreen(
                                 onClick = { sets = sets.toMutableList().also { it.removeAt(i) }; generated = false },
                                 label = { Text(if (s.name != s.setNumber) "${s.setNumber} — ${s.name}" else s.setNumber,
                                     style = MaterialTheme.typography.labelSmall) },
-                                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(14.dp)) }
+                                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
                             )
                         }
                     }
@@ -275,7 +275,7 @@ fun PartsListScreen(
                         // beide 16 dp breit.
                         if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
                             color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                        else Icon(Icons.Default.Build, null, Modifier.size(16.dp))
+                        else Icon(Icons.Default.Build, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                         Spacer(Modifier.width(Abstaende.winzig))
                         Text(stringResource(R.string.partslist_generate))
                     }
@@ -313,7 +313,7 @@ fun PartsListScreen(
                             // beide 16 dp breit.
                             if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onTertiary, strokeWidth = 2.dp)
-                            else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(16.dp))
+                            else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                             Spacer(Modifier.width(Abstaende.winzig))
                             Text("PDF")
                         }
@@ -372,7 +372,7 @@ fun PartsListScreen(
                             // beide 16 dp breit.
                             if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
                                 color = MaterialTheme.colorScheme.onSecondary, strokeWidth = 2.dp)
-                            else Icon(Icons.Default.Inventory2, null, Modifier.size(16.dp))
+                            else Icon(Icons.Default.Inventory2, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                             Spacer(Modifier.width(Abstaende.winzig))
                             Text(stringResource(R.string.partslist_fill_owned))
                         }

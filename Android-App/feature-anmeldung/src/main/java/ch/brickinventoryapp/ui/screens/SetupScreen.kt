@@ -242,7 +242,7 @@ fun SetupScreen(
             onClick = { scanError = null; showScanner = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
-            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(20.dp))
+            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.setup_scan_qr), fontWeight = FontWeight.SemiBold)
         }
@@ -358,7 +358,7 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                             .aspectRatio(1f)
                             .border(2.dp,
                                 if (frozen) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.primary,
-                                Formen.knopf)
+                                Formen.feld)
                     )
                 }
             }

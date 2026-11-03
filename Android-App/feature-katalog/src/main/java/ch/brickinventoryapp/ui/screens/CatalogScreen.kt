@@ -215,7 +215,7 @@ fun CatalogScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         LeerSymbol(Icons.Default.ErrorOutline)
                         Text(fehlertext, fontWeight = FontWeight.SemiBold)
-                        Button(onClick = onRefresh, shape = Formen.knopf) { Text(stringResource(R.string.gallery_refresh)) }
+                        Button(onClick = onRefresh) { Text(stringResource(R.string.gallery_refresh)) }
                     }
                 }
                 state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
@@ -423,7 +423,7 @@ internal fun ThemeRow(label: String, id: Int?, selected: Boolean, onClick: () ->
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            if (selected) Icon(Icons.Default.Check, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+            if (selected) Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
         }
     }
 }

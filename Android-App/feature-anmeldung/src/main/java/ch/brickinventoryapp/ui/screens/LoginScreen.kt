@@ -113,7 +113,7 @@ fun LoginScreen(
                 // Eine Zeile mit Auslassung: Bei 200 % Schrift lief die Adresse sonst aus dem Chip.
                 label = { Text(serverUrl, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium) },
-                leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(14.dp)) },
+                leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) },
                 trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(12.dp)) },
                 shape = Formen.chip
             )
@@ -198,8 +198,7 @@ private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, onClick: ()
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-        enabled = !laeuft && aktiv,
-        shape = Formen.knopf
+        enabled = !laeuft && aktiv
     ) {
         if (laeuft) {
             CircularProgressIndicator(Modifier.size(18.dp),
@@ -238,7 +237,7 @@ private fun AnmeldeFelder(
         label = { Text(stringResource(R.string.login_username)) },
         leadingIcon = { Icon(Icons.Default.Person, null) },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
+        shape = Formen.feld,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { focusMgr.moveFocus(FocusDirection.Down) })
     )
@@ -259,7 +258,7 @@ private fun AnmeldeFelder(
         },
         visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
         modifier = Modifier.fillMaxWidth(), singleLine = true,
-        shape = Formen.knopf,
+        shape = Formen.feld,
         keyboardOptions = KeyboardOptions(
             imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
             keyboardType = KeyboardType.Password),
@@ -281,7 +280,7 @@ private fun AnmeldeFelder(
             supportingText = { Text(stringResource(R.string.login_code_hint)) },
             leadingIcon = { Icon(Icons.Default.Key, null) },
             modifier = Modifier.fillMaxWidth(), singleLine = true,
-            shape = Formen.knopf,
+            shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Ascii),
             keyboardActions = KeyboardActions(onDone = { focusMgr.clearFocus(); absenden() })
         )
@@ -316,15 +315,15 @@ private fun AnmeldeFelder(
     if (codeNoetig && onPasskeyStattCode != null) {
         OutlinedButton(onClick = { onPasskeyStattCode(username, password) },
             enabled = !isLoading && username.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = Formen.knopf) {
-            Icon(Icons.Default.Fingerprint, null, Modifier.size(18.dp))
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Icon(Icons.Default.Fingerprint, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.login_passkey_statt_code))
         }
     } else if (!codeNoetig && onPasskey != null) {
         OutlinedButton(onClick = onPasskey, enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = Formen.knopf) {
-            Icon(Icons.Default.Fingerprint, null, Modifier.size(18.dp))
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Icon(Icons.Default.Fingerprint, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.login_passkey))
         }
@@ -385,32 +384,32 @@ private fun RegistrierFelder(
             value = nutzer, onValueChange = { nutzer = it },
             label = { Text(stringResource(R.string.login_username)) },
             leadingIcon = { Icon(Icons.Default.Person, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = weiter, keyboardActions = naechstes)
         OutlinedTextField(
             value = email, onValueChange = { email = it },
             label = { Text(stringResource(R.string.register_email)) },
             leadingIcon = { Icon(Icons.Default.Email, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
                 keyboardType = KeyboardType.Email),
             keyboardActions = naechstes)
         OutlinedTextField(
             value = vorname, onValueChange = { vorname = it },
             label = { Text(stringResource(R.string.register_first_name)) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = weiter, keyboardActions = naechstes)
         OutlinedTextField(
             value = nachname, onValueChange = { nachname = it },
             label = { Text(stringResource(R.string.register_last_name)) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = weiter, keyboardActions = naechstes)
         OutlinedTextField(
             value = pw1, onValueChange = { pw1 = it },
             label = { Text(stringResource(R.string.login_password)) },
             leadingIcon = { Icon(Icons.Default.Lock, null) },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
                 keyboardType = KeyboardType.Password),
             keyboardActions = naechstes)
@@ -419,7 +418,7 @@ private fun RegistrierFelder(
             label = { Text(stringResource(R.string.register_password_repeat)) },
             leadingIcon = { Icon(Icons.Default.Lock, null) },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
                 keyboardType = KeyboardType.Password))
 
@@ -474,7 +473,7 @@ private fun VergessenFelder(
             value = email, onValueChange = { email = it },
             label = { Text(stringResource(R.string.register_email)) },
             leadingIcon = { Icon(Icons.Default.Email, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
                 keyboardType = KeyboardType.Email))
 
