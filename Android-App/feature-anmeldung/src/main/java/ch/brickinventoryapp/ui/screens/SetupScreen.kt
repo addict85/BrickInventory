@@ -135,8 +135,16 @@ fun SetupScreen(
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
                             modifier = Modifier.fillMaxWidth(),
                         )
-                    } else if (fp != null) Text(stringResource(R.string.setup_qr_pin),
-                        style = MaterialTheme.typography.bodySmall)
+                    } else if (fp != null) {
+                        // Erstes Einrichten: Der Code bestimmt allein, welchem Schlüssel die App
+                        // künftig für diese Adresse traut. Abtippen hiesse, den QR-Code zu
+                        // entwerten; darum die Warnung und der Anfang zum Vergleich mit der Webapp.
+                        Text(stringResource(R.string.setup_qr_pin), color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
                     if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                 }
             },

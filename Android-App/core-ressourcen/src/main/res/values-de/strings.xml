@@ -865,7 +865,7 @@
         <item quantity="other">Eingerichtet · %d Wiederherstellungscodes übrig</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
-    <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App nimmt nur dieses an.</string>
+    <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App merkt es sich für diese Adresse und nimmt danach nur noch dieses an. Nur fortfahren, wenn du den Code eben selbst in deiner Webapp erzeugt hast; dort steht unter Einstellungen → Server-Zertifikat derselbe Anfang.</string>
     <string name="setup_altbestand_text">Gespeichert ist %1$s – eine unverschlüsselte Adresse. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.\n\nSo geht es weiter:\n1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und hier oben scannen.\n2. Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.\n\nDanach meldest du dich einmal neu an.</string>
     <string name="setup_altbestand_titel">Nur noch verschlüsselte Verbindungen</string>
     <string name="setup_qr_klartext_abgelehnt">Dieser QR-Code nennt eine unverschlüsselte Adresse (http). Die App verbindet sich nur über https: Den Server auf https umstellen (README, „HTTPS mit eigener CA“) und den Code danach neu erzeugen.</string>
