@@ -93,6 +93,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
  *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
+ *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -606,5 +607,34 @@ class OberflaechenRegelnTest {
         } finally {
             welt.close()
         }
+    }
+
+    /** Text ganz in einer Zeile: weder umgebrochen noch ausgelassen. */
+    private fun ganzEineZeile(text: String) {
+        val ergebnis = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode()
+            .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
+        val t = ergebnis.single()
+        assertTrue("„$text“ steht in ${t.lineCount} Zeilen, sichtbar bis ${t.getLineEnd(t.lineCount - 1, visibleEnd = true)}",
+            t.lineCount == 1 && !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == text.length)
+    }
+
+    /**
+     * Eine Einfachwahl bei 200 % auf einem schmalen Telefon: Jede Möglichkeit steht
+     * ganz in einer Zeile. Als Segmente brach „Gebraucht“ zu „Gebrau/cht“.
+     */
+    @Test
+    fun `Einfachwahl bricht bei 200 Prozent kein Wort um`() {
+        val zustaende = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used)
+            .map { ctx.getString(it) }
+        val zeitraum = listOf(R.string.chart_period_week, R.string.chart_period_month, R.string.chart_period_year,
+            R.string.chart_period_max).map { ctx.getString(it) }
+        zeige(schrift = 2f) {
+            androidx.compose.foundation.layout.Column(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
+                ch.brickinventoryapp.ui.components.SegmentWahl(zustaende.map { it to it }, zustaende[0], {})
+                ch.brickinventoryapp.ui.components.SegmentWahl(zeitraum.map { it to it }, zeitraum[0], {})
+            }
+        }
+        (zustaende + zeitraum).forEach { ganzEineZeile(it) }
     }
 }
