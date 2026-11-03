@@ -69,6 +69,7 @@ class TokenRotationTest {
         override fun serverUrl() = adresse()
         override fun token() = gespeichert
         override fun tokenHerkunft(): String? = null
+        override fun generation() = schranke.generation
     }
     private val schranke = TokenSchranke()
 

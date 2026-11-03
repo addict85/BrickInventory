@@ -76,7 +76,10 @@ def miss(projekt, wurzel, patch, gradle):
     if zurueck.returncode != 0:
         return False, f'{name}: Patch liess sich nicht zurücknehmen — {zurueck.stderr.strip()}'
     if not os.path.exists(bericht):
-        ende = '\n'.join((lauf.stdout + lauf.stderr).splitlines()[-15:])
+        zeilen = (lauf.stdout + lauf.stderr).splitlines()
+        # Die eigentliche Ursache (Übersetzer, KSP) steht weit vor Gradles Schlusszeilen.
+        ursache = [z for z in zeilen if z.startswith(('e: ', 'w: [ksp]')) or '[ksp]' in z or 'error:' in z][:20]
+        ende = '\n'.join(ursache + zeilen[-15:])
         return False, f'{name}: kein Testbericht für {klasse} — der Test lief nicht (übersetzt der Patch?)\n{ende}'.rstrip()
     rot = fehlschlaege(bericht)
     erwartet = k.get('Rot')
@@ -91,7 +94,7 @@ def main():
     ordner = sys.argv[1] if len(sys.argv) > 1 else 'gegenproben'
     projekt = os.path.dirname(os.path.abspath(ordner))
     wurzel = git(projekt, 'rev-parse', '--show-toplevel').stdout.strip()
-    gradle = shlex.split(os.environ.get('GEGENPROBE_GRADLE', './gradlew --no-daemon -Pksp.incremental=false'))
+    gradle = shlex.split(os.environ.get('GEGENPROBE_GRADLE', './gradlew --no-daemon --no-build-cache -Pksp.incremental=false'))
     patches = sorted(glob.glob(os.path.join(ordner, '*.patch')))
     if not patches:
         print(f'Keine Gegenproben unter {ordner}/ — ohne sie prüft dieser Schritt nichts.')

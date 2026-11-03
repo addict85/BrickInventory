@@ -253,8 +253,12 @@ class PreferencesManager @Inject constructor(
         }
         // Zuerst in den Speicher, dann auf die Platte (siehe serverUrlState).
         // Ein anderer Server beendet die Sitzung: Der Token gehört dem alten.
-        val neueHerkunft: suspend () -> Boolean =
-            { !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(serverUrlJetzt(), normalized) }
+        val neueHerkunft: suspend () -> Boolean = {
+            val anders = !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(serverUrlJetzt(), normalized)
+            // Laufende Aufrufe gehören dem alten Server; ihre Antworten sollen nichts mehr auslösen.
+            if (anders) serverwechselHoerer.forEach { it() }
+            anders
+        }
         tokenSchranke.schreibe(neueSitzung = neueHerkunft) {
             val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
             val anderer = tokenJetzt().isNotBlank() &&
@@ -297,6 +301,18 @@ class PreferencesManager @Inject constructor(
 
     /** Sperre und Generation für alle Schreibungen des Tokens (data/TokenTausch). */
     private val tokenSchranke = TokenSchranke()
+
+    /** Für den Wächter (di/ServerWaechter): die Generation, vor dem Token gelesen. */
+    fun tokenGeneration(): Long = tokenSchranke.generation
+
+    private val serverwechselHoerer = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val nutzerCaHoerer = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    /** Die Server-Clients brechen beim Wechsel auf eine andere Herkunft ihre Aufrufe ab (di/ServerClient). */
+    fun beimServerwechsel(hoerer: () -> Unit) { serverwechselHoerer += hoerer }
+
+    /** Nach dem Umschalten der Nutzer-CAs: neuer TLS-Kontext, offene Verbindungen weg (di/ServerClient). */
+    fun beimNutzerCaWechsel(hoerer: () -> Unit) { nutzerCaHoerer += hoerer }
 
     /** Für den Tausch: Herkunft wie im Wächter — ohne Bindung die eingetragene Adresse. */
     suspend fun tokenStand(): TokenStand {
@@ -428,6 +444,7 @@ class PreferencesManager @Inject constructor(
     fun nutzerCaErlaubt(): Boolean = designSpiegel.getBoolean(NUTZER_CA, false)
     fun setzeNutzerCa(an: Boolean) {
         designSpiegel.edit { putBoolean(NUTZER_CA, an) }
+        nutzerCaHoerer.forEach { it() }
     }
 
     /**

@@ -205,6 +205,10 @@ internal fun ZweiterFaktorCard(
     val kopieren: (String) -> Unit = { text ->
         ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, schluesselEtikett, text)
     }
+    // Neue Codes und ein neuer Schlüssel erscheinen gleich danach im Klartext: erst
+    // nach der Gerätesperre (Schrittschutz), zusätzlich zu Passwort bzw. Code.
+    val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+    val codesGrund = stringResource(R.string.schritt_codes)
     // Felder leeren, sobald ein Schritt gelungen ist — sonst stuende das
     // Passwort beim naechsten Schritt noch da.
     LaunchedEffect(zfZustand.aktiv, zfZustand.geheimnis, zfZustand.codes) { zfPasswort = ""; zfCode = "" }
@@ -282,7 +286,7 @@ internal fun ZweiterFaktorCard(
                 passwortFeld()
                 codeFeld(stringResource(R.string.login_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    OutlinedButton(onClick = { onNeueCodes(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.laedt,
+                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.laedt,
                         shape = Formen.knopf) { Text(stringResource(R.string.zf_new_codes)) }
                     OutlinedButton(onClick = { onAbschalten(zfPasswort, zfCode) },
                         enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt,
@@ -292,7 +296,7 @@ internal fun ZweiterFaktorCard(
             // 4. Nicht eingerichtet.
             zfZustand.aktiv == false -> {
                 passwortFeld()
-                Button(onClick = { onEinrichten(zfPasswort) }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
+                Button(onClick = { schutz.bestaetige(codesGrund) { onEinrichten(zfPasswort) } }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
                 ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
             }

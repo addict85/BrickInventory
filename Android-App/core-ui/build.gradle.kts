@@ -55,6 +55,7 @@ dependencies {
     implementation(libs.bundles.compose)
     implementation(libs.bundles.camera)
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.biometric)
 
     testImplementation(project(":core-testing"))
     testImplementation(libs.bundles.unit.tests)

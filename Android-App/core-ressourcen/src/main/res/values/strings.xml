@@ -619,6 +619,7 @@
     <string name="pdfview_loading_bytes">Loading PDF… %1$s</string>
     <string name="pdfview_rendering">Loading PDF…</string>
     <string name="pdfview_load_failed">Could not load: %1$s</string>
+    <string name="pdfview_fremder_host">This PDF is not on your server. Open it from the set page in another app.</string>
     <string name="pdfview_page">Page %1$d</string>
     <string name="pdfview_unknown_error">Unknown error</string>
     <string name="pdfview_download_failed">Download failed</string>
@@ -833,6 +834,12 @@
     <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.</string>
     <string name="vouchers_export">Export all vouchers as PDF</string>
     <string name="vouchers_pin_show">Show PIN</string>
+    <string name="schritt_untertitel">Confirm with fingerprint, face or your device lock</string>
+    <string name="schritt_entsperren">Confirm</string>
+    <string name="schritt_gutschein">Show voucher PIN</string>
+    <string name="schritt_codes">Recovery codes</string>
+    <string name="schritt_verwaltung">Open administration</string>
+    <string name="schritt_voller_zugriff">Sign in with admin rights</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
     <string name="vouchers_delete_confirm">Really delete voucher %1$s? The stored PDF goes with it.</string>
     <string name="vouchers_saved">Voucher saved</string>
@@ -881,7 +888,7 @@
         <item quantity="other">Set up · %d recovery codes left</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
-    <string name="setup_qr_pin">The code also names the server\'s certificate. The app will accept only that one.</string>
+    <string name="setup_qr_pin">The code also names the server\'s certificate. The app remembers it for this address and from then on accepts only this one. Only continue if you have just created the code yourself in your web app; under Settings → Server certificate it shows the same beginning.</string>
     <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it with the button below.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
     <string name="setup_altbestand_titel">Encrypted connections only</string>
     <string name="setup_qr_klartext_abgelehnt">This QR code names an unencrypted address (http). The app only connects via https: switch the server to https (README, “HTTPS with your own CA”) and create the code again.</string>

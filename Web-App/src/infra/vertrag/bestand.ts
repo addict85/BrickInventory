@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eingabe } from '../validate';
-import { type Route, zeit, Erfolg, ganz } from './grund';
+import { type Route, zeit, Erfolg, ganz, bestaetigt } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const Acquisition = z.looseObject({
@@ -118,5 +118,5 @@ export const routen = {
   'POST /api/v1/papierkorb/:id/wiederherstellen': { antwort: Wiederhergestellt },
   'DELETE /api/v1/papierkorb/:id': { antwort: Erfolg },
   'DELETE /api/v1/papierkorb': { antwort: PapierkorbGeleert },
-  'DELETE /api/v1/bestand': { antwort: BestandGeleert },
+  'DELETE /api/v1/bestand': { antwort: BestandGeleert, ...bestaetigt() },
 } satisfies Record<string, Route>;

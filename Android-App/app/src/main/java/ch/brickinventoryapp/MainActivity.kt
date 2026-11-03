@@ -80,6 +80,14 @@ class MainActivity : NurLauncherStart() {
     // DiskCache-Instanzen liefen auf demselben Verzeichnis.
     @Inject lateinit var imageLoader: ImageLoader
 
+    /** Rückfrage per Gerätesperre vor heiklen Schritten; gilt bis die App in den Hintergrund geht. */
+    private val schrittschutz by lazy {
+        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this) {
+            ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
+                .getString(R.string.schritt_untertitel)
+        }
+    }
+
     /** Das Ziel einer angetippten Meldung; abgelegt nur vom nicht exportierten MeldungsEinstieg. */
     @Inject lateinit var meldungseingang: ch.brickinventoryapp.ui.Meldungseingang
 
@@ -110,6 +118,11 @@ class MainActivity : NurLauncherStart() {
             runCatching { ch.brickinventoryapp.alarm.PreisalarmWorker.durchgang(applicationContext) }
                 .onFailure { ch.brickinventoryapp.util.Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        schrittschutz.vergiss()
     }
 
     /** Ein abgelaufenes Geheimnis lässt sich ab Android 10 erst mit Fokus aus der Zwischenablage nehmen. */
@@ -144,6 +157,7 @@ class MainActivity : NurLauncherStart() {
                 // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.
                 CompositionLocalProvider(
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                    ch.brickinventoryapp.ui.components.LocalSchrittschutz provides schrittschutz,
                 ) {
                     BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.

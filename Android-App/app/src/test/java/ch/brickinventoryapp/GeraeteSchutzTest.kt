@@ -7,12 +7,16 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.Schrittschutz
+import ch.brickinventoryapp.ui.components.Schrittsperre
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.util.TokenVerschluesselung
@@ -36,6 +40,11 @@ import org.robolectric.annotation.Config
  *       verdecktes Fenster …“ (gegenproben/teilweise-verdeckt-durchgelassen.patch)
  *   (b) vorschauVerbergen() mit Vorgabe false → rot „eine neue Installation
  *       verbirgt die Vorschau …“ (gegenproben/vorschau-vorgabe-aus.patch)
+ *   (c) Schrittsperre zeigt den Inhalt ohne Bestätigung (`if (entsperrt || grund.isNotEmpty())`) →
+ *       rot „die Verwaltung zeigt sich erst nach der Geraetesperre“
+ *       (gegenproben/verwaltung-ohne-geraetesperre.patch)
+ *   (d) saveServerUrl() ruft die Hörer nicht → rot „ein anderer Server bricht
+ *       laufende Aufrufe ab …“ (gegenproben/serverwechsel-ohne-abbruch.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -95,6 +104,48 @@ class GeraeteSchutzTest {
         assertSame("Der Filter blieb am Fenster", compose.activity, compose.activity.window.callback)
         tippe(MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED)
         assertEquals(1, klicks)
+    }
+
+    @Test
+    fun `die Verwaltung zeigt sich erst nach der Geraetesperre`() {
+        var bestaetigen: (() -> Unit)? = null
+        compose.setContent {
+            BrickInventoryManagerTheme {
+                CompositionLocalProvider(LocalSchrittschutz provides Schrittschutz { _, weiter -> bestaetigen = weiter }) {
+                    Schrittsperre("Verwaltung") { Text("Verwalteraktion") }
+                }
+            }
+        }
+        compose.waitForIdle()
+        compose.onNodeWithText("Verwalteraktion").assertDoesNotExist()
+        val weiter = bestaetigen
+        assertTrue("Beim Öffnen wird nicht gefragt", weiter != null)
+        compose.runOnUiThread { weiter?.invoke() }
+        compose.waitForIdle()
+        compose.onNodeWithText("Verwalteraktion").assertExists()
+    }
+
+    /** Die Verdrahtung für M1 (pruef6): Die Server-Clients hören hier mit (di/ServerClient.folgtDemServer). */
+    @Test
+    fun `ein anderer Server bricht laufende Aufrufe ab, dieselbe Herkunft nicht`() {
+        val prefs = PreferencesManager(ApplicationProvider.getApplicationContext<Context>(), object : TokenVerschluesselung {
+            override fun verschluessle(klartext: String) = klartext
+            override fun entschluessle(gespeichert: String) = gespeichert
+        })
+        var abgebrochen = 0
+        var nutzerCa = 0
+        prefs.beimServerwechsel { abgebrochen++ }
+        prefs.beimNutzerCaWechsel { nutzerCa++ }
+        kotlinx.coroutines.runBlocking {
+            prefs.saveServerUrl("https://alt.example")
+            abgebrochen = 0
+            prefs.saveServerUrl("https://alt.example/brick")
+            assertEquals("Dieselbe Herkunft bricht nichts ab", 0, abgebrochen)
+            prefs.saveServerUrl("https://neu.example")
+            assertEquals(1, abgebrochen)
+        }
+        prefs.setzeNutzerCa(true)
+        assertEquals("Der TLS-Kontext wird nach dem Umschalten neu gebaut", 1, nutzerCa)
     }
 
     @Test

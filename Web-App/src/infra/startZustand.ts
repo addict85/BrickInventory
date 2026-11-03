@@ -16,10 +16,10 @@ export async function meldeStartZustand(s: StartZustand): Promise<void> {
   await setzeZustand('startup_status', JSON.stringify(s)).catch(logAndContinue('start:zustand schreiben'));
 }
 
-/** Ohne Anmeldung lesbar: nur die bekannten Felder, gekürzt. */
-export function oeffentlicherStartZustand(s: StartZustand): StartZustand {
-  return { ready: s.ready === true, step: String(s.step ?? '').slice(0, 80), progress: Number(s.progress) || 0,
-    total: Number(s.total) || 0, sub: typeof s.sub === 'string' ? s.sub.slice(0, 40) : null };
+/** Gekürzt; Schritt und Unterstand nur angemeldet, sonst sieht jeder, woran der Start hängt. */
+export function oeffentlicherStartZustand(s: StartZustand, angemeldet = false): Omit<StartZustand, 'step'> & { step: string | null } {
+  return { ready: s.ready === true, step: angemeldet ? String(s.step ?? '').slice(0, 80) : null, progress: Number(s.progress) || 0,
+    total: Number(s.total) || 0, sub: angemeldet && typeof s.sub === 'string' ? s.sub.slice(0, 40) : null };
 }
 
 /** Bereit bleibt bereit — darum endet das Nachlesen danach. */

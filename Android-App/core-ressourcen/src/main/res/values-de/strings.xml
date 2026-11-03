@@ -605,6 +605,7 @@
     <string name="pdfview_loading_bytes">PDF wird geladen… %1$s</string>
     <string name="pdfview_rendering">PDF wird geladen…</string>
     <string name="pdfview_load_failed">Fehler beim Laden: %1$s</string>
+    <string name="pdfview_fremder_host">Dieses PDF liegt nicht auf deinem Server. Öffne es auf der Set-Seite mit einer anderen App.</string>
     <string name="pdfview_page">Seite %1$d</string>
     <string name="pdfview_unknown_error">Unbekannter Fehler</string>
     <string name="pdfview_download_failed">Download fehlgeschlagen</string>
@@ -819,6 +820,12 @@
     <string name="vouchers_pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</string>
     <string name="vouchers_export">Alle Gutscheine als PDF exportieren</string>
     <string name="vouchers_pin_show">PIN anzeigen</string>
+    <string name="schritt_untertitel">Mit Fingerabdruck, Gesicht oder der Sperre des Geräts bestätigen</string>
+    <string name="schritt_entsperren">Bestätigen</string>
+    <string name="schritt_gutschein">Gutschein-PIN anzeigen</string>
+    <string name="schritt_codes">Wiederherstellungscodes</string>
+    <string name="schritt_verwaltung">Verwaltung öffnen</string>
+    <string name="schritt_voller_zugriff">Mit Verwalterrechten anmelden</string>
     <string name="vouchers_pin_hide">PIN verbergen</string>
     <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>
     <string name="vouchers_saved">Gutschein gespeichert</string>
@@ -862,7 +869,7 @@
         <item quantity="other">Eingerichtet · %d Wiederherstellungscodes übrig</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
-    <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App nimmt nur dieses an.</string>
+    <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App merkt es sich für diese Adresse und nimmt danach nur noch dieses an. Nur fortfahren, wenn du den Code eben selbst in deiner Webapp erzeugt hast; dort steht unter Einstellungen → Server-Zertifikat derselbe Anfang.</string>
     <string name="setup_altbestand_text">Gespeichert ist %1$s – eine unverschlüsselte Adresse. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.\n\nSo geht es weiter:\n1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und mit dem Knopf darunter scannen.\n2. Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.\n\nDanach meldest du dich einmal neu an.</string>
     <string name="setup_altbestand_titel">Nur noch verschlüsselte Verbindungen</string>
     <string name="setup_qr_klartext_abgelehnt">Dieser QR-Code nennt eine unverschlüsselte Adresse (http). Die App verbindet sich nur über https: Den Server auf https umstellen (README, „HTTPS mit eigener CA“) und den Code danach neu erzeugen.</string>

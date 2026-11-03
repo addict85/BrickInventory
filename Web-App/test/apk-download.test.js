@@ -91,9 +91,11 @@ test('3. der Knopf trägt kein fremdes Markenzeichen', () => {
   assert.match(knopf, /<svg /, 'Das Symbol kommt nicht als eigenes SVG mit.');
 });
 
-test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schlüssel nie', () => {
+test('signiert und veröffentlicht wird nur aus einem Etikett auf main, und Gradle sieht den Schlüssel nie', () => {
   // Ein signiertes APK im Kanal apk-neuste ist ein Update für jede installierte
-  // App. Von einem Zweig aus wäre das ungeprüfter Code an Review und Merge vorbei.
+  // App. Von einem Zweig aus wäre das ungeprüfter Code an Review und Merge vorbei;
+  // seit pruef6 (N4) auch nicht mehr jeder Push auf main, sondern nur ein
+  // Etikett android-v…, dessen Commit auf main liegt.
   // Gegenproben (28.10.2026): die main-Bedingung am Release-Schritt entfernt → rot;
   // BRICK_KEYSTORE_PASSWORT wieder im Schritt „Release bauen“ → rot;
   // (02.11.2026) am Schritt „Release-Schlüssel bereitstellen“ die `if:`-Zeile
@@ -101,6 +103,9 @@ test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schl�
   // secrets.KEY_PASSWORT }}` in den Schritt „Signieren“ → rot „Secrets
   // ausserhalb …“; im Fehlertext „Repository-Secrets gleichen Namens löschen“
   // entfernt → rot „… sagt, dass Repository-Secrets wegmüssen“.
+  // (03.11.2026) Der Schritt „Etikett liegt auf main“ prüft `ahead` statt
+  // `behind` → rot „… nur ein Commit, der auf main liegt“; das Etikett-Muster
+  // unter `push:` entfernt → rot „… Etiketten lösen den Lauf aus“.
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8');
   const schritt = (name) => {
     const i = yml.indexOf(`- name: ${name}`);
@@ -109,18 +114,25 @@ test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schl�
     const ende = rest.search(/\n      - name: /);
     return ende < 0 ? rest : rest.slice(0, ende);
   };
-  assert.match(schritt('BrickInventory.apk als Release bereitstellen'),
-    /if:.*github\.ref == 'refs\/heads\/main'/, 'Release läuft auch auf Zweigen');
   // Die Secrets stehen in genau einem Schritt, und der läuft nur unter derselben
   // Bedingung, unter der der Job in der Environment release steht.
-  const bedingung = "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'";
+  const bedingung = "github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')";
+  assert.ok(schritt('BrickInventory.apk als Release bereitstellen').includes(`if: success() && ${bedingung}\n`),
+    'Release läuft auch ohne Etikett');
+  assert.match(yml, /\n  push:\n    branches: \['\*\*'\]\n(?:    #.*\n)*    tags: \['android-v\*'\]\n/, 'Etiketten lösen den Lauf aus');
+  const aufMain = schritt('Etikett liegt auf main');
+  assert.ok(aufMain.includes(`\n        if: ${bedingung}\n`));
+  assert.match(aufMain, /compare\/main\.\.\.\$GITHUB_SHA/);
+  assert.match(aufMain, /identical\|behind\) echo/, 'signiert wird nur ein Commit, der auf main liegt');
+  assert.ok(yml.indexOf('- name: Etikett liegt auf main') < yml.indexOf('- name: Release-Schlüssel bereitstellen'),
+    'die Prüfung kommt vor dem Schlüssel');
   const schluessel = schritt('Release-Schlüssel bereitstellen');
   assert.ok(schluessel.includes(`\n        if: ${bedingung}\n`), 'Secrets nur in der Environment release');
   for (const geheim of ['KEYSTORE_BASE64', 'KEYSTORE_PASSWORT', 'KEY_ALIAS', 'KEY_PASSWORT'])
     assert.match(schluessel, new RegExp(`: \\$\\{\\{ secrets\\.${geheim} \\}\\}`), `${geheim} fehlt`);
   assert.match(schluessel, /Repository-Secrets gleichen Namens löschen/, 'der Fehlertext sagt, dass Repository-Secrets wegmüssen');
   assert.ok(yml.includes(`environment: \${{ ${bedingung} && 'release' || '' }}`));
-  assert.match(schritt('Signieren'), /ECHT: \$\{\{ github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request' \}\}/);
+  assert.ok(schritt('Signieren').includes(`ECHT: \${{ ${bedingung} }}`));
   // Nur dieser Schritt nennt Secrets; der Bau mit allen Gradle-Plugins nicht.
   const andere = yml.split(/\n      - name: /).filter(t => !t.startsWith('Release-Schlüssel bereitstellen'))
     .join('\n').split('\n').filter(z => !z.trimStart().startsWith('#') && /secrets\./.test(z));
@@ -135,6 +147,8 @@ test('signiert und veröffentlicht wird nur von main, und Gradle sieht den Schl�
 // Gegenproben (01.11.2026, zweite Runde): `environment: release` am Release-Job
 // entfernt → rot „… erst nach Freigabe“; die Fehlermeldung wieder mit „oder
 // als Repository-Secret“ → rot „… nur aus der Environment“.
+// Gegenprobe (03.11.2026): den Schritt „Herkunft des APK bescheinigen“ entfernt
+// → rot „… die Herkunft des APK wird bescheinigt“.
 test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffentlicht danach', () => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android.yml'), 'utf8')
     .split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');
@@ -145,8 +159,8 @@ test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffe
   };
   const signieren = job('signieren');
   assert.match(signieren, /\n    needs: build\n/);
-  assert.match(signieren, /\n    environment: \$\{\{ github\.ref == 'refs\/heads\/main' && github\.event_name != 'pull_request' && 'release' \|\| '' \}\}\n/,
-    'die Secrets auf main nur über die Environment release');
+  assert.ok(signieren.includes("\n    environment: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') && 'release' || '' }}\n"),
+    'die Secrets nur für ein Etikett und nur über die Environment release');
   for (const verboten of [/actions\/checkout/, /gradlew/, /tools\/[\w-]+\.py/, /python/, /setup-gradle/])
     assert.doesNotMatch(signieren, verboten, `der Signierjob führt keinen Projektcode aus (${verboten})`);
   assert.match(signieren, /name: apk-unsigniert/);
@@ -164,7 +178,9 @@ test('signiert wird in einem eigenen Job ohne Projektcode, geprüft und veröffe
   assert.match(release, /\n    needs: \[signieren, apk-pruefen\]\n/, 'veröffentlicht nur das geprüfte, signierte APK');
   assert.match(release, /name: apk-signiert/);
   assert.match(release, /\n    environment: release\n/, 'das Release mit Schreibrecht läuft erst nach Freigabe in der Environment release');
-  assert.match(release, /\n    permissions:\n      contents: write\n/);
+  assert.match(release, /\n    permissions:\n      contents: write\n      id-token: write\n      attestations: write\n/);
+  assert.match(release, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'die Herkunft des APK wird bescheinigt');
+  assert.match(release, /subject-path: Android-App\/app\/build\/outputs\/apk\/release\/BrickInventory\.apk/);
   assert.doesNotMatch(signieren, /oder als Repository-Secret/, 'die Signier-Secrets kommen nur aus der Environment');
 });
 

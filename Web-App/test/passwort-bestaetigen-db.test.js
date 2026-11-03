@@ -1,5 +1,5 @@
 /**
- * Das aktuelle Passwort in einer laufenden Sitzung: gebremst je Konto, und ein
+ * Das aktuelle Passwort in einer laufenden Sitzung: gebremst je Konto und Zugang,
  * Token kann sich nicht selbst vermehren.
  *
  * Wer ein Token erbeutet hat, konnte über /change-password, PUT /profile und
@@ -44,9 +44,9 @@ test('Passwort bestätigen', { concurrency: 1 }, async (t) => {
     `INSERT INTO users (username, email, password_hash, is_active, email_verified)
      VALUES ($1, $2, $3, true, true) RETURNING id`,
     [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
-  await db.run(`DELETE FROM rate_limit_attempts WHERE key = $1`, [`passwort-bestaetigen|${uid}`]);
+  await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`passwort-bestaetigen|${uid}|%`]);
   t.after(async () => {
-    await db.run(`DELETE FROM rate_limit_attempts WHERE key = $1`, [`passwort-bestaetigen|${uid}`]).catch(() => {});
+    await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`%-bestaetigen|${uid}|%`]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -85,7 +85,7 @@ test('Passwort bestätigen', { concurrency: 1 }, async (t) => {
   });
 
   await t.test('ein Erfolg setzt den Zähler zurück', async () => {
-    await db.run(`DELETE FROM rate_limit_attempts WHERE key = $1`, [`passwort-bestaetigen|${uid}`]);
+    await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`passwort-bestaetigen|${uid}|%`]);
     for (let i = 0; i < 4; i++) await post(mitSitzung, '/zweiter-faktor/einrichten', { password: 'falsch' });
     assert.equal((await post(mitSitzung, '/zweiter-faktor/einrichten', { password: PASS })).status, 200);
     assert.equal((await post(mitSitzung, '/zweiter-faktor/einrichten', { password: 'falsch' })).status, 400,

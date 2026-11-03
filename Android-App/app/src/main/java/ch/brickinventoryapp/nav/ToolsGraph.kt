@@ -282,7 +282,11 @@ fun NavGraphBuilder.toolsGraph(
             val stand by vm.state.collectAsStateWithLifecycle()
             LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navController.popBackStack() }
             ReiterGeruest(stringResource(R.string.nav_monitoring), vm, navController, bottomNavItems, snackbarHostState) {
-                MonitoringScreen(vm)
+                // Verwalteraktionen nur nach der Gerätesperre; kein Tipp durch eine Überlagerung.
+                ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+                ch.brickinventoryapp.ui.components.Schrittsperre(stringResource(R.string.schritt_verwaltung)) {
+                    MonitoringScreen(vm)
+                }
             }
         }
         composable(
@@ -295,10 +299,12 @@ fun NavGraphBuilder.toolsGraph(
             val pdfUrl   = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("url")   ?: "", "UTF-8")
             val pdfTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "", "UTF-8")
             if (ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine(pdfUrl)) ch.brickinventoryapp.ui.components.Sichtschutz()
+            val state by vm.state.collectAsStateWithLifecycle()
             PdfViewerScreen(
                 pdfUrl = pdfUrl,
                 title  = pdfTitle,
                 httpClient = vm.apiHttpClient,
+                serverUrl = state.serverUrl,
                 onBack = { navController.popBackStack() }
             )
         }

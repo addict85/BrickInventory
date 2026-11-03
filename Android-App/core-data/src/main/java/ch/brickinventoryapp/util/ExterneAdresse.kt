@@ -25,6 +25,16 @@ fun eigeneAdresse(serverUrl: String, pfad: String): String? {
 }
 
 /**
+ * Lädt der In-App-Betrachter diese Adresse? Nur vom eigenen Server: Er lädt mit
+ * dem Token-Client, und PdfRenderer läuft im Prozess der App ohne Abschottung.
+ * Fremde PDFs öffnet das System (oeffneExtern), wie es SetDetailSections tut.
+ */
+fun pdfImBetrachter(pdfUrl: String, serverUrl: String): Boolean {
+    val ziel = pdfUrl.trim().toHttpUrlOrNull() ?: return false
+    return serverUrl.isNotBlank() && NetworkPolicy.isSameOrigin(ziel, serverUrl)
+}
+
+/**
  * Die Adresse für die Authenticator-App: nur `otpauth://totp|hotp/…`. Sie kommt
  * vom Server und geht per ACTION_VIEW hinaus; ein anderes Schema (`intent:`,
  * `https:`, `content:`) öffnete sonst ein beliebiges Ziel und gäbe ihm das Geheimnis.

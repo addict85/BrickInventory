@@ -182,6 +182,8 @@ object NetzModule {
                 }
             }
             .build()
+            // Eigener Dispatcher: Der Abbruch beim Serverwechsel muss ihn eigens kennen.
+            .also { folgtDemServer(prefs, it) }
 
     /**
      * Ein ImageLoader für die ganze Laufzeit: In der Activity gebaut, entstand bei

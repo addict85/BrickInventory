@@ -194,7 +194,9 @@ class ApkNameTest {
         }
         // Ein Pull-Request darf die Datei hinter dem stabilen Link NICHT
         // ersetzen — sonst zeigt er auf einen ungeprueften Zweig.
-        assert(roh[0].contains("github.event_name != 'pull_request'")) {
+        // Seit der Tag-Bindung genügt auch: nur bei einem gepushten android-v*-Tag.
+        assert(roh[0].contains("github.event_name != 'pull_request'") ||
+            (roh[0].contains("github.event_name == 'push'") && roh[0].contains("refs/tags/android-v"))) {
             "Der Release-Schritt laeuft auch bei Pull-Requests und ueberschreibt " +
                 "damit das APK hinter dem stabilen Link."
         }

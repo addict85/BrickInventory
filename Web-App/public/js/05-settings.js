@@ -54,7 +54,8 @@ async function speichereSmtp() {
   if (JSON.stringify(werte) === geladeneSmtp && (!altlast || altlast.style.display === 'none')) return { success: true };
   const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss');
   if (admin_password === null) return null;
-  const d = await api('POST','/v1/settings', { ...werte, admin_password });
+  const d = await mitZweitemFaktor(z => api('POST','/v1/settings', { ...werte, admin_password, ...z }));
+  if (d === null) return null;
   if (d.success) { geladeneSmtp = JSON.stringify(werte); if (altlast) altlast.style.display = 'none'; }
   return d;
 }
@@ -170,8 +171,10 @@ async function generateQrCode() {
     // db/migrations/0016-token-laufzeit.sql).
     const gueltigkeit = G('qr-validity')?.value || '';
     const pw = G('qr-password');
-    const d = await api('POST', '/v1/auth/qr-token', { gueltigkeit, password: pw?.value || '' });
+    const password = pw?.value || '';
     if (pw) pw.value = '';
+    const d = await mitZweitemFaktor(z => api('POST', '/v1/auth/qr-token', { gueltigkeit, password, ...z }));
+    if (d === null) { frei(); return; }
     if (!d.success) {
       hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown'));
       // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein
@@ -353,7 +356,8 @@ async function revokeOtherTokens() {
                                                tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden');
   if (password === null) return;
   // Zuerst die übrigen Browser: Dort prüft der Server das Passwort.
-  const s = await api('POST', '/v1/settings/sessions/andere-beenden', { password });
+  const s = await mitZweitemFaktor(z => api('POST', '/v1/settings/sessions/andere-beenden', { password, ...z }));
+  if (s === null) return;
   if (!s.success) { toast(s.error || t('settings.error'), 'error'); return; }
   let weg = 0;
   for (const tk of andere) {
@@ -643,7 +647,9 @@ export async function redeemHouseholdInvite(){
   const password = await bestaetigeMitPasswort(tRaw('household.redeem_title'), tRaw('household.redeem_confirm_text'), 'link');
   if(password === null) return;
   const faktor_code = (G('household-redeem-faktor-code')?.value || '').trim();
-  const d = await api('POST','/v1/settings/household/redeem',{ code, password, ...(faktor_code ? { faktor_code } : {}) });
+  const d = await mitZweitemFaktor(z => api('POST','/v1/settings/household/redeem',
+    { code, password, ...(z.code || faktor_code ? { faktor_code: z.code || faktor_code } : {}), ...(z.passkey ? { passkey: z.passkey } : {}) }));
+  if(d === null) return;
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   G('household-redeem-code').value = '';
   if(G('household-redeem-faktor-code')) G('household-redeem-faktor-code').value = '';
@@ -695,7 +701,8 @@ G('btn-dall').onclick=async()=>{
   // statt des früheren Eintippens von „LÖSCHEN". Nur das EIGENE Konto (Server).
   const password=await bestaetigeMitPasswort(tRaw('settings.delete_all.title'),tRaw('settings.delete_all.text'),'loeschen');
   if(password===null) return;
-  const d=await api('DELETE','/v1/bestand',{password});
+  const d=await mitZweitemFaktor(z => api('DELETE','/v1/bestand',{password, ...z}));
+  if(d===null) return;
   if(!d?.success){ toast(d?.error||tRaw('settings.error'),'error'); return; }
   toast(tRaw('settings.delete_all.done',{n:d.sets+d.teile+d.figuren}),'success');
   loadGallery(); loadParts(); loadMinifigs(); loadStats();
@@ -761,7 +768,8 @@ G('btn-cu').onclick=async()=>{
   if(passwortRegelText(p)){toast(passwortRegelText(p),'error');return;}
   const admin_password = await bestaetigeMitPasswort(tRaw('users.create_title'), tRaw('users.admin_confirm_text'), 'schloss');
   if (admin_password === null) return;
-  const d=await api('POST','/v1/auth/users',{username:n,password:p,is_admin:a,admin_password});
+  const d=await mitZweitemFaktor(z => api('POST','/v1/auth/users',{username:n,password:p,is_admin:a,admin_password,...z}));
+  if(d===null) return;
   if(d.success){toast(tRaw('users.created',{name:n}),'success');G('nu-n').value=G('nu-p').value='';G('nu-a').checked=false;loadUsers();} else toast(d.error||t('settings.error'),'error');
 };
 function openRpw(uid){ G('rpw-uid').value=uid; G('rpw-v').value=''; G('pw-modal').classList.add('open'); }
@@ -770,7 +778,8 @@ G('btn-rpw').onclick=async()=>{
   if(passwortRegelText(neuesPw)){toast(passwortRegelText(neuesPw),'error');return;}
   const admin_password = await bestaetigeMitPasswort(tRaw('users.reset_pw_title'), tRaw('users.admin_confirm_text'), 'schloss');
   if (admin_password === null) return;
-  const d=await api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:neuesPw, admin_password});
+  const d=await mitZweitemFaktor(z => api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:neuesPw, admin_password, ...z}));
+  if(d===null) return;
   if(d.success){toast(tRaw('users.pw_reset'),'success');G('pw-modal').classList.remove('open');} else toast(d.error||t('settings.error'),'error');
 };
 async function toggleAdmin(uid,isAdmin){
@@ -779,18 +788,19 @@ async function toggleAdmin(uid,isAdmin){
   const cur = isAdmin === true || isAdmin === 1 || isAdmin === '1';
   const admin_password = await bestaetigeMitPasswort(tRaw('users.role_title'), tRaw('users.admin_confirm_text'), 'schloss');
   if (admin_password === null) return;
-  const d=await api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur, admin_password}); if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+  const d=await mitZweitemFaktor(z => api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur, admin_password, ...z})); if(d===null) return; if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 /** Deaktivieren meldet das Konto auf allen Geräten ab; die Daten bleiben. */
 async function toggleAktiv(uid, aktiv){
   const istAktiv = String(aktiv) === '1';
   const admin_password = await bestaetigeMitPasswort(
     tRaw(istAktiv ? 'users.deactivate_title' : 'users.activate_title'), tRaw('users.admin_confirm_text'), 'schloss');
   if (admin_password === null) return;
-  const d = await api('PUT', `/v1/auth/users/${uid}/aktiv`, { is_active: !istAktiv, admin_password });
+  const d = await mitZweitemFaktor(z => api('PUT', `/v1/auth/users/${uid}/aktiv`, { is_active: !istAktiv, admin_password, ...z }));
+  if (d === null) return;
   if (d.success) { toast(tRaw(istAktiv ? 'users.deactivated' : 'users.activated'), 'success'); loadUsers(); }
   else toast(d.error || t('settings.error'), 'error');
 }
-async function delUser(uid,name){ const admin_password = await bestaetigeMitPasswort(tRaw('users.delete.title'),tRaw('users.delete.text'),'profil'); if(admin_password === null) return; const d=await api('DELETE',`/v1/auth/users/${uid}`,{admin_password}); if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+async function delUser(uid,name){ const admin_password = await bestaetigeMitPasswort(tRaw('users.delete.title'),tRaw('users.delete.text'),'profil'); if(admin_password === null) return; const d=await mitZweitemFaktor(z => api('DELETE',`/v1/auth/users/${uid}`,{admin_password, ...z})); if(d===null) return; if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 
 
 

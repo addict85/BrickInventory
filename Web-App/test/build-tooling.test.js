@@ -85,7 +85,7 @@ test('das Datenverzeichnis ist das einzige Datenvolume der App, der Schlüssel l
   const compose = read('compose.yaml');
   // app und jobs hängen dasselbe ./data ein; daneben nur der Datenschlüssel,
   // der gerade nicht in data/ liegen soll (UPGRADE.md, Abschnitt 21).
-  const appMounts = [...new Set([...compose.matchAll(/^\s*-\s*\.\/[^\s:#]+:(\/app[^\s:#]*)/gm)].map(m => m[1]))];
+  const appMounts = [...new Set([...compose.matchAll(/^\s*-\s*\.\/[^\s:#]+:(\/app[^\s:#]*)/gm)].map(m => m[1]))].sort();
   assert.deepEqual(appMounts, ['/app/data', '/app/schluessel'],
     'Alles Persistente liegt unter data/ — ein zweites Volume erzeugt nur einen verwaisten Ordner');
 });

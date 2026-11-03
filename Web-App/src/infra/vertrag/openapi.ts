@@ -59,6 +59,7 @@ export function openapi(): Record<string, unknown> {
         const { $schema: _, ...schema } = z.toJSONSchema(r.eingabe, { io: 'input', unrepresentable: 'any' });
         op.requestBody = { content: { 'application/json': { schema } } };
       }
+      if (r.bestaetigung) op['x-bestaetigung'] = r.bestaetigung;
       const oaPfad = pfad.replace(/:(\w+)/g, '{$1}');
       (paths[oaPfad] ??= {})[methode.toLowerCase()] = op;
     }

@@ -46,7 +46,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
   const haupt = await anlegen(HAUPT), kind = await anlegen(KIND), haupt2 = await anlegen(HAUPT2);
   await db.run("DELETE FROM global_settings WHERE key LIKE 'smtp_%'");
   t.after(async () => {
-    await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`passwort-bestaetigen|${kind}`]);
+    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${kind}|%`]);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[haupt, kind, haupt2]]);
     await db.pool.end().catch(() => {});
   });
@@ -94,7 +94,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async (t) => {
     const { code } = await createInvite(haupt2);
     const ohne = await einloesen({ code, password: PASS });
     assert.equal(ohne.status, 400, JSON.stringify(ohne.body));
-    assert.equal(ohne.body.code, 'zweiter_faktor_falsch');
+    assert.equal(ohne.body.code, 'zweiter_faktor_noetig');
     // Die Hinweis-Mail abwarten: Spät auf stdout geschrieben, stört sie den Testlauf.
     const zeilen = [], echt = console.log;
     console.log = (...a) => { zeilen.push(a.join(' ')); };

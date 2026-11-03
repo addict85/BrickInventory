@@ -77,6 +77,11 @@ fun GutscheineCard(
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
+    // PIN aufdecken, kopieren, bearbeiten und die PDFs zeigen Geld: erst nach der
+    // Gerätesperre (Schrittschutz). Die Nummer allein löst nichts ein.
+    val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+    val grund = stringResource(R.string.schritt_gutschein)
+    val geschuetzt: (() -> Unit) -> Unit = { schritt -> schutz.bestaetige(grund, schritt) }
     // Das Formular steht in einem Blatt, nicht dauerhaft unter der Liste: Auf dem
     // Telefon lag es sonst bei jedem Besuch im Weg. Offen zum Anlegen ([neu]) oder
     // solange ein Gutschein bearbeitet wird; nach erfolgreichem Speichern (Felder
@@ -128,7 +133,7 @@ fun GutscheineCard(
             }
             // Ohne Gutscheine aus: Der Server antwortete mit 404, ein Betrachter mit
             // Fehlermeldung wäre der umständlichste Weg zu „du hast noch keine“.
-            OutlinedButton(onClick = onExportieren, enabled = zustand.gutscheine.isNotEmpty()) {
+            OutlinedButton(onClick = { geschuetzt(onExportieren) }, enabled = zustand.gutscheine.isNotEmpty()) {
                 Icon(Icons.Default.PictureAsPdf, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_export))
@@ -174,11 +179,16 @@ fun GutscheineCard(
             GutscheinKarte(
                 g = g,
                 pinSichtbar = g.id in zustand.pinSichtbar,
-                onPinSchalten = { onPinSchalten(g.id) },
-                onBearbeiten = { onBearbeiten(g.id) },
+                // Verdecken braucht keine Bestätigung, aufdecken schon.
+                onPinSchalten = {
+                    if (g.id in zustand.pinSichtbar) onPinSchalten(g.id) else geschuetzt { onPinSchalten(g.id) }
+                },
+                onBearbeiten = { geschuetzt { onBearbeiten(g.id) } },
                 onLoeschen = { onLoeschen(g.id) },
-                onPdfOeffnen = { onPdfOeffnen(g.id) },
-                onKopieren = onKopieren,
+                onPdfOeffnen = { geschuetzt { onPdfOeffnen(g.id) } },
+                onKopieren = { wert, istNummer ->
+                    if (istNummer) onKopieren(wert, true) else geschuetzt { onKopieren(wert, false) }
+                },
                 onGuthaben = { onGuthaben(g.id) },
                 guthabenLaeuft = zustand.guthabenLaeuft == g.id,
                 modifier = m,
@@ -319,8 +329,8 @@ private fun GutscheinFormularBlatt(
  * Ein Gutschein als Karte: links Nummer (in Vierergruppen, weil neunzehn Ziffern an
  * der Kasse nicht abzulesen sind), Betrag und Stand der Abfrage, rechts ein Menü mit
  * Guthaben, PDF, Bearbeiten und Löschen. Nummer und PIN kopiert ein Tipp. Jede
- * Aktion geht über GENAU EINEN Rückruf ([onPinSchalten], [onKopieren], [onPdfOeffnen]);
- * dort lässt sich eine Bestätigung (Gerätesperre) vorschalten.
+ * Aktion geht über GENAU EINEN Rückruf; die Gerätesperre davor setzt GutscheineCard
+ * (geschuetzt).
  */
 @Composable
 private fun GutscheinKarte(

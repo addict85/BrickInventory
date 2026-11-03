@@ -26,6 +26,8 @@ fun GutscheineUnterseite(
     // Feldzugriff auf GutscheinUiState.
     val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
     ch.brickinventoryapp.ui.components.Sichtschutz()
+    // PIN kopieren und Gutscheine löschen: kein Tipp durch eine Überlagerung.
+    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
     // Kopiert wird über GeheimeZwischenablage (nach einer Minute wieder leer); die
     // Rückmeldung läuft über den Snackbar des ViewModels wie alle anderen Meldungen.
     val kontext = androidx.compose.ui.platform.LocalContext.current

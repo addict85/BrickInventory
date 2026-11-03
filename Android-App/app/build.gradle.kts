@@ -467,7 +467,6 @@ dependencies {
     implementation(libs.camerax.view)
     implementation(libs.mlkit.barcode)
     implementation(libs.mlkit.textrec)
-    implementation(libs.accompanist.permissions)
 
     debugImplementation(libs.androidx.ui.tooling)
 

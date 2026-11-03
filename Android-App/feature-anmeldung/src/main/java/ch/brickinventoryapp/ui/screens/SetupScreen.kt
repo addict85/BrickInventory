@@ -38,9 +38,6 @@ import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -139,8 +136,16 @@ fun SetupScreen(
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
                             modifier = Modifier.fillMaxWidth(),
                         )
-                    } else if (fp != null) Text(stringResource(R.string.setup_qr_pin),
-                        style = MaterialTheme.typography.bodySmall)
+                    } else if (fp != null) {
+                        // Erstes Einrichten: Der Code bestimmt allein, welchem Schlüssel die App
+                        // künftig für diese Adresse traut. Abtippen hiesse, den QR-Code zu
+                        // entwerten; darum die Warnung und der Anfang zum Vergleich mit der Webapp.
+                        Text(stringResource(R.string.setup_qr_pin), color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
                     if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -302,19 +307,18 @@ fun SetupScreen(
 }
 
 /** QR scanner for setup — reuses the proven CameraPreviewBarcode with QR_CODE format */
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
-    val cameraPermission = rememberPermissionState(android.Manifest.permission.CAMERA)
+    val cameraPermission = rememberKameraErlaubnis()
     var frozen by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (!cameraPermission.status.isGranted) cameraPermission.launchPermissionRequest()
+        if (!cameraPermission.erteilt) cameraPermission.anfragen()
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            cameraPermission.status.isGranted -> {
+            cameraPermission.erteilt -> {
                 // Reuse proven camera implementation with QR-only scanner
                 QrCameraPreview(
                     frozen = frozen,
@@ -339,7 +343,7 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                 }
             }
             else -> {
-                KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
+                KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
         IconButton(onClick = onDismiss, Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {

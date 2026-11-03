@@ -19,6 +19,7 @@ private class GeraeteZugang(private val prefs: PreferencesManager) : Zugangslage
     override fun serverUrl(): String { bereit(); return prefs.serverUrlState.value.orEmpty() }
     override fun token(): String { bereit(); return prefs.authTokenState.value.orEmpty() }
     override fun tokenHerkunft(): String? { bereit(); return prefs.tokenHerkunftState.value }
+    override fun generation(): Long { bereit(); return prefs.tokenGeneration() }
 }
 
 private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTrustManager {
@@ -33,6 +34,18 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
  * eigenen Server; darüber dessen Pinning (util/ServerVertrauen.kt).
  */
 private var gemeinsamesVertrauen: ch.brickinventoryapp.util.PinVertrauen? = null
+private var gemeinsameTls: ch.brickinventoryapp.util.ErneuerbareTlsFabrik? = null
+
+/** Ein SSLContext für alle Server-Clients; neu, sobald die Nutzer-CAs umschalten. */
+@Synchronized
+private fun serverTls(prefs: PreferencesManager, tm: ch.brickinventoryapp.util.PinVertrauen): ch.brickinventoryapp.util.ErneuerbareTlsFabrik {
+    gemeinsameTls?.let { return it }
+    val fabrik = ch.brickinventoryapp.util.ErneuerbareTlsFabrik {
+        javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory
+    }
+    prefs.beimNutzerCaWechsel { fabrik.erneuere() }
+    return fabrik.also { gemeinsameTls = it }
+}
 
 @Synchronized
 private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventoryapp.util.ZertifikatsFrage): ch.brickinventoryapp.util.PinVertrauen {
@@ -75,7 +88,7 @@ internal fun buildInterceptorClient(
                 else ch.brickinventoryapp.ressourcen.R.string.api_server_zu_alt)
         }
     }
-    return OkHttpClient.Builder()
+    val client = OkHttpClient.Builder()
         .apply {
             // Auch der Bild-Client: Sonst fehlten Bildanfragen im Logcat, und ihr
             // Fehlen sähe aus wie ein Befund statt wie eine Lücke der Beobachtung.
@@ -83,8 +96,9 @@ internal fun buildInterceptorClient(
                 addInterceptor(ch.brickinventoryapp.util.netzMitschnitt())
             }
         }
-        // Eine Umleitung von https auf http liefe am Wächter vorbei, der nur die
-        // erste Anfrage sieht.
+        // Keine Umleitung am Wächter vorbei: Er sieht nur, was er selbst schickt, und
+        // folgt nur innerhalb derselben Herkunft (ServerWaechter.senden).
+        .followRedirects(false)
         .followSslRedirects(false)
         .addInterceptor(ServerWaechter(GeraeteZugang(prefs), isApiClient, NetworkPolicy.entwicklung,
             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung,
@@ -97,11 +111,22 @@ internal fun buildInterceptorClient(
             passwortWechselNoetig = { pflicht?.melde() }))
         .apply {
             val tm = serverVertrauen(prefs, frage)
-            val tls = javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
-            sslSocketFactory(tls.socketFactory, tm)
+            sslSocketFactory(serverTls(prefs, tm), tm)
         }
         .connectTimeout(15, TimeUnit.SECONDS)
         // Ein Zwischen-Byte-Timeout; die PDF-Erzeugung läuft über Job-Polling.
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
+    folgtDemServer(prefs, client)
+    return client
+}
+
+/**
+ * Beim Wechsel auf einen anderen Server laufende Aufrufe abbrechen; nach dem
+ * Umschalten der Nutzer-CAs keine Verbindung mit dem alten Vertrauen weiterbenutzen.
+ * Für jeden Client mit eigenem Dispatcher oder Pool (der Bild-Client hat einen).
+ */
+internal fun folgtDemServer(prefs: PreferencesManager, client: OkHttpClient) {
+    prefs.beimServerwechsel { client.dispatcher.cancelAll() }
+    prefs.beimNutzerCaWechsel { client.connectionPool.evictAll() }
 }
