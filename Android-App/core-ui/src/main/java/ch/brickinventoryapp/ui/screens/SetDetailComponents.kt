@@ -63,7 +63,6 @@ import ch.brickinventoryapp.ui.theme.LocalChartColors
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.fmtProzent

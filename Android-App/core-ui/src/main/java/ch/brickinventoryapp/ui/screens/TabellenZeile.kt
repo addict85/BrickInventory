@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ressourcen.R
@@ -80,23 +79,17 @@ fun TabellenZeile(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Box(
-                    Modifier.size(36.dp).clip(Formen.etikett),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (bildUrl != null) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(ctx).data(bildUrl).crossfade(true).build(),
-                            imageLoader = imageLoader,
-                            contentDescription = name,
-                            onState = { st ->
-                                if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
-                            },
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit,
-                        )
-                    }
-                }
+                ch.brickinventoryapp.ui.components.ProduktBild(
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                    imageLoader = imageLoader,
+                    contentDescription = name,
+                    onState = { st ->
+                        if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
+                    },
+                    modifier = Modifier.size(36.dp).clip(Formen.etikett),
+                    contentScale = ContentScale.Fit,
+                    ersatzGroesse = 20.dp,
+                )
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(5.dp)) {

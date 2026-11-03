@@ -26,7 +26,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -493,32 +492,14 @@ fun PartListRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Image
-        Box(Modifier.size(48.dp)) {
-            if (imgUrl != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(ctx).data(imgUrl).crossfade(true).build(),
-                    imageLoader = imageLoader,
-                    contentDescription = part.partName,
-                    modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.small),
-                    contentScale = ContentScale.Fit
-                )
-            } else {
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        // Teile mit dem gemeinsamen Teile-Symbol (wie Reiter
-                        // und Webapp), Figuren mit dem Personensymbol.
-                        if (part.isFig) LeerSymbol(Icons.Default.Person, 22.dp)
-                        else Icon(
-                            ImageVector.vectorResource(R.drawable.ic_parts_bricks),
-                            contentDescription = null,
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-            }
-        }
+        ch.brickinventoryapp.ui.components.ProduktBild(
+            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+            imageLoader = imageLoader,
+            contentDescription = part.partName,
+            modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
+            contentScale = ContentScale.Fit,
+            ersatzGroesse = 24.dp,
+        )
         // Info
         Column(Modifier.weight(1f)) {
             // BL-ID (primary) and RB-ID (secondary)

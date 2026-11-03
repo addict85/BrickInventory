@@ -37,7 +37,6 @@ import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import androidx.compose.material.icons.filled.Person
@@ -160,31 +159,19 @@ fun ManualItemDetailScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    if (imageUrl != null) {
-                        AsyncImage(
-                            model = imageUrl,
-                            imageLoader = imageLoader,
-                            contentDescription = title,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(Formen.chip)
-                                .clickable(role = Role.Button) { showImageZoom = true }
-                                .padding(Abstaende.mittel),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Box(
-                            Modifier.fillMaxWidth().height(160.dp).background(
-                                Brush.linearGradient(listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.secondaryContainer))),
-                            Alignment.Center
-                        ) {
-                            LeerSymbol(if (isFig) Icons.Default.Person else Icons.Default.ViewInAr, 42.dp,
-                                MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                    }
+                    ch.brickinventoryapp.ui.components.ProduktBild(
+                        model = imageUrl,
+                        imageLoader = imageLoader,
+                        contentDescription = title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(Formen.chip)
+                            .clickable(enabled = imageUrl != null, role = Role.Button) { showImageZoom = true }
+                            .padding(Abstaende.mittel),
+                        contentScale = ContentScale.Fit,
+                        ersatzGroesse = 64.dp,
+                    )
                 }
             }
 

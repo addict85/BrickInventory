@@ -42,7 +42,6 @@ import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.core.graphics.toColorInt
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -367,10 +366,6 @@ fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: I
         onEdit = onEdit,
         farbe = farbe,
         farbname = part.colorName,
-        platzhalter = {
-            Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null,
-                Modifier.size(28.dp), tint = Color.Unspecified)
-        },
     )
 }
 
@@ -399,21 +394,18 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     ) {
         Column {
             Box(Modifier.fillMaxWidth().height(90.dp)) {
-                if (imageUrl != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(ctx).data(imageUrl).crossfade(true).build(),
-                        imageLoader = imageLoader,
-                        contentDescription = part.partName,
-                        onState = { st ->
-                            if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
-                        },
-                        modifier = Modifier.fillMaxSize()
-                            .clip(Formen.kachelBildEcken),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) { Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(28.dp), tint = Color.Unspecified) }
-                }
+                ch.brickinventoryapp.ui.components.ProduktBild(
+                    model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                    imageLoader = imageLoader,
+                    contentDescription = part.partName,
+                    onState = { st ->
+                        if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
+                    },
+                    modifier = Modifier.fillMaxSize()
+                        .clip(Formen.kachelBildEcken),
+                    contentScale = ContentScale.Fit,
+                    ersatzGroesse = 32.dp,
+                )
                 // Qty badge
                 Surface(
                     color = MaterialTheme.colorScheme.primary,

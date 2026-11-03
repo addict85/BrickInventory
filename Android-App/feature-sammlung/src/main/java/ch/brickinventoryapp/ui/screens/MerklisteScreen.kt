@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.draw.clip
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
@@ -372,16 +373,12 @@ private fun MerkpostenZeile(
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
-                // Ohne Bild oder beim Fehler das Logo wie in der Galerie, statt eines leeren Flecks.
-                val ersatz = androidx.compose.ui.res.painterResource(R.drawable.ic_logo)
-                coil3.compose.AsyncImage(
+                ch.brickinventoryapp.ui.components.ProduktBild(
                     model = resolveThumbUrl(serverUrl, w.imageLocal, w.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,
-                    placeholder = ersatz,
-                    error = ersatz,
-                    fallback = ersatz,
-                    modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross),
+                    modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross).clip(MaterialTheme.shapes.small),
+                    ersatzGroesse = 28.dp,
                 )
                 Column(Modifier.weight(1f)) {
                     // Kein Name heisst: Der Katalog kennt das Set nicht. Der

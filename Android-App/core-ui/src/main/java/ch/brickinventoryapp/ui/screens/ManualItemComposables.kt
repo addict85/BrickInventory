@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import androidx.compose.material3.*
@@ -277,10 +276,8 @@ fun ErfassungsFelder(
 /**
  * Die Kachel eines manuell erfassten Teils oder einer Figur — eine Fassung, damit
  * Plaketten und Fuss nicht nur in einer nachgezogen werden. Hinein kommen nur die
- * vier Unterschiede (Ersatzbild, Farbpunkt, Farbzeile, Bezeichnung); Grösse, Form
+ * drei Unterschiede (Farbpunkt, Farbzeile, Bezeichnung); Grösse, Form, Ersatzbild
  * und Reihenfolge gehören zur Kachel.
- *
- * @param platzhalter Was im Bildkasten steht, wenn es kein Bild gibt.
  */
 @Composable
 fun ManuelleKachel(
@@ -297,7 +294,6 @@ fun ManuelleKachel(
     onEdit: () -> Unit,
     farbe: Color? = null,
     farbname: String? = null,
-    platzhalter: @Composable () -> Unit,
 ) {
     val ctx = LocalContext.current
     Card(
@@ -309,20 +305,17 @@ fun ManuelleKachel(
     ) {
         Column {
             Box(Modifier.fillMaxWidth().height(76.dp)) {
-                if (bildUrl != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(ctx).data(bildUrl).crossfade(true).build(),
-                        imageLoader = imageLoader,
-                        contentDescription = name,
-                        onState = { st ->
-                            if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
-                        },
-                        modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
-                        contentScale = ContentScale.Fit,
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) { platzhalter() }
-                }
+                ch.brickinventoryapp.ui.components.ProduktBild(
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                    imageLoader = imageLoader,
+                    contentDescription = name,
+                    onState = { st ->
+                        if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
+                    },
+                    modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
+                    contentScale = ContentScale.Fit,
+                    ersatzGroesse = 28.dp,
+                )
                 Surface(
                     color = MaterialTheme.colorScheme.primary,
                     shape = Formen.marke,

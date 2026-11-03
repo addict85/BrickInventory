@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.util.NumericInput
@@ -418,14 +417,15 @@ fun LazyListScope.setDetailHeroImage(
             elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            if (imageUrl != null) {
-                ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
-                    AsyncImage(
-                    model = coil3.request.ImageRequest.Builder(LocalContext.current)
-                        .data(imageUrl)
-                        .memoryCacheKeyExtra("retry", detailRetry.intValue.toString())
-                        .crossfade(true)
-                        .build(),
+            ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
+                ch.brickinventoryapp.ui.components.ProduktBild(
+                    model = imageUrl?.let {
+                        coil3.request.ImageRequest.Builder(LocalContext.current)
+                            .data(it)
+                            .memoryCacheKeyExtra("retry", detailRetry.intValue.toString())
+                            .crossfade(true)
+                            .build()
+                    },
                     imageLoader = imageLoader,
                     contentDescription = set.name,
                     onState = { st ->
@@ -440,31 +440,10 @@ fun LazyListScope.setDetailHeroImage(
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(Formen.chip)
-                        .clickable(role = Role.Button) { onZoom() },
-                    contentScale = ContentScale.Fit
+                        .clickable(enabled = imageUrl != null, role = Role.Button) { onZoom() },
+                    contentScale = ContentScale.Fit,
+                    ersatzGroesse = 64.dp,
                 )
-                }
-            } else {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                )
-                            )
-                        ),
-                    Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.ViewModule, null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.4f)
-                    )
-                }
             }
         }
     }

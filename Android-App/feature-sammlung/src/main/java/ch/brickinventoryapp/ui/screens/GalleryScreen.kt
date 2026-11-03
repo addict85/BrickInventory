@@ -58,7 +58,6 @@ import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -428,12 +427,11 @@ fun SetCard(
                 // Farbe; deshalb derselbe Baustein statt eines zweiten.
                 if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
                 Box(Modifier.fillMaxWidth().height(if (isBrick) 142.dp else 170.dp)) {
-                    if (imageUrl != null) {
-                        ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
-                            AsyncImage(
-                            model = ImageRequest.Builder(ctx).data(imageUrl)
+                    ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
+                            ch.brickinventoryapp.ui.components.ProduktBild(
+                            model = imageUrl?.let { ImageRequest.Builder(ctx).data(it)
                                 .memoryCacheKeyExtra("retry", retryNonce.toString())
-                                .crossfade(true).build(),
+                                .crossfade(true).build() },
                             imageLoader = imageLoader,
                             contentDescription = set.name,
                             onState = { st ->
@@ -458,13 +456,9 @@ fun SetCard(
                             modifier = bild
                                 .fillMaxSize().padding(bottom = 44.dp)
                                 .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
-                            contentScale = ContentScale.Fit
+                            contentScale = ContentScale.Fit,
+                            ersatzGroesse = 48.dp,
                         )
-                        }
-                    } else {
-                        Box(Modifier.fillMaxSize(), Alignment.Center) {
-                            Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))
-                        }
                     }
                     // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
                     // Menü, damit die Bedienelemente auf eigener Fläche stehen (lichtStreifen()).

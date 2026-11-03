@@ -80,6 +80,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   finanzen-einspaltig             Finanzen auch auf dem Tablet einspaltig → rot „Finanzen stehen auf dem Tablet …“
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
  *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
+ *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -276,6 +277,62 @@ class OberflaechenRegelnTest {
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
             compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true).assertIsDisplayed()
             compose.onAllNodesWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)[0].assertIsDisplayed()
+        } finally {
+            welt.close()
+        }
+    }
+
+    /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
+    private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader) {
+        val vm = welt.galerie().also { it.loadSets() }
+        val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
+            ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
+            ch.brickinventoryapp.data.repository.KatalogRepository(welt.t.api, welt.t.cache),
+            object : ch.brickinventoryapp.data.SetAnleger {
+                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+                                     ownerUserId: Int?, storage: String?) =
+                    kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
+            }))
+        zeige {
+            ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
+                imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
+        }
+        warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
+    }
+
+    private fun ersatzbilder() = compose.onAllNodes(
+        androidx.compose.ui.test.hasTestTag(ch.brickinventoryapp.ui.components.BILD_ERSATZ), useUnmergedTree = true)
+        .fetchSemanticsNodes().size
+
+    @Test
+    fun `Galerie zeigt ohne Bild das Ersatzbild auf jeder Kachel`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            // Jede Anfrage scheitert, wie offline oder bei fehlender Vorschau.
+            val kaputt = coil3.ImageLoader.Builder(ctx).components {
+                add(object : coil3.intercept.Interceptor {
+                    override suspend fun intercept(chain: coil3.intercept.Interceptor.Chain) =
+                        coil3.request.ErrorResult(null, chain.request, IllegalStateException("kein Bild"))
+                })
+            }.build()
+            galerieMit(welt, kaputt)
+            val kacheln = compose.onAllNodes(hasClickAction() and hasText("Millennium Falcon", substring = true))
+                .fetchSemanticsNodes().size
+            assertTrue("Die erste Kachel ist sichtbar", kacheln >= 1)
+            val namen = listOf("Millennium Falcon", "Titanic", "Baumhaus")
+            val sichtbar = namen.count { compose.onAllNodesWithText(it, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals("Ersatzbild je sichtbarer Kachel", sichtbar, ersatzbilder())
+        } finally {
+            welt.close()
+        }
+    }
+
+    @Test
+    fun `Galerie zeigt mit Bild kein Ersatzbild`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            galerieMit(welt, Beispielbilder.loader(ctx))
+            warte("Bilder") { ersatzbilder() == 0 }
         } finally {
             welt.close()
         }

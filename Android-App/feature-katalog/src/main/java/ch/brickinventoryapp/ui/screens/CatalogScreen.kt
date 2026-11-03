@@ -54,7 +54,6 @@ import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
 import ch.brickinventoryapp.ui.theme.faecherTon
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import androidx.compose.ui.res.vectorResource
@@ -493,27 +492,17 @@ fun CatalogSetCard(
                     // Katalog-Set heruntergeladen, kommt das Bild von dort. Scheitert die Vorschau,
                     // Rückfall auf die volle Auflösung vor dem Platzhalter.
                     val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
-                    if (thumbUrl != null) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(ctx).data(thumbUrl).crossfade(true).build(),
-                            imageLoader = imageLoader,
-                            contentDescription = set.name,
-                            // onError statt onState: mit "imageLoader" UND "error"
-                            // (Platzhalter-Painter) gehört der Aufruf zur
-                            // Painter-Überladung von AsyncImage, die "onState"
-                            // nicht kennt — nur "onError" als eigener Parameter.
-                            onError = { onThumbError() },
-                            // Kaputte/fehlende CDN-Bilder -> Logo-Platzhalter statt leerer Fläche
-                            error = painterResource(R.drawable.ic_logo),
-                            modifier = Modifier.fillMaxSize()
-                                .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Box(Modifier.fillMaxSize(), Alignment.Center) {
-                            Image(painterResource(R.drawable.ic_logo), null, Modifier.size(48.dp))
-                        }
-                    }
+                    // Kaputte oder fehlende CDN-Bilder: das gemeinsame Ersatzbild statt leerer Fläche.
+                    ch.brickinventoryapp.ui.components.ProduktBild(
+                        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                        imageLoader = imageLoader,
+                        contentDescription = set.name,
+                        onState = { if (it is coil3.compose.AsyncImagePainter.State.Error) onThumbError() },
+                        modifier = Modifier.fillMaxSize()
+                            .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
+                        contentScale = ContentScale.Fit,
+                        ersatzGroesse = 44.dp,
+                    )
                     if (set.owned) {
                         Surface(
                             color = MaterialTheme.colorScheme.primary,
