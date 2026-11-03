@@ -10,6 +10,9 @@
  *      Sitzung bleibt" (die eigene war mit beendet)
  *   C  (02.11.2026) in /sessions/andere-beenden bestaetigePasswort() entfernt
  *      → rot: „die eigene Sitzung bleibt" (200 statt 400 mit falschem Passwort)
+ *   D  (03.11.2026) in angemeldetAntworten() die Sitzung wieder auch mit Token
+ *      angelegt → rot: „die App bekommt ihren Token und keine Sitzung" (Keks
+ *      neben dem Token) und „die eigene Sitzung bleibt" (drei statt zwei)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -84,21 +87,27 @@ test('Browser ohne Token', { concurrency: 1 }, async (t) => {
     eigene = r.cookie;
   });
 
-  await t.test('die App bekommt weiter ihren Token', async () => {
+  await t.test('die App bekommt ihren Token und keine Sitzung', async () => {
+    const vorher = await sitzungen();
     const r = await anmelden({ label: 'Android App', never_expires: true });
     assert.ok(r.body.token, 'Die App kann ohne Token nichts');
+    assert.equal(r.body.token_info?.scope, 'app');
     assert.equal(await tokens(), 1);
+    assert.equal(r.cookie, '', 'Neben dem Token ein Sitzungskeks mit den vollen Rechten des Kontos');
+    assert.equal(await sitzungen(), vorher, 'Die Token-Anmeldung legt eine Sitzung an');
+    const profil = await fetch(basis + '/auth/profile', { headers: { authorization: `Bearer ${r.body.token}` } });
+    assert.equal(profil.status, 200, 'Der Token allein trägt die App');
   });
 
   await t.test('die eigene Sitzung bleibt', async () => {
     await anmelden({ ohne_token: true });            // ein zweiter Browser
-    assert.equal(await sitzungen(), 3, 'Vorbedingung: drei Sitzungen (zwei Browser und die App-Anmeldung)');
+    assert.equal(await sitzungen(), 2, 'Vorbedingung: zwei Sitzungen (zwei Browser; die App hat keine)');
     const ohne = await ruf('/settings/sessions/andere-beenden', { method: 'POST', cookie: eigene, body: { password: 'falsch-1234' } });
     assert.deepEqual([ohne.status, ohne.body?.code], [400, 'aktuelles_passwort_falsch']);
-    assert.equal(await sitzungen(), 3, 'ohne richtiges Passwort wurden Sitzungen beendet');
+    assert.equal(await sitzungen(), 2, 'ohne richtiges Passwort wurden Sitzungen beendet');
     const r = await ruf('/settings/sessions/andere-beenden', { method: 'POST', cookie: eigene, body: { password: PASS } });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(r.body.deleted, 2);
+    assert.equal(r.body.deleted, 1);
     assert.equal(await sitzungen(), 1);
     assert.equal((await ruf('/auth/profile', { cookie: eigene })).status, 200, 'Die eigene Sitzung wurde mit beendet');
   });

@@ -67,7 +67,8 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
   const anmeldung = await ruf('/auth/login', { body: { username: NAME, password: PASS } });
   assert.equal(anmeldung.status, 200, JSON.stringify(anmeldung.body));
   assert.equal(anmeldung.body.user.mustChangePassword, true);
-  const { cookie, body: { token } } = anmeldung;
+  const { body: { token } } = anmeldung;
+  const { cookie } = await ruf('/auth/login', { body: { username: NAME, password: PASS, ohne_token: true } });
 
   await t.test('Sitzung und Token kommen nur bis zum Wechsel', async () => {
     const s = await ruf('/settings/tokens', { cookie });

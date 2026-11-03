@@ -26,8 +26,13 @@ export function gueltigerToken(hash: string) {
       AND (t.hard_expires_at IS NULL OR t.hard_expires_at > NOW())`, [hash]);
 }
 
+/** created_at reist beim Tausch über JavaScript und verliert dabei die Mikrosekunden. */
+const familie = (spalte: string) => `date_trunc('milliseconds', ${spalte})`;
+
 export async function beendeUeberlappung(vorgaenger: string, hash: string): Promise<void> {
-  await db.run('DELETE FROM api_tokens WHERE token = $1 AND ersetzt_durch = $2', [vorgaenger, hash]);
+  await db.run(`WITH weg AS (DELETE FROM api_tokens WHERE token = $1 AND ersetzt_durch = $2 RETURNING token, user_id, created_at)
+    INSERT INTO api_tokens_verbraucht (token, user_id, familie)
+    SELECT token, user_id, ${familie('created_at')} FROM weg WHERE created_at IS NOT NULL ON CONFLICT DO NOTHING`, [vorgaenger, hash]);
   await db.run('UPDATE api_tokens SET vorgaenger = NULL WHERE token = $1', [hash]);
 }
 
@@ -113,6 +118,22 @@ export function befristeVorgaenger(tx: DbSchnittstelle, alt: string, neu: string
         SET ersetzt_durch = $2, sliding = FALSE, never_expires = FALSE,
             expires_at = LEAST(COALESCE(expires_at, 'infinity'::timestamptz), NOW() + make_interval(secs => $3))
       WHERE token = $1 RETURNING expires_at`, [alt, neu, sekunden]);
+}
+
+/** Ein verbrauchter Token kam wieder: Seine Familie endet samt Nachfolger. Erst nach
+ * der Schonfrist, sonst träfe es Anfragen, die noch mit dem alten unterwegs waren. */
+export function sperreFamilie(hash: string, schonfristSek: number) {
+  return db.get<{ user_id: number; label: string | null }>(`
+    WITH v AS (DELETE FROM api_tokens_verbraucht WHERE token = $1 AND verbraucht_am < NOW() - make_interval(secs => $2)
+               RETURNING user_id, familie),
+         t AS (DELETE FROM api_tokens a USING v WHERE a.user_id = v.user_id AND ${familie('a.created_at')} = v.familie RETURNING a.label),
+         r AS (DELETE FROM api_tokens_verbraucht x USING v WHERE x.user_id = v.user_id AND x.familie = v.familie AND x.token <> $1)
+    SELECT v.user_id, (SELECT label FROM t LIMIT 1) AS label FROM v`, [hash, schonfristSek]);
+}
+
+export async function loescheVerwaisteVerbrauchte(): Promise<number> {
+  return (await db.run(`DELETE FROM api_tokens_verbraucht v WHERE NOT EXISTS
+    (SELECT 1 FROM api_tokens t WHERE t.user_id = v.user_id AND ${familie('t.created_at')} = v.familie)`)).changes || 0;
 }
 
 export async function loescheToken(hash: string): Promise<void> {

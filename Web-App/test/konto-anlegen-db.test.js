@@ -65,7 +65,7 @@ test('Konto anlegen', { concurrency: 1 }, async (t) => {
       headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) }, body: JSON.stringify(body) });
     return { status: r.status, cookie: r.headers.get('set-cookie'), body: await r.json().catch(() => null) };
   };
-  const a = await ruf(AUTH + '/login', { username: CHEF, password: PASS });
+  const a = await ruf(AUTH + '/login', { username: CHEF, password: PASS, ohne_token: true });
   assert.equal(a.status, 200, JSON.stringify(a.body));
   const cookie = a.cookie.split(';')[0];
   const konto = (n) => db.get('SELECT id, is_admin FROM users WHERE username = $1', [n]);

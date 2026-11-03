@@ -284,7 +284,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     { m: 'POST', p: '/api/v1/vouchers', body: { number: '5045076374450011111', pin: '1234', amount: 50, currency: 'CHF' },
       danach: (j) => { w.id = String(j.voucher.id); } },
     { m: 'PUT',  p: '/api/v1/vouchers/{id}', body: { number: '5045076374450011111', pin: '4321', amount: 40, currency: 'CHF' } },
-    { m: 'DELETE', p: '/api/v1/vouchers/{id}' },
+    { m: 'DELETE', p: '/api/v1/vouchers/{id}', body: { password: PASS } },
     { m: 'POST', p: '/api/v1/vouchers/pdf',
       form: async () => formular(await pdfMit(['Ihre LEGO-Geschenkkarte im Wert von 25 CHF:', '5045076374450012222', 'PIN: 4711']),
         'application/pdf', 'gutschein.pdf') },

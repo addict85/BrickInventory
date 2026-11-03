@@ -320,7 +320,7 @@ services:
   # ./caddy/data/caddy/pki/authorities/local/root.crt und kommt auf die Geräte
   # (UPGRADE.md, Abschnitt 14).
   caddy:
-    # Fest per Digest wie pgweb; Dependabot (docker-compose) schlägt neue Fassungen vor.
+    # Fest per Digest wie pgweb; Renovate (docker-compose) schlägt neue Fassungen vor.
     image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
     container_name: brickinventory-caddy
     restart: unless-stopped
@@ -341,11 +341,18 @@ services:
     # ca-wurzel, das die App nur lesend sieht. Ein Datei-Mount von root.crt
     # taugt nicht — fehlt die Datei beim ersten Start, legt Docker an ihrer
     # Stelle ein Verzeichnis an, und Caddy kann seine CA nicht schreiben.
+    # Liegt in ./caddy/ca eine eigene CA (scripts/ca-einrichten.sh), signiert
+    # deren Zwischenstelle; den Schlüssel der Wurzel hat Caddy dann nicht.
     command:
       - sh
       - -c
       - |
         q=/data/caddy/pki/authorities/local/root.crt
+        if [ -s /ca-eigen/zwischen.key ]; then
+          q=/ca-eigen/root.crt
+          export BRICK_CA_SIGNIEREN='ca local'
+          export BRICK_CA_EIGEN="$$(printf 'root {\ncert /ca-eigen/root.crt\n}\nintermediate {\ncert /ca-eigen/zwischen-kette.crt\nkey /ca-eigen/zwischen.key\n}')"
+        fi
         while :; do
           if [ -f "$$q" ] && ! cmp -s "$$q" /ca-wurzel/root.crt; then
             cp "$$q" /ca-wurzel/root.crt.neu && chmod 644 /ca-wurzel/root.crt.neu && mv /ca-wurzel/root.crt.neu /ca-wurzel/root.crt
@@ -364,6 +371,8 @@ services:
       # CA (Wurzel und Schlüssel) und Zertifikate. Mitsichern: Geht die CA
       # verloren, muss jedes Gerät das neue Wurzelzertifikat bekommen.
       - ./caddy/data:/data
+      # Die eigene, auf BRICK_HOST beschränkte CA, falls eingerichtet.
+      - ./caddy/ca:/ca-eigen:ro
       - ./caddy/config:/config
       - ca-wurzel:/ca-wurzel
     networks:
@@ -425,6 +434,8 @@ services:
       PGWEB_AUTH_USER: ${PGWEB_USER:-pgweb}
       PGWEB_AUTH_PASS: ${PGWEB_PASSWORD:-}
     # --readonly zusätzlich zur Leserolle; Reparaturen mit psql als App-Rolle.
+    # --lock-session: Die Oberfläche verbindet nur zu PGWEB_DATABASE_URL, nicht
+    # zu beliebigen Hosts und Ports im Docker-Netz.
     entrypoint:
       - /bin/sh
       - -c
@@ -437,7 +448,7 @@ services:
           echo "pgweb: PGWEB_DB_PASSWORD in .env setzen (Leserolle der Datenbank) - siehe UPGRADE.md." >&2
           exit 1
         fi
-        exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly
+        exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly --lock-session
     ports:
       - "127.0.0.1:8081:8081"
     networks:

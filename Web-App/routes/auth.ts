@@ -60,8 +60,8 @@ type Angemeldet = { id: number | string; username: string; is_admin: boolean; mu
 async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet, mitToken: boolean) {
   const { label, never_expires, scope } = req.body ?? {};
   const uid = Number(user.id);
-  // Neue Session-ID gegen Session Fixation, auch für die App; die Zeile verfällt.
-  await establishSession(req, {
+  // Token ODER Sitzung: Die Sitzung trüge die vollen Rechte am Scope des Tokens vorbei.
+  if (!mitToken) await establishSession(req, {
     userId:   uid,
     username: user.username,
     isAdmin:  user.is_admin,
@@ -76,8 +76,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
                               { scope: tokenScope(scope), ip: req.ip });
   } catch (e) {
     console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
-    if (dauerhaft)
-      return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
+    return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
   }
   // `never_expires` nennt, was gilt: Mit gleitender Frist ist nichts unbegrenzt.
   res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),

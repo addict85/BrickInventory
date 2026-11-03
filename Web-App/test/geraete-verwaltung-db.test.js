@@ -84,7 +84,8 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token',
     assert.equal(browser.status, 200, JSON.stringify(browser.body));
     const telefon = await anmelden({ label: 'Pixel 8', never_expires: true });
     const tablet  = await anmelden({ label: 'Tablet',  never_expires: true });
-    const cookie  = browser.cookie.split(';')[0];
+    // Sitzung und Token kommen aus getrennten Anmeldungen: Ein Token-Login legt keine Sitzung an.
+    const cookie  = (await anmelden({ ohne_token: true })).cookie.split(';')[0];
 
     // ── 1. Über die SITZUNG (Webapp) ────────────────────────────────────────
     const perSitzung = await ruf(SETTINGS + '/tokens', { headers: { cookie } });

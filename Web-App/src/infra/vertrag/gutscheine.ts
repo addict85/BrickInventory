@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, zeit } from './grund';
+import { type Route, zeit, bestaetigt } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const GelesenerGutschein = z.looseObject({
@@ -53,13 +53,29 @@ export const GutscheinListe = z.looseObject({
   vouchers: z.array(Gutschein),
 });
 
+export const GutscheinKlartext = z.looseObject({
+  success: z.literal(true),
+  id: z.number().int(),
+  number: z.string(),
+  pin: z.string().nullable(),
+});
+
+export const PdfFreigabe = z.looseObject({
+  success: z.literal(true),
+  ticket: z.string(),
+  gueltig_sek: z.number().int(),
+});
+
 export const routen = {
   'GET /api/v1/vouchers': { antwort: GutscheinListe },
   'POST /api/v1/vouchers': { antwort: GutscheinAntwort },
   'PUT /api/v1/vouchers/:id': { antwort: GutscheinAntwort },
-  'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse },
+  'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse, ...bestaetigt() },
   'POST /api/v1/vouchers/pdf': { antwort: GutscheinAntwort },
   'POST /api/v1/vouchers/:id/guthaben': { antwort: GuthabenAntwort },
+  'POST /api/v1/vouchers/:id/klartext': { antwort: GutscheinKlartext, ...bestaetigt() },
+  'POST /api/v1/vouchers/:id/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt() },
+  'POST /api/v1/vouchers/export/pdf-freigabe': { antwort: PdfFreigabe, ...bestaetigt() },
   'GET /api/v1/vouchers/:id/pdf': { art: 'pdf' },
   'GET /api/v1/vouchers/export/pdf': { art: 'pdf' },
 } satisfies Record<string, Route>;

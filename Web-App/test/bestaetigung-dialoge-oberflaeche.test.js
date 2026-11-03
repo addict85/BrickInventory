@@ -11,10 +11,17 @@
  *      „ein Konto anlegen fragt den Code nach"
  *   C  in 23-passkeys.js setzePasskeyHolen() nicht aufgerufen → rot: „der
  *      Passkey ersetzt den Code"
+ *   D  in 20-papierkorb.js bzw. 17-gutscheine.js wieder confirmDelete() und
+ *      api() ohne Passwort → rot: „den Papierkorb leeren …" bzw. „einen
+ *      Gutschein löschen …" (der Passwortdialog erscheint nicht)
+ *   E  in gutscheinPinUmschalten() holeKlartext() übergangen → rot: „die
+ *      Gutscheinliste zeigt die Maske …" (kein Passwortdialog)
+ *   F  gutscheinPdfOeffnen() wieder openPdfViewer() direkt → rot: „das
+ *      Gutschein-PDF öffnet erst nach Bestätigung …"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { oeffneOberflaeche, warte, takt, sicht } = require('./helpers/oberflaeche');
 
 /** Antwortet ohne Code mit zweiter_faktor_noetig und merkt sich jeden Rumpf. */
 function mitFaktor(liste, passkey = false) {
@@ -88,5 +95,76 @@ test('der Passkey ersetzt den Code', async () => {
     assert.ok(await warte(() => rufe.length === 2), `der Passkey ersetzt den Code: nur ${rufe.length} Anfrage(n)`);
     assert.equal(rufe[1].passkey?.id, 'pk1', 'der Passkey ersetzt den Code');
     assert.equal(rufe[1].code, undefined);
+  } finally { w.close(); }
+});
+
+test('den Papierkorb leeren fragt Passwort und Code', async () => {
+  const rufe = [];
+  const { w, d } = await oeffneOberflaeche({ '/v1/papierkorb': (url, o) => (o?.method === 'DELETE' ? mitFaktor(rufe)(url, o)
+    : { success: true, eintraege: [] }) });
+  try {
+    d.getElementById('papierkorb-leeren').click();
+    await bestaetige(d, { passwort: 'Mein-Passwort-1', code: '246810' });
+    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
+    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '246810' }]);
+  } finally { w.close(); }
+});
+
+test('einen Gutschein löschen fragt Passwort und Code', async () => {
+  const rufe = [];
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '6123456789012', pin: '4711', amount: 50, currency: 'CHF', hat_pdf: false }] },
+    '/v1/vouchers/3': mitFaktor(rufe),
+  });
+  try {
+    await sicht(w, 'gutscheine');
+    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinLoeschen"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="gutscheinLoeschen"]').click();
+    await bestaetige(d, { passwort: 'Mein-Passwort-1', code: '135790' });
+    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
+    assert.deepEqual(rufe[1], { password: 'Mein-Passwort-1', code: '135790' });
+  } finally { w.close(); }
+});
+
+test('das Gutschein-PDF öffnet erst nach Bestätigung, mit dem Ticket', async () => {
+  const freigaben = [], abrufe = [];
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: true }] },
+    '/v1/vouchers/3/pdf-freigabe': (_u, o) => { freigaben.push(JSON.parse(o.body)); return { success: true, ticket: 'T-123', gueltig_sek: 60 }; },
+    '/v1/vouchers/3/pdf': (u) => { abrufe.push(String(u)); return { $status: 403, success: false, error: 'abgelehnt' }; },
+  });
+  try {
+    await sicht(w, 'gutscheine');
+    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinPdfOeffnen"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="gutscheinPdfOeffnen"]').click();
+    const modal = d.getElementById('confirm-modal');
+    assert.ok(await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden), 'der Passwortdialog erscheint');
+    assert.deepEqual(abrufe, [], 'das PDF wird vor der Bestätigung abgerufen');
+    d.getElementById('cd-pw').value = 'Mein-Passwort-1';
+    d.getElementById('cd-confirm').click();
+    assert.ok(await warte(() => abrufe.length === 1), 'kein Abruf des PDFs');
+    assert.deepEqual(freigaben, [{ password: 'Mein-Passwort-1' }]);
+    assert.match(abrufe[0], /\/api\/v1\/vouchers\/3\/pdf\?ticket=T-123$/);
+  } finally { w.close(); }
+});
+
+test('die Gutscheinliste zeigt die Maske, Nummer und PIN erst nach Bestätigung', async () => {
+  const rufe = [];
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }] },
+    '/v1/vouchers/3/klartext': (_u, o) => { rufe.push(JSON.parse(o.body)); return { success: true, id: 3, number: '6123456789012', pin: '4711' }; },
+  });
+  try {
+    await sicht(w, 'gutscheine');
+    assert.ok(await warte(() => d.querySelector('.voucher-row')), 'Gutscheinliste');
+    assert.equal(d.querySelector('.voucher-num').textContent, '…9012');
+    d.querySelector('[data-click="gutscheinPinUmschalten"]').click();
+    const modal = d.getElementById('confirm-modal');
+    assert.ok(await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden), 'der Passwortdialog erscheint');
+    d.getElementById('cd-pw').value = 'Mein-Passwort-1';
+    d.getElementById('cd-confirm').click();
+    assert.ok(await warte(() => d.querySelector('.voucher-pin code')?.textContent === '4711'), 'die PIN erscheint nach der Bestätigung');
+    assert.equal(d.querySelector('.voucher-num').textContent, '6123 4567 8901 2');
+    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }]);
   } finally { w.close(); }
 });

@@ -11,6 +11,9 @@ import { landErlaubt, LAND_STANDARD } from '../../src/gutscheine/gutscheinGuthab
 import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
 import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts } from '../../src/gutscheine/gutscheinDateien';
 import { requireToken } from './middleware';
+import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
+import { protokolliere } from '../../src/verwaltung/dienst';
+import { stelleTicketAus, loeseTicketEin, TICKET_SEK } from '../../src/gutscheine/pdfTicket';
 import { werteAusPdf, PdfZuGross } from '../../src/gutscheine/gutscheinPdf';
 import { verbindeGutscheine, seitenweiseLesen, seitenOderKeine } from '../../src/gutscheine/gutscheinPdfSchreiben';
 import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
@@ -37,12 +40,17 @@ const upload = multer({
   },
 });
 
+/** Nach aussen nur das Ende: Ein erbeutetes App-Token soll nicht alle Codes samt PIN
+ * abgreifen. Den Klartext gibt POST /vouchers/:id/klartext, bestätigt und protokolliert. */
+const PIN_MASKE = '•••';
+const maskiert = (z: { number: string; pin: string | null }) =>
+  ({ number: '…' + z.number.slice(-4), pin: z.pin ? PIN_MASKE : null });
+
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#fueraussen
 function fuerAussen(z: GutscheinZeile) {
   return {
     id: z.id,
-    number: z.number,
-    pin: z.pin,
+    ...maskiert(z),
     amount: Number(z.amount),
     currency: z.currency,
     hat_pdf: !!z.pdf_path,
@@ -188,8 +196,22 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
 
 // Die Sammelwege VOR den :id-Wegen: Sonst fängt `:id` das Wort „export".
 
+// Die PDFs tragen Nummer und PIN: erst bestätigen und protokollieren, dann ein Ticket für genau einen Abruf.
+async function pdfFreigabe(req: AuthedRequest, res: express.Response, ziel: string, aktion: 'gutschein_pdf' | 'gutschein_export', was: string) {
+  await protokolliere(req.apiUser.user_id, req.apiUser.user_id, aktion, was);
+  res.json({ success: true, ticket: stelleTicketAus(req.apiUser.user_id, ziel), gueltig_sek: TICKET_SEK });
+}
+
+router.post('/vouchers/export/pdf-freigabe', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/export/pdf-freigabe'>) => {
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
+  const zeilen = await gutscheineDesKontos(req.apiUser.user_id, 'aelteste');
+  if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
+  await pdfFreigabe(req, res, 'export', 'gutschein_export', `${zeilen.length}`);
+});
+
 router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
+  if (!loeseTicketEin(req.query.ticket, uid, 'export')) return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
   const zeilen = await gutscheineDesKontos(uid, 'aelteste');
   if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
 
@@ -223,11 +245,12 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Antwor
     const alt = await gutschein(req.apiUser.user_id, id);
     if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
-    // Was nicht mitkommt, bleibt stehen, sonst löschte ein Formular mit nur dem
-    // Betrag Nummer und PIN.
+    // Was nicht mitkommt oder maskiert zurückkommt, bleibt stehen: Das Formular
+    // kennt nur die Maske, und ein Formular mit nur dem Betrag löschte sonst Nummer und PIN.
+    const maske = maskiert(alt);
     const w = pruefeWerte({
-      number:   req.body?.number   ?? alt.number,
-      pin:      req.body?.pin      ?? alt.pin,
+      number:   req.body?.number === maske.number ? alt.number : req.body?.number ?? alt.number,
+      pin:      req.body?.pin === PIN_MASKE ? alt.pin : req.body?.pin ?? alt.pin,
       amount:   req.body?.amount   ?? alt.amount,
       currency: req.body?.currency ?? alt.currency,
     }, { nullBetragErlaubt: req.body?.amount === undefined });
@@ -240,14 +263,15 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Antwor
     res.json({ success: true, voucher: fuerAussen(zeile) });
 });
 
+// Endgültig und Bargeld: mit Bestätigung wie das Leeren des Papierkorbs.
 router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/vouchers/:id'>) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
   const pdfPfad = await gutscheinLoeschen(req.apiUser.user_id, id);
   if (pdfPfad === undefined) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
-  // Erst die Zeile, dann die Datei: Eine verwaiste Datei ist besser als eine
-  // Zeile, die ins Leere zeigt.
+  // Erst die Zeile, dann die Datei: lieber eine verwaiste Datei als eine Zeile ins Leere.
   if (pdfPfad) {
     const p = gutscheinDatei(req.apiUser.user_id, pdfPfad);
     if (p) await fs.promises.unlink(p).catch(() => { /* schon weg: in Ordnung */ });
@@ -255,9 +279,29 @@ router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Ant
   res.json({ success: true });
 });
 
+router.post('/vouchers/:id/klartext', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/:id/klartext'>) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
+  const z = await gutschein(req.apiUser.user_id, id);
+  if (!z) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  await protokolliere(req.apiUser.user_id, req.apiUser.user_id, 'gutschein_klartext', maskiert(z).number);
+  res.json({ success: true, id: z.id, number: z.number, pin: z.pin });
+});
+
+router.post('/vouchers/:id/pdf-freigabe', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/:id/pdf-freigabe'>) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
+  const z = await gutschein(req.apiUser.user_id, id);
+  if (!z?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  await pdfFreigabe(req, res, String(id), 'gutschein_pdf', maskiert(z).number);
+});
+
 router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (!loeseTicketEin(req.query.ticket, req.apiUser.user_id, String(id))) return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
   const zeile = await gutschein(req.apiUser.user_id, id);
   if (!zeile?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
   const datei = gutscheinDatei(req.apiUser.user_id, zeile.pdf_path);
@@ -266,9 +310,9 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) =>
 
   res.type('application/pdf');
   const alsDownload = String(req.query.download ?? '') === '1';
-  // Mit Kartennummer, sonst hiessen heruntergeladene Gutscheine alle „12.pdf".
+  // Ohne Kartennummer: Dateinamen landen in Download-Listen und Protokollen.
   res.setHeader('Content-Disposition',
-    `${alsDownload ? 'attachment' : 'inline'}; filename="gutschein-${zeile.number}.pdf"`);
+    `${alsDownload ? 'attachment' : 'inline'}; filename="gutschein-${zeile.id}.pdf"`);
   // Ein Gutschein gehört in keinen geteilten Zwischenspeicher.
   res.setHeader('Cache-Control', 'private, no-store');
   res.end(pdf);

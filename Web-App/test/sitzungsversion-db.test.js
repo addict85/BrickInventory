@@ -63,7 +63,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
   const ruf = (pfad, cookie, o = {}) => fetch(basis + pfad, { ...o,
     headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) } });
   const anmelden = async (name) => {
-    const r = await ruf('/api/v1/auth/login', null, { method: 'POST', body: JSON.stringify({ username: name, password: PW }) });
+    const r = await ruf('/api/v1/auth/login', null, { method: 'POST', body: JSON.stringify({ username: name, password: PW, ohne_token: true }) });
     assert.equal(r.status, 200, await r.text());
     return (r.headers.get('set-cookie') || '').split(';')[0];
   };

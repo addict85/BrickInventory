@@ -25,6 +25,10 @@
  *      („untergeschobenes SET role“: die Sitzung läuft als App-Rolle)
  *   I  `password_hash` aus der Sperrliste der Leserolle gestrichen → rot:
  *      „die Leserolle sieht keine Geheimnisse“
+ *   J  (03.11.2026) `REVOKE TEMPORARY … FROM PUBLIC` gestrichen → rot:
+ *      „die Leserolle legt temporäre Tabellen an“
+ *   K  (03.11.2026) `api_tokens_verbraucht` aus der Sperrliste gestrichen →
+ *      rot: „SELECT token FROM api_tokens_verbraucht“
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
@@ -205,14 +209,19 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     try {
       assert.deepEqual((await l.query(`SELECT username, is_admin FROM users WHERE username = 'leseprobe'`)).rows, [{ username: 'leseprobe', is_admin: false }]);
       for (const sql of ['SELECT password_hash FROM users', 'SELECT reset_token FROM users', 'SELECT * FROM users',
-        'SELECT token FROM api_tokens', 'SELECT sid FROM user_sessions', 'SELECT geheimnis FROM zweiter_faktor',
+        'SELECT token FROM api_tokens', 'SELECT token FROM api_tokens_verbraucht', 'SELECT sid FROM user_sessions', 'SELECT geheimnis FROM zweiter_faktor',
         'SELECT value FROM global_settings'])
         await assert.rejects(l.query(sql), /permission denied/, sql);
       await assert.rejects(l.query(`UPDATE users SET is_admin = true`), /read-only|permission denied/);
       await l.query('SET TRANSACTION READ WRITE').catch(() => {});
       await assert.rejects(l.query(`CREATE TABLE public.probe (x int)`), /permission denied|read-only/);
       await assert.rejects(l.query(`COPY (SELECT 1) TO PROGRAM 'true'`), /permission denied|must be superuser|read-only/);
+      await l.query('SET default_transaction_read_only = off');
+      await assert.rejects(l.query('CREATE TEMP TABLE probe (x int)'), /permission denied/, 'die Leserolle legt temporäre Tabellen an');
     } finally { await l.end(); }
+    const app = new Client({ connectionString: url(neu, ROLLE, PASSWORT) });
+    await app.connect();
+    try { await app.query('CREATE TEMP TABLE probe (x int)'); } finally { await app.end(); }
     const ohne = rolleEinrichten(neu, { PGWEB_DB_PASSWORD: '' });
     assert.equal(ohne.status, 0, ohne.stderr);
     assert.equal((await admin.query('SELECT rolcanlogin FROM pg_roles WHERE rolname = $1', [LESEN])).rows[0].rolcanlogin, false,

@@ -8,6 +8,9 @@
  *   A  legeInPapierkorb() in deleteSet() entfernt      → rot: „Set fehlt im Papierkorb"
  *   B  Spaltenabgleich in stelleWiederHer() entfernt   → rot: „unbekannte Spalte"
  *   C  `user_id = ANY($2)` in stelleWiederHer() weg    → rot: „fremdes Konto"
+ *   D  (03.11.2026) bestaetigeMitFaktor() in DELETE /papierkorb/:id bzw.
+ *      DELETE /papierkorb entfernt → rot: „endgültig löschen ohne Passwort"
+ *      bzw. „Leeren mit falschem Passwort" (200 statt 400)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -100,7 +103,7 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       assert.equal((await eintraege(F)).length, 0);
       assert.equal((await api(F, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status, 404,
         'fremdes Konto darf nicht wiederherstellen');
-      assert.equal((await api(F, 'DELETE', `/papierkorb/${e.id}`)).status, 404);
+      assert.equal((await api(F, 'DELETE', `/papierkorb/${e.id}`, { password: PASS })).status, 404);
 
       const r = await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`);
       assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -120,7 +123,10 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       assert.equal(r.status, 409);
       assert.deepEqual(await zeilen(sub), neu, 'Der neue Bestand bleibt, wie er ist');
       assert.equal((await eintraege(H)).length, 1, 'Der Eintrag bleibt liegen');
-      assert.equal((await api(H, 'DELETE', `/papierkorb/${e.id}`)).status, 200);
+      const ohne = await api(H, 'DELETE', `/papierkorb/${e.id}`);
+      assert.deepEqual([ohne.status, ohne.body.code], [400, 'aktuelles_passwort_falsch'], 'endgültig löschen ohne Passwort');
+      assert.equal((await eintraege(H)).length, 1, 'ohne Passwort ist der Eintrag weg');
+      assert.equal((await api(H, 'DELETE', `/papierkorb/${e.id}`, { password: PASS })).status, 200);
       assert.equal((await eintraege(H)).length, 0);
       await db.run('DELETE FROM set_acquisitions WHERE set_number=$1', [SN]);
       await db.run('DELETE FROM sets WHERE set_number=$1', [SN]);
@@ -201,7 +207,10 @@ test('Papierkorb', { concurrency: 1 }, async (t) => {
       await db.run("UPDATE papierkorb SET geloescht_am = NOW() - interval '29 days' WHERE id=$1", [b.id]);
       assert.ok(await pk.raeumePapierkorbAuf() >= 1);
       assert.deepEqual((await eintraege(H)).map(x => x.id), [b.id]);
-      assert.equal((await api(H, 'DELETE', '/papierkorb')).body.entfernt, 1, 'Leeren entfernt den Rest');
+      const ohne = await api(H, 'DELETE', '/papierkorb', { password: 'falsch-Passwort-1' });
+      assert.deepEqual([ohne.status, ohne.body.code], [400, 'aktuelles_passwort_falsch'], 'Leeren mit falschem Passwort');
+      assert.equal((await eintraege(H)).length, 1, 'Leeren mit falschem Passwort hat entfernt');
+      assert.equal((await api(H, 'DELETE', '/papierkorb', { password: PASS })).body.entfernt, 1, 'Leeren entfernt den Rest');
     });
   } finally {
     await db.run('DELETE FROM papierkorb WHERE user_id = ANY($1)', [ids]).catch(() => {});

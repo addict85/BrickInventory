@@ -1061,3 +1061,129 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
    er behebbare Lücken, den Dependabot-PR mit dem neuen Digest übernehmen
    oder die Lücke mit Grund und Ablaufdatum in `.github/trivy-betrieb.ignore`
    eintragen.
+
+## 32. Runde 8 – Sicherheit
+
+Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
+
+**In den GitHub-Einstellungen**
+
+- **Renovate statt Dependabot für Images und Actions**: `renovate.json` pflegt
+  jetzt auch die Digests in `Dockerfile` und `compose.yaml` und die
+  Commit-SHAs der Actions; `.github/dependabot.yml` ist entfernt, sonst kämen
+  dieselben PRs doppelt. Prüfen, dass die Renovate-App für das Repository
+  eingeschaltet ist (*Settings → GitHub Apps*). Die Sicherheitswarnungen von
+  Dependabot (*Settings → Code security*) bleiben davon unberührt. Ein Sprung
+  auf eine neue PostgreSQL-Hauptversion kommt erst nach Freigabe im
+  Dependency-Dashboard: Er braucht einen Umzug der Daten (`POSTGRES-18.md`).
+
+**Eigene, auf BRICK_HOST beschränkte CA (empfohlen, nicht automatisch)**
+
+Caddys eigene Wurzel gilt auf jedem Gerät, das sie installiert hat, für jede
+Adresse: Wer ihren Schlüssel aus `./caddy/data/caddy/pki/authorities/local/`
+oder aus einer Sicherung von `./caddy/` bekommt, stellt Zertifikate für Bank
+und Mail aus, denen diese Geräte trauen. `scripts/ca-einrichten.sh` legt
+stattdessen eine Wurzel an, die nur für `BRICK_HOST` gilt (Name Constraints),
+und eine Zwischenstelle für Caddy; der Schlüssel der Wurzel bleibt nicht auf
+dem Server. Ohne diese Schritte läuft alles wie bisher.
+
+1. Im Ordner mit `compose.yaml`:
+   ```
+   sudo sh scripts/ca-einrichten.sh
+   ```
+   Mit sudo, weil Caddy im Container als root ohne Capabilities nur Dateien
+   liest, die root gehören. Es liest `BRICK_HOST` aus `.env` (oder
+   `sudo sh scripts/ca-einrichten.sh nas.example.lan`)
+   und schreibt `./caddy/ca/root.crt`, `zwischen.crt`, `zwischen-kette.crt`
+   und `zwischen.key`. Den Schlüssel der Wurzel verwirft es; wer ihn behalten
+   will: `sudo WURZEL_SCHLUESSEL=/media/usb/brickinventory-wurzel.key sh scripts/ca-einrichten.sh`
+   — die Datei danach vom Server wegbringen. Die Ausgabe nennt den neuen
+   Fingerabdruck. Braucht `openssl` auf dem Server.
+2. Caddy mit der neuen CA starten und die alte CA samt ihren Zertifikaten
+   entfernen, sonst liefert Caddy bis zur nächsten Erneuerung noch das alte
+   Blatt aus (vorher eine Kopie offline ablegen, wer zurück will):
+   ```
+   docker compose stop caddy
+   sudo rm -rf caddy/data/caddy/pki/authorities/local caddy/data/caddy/certificates/local
+   docker compose up -d caddy
+   ```
+   `compose.yaml` hängt `./caddy/ca` nur lesend ein; das Startskript nimmt
+   die eigene CA, sobald `zwischen.key` dort liegt, und gibt der App deren
+   Wurzel (`/ca.crt`, QR-Code). Prüfen: Einstellungen → Sicherheit zeigt den
+   Fingerabdruck aus Schritt 1.
+3. Auf jedem Gerät die alte Wurzel „BrickInventory“ entfernen und die neue
+   von `http://<BRICK_HOST>/ca.crt` installieren (Abschnitt 14, Fingerabdruck
+   vergleichen).
+4. Die Android-App einmal neu verknüpfen (QR-Code): Sie meldet sonst ein
+   geändertes Zertifikat und verlangt den neuen Fingerabdruck.
+5. Sicherungen von `./caddy/` aus der Zeit davor enthalten den Schlüssel der
+   alten, unbeschränkten Wurzel: löschen oder wie ein Passwort verwahren.
+   Ist die alte Wurzel von allen Geräten entfernt, ist er wertlos.
+
+Die Zwischenstelle gilt 3649 Tage. Danach (oder bei Verdacht auf einen
+abgeflossenen `zwischen.key`) mit `sudo NEU=1 sh scripts/ca-einrichten.sh` eine
+neue CA anlegen und die Schritte 2–4 wiederholen. Zurück zu Caddys CA:
+`./caddy/ca` umbenennen und Caddy neu starten; er legt dann eine neue,
+unbeschränkte Wurzel an (Schritte 3–4).
+
+**Beim Update** (`docker compose up -d --build`)
+
+- **pgweb** startet mit `--lock-session`: Die Oberfläche bietet keinen
+  Verbindungsdialog mehr und spricht nur mit `PGWEB_DATABASE_URL`, nicht mit
+  anderen Hosts oder Ports im Docker-Netz.
+- **db-rolle** entzieht `PUBLIC` das Recht `TEMPORARY` an der Datenbank: Die
+  Leserolle legt keine temporären Tabellen mehr an. Die App behält es als
+  Eigentümerin der Datenbank. Nichts zu tun; der Dienst läuft bei jedem `up`.
+
+**Was sich für Clients ändert**
+
+- **Token oder Sitzung, nie beides**: `POST /auth/login` ohne `ohne_token`
+  und `POST /auth/passkey/anmelden` mit `mit_token` geben nur noch den Token
+  aus, kein `Set-Cookie` und keine Sitzung. Bisher hielt jeder solche Client
+  neben dem Token (Scope `app`) eine Sitzung mit den vollen Rechten des
+  Kontos. Die Web-App (`ohne_token: true`) und die Android-App (keine
+  Cookies) sind nicht betroffen; ein eigenes Skript, das sich auf den Keks
+  aus einer Token-Anmeldung verlassen hat, meldet sich mit `ohne_token: true`
+  an. Kann der Token nicht gespeichert werden, antwortet die Anmeldung jetzt
+  immer mit 500 `token_nicht_ausgestellt`.
+- **Endgültig löschen nur mit Bestätigung**: `DELETE /papierkorb`,
+  `DELETE /papierkorb/:id` und `DELETE /vouchers/:id` verlangen wie
+  `DELETE /bestand` das Passwort (`password`) und bei aktivem zweitem Faktor
+  `code` oder `passkey` im Rumpf; ohne antworten sie 400
+  `aktuelles_passwort_falsch` bzw. `zweiter_faktor_noetig`. Die Web-App fragt
+  beides ab. Die Android-App muss beim Löschen eines Gutscheins nachziehen
+  (Passwortdialog, Rumpf am `DELETE`); bis dahin scheitert das Löschen dort
+  mit der Meldung des Servers.
+- **Kopierte App-Tokens fallen auf** (Migration 0092): Ein durch
+  `POST /auth/token-rotieren` ersetzter Token bleibt als Hash in
+  `api_tokens_verbraucht` stehen, solange sein Gerät angemeldet ist. Kommt er
+  mehr als 60 Sekunden nach der ersten Nutzung des Nachfolgers wieder (als
+  Anfrage oder zum Tausch), endet die ganze Kette dieses Geräts samt
+  Nachfolger, und der Inhaber bekommt die Mail „ein schon ersetzter
+  App-Zugang wurde erneut benutzt“. Andere Geräte bleiben angemeldet. Für
+  Clients heisst das: den neuen Token speichern, bevor er benutzt wird, und
+  den alten danach nicht mehr schicken — die Android-App tut das schon.
+- **Gutscheine nur maskiert**: Jede Antwort mit einem Gutschein
+  (`GET /vouchers`, `POST`/`PUT /vouchers`, `POST /vouchers/pdf`,
+  `POST /vouchers/:id/guthaben`) trägt als `number` nur `…` und die letzten
+  vier Ziffern und als `pin` `•••` (oder `null` ohne PIN). Den Klartext gibt
+  `POST /vouchers/:id/klartext` mit `password` (bei aktivem zweitem Faktor
+  dazu `code` oder `passkey`): `{ success, id, number, pin }`. Jeder Abruf
+  steht im Verwaltungsprotokoll („Gutscheinnummer und PIN angezeigt“, mit
+  den letzten vier Ziffern). `PUT /vouchers/:id` nimmt die Maske als
+  „unverändert“: Ein Formular, das sie zurückschickt, ändert Nummer und PIN
+  nicht. Die Web-App fragt beim Einblenden der PIN, beim Kopieren und vor
+  dem Löschen das Passwort ab; „Rückgängig“ nach dem Löschen gibt es nur,
+  wenn der Klartext vorher abgerufen wurde. Die Android-App zeigt bis zu
+  ihrem Nachzug nur die Maske (Kopieren liefert „…1234“).
+- **Gutschein-PDFs nur mit Einmal-Ticket**: `GET /vouchers/:id/pdf` und
+  `GET /vouchers/export/pdf` verlangen `?ticket=…`, sonst 403
+  `pdf_freigabe_noetig`. Das Ticket gibt `POST /vouchers/:id/pdf-freigabe`
+  bzw. `POST /vouchers/export/pdf-freigabe` mit `password` (bei aktivem
+  zweitem Faktor dazu `code` oder `passkey`): `{ success: true, ticket,
+  gueltig_sek: 60 }`. Es gilt für genau einen Abruf, 60 Sekunden, nur für
+  dieses Konto und dieses PDF (bzw. den Export); jede Freigabe steht im
+  Verwaltungsprotokoll. Der Dateiname ist jetzt `gutschein-<id>.pdf`, ohne
+  Kartennummer. Die Web-App lädt das PDF einmal und zeigt es aus dem
+  Speicher. Die Android-App muss nachziehen: Bis dahin öffnet sie keine
+  Gutschein-PDFs (403).

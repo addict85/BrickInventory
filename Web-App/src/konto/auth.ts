@@ -14,6 +14,7 @@ import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
 import type { TokenScope } from './repository/zugaenge';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
+import { hinweisNebenher } from './kontoHinweis';
 
 export type { TokenScope };
 
@@ -78,6 +79,8 @@ export const ROTATION_FAELLIG_TAGE = 30;
 export const ROTATION_PFLICHT_TAGE = 60;
 /** Falls die Antwort des Tauschs verloren geht. */
 export const UEBERLAPPUNG_MS = 5 * 60 * 1000;
+/** So lange nach dem Ende der Überlappung gilt ein alter Token als Nachzügler, nicht als Kopie. */
+export const WIEDERVERWENDUNG_SCHONFRIST_S = 60;
 
 const _tokenCache = new Map<string, CacheEintrag>();
 
@@ -145,7 +148,7 @@ export async function pruefeToken(token: string | null | undefined,
 
   const hashed = hashToken(token);
   const row: TokenBenutzer | undefined = await repo.gueltigerToken(hashed);
-  if (!row) { _tokenCache.delete(token); return { nutzer: null }; }
+  if (!row) { _tokenCache.delete(token); await meldeWiederverwendung(hashed); return { nutzer: null }; }
   // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
   // damit alle Wächter es gleich sehen.
   row.is_admin = row.konto_is_admin && row.scope === 'voll' ? 1 : 0;
@@ -160,6 +163,15 @@ export async function pruefeToken(token: string | null | undefined,
   _pruneCache();
   _touchLastUsed(entry, o.ip);
   return ergebnis(row);
+}
+
+/** Ein ersetzter Token kam nach der Schonfrist wieder: Familie sperren, Inhaber benachrichtigen. */
+async function meldeWiederverwendung(hash: string): Promise<void> {
+  const z = await repo.sperreFamilie(hash, WIEDERVERWENDUNG_SCHONFRIST_S);
+  if (!z) return;
+  leereTokenCache();
+  console.warn(`[tokens] ersetzter Token erneut benutzt — Familie von Konto ${z.user_id} gesperrt`);
+  hinweisNebenher(z.user_id, 'token_wiederverwendet', z.label ?? undefined);
 }
 
 export async function validateToken(token: string | null | undefined,
@@ -440,6 +452,7 @@ export async function purgeExpiredTokens() {
   if (m) console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${TOKEN_IDLE_DAYS} Tagen gesetzt`);
   const abgelaufen = await repo.loescheAbgelaufene().catch(warn('Aufräumen abgelaufener Tokens'));
   const n = await repo.loescheUngenutzte(TOKEN_IDLE_DAYS).catch(warn('Aufräumen ungenutzter Tokens'));
+  await repo.loescheVerwaisteVerbrauchte().catch(warn('Aufräumen verbrauchter Tokens'));
   if (n) console.log(`[tokens] ${n} Token seit über ${TOKEN_IDLE_DAYS} Tagen ungenutzt — entfernt`);
   return abgelaufen + n;
 }
