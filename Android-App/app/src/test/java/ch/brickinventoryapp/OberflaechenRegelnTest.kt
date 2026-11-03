@@ -673,9 +673,12 @@ class OberflaechenRegelnTest {
             warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoading } }
             val zeile = ch.brickinventoryapp.ui.setZeilen(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
-            val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(zeile.kaufGesamt!!, "CHF"))
+            // Selbst gerechnet, nicht aus kaufGesamt/gewinn: Sonst prüfte der Test die Rechnung mit sich selbst.
+            val gesamt = java.math.BigDecimal.valueOf(zeile.kaufpreis!!).multiply(java.math.BigDecimal(zeile.menge)).toDouble()
+            val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, "CHF"))
             compose.onNodeWithText(kauf, useUnmergedTree = true).fetchSemanticsNode()
-            compose.onAllNodesWithText(fmtMoney(zeile.gewinn!!, "CHF"), substring = true, useUnmergedTree = true)
+            val gewinn = java.math.BigDecimal.valueOf(zeile.wert!!).subtract(java.math.BigDecimal.valueOf(gesamt)).toDouble()
+            compose.onAllNodesWithText(fmtMoney(gewinn, "CHF"), substring = true, useUnmergedTree = true)
                 .fetchSemanticsNodes().let { assertTrue("Gewinn als Betrag steht da", it.isNotEmpty()) }
         } finally {
             welt.close()

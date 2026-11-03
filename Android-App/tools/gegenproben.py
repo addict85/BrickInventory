@@ -73,9 +73,12 @@ def miss(projekt, wurzel, patch, gradle):
     try:
         lauf = subprocess.run(befehl, cwd=projekt, capture_output=True, text=True)
         # KSP verliert nach einem Patch in einem Vormodul sporadisch dessen Klassen
-        # („… could not be resolved“), in einem frischen Bau nie. Dann einmal mit
+        # („… could not be resolved“) oder Hilt findet alte Ausgaben („Attempt to
+        # recreate a file“) — in einem frischen Bau nie. Dann einmal mit
         # leerem KSP-Stand wiederholen; ein echter Übersetzungsfehler bleibt rot.
-        if not os.path.exists(bericht) and 'could not be resolved' in lauf.stdout + lauf.stderr:
+        ausgabe = lauf.stdout + lauf.stderr
+        if not os.path.exists(bericht) and ('could not be resolved' in ausgabe
+                                            or 'Attempt to recreate a file' in ausgabe):
             for alt in glob.glob(os.path.join(projekt, '*', 'build', 'kspCaches')) + \
                        glob.glob(os.path.join(projekt, '*', 'build', 'generated', 'ksp')):
                 shutil.rmtree(alt, ignore_errors=True)
