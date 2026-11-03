@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -341,6 +342,45 @@ internal fun farbschema(theme: String, dunkel: Boolean = false): ColorScheme =
     }.let { ergaenzeRollen(it, dunkel = theme == "werkbank") }
 
 /**
+ * Flächen mit eigener Farbe, die nicht aus einer Material-Rolle allein folgen:
+ * App-Leiste, Leiste der Detailseiten und die Wert-Kacheln Marktwert und Kaufpreis.
+ * Im Dunkeln stets Container-Rollen (Material 3): Die hellen Markentöne als Fläche
+ * leuchteten auf Schwarz, und die Kaufpreis-Kachel stach den Marktwert aus.
+ */
+data class Akzentflaechen(
+    val leiste: Color, val aufLeiste: Color,
+    val detailLeiste: Color, val aufDetailLeiste: Color,
+    val markt: Color, val aufMarkt: Color,
+    val kauf: Color, val aufKauf: Color,
+)
+
+/**
+ * Ein Akzent je Design: Nur „brick“ hell trägt farbige Leisten und die Petrol-Kachel
+ * des Webs; sonst Leisten auf surface, der Marktwert in der Hauptfarbe und der
+ * Kaufpreis neutral, damit der wichtigste Wert der Seite auch am stärksten wirkt
+ * (primaryContainer lag in Fächer und Noppe so blass wie die neutrale Kachel).
+ */
+internal fun akzentflaechen(theme: String, dunkel: Boolean, s: ColorScheme): Akzentflaechen {
+    val stein = theme == "brick" && !dunkel
+    // Im Dunkeln liegt primaryContainer (--b50) kaum über surface; ein Viertel der
+    // Hauptfarbe in surface gemischt ergibt einen mitteldunklen Ton wie Material 3s Stufe 30.
+    val nacht = s.surface.luminance() < 0.2f
+    val markt = when {
+        stein -> Petrol
+        nacht -> lerp(s.surface, s.primary, 0.28f)
+        else -> s.primary
+    }
+    return Akzentflaechen(
+        leiste = if (stein) s.primary else s.surface, aufLeiste = if (stein) s.onPrimary else s.onSurface,
+        detailLeiste = if (stein) s.secondary else s.surface, aufDetailLeiste = if (stein) s.onSecondary else s.onSurface,
+        markt = markt, aufMarkt = if (stein) Color.White else if (nacht) s.onSurface else s.onPrimary,
+        kauf = s.surfaceContainerHigh, aufKauf = s.onSurface,
+    )
+}
+
+val LocalAkzentflaechen = staticCompositionLocalOf { akzentflaechen("classic", false, LightColors) }
+
+/**
  * Statusfarben je Design. `erfolg` färbt auch Gewinnzahlen und braucht als
  * Text 4,5:1 auf der Fläche (FarbrollenTest).
  * Im Stein-Design gedeckter, damit es neben Salbeigrün und Sand nicht heraussticht.
@@ -449,6 +489,7 @@ fun BrickInventoryManagerTheme(
         LocalChartColors  provides chartColors,
         LocalStatusFarben provides statusFarben,
         LocalSteinDekor provides steinDekor,
+        LocalAkzentflaechen provides akzentflaechen(theme, dunkel, colors),
     ) {
         MaterialTheme(
             colorScheme = colors,

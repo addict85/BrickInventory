@@ -371,17 +371,14 @@ fun kachelAnordnung(breite: Dp, bedarf: Dp, abstand: Dp): KachelAnordnung = when
 @Composable
 fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = Modifier) {
     val farben = MaterialTheme.colorScheme
-    val brick = LocalIsBrickTheme.current
-    val dekor = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current
+    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
     val status = LocalStatusFarben.current
     val pnlText = pnl?.let { fmtProzent(it) } ?: "—"
     val marktKachel: @Composable (Modifier) -> Unit = { m ->
-        WertKachel(stringResource(R.string.detail_section_market), markt,
-            if (brick) Petrol else farben.primaryContainer, if (brick) Color.White else farben.onPrimaryContainer, m)
+        WertKachel(stringResource(R.string.detail_section_market), markt, akzent.markt, akzent.aufMarkt, m)
     }
     val kaufKachel: @Composable (Modifier) -> Unit = { m ->
-        WertKachel(stringResource(R.string.detail_purchase_price), kauf,
-            if (brick) dekor.schiefer else farben.surfaceContainerHigh, if (brick) dekor.aufSchiefer else farben.onSurface, m)
+        WertKachel(stringResource(R.string.detail_purchase_price), kauf, akzent.kauf, akzent.aufKauf, m)
     }
     // Die Statusfarben halten 4,5:1 nur auf surface — deshalb diese Fläche mit Rand.
     val pnlKachel: @Composable (Modifier) -> Unit = { m ->

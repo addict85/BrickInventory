@@ -115,7 +115,7 @@ fun ManualItemDetailScreen(
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
-    val isBrick = LocalIsBrickTheme.current
+    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -135,10 +135,10 @@ fun ManualItemDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isBrick) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
-                    titleContentColor = if (isBrick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface,
-                    navigationIconContentColor = if (isBrick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    actionIconContentColor = if (isBrick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    containerColor = akzent.detailLeiste,
+                    titleContentColor = akzent.aufDetailLeiste,
+                    navigationIconContentColor = akzent.aufDetailLeiste,
+                    actionIconContentColor = akzent.aufDetailLeiste,
                 )
             )
         },
