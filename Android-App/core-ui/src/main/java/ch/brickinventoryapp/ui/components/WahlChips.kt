@@ -29,6 +29,21 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
@@ -51,7 +66,51 @@ fun <T> SegmentWahl(
                 selected = wert == gewaehlt,
                 onClick = { onWahl(wert) },
                 shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
-            ) { Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            ) {
+                // Zwei Zeilen statt Auslassung: Bei grosser Schrift wurde „Gebraucht“ zu „Gebr…“.
+                Text(text, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+        }
+    }
+}
+
+/**
+ * Die Sortierung: ein Symbol mit Menü, überall dieselbe Bauform (Galerie, Merkliste,
+ * Katalog). Sortieren schränkt nichts ein und steht deshalb nicht zwischen den
+ * Filter-Chips; ein Punkt am Symbol sagt, dass von [vorgabe] abgewichen wird.
+ */
+@Composable
+fun SortierMenue(
+    optionen: List<Pair<String, String>>,
+    gewaehlt: String,
+    onWahl: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    vorgabe: String? = null,
+) {
+    var offen by rememberSaveable { mutableStateOf(false) }
+    val aktuell = optionen.firstOrNull { it.first == gewaehlt }?.second ?: ""
+    Box(modifier) {
+        BadgedBox(badge = { if (vorgabe != null && gewaehlt != vorgabe) Badge() }) {
+            OutlinedIconButton(
+                onClick = { offen = true },
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.sort_menu_cd, aktuell))
+            }
+        }
+        DropdownMenu(offen, { offen = false }) {
+            optionen.forEach { (wert, text) ->
+                DropdownMenuItem(
+                    text = { Text(text) },
+                    onClick = { offen = false; if (wert != gewaehlt) onWahl(wert) },
+                    leadingIcon = {
+                        if (wert == gewaehlt) Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                        else Spacer(Modifier.size(18.dp))
+                    },
+                    modifier = Modifier.semantics { selected = wert == gewaehlt },
+                )
+            }
         }
     }
 }

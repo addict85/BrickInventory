@@ -110,7 +110,6 @@ fun CatalogScreen(
     // dasselbe Objekt, keine Kopie.
     val showThemeSheet = remember { mutableStateOf(false) }
     val showYearSheet  = remember { mutableStateOf(false) }
-    val showSortMenu   = remember { mutableStateOf(false) }
 
     val gridState = rememberLazyGridState()
 
@@ -184,8 +183,8 @@ fun CatalogScreen(
 
     Column(Modifier.fillMaxSize()) {
 
-        CatalogSearchField(state, onQueryChange)
-        CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet, showSortMenu, onSortChange)
+        CatalogSearchField(state, onQueryChange, onSortChange)
+        CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
         // Trefferzahl
         Text(
             // pluralStringResource statt stringResource: „1 Set im Katalog",

@@ -369,12 +369,6 @@ private fun AcquisitionManagementRow(
             shape = Formen.etikett
         )
 
-        // Condition toggle
-        ConditionToggle(
-            selected = condition,
-            onSelect = { newCond -> condition = newCond; onSave(null, newCond, null, null) }
-        )
-
         // Price
         OutlinedTextField(
             value = priceText,
@@ -407,4 +401,11 @@ private fun AcquisitionManagementRow(
                 tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
         }
     }
+    // Der Zustand unter Anzahl und Preis über die volle Breite: In der Zeile liess
+    // die Segmentschaltfläche dem Preis auf dem Telefon kaum Platz.
+    ConditionToggle(
+        selected = condition,
+        onSelect = { newCond -> condition = newCond; onSave(null, newCond, null, null) },
+        modifier = Modifier.padding(bottom = Abstaende.klein),
+    )
 }

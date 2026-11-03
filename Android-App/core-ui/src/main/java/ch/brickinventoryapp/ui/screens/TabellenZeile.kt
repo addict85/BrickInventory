@@ -147,15 +147,12 @@ fun AnsichtUmschalter(
     onWechsel: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        for ((wert, text) in listOf("grid" to R.string.view_cards, "table" to R.string.view_table)) {
-            AuswahlChip(
-                selected = aktuell == wert,
-                onClick = { onWechsel(wert) },
-                label = { Text(stringResource(text), style = MaterialTheme.typography.bodyMedium) },
-            )
-        }
-    }
+    ch.brickinventoryapp.ui.components.SegmentWahl(
+        optionen = listOf("grid" to stringResource(R.string.view_cards), "table" to stringResource(R.string.view_table)),
+        gewaehlt = aktuell,
+        onWahl = onWechsel,
+        modifier = modifier,
+    )
 }
 
 /**
@@ -216,7 +213,7 @@ fun Zustandszeile(
             modifier = Modifier.width(90.dp),
         )
         Spacer(Modifier.width(Abstaende.klein))
-        ConditionToggle(selected = zustand, onSelect = onZustand, optionen = optionen)
+        ConditionToggle(selected = zustand, onSelect = onZustand, modifier = Modifier.weight(1f), optionen = optionen)
     }
 }
 
@@ -236,6 +233,7 @@ val ZUSTAND_NEU_GEBRAUCHT: List<Pair<String, Int>> =
 fun ConditionToggle(
     selected: String,
     onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
     /**
      * Wert → Beschriftung, vorbelegt mit „neu / gebraucht“. Als Parameter, weil die
      * BrickLink-Wunschliste einen dritten Wert („egal“) kennt und sonst gleich
@@ -243,24 +241,12 @@ fun ConditionToggle(
      */
     optionen: List<Pair<String, Int>> = ZUSTAND_NEU_GEBRAUCHT,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        optionen.forEach { (value, labelRes) ->
-            val isSelected = selected == value
-            Surface(
-                onClick = { onSelect(value) },
-                shape = MaterialTheme.shapes.small,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                modifier = Modifier.heightIn(min = 34.dp)
-            ) {
-                Box(Modifier.padding(horizontal = 14.dp), contentAlignment = Alignment.Center) {
-                    Text(
-                        stringResource(labelRes),
-                        color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    )
-                }
-            }
-        }
-    }
+    // Dieselbe Segmentschaltfläche wie jede Einfachwahl der App (SegmentWahl): Die
+    // eigene Fassung mit Flächen ohne Rand liess „Gebraucht“ wie Text aussehen.
+    ch.brickinventoryapp.ui.components.SegmentWahl(
+        optionen = optionen.map { (wert, text) -> wert to stringResource(text) },
+        gewaehlt = selected,
+        onWahl = onSelect,
+        modifier = modifier,
+    )
 }

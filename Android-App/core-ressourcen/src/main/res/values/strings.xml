@@ -227,11 +227,12 @@
     <string name="detail_price_none_yet">no price yet</string>
     <string name="detail_purchase_none">not recorded</string>
     <string name="detail_storage_ph">e.g. box 3</string>
-    <string name="filter_condition_all">All conditions</string>
+    <string name="filter_condition_all">All</string>
     <string name="filter_storage_all">All locations</string>
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Reset</string>
+    <string name="sort_menu_cd">Sort: %1$s</string>
     <string name="filter_section_sort">Sort</string>
     <string name="filter_section_spare">Spare parts</string>
     <string name="filter_section_color_category">Color and category</string>
@@ -927,7 +928,7 @@
     <string name="chart_change_year">%1$s this year</string>
     <string name="chart_change_month">%1$s this month</string>
     <string name="chart_change_week">%1$s this week</string>
-    <string name="finance_range_label">Value of your sets today, from lowest to highest market price</string>
+    <string name="finance_range_label">Range today: all sets at their lowest or highest price</string>
     <string name="wanted_add_first">Add a set to the list</string>
     <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
     <string name="fehler_anmeldung_text">Your session has expired.</string>

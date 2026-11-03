@@ -272,7 +272,6 @@ fun LazyListScope.financeCategoryFilter(
                     selected = aktive.isEmpty(),
                     onClick = onAlle,
                     label = { Text(stringResource(R.string.finance_filter_all), style = MaterialTheme.typography.labelMedium) },
-                    shape = Formen.chip
                 )
             }
             item { KategorieChip("sets",  R.string.finance_filter_sets,     aktive, onUmschalten) }
@@ -294,7 +293,6 @@ private fun KategorieChip(
         selected = schluessel in aktive,
         onClick = { onUmschalten(schluessel) },
         label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
-        shape = Formen.chip
     )
 }
 

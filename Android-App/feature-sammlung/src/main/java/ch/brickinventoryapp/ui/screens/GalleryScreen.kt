@@ -70,6 +70,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
+import ch.brickinventoryapp.ui.components.SortierMenue
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -179,9 +180,20 @@ fun GalleryScreen(
                 wert = searchInput,
                 onWert = { searchInput = it; onQueryChange(it) },
                 platzhalter = stringResource(R.string.gallery_search_placeholder),
-                aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme, sort),
+                aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme),
                 onFilter = { zeigeFilter = true },
                 onScannen = onScanBarcode,
+                sortierung = {
+                    // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
+                    // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
+                    SortierMenue(
+                        optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
+                                          "year_desc", "price_desc", "price_asc",
+                                          "qty_desc", "qty_asc").map { it to gallerySortLabel(it) },
+                        gewaehlt = sort, onWahl = onSortChange,
+                        vorgabe = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
+                    )
+                },
             )
 
             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
@@ -270,7 +282,6 @@ fun GalleryScreen(
             members = householdMembers, konto = scopeMode, onKonto = onScopeChange,
             orte = lagerorte, lager = lagerModus, onLager = onLagerChange,
             themen = themes, thema = theme, onThema = onThemeChange,
-            sortierung = sort, onSortierung = onSortChange,
             onSchliessen = { zeigeFilter = false },
         )
     }
@@ -310,38 +321,27 @@ private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
 }
 
 /**
- * Konto, Lagerort, Sortierung und Thema der Galerie. Angewandt wird jede Wahl
- * sofort auf dem Server; das Blatt bleibt offen, damit man mehrere setzen kann.
+ * Konto, Lagerort und Thema der Galerie. Angewandt wird jede Wahl sofort auf dem
+ * Server; das Blatt bleibt offen, damit man mehrere setzen kann. Die Sortierung
+ * hat ihr eigenes Menü neben dem Filterknopf.
  */
 @Composable
 private fun GalerieFilterBlatt(
     members: List<MitgliedAnsicht>, konto: String, onKonto: (String) -> Unit,
     orte: List<LagerortAnsicht>, lager: String, onLager: (String) -> Unit,
     themen: List<String>, thema: String, onThema: (String) -> Unit,
-    sortierung: String, onSortierung: (String) -> Unit,
     onSchliessen: () -> Unit,
 ) {
-    val vorgabe = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
     // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
     val zuruecksetzen: () -> Unit = {
         if (Filterzahl.konto(members, konto) > 0) onKonto(ch.brickinventoryapp.data.ScopeFilter.ALL)
         if (Filterzahl.lager(orte, lager) > 0) onLager("")
         if (thema.isNotBlank()) onThema("")
-        if (sortierung != vorgabe) onSortierung(vorgabe)
     }
-    val aktiv = Filterzahl.galerie(members, konto, orte, lager, thema, sortierung)
+    val aktiv = Filterzahl.galerie(members, konto, orte, lager, thema)
     FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
         KontoFilterAbschnitt(members, konto, onKonto)
         LagerortFilterAbschnitt(orte, lager, onLager)
-        FilterAbschnitt(stringResource(R.string.filter_section_sort)) {
-            // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
-            // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
-            listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                   "year_desc", "price_desc", "price_asc",
-                   "qty_desc", "qty_asc").forEach { w ->
-                FilterWahl(gallerySortLabel(w), sortierung == w) { if (sortierung != w) onSortierung(w) }
-            }
-        }
         if (themen.isNotEmpty()) {
             FilterAbschnitt(stringResource(R.string.catalog_filter_theme)) {
                 FilterWahl(stringResource(R.string.gallery_all), thema.isEmpty()) { if (thema.isNotEmpty()) onThema("") }

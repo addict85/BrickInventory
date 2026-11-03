@@ -383,13 +383,12 @@ private fun MerkpostenDialog(
                 HorizontalDivider()
                 Text(stringResource(R.string.detail_alert),
                      style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    AuswahlChip(selected = richtung == "unter", onClick = { richtung = "unter" },
-                               label = { Text(stringResource(R.string.detail_alert_chip_below)) })
-                    AuswahlChip(selected = richtung == "ueber", onClick = { richtung = "ueber" },
-                               label = { Text(stringResource(R.string.detail_alert_chip_above)) })
-                }
+                ch.brickinventoryapp.ui.components.SegmentWahl(
+                    optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
+                                      "ueber" to stringResource(R.string.detail_alert_chip_above)),
+                    gewaehlt = richtung,
+                    onWahl = { richtung = it },
+                )
                 // Eine Schwelle ist ein Preis — dieselbe Eingaberegel und
                 // dieselbe Tastatur wie ueberall (util/NumericInput.kt).
                 OutlinedTextField(

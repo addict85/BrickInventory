@@ -88,6 +88,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
  *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
+ *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -471,6 +472,39 @@ class OberflaechenRegelnTest {
             .fetchSemanticsNode().boundsInRoot
         val dichte = ctx.resources.displayMetrics.density
         assertTrue("PIN-Zeile nur ${pin.height / dichte} dp hoch", pin.height / dichte >= 47.5f)
+    }
+
+    /**
+     * Ein Bauteil je Entscheidungstyp: Der Zustand ist eine Einfachwahl und steht als
+     * Segmentschaltfläche da (gleich breite, aneinanderstossende Segmente mit der
+     * Rolle RadioButton); die Sortierung ist ein Menü hinter einem Symbol.
+     */
+    @Test
+    fun `Merkliste waehlt den Zustand mit Segmenten und sortiert ueber ein Menue`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.merkliste().also { it.ladeMerkliste() }
+            zeige { MerklisteScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOeffnen = { _, _ -> }) }
+            warte("Merkliste") { vm.merklisteState.value.merkposten.isNotEmpty() }
+            val segmente = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used).map {
+                compose.onNode(hasText(ctx.getString(it)) and
+                    androidx.compose.ui.test.SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role,
+                        androidx.compose.ui.semantics.Role.RadioButton)).fetchSemanticsNode().boundsInRoot
+            }
+            val dichte = ctx.resources.displayMetrics.density
+            segmente.zipWithNext().forEach { (a, b) ->
+                assertTrue("Segmente stossen aneinander (${a.right / dichte} / ${b.left / dichte} dp)",
+                    kotlin.math.abs(b.left - a.right) <= 2 * dichte && kotlin.math.abs(a.top - b.top) < 1f)
+            }
+            // Die Sortierung steht nicht als Chip mit ihrem Namen da, sondern hinter dem Symbol.
+            val vorgabe = ctx.getString(R.string.gallery_sort_added_desc)
+            compose.onAllNodesWithText(vorgabe).assertCountEquals(0)
+            compose.onNodeWithContentDescription(ctx.getString(R.string.sort_menu_cd, vorgabe)).performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText(ctx.getString(R.string.gallery_sort_name)).fetchSemanticsNode()
+        } finally {
+            welt.close()
+        }
     }
 
     @Test

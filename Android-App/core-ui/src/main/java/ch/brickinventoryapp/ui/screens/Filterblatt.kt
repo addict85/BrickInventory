@@ -5,6 +5,7 @@ import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -62,6 +63,8 @@ fun SucheMitFilter(
     onFilter: () -> Unit,
     /** Scannen als Symbol neben dem Filter; null = kein Scanner auf diesem Bildschirm. */
     onScannen: (() -> Unit)? = null,
+    /** Das Sortiermenü (SortierMenue) zwischen Filter und Scannen; null = keine Sortierung. */
+    sortierung: (@Composable () -> Unit)? = null,
 ) {
     // Auf dem Tablet nicht über die ganze Breite: Ein Suchfeld von 1900 px ist keines mehr.
     // Linksbündig wie Kennzahlen und Raster darunter, die ebenfalls links beginnen.
@@ -71,7 +74,9 @@ fun SucheMitFilter(
         val nurSymbol = maxWidth < 360.dp || ch.brickinventoryapp.ui.components.grosseSchrift()
         Row(verticalAlignment = Alignment.CenterVertically) {
             Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
-            FilterKnopf(aktiveFilter, onFilter, nurSymbol, Modifier.padding(end = if (onScannen != null) Abstaende.winzig else 14.dp))
+            val folgt = onScannen != null || sortierung != null
+            FilterKnopf(aktiveFilter, onFilter, nurSymbol, Modifier.padding(end = if (folgt) Abstaende.winzig else 14.dp))
+            if (sortierung != null) Box(Modifier.padding(end = if (onScannen != null) Abstaende.winzig else 14.dp)) { sortierung() }
             if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen, Modifier.padding(end = 14.dp))
         }
     }

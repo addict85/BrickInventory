@@ -211,11 +211,12 @@
     <string name="detail_price_none_yet">noch kein Preis</string>
     <string name="detail_purchase_none">nicht erfasst</string>
     <string name="detail_storage_ph">z. B. Kiste 3</string>
-    <string name="filter_condition_all">Alle Zustände</string>
+    <string name="filter_condition_all">Alle</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Zurücksetzen</string>
+    <string name="sort_menu_cd">Sortieren: %1$s</string>
     <string name="filter_section_sort">Sortierung</string>
     <string name="filter_section_spare">Ersatzteile</string>
     <string name="filter_section_color_category">Farbe und Kategorie</string>
@@ -908,7 +909,7 @@
     <string name="chart_change_year">%1$s dieses Jahr</string>
     <string name="chart_change_month">%1$s diesen Monat</string>
     <string name="chart_change_week">%1$s diese Woche</string>
-    <string name="finance_range_label">Wert der Sets heute, vom tiefsten bis zum höchsten Marktpreis</string>
+    <string name="finance_range_label">Spanne heute: alle Sets zum Tiefst- bzw. Höchstpreis</string>
     <string name="wanted_add_first">Set merken</string>
     <string name="wanted_empty_hint">Merke dir Sets, die du noch kaufen willst. Die App zeigt ihren Marktpreis und meldet sich auf Wunsch, wenn er sich ändert.</string>
     <string name="fehler_anmeldung_text">Deine Sitzung ist abgelaufen.</string>
