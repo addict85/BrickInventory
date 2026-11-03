@@ -27,8 +27,8 @@ import org.robolectric.annotation.GraphicsMode
 class DiagnoseDialogTest {
     @get:Rule val compose = createComposeRule()
 
-    private fun pruefe(name: String, angehalten: Boolean, inhalt: @Composable () -> Unit) {
-        RuntimeEnvironment.setFontScale(2f)
+    private fun pruefe(name: String, angehalten: Boolean, skala: Float = 2f, inhalt: @Composable () -> Unit) {
+        RuntimeEnvironment.setFontScale(skala)
         val offen = mutableStateOf(false)
         compose.setContent {
             BrickInventoryManagerTheme(theme = "classic", dunkel = false) {
@@ -56,21 +56,15 @@ class DiagnoseDialogTest {
         }
     }
 
-    @Test fun nurFelderAngehalten() = pruefe("nurFelderAngehalten", true) { felder() }
-    @Test fun zustandAngehalten() = pruefe("zustandAngehalten", true) {
-        ch.brickinventoryapp.ui.screens.Zustandszeile(zustand = "N", onZustand = {})
+    @Test fun feld150() = pruefe("feld150", false, 1.5f) { felder() }
+    @Test fun feld130() = pruefe("feld130", false, 1.3f) { felder() }
+    @Test fun feldOhneBeschriftung200() = pruefe("feldOhneBeschriftung200", false) {
+        OutlinedTextField(value = "", onValueChange = {}, modifier = Modifier.fillMaxWidth(), singleLine = true)
     }
-    @Test fun lagerortAngehalten() = pruefe("lagerortAngehalten", true) {
-        ch.brickinventoryapp.ui.screens.LagerortErfassung("", listOf("Keller", "Estrich"), {})
+    @Test fun basisFeld200() = pruefe("basisFeld200", false) {
+        androidx.compose.foundation.text.BasicTextField(value = "x", onValueChange = {})
     }
-    @Test fun allesAngehalten() = pruefe("allesAngehalten", true) {
-        felder()
-        ch.brickinventoryapp.ui.screens.Zustandszeile(zustand = "N", onZustand = {})
-        ch.brickinventoryapp.ui.screens.LagerortErfassung("", listOf("Keller", "Estrich"), {})
-    }
-    @Test fun allesLaufend() = pruefe("allesLaufend", false) {
-        felder()
-        ch.brickinventoryapp.ui.screens.Zustandszeile(zustand = "N", onZustand = {})
-        ch.brickinventoryapp.ui.screens.LagerortErfassung("", listOf("Keller", "Estrich"), {})
-    }
+    @Test fun nurText200() = pruefe("nurText200", false) { Text("Nur ein Text") }
+    @Config(sdk = [33])
+    @Test fun feld200Sdk33() = pruefe("feld200Sdk33", false) { felder() }
 }
