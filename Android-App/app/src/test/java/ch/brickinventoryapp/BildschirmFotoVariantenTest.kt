@@ -398,15 +398,14 @@ class BildschirmFotoVariantenTest {
             override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
         }))
 
-    /** Wartet, bis eine Anfrage an [pfad] gestellt ist; danach ruht der Server 0,5 s. */
-    private fun angefragt(pfad: String): () -> Boolean = { welt.pfade.anfragen.any { pfad in it } }
-
     @Test
     fun lagerorte() {
         welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
-        val vm = einstellungen()
-        zeige("lagerorte", bereit = angefragt("/api/v1/storage/locations")) {
+        // Vor dem Zeigen laden: zeige() wartet schon vor setContent auf die Daten, und
+        // ohne Aufruf hier fragte erst der Bildschirm selbst.
+        val vm = einstellungen().also { it.ladeEigeneLagerorte() }
+        zeige("lagerorte", bereit = { vm.lagerState.value.eigene.size == 3 }, zustand = { vm.lagerState.value }) {
             ch.brickinventoryapp.ui.screens.LagerorteUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
         foto("lagerorte")
@@ -427,8 +426,8 @@ class BildschirmFotoVariantenTest {
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
             ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
-            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache)))
-        zeige("haushalt", bereit = angefragt("/api/v1/settings/household")) {
+            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+        zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             ch.brickinventoryapp.ui.screens.HaushaltUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
         foto("haushalt")
@@ -446,12 +445,13 @@ class BildschirmFotoVariantenTest {
     /** Erfassen: der Dialog der Galerie mit Nummer, Menge, Preis, Zustand und Lagerort. */
     @Test
     fun dialogSetErfassen() {
+        // Der Dialog fokussiert sein erstes Feld, der Cursor blinkt ohne Ende: Die Uhr steht
+        // schon VOR setContent, das sonst auf Ruhe wartet (wie galerieLaedt).
+        compose.mainClock.autoAdvance = false
         zeige("dialog-set-erfassen", warten = false) {
             ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {}, onAdd = { _, _, _, _, _, _ -> },
                 lagerorte = listOf("Keller", "Estrich"))
         }
-        // Der Dialog fokussiert sein erstes Feld; der Cursor blinkt — Uhr anhalten wie oben.
-        compose.mainClock.autoAdvance = false
         repeat(3) {
             compose.mainClock.advanceTimeBy(200)
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
