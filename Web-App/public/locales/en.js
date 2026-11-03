@@ -970,7 +970,7 @@ window.I18N_EN = {
   'qr.access_unlimited': 'The access never expires. You can revoke it under “Signed-in devices”.',
   'qr.validity_label': 'Access valid for',
   'qr.password_label': 'Your password',
-  'qr.validity_default': 'Default (90 days unused)',
+  'qr.validity_default': 'Default (6 months, 90 days unused)',
   'qr.validity_1m': '1 month',
   'qr.validity_2m': '2 months',
   'qr.validity_6m': '6 months',

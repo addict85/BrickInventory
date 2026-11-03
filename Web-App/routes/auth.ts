@@ -466,10 +466,10 @@ router.post('/qr-token', requireLogin, async (req, res: Antwort<'POST /api/v1/au
     return sendeFehler(req, res, 503, 'qr_ohne_basis_url');
   }
   await K.raeumeQrTokensAuf().catch(logAndContinue('qr-token:aufräumen'));
-  // Gewählt von der angemeldeten Sitzung, nicht im unangemeldeten /qr-login;
-  // unbekannt heisst „keine feste Frist", ältere Clients bleiben unverändert.
+  // Gewählt von der angemeldeten Sitzung, nicht im unangemeldeten /qr-login.
+  // Ohne gültige Wahl gilt dieselbe Höchstdauer wie bei der App-Anmeldung.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-tage
-  const tage = laufzeitTage(req.body?.gueltigkeit);
+  const tage = laufzeitTage(req.body?.gueltigkeit) ?? APP_HOECHSTDAUER_TAGE;
   // „Unbegrenzt" nur, wenn die App den Server über HTTPS erreicht: Ohne TLS
   // ginge ein Token ohne Ablauf im Klartext durchs Netz.
   if (tage === UNBEGRENZT && !/^https:\/\//i.test(basis))
@@ -500,7 +500,7 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
 
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
   // Die Laufzeit kommt aus der Zeile der Nonce, nicht aus der Anfrage.
-  const bearerToken = await createToken(user.id, 'qr-login', true, claimed.token_days ?? null,
+  const bearerToken = await createToken(user.id, 'qr-login', true, claimed.token_days ?? APP_HOECHSTDAUER_TAGE,
                                         { scope: 'app', ip: req.ip });
   res.json({ success: true, token: bearerToken, username: user.username, isAdmin: false, userId: user.id,
     user: { id: user.id, username: user.username }, token_info: await tokenAngaben(bearerToken) });

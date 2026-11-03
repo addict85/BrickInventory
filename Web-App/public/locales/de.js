@@ -981,7 +981,7 @@ window.I18N_DE = {
   'qr.access_unlimited': 'Der Zugang läuft nie ab. Entziehen kannst du ihn unter „Angemeldete Geräte“.',
   'qr.validity_label': 'Zugang gültig für',
   'qr.password_label': 'Dein Passwort',
-  'qr.validity_default': 'Standard (90 Tage ungenutzt)',
+  'qr.validity_default': 'Standard (6 Monate, 90 Tage ungenutzt)',
   'qr.validity_1m': '1 Monat',
   'qr.validity_2m': '2 Monate',
   'qr.validity_6m': '6 Monate',
