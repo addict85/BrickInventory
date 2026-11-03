@@ -458,6 +458,9 @@
     <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
     <string name="vm_session_expired">Session expired — please log in again</string>
     <string name="vm_abmelden_nachgeholt">Logged out. The server could not be reached, so the app will invalidate the login there as soon as it is online. To be sure, check “Signed-in devices” in the web app.</string>
+    <string name="abmeldung_kanal">Sign-out</string>
+    <string name="abmeldung_gescheitert_titel">Sign-out not confirmed</string>
+    <string name="abmeldung_gescheitert_text">This device could not sign out at %1$s. The login may still be valid there: revoke it in the web app under “Signed-in devices”.</string>
     <string name="vm_rechte_entzogen">Your administrator rights no longer apply — the administration areas are hidden.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->

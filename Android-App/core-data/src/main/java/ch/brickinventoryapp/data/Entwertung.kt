@@ -6,19 +6,25 @@ import ch.brickinventoryapp.di.Zugangslage
 import ch.brickinventoryapp.util.KlartextAbgelehnt
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.Tresorbefund
+import ch.brickinventoryapp.util.ZertifikatUngeklaert
 import ch.brickinventoryapp.util.eigeneAdresse
+import ch.brickinventoryapp.util.pinSchluessel
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
+import javax.net.ssl.SSLContext
+import javax.net.ssl.X509ExtendedTrustManager
 
 /**
- * Was eine spätere Entwertung braucht: der Server, dem das Token gehört, und das
+ * Was eine spätere Entwertung braucht: der Server, dem das Token gehört, das
  * Token selbst — nur verschlüsselt (Keystore), denn der Auftrag liegt bis dahin
- * in der Datenbank von WorkManager.
+ * in der Datenbank von WorkManager — und der Pin dieses Servers. Nach einem
+ * Serverwechsel ist er nicht mehr der eingerichtete; ohne seinen Pin gälten für
+ * ihn nur die System-CAs.
  */
-data class Entwertungsauftrag(val serverUrl: String, val tokenGeheim: String)
+data class Entwertungsauftrag(val serverUrl: String, val tokenGeheim: String, val pin: String? = null)
 
 /** Legt einen Auftrag in die dauerhafte Warteschlange (data/lokal/EntwertungsWorker). */
 fun interface EntwertungsPlaner {
@@ -72,9 +78,17 @@ fun einordnenEntwertung(code: Int): Entwertungsergebnis = when {
  * eigenen Wächter: Der der App kennt nach dem Abmelden kein Token mehr und strich
  * den Kopf; dieser hält dieselben Regeln (https, Pfad, Umleitungen) für den Auftrag.
  */
-class Entwerter(private val basis: OkHttpClient, private val entwicklung: Boolean) {
+class Entwerter(
+    private val basis: OkHttpClient,
+    private val entwicklung: Boolean,
+    /**
+     * TLS-Vertrauen für genau den Server des Auftrags ([pinSchluessel]) mit seinem
+     * Pin. Das gemeinsame der App kennt nur den jetzt eingerichteten Server.
+     */
+    private val vertrauenFuer: ((schluessel: String, pin: String?) -> X509ExtendedTrustManager)? = null,
+) {
 
-    fun entwerte(serverUrl: String, token: String): Entwertungsergebnis {
+    fun entwerte(serverUrl: String, token: String, pin: String? = null): Entwertungsergebnis {
         val ziel = eigeneAdresse(serverUrl, "api/v1/auth/logout")
         if (token.isBlank() || ziel == null) return Entwertungsergebnis.AUFGEBEN
         val lage = object : Zugangslage {
@@ -86,14 +100,24 @@ class Entwerter(private val basis: OkHttpClient, private val entwicklung: Boolea
         val client = basis.newBuilder()
             .followRedirects(false).followSslRedirects(false)
             .addInterceptor(ServerWaechter(lage, istApiClient = false, entwicklung = entwicklung, sitzungAbgelaufen = {}))
+            .apply {
+                val schluessel = pinSchluessel(serverUrl)
+                if (vertrauenFuer != null && schluessel != null) {
+                    val tm = vertrauenFuer(schluessel, pin)
+                    sslSocketFactory(SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory, tm)
+                }
+            }
             .build()
         val anfrage = Request.Builder().url(ziel).post("{}".toRequestBody("application/json".toMediaType())).build()
         return try {
             client.newCall(anfrage).execute().use { einordnenEntwertung(it.code) }
         } catch (_: KlartextAbgelehnt) {
             Entwertungsergebnis.AUFGEBEN
-        } catch (_: java.io.IOException) {
-            Entwertungsergebnis.SPAETER
+        } catch (e: java.io.IOException) {
+            // Ein Zertifikat, das nicht zum Pin passt, wird durch Warten nicht passender;
+            // nachfragen kann im Hintergrund niemand.
+            if (generateSequence<Throwable>(e) { it.cause }.take(8).any { it is ZertifikatUngeklaert }) Entwertungsergebnis.AUFGEBEN
+            else Entwertungsergebnis.SPAETER
         }
     }
 }

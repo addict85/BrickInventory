@@ -90,6 +90,16 @@ class AppViewModel @Inject constructor(
     fun clearSnackbar() { _snackbar.value = null }
     fun showSnackbar(msg: String) { _snackbar.value = msg }
 
+    // Eine nachgeholte Abmeldung, die endgültig scheiterte (EntwertungsWorker): Die
+    // Benachrichtigung kann fehlen, also hier noch einmal, einmalig.
+    init {
+        prefs.gescheiterteEntwertungen().firstOrNull()?.let { server ->
+            _snackbar.value = texte.text(R.string.abmeldung_gescheitert_text,
+                ch.brickinventoryapp.util.NetworkPolicy.ansicht(server)?.adresse ?: server)
+            prefs.quittiereGescheiterteEntwertungen()
+        }
+    }
+
     val blickfeld = blickfeldDienst.konten
     val lagerState = blickfeldDienst.lager
 

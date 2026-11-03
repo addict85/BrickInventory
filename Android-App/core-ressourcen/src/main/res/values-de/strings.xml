@@ -440,6 +440,9 @@
     <string name="vm_anmeldung_zu_alt">Die Anmeldung ist älter als 180 Tage. Bitte melde dich neu an.</string>
     <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
     <string name="vm_abmelden_nachgeholt">Abgemeldet. Der Server war nicht erreichbar; die App entwertet die Anmeldung dort, sobald er wieder erreichbar ist. Zur Sicherheit in der Webapp unter „Angemeldete Geräte“ nachsehen.</string>
+    <string name="abmeldung_kanal">Abmeldung</string>
+    <string name="abmeldung_gescheitert_titel">Abmeldung nicht bestätigt</string>
+    <string name="abmeldung_gescheitert_text">Dieses Gerät konnte sich bei %1$s nicht abmelden. Die Anmeldung gilt dort womöglich noch: In der Webapp unter „Angemeldete Geräte“ widerrufen.</string>
     <string name="vm_rechte_entzogen">Deine Verwalterrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->

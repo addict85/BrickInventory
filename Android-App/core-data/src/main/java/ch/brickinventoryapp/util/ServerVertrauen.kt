@@ -263,6 +263,26 @@ class PinVertrauen(
 }
 
 /**
+ * Vertrauen für einen Server, der nicht (mehr) der eingerichtete sein muss: die
+ * nachgeholte Entwertung nach einem Serverwechsel. Es gilt [pin] unter [schluessel]
+ * wie für den eigenen Server. Eine Abweichung fragt niemanden (eigene
+ * [ZertifikatsFrage]) und merkt nichts — sie bricht den Handshake nur ab.
+ */
+fun auftragsVertrauen(
+    kette: X509ExtendedTrustManager,
+    system: X509ExtendedTrustManager,
+    schluessel: String,
+    pin: String?,
+): PinVertrauen {
+    val auftrag = schluessel
+    val ablage = object : PinAblage {
+        override fun pin(schluessel: String): String? = pin.takeIf { schluessel == auftrag }
+        override fun merkePin(schluessel: String, fingerabdruck: String) = Unit
+    }
+    return PinVertrauen(kette, ablage, eigenerServer = { auftrag }, frage = ZertifikatsFrage(), fremdeHosts = system)
+}
+
+/**
  * Trägt ein Zertifikat der Kette den Pin, und ist alles darunter von ihm aus
  * gültig signiert? Nur den Pin irgendwo in der Kette zu finden genügte nicht:
  * Das Zertifikat einer internen CA ist öffentlich, ein Angreifer könnte es an
