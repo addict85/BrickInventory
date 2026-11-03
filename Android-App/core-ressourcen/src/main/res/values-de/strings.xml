@@ -816,6 +816,12 @@
     <string name="vouchers_pdf_hint">Die Werte werden daraus gelesen. Was du selbst einträgst, gilt. Ein PDF mit mehreren Seiten ergibt mehrere Gutscheine.</string>
     <string name="vouchers_export">Alle Gutscheine als PDF exportieren</string>
     <string name="vouchers_pin_show">PIN anzeigen</string>
+    <string name="schritt_untertitel">Mit Fingerabdruck, Gesicht oder der Sperre des Geräts bestätigen</string>
+    <string name="schritt_entsperren">Bestätigen</string>
+    <string name="schritt_gutschein">Gutschein-PIN anzeigen</string>
+    <string name="schritt_codes">Wiederherstellungscodes</string>
+    <string name="schritt_verwaltung">Verwaltung öffnen</string>
+    <string name="schritt_voller_zugriff">Mit Verwalterrechten anmelden</string>
     <string name="vouchers_pin_hide">PIN verbergen</string>
     <string name="vouchers_delete_confirm">Gutschein %1$s wirklich löschen? Das hinterlegte PDF wird mit gelöscht.</string>
     <string name="vouchers_saved">Gutschein gespeichert</string>

@@ -288,10 +288,13 @@ private fun AnmeldeFelder(
 
     if (error != null) FormularMeldung(error, fehler = true)
 
-    // Ohne Häkchen ein Token ohne Verwalterrechte, auch für ein Verwalterkonto.
+    // Ohne Häkchen ein Token ohne Verwalterrechte, auch für ein Verwalterkonto. Das
+    // Häkchen setzen fragt die Gerätesperre: Ein Token mit Scope voll darf alles.
+    val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+    val vollGrund = stringResource(R.string.schritt_voller_zugriff)
     Row(verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth().toggleable(value = vollerZugriff, role = Role.Checkbox,
-            onValueChange = onVollerZugriff)) {
+            onValueChange = { an -> if (an) schutz.bestaetige(vollGrund) { onVollerZugriff(true) } else onVollerZugriff(false) })) {
         Checkbox(checked = vollerZugriff, onCheckedChange = null)
         Column(Modifier.padding(start = 8.dp)) {
             Text(stringResource(R.string.login_full_access), style = MaterialTheme.typography.bodyMedium)

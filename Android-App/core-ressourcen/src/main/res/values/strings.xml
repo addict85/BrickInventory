@@ -830,6 +830,12 @@
     <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.</string>
     <string name="vouchers_export">Export all vouchers as PDF</string>
     <string name="vouchers_pin_show">Show PIN</string>
+    <string name="schritt_untertitel">Confirm with fingerprint, face or your device lock</string>
+    <string name="schritt_entsperren">Confirm</string>
+    <string name="schritt_gutschein">Show voucher PIN</string>
+    <string name="schritt_codes">Recovery codes</string>
+    <string name="schritt_verwaltung">Open administration</string>
+    <string name="schritt_voller_zugriff">Sign in with admin rights</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
     <string name="vouchers_delete_confirm">Really delete voucher %1$s? The stored PDF goes with it.</string>
     <string name="vouchers_saved">Voucher saved</string>

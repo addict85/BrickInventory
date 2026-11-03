@@ -22,6 +22,8 @@ import org.junit.Test
  *      Gutschein-PDF fordern den Sichtschutz an“
  *   C  (01.11.2026) Sichtschutz() aus dem Zweig `zfZustand.geheimnis != null` in
  *      EinstellungenKonto entfernt → rot „Schlüssel und Codes des zweiten Faktors …“
+ *   D  (03.11.2026, kotlinc lokal) Ueberdeckungsschutz() aus GutscheineUnterseite
+ *      entfernt → rot „Gutscheinseite und Gutschein-PDF fordern den Sichtschutz an“
  */
 class GutscheinSichtschutzTest {
 
@@ -41,6 +43,8 @@ class GutscheinSichtschutzTest {
         val seite = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/screens/GutscheineUnterseite.kt")),
             "fun GutscheineUnterseite(")
         assertTrue("Die Gutscheinseite setzt keinen Sichtschutz", seite.contains("Sichtschutz()"))
+        // Kopieren der PIN und Löschen: kein Tipp durch ein fremdes Fenster (Android 8 bis 11).
+        assertTrue("Die Gutscheinseite setzt keinen Überdeckungsschutz", seite.contains("Ueberdeckungsschutz()"))
         val graph = Quellen.ohneKommentare(Quellen.lies("nav/ToolsGraph.kt"))
         assertTrue("Das Gutschein-PDF setzt keinen Sichtschutz",
             Regex("""zeigtGutscheine\(pdfUrl\)\)\s*ch\.brickinventoryapp\.ui\.components\.Sichtschutz\(\)""").containsMatchIn(graph))

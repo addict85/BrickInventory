@@ -282,7 +282,11 @@ fun NavGraphBuilder.toolsGraph(
             val stand by vm.state.collectAsStateWithLifecycle()
             LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navController.popBackStack() }
             ReiterGeruest(stringResource(R.string.nav_monitoring), vm, navController, bottomNavItems, snackbarHostState) {
-                MonitoringScreen(vm)
+                // Verwalteraktionen nur nach der Gerätesperre; kein Tipp durch eine Überlagerung.
+                ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+                ch.brickinventoryapp.ui.components.Schrittsperre(stringResource(R.string.schritt_verwaltung)) {
+                    MonitoringScreen(vm)
+                }
             }
         }
         composable(

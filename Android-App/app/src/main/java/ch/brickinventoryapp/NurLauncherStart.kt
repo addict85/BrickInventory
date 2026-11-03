@@ -2,15 +2,16 @@ package ch.brickinventoryapp
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 
 /**
  * Basis der exportierten MainActivity. Jede App kann sie starten, und der
  * NavHost liest aus dem Start-Intent Deep-Link-Ziele (deepLinkIds/-Args, data).
  * Deshalb verlieren Extras und Daten ihren Weg, bevor irgendetwas sie sieht:
  * übrig bleibt nur der Launcher-Start. Meldungen kommen über MeldungsEinstieg.
+ * FragmentActivity, weil BiometricPrompt (ui/components/Schrittschutz) eine braucht.
  */
-abstract class NurLauncherStart : ComponentActivity() {
+abstract class NurLauncherStart : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         fremdeAngabenEntfernen(intent)
         super.onCreate(savedInstanceState)

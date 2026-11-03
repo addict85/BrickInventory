@@ -73,6 +73,11 @@ fun GutscheineCard(
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
+    // PIN aufdecken, kopieren, bearbeiten und die PDFs zeigen Geld: erst nach der
+    // Gerätesperre (Schrittschutz). Die Nummer allein löst nichts ein.
+    val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+    val grund = stringResource(R.string.schritt_gutschein)
+    val geschuetzt: (() -> Unit) -> Unit = { schritt -> schutz.bestaetige(grund, schritt) }
     SettingsCard(title = stringResource(R.string.vouchers_title), icon = Icons.Default.Redeem) {
       BoxWithConstraints {
         // Ab Tabletbreite Liste links, Formular rechts wie die Set-Detailseite: untereinander
@@ -110,7 +115,7 @@ fun GutscheineCard(
                     Text(stringResource(R.string.common_cancel))
                 }
             }
-            OutlinedButton(onClick = onExportieren,
+            OutlinedButton(onClick = { geschuetzt(onExportieren) },
                            enabled = zustand.gutscheine.isNotEmpty()) {
                 Icon(Icons.Default.PictureAsPdf, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(Abstaende.klein))
@@ -172,11 +177,16 @@ fun GutscheineCard(
             GutscheinZeile(
                 g = g,
                 pinSichtbar = g.id in zustand.pinSichtbar,
-                onPinSchalten = { onPinSchalten(g.id) },
-                onBearbeiten = { onBearbeiten(g.id) },
+                // Verdecken braucht keine Bestätigung, aufdecken schon.
+                onPinSchalten = {
+                    if (g.id in zustand.pinSichtbar) onPinSchalten(g.id) else geschuetzt { onPinSchalten(g.id) }
+                },
+                onBearbeiten = { geschuetzt { onBearbeiten(g.id) } },
                 onLoeschen = { onLoeschen(g.id) },
-                onPdfOeffnen = { onPdfOeffnen(g.id) },
-                onKopieren = onKopieren,
+                onPdfOeffnen = { geschuetzt { onPdfOeffnen(g.id) } },
+                onKopieren = { wert, istNummer ->
+                    if (istNummer) onKopieren(wert, true) else geschuetzt { onKopieren(wert, false) }
+                },
                 onGuthaben = { onGuthaben(g.id) },
                 guthabenLaeuft = zustand.guthabenLaeuft == g.id,
             )
