@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui
 
-import ch.brickinventoryapp.data.model.GutscheinKlartext
+import ch.brickinventoryapp.ui.model.KlartextAnsicht
 import ch.brickinventoryapp.ui.model.*
 
 /**
@@ -92,7 +92,7 @@ data class GutscheinUiState(
      * Nummer und PIN im Klartext je id, solange die Seite offen ist. Nur hier, nie
      * in Ablage oder Cache; GutscheineUnterseite leert es beim Verlassen.
      */
-    val klartext: Map<Int, GutscheinKlartext> = emptyMap(),
+    val klartext: Map<Int, KlartextAnsicht> = emptyMap(),
     /** Was die Oberfläche in die Zwischenablage legen soll; sie quittiert. */
     val zuKopieren: Kopierauftrag? = null,
     val speichert: Boolean = false,

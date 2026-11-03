@@ -503,6 +503,15 @@ class BildschirmFotoVariantenTest {
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
         }
         compose.onNode(isDialog()).captureRoboImage(pfad(name, "classic", false, "telefon"))
+        if (schrift == 1f) {
+            // Ein Muster für alle Erfassungen: Der Lagerort ist so breit wie die Set-Nummer.
+            val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+            fun breite(label: Int) = compose.onNode(androidx.compose.ui.test.hasSetTextAction() and
+                androidx.compose.ui.test.hasText(ctx.getString(label))).fetchSemanticsNode().boundsInRoot.width
+            org.junit.Assert.assertEquals("Lagerort so breit wie die Set-Nummer",
+                breite(ch.brickinventoryapp.ressourcen.R.string.gallery_set_number),
+                breite(ch.brickinventoryapp.ressourcen.R.string.detail_storage), 1f)
+        }
     }
 
     // ── Laden, Fehler, leer ──

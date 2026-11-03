@@ -280,7 +280,7 @@ private fun GutscheinFormularBlatt(
         // Regel steht in ZahlentastaturTest, der Filter in NumericInput.kt.
         // Beim Bearbeiten steht die Maske des Servers im Feld; eingabeUeberMaske()
         // behandelt sie als Ganzes, gespeichert heisst sie „unverändert“.
-        val nummerMaske = ch.brickinventoryapp.data.model.istGutscheinMaske(zustand.nummer)
+        val nummerMaske = ch.brickinventoryapp.ui.model.istMaskierteNummer(zustand.nummer)
         OutlinedTextField(
             value = zustand.nummer,
             onValueChange = {
@@ -294,7 +294,7 @@ private fun GutscheinFormularBlatt(
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            val pinMaske = zustand.pin == ch.brickinventoryapp.data.model.GUTSCHEIN_PIN_MASKE
+            val pinMaske = zustand.pin == ch.brickinventoryapp.ui.model.PIN_MASKE_ANZEIGE
             OutlinedTextField(
                 value = zustand.pin,
                 onValueChange = { onFeld(null, NumericInput.quantity(eingabeUeberMaske(zustand.pin, it, pinMaske)), null, null) },
@@ -376,7 +376,7 @@ private fun GutscheinKarte(
     onGuthaben: () -> Unit,
     guthabenLaeuft: Boolean,
     /** Nummer und PIN im Klartext, wenn sie auf dieser Seite schon geholt sind. */
-    klartext: ch.brickinventoryapp.data.model.GutscheinKlartext?,
+    klartext: ch.brickinventoryapp.ui.model.KlartextAnsicht?,
     modifier: Modifier = Modifier,
 ) {
     var menue by rememberSaveable { mutableStateOf(false) }

@@ -1,7 +1,7 @@
 Gegenprobe: Lagerortfeld im Erfassen-Dialog wieder ohne volle Breite
 Modul: app
-Test: ch.brickinventoryapp.OberflaechenRegelnTest
-Rot: Erfassen-Dialog
+Test: ch.brickinventoryapp.BildschirmFotoVariantenTest
+Rot: dialogSetErfassen
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/LagerortFeld.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/LagerortFeld.kt
 index 9df097a..23456c8 100644

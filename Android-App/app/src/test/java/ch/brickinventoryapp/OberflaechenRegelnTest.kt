@@ -94,7 +94,6 @@ import ch.brickinventoryapp.ressourcen.R
  *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
  *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
- *   lagerort-feld-schmal            Lagerort im Dialog wieder ohne volle Breite → rot „Erfassen-Dialog …“
  *   kachel-hoehe-nach-inhalt        Thema nur, wenn es eines gibt → rot „Kacheln einer Reihe …“
  *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
  */
@@ -639,28 +638,6 @@ class OberflaechenRegelnTest {
             }
         }
         (zustaende + zeitraum).forEach { ganzEineZeile(it) }
-    }
-
-    /**
-     * Ein Muster für Erfassen-Dialoge: Titel ohne Symbol, alle Felder gleich breit. Das
-     * Lagerortfeld blieb bei Materials 280 dp stehen und war schmaler als die übrigen.
-     */
-    @Test
-    fun `Erfassen-Dialog hat gleich breite Felder und kein Symbol`() {
-        val offen = androidx.compose.runtime.mutableStateOf(false)
-        zeige {
-            if (offen.value) ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {},
-                onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller"), sofortFokus = false)
-        }
-        // Ohne Fokus blinkt kein Cursor, Compose wird von selbst ruhig. Eine angehaltene Uhr
-        // hielte dagegen jeden angefangenen Frame offen, und fetchSemanticsNode wartete ewig.
-        offen.value = true
-        compose.waitForIdle()
-        fun breite(label: Int) = compose.onNode(androidx.compose.ui.test.hasSetTextAction() and
-            hasText(ctx.getString(label))).fetchSemanticsNode().boundsInRoot.width
-        val nummer = breite(R.string.gallery_set_number)
-        val ort = breite(R.string.detail_storage)
-        assertEquals("Lagerort so breit wie die Set-Nummer", nummer, ort, 1f)
     }
 
     /**

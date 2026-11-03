@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.model.GutscheinAntwort
-import ch.brickinventoryapp.data.model.GutscheinKlartext
+import ch.brickinventoryapp.ui.model.KlartextAnsicht
 import ch.brickinventoryapp.data.model.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.GutscheinRequest
@@ -134,8 +134,8 @@ class GutscheinViewModel @Inject constructor(
                         is Result.Success -> {
                             // Inzwischen verlassen oder abgebrochen: Der Klartext bleibt nicht liegen.
                             if (nochOffen(b)) {
-                                _state.update { it.copy(bestaetigung = null, klartext = it.klartext + (b.id to r.data)) }
-                                fuehreAus(b.schritt, r.data)
+                                _state.update { it.copy(bestaetigung = null, klartext = it.klartext + (b.id to r.data.alsAnsicht())) }
+                                fuehreAus(b.schritt, r.data.alsAnsicht())
                             }
                             null
                         }
@@ -156,7 +156,7 @@ class GutscheinViewModel @Inject constructor(
     private fun nochOffen(b: GutscheinBestaetigung) =
         _state.value.bestaetigung.let { it != null && it.schritt == b.schritt && it.id == b.id }
 
-    private fun fuehreAus(schritt: GutscheinSchritt, klar: GutscheinKlartext) {
+    private fun fuehreAus(schritt: GutscheinSchritt, klar: KlartextAnsicht) {
         when (schritt) {
             GutscheinSchritt.PIN_ZEIGEN -> _state.update { it.copy(pinSichtbar = it.pinSichtbar + klar.id) }
             GutscheinSchritt.NUMMER_KOPIEREN -> _state.update { it.copy(zuKopieren = Kopierauftrag(klar.number, true)) }
