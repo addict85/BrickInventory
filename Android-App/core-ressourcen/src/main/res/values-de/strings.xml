@@ -697,7 +697,8 @@
     <!-- ══════════════ Kontokarte (Profil / Passwort) ══════════════ -->
     <string name="konto_title">Konto</string>
     <string name="konto_email_unverified">E-Mail-Adresse nicht bestätigt</string>
-    <string name="konto_email_password">Aktuelles Passwort (für die neue E-Mail-Adresse)</string>
+    <string name="konto_profil_password">Aktuelles Passwort (zum Speichern)</string>
+    <string name="konto_profil_password_needed">Zum Speichern bitte das aktuelle Passwort eingeben.</string>
     <string name="konto_save">Profil speichern</string>
     <string name="konto_saved">Profil gespeichert</string>
     <string name="konto_password_title">Passwort ändern</string>

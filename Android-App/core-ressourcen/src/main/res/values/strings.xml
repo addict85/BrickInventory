@@ -711,7 +711,8 @@
     <!-- ══════════════ Account card (profile / password) ══════════════ -->
     <string name="konto_title">Account</string>
     <string name="konto_email_unverified">Email address not confirmed</string>
-    <string name="konto_email_password">Current password (for the new email address)</string>
+    <string name="konto_profil_password">Current password (to save)</string>
+    <string name="konto_profil_password_needed">To save, enter your current password.</string>
     <string name="konto_save">Save profile</string>
     <string name="konto_saved">Profile saved</string>
     <string name="konto_password_title">Change password</string>

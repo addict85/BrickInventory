@@ -41,6 +41,9 @@ import java.io.File
  *    "code" im Rumpf).
  *  - (01.11.2026) In richteZweitenFaktorEin() `d.otpauth` ungeprüft übernommen:
  *    „eine fremde Adresse statt otpauth wird nicht geöffnet“ rot.
+ *  - (03.11.2026) Patch gegenproben/profil-ohne-passwort.patch (die Prüfung
+ *    `passwort.isNullOrBlank()` in speichereProfil() entfernt): „ohne Passwort
+ *    fragt das Profil den Server nicht“ rot.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KontoViewModelTest {
@@ -211,6 +214,25 @@ class KontoViewModelTest {
         vm.aenderePasswort("alt", "neuNeuNeu123!", " 123456 ") { abgemeldet = true }
         warteBis("abgemeldet") { abgemeldet }
         assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"123456\""))
+    }
+
+    @Test
+    fun `ohne Passwort fragt das Profil den Server nicht`() {
+        vm.speichereProfil("marco2", "marco@example.org", "", "", null)
+        assertEquals("t${R.string.konto_profil_password_needed}", vm.kontoState.value.fehler)
+        vm.speichereProfil("marco2", "marco@example.org", "", "", "  ")
+        assertEquals(0, server.requestCount)
+        assertFalse(vm.kontoState.value.speichert)
+    }
+
+    @Test
+    fun `ein neuer Name traegt das Passwort mit`() {
+        server.enqueue(antwort("""{"success":true}"""))
+        server.enqueue(antwort("""{"success":true,"user":{"id":1,"username":"marco2"}}"""))
+        vm.speichereProfil("marco2", "marco@example.org", "", "", "Mein-Passwort-1")
+        warteBis("gespeichert") { vm.kontoState.value.meldung != null }
+        val rumpf = server.takeRequest().body.readUtf8()
+        assertTrue(rumpf, rumpf.contains("\"password_current\":\"Mein-Passwort-1\"") && rumpf.contains("\"username\":\"marco2\""))
     }
 
     @Test
