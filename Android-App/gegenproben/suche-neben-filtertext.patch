@@ -1,0 +1,18 @@
+Gegenprobe: Filterknopf mit Text schon ab 360 dp (wie vorher)
+Modul: app
+Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Rot: Such-Platzhalter
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
+index a6e7614..7b2a240 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
+@@ -83,7 +83,7 @@ fun SucheMitFilter(
+ }
+ 
+ /** Ab dieser Breite (Tablet, Querformat) trägt der Filterknopf seinen Namen. */
+-private val FILTER_TEXT_AB = 600.dp
++private val FILTER_TEXT_AB = 360.dp
+ 
+ @Composable
+ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, modifier: Modifier = Modifier) {

@@ -346,7 +346,7 @@ class StringResourceParityTest {
         // Test selbst: Am Ende muss jeder Eintrag mindestens einmal gegriffen
         // haben. Ein Eintrag, der nichts mehr beschreibt, sieht aus wie eine
         // Entscheidung und ist doch bloss eine Vermutung.
-        val erlaubt = setOf("BrickInventory", "Manager", "BrickInventory Manager", "PDF")
+        val erlaubt = setOf("PDF")
         val erlaubtGesehen = mutableSetOf<String>()
 
         val fehler = mutableListOf<String>()

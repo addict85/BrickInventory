@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.UnterseitenTest
 Rot: Haushalt gliedert
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
-index 3d61ddb..29da663 100644
+index d9d8476..8ec6c99 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenHaushalt.kt
-@@ -90,9 +90,7 @@ internal fun HouseholdCard(
-             Text(stringResource(R.string.household_state_main),
+@@ -93,9 +93,7 @@ internal fun HouseholdCard(
+             if (!nurUnterkonten) Text(stringResource(R.string.household_state_main),
                  style = MaterialTheme.typography.labelLarge)
              st.subAccounts.forEach { m ->
 -                KontoZeile(m.username, stringResource(R.string.household_remove)) {
