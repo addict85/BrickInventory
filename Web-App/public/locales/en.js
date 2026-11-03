@@ -544,6 +544,8 @@ window.I18N_EN = {
   'storage.new_ph': 'New storage location',
   'storage.add': 'Add',
   'storage.name_fehlt': 'Please enter a name.',
+  'router.nur_verwalter': 'This page is for administrators only. Here is your collection.',
+  'router.unbekannt': 'This page does not exist. Here is your collection.',
   'storage.empty': 'No storage locations yet.',
   'storage.belegt': '{sets} sets, {teile} part types, {figuren} minifigures',
   'storage.leer': 'not in use',

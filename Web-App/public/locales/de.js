@@ -545,6 +545,8 @@ window.I18N_DE = {
   'storage.new_ph': 'Neuer Lagerort',
   'storage.add': 'Hinzufügen',
   'storage.name_fehlt': 'Bitte einen Namen eingeben.',
+  'router.nur_verwalter': 'Diese Seite ist nur für Verwalter. Hier ist deine Sammlung.',
+  'router.unbekannt': 'Diese Seite gibt es nicht. Hier ist deine Sammlung.',
   'storage.empty': 'Noch keine Lagerorte angelegt.',
   'storage.belegt': '{sets} Sets, {teile} Teilesorten, {figuren} Minifiguren',
   'storage.leer': 'nicht belegt',
