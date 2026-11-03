@@ -144,6 +144,19 @@ class BildschirmFotoVariantenTest {
         }
     }
 
+    /**
+     * Uhr anhalten und in festen Schritten vorstellen: Das Bild hängt dann nicht davon
+     * ab, wie weit eine Animation (Ladekreis, Einblenden, Rückzug des Zieh-Indikators)
+     * beim Auslösen gerade war. galerie-fehler wich zwischen Aufnahme und Prüfung ab.
+     */
+    private fun anhalten() {
+        compose.mainClock.autoAdvance = false
+        repeat(20) {
+            compose.mainClock.advanceTimeBy(100)
+            shadowOf(Looper.getMainLooper()).idle()
+        }
+    }
+
     private fun foto(name: String, design: String = "classic", dunkel: Boolean = false, geraet: String = "telefon") =
         compose.onRoot().captureRoboImage(pfad(name, design, dunkel, geraet))
 
@@ -221,6 +234,7 @@ class BildschirmFotoVariantenTest {
             {"id":1,"quantity":1,"purchase_price":1049.0,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"}]}"""
         val vm = welt.setDetail().also { it.ladeAlles() }
         zeige(name, geraet = "schmal", schrift = schrift, bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
+        anhalten()
         foto(name, geraet = "schmal")
     }
 
@@ -384,6 +398,7 @@ class BildschirmFotoVariantenTest {
             androidx.compose.ui.test.hasClickAction()).performClick()
         bereitstellen("merkliste-detail (offen)", { true }, { vm.merklisteState.value })
         compose.waitForIdle()
+        anhalten()
         foto("merkliste-detail", geraet = "tablet")
     }
 
@@ -408,6 +423,7 @@ class BildschirmFotoVariantenTest {
         zeige("lagerorte", bereit = { vm.lagerState.value.eigene.size == 3 }, zustand = { vm.lagerState.value }) {
             ch.brickinventoryapp.ui.screens.LagerorteUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
+        anhalten()
         foto("lagerorte")
     }
 
@@ -417,6 +433,7 @@ class BildschirmFotoVariantenTest {
         zeige("csv-import") {
             ch.brickinventoryapp.ui.screens.CsvImportUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
+        anhalten()
         foto("csv-import")
     }
 
@@ -430,6 +447,7 @@ class BildschirmFotoVariantenTest {
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             ch.brickinventoryapp.ui.screens.HaushaltUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
+        anhalten()
         foto("haushalt")
     }
 
@@ -439,6 +457,7 @@ class BildschirmFotoVariantenTest {
             ch.brickinventoryapp.ui.screens.PartsListScreen(serverUrl = "", imageLoader = bilder, onScanBarcode = {},
                 onResolveSet = { error("im Foto wird nichts aufgelöst") })
         }
+        anhalten()
         foto("bauliste")
     }
 
@@ -480,6 +499,7 @@ class BildschirmFotoVariantenTest {
         val galerie = welt.galerie().also { it.loadSets() }
         zeige("galerie-fehler", bereit = { galerie.galleryState.value.let { !it.galleryLoading && it.galleryFehler != null } },
             zustand = { galerie.galleryState.value }) { Galerie(galerie) }
+        anhalten()
         foto("galerie-fehler")
     }
 
