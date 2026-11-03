@@ -10,7 +10,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.Redeem
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Visibility
@@ -73,36 +77,46 @@ fun GutscheineCard(
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
+    // Das Formular steht in einem Blatt, nicht dauerhaft unter der Liste: Auf dem
+    // Telefon lag es sonst bei jedem Besuch im Weg. Offen zum Anlegen ([neu]) oder
+    // solange ein Gutschein bearbeitet wird; nach erfolgreichem Speichern (Felder
+    // leer) geht es von selbst zu, bei einer Absage bleibt es mit den Eingaben offen.
+    var neu by rememberSaveable { mutableStateOf(false) }
+    var gesendet by remember { mutableStateOf(false) }
+    LaunchedEffect(zustand.speichert) {
+        if (gesendet && !zustand.speichert) {
+            gesendet = false
+            if (zustand.nummer.isEmpty() && zustand.bearbeitet == null) neu = false
+        }
+    }
     SettingsCard(title = stringResource(R.string.vouchers_title), icon = Icons.Default.Redeem) {
       BoxWithConstraints {
-        // Ab Tabletbreite Liste links, Formular rechts wie die Set-Detailseite: untereinander
-        // stand das Formular auf voller Breite unter einer langen Liste.
+        // Ab Tabletbreite zwei Karten nebeneinander: Eine Gutscheinkarte über 1000 dp
+        // zog Nummer und Menü weit auseinander.
         val breit = maxWidth >= 720.dp
-        val spalte = Arrangement.spacedBy(Abstaende.klein)
-        val liste: @Composable ColumnScope.() -> Unit = {
+        Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
 
-        // ── Guthaben aller Karten abfragen ──
+        // ── Kopf: hinzufügen, Guthaben aller Karten, alle als PDF ──
         //
-        // Der Fortschritt steht daneben im Text: Bei einer Abfrage je 30 Sekunden dauern
-        // vier Karten gut anderthalb Minuten, und ein nur ausgegrauter Knopf sagt nicht,
-        // ob noch etwas passiert. Deshalb auch der Abbrechen-Knopf.
+        // Drei Knöpfe derselben Bauform mit Symbol; hinzufügen ist die Hauptaktion. Der
+        // Fortschritt der Guthaben-Abfrage steht darunter im Text: Bei einer Abfrage je
+        // 30 Sekunden dauern vier Karten gut anderthalb Minuten.
         val lauf = zustand.guthabenLauf
-        // Beide Sammelaktionen in einer umbrechenden Reihe: untereinander sahen sie aus
-        // wie zwei Abschnitte.
         FlowRow(verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            modifier = Modifier.padding(bottom = Abstaende.klein)) {
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+            Button(onClick = { neu = true }) {
+                Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(Abstaende.klein))
+                Text(stringResource(R.string.vouchers_add))
+            }
             OutlinedButton(
                 onClick = onGuthabenAlle,
                 enabled = lauf == null && zustand.gutscheine.any { !it.pin.isNullOrBlank() },
             ) {
-                // Kreisel NEBEN der Beschriftung, nicht an ihrer Stelle:
-                // KnopfBreiteTest faengt das andere, und es ist auch das
-                // bessere Verhalten.
-                if (lauf != null) {
-                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.width(Abstaende.winzig))
-                }
+                // Kreisel an der Stelle des Symbols, nicht der Beschriftung (KnopfBreiteTest).
+                if (lauf != null) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Default.Sync, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_balance_all))
             }
             if (lauf != null) {
@@ -110,17 +124,15 @@ fun GutscheineCard(
                     Text(stringResource(R.string.common_cancel))
                 }
             }
-            OutlinedButton(onClick = onExportieren,
-                           enabled = zustand.gutscheine.isNotEmpty()) {
+            // Ohne Gutscheine aus: Der Server antwortete mit 404, ein Betrachter mit
+            // Fehlermeldung wäre der umständlichste Weg zu „du hast noch keine“.
+            OutlinedButton(onClick = onExportieren, enabled = zustand.gutscheine.isNotEmpty()) {
                 Icon(Icons.Default.PictureAsPdf, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_export))
             }
         }
         if (lauf != null) {
-            // Zwei verschiedene Auskuenfte, und sie stehen nacheinander:
-            // welche Karte gerade dran ist — und, falls die Schranke bremst,
-            // wie lange es noch dauert.
             Text(
                 if (lauf.wartenSek > 0) {
                     stringResource(R.string.vouchers_balance_wait,
@@ -131,21 +143,11 @@ fun GutscheineCard(
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = Abstaende.klein),
             )
         }
 
-        // Das PDF aller Gutscheine (oben neben „Guthaben abfragen“) öffnet im
-        // PdfViewerScreen. Ohne Gutscheine ist der Knopf aus: Der Server antwortete mit
-        // 404, und ein Betrachter mit Fehlermeldung wäre der umständlichste Weg zu „du
-        // hast noch keine“.
-
         // Kein eigener Knopf für den Stapel-Import: Die Datei geht über das Feld im
-        // Erfassen-Formular, und der Server entscheidet, ob daraus einer oder zwanzig
-        // werden — wie in der Webapp. Kein Export-Knopf: Der Export ist eine Datei zum
-        // Behalten, und die App kann Dateien nicht speichern oder weitergeben (NUR_WEB in
-        // test/webapp-endpunkte.test.js).
-
+        // Formular, und der Server entscheidet, ob daraus einer oder zwanzig werden.
         if (zustand.gutscheine.isEmpty() && !zustand.laedt && zustand.fehler != null) {
             ch.brickinventoryapp.ui.components.FehlerHinweis(zustand.fehler, onErneut)
         } else if (zustand.gutscheine.isEmpty() && !zustand.laedt) {
@@ -156,9 +158,8 @@ fun GutscheineCard(
             )
         }
 
-        // Dass Antippen kopiert, sieht man einem Text nicht an — anders als in der
-        // Webapp, wo ein Knopf mit Symbol danebensteht. Deshalb der Hinweis, ÜBER der
-        // Liste, wo man ihn vor dem ersten Antippen liest.
+        // Dass Antippen kopiert, sieht man einem Text nicht an; deshalb der Hinweis über
+        // der Liste, wo man ihn vor dem ersten Antippen liest.
         if (zustand.gutscheine.isNotEmpty()) {
             Text(
                 stringResource(R.string.vouchers_copy_hint),
@@ -167,9 +168,8 @@ fun GutscheineCard(
             )
         }
 
-        zustand.gutscheine.forEachIndexed { i, g ->
-            if (i > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            GutscheinZeile(
+        val karte: @Composable (GutscheinAnsicht, Modifier) -> Unit = { g, m ->
+            GutscheinKarte(
                 g = g,
                 pinSichtbar = g.id in zustand.pinSichtbar,
                 onPinSchalten = { onPinSchalten(g.id) },
@@ -179,9 +179,17 @@ fun GutscheineCard(
                 onKopieren = onKopieren,
                 onGuthaben = { onGuthaben(g.id) },
                 guthabenLaeuft = zustand.guthabenLaeuft == g.id,
+                modifier = m,
             )
         }
-
+        if (breit) {
+            zustand.gutscheine.chunked(2).forEach { paar ->
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    paar.forEach { karte(it, Modifier.weight(1f).fillMaxHeight()) }
+                    if (paar.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        } else zustand.gutscheine.forEach { karte(it, Modifier.fillMaxWidth()) }
 
         // Die Summe — nur bei EINER Waehrung (gutscheinSumme).
         val summe = ch.brickinventoryapp.ui.gutscheinSumme(zustand.gutscheine)
@@ -190,15 +198,43 @@ fun GutscheineCard(
             BezeichnungUndWert(stringResource(R.string.vouchers_total), fmtMoney(summe.first.toDouble(), summe.second),
                 wertGewicht = FontWeight.Bold)
         }
-
         }
-        val formular: @Composable ColumnScope.() -> Unit = {
+      }
+    }
+
+    if (neu || zustand.bearbeitet != null) {
+        GutscheinFormularBlatt(
+            zustand = zustand,
+            pdfGewaehlt = pdfUri != null,
+            onFeld = onFeld,
+            onPdfWaehlen = { auswahl.launch(arrayOf("application/pdf")) },
+            onSpeichern = { gesendet = true; onSpeichern(pdfUri); pdfUri = null },
+            onSchliessen = { neu = false; pdfUri = null; if (zustand.bearbeitet != null) onAbbrechen() },
+        )
+    }
+}
+
+/** Das Formular zum Anlegen und Ändern als Blatt von unten. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GutscheinFormularBlatt(
+    zustand: GutscheinUiState,
+    pdfGewaehlt: Boolean,
+    onFeld: (nummer: String?, pin: String?, betrag: String?, waehrung: String?) -> Unit,
+    onPdfWaehlen: () -> Unit,
+    onSpeichern: () -> Unit,
+    onSchliessen: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onSchliessen) {
+      Column(
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
+            .padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+      ) {
         Text(
             stringResource(if (zustand.bearbeitet != null) R.string.vouchers_edit else R.string.vouchers_add),
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = Abstaende.klein),
         )
 
         // Filter UND Tastatur gehoeren zusammen — die Tastaturwahl ist eine
@@ -213,7 +249,6 @@ fun GutscheineCard(
             keyboardOptions = NumericInput.ganzzahlTastatur(),
             modifier = Modifier.fillMaxWidth(),
         )
-        Spacer(Modifier.height(Abstaende.klein))
 
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             OutlinedTextField(
@@ -237,7 +272,6 @@ fun GutscheineCard(
                 modifier = Modifier.weight(1f),
             )
         }
-        Spacer(Modifier.height(Abstaende.klein))
 
         WaehrungsWahl(zustand.waehrung) { onFeld(null, null, null, it) }
 
@@ -245,15 +279,14 @@ fun GutscheineCard(
         //
         // Nur beim Anlegen: Ein Gutschein bekommt sein PDF einmal.
         if (zustand.bearbeitet == null) {
-            Spacer(Modifier.height(Abstaende.mittel))
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                OutlinedButton(onClick = { auswahl.launch(arrayOf("application/pdf")) }) {
+                OutlinedButton(onClick = onPdfWaehlen) {
                     Icon(Icons.Default.UploadFile, null, Modifier.size(18.dp))
                     Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.vouchers_pick_pdf))
                 }
-                if (pdfUri != null) {
+                if (pdfGewaehlt) {
                     Text(
                         stringResource(R.string.vouchers_pdf_chosen),
                         style = MaterialTheme.typography.bodySmall,
@@ -265,44 +298,30 @@ fun GutscheineCard(
                 stringResource(R.string.vouchers_pdf_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = Abstaende.haar),
             )
         }
 
-        Spacer(Modifier.height(Abstaende.mittel))
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically) {
-            Button(
-                onClick = { onSpeichern(pdfUri); pdfUri = null },
-                enabled = !zustand.speichert,
-            ) { Text(stringResource(R.string.settings_save)) }
-            if (zustand.bearbeitet != null) {
-                TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
-            }
+            Button(onClick = onSpeichern, enabled = !zustand.speichert) { Text(stringResource(R.string.settings_save)) }
+            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.common_cancel)) }
             if (zustand.speichert) {
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
-        }
-        }
-        if (breit) Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
-            Column(Modifier.weight(1f), verticalArrangement = spalte, content = liste)
-            Column(Modifier.weight(1f), verticalArrangement = spalte, content = formular)
-        } else Column(verticalArrangement = spalte) {
-            liste()
-            HorizontalDivider(Modifier.padding(vertical = Abstaende.mittel))
-            formular()
         }
       }
     }
 }
 
 /**
- * Eine Zeile. Die Nummer in Vierergruppen, weil neunzehn Ziffern an der Kasse
- * nicht abzulesen sind. Nichts hängt an der Farbe: Jeder Knopf trägt Symbol und
- * Beschreibung, der verdeckte PIN steht als Punkte da.
+ * Ein Gutschein als Karte: links Nummer (in Vierergruppen, weil neunzehn Ziffern an
+ * der Kasse nicht abzulesen sind), Betrag und Stand der Abfrage, rechts ein Menü mit
+ * Guthaben, PDF, Bearbeiten und Löschen. Nummer und PIN kopiert ein Tipp. Jede
+ * Aktion geht über GENAU EINEN Rückruf ([onPinSchalten], [onKopieren], [onPdfOeffnen]);
+ * dort lässt sich eine Bestätigung (Gerätesperre) vorschalten.
  */
 @Composable
-private fun GutscheinZeile(
+private fun GutscheinKarte(
     g: GutscheinAnsicht,
     pinSichtbar: Boolean,
     onPinSchalten: () -> Unit,
@@ -312,93 +331,74 @@ private fun GutscheinZeile(
     onKopieren: (wert: String, istNummer: Boolean) -> Unit,
     onGuthaben: () -> Unit,
     guthabenLaeuft: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     var loeschFrage by rememberSaveable { mutableStateOf(false) }
+    var menue by remember { mutableStateOf(false) }
+    val nummer = inVierergruppen(g.number)
 
-    // Eigener Abstand: Eine Gutscheinzeile ist ein Kind der Karte, und der
-    // Abstand, den die Karte zwischen ihre Kinder legt, wirkt darin nicht —
-    // Nummer, Betrag und PIN stünden sonst dicht aufeinander.
-    Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.klein),
-           verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-        // Antippen kopiert Nummer oder PIN — die rohe Nummer, weil ein Bezahlfeld die
-        // Vierergruppen nicht annimmt. Die ganze Zeile ist die Fläche (mindestens 48 dp
-        // hoch), das Kopiersymbol sagt, was ein Tipp tut.
-        val nummer = inVierergruppen(g.number)
-        KopierZeile(stringResource(R.string.vouchers_cd_copy_number, nummer), { onKopieren(g.number, true) }) {
-            Text(nummer, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f))
-        }
+    OutlinedCard(modifier) {
+      Column(Modifier.padding(start = Abstaende.mittel, top = Abstaende.winzig, bottom = Abstaende.klein),
+             verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                fmtMoney(g.amount, g.currency),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(Modifier.width(Abstaende.klein))
-            // Der Stand der Guthaben-Abfrage im Wort, nicht in einer Farbe (FarbeAlleinTest).
-            // `if` statt `?.let { stringResource(…) }`: stringResource ist @Composable, und in
-            // einer fremden Lambda hinge es am Einbetten durch den Compose-Compiler.
-            val stand = fmtTag(g.guthabenGeprueftAm)
-            Text(
-                if (stand != null) stringResource(R.string.vouchers_balance_as_of, stand)
-                else stringResource(R.string.vouchers_balance_never),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            val pinText = stringResource(R.string.vouchers_pin) + ": " +
-                (g.pin?.let { if (pinSichtbar) it else "••••" } ?: "–")
-            // Der PIN ist auch VERDECKT antippbar: Kopieren heisst nicht ansehen, und wer
-            // ihn einfügen will, muss ihn dafür nicht erst aufdecken.
-            val pin = g.pin
-            if (pin != null) {
-                KopierZeile(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(pin, false) }) {
-                    Text(pinText, style = MaterialTheme.typography.bodySmall)
+            // Die rohe Nummer in die Zwischenablage: Ein Bezahlfeld nimmt die
+            // Vierergruppen nicht an.
+            KopierZeile(stringResource(R.string.vouchers_cd_copy_number, nummer), { onKopieren(g.number, true) },
+                Modifier.weight(1f)) {
+                Text(nummer, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            }
+            Box {
+                IconButton(onClick = { menue = true }) {
+                    if (guthabenLaeuft) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    else Icon(Icons.Default.MoreVert, stringResource(R.string.vouchers_cd_menu, nummer))
                 }
-            } else Text(pinText, style = MaterialTheme.typography.bodySmall)
-            // Ohne `Modifier.size(...)`: IconButton bringt von sich aus
-            // 48 dp Antippflaeche mit (minimumInteractiveComponentSize). Sie
-            // kleiner zu zeichnen waere ein Eintrag in TouchTargetSizeTest —
-            // hier gibt es keinen Grund dafuer, die Zeile hat Platz.
-            if (g.pin != null) {
-                IconButton(onClick = onPinSchalten) {
-                    Icon(
-                        if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show),
-                    )
-                }
-            } else Spacer(Modifier.size(LEERE_STELLE))
-            Spacer(Modifier.weight(1f))
-            // Guthaben abfragen — NUR mit PIN: LEGO fragt Nummer UND PIN ab,
-            // und ein Knopf, der ohne PIN immer dieselbe Absage erzeugt, waere
-            // eine Falle. Ohne PIN steht in der Zeile ohnehin schon „–".
-            if (g.pin != null) {
-                // Kreisel an der Stelle des Symbols: Ein IconButton hat eine feste Grösse, es
-                // rutscht nichts. Die Zeilen stehen vor dem Knopf, damit IconButtonLabelTest die
-                // Beschriftung innerhalb von zehn Zeilen findet.
-                IconButton(onClick = onGuthaben, enabled = !guthabenLaeuft) {
-                    if (guthabenLaeuft) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.Default.Refresh, stringResource(R.string.vouchers_cd_balance, nummer))
+                DropdownMenu(menue, { menue = false }) {
+                    // Guthaben NUR mit PIN: LEGO fragt Nummer UND PIN ab; ohne PIN wäre
+                    // der Eintrag eine Falle, die immer dieselbe Absage erzeugt.
+                    if (g.pin != null) MenueEintrag(stringResource(R.string.vouchers_menu_balance),
+                        stringResource(R.string.vouchers_cd_balance, nummer), Icons.Default.Sync,
+                        enabled = !guthabenLaeuft) { menue = false; onGuthaben() }
+                    if (g.hatPdf) MenueEintrag(stringResource(R.string.vouchers_menu_pdf),
+                        stringResource(R.string.vouchers_cd_pdf, nummer), Icons.Default.PictureAsPdf) {
+                        menue = false; onPdfOeffnen()
                     }
+                    MenueEintrag(stringResource(R.string.common_edit),
+                        stringResource(R.string.vouchers_cd_edit, nummer), Icons.Default.Edit) { menue = false; onBearbeiten() }
+                    MenueEintrag(stringResource(R.string.common_delete),
+                        stringResource(R.string.vouchers_cd_delete, nummer), Icons.Default.Delete) { menue = false; loeschFrage = true }
                 }
-            } else Spacer(Modifier.size(LEERE_STELLE))
-            // Fehlende Knöpfe lassen ihren Platz frei: So stehen Bearbeiten und Löschen in
-            // jeder Zeile an derselben Stelle.
-            if (g.hatPdf) {
-                IconButton(onClick = onPdfOeffnen) {
-                    Icon(Icons.Default.PictureAsPdf, stringResource(R.string.vouchers_cd_pdf, nummer))
-                }
-            } else Spacer(Modifier.size(LEERE_STELLE))
-            IconButton(onClick = onBearbeiten) {
-                Icon(Icons.Default.Edit, stringResource(R.string.vouchers_cd_edit, nummer))
-            }
-            IconButton(onClick = { loeschFrage = true }) {
-                Icon(Icons.Default.Delete, stringResource(R.string.vouchers_cd_delete, nummer))
             }
         }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            modifier = Modifier.padding(end = Abstaende.mittel)) {
+            Text(fmtMoney(g.amount, g.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            // Der Stand der Abfrage als Etikett und im Wort, nicht nur als Farbe (FarbeAlleinTest).
+            val stand = fmtTag(g.guthabenGeprueftAm)
+            Surface(shape = ch.brickinventoryapp.ui.theme.Formen.etikett, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+                Text(
+                    if (stand != null) stringResource(R.string.vouchers_balance_as_of, stand)
+                    else stringResource(R.string.vouchers_balance_never),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.haar),
+                )
+            }
+        }
+        val pin = g.pin
+        if (pin != null) Row(verticalAlignment = Alignment.CenterVertically) {
+            // Der PIN ist auch VERDECKT antippbar: Kopieren heisst nicht ansehen.
+            val pinText = stringResource(R.string.vouchers_pin) + ": " + if (pinSichtbar) pin else "••••"
+            KopierZeile(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(pin, false) }) {
+                Text(pinText, style = MaterialTheme.typography.bodyMedium)
+            }
+            IconButton(onClick = onPinSchalten) {
+                Icon(
+                    if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                    stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show),
+                )
+            }
+        }
+      }
     }
 
     if (loeschFrage) {
@@ -410,7 +410,7 @@ private fun GutscheinZeile(
             text = { Text(stringResource(R.string.vouchers_delete_confirm, g.number)) },
             confirmButton = {
                 TextButton(onClick = { loeschFrage = false; onLoeschen() }) {
-                    Text(stringResource(R.string.common_delete))
+                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -422,14 +422,37 @@ private fun GutscheinZeile(
     }
 }
 
+/** Ein Eintrag im Gutscheinmenü: sichtbarer Text, vorgelesen mit der Nummer. */
+@Composable
+private fun MenueEintrag(
+    text: String,
+    beschreibung: String,
+    symbol: androidx.compose.ui.graphics.vector.ImageVector,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(text) },
+        onClick = onClick,
+        enabled = enabled,
+        leadingIcon = { Icon(symbol, null) },
+        modifier = Modifier.semantics { contentDescription = beschreibung },
+    )
+}
+
 /**
  * Eine antippbare Zeile, die etwas kopiert: mindestens 48 dp hoch, mit sichtbarem
  * Kopiersymbol am Ende. Die Beschreibung nennt, WAS kopiert wird.
  */
 @Composable
-private fun KopierZeile(beschreibung: String, onKopieren: () -> Unit, inhalt: @Composable RowScope.() -> Unit) {
+private fun KopierZeile(
+    beschreibung: String,
+    onKopieren: () -> Unit,
+    modifier: Modifier = Modifier,
+    inhalt: @Composable RowScope.() -> Unit,
+) {
     Row(
-        Modifier.heightIn(min = 48.dp)
+        modifier.heightIn(min = 48.dp)
             .clickable(role = Role.Button, onClickLabel = beschreibung, onClick = onKopieren)
             .semantics(mergeDescendants = true) { contentDescription = beschreibung }
             .padding(end = Abstaende.klein),
@@ -437,12 +460,10 @@ private fun KopierZeile(beschreibung: String, onKopieren: () -> Unit, inhalt: @C
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
     ) {
         inhalt()
-        Icon(Icons.Default.ContentCopy, null, tint = MaterialTheme.colorScheme.primary)
+        // Dieselbe Grösse an Nummer und PIN (vorher 24 und 18 dp).
+        Icon(Icons.Default.ContentCopy, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
     }
 }
-
-/** Die Breite eines IconButton (48 dp), für Zeilen ohne diesen Knopf. */
-private val LEERE_STELLE = 48.dp
 
 /** Dieselben Waehrungen wie in der Webapp (public/index.html). */
 private val WAEHRUNGEN = listOf("CHF", "EUR", "USD", "GBP", "SEK", "NOK", "AUD", "CAD", "DKK")

@@ -90,6 +90,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
  *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
  *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
+ *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -463,16 +464,34 @@ class OberflaechenRegelnTest {
         }
     }
 
+    /**
+     * Jeder Gutschein trägt EIN Menü (statt fünf Symbole in unregelmässigen Abständen);
+     * Menü und Einträge nennen die Nummer, die PIN-Zeile ist 48 dp hoch.
+     */
     @Test
     fun `Gutschein-Knoepfe nennen die Nummer und der PIN hat 48 dp`() {
         zeige { Gutscheine() }
         val nummer = ch.brickinventoryapp.util.inVierergruppen("6061 2345 6789")
-        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, nummer)).fetchSemanticsNode()
-        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_edit, nummer)).fetchSemanticsNode()
         val pin = compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, nummer))
             .fetchSemanticsNode().boundsInRoot
         val dichte = ctx.resources.displayMetrics.density
         assertTrue("PIN-Zeile nur ${pin.height / dichte} dp hoch", pin.height / dichte >= 47.5f)
+        compose.onAllNodesWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, nummer)).assertCountEquals(0)
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_menu, nummer)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, nummer)).fetchSemanticsNode()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_edit, nummer)).fetchSemanticsNode()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_balance, nummer)).fetchSemanticsNode()
+    }
+
+    /** Das Formular steht nicht dauerhaft unter der Liste, sondern öffnet als Blatt. */
+    @Test
+    fun `Gutschein hinzufuegen oeffnet das Formular erst auf Wunsch`() {
+        zeige { Gutscheine() }
+        compose.onAllNodesWithText(ctx.getString(R.string.vouchers_number)).assertCountEquals(0)
+        compose.onNode(hasText(ctx.getString(R.string.vouchers_add)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.vouchers_number)).fetchSemanticsNode()
     }
 
     /**

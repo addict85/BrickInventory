@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Gutschein-Knoepfe
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-index eb3cc1c..352bc4b 100644
+index fdd124a..a20568d 100644
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-@@ -429,7 +429,7 @@ private fun GutscheinZeile(
- @Composable
- private fun KopierZeile(beschreibung: String, onKopieren: () -> Unit, inhalt: @Composable RowScope.() -> Unit) {
+@@ -452,7 +452,7 @@ private fun KopierZeile(
+     inhalt: @Composable RowScope.() -> Unit,
+ ) {
      Row(
--        Modifier.heightIn(min = 48.dp)
-+        Modifier
+-        modifier.heightIn(min = 48.dp)
++        modifier
              .clickable(role = Role.Button, onClickLabel = beschreibung, onClick = onKopieren)
              .semantics(mergeDescendants = true) { contentDescription = beschreibung }
              .padding(end = Abstaende.klein),
