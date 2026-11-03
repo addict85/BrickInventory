@@ -313,7 +313,7 @@ const C = {
   'GET /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers': 'nur-v1',
   'POST /api/v1/vouchers/pdf': 'nur-v1',
-  'GET /api/v1/vouchers/export/pdf': 'nur-web',
+  'GET /api/v1/vouchers/export/pdf': 'nur-v1',
   'PUT /api/v1/vouchers/:id': 'nur-v1',
   'DELETE /api/v1/vouchers/:id': 'nur-v1',
   // Guthaben bei LEGO abfragen. 'nur-v1' wie die uebrigen Gutschein-Wege:
@@ -323,8 +323,8 @@ const C = {
   'POST /api/v1/vouchers/:id/klartext': 'nur-v1',
   // Einmal-Ticket für die PDF-Abrufe (bestätigt, protokolliert, 60 s, ein Abruf).
   'POST /api/v1/vouchers/:id/pdf-freigabe': 'nur-v1',
-  'POST /api/v1/vouchers/export/pdf-freigabe': 'nur-web',
-  // Die PDF-Ausgabe ruft die Android-App nicht ueber Retrofit, sondern ueber
+  'POST /api/v1/vouchers/export/pdf-freigabe': 'nur-v1',
+  // Die PDF-Ausgaben (einzeln und Export) ruft die Android-App nicht ueber Retrofit, sondern ueber
   // die Adresse im PdfViewerScreen (derselbe angemeldete OkHttpClient). Fuer
   // dieses Inventar ist das derselbe Fall: eine Umsetzung, beide Apps.
   'GET /api/v1/vouchers/:id/pdf': 'nur-v1',
