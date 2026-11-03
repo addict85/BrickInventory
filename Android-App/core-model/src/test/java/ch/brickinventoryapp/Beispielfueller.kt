@@ -20,7 +20,7 @@ object Beispielfueller {
      * Dass die Liste vollständig ist, prüft UiModellAbbildungTest am Quelltext.
      */
     val ABBILDUNGSDATEIEN = listOf(
-        "EinzelAnsichten", "FinanzAnsichten", "HaushaltAnsichten", "HintergrundAnsichten",
+        "EinzelAnsichten", "FinanzAnsichten", "GutscheinKlartextAnsicht", "HaushaltAnsichten", "HintergrundAnsichten",
         "KatalogAnsichten", "KontoAnsichten", "PreisAnsichten", "SetAnsichten", "TeileAnsichten", "VerwaltungAnsichten",
     )
 
