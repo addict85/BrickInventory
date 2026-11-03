@@ -293,7 +293,7 @@ test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', (t) => {
   fs.writeFileSync(path.join(arbeit, 'data', '.datenschluessel'), schluessel, { mode: 0o600 });
 
   const sichern = (env) => spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')],
-    { cwd: arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, ...env } });
+    { cwd: arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', ...env } });
 
   const ohne = sichern({});
   assert.equal(ohne.status, 0, ohne.stderr);
@@ -328,7 +328,7 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', (t)
   fs.writeFileSync(path.join(arbeit, 'schluessel', 'datenschluessel'), schluessel, { mode: 0o600 });
   const tresor = path.join(tmp, 'tresor');
   const r = spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')], { cwd: arbeit, encoding: 'utf8',
-    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_SCHLUESSEL_ZIEL: tresor } });
+    env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', BACKUP_SCHLUESSEL_ZIEL: tresor } });
   assert.equal(r.status, 0, r.stderr);
   const archiv = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
   const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], { encoding: 'utf8' });

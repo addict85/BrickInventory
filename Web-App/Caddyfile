@@ -1,5 +1,5 @@
-# Caddy vor der App: HTTPS mit eigener CA für BRICK_HOST aus .env.
-# Siehe README.md (HTTPS) und UPGRADE.md, Abschnitt 14.
+# Caddy vor der App: HTTPS für BRICK_HOST aus .env.
+# Siehe README.md (HTTPS) und UPGRADE.md, Abschnitte 14 und 33.
 {
 	# Keine Verwaltungsschnittstelle: Die Konfiguration ändert sich nur mit
 	# dieser Datei und einem Neustart.
@@ -11,7 +11,7 @@
 	# Ein Gerät, das per IP-Adresse kommt, schickt keinen Namen (SNI).
 	default_sni {$BRICK_HOST}
 	# Mit eigener CA (./caddy/ca, scripts/ca-einrichten.sh) setzt das Startskript
-	# in compose.yaml Wurzel und Zwischenstelle hier ein; sonst legt Caddy seine an.
+	# in compose.yaml Wurzel und Zwischenstelle hier ein.
 	pki {
 		ca local {
 			name "BrickInventory"
@@ -20,26 +20,52 @@
 	}
 }
 
-https://{$BRICK_HOST} {
-	# Die App pinnt die Wurzel (QR-Code, `fp`), sie muss in der Kette stehen.
-	# Caddys eigene CA: Die Wurzel signiert selbst (ihre Zwischenstelle lebt 7
-	# Tage und liegt im selben Volume). Eigene CA: Die Zwischenstelle signiert,
-	# ihre Kettendatei trägt die Wurzel mit (BRICK_CA_SIGNIEREN = „ca local“).
-	tls {
-		issuer internal {
-			{$BRICK_CA_SIGNIEREN:sign_with_root}
+# Anmeldewege, die ohne Sitzung ein Passwort (bcrypt) oder eine Signatur
+# prüfen. Das Standard-Image hat kein Modul für Anfrage-Raten; die Bremse
+# begrenzt deshalb die gleichzeitigen Anfragen an die App: Eine Flut aus vielen
+# Adressen wartet bei Caddy, statt alle Kerne mit bcrypt zu belegen. Die
+# Grenzen je Adresse und Konto setzt der Server.
+(anmeldung) {
+	@anmeldung {
+		method POST
+		path /api/v1/auth/login /api/v1/auth/register /api/v1/auth/forgot-password /api/v1/auth/reset-password /api/v1/auth/bestaetigung-erneut /api/v1/auth/qr-login /api/v1/auth/token-rotieren /api/v1/auth/passkey/anmelden /api/v1/auth/passkey/anmelden/optionen
+	}
+	handle @anmeldung {
+		request_body {
+			max_size 16KB
+		}
+		reverse_proxy app:3000 {
+			header_up X-Request-Id {http.request.uuid}
+			transport http {
+				max_conns_per_host 4
+			}
 		}
 	}
-	reverse_proxy app:3000 {
-		# Eine eigene Kennung je Anfrage; die des Clients wird ersetzt.
-		header_up X-Request-Id {http.request.uuid}
+}
+
+https://{$BRICK_HOST} {
+	# Der Aussteller kommt aus dem Startskript in compose.yaml (eigene CA,
+	# acme oder ausdrücklich Caddys CA). Fehlt er, ist diese Datei ungültig:
+	# kein stiller Rückfall auf eine CA ohne Namensbeschränkung.
+	tls {
+		issuer {$BRICK_TLS_AUSSTELLER} {
+			{$BRICK_TLS_OPTIONEN}
+		}
+	}
+	import anmeldung
+	handle {
+		reverse_proxy app:3000 {
+			# Eine eigene Kennung je Anfrage; die des Clients wird ersetzt.
+			header_up X-Request-Id {http.request.uuid}
+		}
 	}
 	header -Server
 }
 
 http:// {
 	# Nur das Wurzelzertifikat gibt es im Klartext: Ein Gerät braucht es, bevor
-	# es HTTPS vertraut. Abgleichen am Fingerabdruck (Einstellungen der App).
+	# es HTTPS vertraut. Echt ist es nur, wenn der Fingerabdruck auf dem Gerät
+	# dem im Protokoll von Caddy gleicht (UPGRADE.md, Abschnitt 33).
 	handle /ca.crt {
 		reverse_proxy app:3000
 	}

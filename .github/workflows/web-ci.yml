@@ -229,9 +229,10 @@ jobs:
           cache-dependency-path: Web-App/package-lock.json
 
       # npm ci statt npm install: installiert exakt das Lockfile und scheitert,
-      # wenn package.json und package-lock.json auseinanderlaufen.
+      # wenn package.json und package-lock.json auseinanderlaufen. Install-Skripte
+      # nur gezielt (wie im Dockerfile): ein fremdes Paket führt sonst Code im Lauf aus.
       - name: Abhängigkeiten installieren
-        run: npm ci
+        run: npm ci --ignore-scripts && npm rebuild esbuild
 
       - name: Typprüfung
         run: npx tsc --noEmit
@@ -375,7 +376,8 @@ jobs:
 
       # npm audit hat einen eigenen Schritt, damit ein neuer Befund nicht in
       # den Testausgaben untergeht. --omit=dev: Was nur beim Bauen läuft, ist
-      # kein Angriffsweg auf den laufenden Dienst.
+      # kein Angriffsweg auf den laufenden Dienst. Rot ab „moderate“: Bei einem
+      # kleinen Baum ist jeder Befund ein Update, kein Dauerzustand.
       - name: Sicherheitsprüfung der Abhängigkeiten
         env:
           BERICHT: ${{ runner.temp }}/audit.json
@@ -430,7 +432,7 @@ jobs:
             let r; try { r = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); }
             catch { console.log("::warning title=npm audit (pdfjs-dist)::keine auswertbare Antwort"); process.exit(0); }
             const v = (r.vulnerabilities || {})["pdfjs-dist"];
-            if (v && (v.severity === "high" || v.severity === "critical")) {
+            if (v && ["moderate", "high", "critical"].includes(v.severity)) {
               console.log("::error title=Schwachstelle (" + v.severity + ")::pdfjs-dist (public/vendor/pdfjs)");
               process.exit(1);
             }
@@ -439,19 +441,19 @@ jobs:
             const r = JSON.parse(require("fs").readFileSync(process.env.BERICHT, "utf8"));
             const m = r.metadata.vulnerabilities;
             const stand = Object.entries(m).map(([k, v]) => k + "=" + v).join(" ");
-            const schwer = (m.high || 0) + (m.critical || 0);
+            const schwer = (m.moderate || 0) + (m.high || 0) + (m.critical || 0);
             if (schwer === 0) {
-              console.log("::notice title=npm audit::keine Luecke ab \"high\" — " + stand);
+              console.log("::notice title=npm audit::keine Luecke ab \"moderate\" — " + stand);
             } else {
               // Jede einzeln als Annotation: „5 Luecken" allein zwingt wieder
               // zum Protokoll, das von hier aus nicht zu holen ist.
               for (const [name, v] of Object.entries(r.vulnerabilities || {})) {
-                if (v.severity !== "high" && v.severity !== "critical") continue;
+                if (!["moderate", "high", "critical"].includes(v.severity)) continue;
                 const woher = (v.via || [])
                   .map(x => typeof x === "string" ? x : x.title).join("; ");
                 console.log("::error title=Schwachstelle (" + v.severity + ")::" + name + " — " + woher);
               }
-              console.log("::error title=npm audit::" + schwer + " Luecken ab \"high\" — " + stand);
+              console.log("::error title=npm audit::" + schwer + " Luecken ab \"moderate\" — " + stand);
               process.exit(1);
             }
           '

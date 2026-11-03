@@ -13,15 +13,20 @@ Vollständige Node.js Webapp zur Verwaltung deiner Klemmbaustein-Sammlung.
 ## Docker (empfohlen)
 
 ```bash
-cp .env.example .env    # SESSION_SECRET, DB_PASSWORD, DB_APP_PASSWORD und BRICK_HOST eintragen
+cp .env.example .env    # BRICK_HOST eintragen
+sh scripts/geheimnisse-einrichten.sh   # Sitzungsgeheimnis und DB-Passwörter als Docker-Secrets
 sudo sh scripts/ca-einrichten.sh   # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
 docker compose up -d --build
 # → https://<BRICK_HOST>   (Port 80 leitet auf HTTPS um)
 ```
 
-Pflicht in `.env`: `SESSION_SECRET`, `DB_PASSWORD` (Superuser der Datenbank),
-`DB_APP_PASSWORD` (Rolle der App, ein anderer Wert) und `BRICK_HOST` — der
-Name oder die IP-Adresse, unter der Geräte den Server erreichen.
+Pflicht in `.env` ist nur `BRICK_HOST` — der Name oder die IP-Adresse, unter
+der Geräte den Server erreichen. Sitzungsgeheimnis und Passwörter stehen nicht
+in `.env`, sondern als Dateien in `./geheimnisse/` (Ordner 700); `compose.yaml`
+hängt sie als Docker-Secrets unter `/run/secrets/` ein, `docker inspect` zeigt
+sie so nicht. Ohne eigene CA startet Caddy nur mit `BRICK_TLS=acme`
+(öffentlicher Name, Let's Encrypt) oder dem ausdrücklichen Schalter
+`CA_OHNE_NAMENSBESCHRAENKUNG=ja` (UPGRADE.md, Abschnitt 33).
 
 ### HTTPS mit eigener CA (Caddy)
 
@@ -33,8 +38,11 @@ Wurzelzertifikat (Volume `ca-wurzel`), nie den Schlüssel der CA.
 
 Damit Browser und Telefone dem Zertifikat vertrauen, kommt das
 **Wurzelzertifikat** einmal auf jedes Gerät: Es liegt unter
-`https://<BRICK_HOST>/ca.crt` (auch über `http://`, ohne Umleitung). Der
-Fingerabdruck steht in den Einstellungen unter „Sicherheit“ zum Abgleich; die
+`https://<BRICK_HOST>/ca.crt` (auch über `http://`, ohne Umleitung). Über
+HTTP kann es unterwegs ausgetauscht werden; **vor dem Installieren den
+SHA-256-Fingerabdruck auf dem Gerät mit dem auf dem Server vergleichen**
+(`docker compose logs caddy | grep Fingerabdruck` oder die Ausgabe von
+`scripts/ca-einrichten.sh`). Er steht auch in den Einstellungen unter „Sicherheit“; die
 Android-App braucht das nicht: Sie pinnt den Fingerabdruck aus dem QR-Code und
 vertraut der Wurzel ohne systemweite Installation. Schritt für
 Schritt: `UPGRADE.md`, Abschnitt 14.
@@ -52,10 +60,10 @@ Wurzel verwirft das Skript; wer ihn behalten will, gibt mit
 `sudo WURZEL_SCHLUESSEL=/media/usb/wurzel.key sh scripts/ca-einrichten.sh` einen Ort ausserhalb des Servers
 an. Auf dem Server liegt dann nur der Schlüssel der Zwischenstelle
 (`./caddy/ca/zwischen.key`, wie ein Passwort behandeln); auch er taugt nur
-für `BRICK_HOST`. Ohne `./caddy/ca/` läuft alles wie bisher mit Caddys
-uneingeschränkter CA. Wer nur im Browser arbeitet, kann statt einer Wurzel
-auch je Seite eine Ausnahme bestätigen oder einen echten Namen mit ACME
-(DNS-01) nehmen. Umstieg einer bestehenden Installation: `UPGRADE.md`,
+für `BRICK_HOST`. Ohne `./caddy/ca/` startet Caddy nicht — ausser mit
+`BRICK_TLS=acme` (ein öffentlicher Name, Zertifikat von Let's Encrypt, keine
+eigene Wurzel auf den Geräten) oder ausdrücklich mit
+`CA_OHNE_NAMENSBESCHRAENKUNG=ja` (Caddys unbeschränkte CA). Umstieg einer bestehenden Installation: `UPGRADE.md`,
 Abschnitt 32.
 
 ### Ohne HTTPS (bewusste Ausnahme)
@@ -78,25 +86,24 @@ Bilder brauchen **kein eigenes Volume**: Sie liegen unter `data/images/`
 jeweils als `<name>_thumb.jpg` daneben. Ein Backup von `data/` erfasst damit
 alles.
 
-### Datenbankpasswort ändern
-Für eine **neue** Installation vor dem ersten Start eine Datei `.env` neben
-`compose.yaml` anlegen:
-```
-DB_PASSWORD=mein-sicheres-passwort
-DB_APP_PASSWORD=ein-anderes-passwort
-```
-`DB_PASSWORD` gehört dem Superuser `brickinventory`; nur die Datenbank und der
-Dienst `db-rolle` bekommen es. App und Jobs verbinden sich als
-`brickinventory_app` ohne Superuser-Rechte mit `DB_APP_PASSWORD`; `db-rolle`
-legt die Rolle bei jedem `docker compose up` an und übergibt ihr die Tabellen.
-Fehlt einer der Werte, bricht `docker compose up` ab. Eine **bestehende**
-Datenbank behält ihr Passwort aus dem ersten Start; dort den bisherigen Wert
-für `DB_PASSWORD` eintragen.
+### Datenbankpasswörter
+`scripts/geheimnisse-einrichten.sh` legt in `./geheimnisse/` je eine Datei an:
+`db_password` (Superuser `brickinventory`, nur `postgres` und `db-rolle`),
+`db_app_password` (Rolle `brickinventory_app` ohne Superuser-Rechte, mit der
+sich App und Jobs verbinden), `session_secret` und die beiden für pgweb.
+Vorhandene Dateien bleiben; fehlende übernimmt es aus einer alten `.env`
+(`DB_PASSWORD`, `DB_APP_PASSWORD`, `SESSION_SECRET`, `PGWEB_PASSWORD`) oder
+erzeugt sie zufällig. Eine **bestehende** Datenbank behält ihr Passwort aus dem
+ersten Start: Liegt `./pgdata18` schon da und steht kein `DB_PASSWORD` in
+`.env`, bricht das Skript ab, statt ein unpassendes zu erzeugen. `db-rolle`
+setzt das Passwort der App-Rolle bei jedem `docker compose up` neu; zum
+Wechseln genügt es, `geheimnisse/db_app_password` zu ersetzen.
 
 Läuft die Datenbank noch mit dem alten Beispielpasswort `brickinventory_secret`,
 verweigert der Server in Produktion den Start. Ändern: `docker compose exec
 postgres psql -U brickinventory -c "ALTER USER brickinventory PASSWORD
-'neues-passwort'"`, dann `DB_PASSWORD` in `.env` setzen und `docker compose up
+'neues-passwort'"`, dann den Wert in `geheimnisse/db_password` schreiben
+(`printf %s 'neues-passwort' > geheimnisse/db_password`) und `docker compose up
 -d` ausführen.
 
 ### Web- und Job-Prozess
@@ -141,8 +148,14 @@ Nach Änderungen an `public/js/*` oder `public/i18n.js` muss
 ## Sicherung
 
 ```bash
-./scripts/backup.sh            # pg_dump + data/ nach ./backups
+./scripts/backup.sh            # pg_dump + data/ nach ./backups, mit age verschlüsselt
 ```
+Sicherungen sind **immer verschlüsselt**: Die öffentlichen age-Schlüssel der
+Empfänger stehen in `./backup-empfaenger.txt` (einer je Zeile); der private
+Schlüssel liegt auf einem anderen Rechner und wird nur zum Wiederherstellen
+gebraucht (`BACKUP_AGE_IDENTITAET=… ./scripts/restore.sh …`). Ohne Empfänger
+sichert das Skript nichts, ausser mit ausdrücklichem `BACKUP_KLARTEXT=ja`.
+Einrichten: UPGRADE.md, Abschnitt 33.
 Ein Dateikopie-Backup von `pgdata/` bei laufendem PostgreSQL ist **wertlos**.
 
 **Regelmässig sichern** — der Server tut es nicht von selbst. Ein Eintrag in
@@ -176,8 +189,7 @@ anderes Laufwerk als das der Sicherungen); ohne die Angabe meldet es bei jedem
 Lauf, dass der Schlüssel fehlt. `restore.sh` fragt nach, bevor es ohne
 `schluessel/datenschluessel` neu startet. Die Passwort-Hashes stehen trotzdem im Dump. `backup.sh` legt die Dateien deshalb nur für den
 Besitzer lesbar an (`umask 077`) und warnt, wenn das Zielverzeichnis für
-andere offen ist. Wer `backups/` auf ein NAS oder in eine Cloud kopiert,
-verschlüsselt es vorher (z. B. `gpg -c` oder `age`).
+andere offen ist.
 
 ### Automatische Kopie vor einem Update
 
@@ -254,9 +266,16 @@ Einstellungswerte (API-Schlüssel). Reparaturen gehen nicht über pgweb, sondern
 mit `psql` als App-Rolle.
 
 Die Seite fragt nach Benutzer und Passwort (HTTP-Basic): `PGWEB_USER`
-(Vorgabe `pgweb`) und `PGWEB_PASSWORD` in `.env`; dazu `PGWEB_DB_PASSWORD`
-für die Leserolle. Fehlt eines davon, startet pgweb nicht und meldet das im
-Protokoll (`docker compose logs pgweb`).
+(Vorgabe `pgweb`) und das Passwort aus `./geheimnisse/pgweb_password`. Beide
+Passwörter (Anmeldung und Leserolle) legt
+`PGWEB=ja sh scripts/geheimnisse-einrichten.sh` an, danach einmal
+`docker compose up -d db-rolle`. Fehlen sie, startet pgweb nicht und meldet
+das im Protokoll (`docker compose logs pgweb`). pgweb läuft als
+Nicht-root, schreibgeschützt und in einem eigenen Netz nur mit `postgres`.
+
+Was die Leserolle sieht, steht als Allowlist je Tabelle in
+`postgres/app-rolle.sh` (`LESEN_SPALTEN`). Eine neue Tabelle oder Spalte ist
+für pgweb unlesbar, bis sie dort eingetragen ist.
 
 > **Wichtig:** Wer sich an pgweb anmeldet, sieht fast die ganze Datenbank. Der Port
 > ist deshalb zusätzlich an `127.0.0.1` gebunden und nur auf dem Server selbst
@@ -280,7 +299,7 @@ Protokoll (`docker compose logs pgweb`).
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank: `openssl rand -base64 32`. Geht `DATA_KEY_FILE` vor. |
 | `DATA_KEY_FILE` | Datei mit dem Schlüssel, ausserhalb von `data/` (compose.yaml: `/app/schluessel/datenschluessel`, Vorgabe `<APP_ROOT>/schluessel/datenschluessel`). Fehlt sie, legt der erste Start sie an (nur für den Besitzer lesbar). |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
-| `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). |
+| `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). Mit Docker als Datei: `SESSION_SECRET_FILE` (setzt `compose.yaml`). |
 | `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Nur dort setzen. |
 | `BRICK_HOST` | Name oder IP-Adresse des Servers für Caddy (Pflicht mit `compose.yaml`). Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Passkeys brauchen einen Namen, keine IP-Adresse. |
 | `CA_ZERTIFIKAT` | Pfad zum Wurzelzertifikat der internen CA (setzt `compose.yaml`). Daraus kommen `/ca.crt` und der Fingerabdruck `fp` im QR-Code. |

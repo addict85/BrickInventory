@@ -67,8 +67,10 @@ WORKDIR /app
 # Warnung ins Log. Deshalb ist jimp weiterhin eine Abhängigkeit, obwohl es im
 # Normalbetrieb nicht mehr benutzt wird.
 #
-# WICHTIG: `npm ci` läuft hier OHNE --ignore-scripts — sonst lädt sharp seine
-# Binärdatei nicht, und jede Vorschau liefe still über den langsamen Rückfall.
+# Install-Skripte laufen nicht pauschal (--ignore-scripts): Ein kompromittiertes
+# Paket irgendwo im Baum führte sonst beim Bau Code aus. sharp braucht keines
+# (Binärdatei als optionale Abhängigkeit); esbuild baut `npm rebuild` gezielt.
+# Die Liste hält test/dockerfile.test.js mit der Lockfile zusammen.
 #
 # Kommt später eine Abhängigkeit dazu, die doch kompiliert, scheitert `npm ci`
 # hier mit „gyp ERR! find Python" — dann gehört die Zeile
@@ -97,7 +99,7 @@ COPY scripts/ ./scripts/
 # npx aus dem Netz ziehen — langsam und vom Registry-Zustand abhängig. Ins
 # Laufzeit-Image wandern die devDependencies trotzdem nicht: weiter unten
 # entfernt `npm prune --omit=dev` sie wieder, bevor node_modules übernommen wird.
-RUN npm ci
+RUN npm ci --ignore-scripts && npm rebuild esbuild
 
 # ── TypeScript → JavaScript ────────────────────────────────────────────────────
 # server.ts, db/, src/, routes/ und jobs/ werden von esbuild pro Datei
@@ -157,7 +159,7 @@ RUN node scripts/build-frontend.js \
 # devDependencies entfernen, BEVOR node_modules ins Laufzeit-Image geht.
 #
 # Muss nach allen Build-Schritten stehen: esbuild wird bis hierher gebraucht.
-# --ignore-scripts: Installationsskripte der Pakete liefen schon bei npm ci.
+# --ignore-scripts: Installationsskripte laufen nur gezielt (siehe npm ci oben).
 RUN npm prune --omit=dev --ignore-scripts && npm cache clean --force
 
 # ── Runtime Stage ──────────────────────────────────────────────────────────────

@@ -56,7 +56,7 @@ test('das Image trägt kein Datenbankpasswort', () => {
   const zeilen = df.split('\n').filter(l => !l.trim().startsWith('#'));
   assert.deepEqual(zeilen.filter(l => /^\s*(ENV|ARG)\b.*(PASSWORD|_SECRET|PGPASS)/i.test(l)), []);
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
-  assert.match(compose, /PGPASSWORD: \$\{DB_PASSWORD/, 'compose.yaml muss das Passwort hereinreichen');
+  assert.match(compose, /PGPASSWORD_FILE: \/run\/secrets\/db_app_password/, 'compose.yaml muss das Passwort als Datei hereinreichen');
 });
 
 // Gegenprobe (am 28.10.2026 gemessen): den Digest an der zweiten FROM-Zeile
@@ -87,9 +87,36 @@ test('Geheimnisse und Sicherungen bleiben aus Image und Repository', () => {
   // die Sicherungen von scripts/backup.sh und der Datenschlüssel im Image.
   // Gegenprobe (01.11.2026): `backups` aus .dockerignore gestrichen → rot.
   const muster = fs.readFileSync(path.join(ROOT, '.dockerignore'), 'utf8').split('\n').map(l => l.trim());
-  for (const m of ['.env', '.env.*', 'backups', 'schluessel', 'data'])
+  // (03.11.2026) `geheimnisse` aus .gitignore gestrichen → rot.
+  for (const m of ['.env', '.env.*', 'backups', 'schluessel', 'data', 'geheimnisse'])
     assert.ok(muster.includes(m), `.dockerignore schliesst ${m} nicht aus`);
-  const git = spawnSync('git', ['check-ignore', '--no-index', 'backups/x.sql.gz', 'schluessel/datenschluessel', '.env'], { cwd: ROOT, encoding: 'utf8' });
+  const git = spawnSync('git', ['check-ignore', '--no-index', 'backups/x.sql.gz', 'schluessel/datenschluessel', '.env',
+    'geheimnisse/db_password'], { cwd: ROOT, encoding: 'utf8' });
   if (git.error) return;   // ohne git (z. B. im Image) nur der erste Teil
-  assert.deepEqual(git.stdout.trim().split('\n').sort(), ['.env', 'backups/x.sql.gz', 'schluessel/datenschluessel']);
+  assert.deepEqual(git.stdout.trim().split('\n').sort(), ['.env', 'backups/x.sql.gz', 'geheimnisse/db_password', 'schluessel/datenschluessel']);
+});
+
+// Gegenproben (03.11.2026 gemessen, je einzeln): im Dockerfile wieder `RUN npm ci`
+// → rot „Dockerfile: npm ci ohne --ignore-scripts“; `npm rebuild esbuild` in
+// web-ci.yml gestrichen → rot „web-ci.yml baut nicht genau …“.
+test('Install-Skripte laufen nur gezielt, für genau die Pakete, die eines haben', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
+  // fsevents gibt es nur unter macOS; auf Linux wird es nie installiert.
+  const mitSkript = Object.entries(lock.packages)
+    .filter(([n, p]) => p.hasInstallScript && !/(^|\/)fsevents$/.test(n))
+    .map(([n]) => n.replace(/^.*node_modules\//, '')).sort();
+  assert.ok(mitSkript.includes('esbuild'), `Vorbedingung: esbuild hat ein Install-Skript (${mitSkript})`);
+  const quellen = {
+    Dockerfile: fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'),
+    'web-ci.yml': fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8'),
+    'sicherheit.yml': fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'sicherheit.yml'), 'utf8'),
+  };
+  for (const [name, text] of Object.entries(quellen)) {
+    const code = text.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
+    const aufrufe = [...code.matchAll(/npm ci\b[^\n&]*/g)].map(m => m[0]);
+    assert.ok(aufrufe.length > 0, `${name}: kein npm ci gefunden`);
+    for (const a of aufrufe) assert.match(a, /--ignore-scripts/, `${name}: npm ci ohne --ignore-scripts`);
+    const gebaut = [...code.matchAll(/npm rebuild ([^\n&]+)/g)].flatMap(m => m[1].trim().split(/\s+/)).sort();
+    assert.deepEqual(gebaut, mitSkript, `${name} baut nicht genau die Pakete mit Install-Skript`);
+  }
 });

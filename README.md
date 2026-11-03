@@ -135,6 +135,16 @@ cosign verify addict85/brickinventory:latest \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
+Dazu tragen die Images eine Herkunftsbescheinigung (SLSA-Provenance: welcher
+Workflow, welcher Commit) und eine Stückliste (SBOM; npm-Pakete als CycloneDX,
+dazu die Pakete des Basis-Images). Prüfen mit der GitHub-CLI:
+
+```bash
+gh attestation verify oci://docker.io/addict85/brickinventory:latest -R addict85/BrickInventory
+gh attestation verify oci://docker.io/addict85/brickinventory:latest -R addict85/BrickInventory \
+  --predicate-type https://cyclonedx.org/bom
+```
+
 ---
 
 ## Die Android-App
