@@ -543,6 +543,7 @@ window.I18N_EN = {
   'storage.intro': 'The places offered when you file a set or a part. You can also add new ones right there; here you can rename or remove them.',
   'storage.new_ph': 'New storage location',
   'storage.add': 'Add',
+  'storage.name_fehlt': 'Please enter a name.',
   'storage.empty': 'No storage locations yet.',
   'storage.belegt': '{sets} sets, {teile} part types, {figuren} minifigures',
   'storage.leer': 'not in use',

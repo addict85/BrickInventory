@@ -249,6 +249,19 @@ export function feldFehler(id, text) {
   }
 }
 
+/**
+ * Eine Absage des Servers: Gehört ihr Code zu einem Feld des Formulars, steht
+ * die Meldung dort (wie feldFehler), sonst als Toast.
+ * @param {any} d Antwort von api()
+ * @param {Record<string, string>} felder Fehlercode → Feld-ID
+ * @param {string} ersatz Text, wenn die Antwort keinen hat
+ */
+export function antwortFehler(d, felder, ersatz) {
+  const id = d?.code ? felder[d.code] : null;
+  if (id && G(id)) feldFehler(id, d.error || ersatz);
+  else toast(d?.error || ersatz, 'error');
+}
+
 /** Prüft das Set-Nummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht. */
 export function setnummerFeldGueltig(id, wert) {
   const v = wert ?? (G(id)?.value || '').trim();
@@ -647,6 +660,13 @@ export function toast(msg, type='info', aktion) {
   c.appendChild(el);
   _toastStand.set(el, { schluessel, anzahl: 1, frist: setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500)) });
   return el;
+}
+/**
+ * Beim Wechsel der Ansicht: Meldungen gehören zu der Ansicht, in der sie
+ * entstanden; nur solche mit Knopf (Rückgängig, Ändern) bleiben bis zur Frist.
+ */
+export function verwirfToasts() {
+  for (const el of [...(G('toasts')?.children || [])]) if (!el.querySelector('.toast-aktion')) el.remove();
 }
 /**
  * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.

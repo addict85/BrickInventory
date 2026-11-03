@@ -544,6 +544,7 @@ window.I18N_DE = {
   'storage.intro': 'Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue Orte lassen sich auch direkt dort eintragen; hier kannst du sie umbenennen oder entfernen.',
   'storage.new_ph': 'Neuer Lagerort',
   'storage.add': 'Hinzufügen',
+  'storage.name_fehlt': 'Bitte einen Namen eingeben.',
   'storage.empty': 'Noch keine Lagerorte angelegt.',
   'storage.belegt': '{sets} Sets, {teile} Teilesorten, {figuren} Minifiguren',
   'storage.leer': 'nicht belegt',

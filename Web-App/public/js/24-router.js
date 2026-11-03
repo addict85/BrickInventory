@@ -1,4 +1,4 @@
-import { G, ME } from './01-core.js';
+import { G, ME, verwirfToasts } from './01-core.js';
 import { beiDialogWechsel, istOffen, obersterDialog } from './01-dialoge.js';
 import { oeffneSicht } from './02-gallery.js';
 import { openModal } from './07-admin.js';
@@ -104,6 +104,7 @@ function offeneDialoge() {
 export function meldeAnsicht(ansicht) {
   if (!PFADE[ansicht]) return;
   const neu = ansicht !== _ansicht;
+  if (neu) verwirfToasts();
   _ansicht = ansicht;
   if (!_gestartet || _wendeAn) return;
   // Ein offener Dialog bleibt nicht über einem Seitenwechsel stehen.
@@ -177,6 +178,7 @@ function zeigeAnsicht(ansicht, unter) {
       else /** @type {HTMLElement|null} */ (document.querySelector(`.ntab[data-tab="${ansicht}"]`))?.click();
     }
   });
+  if (ansicht !== _ansicht) verwirfToasts();
   _ansicht = ansicht;
 }
 
