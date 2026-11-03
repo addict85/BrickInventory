@@ -17,7 +17,7 @@ import javax.crypto.spec.GCMParameterSpec
  * Schlüssel verlässt den Android-Keystore nie.
  *
  * Eine eigene Hülle statt androidx.security: AES/GCM und der Keystore sind seit
- * API 23 Teil der Plattform (minSdk 26) — siebzig lesbare Zeilen statt einer
+ * API 23 Teil der Plattform (minSdk 30) — siebzig lesbare Zeilen statt einer
  * Abhängigkeit, deren Pflegezustand offen ist.
  *
  * Ist der Schlüssel weg (Wiederherstellung auf ein anderes Gerät, zurückgesetzte
@@ -46,13 +46,11 @@ class KeystoreTokenTresor : TokenVerschluesselung {
         // auch bei einer kompromittierten TEE im Chip. Ohne Chip wirft generateKey,
         // dann gilt der Keystore wie bisher. Ein bestehender Schlüssel bleibt, wo er
         // ist. Der Chip ist langsam; entschlüsselt wird nur bei neuem Geheimtext.
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            try {
-                gen.init(spezifikation().setIsStrongBoxBacked(true).build())
-                return gen.generateKey()
-            } catch (_: java.security.ProviderException) {
-                // StrongBoxUnavailableException ist eine davon; weiter ohne Chip.
-            }
+        try {
+            gen.init(spezifikation().setIsStrongBoxBacked(true).build())
+            return gen.generateKey()
+        } catch (_: java.security.ProviderException) {
+            // StrongBoxUnavailableException ist eine davon; weiter ohne Chip.
         }
         gen.init(spezifikation().build())
         return gen.generateKey()

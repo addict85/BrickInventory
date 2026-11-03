@@ -643,7 +643,6 @@
     <string name="pdfview_no_target">Kein Speicherort erhalten</string>
     <string name="pdfview_write_failed">Datei konnte nicht geschrieben werden</string>
     <string name="pdfview_default_name">Anleitung</string>
-    <string name="pdfview_share">PDF teilen</string>
     <!-- Angemeldete Geraete (Token-Verwaltung) -->
     <string name="tokens_title">Angemeldete Geräte</string>
     <string name="tokens_hint">Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.</string>

@@ -48,11 +48,14 @@ class TargetSdkConfigTest {
         }
     }
 
+    // Android 11 als Untergrenze (sec8 H11): Darunter keine Sicherheitsupdates, und
+    // erst ab 30 bindet die Gerätesperre einen Keystore-Schlüssel samt PIN/Muster
+    // (Schrittschutz). Wer sie senkt, holt die Sonderwege für 8 bis 10 zurück.
     @Test
-    fun `minSdk bleibt unveraendert`() {
-        assert(intAfter("minSdk") == 26) {
-            "minSdk wurde mitgezogen. Der Sprung auf targetSdk 36 betrifft nur das " +
-                "Verhalten auf neuen Geräten — ältere sollen weiter unterstützt bleiben."
+    fun `minSdk ist Android 11`() {
+        assert(intAfter("minSdk") == 30) {
+            "minSdk ist nicht mehr 30. Gesenkt fehlt die schlüsselgebundene Gerätesperre " +
+                "für PIN und Muster; gehoben fallen Geräte weg, ohne dass es jemand entschieden hat."
         }
     }
 

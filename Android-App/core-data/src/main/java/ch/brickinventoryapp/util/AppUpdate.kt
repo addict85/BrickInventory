@@ -88,10 +88,7 @@ fun istErlaubteApkAdresse(url: String): Boolean = liegtUnter(url, UPDATE_RELEASE
  */
 private fun fingerabdruecke(ctx: Context, apk: File): Signatur? {
     val pm = ctx.packageManager
-    @Suppress("DEPRECATION")
-    val flagge = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-        PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-    val info = pm.getPackageArchiveInfo(apk.absolutePath, flagge) ?: return null
+    val info = pm.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES) ?: return null
     // Der Paketname muss stimmen, sonst signiert ein fremdes Paket mit
     // demselben Schluessel sich hier durch.
     if (info.packageName != ctx.packageName) return null
@@ -107,27 +104,21 @@ fun apkFassung(ctx: Context, apk: File): Long? =
 /** Dieselbe Ermittlung fuer die INSTALLIERTE App. */
 private fun eigeneFingerabdruecke(ctx: Context): Signatur? {
     val pm = ctx.packageManager
-    @Suppress("DEPRECATION")
-    val flagge = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-        PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-    val info = runCatching { pm.getPackageInfo(ctx.packageName, flagge) }.getOrNull() ?: return null
+    val info = runCatching { pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES) }.getOrNull() ?: return null
     return signaturen(info)
 }
 
 /**
- * Die Signatur aus einem PackageInfo, beide Wege: GET_SIGNING_CERTIFICATES gibt
- * es erst ab API 28, auf 26 und 27 bleibt `signatures` (ohne Ahnenreihe). Sonst
- * prüfte der Updater dort nichts. `null` bei fehlender Signatur.
+ * Die Signatur aus einem PackageInfo samt Ahnenreihe (v3-Rotation). `null` bei
+ * fehlender Signatur: „unbekannt“ gilt nie als „passt“.
  */
-@Suppress("DEPRECATION")
 private fun signaturen(info: android.content.pm.PackageInfo): Signatur? {
     fun hex(s: Array<android.content.pm.Signature>?) = s.orEmpty().map { sig ->
         MessageDigest.getInstance("SHA-256").digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
     }
-    val (aktuell, ahnen) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        val si = info.signingInfo ?: return null
-        hex(si.apkContentsSigners) to (if (si.hasMultipleSigners()) hex(si.apkContentsSigners) else hex(si.signingCertificateHistory))
-    } else hex(info.signatures).let { it to it }
+    val si = info.signingInfo ?: return null
+    val aktuell = hex(si.apkContentsSigners)
+    val ahnen = if (si.hasMultipleSigners()) hex(si.apkContentsSigners) else hex(si.signingCertificateHistory)
     return Signatur(aktuell.toSet(), ahnen).takeIf { aktuell.isNotEmpty() }
 }
 
@@ -143,8 +134,8 @@ fun signaturPasst(ctx: Context, apk: File): Boolean {
 }
 
 /**
- * Darf die App Pakete installieren? Ab Android 8 eine Erlaubnis je App; bei minSdk
- * 26 entfällt die Frage auf keinem Gerät.
+ * Darf die App Pakete installieren? Eine Erlaubnis je App; bei minSdk
+ * 30 entfällt die Frage auf keinem Gerät.
  */
 fun darfInstallieren(ctx: Context): Boolean =
     ctx.packageManager.canRequestPackageInstalls()

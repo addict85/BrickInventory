@@ -3,8 +3,6 @@ package ch.brickinventoryapp.data
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.os.Build
-import android.telephony.TelephonyManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -12,8 +10,7 @@ import javax.inject.Singleton
 /**
  * In welcher Art Netz hängt das Gerät? Das Vorwärmen der Vorschaubilder lässt sich
  * je Lage erlauben, denn ein Durchlauf im Ausland ist eine Rechnung. Ein gemessenes
- * WLAN (Hotspot) zählt als Mobilfunk; unter API 28 beantwortet TelephonyManager die
- * Roaming-Frage.
+ * WLAN (Hotspot) zählt als Mobilfunk.
  */
 @Singleton
 class Netzlage @Inject constructor(
@@ -52,11 +49,5 @@ class Netzlage @Inject constructor(
     }
 
     private fun istRoaming(faehig: NetworkCapabilities): Boolean =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
-        } else {
-            // Android 8.0/8.1 — siehe KDoc oben.
-            val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-            tm?.isNetworkRoaming ?: false
-        }
+        !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
 }

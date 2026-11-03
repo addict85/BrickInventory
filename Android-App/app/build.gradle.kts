@@ -90,7 +90,7 @@ android {
 
     defaultConfig {
         applicationId = "ch.brickinventoryapp"
-        minSdk        = 26
+        minSdk        = 30
         // targetSdk 37 (Android 17). Relevante Verhaltensänderungen gegenüber 36
         // sind hier NICHT aufgezählt, und das ist eine Lücke, die benannt
         // gehört: Die Liste darunter beschreibt den Schritt 35 → 36. Was 37

@@ -1,10 +1,8 @@
 package ch.brickinventoryapp.ui.components
 
 import android.app.KeyguardManager
-import android.os.Build
 import android.os.SystemClock
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
-import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Box
@@ -73,15 +71,11 @@ class GeraeteSchrittschutz(
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(grund)
             .setSubtitle(untertitel())
-            .setAllowedAuthenticators(erlaubteVerfahren())
+            // Seit minSdk 30 immer starke Biometrie oder die Gerätesperre, nie Klasse-2-Gesicht.
+            .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
             .build()
         BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), rueckruf).authenticate(info)
     }
-
-    // STRONG zusammen mit der Gerätesperre kennt androidx.biometric erst ab Android 11.
-    private fun erlaubteVerfahren(): Int =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-        else BIOMETRIC_WEAK or DEVICE_CREDENTIAL
 }
 
 /**

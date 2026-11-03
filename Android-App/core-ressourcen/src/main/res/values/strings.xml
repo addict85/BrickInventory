@@ -657,7 +657,6 @@
     <string name="pdfview_no_target">No storage location available</string>
     <string name="pdfview_write_failed">File could not be written</string>
     <string name="pdfview_default_name">Instructions</string>
-    <string name="pdfview_share">Share PDF</string>
     <!-- Angemeldete Geraete (Token-Verwaltung) -->
     <string name="tokens_title">Signed-in devices</string>
     <string name="tokens_hint">Every sign-in — in the browser, in the app or via QR code — issues an access token. Lock out a lost or sold device here, without changing your password.</string>
