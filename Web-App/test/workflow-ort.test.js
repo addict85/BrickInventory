@@ -384,3 +384,25 @@ test('Checkouts behalten keine Zugangsdaten, ausser wo der Job schreibt', () => 
   }
   assert.deepEqual(ohne.sort(), ['android.yml:bildschirmfotos-einchecken', 'android.yml:pruefsummen-vorschlagen']);
 });
+
+// Gegenproben (03.11.2026 gemessen, je einzeln): `provenance: mode=max`
+// gestrichen → rot „… Herkunft beim Bau“; den Schritt „Herkunft bescheinigen“
+// gestrichen → rot „… attest-build-provenance“; `attestations: write` gestrichen
+// → rot „… darf Nachweise ablegen“.
+test('das Image trägt Herkunft und Stückliste, bescheinigt am signierten Digest', () => {
+  const yml = fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8')
+    .split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
+  const bau = yml.split(/\n  build:\n/)[1].split(/\n  merge:\n/)[0];
+  assert.match(bau, /^\s+provenance: mode=max\s*$/m, 'keine Herkunft beim Bau');
+  assert.match(bau, /^\s+sbom: generator=docker\/buildkit-syft-scanner:[\d.]+@sha256:[0-9a-f]{64}\s*$/m,
+    'keine Stückliste beim Bau oder ihr Scanner nicht per Digest');
+  const merge = yml.split(/\n  merge:\n/)[1];
+  assert.match(merge, /permissions:\s*\n\s+contents: read\s*\n\s+id-token: write\s*\n\s+attestations: write/,
+    'der Merge-Job darf Nachweise ablegen');
+  assert.match(merge, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'attest-build-provenance fehlt');
+  assert.match(merge, /uses: actions\/attest-sbom@[0-9a-f]{40}/, 'attest-sbom fehlt');
+  assert.match(merge, /npm sbom --omit=dev --package-lock-only --sbom-format=cyclonedx/);
+  // Bescheinigt wird genau der Digest, den cosign signiert hat.
+  assert.equal([...merge.matchAll(/subject-digest: \$\{\{ steps\.signatur\.outputs\.digest \}\}/g)].length, 2);
+  assert.match(merge, /- name: Image signieren\s*\n\s+id: signatur/);
+});

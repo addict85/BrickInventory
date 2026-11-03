@@ -223,7 +223,8 @@ jobs:
 
       - name: Bauen
         run: |
-          npm ci
+          npm ci --ignore-scripts
+          npm rebuild esbuild
           npm run build
 
       # Wie im Betrieb: NODE_ENV=production (Startverbote, Cookies, CSP).
