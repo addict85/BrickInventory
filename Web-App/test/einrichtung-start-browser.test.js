@@ -57,5 +57,4 @@ test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeou
     assert.equal(await b.auswerten(offen), false, 'Assistent über der gefüllten Sammlung');
     assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').hidden`), false, 'Hinweisband fehlt');
   });
-  t.after(() => db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]).catch(() => {}));
 });

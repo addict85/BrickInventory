@@ -126,6 +126,19 @@
     if (typeof ResizeObserver === 'function') new ResizeObserver(() => randHinweis(einstNav)).observe(einstNav);
   }
 
+  // ── 4. Kopf beim Rollen nach unten ausblenden ───────────────────────────
+  // Nur die Klasse; mobile.css blendet aus, und zwar nur bei geringer Höhe
+  // (200 % Zoom, Querformat), wo Kopf, Band und Leiste fast die Hälfte belegen.
+  // Rollen nach oben oder Fokus im Kopf holt ihn zurück.
+  let letzteHoehe = window.scrollY;
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY, wurzel = document.documentElement;
+    if (y < 60 || y < letzteHoehe - 4) wurzel.classList.remove('kopf-weg');
+    else if (y > letzteHoehe + 4) wurzel.classList.add('kopf-weg');
+    if (Math.abs(y - letzteHoehe) > 4) letzteHoehe = y;
+  }, { passive: true });
+  document.querySelector('header')?.addEventListener('focusin', () => document.documentElement.classList.remove('kopf-weg'));
+
   // Für Tests und für Code, der Tabellen ausserhalb des Observers erzeugt.
   window.__bimLabelTables = labelAll;
 })();
