@@ -27,21 +27,34 @@
 # Verschlüsselung wertlos. Mit BACKUP_SCHLUESSEL_ZIEL=<Ordner an einem anderen
 # Ort> legt das Skript ihn dort ab; sonst meldet es ihn.
 #
-# Verschlüsselt (für Kopien ausser Haus): BACKUP_AGE_EMPFAENGER=<öffentlicher
-# age-Schlüssel, age1…> oder BACKUP_AGE_EMPFAENGER_DATEI=<Datei mit einem je
-# Zeile>. Dann entstehen nur *.age-Dateien; den privaten Schlüssel braucht erst
-# restore.sh (BACKUP_AGE_IDENTITAET) und er gehört nicht auf diesen Rechner.
+# Verschlüsselt ist die Vorgabe: Empfänger (öffentliche age-Schlüssel, age1…)
+# aus ./backup-empfaenger.txt (einer je Zeile), BACKUP_AGE_EMPFAENGER_DATEI
+# oder BACKUP_AGE_EMPFAENGER. Es entstehen nur *.age-Dateien; den privaten
+# Schlüssel braucht erst restore.sh (BACKUP_AGE_IDENTITAET), er gehört nicht
+# auf diesen Rechner. Ohne Empfänger sichert das Skript nichts, ausser mit
+# ausdrücklichem BACKUP_KLARTEXT=ja (UPGRADE.md, Abschnitt 33).
 set -eu
 umask 077
 
 AGE="${AGE:-age}"
 VERSCHLUESSELN=""
+if [ -z "${BACKUP_AGE_EMPFAENGER:-}" ] && [ -z "${BACKUP_AGE_EMPFAENGER_DATEI:-}" ] && [ -f ./backup-empfaenger.txt ]; then
+  BACKUP_AGE_EMPFAENGER_DATEI=./backup-empfaenger.txt
+fi
 if [ -n "${BACKUP_AGE_EMPFAENGER:-}" ] || [ -n "${BACKUP_AGE_EMPFAENGER_DATEI:-}" ]; then
   command -v "$AGE" >/dev/null 2>&1 || { echo "[backup] FEHLER: age fehlt (apt install age) — nichts gesichert." >&2; exit 1; }
   if [ -n "${BACKUP_AGE_EMPFAENGER_DATEI:-}" ]; then
     [ -r "$BACKUP_AGE_EMPFAENGER_DATEI" ] || { echo "[backup] FEHLER: $BACKUP_AGE_EMPFAENGER_DATEI nicht lesbar." >&2; exit 1; }
   fi
   VERSCHLUESSELN=1
+elif [ "${BACKUP_KLARTEXT:-}" = ja ]; then
+  echo "[backup] WARNUNG: unverschlüsselt (BACKUP_KLARTEXT=ja) — der Dump enthält Konten, Passwort-Hashes und Sitzungen." >&2
+else
+  echo "[backup] FEHLER: kein Empfänger für die Verschlüsselung — nichts gesichert." >&2
+  echo "[backup]   Auf einem ANDEREN Rechner: age-keygen -o backup-schluessel.txt; den öffentlichen" >&2
+  echo "[backup]   Schlüssel (age1…) hier in ./backup-empfaenger.txt eintragen (UPGRADE.md, Abschnitt 33)." >&2
+  echo "[backup]   Unverschlüsselt nur ausdrücklich: BACKUP_KLARTEXT=ja" >&2
+  exit 1
 fi
 # Verschlüsselt eine fertige Datei nach <datei>.age und entfernt den Klartext.
 verschluessele() {

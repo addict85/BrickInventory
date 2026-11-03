@@ -1187,3 +1187,127 @@ unbeschränkte Wurzel an (Schritte 3–4).
   Kartennummer. Die Web-App lädt das PDF einmal und zeigt es aus dem
   Speicher. Die Android-App muss nachziehen: Bis dahin öffnet sie keine
   Gutschein-PDFs (403).
+
+## 33. Runde 9 – Sichere Vorgaben im Betrieb
+
+Bisher waren die sicheren Wege angeboten, ab dieser Fassung sind sie
+**Pflicht**. Ein `docker compose up -d --build` ohne die Schritte unten
+scheitert mit einer Meldung, die auf diesen Abschnitt zeigt. Reihenfolge
+einhalten; alles im Ordner mit `compose.yaml`.
+
+**1. Geheimnisse als Dateien (Pflicht)**
+
+`SESSION_SECRET`, `DB_PASSWORD`, `DB_APP_PASSWORD` und die pgweb-Passwörter
+stehen nicht mehr in der Umgebung der Container (die zeigt `docker inspect`
+jedem mit Zugang zu Docker), sondern als Docker-Secrets unter
+`/run/secrets/`. Die Dateien liegen in `./geheimnisse/`:
+
+```
+sh scripts/geheimnisse-einrichten.sh
+```
+
+Das Skript übernimmt die Werte aus der bisherigen `.env` und erzeugt fehlende
+zufällig. Vorhandene Dateien überschreibt es nie. Liegt `./pgdata18` schon da
+und fehlt `DB_PASSWORD` in `.env`, bricht es ab: Das Superuser-Passwort steht
+in der Datenbank, ein neues passte nicht. Danach:
+
+- Die Zeilen `SESSION_SECRET`, `DB_PASSWORD`, `DB_APP_PASSWORD`,
+  `PGWEB_PASSWORD` und `PGWEB_DB_PASSWORD` aus `.env` löschen. Das Skript
+  nennt sie am Ende.
+- `./geheimnisse/` wie `schluessel/` behandeln. Der Ordner ist nur für seinen
+  Besitzer offen (700), die Dateien darin sind lesbar (444), damit die
+  Dienste sie ohne root lesen. Nicht ins Repository, nicht neben die
+  Sicherungen.
+- Wer `compose.override.yaml` aus Abschnitt 31 („Geheimnisse als Dateien“)
+  angelegt hat, löscht dort die `secrets`- und `*_FILE`-Einträge.
+  `compose.yaml` macht das jetzt selbst.
+
+**2. Zertifikat: eigene CA, Let's Encrypt oder ausdrücklich Caddys CA (Pflicht)**
+
+Caddy fällt nicht mehr still auf seine eigene CA zurück. Diese CA hat keine
+Namensbeschränkung: Ein Gerät mit ihrer Wurzel traut ihr für jede Adresse.
+Ohne eine der drei Angaben startet Caddy nicht. `docker compose logs caddy`
+zeigt dann „keine eigene, auf BRICK_HOST beschränkte CA“.
+
+- **Empfohlen, im Heimnetz:** `sudo sh scripts/ca-einrichten.sh`, danach
+  weiter wie in Abschnitt 32 (alte CA entfernen, neue Wurzel auf die Geräte,
+  App neu verknüpfen). Wer das schon gemacht hat, muss nichts tun.
+- **Öffentlicher Name** (aus dem Internet auf Port 80 und 443 erreichbar): in
+  `.env` `BRICK_TLS=acme` und optional `ACME_EMAIL=…`. Das Zertifikat kommt
+  dann von Let's Encrypt, auf die Geräte muss keine Wurzel, und `/ca.crt`
+  antwortet 404. Die Android-App einmal neu verknüpfen.
+- **Übergang, bewusst:** `CA_OHNE_NAMENSBESCHRAENKUNG=ja` in `.env` startet
+  wie bisher mit Caddys CA und schreibt bei jedem Start eine Warnung ins
+  Protokoll.
+
+**Fingerabdruck vergleichen (Pflichtschritt beim Installieren der Wurzel).**
+`http://<BRICK_HOST>/ca.crt` ist unverschlüsselt. Wer im Netz mitliest, kann
+die Datei austauschen. Vor dem Installieren den SHA-256-Fingerabdruck, den
+das Gerät anzeigt, mit dem auf dem Server vergleichen:
+
+```
+docker compose logs caddy | grep Fingerabdruck
+```
+
+`scripts/ca-einrichten.sh` nennt denselben Wert bei der Einrichtung. Weicht er
+ab, nicht installieren.
+
+**3. Sicherungen nur verschlüsselt (Pflicht)**
+
+`scripts/backup.sh` sichert ohne Empfänger nichts mehr. Ein Cron-Lauf meldet
+dann `FEHLER: kein Empfänger`. Einmalig einrichten:
+
+1. Auf einem **anderen** Rechner: `age-keygen -o backup-schluessel.txt`.
+   Diese Datei offline aufbewahren (Passwort-Safe, USB-Stick). Sie ist der
+   einzige Weg zurück an die Daten.
+2. Den öffentlichen Schlüssel (`age1…`, steht in der Ausgabe) auf dem Server
+   in `./backup-empfaenger.txt` eintragen, einen je Zeile. Für einen zweiten
+   Verwahrer eine zweite Zeile anlegen.
+3. `apt install age` auf dem Server, dann einmal `./scripts/backup.sh`. Es
+   entstehen nur noch `db_….sql.gz.age` und `data_….tar.gz.age`.
+4. Zurückspielen probehalber: `BACKUP_AGE_IDENTITAET=backup-schluessel.txt
+   ./scripts/restore.sh backups/db_….sql.gz.age backups/data_….tar.gz.age`.
+
+Unverschlüsselte Sicherungen gibt es nur noch mit ausdrücklichem
+`BACKUP_KLARTEXT=ja`. Alte `*.sql.gz` lassen sich weiter einspielen. Den
+Datenschlüssel (`BACKUP_SCHLUESSEL_ZIEL`) weiter getrennt aufbewahren.
+
+**4. pgweb (nur wer es benutzt)**
+
+- Die Passwörter kommen jetzt aus `./geheimnisse/`:
+  `PGWEB=ja sh scripts/geheimnisse-einrichten.sh`, danach
+  `docker compose up -d db-rolle`. Das Passwort für die Anmeldung im Browser
+  steht in `geheimnisse/pgweb_password` (bisheriges `PGWEB_PASSWORD` wird
+  übernommen). Ohne diesen Schritt hat die Leserolle kein Passwort und pgweb
+  startet nicht.
+- pgweb läuft als uid 1000, schreibgeschützt, ohne Capabilities und in einem
+  eigenen Netz `pgweb-net` nur mit `postgres`. App, Jobs und Caddy erreichen
+  es nicht mehr.
+- Die Leserolle liest nur noch eine **Allowlist** je Tabelle
+  (`LESEN_SPALTEN` in `postgres/app-rolle.sh`). Eine neue Tabelle oder
+  Spalte ist für pgweb unsichtbar, bis sie dort eingetragen ist. Nicht mehr
+  lesbar sind zusätzlich `auftraege.nutzlast`, `vouchers.number` und
+  `nummer_suche`, `passkeys.credential_id` und `public_key`,
+  `zweiter_faktor.letzter_schritt` und die ganze Tabelle `idempotenz`.
+
+**5. Anmeldebremse an Caddy (nichts zu tun)**
+
+Die Anmeldewege (`/api/v1/auth/login`, `register`, `forgot-password`,
+`reset-password`, `bestaetigung-erneut`, `qr-login`, `token-rotieren`,
+`passkey/anmelden`) gehen höchstens zu viert gleichzeitig an die App, mit
+Rümpfen bis 16 KB. Der Rest wartet bei Caddy. Eine Flut aus vielen Adressen
+verlangsamt so die Anmeldung, belegt aber nicht alle Kerne mit bcrypt.
+Echte Raten je Adresse kann das Standard-Image von Caddy nicht zählen (dafür
+bräuchte es ein eigenes Caddy-Image mit Zusatzmodul). Die Grenzen je
+Adresse und Konto setzt weiterhin der Server.
+
+**6. Lieferkette (nichts zu tun; zum Prüfen)**
+
+- Das Image installiert Abhängigkeiten mit `npm ci --ignore-scripts`; nur
+  esbuild baut sein Install-Skript gezielt (`npm rebuild esbuild`). Die CI
+  macht es genauso und ist ab einer Lücke der Stufe `moderate` rot.
+- Jedes veröffentlichte Image trägt eine Herkunftsbescheinigung und eine
+  Stückliste. Prüfen: siehe README im Wurzelverzeichnis
+  (`cosign verify …`, `gh attestation verify …`). In den
+  GitHub-Einstellungen ist nichts zu tun: Der Workflow braucht nur
+  `attestations: write`, das er selbst anfordert.

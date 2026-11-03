@@ -29,6 +29,14 @@
  *      „die Leserolle legt temporäre Tabellen an“
  *   K  (03.11.2026) `api_tokens_verbraucht` aus der Sperrliste gestrichen →
  *      rot: „SELECT token FROM api_tokens_verbraucht“
+ *   L  (03.11.2026, Allowlist) `password_hash` in die Zeile `users:` von
+ *      LESEN_SPALTEN aufgenommen → rot: „die Leserolle sieht keine Geheimnisse“
+ *      (SELECT password_hash gelingt) und „… liest genau die Allowlist“
+ *   M  die Allowlist-Schleife durch die alte Sperrliste ersetzt (alle Spalten
+ *      ausser den bekannten Geheimnissen) → rot: „neue Spalten und Tabellen
+ *      bleiben unlesbar“ (users.neues_geheimnis lesbar)
+ *   N  in app-rolle.sh `aus_datei DB_APP_PASSWORD` gestrichen → rot:
+ *      „Passwörter aus Dateien“ (DB_APP_PASSWORD fehlt)
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
@@ -229,6 +237,98 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     const gleich = rolleEinrichten(neu, { PGWEB_DB_PASSWORD: PASSWORT });
     assert.notEqual(gleich.status, 0);
     assert.match(gleich.stderr, /PGWEB_DB_PASSWORD muss sich/);
+  });
+
+  await t.test('die Leserolle liest genau die Allowlist', async () => {
+    const r = rolleEinrichten(neu);
+    assert.equal(r.status, 0, r.stderr);
+    // Jede Spalte der Allowlist gibt es im aktuellen Schema (sonst meldet das Skript sie).
+    assert.doesNotMatch(r.stderr, /fehlt eine der Spalten/, r.stderr);
+    const lesbar = async (tabelle) => {
+      const c = new Client({ connectionString: url(neu) });
+      await c.connect();
+      try {
+        return (await c.query(`SELECT a.attname::text AS n FROM pg_attribute a WHERE a.attrelid = $1::regclass AND a.attnum > 0
+          AND NOT a.attisdropped AND has_column_privilege($2, a.attrelid, a.attnum, 'SELECT') ORDER BY a.attnum`, [tabelle, LESEN])).rows.map(z => z.n);
+      } finally { await c.end(); }
+    };
+    assert.deepEqual(await lesbar('users'), ['id', 'username', 'email', 'first_name', 'last_name', 'is_admin', 'is_active',
+      'email_verified', 'token_expires', 'reset_token_expires', 'must_change_password', 'created_at', 'sitzungs_version']);
+    assert.deepEqual(await lesbar('vouchers'), ['id', 'user_id', 'amount', 'currency', 'pdf_path', 'created_at', 'updated_at', 'guthaben_geprueft_am']);
+    for (const t of ['api_tokens', 'api_tokens_verbraucht', 'user_sessions', 'qr_login_tokens', 'webauthn_challenges',
+      'zweiter_faktor_codes', 'account_link_invites', 'idempotenz'])
+      assert.deepEqual(await lesbar(t), [], `${t} ist für die Leserolle lesbar`);
+  });
+
+  await t.test('neue Spalten und Tabellen bleiben unlesbar, bis die Allowlist sie nennt', async () => {
+    const c = new Client({ connectionString: url(neu) });
+    await c.connect();
+    try {
+      await c.query('ALTER TABLE users ADD COLUMN neues_geheimnis text');
+      await c.query(`UPDATE users SET neues_geheimnis = 'streng geheim'`);
+      await c.query('CREATE TABLE neue_tabelle (id int, geheim text)');
+      await c.query(`INSERT INTO neue_tabelle VALUES (1, 'streng geheim')`);
+    } finally { await c.end(); }
+    const r = rolleEinrichten(neu);
+    assert.equal(r.status, 0, r.stderr);
+    const l = new Client({ connectionString: url(neu, LESEN, LESEN_PW) });
+    await l.connect();
+    try {
+      assert.ok((await l.query(`SELECT username FROM users WHERE username = 'leseprobe'`)).rowCount, 'Vorbedingung: users ist lesbar');
+      await assert.rejects(l.query('SELECT neues_geheimnis FROM users'), /permission denied/, 'neue Spalte lesbar');
+      await assert.rejects(l.query('SELECT * FROM neue_tabelle'), /permission denied/, 'neue Tabelle lesbar');
+    } finally { await l.end(); }
+    // Erst ein Eintrag in der Allowlist gibt die Spalte frei (Kopie des Skripts mit erweiterter Zeile).
+    const fsm = require('node:fs'), osm = require('node:os');
+    const kopie = path.join(fsm.mkdtempSync(path.join(osm.tmpdir(), 'rolle-liste-')), 'app-rolle.sh');
+    const quelle = fsm.readFileSync(SKRIPT, 'utf8');
+    assert.match(quelle, /^users: id, username, /m);
+    fsm.writeFileSync(kopie, quelle.replace(/^(users: .*)$/m, '$1, neues_geheimnis'));
+    const mit = spawnSync('sh', [kopie], { encoding: 'utf8', env: { ...process.env,
+      PGHOST: BASIS.hostname, PGPORT: BASIS.port || '5432', PGUSER: decodeURIComponent(BASIS.username),
+      PGPASSWORD: decodeURIComponent(BASIS.password), PGDATABASE: neu,
+      DB_APP_USER: ROLLE, DB_APP_PASSWORD: PASSWORT, DB_LESEN_USER: LESEN, PGWEB_DB_PASSWORD: LESEN_PW } });
+    fsm.rmSync(path.dirname(kopie), { recursive: true, force: true });
+    assert.equal(mit.status, 0, mit.stderr);
+    const l2 = new Client({ connectionString: url(neu, LESEN, LESEN_PW) });
+    await l2.connect();
+    try {
+      assert.deepEqual((await l2.query(`SELECT neues_geheimnis FROM users WHERE username = 'leseprobe'`)).rows, [{ neues_geheimnis: 'streng geheim' }]);
+      await assert.rejects(l2.query('SELECT * FROM neue_tabelle'), /permission denied/, 'neue Tabelle lesbar');
+    } finally { await l2.end(); }
+    const c2 = new Client({ connectionString: url(neu) });
+    await c2.connect();
+    try { await c2.query('ALTER TABLE users DROP COLUMN neues_geheimnis'); await c2.query('DROP TABLE neue_tabelle'); } finally { await c2.end(); }
+    assert.equal(rolleEinrichten(neu).status, 0);
+  });
+
+  await t.test('Passwörter aus Dateien (Docker-Secrets)', async (tt) => {
+    const fsm = require('node:fs'), osm = require('node:os');
+    const ordner = fsm.mkdtempSync(path.join(osm.tmpdir(), 'rolle-geheim-'));
+    tt.after(() => fsm.rmSync(ordner, { recursive: true, force: true }));
+    const datei = (name, wert) => { const f = path.join(ordner, name); fsm.writeFileSync(f, wert + '\n'); return f; };
+    const umgebung = { DB_APP_PASSWORD_FILE: datei('app', PASSWORT), PGWEB_DB_PASSWORD_FILE: datei('lesen', LESEN_PW),
+      PGPASSWORD_FILE: datei('su', decodeURIComponent(BASIS.password)) };
+    const ohneWerte = (mehr) => {
+      const env = { ...process.env, PGHOST: BASIS.hostname, PGPORT: BASIS.port || '5432', PGUSER: decodeURIComponent(BASIS.username),
+        PGDATABASE: neu, DB_APP_USER: ROLLE, DB_LESEN_USER: LESEN, ...umgebung, ...mehr };
+      for (const k of ['PGPASSWORD', 'DB_APP_PASSWORD', 'PGWEB_DB_PASSWORD']) if (!(k in mehr)) delete env[k];
+      return spawnSync('sh', [SKRIPT], { encoding: 'utf8', env });
+    };
+    const r = ohneWerte({});
+    assert.equal(r.status, 0, r.stderr);
+    const l = new Client({ connectionString: url(neu, LESEN, LESEN_PW) });
+    await l.connect();
+    await l.end();
+    const app = new Client({ connectionString: url(neu, ROLLE, PASSWORT) });
+    await app.connect();
+    await app.end();
+    const beide = ohneWerte({ DB_APP_PASSWORD: PASSWORT });
+    assert.notEqual(beide.status, 0);
+    assert.match(beide.stderr, /DB_APP_PASSWORD und DB_APP_PASSWORD_FILE sind beide gesetzt/);
+    const fehlt = ohneWerte({ DB_APP_PASSWORD_FILE: path.join(ordner, 'gibt-es-nicht') });
+    assert.notEqual(fehlt.status, 0);
+    assert.match(fehlt.stderr, /DB_APP_PASSWORD_FILE=.* ist nicht lesbar/);
   });
 
   await t.test('ein gleiches Passwort wird abgewiesen', () => {

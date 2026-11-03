@@ -10,7 +10,20 @@
 # wirken – daher fester search_path schon beim Verbinden, RESET ALL vor allem
 # anderen und nur Funktionen aus pg_catalog.
 set -eu
-: "${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}"
+
+# Docker-Secrets: X_FILE statt X, damit kein Passwort in `docker inspect` steht.
+aus_datei() {
+  eval "datei=\${$1_FILE:-}"
+  [ -n "$datei" ] || return 0
+  if eval "[ -n \"\${$1:-}\" ]"; then echo "[db-rolle] $1 und $1_FILE sind beide gesetzt - nur eines davon." >&2; exit 1; fi
+  [ -r "$datei" ] || { echo "[db-rolle] $1_FILE=$datei ist nicht lesbar - siehe scripts/geheimnisse-einrichten.sh." >&2; exit 1; }
+  eval "$1=\$(cat \"\$datei\")"
+  export "$1"
+}
+aus_datei PGPASSWORD
+aus_datei DB_APP_PASSWORD
+aus_datei PGWEB_DB_PASSWORD
+: "${DB_APP_PASSWORD:?DB_APP_PASSWORD fehlt - sh scripts/geheimnisse-einrichten.sh, siehe UPGRADE.md}"
 SU_PASSWORT="${PGPASSWORD:-${POSTGRES_PASSWORD:-}}"
 if [ "$DB_APP_PASSWORD" = "$SU_PASSWORT" ]; then
   echo "[db-rolle] DB_APP_PASSWORD muss sich von DB_PASSWORD unterscheiden." >&2
@@ -24,6 +37,78 @@ fi
 export DB_APP_USER="${DB_APP_USER:-brickinventory_app}"
 export DB_LESEN_USER="${DB_LESEN_USER:-brickinventory_lesen}"
 
+# Was die Leserolle (pgweb) lesen darf, je Tabelle: eine Allowlist. Eine neue
+# Tabelle oder Spalte bleibt unlesbar, bis sie hier bewusst steht; eine neue
+# Geheimspalte wird so nie nebenbei freigegeben. Nicht aufgeführt sind z. B.
+# Passwort-Hashes, Tokens, Sitzungen, TOTP, Einstellungswerte, Gutschein-PIN.
+export LESEN_SPALTEN='
+account_links: main_user_id, sub_user_id, created_at
+api_aufrufe: tag, api, konto, anzahl
+api_takt: api, naechster
+app_logs: id, level, message, logged_at
+auftraege: id, art, user_id, schluessel, status, versuche, max_versuche, faellig_ab, belegt_von, fehler, erstellt, aktualisiert, frist_bis, gestartet, fortschritt
+auftrag_pausen: art, bis, grund, stufe
+bl_zuordnung: art, rb_id, bl_id, fetched_at
+catalog_cache: set_number, name, year, theme, pieces, image_url, is_gear, bl_type, fetched_at
+global_settings: key, updated_at
+gutschein_guthaben_schranke: id, letzter_abruf, sperre_bis
+household_former_links: main_user_id, sub_user_id, via_user_id, created_at
+image_misses: cache_key, checked_at, reason
+image_wanted: url, set_number, requested_at
+import_stand: user_id, status, total, done, current, results, error, started_at, updated_at, run_id
+instructions: id, user_id, set_number, url, description, local_path, downloaded_at
+laufzustand: schluessel, wert, aktualisiert
+minifig_acquisitions: id, user_id, fig_number, quantity, unit_price, condition, created_at, currency, price_estimated, tag
+minifig_parts_cache: fig_number, data, fetched_at
+minifig_price_cache: id, fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at, geschaetzt, abdeckung
+minifig_price_history: id, fig_number, condition, currency_code, avg_price, qty_avg_price, recorded_at, geschaetzt, abdeckung
+minifigs: id, user_id, set_number, fig_number, source, storage_id
+minifigs_catalog: fig_number, fig_name, image_url, image_local, updated_at, name_von, bild_von
+papierkorb: id, user_id, art, nummer, farbe_id, bezeichnung, zeilen, geloescht_am
+part_acquisitions: id, user_id, part_number, color_id, quantity, unit_price, condition, created_at, currency, price_estimated, tag
+part_catalog: part_number, part_name, category_name, updated_at, name_von, kategorie_von
+part_color_catalog: part_number, color_id, color_name, color_hex, image_url, image_local, updated_at, farbname_von, farbcode_von, bild_von
+part_price_cache: id, part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at
+part_price_history: id, part_number, color_id, condition, currency_code, avg_price, qty_avg_price, recorded_at
+parts: id, user_id, set_number, part_number, color_id, source, storage_id, added_at
+parts_katalog_offen: id, nummer
+parts_summary: user_id, part_key, color_id, part_number, bl_part_number, part_name, color_name, color_hex, category_name, image_url, image_local, is_spare, total_quantity, in_sets, storage
+parts_summary_state: user_id, built_version, built_at
+parts_version_user: user_id, v
+passkeys: id, user_id, sign_count, transports, name, created_at, last_used
+price_alerts: user_id, set_number, condition, richtung, schwelle, currency_code, ausgeloest, zuletzt_am, zuletzt_preis, created_at
+price_cache: id, set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at
+price_history: id, set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, recorded_at
+rate_limit_attempts: key, count, first_at, last_at, laufend, laufend_seit
+rb_colors: id, name, rgb, is_trans, bl_color_id
+rb_inventories: id, set_num, version
+rb_inventory_minifigs: id, inventory_id, fig_num, quantity
+rb_inventory_parts: id, inventory_id, part_num, color_id, quantity, is_spare, img_url
+rb_part_categories: id, name
+rb_parts: part_num, name, part_cat_id, part_img_url
+rb_sets: set_num, name, year, theme_id, num_parts, set_img_url
+rb_themes: id, name, parent_id
+schema_migrations: name, applied_at, pruefsumme
+set_acquisitions: id, user_id, set_number, quantity, purchase_price, created_at, condition, currency, price_estimated, tag
+set_catalog: set_number, name, year, theme, pieces, minifigs, image_url, image_local, brickset_id, updated_at
+set_figuren: set_number, fig_number, quantity, updated_at
+set_minifigs_catalog: set_number, fig_number, fig_name, quantity, image_url, image_local, updated_at
+set_parts_catalog: set_number, part_number, part_name, color_id, color_name, color_hex, category_name, image_url, image_local, is_spare, quantity, updated_at
+set_stamm: set_number, name, year, theme, pieces, minifigs, image_url, image_local, herkunft
+set_teile: set_number, part_number, color_id, is_spare, quantity, updated_at
+sets: id, user_id, set_number, added_at, updated_at, storage_id
+shared_instructions: id, set_number, url, description, local_path, fetched_at
+storage_locations: id, user_id, name, created_at
+subsets_cache: set_number, data, fetched_at
+user_settings: user_id, key, updated_at
+users: id, username, email, first_name, last_name, is_admin, is_active, email_verified, token_expires, reset_token_expires, must_change_password, created_at, sitzungs_version
+verwaltungsprotokoll: id, zeit, verwalter_id, ziel_id, ziel_name, aktion, einzelheiten
+vouchers: id, user_id, amount, currency, pdf_path, created_at, updated_at, guthaben_geprueft_am
+wanted: id, user_id, set_number, condition, created_at
+wechselkurse: tag, waehrung, je_eur
+zweiter_faktor: user_id, aktiv, eingerichtet_am
+'
+
 # Kommandozeilen-Optionen schlagen ALTER DATABASE … SET; role=none hebt ein
 # untergeschobenes `SET role` auf, das die Sitzung zur App-Rolle machte.
 PGOPTIONS='-c search_path=pg_catalog,pg_temp -c role=none -c default_transaction_read_only=off' \
@@ -36,15 +121,20 @@ SET ROLE NONE;
 \getenv app_passwort DB_APP_PASSWORD
 \getenv lesen_rolle DB_LESEN_USER
 \getenv lesen_passwort PGWEB_DB_PASSWORD
+\getenv lesen_spalten LESEN_SPALTEN
 SELECT pg_catalog.set_config('brickinventory.app_rolle', :'app_rolle', false) AS r,
        pg_catalog.set_config('brickinventory.app_passwort', :'app_passwort', false) AS p,
        pg_catalog.set_config('brickinventory.lesen_rolle', :'lesen_rolle', false) AS lr,
-       pg_catalog.set_config('brickinventory.lesen_passwort', :'lesen_passwort', false) AS lp \gset
+       pg_catalog.set_config('brickinventory.lesen_passwort', :'lesen_passwort', false) AS lp,
+       pg_catalog.set_config('brickinventory.lesen_spalten', :'lesen_spalten', false) AS ls \gset
 DO $$
 DECLARE
   rolle text := pg_catalog.current_setting('brickinventory.app_rolle');
   lesen text := pg_catalog.current_setting('brickinventory.lesen_rolle');
   lesen_pw text := pg_catalog.current_setting('brickinventory.lesen_passwort');
+  liste text := pg_catalog.current_setting('brickinventory.lesen_spalten');
+  spalten text[];
+  tab   oid;
   db    text := pg_catalog.current_database();
   ziel  oid;
   r     record;
@@ -104,8 +194,7 @@ BEGIN
     EXECUTE pg_catalog.format('ALTER %s %s OWNER TO %I', CASE r.typtype WHEN 'd' THEN 'DOMAIN' ELSE 'TYPE' END, r.name, rolle);
   END LOOP;
 
-  -- Leserolle für pgweb: nur SELECT, ohne Anmeldedaten, Sitzungen und
-  -- Geheimnisse. Neue Tabellen sieht sie erst nach dem nächsten Lauf.
+  -- Leserolle für pgweb: nur SELECT auf die Allowlist oben.
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = lesen) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I NOLOGIN', lesen);
   END IF;
@@ -124,22 +213,25 @@ BEGIN
   EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA public TO %I', lesen);
   EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', lesen);
   EXECUTE pg_catalog.format('REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM %I', lesen);
-  FOR r IN SELECT c.oid::pg_catalog.regclass AS name, c.relname,
-                  pg_catalog.array_agg(pg_catalog.quote_ident(a.attname::text) ORDER BY a.attnum) FILTER (WHERE NOT a.attname::text = ANY (CASE c.relname
-                    WHEN 'users' THEN ARRAY['password_hash', 'verification_token', 'reset_token']
-                    WHEN 'zweiter_faktor' THEN ARRAY['geheimnis']
-                    WHEN 'user_settings' THEN ARRAY['value']
-                    WHEN 'global_settings' THEN ARRAY['value']
-                    WHEN 'vouchers' THEN ARRAY['pin']
-                    WHEN 'idempotenz' THEN ARRAY['antwort']
-                    ELSE ARRAY[]::text[] END)) AS spalten
-             FROM pg_catalog.pg_class c JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
-            WHERE c.relnamespace = 'public'::pg_catalog.regnamespace AND c.relkind IN ('r', 'p', 'v', 'm')
-              AND c.relname <> ALL (ARRAY['api_tokens', 'api_tokens_verbraucht', 'qr_login_tokens', 'user_sessions', 'webauthn_challenges',
-                                          'zweiter_faktor_codes', 'account_link_invites'])
-            GROUP BY c.oid, c.relname LOOP
-    EXECUTE pg_catalog.format('GRANT SELECT (%s) ON %s TO %I', pg_catalog.array_to_string(r.spalten, ', '), r.name, lesen);
+  -- Allowlist (LESEN_SPALTEN): nur genannte Spalten genannter Tabellen. Eine
+  -- Spalte, die es nicht gibt, meldet sich; eine fehlende Tabelle nicht, weil
+  -- db-rolle vor den Migrationen einer neuen Datenbank läuft.
+  FOR r IN SELECT pg_catalog.btrim(pg_catalog.split_part(z, ':', 1)) AS tabelle,
+                  pg_catalog.string_to_array(pg_catalog.regexp_replace(pg_catalog.split_part(z, ':', 2), '\s', '', 'g'), ',') AS namen
+             FROM pg_catalog.regexp_split_to_table(liste, E'\n') AS z
+            WHERE pg_catalog.strpos(z, ':') > 0 LOOP
+    tab := (SELECT c.oid FROM pg_catalog.pg_class c WHERE c.relnamespace = 'public'::pg_catalog.regnamespace
+              AND c.relname = r.tabelle AND c.relkind IN ('r', 'p', 'v', 'm'));
+    CONTINUE WHEN tab IS NULL;
+    SELECT pg_catalog.array_agg(pg_catalog.quote_ident(a.attname::text) ORDER BY a.attnum) INTO spalten
+      FROM pg_catalog.pg_attribute a WHERE a.attrelid = tab AND a.attnum > 0 AND NOT a.attisdropped AND a.attname::text = ANY (r.namen);
+    IF pg_catalog.cardinality(r.namen) <> COALESCE(pg_catalog.cardinality(spalten), 0) THEN
+      RAISE NOTICE '[db-rolle] Leserolle: in % fehlt eine der Spalten %', r.tabelle, r.namen;
+    END IF;
+    IF spalten IS NOT NULL THEN
+      EXECUTE pg_catalog.format('GRANT SELECT (%s) ON %s TO %I', pg_catalog.array_to_string(spalten, ', '), tab::pg_catalog.regclass, lesen);
+    END IF;
   END LOOP;
 END $$;
 SQL
-echo "[db-rolle] Rolle ${DB_APP_USER} ohne Superuser-Rechte besitzt die Datenbank; ${DB_LESEN_USER} liest ohne Geheimnisse."
+echo "[db-rolle] Rolle ${DB_APP_USER} ohne Superuser-Rechte besitzt die Datenbank; ${DB_LESEN_USER} liest nur die Allowlist."

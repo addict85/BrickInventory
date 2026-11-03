@@ -34,9 +34,21 @@ den Commits, nicht hier.
 ## Schutzmaßnahmen
 
 ### Transport (1)
-- HTTPS als Standard: Caddy mit eigener CA (`tls internal`) vor der App, die
-  App veröffentlicht keinen Port; Port 80 leitet um und liefert nur `/ca.crt`:
-  `compose.yaml`, `Caddyfile` — `compose-pgweb`.
+- HTTPS als Standard: Caddy vor der App, die App veröffentlicht keinen Port;
+  Port 80 leitet um und liefert nur `/ca.crt`: `compose.yaml`, `Caddyfile` —
+  `compose-pgweb`.
+- Keine CA ohne Namensbeschränkung als stiller Rückfall: Caddy startet nur mit
+  eigener, auf `BRICK_HOST` beschränkter CA (`scripts/ca-einrichten.sh`), mit
+  `BRICK_TLS=acme` (öffentlicher Name) oder ausdrücklich mit
+  `CA_OHNE_NAMENSBESCHRAENKUNG=ja`; ohne Aussteller aus dem Startskript ist
+  das Caddyfile ungültig. Das Protokoll von Caddy und `ca-einrichten.sh`
+  nennen den SHA-256-Fingerabdruck der Wurzel zum Abgleich auf dem Gerät —
+  `ca-eigene-wurzel`.
+- Anmeldewege (Passwort, Passkey, QR, Registrierung, Rücksetzen) gehen
+  höchstens zu viert gleichzeitig an die App, Rümpfe bis 16 KB; der Rest
+  wartet bei Caddy. Das Standard-Image von Caddy hat kein Modul für
+  Anfrage-Raten; die Raten je Adresse und Konto zählt der Server —
+  `caddy-anmeldebremse`.
 - Die Wurzel signiert die Blätter (`sign_with_root`) und steht in der
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
   (`fp`): `utils/tlsWurzel.ts`, `routes/auth.ts` — `tls-wurzel-db`.
@@ -253,7 +265,26 @@ den Commits, nicht hier.
   in `compose.yaml` (`docker-compose`); npm und Gradle über Renovate
   (`renovate.json` im Wurzelverzeichnis), frühestens drei Tage nach
   Erscheinen (`minimumReleaseAge`).
-- `npm ci` aus dem Lockfile; `npm audit --omit=dev` (web-ci.yml).
+- `npm ci --ignore-scripts` aus dem Lockfile (Dockerfile, CI); Install-Skripte
+  nur gezielt für die Pakete, die eines haben (`npm rebuild esbuild`) —
+  `dockerfile`. `npm audit --omit=dev` ist rot ab `moderate` (web-ci.yml) —
+  `build-tooling`.
+- Images mit Herkunft (SLSA-Provenance `mode=max`) und Stückliste (BuildKit
+  mit per Digest festem Scanner; npm als CycloneDX) am Image, dazu
+  `actions/attest-build-provenance` und `actions/attest-sbom` am signierten
+  Digest; prüfen mit `cosign verify` und `gh attestation verify` (README) —
+  `workflow-ort`.
+- Der Test-Schlüssel `Web-App/test/fixtures/abruf-test.key` (mit
+  `abruf-test.crt`, selbstsigniert, `CN=abruf-test`, SHA-256
+  `25:B4:03:BD:C0:2F:3B:87:7B:DC:7F:B6:69:4D:C3:AF:FE:79:C1:42:C9:CE:DD:1E:C1:B2:6C:EF:F7:96:B3:BC`)
+  steht seit Commit `227229e` öffentlich in der Historie. Er war nie
+  produktiv: Nur zwei Tests (`abruf-helfer`, `gutschein-guthaben-abruf`)
+  starten damit einen HTTPS-Server auf `127.0.0.1` und reichen das Zertifikat
+  ihrem eigenen Client als `ca` — kein Image, kein Truststore, keine
+  Konfiguration enthält es. Trotz der Namen im Zertifikat (`localhost`,
+  `cdn.rebrickable.com`, `example.org`) ist es öffentlich und darf nirgends
+  als vertrauenswürdig eingetragen werden; ein Gerät, das es zeigt, wird
+  getäuscht. Die Historie bleibt unverändert.
 - PDF.js lädt ohne eval (`isEvalSupported: false`) und ohne Skripte im PDF;
   die ausgelieferten Dateien enthalten weder `eval(` noch `new Function(` —
   `pdf-zoom`, `pdfjs-fassung`.
@@ -299,14 +330,21 @@ den Commits, nicht hier.
 - `scripts/restore.sh` spielt den Dump als App-Rolle ein, in einer
   Transaktion; Funktionen und Prüfregeln aus dem Dump laufen nie als
   Superuser — `backup-restore-db`.
-- `DB_PASSWORD`, `DB_APP_PASSWORD` und `BRICK_HOST` sind Pflicht; Klartext nur als bewusste
-  Ausnahme (Port 3000 in `compose.yaml` einkommentieren, `COOKIE_SECURE=0`).
+- Sitzungsgeheimnis und alle Datenbankpasswörter nur als Docker-Secrets
+  (`./geheimnisse/`, Ordner 700, `scripts/geheimnisse-einrichten.sh`), kein
+  Dienst bekommt sie als Umgebungsvariable (`docker inspect`) —
+  `compose-geheimnisse`, `geheimnisse-einrichten`, `db-rolle-db`. Klartext
+  nur als bewusste Ausnahme (Port 3000 in `compose.yaml` einkommentieren,
+  `COOKIE_SECURE=0`).
 - `caddy/data/` mitsichern und wie ein Passwort behandeln (Schlüssel der CA).
-- pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur mit Anmeldung
-  (`PGWEB_PASSWORD`) und als Leserolle `brickinventory_lesen`
-  (`PGWEB_DB_PASSWORD`): nur `SELECT`, ohne Tokens, Sitzungen, Passwort-Hashes,
-  TOTP-Geheimnisse, Einstellungswerte und Gutschein-PINs — `compose-pgweb`,
-  `db-rolle-db`.
+- pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur mit Anmeldung und
+  als Leserolle `brickinventory_lesen`; als uid 1000, `read_only`, ohne
+  Capabilities und in einem eigenen Netz nur mit `postgres` —
+  `compose-pgweb`, `compose-geheimnisse`. Die Leserolle liest nur eine
+  Allowlist je Tabelle (`LESEN_SPALTEN` in `postgres/app-rolle.sh`): eine neue
+  Tabelle oder Spalte bleibt unlesbar, bis sie dort steht; Tokens, Sitzungen,
+  Passwort-Hashes, TOTP, Einstellungswerte und Gutschein-PINs stehen nicht
+  darin — `db-rolle-db`.
 - `scripts/restore.sh` entpackt ein data-Archiv nur, wenn es aus Dateien und
   Ordnern unter `data/` besteht (`scripts/archiv-pruefen.sh`) — `restore-archiv`.
 - Container ohne Capabilities ausser den nötigen, `read_only`,
@@ -316,11 +354,12 @@ den Commits, nicht hier.
   (`schluessel-anlegen.sh`, ohne Netz); app und jobs sehen ihn nur lesend —
   `compose-grenzen-schluessel`. Getrennt von `data/` sichern, sonst sind
   Geheimnisse und Gutschein-PDFs einer Sicherung nicht lesbar.
-- Geheimnisse wahlweise aus Dateien (`SESSION_SECRET_FILE`,
-  `PGPASSWORD_FILE`, `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE`) statt aus der
-  Umgebung — `geheimnis-dateien`.
-- Sicherungen auf Wunsch mit age an einen öffentlichen Schlüssel
-  verschlüsselt (`BACKUP_AGE_EMPFAENGER`), ohne Klartext daneben; der private
+- Der Server liest Geheimnisse aus Dateien (`SESSION_SECRET_FILE`,
+  `PGPASSWORD_FILE`, `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE`) —
+  `geheimnis-dateien`.
+- Sicherungen immer mit age an öffentliche Schlüssel verschlüsselt
+  (`./backup-empfaenger.txt`), ohne Klartext daneben; ohne Empfänger keine
+  Sicherung, ausser mit ausdrücklichem `BACKUP_KLARTEXT=ja`. Der private
   Schlüssel liegt nicht auf dem Server — `backup-verschluesselt`.
 
 ## Bekannte Restrisiken
@@ -359,9 +398,11 @@ den Commits, nicht hier.
   5 Codes je Stunde. Einen neuen Zugang prägt nur, wer den zweiten Faktor
   hat. Bei der Anmeldung zählen falsche Codes in die Anmeldebremse je
   Adresse und Konto.
-- **Passwörter von Postgres und `db-rolle`** stehen weiter in deren
-  Umgebung (das offizielle Image liest `POSTGRES_PASSWORD_FILE`, `db-rolle`
-  noch keine Datei).
+- **Geheimnisse auf demselben Rechner**: `./geheimnisse/` ist nur für seinen
+  Besitzer offen; wer root auf dem Server ist, liest sie trotzdem.
+- **Anfrage-Raten am Rand**: Caddy begrenzt die gleichzeitigen Anmeldungen,
+  zählt aber keine Raten je Adresse (kein Modul im Standard-Image). Eine Flut
+  verlangsamt deshalb die Anmeldung für alle, statt den Server zu belegen.
 - **Altbestand im Bildcache**: Bilder, die vor dieser Fassung aus Angaben
   eines Clients geladen wurden, bleiben liegen, bis sie neu geladen werden.
 - **Fremdkontingent**: Nicht-Verwalter bekommen zusammen höchstens die Hälfte;

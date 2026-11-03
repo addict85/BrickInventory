@@ -11,6 +11,13 @@
  *      „restore.sh spielt die verschlüsselte Sicherung ein" (Endmarke fehlt)
  *   C  in backup.sh die Prüfung auf age am Anfang gestrichen → rot: „ohne age
  *      kein Klartext"
+ *   D  (03.11.2026, Vorgabe verschlüsselt) in backup.sh den Abbruch ohne
+ *      Empfänger gestrichen (Zweig `else … exit 1`) → rot: „ohne Empfänger
+ *      keine Sicherung"
+ *   E  die Vorgabe ./backup-empfaenger.txt gestrichen → rot: „die Empfänger
+ *      aus backup-empfaenger.txt gelten ohne weitere Angabe" (Abbruch statt .age)
+ *   F  BACKUP_KLARTEXT nicht mehr beachtet (Zweig gestrichen) → rot:
+ *      „unverschlüsselt nur mit BACKUP_KLARTEXT=ja"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -85,4 +92,41 @@ test('ohne age kein Klartext', (t) => {
   const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: 'age1probe', AGE: path.join(a.tmp, 'gibt-es-nicht') });
   assert.notEqual(r.status, 0, 'ohne age kein Klartext');
   assert.deepEqual(fs.existsSync(a.ziel) ? fs.readdirSync(a.ziel) : [], []);
+});
+
+test('ohne Empfänger keine Sicherung', (t) => {
+  const a = aufbau(t);
+  const r = a.lauf('backup.sh', [a.ziel]);
+  assert.notEqual(r.status, 0, 'ohne Empfänger gesichert');
+  assert.match(r.stderr, /kein Empfänger.*nichts gesichert/s);
+  assert.match(r.stderr, /backup-empfaenger\.txt/);
+  assert.match(r.stderr, /BACKUP_KLARTEXT=ja/);
+  assert.deepEqual(fs.existsSync(a.ziel) ? fs.readdirSync(a.ziel) : [], []);
+});
+
+test('die Empfänger aus backup-empfaenger.txt gelten ohne weitere Angabe', (t) => {
+  if (!hatAge) { if (process.env.CI) assert.fail('age fehlt im CI-Lauf'); t.skip('age nicht installiert'); return; }
+  const a = aufbau(t);
+  fs.writeFileSync(path.join(a.arbeit, 'backup-empfaenger.txt'), `# Sicherung\n${a.empfaenger}\n`);
+  const r = a.lauf('backup.sh', [a.ziel]);
+  assert.equal(r.status, 0, r.stderr);
+  const dateien = fs.readdirSync(a.ziel).sort();
+  assert.deepEqual(dateien.map(n => n.replace(/_\d{4}-\d\d-\d\d_\d{4}/, '')), ['data.tar.gz.age', 'db.sql.gz.age']);
+  // Rundlauf: restore.sh entschlüsselt mit dem privaten Schlüssel und spielt ein.
+  const [daten, dump] = dateien.map(n => path.join(a.ziel, n));
+  fs.rmSync(path.join(a.arbeit, 'data'), { recursive: true });
+  const z = a.lauf('restore.sh', [dump, daten], { BACKUP_AGE_IDENTITAET: a.identitaet }, 'ja\n');
+  assert.equal(z.status, 0, z.stdout + z.stderr);
+  assert.match(fs.readFileSync(path.join(a.tmp, 'eingespielt.sql'), 'utf8'), /CREATE TABLE probe\(\);/);
+  assert.equal(fs.readFileSync(path.join(a.arbeit, 'data', 'uploads', 'anleitung.pdf'), 'utf8'), '%PDF-1.4 geheim');
+});
+
+test('unverschlüsselt nur mit BACKUP_KLARTEXT=ja', (t) => {
+  const a = aufbau(t);
+  const nein = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: '1' });
+  assert.notEqual(nein.status, 0, 'BACKUP_KLARTEXT=1 genügt nicht, nur „ja"');
+  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: 'ja' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stderr, /WARNUNG: unverschlüsselt/);
+  assert.deepEqual(fs.readdirSync(a.ziel).map(n => n.replace(/_\d{4}-\d\d-\d\d_\d{4}/, '')).sort(), ['data.tar.gz', 'db.sql.gz']);
 });
