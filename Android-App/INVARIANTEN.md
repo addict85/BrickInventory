@@ -753,12 +753,9 @@ braucht, ist eine Erlaubnis, die niemand mehr prüft.
 
 Damit der nächste Durchgang nicht dieselben Fragen neu aufwirft:
 
-- **Der Bearer-Token liegt unverschlüsselt in DataStore**
-  (`app_prefs.preferences_pb`). Auf einem nicht gerooteten Gerät schützt das
-  App-Verzeichnis zusammen mit `allowBackup="false"` und
-  `data_extraction_rules`. `androidx.security-crypto` ist abgekündigt, es gibt
-  also keinen gepflegten Aufrüstweg. Der wirksamere Hebel liegt serverseitig:
-  `TOKEN_IDLE_DAYS` löscht ungenutzte Tokens.
+- **Keine Verschlüsselung von `bestand.db`, Antwort-Cache und Vorschaubildern**
+  (SQLCipher o. ä.). Begründung und Datenklassen unter „Daten auf dem Gerät“.
+  Der Token dagegen liegt nur verschlüsselt (`util/TokenTresor.kt`, Keystore).
 - **Kein `SavedStateHandle`.** Nach Prozesstod sind Filter und Rollposition
   weg. Alles lädt ohnehin vom Server nach, und der Scroll-Merker ist eine
   Bequemlichkeit innerhalb einer Sitzung — nicht etwas, das einen Prozesstod
@@ -768,6 +765,83 @@ Damit der nächste Durchgang nicht dieselben Fragen neu aufwirft:
   hat. Bei diesem Kommentaranteil ist der Zusatznutzen klein. Falls doch: nur
   mit `ignoreFailures`, damit es meldet statt blockiert — wie lint es hier
   schon tut.
+
+## Daten auf dem Gerät
+
+Datenklassen und wo sie liegen. **Geheim** heisst: Wer es hat, handelt im Namen
+des Nutzers oder löst Geld ein. **Vertraulich** heisst: privat, aber ohne
+Handlungsmacht.
+
+| Klasse | Inhalt | Ablage |
+|---|---|---|
+| geheim | Token | nur AES-GCM mit Keystore-Schlüssel (`TokenTresor`) |
+| geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), Gutschein-PDFs liegen in einem eigenen Ordner und werden beim Verlassen gelöscht |
+| vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`, Fächer in `Bestandsart`), Ausgang | unverschlüsselt, App-Sandbox |
+| vertraulich | Katalog-Metadaten und Statistik (`ResponseCache`, nur diese zwei Schlüssel) | unverschlüsselt, `noBackupFilesDir` |
+| öffentlich | Vorschaubilder der Sets | unverschlüsselt, `filesDir/vorschau` |
+
+Für alle gilt: `allowBackup="false"`, Cloud-Sicherung und Geräteumzug
+ausgeschlossen (`NetzsicherheitTest`), beim Abmelden geleert, und jede Ablage
+gehört Server und Konto (`CacheBereichTest`).
+
+**Warum nicht verschlüsselt (pruef6 N3):** Gegen ein verlorenes, gesperrtes
+Gerät schützt die dateibasierte Verschlüsselung von Android (ab Android 10
+Pflicht): Vor dem ersten Entsperren ist der Speicher der App unlesbar. Gegen
+Root oder fremden Code in der App hülfe SQLCipher nicht: Der Schlüssel müsste
+ohne Nutzerauthentisierung im Keystore liegen, weil Abgleich, Widget und
+Preisalarm im Hintergrund lesen — dort käme ein Angreifer an ihn wie die App.
+Dafür brächte es native Bibliotheken (16-KB-Ausrichtung, R8, Prüfsummen) und
+eine Migration des Ausgangs. Darum gilt stattdessen: Geheimes kommt gar nicht
+erst auf die Platte; ein neues Fach in `Bestandsart` lässt `CacheBereichTest`
+scheitern, bis es hier eingeordnet ist.
+
+## Restrisiken, bewusst getragen (pruef6)
+
+- **H2 — Pin auf eine System-Wurzel:** Hat der Nutzer beim Erstkontakt ein
+  öffentlich gültiges Zertifikat bestätigt, gilt danach jede öffentlich gültige
+  Kette für diesen Host. Sonst fragte die App bei jedem Wechsel der
+  Zwischenstelle (Let's Encrypt) neu. Restrisiko: ein fehlausgestelltes
+  öffentliches Zertifikat für den Host. Wer das ausschliessen will, betreibt
+  eine eigene CA (Caddy `sign_with_root`); deren Pin bleibt an ihren Schlüssel
+  gebunden.
+- **H7 — keine Root- oder Integritätserkennung:** Die App wird ausserhalb von
+  Play verteilt; Play Integrity bestätigte dort nichts Brauchbares, und eine
+  Root-Erkennung im Client lässt sich auf einem gerooteten Gerät umgehen. Die
+  Geheimnisse sind dafür im Keystore (Token) oder gar nicht auf dem Gerät.
+- **H9 — Widget mit Sammlungswert:** Der Nutzer legt es selbst auf den
+  Startbildschirm; es zeigt eine Summe, keine Einzelheiten, und wird beim
+  Abmelden geleert. Wer den Wert nicht zeigen will, legt es nicht an.
+- **QR-Code beim ersten Einrichten (H6):** Ein Code mit `fp` bestimmt den
+  Schlüssel ohne Abtippen; der Dialog warnt und zeigt den Anfang zum Vergleich
+  mit der Webapp. Abtippen bleibt dem Wechsel eines gemerkten Schlüssels
+  vorbehalten (Begründung im Commit).
+- **Schritt-Schutz (N2):** Ein Gerät ohne Displaysperre lässt die Rückfrage
+  durch; dort gibt es nichts zu fragen. Eine Bestätigung gilt 60 s und
+  verfällt, sobald die App in den Hintergrund geht.
+
+## Token nur an die eigene Herkunft
+
+Ein Token geht nur an die Herkunft (Schema, Host, Port), die ihn ausgab
+(`di/ServerWaechter.kt`). Was eine Antwort auslöst — Nachfassen mit Token,
+Tausch und Wiederholung nach `token_rotation_noetig`, Abmelden, Rechteentzug —
+gilt nur der Sitzung, in der die Anfrage hinausging: Der Wächter liest die
+Generation der `TokenSchranke` vor dem Token und vergleicht danach; beim
+Nachfassen prüft er die Bindung zum Zeitpunkt des Nachfassens neu.
+`TokenTausch.noetig` liefert nur einen Token derselben Herkunft und
+Generation. Beim Wechsel auf eine andere Herkunft brechen alle Server-Clients
+ihre laufenden Aufrufe ab. Umleitungen folgen die Server-Clients nur innerhalb
+derselben Herkunft. Liegt der Server unter einem Pfad (`https://host/brick`),
+geht der Token nur an Adressen darunter, Umleitungen eigener Anfragen bleiben
+darunter, und ein anderer Pfad auf demselben Host gilt als anderer Server
+(`NetworkPolicy.imBasisPfad`, `gleicherServer`). Geprüft: `ServerwechselTest`,
+`UmleitungTest`, `TokenTauschTest`, `BasisPfadTest`.
+
+Abmelden entwertet den Token am Server. Gelingt das in 3 s nicht (kein Netz,
+5xx), geht ein Auftrag mit dem verschlüsselten Token an WorkManager
+(`data/Entwertung.kt`, `EntwertungsWorker`), der mit Rückzug wiederholt, bis
+der Server bestätigt oder 401 sagt. Ein gesperrter Keystore heisst „später“,
+nie „abgemeldet“ (`util/Tresorbefund.kt`). Geprüft: `EntwertungTest`,
+`TresorSperreTest`.
 
 ## Delegierte Zustands-Properties erlauben keinen Smart Cast
 

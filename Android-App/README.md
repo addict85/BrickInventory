@@ -102,19 +102,32 @@ Der Grund steht ausführlich im Workflow: GitHub packt **jedes** Artefakt in ein
 Zip, auch eine einzelne Datei, und es gibt dagegen keinen Schalter (»There is
 currently no way to download artifacts in a format other than a Zip«, Anleitung
 von `actions/upload-artifact`). Ein Release-Anhang wird roh ausgeliefert,
-braucht kein GitHub-Konto und verfällt nicht nach 90 Tagen. Bei
-Pull-Request-Läufen wird er **nicht** ersetzt — sonst zeigte der stabile Link
-auf einen ungeprüften Zweig.
+braucht kein GitHub-Konto und verfällt nicht nach 90 Tagen. Ersetzt wird er
+**nur** aus einem Etikett `android-v…`, dessen Commit auf `main` liegt — nicht
+aus Zweigen, Pull-Requests oder jedem Push auf `main`.
+
+**Veröffentlichen:** auf dem gewünschten Stand von `main`
+
+```
+git tag android-v2026.11.03 origin/main
+git push origin android-v2026.11.03
+```
+
+Der Lauf zum Etikett baut, signiert (nach Freigabe in der Environment
+`release`), prüft, bescheinigt die Herkunft des APK und ersetzt den Anhang.
+Prüfen lässt sich die Herkunft mit
+`gh attestation verify BrickInventory.apk --repo addict85/BrickInventory`.
 
 Signiert wird in einem eigenen Job `signieren`, der nur das unsignierte APK aus
 dem Bau-Job bekommt und keinen Projektcode ausführt (kein Checkout, kein
-Gradle; `zipalign`/`apksigner` aus dem SDK des Runners). Auf `main` läuft er in
+Gradle; `zipalign`/`apksigner` aus dem SDK des Runners). Für ein Etikett
+`android-v…` prüft er zuerst, dass dessen Commit auf `main` liegt, und läuft in
 der Environment `release`; nur dort gehören die vier Secrets `KEYSTORE_BASE64`,
 `KEYSTORE_PASSWORT`, `KEY_ALIAS` und `KEY_PASSWORT` hin (GitHub → Settings →
-Environments → `release`: Deployment-Branch nur `main`, Pflichtprüfer). Nur der
+Environments → `release`: nur Etiketten `android-v*`, Pflichtprüfer). Nur der
 Schritt *Release-Schlüssel bereitstellen* nennt sie, und er läuft nur dort;
 gleichnamige Repository-Secrets fände GitHub trotzdem, sie gehören gelöscht.
-Fehlen sie auf `main`, wird der Lauf rot und nichts veröffentlicht. Danach prüft der
+Fehlen sie, wird der Lauf rot und nichts veröffentlicht. Danach prüft der
 Job `apk-pruefen` das signierte APK (R8, 16-KB-Ausrichtung), erst dann
 veröffentlicht `release` — ebenfalls in der Environment `release`, also erst
 nach der Freigabe eines Prüfers. Siehe *Release signieren*.
@@ -218,8 +231,8 @@ prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`.
 ## Abhängigkeiten und Lieferkette
 
 `renovate.json` liegt im Wurzelverzeichnis (nur dort liest Renovate sie) und
-gilt nur für Gradle; Actions und Docker-Images hält `.github/dependabot.yml`
-aktuell. Renovate erzeugt montags früh gesammelte Pull-Requests für kleine
+gilt für Gradle, die npm-Pakete der Web-App, die Docker-Images (Digests) und
+die GitHub-Actions (Commit-SHAs). Renovate erzeugt montags früh gesammelte Pull-Requests für kleine
 Sprünge und einzelne für grosse. `graphics-path` steigt nicht automatisch,
 `datastore-preferences` kommt als eigener PR: Ob die Bibliotheken 16-KB-
 ausgerichtet sind, misst die CI am fertigen APK (siehe INVARIANTEN.md). Die
@@ -410,15 +423,39 @@ werden:
 ```
 
 Unter **Settings → Environments → New environment** die Environment `release`
-anlegen: *Deployment branches and tags* auf *Selected branches* mit `main`
-stellen und *Required reviewers* setzen (empfohlen; ohne sie veröffentlicht
-jeder Push auf `main` ohne menschliche Freigabe). Die Jobs `signieren` und
+anlegen: *Deployment branches and tags* auf *Selected branches and tags* mit
+der **Etikett-Regel** `android-v*` (keine Zweig-Regel, auch nicht `main`) und
+*Required reviewers* setzen, *Prevent self-review* an. Die Jobs `signieren` und
 `release` warten dann je auf ein Ja. Dort unter *Environment secrets* vier
 Secrets anlegen.
+
+Dazu ein **Tag-Ruleset** (Settings → Rules → Rulesets → New tag ruleset) für
+`refs/tags/android-v*`: Anlegen, Ändern und Löschen nur für Administratoren
+(Bypass-Liste), *Restrict updates* und *Restrict deletions* an. Ein Etikett
+lässt sich sonst von jedem mit Schreibrecht setzen oder umhängen; der Workflow
+signiert ohnehin nur Commits, die auf `main` liegen.
 
 **Übergang:** Gleichnamige Repository-Secrets danach löschen. Der Workflow
 braucht sie nicht mehr; solange sie bestehen, könnte jeder Job auf `main` sie
 lesen, auch ohne Freigabe.
+
+### Release-Zertifikat und Fassung
+
+Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
+(`tools/release-pruefen.py`):
+
+- **Zertifikat:** Das APK muss mit einem der Zertifikate in
+  `tools/release-zertifikat.sha256` signiert sein. Den Wert liefert
+  `keytool -list -v -keystore brick.jks` (Zeile `SHA256:`; Doppelpunkte und
+  Grossschreibung sind gleichgültig). Wird der Schlüssel je gewechselt
+  (Rotation), kommt der neue Wert als zweite Zeile dazu. Ein Lauf ohne Etikett
+  signiert mit einem Wegwerfschlüssel und muss genau an dieser Prüfung
+  scheitern; so läuft sie bei jedem Bau.
+- **Fassung:** Der versionCode muss über dem des veröffentlichten
+  `version.json` liegen (gleich nur für denselben Commit). Ein Etikett auf einem
+  älteren Commit von `main` wird so nicht zum „neusten APK“. Der Job `release`
+  prüft dasselbe unmittelbar vor dem Hochladen noch einmal; zwei Etiketten
+  laufen dort nacheinander (`concurrency: apk-neuste`).
 
 Dazu gehört eine Branch-Protection (oder ein Ruleset) auf `main`: Merge nur
 über Pull-Request mit grüner CI, kein Force-Push. Sonst genügt ein direkter
@@ -434,8 +471,13 @@ Push, um Code bis vor die Freigabe zu bringen.
 Der Job `signieren` schreibt den Schlüsselspeicher nach `$RUNNER_TEMP`, signiert
 das unsignierte APK aus dem Bau-Job mit `apksigner` aus dem SDK des Runners und
 gibt nur das Ergebnis weiter; Gradle und Werkzeuge aus dem Repository sieht der
-Schlüssel nie. Fehlt auf `main` eines der Secrets, wird der Lauf rot, statt
+Schlüssel nie. Fehlt für ein Etikett eines der Secrets, wird der Lauf rot, statt
 etwas Uninstallierbares zu veröffentlichen.
+
+**Restrisiko:** Der Signaturschlüssel liegt als Environment-Secret bei GitHub.
+Wer die Environment-Regeln ändern kann (Administrator), kann signieren lassen.
+Ein Schlüssel ausserhalb von GitHub (HSM/KMS) wäre stärker; für eine
+selbst verteilte App ohne Play-Konto ist das hier bewusst nicht umgesetzt.
 
 ### Prüfen, ob es geklappt hat
 

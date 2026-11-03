@@ -38,10 +38,9 @@ import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 
-/** Filterzeile: Thema, Jahr, Sortierung. */
+/** Filterzeile: Thema und Jahr; sortiert wird über das Menü neben der Suche. */
 @Composable
-fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThemeSheet: androidx.compose.runtime.MutableState<Boolean>, showYearSheet: androidx.compose.runtime.MutableState<Boolean>, showSortMenu: androidx.compose.runtime.MutableState<Boolean>, onSortChange: (String) -> Unit) {
-    // Filter-Zeile: Thema, Jahr, Sortierung
+fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThemeSheet: androidx.compose.runtime.MutableState<Boolean>, showYearSheet: androidx.compose.runtime.MutableState<Boolean>) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -57,7 +56,6 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
                 },
                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(16.dp)) },
                 modifier = Modifier.widthIn(max = 180.dp),
-                shape = Formen.chip
             )
         }
         item {
@@ -66,43 +64,33 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
                 onClick = { showYearSheet.value = true },
                 label = { Text(state.year?.toString() ?: stringResource(R.string.catalog_filter_year), style = MaterialTheme.typography.labelMedium) },
                 trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(16.dp)) },
-                shape = Formen.chip
             )
-        }
-        item {
-            Box {
-                AuswahlChip(
-                    selected = state.sort != "year_desc",
-                    onClick = { showSortMenu.value = true },
-                    label = { Text(sortLabel(state.sort), style = MaterialTheme.typography.labelMedium) },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
-                    shape = Formen.chip
-                )
-                DropdownMenu(showSortMenu.value, { showSortMenu.value = false }) {
-                    listOf("year_desc", "year_asc", "name_asc", "num_asc", "parts_desc", "parts_asc").forEach { s ->
-                        DropdownMenuItem(
-                            text = { Text(sortLabel(s)) },
-                            onClick = { showSortMenu.value = false; onSortChange(s) },
-                            trailingIcon = { if (state.sort == s) Icon(Icons.Default.Check, null, Modifier.size(16.dp)) }
-                        )
-                    }
-                }
-            }
         }
     }
 
 }
 
-/** Das Suchfeld über der Liste. */
+/** Das Suchfeld über der Liste, daneben die Sortierung. */
 @Composable
-fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit) {
+fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (String) -> Unit) {
     // Suchfeld — derselbe Baustein wie in Galerie, Teilen und Minifiguren
     // (TabellenZeile.kt), damit der Leeren-Knopf überall gleich heisst.
-    Suchfeld(
-        wert = state.query,
-        onWert = onQueryChange,
-        platzhalter = stringResource(R.string.catalog_search_placeholder),
-    )
+    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        Suchfeld(
+            wert = state.query,
+            onWert = onQueryChange,
+            platzhalter = stringResource(R.string.catalog_search_placeholder),
+            modifier = Modifier.weight(1f),
+        )
+        ch.brickinventoryapp.ui.components.SortierMenue(
+            optionen = listOf("year_desc", "year_asc", "name_asc", "num_asc", "parts_desc", "parts_asc")
+                .map { it to sortLabel(it) },
+            gewaehlt = state.sort,
+            onWahl = onSortChange,
+            modifier = Modifier.padding(end = Abstaende.rand),
+            vorgabe = "year_desc",
+        )
+    }
 
 }
 

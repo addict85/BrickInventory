@@ -60,11 +60,13 @@ let _pdfSeiteW = 0, _pdfSeiteH = 0;   // Seitengrösse bei scale 1, aus PDF.js
 // Grösse hat — die Seite wäre verzerrt. Siehe _renderPdfPage.
 let _pdfZoomGen = 0;
 
-export async function openPdfViewer(url, title) {
+/** @param {{ daten?: ArrayBuffer, dateiname?: string }} [opt] schon geladene Bytes (Gutschein-PDF mit
+ * Einmal-Ticket: ein zweiter Abruf schlüge fehl), `url` dient dann nur dem Download. */
+export async function openPdfViewer(url, title, opt = {}) {
   const modal = G('pdf-viewer-modal'); if (!modal) return;
   const loading = G('pdf-viewer-loading'), pages = G('pdf-viewer-pages'), dl = G('pdf-viewer-download');
   G('pdf-viewer-title').textContent = title || 'PDF';
-  const fname = decodeURIComponent((url.split('?')[0].split('/').pop() || 'anleitung.pdf'));
+  const fname = opt.dateiname || decodeURIComponent((url.split('?')[0].split('/').pop() || 'anleitung.pdf'));
   dl.href = url; dl.setAttribute('download', fname);
   _pdfCurrentUrl = url;
   _pdfZoom = 1; _pdfZoomGen++; _pdfZeigeFaktor();
@@ -83,7 +85,7 @@ export async function openPdfViewer(url, title) {
     return;
   }
   try {
-    const task = pdfjsLib.getDocument({
+    const task = pdfjsLib.getDocument(opt.daten ? { data: new Uint8Array(opt.daten), isEvalSupported: false, enableScripting: false } : {
       url,
       disableAutoFetch: true,   // nicht die ganze Datei vorab laden
       disableStream: false,

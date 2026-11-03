@@ -162,6 +162,7 @@ class BrickRepositoryErrorMappingTest {
             override fun serverUrl() = server.url("/").toString()
             override fun token() = "geheim"
             override fun tokenHerkunft(): String? = null
+            override fun generation() = 0L
         }
         val waechter = ch.brickinventoryapp.di.ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})
         val e = fehler(baueRepo(waechter = waechter).getMe())

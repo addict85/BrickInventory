@@ -1,0 +1,18 @@
+Gegenprobe: Merkposten-Detail steht nie neben der Liste
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Tablet zeigt Merkliste und Detail nebeneinander
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
+index 2858a41..079fd2c 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
+@@ -230,7 +230,7 @@ fun MerklisteUndDetail(
+             onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z) else onOeffnenEinzeln(sn, z) },
+             gewaehlt = auswahl.takeIf { nebeneinander })
+     }
+-    if (nebeneinander && auswahl != null) {
++    if (false && nebeneinander && auswahl != null) {
+         ch.brickinventoryapp.ui.components.ListeUndDetail(
+             liste = liste,
+             detail = {

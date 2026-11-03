@@ -90,12 +90,15 @@ class TokenTausch(
 
     /**
      * Für 401 `token_rotation_noetig`, auf dem Netz-Thread von OkHttp: Warten ist
-     * hier richtig, die Anfrage braucht den neuen Token.
+     * hier richtig, die Anfrage braucht den neuen Token. „Schon getauscht“ heisst
+     * auch „inzwischen woanders angemeldet“ — darum nur ein Token derselben
+     * Herkunft und Generation wie die abgewiesene Anfrage.
      */
-    override fun noetig(alterToken: String): String? = runBlocking {
+    override fun noetig(alterToken: String, herkunft: String?, generation: Long): String? = runBlocking {
         when (tausche(alterToken)) {
-            Tauschergebnis.GETAUSCHT, Tauschergebnis.SCHON_GETAUSCHT ->
-                stand().token.takeIf { it != alterToken && it.isNotBlank() }
+            Tauschergebnis.GETAUSCHT, Tauschergebnis.SCHON_GETAUSCHT -> stand()
+                .takeIf { herkunft != null && it.herkunft == herkunft && it.generation == generation }
+                ?.token?.takeIf { it != alterToken && it.isNotBlank() }
             Tauschergebnis.SPAETER, Tauschergebnis.NEU_KOPPELN, Tauschergebnis.VERWORFEN -> null
         }
     }

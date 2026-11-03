@@ -1,7 +1,7 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { ico, G, api, esc, toast } from './01-core.js';
-import { confirmDelete, bestaetigeMitPasswort } from './07-admin.js';
+import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 import { loadUsers } from './05-settings.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
@@ -108,7 +108,8 @@ export async function zfCodesKopieren() {
 export async function zfZuruecksetzen(uid, name) {
   const admin_password = await bestaetigeMitPasswort(tRaw('zf.reset_title'), tRaw('zf.reset_text', { name }), 'schloss');
   if (admin_password === null) return;
-  const d = await api('DELETE', `/v1/auth/users/${uid}/zweiter-faktor`, { admin_password });
+  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/users/${uid}/zweiter-faktor`, { admin_password, ...z }));
+  if (d === null) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   toast(tRaw('zf.disabled'), 'success');
   loadUsers();

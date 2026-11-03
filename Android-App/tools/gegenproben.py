@@ -23,6 +23,7 @@ Rückgabe 0 nur, wenn jede Gegenprobe rot war und es mindestens eine gab.
 import glob
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -68,15 +69,29 @@ def miss(projekt, wurzel, patch, gradle):
     if os.path.exists(bericht):
         os.remove(bericht)
     git(wurzel, 'apply', os.path.abspath(patch))
+    befehl = gradle + [f':{k["Modul"]}:testDebugUnitTest', '--rerun', '--tests', klasse]
     try:
-        lauf = subprocess.run(gradle + [f':{k["Modul"]}:testDebugUnitTest', '--rerun', '--tests', klasse],
-                              cwd=projekt, capture_output=True, text=True)
+        lauf = subprocess.run(befehl, cwd=projekt, capture_output=True, text=True)
+        # KSP verliert nach einem Patch in einem Vormodul sporadisch dessen Klassen
+        # („… could not be resolved“) oder Hilt findet alte Ausgaben („Attempt to
+        # recreate a file“) — in einem frischen Bau nie. Dann einmal mit
+        # leerem KSP-Stand wiederholen; ein echter Übersetzungsfehler bleibt rot.
+        ausgabe = lauf.stdout + lauf.stderr
+        if not os.path.exists(bericht) and ('could not be resolved' in ausgabe
+                                            or 'Attempt to recreate a file' in ausgabe):
+            for alt in glob.glob(os.path.join(projekt, '*', 'build', 'kspCaches')) + \
+                       glob.glob(os.path.join(projekt, '*', 'build', 'generated', 'ksp')):
+                shutil.rmtree(alt, ignore_errors=True)
+            lauf = subprocess.run(befehl, cwd=projekt, capture_output=True, text=True)
     finally:
         zurueck = git(wurzel, 'apply', '-R', os.path.abspath(patch))
     if zurueck.returncode != 0:
         return False, f'{name}: Patch liess sich nicht zurücknehmen — {zurueck.stderr.strip()}'
     if not os.path.exists(bericht):
-        ende = '\n'.join((lauf.stdout + lauf.stderr).splitlines()[-15:])
+        zeilen = (lauf.stdout + lauf.stderr).splitlines()
+        # Die eigentliche Ursache (Übersetzer, KSP) steht weit vor Gradles Schlusszeilen.
+        ursache = [z for z in zeilen if z.startswith(('e: ', 'w: [ksp]')) or '[ksp]' in z or 'error:' in z][:20]
+        ende = '\n'.join(ursache + zeilen[-15:])
         return False, f'{name}: kein Testbericht für {klasse} — der Test lief nicht (übersetzt der Patch?)\n{ende}'.rstrip()
     rot = fehlschlaege(bericht)
     erwartet = k.get('Rot')
@@ -91,7 +106,7 @@ def main():
     ordner = sys.argv[1] if len(sys.argv) > 1 else 'gegenproben'
     projekt = os.path.dirname(os.path.abspath(ordner))
     wurzel = git(projekt, 'rev-parse', '--show-toplevel').stdout.strip()
-    gradle = shlex.split(os.environ.get('GEGENPROBE_GRADLE', './gradlew --no-daemon -Pksp.incremental=false'))
+    gradle = shlex.split(os.environ.get('GEGENPROBE_GRADLE', './gradlew --no-daemon --no-build-cache -Pksp.incremental=false'))
     patches = sorted(glob.glob(os.path.join(ordner, '*.patch')))
     if not patches:
         print(f'Keine Gegenproben unter {ordner}/ — ohne sie prüft dieser Schritt nichts.')

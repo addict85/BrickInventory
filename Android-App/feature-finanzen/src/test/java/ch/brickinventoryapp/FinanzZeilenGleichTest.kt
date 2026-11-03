@@ -68,7 +68,7 @@ class FinanzZeilenGleichTest {
         assertEquals(listOf(150.0), teilZeilen(listOf(teil.copy(acquisitions = emptyList()))).map { it.second.kaufpreis })
 
         val s = code(read("ui/screens/FinanceSections.kt"))
-        assert(Regex("""purchaseStr = zeile\.kaufpreis""").findAll(s).count() == 2) {
+        assert(Regex("""purchaseStr = zeile\.kaufGesamt""").findAll(s).count() == 2) {
             "Teile und Minifiguren reichen den Kaufpreis nicht durch — die Zeile bliebe leer"
         }
     }

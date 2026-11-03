@@ -36,12 +36,11 @@ data class DunkleRollen(
 
 fun dunkleRollen(design: String): DunkleRollen {
     fun t(name: String) = argb(dunkelToken(design, name) ?: error("Token --$name fehlt in der dunklen Fassung"))
-    // Gewählte Chips und der kleine Knopf tragen secondaryContainer. Bernstein dafür hat
-    // nur „brick“ auch hell (Sand); classic mischte im Dunkeln sonst Bernstein und Blau,
-    // Fächer und Noppe sind hell neutral und bleiben es hier.
+    // Gewählte Chips und der kleine Knopf tragen secondaryContainer, im Dunkeln im Ton
+    // der Hauptfarbe: Bernstein neben Hellblau (brick, früher auch classic) waren zwei
+    // Akzente. Fächer und Noppe sind hell neutral und bleiben es hier.
     val (zweitFlaeche, aufZweitFlaeche) = when (design) {
-        "brick" -> t("a100") to t("a-schrift")
-        "classic" -> t("b50") to t("b700")
+        "brick", "classic" -> t("b50") to t("b700")
         else -> t("s200") to t("txt")
     }
     return DunkleRollen(

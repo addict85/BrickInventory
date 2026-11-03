@@ -24,6 +24,7 @@ function zeige() {
   modal.querySelectorAll('.ew-schritt').forEach(el =>
     el.classList.toggle('aktiv', el.dataset.schritt === _schritte[_jetzt]));
   G('ew-schritte').textContent = tRaw('setup.step', { n: _jetzt + 1, von: _schritte.length });
+  G('ew-spaeter').hidden = _jetzt === _schritte.length - 1;
   G('ew-zurueck').style.display = _jetzt > 0 ? '' : 'none';
   G('ew-weiter').textContent = _jetzt === _schritte.length - 1 ? tRaw('setup.finish') : tRaw('setup.next');
 }
@@ -33,10 +34,20 @@ function setzeStand(quelle, ok) {
   if (el) el.innerHTML = ok ? ico('ok') : '';
 }
 
+/**
+ * Von selbst geht der Assistent nur auf, wenn das Startpasswort noch gilt oder
+ * die Sammlung leer ist. Über einer gefüllten Sammlung spränge er sonst nach
+ * dem Rendern hinein; dort genügt das Hinweisband zum Rebrickable-Schlüssel.
+ */
 export async function pruefeEinrichtung() {
   const d = await api('GET', '/v1/settings/einrichtung');
   if (!d?.success || !d.offen) return;
-  _schritte = [...(d.passwort_aendern ? ['passwort'] : []), 'quellen', 'erstes-set'];
+  if (!d.passwort_aendern) {
+    const s = (await api('GET', '/v1/stats'))?.stats;
+    const bestand = s ? (s.total_sets || 0) + (s.total_parts || 0) + (s.total_minifigs || 0) : 0;
+    if (bestand > 0) return;
+  }
+  _schritte = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'erstes-set'];
   _jetzt = 0;
   for (const [q, ok] of Object.entries(d.quellen || {})) setzeStand(q, ok);
   zeige();

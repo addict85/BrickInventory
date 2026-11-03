@@ -38,7 +38,7 @@
     <string name="settings_language_de">German</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
-    <string name="login_title">Welcome back</string>
+    <string name="login_title">Sign in to your server</string>
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
@@ -56,7 +56,12 @@
     <string name="nutzer_ca_frage_text">The app will then also accept certificates for your server that were issued by a certificate authority a user installed.\n\nSuch an authority may come from your employer, a network administrator or malware. Whoever controls it can read and change the traffic, including your password and sign-in token. The only remaining protection is comparing the fingerprint with the web app.\n\nUpdates from GitHub are still checked against the system authorities only.\n\nOnly turn this on if you installed the authority yourself for your server.</string>
     <string name="nutzer_ca_frage_ja">Turn on anyway</string>
     <string name="setup_qr_titel">Use this server?</string>
-    <string name="setup_qr_text">The QR code points to:\n%1$s\n\nThe app will only send your login there. Continue only if this is your server.</string>
+    <string name="setup_qr_ziel">The QR code points to this server:</string>
+    <string name="setup_qr_hinweis">The app will only send your login there. Continue only if this is your server.</string>
+    <string name="setup_qr_international" tools:ignore="TypographyDashes">The server name contains characters from other alphabets and is shown in its technical form (xn--…). Such letters can look exactly like familiar ones: compare the name character by character with your server.</string>
+    <string name="setup_qr_anderer_server">This code leads to a different server than the current one (%1$s). If you continue, you will be logged out there and everything you enter from now on goes to the new server.</string>
+    <string name="setup_url_benutzerangabe">An address with a user name (…@…) is not accepted. Enter only the server address, e.g. https://brick.fritz.box</string>
+    <string name="setup_url_zusatz">The address must not contain spaces, line breaks, \\, ? or #. Enter only the server address, e.g. https://brick.fritz.box</string>
     <string name="setup_qr_uebernehmen">Use and log in</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
@@ -134,8 +139,11 @@
     <string name="gallery_refresh">Refresh</string>
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
+    <string name="gallery_price_each">each</string>
     <string name="gallery_delete_title">Delete set?</string>
-    <string name="gallery_delete_text">%1$s and all parts will be removed.</string>
+    <string name="gallery_delete_text">%1$s and its parts will be removed. You can still undo it for a moment afterwards.</string>
+    <string name="gallery_set_deleted_undo">%1$s deleted</string>
+    <string name="common_undo">Undo</string>
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
     <string name="offline_stand">Offline – data as of %1$s</string>
@@ -153,9 +161,9 @@
     <string name="gallery_add">Add</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
-    <string name="minifigs_stat_types">Types</string>
+    <string name="minifigs_stat_types">Figure types</string>
     <string name="minifigs_stat_total">Figures in total</string>
-    <string name="minifigs_stat_manual">Manual</string>
+    <string name="minifigs_stat_manual">Added by you</string>
     <string name="minifigs_search_placeholder">Search…</string>
     <string name="minifigs_manual_section">Manually added minifigures</string>
     <string name="minifigs_sets_section">From sets</string>
@@ -191,7 +199,6 @@
         <item quantity="one">%1$d part</item>
         <item quantity="other">%1$d parts</item>
     </plurals>
-    <string name="partslist_set_number_placeholder">Set number (e.g. 75192)</string>
     <string name="partslist_scan">Scan</string>
     <string name="partslist_generate">Generate</string>
     <string name="partslist_pdf_error_title">PDF error</string>
@@ -199,14 +206,20 @@
     <string name="partslist_reset">Reset</string>
     <string name="partslist_fill_owned">My parts</string>
     <string name="storage_manage">Storage locations</string>
-    <string name="storage_manage_hint">The places offered when you file a set or a part. You can also add new ones right there.</string>
+    <string name="storage_manage_hint">These locations are offered when adding items. The star marks the preselected one.</string>
     <string name="storage_new">New storage location</string>
     <string name="storage_add">Add</string>
     <string name="storage_empty">No storage locations yet.</string>
-    <string name="storage_default_hint">The star marks the storage location that is preselected when adding items. Tap again to switch it off.</string>
     <string name="storage_default_set">Set as default when adding</string>
     <string name="storage_default_is">Default when adding — tap to switch off</string>
-    <string name="storage_delete">Delete storage location</string>
+    <string name="storage_default_label">Preselected when adding</string>
+    <string name="storage_add_button">Add storage location</string>
+    <string name="storage_name">Location name</string>
+    <string name="storage_rename">Rename</string>
+    <string name="storage_rename_title">Rename storage location</string>
+    <string name="storage_menu_cd">Actions for %1$s</string>
+    <string name="storage_delete_title">Delete storage location?</string>
+    <string name="storage_delete_text">“%1$s” will be deleted. This only works while nothing is stored there.</string>
     <string name="detail_storage">Storage</string>
     <string name="detail_alert">Price alert</string>
     <string name="alert_channel_name">Price alerts</string>
@@ -227,11 +240,13 @@
     <string name="detail_price_none_yet">no price yet</string>
     <string name="detail_purchase_none">not recorded</string>
     <string name="detail_storage_ph">e.g. box 3</string>
-    <string name="filter_condition_all">All conditions</string>
+    <string name="detail_storage_none">No storage location</string>
+    <string name="filter_condition_all">All</string>
     <string name="filter_storage_all">All locations</string>
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Reset</string>
+    <string name="sort_menu_cd">Sort: %1$s</string>
     <string name="filter_section_sort">Sort</string>
     <string name="filter_section_spare">Spare parts</string>
     <string name="filter_section_color_category">Color and category</string>
@@ -252,7 +267,8 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Collects the parts of one or more sets — for rebuilding or ordering what is missing.</string>
+    <string name="partslist_empty_hint">Add one or more sets above and tap “Generate” — for rebuilding or ordering what is missing.</string>
+    <string name="partslist_empty_title">No build list yet</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
         <item quantity="one">×%1$d  ·  %2$d type</item>
@@ -291,7 +307,7 @@
     <string name="finance_market_avg">Collection market value</string>
 
     <!-- ══════════════ Parts screen ══════════════ -->
-    <string name="parts_stat_types">Types</string>
+    <string name="parts_stat_types">Part types</string>
     <string name="parts_stat_colors">Colors</string>
     <string name="parts_stat_total">Pieces in total</string>
     <string name="parts_manual_section">Manually added parts</string>
@@ -390,6 +406,9 @@
     <string name="main_barcode_figs">Minifigures</string>
     <string name="main_menu_monitoring">Background work</string>
     <string name="main_menu_logout">Log out</string>
+    <string name="logout_confirm_title">Log out?</string>
+    <string name="logout_confirm_text">You will be logged out on this device. To continue, log in again with your password.</string>
+    <string name="update_badge">Update available</string>
     <string name="main_menu_change_server">Change server</string>
     <string name="vm_settings_saved">Settings saved</string>
 
@@ -438,6 +457,7 @@
     <string name="vm_error">Error: %1$s</string>
     <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
     <string name="vm_session_expired">Session expired — please log in again</string>
+    <string name="vm_abmelden_nachgeholt">Logged out. The server could not be reached, so the app will invalidate the login there as soon as it is online. To be sure, check “Signed-in devices” in the web app.</string>
     <string name="vm_rechte_entzogen">Your administrator rights no longer apply — the administration areas are hidden.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
@@ -528,13 +548,22 @@
     <string name="catalog_buy_bricklink">Buy on BrickLink</string>
     <string name="catalog_search_bricklink">Search on BrickLink</string>
     <string name="finance_purchase_short">Purchase: %1$s</string>
+    <string name="finance_purchase_total">Purchase total: %1$s</string>
     <string name="household_scope_label">Accounts</string>
     <string name="household_scope_all">All accounts</string>
     <string name="household_scope_own">Own</string>
     <string name="household_for_account">For account</string>
     <string name="household_self">(me)</string>
     <string name="household_title">Household</string>
-    <string name="household_intro">Link accounts into a household: a main account sees the sets, parts and minifigures of its direct sub-accounts combined. An account can belong to several main accounts if it accepts each invitation itself. Both accounts must use the same currency.</string>
+    <string name="household_intro_more">A main account only sees its direct sub-accounts, not theirs. An account can belong to several main accounts if it accepts each invitation itself.</string>
+    <string name="household_linked">Linked accounts</string>
+    <string name="household_invite_section">Invite an account</string>
+    <string name="household_unlink_title">Unlink account?</string>
+    <string name="household_unlink_text">You will no longer belong to the main account “%1$s”. Linking again needs a new invitation.</string>
+    <string name="household_remove_title">Remove sub-account?</string>
+    <string name="household_remove_text">You will no longer see the collection of “%1$s”. Linking again needs a new invitation.</string>
+    <string name="common_learn_more">Learn more</string>
+    <string name="household_intro">A main account sees the sets, parts and minifigures of its sub-accounts combined. Both accounts need the same currency.</string>
     <string name="household_state_none">This account is not linked to any other.</string>
     <string name="household_state_main">Sub-accounts</string>
     <string name="household_state_parents">Belongs to these main accounts</string>
@@ -542,7 +571,7 @@
     <string name="household_former_via">previously via %1$s</string>
     <string name="household_former_dismiss">Dismiss</string>
     <string name="household_invite_create">Create invitation code</string>
-    <string name="household_invite_hint">Enter the code in the other account under Settings. Valid for 24 hours, usable once.</string>
+    <string name="household_invite_hint">Enter the code in the other account under “Household”. Valid for 24 hours, usable once.</string>
     <string name="household_invite_copy">Copy</string>
     <string name="household_invite_label">Invitation code</string>
     <string name="household_redeem_title">Accept an invitation</string>
@@ -615,6 +644,7 @@
     <string name="pdfview_loading_bytes">Loading PDF… %1$s</string>
     <string name="pdfview_rendering">Loading PDF…</string>
     <string name="pdfview_load_failed">Could not load: %1$s</string>
+    <string name="pdfview_fremder_host">This PDF is not on your server. Open it from the set page in another app.</string>
     <string name="pdfview_page">Page %1$d</string>
     <string name="pdfview_unknown_error">Unknown error</string>
     <string name="pdfview_download_failed">Download failed</string>
@@ -699,13 +729,18 @@
 
     <!-- ══════════════ CSV upload ══════════════ -->
     <string name="csv_upload_title">Import CSV</string>
-    <string name="csv_upload_sets">Sets</string>
-    <string name="csv_upload_parts">Parts</string>
-    <string name="csv_upload_figs">Minifigures</string>
-    <string name="csv_upload_wanted">Watchlist</string>
-    <string name="csv_upload_alerts">Price alerts</string>
+    <string name="csv_format_sets">Columns: set_number, quantity, purchase_price, condition, acquired_at</string>
+    <string name="csv_format_parts">Columns: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
+    <string name="csv_format_figs">Columns: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
+    <string name="csv_format_wanted">Columns: set_number, condition, created_at</string>
+    <string name="csv_format_alerts">Columns: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_upload_sets">Import sets …</string>
+    <string name="csv_upload_parts">Import parts …</string>
+    <string name="csv_upload_figs">Import minifigures …</string>
+    <string name="csv_upload_wanted">Import watchlist …</string>
+    <string name="csv_upload_alerts">Import price alerts …</string>
     <string name="vouchers_import_done">%1$s, %2$s</string>
-    <string name="csv_upload_hint">Same files as in the web app. Maximum %1$d MB.</string>
+    <string name="csv_upload_hint">The same files as in the web app, with a header row, at most %1$d MB.</string>
     <string name="csv_upload_unreadable">The selected file could not be read.</string>
     <string name="csv_upload_too_big">The file is larger than %1$d MB.</string>
     <string name="csv_upload_result">%1$s: %2$s, %3$s, %4$s</string>
@@ -829,6 +864,12 @@
     <string name="vouchers_pdf_hint">The values are read from it. Anything you fill in yourself wins. A PDF with several pages yields several vouchers.</string>
     <string name="vouchers_export">Export all vouchers as PDF</string>
     <string name="vouchers_pin_show">Show PIN</string>
+    <string name="schritt_untertitel">Confirm with fingerprint, face or your device lock</string>
+    <string name="schritt_entsperren">Confirm</string>
+    <string name="schritt_gutschein">Show voucher PIN</string>
+    <string name="schritt_codes">Recovery codes</string>
+    <string name="schritt_verwaltung">Open administration</string>
+    <string name="schritt_voller_zugriff">Sign in with admin rights</string>
     <string name="vouchers_pin_hide">Hide PIN</string>
     <string name="vouchers_delete_confirm">Really delete voucher %1$s? The stored PDF goes with it.</string>
     <string name="vouchers_saved">Voucher saved</string>
@@ -837,6 +878,12 @@
     <string name="vouchers_amount_invalid">Please enter a valid amount</string>
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
+    <string name="vouchers_confirm_title">Confirm with password</string>
+    <string name="vouchers_confirm_klartext">The number and PIN are only shown after you confirm. The request is logged.</string>
+    <string name="vouchers_confirm_pdf">The PDF shows the number and PIN. Please confirm with your password.</string>
+    <string name="vouchers_confirm_button">Confirm</string>
+    <string name="vouchers_delete_offline">Deleting needs a connection to the server: your password is not stored on the device.</string>
+    <string name="vouchers_mask_hint">Stays unchanged unless you type something new</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
     <!-- Alle Platzhalter sind %s und nicht %d, auch wo Zahlen eingesetzt
@@ -877,8 +924,8 @@
         <item quantity="other">Set up · %d recovery codes left</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
-    <string name="setup_qr_pin">The code also names the server\'s certificate. The app will accept only that one.</string>
-    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it above.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
+    <string name="setup_qr_pin">The code also names the server\'s certificate. The app remembers it for this address and from then on accepts only this one. Only continue if you have just created the code yourself in your web app; under Settings → Server certificate it shows the same beginning.</string>
+    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it with the button below.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
     <string name="setup_altbestand_titel">Encrypted connections only</string>
     <string name="setup_qr_klartext_abgelehnt">This QR code names an unencrypted address (http). The app only connects via https: switch the server to https (README, “HTTPS with your own CA”) and create the code again.</string>
     <string name="setup_url_unlesbar">This address cannot be read. Example: https://brick.fritz.box</string>
@@ -914,6 +961,9 @@
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
     <string name="cd_set_delete">Delete %1$s</string>
     <string name="settings_hell_fest">This design is always dark; light and dark have no effect here.</string>
+    <string name="vouchers_cd_menu">Actions for voucher %1$s</string>
+    <string name="vouchers_menu_balance">Check balance with LEGO</string>
+    <string name="vouchers_menu_pdf">Open PDF</string>
     <string name="vouchers_cd_delete">Delete voucher %1$s</string>
     <string name="vouchers_cd_edit">Edit voucher %1$s</string>
     <string name="vouchers_cd_pdf">Open PDF of voucher %1$s</string>
@@ -927,7 +977,7 @@
     <string name="chart_change_year">%1$s this year</string>
     <string name="chart_change_month">%1$s this month</string>
     <string name="chart_change_week">%1$s this week</string>
-    <string name="finance_range_label">Value of your sets today, from lowest to highest market price</string>
+    <string name="finance_range_label">Range today: all sets at their lowest or highest price</string>
     <string name="wanted_add_first">Add a set to the list</string>
     <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
     <string name="fehler_anmeldung_text">Your session has expired.</string>
@@ -983,4 +1033,8 @@
     <string name="hintergrund_wiederholt_ok">Job will be retried</string>
     <string name="hintergrund_gestartet">%1$s is starting</string>
     <string name="hintergrund_nichts_gestartet">%1$s: nothing to start</string>
+    <plurals name="gallery_delete_text_exemplare">
+        <item quantity="one">%1$d copy of %2$s and its parts will be removed. You can still undo it for a moment afterwards.</item>
+        <item quantity="other">All %1$d copies of %2$s and their parts will be removed. You can still undo it for a moment afterwards.</item>
+    </plurals>
 </resources>

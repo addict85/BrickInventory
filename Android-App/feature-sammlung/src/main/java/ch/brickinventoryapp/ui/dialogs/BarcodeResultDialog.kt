@@ -120,16 +120,15 @@ AlertDialog(
                 }
             }
             val imgUrl = barcodeState.imageLocal?.let { "${state.serverUrl}$it" } ?: barcodeState.imageUrl
-            if (imgUrl != null) {
-                coil3.compose.AsyncImage(
-                    model = coil3.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current)
-                        .data(imgUrl).crossfade(true).build(),
-                    imageLoader = imageLoader,
-                    contentDescription = barcodeState.setName,
-                    modifier = Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium),
-                    contentScale = ContentScale.Fit
-                )
-            }
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            ch.brickinventoryapp.ui.components.ProduktBild(
+                model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                imageLoader = imageLoader,
+                contentDescription = barcodeState.setName,
+                modifier = Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium),
+                contentScale = ContentScale.Fit,
+                ersatzGroesse = 56.dp,
+            )
             if (barcodeState.setName != null)
                 Text(barcodeState.setName!!, fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium)

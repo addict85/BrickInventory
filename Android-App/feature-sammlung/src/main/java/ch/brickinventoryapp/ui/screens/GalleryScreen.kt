@@ -8,6 +8,9 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
@@ -58,7 +61,6 @@ import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -71,6 +73,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
+import ch.brickinventoryapp.ui.components.SortierMenue
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -86,6 +89,8 @@ fun GalleryScreen(
     /** Scroll-Zustand von aussen, damit er den Weg in die Detailansicht übersteht. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
+    // Das Set, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
+    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
     // Zustand und Aktionen vom ViewModel statt über Parameter (wie PartsScreen); die
     // Namen bleiben dieselben, damit der Rumpf darunter unverändert ist.
     val state by vm.state.collectAsStateWithLifecycle()
@@ -120,7 +125,6 @@ fun GalleryScreen(
     val onThemeChange: (String) -> Unit = vm::setGalleryTheme
     val onSortChange: (String) -> Unit = vm::setGallerySort
     val onLoadMore: () -> Unit = vm::loadMoreSets
-    val onDeleteSet: (String) -> Unit = vm::deleteSet
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
     val lagerorte = lagerState.orte
     val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
@@ -176,13 +180,24 @@ fun GalleryScreen(
             // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster. Scannen
             // sitzt daneben, damit unten nur EIN Knopf schwebt. Im Fehlerzustand nicht:
             // Ohne Sammlung gibt es nichts zu suchen.
-            if (anzeige != GalerieAnzeige.FEHLER) SucheMitFilter(
+            if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) SucheMitFilter(
                 wert = searchInput,
                 onWert = { searchInput = it; onQueryChange(it) },
                 platzhalter = stringResource(R.string.gallery_search_placeholder),
-                aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme, sort),
+                aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme),
                 onFilter = { zeigeFilter = true },
                 onScannen = onScanBarcode,
+                sortierung = {
+                    // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
+                    // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
+                    SortierMenue(
+                        optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
+                                          "year_desc", "price_desc", "price_asc",
+                                          "qty_desc", "qty_asc").map { it to gallerySortLabel(it) },
+                        gewaehlt = sort, onWahl = onSortChange,
+                        vorgabe = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
+                    )
+                },
             )
 
             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
@@ -238,8 +253,9 @@ fun GalleryScreen(
                         }
                         itemsIndexed(sets, key = { _, s -> s.setNumber }) { index, set ->
                             Bewegt {
-                                SetCard(set, serverUrl, imageLoader, onSetClick, onDeleteSet, index,
-                                    preis = preise[set.setNumber], waehrung = currency)
+                                SetCard(set, serverUrl, imageLoader, onSetClick, index,
+                                    preis = preise[set.setNumber], waehrung = currency,
+                                    ausgewaehlt = set.setNumber == gewaehlt)
                             }
                         }
                         if (loadingMore) {
@@ -260,7 +276,8 @@ fun GalleryScreen(
 
         // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
         // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
-        if (anzeige != GalerieAnzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+        // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
+        if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
             stringResource(R.string.gallery_add_set), { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
@@ -271,7 +288,6 @@ fun GalleryScreen(
             members = householdMembers, konto = scopeMode, onKonto = onScopeChange,
             orte = lagerorte, lager = lagerModus, onLager = onLagerChange,
             themen = themes, thema = theme, onThema = onThemeChange,
-            sortierung = sort, onSortierung = onSortChange,
             onSchliessen = { zeigeFilter = false },
         )
     }
@@ -311,38 +327,27 @@ private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
 }
 
 /**
- * Konto, Lagerort, Sortierung und Thema der Galerie. Angewandt wird jede Wahl
- * sofort auf dem Server; das Blatt bleibt offen, damit man mehrere setzen kann.
+ * Konto, Lagerort und Thema der Galerie. Angewandt wird jede Wahl sofort auf dem
+ * Server; das Blatt bleibt offen, damit man mehrere setzen kann. Die Sortierung
+ * hat ihr eigenes Menü neben dem Filterknopf.
  */
 @Composable
 private fun GalerieFilterBlatt(
     members: List<MitgliedAnsicht>, konto: String, onKonto: (String) -> Unit,
     orte: List<LagerortAnsicht>, lager: String, onLager: (String) -> Unit,
     themen: List<String>, thema: String, onThema: (String) -> Unit,
-    sortierung: String, onSortierung: (String) -> Unit,
     onSchliessen: () -> Unit,
 ) {
-    val vorgabe = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
     // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
     val zuruecksetzen: () -> Unit = {
         if (Filterzahl.konto(members, konto) > 0) onKonto(ch.brickinventoryapp.data.ScopeFilter.ALL)
         if (Filterzahl.lager(orte, lager) > 0) onLager("")
         if (thema.isNotBlank()) onThema("")
-        if (sortierung != vorgabe) onSortierung(vorgabe)
     }
-    val aktiv = Filterzahl.galerie(members, konto, orte, lager, thema, sortierung)
+    val aktiv = Filterzahl.galerie(members, konto, orte, lager, thema)
     FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
         KontoFilterAbschnitt(members, konto, onKonto)
         LagerortFilterAbschnitt(orte, lager, onLager)
-        FilterAbschnitt(stringResource(R.string.filter_section_sort)) {
-            // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
-            // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
-            listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                   "year_desc", "price_desc", "price_asc",
-                   "qty_desc", "qty_asc").forEach { w ->
-                FilterWahl(gallerySortLabel(w), sortierung == w) { if (sortierung != w) onSortierung(w) }
-            }
-        }
         if (themen.isNotEmpty()) {
             FilterAbschnitt(stringResource(R.string.catalog_filter_theme)) {
                 FilterWahl(stringResource(R.string.gallery_all), thema.isEmpty()) { if (thema.isNotEmpty()) onThema("") }
@@ -374,14 +379,14 @@ fun SetCard(
     serverUrl: String,
     imageLoader: ImageLoader,
     onClick: (String) -> Unit,
-    onDelete: (String) -> Unit,
     /** Position in der Kachelwand — nur fuer die Deckelfarbe des Designs "noppe". */
     position: Int = 0,
     /** Marktpreis und G&V; fehlt beides, steht der Kaufpreis da (wie im Web). */
     preis: KachelPreis? = null,
     waehrung: String = "EUR",
+    /** Steht das Detail dieses Sets daneben? Dann trägt die Kachel einen Rahmen. */
+    ausgewaehlt: Boolean = false,
 ) {
-    var deleting by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
     // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
     // `_thumb`-Datei fehlt (nach einem CSV-Import erzeugt der Server sie nachträglich)
@@ -409,7 +414,9 @@ fun SetCard(
             // Die Mindesthöhe gibt dem Bild Raum über den Etiketten; der Zuwachs geht an den
             // Bildbereich, die Textzeilen bleiben.
             modifier = Modifier.heightIn(min = 272.dp)
-                .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
+                .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier)
+                .semantics { selected = ausgewaehlt }
+                .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.karte) else Modifier),
             onClick = { onClick(set.setNumber) }
         ) {
             Column {
@@ -428,12 +435,11 @@ fun SetCard(
                 // Farbe; deshalb derselbe Baustein statt eines zweiten.
                 if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
                 Box(Modifier.fillMaxWidth().height(if (isBrick) 142.dp else 170.dp)) {
-                    if (imageUrl != null) {
-                        ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
-                            AsyncImage(
-                            model = ImageRequest.Builder(ctx).data(imageUrl)
+                    ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
+                            ch.brickinventoryapp.ui.components.ProduktBild(
+                            model = imageUrl?.let { ImageRequest.Builder(ctx).data(it)
                                 .memoryCacheKeyExtra("retry", retryNonce.toString())
-                                .crossfade(true).build(),
+                                .crossfade(true).build() },
                             imageLoader = imageLoader,
                             contentDescription = set.name,
                             onState = { st ->
@@ -452,72 +458,56 @@ fun SetCard(
                                     onImageError()
                                 }
                             },
-                            // Unten Platz für Zustands- und Besitzer-Etiketten, damit sie das Bild
-                            // nicht verdecken; ContentScale.Fit rückt es nach oben statt es zu
-                            // beschneiden.
+                            // Randlos bis an die Kartenkanten: Der weisse Bildgrund nimmt die Fläche
+                            // ein, die ContentScale.Fit neben dem Bild frei lässt.
                             modifier = bild
-                                .fillMaxSize().padding(bottom = 44.dp)
+                                .fillMaxSize()
                                 .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
-                            contentScale = ContentScale.Fit
+                            contentScale = ContentScale.Fit,
+                            ersatzGroesse = 48.dp,
+                            bildgrund = true,
+                            innenAbstand = Abstaende.klein,
                         )
-                        }
-                    } else {
-                        Box(Modifier.fillMaxSize(), Alignment.Center) {
-                            Image(painterResource(R.drawable.ic_logo), null, Modifier.size(56.dp))
-                        }
                     }
                     // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
                     // Menü, damit die Bedienelemente auf eigener Fläche stehen (lichtStreifen()).
                     if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
-                    // Column statt Box: Eine Box stapelt, die Besitzer-Etiketten verdeckten die
-                    // Zustandsplaketten. Untereinander bleibt beides lesbar.
-                    Column(Modifier.align(Alignment.BottomStart).padding(6.dp),
-                           verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                    // Die Kachel trägt keine zerstörerische Aktion: Gelöscht wird im Detail,
+                    // mit Rückfrage und danach „Rückgängig“. Neben „×2“ lag der Mülleimer
+                    // als einzige sichtbare Aktion der Kachel.
+                    if (set.quantity > 1) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = Formen.etikett,
+                            modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.klein),
+                        ) {
+                            Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                // Zustand und Besitzer unter dem Bild statt darüber: Über dem Bild brauchten sie
+                // einen freien Streifen, der als Lücke zwischen Bild und „Neu“ stand.
+                Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Column(Modifier.padding(bottom = Abstaende.haar), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                         ConditionBadges(set.conditions, set.condition)
                         // Wem gehört dieses Exemplar? Ohne die Angabe verschiebt
                         // man im Haushalt das falsche.
                         OwnerBadges(set.owners)
                     }
-                    // Überlaufmenü oben rechts, wo Android es erwartet; die
-                    // Mengenplakette bleibt in derselben Ecke, links davon.
-                    Row(Modifier.align(Alignment.TopEnd).padding(Abstaende.haar),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        if (set.quantity > 1) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = Formen.etikett,
-                            ) {
-                                Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        // Ein Menü mit nur „Löschen“ war ein Tipp zu viel: direkt der Knopf, die
-                        // Rückfrage danach bleibt. In jedem Design auf eigener runder Fläche,
-                        // damit das Symbol auf jedem Bild lesbar ist.
-                        IconButton(onClick = { deleting = true },
-                            modifier = Modifier.padding(Abstaende.haar)
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)) {
-                            Icon(Icons.Default.DeleteOutline, stringResource(R.string.cd_set_delete, set.name ?: set.setNumber),
-                                Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-                Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Zwei Zeilen, Thema und Teilezahl immer: Kacheln einer Reihe sind dann
+                    // gleich hoch, auch wenn ein Name kurz ist oder eine Angabe fehlt.
                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
                         lineHeight = 16.sp)
-                    set.theme?.let { thema ->
-                        Text(thema, style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary, maxLines = 1)
-                    }
-                    set.pieces?.let { teile ->
-                        Text(fmtInt(teile) + stringResource(R.string.gallery_pieces_suffix),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Text(set.theme.orEmpty(), style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }.orEmpty(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                     // FlowRow und je eine Zeile: Reicht die Breite nicht für beide, rückt die
                     // Prozentzahl unter den Betrag, statt Zeichen für Zeichen umzubrechen.
                     val betrag = kachelBetrag(set, preis)
@@ -526,12 +516,18 @@ fun SetCard(
                             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
                             maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.align(Alignment.CenterVertically))
+                        // Der Betrag gilt je Stück; die Finanzen zeigen dasselbe Set mit dem Wert
+                        // aller Stück, und ohne Hinweis passten die Zahlen nicht zusammen.
+                        if (set.quantity > 1) Text(stringResource(R.string.gallery_price_each),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
                         val pct = preis?.pnlPct
                         if (pct != null) Text(fmtProzent(pct),
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
                             color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error,
                             maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
-                    }
+                    } else Text("", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -539,21 +535,6 @@ fun SetCard(
             mass = NoppenMass.Stein,
             modifier = Modifier.align(Alignment.TopStart),
             farbe = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.noppen,
-        )
-    }
-
-    if (deleting) {
-        AlertDialog(
-            onDismissRequest = { deleting = false },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.gallery_delete_title)) },
-            text = { Text(stringResource(R.string.gallery_delete_text, set.name ?: set.setNumber)) },
-            confirmButton = {
-                TextButton(onClick = { deleting = false; onDelete(set.setNumber) }) {
-                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(R.string.common_cancel)) } }
         )
     }
 }
@@ -572,6 +553,8 @@ fun AddSetDialog(
      * keine Vorgabe.
      */
     vorgabe: String = "",
+    /** Nur Tests: Ein blinkender Cursor lässt Robolectric nie zur Ruhe kommen. */
+    sofortFokus: Boolean = true,
 ) {
     var setNumber by rememberSaveable { mutableStateOf("") }
     var quantity  by rememberSaveable { mutableStateOf("1") }
@@ -586,7 +569,7 @@ fun AddSetDialog(
     // weil das Feld beim ersten Durchlauf noch nicht angeordnet ist und requestFocus()
     // sonst ins Leere liefe.
     val setFeldFokus = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
+    if (sofortFokus) LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)
         try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
     }
@@ -610,51 +593,47 @@ fun AddSetDialog(
         }
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary) },
-        title = { Text(stringResource(R.string.gallery_add_set_title), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OwnerPicker(householdMembers, owner, { owner = it })
-                OutlinedTextField(
-                    value = setNumber,
-                    onValueChange = { setNumber = NumericInput.setNumber(it) },
-                    label = { Text(stringResource(R.string.gallery_set_number)) },
-                    placeholder = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
-                    modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
-                )
-                OutlinedTextField(
-                    value = quantity,
-                    onValueChange = { quantity = NumericInput.quantity(it) },
-                    label = { Text(stringResource(R.string.common_quantity)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
-                )
-                OutlinedTextField(
-                    value = purchasePrice,
-                    onValueChange = { purchasePrice = NumericInput.price(it) },
-                    label = { Text(stringResource(R.string.gallery_purchase_price)) },
-                    placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.preisTastatur(),
-                    keyboardActions = KeyboardActions(onDone = { keyboard?.hide(); submit() })
-                )
-                Zustandszeile(zustand = condition, onZustand = { condition = it })
-                LagerortErfassung(lagerort, lagerorte, { lagerort = it })
-            }
-        },
-        confirmButton = {
-            Button(onClick = { submit() },
-                enabled = setNumber.isNotBlank(), shape = Formen.knopf) { Text(stringResource(R.string.gallery_add)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
-        shape = Formen.chip
-    )
+    // Derselbe Rahmen wie jede Erfassung (ErfassenDialog): Titel links, ohne Symbol.
+    ch.brickinventoryapp.ui.components.ErfassenDialog(
+        titel = stringResource(R.string.gallery_add_set_title),
+        bestaetigen = stringResource(R.string.gallery_add),
+        onBestaetigen = { submit() },
+        onAbbrechen = onDismiss,
+        bestaetigenAn = setNumber.isNotBlank(),
+    ) {
+        OwnerPicker(householdMembers, owner, { owner = it })
+        // Das Beispiel als Hilfetext wie im Merkposten-Dialog: Ein Platzhalter verschwand
+        // mit dem Fokus, und der Dialog fokussiert das Feld sofort.
+        OutlinedTextField(
+            value = setNumber,
+            onValueChange = { setNumber = NumericInput.setNumber(it) },
+            label = { Text(stringResource(R.string.gallery_set_number)) },
+            supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
+            modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
+            shape = Formen.knopf,
+            keyboardOptions = NumericInput.ganzzahlTastatur()
+        )
+        OutlinedTextField(
+            value = quantity,
+            onValueChange = { quantity = NumericInput.quantity(it) },
+            label = { Text(stringResource(R.string.common_quantity)) },
+            modifier = Modifier.fillMaxWidth(), singleLine = true,
+            shape = Formen.knopf,
+            keyboardOptions = NumericInput.ganzzahlTastatur()
+        )
+        OutlinedTextField(
+            value = purchasePrice,
+            onValueChange = { purchasePrice = NumericInput.price(it) },
+            label = { Text(stringResource(R.string.gallery_purchase_price)) },
+            placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
+            modifier = Modifier.fillMaxWidth(), singleLine = true,
+            shape = Formen.knopf,
+            keyboardOptions = NumericInput.preisTastatur(),
+            keyboardActions = KeyboardActions(onDone = { keyboard?.hide(); submit() })
+        )
+        Zustandszeile(zustand = condition, onZustand = { condition = it })
+        LagerortErfassung(lagerort, lagerorte, { lagerort = it })
+    }
 }
 
 /**

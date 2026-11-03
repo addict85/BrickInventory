@@ -6,11 +6,17 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.data.model.GutscheinAntwort
+import ch.brickinventoryapp.ui.model.KlartextAnsicht
+import ch.brickinventoryapp.data.model.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.data.model.GutscheinRequest
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.GuthabenLauf
+import ch.brickinventoryapp.ui.GutscheinBestaetigung
+import ch.brickinventoryapp.ui.GutscheinPdfZiel
+import ch.brickinventoryapp.ui.GutscheinSchritt
+import ch.brickinventoryapp.ui.Kopierauftrag
 import ch.brickinventoryapp.ui.GutscheinUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -69,20 +75,123 @@ class GutscheinViewModel @Inject constructor(
         }
     }
 
+    /** Verdecken sofort; aufdecken braucht den Klartext und damit Passwort und Code. */
     fun schalteGutscheinPin(id: Int) {
-        _state.update {
-            it.copy(pinSichtbar = if (id in it.pinSichtbar) it.pinSichtbar - id else it.pinSichtbar + id)
+        if (id in _state.value.pinSichtbar) _state.update { it.copy(pinSichtbar = it.pinSichtbar - id) }
+        else verlange(GutscheinSchritt.PIN_ZEIGEN, id)
+    }
+
+    /** Nummer oder PIN in die Zwischenablage; die Oberfläche kopiert und quittiert. */
+    fun kopiereGutschein(id: Int, istNummer: Boolean) =
+        verlange(if (istNummer) GutscheinSchritt.NUMMER_KOPIEREN else GutscheinSchritt.PIN_KOPIEREN, id)
+
+    fun kopierenQuittieren() = _state.update { it.copy(zuKopieren = null) }
+
+    /**
+     * Ein Schritt, der Geld zeigt oder vernichtet. Ist der Klartext dieser Karte
+     * schon da, läuft er sofort (die Gerätesperre hat die Oberfläche geprüft); sonst
+     * erst nach Passwort und Code über [bestaetige].
+     */
+    private fun verlange(schritt: GutscheinSchritt, id: Int?) {
+        val klar = id?.let { _state.value.klartext[it] }
+        if (klar != null && schritt in KLARTEXT_SCHRITTE) return fuehreAus(schritt, klar)
+        _state.update { it.copy(bestaetigung = GutscheinBestaetigung(schritt, id)) }
+    }
+
+    fun bestaetigungAbbrechen() = _state.update { it.copy(bestaetigung = null) }
+
+    /**
+     * Passwort und, wenn der Server ihn verlangt hat, Code an die Route des Schritts.
+     * Eine Absage lässt die Rückfrage offen, mit dem Satz des Servers; verlangt er den
+     * Code, erscheint das Feld dafür.
+     */
+    fun bestaetige(passwort: String, code: String?) {
+        val b = _state.value.bestaetigung ?: return
+        if (b.laeuft) return
+        _state.update { it.copy(bestaetigung = b.copy(laeuft = true, fehler = null)) }
+        val anfrage = ZweiterFaktorAnfrage(password = passwort, code = code?.trim()?.ifEmpty { null })
+        viewModelScope.launch {
+            val fehler: Result.Error? = when (b.schritt) {
+                GutscheinSchritt.PDF, GutscheinSchritt.EXPORT -> when (val r = repo.pdfFreigabe(b.id, anfrage)) {
+                    is Result.Success -> {
+                        if (nochOffen(b)) _state.update { it.copy(bestaetigung = null, pdfZiel = GutscheinPdfZiel(b.id, r.data.ticket)) }
+                        null
+                    }
+                    is Result.Error -> r
+                }
+                GutscheinSchritt.LOESCHEN -> when (val r = repo.loeschen(b.id ?: return@launch, anfrage)) {
+                    is Result.Success -> {
+                        _state.update { it.copy(bestaetigung = null, klartext = it.klartext - b.id,
+                            pinSichtbar = it.pinSichtbar - b.id) }
+                        melde(R.string.vouchers_deleted)
+                        lade()
+                        null
+                    }
+                    is Result.Error -> r
+                }
+                GutscheinSchritt.PIN_ZEIGEN, GutscheinSchritt.NUMMER_KOPIEREN, GutscheinSchritt.PIN_KOPIEREN ->
+                    when (val r = repo.klartext(b.id ?: return@launch, anfrage)) {
+                        is Result.Success -> {
+                            // Inzwischen verlassen oder abgebrochen: Der Klartext bleibt nicht liegen.
+                            if (nochOffen(b)) {
+                                _state.update { it.copy(bestaetigung = null, klartext = it.klartext + (b.id to r.data.alsAnsicht())) }
+                                fuehreAus(b.schritt, r.data.alsAnsicht())
+                            }
+                            null
+                        }
+                        is Result.Error -> r
+                    }
+            }
+            if (fehler != null) _state.update {
+                it.copy(bestaetigung = it.bestaetigung?.copy(
+                    laeuft = false,
+                    codeNoetig = it.bestaetigung.codeNoetig || fehler.code in FAKTOR_CODES,
+                    // Offline gibt es kein Löschen auf Vorrat: Das Passwort bliebe sonst liegen.
+                    fehler = if (fehler.transient && b.schritt == GutscheinSchritt.LOESCHEN)
+                        texte.text(R.string.vouchers_delete_offline) else texte.meldung(fehler)))
+            }
         }
     }
 
-    /** Einen bestehenden Gutschein ins Formular holen; das PDF bleibt, wie es ist. */
+    private fun nochOffen(b: GutscheinBestaetigung) =
+        _state.value.bestaetigung.let { it != null && it.schritt == b.schritt && it.id == b.id }
+
+    private fun fuehreAus(schritt: GutscheinSchritt, klar: KlartextAnsicht) {
+        when (schritt) {
+            GutscheinSchritt.PIN_ZEIGEN -> _state.update { it.copy(pinSichtbar = it.pinSichtbar + klar.id) }
+            GutscheinSchritt.NUMMER_KOPIEREN -> _state.update { it.copy(zuKopieren = Kopierauftrag(klar.number, true)) }
+            GutscheinSchritt.PIN_KOPIEREN -> klar.pin?.let { pin -> _state.update { it.copy(zuKopieren = Kopierauftrag(pin, false)) } }
+            GutscheinSchritt.PDF, GutscheinSchritt.EXPORT, GutscheinSchritt.LOESCHEN -> Unit
+        }
+    }
+
+    /**
+     * Klartext weg, PINs wieder verdeckt — wenn die App in den Hintergrund geht. Eine
+     * offene Rückfrage bleibt: Den Code holt man aus der Authenticator-App.
+     */
+    fun vergissKlartext() = _state.update {
+        it.copy(klartext = emptyMap(), pinSichtbar = emptySet(), zuKopieren = null)
+    }
+
+    /** Beim Verlassen der Seite: dazu die offene Rückfrage. */
+    fun verlasseGutscheine() {
+        vergissKlartext()
+        bestaetigungAbbrechen()
+    }
+
+    /**
+     * Einen bestehenden Gutschein ins Formular holen; das PDF bleibt, wie es ist.
+     * Nummer und PIN kommen als Klartext, wenn er schon geholt ist, sonst als Maske:
+     * Der Server nimmt die Maske als „unverändert“.
+     */
     fun bearbeiteGutschein(id: Int) {
         val g = _state.value.gutscheine.find { it.id == id } ?: return
+        val klar = _state.value.klartext[id]
         _state.update {
             it.copy(
                 bearbeitet = g.id,
-                nummer = g.number,
-                pin = g.pin.orEmpty(),
+                nummer = klar?.number ?: g.number,
+                pin = klar?.pin ?: g.pin.orEmpty(),
                 betrag = betragAlsText(g.amount),
                 waehrung = g.currency,
                 pdfName = null,
@@ -292,27 +401,25 @@ class GutscheinViewModel @Inject constructor(
         }
     }
 
-    fun loescheGutschein(id: Int) {
-        viewModelScope.launch {
-            when (val r = repo.loeschen(id)) {
-                is Result.Success -> { melde(R.string.vouchers_deleted); lade() }
-                is Result.Error -> _snackbar.value = texte.meldungFuerSnackbar(r)
-            }
-        }
-    }
+    fun loescheGutschein(id: Int) = verlange(GutscheinSchritt.LOESCHEN, id)
 
     /** Kopiert hat die Oberfläche (die Zwischenablage hängt an der Komposition). */
     fun meldeGutscheinKopiert(istNummer: Boolean) =
         melde(if (istNummer) R.string.vouchers_copied_number else R.string.vouchers_copied_pin)
 
-    /** Ziele für den PDF-Betrachter; der Graph navigiert und quittiert. */
-    fun oeffneGutscheinPdf(id: Int) = _state.update { it.copy(pdfZiel = id) }
+    /** PDF-Betrachter: erst ein Ticket nach Passwort und Code; der Graph navigiert und quittiert. */
+    fun oeffneGutscheinPdf(id: Int) = verlange(GutscheinSchritt.PDF, id)
+    fun oeffneGutscheinExport() = verlange(GutscheinSchritt.EXPORT, null)
     fun gutscheinPdfQuittieren() = _state.update { it.copy(pdfZiel = null) }
-    fun oeffneGutscheinExport() = _state.update { it.copy(exportZeigen = true) }
-    fun gutscheinExportQuittieren() = _state.update { it.copy(exportZeigen = false) }
 
     private fun melde(id: Int) { _snackbar.value = texte.text(id) }
 }
+
+/** Schritte, die der Klartext erledigt; PDF und Löschen fragen jedes Mal. */
+private val KLARTEXT_SCHRITTE = setOf(GutscheinSchritt.PIN_ZEIGEN, GutscheinSchritt.NUMMER_KOPIEREN, GutscheinSchritt.PIN_KOPIEREN)
+
+/** Mit diesen Codes verlangt der Server den zweiten Faktor oder weist ihn ab. */
+private val FAKTOR_CODES = setOf("zweiter_faktor_noetig", "zweiter_faktor_falsch")
 
 /** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
 private const val ABSTAND_VERSUCHE = 4
@@ -320,3 +427,22 @@ private const val ABSTAND_VERSUCHE = 4
 /** Ganze Beträge ohne „.0": Der Gutschein lautet auf 400, nicht auf 400.0. */
 internal fun betragAlsText(betrag: Double): String =
     if (betrag % 1.0 == 0.0) betrag.toLong().toString() else betrag.toString()
+
+/**
+ * Eine Eingabe in ein Feld, das die Maske des Servers trägt: Die Maske ist ein
+ * Ganzes. Getipptes ersetzt sie, Löschen leert das Feld — „…123“ oder die Ziffern
+ * „1234“ aus „…1234“ wären eine neue, falsche Nummer.
+ */
+internal fun eingabeUeberMaske(alt: String, neu: String, istMaske: Boolean): String = when {
+    !istMaske -> neu
+    alt in neu -> neu.replace(alt, "")
+    // Nur Zeichen weggenommen: gelöscht. Sonst ersetzt (markiert und neu getippt, eingefügt).
+    istTeilfolge(neu, alt) -> ""
+    else -> neu
+}
+
+private fun istTeilfolge(teil: String, ganz: String): Boolean {
+    var i = 0
+    for (c in ganz) if (i < teil.length && teil[i] == c) i++
+    return i == teil.length
+}

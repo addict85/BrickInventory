@@ -35,8 +35,24 @@ class GutscheineRepository @Inject constructor(
     suspend fun aendern(id: Int, request: GutscheinRequest): Result<GutscheinAntwort> =
         safeCall { api.aendereGutschein(id, request) }
 
-    suspend fun loeschen(id: Int): Result<GenericResponse> =
-        safeCall { api.loescheGutschein(id) }
+    /**
+     * Löschen mit Passwort und Code. Bewusst ohne Ausgang: Ein gepuffertes Löschen
+     * müsste das Passwort bis zum nächsten Netz aufbewahren.
+     */
+    suspend fun loeschen(id: Int, bestaetigung: ZweiterFaktorAnfrage): Result<GenericResponse> =
+        safeCall { api.loescheGutschein(id, bestaetigung) }
+
+    /** Nummer und PIN im Klartext; nie in Cache oder Ablage. */
+    suspend fun klartext(id: Int, bestaetigung: ZweiterFaktorAnfrage): Result<GutscheinKlartext> =
+        safeCall { api.gutscheinKlartext(id, bestaetigung) }
+
+    /**
+     * Ein einmaliges Ticket für das PDF eines Gutscheins, ohne [id] für das PDF
+     * aller. Die eine Stelle für den Freigabe-Vertrag; die Adresse dazu baut
+     * gutscheinPdfAdresse() in GutscheinAdressen.kt.
+     */
+    suspend fun pdfFreigabe(id: Int?, bestaetigung: ZweiterFaktorAnfrage): Result<GutscheinPdfFreigabe> =
+        safeCall { if (id == null) api.gutscheinExportFreigabe(bestaetigung) else api.gutscheinPdfFreigabe(id, bestaetigung) }
 
     /**
      * Das Guthaben bei LEGO abfragen. Eine gesperrte Abfrage wird zu success=false,

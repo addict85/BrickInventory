@@ -34,6 +34,9 @@ object DatenModule {
     fun provideAnmeldeablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Anmeldeablage = p
 
     @Provides
+    fun provideEntwertungsquelle(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Entwertungsquelle = p
+
+    @Provides
     fun provideCacheBesitzer(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.cache.CacheBesitzer = p
 
     /**

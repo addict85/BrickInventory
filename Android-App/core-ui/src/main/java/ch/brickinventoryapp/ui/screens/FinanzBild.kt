@@ -14,11 +14,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 
 /**
- * Das Vorschaubild einer Finanzzeile — 52 dp, Rückfall auf das Logo. Eine Funktion
+ * Das Vorschaubild einer Finanzzeile — 52 dp, Rückfall auf das gemeinsame Ersatzbild. Eine Funktion
  * für die Set-Zeile (FinanceSections.kt) und die Zeile für manuelle Einträge, weil
  * beide in derselben Tabelle stehen und jede Abweichung sofort auffiele.
  */
@@ -29,17 +28,14 @@ fun FinanzBild(imageUrl: String?, imageLoader: ImageLoader, beschreibung: String
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.size(52.dp)
     ) {
-        if (imageUrl != null) {
-            AsyncImage(
-                model = imageUrl, imageLoader = imageLoader,
-                contentDescription = beschreibung,
-                modifier = Modifier.fillMaxSize().clip(Formen.kachel),
-                contentScale = ContentScale.Fit
-            )
-        } else {
-            Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Image(painterResource(R.drawable.ic_logo), null, Modifier.size(36.dp))
-            }
-        }
+        ch.brickinventoryapp.ui.components.ProduktBild(
+            model = imageUrl, imageLoader = imageLoader,
+            contentDescription = beschreibung,
+            modifier = Modifier.fillMaxSize().clip(Formen.kachel),
+            contentScale = ContentScale.Fit,
+            ersatzGroesse = 28.dp,
+            bildgrund = true,
+            innenAbstand = 2.dp,
+        )
     }
 }

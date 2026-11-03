@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -37,9 +38,6 @@ import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -54,6 +52,7 @@ import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ui.QrLoginPayload
 import ch.brickinventoryapp.ui.parseQrPayload
+import ch.brickinventoryapp.ui.qrWechseltServer
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -116,7 +115,22 @@ fun SetupScreen(
                 // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
                 ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(stringResource(R.string.setup_qr_text, vorschlag.url))
+                    // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
+                    // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
+                    val ansicht = remember(vorschlag) { NetworkPolicy.ansicht(vorschlag.url) }
+                    val bisherHost = remember(vorschlag, currentUrl) { qrWechseltServer(currentUrl, vorschlag.url) }
+                    Text(stringResource(R.string.setup_qr_ziel))
+                    if (ansicht != null) {
+                        Text(ansicht.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium)
+                        Text(ansicht.adresse, fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (ansicht.international) Text(stringResource(R.string.setup_qr_international),
+                            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text(stringResource(R.string.setup_qr_hinweis))
+                    if (bisherHost != null) Text(stringResource(R.string.setup_qr_anderer_server, bisherHost),
+                        color = MaterialTheme.colorScheme.error)
                     val fp = vorschlag.fingerabdruck
                     if (bisher != null && fp != null) {
                         Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
@@ -138,8 +152,16 @@ fun SetupScreen(
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
                             modifier = Modifier.fillMaxWidth(),
                         )
-                    } else if (fp != null) Text(stringResource(R.string.setup_qr_pin),
-                        style = MaterialTheme.typography.bodySmall)
+                    } else if (fp != null) {
+                        // Erstes Einrichten: Der Code bestimmt allein, welchem Schlüssel die App
+                        // künftig für diese Adresse traut. Abtippen hiesse, den QR-Code zu
+                        // entwerten; darum die Warnung und der Anfang zum Vergleich mit der Webapp.
+                        Text(stringResource(R.string.setup_qr_pin), color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
                     if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -194,15 +216,20 @@ fun SetupScreen(
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))
+            // Ein Hinweis mit Anleitung, kein Fehler: in der Infofarbe (primaryContainer)
+            // mit Symbol. Im Fehlerrot las sich der lange Text wie eine Störung.
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
             ) {
-                Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onErrorContainer)
-                    Text(stringResource(R.string.setup_altbestand_text, currentUrl),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                Row(Modifier.padding(Abstaende.gross), horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+                    Icon(Icons.Default.Info, null)
+                    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                        Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.setup_altbestand_text, currentUrl),
+                            style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
         }
@@ -266,6 +293,10 @@ fun SetupScreen(
                                 Text(stringResource(R.string.setup_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                             NetworkPolicy.Adressfehler.UNLESBAR ->
                                 Text(stringResource(R.string.setup_url_unlesbar), color = MaterialTheme.colorScheme.error)
+                            NetworkPolicy.Adressfehler.BENUTZERANGABE ->
+                                Text(stringResource(R.string.setup_url_benutzerangabe), color = MaterialTheme.colorScheme.error)
+                            NetworkPolicy.Adressfehler.ZUSATZ ->
+                                Text(stringResource(R.string.setup_url_zusatz), color = MaterialTheme.colorScheme.error)
                             null -> Text(stringResource(R.string.setup_url_supporting))
                         }
                     },
@@ -296,19 +327,18 @@ fun SetupScreen(
 }
 
 /** QR scanner for setup — reuses the proven CameraPreviewBarcode with QR_CODE format */
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
-    val cameraPermission = rememberPermissionState(android.Manifest.permission.CAMERA)
+    val cameraPermission = rememberKameraErlaubnis()
     var frozen by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (!cameraPermission.status.isGranted) cameraPermission.launchPermissionRequest()
+        if (!cameraPermission.erteilt) cameraPermission.anfragen()
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            cameraPermission.status.isGranted -> {
+            cameraPermission.erteilt -> {
                 // Reuse proven camera implementation with QR-only scanner
                 QrCameraPreview(
                     frozen = frozen,
@@ -333,7 +363,7 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                 }
             }
             else -> {
-                KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
+                KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
         IconButton(onClick = onDismiss, Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {

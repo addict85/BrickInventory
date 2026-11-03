@@ -80,7 +80,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store',
   const anmelden = async (user, passwort) => {
     const r = await fetch(`${basis}${AUTH}/login`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ username: user, password: passwort }),
+      body: JSON.stringify({ username: user, password: passwort, ohne_token: true }),
     });
     const body = await r.json();
     assert.equal(body.success, true, `Anmeldung ${user} fehlgeschlagen: ${JSON.stringify(body)}`);

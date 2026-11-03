@@ -7,11 +7,11 @@ import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
 import { zielGedrosselt } from '../src/konto/zielDrossel';
-import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigePasswort, bestaetigeCode, bestaetigeMitFaktor } from '../src/konto/http/anmeldung';
+import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import { bestaetigeEinrichtungGebremst } from '../src/konto/passwortBestaetigung';
-import { hinweisNebenher } from '../src/konto/kontoHinweis';
+import { hinweisNebenher, verwalterHinweisNebenher } from '../src/konto/kontoHinweis';
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
 import { passwortMangel } from '../src/infra/passwortRegel';
@@ -60,8 +60,8 @@ type Angemeldet = { id: number | string; username: string; is_admin: boolean; mu
 async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet, mitToken: boolean) {
   const { label, never_expires, scope } = req.body ?? {};
   const uid = Number(user.id);
-  // Neue Session-ID gegen Session Fixation, auch für die App; die Zeile verfällt.
-  await establishSession(req, {
+  // Token ODER Sitzung: Die Sitzung trüge die vollen Rechte am Scope des Tokens vorbei.
+  if (!mitToken) await establishSession(req, {
     userId:   uid,
     username: user.username,
     isAdmin:  user.is_admin,
@@ -76,8 +76,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
                               { scope: tokenScope(scope), ip: req.ip });
   } catch (e) {
     console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
-    if (dauerhaft)
-      return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
+    return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
   }
   // `never_expires` nennt, was gilt: Mit gleitender Frist ist nichts unbegrenzt.
   res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
@@ -179,14 +178,15 @@ router.post('/token-rotieren', ipThrottle('token-rotieren', 120, 60 * 60 * 1000)
     alt_gueltig_bis: t.alt_gueltig_bis, ueberlappung_sek: UEBERLAPPUNG_MS / 1000 });
 });
 
-/** Nur aus einer Sitzung und mit Passwort: Sonst prägte ein erbeuteter Token
- * beliebig viele dauerhafte Nachfolger. */
+/** Nur aus einer Sitzung, mit Passwort und zweitem Faktor: Sonst prägte ein
+ * erbeuteter Zugang einen dauerhaften. Die Mail meldet ihn dem Inhaber. */
 router.post('/token-create', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/token-create'>) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const userId = angemeldeteNutzerId(req);
-  if (!await bestaetigePasswort(req, res, userId, req.body?.password)) return;
+  if (!await bestaetigeMitFaktor(req, res, userId, req.body?.password)) return;
   const label = tokenLabel(req.body?.label, 'Android App');
   const neu = await createToken(userId, label, true, null, { scope: tokenScope(req.body?.scope), ip: req.ip });
+  hinweisNebenher(userId, 'token_neu', label);
   res.json({ success: true, token: neu, label, never_expires: false, token_info: await tokenAngaben(neu) });
 });
 
@@ -225,7 +225,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
     // Über die neue Adresse liesse sich danach das Passwort zurücksetzen —
     // wer kurz eine fremde Sitzung hat, übernähme so das Konto.
     if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-    if (!await bestaetigeMitFaktor(req, res, user.id, String(password_current), req.body?.code)) return;
+    if (!await bestaetigeMitFaktor(req, res, user.id, String(password_current))) return;
   }
 
   const felder: Record<string, unknown> = {};
@@ -277,13 +277,14 @@ router.post('/users', requireAdmin, async (req, res: Antwort<'POST /api/v1/auth/
   // Passwort bestätigen und protokollieren — eine erbeutete Sitzung soll keinen
   // Verwalter anlegen.
   const verwalter = angemeldeteNutzerId(req);
-  if (!await bestaetigePasswort(req, res, verwalter, req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, verwalter, req.body?.admin_password)) return;
   // Wie bei der Registrierung auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
   if (await K.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
   const neu = await K.legeKontoAn(username, password, alsVerwalter).catch(alsDoppelt('benutzername_vergeben'));
   if (neu === null) return sendeFehler(req, res, 409, 'benutzername_vergeben');
   await protokolliere(verwalter, neu, 'konto_angelegt');
   if (alsVerwalter) await protokolliere(verwalter, neu, 'verwalter_ernannt');
+  if (alsVerwalter) verwalterHinweisNebenher('verwalter_ernannt', { konto: String(username), durch: nutzerName(req) ?? '' });
   res.json({ success: true });
 });
 
@@ -294,10 +295,12 @@ router.put('/users/:id/admin', requireAdmin, async (req, res: Antwort<'PUT /api/
   if (targetId === nutzerId(req) && !soll)
     return sendeFehler(req, res, 400, 'eigene_adminrolle');
   if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
   const r = await K.setzeVerwalterRolle(targetId, soll);
   if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
+  if (r.geaendert && soll) verwalterHinweisNebenher('verwalter_ernannt',
+    { konto: (await K.kontoKurz(targetId))?.username ?? String(targetId), durch: nutzerName(req) ?? '' });
 
   // Sitzungen enden, weil istVerwalter() zuerst das nie nachgeführte
   // `req.session.isAdmin` fragt; ein Entzug wirkte sonst im offenen Fenster nicht.
@@ -311,7 +314,7 @@ router.put('/users/:id/aktiv', requireAdmin, async (req, res: Antwort<'PUT /api/
   if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
   if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
   const r = await K.setzeAktiv(targetId, soll);
   if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
@@ -330,7 +333,7 @@ router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /a
 
   // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
   // eine offene Verwaltersitzung allein genügt dafür nicht.
-  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
   if (!await K.setzeFremdesPasswort(targetId, password)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
 
@@ -339,7 +342,7 @@ router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /a
 
 router.delete('/users/:id', requireAdmin, async (req, res: Antwort<'DELETE /api/v1/auth/users/:id'>) => {
   const targetId = parseInt(pfadParam(req, 'id'));
-  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
   if (targetId !== nutzerId(req) && await K.kontoExistiert(targetId))
     await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
   if (!await K.loescheKonto(targetId, nutzerId(req))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
@@ -362,7 +365,7 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   if (!current || !newPassword) return sendeFehler(req, res, 400, 'alle_felder_erforderlich');
   const uid = nutzerId(req);
   if (uid == null) return sendeFehler(req, res, 401, 'nicht_angemeldet');
-  if (!await bestaetigeMitFaktor(req, res, uid, String(current), req.body?.code)) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, String(current))) return;
   // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
   // Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt.
   const mangel = passwortMangel(newPassword, (await K.kontoKurz(uid))?.username);
@@ -401,7 +404,7 @@ router.get('/zweiter-faktor', requireLogin, async (req, res: Antwort<'GET /api/v
 
 router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/einrichten'>) => {
   const uid = angemeldeteNutzerId(req);
-  if (!await bestaetigePasswort(req, res, uid, req.body?.password)) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
   const geheimnis = await zf.beginneEinrichtung(uid);
   if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
   const u = await K.kontoKurz(uid);
@@ -412,7 +415,7 @@ router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res: Antwort
 // hat, könnte ebenso das Passwort wechseln; eine Sitzungspflicht schützte nichts.
 router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/bestaetigen'>) => {
   const uid = angemeldeteNutzerId(req);
-  const codes = await bestaetigeEinrichtungGebremst(uid, req.body?.code);
+  const codes = await bestaetigeEinrichtungGebremst(uid, zugangVon(req), req.body?.code);
   if (!Array.isArray(codes)) return sendeFehler(req, res, codes.status, codes.code, codes.vars);
   const kopf = String(req.headers.authorization || '');
   const version = await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
@@ -424,7 +427,7 @@ router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res: Antwor
 router.post('/zweiter-faktor/abschalten', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/abschalten'>) => {
   const uid = angemeldeteNutzerId(req);
   if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-  if (!await bestaetigePasswort(req, res, uid, req.body?.password, { zweiterFaktor: req.body?.code })) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
   await zf.schalteAb(uid);
   res.json({ success: true });
 });
@@ -441,9 +444,12 @@ router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res: Antwor
   const id = parseInt(pfadParam(req, 'id'));
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
-  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
   await zf.schalteAb(id);
   await protokolliere(angemeldeteNutzerId(req), id, 'zweiter_faktor_entfernt');
+  const durch = nutzerName(req) ?? '';
+  hinweisNebenher(id, 'zweiter_faktor_entfernt', undefined, { durch });
+  verwalterHinweisNebenher('verwaltung_faktor_entfernt', { konto: (await K.kontoKurz(id))?.username ?? String(id), durch });
   res.json({ success: true });
 });
 
@@ -452,9 +458,9 @@ router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res: Antwor
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token
 router.post('/qr-token', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/qr-token'>) => {
   // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
-  // zugang. Mit einem erbeuteten Token allein darf das nicht gehen.
+  // zugang; nur aus der Sitzung, mit Passwort und zweitem Faktor.
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
-  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
   // Ohne Adresse verweigern statt raten: Eine falsche Adresse im QR-Code fiele
   // erst später in einem anderen Netz auf.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-basis
@@ -466,16 +472,17 @@ router.post('/qr-token', requireLogin, async (req, res: Antwort<'POST /api/v1/au
     return sendeFehler(req, res, 503, 'qr_ohne_basis_url');
   }
   await K.raeumeQrTokensAuf().catch(logAndContinue('qr-token:aufräumen'));
-  // Gewählt von der angemeldeten Sitzung, nicht im unangemeldeten /qr-login;
-  // unbekannt heisst „keine feste Frist", ältere Clients bleiben unverändert.
+  // Gewählt von der angemeldeten Sitzung, nicht im unangemeldeten /qr-login.
+  // Ohne gültige Wahl gilt dieselbe Höchstdauer wie bei der App-Anmeldung.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-tage
-  const tage = laufzeitTage(req.body?.gueltigkeit);
+  const tage = laufzeitTage(req.body?.gueltigkeit) ?? APP_HOECHSTDAUER_TAGE;
   // „Unbegrenzt" nur, wenn die App den Server über HTTPS erreicht: Ohne TLS
   // ginge ein Token ohne Ablauf im Klartext durchs Netz.
   if (tage === UNBEGRENZT && !/^https:\/\//i.test(basis))
     return sendeFehler(req, res, 400, 'unbegrenzt_nur_https');
   const nonce = crypto.randomBytes(32).toString('base64url');
   await K.legeQrTokenAn(hashToken(nonce), nutzerId(req), new Date(Date.now() + QR_TTL_MS), tage);
+  hinweisNebenher(angemeldeteNutzerId(req), 'qr_zugang_neu');
   // `token_days` nennt, was gespeichert wurde, nicht was gewünscht war.
   // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-qr-token-2
   // `fp` nur zu https: Die App pinnt damit die Wurzel der internen CA; ohne
@@ -500,7 +507,7 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
 
   // Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei.
   // Die Laufzeit kommt aus der Zeile der Nonce, nicht aus der Anfrage.
-  const bearerToken = await createToken(user.id, 'qr-login', true, claimed.token_days ?? null,
+  const bearerToken = await createToken(user.id, 'qr-login', true, claimed.token_days ?? APP_HOECHSTDAUER_TAGE,
                                         { scope: 'app', ip: req.ip });
   res.json({ success: true, token: bearerToken, username: user.username, isAdmin: false, userId: user.id,
     user: { id: user.id, username: user.username }, token_info: await tokenAngaben(bearerToken) });
@@ -653,9 +660,7 @@ router.get('/passkeys', requireLoginOrToken, async (req, res: Antwort<'GET /api/
 router.post('/passkey/registrieren/optionen', requireLoginOrToken, async (req, res: Antwort<'POST /api/v1/auth/passkey/registrieren/optionen'>) => {
   if (!perSitzung(req)) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
   const uid = angemeldeteNutzerId(req);
-  // Ein Passkey ersetzt den Code; ohne Code hier umginge das Passwort allein den zweiten Faktor.
-  const zusatz = await zf.istAktiv(uid) ? { zweiterFaktor: req.body?.code } : {};
-  if (!await bestaetigePasswort(req, res, uid, req.body?.password, zusatz)) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
   const konto = await K.kontoKurz(uid);
   const optionen = await P.registrierungsOptionen(uid, konto?.username ?? String(uid));
   if (!optionen) return sendeFehler(req, res, 503, 'passkey_ohne_domain');
@@ -674,7 +679,7 @@ router.delete('/passkeys/:id', requireLoginOrToken, async (req, res: Antwort<'DE
   const uid = angemeldeteNutzerId(req);
   const id = parseInt(pfadParam(req, 'id'));
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password, req.body?.code)) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
   res.json({ success: true, deleted: await P.loeschePasskey(uid, id) ? 1 : 0 });
 });
 

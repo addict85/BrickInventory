@@ -292,31 +292,21 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
             Text(stringResource(R.string.monitoring_theme),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            // Vier Designs passen nicht mehr in eine Zeile — FlowRow bricht
-            // um, statt die letzten Chips abzuschneiden.
-            androidx.compose.foundation.layout.FlowRow(
-                // Aus der Abstandsskala, nicht als Zahl (AbstandsskalaTest).
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            ) {
-                for ((wert, text) in ch.brickinventoryapp.ui.DESIGN_NAMEN) {
-                    AuswahlChip(
-                        selected = (monState.vorgabeDesign ?: appState.appTheme) == wert,
-                        onClick = {
-                            scope.launch {
-                                if (mon.setzeDesign(wert)) {
-                                    vm.loadSettings()
-                                    onSnack(cacheSavedMsg)
-                                }
-                            }
-                        },
-                        label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
-                    )
-                }
-            }
-            // Beide Chip-Reihen dieses Blocks tragen dieselbe Rolle
-            // (labelMedium): Zwei Reihen direkt uebereinander mit einem Punkt
-            // Unterschied waeren nicht als Absicht lesbar.
+            // Eine Wahl aus mehreren: dieselben Radio-Chips wie in den Einstellungen.
+            ch.brickinventoryapp.ui.components.WahlChips(
+                optionen = ch.brickinventoryapp.ui.DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
+                gewaehlt = monState.vorgabeDesign ?: appState.appTheme,
+                onWahl = { wert ->
+                    scope.launch {
+                        if (mon.setzeDesign(wert)) {
+                            vm.loadSettings()
+                            onSnack(cacheSavedMsg)
+                        }
+                    }
+                },
+            )
+            // Die Netze darüber sind Schalter (mehrere zugleich), das Design eine
+            // Einfachwahl: zwei Bauformen, weil es zwei Entscheidungen sind.
 
             // Cache TTL
             Row(
@@ -578,16 +568,11 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     // Dieselben Spannen wie die Webapp anbietet. Der Server
                     // begrenzt selbst auf 2880 Minuten.
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(15, 60, 240, 1440).forEach { min ->
-                            AuswahlChip(
-                                selected = verwaltung.protokollMinuten == min,
-                                onClick = { protokollScope.launch { mon.ladeProtokoll(min) } },
-                                label = { Text(stringResource(R.string.admin_log_minutes, min),
-                                               style = MaterialTheme.typography.labelSmall) },
-                                shape = Formen.chip)
-                        }
-                    }
+                    ch.brickinventoryapp.ui.components.SegmentWahl(
+                        optionen = listOf(15, 60, 240, 1440).map { it to stringResource(R.string.admin_log_minutes, it) },
+                        gewaehlt = verwaltung.protokollMinuten,
+                        onWahl = { min -> protokollScope.launch { mon.ladeProtokoll(min) } },
+                    )
                     // Der Fehler statt der Leermeldung: „keine Einträge“ wäre falsch, wenn der
                     // Abruf scheiterte.
                     if (verwaltung.fehler != null) {
@@ -616,8 +601,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                                             else versteckteStufen + stufe
                                     },
                                     label = { Text(stufe.uppercase(),
-                                                   style = MaterialTheme.typography.labelSmall) },
-                                    shape = Formen.chip)
+                                                   style = MaterialTheme.typography.labelSmall) })
                             }
                         }
                     }

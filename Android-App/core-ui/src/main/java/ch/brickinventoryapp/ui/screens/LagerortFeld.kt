@@ -41,6 +41,14 @@ fun LagerortFeld(
     vorrat: List<String>,
     onWert: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Was im leeren Feld steht. In den Detailansichten „Kein Lagerort“ — ein Beispiel
+     * wie „z. B. Kiste 3“ im Auswahlrahmen las sich dort wie ein gesetzter Ort; das
+     * Beispiel steht nur beim Erfassen (LagerortErfassung).
+     */
+    platzhalter: String = stringResource(R.string.detail_storage_none),
+    /** Beschriftung im Feld; mit ihr steht das Beispiel als Hilfetext darunter statt als Platzhalter. */
+    beschriftung: String? = null,
 ) {
     // Schluessel ist der Wert von aussen: Kommt ein anderer (anderes Set, oder
     // der normalisierte Wert nach dem Speichern), soll das Feld ihn zeigen
@@ -65,13 +73,19 @@ fun LagerortFeld(
                 if (it.length <= 60) { text = it; offen = true; onWert(it) }
             },
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.detail_storage_ph), style = MaterialTheme.typography.bodySmall,
-                maxLines = 1, overflow = TextOverflow.Ellipsis) },
+            label = beschriftung?.let { { Text(it) } },
+            placeholder = if (beschriftung == null) {
+                { Text(platzhalter, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            } else null,
+            supportingText = beschriftung?.let { { Text(platzhalter) } },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen)
             },
+            // Mit Beschriftung so breit wie die Felder darüber; ohne Breite blieb das
+            // Feld bei Materials 280 dp stehen und war im Dialog schmaler als die anderen.
             modifier = Modifier.menuAnchor(
-                ExposedDropdownMenuAnchorType.PrimaryEditable, true),
+                ExposedDropdownMenuAnchorType.PrimaryEditable, true)
+                .then(if (beschriftung != null) Modifier.fillMaxWidth() else Modifier),
         )
         ExposedDropdownMenu(
             expanded = offen && passend.isNotEmpty(),
@@ -88,12 +102,10 @@ fun LagerortFeld(
 }
 
 /**
- * Dasselbe Feld im Erfassen-Dialog: mit Beschriftung und voller Breite, damit sich
- * der Lagerort schon beim Erfassen setzen lässt — in Galerie, Barcode, Katalog,
- * Merkliste und bei manuellen Teilen und Figuren. Eine eigene Fassung, weil das
- * Feld in den Detailansichten schmal neben seiner Beschriftung steht, im Dialog
- * darunter über die ganze Breite wie die Felder darüber. Das Bedienelement selbst
- * bleibt dasselbe.
+ * Dasselbe Feld im Erfassen-Dialog: Beschriftung im Feld und volle Breite wie die
+ * Felder darüber, damit sich der Lagerort schon beim Erfassen setzen lässt — in
+ * Galerie, Barcode, Katalog, Merkliste und bei manuellen Teilen und Figuren. In den
+ * Detailansichten steht das Feld schmal neben seiner Beschriftung.
  */
 @Composable
 fun LagerortErfassung(
@@ -102,10 +114,7 @@ fun LagerortErfassung(
     onWert: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-        Text(stringResource(R.string.detail_storage),
-             style = MaterialTheme.typography.labelLarge)
-        LagerortFeld(wert = wert, vorrat = vorrat, onWert = onWert,
-                     modifier = Modifier.fillMaxWidth())
-    }
+    LagerortFeld(wert = wert, vorrat = vorrat, onWert = onWert,
+                 modifier = modifier.fillMaxWidth(), platzhalter = stringResource(R.string.detail_storage_ph),
+                 beschriftung = stringResource(R.string.detail_storage))
 }

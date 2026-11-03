@@ -81,6 +81,11 @@ import javax.net.ssl.X509ExtendedTrustManager
  *   P  in checkServerTrusted ohne Socket `if (!passtZumPin(chain, pin))` →
  *      `if (pin.isEmpty())` → rot „ohne Host faellt ein gepinnter Server …“
  *   Q  fingerabdruckAnfang() ohne `.take(11)` → rot „der gezeigte Anfang …“
+ * Gegenproben (03.11.2026, gemessen mit kotlinc lokal; pruef6 H1, H3):
+ *   R  in pruefe() ohne Handshake-Sitzung wieder `mit(fremdeHosts)` → rot „ohne
+ *      Handshake-Sitzung gilt der Pin des eigenen Servers“
+ *   S  ErneuerbareTlsFabrik.erneuere() ohne Wirkung → rot „nach dem Erneuern prueft
+ *      eine neue Verbindung die Kette wieder“ (die Sitzung wurde wiederaufgenommen)
  */
 class ZertifikatPinTest {
 
@@ -375,6 +380,58 @@ class ZertifikatPinTest {
         val abgelehnt = runCatching { tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA") }.isFailure
         assertTrue("Eine System-CA ersetzt den Pin nicht", abgelehnt)
         tm.checkServerTrusted(arrayOf(zert(LEAF), zert(INTER)), "ECDHE_ECDSA")
+    }
+
+    /** Die Fassung mit Socket, aber ohne Handshake-Sitzung: dieselbe Regel wie ohne Socket. */
+    @Test
+    fun `ohne Handshake-Sitzung gilt der Pin des eigenen Servers`() {
+        val tm = PinVertrauen(system(FREMD), pins, eigenerServer = { "nas:8443" }, frage = frage, fremdeHosts = system(FREMD))
+        tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as java.net.Socket?)
+        pins.merkePin("nas:8443", spkiFingerabdruck(zert(INTER)))
+        val abgelehnt = runCatching {
+            tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as java.net.Socket?)
+        }.isFailure
+        assertTrue("Eine System-CA ersetzt den Pin nicht", abgelehnt)
+        tm.checkServerTrusted(arrayOf(zert(LEAF), zert(INTER)), "ECDHE_ECDSA", null as java.net.Socket?)
+    }
+
+    /**
+     * Eine wiederaufgenommene TLS-Sitzung prüft keine Kette. Nach dem Ausschalten der
+     * Nutzer-CAs baut die App den Kontext neu (ServerClient.kt); danach muss eine neue
+     * Verbindung wieder geprüft werden.
+     */
+    @Test
+    fun `nach dem Erneuern prueft eine neue Verbindung die Kette wieder`() {
+        starte(); server.enqueue(MockResponse().setBody("ok"))
+        val basis = system(ROOT)
+        var erlaubt = true
+        val tm = object : X509ExtendedTrustManager() {
+            private fun darf() { if (!erlaubt) throw java.security.cert.CertificateException("entzogen") }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) {
+                darf(); basis.checkServerTrusted(c, a, s)
+            }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) {
+                darf(); basis.checkServerTrusted(c, a, e)
+            }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String) { darf(); basis.checkServerTrusted(c, a) }
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) = basis.checkClientTrusted(c, a, s)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) = basis.checkClientTrusted(c, a, e)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = basis.checkClientTrusted(c, a)
+            override fun getAcceptedIssuers(): Array<X509Certificate> = basis.acceptedIssuers
+        }
+        val fabrik = ch.brickinventoryapp.util.ErneuerbareTlsFabrik {
+            SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory
+        }
+        val c = OkHttpClient.Builder().sslSocketFactory(fabrik, tm)
+            .connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build()
+        fun hole() = try {
+            c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).execute().use { it.isSuccessful }
+        } catch (_: IOException) { false }
+        assertTrue(hole())
+        c.connectionPool.evictAll()
+        erlaubt = false
+        fabrik.erneuere()
+        assertFalse("Die alte Sitzung wurde ohne Prüfung wieder aufgenommen", hole())
     }
 
     /** Der Dialog zeigt vor dem Abtippen nur den Anfang; das Abzutippende steht nicht da. */

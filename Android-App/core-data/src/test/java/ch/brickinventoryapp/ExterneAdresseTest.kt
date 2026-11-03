@@ -3,8 +3,11 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.util.eigeneAdresse
 import ch.brickinventoryapp.util.externeAdresse
 import ch.brickinventoryapp.util.otpauthAdresse
+import ch.brickinventoryapp.util.pdfImBetrachter
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -18,6 +21,8 @@ import org.junit.Test
  *      local_path bleibt auf dem eigenen Server“
  *   C  (01.11.2026) in otpauthAdresse() die Schema-Prüfung entfernt → rot „an
  *      die Authenticator-App geht nur otpauth“ (https durchgelassen)
+ *   D  (03.11.2026, kotlinc lokal) pdfImBetrachter() ohne die Prüfung der
+ *      Herkunft (`ziel.isHttps || serverUrl.isNotBlank()`) → rot „der PDF-Betrachter laedt nur vom eigenen Server“
  */
 class ExterneAdresseTest {
 
@@ -41,6 +46,17 @@ class ExterneAdresseTest {
                              "content://ch.brickinventoryapp.provider/x", "", null)) {
             assertNull("$fremd", otpauthAdresse(fremd))
         }
+    }
+
+    @Test
+    fun `der PDF-Betrachter laedt nur vom eigenen Server`() {
+        assertTrue(pdfImBetrachter("https://nas:8443/brick/api/v1/vouchers/7/pdf", "https://nas:8443/brick"))
+        assertTrue(pdfImBetrachter("https://NAS:8443/uploads/a.pdf", "https://nas:8443/"))
+        for (fremd in listOf("https://www.lego.com/cdn/a.pdf", "http://nas:8443/a.pdf", "https://nas:9443/a.pdf",
+                             "https://nas.example.evil:8443/a.pdf", "content://x/a.pdf", "")) {
+            assertFalse(fremd, pdfImBetrachter(fremd, "https://nas:8443"))
+        }
+        assertFalse("Ohne Server kein Betrachter", pdfImBetrachter("https://nas:8443/a.pdf", ""))
     }
 
     @Test

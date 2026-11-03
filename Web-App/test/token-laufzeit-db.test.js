@@ -34,6 +34,8 @@
  * Gegenprobe (am 28.10. gemessen): in /qr-token die Prüfung von Sitzung und
  * Passwort entfernt → rot im Schritt „0. Ein Code nur mit Sitzung UND
  * Passwort"
+ * Gegenprobe (am 03.11. gemessen): in /qr-token `?? APP_HOECHSTDAUER_TAGE`
+ * entfernt → rot „Ohne Wahl gilt die Höchstdauer von 180 Tagen"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -107,7 +109,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     [auth.hashToken(token)]);
 
   try {
-    const an = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS } });
+    const an = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS, ohne_token: true } });
     assert.equal(an.status, 200, `Anmeldung scheiterte: ${JSON.stringify(an.body)}`);
     const keks = an.cookie.split(';')[0];
 
@@ -148,12 +150,12 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     // Wunsch im Rumpf der EINLOESUNG. Faellt diese Zusicherung, ist die
     // ganze Neuerung eine Schwachstelle statt einer Haertung.
     const ohne = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks }, body: { password: PASS } });
-    assert.equal(ohne.body.token_days, null, 'Ohne Wahl gibt es keine feste Frist');
+    assert.equal(ohne.body.token_days, 180, 'Ohne Wahl gilt die Höchstdauer von 180 Tagen');
     const versuch = await ruf('/qr-login', { method: 'POST',
       body: { token: ohne.body.token, gueltigkeit: 'unbegrenzt', token_days: 3650 } });
     assert.equal(versuch.status, 200, JSON.stringify(versuch.body));
     const zv = await zeile(versuch.body.token);
-    assert.equal(zv.hard_expires_at, null,
+    assert.ok(zv.hard_expires_at && Math.abs(tageVoraus(zv.hard_expires_at) - 180) < 1,
       'Das einloesende Geraet darf sich keine Laufzeit erteilen — sonst reicht ein abfotografierter Code');
     assert.ok(zv.expires_at,
       'Und erst recht keine unbegrenzte: Der Zugang muss die gewoehnliche Gleitfrist tragen');
@@ -200,7 +202,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
       const r = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks },
         body: { gueltigkeit: unsinn, password: PASS } });
       assert.equal(r.status, 200, `„${unsinn}" soll nicht scheitern, sondern nichts waehlen`);
-      assert.equal(r.body.token_days, null, `„${unsinn}" darf keine Frist setzen`);
+      assert.equal(r.body.token_days, 180, `„${unsinn}" darf nur die Vorgabe von 180 Tagen ergeben`);
     }
 
     // ── 5. Die feste Frist sperrt auch dann aus, wenn die gleitende offen ist ──
@@ -229,7 +231,7 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   const einst = ohneKommentare(
     fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
 
-  assert.ok(/api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit, password: /.test(einst),
+  assert.ok(/api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit, password\b/.test(einst),
     'Die Webapp soll die gewaehlte Laufzeit beim Erzeugen des Codes mitschicken');
   assert.ok(!/qr-login/.test(einst),
     'Die Webapp loest keine QR-Codes ein — taete sie es, waere hier die zweite Stelle, ' +

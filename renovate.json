@@ -4,6 +4,9 @@
     "config:recommended"
   ],
   "enabledManagers": [
+    "docker-compose",
+    "dockerfile",
+    "github-actions",
     "gradle",
     "gradle-wrapper",
     "npm"
@@ -25,6 +28,41 @@
         "gradle-wrapper"
       ],
       "minimumReleaseAge": "3 days"
+    },
+    {
+      "description": "Images (Dockerfile, compose.yaml) und Actions stehen per Digest bzw. Commit-SHA fest; Renovate zieht beide nach, statt dass sie still veralten. Ohne minimumReleaseAge: Ein Digest trägt kein Veröffentlichungsdatum, die Regel hielte ihn sonst für immer zurück; Trivy prüft jeden neuen Digest im PR.",
+      "matchManagers": [
+        "dockerfile",
+        "docker-compose",
+        "github-actions"
+      ],
+      "pinDigests": true
+    },
+    {
+      "description": "Neue Digests derselben Fassung gemeinsam: Meist ist es ein neu gebautes Basis-Image mit Sicherheitskorrekturen.",
+      "matchManagers": [
+        "dockerfile",
+        "docker-compose",
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "digest",
+        "pinDigest"
+      ],
+      "groupName": "Digests (Images und Actions)"
+    },
+    {
+      "description": "PostgreSQL: Eine neue Hauptversion braucht einen Umzug der Daten (POSTGRES-18.md), nicht nur ein neues Tag; erst nach Freigabe im Dashboard.",
+      "matchManagers": [
+        "docker-compose"
+      ],
+      "matchPackageNames": [
+        "postgres"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "dependencyDashboardApproval": true
     },
     {
       "description": "Patch- und Minor-Sprünge zusammenfassen: einzeln erzeugen sie mehr PRs, als jemand durchsieht, und genau dann wird pauschal zugestimmt.",

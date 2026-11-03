@@ -3,6 +3,7 @@ import { esc } from './00-escapen.js';
 import { resetScopeModes } from './14-scope.js';
 import { LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
 import { setAllSets, bindTabs, loadGallery, loadStats } from './02-gallery.js';
+import { routeBeimStart } from './24-router.js';
 import { plInit, resetPartsList } from './08-init.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 import { mitZweitemFaktor } from './07-admin.js';
@@ -168,19 +169,45 @@ export function bildTag(o) {
 export function platzhalterInhalt(art) {
   // Dasselbe dezente Symbol wie bei Teilen und Figuren; das rote Logo füllte
   // ohne Bilder jede Karte gleich.
-  return ico(art === 'set' ? 'set' : art === 'figur' ? 'figur' : 'teil');
+  // Sets nehmen die Datei: Sie sieht in jedem Design gleich aus (UI-Prüfung 6, M3).
+  if (art === 'set') return '<img src="/assets/set-placeholder.svg" alt="" aria-hidden="true">';
+  return ico(art === 'figur' ? 'figur' : 'teil');
+}
+
+/**
+ * Zeigt den Platzhalter, solange ein Bild noch einmal versucht wird; das Bild
+ * bleibt verborgen daneben und ersetzt ihn, sobald es doch lädt. Ohne das
+ * stand während des zweiten Versuchs das Symbol des Browsers in der Kachel.
+ */
+export function bildVorlaeufig(img) {
+  if (img.previousElementSibling?.classList.contains('bild-ph-vorlaeufig')) return;
+  bildPlatzhalter(img, true);
+  img.hidden = true; img.style.display = 'none';
+  // Verborgen lädt ein lazy-Bild nie; der zweite Versuch soll aber laufen.
+  img.setAttribute('loading', 'eager');
+}
+
+/** Das Bild hat doch geladen: vorläufigen Platzhalter entfernen. */
+export function bildGeladen(img) {
+  const ph = img.previousElementSibling;
+  if (!ph?.classList.contains('bild-ph-vorlaeufig')) return;
+  ph.remove(); img.hidden = false; img.style.display = '';
 }
 
 /** Ersetzt ein Bild, das nicht lädt, durch seinen Platzhalter in derselben Grösse. */
-export function bildPlatzhalter(img) {
+export function bildPlatzhalter(img, vorlaeufig = false) {
+  const alt = img.previousElementSibling;
+  if (!vorlaeufig && alt?.classList.contains('bild-ph-vorlaeufig')) { alt.classList.remove('bild-ph-vorlaeufig'); img.remove(); return; }
   const ph = document.createElement('span');
   ph.className = ('bild-ph ' + (img.getAttribute('class') || '').replace(/\bloaded\b/, '')).trim();
   ph.setAttribute('role', 'img');
   ph.setAttribute('aria-label', img.getAttribute('alt') || '');
   if (!img.getAttribute('alt')) ph.setAttribute('aria-hidden', 'true');
   const cs = getComputedStyle(img);
-  for (const k of ['width', 'height', 'borderRadius', 'margin']) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
+  // In der Kachel füllt der Platzhalter die Bildfläche; ein kaputtes Bild misst nur sein Symbol.
+  if (!img.closest('.sci')) for (const k of ['width', 'height', 'borderRadius', 'margin']) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
   ph.innerHTML = platzhalterInhalt(img.dataset.ph);
+  if (vorlaeufig) { ph.classList.add('bild-ph-vorlaeufig'); img.before(ph); return; }
   img.replaceWith(ph);
 }
 
@@ -220,6 +247,19 @@ export function feldFehler(id, text) {
     feld.removeAttribute('aria-invalid');
     feld.removeAttribute('aria-describedby');
   }
+}
+
+/**
+ * Eine Absage des Servers: Gehört ihr Code zu einem Feld des Formulars, steht
+ * die Meldung dort (wie feldFehler), sonst als Toast.
+ * @param {any} d Antwort von api()
+ * @param {Record<string, string>} felder Fehlercode → Feld-ID
+ * @param {string} ersatz Text, wenn die Antwort keinen hat
+ */
+export function antwortFehler(d, felder, ersatz) {
+  const id = d?.code ? felder[d.code] : null;
+  if (id && G(id)) feldFehler(id, d.error || ersatz);
+  else toast(d?.error || ersatz, 'error');
 }
 
 /** Prüft das Set-Nummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht. */
@@ -622,6 +662,13 @@ export function toast(msg, type='info', aktion) {
   return el;
 }
 /**
+ * Beim Wechsel der Ansicht: Meldungen gehören zu der Ansicht, in der sie
+ * entstanden; nur solche mit Knopf (Rückgängig, Ändern) bleiben bis zur Frist.
+ */
+export function verwirfToasts() {
+  for (const el of [...(G('toasts')?.children || [])]) if (!el.querySelector('.toast-aktion')) el.remove();
+}
+/**
  * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.
  *
  * ── Woher das kommt ─────────────────────────────────────────────────────────
@@ -704,13 +751,19 @@ export function fehlerMeldung(e) {
 
 // ── Hinweis „Rebrickable-Schlüssel fehlt“ ───────────────────────────────────
 const RB_HINWEIS_WEG = 'bim_rb_hinweis_weg';
+/** Weggeklickt bleibt das Band 30 Tage weg, auch über Neustarts: Bei 200 %
+ * Zoom kostet es ein Achtel der Höhe; erinnert wird später trotzdem. */
+const RB_HINWEIS_FRIST = 30 * 24 * 3600 * 1000;
 /** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab.
  * Schliesst man ihn mit „Später“, kommt das Band (22-einrichtung.js). */
 export function rbHinweisZeigen() {
   const band = G('rb-hinweis');
   if (!band || !ME?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
   if (String(_settingsCache?.rebrickable_api_key || '').trim()) return;
-  try { if (sessionStorage.getItem(RB_HINWEIS_WEG)) return; } catch (_) { /* ohne Speicher: zeigen */ }
+  try {
+    const weg = Number(localStorage.getItem(RB_HINWEIS_WEG));
+    if (weg && Date.now() - weg < RB_HINWEIS_FRIST) return;
+  } catch (_) { /* ohne Speicher: zeigen */ }
   band.hidden = false;
 }
 export function rbHinweisVerbergen() { const b = G('rb-hinweis'); if (b) b.hidden = true; }
@@ -720,10 +773,10 @@ function rbHinweisOeffnen() {
   /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
   G('rb-key')?.focus();
 }
-/** Wegklicken gilt für die Sitzung; der Fokus geht an den Seiteninhalt statt ins Leere. */
+/** Wegklicken gilt RB_HINWEIS_FRIST lang; der Fokus geht an den Seiteninhalt statt ins Leere. */
 function rbHinweisWeg() {
   rbHinweisVerbergen();
-  try { sessionStorage.setItem(RB_HINWEIS_WEG, '1'); } catch (_) { /* dann eben bis zum Neuladen */ }
+  try { localStorage.setItem(RB_HINWEIS_WEG, String(Date.now())); } catch (_) { /* dann eben bis zum Neuladen */ }
   G('inhalt')?.focus({ preventScroll: true });
 }
 
@@ -942,7 +995,7 @@ export function fmtBig(n){
 }
 
 /**
- * Ein Datum überall gleich: „05.01.2024“ (de), „05/01/2024“ (en). Vorher
+ * Ein Datum überall gleich: „05.01.2024“ (de), „5 Jan 2024“ (en). Vorher
  * stand je Stelle toLocaleDateString() („5.1.2024“) neben eigenen Formen.
  * @param {string|number|Date|null|undefined} v
  * @param {'tag'|'zeit'|'tagzeit'|'lang'} [art]  lang: „1. Juni 2026“
@@ -951,7 +1004,10 @@ export function fmtDatum(v, art = 'tag'){
   if (v === null || v === undefined || v === '') return '';
   const d = v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
   if (isNaN(d.getTime())) return '';
-  const tag = { day: '2-digit', month: '2-digit', year: 'numeric' }, zeit = { hour: '2-digit', minute: '2-digit' };
+  // Englisch mit Monatsnamen: „03/11/2026“ liest sich in den USA als 11. März.
+  // Deutsch immer 24 Stunden, auch bei einem Browser mit 12-h-Vorgabe.
+  const tag = LANG === 'en' ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: '2-digit', month: '2-digit', year: 'numeric' };
+  const zeit = LANG === 'en' ? { hour: '2-digit', minute: '2-digit' } : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
   const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : art === 'lang' ? { day: 'numeric', month: 'long', year: 'numeric' } : tag;
   return new Intl.DateTimeFormat(locale(), /** @type {Intl.DateTimeFormatOptions} */ (o)).format(d);
 }
@@ -1361,7 +1417,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   setLangValue(localStorage.getItem('bim_lang') || LANG);
   applyLang(LANG, false);
   // Load settings — also picks up server-stored language preference
-  api('GET','/v1/settings/raw').then(d=>{
+  const einstellungen = api('GET','/v1/settings/raw').then(d=>{
     if(d.success&&d.settings){
       _settingsCache=d.settings;
       CURRENCY=d.settings.currency||'EUR';
@@ -1386,17 +1442,14 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in
   // die Einstellungen bei jeder Anmeldung nimmt dem Verwalter seine Startseite.
   // Ein Band weist einmal je Sitzung darauf hin.
-  if(ME.isAdmin) {
-    const checkRbKey = () => {
-      rbHinweisZeigen();
-      loadGallery();
-    };
-    if(_settingsCache) checkRbKey();
-    else setTimeout(checkRbKey, 600); // wait for the parallel fetch above
-  } else {
+  // Erst die Einstellungen, dann Beträge: Sonst stünden die Preise kurz in
+  // der Vorgabewährung und sprängen dann um (UI-Prüfung 6, N12).
+  einstellungen.catch(() => {}).finally(() => {
+    if (ME?.isAdmin) rbHinweisZeigen();
     loadGallery();
-  }
-  loadStats();
+    loadStats();
+  });
+  routeBeimStart();
 }
 G('btn-login').onclick=doLogin;
 ['lu','lp','lc'].forEach(id=>G(id).addEventListener('keydown',e=>e.key==='Enter'&&doLogin()));

@@ -30,6 +30,10 @@ name: Android-App
 on:
   push:
     branches: ['**']
+    # Veröffentlicht wird nur aus einem Etikett android-v… auf einem Commit von
+    # main (Job `signieren`), nicht aus jedem Push auf main. Für Etiketten wertet
+    # GitHub den paths-Filter nicht aus.
+    tags: ['android-v*']
     paths:
       - 'Android-App/**'
       # shared/ ist der gemeinsame Pruefkorpus beider Apps (siehe shared/README.md).
@@ -194,6 +198,22 @@ jobs:
         run: |
           set -o pipefail
           ./gradlew --no-daemon testDebugUnitTest :core-model:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
+
+      # Das Vergleichsbild liegt nur als Artefakt vor, das hier nicht abrufbar ist:
+      # Lage und Grösse der Abweichung je rotem Foto stehen deshalb im Log.
+      - name: Abweichende Fotos beschreiben
+        if: failure()
+        run: |
+          for neu in app/build/outputs/roborazzi/*_actual.png; do
+            [ -f "$neu" ] || continue
+            name=$(basename "$neu" _actual.png)
+            ref="app/src/test/bildschirmfotos/$name.png"
+            [ -f "$ref" ] || continue
+            pixel=$(compare -metric AE "$ref" "$neu" null: 2>&1 || true)
+            feld=$(compare "$ref" "$neu" -compose src -highlight-color white -lowlight-color black miff:- 2>/dev/null \
+              | convert - -trim -format '%wx%h+%X+%Y' info: 2>/dev/null || true)
+            echo "::warning title=Foto weicht ab::$name: $pixel Pixel verschieden, Bereich $feld (Bild $(identify -format '%wx%h' "$ref"))"
+          done
 
       # Room schreibt das Schema beim Übersetzen nach core-data/schemas und lässt eine
       # Datei stehen, solange ihr Aufbau gleich bleibt. Steht danach etwas
@@ -494,16 +514,17 @@ jobs:
   #
   # Der Schlüssel sieht weder Gradle noch ein Plugin noch ein Werkzeug aus dem
   # Repository: kein Checkout, nur das Artefakt des Bau-Jobs und apksigner/
-  # zipalign aus dem SDK des Runners (Prüfsummen im Protokoll). Auf main mit
-  # der Environment `release`: Nur dort liegen die Secrets, und ihre Regeln
-  # (nur main, Pflichtprüfer) gelten. Auf Zweigen derselbe Ablauf mit einem
-  # Wegwerfschlüssel, ohne Environment und ohne Secrets.
+  # zipalign aus dem SDK des Runners (Prüfsummen im Protokoll). Nur für ein
+  # Etikett android-v… mit der Environment `release`: Nur dort liegen die
+  # Secrets, und ihre Regeln (nur diese Etiketten, Pflichtprüfer) gelten. Sonst
+  # derselbe Ablauf mit einem Wegwerfschlüssel, ohne Environment und ohne Secrets.
   signieren:
     needs: build
     runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'release' || '' }}
+    environment: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') && 'release' || '' }}
     permissions:
       actions: read
+      contents: read
     steps:
       - name: Unsigniertes APK holen
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
@@ -514,8 +535,22 @@ jobs:
       # Die Secrets nennt nur dieser Schritt, und er läuft nur dort, wo der Job in
       # der Environment `release` steht. Gleichnamige Repository-Secrets fände
       # GitHub sonst ebenfalls — sie gehören gelöscht (README, Release signieren).
+      # Ein Etikett kann jeder mit Schreibrecht auf jeden Commit setzen; signiert
+      # wird nur, was schon auf main liegt, also durch Review und CI ging.
+      - name: Etikett liegt auf main
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          STAND=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" --jq .status)
+          case "$STAND" in
+            identical|behind) echo "$GITHUB_REF_NAME ($GITHUB_SHA) liegt auf main." ;;
+            *) echo "::error::$GITHUB_REF_NAME zeigt auf $GITHUB_SHA, der nicht auf main liegt ($STAND). Nichts wird signiert."; exit 1 ;;
+          esac
+
       - name: Release-Schlüssel bereitstellen
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORT }}
@@ -524,7 +559,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
-            echo "::error::Auf main fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — sie gehören in die Environment release; Repository-Secrets gleichen Namens löschen. Ohne Signatur wird nichts veröffentlicht."
+            echo "::error::Für das Etikett fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — sie gehören in die Environment release; Repository-Secrets gleichen Namens löschen. Ohne Signatur wird nichts veröffentlicht."
             exit 1
           fi
           S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
@@ -532,7 +567,7 @@ jobs:
           printf '%s' "$KS_PASS" > "$S/ks_pass"; printf '%s' "$KEY_PASS" > "$S/key_pass"; printf '%s' "$KEY_ALIAS" > "$S/alias"
 
       - name: Probe-Schlüssel erzeugen
-        if: github.ref != 'refs/heads/main' || github.event_name == 'pull_request'
+        if: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')) }}
         run: |
           set -euo pipefail
           S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
@@ -543,7 +578,7 @@ jobs:
 
       - name: Signieren
         env:
-          ECHT: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          ECHT: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') }}
         run: |
           set -euo pipefail
           WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
@@ -630,7 +665,14 @@ jobs:
           name: apk-signiert
           path: Android-App/app/build/outputs
 
+      # Das Release-Zertifikat steht fest in tools/release-zertifikat.sha256: Ein
+      # ausgetauschter Schlüssel in der Environment fiele sonst erst auf, wenn
+      # Updates scheitern, und eine Neuinstallation nähme ihn still an. Ein
+      # Probe-signiertes APK muss genau an dieser Prüfung scheitern (Rückgabe 1);
+      # so läuft sie bei jedem Bau gegen eine echte Ausgabe von apksigner.
       - name: APK prüfen
+        env:
+          ECHT: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') }}
         run: |
           set -euo pipefail
           cd app/build/outputs/apk/release
@@ -638,6 +680,36 @@ jobs:
           WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
           "$WERKZEUGE/apksigner" verify --print-certs BrickInventory.apk > "$RUNNER_TEMP/zertifikat.txt"
           head -3 "$RUNNER_TEMP/zertifikat.txt"
+          cd "$GITHUB_WORKSPACE/Android-App"
+          ERGEBNIS=0
+          python3 tools/release-pruefen.py zertifikat "$RUNNER_TEMP/zertifikat.txt" tools/release-zertifikat.sha256 || ERGEBNIS=$?
+          if [ "$ECHT" = "true" ] && [ "$ERGEBNIS" != 0 ]; then
+            echo "::error::Das APK ist nicht mit dem hinterlegten Release-Zertifikat signiert (tools/release-zertifikat.sha256). Nichts wird veröffentlicht."
+            exit 1
+          fi
+          if [ "$ECHT" != "true" ] && [ "$ERGEBNIS" != 1 ]; then
+            echo "::error::Das Probe-signierte APK muss am Release-Zertifikat scheitern, die Prüfung gab $ERGEBNIS zurück."
+            exit 1
+          fi
+
+      # Ein Etikett auf einem älteren Commit von main brächte einen älteren Stand
+      # als „neustes APK“ zu jeder Neuinstallation. versionCode zählt die Commits.
+      - name: versionCode über dem veröffentlichten
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          V_CODE=$(jq -r '.elements[0].versionCode' app/build/outputs/apk/release/output-metadata.json)
+          ALT=-
+          if gh release view apk-neuste --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version.json -O "$RUNNER_TEMP/version-alt.json"
+            ALT="$RUNNER_TEMP/version-alt.json"
+          fi
+          if ! python3 tools/release-pruefen.py fassung "$ALT" "$V_CODE" "$GITHUB_SHA"; then
+            echo "::error::versionCode $V_CODE liegt nicht über dem veröffentlichten APK. Nichts wird veröffentlicht."
+            exit 1
+          fi
 
       # ── Das fertige APK gegen R8 prüfen ─────────────────────────────────────
       #
@@ -676,14 +748,22 @@ jobs:
   #
   # Was hier landet, holt sich jede installierte App als Update. Darum hängt
   # auch dieser Job an der Environment `release`: Ihre Pflichtprüfer geben die
-  # Veröffentlichung frei, nicht schon der Push auf main allein.
+  # Veröffentlichung frei, nicht schon das Etikett allein. id-token und
+  # attestations nur für die Herkunftsbescheinigung des APK.
   release:
     needs: [signieren, apk-pruefen]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
     environment: release
     runs-on: ubuntu-latest
+    # Zwei Etiketten zugleich: Sonst prüften beide gegen dieselbe alte Fassung,
+    # und das ältere könnte nach dem neueren hochladen.
+    concurrency:
+      group: apk-neuste
+      cancel-in-progress: false
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     defaults:
       run:
         working-directory: Android-App
@@ -727,11 +807,18 @@ jobs:
       # ausgecheckt haben kann — woher das APK stammt, steht deshalb im TEXT
       # des Release und wird bei jedem Lauf neu geschrieben.
       #
-      # NUR von main, auch nicht von Hand auf einem Zweig: Sonst ueberschriebe
-      # ein ungeprueftes Zweig-APK die Datei hinter dem stabilen Link, und die
-      # App holte es sich als Update.
+      # NUR aus einem Etikett android-v… auf main, auch nicht von Hand auf einem
+      # Zweig: Sonst ueberschriebe ein ungeprueftes APK die Datei hinter dem
+      # stabilen Link, und die App holte es sich als Update.
+      # Bescheinigt, aus welchem Lauf, Commit und Workflow das signierte APK
+      # stammt (Sigstore, öffentlich prüfbar mit `gh attestation verify`).
+      - name: Herkunft des APK bescheinigen
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: Android-App/app/build/outputs/apk/release/BrickInventory.apk
+
       - name: BrickInventory.apk als Release bereitstellen
-        if: success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -739,12 +826,42 @@ jobs:
           ETIKETT=apk-neuste
           APK=app/build/outputs/apk/release/BrickInventory.apk
           LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT/BrickInventory.apk"
-          TEXT="Gebaut aus \`$GITHUB_REF_NAME\` ($GITHUB_SHA) am $(date -u '+%d.%m.%Y %H:%M UTC').
+          TEXT="Gebaut aus dem Etikett \`$GITHUB_REF_NAME\` ($GITHUB_SHA) am $(date -u '+%d.%m.%Y %H:%M UTC').
+          Herkunft prüfen: gh attestation verify BrickInventory.apk --repo $GITHUB_REPOSITORY
 
           Direkter Download (immer die neuste Fassung, kein Zip):
           $LINK"
 
+          # Vor dem Hochladen, nicht danach: Die Werte bestimmen, ob überhaupt
+          # hochgeladen wird.
+          META=app/build/outputs/apk/release/output-metadata.json
+          if [ ! -f "$META" ]; then
+            echo "::error::$META fehlt — ohne die Werte von AGP koennte hier nur geraten werden."
+            exit 1
+          fi
+          V_CODE=$(jq -r '.elements[0].versionCode' "$META")
+          V_NAME=$(jq -r '.elements[0].versionName' "$META")
+          if ! printf '%s' "$V_CODE" | grep -Eq '^[0-9]+$'; then
+            echo "::error::versionCode aus $META ist \"$V_CODE\" — keine Zahl."
+            exit 1
+          fi
+          if [ -z "$V_NAME" ] || [ "$V_NAME" = null ]; then
+            echo "::error::versionName aus $META ist leer."
+            exit 1
+          fi
+
+          # Dieselbe Regel wie im Job apk-pruefen (tools/release-pruefen.py fassung),
+          # hier unter der concurrency-Gruppe unmittelbar vor dem Hochladen. Ohne
+          # Werkzeug aus dem Repository: Dieser Job hat Schreibrecht.
           if gh release view "$ETIKETT" >/dev/null 2>&1; then
+            gh release download "$ETIKETT" -p version.json -O "$RUNNER_TEMP/version-alt.json"
+            ALT_CODE=$(jq -r '.versionCode' "$RUNNER_TEMP/version-alt.json")
+            ALT_COMMIT=$(jq -r '.commit' "$RUNNER_TEMP/version-alt.json")
+            if ! printf '%s' "$ALT_CODE" | grep -Eq '^[0-9]+$' || [ "$V_CODE" -lt "$ALT_CODE" ] ||
+               { [ "$V_CODE" -eq "$ALT_CODE" ] && [ "$ALT_COMMIT" != "$GITHUB_SHA" ]; }; then
+              echo "::error::versionCode $V_CODE folgt nicht auf das veröffentlichte $ALT_CODE ($ALT_COMMIT). Nichts wird veröffentlicht."
+              exit 1
+            fi
             gh release edit "$ETIKETT" --notes "$TEXT"
           else
             gh release create "$ETIKETT" --title "BrickInventory — neustes APK" --notes "$TEXT"
@@ -764,22 +881,7 @@ jobs:
           # zweite Wahrheit: Sie liefe Minuten spaeter als die im Build und
           # koennte einen Wert melden, den kein APK traegt — die App boete dann
           # ein Update an, das nach der Installation immer noch „veraltet" ist.
-          META=app/build/outputs/apk/release/output-metadata.json
-          if [ ! -f "$META" ]; then
-            echo "::error::$META fehlt — ohne die Werte von AGP koennte hier nur geraten werden."
-            exit 1
-          fi
-          V_CODE=$(jq -r '.elements[0].versionCode' "$META")
-          V_NAME=$(jq -r '.elements[0].versionName' "$META")
-          if ! printf '%s' "$V_CODE" | grep -Eq '^[0-9]+$'; then
-            echo "::error::versionCode aus $META ist \"$V_CODE\" — keine Zahl."
-            exit 1
-          fi
-          if [ -z "$V_NAME" ] || [ "$V_NAME" = null ]; then
-            echo "::error::versionName aus $META ist leer."
-            exit 1
-          fi
-
+          #
           # Das Feld heisst `commit` und nicht mehr `sha`.
           #
           # Drin stand immer schon $GITHUB_SHA — der Git-Commit, aus dem gebaut

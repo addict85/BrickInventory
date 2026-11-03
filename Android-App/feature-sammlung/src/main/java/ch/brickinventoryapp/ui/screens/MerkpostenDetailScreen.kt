@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -118,19 +119,23 @@ fun MerkpostenDetailScreen(
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
             item {
-                coil3.compose.AsyncImage(
+                ch.brickinventoryapp.ui.components.ProduktBild(
                     model = bildUrl,
                     contentDescription = merkposten.name,
                     imageLoader = imageLoader,
                     // Antippen oeffnet den Zoom — dasselbe Verhalten wie im
                     // Set- und im Katalog-Detail.
                     modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5)
+                        .clip(MaterialTheme.shapes.medium)
                         .clickable(enabled = bildUrl != null, role = Role.Button) { zoomOffen = true },
+                    ersatzGroesse = Abstaende.riesig * 2,
+                    bildgrund = true,
+                    innenAbstand = Abstaende.mittel,
                 )
             }
 
             item {
-                Card(Modifier.fillMaxWidth()) {
+                ch.brickinventoryapp.ui.theme.AppKarte {
                     Column(Modifier.padding(Abstaende.mittel)) {
                         CatalogDetailRow(stringResource(R.string.detail_set_number), merkposten.setNumber)
                         CatalogDetailRow(stringResource(R.string.detail_year),
@@ -168,10 +173,11 @@ fun MerkpostenDetailScreen(
             //
             // Derselbe Abschnitt wie im Set-Detail: derselbe Eintrag in price_alerts am selben
             // Schlüssel, und /sets/:sn/alert verlangt keinen Besitz.
-            setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, vm::setzePreisalarm)
+            setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, vm::setzePreisalarm,
+                aussenAbstand = false)
 
             item {
-                Card(Modifier.fillMaxWidth()) {
+                ch.brickinventoryapp.ui.theme.AppKarte {
                     Column(Modifier.padding(Abstaende.mittel)) {
                         Text(stringResource(R.string.detail_section_market), fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(Abstaende.klein))

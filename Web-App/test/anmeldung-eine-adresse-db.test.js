@@ -14,7 +14,8 @@
  * (einhaengung()), damit der Prüfstand nicht seine eigene Adresse prüft.
  *
  * ── Was durchgespielt wird ──────────────────────────────────────────────────
- *  1. Browser meldet sich an  -> Cookie UND Token, Token mit Ablaufdatum
+ *  1. Ohne `ohne_token` -> nur ein Token mit Ablaufdatum, kein Keks;
+ *     mit `ohne_token` (Browser) -> nur die Sitzung
  *  2. App meldet sich an      -> Token OHNE Ablaufdatum (never_expires)
  *  3. /me mit Cookie, mit Token, ohne alles, mit ungültigem Token
  *  4. Abmelden entwertet BEIDES — Sitzung und Token, in einem Aufruf
@@ -82,18 +83,21 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     [_req('src/konto/auth.js').hashToken(token)]);
 
   try {
-    // ── 1. Der Browser: kein never_expires ──────────────────────────────────
-    const web = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS } });
-    assert.equal(web.status, 200, `Anmeldung scheiterte: ${JSON.stringify(web.body)}`);
-    assert.equal(web.body.success, true);
+    // ── 1. Ohne never_expires: ein Token mit sieben festen Tagen, kein Keks ──
+    const kurz = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS } });
+    assert.equal(kurz.status, 200, `Anmeldung scheiterte: ${JSON.stringify(kurz.body)}`);
+    assert.equal(kurz.body.success, true);
+    assert.equal(kurz.cookie, null, 'Ein Login mit Token trägt keinen Sitzungskeks');
+    assert.ok(kurz.body.token);
+    assert.equal(kurz.body.never_expires, false);
+    assert.equal(kurz.body.user.is_admin, true, 'Die App liest is_admin — das Feld muss da sein');
+    const webToken = kurz.body.token;
+    assert.ok((await ablauf(webToken))?.expires_at, 'Der kurze Token muss ein Ablaufdatum haben');
+    // Der Browser: nur die Sitzung.
+    const web = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS, ohne_token: true } });
     assert.ok(web.cookie, 'Ohne Set-Cookie gibt es keine Sitzung — der Browser wäre nicht angemeldet');
-    assert.ok(web.body.token, 'Ohne Token kann EventSource sich nicht ausweisen');
-    assert.equal(web.body.never_expires, false);
-    assert.equal(web.body.user.is_admin, true, 'Die App liest is_admin — das Feld muss da sein');
+    assert.equal(web.body.token, undefined);
     const webCookie = web.cookie.split(';')[0];
-    const webToken  = web.body.token;
-    assert.ok((await ablauf(webToken))?.expires_at,
-      'Der Token des Browsers muss ein Ablaufdatum haben — er liegt im sessionStorage');
 
     // ── 2. Die App: gleitende Frist statt gar keiner ────────────────────────
     //
@@ -123,7 +127,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     // Und er ist deutlich laenger gueltig als der des Browsers: Wer die App
     // oeffnet, soll nicht woechentlich sein Passwort eintippen.
     assert.ok(new Date(appZeile.expires_at) > new Date((await ablauf(webToken)).expires_at),
-      'Der App-Token muss laenger laufen als die sieben Tage des Browsers');
+      'Der App-Token muss laenger laufen als die sieben festen Tage');
     // Vorbedingung: Es sind zwei VERSCHIEDENE Token, sonst prüft der Rest nichts.
     assert.notEqual(webToken, appToken);
 
@@ -156,7 +160,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
       headers: { cookie: webCookie, authorization: `Bearer ${webToken}` } });
     assert.equal(ab.status, 200);
     assert.equal(await ablauf(webToken), undefined,
-      'Der Token muss beim Abmelden verschwinden — er überlebte sonst sieben Tage im sessionStorage');
+      'Der Token muss beim Abmelden verschwinden');
     const danach = await ruf('/me', { headers: { cookie: webCookie } });
     assert.equal(danach.body.loggedIn, false, 'Die Sitzung muss beim Abmelden enden');
     // Der Token der App ist davon NICHT betroffen — abgemeldet hat sich der Browser.

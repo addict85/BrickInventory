@@ -181,7 +181,7 @@ class StringResourceParityTest {
         val gewolltGleich = setOf(
             "acq_total_quantity", "app_name", "catalog_sort_name", "chart_period_max",
             "comparison_barcode_label", "comparison_scan", "csv_ok_count",
-            "csv_upload_sets", "detail_section_item", "finance_filter_sets",
+            "detail_section_item", "finance_filter_sets",
             "finance_grand_total", "finance_section_sets", "finance_total_sets",
             "gallery_quantity_badge", "gallery_sort_name", "gallery_stat_sets",
             "monitoring_theme",

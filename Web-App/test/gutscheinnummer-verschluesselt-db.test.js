@@ -47,6 +47,7 @@ function alsV1(klar) {
 }
 const g = _req('src/infra/geheimnis.js');
 
+const PASS = 'Nummer-Passwort-1';
 const NR1 = '5045076374451234567', NR2 = '5045076374459876543', NR3 = '5045076374450246802';
 
 function baueGutschein(nummer, pin, betrag) {
@@ -75,7 +76,8 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
   await db.initSchema();
   const c = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
-  await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt','x'), ('fremd','x')`);
+  const hash = require('bcryptjs').hashSync(PASS, 4);
+  await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt', $1), ('fremd', $1)`, [hash]);
   const HAUPT = (await db.get(`SELECT id FROM users WHERE username = 'haupt'`)).id;
   const FREMD = (await db.get(`SELECT id FROM users WHERE username = 'fremd'`)).id;
   t.after(async () => {
@@ -92,13 +94,20 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
       ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}) });
     return { status: r.status, body: await r.json() };
   };
+  /** Nummer und PIN über den bestätigten Weg; die Liste zeigt nur die Maske. */
+  const klartext = async (srv, id) => {
+    const k = await ruf(srv, 'POST', `/vouchers/${id}/klartext`, { password: PASS });
+    assert.equal(k.status, 200, JSON.stringify(k.body));
+    return [k.body.number, k.body.pin];
+  };
   let id1;
 
   await t.test('nach dem Anlegen steht die Nummer in keiner Spalte im Klartext', async () => {
     const r = await ruf(haupt, 'POST', '/vouchers', { number: NR1, pin: '2468', amount: 50, currency: 'CHF' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(r.body.voucher.number, NR1, 'die Antwort an den Eigentümer bleibt gleich');
+    assert.equal(r.body.voucher.number, '…' + NR1.slice(-4), 'nach aussen nur das Ende');
     id1 = r.body.voucher.id;
+    assert.deepEqual(await klartext(haupt, id1), [NR1, '2468'], 'der Eigentümer liest die Nummer bestätigt');
     const zeile = await zeileAlsText(id1);
     assert.ok(!zeile.includes(NR1) && !zeile.includes(NR1.slice(-6)), zeile);
     const roh = await db.get('SELECT number, nummer_suche FROM vouchers WHERE id = $1', [id1]);
@@ -108,17 +117,17 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
 
   await t.test('lesen und ändern', async () => {
     const liste = await ruf(haupt, 'GET', '/vouchers');
-    assert.deepEqual(liste.body.vouchers.map(v => [v.id, v.number, v.pin]), [[id1, NR1, '2468']]);
+    assert.deepEqual(liste.body.vouchers.map(v => [v.id, v.number, v.pin]), [[id1, '…' + NR1.slice(-4), '•••']]);
     const suche = (await db.get('SELECT nummer_suche FROM vouchers WHERE id = $1', [id1])).nummer_suche;
     const r = await ruf(haupt, 'PUT', `/vouchers/${id1}`, { number: NR2 });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(r.body.voucher.number, NR2);
+    assert.equal((await klartext(haupt, id1))[0], NR2);
     const zeile = await zeileAlsText(id1);
     assert.ok(!zeile.includes(NR2) && !zeile.includes(NR1), zeile);
     assert.notEqual((await db.get('SELECT nummer_suche FROM vouchers WHERE id = $1', [id1])).nummer_suche, suche);
     // Nur der Betrag: Die Nummer kommt entschlüsselt aus der Zeile und geht verschlüsselt zurück.
     const b = await ruf(haupt, 'PUT', `/vouchers/${id1}`, { amount: 40 });
-    assert.deepEqual([b.status, b.body.voucher.number, b.body.voucher.amount], [200, NR2, 40]);
+    assert.deepEqual([b.status, (await klartext(haupt, id1))[0], b.body.voucher.amount], [200, NR2, 40]);
     assert.ok(!(await zeileAlsText(id1)).includes(NR2));
   });
 
@@ -142,13 +151,14 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
     const r = await fetch(`${haupt.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
-    assert.deepEqual([b.voucher.number, b.voucher.hat_pdf], [NR1, true]);
+    assert.deepEqual([(await klartext(haupt, b.voucher.id))[0], b.voucher.hat_pdf], [NR1, true]);
     assert.ok(!(await zeileAlsText(b.voucher.id)).includes(NR1));
-    const datei = await fetch(`${haupt.base}/api/v1/vouchers/${b.voucher.id}/pdf?download=1`);
+    const ticket = async (weg) => (await ruf(haupt, 'POST', weg, { password: PASS })).body.ticket;
+    const datei = await fetch(`${haupt.base}/api/v1/vouchers/${b.voucher.id}/pdf?download=1&ticket=${await ticket(`/vouchers/${b.voucher.id}/pdf-freigabe`)}`);
     await datei.arrayBuffer();
-    assert.equal(datei.headers.get('content-disposition'), `attachment; filename="gutschein-${NR1}.pdf"`);
+    assert.equal(datei.headers.get('content-disposition'), `attachment; filename="gutschein-${b.voucher.id}.pdf"`, 'die Nummer steht nicht im Dateinamen');
 
-    const ex = await fetch(`${haupt.base}/api/v1/vouchers/export/pdf`);
+    const ex = await fetch(`${haupt.base}/api/v1/vouchers/export/pdf?ticket=${await ticket('/vouchers/export/pdf-freigabe')}`);
     assert.equal(ex.status, 200);
     const pdf = Buffer.from(await ex.arrayBuffer());
     const { seitenweiseLesen } = _req('src/gutscheine/gutscheinPdfSchreiben.js');
@@ -160,8 +170,10 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
     const imp = await (await fetch(`${haupt.base}/api/v1/vouchers/pdf`, { method: 'POST', body: im })).json();
     assert.deepEqual([imp.mehrere.added, imp.mehrere.errors], [3, 0], JSON.stringify(imp));
     const liste = await ruf(haupt, 'GET', '/vouchers');
-    assert.deepEqual(liste.body.vouchers.map(v => v.number).sort(), [NR1, NR2, NR3].sort());
-    for (const v of liste.body.vouchers) assert.ok(!(await zeileAlsText(v.id)).includes(v.number));
+    const nummern = [];
+    for (const v of liste.body.vouchers) nummern.push((await klartext(haupt, v.id))[0]);
+    assert.deepEqual(nummern.sort(), [NR1, NR2, NR3].sort());
+    for (const v of liste.body.vouchers) assert.ok(!(await zeileAlsText(v.id)).includes((await klartext(haupt, v.id))[0]));
     const nochmal = new FormData();
     nochmal.append('file', new Blob([pdf], { type: 'application/pdf' }), 'alle.pdf');
     const zweit = await (await fetch(`${haupt.base}/api/v1/vouchers/pdf`, { method: 'POST', body: nochmal })).json();
@@ -191,7 +203,9 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
     }
     assert.notEqual(zeilen[0].nummer_suche, zeilen[1].nummer_suche);
     const liste = await ruf(haupt, 'GET', '/vouchers');
-    assert.deepEqual(liste.body.vouchers.map(v => [v.number, v.pin]).sort(), [[NR1, '1357'], [NR3, '8642']].sort());
+    const werte = [];
+    for (const v of liste.body.vouchers) werte.push(await klartext(haupt, v.id));
+    assert.deepEqual(werte.sort(), [[NR1, '1357'], [NR3, '8642']].sort());
     assert.equal((await ruf(haupt, 'POST', '/vouchers', { number: NR1, amount: 5 })).status, 409,
       'eine umgeschlüsselte Nummer zählt für die Doppelprüfung');
     const klar = await db.run(`INSERT INTO vouchers (user_id, number, amount, currency) VALUES ($1, '123456789', 1, 'CHF')`, [HAUPT])

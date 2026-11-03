@@ -1,0 +1,18 @@
+Gegenprobe: ProduktBild zeichnet kein Ersatzbild mehr
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Galerie zeigt ohne Bild das Ersatzbild
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
+index 9e501f6..13776f9 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
+@@ -68,7 +68,7 @@ fun ProduktBild(
+         drawContent(); drawRect(Color.Black, alpha = SCHLEIER_DUNKEL)
+     } else Modifier
+     Box(modifier.then(grund).then(schleier), contentAlignment = Alignment.Center) {
+-        if (!geladen) BildErsatz(Modifier.matchParentSize(), ersatzGroesse)
++        if (false && !geladen) BildErsatz(Modifier.matchParentSize(), ersatzGroesse)
+         if (model != null) {
+             AsyncImage(
+                 model = model,

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.components.AuswahlChip
+import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
 import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
@@ -160,17 +161,6 @@ internal fun KontoCard(
     }
 }
 
-/** Der Code des zweiten Faktors, den der Server für Passwort und E-Mail verlangt. */
-@Composable
-internal fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
-    OutlinedTextField(
-        value = code, onValueChange = { onCode(it.take(24)) },
-        label = { Text(stringResource(R.string.login_code)) },
-        supportingText = { Text(stringResource(R.string.login_code_hint)) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
-}
-
 /**
  * Zweiter Faktor: einrichten, abschalten, neue Wiederherstellungscodes.
  *
@@ -205,6 +195,10 @@ internal fun ZweiterFaktorCard(
     val kopieren: (String) -> Unit = { text ->
         ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, schluesselEtikett, text)
     }
+    // Neue Codes und ein neuer Schlüssel erscheinen gleich danach im Klartext: erst
+    // nach der Gerätesperre (Schrittschutz), zusätzlich zu Passwort bzw. Code.
+    val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+    val codesGrund = stringResource(R.string.schritt_codes)
     // Felder leeren, sobald ein Schritt gelungen ist — sonst stuende das
     // Passwort beim naechsten Schritt noch da.
     LaunchedEffect(zfZustand.aktiv, zfZustand.geheimnis, zfZustand.codes) { zfPasswort = ""; zfCode = "" }
@@ -282,7 +276,7 @@ internal fun ZweiterFaktorCard(
                 passwortFeld()
                 codeFeld(stringResource(R.string.login_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    OutlinedButton(onClick = { onNeueCodes(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.laedt,
+                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.laedt,
                         shape = Formen.knopf) { Text(stringResource(R.string.zf_new_codes)) }
                     OutlinedButton(onClick = { onAbschalten(zfPasswort, zfCode) },
                         enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt,
@@ -292,7 +286,7 @@ internal fun ZweiterFaktorCard(
             // 4. Nicht eingerichtet.
             zfZustand.aktiv == false -> {
                 passwortFeld()
-                Button(onClick = { onEinrichten(zfPasswort) }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
+                Button(onClick = { schutz.bestaetige(codesGrund) { onEinrichten(zfPasswort) } }, enabled = zfPasswort.isNotBlank() && !zfZustand.laedt,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp), shape = Formen.knopf
                 ) { Text(stringResource(R.string.zf_setup), fontWeight = FontWeight.SemiBold) }
             }
@@ -455,25 +449,14 @@ internal fun DesignCard(design: ch.brickinventoryapp.ui.DesignWahl?, onWahl: (St
     SettingsCard(title = stringResource(R.string.monitoring_theme), icon = Icons.Default.Palette) {
         Text(stringResource(R.string.konto_design_hint), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        ) {
-            val vorgabe = namen[design.vorgabe]?.let { stringResource(it) } ?: design.vorgabe
-            AuswahlChip(
-                selected = design.eigenes == null,
-                onClick = { if (design.eigenes != null) onWahl("") },
-                label = { Text(stringResource(R.string.konto_design_vorgabe, vorgabe), style = MaterialTheme.typography.labelMedium) },
-                shape = Formen.chip,
-            )
-            for ((wert, text) in ch.brickinventoryapp.ui.DESIGN_NAMEN) {
-                AuswahlChip(
-                    selected = design.eigenes == wert,
-                    onClick = { if (design.eigenes != wert) onWahl(wert) },
-                    label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
-                    shape = Formen.chip,
-                )
-            }
-        }
+        // Eine Wahl aus mehreren — dieselben Radio-Chips wie in den Einstellungen;
+        // "" steht für „die Vorgabe des Servers“.
+        val vorgabe = namen[design.vorgabe]?.let { stringResource(it) } ?: design.vorgabe
+        ch.brickinventoryapp.ui.components.WahlChips(
+            optionen = listOf("" to stringResource(R.string.konto_design_vorgabe, vorgabe)) +
+                ch.brickinventoryapp.ui.DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
+            gewaehlt = design.eigenes ?: "",
+            onWahl = { wert -> if (wert != (design.eigenes ?: "")) onWahl(wert) },
+        )
     }
 }

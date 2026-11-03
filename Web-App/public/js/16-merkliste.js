@@ -110,7 +110,7 @@ function zeile(w) {
   // Lauf nach dem Eintragen gibt es schlicht noch keinen.
   const preis = w.marktpreis != null
     ? `<span title="${esc(tRaw('detail.market_price'))}" class="preis mk-preis">${fmtN(w.marktpreis, w.waehrung || CURRENCY)}</span>`
-    : `<span class="mk-preis text-mut">—</span>`;
+    : `<span class="mk-preis text-mut mk-preis-offen" title="${esc(tRaw('wanted.preis_offen_hint'))}">${t('wanted.preis_offen')}</span>`;
 
   const arg = escJs(`${w.set_number}|${w.condition}|${w.user_id}`);
   return `
@@ -273,7 +273,15 @@ export async function merkpostenLoeschen(arg) {
   const p = new URLSearchParams({ owner_user_id: String(owner_user_id) });
   const d = await api('DELETE',
     `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`);
-  if (d?.success) { toast(tRaw('wanted.deleted'), 'ok'); await ladeMerkliste(); }
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  // Rückgängig legt den Posten neu an; er hat ausser Nummer, Zustand und Inhaber nichts Eigenes.
+  toast(tRaw('wanted.deleted'), 'success', { text: tRaw('trash.undo'), fn: async () => {
+    const r = await api('POST', '/v1/wanted', { set_number, condition, owner_user_id });
+    if (!r?.success) { toast(r?.error || tRaw('settings.error'), 'error'); return; }
+    toast(tRaw('trash.restored'), 'success');
+    await ladeMerkliste();
+  } });
+  await ladeMerkliste();
 }
 
 /**

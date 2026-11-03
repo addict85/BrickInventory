@@ -115,7 +115,7 @@ test('der Zeitplan im Monitor geht durch denselben Escaper wie sein Nachbar', ()
   // dass sein Gegenstand weg ist — hier fiel er nur auf, weil er die Anzahl
   // der Treffer prüft und nicht bloß deren Form.
   const core = ohneKommentare(require('./helpers/sources').coreQuelle());
-  const treffer = [...core.matchAll(/class="job-sched-input"[^`]*?value="\$\{([^}]+)\}"/g)];
+  const treffer = [...core.matchAll(/class="job-sched-input[^"]*"[^`]*?value="\$\{([^}]+)\}"/g)];
   assert.strictEqual(treffer.length, 2,
     `${treffer.length} Zeitplan-Eingabefelder gefunden, erwartet 2 — Muster veraltet?`);
   for (const m of treffer)

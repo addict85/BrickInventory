@@ -60,6 +60,9 @@ const AUSGELASSEN = new Map([
   ['POST /api/v1/sets/partslist-pdf',               'liefert eine Datei, kein JSON-Modell'],
   ['POST /api/v1/auth/passkey/anmelden/optionen',   'braucht APP_BASE_URL mit Domain; die Optionen bleiben JSON (passkeys-db)'],
   ['POST /api/v1/auth/passkey/anmelden',            'braucht eine WebAuthn-Signatur; antwortet wie /auth/login (passkeys-db)'],
+  ['POST /api/v1/vouchers/{id}/klartext',           'verlangt Passwort und zweiten Faktor; Antwort geprüft in gutscheine-db'],
+  ['POST /api/v1/vouchers/{id}/pdf-freigabe',       'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
+  ['POST /api/v1/vouchers/export/pdf-freigabe',     'verlangt Passwort und zweiten Faktor; Ticket geprüft in gutscheine-db'],
 ]);
 
 /** Ein PDF mit den übergebenen Zeilen. */
@@ -284,7 +287,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     { m: 'POST', p: '/api/v1/vouchers', body: { number: '5045076374450011111', pin: '1234', amount: 50, currency: 'CHF' },
       danach: (j) => { w.id = String(j.voucher.id); } },
     { m: 'PUT',  p: '/api/v1/vouchers/{id}', body: { number: '5045076374450011111', pin: '4321', amount: 40, currency: 'CHF' } },
-    { m: 'DELETE', p: '/api/v1/vouchers/{id}' },
+    { m: 'DELETE', p: '/api/v1/vouchers/{id}', body: { password: PASS } },
     { m: 'POST', p: '/api/v1/vouchers/pdf',
       form: async () => formular(await pdfMit(['Ihre LEGO-Geschenkkarte im Wert von 25 CHF:', '5045076374450012222', 'PIN: 4711']),
         'application/pdf', 'gutschein.pdf') },

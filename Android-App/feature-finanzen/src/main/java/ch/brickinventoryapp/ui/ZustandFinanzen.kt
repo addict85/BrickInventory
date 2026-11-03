@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui
 
+import ch.brickinventoryapp.ui.model.KlartextAnsicht
 import ch.brickinventoryapp.ui.model.*
 
 /**
@@ -81,18 +82,19 @@ data class GutscheinUiState(
     /** Die gewaehlte PDF-Datei, solange sie noch nicht hochgeladen ist. */
     val pdfName: String? = null,
     /**
-     * Welcher Gutschein sein PDF zeigen soll, oder null. Im Zustand statt als Rückruf,
-     * weil SettingsScreen höchstens sechs Parameter haben darf
-     * (ScreenViewModelWiringTest); verbraucht wird das Ziel im Graphen, der den
-     * NavController kennt.
+     * Das freigegebene PDF, das der Graph im Betrachter öffnen soll, oder null. Im
+     * Zustand statt als Rückruf, weil der Graph den NavController kennt; er quittiert.
      */
-    val pdfZiel: Int? = null,
+    val pdfZiel: GutscheinPdfZiel? = null,
+    /** Die laufende Rückfrage nach Passwort und Code, oder null. */
+    val bestaetigung: GutscheinBestaetigung? = null,
     /**
-     * Ob der Export aller Gutscheine gezeigt werden soll. Ein eigenes Feld neben
-     * [pdfZiel]: zwei Knöpfe, einzeln quittiert; der Graph schickt beide in den
-     * PdfViewerScreen.
+     * Nummer und PIN im Klartext je id, solange die Seite offen ist. Nur hier, nie
+     * in Ablage oder Cache; GutscheineUnterseite leert es beim Verlassen.
      */
-    val exportZeigen: Boolean = false,
+    val klartext: Map<Int, KlartextAnsicht> = emptyMap(),
+    /** Was die Oberfläche in die Zwischenablage legen soll; sie quittiert. */
+    val zuKopieren: Kopierauftrag? = null,
     val speichert: Boolean = false,
     /**
      * Die id der Karte, deren Guthaben gerade abgefragt wird, oder null. Eine id statt
@@ -133,3 +135,24 @@ data class GuthabenLauf(
     /** Sekunden bis zum naechsten Versuch, oder 0 waehrend der Abfrage. */
     val wartenSek: Int = 0,
 )
+
+/** Ein freigegebenes PDF; ohne [id] das aller Gutscheine. */
+data class GutscheinPdfZiel(val id: Int?, val ticket: String)
+
+/** Was erst nach Gerätesperre und Passwort geschieht. */
+enum class GutscheinSchritt { PIN_ZEIGEN, NUMMER_KOPIEREN, PIN_KOPIEREN, PDF, EXPORT, LOESCHEN }
+
+/**
+ * Die Rückfrage nach Passwort (und Code), bevor [schritt] für Gutschein [id]
+ * läuft; [id] ist null beim Export aller.
+ */
+data class GutscheinBestaetigung(
+    val schritt: GutscheinSchritt,
+    val id: Int?,
+    /** Der Server hat den Code des zweiten Faktors verlangt. */
+    val codeNoetig: Boolean = false,
+    val fehler: String? = null,
+    val laeuft: Boolean = false,
+)
+
+data class Kopierauftrag(val wert: String, val istNummer: Boolean)

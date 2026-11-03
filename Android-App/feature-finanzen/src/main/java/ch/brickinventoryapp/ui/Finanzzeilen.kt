@@ -24,7 +24,23 @@ data class FinanzZeile(
     /** Zustand der Erfassung; null bei einem Eintrag ohne Erfassungen. */
     val zustand: String?,
     val pnlProzent: Double?,
-)
+) {
+    /**
+     * Der Kauf aller Stück der Zeile. Der Server liefert den Kaufpreis je Stück, den
+     * Marktwert aber für die ganze Zeile (wert_gesamt); nebeneinander gestellt las sich
+     * „Kauf: 400“ neben „899.90“ bei zwei Stück wie ein Gewinn von 125 %.
+     */
+    val kaufGesamt: Double?
+        get() = kaufpreis?.let { BigDecimal.valueOf(it).multiply(BigDecimal(menge.coerceAtLeast(1))).toDouble() }
+
+    /** Gewinn oder Verlust in Geld, auf derselben Grundlage wie [pnlProzent]. */
+    val gewinn: Double?
+        get() {
+            val w = wert ?: return null
+            val k = kaufGesamt ?: return null
+            return BigDecimal.valueOf(w).subtract(BigDecimal.valueOf(k)).toDouble()
+        }
+}
 
 /**
  * Eine Karte je Kaufpreis, sobald es mehrere gibt — jede mit dem Marktpreis

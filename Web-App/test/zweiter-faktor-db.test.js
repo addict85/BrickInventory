@@ -206,7 +206,7 @@ test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async
     const idS = (await db.get('SELECT id FROM users WHERE username = $1', [SPERRE])).id;
     const entfernen = async (id) => {
       const r = await fetch(`${basis}/users/${id}/zweiter-faktor`, { method: 'DELETE',
-        headers: { 'content-type': 'application/json', cookie: keks }, body: JSON.stringify({ admin_password: PASS }) });
+        headers: { 'content-type': 'application/json', cookie: keks }, body: JSON.stringify({ admin_password: PASS, code: await codeFuer(VERWALTER, 1) }) });
       return { status: r.status, body: await r.json().catch(() => null) };
     };
     const eigen = await entfernen(idV);

@@ -4,25 +4,25 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Galerie hat einen schwebenden Knopf
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index c578eba..712725b 100644
+index 0c53be0..f84cae0 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -182,7 +182,6 @@ fun GalleryScreen(
+@@ -186,7 +186,6 @@ fun GalleryScreen(
                  platzhalter = stringResource(R.string.gallery_search_placeholder),
-                 aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme, sort),
+                 aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme),
                  onFilter = { zeigeFilter = true },
 -                onScannen = onScanBarcode,
-             )
- 
-             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
-@@ -260,6 +259,10 @@ fun GalleryScreen(
- 
+                 sortierung = {
+                     // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
+                     // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
+@@ -277,6 +276,10 @@ fun GalleryScreen(
          // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
          // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
+         // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
 +        if (anzeige != GalerieAnzeige.FEHLER) SmallFloatingActionButton(onClick = onScanBarcode,
 +            modifier = Modifier.align(Alignment.BottomEnd).padding(end = Abstaende.gross, bottom = 96.dp)) {
 +            Icon(Icons.Default.QrCodeScanner, stringResource(R.string.gallery_scan_barcode))
 +        }
-         if (anzeige != GalerieAnzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+         if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
              stringResource(R.string.gallery_add_set), { showAddDialog = true },
              Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),

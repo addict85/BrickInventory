@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.util.NumericInput
@@ -375,20 +374,14 @@ fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
         val labelPieces   = stringResource(R.string.detail_pieces)
         val labelMinifigs = stringResource(R.string.detail_minifigs)
         val labelTheme    = stringResource(R.string.detail_theme)
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            contentPadding = PaddingValues(horizontal = Abstaende.gross),
-            modifier = Modifier.padding(bottom = Abstaende.mittel)
-        ) {
-            val chips = buildList {
-                set.year?.let     { add(labelYear     to "$it")  }
-                set.pieces?.let   { add(labelPieces   to ch.brickinventoryapp.util.fmtInt(it)) }
-                set.minifigs?.let { add(labelMinifigs to "$it")  }
-                set.theme?.let    { add(labelTheme    to it)     }
-            }
-            items(chips) { (label, value) ->
-                StatChipV2(label = label, value = value)
-            }
+        val chips = buildList {
+            set.year?.let     { add(labelYear     to "$it")  }
+            set.pieces?.let   { add(labelPieces   to ch.brickinventoryapp.util.fmtInt(it)) }
+            set.minifigs?.let { add(labelMinifigs to "$it")  }
+            set.theme?.let    { add(labelTheme    to it)     }
+        }
+        if (chips.isNotEmpty()) KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
+            chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
         }
     }
 
@@ -418,14 +411,15 @@ fun LazyListScope.setDetailHeroImage(
             elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            if (imageUrl != null) {
-                ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
-                    AsyncImage(
-                    model = coil3.request.ImageRequest.Builder(LocalContext.current)
-                        .data(imageUrl)
-                        .memoryCacheKeyExtra("retry", detailRetry.intValue.toString())
-                        .crossfade(true)
-                        .build(),
+            ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
+                ch.brickinventoryapp.ui.components.ProduktBild(
+                    model = imageUrl?.let {
+                        coil3.request.ImageRequest.Builder(LocalContext.current)
+                            .data(it)
+                            .memoryCacheKeyExtra("retry", detailRetry.intValue.toString())
+                            .crossfade(true)
+                            .build()
+                    },
                     imageLoader = imageLoader,
                     contentDescription = set.name,
                     onState = { st ->
@@ -440,31 +434,14 @@ fun LazyListScope.setDetailHeroImage(
                         .fillMaxWidth()
                         .height(200.dp)
                         .clip(Formen.chip)
-                        .clickable(role = Role.Button) { onZoom() },
-                    contentScale = ContentScale.Fit
+                        .clickable(enabled = imageUrl != null, role = Role.Button) { onZoom() },
+                    contentScale = ContentScale.Fit,
+                    ersatzGroesse = 64.dp,
+                    // Weisser Grund über die ganze Kartenbreite: Das Bild stand sonst schmaler
+                    // als seine Karte, mit harten Kanten links und rechts.
+                    bildgrund = true,
+                    innenAbstand = Abstaende.mittel,
                 )
-                }
-            } else {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(160.dp)
-                        .background(
-                            Brush.linearGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.secondaryContainer
-                                )
-                            )
-                        ),
-                    Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.ViewModule, null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.4f)
-                    )
-                }
             }
         }
     }
@@ -482,6 +459,8 @@ fun LazyListScope.setDetailAlarmSection(
     alarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht>,
     currency: String,
     onSetze: (setNumber: String, richtung: String, roh: String, zustand: String) -> Unit,
+    /** Aus, wo die Liste selbst schon einen Rand hat (Merkposten-Detail). */
+    aussenAbstand: Boolean = true,
 ) {
     item {
         // Fuer WELCHEN Zustand der Alarm gilt. Neu und gebraucht liegen oft
@@ -491,7 +470,7 @@ fun LazyListScope.setDetailAlarmSection(
             mutableStateOf(ch.brickinventoryapp.ui.ALARM_ZUSTAND_VORGABE)
         }
         val alarm = alarme.firstOrNull { it.condition == zustand }
-        SectionCard(title = stringResource(R.string.detail_alert)) {
+        SectionCard(title = stringResource(R.string.detail_alert), aussenAbstand = aussenAbstand) {
             // Der Zustandswechsel LAEDT nur — er speichert nicht. Ein Wechsel
             // ist die Frage „was steht fuer gebraucht?", keine Eingabe. Wuerde
             // hier gespeichert, legte schon das Umschalten einen Alarm im

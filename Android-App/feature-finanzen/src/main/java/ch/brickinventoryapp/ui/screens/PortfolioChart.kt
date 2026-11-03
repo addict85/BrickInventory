@@ -187,22 +187,17 @@ fun PortfolioChart(
 
             Spacer(Modifier.height(10.dp))
 
-            // Zeitraum — umbrechend, damit „Monat“ bei 200 % nicht hinausgeschoben wird.
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(
+            // Zeitraum: eine Einfachwahl, darum Segmente wie überall (SegmentWahl).
+            ch.brickinventoryapp.ui.components.SegmentWahl(
+                optionen = listOf(
                     "week" to stringResource(R.string.chart_period_week),
                     "month" to stringResource(R.string.chart_period_month),
                     "year" to stringResource(R.string.chart_period_year),
                     "max" to stringResource(R.string.chart_period_max)
-                ).forEach { (p, label) ->
-                    AuswahlChip(
-                        selected  = selectedPeriod == p,
-                        onClick   = { onPeriodChange(p) },
-                        label     = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                        modifier  = Modifier.heightIn(min = 28.dp)
-                    )
-                }
-            }
+                ),
+                gewaehlt = selectedPeriod,
+                onWahl = onPeriodChange,
+            )
         }
     }
 }

@@ -1,6 +1,5 @@
 package ch.brickinventoryapp.ui.screens
 
-import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -11,28 +10,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlinx.coroutines.launch
 
 /**
- * Eine CSV-Datei hochladen — Sets, Teile, Minifiguren oder die Merkliste, über
- * dieselben Adressen wie die Webapp. Der Fortschritt danach kommt über den
+ * Eine CSV-Datei hochladen — Sets, Teile, Minifiguren, Merkliste oder Preisalarme,
+ * über dieselben Adressen wie die Webapp. Der Fortschritt danach kommt über den
  * bestehenden Kanal: Der Import läuft auf dem Server weiter, auch wenn die App
  * zugeklappt wird.
  *
- * FlowRow statt Row: Vier Knöpfe mit weight(1f) teilten sich die Breite, und
- * „Minifiguren“ würde auf einem Telefon abgeschnitten. FlowRow bricht um wie bei
- * den Netzschaltern in MonitoringSections.kt. Ohne weight(1f), weil es in einer
- * FlowRow jeden Knopf auf eine eigene Zeile streckte; die Knöpfe nehmen die Breite
- * ihres Textes.
+ * Je Art eine Zeile mit Symbol und den erwarteten Spalten: Als fünf Chips sahen
+ * die Knöpfe wie Filter aus, und welche Datei gemeint ist, stand nirgends.
  */
-// Kurzname, nicht vollqualifiziert: `import androidx.compose.foundation.layout.*`
-// macht FlowRow und diese Annotation verfügbar, und SplitFileImportsTest liest aus
-// @OptIn(...) den kurzen Namen („ExperimentalLayoutApi“). Mit dem vollen Pfad sähe
-// die Regel ihren Marker nicht.
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun CsvImportCard(
     csvZustand: ch.brickinventoryapp.ui.CsvHochladenUiState,
@@ -56,65 +52,56 @@ internal fun CsvImportCard(
     val typen = arrayOf("text/csv", "text/comma-separated-values", "text/plain",
                         "application/vnd.ms-excel", "application/octet-stream")
 
-    SettingsCard(title = stringResource(R.string.csv_upload_title), icon = Icons.Default.UploadFile) {
+    Text(
+        stringResource(R.string.csv_upload_hint,
+            (ch.brickinventoryapp.ui.viewmodel.CSV_MAX_BYTES / 1024 / 1024).toInt()),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+    Abschnitt(titel = null, innenAbstand = false) {
+        listOf(
+            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.SETS, R.string.csv_upload_sets, R.string.csv_format_sets),
+            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.TEILE, R.string.csv_upload_parts, R.string.csv_format_parts),
+            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.MINIFIGUREN, R.string.csv_upload_figs, R.string.csv_format_figs),
+            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.MERKLISTE, R.string.csv_upload_wanted, R.string.csv_format_wanted),
+            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.PREISALARME, R.string.csv_upload_alerts, R.string.csv_format_alerts),
+        ).forEachIndexed { i, (art, titel, spalten) ->
+            if (i > 0) HorizontalDivider()
+            ListItem(
+                headlineContent = { Text(stringResource(titel)) },
+                supportingContent = { Text(stringResource(spalten), style = MaterialTheme.typography.bodySmall) },
+                leadingContent = { Icon(Icons.Default.UploadFile, null, tint = MaterialTheme.colorScheme.primary) },
+                // Der Kreisel steht an der Zeile, deren Import läuft — die anderen bleiben ruhig.
+                trailingContent = if (csvZustand.laeuft && csvZustand.art == art) {
+                    { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) }
+                } else null,
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                modifier = Modifier.clickable(enabled = !csvZustand.laeuft, role = Role.Button) {
+                    gewaehlteArt = art; auswahl.launch(typen)
+                }.alpha(if (csvZustand.laeuft && csvZustand.art != art) 0.6f else 1f),
+            )
+        }
+    }
+
+    val ergebnis = csvZustand.ergebnis
+    if (ergebnis != null) {
         Text(
-            stringResource(R.string.csv_upload_hint,
-                (ch.brickinventoryapp.ui.viewmodel.CSV_MAX_BYTES / 1024 / 1024).toInt()),
+            // Vier Zahlen, im Englischen stimmen zwei davon überein („row/rows“,
+            // „error/errors“). Ein <plurals> stimmt nur mit einer überein, darum vier
+            // Bruchstücke in einem Rahmen — auch „neu“ und „aktualisiert“, damit der Rahmen
+            // kein %d trägt, das Lint beanstandet.
+            stringResource(R.string.csv_upload_result,
+                pluralStringResource(R.plurals.csv_upload_rows, ergebnis.total, ergebnis.total),
+                pluralStringResource(R.plurals.csv_upload_new, ergebnis.neuAngelegt, ergebnis.neuAngelegt),
+                pluralStringResource(R.plurals.csv_upload_updated, ergebnis.updated, ergebnis.updated),
+                pluralStringResource(R.plurals.csv_upload_errors, ergebnis.errors, ergebnis.errors)),
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            listOf(
-                ch.brickinventoryapp.ui.model.CsvImportArt.SETS to R.string.csv_upload_sets,
-                ch.brickinventoryapp.ui.model.CsvImportArt.TEILE to R.string.csv_upload_parts,
-                ch.brickinventoryapp.ui.model.CsvImportArt.MINIFIGUREN to R.string.csv_upload_figs,
-                ch.brickinventoryapp.ui.model.CsvImportArt.MERKLISTE to R.string.csv_upload_wanted,
-                ch.brickinventoryapp.ui.model.CsvImportArt.PREISALARME to R.string.csv_upload_alerts,
-            ).forEach { (art, textId) ->
-                OutlinedButton(
-                    onClick = { gewaehlteArt = art; auswahl.launch(typen) },
-                    enabled = !csvZustand.laeuft,
-                    shape = Formen.knopf,
-                    contentPadding = PaddingValues(horizontal = Abstaende.klein)
-                ) {
-                    // Der Kreisel steht neben der Beschriftung, nicht an ihrer Stelle: Ohne weight
-                    // (in der FlowRow) schrumpfte der Knopf sonst während des Imports auf
-                    // Kreiselgrösse und schöbe die anderen beiseite (KnopfBreiteTest). Dasselbe
-                    // Muster wie beim Knopf „Nach Aktualisierung suchen“.
-                    if (csvZustand.laeuft && csvZustand.art == art) {
-                        CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(Abstaende.winzig))
-                    }
-                    Text(stringResource(textId), maxLines = 1,
-                        style = MaterialTheme.typography.labelLarge)
-                }
-            }
-        }
-
-        val ergebnis = csvZustand.ergebnis
-        if (ergebnis != null) {
-            Text(
-                // Vier Zahlen, im Englischen stimmen zwei davon überein („row/rows“,
-                // „error/errors“). Ein <plurals> stimmt nur mit einer überein, darum vier
-                // Bruchstücke in einem Rahmen — auch „neu“ und „aktualisiert“, damit der Rahmen
-                // kein %d trägt, das Lint beanstandet.
-                stringResource(R.string.csv_upload_result,
-                    pluralStringResource(R.plurals.csv_upload_rows, ergebnis.total, ergebnis.total),
-                    pluralStringResource(R.plurals.csv_upload_new, ergebnis.neuAngelegt, ergebnis.neuAngelegt),
-                    pluralStringResource(R.plurals.csv_upload_updated, ergebnis.updated, ergebnis.updated),
-                    pluralStringResource(R.plurals.csv_upload_errors, ergebnis.errors, ergebnis.errors)),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary)
-            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
-        }
-        if (csvZustand.fehler != null) {
-            Text(csvZustand.fehler, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error)
-            TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
-        }
+            color = MaterialTheme.colorScheme.primary)
+        TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
+    }
+    if (csvZustand.fehler != null) {
+        Text(csvZustand.fehler, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error)
+        TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
     }
 }

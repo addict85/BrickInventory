@@ -37,7 +37,6 @@ import ch.brickinventoryapp.ui.ohneKeineFarbe
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.core.graphics.toColorInt
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import ch.brickinventoryapp.util.NumericInput

@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import ch.brickinventoryapp.ui.theme.ChartColors
 import ch.brickinventoryapp.ui.theme.StatusFarben
+import ch.brickinventoryapp.ui.theme.akzentflaechen
 import ch.brickinventoryapp.ui.theme.diagrammFarben
 import ch.brickinventoryapp.ui.theme.farbschema
 import ch.brickinventoryapp.ui.theme.hatDunkleFassung
@@ -28,6 +29,11 @@ import org.junit.Test
  * Diagrammfarben (02.11.2026, thema.py gegen Compose Desktop):
  *   D  in diagrammFarben() gedaempft wieder fest #94A3B8 → rot „Diagrammschrift …“
  *      mit classic 2,56 auf surface und 2,07 auf surfaceContainerHighest
+ *
+ * Akzentflächen (03.11.2026, thema.py gegen Compose Desktop):
+ *   E  in akzentflaechen() die Stein-Flächen auch im Dunkeln (wie vor M5: Leisten in
+ *      primary/secondary, Marktwert Petrol) → rot „im Dunkeln leuchtet …“ mit
+ *      brick/dunkel.leiste 0,45, .detailLeiste 0,63, .markt 0,17
  */
 class TextKontrastTest {
 
@@ -92,6 +98,46 @@ class TextKontrastTest {
     }
 
     private fun k(a: Color, b: Color) = Kontrast.verhaeltnis(a.toArgb(), b.toArgb())
+
+    private fun akzent(f: Fassung) = akzentflaechen(f.name.substringBefore('/'), f.name.endsWith("/dunkel"), f.s)
+
+    /** App-Leisten und Wert-Kacheln: Schrift auf ihrer Fläche wie jede andere Rolle. */
+    @Test
+    fun `Leisten und Wert-Kacheln tragen lesbare Schrift`() {
+        val fehler = fassungen.flatMap { f ->
+            val a = akzent(f)
+            listOf("leiste" to (a.aufLeiste to a.leiste), "detailLeiste" to (a.aufDetailLeiste to a.detailLeiste),
+                "markt" to (a.aufMarkt to a.markt), "kauf" to (a.aufKauf to a.kauf))
+                .mapNotNull { (n, p) -> k(p.first, p.second).takeIf { it < 4.5 }?.let { "${f.name}.$n %.2f".format(it) } }
+        }
+        assertTrue("Unter 4,5:1: $fehler", fehler.isEmpty())
+    }
+
+    /**
+     * Im Dunkeln keine hellen Flächen (Material 3: Container-Rollen): Eine Leiste oder
+     * Kachel heller als die Schrift auf ihr leuchtet auf Schwarz und zieht den Blick
+     * vom Inhalt weg. Gemessen als relative Luminanz; onSurface liegt bei rund 0,8.
+     */
+    @Test
+    fun `im Dunkeln leuchtet keine Leiste und keine Kachel`() {
+        val fehler = fassungen.filter { it.name.endsWith("/dunkel") || it.name == "werkbank" }.flatMap { f ->
+            val a = akzent(f)
+            listOf("leiste" to a.leiste, "detailLeiste" to a.detailLeiste, "markt" to a.markt, "kauf" to a.kauf)
+                .mapNotNull { (n, c) -> Kontrast.luminanz(c.toArgb()).takeIf { it > 0.1 }?.let { "${f.name}.$n %.2f".format(it) } }
+        }
+        assertTrue("Helle Fläche im Dunkeln: $fehler", fehler.isEmpty())
+    }
+
+    /** Der Marktwert ist der wichtigste Wert der Detailseite; seine Kachel hebt sich stärker ab als der Kaufpreis. */
+    @Test
+    fun `die Marktwert-Kachel ist auffaelliger als die Kaufpreis-Kachel`() {
+        val fehler = fassungen.mapNotNull { f ->
+            val a = akzent(f)
+            val markt = k(a.markt, f.s.surface); val kauf = k(a.kauf, f.s.surface)
+            if (markt < kauf * 1.2) "${f.name} %.2f gegen %.2f".format(markt, kauf) else null
+        }
+        assertTrue("Kaufpreis-Kachel kräftiger als der Marktwert: $fehler", fehler.isEmpty())
+    }
 
     @Test
     fun `jede Schriftrolle erreicht 4,5 zu 1 auf ihrer Flaeche`() {

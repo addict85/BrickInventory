@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { KontoName, type Route } from './grund';
+import { KontoName, type Route, bestaetigt } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const GetrenntesKonto = z.looseObject({
@@ -43,7 +43,7 @@ export const routen = {
   'GET /api/v1/settings/household': { antwort: HouseholdStatusResponse },
   'GET /api/v1/sets/household-members': { antwort: HouseholdMembersResponse },
   'POST /api/v1/settings/household/invite': { antwort: HouseholdInviteResponse },
-  'POST /api/v1/settings/household/redeem': { antwort: GenericResponse },
+  'POST /api/v1/settings/household/redeem': { antwort: GenericResponse, ...bestaetigt({ code: z.string().max(64).nullable().optional() }, 'password', 'faktor_code') },
   'POST /api/v1/settings/household/unlink': { antwort: GenericResponse },
   'POST /api/v1/settings/household/former/dismiss': { antwort: GenericResponse },
 } satisfies Record<string, Route>;

@@ -4,6 +4,10 @@
 # Aufruf:
 #   ./scripts/restore.sh backups/db_JJJJ-MM-TT_HHMM.sql.gz [backups/data_JJJJ-MM-TT_HHMM.tar.gz]
 #
+# Verschlüsselte Sicherungen (*.age, backup.sh mit BACKUP_AGE_EMPFAENGER):
+#   BACKUP_AGE_IDENTITAET=/pfad/zum/privaten/schluessel ./scripts/restore.sh backups/db_….sql.gz.age …
+# Entschlüsselt wird in ein Verzeichnis nur für den Besitzer, das am Ende verschwindet.
+#
 # Der Weg stand bisher nur als Kommentar am Ende von backup.sh — und der dort
 # gezeigte psql-Aufruf hatte eine Falle: OHNE ON_ERROR_STOP meldet psql auch
 # bei einem halben, kaputten Dump Exit 0 (empirisch nachgestellt: abgeschnittener
@@ -32,9 +36,29 @@ DUMP="${1:-}"
 DATA_TAR="${2:-}"
 
 if [ -z "$DUMP" ] || [ ! -f "$DUMP" ]; then
-  echo "Aufruf: $0 backups/db_….sql.gz [backups/data_….tar.gz]" >&2
+  echo "Aufruf: $0 backups/db_….sql.gz[.age] [backups/data_….tar.gz[.age]]" >&2
   exit 1
 fi
+
+case "$DUMP$DATA_TAR" in
+  *.age*)
+    [ -n "${BACKUP_AGE_IDENTITAET:-}" ] || { echo "[restore] FEHLER: *.age braucht BACKUP_AGE_IDENTITAET (privater Schlüssel)." >&2; exit 1; }
+    umask 077
+    KLAR=$(mktemp -d)
+    trap 'rm -rf "$KLAR"' EXIT
+    entschluessele() {
+      case "$1" in
+        *.age) ziel="$KLAR/$(basename "$1" .age)"
+               "${AGE:-age}" -d -i "$BACKUP_AGE_IDENTITAET" -o "$ziel" "$1" \
+                 || { echo "[restore] FEHLER: $1 liess sich nicht entschlüsseln — nichts verändert." >&2; exit 1; }
+               echo "$ziel" ;;
+        *) echo "$1" ;;
+      esac
+    }
+    DUMP=$(entschluessele "$DUMP")
+    [ -z "$DATA_TAR" ] || DATA_TAR=$(entschluessele "$DATA_TAR")
+    ;;
+esac
 
 # 1. Dump auf Vollständigkeit prüfen, bevor irgendetwas überschrieben wird.
 if ! gunzip -c "$DUMP" | tail -n 5 | grep -q 'PostgreSQL database dump complete'; then

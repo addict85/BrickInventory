@@ -30,8 +30,21 @@ import java.io.File
  *   D  in cached() bei bereich == null trotzdem abgelegt (fester Bereich) →
  *      rot „ohne Anmeldung wird nichts abgelegt“
  *   E  den alten Ablageort nicht geräumt → rot „der alte Ablageort …“
+ *   F  (03.11.2026, kotlinc lokal) ein weiteres Fach `PROBE` in Bestandsart → rot
+ *      „die Offline-Ablage kennt genau die eingeordneten Faecher“
  */
 class CacheBereichTest {
+
+    /**
+     * Was auf dem Gerät liegt, ist nach Datenklasse eingeordnet (INVARIANTEN.md,
+     * „Daten auf dem Gerät“). Ein neues Fach muss dort eingeordnet werden, bevor
+     * dieser Test wieder grün ist.
+     */
+    @Test
+    fun `die Offline-Ablage kennt genau die eingeordneten Faecher`() {
+        assertEquals(setOf("SETS", "MERKLISTE", "TEILE", "FIGUREN", "MANUELLE_TEILE", "MANUELLE_FIGUREN", "GUTSCHEINE"),
+            ch.brickinventoryapp.data.lokal.Bestandsart.entries.map { it.name }.toSet())
+    }
 
     private lateinit var server: MockWebServer
     private lateinit var wurzel: File

@@ -80,7 +80,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
   assert.match(chefKeks, /^bim\.sid=/);
 
   await t.test('Token und Sitzung gelten sofort nicht mehr', async () => {
-    const a = await anmelden(NUTZER);
+    const a = { ...await anmelden(NUTZER), cookie: (await anmelden(NUTZER, { ohne_token: true })).cookie };
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal((await rufe('GET', '/profile', { token: a.body.token })).status, 200);
     assert.equal((await rufe('GET', '/profile', { cookie: a.cookie })).status, 200);

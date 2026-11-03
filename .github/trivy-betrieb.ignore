@@ -1,0 +1,81 @@
+# Bewusst hingenommene Lücken in den Betriebs-Images aus Web-App/compose.yaml
+# (Caddy, PostgreSQL, pgweb). Gelesen vom Job trivy-compose in
+# .github/workflows/sicherheit.yml; jede Lücke, die hier nicht steht, macht
+# den Lauf rot.
+#
+# Eine Zeile je Lücke, immer mit Ablaufdatum und Grund darüber:
+#
+#   # caddy: betrifft nur den ACME-Client, wir nutzen die interne CA; neuer Digest folgt
+#   CVE-2026-12345 exp:2026-12-31
+#
+# Nach dem Datum gilt die Ausnahme nicht mehr und der Lauf wird wieder rot.
+# Eine Ausnahme ersetzt nie den neuen Digest, sie überbrückt nur die Zeit bis dahin.
+
+# caddy 2.11.7-alpine (neuester Digest am 03.11.2026): brotli/curl aus Alpine nutzt Caddy nicht
+# (statisches Go-Programm); go-jose/x/net/stdlib warten auf die nächste Caddy-Fassung.
+CVE-2026-111497 exp:2026-12-01
+CVE-2026-111943 exp:2026-12-01
+CVE-2026-116587 exp:2026-12-01
+CVE-2026-78667 exp:2026-12-01
+CVE-2026-78669 exp:2026-12-01
+CVE-2026-92392 exp:2026-12-01
+CVE-2026-97031 exp:2026-12-01
+
+# postgres:18-alpine (neuester Digest am 03.11.2026): stdlib-Lücken stecken in gosu, das nur beim
+# Start die Rechte abgibt; libcurl/brotli nutzt der Server ohne OAuth-Anmeldung nicht.
+CVE-2025-61726 exp:2026-12-01
+CVE-2025-61729 exp:2026-12-01
+CVE-2025-68121 exp:2026-12-01
+CVE-2026-25679 exp:2026-12-01
+CVE-2026-27145 exp:2026-12-01
+CVE-2026-32280 exp:2026-12-01
+CVE-2026-32281 exp:2026-12-01
+CVE-2026-32283 exp:2026-12-01
+CVE-2026-33811 exp:2026-12-01
+CVE-2026-33814 exp:2026-12-01
+CVE-2026-33818 exp:2026-12-01
+CVE-2026-39820 exp:2026-12-01
+CVE-2026-39821 exp:2026-12-01
+CVE-2026-39822 exp:2026-12-01
+CVE-2026-39836 exp:2026-12-01
+CVE-2026-42499 exp:2026-12-01
+CVE-2026-42504 exp:2026-12-01
+CVE-2026-56853 exp:2026-12-01
+CVE-2026-56858 exp:2026-12-01
+CVE-2026-56859 exp:2026-12-01
+CVE-2026-56860 exp:2026-12-01
+CVE-2026-56862 exp:2026-12-01
+
+# pgweb 0.17.0 (neueste Fassung, Debian 11): nur im Profil „tools“, nur an 127.0.0.1, mit
+# Leserolle ohne Geheimspalten. Ersatz oder eigener Bau ist offen; bis dahin bewusst getragen.
+CVE-2025-65637 exp:2026-12-01
+CVE-2025-68973 exp:2026-12-01
+CVE-2025-69421 exp:2026-12-01
+CVE-2026-25681 exp:2026-12-01
+CVE-2026-27135 exp:2026-12-01
+CVE-2026-27136 exp:2026-12-01
+CVE-2026-28387 exp:2026-12-01
+CVE-2026-28388 exp:2026-12-01
+CVE-2026-28389 exp:2026-12-01
+CVE-2026-28390 exp:2026-12-01
+CVE-2026-33845 exp:2026-12-01
+CVE-2026-33846 exp:2026-12-01
+CVE-2026-3833 exp:2026-12-01
+CVE-2026-39828 exp:2026-12-01
+CVE-2026-39829 exp:2026-12-01
+CVE-2026-39830 exp:2026-12-01
+CVE-2026-39831 exp:2026-12-01
+CVE-2026-39832 exp:2026-12-01
+CVE-2026-39835 exp:2026-12-01
+CVE-2026-40355 exp:2026-12-01
+CVE-2026-40356 exp:2026-12-01
+CVE-2026-42009 exp:2026-12-01
+CVE-2026-42010 exp:2026-12-01
+CVE-2026-42508 exp:2026-12-01
+CVE-2026-45447 exp:2026-12-01
+CVE-2026-46595 exp:2026-12-01
+CVE-2026-46597 exp:2026-12-01
+CVE-2026-46600 exp:2026-12-01
+CVE-2026-56851 exp:2026-12-01
+CVE-2026-56852 exp:2026-12-01
+CVE-2026-56854 exp:2026-12-01

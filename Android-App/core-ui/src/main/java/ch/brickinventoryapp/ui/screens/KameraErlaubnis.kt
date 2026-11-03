@@ -1,6 +1,18 @@
 package ch.brickinventoryapp.ui.screens
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +36,33 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
+
+/** Ob die Kamera erlaubt ist, und wie man danach fragt (siehe [rememberKameraErlaubnis]). */
+@Stable
+class KameraErlaubnis(private val zustand: State<Boolean>, private val frage: () -> Unit) {
+    val erteilt: Boolean get() = zustand.value
+    fun anfragen() = frage()
+}
+
+/**
+ * Die Kamera-Erlaubnis über ActivityResult der Plattform; accompanist-permissions
+ * wird nicht mehr gepflegt. Bei jeder Rückkehr neu gelesen: Sie kann inzwischen in
+ * den Systemeinstellungen erteilt oder entzogen worden sein.
+ */
+@Composable
+fun rememberKameraErlaubnis(): KameraErlaubnis {
+    val kontext = LocalContext.current
+    val erteilt = remember { mutableStateOf(kameraErteilt(kontext)) }
+    val starter = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { erteilt.value = it }
+    LifecycleResumeEffect(kontext) {
+        erteilt.value = kameraErteilt(kontext)
+        onPauseOrDispose { }
+    }
+    return remember(starter) { KameraErlaubnis(erteilt) { starter.launch(Manifest.permission.CAMERA) } }
+}
+
+private fun kameraErteilt(kontext: Context): Boolean =
+    ContextCompat.checkSelfPermission(kontext, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
 /**
  * „Die Kamera wird gebraucht“ — der Rückfall, wenn die Erlaubnis fehlt; gemeinsam

@@ -176,7 +176,7 @@ test('die App ist nur über Caddy erreichbar', () => {
 test('Caddy: interne CA, Wurzel in der Kette, eigene Anfragekennung, /ca.crt im Klartext', () => {
   const datei = fs.readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
     .split('\n').filter(z => !/^\s*#/.test(z)).join('\n');
-  assert.match(datei, /issuer internal \{\s*sign_with_root\s*\}/, 'Caddy liefert die Wurzel nicht in der Kette aus');
+  assert.match(datei, /issuer internal \{\s*\{\$BRICK_CA_SIGNIEREN:sign_with_root\}\s*\}/, 'Caddy liefert die Wurzel nicht in der Kette aus');
   assert.match(datei, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
   assert.match(datei, /http:\/\/ \{[\s\S]*handle \/ca\.crt[\s\S]*redir /, 'Port 80 leitet nicht um');
   assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
@@ -226,7 +226,8 @@ test('nur postgres und db-rolle kennen den Superuser, App und Jobs die App-Rolle
 // (02.11.2026) die Prüfung auf PGWEB_DB_PASSWORD gestrichen → rot „… ohne
 // PGWEB_DB_PASSWORD startet pgweb nicht“;
 // `--readonly` gestrichen → rot „… nur lesend“; PGWEB_AUTH_PASS nicht mehr aus
-// PGWEB_PASSWORD → rot „die Anmeldung kommt aus .env“.
+// PGWEB_PASSWORD → rot „die Anmeldung kommt aus .env“; (03.11.2026)
+// `--lock-session` gestrichen → rot „… nur zur eigenen Datenbank“.
 test('ohne PGWEB_PASSWORD startet pgweb nicht, mit Passwort nur lesend', () => {
   const block = leseDienst(compose, 'pgweb');
   assert.match(block, /^\s*PGWEB_AUTH_PASS:\s*\$\{PGWEB_PASSWORD:-\}\s*$/m, 'die Anmeldung kommt aus .env');
@@ -251,4 +252,5 @@ test('ohne PGWEB_PASSWORD startet pgweb nicht, mit Passwort nur lesend', () => {
   const mit = lauf('geheim');
   assert.equal(mit.status, 0, mit.stderr);
   assert.match(mit.stdout, /^PGWEB .*--readonly/m, 'pgweb startet nur lesend');
+  assert.match(mit.stdout, /^PGWEB .*--lock-session/m, 'pgweb verbindet nur zur eigenen Datenbank');
 });

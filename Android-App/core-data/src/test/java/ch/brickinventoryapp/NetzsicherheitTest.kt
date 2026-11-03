@@ -25,6 +25,9 @@ import javax.xml.parsers.DocumentBuilderFactory
  *   E  in backup_rules.xml die Zeile files/vorschau entfernt → rot (dieselbe Prüfung)
  *   F  (02.11.2026) in backup_rules.xml die Zeile design_spiegel.xml entfernt →
  *      rot „Kontodaten verlassen das Geraet nicht“ (Pins, Schalter Nutzer-CA)
+ *   G  (03.11.2026) in buildInterceptorClient `.followRedirects(false)` entfernt →
+ *      rot „die Server-Clients folgen keiner Umleitung selbst“. Was der Wächter
+ *      stattdessen tut, prüft UmleitungTest ausgeführt.
  */
 class NetzsicherheitTest {
 
@@ -66,6 +69,14 @@ class NetzsicherheitTest {
             val quellen = lies(variante).alle("certificates").map { it.getAttribute("src") }
             assertTrue("$variante: $quellen", quellen.isNotEmpty() && quellen.all { it == "system" })
         }
+    }
+
+    /** Die Einstellung des Clients; dass der Wächter nur gleicher Herkunft folgt, prüft UmleitungTest. */
+    @Test
+    fun `die Server-Clients folgen keiner Umleitung selbst`() {
+        val fabrik = Quellen.funktion(Quellen.ohneKommentare(Quellen.di()), "internal fun buildInterceptorClient(")
+        assertTrue("OkHttp folgte Umleitungen am Wächter vorbei", fabrik.contains(".followRedirects(false)"))
+        assertTrue(fabrik.contains(".followSslRedirects(false)"))
     }
 
     private fun regeln(name: String): Element {

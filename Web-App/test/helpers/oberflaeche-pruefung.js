@@ -120,4 +120,45 @@ function pruefeOberflaeche(design, geraet) {
   });
 }
 
-module.exports = { pruefeOberflaeche };
+/** Funde, die grosse Schrift betreffen: Überlauf, Abschneiden, Überlappung, Tippziel, Leiste. */
+const GROSS = /^(Überlauf|abgeschnitten|Überlappung|Tippziel|Leiste)/;
+const LEISTE = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisibility()).map(t => t.querySelector('.tab-label'))
+  .filter(l => l.getBoundingClientRect().width <= 1 || l.scrollWidth > l.clientWidth + 1).map(l => 'Leiste: „' + l.textContent.trim() + '“ abgeschnitten')`;
+
+/**
+ * Alle Ansichten bei 320 px und 200 % Schrift, in allen sechs Designs hell
+ * und dunkel. `modus` 'browser' vergrössert wie die Browsereinstellung
+ * (Page.setFontSizes), 'seite' setzt die Grundschrift der Seite auf 200 %,
+ * 'schmal' misst 320 px bei normaler Schrift auf Englisch.
+ */
+function pruefeGrosseSchrift(modus) {
+  test(`Oberfläche 320 px (${modus}): alle Ansichten`, { concurrency: 1, timeout: 300_000 }, async (t) => {
+    // Schmal auf Englisch: Die längeren Beschriftungen sind dort der enge Fall.
+    const app = await starteApp(t, { name: `ofl_gross_${modus}_${process.pid}`, bestand: musterSammlung, sprache: modus === 'schmal' ? 'en' : 'de' });
+    if (app.grund) { t.skip(app.grund); return; }
+    const { b } = app;
+    await b.tab('Emulation.setDeviceMetricsOverride', { width: 320, height: 640, deviceScaleFactor: 1, mobile: true });
+    await warte(1000);
+    await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
+    if (modus === 'browser') await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
+    else if (modus === 'seite') await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
+    const designs = modus === 'browser' ? ['classic', 'brick', 'noppe', 'werkbank', 'farbfaecher', 'hochglanz']
+      : modus === 'schmal' ? ['classic', 'noppe'] : ['classic'];
+    for (const [ansicht, schritte] of ANSICHTEN) {
+      const funde = [];
+      await b.auswerten(SCHLIESSEN);
+      for (const s of schritte) { await b.auswerten(s); await warte(250); }
+      await warte(400);
+      for (const design of designs) for (const dunkel of [false, true]) {
+        await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`);
+        await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
+        const wo = `${design} ${dunkel ? 'dunkel' : 'hell'}`;
+        for (const f of [...await b.auswerten(LAYOUT(true)), ...await b.auswerten(LEISTE)]) if (GROSS.test(f)) funde.push(`${wo}: ${f}`);
+      }
+      await t.test(ansicht, () => assert.deepEqual(funde, []));
+    }
+    await b.auswerten(SCHLIESSEN);
+  });
+}
+
+module.exports = { pruefeOberflaeche, pruefeGrosseSchrift };

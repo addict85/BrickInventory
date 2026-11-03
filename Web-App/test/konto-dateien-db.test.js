@@ -54,7 +54,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
 
   const ADMIN = 'kd-admin', ZIEL = 'kd-ziel', ADMIN_PW = 'verwalterPasswort1';
   await db.run('DELETE FROM users WHERE username IN ($1, $2)', [ADMIN, ZIEL]);
-  await db.run(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,$3,true,true), ($2,'x',false,true)`,
+  await db.run(`INSERT INTO users (username, password_hash, is_admin, is_active) VALUES ($1,$3,true,true), ($2,$3,false,true)`,
     [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)]);
   const adminId = (await db.get('SELECT id FROM users WHERE username=$1', [ADMIN])).id;
   const zielId  = (await db.get('SELECT id FROM users WHERE username=$1', [ZIEL])).id;
@@ -88,7 +88,9 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     const vonPlatte = lesbar(roh);
     assert.ok(vonPlatte.pin !== PIN && vonPlatte.nummer !== NR, 'PIN und Kartennummer stehen im Klartext auf der Platte');
     assert.notEqual(roh.subarray(0, 5).toString('latin1'), '%PDF-');
-    const aus = Buffer.from(await (await fetch(`${ziel.base}/api/v1/vouchers/${b.voucher.id}/pdf`)).arrayBuffer());
+    const { ticket } = await (await fetch(`${ziel.base}/api/v1/vouchers/${b.voucher.id}/pdf-freigabe`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: ADMIN_PW }) })).json();
+    const aus = Buffer.from(await (await fetch(`${ziel.base}/api/v1/vouchers/${b.voucher.id}/pdf?ticket=${ticket}`)).arrayBuffer());
     assert.ok(aus.equals(original), 'das ausgelieferte PDF ist nicht das hochgeladene');
   });
 

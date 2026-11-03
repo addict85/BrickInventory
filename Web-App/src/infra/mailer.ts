@@ -471,12 +471,13 @@ export async function mailEingerichtet(): Promise<boolean> {
   return !!(await getSetting('smtp_host')) && !!(await getSetting('smtp_user'));
 }
 
-export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt';
+export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt' | 'token_neu' | 'qr_zugang_neu'
+  | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
 export async function sendKontoHinweisMail(to: string, username: string, art: KontoHinweis,
-                                           o: { lang?: string; passkey?: string; haushalt?: string[] } = {}) {
+                                           o: { lang?: string; passkey?: string; haushalt?: string[]; konto?: string | undefined; durch?: string | undefined } = {}) {
   const theme = await getMailTheme();
   const en = o.lang === 'en';
   const was = {
@@ -485,6 +486,18 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
     passwort_geaendert: en ? 'the password of your account was changed.' : 'das Passwort deines Kontos wurde geändert.',
     passwort_zurueckgesetzt: en ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
                                 : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.',
+    token_neu: en ? `a new app token (“${o.passkey ?? ''}”) was created for your account.`
+                  : `für dein Konto wurde ein neuer App-Zugang („${o.passkey ?? ''}“) erzeugt.`,
+    qr_zugang_neu: en ? 'a QR code to sign in the app was created for your account.'
+                      : 'für dein Konto wurde ein QR-Code zur Anmeldung der App erzeugt.',
+    zweiter_faktor_entfernt: en ? `the administrator “${o.durch ?? ''}” removed the second factor of your account.`
+                                : `der Verwalter „${o.durch ?? ''}“ hat den zweiten Faktor deines Kontos entfernt.`,
+    verwalter_ernannt: en ? `“${o.durch ?? ''}” made the account “${o.konto ?? ''}” an administrator.`
+                          : `„${o.durch ?? ''}“ hat das Konto „${o.konto ?? ''}“ zum Verwalter gemacht.`,
+    verwaltung_faktor_entfernt: en ? `“${o.durch ?? ''}” removed the second factor of the account “${o.konto ?? ''}”.`
+                                   : `„${o.durch ?? ''}“ hat den zweiten Faktor des Kontos „${o.konto ?? ''}“ entfernt.`,
+    token_wiederverwendet: en ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
+                              : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   }[art];
   const subject = en ? 'BrickInventory Manager — Change to your account' : 'BrickInventory Manager — Änderung an deinem Konto';
   const haushalt = o.haushalt?.length

@@ -10,21 +10,24 @@
 	skip_install_trust
 	# Ein Gerät, das per IP-Adresse kommt, schickt keinen Namen (SNI).
 	default_sni {$BRICK_HOST}
+	# Mit eigener CA (./caddy/ca, scripts/ca-einrichten.sh) setzt das Startskript
+	# in compose.yaml Wurzel und Zwischenstelle hier ein; sonst legt Caddy seine an.
 	pki {
 		ca local {
 			name "BrickInventory"
+			{$BRICK_CA_EIGEN}
 		}
 	}
 }
 
 https://{$BRICK_HOST} {
-	# Die Wurzel signiert die Blätter selbst und steht damit in der Kette, die
-	# Caddy ausliefert: Die App pinnt genau sie (QR-Code, `fp`). Ein
-	# Zwischenzertifikat lebt hier nur 7 Tage und brächte keine Trennung — sein
-	# Schlüssel liegt im selben Volume wie der der Wurzel.
+	# Die App pinnt die Wurzel (QR-Code, `fp`), sie muss in der Kette stehen.
+	# Caddys eigene CA: Die Wurzel signiert selbst (ihre Zwischenstelle lebt 7
+	# Tage und liegt im selben Volume). Eigene CA: Die Zwischenstelle signiert,
+	# ihre Kettendatei trägt die Wurzel mit (BRICK_CA_SIGNIEREN = „ca local“).
 	tls {
 		issuer internal {
-			sign_with_root
+			{$BRICK_CA_SIGNIEREN:sign_with_root}
 		}
 	}
 	reverse_proxy app:3000 {

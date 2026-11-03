@@ -334,6 +334,11 @@ export function erfassungsPreis(a, betrag) {
 }
 
 // Compact link shown in set-detail-modal → opens the full acq-modal
+/** Erklärt das „≈“, sobald eine Zeile einen geschätzten Preis trägt. */
+function legendeGeschaetzt(acqs) {
+  return acqs.some(a => a.price_estimated) ? `<div class="acq-legende">${esc(tRaw('acq.legende_geschaetzt'))}</div>` : '';
+}
+
 export function renderAcquisitionSummary(acqs, sn) {
   if (!acqs?.length) return `<div data-stil="color:var(--mut);font-size:var(--fs-2)">—</div>`;
   return acqs.map(a => {
@@ -347,7 +352,7 @@ export function renderAcquisitionSummary(acqs, sn) {
       ${price}
       ${dateFmt ? `<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
     </div>`;
-  }).join('');
+  }).join('') + legendeGeschaetzt(acqs);
 }
 
 // ── MANUAL ITEM DETAIL MODAL (Teile + Minifiguren) ─────────────────────────
@@ -368,7 +373,7 @@ function renderManAcqSummary(acqs, type, id, colorId) {
       ${price}
       ${dateFmt ? `<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
     </div>`;
-  }).join('');
+  }).join('') + legendeGeschaetzt(acqs);
 }
 
 export async function openManDetail(type, id, colorId) {

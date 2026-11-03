@@ -274,6 +274,9 @@ const NUR_WEB = new Map([
    EINRICHTUNG],
   ['/api/v1/bestand',
    ALLES_LOESCHEN],
+  ['/api/v1/vouchers/:X/pdf',
+   'Die App holt das Gutschein-PDF nicht über Retrofit, sondern über seine Adresse im ' +
+   'PdfViewerScreen (gutscheinPdfAdresse); die Webapp lädt es seit dem Einmal-Ticket per fetch.'],
 ]);
 
 test('was nur die Webapp kann, hat einen Grund', () => {

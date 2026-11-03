@@ -62,7 +62,7 @@ class PartsListScannerTest {
     @Test
     fun `das Bild bleibt in beiden Faellen sichtbar`() {
         val c = code(src)
-        val bild = c.indexOf("AsyncImage(")
+        val bild = c.indexOf("ProduktBild(")
         val bedingung = c.indexOf("""if (barcodeState.source != "partslist")""")
         assert(bild in 1 until bedingung) {
             "Das Vorschaubild darf NICHT im Erfassungs-Zweig liegen — es ist der Grund, " +

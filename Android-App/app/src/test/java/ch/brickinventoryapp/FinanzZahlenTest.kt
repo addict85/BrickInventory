@@ -36,6 +36,8 @@ import java.math.BigDecimal
  *      Figuren lesen dieselben Zahlenfelder“ (1 statt 4)
  *   D  in gutscheinSumme() `distinct().singleOrNull()` durch `firstOrNull()` ersetzt
  *      → rot „Gutscheine in zwei Währungen ergeben keine Summe“
+ *   E  Patch finanzen-kauf-je-stueck: kaufGesamt ohne Menge → rot „Kauf und Gewinn
+ *      stehen auf der Grundlage des Marktwerts“ (400.0 statt 800.0); nur CI
  */
 class FinanzZahlenTest {
 
@@ -124,5 +126,24 @@ class FinanzZahlenTest {
         assertEquals(BigDecimal("0.30") to "CHF", gutscheinSumme(chf))
         assertNull(gutscheinSumme(chf + Gutschein(id = 3, amount = 5.0, currency = "EUR").alsAnsicht()))
         assertNull(gutscheinSumme(emptyList()))
+    }
+
+    /**
+     * Der Marktwert einer Zeile gilt für alle Stück (wert_gesamt), der Kaufpreis des
+     * Servers je Stück. Kauf und Gewinn der Karte stehen auf derselben Grundlage wie
+     * der Marktwert — sonst las sich Titanic ×2 (CHF 899.90, Kauf 400) wie +125 %.
+     */
+    @Test
+    fun `Kauf und Gewinn stehen auf der Grundlage des Marktwerts`() {
+        val zwei = ch.brickinventoryapp.ui.FinanzZeile("t", menge = 2, wert = 899.9, kaufpreis = 400.0,
+            zustand = "N", pnlProzent = 12.5)
+        assertEquals(800.0, zwei.kaufGesamt!!, 0.0)
+        assertEquals(99.9, zwei.gewinn!!, 0.0)
+        val eins = zwei.copy(menge = 1, wert = 0.3, kaufpreis = 0.1)
+        assertEquals(0.1, eins.kaufGesamt!!, 0.0)
+        // BigDecimal: 0.3 - 0.1 ist als Double 0.19999999999999998.
+        assertEquals(0.2, eins.gewinn!!, 0.0)
+        assertNull(zwei.copy(wert = null).gewinn)
+        assertNull(zwei.copy(kaufpreis = null).kaufGesamt)
     }
 }

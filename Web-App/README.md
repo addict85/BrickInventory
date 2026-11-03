@@ -14,6 +14,7 @@ Vollständige Node.js Webapp zur Verwaltung deiner Klemmbaustein-Sammlung.
 
 ```bash
 cp .env.example .env    # SESSION_SECRET, DB_PASSWORD, DB_APP_PASSWORD und BRICK_HOST eintragen
+sudo sh scripts/ca-einrichten.sh   # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
 docker compose up -d --build
 # → https://<BRICK_HOST>   (Port 80 leitet auf HTTPS um)
 ```
@@ -37,6 +38,25 @@ Fingerabdruck steht in den Einstellungen unter „Sicherheit“ zum Abgleich; di
 Android-App braucht das nicht: Sie pinnt den Fingerabdruck aus dem QR-Code und
 vertraut der Wurzel ohne systemweite Installation. Schritt für
 Schritt: `UPGRADE.md`, Abschnitt 14.
+
+**Das Risiko der Wurzel und die beschränkte CA.** Ein installiertes
+Wurzelzertifikat gilt auf dem Gerät für jede Adresse, die es nicht
+ausdrücklich ausschliesst. Caddys eigene CA schliesst nichts aus: Wer ihren
+Schlüssel aus `./caddy/data/` oder einer Sicherung davon bekommt, stellt
+Zertifikate für Bank und Mail aus, denen jedes Gerät mit dieser Wurzel
+traut. Deshalb vor dem ersten Start `sudo sh scripts/ca-einrichten.sh`: Es legt
+unter `./caddy/ca/` eine Wurzel an, die nur für `BRICK_HOST` gilt (Name
+Constraints; bei einem Namen sind IP-Adressen ganz ausgeschlossen), und eine
+Zwischenstelle (rund zehn Jahre), mit der Caddy signiert. Den Schlüssel der
+Wurzel verwirft das Skript; wer ihn behalten will, gibt mit
+`sudo WURZEL_SCHLUESSEL=/media/usb/wurzel.key sh scripts/ca-einrichten.sh` einen Ort ausserhalb des Servers
+an. Auf dem Server liegt dann nur der Schlüssel der Zwischenstelle
+(`./caddy/ca/zwischen.key`, wie ein Passwort behandeln); auch er taugt nur
+für `BRICK_HOST`. Ohne `./caddy/ca/` läuft alles wie bisher mit Caddys
+uneingeschränkter CA. Wer nur im Browser arbeitet, kann statt einer Wurzel
+auch je Seite eine Ausnahme bestätigen oder einen echten Namen mit ACME
+(DNS-01) nehmen. Umstieg einer bestehenden Installation: `UPGRADE.md`,
+Abschnitt 32.
 
 ### Ohne HTTPS (bewusste Ausnahme)
 

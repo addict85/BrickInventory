@@ -9,10 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import ch.brickinventoryapp.ui.theme.linksBis
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -21,7 +21,6 @@ import androidx.navigation.compose.*
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 
@@ -65,7 +64,12 @@ fun MainScaffold(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDest = navBackStackEntry?.destination
-    val isBrick = LocalIsBrickTheme.current
+    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
+    // Die App-Leiste weicht beim Rollen nach unten und kommt beim Zurückrollen wieder:
+    // Auf dem Telefon standen sonst Titel und Umschalter dauerhaft über dem Inhalt.
+    // Ein neues Ziel beginnt mit sichtbarer Leiste.
+    val einklappen = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    LaunchedEffect(currentDest?.route) { einklappen.state.heightOffset = 0f }
 
     fun istGewaehlt(screen: Screen) =
         currentDest?.hierarchy?.any { d -> d.route?.let { it in zieleVon(screen) } == true } == true
@@ -83,7 +87,7 @@ fun MainScaffold(
     // Das Symbol eines Ziels, an „Mehr“ mit dem Punkt für eine neue Version.
     @Composable
     fun Symbol(screen: Screen, icon: @Composable () -> Unit) {
-        if (screen == Screen.Mehr && updateVerfuegbar) BadgedBox(badge = { Badge() }) { icon() } else icon()
+        if (screen == Screen.Mehr && updateVerfuegbar) BadgedBox(badge = { ch.brickinventoryapp.ui.components.UpdatePunkt() }) { icon() } else icon()
     }
 
     // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten
@@ -107,7 +111,7 @@ fun MainScaffold(
             }
         }
         Scaffold(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).nestedScroll(einklappen.nestedScrollConnection),
             topBar = {
               Column {
                 TopAppBar(
@@ -130,10 +134,12 @@ fun MainScaffold(
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = if (isBrick) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
-                        titleContentColor = if (isBrick) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                        actionIconContentColor = if (isBrick) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                        containerColor = akzent.leiste,
+                        titleContentColor = akzent.aufLeiste,
+                        actionIconContentColor = akzent.aufLeiste,
+                        scrolledContainerColor = akzent.leiste,
                     ),
+                    scrollBehavior = einklappen,
                 )
                 if (art == Navigationsart.LEISTE_UNTEN && currentDest?.route?.let { it in SAMMLUNG } == true) {
                     SammlungUmschalter(currentDest.route, onWahl = { ziel ->
@@ -168,13 +174,14 @@ fun MainScaffold(
             val csvImport by csvImportState.collectAsStateWithLifecycle()
             Row(Modifier.fillMaxSize().padding(padding)) {
                 Column(Modifier.weight(1f).fillMaxHeight()) {
-                    // Auf dem Tablet gehört der Umschalter zum Inhalt: linksbündig über
-                    // Suchfeld und Raster, auf deren Lesebreite begrenzt.
-                    if (art == Navigationsart.SEITENLEISTE && currentDest?.route?.let { it in SAMMLUNG } == true) {
-                        SammlungUmschalter(currentDest.route, onWahl = { ziel ->
-                            onTabAngetippt(ziel)
-                            navController.zuReiter(ziel.route)
-                        }, modifier = Modifier.linksBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste))
+                    // Auf dem Tablet gehört der Umschalter zum Inhalt, so breit wie Suchfeld
+                    // und Raster darunter. Neben einem offenen Set-Detail bleibt „Sets“ gewählt.
+                    if (art == Navigationsart.SEITENLEISTE && currentDest?.route?.let { it in SAMMLUNG || it == Screen.SetDetail.route } == true) {
+                        SammlungUmschalter(currentDest.route.takeUnless { it == Screen.SetDetail.route } ?: Screen.Gallery.route,
+                            onWahl = { ziel ->
+                                onTabAngetippt(ziel)
+                                navController.zuReiter(ziel.route)
+                            })
                     }
                     ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
                     if (csvImport.running) {
@@ -236,7 +243,7 @@ private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Setti
 
 /** Die Routen, bei denen ein Ziel der Leiste als gewaehlt gilt. */
 private fun zieleVon(screen: Screen): Set<String> = when (screen) {
-    Screen.Gallery -> SAMMLUNG
+    Screen.Gallery -> SAMMLUNG + Screen.SetDetail.route
     Screen.Mehr -> MEHR
     else -> setOf(screen.route)
 }
@@ -249,26 +256,22 @@ private fun androidx.navigation.NavController.zuReiter(route: String) =
         restoreState = true
     }
 
-/** Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. Über
+ * SegmentWahl, damit er bei grosser Schrift wie jede Einfachwahl zu Chips wird.
+ */
 @Composable
 private fun SammlungUmschalter(aktuell: String?, onWahl: (Screen) -> Unit, modifier: Modifier = Modifier) {
     val ziele = listOf(
         Screen.Gallery to R.string.gallery_stat_sets,
         Screen.Parts to R.string.nav_parts,
         Screen.Minifigs to R.string.nav_minifigs,
+    ).map { (ziel, text) -> ziel to stringResource(text) }
+    ch.brickinventoryapp.ui.components.SegmentWahl<Screen?>(
+        optionen = ziele,
+        gewaehlt = ziele.firstOrNull { it.first.route == aktuell }?.first,
+        onWahl = { if (it != null) onWahl(it) },
+        modifier = modifier.padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.mittel,
+            vertical = ch.brickinventoryapp.ui.theme.Abstaende.winzig),
     )
-    SingleChoiceSegmentedButtonRow(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.mittel, vertical = ch.brickinventoryapp.ui.theme.Abstaende.winzig)
-    ) {
-        ziele.forEachIndexed { i, (screen, text) ->
-            SegmentedButton(
-                selected = aktuell == screen.route,
-                onClick = { onWahl(screen) },
-                shape = SegmentedButtonDefaults.itemShape(index = i, count = ziele.size),
-            ) { Text(stringResource(text), maxLines = 1, overflow = TextOverflow.Ellipsis) }
-        }
-    }
 }

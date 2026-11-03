@@ -70,7 +70,7 @@
        „Set hinzufügen“ las sich wie ein Wort. +0,08 em bringt ihn auf das Mass
        üblicher Textschriften. Die Grösse folgt der Schriftgrösse des Browsers
        (15 px bei der Vorgabe 16 px); eine feste px-Zahl überging sie. */
-    body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:calc(var(--fs-4) * .9375);line-height:1.5;min-height:100vh;word-spacing:.08em}
+    body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:calc(var(--fs-4) * .9375);line-height:1.5;min-height:100vh;word-spacing:.08em;overflow-wrap:break-word}
 
     /* LOGIN */
     #startup-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:var(--screen-bg)}
@@ -544,7 +544,7 @@
     /* PARTS */
     /* Ein Bereich mit eigener Überschrift, z. B. die manuell erfassten Teile. */
     .bereich-karte{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
-    .bereich-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem}
+    .bereich-titel{font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:.75rem;overflow-wrap:anywhere;hyphens:auto;min-width:0}
     /* Rand aus einem Token: Ein schwarzer Punkt auf dunklem Grund braucht einen hellen Ring. */
     .color-dot{width:14px;height:14px;border-radius:50%;border:1px solid var(--farbpunkt-rand);flex-shrink:0}
     /* Kennzahlen: in jedem Design dieselbe Reihe Kacheln über dem Inhalt. */
@@ -615,7 +615,7 @@
     .ssec{background:var(--sur);border:1.5px solid var(--bdr);border-radius:var(--rad);padding:var(--sp-5);box-shadow:var(--sh0)}
     .sgroup-label{font-size:var(--fs-0);font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--mut);padding:.5rem 0 .75rem;margin-top:1.5rem;border-bottom:2px solid var(--bdr);margin-bottom:1rem}
     .ssec.full{grid-column:1/-1}
-    .stit{font-size:var(--fs-3);font-weight:700;color:var(--txt);display:flex;align-items:center;gap:6px;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--bdr)}
+    .stit{font-size:var(--fs-3);font-weight:700;color:var(--txt);display:flex;flex-wrap:wrap;align-items:center;gap:6px;overflow-wrap:anywhere;hyphens:auto;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--bdr)}
     .sform{display:flex;flex-direction:column;gap:13px}
     .ibox{background:var(--b50);border:1px solid var(--b200);border-radius:8px;padding:11px 13px;font-size:var(--fs-2);color:var(--b700);line-height:1.7}
     .ibox a{color:var(--b700);font-weight:600;text-decoration:underline}
@@ -686,7 +686,8 @@
          margin:calc(var(--modal-pady) * -1) calc(var(--modal-padx) * -1) 1.25rem;
          padding:.85rem var(--modal-padx);
          display:flex;justify-content:space-between;align-items:center}
-    .mtit{font-size:var(--fs-4);font-weight:800}
+    .mtit{font-size:var(--fs-4);font-weight:800;overflow-wrap:anywhere;hyphens:auto}
+    .mhd > *{min-width:0}
     /* Nach der Grundregel .modal: Pruefungen lesen deren ersten Fund. */
     .ovl.open > .modal{animation:hochgleiten .2s ease-out}
     svg.diagramm{display:block;max-width:100%}
@@ -862,7 +863,7 @@ html::-webkit-scrollbar{width:0;height:0}
        unterschiedlich breit und sind beim Abtippen schlechter zu verfolgen. */
     .voucher-num{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
                  font-size:var(--fs-3);font-variant-numeric:tabular-nums;
-                 word-break:break-all}
+                 overflow-wrap:anywhere}
     .voucher-meta{font-size:var(--fs-1);color:var(--mut);margin-top:2px}
     .voucher-amount{font-weight:600;color:var(--txt)}
     /* Der Stand der Guthaben-Abfrage. Eigene Zeile und KEINE eigene
@@ -870,7 +871,7 @@ html::-webkit-scrollbar{width:0;height:0}
        abgefragt"), nicht in einem Farbton — Marco sieht Rot und Gruen
        nicht auseinander. */
     .voucher-stand{display:block;color:var(--mut);font-size:var(--fs-1)}
-    .voucher-pin{display:flex;align-items:center;gap:.35rem;font-size:var(--fs-1)}
+    .voucher-pin{display:flex;flex-wrap:wrap;align-items:center;gap:.35rem;font-size:var(--fs-1);min-width:0}
     .voucher-pin-label{color:var(--mut);text-transform:uppercase;
                        letter-spacing:.5px;font-size:var(--fs-0)}
     .voucher-pin code{font-size:var(--fs-2);letter-spacing:.08em}
@@ -1086,10 +1087,16 @@ a{color:var(--b600);text-underline-offset:2px}
   background:var(--b50);color:var(--txt);border-bottom:1px solid var(--bdr);font-size:var(--fs-2)}
 .hinweis-band[hidden]{display:none}
 .hinweis-band > .ico{color:var(--b700)}
+.hinweis-kurz{display:none}
+/* Am Telefon eine Zeile: kurzer Satz, Knopf und Schliessen; wird es eng
+   (grosse Schrift), rutschen die Knöpfe gemeinsam in die nächste Zeile. */
 @media (max-width:640px){
-  .hinweis-band{grid-template-columns:auto minmax(0,1fr) auto}
-  .hinweis-band > .btn.bp{grid-column:2;grid-row:2;justify-self:start}
-  .hinweis-band .hinweis-zu{grid-column:3;grid-row:1}
+  .hinweis-band{display:flex;flex-wrap:wrap;padding:4px 12px;gap:4px 8px}
+  .hinweis-band > .ico{flex:none}
+  .hinweis-band > #rb-hinweis-text{flex:1 1 8em;min-width:0}
+  .hinweis-band > .btn{flex:0 1 auto;min-width:44px}
+  .hinweis-band .hinweis-lang{display:none}
+  .hinweis-band .hinweis-kurz{display:inline}
 }
 /* Der Schlüssel betrifft Sammlung und Katalog; auf anderen Seiten wäre das Band nur Lärm. */
 body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #rb-hinweis{display:none}
@@ -1107,7 +1114,11 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .fin-datum{font-size:var(--fs-1);color:var(--mut)}
 .dt-fin{table-layout:fixed;width:100%;min-width:1065px}
 .sp-40{width:40px}.sp-55{width:55px}.sp-60{width:60px}.sp-70{width:70px}.sp-80{width:80px}.sp-90{width:90px}
-.sp-110{width:110px}.sp-250{width:250px}.sp-395{width:395px}
+.sp-110{width:110px}.sp-235{width:235px}.sp-380{width:380px}
+/* Köpfe brechen nicht um; die Spalten sind dafür breit genug (Kurzform G/V). */
+.dt-fin th{white-space:nowrap;padding-left:8px;padding-right:8px}
+.acq-legende{font-size:var(--fs-0);color:var(--mut);margin-top:2px}
+.fin-je{display:block;font-size:var(--fs-0);color:var(--mut);white-space:nowrap}
 /* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
 .dt-fin .zahl,.dt-fin th.zahl,.dt-fin .fin-fuss-wert{text-align:right}
 .dt-fin .zahl .qbadge{margin-left:auto}
@@ -1144,7 +1155,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 
 
 /* ── Dialog „Set hinzufügen“: zwei Spalten, Knopf rechts unten ─────────── */
-.erfassen-raster{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,max(10em,calc(50% - .5rem))),1fr));gap:.75rem 1rem;align-items:end}
+.erfassen-raster{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,max(10em,calc(50% - .5rem))),1fr));gap:.75rem 1rem;align-items:start}
 .erfassen-raster .fg{min-width:0}
 .erfassen-raster .fg select,.erfassen-raster .fg input{width:100%}
 .erfassen-raster .zeile > select{flex:1 1 auto;min-width:0}
@@ -1172,6 +1183,9 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .diagramm-flaeche{min-height:80px}
 .diagramm-hinweis{color:var(--mut);font-size:var(--fs-2);padding:1rem}
 .zeitraum-wahl{display:flex;gap:6px;margin-top:.75rem;justify-content:center;flex-wrap:wrap}
+/* Die Veränderung im gewählten Zeitraum gehört zum Diagramm, nicht neben die Kennzahl zum Einstand (N3). */
+.zeitraum-wert{display:flex;justify-content:center;margin-top:.5rem;font-size:var(--fs-2)}
+.zeitraum-wert:has(#portfolio-pnl:empty){display:none}
 .fin-banner{display:flex;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:.85rem 1.25rem;margin-bottom:.75rem;align-items:center;justify-content:space-between}
 .chip-reihe{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem}
 .rechts-buendig{margin-left:auto}
@@ -1238,3 +1252,145 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .tab:has(.empty.leer [data-click="oeffneErfassen"]) .erfassen-leiste > [data-click="oeffneErfassen"]{display:none}
 /* Die weisse QR-Fläche erst, wenn ein Code darin steht. */
 #qr-code:empty{display:none !important}
+
+/* ── Hintergrundarbeiten: drei Bereiche, Tabellen mit beschrifteten Spalten ── */
+.mon-einleitung{color:var(--mut);font-size:var(--fs-3);margin:-.25rem 0 1rem;max-width:70ch}
+.mon-teil{margin-bottom:1rem;min-width:0}
+.mon-titel{display:flex;align-items:center;gap:.5rem;font-size:var(--fs-4);font-weight:700;margin:0 0 .25rem;overflow-wrap:anywhere;hyphens:auto}
+.mon-titel .ico{flex:none;width:1.1em;height:1.1em;color:var(--b600)}
+.mon-untertitel{font-size:var(--fs-3);font-weight:700;margin:1rem 0 .5rem}
+.mon-hinweis{color:var(--mut);font-size:var(--fs-2);margin:0 0 .75rem}
+.mon-leise{color:var(--mut);font-size:var(--fs-2)}
+p.mon-leise{margin:0 0 .35rem}
+.mon-warnung{color:var(--r700);font-size:var(--fs-2);display:flex;gap:.35rem;align-items:center;margin:0 0 .5rem}
+.mon-kacheln{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11rem),1fr));gap:.75rem}
+.mon-kachel{min-width:0;border:1px solid var(--bdr);border-radius:8px;padding:.75rem 1rem;background:var(--sur)}
+.mon-kachel-l{font-size:var(--fs-2);color:var(--mut);font-weight:600}
+.mon-kachel-v{font-size:var(--fs-5);font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:var(--txt)}
+.mon-balken{height:6px;border-radius:3px;background:var(--s100);overflow:hidden;margin-top:.35rem}
+.mon-balken > div{height:100%;width:0;background:var(--b500);border-radius:3px}
+.mon-zahlen{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:.5rem 1.25rem;margin:.25rem 0 1rem}
+.mon-zahlen > div{min-width:0;border-bottom:1px solid var(--bdr);padding-bottom:.35rem}
+.mon-zahlen dt{font-size:var(--fs-2);color:var(--mut)}
+.mon-zahlen dd{margin:0;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.mon-formular{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.75rem;margin-bottom:.75rem}
+.mon-formular .fg{flex:1 1 12rem;max-width:20rem}
+.mon-formular .btn{flex:0 0 auto}
+.mon-aktionen{display:flex;flex-wrap:wrap;gap:.5rem}
+.mon-aktionen .btn{flex:0 1 auto}
+.mon-tabelle td{vertical-align:top}
+.mon-tabelle .zahl{text-align:right;font-variant-numeric:tabular-nums}
+.mon-name{display:inline-flex;align-items:center;gap:.5rem;font-weight:600}
+.mon-sinnbild{flex:none;width:16px;height:16px}
+.mon-zustand{display:inline-flex;align-items:center;gap:.35rem;font-weight:600}
+.mon-zustand .ico{width:1em;height:1em}
+.mon-ziffer{font-variant-numeric:tabular-nums;color:var(--mut)}
+.mon-ziffer.mon-laeuft{color:var(--b700,var(--b600));font-weight:700}
+.mon-ziffer.mon-fehler,.mon-zustand.mon-fehler,.mon-zustand.mon-error{color:var(--r700)}
+.mon-knoepfe{display:flex;flex-wrap:wrap;gap:.35rem;justify-content:flex-start}
+.mon-knoepfe .btn{flex:0 1 auto}
+.mon-plan{display:inline-flex;align-items:center;gap:.35rem;flex-wrap:wrap;font-size:var(--fs-2);color:var(--mut)}
+.mon-plan input{min-height:32px;padding:4px 8px;border:1px solid var(--feldrand);border-radius:6px;background:var(--sur);color:var(--txt);font:inherit;font-variant-numeric:tabular-nums}
+.mon-plan input[aria-invalid="true"]{border-color:var(--r500)}
+.mon-panel{margin-top:.75rem}
+
+/* Lagerorte: Feld und Knöpfe in einer Höhe, die Belegung als Marke daneben. */
+.lager-eingabe{width:100%;height:max(38px,2.6em);border:1px solid var(--feldrand);border-radius:var(--rad);padding:.5rem .75rem;font-size:var(--fs-3);font-family:inherit;background:var(--sur);color:var(--txt)}
+.lager-sinnbild{flex:none;width:max(38px,2.6em);padding:0}
+.lager-marke{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--s100);color:var(--txt);font-size:var(--fs-1)}
+.lager-marke.lager-frei{background:none;color:var(--mut);border:1px dashed var(--feldrand)}
+
+/* Gutscheine: Land mit Hinweis über die volle Breite, Felder mit Luft
+   dazwischen, Aktionen beschriftet; Seltenes hinter „Mehr“. */
+.voucher-land{margin-bottom:1rem}
+.voucher-land-hinweis{margin-top:.35rem;max-width:70ch}
+.voucher-felder{margin-bottom:.75rem}
+.voucher-abweichung{display:block;width:fit-content;max-width:100%;margin:2px 0;padding:0 6px;border-radius:6px;border:1px solid var(--chart-used,var(--a500));color:var(--txt);font-size:var(--fs-0)}
+.voucher-abweichung-hinweis{margin-top:.25rem;color:var(--a-schrift)}
+.voucher-actions .btn{flex:0 0 auto}
+.v-text{display:inline-flex;align-items:center;gap:6px}
+.v-text.v-btn-gefahr{color:var(--r700)}
+.v-mehr{position:relative}
+.v-mehr > .mehr-liste{position:absolute;right:0;top:calc(100% + 4px);z-index:20;display:flex;flex-direction:column;align-items:stretch;gap:4px;
+  min-width:14rem;max-width:calc(100vw - 2rem);padding:6px;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);box-shadow:var(--sh2)}
+.v-mehr > .mehr-liste .btn{justify-content:flex-start;text-align:left}
+.v-mehr:not([open]) > .mehr-liste{display:none}
+
+/* Sichten aus dem Kontomenü: am breiten Bildschirm zwei Spalten Karten statt
+   einer schmalen Spalte neben leerer Fläche (I4). */
+.fg[hidden]{display:none}
+.konto-fuss{display:flex;justify-content:flex-end;margin-top:.75rem}
+.konto-fuss .btn{flex:0 0 auto}
+:is(#tab-profil,#tab-gutscheine,#tab-alarme,#tab-lagerorte,#tab-haushalt) .stit{margin-bottom:.75rem}
+@media (min-width:1100px){
+  :is(#tab-profil,#tab-gutscheine,#tab-alarme,#tab-lagerorte,#tab-haushalt).tab.active{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:1.25rem;align-items:start;max-width:1400px}
+  :is(#tab-profil,#tab-gutscheine,#tab-alarme,#tab-lagerorte,#tab-haushalt) > :is(.ph,.sgroup-label,.gefahrenzone){grid-column:1 / -1}
+  :is(#tab-profil,#tab-gutscheine,#tab-alarme,#tab-lagerorte,#tab-haushalt) > .ssec{max-width:none;margin:0 0 1.25rem}
+  #tab-profil > .gefahrenzone{max-width:none}
+}
+
+/* Kacheln einer Reihe gleich hoch: Name höchstens zwei Zeilen, Jahr/Thema und
+   Plaketten je eine eigene Zeile, Preis und Datum unten bündig (N1). */
+#gallery .sc{display:flex;flex-direction:column}
+#gallery .sc > .scb{flex:1 1 auto;display:flex;flex-direction:column}
+#gallery .sname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.6em}
+#gallery .smeta{flex-direction:column;align-items:flex-start;gap:4px}
+#gallery .scb > .price-badge{margin-top:auto}
+#gallery .scb > .price-badge[hidden] + .kachel-datum{margin-top:auto}
+.unbekannt-badge{display:inline-block;padding:1px 7px;border-radius:999px;border:1px dashed var(--feldrand);color:var(--txt);font-size:var(--fs-0);font-weight:600}
+.erfassen-unbekannt{grid-column:1 / -1;margin:0}
+.erfassen-unbekannt[hidden]{display:none}
+
+/* Set-Detail: Felder und Knöpfe in einer Höhe wie in den übrigen Formularen (N6). */
+@media (min-width:641px){
+  #set-modal .detail-knopf,#set-modal select.alarm-feld,#set-modal input.alarm-feld,#set-modal .detail-feld,#set-modal .dr select{min-height:36px}
+  #set-modal .menge-knopf{min-width:36px}
+}
+#set-modal .detail-knopf{font-size:var(--fs-2);padding:4px 12px}
+#set-modal .menge-knopf{font-size:var(--fs-4);padding:0 10px;line-height:1}
+#set-modal .menge-feld{flex:0 0 auto;width:5em}
+.menge-feld{width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:4px;font-weight:600;background:var(--sur);color:var(--txt)}
+input.alarm-feld[inputmode=decimal]{width:7.5em}
+#set-modal .mehr-liste{flex-wrap:wrap}
+
+/* Bauliste: der Leerzustand mittig über die volle Breite, Zurücksetzen erst
+   mit Inhalt — ein gesperrter roter Knopf las sich wie ein aktiver (N4). */
+#pl-sets > .empty{flex:1 1 100%}
+#btn-pl-reset:disabled{display:none}
+#tab-gallery.sammlung-leer .filterleiste{display:none}
+
+/* Einstellungen: eine Seitennavigation mit aktivem Balken statt einer Reihe
+   kleiner Umrandungsknöpfe (I5). Am Telefon eine rollende Reihe von Reitern. */
+.einst-link{display:flex;align-items:center;min-height:40px;padding:8px 12px;border-left:3px solid transparent;border-radius:0 8px 8px 0;
+  color:var(--txt);font-size:var(--fs-3);font-weight:600;text-decoration:none}
+@media (hover:hover){.einst-link:hover{background:var(--s100)}}
+#global-settings-grid > .einst-nav .einst-link[aria-current="page"]{background:var(--b50);color:var(--b700,var(--b600));border-left-color:var(--b600)}
+#global-settings-grid > .einst-nav{gap:2px;border-right:1px solid var(--bdr);padding-right:.5rem}
+@media(max-width:700px){
+  #global-settings-grid > .einst-nav{border-right:0;border-bottom:1px solid var(--bdr);padding:0;gap:0}
+  .einst-link{min-height:44px;border-left:0;border-bottom:3px solid transparent;border-radius:0;white-space:nowrap}
+  #global-settings-grid > .einst-nav .einst-link[aria-current="page"]{border-bottom-color:var(--b600)}
+}
+
+/* Einrichtung: ein Dienst je Schritt, die Knöpfe in einer festen Fussleiste (M8). */
+.ew-titel{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;font-size:var(--fs-4);font-weight:700;margin:0 0 .5rem}
+.ew-pflicht{font-size:var(--fs-0);font-weight:700;padding:1px 8px;border-radius:999px;background:var(--b50);color:var(--b700,var(--b600));border:1px solid var(--b600)}
+.ew-pflicht.ew-optional{background:none;color:var(--mut);border-color:var(--feldrand)}
+.ew-schritt > p{margin:0 0 .75rem}
+.ew-aktion{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;margin-top:.75rem}
+.ew-aktion .btn{flex:0 0 auto}
+.ew-link{display:inline-flex;align-items:center;min-height:24px;font-size:var(--fs-2)}
+.ew-fuss{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
+.ew-fuss-rechts{display:flex;gap:.5rem;margin-left:auto}
+.ew-fuss .btn{flex:0 0 auto}
+#ew-spaeter[hidden]{display:none}
+@media (max-width:640px){.ew-link{min-height:44px}}
+.diagramm-preis .kaufpunkt{pointer-events:none}
+.mk-preis-offen{font-size:var(--fs-1)}
+.mon-arten td:first-child{font-weight:600}
+.mon-plan input.mon-zeit{width:5em}
+.mon-plan input.mon-minuten{width:4.5em}
+.hinweis-band .hinweis-zu{flex:none}
+
+/* Ein Sinnbild aus data-ico klebt sonst am Text, wo der Behälter keinen Abstand setzt. */
+[data-ico]:not(.btn):not(.stit) > .ico + .ico-text{margin-left:.35em}

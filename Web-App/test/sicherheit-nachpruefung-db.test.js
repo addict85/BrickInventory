@@ -77,7 +77,7 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
     assert.equal(neu.status, 200, await neu.clone().text());
     const liste = await holen('/api/v1/vouchers');
     assert.equal(liste.status, 200);
-    assert.equal((await liste.json()).vouchers[0].pin, '1234');
+    assert.equal((await liste.json()).vouchers[0].pin, '•••');
     assert.equal(liste.headers.get('cache-control'), 'no-store', '/api/v1/vouchers');
     assert.equal(anmeldung.headers.get('cache-control'), 'no-store', 'POST /api/v1/auth/login');
     for (const pfad of ['/api/v1/stats', '/reset-password?token=x', '/verify?token=x']) {

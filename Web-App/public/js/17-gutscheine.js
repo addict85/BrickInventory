@@ -1,7 +1,8 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
+import { antwortFehler, fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld, CURRENCY, _settingsCache } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
 //
@@ -37,15 +38,22 @@ const el = (id) => document.getElementById(id);
 // Reihenfolge durch und haengt das Ereignis ZULETZT an. Ein `(ev, id)` waere
 // also still verdreht — die id landete in `ev`.
 
-/**
- * Die PIN-Anzeige.
- *
- * Standardmässig verdeckt. Nicht aus Sicherheitsglauben — wer die Seite offen
- * hat, ist angemeldet und kann ihn einblenden —, sondern gegen die Schulter
- * daneben und gegen Bildschirmfotos: Eine Liste mit allen PINs im Klartext
- * ist genau das, was man nicht versehentlich herumzeigen will.
- */
+/** Eingeblendete PINs: auch nach dem Abruf nur auf Wunsch, gegen die Schulter daneben. */
 const _sichtbar = new Set();
+
+/** Nummer und PIN im Klartext je id: Die Liste des Servers trägt nur die Maske,
+ * den Klartext gibt es bestätigt und protokolliert, einmal je Gutschein und Seite. */
+const _klartext = new Map();
+
+async function holeKlartext(id) {
+  if (_klartext.has(id)) return _klartext.get(id);
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.klartext_title'), tRaw('vouchers.klartext_text'), 'schloss');
+  if (password === null) return null;
+  const d = await mitZweitemFaktor(z => api('POST', `/v1/vouchers/${id}/klartext`, { password, ...z }));
+  if (!d?.success) { if (d) toast(d.error || tRaw('vouchers.load_error'), 'error'); return null; }
+  _klartext.set(id, { number: d.number, pin: d.pin });
+  return _klartext.get(id);
+}
 
 /**
  * Das Kopieren-Symbol — zwei Blaetter, wie ueberall sonst auch.
@@ -62,27 +70,46 @@ const KOPIE_ICON_SVG =
 
 /** „6123-4567-8901“ und „612345678901“ → „6123 4567 8901“. */
 export function gruppiereNummer(roh) {
-  return String(roh ?? '').replace(/[\s-]/g, '').replace(/(.{4})(?=.)/g, '$1 ');
+  return String(roh ?? '').replace(/[\s-]/g, '').replace(/(\d{4})(?=\d)/g, '$1 ');
+}
+
+/** Die Währung der Karten des Ausgabelandes; ohne Land die des Kontos. */
+const LAND_WAEHRUNG = { 'de-CH': 'CHF', 'de-DE': 'EUR', 'de-AT': 'EUR', 'fr-FR': 'EUR', 'it-IT': 'EUR', 'nl-NL': 'EUR', 'en-GB': 'GBP', 'en-US': 'USD' };
+export function landWaehrung() {
+  const land = G('gutschein-land')?.value || _settingsCache?.gutschein_land || '';
+  return LAND_WAEHRUNG[land] || CURRENCY;
+}
+
+/** Vorschlag im Formular und der Satz darunter, wenn die gewählte Währung abweicht. */
+function waehrungPruefen() {
+  const feld = G('v-currency'), hinweis = el('v-currency-hinweis');
+  if (!feld || !hinweis) return;
+  const soll = landWaehrung();
+  hinweis.hidden = feld.value === soll;
+  hinweis.textContent = tRaw('vouchers.waehrung_hinweis', { w: soll });
 }
 
 function zeile(g) {
-  const pinOffen = _sichtbar.has(g.id);
+  const k = _klartext.get(g.id);
+  const pinOffen = _sichtbar.has(g.id) && !!k;
   // Die Nummer in Vierergruppen: 19 Ziffern am Stück sind beim Abtippen an
   // der Kasse nicht zu lesen, und genau dafür ist sie da. Erst die eigenen
   // Trenner weg, sonst zählen sie mit („6123 -456 7-89“). Kopiert wird
   // trotzdem die ROHE Nummer — mit Leerzeichen nimmt sie kein Bezahlfeld an.
-  const nummer = gruppiereNummer(g.number);
+  const nummer = gruppiereNummer(k ? k.number : g.number);
   return `
     <div class="voucher-row" data-id="${g.id}">
       <div class="voucher-main">
         <div class="voucher-num-row">
-          <span class="voucher-num" title="${esc(g.number)}">${esc(nummer)}</span>
+          <span class="voucher-num">${esc(nummer)}</span>
           <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="nummer"
                   title="${tRaw('vouchers.copy_number')}"
                   aria-label="${tRaw('vouchers.copy_number')}">${KOPIE_ICON_SVG}</button>
         </div>
         <div class="voucher-meta">
           <span class="voucher-amount">${fmtN(g.amount, g.currency)}</span>
+          ${landWaehrung() && g.currency !== landWaehrung() ? `<span class="voucher-abweichung">${t('vouchers.waehrung_abweichend', { w: landWaehrung() })}</span>` : ''}
+          ${g.hat_pdf ? '' : `<span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}
           <!-- Der Stand NEBEN dem Betrag, nicht statt ihm: „250 CHF" allein
                ist keine Auskunft, „250 CHF, abgefragt am 15.10." ist eine.
                Und eine Karte, deren Guthaben noch nie abgefragt wurde, sagt
@@ -95,7 +122,7 @@ function zeile(g) {
       </div>
       <div class="voucher-pin">
         <span class="voucher-pin-label">${t('vouchers.pin')}</span>
-        <code>${g.pin ? (pinOffen ? esc(g.pin) : '••••') : '–'}</code>
+        <code>${g.pin ? (pinOffen ? esc(k.pin) : '••••') : '–'}</code>
         ${g.pin ? `<button class="v-btn" data-click="gutscheinPinUmschalten" data-arg="${g.id}"
                      title="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}"
                      aria-label="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}">
@@ -105,22 +132,17 @@ function zeile(g) {
                      aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}</button>` : ''}
       </div>
       <div class="voucher-actions">
-        <!-- Guthaben abfragen. NUR mit PIN: LEGO fragt Nummer UND PIN ab, und
-             ein Knopf, der ohne PIN immer dieselbe Absage erzeugt, waere eine
-             Falle. Ohne PIN steht in der Zeile ohnehin schon „–". -->
-        ${g.pin ? `
-          <button class="v-btn" data-click="guthabenAbfragen" data-arg="${g.id}"
-                  title="${tRaw('vouchers.balance_one')}"
-                  aria-label="${tRaw('vouchers.balance_one')}">${ico('aktualisieren')}</button>` : ''}
-        ${g.hat_pdf ? `
-          <button class="v-btn" data-click="gutscheinPdfOeffnen" data-arg="${g.id}"
-                  title="${tRaw('vouchers.pdf_open')}"
-                  aria-label="${tRaw('vouchers.pdf_open')}">${ico('datei')}</button>`
-        : `<span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}
-        <button class="v-btn" data-click="gutscheinBearbeiten" data-arg="${g.id}"
-                title="${tRaw('vouchers.edit_title')}" aria-label="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
-        <button class="v-btn v-btn-gefahr" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
-                title="${tRaw('vouchers.delete_title')}" aria-label="${tRaw('vouchers.delete_title')}">${ico('loeschen')}</button>
+        <button class="btn bs btn-sm v-text" type="button" data-click="gutscheinBearbeiten" data-arg="${g.id}"
+                aria-label="${t('common.edit')}: ${esc(nummer)}">${ico('bearbeiten')}<span>${t('common.edit')}</span></button>
+        <details class="mehr-menue v-mehr">
+          <summary class="btn bs btn-sm v-text" aria-label="${t('vouchers.mehr')}: ${esc(nummer)}">${ico('menue')}<span>${t('vouchers.mehr')}</span></summary>
+          <div class="mehr-liste">
+            ${g.pin ? `<button class="btn bs btn-sm v-text" type="button" data-click="guthabenAbfragen" data-arg="${g.id}">${ico('aktualisieren')}<span>${t('vouchers.balance_one')}</span></button>` : ''}
+            ${g.hat_pdf ? `<button class="btn bs btn-sm v-text" type="button" data-click="gutscheinPdfOeffnen" data-arg="${g.id}">${ico('datei')}<span>${t('vouchers.pdf_open')}</span></button>` : ''}
+            <button class="btn bs btn-sm v-text v-btn-gefahr" type="button" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
+                    aria-label="${t('common.delete')}: ${esc(nummer)}">${ico('loeschen')}<span>${t('common.delete')}</span></button>
+          </div>
+        </details>
       </div>
     </div>`;
 }
@@ -132,6 +154,10 @@ export async function ladeGutscheine() {
   const d = await api('GET', '/v1/vouchers');
   if (!d?.success) { liste.innerHTML = `<div class="voucher-leer">${t('vouchers.load_error')}</div>`; return; }
   _gutscheine = d.vouchers || [];
+  zeigeLandWaehrung();
+  const cur = G('v-currency');
+  if (cur && !_bearbeitet && !G('v-amount')?.value) cur.value = landWaehrung();
+  waehrungPruefen();
   liste.innerHTML = _gutscheine.length
     ? _gutscheine.map(zeile).join('')
     : `<div class="voucher-leer" data-i18n="vouchers.empty">${t('vouchers.empty')}</div>`;
@@ -152,6 +178,8 @@ export async function ladeGutscheine() {
 
 function formularLeeren() {
   _bearbeitet = null;
+  const cur = G('v-currency'); if (cur) cur.value = landWaehrung();
+  waehrungPruefen();
   for (const id of ['v-number', 'v-pin', 'v-amount']) { const e = el(id); if (e) e.value = ''; }
   const datei = el('v-pdf'); if (datei) { datei.value = ''; gutscheinDateiGewaehlt.call(datei); }
   const titel = el('vouchers-form-title');
@@ -164,8 +192,10 @@ export function gutscheinBearbeiten(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
   _bearbeitet = g.id;
-  el('v-number').value = g.number;
-  el('v-pin').value    = g.pin || '';
+  // Ohne Abruf trägt das Formular die Maske; der Server lässt sie als „unverändert“ stehen.
+  const k = _klartext.get(g.id);
+  el('v-number').value = k ? k.number : g.number;
+  el('v-pin').value    = (k ? k.pin : g.pin) || '';
   el('v-amount').value = betragFuerFeld(g.amount);
   const cur = el('v-currency'); if (cur) cur.value = g.currency;
   el('vouchers-form-title').textContent = tRaw('vouchers.edit');
@@ -191,6 +221,10 @@ export function gutscheinAbbrechen() {
  * damit kein Entweder-oder in der Bedienung — man kann ein PDF hochladen UND
  * den Betrag selbst eintragen, wenn das PDF ihn nicht hergibt.
  */
+/** Fehlercodes des Servers → Feld im Formular (Meldung am Feld statt Toast). */
+const GUTSCHEIN_FELDER = { nummer_ungueltig: 'v-number', gutschein_existiert: 'v-number',
+  pin_ungueltig: 'v-pin', betrag_ungueltig: 'v-amount', waehrung_ungueltig: 'v-currency' };
+
 export async function gutscheinSpeichern() {
   const number   = el('v-number').value.trim();
   const pin      = el('v-pin').value.trim();
@@ -202,7 +236,8 @@ export async function gutscheinSpeichern() {
 
   if (_bearbeitet) {
     const d = await api('PUT', `/v1/vouchers/${_bearbeitet}`, { number, pin, amount, currency });
-    if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
+    if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
+    _klartext.delete(_bearbeitet);
     toast(tRaw('vouchers.saved'), 'success');
     formularLeeren(); el('v-pdf').parentElement.style.display = '';
     await ladeGutscheine();
@@ -240,7 +275,7 @@ export async function gutscheinSpeichern() {
       toast(tRaw('vouchers.pdf_incomplete'), 'error');
       return;
     }
-    if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
+    if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
 
     // ── Ein PDF, zwei mögliche Antworten ────────────────────────────────────
     //
@@ -265,7 +300,7 @@ export async function gutscheinSpeichern() {
   }
 
   const d = await api('POST', '/v1/vouchers', { number, pin, amount, currency });
-  if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
+  if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
   toast(tRaw('vouchers.saved'), 'success');
   formularLeeren();
   await ladeGutscheine();
@@ -274,16 +309,28 @@ export async function gutscheinSpeichern() {
 export async function gutscheinLoeschen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
-  if (!confirm(tRaw('vouchers.delete_confirm', { nummer: g.number }))) return;
-  const d = await api('DELETE', `/v1/vouchers/${id}`);
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.delete_title'), tRaw('vouchers.delete_confirm', { nummer: gruppiereNummer(g.number) }), 'loeschen');
+  if (password === null) return;
+  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/vouchers/${id}`, { password, ...z }));
+  if (d === null) return;
   if (!d?.success) { toast(d?.error || tRaw('vouchers.delete_error'), 'error'); return; }
-  toast(tRaw('vouchers.deleted'), 'success');
+  // Rückgängig legt die Karte neu an: nur mit abgerufenem Klartext und ohne PDF, das verloren ginge.
+  const k = _klartext.get(g.id);
+  _klartext.delete(g.id);
+  toast(tRaw('vouchers.deleted'), 'success', g.hat_pdf || !k ? undefined : { text: tRaw('trash.undo'), fn: async () => {
+    const r = await api('POST', '/v1/vouchers', { number: k.number, pin: k.pin || '', amount: g.amount, currency: g.currency });
+    if (!r?.success) { toast(r?.error || tRaw('vouchers.save_error'), 'error'); return; }
+    toast(tRaw('trash.restored'), 'success');
+    await ladeGutscheine();
+  } });
   await ladeGutscheine();
 }
 
-export function gutscheinPinUmschalten(id) {
+export async function gutscheinPinUmschalten(id) {
   const n = Number(id);
-  if (_sichtbar.has(n)) _sichtbar.delete(n); else _sichtbar.add(n);
+  if (_sichtbar.has(n)) _sichtbar.delete(n);
+  else if (await holeKlartext(n)) _sichtbar.add(n);
+  else return;
   ladeGutscheine();
 }
 
@@ -307,9 +354,25 @@ export function gutscheinPinUmschalten(id) {
  * PDFs im PdfViewerScreen, demselben, der auch Anleitungen und Teilelisten
  * zeigt. Genau das meint „analog".
  */
-export function gutscheinPdfOeffnen(id) {
+export async function gutscheinPdfOeffnen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
-  openPdfViewer(`/api/v1/vouchers/${id}/pdf`, g ? g.number : 'PDF');
+  const f = await pdfFreigabe(`/v1/vouchers/${id}/pdf-freigabe`);
+  if (!f) return;
+  const r = await fetch(`/api/v1/vouchers/${id}/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
+  if (!r.ok) { toast((await r.json().catch(() => ({}))).error || tRaw('settings.error'), 'error'); return; }
+  const daten = await r.arrayBuffer();
+  openPdfViewer(URL.createObjectURL(new Blob([daten], { type: 'application/pdf' })), g ? g.number : 'PDF',
+    { daten, dateiname: `gutschein-${id}.pdf` });
+}
+
+/** Bestätigung, dann ein Ticket für genau einen Abruf des PDFs (60 s). */
+async function pdfFreigabe(pfad) {
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.pdf_freigabe_title'), tRaw('vouchers.pdf_freigabe_text'), 'schloss');
+  if (password === null) return null;
+  const d = await mitZweitemFaktor(z => api('POST', pfad, { password, ...z }));
+  if (!d?.success) { if (d) toast(d.error || tRaw('settings.error'), 'error'); return null; }
+  // Nach der Frist gilt das Ticket nicht mehr; ein hängender Abruf bricht dann ab.
+  return { ticket: d.ticket, frist: AbortSignal.timeout(d.gueltig_sek * 1000) };
 }
 
 /**
@@ -334,7 +397,9 @@ export function gutscheinPdfOeffnen(id) {
 export async function gutscheinKopieren(id, feld) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
-  const wert = feld === 'pin' ? (g.pin || '') : String(g.number);
+  const k = await holeKlartext(g.id);
+  if (!k) return;
+  const wert = feld === 'pin' ? (k.pin || '') : String(k.number);
   if (!wert) return;
   let geklappt = false;
   try {
@@ -381,9 +446,11 @@ export async function gutscheinKopieren(id, feld) {
  * noch das, was wirklich offen ist — und das sagt die Meldung.
  */
 async function gutscheineExportieren() {
+  const f = await pdfFreigabe('/v1/vouchers/export/pdf-freigabe');
+  if (!f) return;
   toast(tRaw('vouchers.export_running'), 'info');
   try {
-    const r = await fetch('/api/v1/vouchers/export/pdf');
+    const r = await fetch(`/api/v1/vouchers/export/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       toast(d.error || tRaw('settings.error'), 'error');
@@ -584,6 +651,10 @@ export async function gutscheinLandSpeichern() {
   const feld = el('gutschein-land');
   if (!feld) return;
   const d = await api('POST', '/v1/settings', { gutschein_land: feld.value });
+  if (!_bearbeitet) { const cur = G('v-currency'); if (cur) cur.value = landWaehrung(); }
+  waehrungPruefen();
+  zeigeLandWaehrung();
+  await ladeGutscheine();
   toast(d?.success ? tRaw('settings.saved') : (d?.error || tRaw('settings.error')),
     d?.success ? 'success' : 'error');
 }
@@ -596,7 +667,14 @@ function gutscheinDateiGewaehlt() {
   name.textContent = datei ? datei.name : tRaw('vouchers.pdf_none');
 }
 
+/** Unter dem Ausgabeland: in welcher Währung dessen Karten lauten. */
+function zeigeLandWaehrung() {
+  const z = el('gutschein-land-waehrung');
+  if (z) z.textContent = tRaw('vouchers.land_waehrung', { w: landWaehrung() });
+}
+
 registerActions({
+  waehrungPruefen,
   gutscheinDateiGewaehlt,
   gutscheineExportieren,
   ladeGutscheine,
@@ -611,3 +689,19 @@ registerActions({
   guthabenAlleAbfragen,
   gutscheinLandSpeichern,
 });
+
+// „Mehr“ klappt zu, sobald daneben getippt, darin gewählt oder Escape gedrückt wird.
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (ev) => {
+    const ziel = ev.target instanceof Element ? ev.target : null;
+    for (const d of document.querySelectorAll('details.v-mehr[open]'))
+      if (!d.contains(ziel) || ziel?.closest('.mehr-liste button')) /** @type {HTMLDetailsElement} */ (d).open = false;
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    for (const d of document.querySelectorAll('details.v-mehr[open]')) {
+      /** @type {HTMLDetailsElement} */ (d).open = false;
+      if (d.contains(document.activeElement)) /** @type {HTMLElement|null} */ (d.querySelector('summary'))?.focus();
+    }
+  });
+}

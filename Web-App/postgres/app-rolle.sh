@@ -118,6 +118,8 @@ BEGIN
     EXECUTE pg_catalog.format('REVOKE %I FROM %I', r.rolname, lesen);
   END LOOP;
   EXECUTE 'REVOKE CREATE ON SCHEMA public FROM PUBLIC';
+  -- Auch keine temporären Tabellen; die App behält TEMP als Eigentümerin.
+  EXECUTE pg_catalog.format('REVOKE TEMPORARY ON DATABASE %I FROM PUBLIC', db);
   EXECUTE pg_catalog.format('GRANT CONNECT ON DATABASE %I TO %I', db, lesen);
   EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA public TO %I', lesen);
   EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', lesen);
@@ -133,7 +135,7 @@ BEGIN
                     ELSE ARRAY[]::text[] END)) AS spalten
              FROM pg_catalog.pg_class c JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
             WHERE c.relnamespace = 'public'::pg_catalog.regnamespace AND c.relkind IN ('r', 'p', 'v', 'm')
-              AND c.relname <> ALL (ARRAY['api_tokens', 'qr_login_tokens', 'user_sessions', 'webauthn_challenges',
+              AND c.relname <> ALL (ARRAY['api_tokens', 'api_tokens_verbraucht', 'qr_login_tokens', 'user_sessions', 'webauthn_challenges',
                                           'zweiter_faktor_codes', 'account_link_invites'])
             GROUP BY c.oid, c.relname LOOP
     EXECUTE pg_catalog.format('GRANT SELECT (%s) ON %s TO %I', pg_catalog.array_to_string(r.spalten, ', '), r.name, lesen);

@@ -173,8 +173,8 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
   // 30.10.2026: 92 — acht Dateien prüfen jetzt Verhalten (Erfassungen, Summen,
   // Mengen-Echo, Preisverlauf, Figurenschätzung, LISTEN/NOTIFY, CSV, Katalogbilder).
   // 30.10.2026: 90 — der Start des Job-Prozesses wird ausgeführt statt gelesen.
-  // 02.11.2026: 87 — workflow-ort führt das Skript des Sicherheitslaufs aus.
-  const SCHRANKE = 87;
+  // 02.11.2026: 87 — workflow-ort führt das Skript des Sicherheitslaufs aus. 03.11.2026: 86.
+  const SCHRANKE = 86;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
   const ist = reineQuelltextTests();
@@ -227,8 +227,8 @@ test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   // GEMESSEN am 28.10.2026: 455 vor dem Umzug in Klassen, danach 170,
   // davon 56 reines display:none. 112 am 29.10. (Merkliste-Kasten als Klasse),
   // 52 am selben Tag (Diagramm, Banner, Dialogfüsse, PDF-Ansicht als Klassen).
-  // 51 am 30.10. (Kennzahlen der Minifiguren ohne eigenes Raster).
-  const SCHRANKE = 51;
+  // 51 am 30.10. (Kennzahlen der Minifiguren ohne eigenes Raster). 47 am 03.11.
+  const SCHRANKE = 47;
   const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
   const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
   assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');

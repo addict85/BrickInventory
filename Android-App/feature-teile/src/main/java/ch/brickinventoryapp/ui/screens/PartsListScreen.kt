@@ -26,7 +26,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -43,7 +42,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.LeerSymbol
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 
 // ── Sortierung wie Webapp und PDF ──
@@ -136,6 +134,7 @@ fun PartsListScreen(
     val loadingSetFmt      = stringResource(R.string.partslist_loading_set)
     val errorForSetFmt     = stringResource(R.string.partslist_error_for_set)
     val noColorLabel       = stringResource(R.string.partslist_no_color)
+    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
     val rbPrefixFmt        = stringResource(R.string.partslist_rb_prefix)
     val bestandVollstaendigText = stringResource(R.string.partslist_owned_complete)
     val bestandFehlerText       = stringResource(R.string.partslist_owned_error)
@@ -189,7 +188,9 @@ fun PartsListScreen(
                         // Done statt Next, weil rechts der Knopf „+“ kommt, kein Feld.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
                         keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
-                        placeholder = { Text(stringResource(R.string.partslist_set_number_placeholder)) },
+                        // Beschriftung statt Platzhalter: Der lange Platzhalter brach im Feld
+                        // zweizeilig um und verschwand beim Tippen.
+                        label = { Text(stringResource(R.string.gallery_set_number)) },
                         modifier = Modifier.weight(1f).focusRequester(setFeldFokus),
                         singleLine = true,
                         shape = MaterialTheme.shapes.large,
@@ -317,8 +318,11 @@ fun PartsListScreen(
                             Text("PDF")
                         }
                     }
+                    // Nur mit Inhalt: Ein roter Knopf auf der leeren Seite lud zum Tippen ein,
+                    // ohne etwas zu tun.
                     OutlinedButton(
                         onClick = { reset() },
+                        enabled = sets.isNotEmpty() || generated || status.isNotBlank(),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) { Text(stringResource(R.string.partslist_reset)) }
                 }
@@ -411,14 +415,10 @@ fun PartsListScreen(
         }
 
         if (!generated || parts.isEmpty()) {
-            if (!isLoading) Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    LeerSymbol(Icons.AutoMirrored.Filled.ListAlt, 48.dp)
-                    Spacer(Modifier.height(Abstaende.klein))
-                    Text(stringResource(R.string.partslist_empty_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            // Derselbe Leerzustand wie jede Liste (ZustandsHinweis): mittig, mit Rand.
+            if (!isLoading) ch.brickinventoryapp.ui.components.ZustandsHinweis {
+                ch.brickinventoryapp.ui.components.HinweisText(Icons.AutoMirrored.Filled.ListAlt,
+                    stringResource(R.string.partslist_empty_title), stringResource(R.string.partslist_empty_hint))
             }
             return@Column
         }
@@ -446,7 +446,7 @@ fun PartsListScreen(
                                 catch (_: Exception) { Color.Gray }))
                             Spacer(Modifier.width(6.dp))
                         }
-                        val displayName = colorName.ifEmpty { noColorLabel }
+                        val displayName = if (colorName.isEmpty()) noColorLabel else farbe(colorName)
                         Text(displayName, fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary)
@@ -493,32 +493,14 @@ fun PartListRow(
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Image
-        Box(Modifier.size(48.dp)) {
-            if (imgUrl != null) {
-                AsyncImage(
-                    model = ImageRequest.Builder(ctx).data(imgUrl).crossfade(true).build(),
-                    imageLoader = imageLoader,
-                    contentDescription = part.partName,
-                    modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.small),
-                    contentScale = ContentScale.Fit
-                )
-            } else {
-                Surface(color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.small, modifier = Modifier.fillMaxSize()) {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        // Teile mit dem gemeinsamen Teile-Symbol (wie Reiter
-                        // und Webapp), Figuren mit dem Personensymbol.
-                        if (part.isFig) LeerSymbol(Icons.Default.Person, 22.dp)
-                        else Icon(
-                            ImageVector.vectorResource(R.drawable.ic_parts_bricks),
-                            contentDescription = null,
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-            }
-        }
+        ch.brickinventoryapp.ui.components.ProduktBild(
+            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+            imageLoader = imageLoader,
+            contentDescription = part.partName,
+            modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
+            contentScale = ContentScale.Fit,
+            ersatzGroesse = 24.dp,
+        )
         // Info
         Column(Modifier.weight(1f)) {
             // BL-ID (primary) and RB-ID (secondary)
@@ -529,7 +511,7 @@ fun PartListRow(
                 Text(String.format(rbPrefixFmt, part.partNumber), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(part.partName, style = MaterialTheme.typography.bodySmall,
+            Text(ch.brickinventoryapp.ui.components.katalogName(part.partName), style = MaterialTheme.typography.bodySmall,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         // Quantity badge

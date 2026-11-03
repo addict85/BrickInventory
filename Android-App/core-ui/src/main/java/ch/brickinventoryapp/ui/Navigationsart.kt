@@ -17,5 +17,12 @@ const val MITTLERE_BREITE_DP = 600f
 /** Untergrenze der Breitenklasse „expanded" laut Material Design. */
 const val GROSSE_BREITE_DP = 840f
 
+/**
+ * Ab „expanded" stehen Liste und Detail nebeneinander (Material: List-Detail): Das
+ * Detail ersetzte auf dem Tablet die Liste, und wer drei Sets verglich, ging dreimal
+ * zurück. Gemessen wird das Fenster, nicht das Gerät.
+ */
+fun listeUndDetail(fensterbreiteDp: Float): Boolean = fensterbreiteDp >= GROSSE_BREITE_DP
+
 /** Ab „expanded" verteilt sich eine Detailseite auf zwei Spalten. */
 fun zweiSpaltig(fensterbreiteDp: Float): Boolean = fensterbreiteDp >= GROSSE_BREITE_DP

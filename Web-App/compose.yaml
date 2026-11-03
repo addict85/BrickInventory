@@ -7,6 +7,14 @@
 # Start:
 #   docker compose up -d --build
 #
+# Ressourcengrenzen (mem_limit, pids_limit, cpus) je Dienst: Ein Fehler in
+# einer nativen Bibliothek (sharp, pdf-lib) oder eine Flut von Anfragen soll
+# einen Container füllen, nicht den ganzen Rechner. NODE_OPTIONS begrenzt nur
+# den JavaScript-Heap, nicht den Speicher von sharp. Die Vorgaben passen auf
+# einen Raspberry Pi 4 mit 4 GB; auf einem kleineren Gerät oder bei grossen
+# Sammlungen in .env anpassen (APP_MEM_LIMIT, JOBS_MEM_LIMIT, DB_MEM_LIMIT …,
+# UPGRADE.md, Runde 7). Wer an eine Grenze stösst, sieht im Protokoll
+# „OOMKilled" (docker inspect) bzw. „Resource temporarily unavailable".
 # ════════════════════════════════════════════════════════════════════════════════
 
 services:
@@ -39,6 +47,10 @@ services:
       # Für postgres/app-rolle.sh beim Anlegen einer neuen Datenbank.
       DB_APP_PASSWORD: ${DB_APP_PASSWORD:?DB_APP_PASSWORD in .env setzen - siehe UPGRADE.md}
     command: postgres -c max_connections=200 -c shared_buffers=128MB
+    # Ein Prozess je Verbindung: 200 Verbindungen plus Hintergrundprozesse.
+    mem_limit: ${DB_MEM_LIMIT:-1g}
+    pids_limit: 300
+    cpus: ${DB_CPUS:-2}
     # Der Entrypoint des Images läuft als root: Er legt $PGDATA an (chmod 700),
     # richtet die Eigentümer per find/chown und wechselt mit gosu zu postgres.
     # Genau dafür reichen diese fünf; der Server selbst läuft ohne.
@@ -78,6 +90,9 @@ services:
       postgres:
         condition: service_healthy
     entrypoint: ["sh", "/rolle/app-rolle.sh"]
+    mem_limit: 128m
+    pids_limit: 32
+    cpus: 0.5
     environment:
       PGHOST: postgres
       PGUSER: brickinventory
@@ -91,6 +106,32 @@ services:
     networks:
       - brickinventory-net
 
+  # ── Datenschlüssel anlegen ───────────────────────────────────────────────────
+  # Legt ./schluessel/datenschluessel beim ersten Start an (32 Zufallsbyte,
+  # base64, nur für brickinv lesbar) und endet. app und jobs sehen den Ordner
+  # danach nur lesend. Liegt noch ein alter Schlüssel in data/.datenschluessel,
+  # legt er keinen neuen an: Der Server meldet dann den Umzug (UPGRADE.md).
+  schluessel:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: brickinventory-schluessel
+    restart: "no"
+    user: root
+    network_mode: none
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    read_only: true
+    mem_limit: 64m
+    pids_limit: 16
+    cpus: 0.5
+    entrypoint: ["sh", "/app/schluessel-anlegen.sh"]
+    volumes:
+      - ./schluessel:/app/schluessel
+      - ./data:/app/data:ro
+
   # ── BrickInventory Manager App ───────────────────────────────────────────────
   app:
     build:
@@ -101,6 +142,10 @@ services:
     # Kleiner init-Prozess als PID 1: reicht Signale weiter und räumt
     # verwaiste Kindprozesse (Bildwerkzeuge, PDF) ab.
     init: true
+    # Heap 384 MB (Dockerfile) plus sharp, PDF und Puffer.
+    mem_limit: ${APP_MEM_LIMIT:-1g}
+    pids_limit: 256
+    cpus: ${APP_CPUS:-2}
     # docker-entrypoint.sh läuft als root und braucht genau vier Rechte:
     # mkdir/Marke im Datenordner, der brickinv gehört (DAC_OVERRIDE), chown
     # (CHOWN) und den Wechsel zu brickinv per su-exec (SETUID, SETGID). Der
@@ -114,6 +159,8 @@ services:
       - /tmp
     depends_on:
       db-rolle:
+        condition: service_completed_successfully
+      schluessel:
         condition: service_completed_successfully
     # Kein veröffentlichter Port: Von aussen geht es nur über Caddy (HTTPS).
     #
@@ -142,8 +189,10 @@ services:
       # verschieben, danach kann der Ordner weg.
       - ./data:/app/data
       # Der Datenschlüssel für gespeicherte Geheimnisse, getrennt von ./data:
-      # Eine Sicherung von data/ (scripts/backup.sh) enthält ihn so nie.
-      - ./schluessel:/app/schluessel
+      # Eine Sicherung von data/ (scripts/backup.sh) enthält ihn so nie. Nur
+      # lesend: Angelegt wird er vom Dienst `schluessel`, ein Fehler im Server
+      # kann ihn so nicht überschreiben.
+      - ./schluessel:/app/schluessel:ro
       # Nur das öffentliche Wurzelzertifikat, das Caddy hineinkopiert (siehe
       # dort); Caddys Ordner mit dem Schlüssel der CA sieht die App nicht.
       - ca-wurzel:/caddy-ca:ro
@@ -221,6 +270,9 @@ services:
     container_name: brickinventory-jobs
     restart: unless-stopped
     init: true
+    mem_limit: ${JOBS_MEM_LIMIT:-1g}
+    pids_limit: 256
+    cpus: ${JOBS_CPUS:-1.5}
     # Dieselben Rechte wie `app` (siehe dort): der Entrypoint richtet ./data ein.
     security_opt:
       - no-new-privileges:true
@@ -232,11 +284,13 @@ services:
     depends_on:
       db-rolle:
         condition: service_completed_successfully
+      schluessel:
+        condition: service_completed_successfully
     # Bilder, Anleitungen, PDFs und der Datenschlüssel liegen dort, wo auch
     # `app` sie sucht.
     volumes:
       - ./data:/app/data
-      - ./schluessel:/app/schluessel
+      - ./schluessel:/app/schluessel:ro
     environment:
       ROLLE: jobs
       DATA_KEY_FILE: /app/schluessel/datenschluessel
@@ -266,10 +320,13 @@ services:
   # ./caddy/data/caddy/pki/authorities/local/root.crt und kommt auf die Geräte
   # (UPGRADE.md, Abschnitt 14).
   caddy:
-    # Fest per Digest wie pgweb; Dependabot (docker-compose) schlägt neue Fassungen vor.
+    # Fest per Digest wie pgweb; Renovate (docker-compose) schlägt neue Fassungen vor.
     image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
     container_name: brickinventory-caddy
     restart: unless-stopped
+    mem_limit: ${CADDY_MEM_LIMIT:-256m}
+    pids_limit: 128
+    cpus: ${CADDY_CPUS:-1}
     # Caddy läuft als root im Container und braucht nur die Ports unter 1024.
     security_opt:
       - no-new-privileges:true
@@ -284,11 +341,18 @@ services:
     # ca-wurzel, das die App nur lesend sieht. Ein Datei-Mount von root.crt
     # taugt nicht — fehlt die Datei beim ersten Start, legt Docker an ihrer
     # Stelle ein Verzeichnis an, und Caddy kann seine CA nicht schreiben.
+    # Liegt in ./caddy/ca eine eigene CA (scripts/ca-einrichten.sh), signiert
+    # deren Zwischenstelle; den Schlüssel der Wurzel hat Caddy dann nicht.
     command:
       - sh
       - -c
       - |
         q=/data/caddy/pki/authorities/local/root.crt
+        if [ -s /ca-eigen/zwischen.key ]; then
+          q=/ca-eigen/root.crt
+          export BRICK_CA_SIGNIEREN='ca local'
+          export BRICK_CA_EIGEN="$$(printf 'root {\ncert /ca-eigen/root.crt\n}\nintermediate {\ncert /ca-eigen/zwischen-kette.crt\nkey /ca-eigen/zwischen.key\n}')"
+        fi
         while :; do
           if [ -f "$$q" ] && ! cmp -s "$$q" /ca-wurzel/root.crt; then
             cp "$$q" /ca-wurzel/root.crt.neu && chmod 644 /ca-wurzel/root.crt.neu && mv /ca-wurzel/root.crt.neu /ca-wurzel/root.crt
@@ -307,6 +371,8 @@ services:
       # CA (Wurzel und Schlüssel) und Zertifikate. Mitsichern: Geht die CA
       # verloren, muss jedes Gerät das neue Wurzelzertifikat bekommen.
       - ./caddy/data:/data
+      # Die eigene, auf BRICK_HOST beschränkte CA, falls eingerichtet.
+      - ./caddy/ca:/ca-eigen:ro
       - ./caddy/config:/config
       - ca-wurzel:/ca-wurzel
     networks:
@@ -350,6 +416,9 @@ services:
     cap_drop: [ALL]
     profiles: ["tools"]
     restart: "no"          # bewusst nicht "unless-stopped": Werkzeug auf Zeit
+    mem_limit: 256m
+    pids_limit: 64
+    cpus: 0.5
     depends_on:
       db-rolle:
         condition: service_completed_successfully
@@ -365,6 +434,8 @@ services:
       PGWEB_AUTH_USER: ${PGWEB_USER:-pgweb}
       PGWEB_AUTH_PASS: ${PGWEB_PASSWORD:-}
     # --readonly zusätzlich zur Leserolle; Reparaturen mit psql als App-Rolle.
+    # --lock-session: Die Oberfläche verbindet nur zu PGWEB_DATABASE_URL, nicht
+    # zu beliebigen Hosts und Ports im Docker-Netz.
     entrypoint:
       - /bin/sh
       - -c
@@ -377,7 +448,7 @@ services:
           echo "pgweb: PGWEB_DB_PASSWORD in .env setzen (Leserolle der Datenbank) - siehe UPGRADE.md." >&2
           exit 1
         fi
-        exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly
+        exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly --lock-session
     ports:
       - "127.0.0.1:8081:8081"
     networks:

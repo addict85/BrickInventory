@@ -20,6 +20,7 @@ import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13
 import { ladeMerkliste, merklisteZuruecksetzen } from './16-merkliste.js';
 import { initCatalog, katalogZuruecksetzen } from './09-catalog.js';
 import { delSetStop, openPdfViewerLink, stopEvent } from './11-actions.js';
+import { meldeAnsicht, meldeFilter } from './24-router.js';
 
 // ═══ Navigation, Stats, Progress-Overlay, Galerie, CSV-Polling, Set-Detail-Modal ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -123,6 +124,7 @@ export function bindTabs(){
       if (unter) G('btn-umenu')?.setAttribute('aria-current', 'page'); else G('btn-umenu')?.removeAttribute('aria-current');
       t.classList.add('active'); G('tab-'+t.dataset.tab).classList.add('active');
       const tab = t.dataset.tab;
+      meldeAnsicht(tab);
       markiereGruppe(tab);
       zeigeSeitenname(G('tab-'+tab), unter);
       syncTabTitleIcon(tab);
@@ -208,6 +210,7 @@ export function oeffneSicht(name){
   markiereGruppe(null);
   zeigeSeitenname(flaeche, true);
   menueSchliessen();
+  meldeAnsicht(name);
   // Die Sichten liegen im Kontomenü, nicht in der Leiste: Dann zeigt der
   // Menüknopf, wo man ist — sonst wäre kein Reiter als aktiv markiert.
   G('btn-umenu')?.classList.add('aktiv');
@@ -650,6 +653,7 @@ function filterZuruecksetzen(ansicht) {
   else if (ansicht === 'catalog') katalogZuruecksetzen();
   else if (ansicht === 'parts') teileFilterZuruecksetzen();
   else if (ansicht === 'minifigs') figurenFilterZuruecksetzen();
+  meldeFilter();
 }
 
 export function onStorageChange(view) {
@@ -956,6 +960,8 @@ export function renderGallery(){
   // Ein Filter ohne Suchtext (Thema, Lagerort) ist auch ein Filter: Sonst stünde
   // „Noch keine Sets“ über einer Sammlung, die nur ausgeblendet ist.
   const gefiltert = !!(q || G('gtheme')?.value || lagerModus('gallery'));
+  // Ohne ein einziges Set filtern und sortieren die Felder nichts (N5).
+  G('tab-gallery')?.classList.toggle('sammlung-leer', !list.length && !gefiltert);
   if(!list.length){
     c.innerHTML = gefiltert
       ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
@@ -1092,6 +1098,8 @@ function gridCard(s){
   // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat —
   // eine Plakette je Zustand, siehe condBadges().
   const condBadge = condBadges(s);
+  // Ohne Jahr, Thema und echten Namen kennt der Katalog die Nummer (noch) nicht.
+  const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
   // Kein aria-label: Der Name kommt aus dem Inhalt, sonst fehlte dem Vorleser, was sichtbar dasteht.
   return `<div class="sc" tabindex="0" role="button" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</span></div>
@@ -1105,6 +1113,7 @@ function gridCard(s){
           ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
           ${condBadge}
+          ${unbekannt ? `<span class="unbekannt-badge" title="${esc(tRaw('gallery.card.unbekannt_hint'))}">${t('gallery.card.unbekannt')}</span>` : ''}
           ${ownerBadges(s)}
         </div>
       </div>
@@ -1131,12 +1140,38 @@ function tableRow(s){
 
 // Add set via SSE stream
 G('btn-add').onclick=doAddSet;
+G('add-num').addEventListener('input', unbekanntZuruecksetzen);
 G('add-num').addEventListener('keydown',e=>e.key==='Enter'&&doAddSet());
 /** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */
 // Ohne data-arg reicht der Dispatcher das Ereignis als erstes Argument.
 const erfassenDialog = (art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
 export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open'); }
 export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
+
+/**
+ * Eine Nummer, die der Katalog nicht kennt, wird erst nach Rückfrage
+ * angelegt: Sonst entsteht aus einem Tippfehler ein Set ohne Namen und Bild.
+ * Die Rückfrage steht im Dialog; ein zweiter Klick legt an.
+ */
+function unbekanntZuruecksetzen() {
+  const box = G('add-unbekannt'); if (box) box.hidden = true;
+  delete G('add-num').dataset.bestaetigt;
+  G('btn-add-text').textContent = tRaw('gallery.add.submit');
+}
+
+async function setUnbekannt(num) {
+  const nr = /-\d+$/.test(num) ? num : num + '-1';
+  if (G('add-num').dataset.bestaetigt === nr) return false;
+  const d = await api('GET', `/v1/catalog/sets/${encodeURIComponent(nr)}`);
+  if (d?.success) return false;
+  if (d?.status && d.status !== 404 && d.code !== 'set_nicht_im_katalog') return false;
+  G('add-num').dataset.bestaetigt = nr;
+  const box = G('add-unbekannt');
+  box.textContent = tRaw('gallery.add.unbekannt', { num: nr });
+  box.hidden = false;
+  G('btn-add-text').textContent = tRaw('gallery.add.trotzdem');
+  return true;
+}
 
 async function doAddSet(){
   const num=G('add-num').value.trim(), qty=parseInt(G('add-qty').value)||1;
@@ -1148,6 +1183,8 @@ async function doAddSet(){
   // eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
   if(!setnummerFeldGueltig('add-num', num) || !preis.ok) return;
+  if (await setUnbekannt(num)) return;
+  unbekanntZuruecksetzen();
   showProgress(t('gallery.adding_set',{num}), false);
   try{
     await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
@@ -1447,6 +1484,8 @@ export async function delSet(sn){
   loadGallery(); loadParts(); loadStats();
   return true;
 }
+/** Aus „Weitere Aktionen“ im Set-Detail: das offene Set. */
+function teileNeuImportieren(){ if (curSet?.set_number) reimportParts(curSet.set_number); }
 export async function reimportParts(sn){ toast(tRaw('detail.importing_parts',{sn}),'info'); const d=await api('POST',`/v1/sets/${sn}/parts`); if(d.success){toast(tRaw('detail.parts_imported',{count:d.count}),'success');loadParts();} else toast(d.error,'error'); }
 
 // ── MODAL ─────────────────────────────────────────────
@@ -1569,9 +1608,11 @@ export function autosaveSet(){
       // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim
       // Erhöhen entsteht eine neue Zeile, beim Reduzieren fällt (LIFO) die
       // letzte weg — sonst blieb die entfernte Zeile in der Detailsicht stehen.
+      const sn = curSet.set_number;
       if (echt !== prevQty && typeof renderAcquisitionSummary === 'function') {
-        api('GET', `/v1/sets/${esc(curSet.set_number)}/acquisitions`).then(ad => {
+        api('GET', `/v1/sets/${esc(sn)}/acquisitions`).then(ad => {
           if (!ad?.success) return;
+          if (echt > prevQty) meldeNeueExemplare(sn, ad.acquisitions, echt - prevQty);
           const sumEl = G('m-acq-summary');
           if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, curSet.set_number) +
             `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
@@ -1580,11 +1621,27 @@ export function autosaveSet(){
           }
         }).catch(()=>{});
       }
-      toast(tRaw('settings.saved'),'success');
+      // Mehr Exemplare melden sich mit Preis (meldeNeueExemplare), sobald die Erfassungen da sind.
+      if (!(echt > prevQty)) toast(tRaw('settings.saved'),'success');
       loadGallery();
       if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance();
     } else { toast(d.error||t('settings.error'),'error'); }
   }, 400);
+}
+
+/**
+ * „+“ legt eine Kauferfassung an, meist mit dem Marktpreis als Schätzung. Das
+ * verändert die Finanzen, also sagt der Toast es samt Betrag und bietet
+ * „Ändern“ an, statt nur „Gespeichert“ zu melden.
+ */
+function meldeNeueExemplare(sn, acqs, n) {
+  const neu = [...(acqs || [])].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+  const preis = neu?.purchase_price;
+  const mehrere = n > 1 ? 'exemplare' : 'exemplar';
+  const text = preis != null && neu.price_estimated
+    ? tRaw(`acq.${mehrere}_geschaetzt`, { n, preis: fmtGeld(preis, neu.currency || CURRENCY) })
+    : preis == null ? tRaw(`acq.${mehrere}_ohne_preis`, { n }) : tRaw('settings.saved');
+  toast(text, 'success', { text: tRaw('acq.aendern'), fn: () => openAcqModal(sn) });
 }
 
 // Keine eigene Rückfrage mehr — delSet() fragt (siehe dort). Der Dialog
@@ -1604,6 +1661,7 @@ async function redownloadInstr(sn){ toast(tRaw('instr.loading'),'info'); const d
 // der erste Lauf dieses Umbaus rot geworden.
 registerActions({
   loadGallery,
+  teileNeuImportieren,
   filterUmschalten,
   filterZuruecksetzen,
   benutzerMenue,

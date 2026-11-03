@@ -72,7 +72,10 @@ fun fmtTag(iso: String?, jahr: DatumJahr = DatumJahr.VOLL): String? = fmtDatum(i
  * dann gleichmässig in Vierer — „1234-5678 9“ hiesse sonst „1234 -567 8 9“.
  */
 fun inVierergruppen(nummer: String): String =
-    nummer.filter { it.isLetterOrDigit() }.chunked(4).joinToString(" ")
+    // Die Maske des Servers („…1234“) bleibt, wie sie ist: gefiltert hiesse sie „1234“
+    // und sähe aus wie eine ganze, kurze Nummer.
+    if (ch.brickinventoryapp.data.model.istGutscheinMaske(nummer)) nummer
+    else nummer.filter { it.isLetterOrDigit() }.chunked(4).joinToString(" ")
 
 /** Wie fmtMoney, aber aus dem String der API — `null`/unlesbar ergibt „—". */
 fun fmtMoneyOrDash(amount: String?, currencyCode: String?): String {
