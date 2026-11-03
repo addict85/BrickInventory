@@ -1,10 +1,8 @@
 package ch.brickinventoryapp.ui.components
 
 import android.app.KeyguardManager
-import android.os.Build
 import android.os.SystemClock
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
-import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_WEAK
 import androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL
 import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.layout.Box
@@ -44,17 +42,19 @@ fun interface Schrittschutz {
 val LocalSchrittschutz = staticCompositionLocalOf { Schrittschutz { _, _ -> } }
 
 /**
- * Fingerabdruck oder Gesicht, sonst PIN, Muster oder Passwort des Geräts
- * (androidx.biometric). Ein Gerät ohne Sperre hat nichts zu fragen und lässt
- * durch — der Schritt wäre dort ohnehin jedem offen.
+ * Fingerabdruck (starke Biometrie), sonst PIN, Muster oder Passwort des Geräts. Ein
+ * Gerät ohne Sperre hat nichts zu fragen und lässt durch — der Schritt wäre dort
+ * ohnehin jedem offen. Bestätigt ist erst, was der Keystore freigibt ([Schrittfreigabe]).
  */
-// [untertitel] kommt von aussen: Unter Android 13 trägt die Activity die
-// System- statt der App-Sprache, den lokalisierten Context kennt core-ui nicht.
+// [untertitel] und [keinSchluessel] kommen von aussen: Unter Android 13 trägt die
+// Activity die System- statt der App-Sprache, den lokalisierten Context kennt core-ui nicht.
 class GeraeteSchrittschutz(
     private val activity: FragmentActivity,
+    private val keinSchluessel: () -> Unit = {},
     private val untertitel: () -> String,
 ) : Schrittschutz {
     private val frist = Bestaetigungsfrist(uhr = SystemClock::elapsedRealtime)
+    private val freigabe = Schrittfreigabe(GeraeteSchluessel::oeffentlich)
 
     /** Beim Verlassen der App (MainActivity.onStop): Danach wird wieder gefragt. */
     fun vergiss() = frist.vergiss()
@@ -64,24 +64,23 @@ class GeraeteSchrittschutz(
             weiter()
             return
         }
+        // Ohne gebundenen Schlüssel kein Weiter: Ein Rückfall auf die blosse Rückfrage
+        // wäre genau der Weg, den ein eingehakter Rückruf öffnet.
+        val signatur = runCatching { GeraeteSchluessel.signatur() }.getOrNull() ?: return keinSchluessel()
         val rueckruf = object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                frist.bestaetigt()
-                weiter()
-            }
+            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) =
+                nachFreigabe(freigabe, result.cryptoObject?.signature, frist, weiter)
         }
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(grund)
             .setSubtitle(untertitel())
-            .setAllowedAuthenticators(erlaubteVerfahren())
+            // Seit minSdk 30 immer starke Biometrie oder die Gerätesperre, nie Klasse-2-Gesicht;
+            // beides kann der Keystore-Schlüssel freigeben (GeraeteSchluessel).
+            .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
             .build()
-        BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), rueckruf).authenticate(info)
+        BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), rueckruf)
+            .authenticate(info, BiometricPrompt.CryptoObject(signatur))
     }
-
-    // STRONG zusammen mit der Gerätesperre kennt androidx.biometric erst ab Android 11.
-    private fun erlaubteVerfahren(): Int =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) BIOMETRIC_STRONG or DEVICE_CREDENTIAL
-        else BIOMETRIC_WEAK or DEVICE_CREDENTIAL
 }
 
 /**
@@ -90,6 +89,8 @@ class GeraeteSchrittschutz(
  */
 @Composable
 fun Schrittsperre(grund: String, inhalt: @Composable () -> Unit) {
+    // Eine Seite hinter der Gerätesperre ist heikel: kein untergeschobener Tipp (sec8 H8).
+    Ueberdeckungsschutz()
     val schutz = LocalSchrittschutz.current
     var entsperrt by remember { mutableStateOf(false) }
     val frage = { schutz.bestaetige(grund) { entsperrt = true } }

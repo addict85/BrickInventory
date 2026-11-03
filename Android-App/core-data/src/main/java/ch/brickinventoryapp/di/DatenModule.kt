@@ -26,6 +26,15 @@ object DatenModule {
     @Singleton
     fun provideTokenVerschluesselung(): TokenVerschluesselung = KeystoreTokenTresor()
 
+    /** Der Schlüssel der lokalen Ablagen; umhüllt unter eigenem Alias, abgelegt ohne Sicherung. */
+    @Provides
+    @Singleton
+    fun provideAblageschluessel(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
+    ): ch.brickinventoryapp.util.Ablageschluessel = ch.brickinventoryapp.util.Ablageschluessel(
+        java.io.File(context.noBackupFilesDir, "ablage.schluessel"), KeystoreTokenTresor("brickinventory_ablage"),
+    )
+
     @Provides
     @Singleton
     fun provideJson(): Json = ch.brickinventoryapp.data.api.ApiJson

@@ -463,6 +463,9 @@
     <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
     <string name="vm_session_expired">Session expired — please log in again</string>
     <string name="vm_abmelden_nachgeholt">Logged out. The server could not be reached, so the app will invalidate the login there as soon as it is online. To be sure, check “Signed-in devices” in the web app.</string>
+    <string name="abmeldung_kanal">Sign-out</string>
+    <string name="abmeldung_gescheitert_titel">Sign-out not confirmed</string>
+    <string name="abmeldung_gescheitert_text">This device could not sign out at %1$s. The login may still be valid there: revoke it in the web app under “Signed-in devices”.</string>
     <string name="vm_rechte_entzogen">Your administrator rights no longer apply — the administration areas are hidden.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
@@ -659,7 +662,6 @@
     <string name="pdfview_no_target">No storage location available</string>
     <string name="pdfview_write_failed">File could not be written</string>
     <string name="pdfview_default_name">Instructions</string>
-    <string name="pdfview_share">Share PDF</string>
     <!-- Angemeldete Geraete (Token-Verwaltung) -->
     <string name="tokens_title">Signed-in devices</string>
     <string name="tokens_hint">Every sign-in — in the browser, in the app or via QR code — issues an access token. Lock out a lost or sold device here, without changing your password.</string>
@@ -817,6 +819,8 @@
     <string name="update_signatur_falsch">The downloaded app is not signed with the same key as this one and was deleted. It was not installed.</string>
     <string name="update_fassung_falsch">The downloaded app carries a different version than announced and was deleted. It was not installed.</string>
     <string name="update_fremde_adresse">The update points to an address outside our release. Nothing was downloaded.</string>
+    <string name="update_beschreibung_unsigniert">The update description is not signed with this app’s key. Nothing is offered.</string>
+    <string name="update_pruefsumme_falsch">The downloaded app is not the one announced in the signed description and was deleted. It was not installed.</string>
     <string name="update_installer_fehlt">The installation could not be started.</string>
     <string name="update_installation_fehlgeschlagen">The installation failed: %1$s</string>
 
@@ -876,6 +880,7 @@
     <string name="vouchers_pin_show">Show PIN</string>
     <string name="schritt_untertitel">Confirm with fingerprint, face or your device lock</string>
     <string name="schritt_entsperren">Confirm</string>
+    <string name="schritt_kein_schluessel">The device lock cannot be checked right now. Please try again later.</string>
     <string name="schritt_gutschein">Show voucher PIN</string>
     <string name="schritt_codes">Recovery codes</string>
     <string name="schritt_verwaltung">Open administration</string>
@@ -944,6 +949,8 @@
     <string name="settings_systemfarben_hint">Colors from your wallpaper instead of the design\'s colors. Shapes and fonts stay.</string>
     <string name="settings_vorschau_verbergen">Hide preview in the app overview</string>
     <string name="settings_vorschau_verbergen_hint">No preview in the recent apps overview and no screenshots of the app. Applies to this device.</string>
+    <string name="settings_widget_werte">Show amounts in the widget</string>
+    <string name="settings_widget_werte_hint">Otherwise the collection value and gains are hidden on the home screen, where anyone who sees the phone can read them. Applies to this device.</string>
     <string name="zert_titel_erstkontakt">Trust this server?</string>
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>

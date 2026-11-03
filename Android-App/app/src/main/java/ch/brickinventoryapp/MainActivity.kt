@@ -82,7 +82,10 @@ class MainActivity : NurLauncherStart() {
 
     /** Rückfrage per Gerätesperre vor heiklen Schritten; gilt bis die App in den Hintergrund geht. */
     private val schrittschutz by lazy {
-        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this) {
+        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this, keinSchluessel = {
+            android.widget.Toast.makeText(this, ch.brickinventoryapp.util.LanguageManager.localizedContext(this).getString(R.string.schritt_kein_schluessel),
+                android.widget.Toast.LENGTH_LONG).show()
+        }) {
             ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
                 .getString(R.string.schritt_untertitel)
         }
@@ -151,14 +154,16 @@ class MainActivity : NurLauncherStart() {
             // Über den Zähler von Sichtschutz, damit ein Bildschirm, der ihn selbst
             // setzt, beim Verlassen den Wunsch des Nutzers nicht aufhebt.
             val vorschauVerbergen by vm.vorschauVerbergen.collectAsStateWithLifecycle()
-            if (vorschauVerbergen) ch.brickinventoryapp.ui.components.Sichtschutz()
+            if (vorschauVerbergen) ch.brickinventoryapp.ui.components.Sichtschutz(ueberdeckung = false)
             val sicht = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
                 // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.
                 CompositionLocalProvider(
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                     ch.brickinventoryapp.ui.components.LocalSchrittschutz provides schrittschutz,
-                ) {
+                ) { ch.brickinventoryapp.ui.components.TastaturOhneLernen {
+                    // App-weit (sec8 H4): Gutschein-Nummer und PIN, Passwörter, Codes und
+                    // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
                     BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
                     val startpasswort by vm.passwortPflicht.noetig.collectAsStateWithLifecycle()
@@ -194,7 +199,7 @@ class MainActivity : NurLauncherStart() {
                             onAbbrechen = vm.nutzerCa::abbrechen,
                         )
                     }
-                }
+                } }
             }
         }
     }

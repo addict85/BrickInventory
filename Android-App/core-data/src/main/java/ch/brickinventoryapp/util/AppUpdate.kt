@@ -8,6 +8,7 @@ import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.net.toUri
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.File
@@ -18,22 +19,32 @@ import java.security.MessageDigest
  * prüfen, nie von allein laden. Es geht, weil der versionCode monoton steigt
  * (VERSION_CODE_BASE + Anzahl Commits, app/build.gradle.kts).
  *
- * 1. version.json aus dem Release lesen
+ * 1. version-signiert.json aus dem Release lesen und ihre Signatur gegen die
+ *    Signierer der installierten App prüfen ([gepruefteBeschreibung])
  * 2. versionCode vergleichen — echt grösser, nie „ungleich“
- * 3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage prüfen
+ * 3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage und die
+ *    signierte Prüfsumme prüfen ([pruefsummePasst])
  * 4. Signatur mit der installierten App vergleichen und den versionCode IM APK
- *    gegen version.json ([fassungPasst]), erst dann anbieten
+ *    gegen die Beschreibung ([fassungPasst]), erst dann anbieten
  *
  * Schritt 4 ersetzt Androids Prüfung nicht, er kommt früher: Ein fremdes APK wird
  * gar nicht erst angeboten.
  */
 
-/** Die Release-Ablage — EIN Ort, aus dem beide Adressen entstehen. */
-const val UPDATE_RELEASE_BASIS =
-    "https://github.com/addict85/BrickInventory/releases/download/apk-neuste"
+/** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */
+const val UPDATE_RELEASE_WURZEL = "https://github.com/addict85/BrickInventory/releases/download"
 
-/** Die Beschreibung der neusten Fassung; geschrieben vom Android-Workflow. */
-const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version.json"
+/** Die Release-Ablage der neusten Fassung — EIN Ort, aus dem die Adressen entstehen. */
+const val UPDATE_RELEASE_BASIS = "$UPDATE_RELEASE_WURZEL/apk-neuste"
+
+/**
+ * Die signierte Beschreibung der neusten Fassung; geschrieben vom Signierjob. Die
+ * unsignierte version.json daneben bleibt nur für ältere installierte Fassungen.
+ */
+const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version-signiert.json"
+
+/** Ein Fassungsetikett des Workflows (android-v…); sein Anhang wird nie ersetzt. */
+private val FASSUNGS_ETIKETT = Regex("android-v[0-9A-Za-z._-]{1,40}")
 
 /**
  * Absolute Obergrenze für das APK: Die erwartete Grösse steht in version.json, und
@@ -70,6 +81,11 @@ data class UpdateBeschreibung(
      */
     @SerialName("commit") val commit: String = "",
     @SerialName("apkSize") val apkSize: Long = 0,
+    /**
+     * SHA-256 des APK. Trägt nur, weil die Beschreibung signiert ist
+     * ([gepruefteBeschreibung]); in einer unsignierten Datei fälschte man sie mit.
+     */
+    @SerialName("apkSha256") val apkSha256: String = "",
 )
 
 /**
@@ -79,8 +95,23 @@ data class UpdateBeschreibung(
  */
 fun istNeuer(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
 
-/** Zeigt die Adresse in unsere Release-Ablage? Geparst verglichen, siehe [liegtUnter]. */
-fun istErlaubteApkAdresse(url: String): Boolean = liegtUnter(url, UPDATE_RELEASE_BASIS)
+/**
+ * Zeigt die Adresse in unsere Release-Ablage — die neuste oder das Etikett einer
+ * Fassung? Geparst verglichen, siehe [liegtUnter].
+ */
+fun istErlaubteApkAdresse(url: String): Boolean {
+    if (liegtUnter(url, UPDATE_RELEASE_BASIS)) return true
+    val etikett = url.toHttpUrlOrNull()?.pathSegments?.dropLast(1)?.lastOrNull() ?: return false
+    return FASSUNGS_ETIKETT.matches(etikett) && liegtUnter(url, "$UPDATE_RELEASE_WURZEL/$etikett")
+}
+
+/** Die Signierzertifikate der installierten App (DER); gegen sie wird die Beschreibung geprüft. */
+fun eigeneZertifikate(ctx: Context): List<ByteArray> {
+    val info = runCatching {
+        ctx.packageManager.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+    }.getOrNull() ?: return emptyList()
+    return info.signingInfo?.apkContentsSigners.orEmpty().map { it.toByteArray() }
+}
 
 /**
  * Die Signatur eines APK als Fingerabdruck. `null`, wenn nicht lesbar oder nicht
@@ -88,10 +119,7 @@ fun istErlaubteApkAdresse(url: String): Boolean = liegtUnter(url, UPDATE_RELEASE
  */
 private fun fingerabdruecke(ctx: Context, apk: File): Signatur? {
     val pm = ctx.packageManager
-    @Suppress("DEPRECATION")
-    val flagge = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-        PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-    val info = pm.getPackageArchiveInfo(apk.absolutePath, flagge) ?: return null
+    val info = pm.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES) ?: return null
     // Der Paketname muss stimmen, sonst signiert ein fremdes Paket mit
     // demselben Schluessel sich hier durch.
     if (info.packageName != ctx.packageName) return null
@@ -107,27 +135,21 @@ fun apkFassung(ctx: Context, apk: File): Long? =
 /** Dieselbe Ermittlung fuer die INSTALLIERTE App. */
 private fun eigeneFingerabdruecke(ctx: Context): Signatur? {
     val pm = ctx.packageManager
-    @Suppress("DEPRECATION")
-    val flagge = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-        PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-    val info = runCatching { pm.getPackageInfo(ctx.packageName, flagge) }.getOrNull() ?: return null
+    val info = runCatching { pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES) }.getOrNull() ?: return null
     return signaturen(info)
 }
 
 /**
- * Die Signatur aus einem PackageInfo, beide Wege: GET_SIGNING_CERTIFICATES gibt
- * es erst ab API 28, auf 26 und 27 bleibt `signatures` (ohne Ahnenreihe). Sonst
- * prüfte der Updater dort nichts. `null` bei fehlender Signatur.
+ * Die Signatur aus einem PackageInfo samt Ahnenreihe (v3-Rotation). `null` bei
+ * fehlender Signatur: „unbekannt“ gilt nie als „passt“.
  */
-@Suppress("DEPRECATION")
 private fun signaturen(info: android.content.pm.PackageInfo): Signatur? {
     fun hex(s: Array<android.content.pm.Signature>?) = s.orEmpty().map { sig ->
         MessageDigest.getInstance("SHA-256").digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
     }
-    val (aktuell, ahnen) = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        val si = info.signingInfo ?: return null
-        hex(si.apkContentsSigners) to (if (si.hasMultipleSigners()) hex(si.apkContentsSigners) else hex(si.signingCertificateHistory))
-    } else hex(info.signatures).let { it to it }
+    val si = info.signingInfo ?: return null
+    val aktuell = hex(si.apkContentsSigners)
+    val ahnen = if (si.hasMultipleSigners()) hex(si.apkContentsSigners) else hex(si.signingCertificateHistory)
     return Signatur(aktuell.toSet(), ahnen).takeIf { aktuell.isNotEmpty() }
 }
 
@@ -143,8 +165,8 @@ fun signaturPasst(ctx: Context, apk: File): Boolean {
 }
 
 /**
- * Darf die App Pakete installieren? Ab Android 8 eine Erlaubnis je App; bei minSdk
- * 26 entfällt die Frage auf keinem Gerät.
+ * Darf die App Pakete installieren? Eine Erlaubnis je App; bei minSdk
+ * 30 entfällt die Frage auf keinem Gerät.
  */
 fun darfInstallieren(ctx: Context): Boolean =
     ctx.packageManager.canRequestPackageInstalls()

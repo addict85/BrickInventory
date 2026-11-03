@@ -159,6 +159,21 @@ fun SettingsScreen(
                 Switch(checked = vorschauVerbergen, onCheckedChange = null)
             }
 
+            // Je Gerät, Vorgabe aus: Das Widget liegt ohne Entsperren auf dem Startbildschirm.
+            val widgetWerte by app.widgetWerte.collectAsStateWithLifecycle()
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .toggleable(value = widgetWerte, role = Role.Switch, onValueChange = { app.setWidgetWerte(it) }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_widget_werte), style = MaterialTheme.typography.bodyMedium)
+                    Text(stringResource(R.string.settings_widget_werte_hint), style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Switch(checked = widgetWerte, onCheckedChange = null)
+            }
+
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             // Währung und Preisgrundlage gehen zusammen an den Server (ein Endpunkt).

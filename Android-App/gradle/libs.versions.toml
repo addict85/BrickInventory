@@ -189,6 +189,10 @@ work                        = "2.12.0"
 # Lokale Ablage und Ausgang (data/lokal/room). Mindestens die Fassung, die
 # WorkManager schon mitbringt (room-runtime 2.7.0 in verification-metadata.xml).
 room                        = "2.8.5"
+# Verschlüsselte Ablage des Bestands (sec8 N5). Auf Maven Central, signiert von
+# Zetetic (Schlüssel 61DE…0CEC in verification-keyring.keys); 4.19.1 vom 29.09.2026,
+# .so auf 16 KB ausgerichtet. Zieht androidx.sqlite 2.7.0 zur Laufzeit nach.
+sqlcipher                   = "4.19.1"
 junit                       = "4.13.2"
 # org.json steckt in android.jar nur als Attrappe — siehe Kommentar bei
 # testImplementation(libs.json) in app/build.gradle.kts.
@@ -239,6 +243,7 @@ androidx-work                       = { group = "androidx.work",              na
 androidx-room-runtime               = { group = "androidx.room",              name = "room-runtime",                      version.ref = "room" }
 androidx-room-ktx                   = { group = "androidx.room",              name = "room-ktx",                          version.ref = "room" }
 androidx-room-compiler              = { group = "androidx.room",              name = "room-compiler",                     version.ref = "room" }
+sqlcipher-android                   = { group = "net.zetetic",                name = "sqlcipher-android",                 version.ref = "sqlcipher" }
 androidx-graphics-path              = { group = "androidx.graphics",          name = "graphics-path",                     version.ref = "graphicsPath" }
 androidx-appcompat                  = { group = "androidx.appcompat",         name = "appcompat",                         version.ref = "appcompat" }
 androidx-profileinstaller           = { group = "androidx.profileinstaller",  name = "profileinstaller",                  version.ref = "profileinstaller" }

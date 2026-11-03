@@ -15,6 +15,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Schrittschutz
 import ch.brickinventoryapp.ui.components.Schrittsperre
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
@@ -47,6 +48,8 @@ import org.robolectric.annotation.Config
  *       laufende Aufrufe ab …“ (gegenproben/serverwechsel-ohne-abbruch.patch)
  *   (e) saveServerUrl() vergleicht beim Token nur die Herkunft → rot „ein anderer
  *       Pfad auf demselben Host verwirft den Token“ (gegenproben/pfadwechsel-behaelt-token.patch)
+ *   (f) (sec8 H8) Sichtschutz() ohne Ueberdeckungsschutz() → rot „heikle Seiten sind
+ *       vor Ueberlagerung geschuetzt“ (gegenproben/sichtschutz-ohne-ueberdeckung.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -106,6 +109,34 @@ class GeraeteSchutzTest {
         assertSame("Der Filter blieb am Fenster", compose.activity, compose.activity.window.callback)
         tippe(MotionEvent.FLAG_WINDOW_IS_PARTIALLY_OBSCURED)
         assertEquals(1, klicks)
+    }
+
+    /**
+     * Wächter für jede heikle Seite (sec8 H8): Wer Sichtschutz oder die Schrittsperre
+     * setzt, bekommt den Schutz vor Überlagerung mit — auch vor der Bestätigung. Nur
+     * der app-weite Wunsch „Vorschau verbergen“ bleibt ohne.
+     */
+    @Test
+    fun `heikle Seiten sind vor Ueberlagerung geschuetzt`() {
+        val seite = mutableStateOf("keine")
+        compose.setContent {
+            BrickInventoryManagerTheme {
+                CompositionLocalProvider(LocalSchrittschutz provides Schrittschutz { _, _ -> }) {
+                    when (seite.value) {
+                        "sichtschutz" -> Sichtschutz()
+                        "schrittsperre" -> Schrittsperre("Verwaltung") { Text("Verwalteraktion") }
+                        "vorschau" -> Sichtschutz(ueberdeckung = false)
+                    }
+                    Text("Seite")
+                }
+            }
+        }
+        val fenster = compose.activity.window.decorView
+        for ((name, erwartet) in listOf("sichtschutz" to true, "keine" to false, "schrittsperre" to true, "vorschau" to false)) {
+            compose.runOnUiThread { seite.value = name }
+            compose.waitForIdle()
+            assertEquals("$name: Schutz vor Überlagerung", erwartet, fenster.filterTouchesWhenObscured)
+        }
     }
 
     @Test

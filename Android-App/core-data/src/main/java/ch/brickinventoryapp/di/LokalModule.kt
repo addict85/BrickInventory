@@ -11,6 +11,8 @@ import ch.brickinventoryapp.data.lokal.WorkManagerPlaner
 import ch.brickinventoryapp.data.lokal.room.BestandDatenbank
 import ch.brickinventoryapp.data.lokal.room.RoomAusgang
 import ch.brickinventoryapp.data.lokal.room.RoomBestand
+import ch.brickinventoryapp.data.lokal.room.VerschluesselteBestandsfabrik
+import ch.brickinventoryapp.util.Ablageschluessel
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -36,8 +38,10 @@ abstract class LokalModule {
     companion object {
         @Provides
         @Singleton
-        fun datenbank(@ApplicationContext context: Context): BestandDatenbank =
+        fun datenbank(@ApplicationContext context: Context, ablage: Ablageschluessel): BestandDatenbank =
             Room.databaseBuilder(context, BestandDatenbank::class.java, BestandDatenbank.NAME)
+                // Verschlüsselt mit SQLCipher (sec8 N5); ein Klartext-Altbestand wird beim ersten Öffnen übernommen.
+                .openHelperFactory(VerschluesselteBestandsfabrik(context, ablage))
                 .addMigrations(*BestandDatenbank.MIGRATIONEN)
                 .build()
     }

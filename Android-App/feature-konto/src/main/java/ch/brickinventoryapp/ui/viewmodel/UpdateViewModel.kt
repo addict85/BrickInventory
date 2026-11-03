@@ -9,9 +9,11 @@ import ch.brickinventoryapp.ui.UpdateUiState
 import ch.brickinventoryapp.util.UPDATE_JSON_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_VERSION_URL
-import ch.brickinventoryapp.util.UpdateBeschreibung
 import ch.brickinventoryapp.util.apkFassung
 import ch.brickinventoryapp.util.darfInstallieren
+import ch.brickinventoryapp.util.eigeneZertifikate
+import ch.brickinventoryapp.util.gepruefteBeschreibung
+import ch.brickinventoryapp.util.pruefsummePasst
 import ch.brickinventoryapp.util.fassungPasst
 import ch.brickinventoryapp.util.Installationsmeldung
 import ch.brickinventoryapp.util.installiere
@@ -31,7 +33,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
@@ -93,17 +94,19 @@ class UpdateViewModel @Inject constructor(
                             // peekBody statt body.string(): liest HOECHSTENS so viele
                             // Bytes. Ohne die Grenze koennte eine manipulierte
                             // Antwort die App umbringen, ohne je ein APK anfassen zu
-                            // muessen — version.json traegt fuenf Felder.
+                            // muessen — die Beschreibung traegt sechs Felder.
                             antwort.peekBody(UPDATE_JSON_MAX_BYTES).string()
                         }
                 }
-                val beschreibung = updateJson.decodeFromString<UpdateBeschreibung>(roh)
-                // Die Adresse aus einer heruntergeladenen Datei wird geprueft, nicht
-                // geglaubt — siehe istErlaubteApkAdresse.
-                if (!istErlaubteApkAdresse(beschreibung.apkUrl)) {
+                // Nur eine vom Release-Schlüssel signierte Beschreibung zählt: Schreibrecht
+                // am Repository allein reicht dann nicht, um ein Update zu unterdrücken
+                // oder umzuleiten. Danach wird die Adresse trotzdem geprüft, nicht geglaubt.
+                val beschreibung = withContext(Dispatchers.IO) { gepruefteBeschreibung(roh, eigeneZertifikate(ctx)) }
+                if (beschreibung == null || !istErlaubteApkAdresse(beschreibung.apkUrl)) {
                     _state.update {
                         it.copy(laedtPruefung = false, geprueft = true, neuereFassung = null,
-                            fehler = if (still) null else texte.text(R.string.update_fremde_adresse))
+                            fehler = if (still) null else texte.text(
+                                if (beschreibung == null) R.string.update_beschreibung_unsigniert else R.string.update_fremde_adresse))
                     }
                     return@launch
                 }
@@ -205,6 +208,15 @@ class UpdateViewModel @Inject constructor(
                             }
                         }
                 }
+                // Genau das APK, das der Signierjob beschrieben hat — nicht ein anderes
+                // mit derselben Signatur (etwa eine ältere Fassung).
+                if (!withContext(Dispatchers.IO) { pruefsummePasst(ziel, fassung.apkSha256) }) {
+                    ziel.delete()
+                    _state.update {
+                        it.copy(fortschritt = null, fehler = texte.text(R.string.update_pruefsumme_falsch))
+                    }
+                    return@launch
+                }
                 // Die Signatur wird geprueft, BEVOR der Nutzer gefragt wird —
                 // siehe util/AppUpdate.kt. Passt sie nicht, wird die Datei
                 // geloescht: Ein APK unbekannter Herkunft soll nicht liegenbleiben.
@@ -250,7 +262,9 @@ class UpdateViewModel @Inject constructor(
     fun starteInstallation() {
         val datei = updateDatei(ctx)
         val gemeldet = _state.value.neuereFassung?.versionCode ?: 0
-        if (!datei.isFile || !signaturPasst(ctx, datei) || !fassungPasst(apkFassung(ctx, datei), gemeldet, fassung.code)) {
+        val pruefsumme = _state.value.neuereFassung?.apkSha256.orEmpty()
+        if (!datei.isFile || !pruefsummePasst(datei, pruefsumme) || !signaturPasst(ctx, datei) ||
+            !fassungPasst(apkFassung(ctx, datei), gemeldet, fassung.code)) {
             datei.delete()
             _state.update {
                 it.copy(bereitZurInstallation = false, fehler = texte.text(R.string.update_signatur_falsch))
@@ -269,5 +283,3 @@ class UpdateViewModel @Inject constructor(
         }
     }
 }
-
-private val updateJson = Json { ignoreUnknownKeys = true }

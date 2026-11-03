@@ -141,6 +141,21 @@ internal fun buildEntwertungsBasis(
     .build()
 
 /**
+ * Vertrauen je Entwertungsauftrag (data/Entwertung.kt): der Pin aus dem Auftrag,
+ * sonst der gemerkte — Pins bleiben beim Abmelden stehen. Nutzer-CAs wie beim
+ * eigenen Server nur auf ausdrückliche Einstellung.
+ */
+internal fun auftragsVertrauenFabrik(prefs: PreferencesManager): (String, String?) -> javax.net.ssl.X509ExtendedTrustManager {
+    val system = vertrauen(null)
+    val kette = ch.brickinventoryapp.util.WahlVertrauen(
+        system = system,
+        mitNutzer = lazy { vertrauen(java.security.KeyStore.getInstance("AndroidCAStore").apply { load(null) }) },
+        nutzerErlaubt = { prefs.nutzerCaErlaubt() },
+    )
+    return { schluessel, pin -> ch.brickinventoryapp.util.auftragsVertrauen(kette, system, schluessel, pin ?: prefs.pin(schluessel)) }
+}
+
+/**
  * Beim Wechsel auf einen anderen Server laufende Aufrufe abbrechen; nach dem
  * Umschalten der Nutzer-CAs keine Verbindung mit dem alten Vertrauen weiterbenutzen.
  * Für jeden Client mit eigenem Dispatcher oder Pool (der Bild-Client hat einen).

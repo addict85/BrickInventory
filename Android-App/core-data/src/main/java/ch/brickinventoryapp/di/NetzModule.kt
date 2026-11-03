@@ -150,9 +150,12 @@ object NetzModule {
             }
             // Nur eigener Server und die Bild-CDNs (util/BildHosts.kt); Umleitungen prüft
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
-            .addInterceptor(ch.brickinventoryapp.util.BildHostWaechter { url ->
-                ch.brickinventoryapp.util.istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
-            })
+            .addInterceptor(ch.brickinventoryapp.util.BildHostWaechter(
+                eigenerServer = { url ->
+                    ch.brickinventoryapp.util.istEigenerBildServer(url, prefs.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
+                },
+                basisPfad = { NetworkPolicy.basisPfad(prefs.serverUrlState.value.orEmpty()).orEmpty() },
+            ))
             .followRedirects(false)
             // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln verhungern: Dies ist
             // der eine ImageLoader der App. Bei 3 Verbindungen je Host warteten Kacheln, Coil
@@ -256,7 +259,8 @@ object NetzModule {
         prefs: PreferencesManager,
         frage: ch.brickinventoryapp.util.ZertifikatsFrage,
     ): ch.brickinventoryapp.data.Entwerter =
-        ch.brickinventoryapp.data.Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung)
+        ch.brickinventoryapp.data.Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
+            vertrauenFuer = auftragsVertrauenFabrik(prefs))
 
     // Kein unqualifiziertes OkHttpClient-Binding: Es lieferte still den api-Client
     // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @Named("api"),

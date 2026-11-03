@@ -151,7 +151,7 @@ gh attestation verify oci://docker.io/addict85/brickinventory:latest -R addict85
 
 <img src="docs/screenshots/android-icon.png" width="64" align="left" alt="App-Symbol">
 
-Kotlin und Jetpack Compose, `minSdk 26`, `compileSdk`/`targetSdk` 37.
+Kotlin und Jetpack Compose, `minSdk 30` (Android 11), `compileSdk`/`targetSdk` 37.
 Spricht ausschliesslich über `/api/v1/` mit Bearer-Token — die
 Geräteverwaltung liegt in der Weboberfläche unter *Einstellungen → Angemeldete Geräte*.
 Anmeldung wahlweise über den QR-Code für die Android-App aus den Einstellungen.

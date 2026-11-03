@@ -1,0 +1,18 @@
+Gegenprobe: Die nachgeholte Entwertung behandelt den alten Server als fremden Host, nur System-CAs (Stand vor sec8 N2)
+Modul: core-data
+Test: ch.brickinventoryapp.AlterServerPinTest
+Rot: eigener CA
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
+index d89dd5e..0a42de7 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
+@@ -279,7 +279,7 @@ fun auftragsVertrauen(
+         override fun pin(schluessel: String): String? = pin.takeIf { schluessel == auftrag }
+         override fun merkePin(schluessel: String, fingerabdruck: String) = Unit
+     }
+-    return PinVertrauen(kette, ablage, eigenerServer = { auftrag }, frage = ZertifikatsFrage(), fremdeHosts = system)
++    return PinVertrauen(kette, ablage, eigenerServer = { null }, frage = ZertifikatsFrage(), fremdeHosts = system)
+ }
+ 
+ /**

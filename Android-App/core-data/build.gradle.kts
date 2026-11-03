@@ -19,7 +19,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        minSdk = 26
+        minSdk = 30
     }
 
     compileOptions {
@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.sqlcipher.android)
     ksp(libs.androidx.room.compiler)
 
     testImplementation(project(":core-testing"))

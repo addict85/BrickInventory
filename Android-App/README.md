@@ -427,7 +427,14 @@ anlegen: *Deployment branches and tags* auf *Selected branches and tags* mit
 der **Etikett-Regel** `android-v*` (keine Zweig-Regel, auch nicht `main`) und
 *Required reviewers* setzen, *Prevent self-review* an. Die Jobs `signieren` und
 `release` warten dann je auf ein Ja. Dort unter *Environment secrets* vier
-Secrets anlegen.
+Secrets anlegen. Der Job `signieren` liest diese Regeln über die API und
+signiert nicht, wenn kein Pflichtprüfer eingetragen ist oder die Environment
+mehr als das Etikett `android-v*` zulässt.
+
+Unter **Settings → General → Releases** *Immutable releases* einschalten: Der
+Anhang `BrickInventory-<versionCode>.apk` im Release jedes Etiketts ist das,
+worauf die signierte Beschreibung zeigt; er soll sich nach dem Veröffentlichen
+nicht mehr ändern lassen. Der Workflow ersetzt ihn ohnehin nie.
 
 Dazu ein **Tag-Ruleset** (Settings → Rules → Rulesets → New tag ruleset) für
 `refs/tags/android-v*`: Anlegen, Ändern und Löschen nur für Administratoren
@@ -456,6 +463,26 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
   älteren Commit von `main` wird so nicht zum „neusten APK“. Der Job `release`
   prüft dasselbe unmittelbar vor dem Hochladen noch einmal; zwei Etiketten
   laufen dort nacheinander (`concurrency: apk-neuste`).
+
+### Signierte Beschreibung, Prüfsumme des Baus
+
+- **`version-signiert.json`** (im Release `apk-neuste`): Der Job `signieren`
+  schreibt versionCode, versionName, Commit, die Adresse des
+  Fassungsanhangs, Grösse und SHA-256 des APK und signiert das mit **demselben
+  Schlüssel wie das APK** (`openssl dgst -sha256`). Die App liest nur diese
+  Datei und prüft sie gegen die Signierer der installierten Fassung, das
+  geladene APK danach gegen die Prüfsumme. Wer nur Schreibrecht am Repository
+  hat, kann so kein Update umleiten oder eine ältere Fassung anbieten. Ein
+  Zurückhalten (Datei löschen oder die vorige wieder hochladen) bleibt möglich,
+  aber keine ältere Fassung wird installiert. `apk-pruefen` prüft Signatur und
+  Inhalt vor dem Veröffentlichen. Die unsignierte `version.json` bleibt für
+  Fassungen, die vor dieser Änderung installiert wurden.
+- **Prüfsumme des Baus:** Der Baujob misst das unsignierte APK und Bundle gleich
+  nach `assembleRelease`, bevor Lint und weitere Gradle-Läufe Projektcode
+  ausführen; `signieren` signiert nur genau diese Bytes.
+- **Schlüsselrotation:** Nach einer v3-Rotation muss eine Fassung lang auch die
+  Beschreibung mit dem alten Schlüssel signiert sein, sonst finden installierte
+  Geräte das Update nicht (sie kennen nur ihren Signierer).
 
 Dazu gehört eine Branch-Protection (oder ein Ruleset) auf `main`: Merge nur
 über Pull-Request mit grüner CI, kein Force-Push. Sonst genügt ein direkter

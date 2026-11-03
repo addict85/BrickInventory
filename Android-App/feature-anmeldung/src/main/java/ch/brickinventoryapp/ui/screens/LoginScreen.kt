@@ -18,6 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -73,6 +76,8 @@ fun LoginScreen(
     ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
     if (showPw && formular == AnmeldeFormular.ANMELDEN) ch.brickinventoryapp.ui.components.Sichtschutz()
 
+    // Passwort, Code und Adresse lernt die Tastatur nicht mit (sec8 H4).
+    ch.brickinventoryapp.ui.components.TastaturOhneLernen {
     // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
     // läge der Anmeldeknopf sonst unerreichbar unter dem Rand.
     Box(
@@ -140,6 +145,7 @@ fun LoginScreen(
             }
         }
     }
+}
 }
 
 /**
@@ -222,7 +228,8 @@ private fun AnmeldeFelder(
         value = username, onValueChange = onUsername,
         label = { Text(stringResource(R.string.login_username)) },
         leadingIcon = { Icon(Icons.Default.Person, null) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true,
+        // Für den Passwortmanager: Er füllt nur, was er als Anmeldefeld erkennt.
+        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Username }, singleLine = true,
         shape = Formen.feld,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { focusMgr.moveFocus(FocusDirection.Down) })
@@ -243,7 +250,7 @@ private fun AnmeldeFelder(
             }
         },
         visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
-        modifier = Modifier.fillMaxWidth(), singleLine = true,
+        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Password }, singleLine = true,
         shape = Formen.feld,
         keyboardOptions = KeyboardOptions(
             imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
@@ -374,7 +381,7 @@ private fun RegistrierFelder(
             value = nutzer, onValueChange = { nutzer = it },
             label = { Text(stringResource(R.string.login_username)) },
             leadingIcon = { Icon(Icons.Default.Person, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
+            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.NewUsername }, singleLine = true, shape = Formen.feld,
             keyboardOptions = weiter, keyboardActions = naechstes)
         OutlinedTextField(
             value = email, onValueChange = { email = it },
@@ -399,7 +406,7 @@ private fun RegistrierFelder(
             label = { Text(stringResource(R.string.login_password)) },
             leadingIcon = { Icon(Icons.Default.Lock, null) },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
+            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.NewPassword }, singleLine = true, shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
                 keyboardType = KeyboardType.Password),
             keyboardActions = naechstes)
@@ -408,7 +415,7 @@ private fun RegistrierFelder(
             label = { Text(stringResource(R.string.register_password_repeat)) },
             leadingIcon = { Icon(Icons.Default.Lock, null) },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
+            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.NewPassword }, singleLine = true, shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
                 keyboardType = KeyboardType.Password))
 

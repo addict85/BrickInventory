@@ -6,7 +6,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -73,15 +72,11 @@ class CsvImportService : Service() {
         super.onCreate()
         createNotificationChannel()
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ServiceCompat.startForeground(
-                    this, NOTIFICATION_ID,
-                    buildNotification(loc.getString(R.string.notif_csv_running), 0, 0),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, buildNotification(loc.getString(R.string.notif_csv_running), 0, 0))
-            }
+            ServiceCompat.startForeground(
+                this, NOTIFICATION_ID,
+                buildNotification(loc.getString(R.string.notif_csv_running), 0, 0),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
         } catch (e: Exception) {
             // If foreground service cannot be started (e.g. background restriction),
             // stop self gracefully instead of crashing

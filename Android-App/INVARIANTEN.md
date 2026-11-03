@@ -244,7 +244,8 @@ Zwei Folgeregeln:
 
 `compileSdk` und `targetSdk` stehen beide auf 36 und werden bewusst
 gleichgezogen: Ein höherer `compileSdk` wäre erlaubt, verdeckt aber, welche
-Verhaltensänderungen tatsächlich aktiv sind. `minSdk` bleibt bei 26.
+Verhaltensänderungen tatsächlich aktiv sind. `minSdk` ist 30 (Android 11, siehe
+`TargetSdkConfigTest`): Darunter gibt es keine Sicherheitsupdates mehr.
 
 Der Sprung ist deshalb harmlos, weil die App zwei Dinge **nicht** tut:
 

@@ -439,16 +439,10 @@ class VorschauAblageTest {
                 "waermt „nur im WLAN\" ueber den Hotspot eines anderen " +
                 "Telefons vor — also ueber dessen Datentarif."
         }
-        // ── Die Falle bei minSdk 26 ─────────────────────────────────────────
-        //
-        // NET_CAPABILITY_NOT_ROAMING gibt es erst ab API 28, die App laeuft ab
-        // 26. Ohne Rueckfall haette die Roaming-Einstellung auf Android 8.0 und
-        // 8.1 stillschweigend nicht gegriffen — und das faellt niemandem auf,
-        // bis die Rechnung kommt.
-        assert(nl.contains("Build.VERSION_CODES.P") && nl.contains("isNetworkRoaming")) {
-            "Der Rueckfall fuer Android 8 fehlt. NET_CAPABILITY_NOT_ROAMING " +
-                "gibt es erst ab API 28, minSdk ist 26 — dort entschiede dann " +
-                "niemand mehr ueber Roaming."
+        // Roaming: seit minSdk 30 allein ueber die Faehigkeit des Netzes.
+        assert(nl.contains("NET_CAPABILITY_NOT_ROAMING")) {
+            "Die Netzlage fragt nicht mehr nach Roaming — dann waermt „nicht " +
+                "im Ausland\" doch vor."
         }
         // Ohne diese Erlaubnis liefert ConnectivityManager nichts, und die
         // ganze Einstellung waere eine Anzeige ohne Wirkung.

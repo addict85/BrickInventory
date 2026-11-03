@@ -59,6 +59,8 @@ class PreferencesManager @Inject constructor(
         const val PIN_PRAEFIX = "pin:"
         const val SYSTEMFARBEN = "systemfarben"
         const val VORSCHAU_VERBERGEN = "vorschau_verbergen"
+        const val ENTWERTUNG_GESCHEITERT = "entwertung_gescheitert"
+        const val WIDGET_WERTE = "widget_werte"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -478,6 +480,15 @@ class PreferencesManager @Inject constructor(
     override fun vergissVorgehaltenen(schluessel: String) { vorgehalten.remove(schluessel) }
     private val vorgehalten = java.util.concurrent.ConcurrentHashMap<String, String>()
 
+    /**
+     * Geldwerte im Startbildschirm-Widget zeigen? Je Gerät, Vorgabe aus: Das Widget
+     * ist ohne Entsperren für jeden lesbar, der das Telefon sieht.
+     */
+    fun widgetWerteZeigen(): Boolean = designSpiegel.getBoolean(WIDGET_WERTE, false)
+    fun setzeWidgetWerteZeigen(an: Boolean) {
+        designSpiegel.edit { putBoolean(WIDGET_WERTE, an) }
+    }
+
     /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */
     fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)
     fun setzeSystemfarben(an: Boolean) {
@@ -495,11 +506,24 @@ class PreferencesManager @Inject constructor(
     }
 
 
+    /**
+     * Server, an denen eine nachgeholte Abmeldung endgültig scheiterte. Die Meldung
+     * des Arbeiters kann abgeschaltet sein; die App sagt es darum beim nächsten Start
+     * noch einmal (AppViewModel), danach ist die Liste leer.
+     */
+    fun merkeGescheiterteEntwertung(server: String) {
+        designSpiegel.edit { putStringSet(ENTWERTUNG_GESCHEITERT, gescheiterteEntwertungen() + server) }
+    }
+    fun gescheiterteEntwertungen(): Set<String> = designSpiegel.getStringSet(ENTWERTUNG_GESCHEITERT, null).orEmpty().toSet()
+    fun quittiereGescheiterteEntwertungen() {
+        designSpiegel.edit { remove(ENTWERTUNG_GESCHEITERT) }
+    }
+
     /** Der Geheimtext wie abgelegt: Der Auftrag braucht das Token nie im Klartext. */
     override suspend fun entwertungsauftrag(): Entwertungsauftrag? {
         val geheim = context.dataStore.data.first()[AUTH_TOKEN_ENC] ?: return null
         val server = serverUrlJetzt().ifBlank { return null }
-        return Entwertungsauftrag(server, geheim)
+        return Entwertungsauftrag(server, geheim, ch.brickinventoryapp.util.pinSchluessel(server)?.let(::pin))
     }
 
     suspend fun clearSession() = tokenSchranke.schreibe {

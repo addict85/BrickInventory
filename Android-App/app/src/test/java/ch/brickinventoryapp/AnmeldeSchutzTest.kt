@@ -1,10 +1,12 @@
 package ch.brickinventoryapp
 
 import android.view.WindowManager
+import android.view.inputmethod.EditorInfo
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.AnmeldeFormular
@@ -30,6 +32,8 @@ import org.robolectric.annotation.Config
  *       vor Ueberlagerung geschuetzt …“ (gegenproben/anmeldung-ohne-ueberdeckungsschutz.patch)
  *   (b) Sichtschutz() für das sichtbare Passwort entfernt → rot „ein sichtbares
  *       Passwort …“ (gegenproben/passwort-ohne-sichtschutz.patch)
+ *   (c) (sec8 H4) TastaturOhneLernen setzt die Flagge nicht mehr → rot „Passwort
+ *       und Code lernt die Tastatur nicht mit“ (gegenproben/tastatur-lernt-mit.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -56,6 +60,34 @@ class AnmeldeSchutzTest {
             }
         }
         compose.waitForIdle()
+    }
+
+    // Aussen ein zweiter Abfänger: Er sieht die Anfrage so, wie die Anmeldung sie an die
+    // Tastatur weitergibt, und fragt nach dem EditorInfo, das daraus entstünde.
+    @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+    @Test
+    fun `Passwort und Code lernt die Tastatur nicht mit`() {
+        var gesehen: EditorInfo? = null
+        compose.setContent {
+            androidx.compose.ui.platform.InterceptPlatformTextInput(interceptor = { anfrage, _ ->
+                gesehen = EditorInfo().also { anfrage.createInputConnection(it) }
+                kotlinx.coroutines.awaitCancellation()
+            }) {
+                BrickInventoryManagerTheme {
+                    LoginScreen(
+                        serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = true,
+                        formular = AnmeldeFormular.ANMELDEN, registrierungOffen = false, kontoLaeuft = false,
+                        kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
+                        onFormular = {}, onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText(ctx.getString(R.string.login_password)).performClick()
+        compose.waitForIdle()
+        val info = checkNotNull(gesehen) { "Das Passwortfeld hat keine Eingabe gestartet" }
+        assertTrue("Die Tastatur darf das Passwort lernen",
+            (info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0)
     }
 
     @Test

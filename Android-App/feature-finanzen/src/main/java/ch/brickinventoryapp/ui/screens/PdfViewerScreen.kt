@@ -8,7 +8,6 @@ import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
 import android.graphics.pdf.PdfRenderer
 import android.net.wifi.WifiManager
-import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.ParcelFileDescriptor
@@ -810,56 +809,31 @@ private fun printPdf(ctx: Context, file: File, title: String) {
 /**
  * Die geladene PDF-Datei in den Download-Ordner kopieren — ohne zweiten Download:
  * Der DownloadManager kennt unseren Bearer-Token nicht und legte die 401-Antwort
- * als „anleitung.pdf“ ab. Kopieren geht auch offline. Ab Android 10 über den
- * MediaStore, der keine Berechtigung braucht.
+ * als „anleitung.pdf“ ab. Kopieren geht auch offline. Über den MediaStore, der
+ * keine Berechtigung braucht.
  */
 private fun savePdfToDownloads(ctx: Context, file: File, title: String) {
     try {
         val safe = (title.ifBlank { "anleitung" }).replace(Regex("[^A-Za-z0-9._-]"), "_")
         val name = if (safe.endsWith(".pdf", true)) safe else "$safe.pdf"
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // Ab Android 10: MediaStore. IS_PENDING blendet die Datei aus,
-            // solange geschrieben wird — sonst könnte eine andere App sie
-            // halbfertig öffnen.
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, name)
-                put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
-                put(MediaStore.Downloads.IS_PENDING, 1)
-            }
-            val resolver = ctx.contentResolver
-            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                ?: throw IllegalStateException(ctx.getString(R.string.pdfview_no_target))
-            resolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
-                ?: throw IllegalStateException(ctx.getString(R.string.pdfview_write_failed))
-            values.clear()
-            values.put(MediaStore.Downloads.IS_PENDING, 0)
-            resolver.update(uri, values, null, null)
-            Toast.makeText(ctx, ctx.getString(R.string.pdfview_saved, name), Toast.LENGTH_SHORT).show()
-        } else {
-            // Android 8 und 9 kennen MediaStore.Downloads nicht, und der öffentliche Ordner
-            // bräuchte WRITE_EXTERNAL_STORAGE. Deshalb das app-eigene Verzeichnis, erreichbar
-            // über die Dateien-App und den Teilen-Dialog. Genau das Verzeichnis, das
-            // res/xml/file_paths.xml freigibt — ein anderes liesse den Teilen-Dialog an
-            // „Failed to find configured root“ scheitern.
-            val base = ctx.getExternalFilesDir(null) ?: ctx.filesDir
-            val dir = java.io.File(base, "pdf")
-            dir.mkdirs()
-            val target = java.io.File(dir, name)
-            file.copyTo(target, overwrite = true)
-
-            val shareUri = androidx.core.content.FileProvider.getUriForFile(
-                ctx, ctx.packageName + ".provider", target)
-            ctx.startActivity(
-                android.content.Intent.createChooser(
-                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                        type = "application/pdf"
-                        putExtra(android.content.Intent.EXTRA_STREAM, shareUri)
-                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }, ctx.getString(R.string.pdfview_share)
-                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
+        // IS_PENDING blendet die Datei aus,
+        // solange geschrieben wird — sonst könnte eine andere App sie
+        // halbfertig öffnen.
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, name)
+            put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
+            put(MediaStore.Downloads.IS_PENDING, 1)
         }
+        val resolver = ctx.contentResolver
+        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            ?: throw IllegalStateException(ctx.getString(R.string.pdfview_no_target))
+        resolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
+            ?: throw IllegalStateException(ctx.getString(R.string.pdfview_write_failed))
+        values.clear()
+        values.put(MediaStore.Downloads.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
+        Toast.makeText(ctx, ctx.getString(R.string.pdfview_saved, name), Toast.LENGTH_SHORT).show()
     } catch (e: Exception) {
         Toast.makeText(ctx, ctx.getString(R.string.pdfview_save_failed, e.message ?: ""), Toast.LENGTH_LONG).show()
     }
