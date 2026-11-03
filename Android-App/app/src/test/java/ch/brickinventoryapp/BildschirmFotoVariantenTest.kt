@@ -445,13 +445,15 @@ class BildschirmFotoVariantenTest {
     /** Erfassen: der Dialog der Galerie mit Nummer, Menge, Preis, Zustand und Lagerort. */
     @Test
     fun dialogSetErfassen() {
-        // Der Dialog fokussiert sein erstes Feld, der Cursor blinkt ohne Ende: Die Uhr steht
-        // schon VOR setContent, das sonst auf Ruhe wartet (wie galerieLaedt).
-        compose.mainClock.autoAdvance = false
+        // Der Dialog fokussiert sein erstes Feld, der Cursor blinkt ohne Ende. setContent wartet
+        // auf Ruhe, darum geht er erst danach auf (wie der Merkposten-Dialog per Klick).
+        val offen = androidx.compose.runtime.mutableStateOf(false)
         zeige("dialog-set-erfassen", warten = false) {
-            ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {}, onAdd = { _, _, _, _, _, _ -> },
-                lagerorte = listOf("Keller", "Estrich"))
+            if (offen.value) ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {},
+                onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller", "Estrich"))
         }
+        compose.mainClock.autoAdvance = false
+        offen.value = true
         repeat(3) {
             compose.mainClock.advanceTimeBy(200)
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
