@@ -91,6 +91,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
  *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
  *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
+ *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -441,6 +442,30 @@ class OberflaechenRegelnTest {
                     "${text.getLineEnd(letzte, visibleEnd = true)}/${name.length})",
                     !text.isLineEllipsized(letzte) && text.getLineEnd(letzte, visibleEnd = true) == name.length)
             }
+        } finally {
+            welt.close()
+        }
+    }
+
+    /**
+     * Farben auf Deutsch wie in der Webapp („Trans-Klar“), Teilenamen bleiben englisch,
+     * sind aber als Englisch ausgezeichnet, damit TalkBack sie richtig ausspricht.
+     */
+    @Test
+    fun `Teile nennen Farben auf Deutsch und Namen als Englisch`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.teile().also { it.loadParts() }
+            zeige { ch.brickinventoryapp.ui.screens.PartsScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            compose.onAllNodesWithText("Trans-Klar", useUnmergedTree = true).fetchSemanticsNodes().let {
+                assertTrue("Trans-Klar steht da", it.isNotEmpty())
+            }
+            compose.onAllNodesWithText("Trans-Clear", useUnmergedTree = true).assertCountEquals(0)
+            val name = compose.onNodeWithText("Brick 2 x 4", useUnmergedTree = true).fetchSemanticsNode()
+                .config[androidx.compose.ui.semantics.SemanticsProperties.Text].single()
+            assertTrue("Teilename als Englisch ausgezeichnet: ${name.spanStyles}",
+                name.spanStyles.any { it.item.localeList == androidx.compose.ui.text.intl.LocaleList("en") })
         } finally {
             welt.close()
         }

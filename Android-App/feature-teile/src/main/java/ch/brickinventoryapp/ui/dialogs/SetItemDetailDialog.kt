@@ -56,6 +56,7 @@ fun SetItemDetailDialog(
     onOpenSet: (String) -> Unit,
 ) {
     val zustand by vm.setItemState.collectAsStateWithLifecycle()
+    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
     // `lagerZustand`, nicht `lager`: UiStateFieldsTest bestimmt den Typ je NAME
     // und Datei — dieselbe Namensfalle wie bei `state` in SettingsScreen.kt.
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
@@ -94,7 +95,7 @@ fun SetItemDetailDialog(
             Column {
                 Text(kopf?.name ?: zustand.nummer, fontWeight = FontWeight.SemiBold)
                 Text(
-                    zustand.nummer + (kopf?.colorName?.let { " · $it" } ?: ""),
+                    zustand.nummer + (kopf?.colorName?.let { " · " + farbe(it) } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -129,7 +130,7 @@ fun SetItemDetailDialog(
                             stringResource(R.string.setitem_total_qty),
                             ch.brickinventoryapp.ui.mengeAusSet(kopf?.totalQuantity ?: 0))
                         kopf?.colorName?.let {
-                            SetItemZeile(stringResource(R.string.setitem_color), it)
+                            SetItemZeile(stringResource(R.string.setitem_color), farbe(it))
                         }
                         kopf?.categoryName?.let {
                             SetItemZeile(stringResource(R.string.setitem_category), it)

@@ -414,7 +414,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 // Die Nummer steht schon darüber; ohne Namen dieselbe Nummer noch einmal sah wie ein Name aus.
                 val figName = fig.figName
                 if (figName != null) {
-                    Text(figName,
+                    Text(ch.brickinventoryapp.ui.components.katalogName(figName),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)

@@ -180,9 +180,10 @@ fun ManualItemDetailScreen(
                 val labelNumber = stringResource(
                     if (isFig) R.string.detail_fig_number else R.string.detail_part_number)
                 val labelColor  = stringResource(R.string.detail_color)
+                val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
                 val chips = buildList {
                     add(labelNumber to id)
-                    part?.colorName?.let { add(labelColor to it) }
+                    part?.colorName?.let { add(labelColor to farbe(it)) }
                     fig?.blFigNumber?.let { add("BrickLink" to it) }
                 }
                 KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {

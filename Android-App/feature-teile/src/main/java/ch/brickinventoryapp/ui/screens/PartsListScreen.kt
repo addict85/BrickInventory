@@ -135,6 +135,7 @@ fun PartsListScreen(
     val loadingSetFmt      = stringResource(R.string.partslist_loading_set)
     val errorForSetFmt     = stringResource(R.string.partslist_error_for_set)
     val noColorLabel       = stringResource(R.string.partslist_no_color)
+    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
     val rbPrefixFmt        = stringResource(R.string.partslist_rb_prefix)
     val bestandVollstaendigText = stringResource(R.string.partslist_owned_complete)
     val bestandFehlerText       = stringResource(R.string.partslist_owned_error)
@@ -445,7 +446,7 @@ fun PartsListScreen(
                                 catch (_: Exception) { Color.Gray }))
                             Spacer(Modifier.width(6.dp))
                         }
-                        val displayName = colorName.ifEmpty { noColorLabel }
+                        val displayName = if (colorName.isEmpty()) noColorLabel else farbe(colorName)
                         Text(displayName, fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleSmall,
                             color = MaterialTheme.colorScheme.primary)
@@ -510,7 +511,7 @@ fun PartListRow(
                 Text(String.format(rbPrefixFmt, part.partNumber), style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(part.partName, style = MaterialTheme.typography.bodySmall,
+            Text(ch.brickinventoryapp.ui.components.katalogName(part.partName), style = MaterialTheme.typography.bodySmall,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
         // Quantity badge
