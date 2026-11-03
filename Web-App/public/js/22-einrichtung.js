@@ -34,9 +34,19 @@ function setzeStand(quelle, ok) {
   if (el) el.innerHTML = ok ? ico('ok') : '';
 }
 
+/**
+ * Von selbst geht der Assistent nur auf, wenn das Startpasswort noch gilt oder
+ * die Sammlung leer ist. Über einer gefüllten Sammlung spränge er sonst nach
+ * dem Rendern hinein; dort genügt das Hinweisband zum Rebrickable-Schlüssel.
+ */
 export async function pruefeEinrichtung() {
   const d = await api('GET', '/v1/settings/einrichtung');
   if (!d?.success || !d.offen) return;
+  if (!d.passwort_aendern) {
+    const s = (await api('GET', '/v1/stats'))?.stats;
+    const bestand = s ? (s.total_sets || 0) + (s.total_parts || 0) + (s.total_minifigs || 0) : 0;
+    if (bestand > 0) return;
+  }
   _schritte = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'erstes-set'];
   _jetzt = 0;
   for (const [q, ok] of Object.entries(d.quellen || {})) setzeStand(q, ok);

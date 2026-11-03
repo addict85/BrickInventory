@@ -1,14 +1,15 @@
 /**
  * Fehlt der Rebrickable-Schlüssel, öffnet der Verwalter trotzdem seine
  * Sammlung. Ein Band weist darauf hin, führt auf Wunsch zum Feld und lässt
- * sich für die Sitzung wegklicken. Am echten Bündel in jsdom.
+ * sich für 30 Tage wegklicken. Am echten Bündel in jsdom.
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in checkRbKey wieder der Sprung auf den Reiter „settings“ → rot:
  *      „Sammlung statt Einstellungen“
  *   B  rbHinweisZeigen() nicht aufgerufen → rot: „Band erscheint“
- *   C  sessionStorage-Prüfung in rbHinweisZeigen entfernt → rot: „weggeklickt
- *      bleibt es weg“
+ *   C  localStorage-Prüfung in rbHinweisZeigen entfernt → rot: „weggeklickt
+ *      bleibt es weg“ (03.11.2026: Frist auf 30 Tage gesetzt → rot: „nach
+ *      30 Tagen kommt es wieder“)
  *   D  rbHinweisOeffnen ohne Klick auf den Abschnitt → rot: „Link führt zum Feld“
  *   E  einrichtungSpaeter ohne rbHinweisZeigen() → rot: „nach „Später“ im
  *      Assistenten erscheint das Band“
@@ -49,7 +50,7 @@ test('ohne Rebrickable-Schlüssel: Sammlung mit Hinweisband', async (t) => {
   } finally { w.close(); }
 });
 
-test('weggeklickt bleibt es weg — für die Sitzung', async () => {
+test('weggeklickt bleibt es weg — auch in einer neuen Sitzung', async () => {
   const erst = await oeffneOberflaeche(OHNE_SCHLUESSEL);
   let gemerkt;
   try {
@@ -57,14 +58,23 @@ test('weggeklickt bleibt es weg — für die Sitzung', async () => {
     await warte(() => !band.hidden, 2000);
     band.querySelector('[data-click="rbHinweisWeg"]').click();
     assert.equal(band.hidden, true);
-    gemerkt = erst.w.sessionStorage.getItem('bim_rb_hinweis_weg');
-    assert.ok(gemerkt, 'nichts in sessionStorage gemerkt');
+    gemerkt = erst.w.localStorage.getItem('bim_rb_hinweis_weg');
+    assert.ok(gemerkt, 'nichts in localStorage gemerkt');
   } finally { erst.w.close(); }
-  const zweit = await oeffneOberflaeche(OHNE_SCHLUESSEL, { vorher: (w) => w.sessionStorage.setItem('bim_rb_hinweis_weg', gemerkt) });
+  const zweit = await oeffneOberflaeche(OHNE_SCHLUESSEL, { vorher: (w) => w.localStorage.setItem('bim_rb_hinweis_weg', gemerkt) });
   try {
     await takt(800);
     assert.equal(zweit.d.getElementById('rb-hinweis').hidden, true);
   } finally { zweit.w.close(); }
+});
+
+test('nach 30 Tagen kommt es wieder', async () => {
+  const vor31 = String(Date.now() - 31 * 24 * 3600 * 1000);
+  const { w, d } = await oeffneOberflaeche(OHNE_SCHLUESSEL, { vorher: (f) => f.localStorage.setItem('bim_rb_hinweis_weg', vor31) });
+  try {
+    await warte(() => !d.getElementById('rb-hinweis').hidden, 2000);
+    assert.equal(d.getElementById('rb-hinweis').hidden, false);
+  } finally { w.close(); }
 });
 
 test('nach „Später“ im Assistenten erscheint das Band', async () => {

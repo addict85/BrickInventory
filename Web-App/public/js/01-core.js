@@ -249,6 +249,19 @@ export function feldFehler(id, text) {
   }
 }
 
+/**
+ * Eine Absage des Servers: Gehört ihr Code zu einem Feld des Formulars, steht
+ * die Meldung dort (wie feldFehler), sonst als Toast.
+ * @param {any} d Antwort von api()
+ * @param {Record<string, string>} felder Fehlercode → Feld-ID
+ * @param {string} ersatz Text, wenn die Antwort keinen hat
+ */
+export function antwortFehler(d, felder, ersatz) {
+  const id = d?.code ? felder[d.code] : null;
+  if (id && G(id)) feldFehler(id, d.error || ersatz);
+  else toast(d?.error || ersatz, 'error');
+}
+
 /** Prüft das Set-Nummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht. */
 export function setnummerFeldGueltig(id, wert) {
   const v = wert ?? (G(id)?.value || '').trim();
@@ -649,6 +662,13 @@ export function toast(msg, type='info', aktion) {
   return el;
 }
 /**
+ * Beim Wechsel der Ansicht: Meldungen gehören zu der Ansicht, in der sie
+ * entstanden; nur solche mit Knopf (Rückgängig, Ändern) bleiben bis zur Frist.
+ */
+export function verwirfToasts() {
+  for (const el of [...(G('toasts')?.children || [])]) if (!el.querySelector('.toast-aktion')) el.remove();
+}
+/**
  * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.
  *
  * ── Woher das kommt ─────────────────────────────────────────────────────────
@@ -731,13 +751,19 @@ export function fehlerMeldung(e) {
 
 // ── Hinweis „Rebrickable-Schlüssel fehlt“ ───────────────────────────────────
 const RB_HINWEIS_WEG = 'bim_rb_hinweis_weg';
+/** Weggeklickt bleibt das Band 30 Tage weg, auch über Neustarts: Bei 200 %
+ * Zoom kostet es ein Achtel der Höhe; erinnert wird später trotzdem. */
+const RB_HINWEIS_FRIST = 30 * 24 * 3600 * 1000;
 /** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab.
  * Schliesst man ihn mit „Später“, kommt das Band (22-einrichtung.js). */
 export function rbHinweisZeigen() {
   const band = G('rb-hinweis');
   if (!band || !ME?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
   if (String(_settingsCache?.rebrickable_api_key || '').trim()) return;
-  try { if (sessionStorage.getItem(RB_HINWEIS_WEG)) return; } catch (_) { /* ohne Speicher: zeigen */ }
+  try {
+    const weg = Number(localStorage.getItem(RB_HINWEIS_WEG));
+    if (weg && Date.now() - weg < RB_HINWEIS_FRIST) return;
+  } catch (_) { /* ohne Speicher: zeigen */ }
   band.hidden = false;
 }
 export function rbHinweisVerbergen() { const b = G('rb-hinweis'); if (b) b.hidden = true; }
@@ -747,10 +773,10 @@ function rbHinweisOeffnen() {
   /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
   G('rb-key')?.focus();
 }
-/** Wegklicken gilt für die Sitzung; der Fokus geht an den Seiteninhalt statt ins Leere. */
+/** Wegklicken gilt RB_HINWEIS_FRIST lang; der Fokus geht an den Seiteninhalt statt ins Leere. */
 function rbHinweisWeg() {
   rbHinweisVerbergen();
-  try { sessionStorage.setItem(RB_HINWEIS_WEG, '1'); } catch (_) { /* dann eben bis zum Neuladen */ }
+  try { localStorage.setItem(RB_HINWEIS_WEG, String(Date.now())); } catch (_) { /* dann eben bis zum Neuladen */ }
   G('inhalt')?.focus({ preventScroll: true });
 }
 

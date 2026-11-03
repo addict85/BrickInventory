@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld, CURRENCY, _settingsCache } from './01-core.js';
+import { antwortFehler, fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld, CURRENCY, _settingsCache } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 import { confirmDelete } from './07-admin.js';
 
@@ -211,6 +211,10 @@ export function gutscheinAbbrechen() {
  * damit kein Entweder-oder in der Bedienung — man kann ein PDF hochladen UND
  * den Betrag selbst eintragen, wenn das PDF ihn nicht hergibt.
  */
+/** Fehlercodes des Servers → Feld im Formular (Meldung am Feld statt Toast). */
+const GUTSCHEIN_FELDER = { nummer_ungueltig: 'v-number', gutschein_existiert: 'v-number',
+  pin_ungueltig: 'v-pin', betrag_ungueltig: 'v-amount', waehrung_ungueltig: 'v-currency' };
+
 export async function gutscheinSpeichern() {
   const number   = el('v-number').value.trim();
   const pin      = el('v-pin').value.trim();
@@ -222,7 +226,7 @@ export async function gutscheinSpeichern() {
 
   if (_bearbeitet) {
     const d = await api('PUT', `/v1/vouchers/${_bearbeitet}`, { number, pin, amount, currency });
-    if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
+    if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
     toast(tRaw('vouchers.saved'), 'success');
     formularLeeren(); el('v-pdf').parentElement.style.display = '';
     await ladeGutscheine();
@@ -260,7 +264,7 @@ export async function gutscheinSpeichern() {
       toast(tRaw('vouchers.pdf_incomplete'), 'error');
       return;
     }
-    if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
+    if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
 
     // ── Ein PDF, zwei mögliche Antworten ────────────────────────────────────
     //
@@ -285,7 +289,7 @@ export async function gutscheinSpeichern() {
   }
 
   const d = await api('POST', '/v1/vouchers', { number, pin, amount, currency });
-  if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
+  if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
   toast(tRaw('vouchers.saved'), 'success');
   formularLeeren();
   await ladeGutscheine();

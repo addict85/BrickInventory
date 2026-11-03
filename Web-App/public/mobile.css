@@ -508,3 +508,27 @@
   #gallery .sc > .scb { padding: 8px 10px; min-width: 0; }
   #gallery .sc { padding: 6px; }
 }
+
+
+/* ── Geringe Höhe: 200 % Zoom, Telefon quer ──────────────────────────────
+   Kopf (52 px), Hinweisband und untere Leiste nahmen bei 640 × 450 fast die
+   Hälfte der Höhe. Der Kopf weicht beim Rollen nach unten (Klasse aus
+   10-mobile.js), die untere Leiste wird schmaler und zeigt nur Symbole; der
+   Name bleibt für Vorleser erhalten. Breiter als 640 px steht die Leiste
+   oben unter dem Kopf und rückt mit ihm nach oben. */
+@media (max-height: 500px) {
+  header { transition: transform .2s ease; }
+  .kopf-weg header { transform: translateY(-100%); }
+}
+@media (max-height: 500px) and (min-width: 641px) {
+  nav { transition: top .2s ease; }
+  .kopf-weg nav { top: 0; }
+}
+@media (max-height: 500px) and (max-width: 640px) {
+  .ntab { padding: 10px 2px; gap: 0; }
+  .ntab .tab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  main:not(#login-screen) { padding-bottom: 3.5rem; }
+}
+@media (max-height: 500px) and (prefers-reduced-motion: reduce) {
+  header, nav { transition: none; }
+}

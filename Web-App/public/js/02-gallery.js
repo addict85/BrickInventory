@@ -1608,9 +1608,11 @@ export function autosaveSet(){
       // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim
       // Erhöhen entsteht eine neue Zeile, beim Reduzieren fällt (LIFO) die
       // letzte weg — sonst blieb die entfernte Zeile in der Detailsicht stehen.
+      const sn = curSet.set_number;
       if (echt !== prevQty && typeof renderAcquisitionSummary === 'function') {
-        api('GET', `/v1/sets/${esc(curSet.set_number)}/acquisitions`).then(ad => {
+        api('GET', `/v1/sets/${esc(sn)}/acquisitions`).then(ad => {
           if (!ad?.success) return;
+          if (echt > prevQty) meldeNeueExemplare(sn, ad.acquisitions, echt - prevQty);
           const sumEl = G('m-acq-summary');
           if (sumEl) sumEl.innerHTML = renderAcquisitionSummary(ad.acquisitions, curSet.set_number) +
             `<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(curSet.set_number)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>`;
@@ -1619,11 +1621,27 @@ export function autosaveSet(){
           }
         }).catch(()=>{});
       }
-      toast(tRaw('settings.saved'),'success');
+      // Mehr Exemplare melden sich mit Preis (meldeNeueExemplare), sobald die Erfassungen da sind.
+      if (!(echt > prevQty)) toast(tRaw('settings.saved'),'success');
       loadGallery();
       if(document.querySelector('.ntab.active')?.dataset?.tab==='finance') loadFinance();
     } else { toast(d.error||t('settings.error'),'error'); }
   }, 400);
+}
+
+/**
+ * „+“ legt eine Kauferfassung an, meist mit dem Marktpreis als Schätzung. Das
+ * verändert die Finanzen, also sagt der Toast es samt Betrag und bietet
+ * „Ändern“ an, statt nur „Gespeichert“ zu melden.
+ */
+function meldeNeueExemplare(sn, acqs, n) {
+  const neu = [...(acqs || [])].sort((a, b) => (b.id || 0) - (a.id || 0))[0];
+  const preis = neu?.purchase_price;
+  const mehrere = n > 1 ? 'exemplare' : 'exemplar';
+  const text = preis != null && neu.price_estimated
+    ? tRaw(`acq.${mehrere}_geschaetzt`, { n, preis: fmtGeld(preis, neu.currency || CURRENCY) })
+    : preis == null ? tRaw(`acq.${mehrere}_ohne_preis`, { n }) : tRaw('settings.saved');
+  toast(text, 'success', { text: tRaw('acq.aendern'), fn: () => openAcqModal(sn) });
 }
 
 // Keine eigene Rückfrage mehr — delSet() fragt (siehe dort). Der Dialog
