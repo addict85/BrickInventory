@@ -199,6 +199,22 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon testDebugUnitTest :core-model:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
 
+      # Das Vergleichsbild liegt nur als Artefakt vor, das hier nicht abrufbar ist:
+      # Lage und Grösse der Abweichung je rotem Foto stehen deshalb im Log.
+      - name: Abweichende Fotos beschreiben
+        if: failure()
+        run: |
+          for neu in app/build/outputs/roborazzi/*_actual.png; do
+            [ -f "$neu" ] || continue
+            name=$(basename "$neu" _actual.png)
+            ref="app/src/test/bildschirmfotos/$name.png"
+            [ -f "$ref" ] || continue
+            pixel=$(compare -metric AE "$ref" "$neu" null: 2>&1 || true)
+            feld=$(compare "$ref" "$neu" -compose src -highlight-color white -lowlight-color black miff:- 2>/dev/null \
+              | convert - -trim -format '%wx%h+%X+%Y' info: 2>/dev/null || true)
+            echo "::warning title=Foto weicht ab::$name: $pixel Pixel verschieden, Bereich $feld (Bild $(identify -format '%wx%h' "$ref"))"
+          done
+
       # Room schreibt das Schema beim Übersetzen nach core-data/schemas und lässt eine
       # Datei stehen, solange ihr Aufbau gleich bleibt. Steht danach etwas
       # anderes da als eingecheckt, fehlt eine Fassung samt Migration.
