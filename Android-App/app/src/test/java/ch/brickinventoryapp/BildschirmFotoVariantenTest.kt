@@ -118,7 +118,11 @@ class BildschirmFotoVariantenTest {
         sprache: String? = DEUTSCH, schrift: Float = 1f, bereit: () -> Boolean = { true }, zustand: () -> Any? = { null },
         warten: Boolean = true, inhalt: @Composable () -> Unit,
     ) {
-        val maske = if (geraet == "tablet") "w1280dp-h800dp-land-xhdpi" else "w411dp-h891dp-port-xxhdpi"
+        val maske = when (geraet) {
+            "tablet" -> "w1280dp-h800dp-land-xhdpi"
+            "schmal" -> "w360dp-h740dp-port-xxhdpi"
+            else -> "w411dp-h891dp-port-xxhdpi"
+        }
         RuntimeEnvironment.setQualifiers(if (sprache != null) "$sprache-$maske" else maske)
         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
         if (warten) bereitstellen(name, bereit, zustand)
@@ -201,6 +205,23 @@ class BildschirmFotoVariantenTest {
     @Test fun detailFarbfaecher() = detailFoto("set-detail", "farbfaecher")
     @Test fun detailHochglanzDunkel() = detailFoto("set-detail", "hochglanz", dunkel = true)
     @Test fun detailWerkbank() = detailFoto("set-detail", "werkbank")
+
+    // ── Vierstellige Beträge auf schmalem Telefon (360 dp) ──
+    // Ein Kaufpreis über CHF 1’000 in den Wert-Kacheln: Dort brach „CHF 700.0 / 0“
+    // um, und mit vier Stellen wurde es nur enger.
+
+    private fun detailTeuerFoto(name: String, schrift: Float) {
+        welt.pfade.antworten["/api/v1/sets/75192-1/price"] =
+            """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":1249.9,"min_price":1180.0,"max_price":1320.0,"qty_avg_price":1249.9}"""
+        welt.pfade.antworten["/api/v1/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
+            {"id":1,"quantity":1,"purchase_price":1049.0,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"}]}"""
+        val vm = welt.setDetail().also { it.ladeAlles() }
+        zeige(name, geraet = "schmal", schrift = schrift, bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
+        foto(name, geraet = "schmal")
+    }
+
+    @Test fun detailVierstelligSchmal() = detailTeuerFoto("set-detail-vierstellig", 1f)
+    @Test fun detailVierstelligSchmalSchrift200() = detailTeuerFoto("set-detail-vierstellig-schrift200", 2f)
 
     // ── Englisch (en-GB): Texte, Zahlen, Beträge und Achsen ──
 

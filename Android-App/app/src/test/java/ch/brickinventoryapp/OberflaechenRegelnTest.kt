@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.Icon
@@ -78,6 +79,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   teile-raster-fest               Teileraster wieder fest 110 dp → rot „Teile bei 200 Prozent …“
  *   finanzen-einspaltig             Finanzen auch auf dem Tablet einspaltig → rot „Finanzen stehen auf dem Tablet …“
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
+ *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -126,6 +128,44 @@ class OberflaechenRegelnTest {
         assertEquals("Prozent", 1, zeilen(compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true)))
         assertEquals("Betrag", 1, zeilen(compose.onNodeWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)))
     }
+
+    /**
+     * Prüft je Betrag: eine Zeile, nichts ausgelassen und nicht breiter als seine
+     * Kachel (mit softWrap = false liefe er sonst über den Rand). Kacheln derselben
+     * Reihe sind gleich hoch.
+     */
+    private fun wertKachelnGanz(schrift: Float) {
+        val markt = fmtMoney(1712.4, "CHF")
+        val kauf = fmtMoney(1500.0, "CHF")
+        val pnl = fmtProzent(14.2)
+        zeige(schrift) {
+            Box(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
+                ch.brickinventoryapp.ui.screens.WertKacheln(markt, kauf, 14.2)
+            }
+        }
+        for (betrag in listOf(markt, kauf, pnl)) {
+            val ergebnis = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(betrag, useUnmergedTree = true).fetchSemanticsNode()
+                .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
+            val t = ergebnis.single()
+            assertEquals("$betrag in einer Zeile", 1, t.lineCount)
+            assertTrue("$betrag ist abgeschnitten (rechts ${t.getLineRight(0)} von ${t.size.width})",
+                !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == betrag.length &&
+                    t.getLineRight(0) <= t.size.width + 0.5f)
+        }
+        val kacheln = listOf(R.string.detail_section_market, R.string.detail_purchase_price, R.string.detail_pnl_tile)
+            .map { compose.onNodeWithText(ctx.getString(it), substring = true).fetchSemanticsNode().boundsInRoot }
+        kacheln.groupBy { it.top }.values.filter { it.size > 1 }.forEach { reihe ->
+            assertTrue("Kacheln einer Reihe gleich hoch: ${reihe.map { it.height }}",
+                reihe.all { kotlin.math.abs(it.height - reihe[0].height) < 1f })
+        }
+    }
+
+    @Test
+    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent ganz`() = wertKachelnGanz(1f)
+
+    @Test
+    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 200 Prozent ganz`() = wertKachelnGanz(2f)
 
     @Test
     fun `Kaufpreis bei 200 Prozent steht unter der Bezeichnung in einer Zeile`() {
