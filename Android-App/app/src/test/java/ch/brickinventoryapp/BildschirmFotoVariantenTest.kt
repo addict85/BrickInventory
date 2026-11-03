@@ -390,24 +390,35 @@ class BildschirmFotoVariantenTest {
      * byte-gleich mit dem 100-%-Foto und bewies nichts.
      */
     private fun dialogFoto(name: String, design: String, dunkel: Boolean, geraet: String, schrift: Float) {
-        // Bei angehaltener Uhr: Erst bei grosser Schrift rollt der Dialog, und ein Rollen
-        // ins Bild wartet auf Bilder der Uhr. Vorstellen, bis es fertig ist.
-        if (!compose.mainClock.autoAdvance) repeat(20) {
-            compose.mainClock.advanceTimeBy(100)
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        if (schrift == 1f) {
+            compose.onNode(isDialog()).captureRoboImage(pfad(name, design, dunkel, geraet))
+            return
         }
-        if (schrift != 1f) {
-            val texte = compose.onAllNodes(androidx.compose.ui.test.hasAnyAncestor(isDialog()), useUnmergedTree = true)
-                .fetchSemanticsNodes()
-            val skalen = texte.mapNotNull { n ->
-                val ergebnis = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
-                n.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
-                ergebnis.firstOrNull()?.layoutInput?.density?.fontScale
-            }
-            org.junit.Assert.assertTrue("$name: Schrift erreicht den Dialog nicht (Skalen $skalen)",
-                skalen.isNotEmpty() && skalen.all { it >= schrift - 0.05f })
+        // Ein Material-Textfeld im Dialogfenster kommt unter Robolectric ab 130 % Schrift
+        // nie zur Ruhe (auch mit Android 13; im Hauptfenster schon). Darum hier am Fenster
+        // selbst messen und fotografieren statt über die Synchronisierung von Compose.
+        val looper = shadowOf(Looper.getMainLooper())
+        repeat(10) { compose.mainClock.advanceTimeBy(50); looper.idle() }
+        val fenster = org.robolectric.shadows.ShadowDialog.getLatestDialog().window!!.decorView
+        val wurzel = composeWurzel(fenster) ?: error("$name: kein Compose im Dialogfenster")
+        val skalen = mutableListOf<Float>()
+        fun sammle(n: androidx.compose.ui.semantics.SemanticsNode) {
+            val ergebnis = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+            n.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
+            ergebnis.firstOrNull()?.layoutInput?.density?.fontScale?.let { skalen += it }
+            n.children.forEach { sammle(it) }
         }
-        compose.onNode(isDialog()).captureRoboImage(pfad(name, design, dunkel, geraet))
+        sammle(wurzel.semanticsOwner.unmergedRootSemanticsNode)
+        org.junit.Assert.assertTrue("$name: Schrift erreicht den Dialog nicht (Skalen $skalen)",
+            skalen.isNotEmpty() && skalen.all { it >= schrift - 0.05f })
+        fenster.captureRoboImage(pfad(name, design, dunkel, geraet))
+    }
+
+    /** Die Compose-Wurzel in einem Fensterbaum, ohne auf Ruhe zu warten. */
+    private fun composeWurzel(v: android.view.View): androidx.compose.ui.platform.ViewRootForTest? = when (v) {
+        is androidx.compose.ui.platform.ViewRootForTest -> v
+        is android.view.ViewGroup -> (0 until v.childCount).firstNotNullOfOrNull { composeWurzel(v.getChildAt(it)) }
+        else -> null
     }
 
     private fun dialogSetLoeschenFoto(name: String, schrift: Float) {

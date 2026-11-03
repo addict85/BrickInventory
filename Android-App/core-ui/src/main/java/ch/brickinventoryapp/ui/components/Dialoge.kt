@@ -6,7 +6,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
@@ -23,13 +22,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
@@ -85,11 +82,7 @@ fun ErfassenDialog(
         // Rollbar: Bei 200 % Schrift sind die Felder höher als das Fenster; die Knöpfe
         // bleiben dabei stehen, nur die Felder rollen.
         text = {
-            // Höchstens gut die halbe Bildschirmhöhe: Sonst wächst der Dialog über den
-            // Bildschirm, das Fenster kürzt ihn, und Compose misst ohne Ende neu.
-            val metrik = LocalContext.current.resources.displayMetrics
-            val hoechstens = (metrik.heightPixels / metrik.density * 0.55f).dp
-            Column(Modifier.heightIn(max = hoechstens).verticalScroll(rememberScrollState()),
+            Column(Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
                 inhalt()
                 if (!bestaetigenAn && fehlt != null) Text(fehlt, style = MaterialTheme.typography.bodySmall,
