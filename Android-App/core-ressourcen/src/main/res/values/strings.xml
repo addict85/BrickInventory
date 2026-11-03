@@ -868,6 +868,7 @@
     <string name="vouchers_pin_show">Show PIN</string>
     <string name="schritt_untertitel">Confirm with fingerprint, face or your device lock</string>
     <string name="schritt_entsperren">Confirm</string>
+    <string name="schritt_kein_schluessel">The device lock cannot be checked right now. Please try again later.</string>
     <string name="schritt_gutschein">Show voucher PIN</string>
     <string name="schritt_codes">Recovery codes</string>
     <string name="schritt_verwaltung">Open administration</string>

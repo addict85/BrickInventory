@@ -854,6 +854,7 @@
     <string name="vouchers_pin_show">PIN anzeigen</string>
     <string name="schritt_untertitel">Mit Fingerabdruck, Gesicht oder der Sperre des Geräts bestätigen</string>
     <string name="schritt_entsperren">Bestätigen</string>
+    <string name="schritt_kein_schluessel">Die Gerätesperre lässt sich gerade nicht prüfen. Bitte später erneut versuchen.</string>
     <string name="schritt_gutschein">Gutschein-PIN anzeigen</string>
     <string name="schritt_codes">Wiederherstellungscodes</string>
     <string name="schritt_verwaltung">Verwaltung öffnen</string>

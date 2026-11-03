@@ -82,7 +82,10 @@ class MainActivity : NurLauncherStart() {
 
     /** Rückfrage per Gerätesperre vor heiklen Schritten; gilt bis die App in den Hintergrund geht. */
     private val schrittschutz by lazy {
-        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this) {
+        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this, keinSchluessel = {
+            android.widget.Toast.makeText(this, ch.brickinventoryapp.util.LanguageManager.localizedContext(this).getString(R.string.schritt_kein_schluessel),
+                android.widget.Toast.LENGTH_LONG).show()
+        }) {
             ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
                 .getString(R.string.schritt_untertitel)
         }
