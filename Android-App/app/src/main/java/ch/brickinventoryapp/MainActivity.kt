@@ -161,7 +161,9 @@ class MainActivity : NurLauncherStart() {
                 CompositionLocalProvider(
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                     ch.brickinventoryapp.ui.components.LocalSchrittschutz provides schrittschutz,
-                ) {
+                ) { ch.brickinventoryapp.ui.components.TastaturOhneLernen {
+                    // App-weit (sec8 H4): Gutschein-Nummer und PIN, Passwörter, Codes und
+                    // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
                     BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
                     val startpasswort by vm.passwortPflicht.noetig.collectAsStateWithLifecycle()
@@ -197,7 +199,7 @@ class MainActivity : NurLauncherStart() {
                             onAbbrechen = vm.nutzerCa::abbrechen,
                         )
                     }
-                }
+                } }
             }
         }
     }

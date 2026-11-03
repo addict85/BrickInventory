@@ -18,6 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -73,85 +76,88 @@ fun LoginScreen(
     ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
     if (showPw && formular == AnmeldeFormular.ANMELDEN) ch.brickinventoryapp.ui.components.Sichtschutz()
 
-    // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
-    // läge der Anmeldeknopf sonst unerreichbar unter dem Rand.
-    Box(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier
-                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
-                .padding(horizontal = 28.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(0.dp)
+    // Passwort, Code und Adresse lernt die Tastatur nicht mit (sec8 H4).
+    ch.brickinventoryapp.ui.components.TastaturOhneLernen {
+        // Rollbar: Auf einem kleinen Telefon, mit offener Tastatur oder grosser Schrift
+        // läge der Anmeldeknopf sonst unerreichbar unter dem Rand.
+        Box(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+            contentAlignment = Alignment.Center
         ) {
-            // Logo
-            Image(
-                painter = painterResource(R.drawable.ic_logo),
-                contentDescription = "BrickInventory Manager",
-                modifier = Modifier.size(80.dp)
-            )
-            Spacer(Modifier.height(14.dp))
-            Text(
-                "BrickInventory",
-                fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.headlineSmall,
-                letterSpacing = (-0.5).sp
-            )
-            Text(
-                "Manager",
-                fontWeight = FontWeight.Light,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(Abstaende.klein))
-
-            // Server chip
-            AssistChip(
-                onClick = onChangeServer,
-                // Eine Zeile mit Auslassung: Bei 200 % Schrift lief die Adresse sonst aus dem Chip.
-                label = { Text(serverUrl, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.labelMedium) },
-                leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(14.dp)) },
-                trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(12.dp)) },
-                shape = Formen.chip
-            )
-
-            Spacer(Modifier.height(28.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = Formen.chip,
-                elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            Column(
+                modifier = Modifier
+                    .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
+                    .padding(horizontal = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                Column(
-                    Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
+                // Logo
+                Image(
+                    painter = painterResource(R.drawable.ic_logo),
+                    contentDescription = "BrickInventory Manager",
+                    modifier = Modifier.size(80.dp)
+                )
+                Spacer(Modifier.height(14.dp))
+                Text(
+                    "BrickInventory",
+                    fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.headlineSmall,
+                    letterSpacing = (-0.5).sp
+                )
+                Text(
+                    "Manager",
+                    fontWeight = FontWeight.Light,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(Abstaende.klein))
+
+                // Server chip
+                AssistChip(
+                    onClick = onChangeServer,
+                    // Eine Zeile mit Auslassung: Bei 200 % Schrift lief die Adresse sonst aus dem Chip.
+                    label = { Text(serverUrl, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelMedium) },
+                    leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(14.dp)) },
+                    trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(12.dp)) },
+                    shape = Formen.chip
+                )
+
+                Spacer(Modifier.height(28.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = Formen.chip,
+                    elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    when (formular) {
-                        AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
-                            username = username, onUsername = { username = it },
-                            password = password, onPassword = { password = it },
-                            showPw = showPw, onShowPw = { showPw = it },
-                            codeNoetig = codeNoetig, code = code, onCode = { code = it },
-                            isLoading = isLoading, error = error,
-                            registrierungOffen = registrierungOffen,
-                            focusMgr = focusMgr,
-                            onLogin = onLogin, onFormular = onFormular,
-                            vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff,
-                            onPasskey = onPasskey,
-                            onPasskeyStattCode = onPasskeyStattCode.takeIf { passkeyStattCode && onPasskey != null })
+                    Column(
+                        Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
+                        verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
+                    ) {
+                        when (formular) {
+                            AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
+                                username = username, onUsername = { username = it },
+                                password = password, onPassword = { password = it },
+                                showPw = showPw, onShowPw = { showPw = it },
+                                codeNoetig = codeNoetig, code = code, onCode = { code = it },
+                                isLoading = isLoading, error = error,
+                                registrierungOffen = registrierungOffen,
+                                focusMgr = focusMgr,
+                                onLogin = onLogin, onFormular = onFormular,
+                                vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff,
+                                onPasskey = onPasskey,
+                                onPasskeyStattCode = onPasskeyStattCode.takeIf { passkeyStattCode && onPasskey != null })
 
-                        AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
-                            laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                            focusMgr = focusMgr,
-                            onRegistrieren = onRegistrieren, onFormular = onFormular)
+                            AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
+                                laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
+                                focusMgr = focusMgr,
+                                onRegistrieren = onRegistrieren, onFormular = onFormular)
 
-                        AnmeldeFormular.PASSWORT_VERGESSEN -> VergessenFelder(
-                            laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                            onSenden = onPasswortVergessen, onFormular = onFormular)
+                            AnmeldeFormular.PASSWORT_VERGESSEN -> VergessenFelder(
+                                laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
+                                onSenden = onPasswortVergessen, onFormular = onFormular)
+                        }
                     }
                 }
             }
@@ -237,7 +243,8 @@ private fun AnmeldeFelder(
         value = username, onValueChange = onUsername,
         label = { Text(stringResource(R.string.login_username)) },
         leadingIcon = { Icon(Icons.Default.Person, null) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true,
+        // Für den Passwortmanager: Er füllt nur, was er als Anmeldefeld erkennt.
+        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Username }, singleLine = true,
         shape = Formen.knopf,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
         keyboardActions = KeyboardActions(onNext = { focusMgr.moveFocus(FocusDirection.Down) })
@@ -258,7 +265,7 @@ private fun AnmeldeFelder(
             }
         },
         visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
-        modifier = Modifier.fillMaxWidth(), singleLine = true,
+        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Password }, singleLine = true,
         shape = Formen.knopf,
         keyboardOptions = KeyboardOptions(
             imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
@@ -385,7 +392,7 @@ private fun RegistrierFelder(
             value = nutzer, onValueChange = { nutzer = it },
             label = { Text(stringResource(R.string.login_username)) },
             leadingIcon = { Icon(Icons.Default.Person, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.NewUsername }, singleLine = true, shape = Formen.knopf,
             keyboardOptions = weiter, keyboardActions = naechstes)
         OutlinedTextField(
             value = email, onValueChange = { email = it },
@@ -410,7 +417,7 @@ private fun RegistrierFelder(
             label = { Text(stringResource(R.string.login_password)) },
             leadingIcon = { Icon(Icons.Default.Lock, null) },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.NewPassword }, singleLine = true, shape = Formen.knopf,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
                 keyboardType = KeyboardType.Password),
             keyboardActions = naechstes)
@@ -419,7 +426,7 @@ private fun RegistrierFelder(
             label = { Text(stringResource(R.string.register_password_repeat)) },
             leadingIcon = { Icon(Icons.Default.Lock, null) },
             visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
+            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.NewPassword }, singleLine = true, shape = Formen.knopf,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
                 keyboardType = KeyboardType.Password))
 
