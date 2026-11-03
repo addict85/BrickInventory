@@ -89,12 +89,13 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async (t) => {
     }
     const lang = await registriere(`lang_${P}`, `lang_${P}@example.org`, { first_name: 'x'.repeat(101) });
     assert.equal(lang.status, 400, 'über 100 Zeichen weist der Eingabevertrag ab');
+    const hash = await require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs')).hash('Profil-Passwort-1', 4);
     sitzung.userId = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
-      VALUES ($1, 'x', true, true) RETURNING id`, [`profil_${P}`])).id;
+      VALUES ($1, $2, true, true) RETURNING id`, [`profil_${P}`, hash])).id;
     const p = await rufe('PUT', '/profile', { first_name: 'Anna\u0007' });
     assert.equal(p.status, 400, JSON.stringify(p.body));
     assert.equal(p.body.code, 'name_ungueltig');
-    assert.equal((await rufe('PUT', '/profile', { first_name: 'Anna-Lena', last_name: "O'Brien" })).status, 200);
+    assert.equal((await rufe('PUT', '/profile', { first_name: 'Anna-Lena', last_name: "O'Brien", password_current: 'Profil-Passwort-1' })).status, 200);
     await leereZaehler();
   });
 
