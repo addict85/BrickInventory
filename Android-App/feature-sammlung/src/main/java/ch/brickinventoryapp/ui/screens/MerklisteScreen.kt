@@ -340,6 +340,7 @@ private fun MerkpostenErfassenDialog(
         onBestaetigen = { onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null) },
         onAbbrechen = onDismiss,
         bestaetigenAn = nummer.isNotBlank(),
+        fehlt = stringResource(R.string.wanted_need_number),
     ) {
         OutlinedTextField(
             value = nummer,

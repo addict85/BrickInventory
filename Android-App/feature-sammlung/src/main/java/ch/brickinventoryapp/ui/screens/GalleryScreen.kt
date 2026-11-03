@@ -629,6 +629,7 @@ fun AddSetDialog(
         onBestaetigen = { submit() },
         onAbbrechen = onDismiss,
         bestaetigenAn = setNumber.isNotBlank(),
+        fehlt = stringResource(R.string.wanted_need_number),
     ) {
         OwnerPicker(householdMembers, owner, { owner = it })
         // Das Beispiel als Hilfetext wie im Merkposten-Dialog: Ein Platzhalter verschwand

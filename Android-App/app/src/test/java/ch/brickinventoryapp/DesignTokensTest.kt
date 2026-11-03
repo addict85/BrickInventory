@@ -40,7 +40,7 @@ class DesignTokensTest {
         assert(fehler.isEmpty()) {
             "Feste Eckenradien ausserhalb von $themeOrdner/ (${fehler.size}):\n  " +
                 fehler.joinToString("\n  ") +
-                "\nDafür gibt es Formen.karte/chip/knopf/kachel/leiste/etikett/marke/fab/strich. " +
+                "\nDafür gibt es Formen.karte/chip/feld/kachel/leiste/etikett/marke/fab/strich. " +
                 "Passt keine, gehört eine NEUE dorthin — sonst ist die nächste " +
                 "Designänderung wieder eine Suche über den ganzen Baum."
         }
@@ -114,7 +114,9 @@ class DesignTokensTest {
         val aufruf = Regex("""\b(Button|OutlinedButton|FilledTonalButton|ElevatedButton|TextButton)\(""")
         val fehler = mutableListOf<String>()
         for (datei in Quellen.alle()) {
+            // Zeichenketten leeren: Eine Klammer darin würfe die Klammerbilanz um.
             val s = Quellen.ohneKommentare(datei.readText())
+                .replace(Regex(""""(?:\\.|[^"\\\n])*""""), "\"\"")
             for (m in aufruf.findAll(s)) {
                 // Die Argumentliste bis zur passenden Klammer; der Inhalt (Lambda) folgt danach.
                 var tiefe = 0

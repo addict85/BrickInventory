@@ -72,6 +72,8 @@ fun ErfassenDialog(
     onBestaetigen: () -> Unit,
     onAbbrechen: () -> Unit,
     bestaetigenAn: Boolean = true,
+    /** Was fehlt, solange [bestaetigenAn] aus ist — ein blasser Knopf allein liess raten, warum. */
+    fehlt: String? = null,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
     AlertDialog(
@@ -79,8 +81,14 @@ fun ErfassenDialog(
         title = { Text(titel) },
         // Rollbar: Bei 200 % Schrift sind die Felder höher als das Fenster; die Knöpfe
         // bleiben dabei stehen, nur die Felder rollen.
-        text = { Column(Modifier.verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel), content = inhalt) },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+                inhalt()
+                if (!bestaetigenAn && fehlt != null) Text(fehlt, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
         confirmButton = {
             Button(onClick = onBestaetigen, enabled = bestaetigenAn) { Text(bestaetigen) }
         },
