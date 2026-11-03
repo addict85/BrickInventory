@@ -124,26 +124,16 @@ export async function loadMonitor() {
     const _ae = document.activeElement;
     if (_ae && _ae.classList && _ae.classList.contains('job-sched-input')) return;
     const { jobs, db: dbStats, schedules } = d;
-    // Zeitplan-Control je Job: tägliche Jobs -> Uhrzeit (HH:MM), Preis-Job -> Intervall (min).
-    // ── Warum die Werte durch esc() gehen ─────────────────────────────────
-    //
-    // Der Server prueft den Zeitplan (routes/api_v1/admin.ts: /^(\d{1,2}):(\d{2})$/
-    // fuer die Uhrzeit, parseInt fuer die Minuten) — heute kann hier also
-    // nichts Boesartiges ankommen.
-    //
-    // Trotzdem: `data-arg="${esc(k)}"` in derselben Zeile geht durch esc(),
-    // diese beiden gingen es nicht. Eine Zeile, die dieselbe Regel zweimal
-    // verschieden anwendet, ist der Anfang der naechsten Luecke — und die
-    // Absicherung laege sonst in einer anderen Datei, die niemand mitliest,
-    // wenn er hier etwas aendert.
+    // Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die
+    // Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
     const schedInput = (k) => {
       const sc = schedules?.[k];
-      if (!sc) return '';
+      if (!sc) return `<span class="mon-leise">${t('monitor.sched.keiner')}</span>`;
       if (sc.type === 'daily') {
-        return `<input type="time" class="job-sched-input" value="${esc(sc.time)}" title="${t('monitor.sched.daily_hint')}" aria-label="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}" data-stil="font-size:var(--fs-1);padding:2px 5px;border:1px solid var(--feldrand);border-radius:6px;background:var(--sur);color:var(--txt)">`;
+        return `<label class="mon-plan">${t('monitor.sched.taeglich')} <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="job-sched-input mon-zeit" value="${esc(sc.time)}" aria-label="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}"></label>`;
       }
       if (sc.type === 'interval') {
-        return `<span data-stil="display:inline-flex;align-items:center;gap:3px;font-size:var(--fs-1);color:var(--mut)" title="${t('monitor.sched.interval_hint')}"><input inputmode="numeric" type="number" min="5" class="job-sched-input" aria-label="${t('monitor.sched.interval_hint')}" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}" data-stil="width:54px;font-size:var(--fs-1);padding:2px 5px;border:1px solid var(--feldrand);border-radius:6px;background:var(--sur);color:var(--txt)"> ${t('monitor.sched.min')}</span>`;
+        return `<label class="mon-plan">${t('monitor.sched.alle')} <input inputmode="numeric" type="number" min="5" class="job-sched-input mon-minuten" aria-label="${t('monitor.sched.interval_hint')}" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}"> ${t('monitor.sched.min')}</label>`;
       }
       return '';
     };
@@ -156,9 +146,10 @@ export async function loadMonitor() {
         // Handbücher herunterladen: kleines aufgeschlagenes Buch
         instrQueue: '<path d="M60,28 C50,22 30,20 16,24 L16,92 C30,88 50,90 60,96 Z" fill="#E63329"/><path d="M60,28 C70,22 90,20 104,24 L104,92 C90,88 70,90 60,96 Z" fill="#CC2A21"/><rect x="24" y="38" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="50" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="62" width="20" height="4" rx="2" fill="#fff"/>',
         // Preise aktualisieren: Preisschild (Gold) mit Loch
+        brickset: '<rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/>',
         priceJob: '<path d="M18,60 L58,20 L100,20 Q108,20 108,28 L108,70 Q108,78 100,78 L58,100 Z" fill="#F2CD37"/><circle cx="84" cy="42" r="9" fill="#fff"/>',
       };
-      return svgs[k] ? `<svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0">${svgs[k]}</svg>` : '';
+      return svgs[k] ? `<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${svgs[k]}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
     };
     const jobZustand = (s) => ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'),
       error: tRaw('monitor.state.error') })[s] || tRaw('monitor.state.idle');
@@ -170,59 +161,51 @@ export async function loadMonitor() {
       if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
       return ico('pause');
     };
-    const bar = (v,t) => {
-      if (!t) return '';
-      const pct = Math.min(100, Math.round(v/t*100));
-      return `<div data-stil="background:var(--s100);border-radius:4px;height:6px;margin-top:4px"><div data-stil="background:var(--b500);height:100%;border-radius:4px;transition:width .3s" data-breite="${pct}"></div></div>`;
+    const bar = (v, gesamt) => {
+      if (!gesamt) return '';
+      const pct = Math.min(100, Math.round(v / gesamt * 100));
+      return `<div class="mon-balken"><div data-breite="${pct}"></div></div>`;
     };
-    // Preserve brickset queue panel if currently open
-    const existingPanel = G('brickset-queue-panel');
-    const panelOpen     = existingPanel && existingPanel.style.display !== 'none';
-    const panelHTML     = panelOpen ? existingPanel.innerHTML : null;
+    const aktionen = (k, j) => [
+      k === 'priceJob' ? `<button class="btn bs btn-sm" type="button" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : '',
+      k === 'instrQueue' ? `<button class="btn bs btn-sm" type="button" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : '',
+      k === 'csvImport' ? `<button class="btn bs btn-sm" type="button" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : '',
+      k === 'imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" type="button" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : '',
+      k === 'imgDl' ? `<button class="btn bs btn-sm" type="button" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : '',
+      k === 'bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${t('monitor.show')}</span></button>` : '',
+    ].join('');
+    const name = (k, j) => t('monitor.job.' + k, {}) !== 'monitor.job.' + k ? t('monitor.job.' + k) : esc(j.label || k);
+    const panel = G('brickset-queue-panel');
+    const panelHTML = panel && panel.style.display !== 'none' ? panel.innerHTML : null;
+    const zahl = (n) => (n || 0).toLocaleString(locale());
+    const setze = (id, v) => { const e = G(id); if (e) e.textContent = v; };
+    setze('mon-db-sync', dbStats.csvCache.lastSync ? fmtDatum(dbStats.csvCache.lastSync) : '–');
+    setze('mon-db-teile', zahl(dbStats.csvCache.parts));
+    setze('mon-db-inventar', zahl(dbStats.csvCache.inventoryParts));
+    setze('mon-db-bl', `${zahl(dbStats.blMapping.mapped)} / ${zahl(dbStats.blMapping.total)}`);
 
     el.innerHTML = `
-      <div data-stil="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:1rem">
-        ${Object.entries(jobs).map(([k,j])=>`
-          <div class="card" data-stil="padding:1rem;min-width:0">
-            <div data-stil="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem">
-              <span data-stil="font-weight:600;font-size:var(--fs-3);display:inline-flex;align-items:center;gap:6px">${k==='bricksetRetry' ? '<svg width="16" height="16" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0"><rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/></svg>' : jobIconSvg(k)}${t('monitor.job.'+k, {}) !== 'monitor.job.'+k ? t('monitor.job.'+k) : (j.label||'')}</span>
-              <div data-stil="display:flex;align-items:center;flex-wrap:wrap;gap:.5rem">
-                ${schedInput(k)}
-                ${k==='priceJob' ? `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : ''}
-                ${k==='instrQueue' ? `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : ''}
-                ${k==='csvImport' ? `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : ''}
-                ${k==='imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : ''}
-                ${k==='imgDl' ? `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : ''}
-                ${k==='bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1);display:inline-flex;align-items:center;gap:5px" data-click="toggleBricksetQueue" data-self="1"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="flex-shrink:0"><rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/></svg> ${t('monitor.show')}</button>` : ''}
-                <span role="img" title="${esc(jobZustand(j.status))}" aria-label="${esc(jobZustand(j.status))}">${statusIcon(j.status, j)}</span>
-              </div>
-            </div>
-            ${j.sub ? `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${translateJobSub(j.sub)}</div>` : ''}
-            ${j.total > 0 ? bar(j.progress, j.total) : ''}
-            ${j.lastRun ? `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-top:.4rem">${t('monitor.last_run')} ${fmtDatum(j.lastRun, 'zeit')}</div>` : ''}
-            ${k==='bricksetRetry' ? `<div id="brickset-queue-panel" data-stil="display:none;margin-top:.75rem"></div>` : ''}
-          </div>`).join('')}
-      </div>
-      <div class="card" id="auftraege-karte" data-stil="padding:1rem;margin-top:.5rem"></div>
-      <div class="card" data-stil="padding:1rem;margin-top:.5rem">
-        <div data-stil="font-weight:600;margin-bottom:.75rem">${t('monitor.db')}</div>
-        <div data-stil="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;font-size:var(--fs-2)">
-          <div><div data-stil="color:var(--mut)">${t('monitor.last_sync')}</div><div data-stil="font-weight:600">${dbStats.csvCache.lastSync||'–'}</div></div>
-          <div><div data-stil="color:var(--mut)">${t('monitor.parts_cached')}</div><div data-stil="font-weight:600">${(dbStats.csvCache.parts||0).toLocaleString(locale())}</div></div>
-          <div><div data-stil="color:var(--mut)">${t('monitor.inventory_parts')}</div><div data-stil="font-weight:600">${(dbStats.csvCache.inventoryParts||0).toLocaleString(locale())}</div></div>
-          <div><div data-stil="color:var(--mut)">${t('monitor.bl_mapped')}</div><div data-stil="font-weight:600">${(dbStats.blMapping.mapped||0).toLocaleString(locale())} / ${(dbStats.blMapping.total||0).toLocaleString(locale())}</div></div>
-        </div>
-      </div>`;
+      <p class="mon-hinweis">${t('monitor.services_hint')}</p>
+      <div class="tw"><table class="dt mon-tabelle">
+        <thead><tr><th>${t('monitor.col.dienst')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeitplan')}</th><th>${t('monitor.col.zuletzt')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
+        <tbody>${Object.entries(jobs).map(([k, j]) => `<tr>
+          <td><span class="mon-name">${k === 'bricksetRetry' ? jobIconSvg('brickset') : jobIconSvg(k)}${name(k, j)}</span></td>
+          <td><span class="mon-zustand mon-${esc(j.status || 'idle')}">${statusIcon(j.status, j)} ${esc(jobZustand(j.status))}</span>
+            ${j.sub ? `<div class="mon-leise">${translateJobSub(j.sub)}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+          <td>${schedInput(k)}</td>
+          <td>${j.lastRun ? fmtDatum(j.lastRun, 'zeit') : '–'}</td>
+          <td><div class="mon-knoepfe">${aktionen(k, j) || '<span class="mon-leise">–</span>'}</div></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      ${jobs.bricksetRetry ? '<div id="brickset-queue-panel" class="mon-panel" data-stil="display:none"></div>' : ''}`;
 
-    // Restore panel state if it was open before re-render
-    if (panelOpen && panelHTML !== null) {
-      const newPanel = G('brickset-queue-panel');
-      if (newPanel) {
-        newPanel.innerHTML = panelHTML;
-        newPanel.style.display = 'block';
-        // Update toggle button text
-        const toggleBtn = newPanel.closest('.card')?.querySelector('button.btn.bs');
-        if (toggleBtn && toggleBtn.textContent.includes(t('monitor.show'))) toggleBtn.textContent = tRaw('monitor.collapse');
+    if (panelHTML !== null) {
+      const neu = G('brickset-queue-panel');
+      if (neu) {
+        neu.innerHTML = panelHTML;
+        neu.style.display = 'block';
+        const knopf = el.querySelector('[data-click="toggleBricksetQueue"] span');
+        if (knopf) knopf.textContent = tRaw('monitor.collapse');
       }
     }
 
@@ -294,37 +277,56 @@ async function zeigeAuftraege() {
   if (!d?.success) { el.innerHTML = ''; return; }
   const zahl = {};
   for (const z of d.zusammenfassung) (zahl[z.art] ||= {})[z.status] = z.anzahl;
+  // Der nächste Lauf je Art: der früheste wartende Auftrag dieser Art.
+  const naechster = {};
+  for (const a of d.auftraege)
+    if (a.status === 'offen' && a.faellig_ab && (!naechster[a.art] || a.faellig_ab < naechster[a.art])) naechster[a.art] = a.faellig_ab;
   const knopf = (aktion, arg, text) =>
-    `<button class="btn bs btn-sm" data-stil="padding:2px 10px;font-size:var(--fs-1)" data-click="${aktion}"${echt()} data-arg="${esc(arg)}">${text}</button>`;
+    `<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${esc(arg)}">${text}</button>`;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
+  const status = (s) => Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : esc(s);
+  const ziffer = (n, klasse = '') => `<span class="mon-ziffer${n ? ' ' + klasse : ''}">${n || 0}</span>`;
   const zeile = (a) => {
     const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
-    const wann = a.status === 'offen' ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit }) : '';
+    const wann = a.status === 'offen' ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit }) : (a.status === 'laeuft' ? zeit : '');
     const stand = a.fortschritt?.gesamt ? `${a.fortschritt.erledigt ?? 0} / ${a.fortschritt.gesamt}` : (a.fortschritt?.text || '');
-    return `<div data-stil="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;font-size:var(--fs-2);padding:.35rem 0;border-top:1px solid var(--bdr)">
-      <span data-stil="font-weight:600">${artName(a.art)}${a.set_number ? ' · ' + esc(a.set_number) : ''}</span>
-      <span data-stil="color:var(--mut)">${Object.hasOwn(STATUSNAMEN, a.status) ? STATUSNAMEN[a.status]() : esc(a.status)}${wann ? ' · ' + wann : ''}${stand ? ' · ' + esc(stand) : ''}</span>
-      ${a.versuche > 1 ? `<span data-stil="color:var(--mut)">${t('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>` : ''}
-      ${a.fehler && a.status !== 'laeuft' ? fehlerKasten(a.fehler) : ''}
-      <span data-stil="margin-left:auto;display:inline-flex;gap:.35rem">
-        ${a.status === 'offen' || a.status === 'laeuft' ? knopf('auftragAbbrechen', a.id, t('monitor.auftraege.abbrechen')) : ''}
-        ${a.status === 'fehler' || a.status === 'abgebrochen' ? knopf('auftragWiederholen', a.id, t('monitor.auftraege.wiederholen')) : ''}
-      </span></div>`;
+    const hinweis = [a.fehler && a.status !== 'laeuft' ? fehlerKasten(a.fehler) : '',
+      a.versuche > 1 ? `<span class="mon-leise">${t('monitor.auftraege.versuch', { n: a.versuche, max: a.max_versuche })}</span>` : '',
+      stand ? `<span class="mon-leise">${esc(stand)}</span>` : ''].filter(Boolean).join(' ');
+    const aktion = a.status === 'offen' || a.status === 'laeuft' ? knopf('auftragAbbrechen', a.id, t('monitor.auftraege.abbrechen'))
+      : a.status === 'fehler' || a.status === 'abgebrochen' ? knopf('auftragWiederholen', a.id, t('monitor.auftraege.wiederholen')) : '';
+    return `<tr>
+      <td><strong>${artName(a.art)}</strong>${a.set_number ? ` <span class="mon-leise">${esc(a.set_number)}</span>` : ''}</td>
+      <td><span class="mon-zustand mon-${esc(a.status)}">${status(a.status)}</span></td>
+      <td>${wann || '–'}</td>
+      <td>${hinweis || '–'}</td>
+      <td><div class="mon-knoepfe">${aktion}</div></td>
+    </tr>`;
   };
+  const mehr = d.auftraege.length - 40;
+  const pause = (p) => t('monitor.auftraege.pause', { art: Object.hasOwn(ARTNAMEN, p.art) ? ARTNAMEN[p.art]() : esc(p.art), bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' });
   el.innerHTML = `
-    <div data-stil="font-weight:600;margin-bottom:.5rem">${t('monitor.auftraege.titel')}</div>
-    ${d.job_prozess.laeuft ? '' : `<div data-stil="color:var(--r700);font-size:var(--fs-2);margin-bottom:.5rem">${ico('warnung')} ${t('monitor.auftraege.kein_prozess')}</div>`}
-    ${d.pausen.map(p => `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${t('monitor.auftraege.pause', { art: Object.hasOwn(ARTNAMEN, p.art) ? ARTNAMEN[p.art]() : p.art, bis: fmtDatum(p.bis, 'zeit'), grund: p.grund || '' })}</div>`).join('')}
-    ${d.bildbedarf ? `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${t('monitor.auftraege.bildbedarf', { n: d.bildbedarf })}</div>` : ''}
-    <div data-stil="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:.35rem .75rem;margin:.5rem 0">
-      ${arten.map(art => `<div data-stil="display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)">
-        <span data-stil="flex:1;min-width:0">${artName(art)}</span>
-        <span data-stil="color:var(--mut)">${zahl[art].laeuft || 0} · ${zahl[art].offen || 0} · ${zahl[art].fehler || 0}</span>
-        ${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'))}
-        ${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren')) : ''}
-      </div>`).join('')}
-    </div>
-    ${d.auftraege.length ? d.auftraege.slice(0, 40).map(zeile).join('') : `<div data-stil="font-size:var(--fs-2);color:var(--mut)">${t('monitor.auftraege.leer')}</div>`}`;
+    <h2 class="mon-titel" id="mon-t-auftraege">${ico('liste')}<span>${t('monitor.auftraege.titel')}</span></h2>
+    <p class="mon-hinweis">${t('monitor.auftraege.hinweis')}</p>
+    ${d.job_prozess.laeuft ? '' : `<p class="mon-warnung">${ico('warnung')} ${t('monitor.auftraege.kein_prozess')}</p>`}
+    ${d.pausen.map(p => `<p class="mon-leise">${ico('pause')} ${pause(p)}</p>`).join('')}
+    ${d.bildbedarf ? `<p class="mon-leise">${t('monitor.auftraege.bildbedarf', { n: d.bildbedarf })}</p>` : ''}
+    ${arten.length ? `<div class="tw"><table class="dt mon-tabelle mon-arten">
+      <thead><tr><th>${t('monitor.col.art')}</th><th class="zahl">${t('monitor.col.offen')}</th><th class="zahl">${t('monitor.col.laeuft')}</th><th class="zahl">${t('monitor.col.fehler')}</th><th>${t('monitor.col.naechster')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
+      <tbody>${arten.map(art => `<tr>
+        <td>${artName(art)}</td>
+        <td class="zahl">${ziffer(zahl[art].offen)}</td>
+        <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
+        <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
+        <td>${naechster[art] ? fmtDatum(naechster[art], 'zeit') : '–'}</td>
+        <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren')) : ''}</div></td>
+      </tr>`).join('')}</tbody></table></div>` : ''}
+    <h3 class="mon-untertitel">${t('monitor.auftraege.einzeln')}</h3>
+    ${d.auftraege.length ? `<div class="tw"><table class="dt mon-tabelle">
+      <thead><tr><th>${t('monitor.col.auftrag')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeit')}</th><th>${t('monitor.col.hinweis')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
+      <tbody>${d.auftraege.slice(0, 40).map(zeile).join('')}</tbody></table></div>
+      ${mehr > 0 ? `<p class="mon-leise">${t('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}`
+      : `<p class="mon-leise">${t('monitor.auftraege.leer')}</p>`}`;
 }
 
 async function auftragAbbrechen(id) {

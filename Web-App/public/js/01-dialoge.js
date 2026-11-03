@@ -12,7 +12,7 @@
 const FOKUSSIERBAR = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
 /** Offen heisst: Klasse `open`, oder ein Inline-`display` ausser none (confirm, PDF). */
-function istOffen(el) {
+export function istOffen(el) {
   return el.style.display ? el.style.display !== 'none' : el.classList.contains('open');
 }
 
@@ -56,11 +56,16 @@ function fokussiereFlaeche(dialog) {
 
 const _vorher = new WeakMap();
 const _warOffen = new WeakMap();
+const _hoerer = [];
+
+/** Rückruf für jedes Öffnen und Schliessen (der Router führt damit den Verlauf). */
+export function beiDialogWechsel(fn) { _hoerer.push(fn); }
 
 function zustandGeaendert(dialog) {
   const offen = istOffen(dialog);
   if (offen === _warOffen.get(dialog)) return;
   _warOffen.set(dialog, offen);
+  for (const h of _hoerer) h(dialog, offen);
   if (offen) {
     const aktiv = document.activeElement;
     if (aktiv && aktiv !== document.body && !dialog.contains(aktiv)) _vorher.set(dialog, aktiv);

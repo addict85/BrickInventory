@@ -4,7 +4,7 @@ import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { fmtDatum, ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache, leseBetrag, betragFuerFeld } from './01-core.js';
 import { initStorageSelects } from './02-gallery.js';
-import { PARTS_ICON_SVG, _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, reimportParts, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
+import { _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
 import { diagrammLeer, loadFinance } from './04-finance.js';
 import { scopeQuery } from './14-scope.js';
 import { loadApiLimits, loadCacheTtl, loadSettings } from './05-settings.js';
@@ -503,14 +503,19 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
   const chart = data?.chart;
   const axis  = chart?.x || [];
   // Vor firstRealIndex stehen aufgefüllte Nullen; gezeichnet ergäben sie einen Kurssturz.
+  // Der Kaufpreis am Kauftag ist kein Marktpreis: Er steht als Punkt und
+  // Bezugslinie da, nicht als Anfang der Kurve (UI-Prüfung 6, M4).
+  const kaufTage = (k) => new Set(((k === 'U' ? data?.history_used : data?.history_new) || [])
+    .filter(p => p?.is_purchase_price).map(p => String(p.recorded_at)));
   const series = (chart?.values || [])
-    .map(sd => ({
+    .map(sd => { const tage = kaufTage(sd.name); return {
       key: sd.name,
       name: NAMES[sd.name] || sd.name,
       color: COLORS[sd.name] || 'var(--mut)',
-      pts: (sd.values || []).slice(sd.firstRealIndex ?? 0).filter(pt => pt.y > 0),
+      pts: (sd.values || []).slice(sd.firstRealIndex ?? 0).filter(pt => pt.y > 0 && !tage.has(String(pt.x))),
       kauf: Number(data?.by_condition?.[sd.name]?.purchase_price) || 0,
-    }))
+      kaufTag: [...tage][0] || null,
+    }; })
     .filter(sd => sd.pts.length > 0);
 
   if (!series.length || axis.length < 2) {
@@ -551,6 +556,9 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
   const kaufLinien = kaeufe.map(sd => bezugsLinie(sd.kauf, yOf, PAD.l, W - PAD.r,
     `${tRaw('detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, CURRENCY)}`, sd.color)).join('');
 
+  const kaufPunkte = kaeufe.filter(sd => sd.kaufTag).map(sd =>
+    `<circle cx="${xOf(sd.kaufTag).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="4.5" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="kaufpunkt"><title>${esc(tRaw('detail.purchase_price'))} ${esc(fmtN(sd.kauf, CURRENCY))}</title></circle>`).join('');
+
   const fmtDay = d => fmtDatum(new Date(toTime(d)));
   const xTicks = zeitTeilung(toTime(first), toTime(last), Math.floor(iw / 80)).map(s => {
     const x = PAD.l + ((s.t - toTime(first)) / span) * iw;
@@ -577,6 +585,7 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
     ${yAchse(teilung, min, yOf, PAD.l, W - PAD.r, PAD.t, unten, CURRENCY)}
     ${parts}
     ${kaufLinien}
+    ${kaufPunkte}
     ${xTicks}
     ${legend}
     ${fk.svg}
@@ -756,7 +765,7 @@ export function alarmBlock(sn, praefix = 'm') {
         <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
         <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
       </select>
-      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" placeholder="—" aria-label="${esc(tRaw('detail.alert_price'))}"
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" placeholder="${esc(tRaw('detail.alert_preis_ph'))}" aria-label="${esc(tRaw('detail.alert_price'))}"
              data-input="alarmGetippt" data-arg="${escJs(sn)}"
              data-change="speichereAlarm" />
       <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
@@ -1139,6 +1148,7 @@ export async function openModal(sn){
   const bild = G('m-img'); bild.src = '/assets/set-placeholder.svg';
   G('m-det').innerHTML = skelettZeilen(4, t('common.loading'));
   G('m-instr').innerHTML = '';
+  G('set-modal').dataset.nummer = sn;
   G('set-modal').classList.add('open');
   const [d, ad] = await Promise.all([
     api('GET',`/v1/sets/${sn}`),
@@ -1167,16 +1177,16 @@ export async function openModal(sn){
   const priceRow = '<div id="m-market-rows"></div>';
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
-      <button class="btn bs btn-sm" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" aria-label="${esc(tRaw('detail.qty'))}" data-stil="width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="autosaveSet" />
-      <button class="btn bs btn-sm" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
+      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}">−</button>
+      <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-feld menge-feld" aria-label="${esc(tRaw('detail.qty'))}" data-change="autosaveSet" />
+      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}">+</button>
     `, { wertStil: 'display:flex;align-items:center;gap:6px' });
 
   // Acquisition summary: compact read-only rows + button to open full editor
   const acqs = ad?.acquisitions || [];
   const acqRows = detailZeile(t('detail.purchase_price'), `
       ${renderAcquisitionSummary(acqs, sn)}
-      <button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${escJs(sn)}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
+      <button class="btn bs btn-sm detail-knopf" data-click="openAcqModal" data-arg="${escJs(sn)}">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
     `, { zeilenStil: 'align-items:flex-start',
          wertId: 'm-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
@@ -1185,7 +1195,7 @@ export async function openModal(sn){
     ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
     ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
     ${qtyRow}
-    ${detailZeile(t('detail.pieces'), `${curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—'} <button type="button" class="btn bs btn-sm teile-neu" data-click="reimportParts" data-arg="${escJs(sn)}">${PARTS_ICON_SVG}<span>${t('detail.reimport_parts')}</span></button>`)}
+    ${detailZeile(t('detail.pieces'), curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—')}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
     ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',

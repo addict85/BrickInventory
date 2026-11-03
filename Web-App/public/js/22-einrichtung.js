@@ -24,6 +24,7 @@ function zeige() {
   modal.querySelectorAll('.ew-schritt').forEach(el =>
     el.classList.toggle('aktiv', el.dataset.schritt === _schritte[_jetzt]));
   G('ew-schritte').textContent = tRaw('setup.step', { n: _jetzt + 1, von: _schritte.length });
+  G('ew-spaeter').hidden = _jetzt === _schritte.length - 1;
   G('ew-zurueck').style.display = _jetzt > 0 ? '' : 'none';
   G('ew-weiter').textContent = _jetzt === _schritte.length - 1 ? tRaw('setup.finish') : tRaw('setup.next');
 }
@@ -36,7 +37,7 @@ function setzeStand(quelle, ok) {
 export async function pruefeEinrichtung() {
   const d = await api('GET', '/v1/settings/einrichtung');
   if (!d?.success || !d.offen) return;
-  _schritte = [...(d.passwort_aendern ? ['passwort'] : []), 'quellen', 'erstes-set'];
+  _schritte = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'erstes-set'];
   _jetzt = 0;
   for (const [q, ok] of Object.entries(d.quellen || {})) setzeStand(q, ok);
   zeige();

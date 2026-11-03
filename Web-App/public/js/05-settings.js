@@ -1,10 +1,11 @@
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
-import { loadGallery, loadStats } from './02-gallery.js';
+import { feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
+import { allSets, loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
+import { meldeAbschnitt } from './24-router.js';
 
 // ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -135,9 +136,12 @@ export async function loadRateLimitStats(){
   const d = await api('GET','/v1/admin/cache-stats');
   if(!d.success || !d.rate_limits) return;
   const fmt = (rl) => rl ? `${rl.count.toLocaleString(locale())} / ${rl.limit.toLocaleString(locale())}` : '—';
-  if(G('rl-bricklink'))   G('rl-bricklink').textContent   = fmt(d.rate_limits.bricklink);
-  if(G('rl-rebrickable')) G('rl-rebrickable').textContent = fmt(d.rate_limits.rebrickable);
-  if(G('rl-brickset'))    G('rl-brickset').textContent    = fmt(d.rate_limits.brickset);
+  for (const dienst of ['bricklink', 'rebrickable', 'brickset']) {
+    const rl = d.rate_limits[dienst];
+    if (G('rl-' + dienst)) G('rl-' + dienst).textContent = fmt(rl);
+    const balken = G('rl-' + dienst + '-balken');
+    if (balken) balken.style.width = rl?.limit ? Math.min(100, 100 * rl.count / rl.limit) + '%' : '0';
+  }
 }
 export async function loadCacheStats(){
   const d = await api('GET','/v1/admin/cache-stats');
@@ -424,45 +428,43 @@ async function setzeEigenesDesign() {
   toast(tRaw('settings.theme_saved'), 'success');
 }
 
+// Darstellung wirkt sofort: Währung und Standard-Zustand speichern beim Wählen.
+async function speichereWaehrung() {
+  const wert = G('s-cur').value;
+  const d = await api('POST', '/v1/settings', { currency: wert });
+  if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
+  set_CURRENCY(wert);
+  if (_settingsCache) _settingsCache.currency = wert;
+  await loadHousehold().catch(() => {});
+  loadStats(); if (document.getElementById('tab-gallery')?.classList.contains('active')) loadGallery();
+  toast(tRaw('konto.waehrung_gespeichert', { w: wert }), 'success');
+}
+
+async function speichereZustand() {
+  const condVal = G('s-default-condition')?.value || 'N';
+  const d = await api('POST', '/v1/settings/user/default-condition', { condition: condVal }).catch(() => null);
+  if (!d?.success) { toast(d?.error || t('settings.error'), 'error'); return; }
+  initDefaultCondition();
+  toast(tRaw('settings.saved'), 'success');
+}
+
+/** Eine neue E-Mail-Adresse verlangt das aktuelle Passwort; das Feld steht erst dann da. */
+function emailGetippt() {
+  const neu = G('prof-email').value.trim().toLowerCase() !== (G('prof-email').dataset.bisher || '').toLowerCase();
+  const zeile = G('prof-pw-zeile'); if (zeile) zeile.hidden = !neu;
+}
+
 G('btn-sav-prof').onclick = async () => {
   const first_name = G('prof-first').value.trim();
   const last_name  = G('prof-last').value.trim();
   const username   = G('prof-user').value.trim();
   const email      = G('prof-email').value.trim();
-  const pwC = G('pw-c').value, pwN = G('pw-n').value, pwR = G('pw-r').value;
-  // Eine neue E-Mail-Adresse verlangt das aktuelle Passwort (Server).
+  const pwC = G('prof-pw')?.value || '';
   const emailChanged = email.toLowerCase() !== (G('prof-email').dataset.bisher || '').toLowerCase();
-  const wantsPwChange = !!(pwN || pwR || (pwC && !emailChanged));
-
-  // Erst ALLES validieren, dann speichern — sonst würde bei einem Passwort-
-  // Fehler das Profil trotzdem schon geändert (halber Speichervorgang).
   if (!username) { toast(tRaw('profile.username_empty'), 'error'); return; }
-  if (emailChanged && !pwC) { toast(tRaw('profile.email_needs_password'), 'error'); G('pw-c').focus(); return; }
-  if (wantsPwChange) {
-    if (!pwC || !pwN) { toast(tRaw('settings.password.fill_all'), 'error'); return; }
-    if (pwN !== pwR)  { toast(tRaw('settings.password.mismatch'), 'error'); return; }
-  }
-
+  if (emailChanged && !pwC) { emailGetippt(); toast(tRaw('profile.email_needs_password'), 'error'); G('prof-pw')?.focus(); return; }
   const btn = G('btn-sav-prof'); btn.disabled = true;
   try {
-    // Währung (Sprache speichert setLang() bereits beim Umschalten)
-    const dCur = await api('POST', '/v1/settings', { currency: G('s-cur').value });
-    if (!dCur.success) { toast(dCur.error || t('settings.error'), 'error'); return; }
-    set_CURRENCY(G('s-cur').value);
-    // Die Haushaltskarte nennt die Waehrung im Klartext
-    // („… verknuepft. Waehrung: CHF") und wurde nach dem Speichern nie neu
-    // gezeichnet — sie zeigte den alten Wert bis zum naechsten Seitenaufruf.
-    // Marco hat das gemeldet. Dieselbe Ueberlegung wie beim Standard-Zustand
-    // zwei Zeilen tiefer: sofort umstellen, ohne Reload.
-    await loadHousehold().catch(() => {});
-
-    // Benutzerspezifischer Standard-Zustand (immer N oder U, nie leer)
-    const condVal = G('s-default-condition')?.value || 'N';
-    await api('POST', '/v1/settings/user/default-condition', { condition: condVal }).catch(()=>{});
-    // Erfassungsformulare sofort auf den neuen Default umstellen (ohne Reload)
-    if (typeof initDefaultCondition === 'function') initDefaultCondition();
-
-    // Profil
     const d = await mitZweitemFaktor(z => api('PUT', '/v1/auth/profile', { username, email, first_name, last_name,
                                                       ...(emailChanged ? { password_current: pwC, ...z } : {}) }));
     if (!d) return;
@@ -470,38 +472,32 @@ G('btn-sav-prof').onclick = async () => {
     if (d.emailChanged) {
       const hint = G('prof-email-hint');
       if (hint) hint.textContent = tRaw('profile.mail_sent_hint');
-      if (!wantsPwChange) G('pw-c').value = '';
     }
+    if (G('prof-pw')) G('prof-pw').value = '';
     await loadProfile();
-    // Der Namenszug in der Kopfzeile wird sonst nur EINMAL gesetzt (showApp,
-    // 01-core.js) und truege bis zum naechsten Neuladen den alten Namen.
-    // Das Element heisst `ubadge`; hier stand `uname`, das es im HTML nicht
-    // gibt — die Zeile lief seither ins Leere.
-    // Ueber zeigeBenutzernamen() und nicht von Hand: Seit dem 17.10. traegt
-    // der Namenszug den Verwalter-Zusatz, und eine zweite Fassung dieser
-    // Regel hier wuerde ihn beim Speichern des Profils wieder abschneiden.
+    emailGetippt();
+    // Der Namenszug in der Kopfzeile wird sonst nur beim Start gesetzt.
     if (ME) { ME.username = username; zeigeBenutzernamen(); }
-
-    // Passwort (optional)
-    if (wantsPwChange) {
-      // Vor dem Absenden pruefen — die App tut das in ihrer Oberflaeche
-      // laengst (SettingsScreen sperrt den Knopf), die Webapp lief bis
-      // hierher in den Serverfehler.
-      if (passwortRegelText(pwN)) { toast(passwortRegelText(pwN), 'error'); return; }
-      const dPw = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password',
-        { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked, ...z }));
-      if (!dPw) return;
-      if (!dPw.success) {
-        // Profil & Währung sind gespeichert, nur das Passwort schlug fehl —
-        // das dem Nutzer explizit so sagen statt pauschal "Fehler".
-        toast(tRaw('settings.password.failed_rest_saved', { error: dPw.error || t('settings.error') }), 'error');
-        return;
-      }
-      G('pw-c').value = G('pw-n').value = G('pw-r').value = '';
-      if (G('pw-pk')) G('pw-pk').checked = false;
-    }
-
     toast(d.emailChanged ? t('profile.saved_mail') : t('settings.saved'), 'success');
+  } finally {
+    btn.disabled = false;
+  }
+};
+
+G('btn-sav-pw').onclick = async () => {
+  const pwC = G('pw-c').value, pwN = G('pw-n').value, pwR = G('pw-r').value;
+  if (!pwC || !pwN) { toast(tRaw('settings.password.fill_all'), 'error'); return; }
+  if (pwN !== pwR)  { toast(tRaw('settings.password.mismatch'), 'error'); return; }
+  if (passwortRegelText(pwN)) { toast(passwortRegelText(pwN), 'error'); return; }
+  const btn = G('btn-sav-pw'); btn.disabled = true;
+  try {
+    const dPw = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password',
+      { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked, ...z }));
+    if (!dPw) return;
+    if (!dPw.success) { toast(dPw.error || t('settings.error'), 'error'); return; }
+    G('pw-c').value = G('pw-n').value = G('pw-r').value = '';
+    if (G('pw-pk')) G('pw-pk').checked = false;
+    toast(tRaw('konto.passwort_geaendert'), 'success');
   } finally {
     btn.disabled = false;
   }
@@ -846,9 +842,26 @@ async function delUser(uid,name){ const admin_password = await bestaetigeMitPass
  * ist: „unter 30" heisst etwas anderes, wenn das Set bei 28 steht, als wenn es
  * bei 300 steht.
  */
+/** Ein Preisalarm direkt in der Übersicht, ohne Umweg über das Set. */
+async function legeAlarmAn() {
+  const roh = String(G('alarm-neu-set')?.value || '').trim();
+  const sn = /^\d+$/.test(roh) ? roh + '-1' : roh;
+  const schwelle = leseBetrag(G('alarm-neu-preis')?.value);
+  if (!sn) { feldFehler('alarm-neu-set', tRaw('alerts.new_set_fehlt')); return; }
+  if (!(Number(schwelle) > 0)) { feldFehler('alarm-neu-preis', tRaw('alerts.new_preis_fehlt')); return; }
+  const d = await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`,
+    { richtung: G('alarm-neu-richtung').value, schwelle, condition: G('alarm-neu-zustand').value });
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  G('alarm-neu-set').value = ''; G('alarm-neu-preis').value = '';
+  toast(tRaw('alerts.new_ok', { set: sn }), 'success');
+  await ladeAlarmUebersicht();
+}
+
 export async function ladeAlarmUebersicht() {
   const el = G('alerts-list');
   if (!el) return;
+  const vorschlag = G('alarm-neu-sets');
+  if (vorschlag) vorschlag.innerHTML = allSets.map(x => `<option value="${esc(x.set_number)}">${esc(x.name || '')}</option>`).join('');
   const d = await api('GET', '/v1/alerts');
   if (!d?.success) return;
   const alarme = d.alerts || [];
@@ -864,7 +877,7 @@ export async function ladeAlarmUebersicht() {
     const schluessel = `${a.set_number}|${a.condition}`;
     const stand = a.zuletzt_preis == null
       ? ''
-      : t('alerts.last', { preis: `${esc(a.currency_code)} ${a.zuletzt_preis.toFixed(2)}` });
+      : t('alerts.last', { preis: fmtN(a.zuletzt_preis, a.currency_code) });
     // „scharf" gegen „unscharf" — und der Unterschied darf NICHT in der Farbe
     // liegen. Marco ist rot-gruen-schwach; gruen gegen grau ist fuer ihn
     // zweimal dasselbe, und damit stand die Aussage bisher nirgends. Sie
@@ -990,7 +1003,7 @@ export async function ladeLagerortVerwaltung() {
   // Zelle und ergibt zusammen dieselbe durchgehende Linie.
   el.innerHTML = `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">` +
                  `${esc(tRaw('storage.default_hint'))}</div>` +
-                 `<div data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
+                 `<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">` +
                  orte.map(o => {
     const n = belegung.get(o.name);
     // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts):
@@ -999,18 +1012,17 @@ export async function ladeLagerortVerwaltung() {
     const wie = n ? t('storage.belegt', { sets: n.sets, teile: n.teile, figuren: n.figuren ?? 0 })
                   : esc(tRaw('storage.leer'));
     return `<div data-stil="display:contents">
-      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}" aria-label="${esc(tRaw('detail.storage'))}"
-             data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1"
-             data-stil="width:100%;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" /></span>
-      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end">${wie}</span>
-      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs btn-sm" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
-              data-arg2="${o.id === vorgabeId ? 1 : 0}" data-stil="padding:2px 8px"
+      <span class="lager-feld" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><input type="text" maxlength="60" value="${esc(o.name)}" aria-label="${esc(tRaw('detail.storage'))}"
+             data-change="benenneLagerortUm" data-arg="${o.id}" data-val="1" class="lager-eingabe" /></span>
+      <span class="lager-belegt" data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;font-size:var(--fs-1);color:var(--mut);white-space:nowrap;justify-content:flex-end"><span class="lager-marke${n ? '' : ' lager-frei'}">${wie}</span></span>
+      <span data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="schalteLagerortVorgabe" data-arg="${o.id}"
+              data-arg2="${o.id === vorgabeId ? 1 : 0}"
               title="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-label="${esc(tRaw(o.id === vorgabeId ? 'storage.default_is' : 'storage.default_set'))}"
               aria-pressed="${o.id === vorgabeId ? 'true' : 'false'}">${ico(o.id === vorgabeId ? 'stern-voll' : 'merkliste')}</button></span>
-      <span data-stil="padding:4px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs btn-sm" data-click="loescheLagerort"${echt()} data-arg="${o.id}"
+      <span data-stil="padding:6px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center"><button class="btn bs lager-sinnbild" data-click="loescheLagerort"${echt()} data-arg="${o.id}"
               aria-label="${esc(tRaw('common.delete'))}: ${esc(o.name)}" title="${esc(tRaw('common.delete'))}"
-              data-arg2="${esc(o.name)}" data-stil="padding:2px 8px">${ico('loeschen')}</button></span>
+              data-arg2="${esc(o.name)}">${ico('loeschen')}</button></span>
     </div>`;
   }).join('') + `</div>`;
 }
@@ -1161,10 +1173,15 @@ export function einstAbschnitt(id, ev){
     else l.removeAttribute('aria-current');
   }
   try { localStorage.setItem(EINST_KEY, ziel.id); } catch (_) { /* nur Komfort */ }
+  if (ev) meldeAbschnitt();
 }
 einstAbschnitt((() => { try { return localStorage.getItem(EINST_KEY); } catch (_) { return null; } })());
 
 registerActions({
+  legeAlarmAn,
+  speichereWaehrung,
+  speichereZustand,
+  emailGetippt,
   setzeEigenesDesign,
   einstAbschnitt,
   geheimUmschalten,

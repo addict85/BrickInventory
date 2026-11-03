@@ -40,8 +40,9 @@ test('Gutscheine: Zeile und Aktionen', async () => {
     assert.match(zeile.querySelector('.voucher-nopdf').textContent.trim(), /^kein PDF$/);
     const loeschen = zeile.querySelector('[data-click="gutscheinLoeschen"]');
     const bearbeiten = zeile.querySelector('[data-click="gutscheinBearbeiten"]');
-    assert.equal(loeschen.className, bearbeiten.className.replace('v-btn', 'v-btn v-btn-gefahr'));
-    assert.ok(loeschen.getAttribute('aria-label') && bearbeiten.getAttribute('aria-label'));
+    // Beide beschriftet (UI-Prüfung 6, M7), Löschen als Gefahr markiert.
+    assert.equal(loeschen.className, bearbeiten.className + ' v-btn-gefahr');
+    assert.deepEqual([bearbeiten.textContent.trim(), loeschen.textContent.trim()], ['Bearbeiten', 'Löschen']);
     for (const e of o.d.querySelectorAll('[data-nur-mit-gutscheinen]')) assert.equal(zu(o.w, e), false);
   } finally { o.w.close(); }
 });

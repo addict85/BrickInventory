@@ -193,6 +193,8 @@
   .btn, .btn-sm, .vb, .v-btn, .period-btn, .ubadge-knopf, .sammlung-wahl button, .umenu-item,
   details > summary, .import-menue > summary, #tab-profil .btn, .acq-loeschen { min-height: 44px; }
   .vb, .v-btn, .btn-sm, .ubadge-knopf, .acq-loeschen { min-width: 44px; }
+  .lager-sinnbild { min-width: 44px; }
+  .mon-plan, .mon-plan input { min-height: 44px; }
   /* Häkchen: 22 px gezeichnet, aber 44 px Tippfläche am Kästchen selbst — auch
      ohne Beschriftung. Das Kästchen malen zwei Hintergrundschichten in die Mitte;
      der negative Rand hält den Platz im Layout bei 22 px.
@@ -269,6 +271,12 @@
     text-align: right;
   }
   .dt tr td:last-child { border-bottom: none; }
+  /* Wird es eng (grosse Schrift), steht der Wert unter seiner Beschriftung. */
+  .dt td { flex-wrap: wrap; row-gap: .25rem; }
+  .dt td > * { max-width: 100%; }
+  .mon-tabelle td { justify-content: flex-start; text-align: left; column-gap: .75rem; }
+  .mon-tabelle td::before { flex-basis: 100%; }
+  .ptitle { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
 
   .dt td::before {
     content: attr(data-label);
@@ -365,7 +373,7 @@
   /* ─ Toasts über die volle Breite ────────────────────────────────────── */
   /* Oben statt über der Leiste: Unten liegen die Felder der Dialoge (Blätter). */
   #toasts { left: .6rem; right: .6rem; top: calc(56px + env(safe-area-inset-top)); bottom: auto; }
-  .toast  { width: auto; }
+  .toast  { width: auto; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 
   /* ─ Login-, Registrierungs- und Startup-Screen ──────────────────────── */
   #login-screen, #startup-screen { padding: 1rem .8rem; }
@@ -384,18 +392,36 @@
 /* Fünf Beschriftungen brauchen je rund 3,9 em; em misst hier die Schrift-
    grösse des Browsers. Darunter zwei Reihen zu drei Zielen mit etwas kleinerer
    Schrift: Die Namen bleiben lesbar, statt nur Symbole zu zeigen. */
-@media (max-width: 19.5em) {
-  nav:not(.einst-nav) { display: grid; grid-template-columns: repeat(3, auto); justify-content: space-around; }
-  .ntab { padding: 4px 2px; min-height: 44px; gap: 1px; }
+@media (max-width: 640px) {
+  /* Die Leiste misst sich selbst (Container-Abfrage in em ihrer Schrift):
+     So greift die Zweireihigkeit bei grosser Browserschrift UND bei
+     vergrösserter Grundschrift der Seite, die eine Media-Abfrage nicht sieht. */
+  nav:not(.einst-nav) { container: leiste / inline-size; flex-wrap: wrap; }
+}
+@container leiste (max-width: 20.5em) {
+  .ntab { flex: 0 0 33.333%; padding: 4px 2px; min-height: 44px; gap: 1px; }
   .ntab .ico { width: .8rem; height: .8rem; }
-  .ntab .tab-label { font-size: var(--fs-0); line-height: 1.15; white-space: normal; overflow: visible;
+  /* Etwas kleiner als die übrige Schrift: „Sammlung“ passt so ganz in ein Drittel. */
+  .ntab .tab-label { font-size: calc(var(--fs-0) * .8); line-height: 1.15; white-space: normal; overflow: visible;
                      text-overflow: clip; overflow-wrap: anywhere; text-align: center; }
 }
 
 
 /* Sehr schmal (320 px bei 200 %): Felder, Auswahllisten und lange Zeilen geben nach,
-   statt über den Rand zu ragen. */
-@media (max-width: 19.5em) {
+   statt über den Rand zu ragen. Gemessen am Inhalt selbst, wie bei der Leiste. */
+@media (max-width: 640px) { main:not(#login-screen) { container: haupt / inline-size; } }
+@container haupt (max-width: 20.5em) {
+  .merk-erfassen > .fg { flex: 1 1 100%; max-width: none !important; }
+  .merk-erfassen > .btn { flex: 1 1 100%; }
+  .zeitraum-wahl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  main :is(.filterleiste, .filterzeile) > :is(input.si, input.suchfeld) { flex: 1 1 100%; width: 100% !important; }
+  /* Lagerorte: das Feld über die ganze Zeile, Belegung und Knöpfe darunter. */
+  #storage-list .lager-raster { grid-template-columns: minmax(0, 1fr) max-content max-content !important; }
+  #storage-list .lager-feld { grid-column: 1 / -1; border-bottom: 0 !important; padding-bottom: 0 !important; }
+  #storage-list .lager-belegt { justify-content: flex-start !important; white-space: normal !important; }
+  .erfassen-leiste .import-menue { flex: 1 1 100%; min-width: 0; }
+  .erfassen-leiste .import-menue > summary { width: 100%; white-space: normal; }
+  main :is(p, li, h1, h2, h3, label, .ibox, .stit, .hinweis-absatz) { hyphens: auto; }
   main select, main input:not([type=checkbox]):not([type=radio]) { max-width: 100%; min-width: 0; }
   main .fg, main :is(.zeile, .sform, .ssec) > *, .diagramm-werte > *, .apk-btn, .apk-btn-txt { min-width: 0; max-width: 100%; }
   #tab-lagerorte .sgrid2 { grid-template-columns: minmax(0, 1fr) !important; }
@@ -423,6 +449,8 @@
   .ntab       { font-size: var(--fs-0); }
   /* Bei 320 px bleiben 64 px je Ziel: „Sammlung“ passt nur ohne Rand und etwas enger. */
   .ntab       { padding-left: 0; padding-right: 0; letter-spacing: -.02em; word-spacing: 0; }
+  [data-theme="brick"] nav { padding-left: 2px; padding-right: 2px; column-gap: 0; }
+  [data-theme="brick"] .ntab { padding-left: 0; padding-right: 0; }
 }
 
 
@@ -446,7 +474,7 @@
   /* Die Pills des Stein-Designs werden unten zur Leiste wie in den anderen. */
   [data-theme="brick"] nav {
     position: fixed; top: auto; bottom: 0; left: 0; right: 0; margin: 0;
-    flex-wrap: nowrap; gap: 2px; padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
+    gap: 2px 0; padding: 4px 4px calc(4px + env(safe-area-inset-bottom));
     background: var(--sur); border-top: 1px solid var(--bdr);
     box-shadow: 0 -2px 10px rgba(15, 23, 42, .06);
   }
@@ -467,4 +495,16 @@
 
   /* Die Tabellen-Karten bekommen im Stein-Design denselben Rahmen wie .sc */
   [data-theme="brick"] .dt tr { border: none; box-shadow: var(--sh0); }
+}
+
+/* Schmales Telefon bei normaler Schrift (M6): die Sammlung als Liste mit Bild
+   links. Eine Kachel über die volle Breite war 460 px hoch. Bei grosser Schrift
+   (unter 15 em) bleibt die Kachel, sonst bliebe neben dem Bild kein Platz. */
+@container haupt (min-width: 15em) and (max-width: 22em) {
+  #gallery .sgrid { grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+  #gallery .sc { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); align-items: stretch; }
+  #gallery .sc > .sci { aspect-ratio: auto; height: 100%; min-height: 5.5rem; border-bottom: 0; border-right: 1px solid var(--bdr); }
+  #gallery .sc > .sci img { padding: 6px; }
+  #gallery .sc > .scb { padding: 8px 10px; min-width: 0; }
+  #gallery .sc { padding: 6px; }
 }

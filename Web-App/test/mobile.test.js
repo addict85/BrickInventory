@@ -129,10 +129,15 @@ test('mobile.css deckt beide Designs ab und steht ganz in Media Queries', () => 
   const outside = css
     .replace(/\/\*[\s\S]*?\*\//g, '')          // Kommentare weg
     .replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '')  // Media-Blöcke weg
+    // Container-Abfragen greifen nur, wo ein Container besteht — und den
+    // legt mobile.css nur innerhalb von @media an (geprüft darunter).
+    .replace(/@container[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '')
     .trim();
   assert.equal(outside, '',
     `Regeln ausserhalb von @media würden den Desktop treffen:\n${outside.slice(0, 300)}`);
 
+  const ohneMedia = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+  assert.doesNotMatch(ohneMedia, /container\s*:/, 'Ein Container ausserhalb von @media verändert auch den Desktop');
   assert.match(css, /\[data-theme="brick"\]/,
     'Das Stein-Design braucht eigene Regeln für Noppen und Innenabstände');
   assert.match(css, /#login-screen/,

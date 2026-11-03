@@ -365,7 +365,7 @@
                  inzwischen ab, denn dieser Text hier enthielt den Tag
                  ausgeschrieben und hat GENAU DAS ausgeloest.) -->
             <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="settings"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg><span data-i18n="nav.settings">Einstellungen</span></button>
-            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hintergrundarbeiten</span></button>
+            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hintergrund­arbeiten</span></button>
             <hr class="umenu-trenner">
             <button class="umenu-item umenu-abmelden" role="menuitem" tabindex="-1" id="btn-logout"><svg class="ico" aria-hidden="true"><use href="#i-abmelden"/></svg><span data-i18n="settings.logout">Abmelden</span></button>
           </div>
@@ -385,14 +385,14 @@
     <button type="button" class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> <span class="tab-label">Katalog</span></button>
     <!-- Verwalterseiten: ohne Platz in der Leiste, geöffnet über das Benutzermenü. -->
     <button type="button" class="ntab ntab-unter" id="ntab-settings" data-tab="settings" data-i18n-tab="nav.settings" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg> <span class="tab-label">Einstellungen</span></button>
-    <button type="button" class="ntab ntab-unter" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg> <span class="tab-label">Hintergrundarbeiten</span></button>
+    <button type="button" class="ntab ntab-unter" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg> <span class="tab-label">Hintergrund­arbeiten</span></button>
   </nav>
 
   <div class="offline-band" id="offline-band" role="status" hidden></div>
   <div class="hinweis-band" id="rb-hinweis" role="region" aria-labelledby="rb-hinweis-text" hidden>
     <svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>
-    <span id="rb-hinweis-text" data-i18n="rb_key.banner">Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.</span>
-    <button type="button" class="btn bp btn-sm" data-click="rbHinweisOeffnen" data-i18n="rb_key.banner_link">Schlüssel eintragen</button>
+    <span id="rb-hinweis-text"><span class="hinweis-lang" data-i18n="rb_key.banner">Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.</span><span class="hinweis-kurz" data-i18n="rb_key.banner_short">Rebrickable-Schlüssel fehlt.</span></span>
+    <button type="button" class="btn bp btn-sm" data-click="rbHinweisOeffnen"><span class="hinweis-lang" data-i18n="rb_key.banner_link">Schlüssel eintragen</span><span class="hinweis-kurz" data-i18n="rb_key.banner_link_short">Eintragen</span></button>
     <button type="button" class="btn bs btn-sm hinweis-zu" data-click="rbHinweisWeg" aria-label="Hinweis ausblenden" data-i18n="rb_key.banner_close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
   </div>
   <main id="inhalt" tabindex="-1">
@@ -433,7 +433,7 @@
           <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="liste">Filter</button>
           <input type="text" class="si suchfeld" id="gs" placeholder="Sets suchen…" data-i18n="gallery.search" data-i18n-attr="placeholder" / aria-label="Sets suchen">
           <select class="w-auto" id="gtheme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label" data-change="renderGallery">
-            <option value="" data-i18n="gallery.filter.all">Alle</option>
+            <option value="" data-i18n="gallery.filter.all">Alle Themen</option>
           </select>
           <select class="w-auto" id="gsort" aria-label="Sortierung" data-i18n="gallery.sort_label" data-i18n-attr="aria-label">
             <option value="added_desc" data-i18n="gallery.sort.added">Zuletzt hinzugefügt</option>
@@ -742,7 +742,6 @@
           <div class="bereich-titel ohne-abstand-u" data-i18n="finance.chart.label">Wertentwicklung Portfolio</div>
           <div class="diagramm-werte">
             <div class="text-klein"><span data-i18n="finance.market_label">Marktwert</span>: <span class="wert-primaer" id="portfolio-current">—</span></div>
-            <span id="portfolio-pnl"></span>
           </div>
           <span id="portfolio-purchase" data-stil="display:none"></span>
         </div>
@@ -754,6 +753,9 @@
           <button class="period-btn" aria-pressed="false" data-period="month" data-click="setChartPeriod" data-arg="month" data-i18n="finance.period.month">Monat</button>
           <button class="period-btn" aria-pressed="false" data-period="year"  data-click="setChartPeriod" data-arg="year" data-i18n="finance.period.year">Jahr</button>
           <button class="period-btn active" aria-pressed="true" data-period="max"   data-click="setChartPeriod" data-arg="max" data-i18n="finance.period.max">Max</button>
+        </div>
+        <div class="zeitraum-wert" role="status">
+          <span id="portfolio-pnl"></span>
 
         </div>
       </div>
@@ -884,13 +886,13 @@
       <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis">(Admin)</span></div>
       <div class="sgrid2" id="global-settings-grid" data-stil="display:none">
         <nav class="einst-nav full" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
-          <a class="btn bs btn-sm" href="#einst-design" data-click="einstAbschnitt" data-arg="einst-design" data-i18n="settings.general_title">Erscheinungsbild</a>
-          <a class="btn bs btn-sm" href="#einst-bl" data-click="einstAbschnitt" data-arg="einst-bl">BrickLink</a>
-          <a class="btn bs btn-sm" href="#einst-rb" data-click="einstAbschnitt" data-arg="einst-rb">Rebrickable</a>
-          <a class="btn bs btn-sm" href="#einst-bs" data-click="einstAbschnitt" data-arg="einst-bs">Brickset</a>
-          <a class="btn bs btn-sm" href="#usermgmt" data-click="einstAbschnitt" data-arg="usermgmt" data-i18n="settings.users_title">Benutzerverwaltung</a>
-          <a class="btn bs btn-sm" href="#einst-smtp" data-click="einstAbschnitt" data-arg="einst-smtp">E-Mail</a>
-          <a class="btn bs btn-sm" href="#einst-konfig" data-click="einstAbschnitt" data-arg="einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
+          <a class="einst-link" href="#einst-design" data-click="einstAbschnitt" data-arg="einst-design" data-i18n="settings.general_title">Erscheinungsbild</a>
+          <a class="einst-link" href="#einst-bl" data-click="einstAbschnitt" data-arg="einst-bl">BrickLink</a>
+          <a class="einst-link" href="#einst-rb" data-click="einstAbschnitt" data-arg="einst-rb">Rebrickable</a>
+          <a class="einst-link" href="#einst-bs" data-click="einstAbschnitt" data-arg="einst-bs">Brickset</a>
+          <a class="einst-link" href="#usermgmt" data-click="einstAbschnitt" data-arg="usermgmt" data-i18n="settings.users_title">Benutzerverwaltung</a>
+          <a class="einst-link" href="#einst-smtp" data-click="einstAbschnitt" data-arg="einst-smtp">E-Mail</a>
+          <a class="einst-link" href="#einst-konfig" data-click="einstAbschnitt" data-arg="einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
         </nav>
         <div class="ssec" id="einst-design">
           <div class="stit" data-i18n="settings.general_title" data-ico="einstellungen">Erscheinungsbild</div>
@@ -1024,91 +1026,85 @@
 
       <!-- ── KONTO (Profil) ───────────────────────────────────────────────── -->
 
-      <div class="ssec abstand-u-125" id="profile-settings-card">
-        <div class="sform">
-
-          <!-- Darstellung: Design je Konto (Server), hell/dunkel je Gerät (00-theme-boot.js) -->
-          <div class="profil-raster">
-            <div class="fg"><label for="design-wahl" data-i18n="settings.own_theme">Design</label>
-              <select id="design-wahl" data-change="setzeEigenesDesign">
-                <option value="" data-i18n="settings.own_theme_vorgabe">Vorgabe</option>
-                <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
-                <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
-                <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (immer dunkel)</option>
-                <option value="farbfaecher" data-i18n="settings.theme_farbfaecher">Farbfächer</option>
-                <option value="noppe" data-i18n="settings.theme_noppe">Noppe (poppig)</option>
-                <option value="hochglanz" data-i18n="settings.theme_hochglanz">Hochglanz</option>
-              </select>
-            </div>
-            <div class="fg"><label for="dunkel-wahl" data-i18n="settings.dark.label">Darstellung auf diesem Gerät</label>
-              <select id="dunkel-wahl" data-change="setzeDunkel">
-                <option value="system" data-i18n="settings.dark.system">Wie das System (hell/dunkel)</option>
-                <option value="server" data-i18n="settings.dark.server">Ohne Dunkelmodus</option>
-              </select>
-            </div>
-            <div class="fg"><label for="lang-select" data-i18n="settings.language">Sprache</label>
-              <select id="lang-select" data-change="setLangFromEl">
-                <option value="de" data-i18n="settings.lang.de">Deutsch</option>
-                <option value="en" data-i18n="settings.lang.en">Englisch</option>
-              </select>
-            </div>
-            <div class="fg"><label for="s-cur" data-i18n="settings.currency">Währung</label>
-              <select id="s-cur">
-                <option value="EUR" data-i18n="currency.eur">EUR – Euro</option>
-                <option value="CHF" data-i18n="currency.chf">CHF – Schweizer Franken</option>
-                <option value="USD" data-i18n="currency.usd">USD – US-Dollar</option>
-                <option value="GBP" data-i18n="currency.gbp">GBP – Britisches Pfund</option>
-                <option value="SEK" data-i18n="currency.sek">SEK – Schwedische Krone</option>
-                <option value="NOK" data-i18n="currency.nok">NOK – Norwegische Krone</option>
-                <option value="AUD" data-i18n="currency.aud">AUD – Australischer Dollar</option>
-                <option value="CAD" data-i18n="currency.cad">CAD – Kanadischer Dollar</option>
-              </select>
-            </div>
-            <div class="fg"><label for="s-default-condition" data-i18n="settings.default_condition">Standard-Zustand</label>
-              <select id="s-default-condition">
-                <option value="N" data-i18n="common.condition_new">Neuware</option>
-                <option value="U" data-i18n="common.condition_used">Gebraucht</option>
-              </select>
-            </div>
+      <section class="ssec abstand-u-125" id="profile-settings-card" aria-labelledby="konto-t-darstellung">
+        <h2 class="stit" id="konto-t-darstellung"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg> <span data-i18n="konto.darstellung">Darstellung</span></h2>
+        <p class="hinweis-absatz abstand-u-075" data-i18n="konto.darstellung_hint">Jede Änderung gilt sofort.</p>
+        <div class="profil-raster">
+          <div class="fg"><label for="design-wahl" data-i18n="settings.own_theme">Design</label>
+            <select id="design-wahl" data-change="setzeEigenesDesign" aria-describedby="design-hinweis">
+              <option value="" data-i18n="settings.own_theme_vorgabe">Vorgabe</option>
+              <option value="classic" data-i18n="settings.theme_classic">Klassisch</option>
+              <option value="brick" data-i18n="settings.theme_brick">Stein (Blau)</option>
+              <option value="werkbank" data-i18n="settings.theme_werkbank">Werkbank (immer dunkel)</option>
+              <option value="farbfaecher" data-i18n="settings.theme_farbfaecher">Farbfächer</option>
+              <option value="noppe" data-i18n="settings.theme_noppe">Noppe (poppig)</option>
+              <option value="hochglanz" data-i18n="settings.theme_hochglanz">Hochglanz</option>
+            </select>
+            <div class="text-klein" id="design-hinweis"></div>
           </div>
-          <div class="text-klein" id="design-hinweis"></div>
-
-          <!-- Profil -->
-          <!-- Ein FORM um Profil UND Passwortfelder: Ohne es meldet Chrome
-               „Password field is not contained in a form", und der
-               Passwortmanager bietet Speichern und Ausfuellen nur noch nach
-               Heuristik an. display:contents haelt das Layout unveraendert,
-               data-submit nennt den Knopf fuer die Eingabetaste. -->
-          <form class="nur-inhalt" data-submit="btn-sav-prof">
-          <div class="profil-raster">
-            <div class="fg"><label for="prof-first" data-i18n="settings.profile.firstname">Vorname</label><input type="text" id="prof-first" data-i18n="settings.profile.firstname" data-i18n-attr="placeholder" placeholder="Vorname" /></div>
-            <div class="fg"><label for="prof-last" data-i18n="settings.profile.lastname">Nachname</label><input type="text" id="prof-last" data-i18n="settings.profile.lastname" data-i18n-attr="placeholder" placeholder="Nachname" /></div>
+          <div class="fg"><label for="dunkel-wahl" data-i18n="settings.dark.label">Darstellung auf diesem Gerät</label>
+            <select id="dunkel-wahl" data-change="setzeDunkel">
+              <option value="system" data-i18n="settings.dark.system">Wie das System (hell/dunkel)</option>
+              <option value="server" data-i18n="settings.dark.server">Ohne Dunkelmodus</option>
+            </select>
           </div>
+          <div class="fg"><label for="lang-select" data-i18n="settings.language">Sprache</label>
+            <select id="lang-select" data-change="setLangFromEl">
+              <option value="de" data-i18n="settings.lang.de">Deutsch</option>
+              <option value="en" data-i18n="settings.lang.en">Englisch</option>
+            </select>
+          </div>
+          <div class="fg"><label for="s-cur" data-i18n="settings.currency">Währung</label>
+            <select id="s-cur" data-change="speichereWaehrung">
+              <option value="EUR" data-i18n="currency.eur">EUR – Euro</option>
+              <option value="CHF" data-i18n="currency.chf">CHF – Schweizer Franken</option>
+              <option value="USD" data-i18n="currency.usd">USD – US-Dollar</option>
+              <option value="GBP" data-i18n="currency.gbp">GBP – Britisches Pfund</option>
+              <option value="SEK" data-i18n="currency.sek">SEK – Schwedische Krone</option>
+              <option value="NOK" data-i18n="currency.nok">NOK – Norwegische Krone</option>
+              <option value="AUD" data-i18n="currency.aud">AUD – Australischer Dollar</option>
+              <option value="CAD" data-i18n="currency.cad">CAD – Kanadischer Dollar</option>
+            </select>
+          </div>
+          <div class="fg"><label for="s-default-condition" data-i18n="settings.default_condition">Standard-Zustand</label>
+            <select id="s-default-condition" data-change="speichereZustand">
+              <option value="N" data-i18n="common.condition_new">Neuware</option>
+              <option value="U" data-i18n="common.condition_used">Gebraucht</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="ssec abstand-u-125" aria-labelledby="konto-t-profil">
+        <h2 class="stit" id="konto-t-profil"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg> <span data-i18n="konto.profil">Profil</span></h2>
+        <form class="nur-inhalt sform" data-submit="btn-sav-prof">
           <div class="profil-raster">
-            <div class="fg"><label for="prof-user" data-i18n="users.col.username">Benutzername</label><input type="text" id="prof-user" /></div>
+            <div class="fg"><label for="prof-first" data-i18n="settings.profile.firstname">Vorname</label><input type="text" id="prof-first" autocomplete="given-name" /></div>
+            <div class="fg"><label for="prof-last" data-i18n="settings.profile.lastname">Nachname</label><input type="text" id="prof-last" autocomplete="family-name" /></div>
+            <div class="fg"><label for="prof-user" data-i18n="users.col.username">Benutzername</label><input type="text" id="prof-user" autocomplete="username" /></div>
             <div class="fg">
               <label for="prof-email">E-Mail <span id="prof-email-verified" class="email-status"></span></label>
-              <input type="email" id="prof-email" />
+              <input type="email" id="prof-email" autocomplete="email" data-input="emailGetippt" />
               <div class="text-klein abstand-o-3" id="prof-email-hint"></div>
             </div>
+            <div class="fg" id="prof-pw-zeile" hidden><label for="prof-pw" data-i18n="konto.email_passwort">Aktuelles Passwort (für die neue E-Mail-Adresse)</label><input type="password" id="prof-pw" autocomplete="current-password" /></div>
           </div>
+          <div class="konto-fuss"><button type="button" class="btn bp btn-speichern" id="btn-sav-prof" data-i18n="settings.save" data-ico="speichern">Speichern</button></div>
+        </form>
+      </section>
 
-          <!-- Passwort (optional) -->
-          <div class="trenner-oben-13">
-            <div class="etikett-titel"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></div>
-            <div class="text-klein abstand-u-075" data-i18n="settings.password.optional_hint">Nur ausfüllen, wenn du dein Passwort ändern möchtest.</div>
-            <div class="profil-raster profil-raster-3">
-              <div class="fg"><label for="pw-c" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pw-c" /></div>
-              <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" /></div>
-              <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" /></div>
-            </div>
-            <label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="pw-pk" /> <span data-i18n="settings.password.revoke_passkeys">Auch alle Passkeys entfernen (falls jemand Fremdes Zugang hatte)</span></label>
+      <section class="ssec abstand-u-125" aria-labelledby="konto-t-passwort">
+        <h2 class="stit" id="konto-t-passwort"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></h2>
+        <form class="nur-inhalt sform" data-submit="btn-sav-pw">
+          <div class="profil-raster profil-raster-3">
+            <div class="fg"><label for="pw-c" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pw-c" autocomplete="current-password" /></div>
+            <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" autocomplete="new-password" /></div>
+            <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" autocomplete="new-password" /></div>
           </div>
-
-          <button type="button" class="btn bp btn-speichern" id="btn-sav-prof" data-i18n="settings.save" data-ico="speichern">Speichern</button>
-          </form>
-        </div>
-      </div>
+          <label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="pw-pk" /> <span data-i18n="settings.password.revoke_passkeys">Auch alle Passkeys entfernen (falls jemand Fremdes Zugang hatte)</span></label>
+          <div class="konto-fuss"><button type="button" class="btn bp" id="btn-sav-pw" data-i18n="settings.password.change" data-ico="schloss">Passwort ändern</button></div>
+        </form>
+      </section>
 
 
       <!-- Zweiter Faktor (TOTP) — Inhalt zeichnet js/21-zweiter-faktor.js -->
@@ -1168,7 +1164,7 @@
                nichts tut, waere schlimmer als keines. Gelesen wird der Wert
                fuer alle, die Abfrage benutzt ihn also auch bei den uebrigen
                Konten. -->
-          <div class="admin-only" data-stil="display:none;margin-bottom:1rem">
+          <div class="admin-only voucher-land" data-stil="display:none">
             <div class="fg max-17rem">
               <label for="gutschein-land" data-i18n="vouchers.country">Ausgabeland</label>
               <select id="gutschein-land" data-change="gutscheinLandSpeichern">
@@ -1181,8 +1177,8 @@
                 <option value="en-GB" data-i18n="vouchers.country_en_gb">Grossbritannien</option>
                 <option value="en-US" data-i18n="vouchers.country_en_us">USA</option>
               </select>
-              <div class="text-klein abstand-o-3" data-i18n="vouchers.country_hint">Eine Karte gilt nur im Shop ihres Ausgabelandes. Die Einstellung gilt für alle Benutzer.</div>
             </div>
+            <p class="text-klein voucher-land-hinweis"><span data-i18n="vouchers.country_hint">Eine Karte gilt nur im Shop ihres Ausgabelandes. Die Einstellung gilt für alle Benutzer.</span> <span id="gutschein-land-waehrung"></span></p>
           </div>
 
           <div id="vouchers-list" class="voucher-list"></div>
@@ -1236,11 +1232,14 @@
                     data-i18n="vouchers.export" data-ico="datei">Alle Gutscheine als PDF exportieren</button>
           </div>
 
-          <div class="trenner-oben-13">
-            <div class="etikett-titel abstand-u-06"
-                 id="vouchers-form-title" data-i18n="vouchers.add">Gutschein hinzufügen</div>
+        </div>
+      </div>
+      <div class="ssec abstand-u-125" id="voucher-form-card">
+        <div class="sform">
+          <div>
+            <h2 class="stit" id="vouchers-form-title" data-i18n="vouchers.add">Gutschein hinzufügen</h2>
 
-            <div class="sgrid2 luecke-075">
+            <div class="sgrid2 luecke-075 voucher-felder">
               <div class="fg">
                 <label for="v-number" data-i18n="vouchers.number">Gutscheinnummer</label>
                 <input type="text" id="v-number" inputmode="numeric" autocomplete="off" />
@@ -1251,14 +1250,14 @@
               </div>
             </div>
 
-            <div class="sgrid2 luecke-075">
+            <div class="sgrid2 luecke-075 voucher-felder">
               <div class="fg">
                 <label for="v-amount" data-i18n="vouchers.amount">Betrag</label>
                 <input type="text" autocomplete="off" id="v-amount" inputmode="decimal" />
               </div>
               <div class="fg">
                 <label for="v-currency" data-i18n="settings.currency">Währung</label>
-                <select id="v-currency">
+                <select id="v-currency" aria-describedby="v-currency-hinweis" data-change="waehrungPruefen">
                   <option value="CHF">CHF</option>
                   <option value="EUR">EUR</option>
                   <option value="USD">USD</option>
@@ -1269,6 +1268,7 @@
                   <option value="CAD">CAD</option>
                   <option value="DKK">DKK</option>
                 </select>
+                <p class="text-klein voucher-abweichung-hinweis" id="v-currency-hinweis" hidden></p>
               </div>
             </div>
 
@@ -1278,7 +1278,7 @@
               Beides zusammen in einem Formular, weil es ein Vorgang ist:
               „diesen Gutschein erfassen".
             -->
-            <div class="fg">
+            <div class="fg voucher-felder">
               <span class="feld-titel" id="v-pdf-titel" data-i18n="vouchers.pdf_label">PDF des Gutscheins (optional)</span>
               <div class="zeile luecke-05 mittig umbruch">
                 <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="vouchers.pdf_choose">PDF wählen</span><input type="file" id="v-pdf" accept="application/pdf" class="datei-versteckt" aria-label="PDF des Gutscheins (optional)" data-i18n="vouchers.pdf_label" data-i18n-attr="aria-label" data-change="gutscheinDateiGewaehlt" /></label>
@@ -1316,21 +1316,28 @@
 
           <!-- Gefüllt von ladeAlarmUebersicht() -->
           <div class="schrift-3" id="alerts-list"></div>
-
-          <!-- CSV-Einlesen (Marcos Liste, Stück 2). Kein eigener
-               EXPORT-Knopf: Die Alarme liegen in demselben ZIP wie Sets,
-               Teile, Minifiguren und Merkliste (weiter unten unter „Daten
-               exportieren"). Dieselbe Entscheidung wie bei der Merkliste, und
-               aus demselben Grund — die drei einzelnen /export/csv-Routen
-               sind in diesem Baum ausdrücklich entfernt worden.
-
-               Das Label trägt KEIN for= : Es umschliesst sein Feld schon, und
-               ein for= auf ein fremdes Feld fällt in test/a11y.test.js auf. -->
-          <div class="zeile luecke-8 mittig abstand-o-075">
+        </div>
+      </div>
+      <div class="ssec abstand-u-125" id="alerts-new-card">
+        <form class="sform nur-inhalt" data-submit="alarm-neu-knopf">
+          <h2 class="stit" data-i18n="alerts.new_title">Preisalarm anlegen</h2>
+          <div class="profil-raster">
+            <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Setnummer</label>
+              <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" inputmode="text" placeholder="10294-1" /></div>
+            <div class="fg"><label for="alarm-neu-zustand" data-i18n="common.condition">Zustand</label>
+              <select id="alarm-neu-zustand"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
+            <div class="fg"><label for="alarm-neu-richtung" data-i18n="alerts.new_dir">Melden, wenn der Preis</label>
+              <select id="alarm-neu-richtung"><option value="unter" data-i18n="detail.alert_below">fällt unter</option><option value="ueber" data-i18n="detail.alert_above">steigt über</option></select></div>
+            <div class="fg"><label for="alarm-neu-preis" data-i18n="alerts.new_preis">Grenzpreis</label>
+              <input type="text" id="alarm-neu-preis" inputmode="decimal" autocomplete="off" /></div>
+          </div>
+          <datalist id="alarm-neu-sets"></datalist>
+          <div class="konto-fuss"><button type="button" class="btn bp" id="alarm-neu-knopf" data-click="legeAlarmAn" data-i18n="alerts.new_add" data-ico="alarm">Alarm anlegen</button></div>
+        </form>
+        <div class="zeile luecke-8 mittig abstand-o-075 trenner-oben-13">
             <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="alerts-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importAlarmeCsv" /></label>
             <span class="text-mittel" id="alerts-csv-status" role="status"></span>
           </div>
-        </div>
       </div>
     </div>
 
@@ -1349,9 +1356,14 @@
           <!-- Gefüllt von ladeLagerortVerwaltung() -->
           <div class="schrift-3" id="storage-list"></div>
 
+        </div>
+      </div>
+      <div class="ssec abstand-u-125" id="storage-new-card">
+        <div class="sform">
+          <h2 class="stit" data-i18n="storage.new_ph">Neuer Lagerort</h2>
           <div class="sgrid2" data-stil="gap:.5rem;grid-template-columns:1fr auto">
             <div class="fg">
-              <label for="storage-new" data-i18n="storage.new_ph">Neuer Lagerort</label>
+              <label for="storage-new" data-i18n="col.name">Name</label>
               <input type="text" id="storage-new" maxlength="60"
                      data-i18n="storage.new_ph" data-i18n-attr="placeholder"
                      placeholder="Neuer Lagerort" data-keydown="lagerortTaste" />
@@ -1380,7 +1392,9 @@
           <div class="schrift-3" id="household-state"></div>
 
           <!-- Als Hauptkonto: Einladungscode erzeugen -->
-          <div class="trenner-oben-13" id="household-invite-box" data-stil="display:none">
+        </div>
+      </div>
+      <div class="ssec abstand-u-125 sform" id="household-invite-box" data-stil="display:none">
             <div class="etikett-titel">
               <svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg> <span data-i18n="household.invite_title">Konto einladen</span>
             </div>
@@ -1400,7 +1414,7 @@
           </div>
 
           <!-- Als eigenständiges Konto: Code einlösen -->
-          <div class="trenner-oben-13" id="household-redeem-box" data-stil="display:none">
+      <div class="ssec abstand-u-125 sform" id="household-redeem-box" data-stil="display:none">
             <div class="etikett-titel">
               <svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> <span data-i18n="household.redeem_title">Einladung annehmen</span>
             </div>
@@ -1422,8 +1436,6 @@
               <svg class="ico" aria-hidden="true"><use href="#i-ok"/></svg> <span data-i18n="household.redeem_submit">Verknüpfen</span>
             </button>
           </div>
-        </div>
-      </div>
     </div>
 
     <!-- ══ DATEN (Menue) ══ -->
@@ -1434,11 +1446,11 @@
 
         <div class="ssec full">
           <div>
-            <div class="stit" data-i18n="settings.data_export_title" data-ico="export">Daten exportieren / importieren</div>
+            <div class="stit" data-i18n="settings.data_export_title" data-ico="export">Daten exportieren</div>
 
 
             <p class="hinweis-absatz">
-              <span data-i18n="settings.data_zip_hint">Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Jede Datei lässt sich über den CSV-Import ihrer Seite wieder einlesen.</span>
+              <span data-i18n="settings.data_zip_hint">Sets, eigene Teile, Minifiguren, Merkliste und Preisalarme als ZIP mit fünf CSV-Dateien. Eingelesen wird jede Datei über „Importieren“ auf ihrer eigenen Seite.</span>
             </p>
             <div class="zeile luecke-10 umbruch mittig abstand-u-1">
               <a class="btn bs" href="/api/v1/settings/export/data" data-i18n="settings.data_zip_btn" data-ico="export">Sets, Teile, Minifiguren, Merkliste &amp; Alarme exportieren (ZIP)</a>
@@ -1575,7 +1587,7 @@
     <!-- MONITOR TAB -->
     <div class="tab" id="tab-monitor">
       <div class="ph zeile mittig verteilt umbruch luecke-05">
-        <h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hintergrundarbeiten</span></h1>
+        <h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hintergrund­arbeiten</span></h1>
         <button class="btn bs btn-sm schrift-2" data-click="openLogViewer" data-i18n="monitor.logs_btn" data-ico="liste">Logs anzeigen</button>
       </div>
       <!-- Hidden stubs so existing JS references don't break -->
@@ -1591,49 +1603,57 @@
         <span id="job-status-detail"></span>
         <div id="job-progress-wrap"><div id="job-prog-bar"></div><span id="job-prog-txt"></span></div>
       </div>
-      <!-- API-Aufrufe heute -->
-      <div class="card innen-1 abstand-u-1">
-        <div class="text-fett-3 abstand-u-075" data-i18n="monitor.api_calls" data-ico="monitoring">API-Aufrufe heute</div>
-        <div data-stil="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem" id="rl-stats">
-          <div class="pstat"><div class="v" id="rl-rebrickable">—</div><div class="l" data-i18n="monitor.api.rebrickable">Rebrickable</div></div>
-          <div class="pstat"><div class="v" id="rl-bricklink">—</div><div class="l" data-i18n="monitor.api.bricklink">BrickLink</div></div>
-          <div class="pstat"><div class="v" id="rl-brickset">—</div><div class="l" data-i18n="monitor.api.brickset">Brickset</div></div>
-        </div>
-      </div>
+      <p class="mon-einleitung" data-i18n="monitor.intro">Was der Server im Hintergrund holt und rechnet: Kontingente der Dienste, Zwischenspeicher und anstehende Aufträge.</p>
 
-      <!-- Cache-Status -->
-      <div class="card innen-1 abstand-u-1">
-        <div class="zeile mittig verteilt abstand-u-075">
-          <div class="text-fett-3" data-i18n="monitor.cache_status" data-ico="monitoring">Cache-Status</div>
-          <div class="zeile mittig luecke-05">
-            <label for="mon-cache-ttl" class="text-klein" data-i18n="monitor.cache_duration">Cache-Dauer:</label>
-            <select class="auswahl-mini" id="mon-cache-ttl">
+      <section class="card mon-teil" aria-labelledby="mon-t-kontingente">
+        <h2 class="mon-titel" id="mon-t-kontingente"><svg class="ico" aria-hidden="true"><use href="#i-uhr"/></svg><span data-i18n="monitor.api_calls">Kontingente heute</span></h2>
+        <p class="mon-hinweis" data-i18n="monitor.api_calls_hint">API-Aufrufe seit Mitternacht und die Tagesgrenze je Dienst.</p>
+        <div class="mon-kacheln" id="rl-stats">
+          <div class="mon-kachel"><div class="mon-kachel-l" data-i18n="monitor.api.rebrickable">Rebrickable</div><div class="mon-kachel-v" id="rl-rebrickable">—</div><div class="mon-balken"><div id="rl-rebrickable-balken"></div></div></div>
+          <div class="mon-kachel"><div class="mon-kachel-l" data-i18n="monitor.api.bricklink">BrickLink</div><div class="mon-kachel-v" id="rl-bricklink">—</div><div class="mon-balken"><div id="rl-bricklink-balken"></div></div></div>
+          <div class="mon-kachel"><div class="mon-kachel-l" data-i18n="monitor.api.brickset">Brickset</div><div class="mon-kachel-v" id="rl-brickset">—</div><div class="mon-balken"><div id="rl-brickset-balken"></div></div></div>
+        </div>
+      </section>
+
+      <section class="card mon-teil" aria-labelledby="mon-t-speicher">
+        <h2 class="mon-titel" id="mon-t-speicher"><svg class="ico" aria-hidden="true"><use href="#i-daten"/></svg><span data-i18n="monitor.cache_status">Zwischenspeicher</span></h2>
+        <dl class="mon-zahlen">
+          <div><dt data-i18n="monitor.prices_cached">Gespeicherte Preise</dt><dd id="cs-prices">—</dd></div>
+          <div><dt data-i18n="monitor.parts_lists">Baulisten</dt><dd id="cs-subsets">—</dd></div>
+          <div><dt data-i18n="monitor.catalog_entries">Katalog-Einträge</dt><dd id="cs-catalog">—</dd></div>
+          <div><dt data-i18n="monitor.last_sync">Rebrickable-Katalog vom</dt><dd id="mon-db-sync">—</dd></div>
+          <div><dt data-i18n="monitor.parts_cached">Teile im Katalog</dt><dd id="mon-db-teile">—</dd></div>
+          <div><dt data-i18n="monitor.inventory_parts">Teile in Set-Inventaren</dt><dd id="mon-db-inventar">—</dd></div>
+          <div><dt data-i18n="monitor.bl_mapped">BrickLink-Nummern zugeordnet</dt><dd id="mon-db-bl">—</dd></div>
+        </dl>
+        <div class="mon-formular">
+          <div class="fg"><label for="mon-cache-ttl" data-i18n="monitor.cache_duration">Preise aufbewahren</label>
+            <select id="mon-cache-ttl">
               <option value="12" data-i18n="settings.job.h12">12 Stunden</option>
               <option value="24" selected data-i18n="monitor.cache_day">1 Tag</option>
               <option value="168" data-i18n="monitor.cache_week">1 Woche</option>
-            </select>
-            <span data-stil="margin-left:.5rem;font-size:var(--fs-1);color:var(--mut)" data-i18n="monitor.default_condition">Preiszustand:</span>
-            <select class="auswahl-mini" id="mon-default-condition" aria-label="Preiszustand" data-i18n="monitor.default_condition" data-i18n-attr="aria-label">
+            </select></div>
+          <div class="fg"><label for="mon-default-condition" data-i18n="monitor.default_condition">Preiszustand für neue Konten</label>
+            <select id="mon-default-condition">
               <option value="N" data-i18n="monitor.condition_new">Neuware</option>
               <option value="U" data-i18n="monitor.condition_used">Gebraucht</option>
-            </select>
-            <button class="btn bs btn-sm" id="btn-save-cache-ttl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
-          </div>
+            </select></div>
+          <button class="btn bp btn-speichern" type="button" id="btn-save-cache-ttl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
         </div>
-        <div id="cache-stats-box" data-stil="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem;margin-bottom:.75rem">
-          <div class="pstat"><div class="v" id="cs-prices">—</div><div class="l" data-i18n="monitor.prices_cached">Preise gecacht</div></div>
-          <div class="pstat"><div class="v" id="cs-subsets">—</div><div class="l" data-i18n="monitor.parts_lists">Baulisten</div></div>
-          <div class="pstat"><div class="v" id="cs-catalog">—</div><div class="l" data-i18n="monitor.catalog_entries">Katalog-Einträge</div></div>
+        <div class="mon-aktionen">
+          <button class="btn bs" type="button" id="btn-clr-prices" data-i18n="settings.clear_price_cache">Preis-Cache leeren</button>
+          <button class="btn bs" type="button" id="btn-clr-all-cache" data-i18n="monitor.clear_all">Alle Caches leeren (Preise, Teile, Katalog)</button>
         </div>
-        <div class="zeile luecke-8 umbruch">
-          <button class="btn bs btn-sm" id="btn-clr-prices" data-i18n="settings.clear_price_cache" data-ico="loeschen">Preis-Cache leeren</button>
-          <button class="btn bs btn-sm" id="btn-clr-all-cache"><span data-i18n="settings.all_cache.clear">Alle Caches leeren</span> <span class="text-klein" data-i18n="settings.clear_all_cache_hint">(Preise + Teile + Katalog)</span></button>
-        </div>
-      </div>
+      </section>
 
-      <div id="monitor-content">
-        <div class="loading"><div class="spin"></div><span data-i18n="monitor.loading">Lade…</span></div>
-      </div>
+      <section class="card mon-teil" aria-labelledby="mon-t-dienste">
+        <h2 class="mon-titel" id="mon-t-dienste"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="monitor.services">Dienste und Zeitpläne</span></h2>
+        <div id="monitor-content">
+          <div class="loading"><div class="spin"></div><span data-i18n="monitor.loading">Lade…</span></div>
+        </div>
+      </section>
+
+      <section class="card mon-teil" id="auftraege-karte" aria-labelledby="mon-t-auftraege"></section>
     </div>
   </main>
 </div>
@@ -1723,7 +1743,8 @@
       <!-- Kontoauswahl: nur im Haushalt sichtbar (siehe loadHouseholdMembers) -->
       <div class="fg" id="add-owner-box" data-stil="display:none"><label for="add-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="add-owner"></select></div>
       <div class="fg" id="add-storage-box"><span class="feld-titel" id="add-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="add-storage-slot"></span></div>
-      <div class="erfassen-fuss"><button class="btn bp" id="btn-add" data-i18n="gallery.add.submit">Hinzufügen</button></div>
+      <div class="hinweis-warnung erfassen-unbekannt" id="add-unbekannt" role="status" hidden></div>
+      <div class="erfassen-fuss"><button class="btn bp" id="btn-add"><span id="btn-add-text" data-i18n="gallery.add.submit">Hinzufügen</span></button></div>
     </div>
     <div class="abstand-o-8 schrift-2" id="add-status" role="status"></div>
   </div>
@@ -1757,6 +1778,7 @@
       <details class="mehr-menue">
         <summary class="btn bs" data-i18n="common.more_actions" data-ico="menue">Weitere Aktionen</summary>
         <div class="mehr-liste">
+      <button class="btn bs" type="button" data-click="teileNeuImportieren"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="detail.reimport_parts">Teile neu importieren</span></button>
       <button class="btn bd" id="btn-md" aria-label="Set löschen" data-i18n="detail.delete" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-loeschen"/></svg><span data-i18n="common.delete">Löschen</span></button>
         </div>
       </details>
@@ -2097,34 +2119,42 @@
         <div class="fg"><label for="ew-pw-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="ew-pw-alt" autocomplete="current-password" data-erstfokus /></div>
         <div class="fg"><label for="ew-pw-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="ew-pw-neu" autocomplete="new-password" /></div>
         <div class="fg"><label for="ew-pw-wdh" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="ew-pw-wdh" autocomplete="new-password" /></div>
-        <div><button type="button" class="btn bp btn-sm" id="ew-pw-setzen" data-click="einrichtungPasswort" data-i18n="setup.pw_set">Passwort setzen</button></div>
+        <div><button type="button" class="btn bp" id="ew-pw-setzen" data-click="einrichtungPasswort" data-i18n="setup.pw_set">Passwort setzen</button></div>
       </form>
     </section>
 
-    <section class="ew-schritt" data-schritt="quellen">
-      <p class="schrift-3" data-i18n="setup.sources_hint">Ohne diese Schlüssel bleibt die Sammlung leer: Rebrickable liefert Sets, Teile und Bilder, BrickLink die Preise, Brickset Anleitungen. Alle drei sind kostenlos; Rebrickable ist das Wichtigste.</p>
-      <div class="ew-quelle">
-        <div class="stit">Rebrickable <span id="ew-stand-rebrickable"></span></div>
-        <a class="schrift-1" href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_rb">Wo bekomme ich den Schlüssel? rebrickable.com → API → Generate Key</a>
-        <div class="fg"><label for="ew-rb" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-rb" autocomplete="off" spellcheck="false" /></div>
-        <button type="button" class="btn bs btn-sm" data-click="einrichtungQuelle" data-arg="rebrickable" data-i18n="setup.save_test">Speichern und testen</button>
+    <section class="ew-schritt" data-schritt="rebrickable">
+      <h3 class="ew-titel">Rebrickable <span class="ew-pflicht" data-i18n="setup.required">notwendig</span> <span id="ew-stand-rebrickable"></span></h3>
+      <p class="schrift-3" data-i18n="setup.rb_hint">Rebrickable liefert Sets, Teile und Bilder. Ohne diesen Schlüssel bleibt die Sammlung leer. Er ist kostenlos.</p>
+      <div class="fg"><label for="ew-rb" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-rb" autocomplete="off" spellcheck="false" /></div>
+      <div class="ew-aktion">
+        <button type="button" class="btn bs" data-click="einrichtungQuelle" data-arg="rebrickable" data-i18n="setup.check">Schlüssel prüfen</button>
+        <a class="ew-link" href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_rb">Schlüssel bei rebrickable.com anlegen (Konto → Einstellungen → API)</a>
       </div>
-      <div class="ew-quelle">
-        <div class="stit">BrickLink <span id="ew-stand-bricklink"></span></div>
-        <a class="schrift-1" href="https://www.bricklink.com/v2/api/register_consumer.page" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_bl">Wo bekomme ich die Schlüssel? bricklink.com → API-Zugang registrieren (vier Werte)</a>
-        <div class="sgrid2 luecke-05">
-          <div class="fg"><label for="ew-bl-ck">Consumer Key</label><input type="text" id="ew-bl-ck" autocomplete="off" spellcheck="false" /></div>
-          <div class="fg"><label for="ew-bl-cs">Consumer Secret</label><input type="text" id="ew-bl-cs" autocomplete="off" spellcheck="false" /></div>
-          <div class="fg"><label for="ew-bl-tv">Token Value</label><input type="text" id="ew-bl-tv" autocomplete="off" spellcheck="false" /></div>
-          <div class="fg"><label for="ew-bl-ts">Token Secret</label><input type="text" id="ew-bl-ts" autocomplete="off" spellcheck="false" /></div>
-        </div>
-        <button type="button" class="btn bs btn-sm" data-click="einrichtungQuelle" data-arg="bricklink" data-i18n="setup.save_test">Speichern und testen</button>
+    </section>
+
+    <section class="ew-schritt" data-schritt="bricklink">
+      <h3 class="ew-titel">BrickLink <span class="ew-pflicht ew-optional" data-i18n="setup.optional">freiwillig</span> <span id="ew-stand-bricklink"></span></h3>
+      <p class="schrift-3" data-i18n="setup.bl_hint">BrickLink liefert die Marktpreise für Finanzen und Preisalarme. Dafür braucht es vier Werte aus dem API-Zugang.</p>
+      <div class="sgrid2 luecke-05">
+        <div class="fg"><label for="ew-bl-ck">Consumer Key</label><input type="text" id="ew-bl-ck" autocomplete="off" spellcheck="false" /></div>
+        <div class="fg"><label for="ew-bl-cs">Consumer Secret</label><input type="text" id="ew-bl-cs" autocomplete="off" spellcheck="false" /></div>
+        <div class="fg"><label for="ew-bl-tv">Token Value</label><input type="text" id="ew-bl-tv" autocomplete="off" spellcheck="false" /></div>
+        <div class="fg"><label for="ew-bl-ts">Token Secret</label><input type="text" id="ew-bl-ts" autocomplete="off" spellcheck="false" /></div>
       </div>
-      <div class="ew-quelle">
-        <div class="stit">Brickset <span id="ew-stand-brickset"></span></div>
-        <a class="schrift-1" href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_bs">Wo bekomme ich den Schlüssel? brickset.com → Tools → API-Schlüssel anfordern</a>
-        <div class="fg"><label for="ew-bs" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-bs" autocomplete="off" spellcheck="false" /></div>
-        <button type="button" class="btn bs btn-sm" data-click="einrichtungQuelle" data-arg="brickset" data-i18n="setup.save_test">Speichern und testen</button>
+      <div class="ew-aktion">
+        <button type="button" class="btn bs" data-click="einrichtungQuelle" data-arg="bricklink" data-i18n="setup.check_bl">Zugang prüfen</button>
+        <a class="ew-link" href="https://www.bricklink.com/v2/api/register_consumer.page" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_bl">Zugang bei bricklink.com registrieren</a>
+      </div>
+    </section>
+
+    <section class="ew-schritt" data-schritt="brickset">
+      <h3 class="ew-titel">Brickset <span class="ew-pflicht ew-optional" data-i18n="setup.optional">freiwillig</span> <span id="ew-stand-brickset"></span></h3>
+      <p class="schrift-3" data-i18n="setup.bs_hint">Brickset liefert Bauanleitungen, wenn Rebrickable keine hat.</p>
+      <div class="fg"><label for="ew-bs" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-bs" autocomplete="off" spellcheck="false" /></div>
+      <div class="ew-aktion">
+        <button type="button" class="btn bs" data-click="einrichtungQuelle" data-arg="brickset" data-i18n="setup.check">Schlüssel prüfen</button>
+        <a class="ew-link" href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_bs">Schlüssel bei brickset.com anfordern</a>
       </div>
     </section>
 
@@ -2137,9 +2167,12 @@
       </div>
     </section>
 
-    <div class="dialog-fuss">
-      <button type="button" class="btn bs btn-sm" id="ew-zurueck" data-click="einrichtungZurueck" data-i18n="setup.back">Zurück</button>
-      <button type="button" class="btn bp btn-sm" id="ew-weiter" data-click="einrichtungWeiter" data-i18n="setup.next">Weiter</button>
+    <div class="mfooter ew-fuss">
+      <button type="button" class="btn bs" id="ew-spaeter" data-click="einrichtungSpaeter" data-i18n="setup.later">Später</button>
+      <span class="ew-fuss-rechts">
+        <button type="button" class="btn bs" id="ew-zurueck" data-click="einrichtungZurueck" data-i18n="setup.back">Zurück</button>
+        <button type="button" class="btn bp" id="ew-weiter" data-click="einrichtungWeiter" data-i18n="setup.next">Weiter</button>
+      </span>
     </div>
   </div>
 </div>
