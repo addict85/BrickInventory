@@ -228,9 +228,11 @@ test('das Log-Fenster lädt sein Skript als Datei, nicht inline', () => {
                          core.indexOf('function openLogViewer') + 9000);
   assert.doesNotMatch(win, /'<script>'/, 'Inline-<script> wird von der CSP blockiert');
   assert.match(win, /logviewer\.js/, 'Externes Skript fehlt');
-  for (const attr of ['data-auth', 'data-base', 'data-i18n']) {
+  for (const attr of ['data-base', 'data-i18n']) {
     assert.ok(win.includes(attr), `${attr} fehlt — das Skript kommt sonst nicht an seine Daten`);
   }
+  // Die Sitzung meldet das Fenster an; ein Token aus localStorage legt die Webapp nicht mehr ab.
+  assert.doesNotMatch(win, /localStorage|data-auth/, 'Altlast authToken aus localStorage');
   assert.match(win, /escHtmlAttr\(/, 'Attributwerte müssen abgesichert werden');
   assert.ok(fs.existsSync(path.join(PUB, 'js', 'logviewer.js')), 'logviewer.js fehlt');
 });
