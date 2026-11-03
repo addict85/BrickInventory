@@ -19,6 +19,9 @@
  *      Adresse verrät sich nur mit Passwort“
  *   F  kontoGedrosselt() in PUT /profile entfernt → rot: „Vergabeprüfungen
  *      sind gebremst“
+ *   G  Passwortpflicht wieder nur bei neuer Adresse → rot: „auch ohne neue
+ *      Adresse nur mit Passwort“ und „ein belegter Benutzername verrät sich
+ *      nur mit Passwort“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -102,9 +105,18 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
       'Die bisherige Adresse muss erfahren, dass das Konto eine neue hat');
   });
 
-  await t.test('ohne neue Adresse kein Passwort nötig', async () => {
-    const r = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu' });
-    assert.equal(r.status, 200, JSON.stringify(r.body));
+  await t.test('auch ohne neue Adresse nur mit Passwort', async () => {
+    const ohne = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu' });
+    assert.deepEqual([ohne.status, ohne.body.code], [400, 'aktuelles_passwort_erforderlich']);
+    assert.equal((await profil({ first_name: 'Neu', password_current: 'falsch-falsch' })).body.code, 'aktuelles_passwort_falsch');
+    const mit = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu', password_current: PASS });
+    assert.equal(mit.status, 200, JSON.stringify(mit.body));
+    assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Neu');
+  });
+
+  await t.test('ein belegter Benutzername verrät sich nur mit Passwort', async () => {
+    assert.equal((await profil({ username: `${NAME}_b` })).body.code, 'aktuelles_passwort_erforderlich');
+    assert.equal((await profil({ username: `${NAME}_b`, password_current: 'falsch-falsch' })).body.code, 'aktuelles_passwort_falsch');
   });
 
   await t.test('in Produktion ohne APP_BASE_URL kein Link aus dem Host-Kopf', async () => {
@@ -135,7 +147,7 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
 
   await t.test('Vergabeprüfungen sind gebremst', async () => {
     const codes = [];
-    for (let i = 0; i < 12; i++) codes.push((await profil({ username: `${NAME}_b` })).body.code);
+    for (let i = 0; i < 12; i++) codes.push((await profil({ username: `${NAME}_b`, password_current: PASS })).body.code);
     assert.equal(codes[0], 'benutzername_vergeben');
     const ab = codes.indexOf('zu_viele_anfragen');
     assert.ok(ab > 0, codes.join(', '));

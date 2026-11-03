@@ -213,15 +213,13 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
 
   const nameNeu = username && username.toLowerCase() !== String(user.username || '').toLowerCase();
   const emailChanged = email && email.toLowerCase() !== String(user.email || '').toLowerCase();
-  if (emailChanged) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-      return sendeFehler(req, res, 400, 'email_ungueltig');
-    // Über die neue Adresse liesse sich danach das Passwort zurücksetzen —
-    // wer kurz eine fremde Sitzung hat, übernähme so das Konto. Vor der
-    // Vergabeprüfung, damit nur der Inhaber erfährt, ob eine Adresse belegt ist.
-    if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-    if (!await bestaetigeMitFaktor(req, res, user.id, String(password_current))) return;
-  }
+  if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    return sendeFehler(req, res, 400, 'email_ungueltig');
+  // Jede Änderung mit Passwort (und zweitem Faktor): Über eine neue Adresse liesse
+  // sich das Passwort zurücksetzen, und erst danach verrät die Vergabeprüfung, ob
+  // es einen Namen oder eine Adresse schon gibt.
+  if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
+  if (!await bestaetigeMitFaktor(req, res, user.id, String(password_current))) return;
   if (nameNeu || emailChanged) {
     // Jede Vergabeprüfung verrät, ob es ein Konto gibt; die Registrierung verbirgt das.
     const zuOft = await kontoGedrosselt('profil-vergabe', user.id, 10, 60 * 60 * 1000);
