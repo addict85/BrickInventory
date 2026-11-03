@@ -304,11 +304,11 @@ jobs:
         id: pruefsumme
         run: |
           set -euo pipefail
-          APK=$(sha256sum app/build/outputs/apk/release/app-release-unsigned.apk | cut -d' ' -f1)
-          AAB=$(sha256sum app/build/outputs/bundle/release/app-release.aab | cut -d' ' -f1)
-          echo "pruefsumme_apk=$APK" >> "$GITHUB_OUTPUT"
-          echo "pruefsumme_aab=$AAB" >> "$GITHUB_OUTPUT"
-          echo "unsigniert: APK $APK, AAB $AAB"
+          SUMME_APK=$(sha256sum app/build/outputs/apk/release/app-release-unsigned.apk | cut -d' ' -f1)
+          SUMME_AAB=$(sha256sum app/build/outputs/bundle/release/app-release.aab | cut -d' ' -f1)
+          echo "pruefsumme_apk=$SUMME_APK" >> "$GITHUB_OUTPUT"
+          echo "pruefsumme_aab=$SUMME_AAB" >> "$GITHUB_OUTPUT"
+          echo "unsigniert: APK $SUMME_APK, AAB $SUMME_AAB"
 
       # ── Warum ZUSÄTZLICH ein Bundle (.aab) ──────────────────────────────────
       #

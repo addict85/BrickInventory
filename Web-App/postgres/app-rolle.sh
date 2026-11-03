@@ -63,11 +63,11 @@ minifig_parts_cache: fig_number, data, fetched_at
 minifig_price_cache: id, fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at, geschaetzt, abdeckung
 minifig_price_history: id, fig_number, condition, currency_code, avg_price, qty_avg_price, recorded_at, geschaetzt, abdeckung
 minifigs: id, user_id, set_number, fig_number, source, storage_id
-minifigs_catalog: fig_number, fig_name, image_url, image_local, updated_at, name_von, bild_von
+minifigs_catalog: fig_number, fig_name, image_url, image_local, updated_at
 papierkorb: id, user_id, art, nummer, farbe_id, bezeichnung, zeilen, geloescht_am
 part_acquisitions: id, user_id, part_number, color_id, quantity, unit_price, condition, created_at, currency, price_estimated, tag
-part_catalog: part_number, part_name, category_name, updated_at, name_von, kategorie_von
-part_color_catalog: part_number, color_id, color_name, color_hex, image_url, image_local, updated_at, farbname_von, farbcode_von, bild_von
+part_catalog: part_number, part_name, category_name, updated_at
+part_color_catalog: part_number, color_id, color_name, color_hex, image_url, image_local, updated_at
 part_price_cache: id, part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at
 part_price_history: id, part_number, color_id, condition, currency_code, avg_price, qty_avg_price, recorded_at
 parts: id, user_id, set_number, part_number, color_id, source, storage_id, added_at
