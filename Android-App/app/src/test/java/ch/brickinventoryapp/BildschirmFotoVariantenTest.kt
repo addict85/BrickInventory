@@ -113,8 +113,9 @@ class BildschirmFotoVariantenTest {
         }
     }
 
+    // Werkbank ist ein dunkles Design ohne helle Fassung; „hell“ im Namen führte in die Irre.
     private fun pfad(name: String, design: String, dunkel: Boolean, geraet: String) =
-        "src/test/bildschirmfotos/${name}_${design}_${if (dunkel) "dunkel" else "hell"}_$geraet.png"
+        "src/test/bildschirmfotos/${name}_${design}_${if (dunkel || design == "werkbank") "dunkel" else "hell"}_$geraet.png"
 
     /**
      * Zeigt [inhalt] und wartet auf die Daten; das Foto nimmt der Aufrufer, damit

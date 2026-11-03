@@ -5,6 +5,10 @@ package ch.brickinventoryapp.ui.dialogs
 // `by` vor collectAsStateWithLifecycle braucht runtime.getValue.
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -55,6 +59,31 @@ fun SetItemDetailDialog(
     serverUrl: String,
     onOpenSet: (String) -> Unit,
 ) {
+    SetItemDetail(vm, imageLoader, serverUrl, onOpenSet, alsDialog = true)
+}
+
+/**
+ * Dasselbe Detail als rechte Hälfte neben der Liste (Tablet, Listen-Detail wie in
+ * der Merkliste): Titel mit Schliessen-Knopf, darunter der Inhalt, rollbar.
+ */
+@Composable
+fun SetItemDetailBereich(
+    vm: TeileViewModel,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    onOpenSet: (String) -> Unit,
+) {
+    SetItemDetail(vm, imageLoader, serverUrl, onOpenSet, alsDialog = false)
+}
+
+@Composable
+private fun SetItemDetail(
+    vm: TeileViewModel,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    onOpenSet: (String) -> Unit,
+    alsDialog: Boolean,
+) {
     val zustand by vm.setItemState.collectAsStateWithLifecycle()
     val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
     // `lagerZustand`, nicht `lager`: UiStateFieldsTest bestimmt den Typ je NAME
@@ -84,14 +113,7 @@ fun SetItemDetailDialog(
     // trifft der Dialog fuer manuell erfasste Teile.
     val bild = kopf?.let { resolveFullUrlViaProxy(serverUrl, it.imageLocal, it.imageUrl) }
 
-    AlertDialog(
-        onDismissRequest = { vm.schliesseSetItem() },
-        confirmButton = {
-            TextButton(onClick = { vm.schliesseSetItem() }) {
-                Text(stringResource(R.string.detail_close))
-            }
-        },
-        title = {
+    val titel: @Composable () -> Unit = {
             Column {
                 Text(kopf?.name ?: zustand.nummer, fontWeight = FontWeight.SemiBold)
                 Text(
@@ -100,8 +122,8 @@ fun SetItemDetailDialog(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-        },
-        text = {
+    }
+    val inhalt: @Composable () -> Unit = {
             Column(Modifier.fillMaxWidth()) {
                 when {
                     zustand.laedt -> Box(Modifier.fillMaxWidth().padding(Abstaende.sehrGross), Alignment.Center) {
@@ -214,8 +236,35 @@ fun SetItemDetailDialog(
                     }
                 }
             }
-        },
-    )
+    }
+
+    if (alsDialog) {
+        AlertDialog(
+            onDismissRequest = { vm.schliesseSetItem() },
+            confirmButton = {
+                TextButton(onClick = { vm.schliesseSetItem() }) {
+                    Text(stringResource(R.string.detail_close))
+                }
+            },
+            title = titel,
+            text = inhalt,
+        )
+    } else {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.gross),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+        ) {
+            Row(verticalAlignment = Alignment.Top) {
+                Box(Modifier.weight(1f)) {
+                    ProvideTextStyle(MaterialTheme.typography.titleLarge) { titel() }
+                }
+                IconButton(onClick = { vm.schliesseSetItem() }) {
+                    Icon(Icons.Default.Close, stringResource(R.string.detail_close))
+                }
+            }
+            inhalt()
+        }
+    }
 
     if (zeigeZoom && bild != null) {
         ZoomableImageDialog(

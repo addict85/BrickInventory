@@ -206,7 +206,8 @@ fun GalleryScreen(
             PullToRefreshBox(isRefreshing = isLoading && anzeige == GalerieAnzeige.LISTE, onRefresh = onRefresh,
                              modifier = Modifier.fillMaxSize()) {
                 when (anzeige) {
-                    GalerieAnzeige.LAEDT -> SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 272.dp)
+                    GalerieAnzeige.LAEDT -> SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 252.dp,
+                        kopfzeile = true)
                     // Fehler und leere Sammlung sehen verschieden aus und bieten
                     // Verschiedenes an: hier den Grund und einen neuen Versuch.
                     GalerieAnzeige.FEHLER -> GalerieHinweis {
@@ -405,15 +406,17 @@ fun SetCard(
     val isBrick = LocalIsBrickTheme.current
     val istNoppe = LocalIsNoppeTheme.current
     val istGlanz = LocalIstGlanz.current
+    // Im Design "farbfaecher" trägt jede Kachel den Ton ihres Themas als Streifen, wie
+    // im Katalog. Die Galerie kennt nur den Namen; derselbe Name ergibt denselben Ton.
+    val ton = if (ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme.current)
+        ch.brickinventoryapp.ui.theme.faecherTon(set.theme?.hashCode()) else null
 
     // Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
     // Deshalb rückt die Karte um die Noppenhöhe nach unten, und die Reihe wird daneben
     // gezeichnet und darübergelegt — wie `top:-6px` im CSS.
     Box {
         AppKarte(
-            // Die Mindesthöhe gibt dem Bild Raum über den Etiketten; der Zuwachs geht an den
-            // Bildbereich, die Textzeilen bleiben.
-            modifier = Modifier.heightIn(min = 272.dp)
+            modifier = Modifier
                 .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier)
                 .semantics { selected = ausgewaehlt }
                 .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.karte) else Modifier),
@@ -434,7 +437,10 @@ fun SetCard(
                 // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
                 // Farbe; deshalb derselbe Baustein statt eines zweiten.
                 if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
-                Box(Modifier.fillMaxWidth().height(if (isBrick) 142.dp else 170.dp)) {
+                if (ton != null) Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
+                // 4:3 wie die Setbilder selbst: Eine feste Höhe liess bei ContentScale.Fit
+                // eine Lücke zwischen Bild und Text.
+                Box(Modifier.fillMaxWidth().aspectRatio(BILD_SEITENVERHAELTNIS)) {
                     ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
                             ch.brickinventoryapp.ui.components.ProduktBild(
                             model = imageUrl?.let { ImageRequest.Builder(ctx).data(it)
@@ -475,6 +481,19 @@ fun SetCard(
                     // Die Kachel trägt keine zerstörerische Aktion: Gelöscht wird im Detail,
                     // mit Rückfrage und danach „Rückgängig“. Neben „×2“ lag der Mülleimer
                     // als einzige sichtbare Aktion der Kachel.
+                    // G&V als Marke auf dem Bild: In der Preiszeile brach sie neben „je Stück“
+                    // um, und die Kachel wurde höher als ihre Nachbarin.
+                    val pct = preis?.pnlPct
+                    if (pct != null && kachelBetrag(set, preis) != null) Surface(
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = Formen.etikett,
+                        modifier = Modifier.align(Alignment.TopStart).padding(Abstaende.klein),
+                    ) {
+                        Text(fmtProzent(pct), Modifier.padding(horizontal = Abstaende.winzig + Abstaende.haar, vertical = Abstaende.haar),
+                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                            color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error,
+                            maxLines = 1, softWrap = false)
+                    }
                     if (set.quantity > 1) {
                         Surface(
                             color = MaterialTheme.colorScheme.primary,
@@ -498,18 +517,17 @@ fun SetCard(
                     }
                     Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // Zwei Zeilen, Thema und Teilezahl immer: Kacheln einer Reihe sind dann
+                    // Zwei Zeilen, Thema und Preis immer: Kacheln einer Reihe sind dann
                     // gleich hoch, auch wenn ein Name kurz ist oder eine Angabe fehlt.
                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
                         maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
                         lineHeight = 16.sp)
-                    Text(set.theme.orEmpty(), style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }.orEmpty(),
+                    // Thema und Teilezahl in einer Zeile: Getrennt stand meist eine davon leer.
+                    Text(themaUndTeile(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // FlowRow und je eine Zeile: Reicht die Breite nicht für beide, rückt die
-                    // Prozentzahl unter den Betrag, statt Zeichen für Zeichen umzubrechen.
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
+                    // den Betrag, statt Zeichen für Zeichen umzubrechen.
                     val betrag = kachelBetrag(set, preis)
                     if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
@@ -522,11 +540,6 @@ fun SetCard(
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
-                        val pct = preis?.pnlPct
-                        if (pct != null) Text(fmtProzent(pct),
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                            color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error,
-                            maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
                     } else Text("", style = MaterialTheme.typography.labelMedium)
                 }
             }
@@ -538,6 +551,22 @@ fun SetCard(
         )
     }
 }
+
+/** Seitenverhältnis der Bildfläche einer Kachel — das der Setbilder. */
+private const val BILD_SEITENVERHAELTNIS = 4f / 3f
+
+/** „Star Wars · 7’541 Teile“ — das Thema in der Hauptfarbe, die Teilezahl leiser. */
+@Composable
+private fun themaUndTeile(thema: String?, teile: String?): androidx.compose.ui.text.AnnotatedString =
+    androidx.compose.ui.text.buildAnnotatedString {
+        if (!thema.isNullOrBlank()) {
+            pushStyle(androidx.compose.ui.text.SpanStyle(color = MaterialTheme.colorScheme.primary))
+            append(thema)
+            pop()
+        }
+        if (!thema.isNullOrBlank() && teile != null) append(" · ")
+        if (teile != null) append(teile)
+    }
 
 @Composable
 fun AddSetDialog(

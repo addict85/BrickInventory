@@ -9,6 +9,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,8 +39,8 @@ import ch.brickinventoryapp.ui.theme.Formen
 
 /**
  * Kacheln ohne Inhalt, solange die erste Seite lädt. Die Fläche steht schon so
- * da, wie die Liste gleich aussieht — kein Kringel in der Mitte, der beim
- * Eintreffen einer vollen Seite weicht, und nichts springt.
+ * da, wie die Liste gleich aussieht — Bildfläche und zwei Textbalken je Kachel,
+ * auf Wunsch die Kennzahlenzeile darüber —, damit beim Eintreffen nichts springt.
  */
 @Composable
 fun SkelettRaster(
@@ -47,6 +50,8 @@ fun SkelettRaster(
     anzahl: Int = 12,
     innenabstand: PaddingValues = PaddingValues(Abstaende.mittel),
     abstand: Dp = 10.dp,
+    /** Eine Zeile über die ganze Breite vorweg, wo die Liste Kennzahlen zeigt (Galerie). */
+    kopfzeile: Boolean = false,
 ) {
     val laedt = stringResource(R.string.common_loading)
     // Ein Schimmer für alle Kacheln: Läuft er über alle gleich, liest es sich als eine
@@ -69,13 +74,26 @@ fun SkelettRaster(
         verticalArrangement = Arrangement.spacedBy(abstand),
         userScrollEnabled = false,
     ) {
+        if (kopfzeile) item(key = "skelett-kopf", span = { GridItemSpan(maxLineSpan) }) {
+            Box(Modifier.fillMaxWidth().height(SKELETT_KOPF).clip(Formen.karte).background(schimmer))
+        }
         items(anzahl, key = { "skelett-$it" }) {
-            Box(
-                Modifier.fillMaxWidth().height(kachelHoehe).clip(Formen.leiste).background(schimmer)
-            )
+            // Wie eine Karte: Fläche, darin Bild und zwei Zeilen Text als Balken.
+            Column(
+                Modifier.fillMaxWidth().height(kachelHoehe).clip(Formen.leiste)
+                    .background(MaterialTheme.colorScheme.surface).padding(Abstaende.klein),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            ) {
+                Box(Modifier.fillMaxWidth().weight(1f).clip(Formen.kachel).background(schimmer))
+                Box(Modifier.fillMaxWidth(0.8f).height(Abstaende.mittel).clip(Formen.strich).background(schimmer))
+                Box(Modifier.fillMaxWidth(0.5f).height(Abstaende.mittel).clip(Formen.strich).background(schimmer))
+            }
         }
     }
 }
+
+/** Höhe der Kennzahlenzeile im Skelett — so hoch wie die echte bei 100 %. */
+private val SKELETT_KOPF = 88.dp
 
 /**
  * Ein Eintrag, der beim Einfügen, Entfernen und Umsortieren gleitet statt zu

@@ -137,15 +137,17 @@ fun MerkpostenDetailScreen(
             item {
                 ch.brickinventoryapp.ui.theme.AppKarte {
                     Column(Modifier.padding(Abstaende.mittel)) {
+                        // Nur Zeilen mit Wert: Vier Gedankenstriche untereinander sagten nur,
+                        // dass der Katalog das Set nicht kennt.
                         CatalogDetailRow(stringResource(R.string.detail_set_number), merkposten.setNumber)
-                        CatalogDetailRow(stringResource(R.string.detail_year),
-                            merkposten.year?.toString() ?: "—")
-                        CatalogDetailRow(stringResource(R.string.detail_theme),
-                            detail.katalog?.themeName ?: "—")
-                        CatalogDetailRow(stringResource(R.string.detail_pieces),
-                            (detail.katalog?.numParts ?: merkposten.numParts)?.toString() ?: "—")
-                        CatalogDetailRow(stringResource(R.string.detail_minifigs),
-                            detail.katalog?.minifigs?.toString() ?: "—")
+                        merkposten.year?.let { CatalogDetailRow(stringResource(R.string.detail_year), it.toString()) }
+                        detail.katalog?.themeName?.let { CatalogDetailRow(stringResource(R.string.detail_theme), it) }
+                        (detail.katalog?.numParts ?: merkposten.numParts)?.let {
+                            CatalogDetailRow(stringResource(R.string.detail_pieces), ch.brickinventoryapp.util.fmtInt(it))
+                        }
+                        detail.katalog?.minifigs?.let {
+                            CatalogDetailRow(stringResource(R.string.detail_minifigs), ch.brickinventoryapp.util.fmtInt(it))
+                        }
                         CatalogDetailRow(stringResource(R.string.common_condition),
                             stringResource(if (merkposten.condition == "U") R.string.condition_used
                                            else R.string.condition_new))
@@ -179,7 +181,7 @@ fun MerkpostenDetailScreen(
             item {
                 ch.brickinventoryapp.ui.theme.AppKarte {
                     Column(Modifier.padding(Abstaende.mittel)) {
-                        Text(stringResource(R.string.detail_section_market), fontWeight = FontWeight.Bold)
+                        ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.detail_section_market))
                         Spacer(Modifier.height(Abstaende.klein))
                         // Aus der PREIS-Antwort, nicht aus dem Verlauf: Die
                         // holt frisch, der Verlauf liest nur den Cache.

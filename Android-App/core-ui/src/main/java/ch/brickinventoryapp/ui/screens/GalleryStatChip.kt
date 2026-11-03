@@ -23,19 +23,20 @@ import ch.brickinventoryapp.util.fmtInt
  */
 @Composable
 fun GalleryStatChip(value: String, label: String, detail: String? = null) {
-    Column(Modifier.semantics(mergeDescendants = true) {}) {
-        Text(
-            buildAnnotatedString {
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) { append(value) }
-                append(' ')
-                append(label)
-            },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (detail != null) Text(detail, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
+    // Die Aufschlüsselung klein in derselben Zeile: Als zweite Zeile darunter war die
+    // Kennzahl breiter als ihr Wert und liess eine Lücke vor der nächsten.
+    val klein = MaterialTheme.typography.labelSmall.fontSize
+    Text(
+        buildAnnotatedString {
+            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) { append(value) }
+            append(' ')
+            append(label)
+            if (detail != null) withStyle(SpanStyle(fontSize = klein)) { append("\u2002("); append(detail); append(')') }
+        },
+        Modifier.semantics(mergeDescendants = true) {},
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 /**

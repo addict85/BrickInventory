@@ -45,6 +45,7 @@ import org.robolectric.annotation.GraphicsMode
  *   reiter-bricht-um          Beschriftung wieder als Text ohne Zeilengrenze → rot „Reiterleiste …“
  *   suche-neben-filtertext    Filterknopf mit Text schon ab 360 dp → rot „Such-Platzhalter …“
  *   verlauf-ab-zwei-punkten   Linie schon ab zwei Punkten → rot „Preisverlauf …“
+ *   teile-detail-als-dialog   Teile-Detail auch auf dem Tablet als Dialog → rot „Tablet zeigt Teil …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -169,5 +170,45 @@ class FeinschliffRegelnTest {
         compose.waitForIdle()
         assertTrue("Preisverlauf mit drei Punkten zeigt die Linie",
             compose.onAllNodes(hasText(zuWenig)).fetchSemanticsNodes().isEmpty())
+    }
+
+    /** Antworten des Testservers kommen über den Hauptlooper; ihn selbst treiben. */
+    private fun warte(name: String, fertig: () -> Boolean) {
+        val ende = System.nanoTime() + 10_000_000_000L
+        while (!fertig()) {
+            check(System.nanoTime() < ende) { "$name nach 10 s nicht geladen" }
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+        compose.waitForIdle()
+    }
+
+    /** Listen-Detail wie in der Merkliste: Das Teil steht rechts, die Liste bleibt links stehen. */
+    @Test
+    fun `Tablet zeigt Teil und Liste nebeneinander`() {
+        org.robolectric.RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.teile().also { it.loadParts() }
+            val bilder = coil3.ImageLoader.Builder(ctx).build()
+            zeige {
+                ch.brickinventoryapp.nav.TeileListeUndDetail(vm, bilder, "", rememberNavController()) { _ ->
+                    ch.brickinventoryapp.ui.screens.PartsScreen(vm = vm, imageLoader = bilder)
+                }
+            }
+            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            val kachel = androidx.compose.ui.test.hasText("Brick 2 x 4", substring = true) and
+                androidx.compose.ui.test.hasClickAction()
+            compose.onNode(kachel).performClick()
+            compose.waitForIdle()
+            val zu = compose.onNode(androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.detail_close)))
+                .fetchSemanticsNode().boundsInRoot
+            val liste = compose.onNode(kachel).fetchSemanticsNode().boundsInRoot
+            assertTrue("Tablet zeigt Teil rechts der Liste ($liste / $zu)", zu.left >= liste.right)
+            assertTrue("Tablet zeigt Teil ohne Dialog",
+                compose.onAllNodes(androidx.compose.ui.test.isDialog()).fetchSemanticsNodes().isEmpty())
+        } finally {
+            welt.close()
+        }
     }
 }

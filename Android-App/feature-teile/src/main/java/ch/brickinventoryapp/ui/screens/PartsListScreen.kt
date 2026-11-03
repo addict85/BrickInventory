@@ -204,11 +204,12 @@ fun PartsListScreen(
                     // in einer Zeile sah aus wie der eine Hauptknopf des Bildschirms.
                     ch.brickinventoryapp.ui.components.ScanKnopf(onScanBarcode,
                         beschreibung = stringResource(R.string.partslist_scan))
-                    Button(
+                    // Ein Symbol in voller Grösse statt eines „+“ in Textgrösse, das gesperrt kaum
+                    // zu sehen war.
+                    FilledIconButton(
                         onClick = { if (setInput.isNotBlank()) addSet(setInput) },
                         enabled = setInput.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) { Text("+") }
+                    ) { Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set)) }
                 }
 
                 // Set chips
@@ -275,7 +276,7 @@ fun PartsListScreen(
                         // beide 16 dp breit.
                         if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
                             color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                        else Icon(Icons.Default.Build, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                        else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                         Spacer(Modifier.width(Abstaende.winzig))
                         Text(stringResource(R.string.partslist_generate))
                     }

@@ -390,8 +390,10 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = 
     val marktKachel: @Composable (Modifier) -> Unit = { m ->
         WertKachel(stringResource(R.string.detail_section_market), markt, akzent.markt, akzent.aufMarkt, m)
     }
+    // Mit Rand: In Brick hell lag die Kauffläche fast im Ton des Hintergrunds.
     val kaufKachel: @Composable (Modifier) -> Unit = { m ->
-        WertKachel(stringResource(R.string.detail_purchase_price), kauf, akzent.kauf, akzent.aufKauf, m)
+        WertKachel(stringResource(R.string.detail_purchase_price), kauf, akzent.kauf, akzent.aufKauf, m,
+            rand = farben.outlineVariant)
     }
     // Die Statusfarben halten 4,5:1 nur auf surface — deshalb diese Fläche mit Rand.
     val pnlKachel: @Composable (Modifier) -> Unit = { m ->

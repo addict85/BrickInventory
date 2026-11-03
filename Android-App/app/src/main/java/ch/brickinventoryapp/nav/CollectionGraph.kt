@@ -240,29 +240,22 @@ fun NavGraphBuilder.collectionGraph(
                     bereit = partsState.parts.isNotEmpty() && partsState.manualParts != null,
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualParts?.size ?: 0)
-                PartsScreen(
-                    vm = teileVm,
-                    imageLoader = imageLoader,
-                    onOpenDetail = { partNumber, colorId ->
-                        navController.navigate(Screen.ManualItemDetail.createRoute(
-                            "part", partNumber, colorId,
-                            partsState.manualParts
-                                ?.find { it.partNumber == partNumber && it.colorId == colorId }
-                                ?.partName ?: partNumber))
-                    },
-                    gridState = partsGridState
-                )
-                // ── Der Detail-Dialog für Teile aus Sets ──
-                //
-                // Hier und nicht im Bildschirm, weil nur der Graph den NavController kennt — wie
-                // onOpenDetail darüber. Der Dialog zeigt sich nur, wenn im Zustand ein Teil offen
-                // ist (SetItemUiState.offen).
-                SetItemDetailDialog(
-                    vm = teileVm,
-                    imageLoader = imageLoader,
-                    serverUrl = state.serverUrl,
-                    onOpenSet = { navController.navigate(Screen.SetDetail.createRoute(it)) },
-                )
+                // Das Detail eines Teils (aus Sets oder manuell) steht auf dem Tablet neben
+                // der Liste, auf dem Telefon als Dialog bzw. eigene Seite. Hier und nicht im
+                // Bildschirm, weil nur der Graph den NavController kennt.
+                TeileListeUndDetail(teileVm, imageLoader, state.serverUrl, navController) { oeffneManuell ->
+                    PartsScreen(
+                        vm = teileVm,
+                        imageLoader = imageLoader,
+                        onOpenDetail = { partNumber, colorId ->
+                            oeffneManuell("part", partNumber, colorId,
+                                partsState.manualParts
+                                    ?.find { it.partNumber == partNumber && it.colorId == colorId }
+                                    ?.partName ?: partNumber)
+                        },
+                        gridState = partsGridState
+                    )
+                }
             }
         }
         composable(Screen.Minifigs.route) {
@@ -281,25 +274,19 @@ fun NavGraphBuilder.collectionGraph(
                     bereit = partsState.minifigs.isNotEmpty() && partsState.manualFigs != null,
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualFigs?.size ?: 0)
-                MinifigsScreen(
-                    vm = teileVm,
-                    imageLoader = imageLoader,
-                    onOpenDetail = { figNumber ->
-                        navController.navigate(Screen.ManualItemDetail.createRoute(
-                            "fig", figNumber, 0,
-                            partsState.manualFigs?.find { it.figNumber == figNumber }
-                                ?.figName ?: figNumber))
-                    },
-                    gridState = minifigsGridState
-                )
-                // Derselbe Dialog wie im Teile-Reiter — er unterscheidet
-                // Teile und Figuren selbst ueber SetItemUiState.art.
-                SetItemDetailDialog(
-                    vm = teileVm,
-                    imageLoader = imageLoader,
-                    serverUrl = state.serverUrl,
-                    onOpenSet = { navController.navigate(Screen.SetDetail.createRoute(it)) },
-                )
+                // Wie im Teile-Reiter; das Detail unterscheidet Teile und Figuren selbst.
+                TeileListeUndDetail(teileVm, imageLoader, state.serverUrl, navController) { oeffneManuell ->
+                    MinifigsScreen(
+                        vm = teileVm,
+                        imageLoader = imageLoader,
+                        onOpenDetail = { figNumber ->
+                            oeffneManuell("fig", figNumber, 0,
+                                partsState.manualFigs?.find { it.figNumber == figNumber }
+                                    ?.figName ?: figNumber)
+                        },
+                        gridState = minifigsGridState
+                    )
+                }
             }
         }
         composable(Screen.Comparison.route) {
@@ -368,4 +355,60 @@ fun NavGraphBuilder.collectionGraph(
                 onBack  = { navController.popBackStack() }
             )
         }
+}
+
+/**
+ * Teile und Minifiguren auf breiten Fenstern: Liste links, Detail rechts, wie in der
+ * Merkliste. Drei kleine Kacheln oben links auf leerer Fläche boten dem Tablet nichts;
+ * jetzt bleibt die Liste stehen, während man Teil um Teil ansieht. Auf dem Telefon
+ * bleibt es beim Dialog (Teil aus Sets) bzw. der eigenen Seite (manuell erfasst).
+ */
+@Composable
+internal fun TeileListeUndDetail(
+    teileVm: TeileViewModel,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    navController: NavHostController,
+    liste: @Composable (oeffneManuell: (String, String, Int, String) -> Unit) -> Unit,
+) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val nebeneinander = listeUndDetail(maxWidth.value)
+        val setItem by teileVm.setItemState.collectAsStateWithLifecycle()
+        // Typ, Nummer, Farbe, Titel des offenen manuellen Eintrags; Liste, weil sie sich speichern lässt.
+        var manuell by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<List<String>?>(null) }
+        val oeffneManuell: (String, String, Int, String) -> Unit = { typ, id, farbe, titel ->
+            if (nebeneinander) {
+                teileVm.schliesseSetItem()
+                manuell = listOf(typ, id, farbe.toString(), titel)
+            } else navController.navigate(Screen.ManualItemDetail.createRoute(typ, id, farbe, titel))
+        }
+        val oeffneSet: (String) -> Unit = { navController.navigate(Screen.SetDetail.createRoute(it)) }
+        val offen = manuell
+        if (nebeneinander && (setItem.offen || offen != null)) {
+            ch.brickinventoryapp.ui.components.ListeUndDetail(
+                liste = { liste(oeffneManuell) },
+                detail = {
+                    if (setItem.offen) {
+                        ch.brickinventoryapp.ui.dialogs.SetItemDetailBereich(teileVm, imageLoader, serverUrl, oeffneSet)
+                    } else if (offen != null) key(offen) {
+                        ManualItemDetailScreen(
+                            vm = hiltViewModel<KaeufeViewModel>(),
+                            teile = teileVm,
+                            type = offen[0],
+                            id = offen[1],
+                            colorId = offen[2].toInt(),
+                            fallbackTitle = offen[3],
+                            imageLoader = imageLoader,
+                            onBack = { manuell = null },
+                            onNavigateToAcqMgmt = { t, i, c, title ->
+                                navController.navigate(Screen.AcquisitionManagement.createRoute(t, i, c, title))
+                            },
+                            onFarbeGeaendert = { neueFarbe -> manuell = listOf(offen[0], offen[1], neueFarbe.toString(), offen[3]) },
+                        )
+                    }
+                },
+            )
+        } else liste(oeffneManuell)
+        if (!nebeneinander) SetItemDetailDialog(teileVm, imageLoader, serverUrl, oeffneSet)
+    }
 }

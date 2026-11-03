@@ -202,6 +202,7 @@
         <item quantity="other">%1$d parts</item>
     </plurals>
     <string name="partslist_scan">Scan</string>
+    <string name="partslist_add_set">Add set to the build list</string>
     <string name="partslist_generate">Generate</string>
     <string name="partslist_pdf_error_title">PDF error</string>
     <string name="partslist_ok">OK</string>
@@ -733,11 +734,16 @@
 
     <!-- ══════════════ CSV upload ══════════════ -->
     <string name="csv_upload_title">Import CSV</string>
-    <string name="csv_format_sets">Columns: set_number, quantity, purchase_price, condition, acquired_at</string>
-    <string name="csv_format_parts">Columns: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
-    <string name="csv_format_figs">Columns: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
-    <string name="csv_format_wanted">Columns: set_number, condition, created_at</string>
-    <string name="csv_format_alerts">Columns: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_format_sets">Columns in the file: set_number, quantity, purchase_price, condition, acquired_at</string>
+    <string name="csv_format_parts">Columns in the file: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
+    <string name="csv_format_figs">Columns in the file: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
+    <string name="csv_format_wanted">Columns in the file: set_number, condition, created_at</string>
+    <string name="csv_format_alerts">Columns in the file: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_desc_sets">Set number, quantity, purchase price, condition and purchase date</string>
+    <string name="csv_desc_parts">Part number, quantity, colour, unit price, condition and purchase date</string>
+    <string name="csv_desc_figs">Figure number (Rebrickable or BrickLink), quantity, unit price, condition and purchase date</string>
+    <string name="csv_desc_wanted">Set number, condition and since when it is on the list</string>
+    <string name="csv_desc_alerts">Set number, condition, direction (below/above), threshold and currency</string>
     <string name="csv_upload_sets">Import sets …</string>
     <string name="csv_upload_parts">Import parts …</string>
     <string name="csv_upload_figs">Import minifigures …</string>

@@ -186,6 +186,7 @@
         <item quantity="other">%1$d Teile</item>
     </plurals>
     <string name="partslist_scan">Scan</string>
+    <string name="partslist_add_set">Set zur Bauliste hinzufügen</string>
     <string name="partslist_generate">Erstellen</string>
     <string name="partslist_pdf_error_title">PDF Fehler</string>
     <string name="partslist_ok">OK</string>
@@ -719,11 +720,16 @@
 
     <!-- ══════════════ CSV hochladen ══════════════ -->
     <string name="csv_upload_title">CSV importieren</string>
-    <string name="csv_format_sets">Spalten: set_number, quantity, purchase_price, condition, acquired_at</string>
-    <string name="csv_format_parts">Spalten: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
-    <string name="csv_format_figs">Spalten: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
-    <string name="csv_format_wanted">Spalten: set_number, condition, created_at</string>
-    <string name="csv_format_alerts">Spalten: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_format_sets">Spalten in der Datei: set_number, quantity, purchase_price, condition, acquired_at</string>
+    <string name="csv_format_parts">Spalten in der Datei: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
+    <string name="csv_format_figs">Spalten in der Datei: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
+    <string name="csv_format_wanted">Spalten in der Datei: set_number, condition, created_at</string>
+    <string name="csv_format_alerts">Spalten in der Datei: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_desc_sets">Set-Nummer, Anzahl, Kaufpreis, Zustand und Kaufdatum</string>
+    <string name="csv_desc_parts">Teilenummer, Anzahl, Farbe, Stückpreis, Zustand und Kaufdatum</string>
+    <string name="csv_desc_figs">Figurennummer (Rebrickable oder BrickLink), Anzahl, Stückpreis, Zustand und Kaufdatum</string>
+    <string name="csv_desc_wanted">Set-Nummer, Zustand und seit wann es auf der Liste steht</string>
+    <string name="csv_desc_alerts">Set-Nummer, Zustand, Richtung (unter/über), Schwelle und Währung</string>
     <string name="csv_upload_sets">Sets importieren …</string>
     <string name="csv_upload_parts">Teile importieren …</string>
     <string name="csv_upload_figs">Minifiguren importieren …</string>

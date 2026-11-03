@@ -63,7 +63,10 @@ fun ProduktBild(
     val ziel = (model as? ImageRequest)?.data ?: model
     var geladen by remember(ziel) { mutableStateOf(false) }
     val dunkel = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val grund = if (bildgrund && geladen) Modifier.background(BILDGRUND) else Modifier
+    // Im Dunkeln ist der Rand um das Bild dunkel und das Bild selbst gedämpft: Weisse
+    // Flächen blendeten neben den dunklen Karten (Prüfung 8, N3).
+    val grund = if (bildgrund && geladen) Modifier.background(
+        if (dunkel) MaterialTheme.colorScheme.surfaceContainerHighest else BILDGRUND) else Modifier
     val schleier = if (bildgrund && geladen && dunkel) Modifier.drawWithContent {
         drawContent(); drawRect(Color.Black, alpha = SCHLEIER_DUNKEL)
     } else Modifier
@@ -89,7 +92,7 @@ fun ProduktBild(
 private val BILDGRUND = Color.White
 
 /** Deckkraft des Schleiers im Dunkeln: hell genug zum Erkennen, ohne zu blenden. */
-private const val SCHLEIER_DUNKEL = 0.22f
+private const val SCHLEIER_DUNKEL = 0.32f
 
 /** Das Ersatzbild allein — auch für Flächen, die gar keine Adresse haben. */
 @Composable

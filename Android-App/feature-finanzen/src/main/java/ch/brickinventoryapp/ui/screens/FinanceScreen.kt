@@ -129,8 +129,8 @@ fun FinanceScreen(
       BoxWithConstraints(Modifier.fillMaxSize()) {
         val rand = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel)
         val abstand = Arrangement.spacedBy(10.dp)
-        // Überblick: Kontofilter, Verlauf, Kopfkachel und Summe.
-        val ueberblick: androidx.compose.foundation.lazy.LazyListScope.(mitSumme: Boolean) -> Unit = { mitSumme ->
+        // Überblick: Kontofilter, Verlauf und Kopfkachel; die Summe steht nach den Zeilen.
+        val ueberblick: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten. Er gilt für
             // ALLE Zahlen dieses Reiters: Kurve, Kacheln, Sets, Teile und Minifiguren.
             if (householdMembers.size > 1) {
@@ -151,7 +151,6 @@ fun FinanceScreen(
                 )
             }
             financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
-            if (mitSumme) financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
         }
         // Die Zeilen: Filter, Sets, Teile, Minifiguren.
         val zeilen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
@@ -166,17 +165,22 @@ fun FinanceScreen(
         }
         // Ab Tabletbreite zwei Spalten wie die Set-Detailseite: links der Überblick, rechts
         // die Zeilen. Einspaltig lagen Betrag und Bezeichnung einer Zeile eine Armlänge auseinander.
+        // Die Summe schliesst die Zeilen rechts ab: Links unter dem Überblick stand sie
+        // neben einer halb leeren rechten Spalte.
         if (zweiSpaltig(maxWidth.value)) {
             Row(Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand, verticalArrangement = abstand) {
-                    ueberblick(true)
+                    ueberblick()
                 }
                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = listState, contentPadding = rand,
-                    verticalArrangement = abstand) { zeilen() }
+                    verticalArrangement = abstand) {
+                    zeilen()
+                    financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
+                }
             }
         } else {
             LazyColumn(state = listState, contentPadding = rand, verticalArrangement = abstand) {
-                ueberblick(false)
+                ueberblick()
                 zeilen()
                 financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
             }

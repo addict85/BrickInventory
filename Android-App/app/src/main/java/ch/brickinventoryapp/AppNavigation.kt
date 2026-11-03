@@ -1,5 +1,10 @@
 package ch.brickinventoryapp
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
@@ -172,7 +177,14 @@ fun BrickInventoryManagerApp(
     // Der gemeinsame Raum für Elementübergänge (Galerie → Set-Detail); das
     // vorhersagbare Zurück spielt denselben Übergang rückwärts.
     ch.brickinventoryapp.ui.components.UebergangsRahmen {
-    NavHost(navController, startDestination = startDest) {
+    // Dezente Übergänge: kurz einblenden und ein Stück nachrücken, zurück in die
+    // Gegenrichtung. Die Vorgabe (700 ms reines Überblenden) wirkte träge.
+    NavHost(navController, startDestination = startDest,
+        enterTransition = { fadeIn(tween(UEBERGANG_MS)) + slideInHorizontally(tween(UEBERGANG_MS)) { it / 16 } },
+        exitTransition = { fadeOut(tween(UEBERGANG_MS / 2)) },
+        popEnterTransition = { fadeIn(tween(UEBERGANG_MS)) },
+        popExitTransition = { fadeOut(tween(UEBERGANG_MS / 2)) + slideOutHorizontally(tween(UEBERGANG_MS)) { it / 16 } },
+    ) {
         // Die Ziele liegen in nav/*.kt. state/manDetailState werden nicht übergeben: Der
         // NavHost-Builder läuft nur einmal, ein durchgereichter Wert bliebe die
         // Momentaufnahme des ersten Frames. Die Ziele lesen den Zustand selbst per
@@ -186,3 +198,6 @@ fun BrickInventoryManagerApp(
     }
     }
 }
+
+/** Dauer eines Seitenwechsels; kurz genug, dass er nicht aufhält. */
+private const val UEBERGANG_MS = 220

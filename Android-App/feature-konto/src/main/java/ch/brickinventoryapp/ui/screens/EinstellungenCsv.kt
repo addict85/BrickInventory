@@ -60,16 +60,25 @@ internal fun CsvImportCard(
 
     Abschnitt(titel = null, innenAbstand = false) {
         listOf(
-            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.SETS, R.string.csv_upload_sets, R.string.csv_format_sets),
-            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.TEILE, R.string.csv_upload_parts, R.string.csv_format_parts),
-            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.MINIFIGUREN, R.string.csv_upload_figs, R.string.csv_format_figs),
-            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.MERKLISTE, R.string.csv_upload_wanted, R.string.csv_format_wanted),
-            Triple(ch.brickinventoryapp.ui.model.CsvImportArt.PREISALARME, R.string.csv_upload_alerts, R.string.csv_format_alerts),
-        ).forEachIndexed { i, (art, titel, spalten) ->
+            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.SETS, R.string.csv_upload_sets, R.string.csv_desc_sets, R.string.csv_format_sets),
+            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.TEILE, R.string.csv_upload_parts, R.string.csv_desc_parts, R.string.csv_format_parts),
+            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.MINIFIGUREN, R.string.csv_upload_figs, R.string.csv_desc_figs, R.string.csv_format_figs),
+            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.MERKLISTE, R.string.csv_upload_wanted, R.string.csv_desc_wanted, R.string.csv_format_wanted),
+            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.PREISALARME, R.string.csv_upload_alerts, R.string.csv_desc_alerts, R.string.csv_format_alerts),
+        ).forEachIndexed { i, (art, titel, inhalt, spalten) ->
             if (i > 0) HorizontalDivider()
             ListItem(
                 headlineContent = { Text(stringResource(titel)) },
-                supportingContent = { Text(stringResource(spalten), style = MaterialTheme.typography.bodySmall) },
+                // Erst auf Deutsch, was drinsteht; die Spaltennamen der Datei leiser darunter
+                // für den, der sie von Hand anlegt. Roh standen sie wie Programmtext da.
+                supportingContent = {
+                    Column {
+                        Text(stringResource(inhalt), style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(spalten), style = MaterialTheme.typography.labelSmall,
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
                 leadingContent = { Icon(Icons.Default.UploadFile, null, tint = MaterialTheme.colorScheme.primary) },
                 // Der Kreisel steht an der Zeile, deren Import läuft — die anderen bleiben ruhig.
                 trailingContent = if (csvZustand.laeuft && csvZustand.art == art) {
@@ -105,3 +114,11 @@ internal fun CsvImportCard(
         TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
     }
 }
+
+/** Eine Importart: was sie ist, was drinsteht (Klartext) und wie die Spalten der Datei heissen. */
+private data class CsvArt(
+    val art: ch.brickinventoryapp.ui.model.CsvImportArt,
+    val titel: Int,
+    val inhalt: Int,
+    val spalten: Int,
+)
