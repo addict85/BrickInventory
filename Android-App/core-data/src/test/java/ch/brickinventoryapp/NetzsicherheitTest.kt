@@ -28,6 +28,9 @@ import javax.xml.parsers.DocumentBuilderFactory
  *   G  (03.11.2026) in buildInterceptorClient `.followRedirects(false)` entfernt →
  *      rot „die Server-Clients folgen keiner Umleitung selbst“. Was der Wächter
  *      stattdessen tut, prüft UmleitungTest ausgeführt.
+ *   H  (03.11.2026, sec8 H3, kotlinc lokal) in src/main die Zeile
+ *      <certificateTransparency> der base-config entfernt → rot „der Release-Build
+ *      verlangt Certificate Transparency“
  */
 class NetzsicherheitTest {
 
@@ -61,6 +64,14 @@ class NetzsicherheitTest {
         val hosts = klartext.flatMap { it.kinder("domain") }
         assertEquals(NetworkPolicy.ENTWICKLUNGS_HOSTS, hosts.map { it.textContent.trim() }.toSet())
         assertTrue("Ohne Unterdomänen", hosts.all { it.getAttribute("includeSubdomains") == "false" })
+    }
+
+    @Test
+    fun `der Release-Build verlangt Certificate Transparency`() {
+        val cfg = lies("main")
+        val bereiche = cfg.kinder("domain-config") + cfg.kinder("base-config")
+        val ohne = bereiche.filter { b -> b.kinder("certificateTransparency").none { it.getAttribute("enabled") == "true" } }
+        assertTrue("Ohne Certificate Transparency: " + ohne.map { it.tagName }, bereiche.isNotEmpty() && ohne.isEmpty())
     }
 
     @Test
