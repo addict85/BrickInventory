@@ -1076,3 +1076,12 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
   Dependabot (*Settings → Code security*) bleiben davon unberührt. Ein Sprung
   auf eine neue PostgreSQL-Hauptversion kommt erst nach Freigabe im
   Dependency-Dashboard: Er braucht einen Umzug der Daten (`POSTGRES-18.md`).
+
+**Beim Update** (`docker compose up -d --build`)
+
+- **pgweb** startet mit `--lock-session`: Die Oberfläche bietet keinen
+  Verbindungsdialog mehr und spricht nur mit `PGWEB_DATABASE_URL`, nicht mit
+  anderen Hosts oder Ports im Docker-Netz.
+- **db-rolle** entzieht `PUBLIC` das Recht `TEMPORARY` an der Datenbank: Die
+  Leserolle legt keine temporären Tabellen mehr an. Die App behält es als
+  Eigentümerin der Datenbank. Nichts zu tun; der Dienst läuft bei jedem `up`.

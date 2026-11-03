@@ -118,6 +118,8 @@ BEGIN
     EXECUTE pg_catalog.format('REVOKE %I FROM %I', r.rolname, lesen);
   END LOOP;
   EXECUTE 'REVOKE CREATE ON SCHEMA public FROM PUBLIC';
+  -- Auch keine temporären Tabellen; die App behält TEMP als Eigentümerin.
+  EXECUTE pg_catalog.format('REVOKE TEMPORARY ON DATABASE %I FROM PUBLIC', db);
   EXECUTE pg_catalog.format('GRANT CONNECT ON DATABASE %I TO %I', db, lesen);
   EXECUTE pg_catalog.format('GRANT USAGE ON SCHEMA public TO %I', lesen);
   EXECUTE pg_catalog.format('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM %I', lesen);

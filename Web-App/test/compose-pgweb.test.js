@@ -226,7 +226,8 @@ test('nur postgres und db-rolle kennen den Superuser, App und Jobs die App-Rolle
 // (02.11.2026) die Prüfung auf PGWEB_DB_PASSWORD gestrichen → rot „… ohne
 // PGWEB_DB_PASSWORD startet pgweb nicht“;
 // `--readonly` gestrichen → rot „… nur lesend“; PGWEB_AUTH_PASS nicht mehr aus
-// PGWEB_PASSWORD → rot „die Anmeldung kommt aus .env“.
+// PGWEB_PASSWORD → rot „die Anmeldung kommt aus .env“; (03.11.2026)
+// `--lock-session` gestrichen → rot „… nur zur eigenen Datenbank“.
 test('ohne PGWEB_PASSWORD startet pgweb nicht, mit Passwort nur lesend', () => {
   const block = leseDienst(compose, 'pgweb');
   assert.match(block, /^\s*PGWEB_AUTH_PASS:\s*\$\{PGWEB_PASSWORD:-\}\s*$/m, 'die Anmeldung kommt aus .env');
@@ -251,4 +252,5 @@ test('ohne PGWEB_PASSWORD startet pgweb nicht, mit Passwort nur lesend', () => {
   const mit = lauf('geheim');
   assert.equal(mit.status, 0, mit.stderr);
   assert.match(mit.stdout, /^PGWEB .*--readonly/m, 'pgweb startet nur lesend');
+  assert.match(mit.stdout, /^PGWEB .*--lock-session/m, 'pgweb verbindet nur zur eigenen Datenbank');
 });

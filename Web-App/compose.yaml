@@ -425,6 +425,8 @@ services:
       PGWEB_AUTH_USER: ${PGWEB_USER:-pgweb}
       PGWEB_AUTH_PASS: ${PGWEB_PASSWORD:-}
     # --readonly zusätzlich zur Leserolle; Reparaturen mit psql als App-Rolle.
+    # --lock-session: Die Oberfläche verbindet nur zu PGWEB_DATABASE_URL, nicht
+    # zu beliebigen Hosts und Ports im Docker-Netz.
     entrypoint:
       - /bin/sh
       - -c
@@ -437,7 +439,7 @@ services:
           echo "pgweb: PGWEB_DB_PASSWORD in .env setzen (Leserolle der Datenbank) - siehe UPGRADE.md." >&2
           exit 1
         fi
-        exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly
+        exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly --lock-session
     ports:
       - "127.0.0.1:8081:8081"
     networks:

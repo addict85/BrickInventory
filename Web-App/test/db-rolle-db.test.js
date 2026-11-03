@@ -25,6 +25,8 @@
  *      („untergeschobenes SET role“: die Sitzung läuft als App-Rolle)
  *   I  `password_hash` aus der Sperrliste der Leserolle gestrichen → rot:
  *      „die Leserolle sieht keine Geheimnisse“
+ *   J  (03.11.2026) `REVOKE TEMPORARY … FROM PUBLIC` gestrichen → rot:
+ *      „die Leserolle legt temporäre Tabellen an“
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
@@ -212,7 +214,12 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
       await l.query('SET TRANSACTION READ WRITE').catch(() => {});
       await assert.rejects(l.query(`CREATE TABLE public.probe (x int)`), /permission denied|read-only/);
       await assert.rejects(l.query(`COPY (SELECT 1) TO PROGRAM 'true'`), /permission denied|must be superuser|read-only/);
+      await l.query('SET default_transaction_read_only = off');
+      await assert.rejects(l.query('CREATE TEMP TABLE probe (x int)'), /permission denied/, 'die Leserolle legt temporäre Tabellen an');
     } finally { await l.end(); }
+    const app = new Client({ connectionString: url(neu, ROLLE, PASSWORT) });
+    await app.connect();
+    try { await app.query('CREATE TEMP TABLE probe (x int)'); } finally { await app.end(); }
     const ohne = rolleEinrichten(neu, { PGWEB_DB_PASSWORD: '' });
     assert.equal(ohne.status, 0, ohne.stderr);
     assert.equal((await admin.query('SELECT rolcanlogin FROM pg_roles WHERE rolname = $1', [LESEN])).rows[0].rolcanlogin, false,
