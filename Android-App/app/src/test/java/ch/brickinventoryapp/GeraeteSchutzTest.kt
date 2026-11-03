@@ -40,7 +40,7 @@ import org.robolectric.annotation.Config
  *       verdecktes Fenster …“ (gegenproben/teilweise-verdeckt-durchgelassen.patch)
  *   (b) vorschauVerbergen() mit Vorgabe false → rot „eine neue Installation
  *       verbirgt die Vorschau …“ (gegenproben/vorschau-vorgabe-aus.patch)
- *   (c) Schrittsperre zeigt den Inhalt ohne Bestätigung (`if (frei || grund.isNotEmpty())`) →
+ *   (c) Schrittsperre zeigt den Inhalt ohne Bestätigung (`if (entsperrt || grund.isNotEmpty())`) →
  *       rot „die Verwaltung zeigt sich erst nach der Geraetesperre“
  *       (gegenproben/verwaltung-ohne-geraetesperre.patch)
  *   (d) saveServerUrl() ruft die Hörer nicht → rot „ein anderer Server bricht

@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.GeraeteSchutzTest
 Rot: die Verwaltung zeigt sich erst nach der Geraetesperre
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
-index 0ab9629..1ceab17 100644
+index b1af86e..5178bd9 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 @@ -90,7 +90,7 @@ fun Schrittsperre(grund: String, inhalt: @Composable () -> Unit) {
-     val frage = { schutz.bestaetige(grund) { frei = true } }
-     LaunchedEffect(schutz) { if (!frei) frage() }
-     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { frei = false }
--    if (frei) {
-+    if (frei || grund.isNotEmpty()) {
+     val frage = { schutz.bestaetige(grund) { entsperrt = true } }
+     LaunchedEffect(schutz) { if (!entsperrt) frage() }
+     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { entsperrt = false }
+-    if (entsperrt) {
++    if (entsperrt || grund.isNotEmpty()) {
          inhalt()
      } else {
          Box(Modifier.fillMaxSize(), Alignment.Center) {

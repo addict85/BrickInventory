@@ -86,11 +86,11 @@ class GeraeteSchrittschutz(private val activity: FragmentActivity) : Schrittschu
 @Composable
 fun Schrittsperre(grund: String, inhalt: @Composable () -> Unit) {
     val schutz = LocalSchrittschutz.current
-    var frei by remember { mutableStateOf(false) }
-    val frage = { schutz.bestaetige(grund) { frei = true } }
-    LaunchedEffect(schutz) { if (!frei) frage() }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { frei = false }
-    if (frei) {
+    var entsperrt by remember { mutableStateOf(false) }
+    val frage = { schutz.bestaetige(grund) { entsperrt = true } }
+    LaunchedEffect(schutz) { if (!entsperrt) frage() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { entsperrt = false }
+    if (entsperrt) {
         inhalt()
     } else {
         Box(Modifier.fillMaxSize(), Alignment.Center) {

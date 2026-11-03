@@ -49,6 +49,8 @@ import java.io.File
  *     Gegenprobe (01.11.2026, gemessen): `pwNeu` in StartpasswortMaske wieder
  *     `rememberSaveable` → rot „Passwoerter und Codes …“; die Ausnahme `geheim`
  *     im ersten Test entfernt → rot „vom Menschen eingegebener Zustand …“.
+ *     Dazu `entsperrt` der Schrittsperre. Gegenprobe (03.11.2026, kotlinc lokal):
+ *     dort `rememberSaveable` → rot „Passwoerter und Codes …“ (Schrittschutz.kt).
  *
  * Dieselbe Falle ist in diesem Baum schon einmal zugeschnappt: ScrollMemory.kt
  * hält in seiner eigenen Erklärung fest, dass der dortige Merker als
@@ -169,8 +171,11 @@ class BildschirmZustandTest {
      */
     private val gemessen = Regex("""(?i)bytes|belegt|belegung""")
 
-    /** Passwörter und Codes (Sorte 4): nie im Bundle. */
-    private val geheim = Regex("""(?i)passw|^pw(?!$)|^(zf|faktor)?code$""")
+    /**
+     * Passwörter und Codes (Sorte 4): nie im Bundle. Ebenso `entsperrt` der
+     * Schrittsperre: Aus dem Bundle zurückgeholt, umginge er die Gerätesperre.
+     */
+    private val geheim = Regex("""(?i)passw|^pw(?!$)|^(zf|faktor)?code$|^entsperrt$""")
 
     /** Werte, die das Bundle nicht aufnehmen kann. */
     private val nichtSpeicherbar = Regex("""Offset|listOf|mapOf|setOf|Bitmap""")
