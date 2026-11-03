@@ -553,6 +553,8 @@ fun AddSetDialog(
      * keine Vorgabe.
      */
     vorgabe: String = "",
+    /** Nur Tests: Ein blinkender Cursor lässt Robolectric nie zur Ruhe kommen. */
+    sofortFokus: Boolean = true,
 ) {
     var setNumber by rememberSaveable { mutableStateOf("") }
     var quantity  by rememberSaveable { mutableStateOf("1") }
@@ -567,7 +569,7 @@ fun AddSetDialog(
     // weil das Feld beim ersten Durchlauf noch nicht angeordnet ist und requestFocus()
     // sonst ins Leere liefe.
     val setFeldFokus = remember { FocusRequester() }
-    LaunchedEffect(Unit) {
+    if (sofortFokus) LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)
         try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
     }

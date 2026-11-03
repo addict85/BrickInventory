@@ -650,9 +650,9 @@ class OberflaechenRegelnTest {
         val offen = androidx.compose.runtime.mutableStateOf(false)
         zeige {
             if (offen.value) ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {},
-                onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller"))
+                onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller"), sofortFokus = false)
         }
-        // Der Dialog fokussiert sein erstes Feld, der Cursor blinkt: Uhr in festen Schritten.
+        // Ohne Fokus blinkt kein Cursor; fetchSemanticsNode wartet sonst ewig auf Ruhe.
         compose.mainClock.autoAdvance = false
         offen.value = true
         repeat(3) {
