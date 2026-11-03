@@ -26,6 +26,8 @@
     <string name="login_username">Benutzername</string>
     <string name="login_password">Passwort</string>
     <string name="login_button">Anmelden</string>
+    <string name="login_missing_credentials">Benutzername und Passwort eingeben, dann anmelden.</string>
+    <string name="login_missing_code">Den Code aus der Authenticator-App eingeben, dann anmelden.</string>
     <string name="login_code">Code aus der Authenticator-App</string>
     <string name="login_code_hint">Oder einer deiner Wiederherstellungscodes</string>
     <string name="login_passkey">Mit Passkey anmelden</string>
@@ -225,6 +227,7 @@
     <string name="detail_purchase_none">nicht erfasst</string>
     <string name="detail_storage_none">Kein Lagerort</string>
     <string name="detail_storage_ph">z. B. Kiste 3</string>
+    <string name="detail_storage_choose">Aus der Liste wählen oder neu eintippen</string>
     <string name="filter_condition_all">Alle</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
     <string name="filter_button">Filter</string>
@@ -358,8 +361,9 @@
     <string name="detail_instructions">Anleitungen</string>
     <string name="detail_instruction_default">Anleitung</string>
     <string name="detail_close">Schliessen</string>
-    <string name="detail_price_low">Tief</string>
-    <string name="detail_price_high">Hoch</string>
+    <string name="price_chart_low_high">Tief %1$s · Hoch %2$s</string>
+    <string name="price_chart_too_few">Noch zu wenig Verlauf: Das Diagramm erscheint ab drei Messpunkten.</string>
+    <string name="detail_section_price_history">Preisverlauf</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
     <string name="settings_dark_label">Darstellung auf diesem Gerät</string>
@@ -802,10 +806,10 @@
 
     <!-- Merkliste (Nachtrag 179) -->
     <string name="nav_wanted">Merkliste</string>
-    <string name="wanted_add_title">Merkposten hinzufügen</string>
+    <string name="wanted_add_title">Set merken</string>
     <string name="wanted_add_submit">Auf die Merkliste</string>
     <string name="wanted_search">Suchen…</string>
-    <string name="wanted_no_results">Keine Merkposten gefunden</string>
+    <string name="wanted_no_results">Kein gemerktes Set gefunden</string>
     <string name="wanted_empty">Deine Merkliste ist leer</string>
     <string name="wanted_owned">Schon vorhanden</string>
     <string name="wanted_alert_below">Alarm unter %1$s</string>
@@ -958,7 +962,7 @@
     <string name="chart_change_year">%1$s dieses Jahr</string>
     <string name="chart_change_month">%1$s diesen Monat</string>
     <string name="chart_change_week">%1$s diese Woche</string>
-    <string name="finance_range_label">Spanne heute: alle Sets zum Tiefst- bzw. Höchstpreis</string>
+    <string name="finance_range_label">Heutige Preisspanne – günstigster bis teuerster Fall</string>
     <string name="wanted_add_first">Set merken</string>
     <string name="wanted_empty_hint">Merke dir Sets, die du noch kaufen willst. Die App zeigt ihren Marktpreis und meldet sich auf Wunsch, wenn er sich ändert.</string>
     <string name="fehler_anmeldung_text">Deine Sitzung ist abgelaufen.</string>

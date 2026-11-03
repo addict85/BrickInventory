@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,7 +51,8 @@ fun Rueckfrage(
         onDismissRequest = onAbbrechen,
         icon = symbol?.let { s -> { Icon(s, null, tint = MaterialTheme.colorScheme.error) } },
         title = { Text(titel) },
-        text = { Text(text) },
+        // Rollbar: Bei 200 % Schrift reicht ein langer Satz sonst unter die Knöpfe.
+        text = { Text(text, Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
             TextButton(onClick = onBestaetigen) { Text(bestaetigen, color = MaterialTheme.colorScheme.error) }
         },
@@ -74,7 +77,10 @@ fun ErfassenDialog(
     AlertDialog(
         onDismissRequest = onAbbrechen,
         title = { Text(titel) },
-        text = { Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel), content = inhalt) },
+        // Rollbar: Bei 200 % Schrift sind die Felder höher als das Fenster; die Knöpfe
+        // bleiben dabei stehen, nur die Felder rollen.
+        text = { Column(Modifier.verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel), content = inhalt) },
         confirmButton = {
             Button(onClick = onBestaetigen, enabled = bestaetigenAn) { Text(bestaetigen) }
         },
@@ -100,10 +106,10 @@ fun Abschnitt(
             if (innenAbstand) Modifier.fillMaxWidth().padding(Abstaende.gross) else Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
-            if (titel != null) Text(titel, style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = (if (innenAbstand) Modifier else Modifier.padding(start = Abstaende.gross,
-                    end = Abstaende.gross, top = Abstaende.gross)).semantics { heading() })
+            // Dieselbe Überschrift wie jede Karte (Abschnittstitel).
+            if (titel != null) Abschnittstitel(titel,
+                if (innenAbstand) Modifier else Modifier.padding(start = Abstaende.gross,
+                    end = Abstaende.gross, top = Abstaende.gross))
             inhalt()
         }
     }

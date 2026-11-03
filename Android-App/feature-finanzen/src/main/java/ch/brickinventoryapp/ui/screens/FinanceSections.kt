@@ -82,12 +82,8 @@ fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFi
     val figsItems = figsValuation?.figs ?: emptyList()
     if (figsItems.isNotEmpty() && showFigs) {
         item {
-            Text(stringResource(R.string.finance_section_minifigs).uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
+            ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.finance_section_minifigs),
+                Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
         }
         items(figurZeilen(figsItems), key = { it.second.schluessel }) { (fig, zeile) ->
             // Bild über image_local und den Server-Proxy, nicht roh über fig.imageUrl — sonst
@@ -125,12 +121,8 @@ fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showPa
     val partsItems = partsValuation?.parts ?: emptyList()
     if (partsItems.isNotEmpty() && showParts) {
         item {
-            Text(stringResource(R.string.finance_section_parts).uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
+            ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.finance_section_parts),
+                Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
         }
         // Wie bei den Sets: eine vollständige Zeile je Kaufpreis. Ein
         // Teil, das einmal neu und einmal gebraucht gekauft wurde,
@@ -171,12 +163,8 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
     // Section header
     if (showSets) {
     item {
-        Text(stringResource(R.string.finance_section_sets).uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            letterSpacing = 0.8.sp,
-            modifier = Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
+        ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.finance_section_sets),
+            Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
     }
 
     // ── Eine vollständige Karte je Kaufpreis ──

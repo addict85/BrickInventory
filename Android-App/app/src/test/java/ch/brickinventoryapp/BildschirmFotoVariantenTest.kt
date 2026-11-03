@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.isDialog
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -71,7 +72,9 @@ import java.util.Locale
  *
  * Gegenprobe wie bei BildschirmFotoTest erst mit eingecheckten Referenzen möglich
  * (eine Farbe in Theme.kt ändern → verifyRoborazziDebug rot); ohne Android-SDK
- * hier nicht messbar.
+ * hier nicht messbar. Die Dialoge bei 200 % prüfen dazu, dass die Schrift im
+ * Dialogfenster ankommt — Gegenprobe dialog-schrift-nur-lokal: ohne
+ * setFontScale → rot „dialogSetErfassenSchrift200“ (Schrift erreicht den Dialog nicht).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -128,6 +131,9 @@ class BildschirmFotoVariantenTest {
             else -> "w411dp-h891dp-port-xxhdpi"
         }
         RuntimeEnvironment.setQualifiers(if (sprache != null) "$sprache-$maske" else maske)
+        // Die Schrift auch in der Konfiguration: Ein Dialog hat sein eigenes Fenster und
+        // nimmt die Dichte von dort, LocalDensity unten reicht nicht hinein (M2).
+        if (schrift != 1f) RuntimeEnvironment.setFontScale(schrift)
         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
         if (warten) bereitstellen(name, bereit, zustand)
         compose.setContent {
@@ -366,44 +372,72 @@ class BildschirmFotoVariantenTest {
 
     // ── Dialoge ──
 
-    @Test
-    fun dialogSetLoeschen() {
-        val vm = welt.setDetail().also { it.ladeAlles() }
-        zeige("dialog-set-loeschen", design = "noppe", bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
-        compose.onNodeWithContentDescription("Millennium Falcon löschen").performClick()
-        compose.waitForIdle()
-        compose.onNode(isDialog()).captureRoboImage(pfad("dialog-set-loeschen", "noppe", false, "telefon"))
+    /**
+     * Fotografiert den offenen Dialog. Bei grosser Schrift prüft es vorher, dass sie
+     * im Dialogfenster ankommt: Mit LocalDensity allein war das 200-%-Foto
+     * byte-gleich mit dem 100-%-Foto und bewies nichts.
+     */
+    private fun dialogFoto(name: String, design: String, dunkel: Boolean, geraet: String, schrift: Float) {
+        if (schrift != 1f) {
+            val texte = compose.onAllNodes(androidx.compose.ui.test.hasAnyAncestor(isDialog()), useUnmergedTree = true)
+                .fetchSemanticsNodes()
+            val skalen = texte.mapNotNull { n ->
+                val ergebnis = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+                n.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
+                ergebnis.firstOrNull()?.layoutInput?.density?.fontScale
+            }
+            org.junit.Assert.assertTrue("$name: Schrift erreicht den Dialog nicht (Skalen $skalen)",
+                skalen.isNotEmpty() && skalen.all { it >= schrift - 0.05f })
+        }
+        compose.onNode(isDialog()).captureRoboImage(pfad(name, design, dunkel, geraet))
     }
 
+    private fun dialogSetLoeschenFoto(name: String, schrift: Float) {
+        val vm = welt.setDetail().also { it.ladeAlles() }
+        zeige(name, design = "noppe", schrift = schrift, bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
+        compose.onNodeWithContentDescription("Millennium Falcon löschen").performClick()
+        compose.waitForIdle()
+        dialogFoto(name, "noppe", false, "telefon", schrift)
+    }
+
+    @Test fun dialogSetLoeschen() = dialogSetLoeschenFoto("dialog-set-loeschen", 1f)
+    @Test fun dialogSetLoeschenSchrift200() = dialogSetLoeschenFoto("dialog-set-loeschen-schrift200", 2f)
+
     /** Die Rückfrage vor dem Abmelden — dieselbe Bauform wie beim Löschen eines Sets. */
-    @Test
-    fun dialogAbmelden() {
-        zeige("dialog-abmelden", dunkel = true) {
+    private fun dialogAbmeldenFoto(name: String, dunkel: Boolean, geraet: String, schrift: Float) {
+        zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
             MehrBildschirm(rememberNavController(), isAdmin = false, updateVerfuegbar = true, onAbmelden = {})
         }
         compose.onNodeWithText("Abmelden").performClick()
         compose.waitForIdle()
-        compose.onNode(isDialog()).captureRoboImage(pfad("dialog-abmelden", "classic", true, "telefon"))
+        dialogFoto(name, "classic", dunkel, geraet, schrift)
     }
 
-    @Test
-    fun dialogMerkpostenAnlegen() {
+    @Test fun dialogAbmelden() = dialogAbmeldenFoto("dialog-abmelden", true, "telefon", 1f)
+    @Test fun dialogAbmeldenSchrift200() = dialogAbmeldenFoto("dialog-abmelden-schrift200", false, "telefon", 2f)
+    @Test fun dialogAbmeldenTablet() = dialogAbmeldenFoto("dialog-abmelden", false, "tablet", 1f)
+
+    private fun dialogMerkpostenFoto(name: String, dunkel: Boolean, schrift: Float) {
         val vm = welt.merkliste().also { it.ladeMerkliste() }
-        zeige("dialog-merkposten", dunkel = true, bereit = { vm.merklisteState.value.merkposten.isNotEmpty() },
+        zeige(name, dunkel = dunkel, schrift = schrift, bereit = { vm.merklisteState.value.merkposten.isNotEmpty() },
             zustand = { vm.merklisteState.value }) {
             MerklisteScreen(vm = vm, imageLoader = bilder, onScan = {}, onOeffnen = { _, _ -> })
         }
         // Der Dialog fokussiert sein erstes Feld; der blinkende Cursor lässt
         // Compose nie ruhig werden. Darum die Uhr anhalten und gezielt vorstellen.
         compose.mainClock.autoAdvance = false
-        compose.onNodeWithContentDescription("Merkposten hinzufügen").performClick()
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        compose.onNodeWithContentDescription(ctx.getString(ch.brickinventoryapp.ressourcen.R.string.wanted_add_title)).performClick()
         // Das Dialogfenster entsteht über den Hauptlooper, nicht über die Compose-Uhr.
         repeat(3) {
             compose.mainClock.advanceTimeBy(200)
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
         }
-        compose.onNode(isDialog()).captureRoboImage(pfad("dialog-merkposten", "classic", true, "telefon"))
+        dialogFoto(name, "classic", dunkel, "telefon", schrift)
     }
+
+    @Test fun dialogMerkpostenAnlegen() = dialogMerkpostenFoto("dialog-merkposten", true, 1f)
+    @Test fun dialogMerkpostenSchrift200() = dialogMerkpostenFoto("dialog-merkposten-schrift200", false, 2f)
 
     // ── Liste und Detail nebeneinander (Tablet) ──
 
@@ -488,13 +522,16 @@ class BildschirmFotoVariantenTest {
     /** Bei 200 % stehen Zustand und Lagerort als Chips bzw. volle Zeile da, nichts bricht im Wort. */
     @Test fun dialogSetErfassenSchrift200() = dialogSetErfassenFoto("dialog-set-erfassen-schrift200", 2f)
 
-    private fun dialogSetErfassenFoto(name: String, schrift: Float) {
-        // Der Dialog fokussiert sein erstes Feld, der Cursor blinkt ohne Ende. setContent wartet
-        // auf Ruhe, darum geht er erst danach auf (wie der Merkposten-Dialog per Klick).
+    /** Auf dem Tablet steht der Dialog in seiner Material-Breite über der Fläche. */
+    @Test fun dialogSetErfassenTablet() = dialogSetErfassenFoto("dialog-set-erfassen", 1f, geraet = "tablet")
+
+    private fun dialogSetErfassenFoto(name: String, schrift: Float, geraet: String = "telefon") {
+        // Ohne sofortigen Fokus: Ein blinkender Cursor liesse Compose nie zur Ruhe kommen.
+        // setContent wartet auf Ruhe, darum geht der Dialog erst danach auf.
         val offen = androidx.compose.runtime.mutableStateOf(false)
-        zeige(name, schrift = schrift, warten = false) {
+        zeige(name, geraet = geraet, schrift = schrift, warten = false) {
             if (offen.value) ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {},
-                onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller", "Estrich"))
+                onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller", "Estrich"), sofortFokus = false)
         }
         compose.mainClock.autoAdvance = false
         offen.value = true
@@ -502,8 +539,8 @@ class BildschirmFotoVariantenTest {
             compose.mainClock.advanceTimeBy(200)
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
         }
-        compose.onNode(isDialog()).captureRoboImage(pfad(name, "classic", false, "telefon"))
-        if (schrift == 1f) {
+        dialogFoto(name, "classic", false, geraet, schrift)
+        if (schrift == 1f && geraet == "telefon") {
             // Ein Muster für alle Erfassungen: Der Lagerort ist so breit wie die Set-Nummer.
             val ctx = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
             fun breite(label: Int) = compose.onNode(androidx.compose.ui.test.hasSetTextAction() and

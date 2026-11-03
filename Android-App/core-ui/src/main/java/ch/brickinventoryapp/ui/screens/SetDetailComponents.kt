@@ -101,14 +101,7 @@ fun SectionCard(
 ) {
     AppKarte(if (aussenAbstand) Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp) else Modifier) {
         Column(Modifier.padding(horizontal = Abstaende.gross, vertical = 14.dp)) {
-            Text(
-                title.uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp,
-                modifier = Modifier.padding(bottom = 10.dp).semantics { heading() }
-            )
+            ch.brickinventoryapp.ui.components.Abschnittstitel(title, Modifier.padding(bottom = 10.dp))
             content()
         }
     }
@@ -138,18 +131,22 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     fun labelFor(cond: String) = if (cond == "U") labelUsed else labelNew
 
     // Tief und Hoch über BEIDE Reihen — dieselbe Skala. Kein „Aktuell“: Den heutigen
-    // Preis zeigt jede Karte schon darüber, er stand sonst dreimal da. Mit Währung,
-    // weil die Achse dieses Diagramms keine Beträge trägt.
+    // Preis zeigt jede Karte schon darüber, er stand sonst dreimal da.
     val allValues = lines.flatMap { it.points }.map { it.value }
-    FlowRow(
-        Modifier.fillMaxWidth().padding(bottom = Abstaende.klein),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        PriceStatCell(stringResource(R.string.detail_price_low),
-            ch.brickinventoryapp.util.fmtMoney(allValues.min(), waehrung))
-        PriceStatCell(stringResource(R.string.detail_price_high),
-            ch.brickinventoryapp.util.fmtMoney(allValues.max(), waehrung))
+    val tiefHoch = stringResource(R.string.price_chart_low_high,
+        ch.brickinventoryapp.util.fmtMoney(allValues.min(), waehrung),
+        ch.brickinventoryapp.util.fmtMoney(allValues.max(), waehrung))
+    // Unter drei Messpunkten ist eine Linie keine Aussage: Zwei Punkte ohne Achse
+    // lasen sich wie ein Trend. Dann Tief und Hoch und ein Satz, warum kein Diagramm.
+    if (lines.maxOf { it.points.size } < MIN_PUNKTE_VERLAUF) {
+        Text(tiefHoch, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.price_chart_too_few), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        return
     }
+    Text(tiefHoch, style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(bottom = Abstaende.klein))
 
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val surfaceCol = MaterialTheme.colorScheme.surface
@@ -159,10 +156,25 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
             ch.brickinventoryapp.util.fmtAmount(z.anfang), ch.brickinventoryapp.util.fmtAmount(z.ende),
             ch.brickinventoryapp.util.fmtAmount(z.tief), ch.brickinventoryapp.util.fmtAmount(z.hoch))
     }.joinToString("; ")
-    Canvas(modifier = Modifier.fillMaxWidth().height(120.dp).semantics { contentDescription = beschreibung }) {
+    val achse = PriceChartMath.yTicks(bounds).reversed()
+    Row(Modifier.fillMaxWidth().height(mitSchriftHoehe(120.dp))) {
+    // Die Wertachse: oben, Mitte, unten — an den Hilfslinien, auf ganze Beträge gerundet.
+    Column(Modifier.fillMaxHeight().padding(end = Abstaende.klein),
+        verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
+        achse.forEach { v ->
+            Text(ch.brickinventoryapp.util.fmtAmount(v, 0, 0), style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
+        }
+    }
+    val randOben = with(androidx.compose.ui.platform.LocalDensity.current) {
+        (MaterialTheme.typography.labelSmall.lineHeight.toPx() / 2)
+    }
+    Canvas(modifier = Modifier.weight(1f).fillMaxHeight().semantics { contentDescription = beschreibung }) {
         val w = size.width
         val h = size.height
-        val topPad = 4f
+        // So weit eingerückt wie die halbe Zeile der Achsenbeschriftung: Die Linien
+        // stehen dann auf Höhe ihrer Zahlen.
+        val topPad = randOben
         val usableH = (h - topPad * 2).coerceAtLeast(1f)
         fun px(day: Long) = bounds.xFraction(day) * w
         fun py(v: Double) = topPad + bounds.yFraction(v) * usableH
@@ -205,6 +217,7 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
             drawCircle(color, radius = 3.5f, center = pts.last())
         }
     }
+    }
 
     // ── Legende ───────────────────────────────────────────────────────────────
     // Nur die Zustände, die tatsächlich eine Linie haben: Ein Eintrag ohne
@@ -243,6 +256,13 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
         }
     }
 }
+
+/** Ab so vielen Messpunkten einer Reihe zeigt PriceChart eine Linie. */
+const val MIN_PUNKTE_VERLAUF = 3
+
+/** Das Diagramm wächst mit der Schrift, damit die Achsenzahlen nicht ineinanderlaufen. */
+@Composable
+private fun mitSchriftHoehe(basis: Dp): Dp = ch.brickinventoryapp.ui.components.mitSchrift(basis)
 
 /**
  * Marktpreis und Entwicklung je Zustand. Eine Zeile erscheint nur, wenn der Server
@@ -338,15 +358,6 @@ fun PnlBadge(
             color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
         )
-    }
-}
-
-@Composable
-fun PriceStatCell(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
-        Text(label, style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

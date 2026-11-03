@@ -44,6 +44,7 @@ import org.robolectric.annotation.GraphicsMode
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   reiter-bricht-um          Beschriftung wieder als Text ohne Zeilengrenze → rot „Reiterleiste …“
  *   suche-neben-filtertext    Filterknopf mit Text schon ab 360 dp → rot „Such-Platzhalter …“
+ *   verlauf-ab-zwei-punkten   Linie schon ab zwei Punkten → rot „Preisverlauf …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -142,5 +143,31 @@ class FeinschliffRegelnTest {
         } finally {
             welt.close()
         }
+    }
+
+    private fun verlauf(punkte: Int) = ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht(
+        values = listOf(ch.brickinventoryapp.ui.model.PreisReiheAnsicht("N",
+            (1..punkte).map { ch.brickinventoryapp.ui.model.PreisPunktAnsicht("2026-0$it-01", 700.0 + 10 * it) })))
+
+    /** Zwei Punkte ohne Achse lasen sich wie ein Trend; erst ab drei steht eine Linie da. */
+    @Test
+    fun `Preisverlauf zeigt unter drei Punkten keine Linie und nennt Tief und Hoch`() {
+        val punkte = androidx.compose.runtime.mutableIntStateOf(2)
+        zeige {
+            androidx.compose.foundation.layout.Column {
+                ch.brickinventoryapp.ui.screens.PriceChart(verlauf(punkte.intValue), "CHF")
+            }
+        }
+        val zuWenig = ctx.getString(R.string.price_chart_too_few)
+        assertTrue("Preisverlauf mit zwei Punkten sagt, warum kein Diagramm",
+            compose.onAllNodes(hasText(zuWenig)).fetchSemanticsNodes().size == 1)
+        val tiefHoch = ctx.getString(R.string.price_chart_low_high,
+            ch.brickinventoryapp.util.fmtMoney(710.0, "CHF"), ch.brickinventoryapp.util.fmtMoney(720.0, "CHF"))
+        assertTrue("Preisverlauf nennt Tief und Hoch",
+            compose.onAllNodes(hasText(tiefHoch)).fetchSemanticsNodes().size == 1)
+        punkte.intValue = 3
+        compose.waitForIdle()
+        assertTrue("Preisverlauf mit drei Punkten zeigt die Linie",
+            compose.onAllNodes(hasText(zuWenig)).fetchSemanticsNodes().isEmpty())
     }
 }

@@ -76,7 +76,10 @@ internal fun HouseholdCard(
     // Ein Konto kann zugleich Unterkonto (auch mehrerer Hauptkonten) und
     // Hauptkonto eigener Unterkonten sein: beide Listen unabhängig.
     val eltern = st?.elternkonten.orEmpty()
-    if (st != null) Abschnitt(stringResource(R.string.household_linked)) {
+    // Nur Unterkonten: Die Karte heisst gleich so, statt „Verknüpfte Konten“ und
+    // darunter „Unterkonten“ als zweite Überschrift zu zeigen.
+    val nurUnterkonten = eltern.isEmpty() && st?.subAccounts?.isNotEmpty() == true
+    if (st != null) Abschnitt(stringResource(if (nurUnterkonten) R.string.household_state_main else R.string.household_linked)) {
         if (eltern.isNotEmpty()) {
             Text(stringResource(R.string.household_state_parents),
                 style = MaterialTheme.typography.labelLarge)
@@ -87,7 +90,7 @@ internal fun HouseholdCard(
             }
         }
         if (st.subAccounts.isNotEmpty()) {
-            Text(stringResource(R.string.household_state_main),
+            if (!nurUnterkonten) Text(stringResource(R.string.household_state_main),
                 style = MaterialTheme.typography.labelLarge)
             st.subAccounts.forEach { m ->
                 KontoZeile(m.username, stringResource(R.string.household_remove)) {

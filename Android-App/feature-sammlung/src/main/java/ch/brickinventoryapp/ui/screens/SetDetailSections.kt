@@ -221,7 +221,10 @@ fun LazyListScope.setDetailInstructionsSection(
 fun LazyListScope.setDetailPriceSection(detailState: SetDetailUiState, price: SetPreisAnsicht?, history: PreisverlaufAnsicht?, currency: String) {
     if (price != null && !price.noPrice || detailState.setPriceLoading) {
         item {
-            SectionCard(title = stringResource(R.string.detail_section_market)) {
+            // „Preisverlauf“, sobald ein Verlauf da ist: Direkt über der Karte steht schon
+            // die Kachel „Marktpreis“, zweimal derselbe Titel las sich wie ein Doppel.
+            val verlauf = history?.chart?.values?.isNotEmpty() == true || detailState.priceHistoryLoading
+            SectionCard(title = stringResource(if (verlauf) R.string.detail_section_price_history else R.string.detail_section_market)) {
                 if (detailState.setPriceLoading && price == null) {
                     PreisLaedtZeile()
                 } else if (price != null && !price.noPrice) {

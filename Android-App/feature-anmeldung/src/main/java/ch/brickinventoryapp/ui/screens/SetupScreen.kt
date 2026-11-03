@@ -195,24 +195,7 @@ fun SetupScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Box(Modifier.size(80.dp), contentAlignment = Alignment.Center) {
-            // Auf surface statt primary: Der rote Stein des Logos verschwand auf manchem
-            // primary (noppe dunkel 1,2:1); auf surface steht er in jedem Design.
-            Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                modifier = Modifier.size(80.dp)) {
-                Box(contentAlignment = Alignment.Center) {
-                    androidx.compose.foundation.Image(
-                        painter = androidx.compose.ui.res.painterResource(ch.brickinventoryapp.ressourcen.R.drawable.ic_logo),
-                        contentDescription = null, modifier = Modifier.size(64.dp)
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(20.dp))
-        Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.headlineSmall)
-        Text(stringResource(R.string.setup_subtitle), style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ch.brickinventoryapp.ui.components.MarkenKopf(stringResource(R.string.setup_subtitle))
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))
@@ -257,8 +240,10 @@ fun SetupScreen(
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             HorizontalDivider(Modifier.weight(1f))
+            // Luft um den Text: Die Linien stiessen sonst an „oder manuell“.
             Text(stringResource(R.string.setup_or_manual), style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Abstaende.mittel))
             HorizontalDivider(Modifier.weight(1f))
         }
 

@@ -42,6 +42,8 @@
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
+    <string name="login_missing_credentials">Enter user name and password to sign in.</string>
+    <string name="login_missing_code">Enter the code from your authenticator app to sign in.</string>
     <string name="login_code">Code from your authenticator app</string>
     <string name="login_code_hint">Or one of your recovery codes</string>
     <string name="login_passkey">Sign in with a passkey</string>
@@ -240,6 +242,7 @@
     <string name="detail_price_none_yet">no price yet</string>
     <string name="detail_purchase_none">not recorded</string>
     <string name="detail_storage_ph">e.g. box 3</string>
+    <string name="detail_storage_choose">Pick from the list or type a new one</string>
     <string name="detail_storage_none">No storage location</string>
     <string name="filter_condition_all">All</string>
     <string name="filter_storage_all">All locations</string>
@@ -371,8 +374,9 @@
     <string name="detail_instructions">Instructions</string>
     <string name="detail_instruction_default">Instruction</string>
     <string name="detail_close">Close</string>
-    <string name="detail_price_low">Low</string>
-    <string name="detail_price_high">High</string>
+    <string name="price_chart_low_high">Low %1$s · High %2$s</string>
+    <string name="price_chart_too_few">Not enough history yet: the chart appears from three data points.</string>
+    <string name="detail_section_price_history">Price history</string>
 
     <!-- ══════════════ Navigation & Main ══════════════ -->
     <string name="settings_dark_label">Appearance on this device</string>
@@ -816,10 +820,10 @@
 
     <!-- Merkliste (Nachtrag 179) -->
     <string name="nav_wanted">Wanted</string>
-    <string name="wanted_add_title">Add a wanted item</string>
+    <string name="wanted_add_title">Add a set to the list</string>
     <string name="wanted_add_submit">Add to wanted list</string>
     <string name="wanted_search">Search…</string>
-    <string name="wanted_no_results">No wanted items found</string>
+    <string name="wanted_no_results">No saved set found</string>
     <string name="wanted_empty">Your wanted list is empty</string>
     <string name="wanted_owned">Already owned</string>
     <string name="wanted_alert_below">Alert below %1$s</string>
@@ -977,7 +981,7 @@
     <string name="chart_change_year">%1$s this year</string>
     <string name="chart_change_month">%1$s this month</string>
     <string name="chart_change_week">%1$s this week</string>
-    <string name="finance_range_label">Range today: all sets at their lowest or highest price</string>
+    <string name="finance_range_label">Today’s price range – cheapest to dearest case</string>
     <string name="wanted_add_first">Add a set to the list</string>
     <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
     <string name="fehler_anmeldung_text">Your session has expired.</string>

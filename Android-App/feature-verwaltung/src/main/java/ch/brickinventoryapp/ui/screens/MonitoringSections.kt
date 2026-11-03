@@ -181,11 +181,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     // ── Price Cache ───────────────────────────────────────────────────────────
     AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(stringResource(R.string.monitoring_price_cache).uppercase(),
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                letterSpacing = 0.8.sp)
+            ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.monitoring_price_cache))
 
             cacheStats?.let { cs ->
                 Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
@@ -407,11 +403,7 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text(stringResource(R.string.monitoring_api_calls).uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 0.8.sp)
+                ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.monitoring_api_calls))
                 FilledTonalIconButton(
                     onClick = { editingLimits = !editingLimits },
                 ) { Icon(if (editingLimits) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }

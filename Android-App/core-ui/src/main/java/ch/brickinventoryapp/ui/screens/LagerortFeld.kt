@@ -114,7 +114,10 @@ fun LagerortErfassung(
     onWert: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Gibt es schon Orte, ist das Feld eine Auswahl; ein Beispiel wie „Kiste 3“
+    // passte dort nicht zur Liste, die aufklappt.
+    val hilfe = if (vorrat.isNotEmpty()) R.string.detail_storage_choose else R.string.detail_storage_ph
     LagerortFeld(wert = wert, vorrat = vorrat, onWert = onWert,
-                 modifier = modifier.fillMaxWidth(), platzhalter = stringResource(R.string.detail_storage_ph),
+                 modifier = modifier.fillMaxWidth(), platzhalter = stringResource(hilfe),
                  beschriftung = stringResource(R.string.detail_storage))
 }

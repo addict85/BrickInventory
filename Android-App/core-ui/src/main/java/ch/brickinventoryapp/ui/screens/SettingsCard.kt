@@ -32,19 +32,7 @@ fun SettingsCard(
             Modifier.padding(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                modifier = Modifier.padding(bottom = Abstaende.mittel)
-            ) {
-                Icon(icon, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
-                Text(title.uppercase(),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.semantics { heading() })
-            }
+            ch.brickinventoryapp.ui.components.Abschnittstitel(title, Modifier.padding(bottom = Abstaende.mittel), symbol = icon)
             content()
         }
     }

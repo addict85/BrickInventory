@@ -86,26 +86,9 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // Logo
-            Image(
-                painter = painterResource(R.drawable.ic_logo),
-                contentDescription = "BrickInventory Manager",
-                modifier = Modifier.size(80.dp)
-            )
-            Spacer(Modifier.height(14.dp))
-            Text(
-                "BrickInventory",
-                fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.headlineSmall,
-                letterSpacing = (-0.5).sp
-            )
-            Text(
-                "Manager",
-                fontWeight = FontWeight.Light,
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(Abstaende.klein))
+            // Derselbe Kopf wie beim Einrichten, das direkt davor kommt.
+            ch.brickinventoryapp.ui.components.MarkenKopf()
+            Spacer(Modifier.height(Abstaende.mittel))
 
             // Server chip
             AssistChip(
@@ -194,7 +177,10 @@ private fun FormularMeldung(text: String, fehler: Boolean) {
 
 /** Ein Knopf, der laedt: Kringel statt Beschriftung, solange etwas laeuft. */
 @Composable
-private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, onClick: () -> Unit) {
+private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, fehlt: String? = null, onClick: () -> Unit) {
+    // Ein gesperrter Hauptknopf sagt, was fehlt: Blass allein liess raten, warum.
+    if (!aktiv && !laeuft && fehlt != null) Text(fehlt, style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
     Button(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
@@ -308,7 +294,11 @@ private fun AnmeldeFelder(
     LadeKnopf(
         stringResource(R.string.login_button),
         laeuft = isLoading,
-        aktiv = username.isNotBlank() && password.isNotBlank() && (!codeNoetig || code.isNotBlank())
+        aktiv = username.isNotBlank() && password.isNotBlank() && (!codeNoetig || code.isNotBlank()),
+        fehlt = stringResource(when {
+            username.isBlank() || password.isBlank() -> R.string.login_missing_credentials
+            else -> R.string.login_missing_code
+        }),
     ) { onLogin(username, password, code.takeIf { codeNoetig }) }
 
     // Statt des Codes: Name und Passwort von oben gehen mit, der Passkey ersetzt nur den Code.

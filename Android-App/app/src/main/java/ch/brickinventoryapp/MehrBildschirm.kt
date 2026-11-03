@@ -107,13 +107,8 @@ fun MehrBildschirm(
 
 /** Überschrift einer Gruppe — Vorleseprogramme springen von einer zur nächsten. */
 @Composable
-private fun MehrGruppe(titel: Int, trenner: Boolean = true) {
-    if (trenner) HorizontalDivider(Modifier.padding(top = Abstaende.klein))
-    Text(stringResource(titel), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = Abstaende.gross, end = Abstaende.gross, top = Abstaende.gross, bottom = Abstaende.winzig)
-            .semantics { heading() })
-}
+private fun MehrGruppe(titel: Int, trenner: Boolean = true) =
+    ch.brickinventoryapp.ui.components.Gruppentitel(stringResource(titel), trenner = trenner)
 
 /** Ein Eintrag: Symbol, Text, ganze Zeile antippbar (mindestens 56 dp hoch). */
 @Composable

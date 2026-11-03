@@ -451,12 +451,8 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
 /** Sektions-Überschrift innerhalb der Grids (Manuell erfasst / Aus Sets). */
 @Composable
 fun SectionHeader(text: String) {
-    Text(text.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        letterSpacing = 0.8.sp,
-        modifier = Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig).semantics { heading() })
+    ch.brickinventoryapp.ui.components.Abschnittstitel(text,
+        Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig))
 }
 
 /**
