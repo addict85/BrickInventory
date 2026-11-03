@@ -601,6 +601,7 @@
     <string name="pdfview_loading_bytes">PDF wird geladen… %1$s</string>
     <string name="pdfview_rendering">PDF wird geladen…</string>
     <string name="pdfview_load_failed">Fehler beim Laden: %1$s</string>
+    <string name="pdfview_fremder_host">Dieses PDF liegt nicht auf deinem Server. Öffne es auf der Set-Seite mit einer anderen App.</string>
     <string name="pdfview_page">Seite %1$d</string>
     <string name="pdfview_unknown_error">Unbekannter Fehler</string>
     <string name="pdfview_download_failed">Download fehlgeschlagen</string>

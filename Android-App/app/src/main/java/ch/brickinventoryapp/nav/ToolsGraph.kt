@@ -295,10 +295,12 @@ fun NavGraphBuilder.toolsGraph(
             val pdfUrl   = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("url")   ?: "", "UTF-8")
             val pdfTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "", "UTF-8")
             if (ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine(pdfUrl)) ch.brickinventoryapp.ui.components.Sichtschutz()
+            val state by vm.state.collectAsStateWithLifecycle()
             PdfViewerScreen(
                 pdfUrl = pdfUrl,
                 title  = pdfTitle,
                 httpClient = vm.apiHttpClient,
+                serverUrl = state.serverUrl,
                 onBack = { navController.popBackStack() }
             )
         }

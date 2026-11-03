@@ -148,6 +148,8 @@ fun PdfViewerScreen(
     pdfUrl: String,
     title: String,
     httpClient: OkHttpClient,
+    /** Nur Adressen dieses Servers lädt der Betrachter (pdfImBetrachter). */
+    serverUrl: String,
     onBack: () -> Unit
 ) {
     val ctx = LocalContext.current
@@ -156,6 +158,7 @@ fun PdfViewerScreen(
     // LocalContextGetResourceValueCall).
     val ladefehlerText = stringResource(R.string.pdfview_download_failed)
     val unbekannterFehlerText = stringResource(R.string.pdfview_unknown_error)
+    val fremderHostText = stringResource(R.string.pdfview_fremder_host)
     var state by remember(pdfUrl) { mutableStateOf<PdfLoadState>(PdfLoadState.Downloading(0, 0, 0)) }
     // Der Zoom gehoert hierher und nicht in PdfPages: Die Knoepfe sitzen in der
     // Kopfzeile, die Geste in der Liste, und der Faktor wird unten angezeigt —
@@ -189,6 +192,10 @@ fun PdfViewerScreen(
     }
 
     LaunchedEffect(pdfUrl) {
+        if (!ch.brickinventoryapp.util.pdfImBetrachter(pdfUrl, serverUrl)) {
+            state = PdfLoadState.Error(fremderHostText)
+            return@LaunchedEffect
+        }
         state = PdfLoadState.Downloading(0, 0, 0)
         // WLAN wachhalten: Wird der Bildschirm schwarz (auch manuelle Sperre), kann
         // Android sonst das WLAN schlafen legen → DNS-/Verbindungsabbruch.
