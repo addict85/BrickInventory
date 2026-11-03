@@ -33,7 +33,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 class PreferencesManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tresor: TokenVerschluesselung,
-) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage {
+) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -494,6 +494,13 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
     }
 
+
+    /** Der Geheimtext wie abgelegt: Der Auftrag braucht das Token nie im Klartext. */
+    override suspend fun entwertungsauftrag(): Entwertungsauftrag? {
+        val geheim = context.dataStore.data.first()[AUTH_TOKEN_ENC] ?: return null
+        val server = serverUrlJetzt().ifBlank { return null }
+        return Entwertungsauftrag(server, geheim)
+    }
 
     suspend fun clearSession() = tokenSchranke.schreibe {
         _authTokenState.value = ""

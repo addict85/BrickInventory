@@ -249,6 +249,15 @@ object NetzModule {
             .pingInterval(20, TimeUnit.SECONDS)
             .build()
 
+    /** Für Abmeldungen, die erst später den Server erreichen (data/Entwertung.kt). */
+    @Provides
+    @Singleton
+    fun provideEntwerter(
+        prefs: PreferencesManager,
+        frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+    ): ch.brickinventoryapp.data.Entwerter =
+        ch.brickinventoryapp.data.Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung)
+
     // Kein unqualifiziertes OkHttpClient-Binding: Es lieferte still den api-Client
     // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @Named("api"),
     // @Named("image") oder @Named("sse").

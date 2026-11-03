@@ -71,6 +71,7 @@ class AppViewModel @Inject constructor(
     private val abmeldehaken: Abmeldehaken,
     /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
     val passwortPflicht: ch.brickinventoryapp.data.PasswortPflicht,
+    private val abmeldung: ch.brickinventoryapp.data.Abmeldung,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -238,13 +239,17 @@ class AppViewModel @Inject constructor(
      * Bild-Cache, sonst sähe der nächste Nutzer auf dem Gerät fremde Daten.
      * Die Bereichs-ViewModels leeren sich auf [Sitzung.abgemeldet]. Der Job lässt
      * einen Serverwechsel warten, bis alles weg ist. Zuerst entwertet der Server
-     * den Token (kurz begrenzt) — beim Wechsel ist das noch der alte Server.
+     * den Token (kurz begrenzt, sonst später aus der Warteschlange) — beim Wechsel
+     * ist das noch der alte Server.
      */
     @OptIn(coil3.annotation.ExperimentalCoilApi::class)
     fun logout(): Job {
         csvWatchJob?.cancel(); csvWatchJob = null
         return viewModelScope.launch {
-            if (sitzung.state.value.isLoggedIn) repo.konto.abmeldenAmServer()
+            if (sitzung.state.value.isLoggedIn &&
+                abmeldung.amServer() == ch.brickinventoryapp.data.Abmeldeweg.NACHGEHOLT) {
+                _snackbar.value = texte.text(R.string.vm_abmelden_nachgeholt)
+            }
             prefs.clearSession()
             passwortPflicht.erledigt()
             repo.clearCache()

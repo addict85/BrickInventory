@@ -122,6 +122,25 @@ internal fun buildInterceptorClient(
 }
 
 /**
+ * Derselbe TLS-Weg wie die Server-Clients (Pins, Nutzer-CAs nur für den eigenen
+ * Server), aber ohne den Wächter der App: Den setzt der Entwerter mit dem Token
+ * des Auftrags selbst ein.
+ */
+internal fun buildEntwertungsBasis(
+    prefs: PreferencesManager,
+    frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+): OkHttpClient = OkHttpClient.Builder()
+    .followRedirects(false)
+    .followSslRedirects(false)
+    .apply {
+        val tm = serverVertrauen(prefs, frage)
+        sslSocketFactory(serverTls(prefs, tm), tm)
+    }
+    .connectTimeout(15, TimeUnit.SECONDS)
+    .readTimeout(30, TimeUnit.SECONDS)
+    .build()
+
+/**
  * Beim Wechsel auf einen anderen Server laufende Aufrufe abbrechen; nach dem
  * Umschalten der Nutzer-CAs keine Verbindung mit dem alten Vertrauen weiterbenutzen.
  * Für jeden Client mit eigenem Dispatcher oder Pool (der Bild-Client hat einen).

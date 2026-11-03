@@ -30,6 +30,7 @@ abstract class LokalModule {
     @Binds abstract fun bestand(r: RoomBestand): LokalerBestand
     @Binds abstract fun ausgang(r: RoomAusgang): Ausgang
     @Binds abstract fun planer(p: WorkManagerPlaner): AusgangPlaner
+    @Binds abstract fun entwertung(p: ch.brickinventoryapp.data.lokal.WorkManagerEntwertung): ch.brickinventoryapp.data.EntwertungsPlaner
     @Binds abstract fun sender(s: ServerSender): Bearbeitungssender
 
     companion object {
