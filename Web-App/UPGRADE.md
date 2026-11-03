@@ -949,3 +949,115 @@ Was sich für Nutzer und Clients ändert:
 - **Abhängigkeiten**: `oauth` und `@types/oauth` entfernt (ungenutzt).
   Renovate schlägt npm- und Gradle-Fassungen erst drei Tage nach Erscheinen
   vor. `npm run build` läuft auch ohne den Ordner `Android-App/`.
+
+## 31. Runde 7 – Sicherheit
+
+Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
+
+**Vor dem Update**
+
+- **Datenschlüssel noch in `data/.datenschluessel`?** Dann jetzt nach
+  `schluessel/datenschluessel` umziehen (Abschnitt 21): app und jobs hängen
+  `./schluessel` ab dieser Fassung **nur lesend** ein und können ihn nicht
+  mehr selbst anlegen. Wer schon umgezogen ist, muss nichts tun.
+
+**Beim Update** (`docker compose up -d --build`)
+
+- Neuer Einmal-Dienst **`schluessel`** (läuft vor app und jobs, ohne Netz):
+  Er legt `./schluessel/datenschluessel` an, falls er fehlt, und setzt
+  Eigentümer `brickinv`, Modus 400, Ordner 700. Im Protokoll:
+  `[schluessel] Datenschlüssel vorhanden.` Bei einer Neuinstallation steht dort
+  „Neuer Datenschlüssel angelegt“ — diese Datei getrennt von `data/` sichern.
+- **Ressourcengrenzen** je Dienst (`mem_limit`, `pids_limit`, `cpus`):
+  app und jobs 1 GB, postgres 1 GB/300 Prozesse, caddy 256 MB. Auf einem Gerät
+  mit wenig Speicher oder bei sehr grossen Sammlungen in `.env` anpassen:
+  `APP_MEM_LIMIT`, `JOBS_MEM_LIMIT`, `DB_MEM_LIMIT`, `CADDY_MEM_LIMIT`
+  (z. B. `768m`, `2g`) und `APP_CPUS`, `JOBS_CPUS`, `DB_CPUS`, `CADDY_CPUS`.
+  Stösst ein Dienst an die Grenze, zeigt `docker inspect <container>`
+  `"OOMKilled": true`; dann den Wert erhöhen.
+
+**Optional**
+
+- **Geheimnisse als Dateien** (Docker-Secrets): `SESSION_SECRET_FILE`,
+  `PGPASSWORD_FILE`, `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE` statt der
+  Variablen (nie beide). Beispiel als `compose.override.yaml` neben
+  `compose.yaml`:
+
+  ```yaml
+  services:
+    app:
+      environment:
+        SESSION_SECRET: ""
+        SESSION_SECRET_FILE: /run/secrets/session_secret
+        PGPASSWORD: ""
+        PGPASSWORD_FILE: /run/secrets/db_app_password
+      secrets: [session_secret, db_app_password]
+    jobs:
+      environment:
+        PGPASSWORD: ""
+        PGPASSWORD_FILE: /run/secrets/db_app_password
+      secrets: [db_app_password]
+  secrets:
+    session_secret:  { file: ./geheim/session_secret }
+    db_app_password: { file: ./geheim/db_app_password }
+  ```
+
+  `compose.yaml` verlangt `SESSION_SECRET` und `DB_APP_PASSWORD` weiterhin in
+  `.env` (die Prüfung `:?` greift vor dem Override). `DB_APP_PASSWORD` braucht
+  der Dienst `db-rolle` als echten Wert; für `SESSION_SECRET` genügt dort ein
+  Platzhalter. Postgres und `db-rolle` bekommen ihre Passwörter weiter als
+  Umgebungsvariable (`db-rolle` läuft nur kurz).
+- **Verschlüsselte Sicherungen** mit [age](https://age-encryption.org):
+  Auf einem **anderen** Rechner `age-keygen -o backup-schluessel.txt`; den
+  privaten Schlüssel dort und offline aufbewahren. Auf dem Server
+  `apt install age` und beim Aufruf
+  `BACKUP_AGE_EMPFAENGER=age1… ./scripts/backup.sh` (oder
+  `BACKUP_AGE_EMPFAENGER_DATEI=<Datei mit einem Empfänger je Zeile>`). Es
+  entstehen nur `db_….sql.gz.age` und `data_….tar.gz.age`, kein Klartext.
+  Zurück: `BACKUP_AGE_IDENTITAET=backup-schluessel.txt ./scripts/restore.sh
+  backups/db_….sql.gz.age backups/data_….tar.gz.age`. Den Datenschlüssel
+  (`BACKUP_SCHLUESSEL_ZIEL`) weiterhin getrennt aufbewahren.
+
+**Was sich für Clients ändert**
+
+- **Ein Bestätigungsweg mit zweitem Faktor**: Bei aktivem TOTP verlangen
+  jetzt alle Routen mit Passwortbestätigung zusätzlich `code` (TOTP- oder
+  Wiederherstellungscode) **oder** `passkey` (Antwort auf
+  `POST /auth/passkey/anmelden/optionen` mit `zweck: "zweiter_faktor"`), auch
+  mit dem Verwalterpasswort: `token-create`, `qr-token`, alle Verwalterrouten
+  unter `/auth/users`, `DELETE /bestand`, `/settings/sessions/andere-beenden`,
+  SMTP-Änderung über `POST /settings` (`admin_password` + `code`),
+  `zweiter-faktor/einrichten` und die bisherigen (Passwortwechsel, E-Mail,
+  Passkey anlegen/löschen, 2FA abschalten, Haushalt beitreten mit
+  `faktor_code`). Fehlt beides: 400 `zweiter_faktor_noetig` (mit
+  `passkey: true`, wenn das Konto Passkeys hat). Die Webapp fragt den Code
+  selbst nach. `zweiter-faktor/einrichten` antwortet bei schon aktivem
+  Faktor ohne Code mit `zweiter_faktor_noetig` statt 409. Welche Routen das
+  sind, steht im Vertrag als `x-bestaetigung` (`docs/openapi.json`).
+- **Bremsen je Zugang**: Falsche Passwörter und falsche Codes zählen je
+  Konto **und** Sitzung bzw. App-Token (über den Tausch hinweg); Codes in
+  einem eigenen Zähler, 5 je Stunde, den nur ein richtiger Code löscht.
+  Fehlversuche aus einer fremden Sitzung sperren die eigene nicht mehr.
+- **Hinweis-Mails** (wo Mail eingerichtet ist): neuer App-Token, neuer
+  QR-Zugang (an den Inhaber), neuer oder ernannter Verwalter und ein vom
+  Verwalter entfernter zweiter Faktor (an alle Verwalter, der Faktor auch an
+  das betroffene Konto).
+- `GET /api/v1/startup-status` nennt Schritt und Unterstand nur noch
+  angemeldet; anonym bleiben `ready`, `progress`, `total`.
+
+**Aufgaben in den GitHub-Einstellungen (nur dort möglich)**
+
+1. *Settings → Environments → New environment* `docker-hub`:
+   *Required reviewers* (sich selbst), *Deployment branches and tags* →
+   *Selected branches* `main`. Die Docker-Hub-Secrets `DOCKERHUB_USERNAME`
+   und `DOCKERHUB_TOKEN` dort als *Environment secrets* anlegen und die
+   gleichnamigen *Repository secrets* löschen. Danach wartet jeder
+   Veröffentlichungslauf auf die Freigabe (einmal für beide Architekturen,
+   einmal für Manifest und Signatur). Ohne diese Einrichtung legt GitHub die
+   Umgebung beim ersten Lauf ohne Schutz an; der Lauf geht dann wie bisher.
+2. *Settings → Branches*: Schutzregel für `main` mit den Pflicht-Checks
+   *CI* und *Sicherheit*, kein Force-Push.
+3. Der Trivy-Lauf für Caddy, PostgreSQL und pgweb ist jetzt scharf: Meldet
+   er behebbare Lücken, den Dependabot-PR mit dem neuen Digest übernehmen
+   oder die Lücke mit Grund und Ablaufdatum in `.github/trivy-betrieb.ignore`
+   eintragen.

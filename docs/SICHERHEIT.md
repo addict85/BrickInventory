@@ -15,7 +15,7 @@ den Commits, nicht hier.
 | Gutschein-PDFs (Kartennummer, PIN) | `data/vouchers/<konto>/`, AES-256-GCM |
 | Eigene Anleitungen | `data/uploads/<konto>/` |
 | Gemeinsamer Bildcache, geteilte Anleitungen | `data/images/`, `data/instructions/` |
-| Datenschlüssel | `data/.datenschluessel` (0600) oder `DATA_KEY` |
+| Datenschlüssel | `schluessel/datenschluessel` (0400, für app und jobs nur lesend) oder `DATA_KEY` |
 | Kontingent bei Rebrickable, Brickset, BrickLink | Server-Schlüssel |
 
 ## Angreifer
@@ -48,8 +48,15 @@ den Commits, nicht hier.
 ### Anmeldung und Sitzung (2, 3)
 - „Passwort ≠ Benutzername“ gilt auch beim Ändern mit App-Token und beim
   Setzen durch den Verwalter (Name aus der Tabelle) — `passwort-regel-db`.
-- „Andere Sitzungen beenden“ verlangt das Passwort: Eine erbeutete Sitzung
-  sperrt den Inhaber nicht aus — `web-ohne-token-db`.
+- „Andere Sitzungen beenden“ verlangt das Passwort (und bei aktivem TOTP den
+  Code): Eine erbeutete Sitzung sperrt den Inhaber nicht aus — `web-ohne-token-db`.
+- Bremsen der erneuten Bestätigung je Konto **und** Zugang (Sitzung, gehasht,
+  oder Token-Familie über `created_at`, das der Tausch erbt): Fehlversuche aus
+  einer erbeuteten Sitzung sperren weder „andere beenden“ noch den
+  Passwortwechsel des Inhabers. Falsche Codes zählen in einem eigenen Zähler
+  (5 je Stunde), den nur ein richtiger Code löscht; ein richtiges Passwort
+  setzt ihn nicht zurück: `src/konto/passwortBestaetigung.ts`,
+  `src/konto/loginLimiter.ts` — `bestaetigung-bremsen-db`.
 - Kein Passwort-Orakel: Ein gesperrtes oder unbestätigtes Konto bekommt bei
   richtigem Passwort dieselbe 401 `anmeldedaten_ungueltig` wie bei falschem
   (gezählt als Fehlversuch). Einen neuen Bestätigungslink gibt
@@ -81,15 +88,24 @@ den Commits, nicht hier.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
   einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `utils/passkeys.ts` —
   `passkeys-db`. TOTP: `utils/zweiterFaktor.ts` — `zweiter-faktor-db`.
-- Kein Weg am zweiten Faktor vorbei: Ein neuer Passkey und das Einlösen
-  einer Haushaltseinladung verlangen bei aktivem TOTP auch den Code; jede
-  Code-Prüfung (auch das Bestätigen der Einrichtung) läuft über die
-  Konto-Bremse — `passkeys-db`, `haushalt-beitreten-db`, `zweiter-faktor-db`.
-  Den Notausgang des Verwalters (`DELETE /auth/users/:id/zweiter-faktor`)
-  gibt es nur für fremde Konten (eigenes: 400 `eigener_zweiter_faktor`).
-  Ebenso Passwortwechsel, Passkey löschen und neue E-Mail (`code`; fehlt er,
-  400 `zweiter_faktor_noetig` ohne Zählung) — `zweiter-faktor-heikel-db`.
-  Eine neue E-Mail gilt auch beim Verwalter erst nach dem Link als bestätigt.
+- Kein Weg am zweiten Faktor vorbei: Es gibt genau einen Bestätigungsweg,
+  `bestaetigeMitFaktor` (`src/konto/http/anmeldung.ts`). Bei aktivem TOTP
+  verlangt er immer Code oder Passkey-Antwort, auch mit dem
+  Verwalterpasswort; fehlt beides, 400 `zweiter_faktor_noetig` ohne Zählung.
+  Jede Route, die einen Zugang prägt oder Schutz abbaut, trägt im API-Vertrag
+  `bestaetigung` (token-create, qr-token, Passkey anlegen/löschen, alle
+  Verwalterrouten an Konten, `DELETE /bestand`, andere beenden, Passwort,
+  E-Mail, 2FA abschalten, Haushalt beitreten, SMTP). Der Wächter
+  `bestaetigung-vertrag-db` ruft jede markierte Route ohne und mit falschem
+  Code, verlangt die Marke für jede Passwort-Eingabe des Vertrags und lässt
+  `bcrypt.compare` nur in Anmeldung und Bestätigung zu; eine Route ohne Marke,
+  die bestätigt, antwortet in Tests mit 500. Den Notausgang des Verwalters
+  (`DELETE /auth/users/:id/zweiter-faktor`) gibt es nur für fremde Konten.
+  Eine neue E-Mail gilt auch beim Verwalter erst nach dem Link als bestätigt
+  — `zweiter-faktor-heikel-db`, `passkeys-db`, `haushalt-beitreten-db`.
+- Hinweis-Mails bei neuem App-Token und QR-Zugang (Inhaber), neuem Verwalter
+  und vom Verwalter entferntem zweitem Faktor (alle Verwalter, das Konto
+  selbst): `src/konto/kontoHinweis.ts` — `zugang-hinweis-db`.
 - Wiederherstellungscodes: 80 Bit, als HMAC mit Teilschlüssel des
   Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`.
 - Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys; der
@@ -107,6 +123,7 @@ den Commits, nicht hier.
 - Mailadressen stehen im Protokoll nur maskiert — `haushalt-beitreten-db`.
 - In Produktion kein Start mit Beispiel-`SESSION_SECRET` oder
   Beispiel-Datenbankpasswort: `server.ts`, `utils/konfig.ts` (`startVerbote`) — `startverbot`.
+- `/api/v1/startup-status` nennt Schritt und Unterstand nur angemeldet — `gesundheit-db`.
 
 ### Herkunft der Client-Adresse (1)
 - `TRUST_PROXY` vertraut nur ausdrücklich genannten Adressen oder kleinen
@@ -249,13 +266,20 @@ den Commits, nicht hier.
   Unterordner legt er als `brickinv` an, die Marke schreibt er als
   `brickinv`, und der Reparaturschritt (`find -xdev … -exec chown -h`) folgt
   keinem Symlink des Dienstes und bleibt im Datenträger — `entrypoint-start`.
-- `docker-publish.yml`: Der Tag beim Handstart nur über `env` und in
-  Docker-Tag-Form, sonst Abbruch — `workflow-tag`.
+- `docker-publish.yml`: Ein Image entsteht nur aus einem Commit mit grüner
+  CI, auch beim Handstart (nur `main`, grüner Lauf von `web-ci.yml` auf genau
+  diesem Commit, sonst Abbruch); Hochladen und Signieren laufen in der
+  Umgebung `docker-hub` mit Freigabe. Der Tag beim Handstart nur über `env`
+  und in Docker-Tag-Form — `workflow-tag`.
+- Checkouts ohne gespeicherte Zugangsdaten (`persist-credentials: false`),
+  ausser in den zwei Jobs, die einen Zweig pushen — `workflow-ort`.
+- `su-exec` im Laufzeit-Image mit fester Fassung — `dockerfile`.
 - `.github/workflows/sicherheit.yml`: CodeQL (TypeScript, Kotlin), Trivy
   (Abhängigkeiten, Image), ZAP-Baseline gegen den Produktionsserver. Die
   Images aus `compose.yaml` (Caddy, Postgres, pgweb) liest der Lauf aus der
-  Datei, prüft sie mit Trivy (Bericht) und meldet einen Digest, der hinter
-  seinem Tag zurückliegt.
+  Datei und prüft sie mit Trivy; eine behebbare Lücke ab high ist rot,
+  ausser sie steht mit Ablaufdatum in `.github/trivy-betrieb.ignore`. Ein
+  Digest, der hinter seinem Tag zurückliegt, wird gemeldet — `workflow-ort`.
 
 ## Betrieb
 
@@ -285,9 +309,19 @@ den Commits, nicht hier.
   `db-rolle-db`.
 - `scripts/restore.sh` entpackt ein data-Archiv nur, wenn es aus Dateien und
   Ordnern unter `data/` besteht (`scripts/archiv-pruefen.sh`) — `restore-archiv`.
-- Container ohne Capabilities ausser den nötigen, `read_only`, `no-new-privileges`.
-- Datenschlüssel getrennt von `data/` sichern (`DATA_KEY`), sonst sind
+- Container ohne Capabilities ausser den nötigen, `read_only`,
+  `no-new-privileges`, und mit Grenzen für Speicher, Prozesse und CPU
+  (`mem_limit`, `pids_limit`, `cpus`) — `compose-grenzen-schluessel`.
+- Den Datenschlüssel legt der Einmal-Dienst `schluessel` an
+  (`schluessel-anlegen.sh`, ohne Netz); app und jobs sehen ihn nur lesend —
+  `compose-grenzen-schluessel`. Getrennt von `data/` sichern, sonst sind
   Geheimnisse und Gutschein-PDFs einer Sicherung nicht lesbar.
+- Geheimnisse wahlweise aus Dateien (`SESSION_SECRET_FILE`,
+  `PGPASSWORD_FILE`, `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE`) statt aus der
+  Umgebung — `geheimnis-dateien`.
+- Sicherungen auf Wunsch mit age an einen öffentlichen Schlüssel
+  verschlüsselt (`BACKUP_AGE_EMPFAENGER`), ohne Klartext daneben; der private
+  Schlüssel liegt nicht auf dem Server — `backup-verschluesselt`.
 
 ## Bekannte Restrisiken
 
@@ -317,8 +351,17 @@ den Commits, nicht hier.
   selbst (Einstellungen → Haushalt).
 - **Alte Wiederherstellungscodes** (vor dem 01.11.2026, 50 Bit, SHA-256) gelten, bis
   sie verbraucht oder neu erzeugt sind.
-- **Datenschlüssel neben den Daten**: Ohne `DATA_KEY` liegt der Schlüssel in
-  `data/`. Wer das ganze Volume hat, hat auch die Geheimnisse.
+- **Datenschlüssel auf demselben Rechner**: `schluessel/` liegt neben `data/`.
+  Wer den ganzen Rechner hat, hat auch die Geheimnisse; nur eine Sicherung von
+  `data/` allein gibt sie nicht preis.
+- **Mehrere erbeutete Zugänge**: Die Bremsen gelten je Sitzung bzw.
+  Token-Familie. Wer mehrere Sitzungen desselben Kontos erbeutet, rät in jeder
+  5 Codes je Stunde. Einen neuen Zugang prägt nur, wer den zweiten Faktor
+  hat. Bei der Anmeldung zählen falsche Codes in die Anmeldebremse je
+  Adresse und Konto.
+- **Passwörter von Postgres und `db-rolle`** stehen weiter in deren
+  Umgebung (das offizielle Image liest `POSTGRES_PASSWORD_FILE`, `db-rolle`
+  noch keine Datei).
 - **Altbestand im Bildcache**: Bilder, die vor dieser Fassung aus Angaben
   eines Clients geladen wurden, bleiben liegen, bis sie neu geladen werden.
 - **Fremdkontingent**: Nicht-Verwalter bekommen zusammen höchstens die Hälfte;
@@ -334,5 +377,5 @@ den Commits, nicht hier.
   schon jemand geladen hatte.
 - **Bilder der Container** (`postgres`, `caddy`, `pgweb`, ZAP) sind per Digest
   fest und veralten damit; Dependabot schlägt neue Fassungen vor (ZAP und die
-  Dienst-Container der Workflows nicht). Trivy meldet Lücken der drei
-  Betriebs-Images vorerst nur, ohne den Lauf rot zu machen.
+  Dienst-Container der Workflows nicht). Eine hingenommene Lücke steht mit
+  Ablaufdatum in `.github/trivy-betrieb.ignore`.
