@@ -34,11 +34,11 @@ fun widgetZahlen(pnl: PnlResponse?, verlauf: PortfolioHistoryResponse?, jetzt: L
     val waehrung = pnl?.currency ?: verlauf?.currency ?: "EUR"
     val t = pnl?.totals
     val mitBasis = t?.basisEinstand != null && (t.positionenBewertet ?: 0) > 0
-    val wert = (if (mitBasis) t?.basisMarktwert else t?.current)?.toDoubleOrNull()
+    val wert = (if (mitBasis) t.basisMarktwert else t?.current)?.toDoubleOrNull()
         ?: verlauf?.points?.lastOrNull()?.value
     val kauf = t?.purchase?.toDoubleOrNull()
     val gesamt = when {
-        mitBasis -> t?.basisGuvBetrag?.toDoubleOrNull()
+        mitBasis -> t.basisGuvBetrag?.toDoubleOrNull()
         t?.basisEinstand != null -> null
         wert != null && kauf != null -> wert - kauf
         else -> null

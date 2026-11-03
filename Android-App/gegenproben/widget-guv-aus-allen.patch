@@ -11,7 +11,7 @@ index 8fcc929..1405f88 100644
          ?: verlauf?.points?.lastOrNull()?.value
      val kauf = t?.purchase?.toDoubleOrNull()
      val gesamt = when {
--        mitBasis -> t?.basisGuvBetrag?.toDoubleOrNull()
+-        mitBasis -> t.basisGuvBetrag?.toDoubleOrNull()
 +        mitBasis -> wert?.let { w -> kauf?.let { w - it } }
          t?.basisEinstand != null -> null
          wert != null && kauf != null -> wert - kauf

@@ -4,20 +4,21 @@ Test: ch.brickinventoryapp.FeinschliffRegelnTest
 Rot: Reiterleiste
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 7b71c8a..9f988d2 100644
+index 3cd4992..94a0999 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -245,12 +245,7 @@ fun ReiterGeruest(
- private fun ReiterBeschriftung(text: String) {
-     val farbe = LocalContentColor.current
-     val stil = MaterialTheme.typography.labelSmall
--    androidx.compose.foundation.text.BasicText(
--        // Ellipsis als Massstab: Die Grösse passt, wenn nichts ausgelassen wird.
--        text, style = stil, color = { farbe }, maxLines = 1, overflow = TextOverflow.Ellipsis,
--        autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(
--            minFontSize = REITER_SCHRIFT_MIN, maxFontSize = stil.fontSize, stepSize = 0.5.sp),
+@@ -249,13 +249,7 @@ private fun ReiterBeschriftung(text: String) {
+     // einen halben Punkt, bis das Wort ganz in eine Zeile passt.
+     val schrift = LocalDensity.current.fontScale
+     var groesse by remember(text, schrift) { mutableStateOf(stil.fontSize) }
+-    Text(
+-        text, style = stil.copy(fontSize = groesse), maxLines = 1, softWrap = false,
+-        overflow = TextOverflow.Clip,
+-        onTextLayout = { l ->
+-            if (l.hasVisualOverflow && groesse > REITER_SCHRIFT_MIN) groesse = (groesse.value - 0.5f).sp
+-        },
 -    )
-+    androidx.compose.foundation.text.BasicText(text, style = stil, color = { farbe })
++    Text(text, style = stil.copy(fontSize = groesse))
  }
  
  /** Kleiner wird keine Beschriftung; bei 200 % sind das noch 14 dp, gut lesbar. */

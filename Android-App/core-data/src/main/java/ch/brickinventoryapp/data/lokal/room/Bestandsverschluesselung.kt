@@ -71,12 +71,12 @@ private val KOPF = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
 private fun bereite(datei: File, passwort: ByteArray, schluesselNeu: Boolean) {
     when {
         !datei.isFile -> Unit
-        istKlartextDatenbank(datei) -> uebernimm(datei, passwort)
+        istKlartextDatenbank(datei) -> verschluesseleKlartext(datei, passwort)
         schluesselNeu -> loescheDatenbank(datei)
     }
 }
 
-private fun uebernimm(datei: File, passwort: ByteArray) {
+private fun verschluesseleKlartext(datei: File, passwort: ByteArray) {
     val ziel = File(datei.parentFile, datei.name + ".neu")
     loescheDatenbank(ziel)
     val alt = SQLiteDatabase.openDatabase(datei.path, "", null, SQLiteDatabase.OPEN_READWRITE, null, null)

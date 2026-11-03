@@ -390,6 +390,12 @@ class BildschirmFotoVariantenTest {
      * byte-gleich mit dem 100-%-Foto und bewies nichts.
      */
     private fun dialogFoto(name: String, design: String, dunkel: Boolean, geraet: String, schrift: Float) {
+        // Bei angehaltener Uhr: Erst bei grosser Schrift rollt der Dialog, und ein Rollen
+        // ins Bild wartet auf Bilder der Uhr. Vorstellen, bis es fertig ist.
+        if (!compose.mainClock.autoAdvance) repeat(20) {
+            compose.mainClock.advanceTimeBy(100)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        }
         if (schrift != 1f) {
             val texte = compose.onAllNodes(androidx.compose.ui.test.hasAnyAncestor(isDialog()), useUnmergedTree = true)
                 .fetchSemanticsNodes()

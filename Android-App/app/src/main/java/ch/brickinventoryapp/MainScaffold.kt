@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -243,13 +244,17 @@ fun ReiterGeruest(
  */
 @Composable
 private fun ReiterBeschriftung(text: String) {
-    val farbe = LocalContentColor.current
     val stil = MaterialTheme.typography.labelSmall
-    androidx.compose.foundation.text.BasicText(
-        // Ellipsis als Massstab: Die Grösse passt, wenn nichts ausgelassen wird.
-        text, style = stil, color = { farbe }, maxLines = 1, overflow = TextOverflow.Ellipsis,
-        autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(
-            minFontSize = REITER_SCHRIFT_MIN, maxFontSize = stil.fontSize, stepSize = 0.5.sp),
+    // Startgrösse je Text und Schriftmass; jede Messung mit Überstand verkleinert um
+    // einen halben Punkt, bis das Wort ganz in eine Zeile passt.
+    val schrift = LocalDensity.current.fontScale
+    var groesse by remember(text, schrift) { mutableStateOf(stil.fontSize) }
+    Text(
+        text, style = stil.copy(fontSize = groesse), maxLines = 1, softWrap = false,
+        overflow = TextOverflow.Clip,
+        onTextLayout = { l ->
+            if (l.hasVisualOverflow && groesse > REITER_SCHRIFT_MIN) groesse = (groesse.value - 0.5f).sp
+        },
     )
 }
 
