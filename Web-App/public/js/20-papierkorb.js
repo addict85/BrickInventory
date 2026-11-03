@@ -1,7 +1,7 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, ico, G, api, esc, toast } from './01-core.js';
-import { confirmDelete } from './07-admin.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
@@ -58,16 +58,21 @@ export async function papierkorbWiederherstellen(id) {
   await ladePapierkorb();
 }
 
+// Endgültig heisst unumkehrbar: Der Server verlangt dafür das Passwort (und den zweiten Faktor).
 export async function papierkorbEndgueltig(id) {
-  if (!await confirmDelete(tRaw('trash.delete_final'), t('common.delete_text'))) return;
-  const d = await api('DELETE', `/v1/papierkorb/${id}`);
+  const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), t('common.delete_text'), 'loeschen');
+  if (password === null) return;
+  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/papierkorb/${id}`, { password, ...z }));
+  if (d === null) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   await ladePapierkorb();
 }
 
 export async function papierkorbLeeren() {
-  if (!await confirmDelete(tRaw('trash.clear'), t('trash.clear_confirm'))) return;
-  const d = await api('DELETE', '/v1/papierkorb');
+  const password = await bestaetigeMitPasswort(tRaw('trash.clear'), t('trash.clear_confirm'), 'loeschen');
+  if (password === null) return;
+  const d = await mitZweitemFaktor(z => api('DELETE', '/v1/papierkorb', { password, ...z }));
+  if (d === null) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   await ladePapierkorb();
 }

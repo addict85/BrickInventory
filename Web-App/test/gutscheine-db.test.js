@@ -58,6 +58,7 @@ const PDFDocument = require('pdfkit');   // kein Verzeichnispfad: pdfkit 0.20 ha
 const VOUCHER_DIR = path.join(ROOT, 'data', 'vouchers');
 
 const U = {};
+const PASS = 'Gutschein-Passwort-1';
 
 /** Ein Gutschein-PDF mit erfundenen Werten — nie ein echtes, das Repo ist oeffentlich. */
 function pdfMit(zeilen) {
@@ -80,7 +81,7 @@ async function seed() {
   try { await _req('db/migrate.js').runMigrations(client); } finally { client.release(); }
   for (const name of ['opa', 'enkel', 'chef']) {
     await db.run('INSERT INTO users (username, password_hash) VALUES ($1,$2)',
-      [name, 'x']);
+      [name, require(path.join(ROOT, 'node_modules', 'bcryptjs')).hashSync(PASS, 4)]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
   // chef ist Administrator, opa ist Haupt-, enkel Unterkonto. Beides zusammen
@@ -214,7 +215,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       ]) {
         const r = methode === 'GET'
           ? await hole(pfad, keks)
-          : await jsonAn(pfad, keks, methode, { amount: 1 });
+          : await jsonAn(pfad, keks, methode, { amount: 1, password: PASS });
         assert.equal(r.status, 404, `${wer} durfte ${methode} ${pfad} nicht`);
       }
       // Und die Zeile steht noch.
@@ -371,6 +372,8 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
     });
 
     // ── Loeschen ────────────────────────────────────────────────────────────
+    // Gegenprobe (03.11.2026 gemessen): bestaetigeMitFaktor() in DELETE
+    // /vouchers/:id entfernt → rot „löschen ohne Passwort" (200 statt 400).
     await t.test('loeschen nimmt Zeile UND Datei mit', async () => {
       const liste = await (await hole('/api/v1/vouchers', keksOpa)).json();
       const mitPdf = liste.vouchers.find(v => v.hat_pdf);
@@ -378,7 +381,10 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const datei = path.join(VOUCHER_DIR, zeile.pdf_path);
       assert.ok(fs.existsSync(datei), 'Vorbedingung: die Datei liegt da');
 
-      const r = await hole(`/api/v1/vouchers/${mitPdf.id}`, keksOpa, { method: 'DELETE' });
+      const ohne = await hole(`/api/v1/vouchers/${mitPdf.id}`, keksOpa, { method: 'DELETE' });
+      assert.deepEqual([ohne.status, (await ohne.json()).code], [400, 'aktuelles_passwort_falsch'], 'löschen ohne Passwort');
+      assert.ok(fs.existsSync(datei), 'ohne Passwort ist die Datei weg');
+      const r = await jsonAn(`/api/v1/vouchers/${mitPdf.id}`, keksOpa, 'DELETE', { password: PASS });
       assert.equal(r.status, 200);
       assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [mitPdf.id])).n, 0);
       assert.ok(!fs.existsSync(datei), 'die Datei muss mit der Zeile verschwinden');

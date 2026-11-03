@@ -11,6 +11,7 @@ import { landErlaubt, LAND_STANDARD } from '../../src/gutscheine/gutscheinGuthab
 import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
 import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts } from '../../src/gutscheine/gutscheinDateien';
 import { requireToken } from './middleware';
+import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { werteAusPdf, PdfZuGross } from '../../src/gutscheine/gutscheinPdf';
 import { verbindeGutscheine, seitenweiseLesen, seitenOderKeine } from '../../src/gutscheine/gutscheinPdfSchreiben';
 import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
@@ -240,14 +241,15 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Antwor
     res.json({ success: true, voucher: fuerAussen(zeile) });
 });
 
+// Endgültig und Bargeld: mit Bestätigung wie das Leeren des Papierkorbs.
 router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/vouchers/:id'>) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
   const pdfPfad = await gutscheinLoeschen(req.apiUser.user_id, id);
   if (pdfPfad === undefined) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
-  // Erst die Zeile, dann die Datei: Eine verwaiste Datei ist besser als eine
-  // Zeile, die ins Leere zeigt.
+  // Erst die Zeile, dann die Datei: lieber eine verwaiste Datei als eine Zeile ins Leere.
   if (pdfPfad) {
     const p = gutscheinDatei(req.apiUser.user_id, pdfPfad);
     if (p) await fs.promises.unlink(p).catch(() => { /* schon weg: in Ordnung */ });

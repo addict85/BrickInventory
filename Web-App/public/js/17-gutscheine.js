@@ -2,7 +2,7 @@ import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld, CURRENCY, _settingsCache } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
-import { confirmDelete } from './07-admin.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
 //
@@ -294,8 +294,10 @@ export async function gutscheinSpeichern() {
 export async function gutscheinLoeschen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
-  if (!await confirmDelete(tRaw('vouchers.delete_title'), tRaw('vouchers.delete_confirm', { nummer: gruppiereNummer(g.number) }), 'loeschen')) return;
-  const d = await api('DELETE', `/v1/vouchers/${id}`);
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.delete_title'), tRaw('vouchers.delete_confirm', { nummer: gruppiereNummer(g.number) }), 'loeschen');
+  if (password === null) return;
+  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/vouchers/${id}`, { password, ...z }));
+  if (d === null) return;
   if (!d?.success) { toast(d?.error || tRaw('vouchers.delete_error'), 'error'); return; }
   // Rückgängig legt die Karte mit Nummer, PIN und Betrag neu an; ein PDF ginge dabei verloren.
   toast(tRaw('vouchers.deleted'), 'success', g.hat_pdf ? undefined : { text: tRaw('trash.undo'), fn: async () => {

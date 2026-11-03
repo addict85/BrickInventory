@@ -11,10 +11,13 @@
  *      „ein Konto anlegen fragt den Code nach"
  *   C  in 23-passkeys.js setzePasskeyHolen() nicht aufgerufen → rot: „der
  *      Passkey ersetzt den Code"
+ *   D  in 20-papierkorb.js bzw. 17-gutscheine.js wieder confirmDelete() und
+ *      api() ohne Passwort → rot: „den Papierkorb leeren …" bzw. „einen
+ *      Gutschein löschen …" (der Passwortdialog erscheint nicht)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { oeffneOberflaeche, warte, takt, sicht } = require('./helpers/oberflaeche');
 
 /** Antwortet ohne Code mit zweiter_faktor_noetig und merkt sich jeden Rumpf. */
 function mitFaktor(liste, passkey = false) {
@@ -88,5 +91,33 @@ test('der Passkey ersetzt den Code', async () => {
     assert.ok(await warte(() => rufe.length === 2), `der Passkey ersetzt den Code: nur ${rufe.length} Anfrage(n)`);
     assert.equal(rufe[1].passkey?.id, 'pk1', 'der Passkey ersetzt den Code');
     assert.equal(rufe[1].code, undefined);
+  } finally { w.close(); }
+});
+
+test('den Papierkorb leeren fragt Passwort und Code', async () => {
+  const rufe = [];
+  const { w, d } = await oeffneOberflaeche({ '/v1/papierkorb': (url, o) => (o?.method === 'DELETE' ? mitFaktor(rufe)(url, o)
+    : { success: true, eintraege: [] }) });
+  try {
+    d.getElementById('papierkorb-leeren').click();
+    await bestaetige(d, { passwort: 'Mein-Passwort-1', code: '246810' });
+    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
+    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }, { password: 'Mein-Passwort-1', code: '246810' }]);
+  } finally { w.close(); }
+});
+
+test('einen Gutschein löschen fragt Passwort und Code', async () => {
+  const rufe = [];
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '6123456789012', pin: '4711', amount: 50, currency: 'CHF', hat_pdf: false }] },
+    '/v1/vouchers/3': mitFaktor(rufe),
+  });
+  try {
+    await sicht(w, 'gutscheine');
+    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinLoeschen"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="gutscheinLoeschen"]').click();
+    await bestaetige(d, { passwort: 'Mein-Passwort-1', code: '135790' });
+    assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
+    assert.deepEqual(rufe[1], { password: 'Mein-Passwort-1', code: '135790' });
   } finally { w.close(); }
 });

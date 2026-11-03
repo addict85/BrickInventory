@@ -1097,3 +1097,11 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
   aus einer Token-Anmeldung verlassen hat, meldet sich mit `ohne_token: true`
   an. Kann der Token nicht gespeichert werden, antwortet die Anmeldung jetzt
   immer mit 500 `token_nicht_ausgestellt`.
+- **Endgültig löschen nur mit Bestätigung**: `DELETE /papierkorb`,
+  `DELETE /papierkorb/:id` und `DELETE /vouchers/:id` verlangen wie
+  `DELETE /bestand` das Passwort (`password`) und bei aktivem zweitem Faktor
+  `code` oder `passkey` im Rumpf; ohne antworten sie 400
+  `aktuelles_passwort_falsch` bzw. `zweiter_faktor_noetig`. Die Web-App fragt
+  beides ab. Die Android-App muss beim Löschen eines Gutscheins nachziehen
+  (Passwortdialog, Rumpf am `DELETE`); bis dahin scheitert das Löschen dort
+  mit der Meldung des Servers.

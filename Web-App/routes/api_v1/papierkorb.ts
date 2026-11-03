@@ -24,9 +24,11 @@ router.post('/papierkorb/:id/wiederherstellen', requireToken, async (req: Authed
   res.json({ success: true, art: r.art, nummer: r.nummer, user_id: r.user_id });
 });
 
+// Bestätigt wie /bestand: Sonst leerte ein erbeutetes Token alles Stück für Stück, unumkehrbar.
 router.delete('/papierkorb/:id', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/papierkorb/:id'>) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
   if (!await loescheEndgueltig(await writableIds(req.apiUser.user_id), id))
     return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({ success: true });
@@ -39,6 +41,7 @@ router.delete('/bestand', requireToken, async (req: AuthedRequest, res: Antwort<
 });
 
 router.delete('/papierkorb', requireToken, async (req: AuthedRequest, res: Antwort<'DELETE /api/v1/papierkorb'>) => {
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
   res.json({ success: true, entfernt: await leerePapierkorb(await writableIds(req.apiUser.user_id)) });
 });
 

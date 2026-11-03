@@ -116,7 +116,7 @@ export const routen = {
   'PUT /api/v1/storage/default': { antwort: LagerortVorgabeResponse },
   'GET /api/v1/papierkorb': { antwort: Papierkorb },
   'POST /api/v1/papierkorb/:id/wiederherstellen': { antwort: Wiederhergestellt },
-  'DELETE /api/v1/papierkorb/:id': { antwort: Erfolg },
-  'DELETE /api/v1/papierkorb': { antwort: PapierkorbGeleert },
+  'DELETE /api/v1/papierkorb/:id': { antwort: Erfolg, ...bestaetigt() },
+  'DELETE /api/v1/papierkorb': { antwort: PapierkorbGeleert, ...bestaetigt() },
   'DELETE /api/v1/bestand': { antwort: BestandGeleert, ...bestaetigt() },
 } satisfies Record<string, Route>;
