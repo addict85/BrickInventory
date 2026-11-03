@@ -1114,7 +1114,10 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .fin-datum{font-size:var(--fs-1);color:var(--mut)}
 .dt-fin{table-layout:fixed;width:100%;min-width:1065px}
 .sp-40{width:40px}.sp-55{width:55px}.sp-60{width:60px}.sp-70{width:70px}.sp-80{width:80px}.sp-90{width:90px}
-.sp-110{width:110px}.sp-250{width:250px}.sp-395{width:395px}
+.sp-110{width:110px}.sp-235{width:235px}.sp-380{width:380px}
+/* Köpfe brechen nicht um; die Spalten sind dafür breit genug (Kurzform G/V). */
+.dt-fin th{white-space:nowrap;padding-left:8px;padding-right:8px}
+.fin-je{display:block;font-size:var(--fs-0);color:var(--mut);white-space:nowrap}
 /* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
 .dt-fin .zahl,.dt-fin th.zahl,.dt-fin .fin-fuss-wert{text-align:right}
 .dt-fin .zahl .qbadge{margin-left:auto}

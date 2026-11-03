@@ -210,7 +210,7 @@ export async function loadFinance(){
   // 02-gallery.js (dort für Kacheln mit mehreren Zuständen).
   const condBadge = c => condBadges({ conditions: [c] });
   const pmColgroup = `<colgroup>
-    <col class="sp-60"><col class="sp-395"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-40">
+    <col class="sp-60"><col class="sp-380"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-55">
   </colgroup>`;
   // Wie bei den Sets: eine VOLLSTÄNDIGE Zeile je Kaufpreis-Erfassung, jede mit
   // dem Marktpreis ihres Zustands und ihrer eigenen Entwicklung. Ein Teil, das
@@ -250,7 +250,7 @@ export async function loadFinance(){
       <td class="fin-name"><span class="fin-name-text">${label}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(it)}</span><span class="fin-unter">×${qty}</span></td>
       <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
       <td class="fin-detail fin-datum">${acq?.created_at?fmtDatum(acq.created_at):''}</td>
-      <td class="fin-detail price-cell zahl">${purchase!=null?fmtGeld(purchase,cur):'<span class="text-mut">—</span>'}</td>
+      <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
       <td class="fin-detail price-cell zahl">${current>0?geschaetztMarke(it, fmtN(current,cur)):'<span class="text-mut">—</span>'}</td>
       <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total,cur) : '<span class="text-mut">—</span>'}</td>
       <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
@@ -281,7 +281,7 @@ export async function loadFinance(){
   // Die vierte Spalte war ein reiner Platzhalter, damit die Preisspalten an
   // derselben Stelle wie in der Sets-Tabelle beginnen. Sie trägt jetzt dasselbe
   // wie dort: das Erfassungsdatum der Zeile.
-  const pmTableHead = `<thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead>`;
+  const pmTableHead = `<thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead>`;
   // Die Summen liefert der Server (`total_value`) — Android liest sie seit jeher
   // von dort. Hier wurde stattdessen über `display_value` addiert; heute kommt
   // dasselbe heraus, aber sobald der Server Zeilen ohne Preis anders behandelt,
@@ -342,7 +342,7 @@ export async function loadFinance(){
     <td class="fin-name">${esc(s.name)||'—'}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td><td class="fin-detail">${s.year||'—'}</td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${dateSrc?fmtDatum(dateSrc):'—'}</td>
-    <td class="fin-detail price-cell zahl">${purchase!=null?fmtGeld(purchase,cur):'—'}</td>
+    <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
     <td class="fin-detail zahl ${s.error?'':'price-cell'}">${s.error?`<span class="fin-fehlt" title="${esc(t('finance.price_failed'))}: ${esc(s.error)}">${t('finance.price_missing_short')}</span>`:fmtN(market,cur)}</td>
     <td class="fin-wert zahl ${s.error?'':'price-total'}">${s.error?'<span class="text-mut">—</span>':fmtN(total,cur)}</td>
     <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
@@ -394,12 +394,37 @@ export async function loadFinance(){
         <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal)}</tfoot>
       </table>
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-250"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-40"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th><th class="zahl">${t('detail.purchase_price')}</th><th class="zahl">${t('detail.market_price')}</th><th class="zahl">${t('finance.grand.value')}</th><th class="zahl">${t('finance.total_pnl')}</th><th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-235"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
   // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
   // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
   // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine
   // Behauptung.
   finFilterAnwenden();
+}
+
+/**
+ * Die Kaufpreisspalte zeigt den Einstand der Zeile (Menge × Stückpreis), damit
+ * die Summe darunter sich aus der Spalte nachrechnen lässt; der Stückpreis
+ * steht bei Menge > 1 als „je …“ darunter.
+ */
+function einstandZelle(stueck, menge, cur) {
+  const p = stueck == null || String(stueck).trim() === '' ? NaN : Number(stueck);
+  if (!Number.isFinite(p)) return '<span class="text-mut">—</span>';
+  const n = parseInt(menge) || 1;
+  if (n <= 1) return fmtGeld(p, cur);
+  return `${fmtGeld(p * n, cur)}<span class="fin-je">${esc(tRaw('finance.je', { preis: fmtGeld(p, cur) }))}</span>`;
+}
+
+/**
+ * Die Köpfe der Preisspalten. Sie brechen nicht um: „Gewinn/Verlust“ steht
+ * gekürzt da, der volle Name im title und für Vorleser.
+ */
+function preisKoepfe() {
+  const kurz = (lang, kurzTxt) => `<th class="zahl" title="${esc(tRaw(lang))}"><span aria-hidden="true">${kurzTxt}</span><span class="vh">${t(lang)}</span></th>`;
+  return `<th class="zahl">${t('finance.stat.purchase')}</th>`
+    + `<th class="zahl" title="${esc(tRaw('finance.market_price_stueck'))}">${t('detail.market_price')}</th>`
+    + `<th class="zahl">${t('finance.grand.value')}</th>`
+    + kurz('finance.total_pnl', t('finance.pnl_kurz'));
 }
 
 /** Zahl aus der Serverantwort, sonst der Ersatzwert. */
