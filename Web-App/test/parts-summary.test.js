@@ -342,10 +342,12 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
   assert.deepEqual(ausLive, ausSummary,
     'Die beiden Wege zählen Verschiedenes. Aus der Zusammenfassung: ' +
     `${JSON.stringify(ausSummary)}, live: ${JSON.stringify(ausLive)}. ` +
-    'Das manuell erfasste Teil (Menge 11) gehört in keine der Set-Zahlen.');
+    'Das manuell erfasste Teil (Menge 11) gehört in keine der Set-Mengen.');
 
-  // Und der Inhalt stimmt auch: EIN Set-Teil, Menge 3 — das manuelle zählt nicht.
-  assert.equal(ausSummary.unique_parts, 1, 'Das manuelle Teil wurde mitgezählt');
+  // Sorten und Farben zählen beide Quellen, wie die Liste darunter (siehe
+  // teile-kennzahlen-einzeln-db.test.js); die Menge bleibt nach Quelle getrennt.
+  assert.equal(ausSummary.unique_parts, 2, 'Das manuelle Teil fehlt in den Sorten');
+  assert.equal(ausSummary.unique_colors, 2, 'Die Farbe des manuellen Teils fehlt');
   assert.equal(ausSummary.total_parts, 3, 'Die Menge des manuellen Teils steckt in der Summe');
   // Getrennt ausgewiesen: Der Teile-Reiter zählt beide zusammen, wie die
   // Kachel der Sammlung (/v1/stats). Gegenprobe (01.11.2026): manual_parts in
