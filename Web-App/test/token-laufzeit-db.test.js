@@ -109,7 +109,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser',
     [auth.hashToken(token)]);
 
   try {
-    const an = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS } });
+    const an = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS, ohne_token: true } });
     assert.equal(an.status, 200, `Anmeldung scheiterte: ${JSON.stringify(an.body)}`);
     const keks = an.cookie.split(';')[0];
 

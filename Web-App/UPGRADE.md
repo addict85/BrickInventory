@@ -1085,3 +1085,15 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
 - **db-rolle** entzieht `PUBLIC` das Recht `TEMPORARY` an der Datenbank: Die
   Leserolle legt keine temporären Tabellen mehr an. Die App behält es als
   Eigentümerin der Datenbank. Nichts zu tun; der Dienst läuft bei jedem `up`.
+
+**Was sich für Clients ändert**
+
+- **Token oder Sitzung, nie beides**: `POST /auth/login` ohne `ohne_token`
+  und `POST /auth/passkey/anmelden` mit `mit_token` geben nur noch den Token
+  aus, kein `Set-Cookie` und keine Sitzung. Bisher hielt jeder solche Client
+  neben dem Token (Scope `app`) eine Sitzung mit den vollen Rechten des
+  Kontos. Die Web-App (`ohne_token: true`) und die Android-App (keine
+  Cookies) sind nicht betroffen; ein eigenes Skript, das sich auf den Keks
+  aus einer Token-Anmeldung verlassen hat, meldet sich mit `ohne_token: true`
+  an. Kann der Token nicht gespeichert werden, antwortet die Anmeldung jetzt
+  immer mit 500 `token_nicht_ausgestellt`.
