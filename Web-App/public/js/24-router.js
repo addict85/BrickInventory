@@ -1,4 +1,5 @@
-import { G, ME } from './01-core.js';
+import { G, ME, toast, verwirfToasts } from './01-core.js';
+import { tRaw } from '../i18n.js';
 import { beiDialogWechsel, istOffen, obersterDialog } from './01-dialoge.js';
 import { oeffneSicht } from './02-gallery.js';
 import { openModal } from './07-admin.js';
@@ -104,6 +105,7 @@ function offeneDialoge() {
 export function meldeAnsicht(ansicht) {
   if (!PFADE[ansicht]) return;
   const neu = ansicht !== _ansicht;
+  if (neu) verwirfToasts();
   _ansicht = ansicht;
   if (!_gestartet || _wendeAn) return;
   // Ein offener Dialog bleibt nicht über einem Seitenwechsel stehen.
@@ -167,9 +169,14 @@ function schliesse(dialog) {
   });
 }
 
-/** Ansicht öffnen, ohne einen Eintrag anzulegen. */
+/**
+ * Ansicht öffnen, ohne einen Eintrag anzulegen. Eine Verwalterseite öffnet für
+ * andere Konten die Sammlung; true heisst „abgewiesen“, damit der Aufrufer die
+ * Adresse dazu passend setzt und es sagt.
+ */
 function zeigeAnsicht(ansicht, unter) {
-  if (NUR_VERWALTER.has(ansicht) && !ME?.isAdmin) ansicht = 'gallery';
+  const abgewiesen = NUR_VERWALTER.has(ansicht) && !ME?.isAdmin;
+  if (abgewiesen) ansicht = 'gallery';
   mitRouter(() => {
     if (ansicht === 'settings' && ABSCHNITT_ID[unter]) einstAbschnitt(ABSCHNITT_ID[unter]);
     if (ansicht !== _ansicht || !document.getElementById('tab-' + ansicht)?.classList.contains('active')) {
@@ -177,8 +184,17 @@ function zeigeAnsicht(ansicht, unter) {
       else /** @type {HTMLElement|null} */ (document.querySelector(`.ntab[data-tab="${ansicht}"]`))?.click();
     }
   });
+  if (ansicht !== _ansicht) verwirfToasts();
   _ansicht = ansicht;
+  return abgewiesen;
 }
+
+/** Die Adresse zeigte etwas anderes als die Ansicht: sagen, warum. */
+function sageUmleitung(grund) {
+  toast(tRaw(grund === 'verwalter' ? 'router.nur_verwalter' : 'router.unbekannt'), 'info');
+}
+/** `#/…` ist ein Pfad der App; `#inhalt` oder `#` (Sprungverweis) nicht. */
+const istAppPfad = (hash = location.hash) => /^#\/./.test(hash);
 
 /** Filter aus der Adresse in die Felder; fehlt eine Option noch, folgt sie nach. */
 function setzeFilter(ansicht, filter) {
@@ -210,6 +226,7 @@ function wennOption(sel, wert) {
 }
 
 /** Den Zustand eines Verlaufseintrags herstellen (Zurück, Vor, Start). */
+/** @returns {boolean} true, wenn die Ansicht abgewiesen wurde (Verwalterseite) */
 function wendeAn(ziel, dlg) {
   // Dialoge, die im Ziel nicht offen sind, von oben her schliessen.
   for (let d = obersterDialog(), n = 0; d && n < 10; d = obersterDialog(), n++) {
@@ -217,9 +234,11 @@ function wendeAn(ziel, dlg) {
     schliesse(d);
     if (obersterDialog() === d) break;
   }
-  zeigeAnsicht(ziel.ansicht, ziel.unter);
+  const abgewiesen = zeigeAnsicht(ziel.ansicht, ziel.unter);
+  if (abgewiesen) return true;
   setzeFilter(ziel.ansicht, ziel.filter || {});
   if (ziel.set && !G('set-modal')?.classList.contains('open')) mitRouter(() => openModal(ziel.set));
+  return false;
 }
 
 window.addEventListener('popstate', (ev) => {
@@ -231,11 +250,19 @@ window.addEventListener('popstate', (ev) => {
   const ziel = leseAdresse();
   if (!ziel) {
     // Ein Sprungverweis (#inhalt, href="#") ist kein Ziel: Adresse zurückstellen.
+    // Ein unbekannter Pfad dagegen zeigt die Sammlung und sagt es.
+    const unbekannt = istAppPfad();
+    if (unbekannt) zeigeAnsicht('gallery', '');
     history.replaceState(zustand(), '', adresse());
+    if (unbekannt) sageUmleitung('unbekannt');
     return;
   }
   const dlg = /** @type {string[]} */ (ev.state?.dlg || (ziel.set ? ['set-modal'] : []));
-  wendeAn(ziel, dlg);
+  if (wendeAn(ziel, dlg)) {
+    history.replaceState(zustand({ dlg: [] }), '', adresse());
+    sageUmleitung('verwalter');
+    return;
+  }
   // Dialoge, die nicht wieder hergestellt werden können, fallen aus dem Eintrag.
   const offen = dlg.filter(id => (G(id) && istOffen(G(id))) || (id === 'set-modal' && ziel.set));
   history.replaceState({ brick: 1, ansicht: _ansicht, dlg: offen }, '', location.href);
@@ -246,11 +273,14 @@ export function routeBeimStart() {
   const ziel = leseAdresse();
   _gestartet = true;
   if (!ziel) {
+    const unbekannt = istAppPfad();
     history.replaceState({ brick: 1, ansicht: _ansicht, dlg: [] }, '', location.pathname + location.search);
+    if (unbekannt) sageUmleitung('unbekannt');
     return;
   }
-  wendeAn(ziel, []);
+  const abgewiesen = wendeAn(ziel, []);
   history.replaceState({ brick: 1, ansicht: _ansicht, dlg: [] }, '', adresse());
+  if (abgewiesen) { sageUmleitung('verwalter'); return; }
   // Ein Set-Link öffnet den Dialog über der Ansicht; „Zurück“ schliesst ihn.
   if (ziel.set) openModal(ziel.set);
 }

@@ -129,11 +129,13 @@ fun MerkpostenDetailScreen(
                         .clip(MaterialTheme.shapes.medium)
                         .clickable(enabled = bildUrl != null, role = Role.Button) { zoomOffen = true },
                     ersatzGroesse = Abstaende.riesig * 2,
+                    bildgrund = true,
+                    innenAbstand = Abstaende.mittel,
                 )
             }
 
             item {
-                Card(Modifier.fillMaxWidth()) {
+                ch.brickinventoryapp.ui.theme.AppKarte {
                     Column(Modifier.padding(Abstaende.mittel)) {
                         CatalogDetailRow(stringResource(R.string.detail_set_number), merkposten.setNumber)
                         CatalogDetailRow(stringResource(R.string.detail_year),
@@ -171,10 +173,11 @@ fun MerkpostenDetailScreen(
             //
             // Derselbe Abschnitt wie im Set-Detail: derselbe Eintrag in price_alerts am selben
             // Schlüssel, und /sets/:sn/alert verlangt keinen Besitz.
-            setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, vm::setzePreisalarm)
+            setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, vm::setzePreisalarm,
+                aussenAbstand = false)
 
             item {
-                Card(Modifier.fillMaxWidth()) {
+                ch.brickinventoryapp.ui.theme.AppKarte {
                     Column(Modifier.padding(Abstaende.mittel)) {
                         Text(stringResource(R.string.detail_section_market), fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(Abstaende.klein))

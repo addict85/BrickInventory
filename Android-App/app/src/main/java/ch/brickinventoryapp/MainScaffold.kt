@@ -87,7 +87,7 @@ fun MainScaffold(
     // Das Symbol eines Ziels, an „Mehr“ mit dem Punkt für eine neue Version.
     @Composable
     fun Symbol(screen: Screen, icon: @Composable () -> Unit) {
-        if (screen == Screen.Mehr && updateVerfuegbar) BadgedBox(badge = { Badge() }) { icon() } else icon()
+        if (screen == Screen.Mehr && updateVerfuegbar) BadgedBox(badge = { ch.brickinventoryapp.ui.components.UpdatePunkt() }) { icon() } else icon()
     }
 
     // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten
@@ -256,26 +256,22 @@ private fun androidx.navigation.NavController.zuReiter(route: String) =
         restoreState = true
     }
 
-/** Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. Über
+ * SegmentWahl, damit er bei grosser Schrift wie jede Einfachwahl zu Chips wird.
+ */
 @Composable
 private fun SammlungUmschalter(aktuell: String?, onWahl: (Screen) -> Unit, modifier: Modifier = Modifier) {
     val ziele = listOf(
         Screen.Gallery to R.string.gallery_stat_sets,
         Screen.Parts to R.string.nav_parts,
         Screen.Minifigs to R.string.nav_minifigs,
+    ).map { (ziel, text) -> ziel to stringResource(text) }
+    ch.brickinventoryapp.ui.components.SegmentWahl<Screen?>(
+        optionen = ziele,
+        gewaehlt = ziele.firstOrNull { it.first.route == aktuell }?.first,
+        onWahl = { if (it != null) onWahl(it) },
+        modifier = modifier.padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.mittel,
+            vertical = ch.brickinventoryapp.ui.theme.Abstaende.winzig),
     )
-    SingleChoiceSegmentedButtonRow(
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.mittel, vertical = ch.brickinventoryapp.ui.theme.Abstaende.winzig)
-    ) {
-        ziele.forEachIndexed { i, (screen, text) ->
-            SegmentedButton(
-                selected = aktuell == screen.route,
-                onClick = { onWahl(screen) },
-                shape = SegmentedButtonDefaults.itemShape(index = i, count = ziele.size),
-            ) { Text(stringResource(text), maxLines = 1, overflow = TextOverflow.Ellipsis) }
-        }
-    }
 }

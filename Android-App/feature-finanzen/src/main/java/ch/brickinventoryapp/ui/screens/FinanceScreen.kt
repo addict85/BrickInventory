@@ -202,10 +202,14 @@ fun ManualFinanceRow(
      * gleich viel sagen.
      */
     purchaseStr: String? = null,
+    /** [purchaseStr] gilt für alle Stück der Zeile, wie der Marktwert daneben. */
+    purchaseGesamt: Boolean = false,
     /** Zustand dieser Erfassung; null = Eintrag ohne Erfassungen. */
     condition: String? = null,
     /** Entwicklung gegen den Kaufpreis dieser Erfassung (vom Server, pnl_prozent). */
-    pnlProzent: Double? = null
+    pnlProzent: Double? = null,
+    /** Dieselbe Entwicklung in Geld, schon formatiert mit Vorzeichen. */
+    gewinnStr: String? = null,
 ) {
     // Zwei Karten statt einer mit `enabled`: Material3 hat für die anklickbare
     // Karte eine eigene Überladung, und eine Card mit onClick = {} sähe zwar
@@ -243,7 +247,8 @@ fun ManualFinanceRow(
                 // gleich aussehen, und in der Webapp tun sie es.
                 purchaseStr?.let {
                     Text(
-                        stringResource(R.string.finance_purchase_short, it),
+                        if (purchaseGesamt) stringResource(R.string.finance_purchase_total, it)
+                        else stringResource(R.string.finance_purchase_short, it),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -251,7 +256,7 @@ fun ManualFinanceRow(
                 // Entwicklung wie bei den Sets — gegen den Kaufpreis dieser
                 // Erfassung, gerechnet auf dem Server.
                 pnlProzent?.let {
-                    Box(Modifier.padding(top = Abstaende.haar)) { PnlBadge(it) }
+                    Box(Modifier.padding(top = Abstaende.haar)) { PnlBadge(it, gewinnStr) }
                 }
             }
         }
@@ -265,6 +270,10 @@ fun ManualFinanceRow(
              colors = cardColors, elevation = cardElevation, content = content)
     }
 }
+
+/** Gewinn als Betrag mit Vorzeichen, wie die Prozentzahl daneben (fmtProzent). */
+internal fun gewinnText(betrag: Double, fmtWert: (Double?) -> String): String =
+    if (betrag >= 0.005) "+" + fmtWert(betrag) else fmtWert(betrag)
 
 @Composable
 fun SubtotalRow(label: String, value: String) {

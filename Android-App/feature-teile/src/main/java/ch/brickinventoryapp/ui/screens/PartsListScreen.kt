@@ -42,7 +42,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.LeerSymbol
 import androidx.compose.material.icons.automirrored.filled.ListAlt
 
 // ── Sortierung wie Webapp und PDF ──
@@ -189,7 +188,9 @@ fun PartsListScreen(
                         // Done statt Next, weil rechts der Knopf „+“ kommt, kein Feld.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
                         keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
-                        placeholder = { Text(stringResource(R.string.partslist_set_number_placeholder)) },
+                        // Beschriftung statt Platzhalter: Der lange Platzhalter brach im Feld
+                        // zweizeilig um und verschwand beim Tippen.
+                        label = { Text(stringResource(R.string.gallery_set_number)) },
                         modifier = Modifier.weight(1f).focusRequester(setFeldFokus),
                         singleLine = true,
                         shape = MaterialTheme.shapes.large,
@@ -317,8 +318,11 @@ fun PartsListScreen(
                             Text("PDF")
                         }
                     }
+                    // Nur mit Inhalt: Ein roter Knopf auf der leeren Seite lud zum Tippen ein,
+                    // ohne etwas zu tun.
                     OutlinedButton(
                         onClick = { reset() },
+                        enabled = sets.isNotEmpty() || generated || status.isNotBlank(),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
                     ) { Text(stringResource(R.string.partslist_reset)) }
                 }
@@ -411,14 +415,10 @@ fun PartsListScreen(
         }
 
         if (!generated || parts.isEmpty()) {
-            if (!isLoading) Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    LeerSymbol(Icons.AutoMirrored.Filled.ListAlt, 48.dp)
-                    Spacer(Modifier.height(Abstaende.klein))
-                    Text(stringResource(R.string.partslist_empty_hint),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            // Derselbe Leerzustand wie jede Liste (ZustandsHinweis): mittig, mit Rand.
+            if (!isLoading) ch.brickinventoryapp.ui.components.ZustandsHinweis {
+                ch.brickinventoryapp.ui.components.HinweisText(Icons.AutoMirrored.Filled.ListAlt,
+                    stringResource(R.string.partslist_empty_title), stringResource(R.string.partslist_empty_hint))
             }
             return@Column
         }

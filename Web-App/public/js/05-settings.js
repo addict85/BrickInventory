@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
+import { antwortFehler, feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
 import { allSets, loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -486,15 +486,19 @@ G('btn-sav-prof').onclick = async () => {
 
 G('btn-sav-pw').onclick = async () => {
   const pwC = G('pw-c').value, pwN = G('pw-n').value, pwR = G('pw-r').value;
-  if (!pwC || !pwN) { toast(tRaw('settings.password.fill_all'), 'error'); return; }
-  if (pwN !== pwR)  { toast(tRaw('settings.password.mismatch'), 'error'); return; }
-  if (passwortRegelText(pwN)) { toast(passwortRegelText(pwN), 'error'); return; }
+  if (!pwC || !pwN) { feldFehler(pwC ? 'pw-n' : 'pw-c', tRaw('settings.password.fill_all')); return; }
+  if (pwN !== pwR)  { feldFehler('pw-r', tRaw('settings.password.mismatch')); return; }
+  if (passwortRegelText(pwN)) { feldFehler('pw-n', passwortRegelText(pwN)); return; }
   const btn = G('btn-sav-pw'); btn.disabled = true;
   try {
     const dPw = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password',
       { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked, ...z }));
     if (!dPw) return;
-    if (!dPw.success) { toast(dPw.error || t('settings.error'), 'error'); return; }
+    if (!dPw.success) {
+      antwortFehler(dPw, { aktuelles_passwort_falsch: 'pw-c', alle_felder_erforderlich: 'pw-c',
+        passwort_zu_kurz: 'pw-n', passwort_zu_lang: 'pw-n', passwort_zu_haeufig: 'pw-n' }, tRaw('settings.error'));
+      return;
+    }
     G('pw-c').value = G('pw-n').value = G('pw-r').value = '';
     if (G('pw-pk')) G('pw-pk').checked = false;
     toast(tRaw('konto.passwort_geaendert'), 'success');
@@ -1031,9 +1035,12 @@ export async function ladeLagerortVerwaltung() {
 async function legeLagerortAn() {
   const feld = G('storage-new');
   const name = String(feld?.value || '').trim();
-  if (!name) return;
+  if (!name) { feldFehler('storage-new', tRaw('storage.name_fehlt')); return; }
   const d = await api('POST', '/v1/storage/locations', { name });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  if (!d?.success) {
+    antwortFehler(d, { lagerort_leer: 'storage-new', lagerort_zu_lang: 'storage-new', lagerort_doppelt: 'storage-new' }, tRaw('settings.error'));
+    return;
+  }
   feld.value = '';
   await ladeLagerortVerwaltung();
 }

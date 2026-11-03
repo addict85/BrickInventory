@@ -1,0 +1,37 @@
+Gegenprobe: Kachel nur so hoch wie ihr Inhalt (Name einzeilig, fehlende Angaben ohne Zeile)
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Kacheln einer Reihe
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+index 6ad4f24..c97ddc1 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+@@ -501,13 +501,13 @@ fun SetCard(
+                     // Zwei Zeilen, Thema und Teilezahl immer: Kacheln einer Reihe sind dann
+                     // gleich hoch, auch wenn ein Name kurz ist oder eine Angabe fehlt.
+                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
+-                        maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
++                        maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                         lineHeight = 16.sp)
+-                    Text(set.theme.orEmpty(), style = MaterialTheme.typography.labelSmall,
+-                        color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+-                    Text(set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }.orEmpty(),
++                    set.theme?.let { Text(it, style = MaterialTheme.typography.labelSmall,
++                        color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis) }
++                    set.pieces?.let { Text(fmtInt(it) + stringResource(R.string.gallery_pieces_suffix),
+                         style = MaterialTheme.typography.labelSmall,
+-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
++                        color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                     // FlowRow und je eine Zeile: Reicht die Breite nicht für beide, rückt die
+                     // Prozentzahl unter den Betrag, statt Zeichen für Zeichen umzubrechen.
+                     val betrag = kachelBetrag(set, preis)
+@@ -527,7 +527,7 @@ fun SetCard(
+                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                             color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error,
+                             maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
+-                    } else Text("", style = MaterialTheme.typography.labelMedium)
++                    }
+                 }
+             }
+         }

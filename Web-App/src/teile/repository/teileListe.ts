@@ -260,20 +260,27 @@ export function kategorien(uids: number[], ausZusammenfassung: boolean) {
 
 export async function kennzahlen(uids: number[], ausZusammenfassung: boolean) {
   type Roh = { unique_parts: string | number | null; unique_colors: string | number | null; total_parts: string | number | null };
+  // Sorten und Farben zählen Set-Teile UND einzeln erfasste Teile, denn die
+  // Liste darunter zeigt beide. Die Gesamtzahl bleibt ohne einzelne Teile;
+  // die kommen als manual_parts dazu (Aufschlüsselung in der Kachel).
   const r = ausZusammenfassung
     ? await db.get<Roh>(`
-      SELECT COUNT(DISTINCT part_number)::int AS unique_parts,
-             COUNT(DISTINCT color_id)::int    AS unique_colors,
-             COALESCE(SUM(total_quantity), 0) AS total_parts
-        FROM parts_summary WHERE user_id = ANY($1)`, [uids])
+      WITH arten AS (
+        SELECT part_number, color_id FROM parts_summary WHERE user_id = ANY($1)
+        UNION
+        SELECT part_number, color_id FROM parts WHERE user_id = ANY($1) AND source = 'manual')
+      SELECT (SELECT COUNT(DISTINCT part_number) FROM arten)::int AS unique_parts,
+             (SELECT COUNT(DISTINCT color_id) FROM arten)::int    AS unique_colors,
+             (SELECT COALESCE(SUM(total_quantity), 0) FROM parts_summary WHERE user_id = ANY($1)) AS total_parts`, [uids])
     : await db.get<Roh>(`
     SELECT COUNT(DISTINCT p.part_number) AS unique_parts,
            COUNT(DISTINCT p.color_id)    AS unique_colors,
-           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)}) AS total_parts
+           SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})
+             FILTER (WHERE COALESCE(p.source, 'set') <> 'manual') AS total_parts
     FROM parts p
     ${mengeJoin('p', 'sm', '= ANY($1)')}
     ${teilmengeJoin('p', 'part')}
-    WHERE p.user_id = ANY($1) AND COALESCE(p.source, 'set') <> 'manual'`, [uids]);
+    WHERE p.user_id = ANY($1)`, [uids]);
   if (!r) return null;
   // Einzeln erfasste Teile stehen nicht in der Zusammenfassung; die Oberfläche
   // zählt sie zur Gesamtzahl, damit Sammlung und Teile-Reiter dieselbe zeigen.

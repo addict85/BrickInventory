@@ -1,0 +1,17 @@
+Gegenprobe: Zurücksetzen auch auf der leeren Bauliste aktiv
+Modul: app
+Test: ch.brickinventoryapp.UnterseitenTest
+Rot: leere Bauliste
+
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
+index b0e49c0..cb897c4 100644
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
+@@ -322,7 +322,6 @@ fun PartsListScreen(
+                     // ohne etwas zu tun.
+                     OutlinedButton(
+                         onClick = { reset() },
+-                        enabled = sets.isNotEmpty() || generated || status.isNotBlank(),
+                         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                     ) { Text(stringResource(R.string.partslist_reset)) }
+                 }

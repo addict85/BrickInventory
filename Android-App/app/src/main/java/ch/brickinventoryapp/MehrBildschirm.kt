@@ -26,6 +26,11 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import ch.brickinventoryapp.ui.components.Rueckfrage
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -56,6 +61,17 @@ fun MehrBildschirm(
     onAbmelden: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Abmelden beendet die Sitzung auf diesem Gerät; ein Fehltipp im Menü hiesse
+    // Passwort und zweiter Faktor von vorn. Darum fragt es nach wie Set löschen.
+    var fragtAbmelden by rememberSaveable { mutableStateOf(false) }
+    if (fragtAbmelden) Rueckfrage(
+        titel = stringResource(R.string.logout_confirm_title),
+        text = stringResource(R.string.logout_confirm_text),
+        bestaetigen = stringResource(R.string.main_menu_logout),
+        onBestaetigen = { fragtAbmelden = false; onAbmelden() },
+        onAbbrechen = { fragtAbmelden = false },
+        symbol = Icons.AutoMirrored.Filled.Logout,
+    )
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).mittigBis(Lesebreite.formular)
         .padding(vertical = Abstaende.klein)) {
         MehrGruppe(R.string.nav_group_prices, trenner = false)
@@ -71,11 +87,11 @@ fun MehrBildschirm(
         MehrEintrag(R.string.household_title, Icons.Default.Group) { navController.navigate(Screen.Haushalt.route) }
         MehrGruppe(R.string.nav_group_account)
         MehrEintrag(R.string.konto_title, Icons.Default.AccountCircle) { navController.navigate(Screen.Konto.route) }
-        // Der Punkt sagt, dass eine neue Version bereitliegt; nachsehen kann man in den Einstellungen.
+        // Der Punkt allein sagte nicht, wofür er steht: Darunter steht es in Worten.
         MehrEintrag(R.string.nav_settings, Icons.Default.Settings, punkt = updateVerfuegbar) {
             navController.navigate(Screen.Settings.route) { launchSingleTop = true }
         }
-        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Filled.Logout) { onAbmelden() }
+        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Filled.Logout) { fragtAbmelden = true }
         if (isAdmin) {
             MehrGruppe(R.string.nav_group_server)
             MehrEintrag(R.string.main_menu_monitoring, Icons.Default.Assessment) {
@@ -104,7 +120,9 @@ private fun MehrGruppe(titel: Int, trenner: Boolean = true) {
 private fun MehrEintrag(titel: Int, symbol: ImageVector, punkt: Boolean = false, onKlick: () -> Unit) {
     ListItem(
         headlineContent = { Text(stringResource(titel)) },
+        supportingContent = if (punkt) ({ Text(stringResource(R.string.update_badge)) }) else null,
         leadingContent = { Icon(symbol, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        // Der Text darunter sagt es schon; der Punkt bleibt ohne zweite Ansage.
         trailingContent = if (punkt) ({ Badge() }) else null,
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clickable(role = Role.Button, onClick = onKlick),

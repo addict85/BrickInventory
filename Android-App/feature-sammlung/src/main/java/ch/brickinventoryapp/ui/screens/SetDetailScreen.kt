@@ -193,22 +193,16 @@ fun SetDetailScreen(
         }
 
         if (showSetDeleteConfirm) {
-            AlertDialog(
-                onDismissRequest = { showSetDeleteConfirm = false },
-                icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-                title = { Text(stringResource(R.string.gallery_delete_title)) },
+            val name = set.name ?: setNumber
+            ch.brickinventoryapp.ui.components.Rueckfrage(
+                titel = stringResource(R.string.gallery_delete_title),
                 // Bei mehreren Exemplaren sagt der Satz, dass alle gemeint sind.
-                text = {
-                    val name = set.name ?: setNumber
-                    Text(if (set.quantity > 1) pluralStringResource(R.plurals.gallery_delete_text_exemplare, set.quantity, set.quantity, name)
-                         else stringResource(R.string.gallery_delete_text, name))
-                },
-                confirmButton = {
-                    TextButton(onClick = { showSetDeleteConfirm = false; onDelete(setNumber) }) {
-                        Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                dismissButton = { TextButton(onClick = { showSetDeleteConfirm = false }) { Text(stringResource(R.string.common_cancel)) } }
+                text = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_delete_text_exemplare, set.quantity, set.quantity, name)
+                       else stringResource(R.string.gallery_delete_text, name),
+                bestaetigen = stringResource(R.string.common_delete),
+                onBestaetigen = { showSetDeleteConfirm = false; onDelete(setNumber) },
+                onAbbrechen = { showSetDeleteConfirm = false },
+                symbol = Icons.Default.Delete,
             )
         }
 

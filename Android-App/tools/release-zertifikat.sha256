@@ -1,0 +1,4 @@
+# SHA-256 des Zertifikats, mit dem Releases signiert werden (tools/release-pruefen.py).
+# Ein Wert je Zeile; bei einer Schlüsselrotation stehen alter und neuer Wert hier.
+# Abgleich mit dem Schlüsselspeicher: keytool -list -v -keystore signatur.jks → „SHA256:“
+a51ff2f425d94b6f31a06b7805013cc801791b28e58404dc26c7c8298380af06

@@ -270,46 +270,39 @@ internal fun UebernahmeDialog(
     // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Katalog-Dialog.
     var lagerort by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.wanted_take), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                Text(merkposten.name ?: merkposten.setNumber, style = MaterialTheme.typography.bodyMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    // NumericInput statt eigener Filterung: Die Regel, was eine Zahl ist (genau ein
-                    // Trennzeichen), steht einmal in util/NumericInput.kt.
-                    OutlinedTextField(
-                        value = anzahl,
-                        onValueChange = { anzahl = NumericInput.quantity(it) },
-                        label = { Text(stringResource(R.string.common_quantity)) },
-                        singleLine = true,
-                        keyboardOptions = NumericInput.ganzzahlTastatur(),
-                        modifier = Modifier.weight(1f),
-                    )
-                    OutlinedTextField(
-                        value = preis,
-                        onValueChange = { preis = NumericInput.price(it) },
-                        label = { Text(stringResource(R.string.gallery_purchase_price)) },
-                        singleLine = true,
-                        keyboardOptions = NumericInput.preisTastatur(),
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
-                Zustandszeile(zustand, { zustand = it })
-                // Lagerort wie bei jeder anderen Erfassung.
-                LagerortErfassung(lagerort, lagerorte, { lagerort = it })
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand,
-                                             lagerort.trim().takeIf { it.isNotEmpty() }) }) {
-                Text(stringResource(R.string.wanted_take))
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
-    )
+    ch.brickinventoryapp.ui.components.ErfassenDialog(
+        titel = stringResource(R.string.wanted_take),
+        bestaetigen = stringResource(R.string.wanted_take),
+        onBestaetigen = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand,
+                                        lagerort.trim().takeIf { it.isNotEmpty() }) },
+        onAbbrechen = onDismiss,
+    ) {
+        Text(merkposten.name ?: merkposten.setNumber, style = MaterialTheme.typography.bodyMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+            // NumericInput statt eigener Filterung: Die Regel, was eine Zahl ist (genau ein
+            // Trennzeichen), steht einmal in util/NumericInput.kt.
+            OutlinedTextField(
+                value = anzahl,
+                onValueChange = { anzahl = NumericInput.quantity(it) },
+                label = { Text(stringResource(R.string.common_quantity)) },
+                singleLine = true,
+                keyboardOptions = NumericInput.ganzzahlTastatur(),
+                modifier = Modifier.weight(1f),
+            )
+            OutlinedTextField(
+                value = preis,
+                onValueChange = { preis = NumericInput.price(it) },
+                label = { Text(stringResource(R.string.gallery_purchase_price)) },
+                singleLine = true,
+                keyboardOptions = NumericInput.preisTastatur(),
+                modifier = Modifier.weight(1f),
+            )
+        }
+        // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
+        Zustandszeile(zustand, { zustand = it })
+        // Lagerort wie bei jeder anderen Erfassung.
+        LagerortErfassung(lagerort, lagerorte, { lagerort = it })
+    }
 }
 
 /**
@@ -339,46 +332,36 @@ private fun MerkpostenErfassenDialog(
         try { nummerFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.wanted_add_title), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                OutlinedTextField(
-                    value = nummer,
-                    onValueChange = { nummer = NumericInput.setNumber(it) },
-                    label = { Text(stringResource(R.string.gallery_set_number)) },
-                    // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
-                    // Fokus, und der Dialog fokussiert das Feld sofort.
-                    supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
-                    singleLine = true,
-                    shape = Formen.knopf,
-                    // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
-                    // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
-                    // Regel dazu steht in NumericInputTest.
-                    keyboardOptions = NumericInput.ganzzahlTastatur(),
-                    modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
-                )
-                // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
-                Zustandszeile(zustand, { zustand = it })
-                // Derselbe Waehler wie beim Erfassen eines Sets. Bei einem
-                // Einzelkonto blendet er sich selbst aus (members.size < 2).
-                OwnerPicker(householdMembers, besitzer, { besitzer = it })
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    // Nur mitschicken, wenn es ueberhaupt eine Wahl gab —
-                    // sonst schreibt der Server auf das eigene Konto.
-                    onAnlegen(nummer, zustand,
-                              if (householdMembers.size > 1) besitzer else null)
-                },
-                enabled = nummer.isNotBlank(),
-            ) { Text(stringResource(R.string.wanted_add_submit)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
-    )
+    ch.brickinventoryapp.ui.components.ErfassenDialog(
+        titel = stringResource(R.string.wanted_add_title),
+        bestaetigen = stringResource(R.string.wanted_add_submit),
+        // Nur mitschicken, wenn es ueberhaupt eine Wahl gab — sonst schreibt der
+        // Server auf das eigene Konto.
+        onBestaetigen = { onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null) },
+        onAbbrechen = onDismiss,
+        bestaetigenAn = nummer.isNotBlank(),
+    ) {
+        OutlinedTextField(
+            value = nummer,
+            onValueChange = { nummer = NumericInput.setNumber(it) },
+            label = { Text(stringResource(R.string.gallery_set_number)) },
+            // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
+            // Fokus, und der Dialog fokussiert das Feld sofort.
+            supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
+            singleLine = true,
+            shape = Formen.knopf,
+            // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
+            // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
+            // Regel dazu steht in NumericInputTest.
+            keyboardOptions = NumericInput.ganzzahlTastatur(),
+            modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
+        )
+        // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
+        Zustandszeile(zustand, { zustand = it })
+        // Derselbe Waehler wie beim Erfassen eines Sets. Bei einem
+        // Einzelkonto blendet er sich selbst aus (members.size < 2).
+        OwnerPicker(householdMembers, besitzer, { besitzer = it })
+    }
 }
 
 
@@ -399,6 +382,11 @@ private fun MerkpostenZeile(
             .semantics { selected = gewaehlt }
             .clickable(role = Role.Button, onClick = onOeffnen),
         border = if (gewaehlt) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        // Dieselbe Karte wie Galerie und Finanzen (AppKarte): Die graue Fläche der
+        // Vorgabe-Card war ein dritter Kartenstil für dieselbe Ebene.
+        shape = ch.brickinventoryapp.ui.theme.Formen.karte,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = ch.brickinventoryapp.ui.theme.Formen.karteErhebung),
     ) {
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -409,6 +397,7 @@ private fun MerkpostenZeile(
                     imageLoader = imageLoader,
                     modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross).clip(MaterialTheme.shapes.small),
                     ersatzGroesse = 28.dp,
+                    bildgrund = true,
                 )
                 Column(Modifier.weight(1f)) {
                     // Kein Name heisst: Der Katalog kennt das Set nicht. Der
@@ -428,7 +417,9 @@ private fun MerkpostenZeile(
                 }
             }
             // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+            // Mindesthöhe einer Plakette: Karten mit und ohne Plakette sind dann gleich hoch.
+            FlowRow(Modifier.heightIn(min = 32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 w.alarm?.let { a ->
                     InfoPlakette(

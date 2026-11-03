@@ -40,7 +40,12 @@
     <string name="nutzer_ca_frage_text">Die App nimmt dann für deinen Server auch Zertifikate an, die eine vom Nutzer installierte Zertifizierungsstelle ausgestellt hat.\n\nEine solche Stelle kann von deiner Firma, einem Netzwerkverwalter oder von Schadsoftware stammen. Wer sie kontrolliert, kann den Verkehr mitlesen und verändern, auch Passwort und Anmeldetoken. Schutz bleibt dann nur der Vergleich des Fingerabdrucks mit der Webapp.\n\nUpdates von GitHub prüft die App weiter nur gegen die Zertifizierungsstellen des Systems.\n\nNur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
     <string name="nutzer_ca_frage_ja">Trotzdem einschalten</string>
     <string name="setup_qr_titel">Diesen Server übernehmen?</string>
-    <string name="setup_qr_text">Der QR-Code zeigt auf:\n%1$s\n\nDie App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
+    <string name="setup_qr_ziel">Der QR-Code führt zu diesem Server:</string>
+    <string name="setup_qr_hinweis">Die App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
+    <string name="setup_qr_international">Der Servername enthält Zeichen aus anderen Schriften und steht hier in seiner technischen Form (xn--…). Solche Buchstaben sehen bekannten zum Verwechseln ähnlich: Vergleiche den Namen Zeichen für Zeichen mit deinem Server.</string>
+    <string name="setup_qr_anderer_server">Dieser Code führt zu einem anderen Server als dem bisherigen (%1$s). Fährst du fort, wirst du dort abgemeldet, und alles, was du ab jetzt erfasst, geht an den neuen Server.</string>
+    <string name="setup_url_benutzerangabe">Eine Adresse mit Benutzername (…@…) wird nicht angenommen. Gib nur die Serveradresse ein, z. B. https://brick.fritz.box</string>
+    <string name="setup_url_zusatz">Die Adresse darf keine Leerzeichen, Zeilenumbrüche, \\, ? oder # enthalten. Gib nur die Serveradresse ein, z. B. https://brick.fritz.box</string>
     <string name="setup_qr_uebernehmen">Übernehmen und anmelden</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->
@@ -65,7 +70,7 @@
 
     <!-- ══════════════ Comparison screen ══════════════ -->
     <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
-    <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">z.B. 75192-1 oder Barcode</string>
+    <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">z. B. 75192-1 oder Barcode</string>
     <string name="comparison_search">Suchen</string>
     <string name="comparison_scan_new">Neu</string>
     <string name="comparison_scan">Scan</string>
@@ -118,6 +123,7 @@
     <string name="gallery_refresh">Neu laden</string>
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>
+    <string name="gallery_price_each">je Stück</string>
     <string name="gallery_delete_title">Set löschen?</string>
     <string name="gallery_delete_text">%1$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</string>
     <string name="gallery_set_deleted_undo">%1$s gelöscht</string>
@@ -134,7 +140,7 @@
     <string name="gallery_add_set">Set hinzufügen</string>
     <string name="gallery_add_set_title">Set hinzufügen</string>
     <string name="gallery_set_number">Set-Nummer</string>
-    <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">z.B. 75192-1 oder 75192</string>
+    <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">z. B. 75192-1 oder 75192</string>
     <string name="gallery_purchase_price">Kaufpreis (optional)</string>
     <string name="gallery_add">Hinzufügen</string>
 
@@ -151,9 +157,9 @@
     <string name="minifigs_add">Minifigur hinzufügen</string>
     <string name="minifigs_add_title">Minifigur erfassen</string>
     <string name="minifigs_fig_number">Minifigur-Nummer</string>
-    <string name="minifigs_fig_number_placeholder">z.B. fig-007357 (Rebrickable)</string>
+    <string name="minifigs_fig_number_placeholder">z. B. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink-Nr. (optional)</string>
-    <string name="minifigs_bl_number_placeholder">z.B. sw0001 — für Marktpreis</string>
+    <string name="minifigs_bl_number_placeholder">z. B. sw0001 — für Marktpreis</string>
     <string name="minifigs_bl_hint">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis näherungsweise aus den einzelnen Teilen der Figur berechnet.</string>
     <string name="minifigs_add_button">Hinzufügen</string>
     <string name="minifigs_delete_title">Minifigur löschen?</string>
@@ -177,7 +183,6 @@
         <item quantity="one">%1$d Teil</item>
         <item quantity="other">%1$d Teile</item>
     </plurals>
-    <string name="partslist_set_number_placeholder">Set-Nummer (z.B. 75192)</string>
     <string name="partslist_scan">Scan</string>
     <string name="partslist_generate">Erstellen</string>
     <string name="partslist_pdf_error_title">PDF Fehler</string>
@@ -185,14 +190,20 @@
     <string name="partslist_reset">Zurücksetzen</string>
     <string name="partslist_fill_owned">Mein Bestand</string>
     <string name="storage_manage">Lagerorte</string>
-    <string name="storage_manage_hint">Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue lassen sich auch direkt dort eintragen.</string>
+    <string name="storage_manage_hint">Diese Orte stehen beim Erfassen zur Auswahl. Der Stern markiert den vorausgewählten.</string>
     <string name="storage_new">Neuer Lagerort</string>
     <string name="storage_add">Hinzufügen</string>
     <string name="storage_empty">Noch keine Lagerorte angelegt.</string>
-    <string name="storage_default_hint">Der Stern markiert den Lagerort, der beim Erfassen schon vorausgewählt ist. Nochmal tippen schaltet ihn ab.</string>
     <string name="storage_default_set">Als Vorgabe beim Erfassen setzen</string>
     <string name="storage_default_is">Vorgabe beim Erfassen — tippen schaltet sie ab</string>
-    <string name="storage_delete">Lagerort löschen</string>
+    <string name="storage_default_label">Vorgabe beim Erfassen</string>
+    <string name="storage_add_button">Lagerort hinzufügen</string>
+    <string name="storage_name">Name des Lagerorts</string>
+    <string name="storage_rename">Umbenennen</string>
+    <string name="storage_rename_title">Lagerort umbenennen</string>
+    <string name="storage_menu_cd">Aktionen für %1$s</string>
+    <string name="storage_delete_title">Lagerort löschen?</string>
+    <string name="storage_delete_text">„%1$s“ wird gelöscht. Das geht nur, solange nichts darin liegt.</string>
     <string name="detail_storage">Lagerort</string>
     <string name="detail_alert">Preisalarm</string>
     <string name="alert_channel_name">Preisalarme</string>
@@ -240,7 +251,8 @@
         <item quantity="other">%1$d verschiedene</item>
     </plurals>
     <string name="partslist_owned_error">Der eigene Bestand liess sich nicht laden.</string>
-    <string name="partslist_empty_hint">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</string>
+    <string name="partslist_empty_hint">Füge oben ein oder mehrere Sets hinzu und tippe auf „Erstellen“ — für den Nachbau oder um Fehlendes zu bestellen.</string>
+    <string name="partslist_empty_title">Noch keine Bauliste</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
     <plurals name="partslist_group_summary">
         <item quantity="one">×%1$d  ·  %2$d Typ</item>
@@ -291,7 +303,7 @@
     <string name="parts_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
     <string name="parts_add_title">Teil erfassen</string>
     <string name="parts_part_number">Teilenummer</string>
-    <string name="parts_part_number_placeholder">z.B. 3001</string>
+    <string name="parts_part_number_placeholder">z. B. 3001</string>
     <string name="parts_no_color">Keine Farbe</string>
     <string name="parts_color_label">Farbe (optional)</string>
     <string name="parts_color_unknown">Farbe %1$d</string>
@@ -377,6 +389,9 @@
     <string name="main_barcode_figs">Minifiguren</string>
     <string name="main_menu_monitoring">Hintergrundarbeiten</string>
     <string name="main_menu_logout">Abmelden</string>
+    <string name="logout_confirm_title">Abmelden?</string>
+    <string name="logout_confirm_text">Du meldest dich auf diesem Gerät ab. Zum Weiterarbeiten meldest du dich wieder mit deinem Passwort an.</string>
+    <string name="update_badge">Update verfügbar</string>
     <string name="main_menu_change_server">Server ändern</string>
     <string name="vm_settings_saved">Einstellungen gespeichert</string>
 
@@ -424,6 +439,7 @@
     <string name="vm_error">Fehler: %1$s</string>
     <string name="vm_anmeldung_zu_alt">Die Anmeldung ist älter als 180 Tage. Bitte melde dich neu an.</string>
     <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
+    <string name="vm_abmelden_nachgeholt">Abgemeldet. Der Server war nicht erreichbar; die App entwertet die Anmeldung dort, sobald er wieder erreichbar ist. Zur Sicherheit in der Webapp unter „Angemeldete Geräte“ nachsehen.</string>
     <string name="vm_rechte_entzogen">Deine Verwalterrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
@@ -523,13 +539,22 @@
     <string name="catalog_buy_bricklink">Auf BrickLink kaufen</string>
     <string name="catalog_search_bricklink">Auf BrickLink suchen</string>
     <string name="finance_purchase_short">Kauf: %1$s</string>
+    <string name="finance_purchase_total">Kauf gesamt: %1$s</string>
     <string name="household_scope_label">Konten</string>
     <string name="household_scope_all">Alle Konten</string>
     <string name="household_scope_own">Eigene</string>
     <string name="household_for_account">Für Konto</string>
     <string name="household_self">(ich)</string>
     <string name="household_title">Haushalt</string>
-    <string name="household_intro">Verknüpfe Konten zu einem Haushalt: Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner direkten Unterkonten zusammengefasst. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt. Beide Konten müssen dieselbe Währung verwenden.</string>
+    <string name="household_intro_more">Ein Hauptkonto sieht nur seine direkten Unterkonten, nicht deren Unterkonten. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt.</string>
+    <string name="household_linked">Verknüpfte Konten</string>
+    <string name="household_invite_section">Konto einladen</string>
+    <string name="household_unlink_title">Verknüpfung lösen?</string>
+    <string name="household_unlink_text">Du gehörst danach nicht mehr zum Hauptkonto „%1$s“. Wieder verknüpfen geht nur mit einer neuen Einladung.</string>
+    <string name="household_remove_title">Unterkonto entfernen?</string>
+    <string name="household_remove_text">Du siehst die Sammlung von „%1$s“ danach nicht mehr. Wieder verknüpfen geht nur mit einer neuen Einladung.</string>
+    <string name="common_learn_more">Mehr erfahren</string>
+    <string name="household_intro">Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner Unterkonten zusammengefasst. Beide Konten brauchen dieselbe Währung.</string>
     <string name="household_state_none">Dieses Konto ist mit keinem anderen verknüpft.</string>
     <string name="household_state_main">Unterkonten</string>
     <string name="household_state_parents">Gehört zu diesen Hauptkonten</string>
@@ -537,7 +562,7 @@
     <string name="household_former_via">bisher über %1$s</string>
     <string name="household_former_dismiss">Ausblenden</string>
     <string name="household_invite_create">Einladungscode erzeugen</string>
-    <string name="household_invite_hint">Gib den Code im anderen Konto unter Einstellungen ein. 24 Stunden gültig, einmal verwendbar.</string>
+    <string name="household_invite_hint">Gib den Code im anderen Konto unter „Haushalt“ ein. 24 Stunden gültig, einmal verwendbar.</string>
     <string name="household_invite_copy">Kopieren</string>
     <string name="household_invite_label">Einladungscode</string>
     <string name="household_redeem_title">Einladung annehmen</string>
@@ -690,13 +715,18 @@
 
     <!-- ══════════════ CSV hochladen ══════════════ -->
     <string name="csv_upload_title">CSV importieren</string>
-    <string name="csv_upload_sets">Sets</string>
-    <string name="csv_upload_parts">Teile</string>
-    <string name="csv_upload_figs">Minifiguren</string>
-    <string name="csv_upload_wanted">Merkliste</string>
-    <string name="csv_upload_alerts">Preisalarme</string>
+    <string name="csv_format_sets">Spalten: set_number, quantity, purchase_price, condition, acquired_at</string>
+    <string name="csv_format_parts">Spalten: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
+    <string name="csv_format_figs">Spalten: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
+    <string name="csv_format_wanted">Spalten: set_number, condition, created_at</string>
+    <string name="csv_format_alerts">Spalten: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_upload_sets">Sets importieren …</string>
+    <string name="csv_upload_parts">Teile importieren …</string>
+    <string name="csv_upload_figs">Minifiguren importieren …</string>
+    <string name="csv_upload_wanted">Merkliste importieren …</string>
+    <string name="csv_upload_alerts">Preisalarme importieren …</string>
     <string name="vouchers_import_done">%1$s, %2$s</string>
-    <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp. Höchstens %1$d MB.</string>
+    <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp, mit Kopfzeile, höchstens %1$d MB.</string>
     <string name="csv_upload_unreadable">Die gewählte Datei liess sich nicht lesen.</string>
     <string name="csv_upload_too_big">Die Datei ist grösser als %1$d MB.</string>
     <string name="csv_upload_result">%1$s: %2$s, %3$s, %4$s</string>

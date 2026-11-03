@@ -128,16 +128,22 @@ class KontoRepository @Inject constructor(
     /**
      * Den Token am Server entwerten, bevor er lokal verschwindet — sonst bliebe er
      * gültig, bis er verfällt. Höchstens [grenzeMs]: Abmelden darf nicht am Netz
-     * hängen; ein Fehler wird nur protokolliert.
+     * hängen. Was dann noch offen ist, holt data/Abmeldung nach.
      */
-    suspend fun abmeldenAmServer(grenzeMs: Long = 3_000): Boolean = try {
-        kotlinx.coroutines.withTimeoutOrNull(grenzeMs) { api.logout().isSuccessful }
-            ?: false.also { ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Server antwortete nicht in $grenzeMs ms") }
+    suspend fun abmeldenAmServer(grenzeMs: Long = 3_000): Boolean =
+        entwertenAmServer(grenzeMs) == ch.brickinventoryapp.data.Entwertungsergebnis.ENTWERTET
+
+    /** Wie [abmeldenAmServer], aber mit dem Grund: Nur SPAETER lohnt eine Wiederholung. */
+    suspend fun entwertenAmServer(grenzeMs: Long = 3_000): ch.brickinventoryapp.data.Entwertungsergebnis = try {
+        kotlinx.coroutines.withTimeoutOrNull(grenzeMs) { ch.brickinventoryapp.data.einordnenEntwertung(api.logout().code()) }
+            ?: ch.brickinventoryapp.data.Entwertungsergebnis.SPAETER.also {
+                ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Server antwortete nicht in $grenzeMs ms")
+            }
     } catch (e: kotlinx.coroutines.CancellationException) {
         throw e
     } catch (e: Exception) {
         ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Token am Server nicht entwertet", e)
-        false
+        ch.brickinventoryapp.data.Entwertungsergebnis.SPAETER
     }
 
     suspend fun getSettings(): Result<SettingsResponse> =

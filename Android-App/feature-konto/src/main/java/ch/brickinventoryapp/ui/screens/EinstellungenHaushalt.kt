@@ -5,25 +5,29 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
+import ch.brickinventoryapp.ui.components.Abschnitt
+import ch.brickinventoryapp.ui.components.Rueckfrage
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Haushalts-Karte: verknüpfen, Einladungscode erzeugen, Verknüpfung lösen.
+ * Haushalt: verknüpfte Konten, Konto einladen, Einladung annehmen — drei Abschnitte
+ * mit Überschrift. In einer Karte standen beide Abläufe ungegliedert untereinander,
+ * und niemand sah, welcher für welches Konto gedacht ist.
  *
- * Zeigt je nach Rolle nur EINEN der beiden Kästen. Wer schon Unterkonto ist,
- * sieht keinen Einladungsknopf (Konten lassen sich nur über eine Stufe
- * verknüpfen), und wer Unterkonten hat, sieht kein Eingabefeld. Beides würde
- * der Server ohnehin ablehnen — aber ein Knopf, der immer eine Fehlermeldung
- * erzeugt, ist schlimmer als keiner.
+ * Einladen und Annehmen darf jedes Konto (auch Unterkonten und Hauptkonten
+ * mehrerer Unterkonten); was der Server nicht erlaubt, sagt seine Meldung.
  */
 @Composable
 internal fun HouseholdCard(
@@ -44,60 +48,59 @@ internal fun HouseholdCard(
     // Über GeheimeZwischenablage statt LocalClipboard: Sie nimmt den Code nach
     // einer Minute wieder heraus, auch wenn die Seite dann schon zu ist.
     val kontext = androidx.compose.ui.platform.LocalContext.current
-    // Das Etikett eines ClipData ist auf manchen Android-Oberflaechen SICHTBAR
-    // — es gehoert darum in die Sprachdateien und nicht in den Quelltext.
-    //
-    // Hier stand erst `"invite"`, und StringResourceParityTest hat es zu Recht
-    // beanstandet: `newPlainText(` endet auf `Text(` und faellt damit unter
-    // dieselbe Regel wie ein Compose-`Text("…")`. Das ist kein Fehlalarm des
-    // Tests, sondern genau sein Zweck.
-    //
-    // Geholt wird die Zeichenkette HIER, nicht im onClick: stringResource ist
-    // @Composable, der Klick-Rumpf ist es nicht.
+    // Das Etikett eines ClipData ist auf manchen Android-Oberflächen sichtbar und
+    // gehört darum in die Sprachdateien. Geholt hier, weil der Klick-Rumpf nicht
+    // @Composable ist.
     val einladungEtikett = stringResource(R.string.household_invite_label)
+    // Trennen nimmt einem Hauptkonto die Sicht auf fremde Daten; zurück geht es nur
+    // über eine neue Einladung. Darum fragt es nach, mit dem Namen des Kontos.
+    // Gemerkt wird Konto-ID und ob es ein Hauptkonto ist.
+    var trennen by rememberSaveable { mutableStateOf<Int?>(null) }
+    var trenntEltern by rememberSaveable { mutableStateOf(false) }
+    var mehr by rememberSaveable { mutableStateOf(false) }
 
-    SettingsCard(title = stringResource(R.string.household_title), icon = Icons.Default.Group) {
+    // Zwei Sätze vorn, der Rest auf Wunsch: Sechs Zeilen Erklärung vor dem ersten
+    // Knopf las niemand.
+    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
         Text(stringResource(R.string.household_intro),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (mehr) Text(stringResource(R.string.household_intro_more),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else TextButton(onClick = { mehr = true }, contentPadding = PaddingValues(horizontal = 0.dp)) {
+            Text(stringResource(R.string.common_learn_more))
+        }
+    }
 
-        // Zwei unabhängige Abschnitte: Ein Konto kann zugleich Unterkonto
-        // (auch mehrerer Hauptkonten) und Hauptkonto eigener Unterkonten sein.
-        val eltern = st?.elternkonten.orEmpty()
+    // Ein Konto kann zugleich Unterkonto (auch mehrerer Hauptkonten) und
+    // Hauptkonto eigener Unterkonten sein: beide Listen unabhängig.
+    val eltern = st?.elternkonten.orEmpty()
+    if (st != null) Abschnitt(stringResource(R.string.household_linked)) {
         if (eltern.isNotEmpty()) {
             Text(stringResource(R.string.household_state_parents),
                 style = MaterialTheme.typography.labelLarge)
             eltern.forEach { m ->
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(m.username, modifier = Modifier.weight(1f),
-                        fontWeight = FontWeight.SemiBold)
-                    TextButton(onClick = { onUnlinkParent(m.id) }) {
-                        Text(stringResource(R.string.household_unlink))
-                    }
+                KontoZeile(m.username, stringResource(R.string.household_unlink)) {
+                    trennen = m.id; trenntEltern = true
                 }
             }
         }
-        if (st != null && st.subAccounts.isNotEmpty()) {
+        if (st.subAccounts.isNotEmpty()) {
             Text(stringResource(R.string.household_state_main),
                 style = MaterialTheme.typography.labelLarge)
             st.subAccounts.forEach { m ->
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(m.username, modifier = Modifier.weight(1f),
-                        fontWeight = FontWeight.SemiBold)
-                    TextButton(onClick = { onUnlink(m.id) }) {
-                        Text(stringResource(R.string.household_remove))
-                    }
+                KontoZeile(m.username, stringResource(R.string.household_remove)) {
+                    trennen = m.id; trenntEltern = false
                 }
             }
         }
-        if (st != null && eltern.isEmpty() && st.subAccounts.isEmpty()) {
+        if (eltern.isEmpty() && st.subAccounts.isEmpty()) {
             Text(stringResource(R.string.household_state_none),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (st != null && st.formerLinks.isNotEmpty()) {
+        if (st.formerLinks.isNotEmpty()) {
             Surface(color = MaterialTheme.colorScheme.secondaryContainer,
                     shape = MaterialTheme.shapes.small) {
                 Column(Modifier.padding(Abstaende.mittel),
@@ -125,80 +128,104 @@ internal fun HouseholdCard(
                 }
             }
         }
+    }
 
-        // Einladen darf JEDES Konto — auch eines, das selbst Unterkonto ist.
-        if (st != null) {
-            HorizontalDivider()
-            Text(stringResource(R.string.household_invite_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onClick = onCreateInvite, enabled = !state.isLoading) {
-                Text(stringResource(R.string.household_invite_create))
-            }
-            state.inviteCode?.let { c ->
-                OutlinedTextField(
-                    value = c, onValueChange = {}, readOnly = true, singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c)
-                        }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
-                    }
-                )
-            }
+    if (st != null) Abschnitt(stringResource(R.string.household_invite_section)) {
+        Text(stringResource(R.string.household_invite_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Button(onClick = onCreateInvite, enabled = !state.isLoading, shape = Formen.knopf) {
+            Text(stringResource(R.string.household_invite_create))
         }
-
-        // Einlösen kann jedes Konto: Jedes weitere Hauptkonto braucht seine
-        // eigene, angenommene Einladung.
-        if (st != null) {
-            HorizontalDivider()
-            Text(stringResource(R.string.household_redeem_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        state.inviteCode?.let { c ->
             OutlinedTextField(
-                value = code, onValueChange = { code = it }, singleLine = true,
-                label = { Text(stringResource(R.string.household_redeem_title)) },
-                modifier = Modifier.fillMaxWidth()
+                value = c, onValueChange = {}, readOnly = true, singleLine = true,
+                label = { Text(stringResource(R.string.household_invite_label)) },
+                modifier = Modifier.fillMaxWidth(),
+                trailingIcon = {
+                    IconButton(onClick = {
+                        ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c)
+                    }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
+                }
             )
-            // Nach einem Fehlversuch ist das Feld leer und rot, bis wieder getippt wird.
-            val passwortFalsch = state.passwortFalsch && passwort.isEmpty()
+        }
+    }
+
+    if (st != null) Abschnitt(stringResource(R.string.household_redeem_title)) {
+        Text(stringResource(R.string.household_redeem_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        // Beschriftet mit dem, was hineingehört; „Einladung annehmen“ ist die Überschrift.
+        OutlinedTextField(
+            value = code, onValueChange = { code = it }, singleLine = true,
+            label = { Text(stringResource(R.string.household_invite_label)) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        // Nach einem Fehlversuch ist das Feld leer und rot, bis wieder getippt wird.
+        val passwortFalsch = state.passwortFalsch && passwort.isEmpty()
+        OutlinedTextField(
+            value = passwort, onValueChange = { passwort = it }, singleLine = true,
+            label = { Text(stringResource(R.string.household_redeem_password)) },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = passwortFalsch,
+            supportingText = if (passwortFalsch) {
+                { Text(stringResource(R.string.household_redeem_password_wrong)) }
+            } else null,
+            modifier = Modifier.fillMaxWidth()
+        )
+        // Bei aktivem zweitem Faktor verlangt der Server dessen Code (oder einen Wiederherstellungscode).
+        if (state.faktorNoetig) {
+            val faktorFalsch = state.faktorFalsch && faktorCode.isEmpty()
             OutlinedTextField(
-                value = passwort, onValueChange = { passwort = it }, singleLine = true,
-                label = { Text(stringResource(R.string.household_redeem_password)) },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                isError = passwortFalsch,
-                supportingText = if (passwortFalsch) {
-                    { Text(stringResource(R.string.household_redeem_password_wrong)) }
+                value = faktorCode, onValueChange = { faktorCode = it.take(24) }, singleLine = true,
+                label = { Text(stringResource(R.string.household_redeem_code)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                isError = faktorFalsch,
+                supportingText = if (faktorFalsch) {
+                    { Text(stringResource(R.string.household_redeem_code_wrong)) }
                 } else null,
                 modifier = Modifier.fillMaxWidth()
             )
-            // Bei aktivem zweitem Faktor verlangt der Server dessen Code (oder einen Wiederherstellungscode).
-            if (state.faktorNoetig) {
-                val faktorFalsch = state.faktorFalsch && faktorCode.isEmpty()
-                OutlinedTextField(
-                    value = faktorCode, onValueChange = { faktorCode = it.take(24) }, singleLine = true,
-                    label = { Text(stringResource(R.string.household_redeem_code)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                    isError = faktorFalsch,
-                    supportingText = if (faktorFalsch) {
-                        { Text(stringResource(R.string.household_redeem_code_wrong)) }
-                    } else null,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.faktorNoetig }); passwort = ""; faktorCode = "" },
-                   enabled = code.isNotBlank() && passwort.isNotEmpty() && (!state.faktorNoetig || faktorCode.isNotBlank()) &&
-                       !state.isLoading) {
-                Text(stringResource(R.string.household_redeem_submit))
-            }
         }
+        Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.faktorNoetig }); passwort = ""; faktorCode = "" },
+               enabled = code.isNotBlank() && passwort.isNotEmpty() && (!state.faktorNoetig || faktorCode.isNotBlank()) &&
+                   !state.isLoading, shape = Formen.knopf) {
+            Text(stringResource(R.string.household_redeem_submit))
+        }
+    }
 
-        // Meldung des Servers — Währung weicht ab, Konten schon oder
-        // umgekehrt verknüpft. Wortlaut unverändert übernommen.
-        state.message?.takeUnless { state.passwortFalsch || state.faktorFalsch }?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error)
-        }
+    // Meldung des Servers — Währung weicht ab, Konten schon oder
+    // umgekehrt verknüpft. Wortlaut unverändert übernommen.
+    state.message?.takeUnless { state.passwortFalsch || state.faktorFalsch }?.let {
+        Text(it, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error)
+    }
+
+    trennen?.let { id ->
+        val name = (if (trenntEltern) eltern.firstOrNull { it.id == id }?.username
+                    else st?.subAccounts.orEmpty().firstOrNull { it.id == id }?.username) ?: "—"
+        Rueckfrage(
+            titel = stringResource(if (trenntEltern) R.string.household_unlink_title else R.string.household_remove_title),
+            text = stringResource(if (trenntEltern) R.string.household_unlink_text else R.string.household_remove_text, name),
+            bestaetigen = stringResource(if (trenntEltern) R.string.household_unlink else R.string.household_remove),
+            onBestaetigen = {
+                trennen = null
+                if (trenntEltern) onUnlinkParent(id) else onUnlink(id)
+            },
+            onAbbrechen = { trennen = null },
+            symbol = Icons.Default.LinkOff,
+        )
+    }
+}
+
+/** Ein verknüpftes Konto mit seiner einen Aktion. */
+@Composable
+private fun KontoZeile(name: String, aktion: String, onAktion: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+        Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
+        TextButton(onClick = onAktion) { Text(aktion, color = MaterialTheme.colorScheme.error) }
     }
 }

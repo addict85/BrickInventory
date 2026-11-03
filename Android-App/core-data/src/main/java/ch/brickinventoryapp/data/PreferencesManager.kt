@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ch.brickinventoryapp.util.TokenVerschluesselung
+import ch.brickinventoryapp.util.liesToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -31,7 +33,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 class PreferencesManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tresor: TokenVerschluesselung,
-) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage {
+) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -123,10 +125,12 @@ class PreferencesManager @Inject constructor(
      * Das Bearer-Token im Klartext. Erst der verschlüsselte Wert, sonst der alte
      * Klartext — sonst wäre jede ältere Installation nach dem Update abgemeldet.
      * Umgeschrieben wird in uebernehmeAltesToken(); ein Lesepfad schreibt nicht.
+     * Ein gesperrter Keystore wird abgewartet und nachgeholt (util/Tresorbefund.liesToken).
      */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val authToken: Flow<String> = context.dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] to prefs[AUTH_TOKEN] }
         .distinctUntilChanged()
-        .map { (geheim, alt) -> geheim?.let { tresor.entschluessle(it) } ?: alt ?: "" }
+        .transformLatest { (geheim, alt) -> liesToken(tresor, geheim, alt, melde = { emit(it) }) }
     val username:  Flow<String> = context.dataStore.data.map { it[USERNAME]   ?: "" }
     val currency:  Flow<String> = context.dataStore.data.map { it[CURRENCY]   ?: "EUR" }
     val language:  Flow<String> = context.dataStore.data.map { it[LANGUAGE]   ?: "system" }
@@ -254,15 +258,18 @@ class PreferencesManager @Inject constructor(
         // Zuerst in den Speicher, dann auf die Platte (siehe serverUrlState).
         // Ein anderer Server beendet die Sitzung: Der Token gehört dem alten.
         val neueHerkunft: suspend () -> Boolean = {
-            val anders = !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(serverUrlJetzt(), normalized)
+            val anders = !ch.brickinventoryapp.util.NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized)
             // Laufende Aufrufe gehören dem alten Server; ihre Antworten sollen nichts mehr auslösen.
             if (anders) serverwechselHoerer.forEach { it() }
             anders
         }
         tokenSchranke.schreibe(neueSitzung = neueHerkunft) {
+            // Die Herkunft hält nur Schema, Host und Port; ein anderer Pfad auf demselben
+            // Host ist eine andere Anwendung, also zählt die bisherige Adresse mit.
             val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
             val anderer = tokenJetzt().isNotBlank() &&
-                !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(herkunft, normalized)
+                (!ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
+                    !ch.brickinventoryapp.util.NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized))
             if (anderer) { _authTokenState.value = ""; _tokenHerkunftState.value = null }
             _serverUrlState.value = normalized
             context.dataStore.edit {
@@ -487,6 +494,13 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
     }
 
+
+    /** Der Geheimtext wie abgelegt: Der Auftrag braucht das Token nie im Klartext. */
+    override suspend fun entwertungsauftrag(): Entwertungsauftrag? {
+        val geheim = context.dataStore.data.first()[AUTH_TOKEN_ENC] ?: return null
+        val server = serverUrlJetzt().ifBlank { return null }
+        return Entwertungsauftrag(server, geheim)
+    }
 
     suspend fun clearSession() = tokenSchranke.schreibe {
         _authTokenState.value = ""

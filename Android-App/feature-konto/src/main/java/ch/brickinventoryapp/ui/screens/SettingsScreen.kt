@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -218,8 +219,18 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(Abstaende.klein))
 
+        // Dieselbe Rückfrage wie unter „Mehr“: Abmelden ist von beiden Stellen gleich schwer.
+        var fragtAbmelden by rememberSaveable { mutableStateOf(false) }
+        if (fragtAbmelden) ch.brickinventoryapp.ui.components.Rueckfrage(
+            titel = stringResource(R.string.logout_confirm_title),
+            text = stringResource(R.string.logout_confirm_text),
+            bestaetigen = stringResource(R.string.settings_logout),
+            onBestaetigen = { fragtAbmelden = false; onLogout() },
+            onAbbrechen = { fragtAbmelden = false },
+            symbol = Icons.AutoMirrored.Filled.Logout,
+        )
         OutlinedButton(
-            onClick = onLogout,
+            onClick = { fragtAbmelden = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             shape = Formen.knopf,
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),

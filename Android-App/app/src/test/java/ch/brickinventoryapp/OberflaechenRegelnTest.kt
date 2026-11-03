@@ -93,6 +93,10 @@ import ch.brickinventoryapp.ressourcen.R
  *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
  *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
+ *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
+ *   lagerort-feld-schmal            Lagerort im Dialog wieder ohne volle Breite → rot „Erfassen-Dialog …“
+ *   kachel-hoehe-nach-inhalt        Thema nur, wenn es eines gibt → rot „Kacheln einer Reihe …“
+ *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -603,6 +607,102 @@ class OberflaechenRegelnTest {
             // Nur diese beiden Wege: kein schwebender Knopf und kein Scan-Symbol darüber.
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.wanted_add_title)).assertCountEquals(0)
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode)).assertCountEquals(0)
+        } finally {
+            welt.close()
+        }
+    }
+
+    /** Text ganz in einer Zeile: weder umgebrochen noch ausgelassen. */
+    private fun ganzEineZeile(text: String) {
+        val ergebnis = mutableListOf<TextLayoutResult>()
+        compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode()
+            .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
+        val t = ergebnis.single()
+        assertTrue("„$text“ steht in ${t.lineCount} Zeilen, sichtbar bis ${t.getLineEnd(t.lineCount - 1, visibleEnd = true)}",
+            t.lineCount == 1 && !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == text.length)
+    }
+
+    /**
+     * Eine Einfachwahl bei 200 % auf einem schmalen Telefon: Jede Möglichkeit steht
+     * ganz in einer Zeile. Als Segmente brach „Gebraucht“ zu „Gebrau/cht“.
+     */
+    @Test
+    fun `Einfachwahl bricht bei 200 Prozent kein Wort um`() {
+        val zustaende = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used)
+            .map { ctx.getString(it) }
+        val zeitraum = listOf(R.string.chart_period_week, R.string.chart_period_month, R.string.chart_period_year,
+            R.string.chart_period_max).map { ctx.getString(it) }
+        zeige(schrift = 2f) {
+            androidx.compose.foundation.layout.Column(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
+                ch.brickinventoryapp.ui.components.SegmentWahl(zustaende.map { it to it }, zustaende[0], {})
+                ch.brickinventoryapp.ui.components.SegmentWahl(zeitraum.map { it to it }, zeitraum[0], {})
+            }
+        }
+        (zustaende + zeitraum).forEach { ganzEineZeile(it) }
+    }
+
+    /**
+     * Ein Muster für Erfassen-Dialoge: Titel ohne Symbol, alle Felder gleich breit. Das
+     * Lagerortfeld blieb bei Materials 280 dp stehen und war schmaler als die übrigen.
+     */
+    @Test
+    fun `Erfassen-Dialog hat gleich breite Felder und kein Symbol`() {
+        val offen = androidx.compose.runtime.mutableStateOf(false)
+        zeige {
+            if (offen.value) ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {},
+                onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller"), sofortFokus = false)
+        }
+        // Ohne Fokus blinkt kein Cursor; fetchSemanticsNode wartet sonst ewig auf Ruhe.
+        compose.mainClock.autoAdvance = false
+        offen.value = true
+        repeat(3) {
+            compose.mainClock.advanceTimeBy(200)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        }
+        fun breite(label: Int) = compose.onNode(androidx.compose.ui.test.hasSetTextAction() and
+            hasText(ctx.getString(label))).fetchSemanticsNode().boundsInRoot.width
+        val nummer = breite(R.string.gallery_set_number)
+        val ort = breite(R.string.detail_storage)
+        assertEquals("Lagerort so breit wie die Set-Nummer", nummer, ort, 1f)
+    }
+
+    /**
+     * Kacheln einer Reihe sind gleich hoch, auch wenn bei einer Thema, Teilezahl und
+     * Preis fehlen und der Name kurz ist.
+     */
+    @Test
+    fun `Kacheln einer Reihe sind gleich hoch`() {
+        val bilder = coil3.ImageLoader.Builder(ctx).build()
+        val voll = SetAnsicht(setNumber = "10294-1", name = "Titanic mit sehr langem Namen über zwei Zeilen",
+            theme = "Icons", pieces = 9090, condition = "N")
+        val karg = SetAnsicht(setNumber = "1-1", name = "Box")
+        zeige {
+            androidx.compose.foundation.layout.Row(Modifier.width(380.dp)) {
+                Box(Modifier.weight(1f)) {
+                    SetCard(voll, "", bilder, {}, preis = KachelPreis(449.95, 12.5), waehrung = "CHF")
+                }
+                Box(Modifier.weight(1f)) { SetCard(karg, "", bilder, {}, waehrung = "CHF") }
+            }
+        }
+        val a = compose.onNode(hasText("10294-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
+        val b = compose.onNode(hasText("1-1") and hasClickAction()).fetchSemanticsNode().boundsInRoot
+        assertEquals("Kacheln einer Reihe gleich hoch", a.height, b.height, 1f)
+    }
+
+    /** Titanic ×2: Marktwert und Kauf beide für zwei Stück, der Gewinn auch als Betrag. */
+    @Test
+    fun `Finanzen nennen bei zwei Stueck den Kauf gesamt und den Gewinn als Betrag`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.finanzen().also { it.loadValuation() }
+            zeige { ch.brickinventoryapp.ui.screens.FinanceScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoading } }
+            val zeile = ch.brickinventoryapp.ui.setZeilen(vm.financeState.value.valuation!!.sets).map { it.second }
+                .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
+            val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(zeile.kaufGesamt!!, "CHF"))
+            compose.onNodeWithText(kauf, useUnmergedTree = true).fetchSemanticsNode()
+            compose.onAllNodesWithText(fmtMoney(zeile.gewinn!!, "CHF"), substring = true, useUnmergedTree = true)
+                .fetchSemanticsNodes().let { assertTrue("Gewinn als Betrag steht da", it.isNotEmpty()) }
         } finally {
             welt.close()
         }

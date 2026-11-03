@@ -23,15 +23,9 @@ import javax.crypto.spec.GCMParameterSpec
  * Ist der Schlüssel weg (Wiederherstellung auf ein anderes Gerät, zurückgesetzte
  * App-Daten), schlägt das Entschlüsseln fehl, und das heisst „kein gültiges Token
  * da“: null und die Anmeldemaske. Still auf Klartext zurückzufallen höbe den Sinn
- * auf.
+ * auf. Antwortet der Keystore nur gerade nicht, heisst das nicht „weg“ (oeffne,
+ * util/Tresorbefund.kt).
  */
-interface TokenVerschluesselung {
-    /** Klartext → speicherbare Zeichenkette. Wirft, wenn die Plattform nicht kann. */
-    fun verschluessle(klartext: String): String
-
-    /** Gespeicherte Zeichenkette → Klartext, oder null wenn sie nicht lesbar ist. */
-    fun entschluessle(gespeichert: String): String?
-}
 
 /**
  * Die echte Umsetzung über den Android-Keystore.
@@ -86,7 +80,13 @@ class KeystoreTokenTresor : TokenVerschluesselung {
         return Base64.encodeToString(zusammen, Base64.NO_WRAP)
     }
 
-    override fun entschluessle(gespeichert: String): String? = try {
+    /** Für Aufrufer, die nur „lesbar oder nicht“ kennen; ein gesperrter Keystore ist hier auch null. */
+    override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext
+
+    // Ein fehlender Schlüssel wird in schluessel() neu erzeugt; der Geheimtext passt
+    // dann nicht (AEADBadTag) und gilt als weg. KeyStoreException, ProviderException
+    // u. Ä. beim Hochfahren dagegen als vorübergehend (tresorFehlerDauerhaft).
+    override fun oeffne(gespeichert: String): Tresorbefund = oeffneMitNeuversuch {
         val roh = Base64.decode(gespeichert, Base64.NO_WRAP)
         if (roh.size <= IV_LAENGE) null else {
             val c = Cipher.getInstance(TRANSFORMATION)
@@ -97,11 +97,6 @@ class KeystoreTokenTresor : TokenVerschluesselung {
             )
             String(c.doFinal(roh, IV_LAENGE, roh.size - IV_LAENGE), Charsets.UTF_8)
         }
-    } catch (e: Exception) {
-        // Absichtlich breit gefangen und still: Ein fehlender oder nicht mehr
-        // passender Schlüssel, ein beschädigter Eintrag, ein Gerätewechsel —
-        // für den Aufrufer ist all das dasselbe, nämlich "kein Token".
-        null
     }
 
     private companion object {

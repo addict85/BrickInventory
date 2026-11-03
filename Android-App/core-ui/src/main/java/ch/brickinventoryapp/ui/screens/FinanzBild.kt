@@ -34,6 +34,8 @@ fun FinanzBild(imageUrl: String?, imageLoader: ImageLoader, beschreibung: String
             modifier = Modifier.fillMaxSize().clip(Formen.kachel),
             contentScale = ContentScale.Fit,
             ersatzGroesse = 28.dp,
+            bildgrund = true,
+            innenAbstand = 2.dp,
         )
     }
 }

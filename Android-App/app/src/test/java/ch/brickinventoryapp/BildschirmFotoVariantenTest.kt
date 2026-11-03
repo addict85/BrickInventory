@@ -342,6 +342,16 @@ class BildschirmFotoVariantenTest {
     @Test fun geruestTelefon() = geruestFoto("telefon")
     @Test fun geruestTablet() = geruestFoto("tablet")
 
+    /** Der Umschalter Sets | Teile | Minifiguren bei 200 %: als Chips, kein Wort gebrochen. */
+    @Test
+    fun geruestSchrift200() {
+        val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
+        zeige("geruest-schrift200", schrift = 2.0f, bereit = galerieFertig(galerie),
+            zustand = { galerie.galleryState.value }) { Geruest(galerie) }
+        anhalten()
+        foto("geruest-schrift200")
+    }
+
     /** Die Seite „Mehr“: alle übrigen Ziele gruppiert, mit dem Punkt für eine neue Version. */
     private fun mehrFoto(geraet: String, dunkel: Boolean) {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
@@ -363,6 +373,17 @@ class BildschirmFotoVariantenTest {
         compose.onNodeWithContentDescription("Millennium Falcon löschen").performClick()
         compose.waitForIdle()
         compose.onNode(isDialog()).captureRoboImage(pfad("dialog-set-loeschen", "noppe", false, "telefon"))
+    }
+
+    /** Die Rückfrage vor dem Abmelden — dieselbe Bauform wie beim Löschen eines Sets. */
+    @Test
+    fun dialogAbmelden() {
+        zeige("dialog-abmelden", dunkel = true) {
+            MehrBildschirm(rememberNavController(), isAdmin = false, updateVerfuegbar = true, onAbmelden = {})
+        }
+        compose.onNodeWithText("Abmelden").performClick()
+        compose.waitForIdle()
+        compose.onNode(isDialog()).captureRoboImage(pfad("dialog-abmelden", "classic", true, "telefon"))
     }
 
     @Test
@@ -462,12 +483,16 @@ class BildschirmFotoVariantenTest {
     }
 
     /** Erfassen: der Dialog der Galerie mit Nummer, Menge, Preis, Zustand und Lagerort. */
-    @Test
-    fun dialogSetErfassen() {
+    @Test fun dialogSetErfassen() = dialogSetErfassenFoto("dialog-set-erfassen", 1f)
+
+    /** Bei 200 % stehen Zustand und Lagerort als Chips bzw. volle Zeile da, nichts bricht im Wort. */
+    @Test fun dialogSetErfassenSchrift200() = dialogSetErfassenFoto("dialog-set-erfassen-schrift200", 2f)
+
+    private fun dialogSetErfassenFoto(name: String, schrift: Float) {
         // Der Dialog fokussiert sein erstes Feld, der Cursor blinkt ohne Ende. setContent wartet
         // auf Ruhe, darum geht er erst danach auf (wie der Merkposten-Dialog per Klick).
         val offen = androidx.compose.runtime.mutableStateOf(false)
-        zeige("dialog-set-erfassen", warten = false) {
+        zeige(name, schrift = schrift, warten = false) {
             if (offen.value) ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {},
                 onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller", "Estrich"))
         }
@@ -477,7 +502,7 @@ class BildschirmFotoVariantenTest {
             compose.mainClock.advanceTimeBy(200)
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
         }
-        compose.onNode(isDialog()).captureRoboImage(pfad("dialog-set-erfassen", "classic", false, "telefon"))
+        compose.onNode(isDialog()).captureRoboImage(pfad(name, "classic", false, "telefon"))
     }
 
     // ── Laden, Fehler, leer ──

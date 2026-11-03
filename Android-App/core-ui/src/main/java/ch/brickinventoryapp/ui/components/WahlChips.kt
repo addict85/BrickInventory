@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -49,9 +50,13 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Genau eine von zwei oder drei gleichrangigen Möglichkeiten (Neu | Gebraucht,
+ * Genau eine von zwei bis vier gleichrangigen Möglichkeiten (Neu | Gebraucht,
  * Fällt unter | Steigt über): Material sieht dafür die Segmentschaltfläche vor —
  * zwei Chips nebeneinander lasen sich wie zwei Filter, die man beide setzen kann.
+ *
+ * Ab grosser Schrift ([GROSSE_SCHRIFT_AB]) dieselbe Wahl als [WahlChips]: Segmente
+ * teilen die Breite zu gleichen Teilen, und ein langes Wort brach darin Zeichen für
+ * Zeichen um. Chips brechen zwischen den Möglichkeiten um, nie im Wort.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +66,10 @@ fun <T> SegmentWahl(
     onWahl: (T) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (LocalDensity.current.fontScale >= GROSSE_SCHRIFT_AB) {
+        WahlChips(optionen, gewaehlt, onWahl, modifier.fillMaxWidth())
+        return
+    }
     SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
         optionen.forEachIndexed { i, (wert, text) ->
             SegmentedButton(

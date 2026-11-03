@@ -1,0 +1,18 @@
+Gegenprobe: Abmelden unter Mehr meldet sofort ab
+Modul: app
+Test: ch.brickinventoryapp.UnterseitenTest
+Rot: Abmelden fragt
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
+index 83eff43..0aadaf8 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
+@@ -91,7 +91,7 @@ fun MehrBildschirm(
+         MehrEintrag(R.string.nav_settings, Icons.Default.Settings, punkt = updateVerfuegbar) {
+             navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+         }
+-        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Filled.Logout) { fragtAbmelden = true }
++        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Filled.Logout) { onAbmelden() }
+         if (isAdmin) {
+             MehrGruppe(R.string.nav_group_server)
+             MehrEintrag(R.string.main_menu_monitoring, Icons.Default.Assessment) {
