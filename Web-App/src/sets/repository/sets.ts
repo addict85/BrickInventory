@@ -2,6 +2,7 @@ import { mengeSummeSql, erfassungsTagSql, mengeAus, mengeJoin, inKontowaehrung, 
 import { ausTabelle } from '../../infra/validate';
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
+import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 
 /** Das eigene Konto gewinnt, wenn mehrere Konten das Set halten. */
 export function setImBlickfeld(ids: number[], setNumber: string, viewerId: number) {
@@ -227,10 +228,10 @@ export async function setListe(uids: number[], f: SetFilter) {
     where.push(`s.storage = $${params.length}`);
   }
   if (search) {
-    params.push(`%${String(search).toLowerCase()}%`);
+    params.push(enthaeltMuster(String(search).toLowerCase()));
     const i = params.length;
-    where.push(`(LOWER(s.set_number) LIKE $${i} OR LOWER(s.name) LIKE $${i}
-                 OR LOWER(COALESCE(s.theme,'')) LIKE $${i} OR COALESCE(s.year,0)::text LIKE $${i})`);
+    where.push(`(LOWER(s.set_number) LIKE $${i}${E} OR LOWER(s.name) LIKE $${i}${E}
+                 OR LOWER(COALESCE(s.theme,'')) LIKE $${i}${E} OR COALESCE(s.year,0)::text LIKE $${i}${E})`);
   }
   const whereSql = where.length ? where.join(' AND ') : 'TRUE';
   // ausTabelle: Ein direkter Zugriff liefert auch geerbte Eigenschaften.

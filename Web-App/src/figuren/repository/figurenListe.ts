@@ -2,10 +2,11 @@ import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
 import * as db from '../../../db/database';
 import { figurSichtJoin, FIGUR } from '../../../db/katalogSicht';
+import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 
 // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#figurensuche
 function figurenSuche(nummer: string, name: string, pi: number) {
-  return `(${nummer} ILIKE $${pi} OR ${name} ILIKE $${pi})`;
+  return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E})`;
 }
 
 /** Gezählt werden die Gruppen, sonst zählte eine Figur aus fünf Sets fünfmal. */
@@ -24,7 +25,7 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
     // Der Figurenname steht im Katalog; figurSichtJoin hängt an jeder Abfrage,
     // die diese Bedingung benutzt.
     where += ` AND ${figurenSuche('m.fig_number', FIGUR.name, pi)}`;
-    params.push(`%${search}%`); pi++;
+    params.push(enthaeltMuster(search)); pi++;
   }
   const figParams = [...params];
   let figLimit = '';
@@ -126,7 +127,7 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
   // Platzhalter vor LIMIT/OFFSET.
   let suche = '';
   if (search) {
-    params.push(`%${search}%`);
+    params.push(enthaeltMuster(search));
     suche = ` AND ${figurenSuche('m.fig_number', FIGUR.name, params.length)}`;
   }
   let limit = '';

@@ -2,6 +2,7 @@ import * as db from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
+import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 
 /** Beide Wege (Zusammenfassung und live) liefern dieselbe Form, damit die
  * Oberflächen nicht wissen müssen, woher die Zeilen kommen. */
@@ -25,7 +26,7 @@ function ordnungSql(o: TeileOrdnung, sp: { farbe: string; name: string; menge: s
 
 /** `pi` ist der Platzhalter für `%text%`. */
 function teileSuche(nummer: string, name: string, blNummer: string, pi: number) {
-  return `(${nummer} ILIKE $${pi} OR ${name} ILIKE $${pi} OR ${blNummer} ILIKE $${pi})`;
+  return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E} OR ${blNummer} ILIKE $${pi}${E})`;
 }
 
 export interface TeilZeile {
@@ -80,7 +81,7 @@ export async function seiteAusZusammenfassung(uids: number[], f: TeileFilter, s:
   }
   if (f.search) {
     cond.push(teileSuche('part_number', 'part_name', 'bl_part_number', params.length + 1));
-    params.push(`%${f.search}%`);
+    params.push(enthaeltMuster(f.search));
   }
   const where = cond.join(' AND ');
   const multi = uids.length > 1;
@@ -134,7 +135,7 @@ function teileWo(uids: number[], f: TeileFilter) {
   if (f.ohneManuelle) where += " AND COALESCE(p.source,'set') <> 'manual'";
   if (f.search) {
     where += ` AND ${teileSuche('p.part_number', TEIL.name, blNummerSql('p.part_number'), pi)}`;
-    params.push(`%${f.search}%`); pi++;
+    params.push(enthaeltMuster(f.search)); pi++;
   }
   // Lagerort als eigener Filter über den Namen aus dem Vorrat (lo).
   if (f.storage) { where += ` AND lo.name = $${pi++}`; params.push(String(f.storage)); }
@@ -305,7 +306,7 @@ export function manuelleTeile(uids: number[], f: { search?: string | null; stora
   const params: unknown[] = [uids];
   let filter = '';
   if (f.search) {
-    params.push(`%${f.search}%`);
+    params.push(enthaeltMuster(f.search));
     filter = ` AND ${teileSuche('t.part_number', TEIL.name, blNummerSql('t.part_number'), params.length)}`;
   }
   if (f.storage) { params.push(String(f.storage)); filter += ` AND lo.name = $${params.length}`; }

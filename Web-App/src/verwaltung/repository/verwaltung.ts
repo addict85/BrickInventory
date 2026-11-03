@@ -1,4 +1,5 @@
 import * as db from '../../../db/database';
+import { LIKE_ESCAPE, likeWoertlich } from '../../../db/likeSuche';
 import { mengeSkalar } from '../../../db/bestandsmenge';
 
 /** Die Route spricht db/ nicht selbst an. */
@@ -41,8 +42,8 @@ export function fehlanzeigeDesSets(sn: string): Promise<Fehlanzeige | undefined>
 /** @param datei der Dateiname ohne Endung, wie ihn die Bildablage bildet */
 export function fehlanzeigeDerVorschau(datei: string): Promise<Fehlanzeige | undefined> {
   return db.get(
-    `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1`,
-    ['thumb:%' + datei + '_thumb.jpg']);
+    `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`,
+    ['thumb:%' + likeWoertlich(datei + '_thumb.jpg')]);
 }
 
 export function setFehlanzeigen(): Promise<Schluessel[]> {
