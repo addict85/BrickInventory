@@ -220,6 +220,7 @@ export const routen = {
   'POST /api/v1/auth/passkey/registrieren/optionen': { antwort: PasskeyOptionen, ...bestaetigt() },
   'POST /api/v1/auth/passkey/registrieren': { antwort: PasskeyAngelegt, eingabe: z.looseObject({ name: txtLeer(100) }) },
   'POST /api/v1/auth/passkey/anmelden/optionen': { antwort: PasskeyOptionen },
-  'POST /api/v1/auth/passkey/anmelden': { antwort: PasskeyAnmeldung, geheim: true },
+  'POST /api/v1/auth/passkey/anmelden': { antwort: PasskeyAnmeldung, geheim: true,
+    eingabe: z.looseObject({ antwort: z.record(z.string(), z.unknown()).nullable().optional(), mit_token: z.boolean().optional() }) },
   'POST /api/v1/settings/sessions/andere-beenden': { antwort: Geloescht, ...bestaetigt() },
 } satisfies Record<string, Route>;

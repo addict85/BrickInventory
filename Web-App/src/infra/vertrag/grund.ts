@@ -53,5 +53,11 @@ export function bestaetigt(felder: Record<string, z.ZodType> = {}, passwort = 'p
       [code]: faktorFelder.code, passkey: faktorFelder.passkey }) };
 }
 
+const EINFACH = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+/** Für jede schreibende Route ohne eigenes Schema: nur einfache Werte und Listen
+ * davon. Ein Objekt statt eines Textes ({"$ne":1}) landete sonst als
+ * "[object Object]" in der Tabelle oder an einer Prüfung vorbei. */
+export const FLACHE_EINGABE = z.record(z.string(), z.union([EINFACH, z.array(EINFACH)]));
+
 /** Ein Konto in Besitzerlisten. */
 export const KontoName = z.looseObject({ id: ganz, username: z.string() });

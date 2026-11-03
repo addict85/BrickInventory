@@ -2,6 +2,7 @@ import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../konfig';
 import { routeZu } from './index';
+import { FLACHE_EINGABE } from './grund';
 import { GROESSTE_ID, idWert } from '../validate';
 import { sendeFehler } from '../fehlerTexte';
 import { handleRouteError } from '../httpError';
@@ -19,8 +20,8 @@ export function eingabePruefen(req: Request, res: Response, next: NextFunction):
     if (typeof wert !== 'string' || wert.length > ABFRAGE_HOECHSTENS)
       return sendeFehler(req, res, 400, 'eingabe_ungueltig', { feld: name.slice(0, 40) });
   const route = req.route ? routeZu(`${req.method} ${req.baseUrl}${req.route.path}`) : undefined;
-  if (!route?.eingabe || route.formular) return next();
-  const r = route.eingabe.safeParse(req.body ?? {});
+  if (route?.formular || (!route?.eingabe && req.method === 'GET')) return next();
+  const r = (route?.eingabe ?? FLACHE_EINGABE).safeParse(req.body ?? {});
   if (r.success) return next();
   const erste = r.error.issues[0];
   const eigener = (erste as { params?: { fehler?: unknown } } | undefined)?.params?.fehler;

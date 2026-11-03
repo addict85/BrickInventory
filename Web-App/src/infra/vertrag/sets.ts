@@ -182,7 +182,7 @@ export const routen = {
   'GET /api/v1/sets/:setNumber/minifigs-list': { antwort: MinifigsResponse },
   'GET /api/v1/sets/exists/:setNumber': { antwort: SetExistsResponse },
   'GET /api/v1/sets/barcode/:barcode': { antwort: BarcodeResponse },
-  'POST /api/v1/sets/:setNumber/instructions/upload': { antwort: AnleitungHochgeladen },
+  'POST /api/v1/sets/:setNumber/instructions/upload': { antwort: AnleitungHochgeladen, formular: true },
   'DELETE /api/v1/sets/:setNumber/instructions/:instrId': { antwort: GenericResponse },
   'POST /api/v1/sets': { antwort: AddSetResponse, eingabe: z.looseObject({ set_number: z.union([z.string(), z.number()]), quantity: eingabe.stueckzahl(), purchase_price: eingabe.preis('Kaufpreis') }) },
   'PUT /api/v1/sets/:setNumber': { antwort: GenericResponse },

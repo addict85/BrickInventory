@@ -1381,6 +1381,35 @@
             }
           }
         },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "antwort": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "mit_token": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
         "x-geheim": true
       }
     },
@@ -5269,6 +5298,40 @@
               }
             }
           }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "teile": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "part_number": {
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        },
+                        "color_id": {
+                          "type": [
+                            "string",
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "additionalProperties": {}
+                    }
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
         }
       }
     },
@@ -5890,6 +5953,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
                 }
               }
             }
