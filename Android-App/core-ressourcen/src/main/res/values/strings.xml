@@ -135,7 +135,9 @@
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_delete_title">Delete set?</string>
-    <string name="gallery_delete_text">%1$s and all parts will be removed.</string>
+    <string name="gallery_delete_text">%1$s and its parts will be removed. You can still undo it for a moment afterwards.</string>
+    <string name="gallery_set_deleted_undo">%1$s deleted</string>
+    <string name="common_undo">Undo</string>
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
     <string name="offline_stand">Offline – data as of %1$s</string>
@@ -984,4 +986,8 @@
     <string name="hintergrund_wiederholt_ok">Job will be retried</string>
     <string name="hintergrund_gestartet">%1$s is starting</string>
     <string name="hintergrund_nichts_gestartet">%1$s: nothing to start</string>
+    <plurals name="gallery_delete_text_exemplare">
+        <item quantity="one">%1$d copy of %2$s and its parts will be removed. You can still undo it for a moment afterwards.</item>
+        <item quantity="other">All %1$d copies of %2$s and their parts will be removed. You can still undo it for a moment afterwards.</item>
+    </plurals>
 </resources>

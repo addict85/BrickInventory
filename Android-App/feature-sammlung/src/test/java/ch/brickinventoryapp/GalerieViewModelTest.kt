@@ -42,6 +42,10 @@ import org.junit.Test
  *      Kennzahlen bringen Preis und G&V …“ (800,0 statt 812,5)
  *   G  in loadStats() ladePreise() entfernt → rot „die Kennzahlen bringen
  *      Preis und G&V …“
+ *   H  (03.11.2026, modbau) in loeschenVormerken() sofort deleteSet() aufgerufen →
+ *      rot „vorgemerktes Loeschen …“ und „Rueckgaengig …“ (DELETE schon gesendet)
+ *   I  (03.11.2026, modbau) in rueckgaengig() loadSets() entfernt → rot
+ *      „Rueckgaengig holt das Set zurueck …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalerieViewModelTest {
@@ -137,6 +141,36 @@ class GalerieViewModelTest {
         assertEquals(listOf(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren), gemeldet)
         assertTrue(pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
         TestApi.warteBis("Liste ohne das Set") { vm.galleryState.value.sets.none { it.setNumber == "10294-1" } }
+    }
+
+    @Test
+    fun `vorgemerktes Loeschen nimmt die Kachel sofort weg und fragt den Server erst danach`() {
+        val vm = vm()
+        vm.loadSets()
+        TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.size == 2 }
+        vm.loeschenVormerken("10294-1", "Titanic")
+        assertTrue(vm.galleryState.value.sets.none { it.setNumber == "10294-1" })
+        assertEquals("Titanic", vm.vorgemerkt.value?.name)
+        Thread.sleep(200)
+        assertTrue("Noch kein DELETE", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isEmpty())
+        vm.loeschenAusfuehren()
+        TestApi.warteBis("DELETE gesendet") { pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isNotEmpty() }
+        assertEquals(null, vm.vorgemerkt.value)
+    }
+
+    @Test
+    fun `Rueckgaengig holt das Set zurueck, ohne es je zu loeschen`() {
+        val vm = vm()
+        vm.loadSets()
+        TestApi.warteBis("Liste geladen") { vm.galleryState.value.sets.size == 2 }
+        vm.loeschenVormerken("10294-1", "Titanic")
+        vm.rueckgaengig()
+        TestApi.warteBis("Set wieder da") { vm.galleryState.value.sets.any { it.setNumber == "10294-1" } }
+        Thread.sleep(200)
+        assertTrue("Kein DELETE", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isEmpty())
+        vm.loeschenAusfuehren()
+        Thread.sleep(200)
+        assertTrue("Nach Rückgängig gibt es nichts mehr auszuführen", pfade.anfragenAn("DELETE /api/v1/sets/10294-1").isEmpty())
     }
 
     @Test

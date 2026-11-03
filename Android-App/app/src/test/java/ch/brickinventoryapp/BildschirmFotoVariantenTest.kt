@@ -338,7 +338,7 @@ class BildschirmFotoVariantenTest {
     fun dialogSetLoeschen() {
         val vm = welt.setDetail().also { it.ladeAlles() }
         zeige("dialog-set-loeschen", design = "noppe", bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
-        compose.onNodeWithContentDescription("Löschen").performClick()
+        compose.onNodeWithContentDescription("Millennium Falcon löschen").performClick()
         compose.waitForIdle()
         compose.onNode(isDialog()).captureRoboImage(pfad("dialog-set-loeschen", "noppe", false, "telefon"))
     }

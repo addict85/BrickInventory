@@ -119,7 +119,9 @@
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_delete_title">Set löschen?</string>
-    <string name="gallery_delete_text">%1$s und alle Teile werden entfernt.</string>
+    <string name="gallery_delete_text">%1$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</string>
+    <string name="gallery_set_deleted_undo">%1$s gelöscht</string>
+    <string name="common_undo">Rückgängig</string>
     <string name="gallery_pieces_suffix"> Teile</string>
     <string name="gallery_scan_barcode">Barcode scannen</string>
     <string name="offline_stand">Offline – Stand von %1$s</string>
@@ -965,4 +967,8 @@
     <string name="hintergrund_wiederholt_ok">Auftrag wird wiederholt</string>
     <string name="hintergrund_gestartet">%1$s startet</string>
     <string name="hintergrund_nichts_gestartet">%1$s: nichts zu starten</string>
+    <plurals name="gallery_delete_text_exemplare">
+        <item quantity="one">%1$d Exemplar von %2$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</item>
+        <item quantity="other">Alle %1$d Exemplare von %2$s und ihre Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</item>
+    </plurals>
 </resources>

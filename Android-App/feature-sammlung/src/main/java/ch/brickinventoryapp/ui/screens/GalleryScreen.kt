@@ -120,7 +120,6 @@ fun GalleryScreen(
     val onThemeChange: (String) -> Unit = vm::setGalleryTheme
     val onSortChange: (String) -> Unit = vm::setGallerySort
     val onLoadMore: () -> Unit = vm::loadMoreSets
-    val onDeleteSet: (String) -> Unit = vm::deleteSet
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) }
     val lagerorte = lagerState.orte
     val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
@@ -249,7 +248,7 @@ fun GalleryScreen(
                         }
                         itemsIndexed(sets, key = { _, s -> s.setNumber }) { index, set ->
                             Bewegt {
-                                SetCard(set, serverUrl, imageLoader, onSetClick, onDeleteSet, index,
+                                SetCard(set, serverUrl, imageLoader, onSetClick, index,
                                     preis = preise[set.setNumber], waehrung = currency)
                             }
                         }
@@ -373,14 +372,12 @@ fun SetCard(
     serverUrl: String,
     imageLoader: ImageLoader,
     onClick: (String) -> Unit,
-    onDelete: (String) -> Unit,
     /** Position in der Kachelwand — nur fuer die Deckelfarbe des Designs "noppe". */
     position: Int = 0,
     /** Marktpreis und G&V; fehlt beides, steht der Kaufpreis da (wie im Web). */
     preis: KachelPreis? = null,
     waehrung: String = "EUR",
 ) {
-    var deleting by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
     // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
     // `_thumb`-Datei fehlt (nach einem CSV-Import erzeugt der Server sie nachträglich)
@@ -472,28 +469,18 @@ fun SetCard(
                         // man im Haushalt das falsche.
                         OwnerBadges(set.owners)
                     }
-                    // Überlaufmenü oben rechts, wo Android es erwartet; die
-                    // Mengenplakette bleibt in derselben Ecke, links davon.
-                    Row(Modifier.align(Alignment.TopEnd).padding(Abstaende.haar),
-                        verticalAlignment = Alignment.CenterVertically) {
-                        if (set.quantity > 1) {
-                            Surface(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = Formen.etikett,
-                            ) {
-                                Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        // Ein Menü mit nur „Löschen“ war ein Tipp zu viel: direkt der Knopf, die
-                        // Rückfrage danach bleibt. In jedem Design auf eigener runder Fläche,
-                        // damit das Symbol auf jedem Bild lesbar ist.
-                        IconButton(onClick = { deleting = true },
-                            modifier = Modifier.padding(Abstaende.haar)
-                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f), CircleShape)) {
-                            Icon(Icons.Default.DeleteOutline, stringResource(R.string.cd_set_delete, set.name ?: set.setNumber),
-                                Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Die Kachel trägt keine zerstörerische Aktion: Gelöscht wird im Detail,
+                    // mit Rückfrage und danach „Rückgängig“. Neben „×2“ lag der Mülleimer
+                    // als einzige sichtbare Aktion der Kachel.
+                    if (set.quantity > 1) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = Formen.etikett,
+                            modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.klein),
+                        ) {
+                            Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -533,21 +520,6 @@ fun SetCard(
             mass = NoppenMass.Stein,
             modifier = Modifier.align(Alignment.TopStart),
             farbe = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.noppen,
-        )
-    }
-
-    if (deleting) {
-        AlertDialog(
-            onDismissRequest = { deleting = false },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(R.string.gallery_delete_title)) },
-            text = { Text(stringResource(R.string.gallery_delete_text, set.name ?: set.setNumber)) },
-            confirmButton = {
-                TextButton(onClick = { deleting = false; onDelete(set.setNumber) }) {
-                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text(stringResource(R.string.common_cancel)) } }
         )
     }
 }

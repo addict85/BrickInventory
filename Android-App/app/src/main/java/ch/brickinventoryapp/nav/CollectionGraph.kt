@@ -109,6 +109,21 @@ fun NavGraphBuilder.collectionGraph(
                     navController.navigate(Screen.SetDetail.createRoute(found))
                 }
             }
+            // Gelöscht wird erst, wenn die Snackbar ohne „Rückgängig“ endet — auch wenn
+            // sie verschwindet, weil man die Galerie verlässt (finally).
+            val vorgemerkt by galerieVm.vorgemerkt.collectAsStateWithLifecycle()
+            val geloeschtText = vorgemerkt?.let { stringResource(R.string.gallery_set_deleted_undo, it.name) }
+            val rueckgaengigText = stringResource(R.string.common_undo)
+            LaunchedEffect(vorgemerkt) {
+                if (vorgemerkt == null || geloeschtText == null) return@LaunchedEffect
+                var zurueck = false
+                try {
+                    zurueck = snackbarHostState.showSnackbar(geloeschtText, rueckgaengigText,
+                        duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed
+                } finally {
+                    if (zurueck) galerieVm.rueckgaengig() else galerieVm.loeschenAusfuehren()
+                }
+            }
             val ziel = this
             ReiterGeruest(stringResource(R.string.nav_gallery), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.components.MitZiel(ziel) {
@@ -138,10 +153,12 @@ fun NavGraphBuilder.collectionGraph(
             val galerieEintrag = remember(backStack) {
                 runCatching { navController.getBackStackEntry(Screen.Gallery.route) }.getOrNull()
             }
-            val vorschau = galerieEintrag?.let { eintrag ->
-                val galerie by hiltViewModel<GalerieViewModel>(eintrag).galleryState.collectAsStateWithLifecycle()
+            val galerieUnten = galerieEintrag?.let { hiltViewModel<GalerieViewModel>(it) }
+            val vorschau = galerieUnten?.let { g ->
+                val galerie by g.galleryState.collectAsStateWithLifecycle()
                 galerie.sets.find { it.setNumber == setNumber }
             }
+            val vorschauName = vorschau?.name
             val detailVm: SetDetailViewModel = hiltViewModel()
             ch.brickinventoryapp.ui.components.MitZiel(this) {
             SetDetailScreen(
@@ -151,8 +168,11 @@ fun NavGraphBuilder.collectionGraph(
                 serverUrl = state.serverUrl,
                 imageLoader = imageLoader,
                 onBack = { navController.popBackStack() },
+                // Zurück in die Galerie, die das Set mit „Rückgängig“ vormerkt; ohne
+                // Galerie darunter (Einstieg von aussen) wird gleich gelöscht.
                 onDelete = { sn ->
-                    detailVm.deleteSet(sn)
+                    val name = detailVm.setDetailState.value.setDetail?.name ?: vorschauName ?: sn
+                    if (galerieUnten != null) galerieUnten.loeschenVormerken(sn, name) else detailVm.deleteSet(sn)
                     navController.popBackStack()
                 },
                 onNavigateToAcqMgmt = { type, id, colorId, title ->

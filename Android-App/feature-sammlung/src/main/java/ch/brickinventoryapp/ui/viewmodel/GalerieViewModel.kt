@@ -117,11 +117,42 @@ class GalerieViewModel @Inject constructor(
         }
     }
 
-    fun deleteSet(setNumber: String) {
+    /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
+    data class VorgemerktesLoeschen(val setNumber: String, val name: String)
+
+    private val _vorgemerkt = kotlinx.coroutines.flow.MutableStateFlow<VorgemerktesLoeschen?>(null)
+    val vorgemerkt: kotlinx.coroutines.flow.StateFlow<VorgemerktesLoeschen?> = _vorgemerkt
+
+    /**
+     * Löschen mit „Rückgängig“: Die Kachel verschwindet sofort, der Server erfährt
+     * davon erst mit [loeschenAusfuehren] — eine Rückfrage allein schützte nicht vor
+     * dem falschen Set. Ein noch offenes früheres Löschen wird zuerst ausgeführt.
+     */
+    fun loeschenVormerken(setNumber: String, name: String) {
+        loeschenAusfuehren()
+        galerie.entferne(setNumber)
+        _vorgemerkt.value = VorgemerktesLoeschen(setNumber, name)
+    }
+
+    /** Das vorgemerkte Set bleibt; die Liste kommt neu vom Server, auf dem es nie fehlte. */
+    fun rueckgaengig() {
+        if (_vorgemerkt.value == null) return
+        _vorgemerkt.value = null
+        loadSets()
+    }
+
+    fun loeschenAusfuehren() {
+        val v = _vorgemerkt.value ?: return
+        _vorgemerkt.value = null
+        deleteSet(v.setNumber, erfolgMelden = false)
+    }
+
+    /** [erfolgMelden] aus, wenn „gelöscht“ schon in der Snackbar mit „Rückgängig“ stand. */
+    fun deleteSet(setNumber: String, erfolgMelden: Boolean = true) {
         viewModelScope.launch {
             val (geloescht, satz) = setLoeschen(sets, dienste.texte, setNumber)
             if (geloescht) galerie.entferne(setNumber)
-            _snackbar.value = satz
+            if (!geloescht || erfolgMelden) _snackbar.value = satz
             if (geloescht) dienste.bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
         }
     }

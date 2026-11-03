@@ -4,6 +4,7 @@ import ch.brickinventoryapp.ui.model.SetAnsicht
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -105,7 +106,7 @@ fun SetDetailScreen(
                     // verdeckte, was wandert. Der Server erzwingt dieselbe Regel: move ohne
                     // acquisition_ids antwortet mit 400.
                     IconButton(onClick = { showSetDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                        Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -196,7 +197,12 @@ fun SetDetailScreen(
                 onDismissRequest = { showSetDeleteConfirm = false },
                 icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
                 title = { Text(stringResource(R.string.gallery_delete_title)) },
-                text = { Text(stringResource(R.string.gallery_delete_text, set.name ?: setNumber)) },
+                // Bei mehreren Exemplaren sagt der Satz, dass alle gemeint sind.
+                text = {
+                    val name = set.name ?: setNumber
+                    Text(if (set.quantity > 1) pluralStringResource(R.plurals.gallery_delete_text_exemplare, set.quantity, set.quantity, name)
+                         else stringResource(R.string.gallery_delete_text, name))
+                },
                 confirmButton = {
                     TextButton(onClick = { showSetDeleteConfirm = false; onDelete(setNumber) }) {
                         Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)

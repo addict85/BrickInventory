@@ -130,7 +130,7 @@ class OberflaechenRegelnTest {
         zeige(schrift = 2f) {
             Box(Modifier.width(188.dp)) {
                 SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars"),
-                    serverUrl = "", imageLoader = bilder, onClick = {}, onDelete = {},
+                    serverUrl = "", imageLoader = bilder, onClick = {},
                     preis = KachelPreis(812.5, 16.1), waehrung = "CHF")
             }
         }
