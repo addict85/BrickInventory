@@ -120,7 +120,7 @@ jobs:
           skip-setup-trivy: true
 
   # ── Fremde Images aus compose.yaml ────────────────────────────────────────
-  # Die Liste kommt aus compose.yaml, damit Dependabot (docker-compose) die
+  # Die Liste kommt aus compose.yaml, damit Renovate (docker-compose) die
   # einzige Stelle pflegt. Eine behebbare Lücke ab high macht den Lauf rot:
   # Behoben wird sie mit dem nächsten Digest. Bis dahin steht sie mit Grund und
   # Ablaufdatum in .github/trivy-betrieb.ignore — danach ist sie wieder rot.
@@ -140,7 +140,7 @@ jobs:
           sed -n 's/^[[:space:]]*image:[[:space:]]*\([^[:space:]#]*@sha256:[0-9a-f]\{64\}\).*/\1/p' Web-App/compose.yaml | sort -u > images.txt
           [ -s images.txt ] || { echo "::error title=compose.yaml::Kein Image per Digest gefunden."; exit 1; }
           echo "images=$(jq -R . images.txt | jq -sc .)" >> "$GITHUB_OUTPUT"
-      # Meldet einen Tag, der weitergezogen ist, ohne dass ein Dependabot-PR kam.
+      # Meldet einen Tag, der weitergezogen ist, ohne dass ein Renovate-PR kam.
       - name: Digests gegen die aktuellen Tags
         run: |
           while read -r ref; do

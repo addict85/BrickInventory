@@ -1061,3 +1061,18 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
    er behebbare Lücken, den Dependabot-PR mit dem neuen Digest übernehmen
    oder die Lücke mit Grund und Ablaufdatum in `.github/trivy-betrieb.ignore`
    eintragen.
+
+## 32. Runde 8 – Sicherheit
+
+Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
+
+**In den GitHub-Einstellungen**
+
+- **Renovate statt Dependabot für Images und Actions**: `renovate.json` pflegt
+  jetzt auch die Digests in `Dockerfile` und `compose.yaml` und die
+  Commit-SHAs der Actions; `.github/dependabot.yml` ist entfernt, sonst kämen
+  dieselben PRs doppelt. Prüfen, dass die Renovate-App für das Repository
+  eingeschaltet ist (*Settings → GitHub Apps*). Die Sicherheitswarnungen von
+  Dependabot (*Settings → Code security*) bleiben davon unberührt. Ein Sprung
+  auf eine neue PostgreSQL-Hauptversion kommt erst nach Freigabe im
+  Dependency-Dashboard: Er braucht einen Umzug der Daten (`POSTGRES-18.md`).

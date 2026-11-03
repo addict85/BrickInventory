@@ -320,7 +320,7 @@ services:
   # ./caddy/data/caddy/pki/authorities/local/root.crt und kommt auf die Geräte
   # (UPGRADE.md, Abschnitt 14).
   caddy:
-    # Fest per Digest wie pgweb; Dependabot (docker-compose) schlägt neue Fassungen vor.
+    # Fest per Digest wie pgweb; Renovate (docker-compose) schlägt neue Fassungen vor.
     image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
     container_name: brickinventory-caddy
     restart: unless-stopped
