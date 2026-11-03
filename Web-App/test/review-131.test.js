@@ -127,9 +127,10 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
 test('der Sitzungsschlüssel darf in Produktion kein Beispielwert sein', () => {
   const src = quelle('server.ts');
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
-  // compose.yaml trägt keinen Wert mehr, sie verlangt ihn aus .env; der
-  // frühere Beispielwert steht in alten Kopien und bleibt gesperrt.
-  assert.match(compose, /SESSION_SECRET:\s*\$\{SESSION_SECRET:\?/, 'compose.yaml verlangt SESSION_SECRET aus .env');
+  // compose.yaml trägt keinen Wert mehr, sie reicht ihn als Docker-Secret
+  // herein; der frühere Beispielwert steht in alten Kopien und bleibt gesperrt.
+  assert.match(compose, /SESSION_SECRET_FILE:\s*\/run\/secrets\/session_secret/, 'compose.yaml reicht SESSION_SECRET als Datei herein');
+  assert.doesNotMatch(compose, /^\s*SESSION_SECRET:/m, 'SESSION_SECRET steht als Umgebungsvariable in compose.yaml');
   assert.ok(src.includes("'change-me-to-a-long-random-string'"),
     'server.ts weist den früheren Beispielwert aus compose.yaml nicht zurück');
   assert.match(src, /SESSION_SECRET[\s\S]{0,1200}?length\s*<\s*\d+/,
