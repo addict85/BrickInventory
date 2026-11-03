@@ -44,6 +44,9 @@ import org.junit.Test
  *      derselbe Token zurueckkommt“
  *   I  anmeldungUeberfaellig() mit `TOKEN_HOECHSTDAUER_TAGE * 24 * 60 * 1000`
  *      (Minuten statt Stunden) → rot „nach 180 Tagen ist die Anmeldung ueberfaellig …“
+ * Gegenprobe (03.11.2026, gemessen mit kotlinc lokal):
+ *   J  noetig() wieder ohne Herkunft und Generation (`stand().token.takeIf …`) →
+ *      rot „schon getauscht heisst nicht: den Token einer anderen Sitzung nehmen“
  */
 class TokenTauschTest {
 
@@ -145,7 +148,7 @@ class TokenTauschTest {
         assertEquals(Tauschergebnis.VERWORFEN, tausch.await())
         assertEquals("Nach dem Abmelden ist niemand angemeldet", "", w.gespeichert)
         assertFalse(w.protokoll.toString(), w.protokoll.any { it.startsWith("speichere") })
-        assertEquals(null, w.tausch.noetig("alt"))
+        assertEquals(null, w.tausch.noetig("alt", HIER, w.schranke.generation))
     }
 
     @Test
@@ -164,6 +167,20 @@ class TokenTauschTest {
         w.antwortHerkunft = null
         assertEquals(Tauschergebnis.VERWORFEN, w.tausch.tausche("alt"))
         assertEquals("alt", w.gespeichert)
+    }
+
+    /** Pruef6 M1: „Schon getauscht“ war auch „inzwischen beim neuen Server angemeldet“. */
+    @Test
+    fun `schon getauscht heisst nicht, den Token einer anderen Sitzung nehmen`() = runTest {
+        val w = Welt()
+        val g = w.schranke.generation
+        w.abmelden(); w.anmelden("vom-neuen", "https://neu.example:443")
+        assertEquals("Andere Herkunft und Generation", null, w.tausch.noetig("alt", HIER, g))
+        assertEquals("Andere Generation", null, w.tausch.noetig("alt", "https://neu.example:443", g))
+        assertEquals("Andere Herkunft", null, w.tausch.noetig("alt", HIER, w.schranke.generation))
+        // Dieselbe Sitzung: Eine andere Anfrage hat eben getauscht, ihr Token gilt.
+        assertEquals("vom-neuen", w.tausch.noetig("alt", "https://neu.example:443", w.schranke.generation))
+        assertFalse(w.protokoll.toString(), w.protokoll.any { it.startsWith("rotiere") })
     }
 
     @Test

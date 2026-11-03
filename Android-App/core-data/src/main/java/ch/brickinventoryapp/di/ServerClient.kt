@@ -19,6 +19,7 @@ private class GeraeteZugang(private val prefs: PreferencesManager) : Zugangslage
     override fun serverUrl(): String { bereit(); return prefs.serverUrlState.value.orEmpty() }
     override fun token(): String { bereit(); return prefs.authTokenState.value.orEmpty() }
     override fun tokenHerkunft(): String? { bereit(); return prefs.tokenHerkunftState.value }
+    override fun generation(): Long { bereit(); return prefs.tokenGeneration() }
 }
 
 private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTrustManager {
@@ -75,7 +76,7 @@ internal fun buildInterceptorClient(
                 else ch.brickinventoryapp.ressourcen.R.string.api_server_zu_alt)
         }
     }
-    return OkHttpClient.Builder()
+    val client = OkHttpClient.Builder()
         .apply {
             // Auch der Bild-Client: Sonst fehlten Bildanfragen im Logcat, und ihr
             // Fehlen sähe aus wie ein Befund statt wie eine Lücke der Beobachtung.
@@ -104,4 +105,14 @@ internal fun buildInterceptorClient(
         // Ein Zwischen-Byte-Timeout; die PDF-Erzeugung läuft über Job-Polling.
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
+    folgtDemServer(prefs, client)
+    return client
+}
+
+/**
+ * Beim Wechsel auf einen anderen Server laufende Aufrufe abbrechen: Ihre Antworten
+ * gehören dem alten Server. Für jeden Client mit eigenem Dispatcher (der Bild-Client hat einen).
+ */
+internal fun folgtDemServer(prefs: PreferencesManager, client: OkHttpClient) {
+    prefs.beimServerwechsel { client.dispatcher.cancelAll() }
 }

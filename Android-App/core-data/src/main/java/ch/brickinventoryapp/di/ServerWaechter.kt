@@ -7,6 +7,7 @@ import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.VersionsHinweis
 import ch.brickinventoryapp.util.darfNachfassen
 import ch.brickinventoryapp.util.versionsHinweis
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.Request
@@ -23,6 +24,12 @@ interface Zugangslage {
     fun token(): String
     /** Die Herkunft, an die der Token gebunden ist; null bei Altbestand ohne Bindung. */
     fun tokenHerkunft(): String?
+    /**
+     * Zählt Anmelden, Abmelden und Serverwechsel (data/TokenSchranke). Wird vor dem
+     * Token gelesen und danach verglichen: Was eine Antwort auslöst, gilt nur der
+     * Sitzung, in der die Anfrage hinausging.
+     */
+    fun generation(): Long
 }
 
 /** Platzhalter, auf den Retrofit gebaut ist; der Wächter schreibt ihn auf den Server um. */
@@ -35,7 +42,8 @@ const val PLATZHALTER_BASIS = "http://localhost:3000/"
  */
 interface Rotationsanlass {
     fun faellig(alterToken: String)
-    fun noetig(alterToken: String): String?
+    /** Nur ein Token mit [herkunft] und aus [generation]; ein jüngerer gehört einer anderen Sitzung. */
+    fun noetig(alterToken: String, herkunft: String?, generation: Long): String?
 }
 
 /** Pfad des Tauschs selbst: Seine Antwort löst keinen weiteren aus. */
@@ -79,6 +87,8 @@ class ServerWaechter(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
+        // Zuerst: Ein Wechsel nach diesem Punkt zeigt sich als andere Generation.
+        val generation = lage.generation()
         val serverUrl = lage.serverUrl().trim().trimEnd('/')
         val token = lage.token()
         val reqBuilder = original.newBuilder()
@@ -119,35 +129,42 @@ class ServerWaechter(
         val ausgehend = reqBuilder.build()
         var antwort = chain.proceed(ausgehend)
         var tokenMitgeschickt = mitToken && ausgehend.header("Authorization") != null
+        // Die Sitzung des Tokens, der zuletzt hinausging; nur sie darf die Antwort auswerten.
+        var sitzung = generation
+        var gesendet = ausgehend
 
         // Die Anmeldung setzt den Token und feuert sofort Abrufe; einer kann noch
-        // ohne Kopf hinausgegangen sein (util/Abgewiesen.kt).
+        // ohne Kopf hinausgegangen sein (util/Abgewiesen.kt). Der Token wird jetzt
+        // gelesen, also gilt seine Bindung von jetzt, nicht die vom Senden.
         if (darfNachfassen(antwort.code, unserServer, ausgehend.header("Authorization") != null, ausgehend.method)) {
-            val jetzt = lage.token()
-            if (jetzt.isNotBlank() && tokenGehoertHierher) {
+            tokenFuer(ausgehend.url)?.let { (jetzt, g) ->
                 antwort.close()
-                val nachfass = ausgehend.newBuilder().header("Authorization", "Bearer $jetzt").build()
-                antwort = chain.proceed(nachfass)
+                gesendet = ausgehend.newBuilder().header("Authorization", "Bearer $jetzt").build()
+                antwort = chain.proceed(gesendet)
                 tokenMitgeschickt = true
+                sitzung = g
             }
         }
 
+        val dieselbeSitzung = { lage.generation() == sitzung }
         val rotierbar = rotation != null && tokenMitgeschickt && unserServer &&
             !ausgehend.url.encodedPath.endsWith(ROTATIONS_PFAD)
         if (rotierbar && antwort.code == 401) {
             val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
-            val gesendet = ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim().orEmpty()
-            if (code == "token_rotation_noetig") rotation.noetig(gesendet)?.let { neu ->
-                // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
-                antwort.close()
-                val wieder = ausgehend.newBuilder().header("Authorization", "Bearer $neu").build()
-                antwort = chain.proceed(wieder)
-            }
-        } else if (rotierbar && antwort.header("X-Token-Rotation") == "faellig") {
-            ausgehend.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation.faellig(it) }
+            val alt = gesendet.header("Authorization")?.removePrefix("Bearer ")?.trim().orEmpty()
+            val herkunftDerAnfrage = NetworkPolicy.herkunft(gesendet.url.toString())
+            if (code == "token_rotation_noetig") rotation.noetig(alt, herkunftDerAnfrage, sitzung)
+                ?.takeIf { dieselbeSitzung() }?.let { neu ->
+                    // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
+                    antwort.close()
+                    antwort = chain.proceed(gesendet.newBuilder().header("Authorization", "Bearer $neu").build())
+                }
+        } else if (rotierbar && antwort.header("X-Token-Rotation") == "faellig" && dieselbeSitzung()) {
+            gesendet.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation.faellig(it) }
         }
 
-        if ((antwort.code == 401 || antwort.code == 403) && tokenMitgeschickt && unserServer) {
+        // Ein 401 oder 403 des vorigen Servers betrifft die neue Sitzung nicht.
+        if ((antwort.code == 401 || antwort.code == 403) && tokenMitgeschickt && unserServer && dieselbeSitzung()) {
             val code = runCatching { Fehlerrumpf.lies(antwort.peekBody(16_384).string()).code }.getOrNull()
             if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
             if (antwort.code == 403 && code == NUR_ADMINS) rechteEntzogen()
@@ -162,5 +179,20 @@ class ServerWaechter(
             )?.let { if (versionGemeldet.compareAndSet(false, true)) melden(it) }
         }
         return antwort
+    }
+
+    /**
+     * Der jetzige Token samt Generation, wenn er jetzt zu [ziel] gehört: eigener
+     * Server und gebundene Herkunft, beides von jetzt. Ändert sich die Generation
+     * während des Lesens, passen die Werte nicht sicher zusammen — dann keiner.
+     */
+    private fun tokenFuer(ziel: HttpUrl): Pair<String, Long>? {
+        val g = lage.generation()
+        val server = lage.serverUrl().trim().trimEnd('/')
+        val token = lage.token()
+        val herkunft = lage.tokenHerkunft() ?: NetworkPolicy.herkunft(server)
+        val passt = token.isNotBlank() && server.isNotBlank() && NetworkPolicy.isSameOrigin(ziel, server) &&
+            herkunft == NetworkPolicy.herkunft(ziel.toString())
+        return if (passt && lage.generation() == g) token to g else null
     }
 }

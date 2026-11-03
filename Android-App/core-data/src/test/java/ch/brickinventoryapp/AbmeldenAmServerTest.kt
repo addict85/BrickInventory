@@ -39,6 +39,7 @@ class AbmeldenAmServerTest {
         override fun serverUrl() = server.url("/").toString().trimEnd('/')
         override fun token() = "geheim"
         override fun tokenHerkunft(): String? = null
+        override fun generation() = 0L
     }
     private val client = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = {}))

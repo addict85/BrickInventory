@@ -76,6 +76,7 @@ class ServerWaechterTest {
         override fun serverUrl() = url
         override fun token(): String = if (tokens.size > 1) tokens.removeFirst() else tokens.first()
         override fun tokenHerkunft() = herkunft
+        override fun generation() = 0L
     }
 
     @Before
