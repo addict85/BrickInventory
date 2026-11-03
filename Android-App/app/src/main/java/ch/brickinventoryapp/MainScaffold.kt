@@ -16,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.isSpecified
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -94,6 +96,9 @@ fun MainScaffold(
 
     // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten
     // Bildschirm ist schmal und bekommt die Leiste unten.
+    // Eine Grösse für alle Beschriftungen: Schrumpft jede für sich, steht „Sammlung“
+    // klein neben grossem „Mehr“.
+    val reiterSchrift = remember(LocalDensity.current.fontScale) { mutableStateOf(REITER_SCHRIFT_START) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val art = navigationsart(maxWidth.value)
         // Auf breiten Fenstern steht die Seitenleiste über die volle Höhe links, App-Leiste
@@ -107,7 +112,7 @@ fun MainScaffold(
                         selected = istGewaehlt(screen),
                         onClick = { reiterWaehlen(screen) },
                         icon = { Symbol(screen, icon) },
-                        label = { ReiterBeschriftung(label) }
+                        label = { ReiterBeschriftung(label, reiterSchrift) }
                     )
                 }
             }
@@ -160,7 +165,7 @@ fun MainScaffold(
                         bottomNavItems.forEach { (screen, icon, label) ->
                             NavigationBarItem(
                                 icon = { Symbol(screen, icon) },
-                                label = { ReiterBeschriftung(label) },
+                                label = { ReiterBeschriftung(label, reiterSchrift) },
                                 selected = istGewaehlt(screen),
                                 onClick = { reiterWaehlen(screen) }
                             )
@@ -243,20 +248,22 @@ fun ReiterGeruest(
  * schrittweise kleiner, wie Android es in der eigenen Systemleiste hält.
  */
 @Composable
-private fun ReiterBeschriftung(text: String) {
+private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>) {
     val stil = MaterialTheme.typography.labelSmall
-    // Startgrösse je Text und Schriftmass; jede Messung mit Überstand verkleinert um
-    // einen halben Punkt, bis das Wort ganz in eine Zeile passt.
-    val schrift = LocalDensity.current.fontScale
-    var groesse by remember(text, schrift) { mutableStateOf(stil.fontSize) }
+    // Jede Messung mit Überstand verkleinert die gemeinsame Grösse um einen halben
+    // Punkt, bis jedes Wort ganz in eine Zeile passt.
+    val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
     Text(
-        text, style = stil.copy(fontSize = groesse), maxLines = 1, softWrap = false,
+        text, style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
         overflow = TextOverflow.Clip,
         onTextLayout = { l ->
-            if (l.hasVisualOverflow && groesse > REITER_SCHRIFT_MIN) groesse = (groesse.value - 0.5f).sp
+            if (l.hasVisualOverflow && aktuell > REITER_SCHRIFT_MIN) groesse.value = (aktuell.value - 0.5f).sp
         },
     )
 }
+
+/** Unbestimmt: Die Beschriftung beginnt bei der Grösse des Themas. */
+private val REITER_SCHRIFT_START = TextUnit.Unspecified
 
 /** Kleiner wird keine Beschriftung; bei 200 % sind das noch 14 dp, gut lesbar. */
 private val REITER_SCHRIFT_MIN = 7.sp

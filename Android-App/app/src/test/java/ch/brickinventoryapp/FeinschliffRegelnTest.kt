@@ -115,6 +115,10 @@ class FeinschliffRegelnTest {
             }
         }
         ziele.forEach { (_, text) -> ganzEineZeile(text, "Reiterleiste") }
+        // Gegenprobe reiter-eigene-groesse: jede Beschriftung schrumpft für sich → rot
+        // „Reiterleiste in verschiedenen Grössen“.
+        val groessen = ziele.map { (_, text) -> layout(textKnoten(text)).layoutInput.style.fontSize }.toSet()
+        assertTrue("Reiterleiste in verschiedenen Grössen: $groessen", groessen.size == 1)
     }
 
     // Gegenprobe zustand-feste-spalte: Beschriftung bei jeder Schrift in der festen
@@ -126,7 +130,14 @@ class FeinschliffRegelnTest {
     }
 
     @Test
-    fun `Such-Platzhalter der Galerie steht auf dem Telefon ganz da`() {
+    fun `Such-Platzhalter der Galerie steht auf dem Telefon ganz da`() = suchPlatzhalterGanz(1f)
+
+    // Gegenprobe suche-gross-neben-knoepfen: Knöpfe auch bei grosser Schrift neben
+    // dem Feld → rot „Such-Platzhalter 200 %: … sichtbar bis 5/7“.
+    @Test
+    fun `Such-Platzhalter der Galerie steht auch bei 200 Prozent ganz da`() = suchPlatzhalterGanz(2f)
+
+    private fun suchPlatzhalterGanz(schrift: Float) {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.galerie().also { it.loadSets() }
@@ -138,7 +149,7 @@ class FeinschliffRegelnTest {
                                          ownerUserId: Int?, storage: String?) =
                         kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
                 }))
-            zeige {
+            zeige(schrift) {
                 ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
@@ -149,7 +160,8 @@ class FeinschliffRegelnTest {
                 Thread.sleep(10)
             }
             compose.waitForIdle()
-            ganzEineZeile(ctx.getString(R.string.gallery_search_placeholder), "Such-Platzhalter")
+            ganzEineZeile(ctx.getString(R.string.gallery_search_placeholder),
+                if (schrift == 1f) "Such-Platzhalter" else "Such-Platzhalter 200 %")
         } finally {
             welt.close()
         }

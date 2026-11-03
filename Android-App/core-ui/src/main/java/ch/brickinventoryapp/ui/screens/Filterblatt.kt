@@ -71,13 +71,23 @@ fun SucheMitFilter(
         // Auf dem Telefon immer als Symbol: Neben „Filter“ mit Text, Sortieren und
         // Scannen blieb dem Suchfeld bei 411 dp nur „Such…“. Die Zahl am Symbol
         // sagt weiter, wie viele Filter wirken.
-        val nurSymbol = maxWidth < FILTER_TEXT_AB || ch.brickinventoryapp.ui.components.grosseSchrift()
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
+        val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+        val nurSymbol = maxWidth < FILTER_TEXT_AB || gross
+        val knoepfe: @Composable () -> Unit = {
             val folgt = onScannen != null || sortierung != null
             FilterKnopf(aktiveFilter, onFilter, nurSymbol, Modifier.padding(end = if (folgt) Abstaende.winzig else 14.dp))
             if (sortierung != null) Box(Modifier.padding(end = if (onScannen != null) Abstaende.winzig else 14.dp)) { sortierung() }
             if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen, Modifier.padding(end = 14.dp))
+        }
+        // Bei grosser Schrift die Knöpfe unter das Feld: Daneben blieb vom Platzhalter
+        // nur „Suche…“.
+        if (gross) Column {
+            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically) { knoepfe() }
+        } else Row(verticalAlignment = Alignment.CenterVertically) {
+            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
+            knoepfe()
         }
     }
 }

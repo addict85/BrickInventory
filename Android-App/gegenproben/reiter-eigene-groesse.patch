@@ -1,0 +1,27 @@
+Gegenprobe: Jede Reiterbeschriftung schrumpft für sich
+Modul: app
+Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Rot: Reiterleiste in verschiedenen
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
+index 9bc9efb..c38c969 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
+@@ -112,7 +112,7 @@ fun MainScaffold(
+                         selected = istGewaehlt(screen),
+                         onClick = { reiterWaehlen(screen) },
+                         icon = { Symbol(screen, icon) },
+-                        label = { ReiterBeschriftung(label, reiterSchrift) }
++                        label = { ReiterBeschriftung(label, remember { mutableStateOf(REITER_SCHRIFT_START) }) }
+                     )
+                 }
+             }
+@@ -165,7 +165,7 @@ fun MainScaffold(
+                         bottomNavItems.forEach { (screen, icon, label) ->
+                             NavigationBarItem(
+                                 icon = { Symbol(screen, icon) },
+-                                label = { ReiterBeschriftung(label, reiterSchrift) },
++                                label = { ReiterBeschriftung(label, remember { mutableStateOf(REITER_SCHRIFT_START) }) },
+                                 selected = istGewaehlt(screen),
+                                 onClick = { reiterWaehlen(screen) }
+                             )

@@ -4,21 +4,21 @@ Test: ch.brickinventoryapp.FeinschliffRegelnTest
 Rot: Reiterleiste
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 3cd4992..94a0999 100644
+index 9bc9efb..c955ef4 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -249,13 +249,7 @@ private fun ReiterBeschriftung(text: String) {
-     // einen halben Punkt, bis das Wort ganz in eine Zeile passt.
-     val schrift = LocalDensity.current.fontScale
-     var groesse by remember(text, schrift) { mutableStateOf(stil.fontSize) }
+@@ -253,13 +253,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>) {
+     // Jede Messung mit Überstand verkleinert die gemeinsame Grösse um einen halben
+     // Punkt, bis jedes Wort ganz in eine Zeile passt.
+     val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
 -    Text(
--        text, style = stil.copy(fontSize = groesse), maxLines = 1, softWrap = false,
+-        text, style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
 -        overflow = TextOverflow.Clip,
 -        onTextLayout = { l ->
--            if (l.hasVisualOverflow && groesse > REITER_SCHRIFT_MIN) groesse = (groesse.value - 0.5f).sp
+-            if (l.hasVisualOverflow && aktuell > REITER_SCHRIFT_MIN) groesse.value = (aktuell.value - 0.5f).sp
 -        },
 -    )
-+    Text(text, style = stil.copy(fontSize = groesse))
++    Text(text, style = stil.copy(fontSize = aktuell))
  }
  
- /** Kleiner wird keine Beschriftung; bei 200 % sind das noch 14 dp, gut lesbar. */
+ /** Unbestimmt: Die Beschriftung beginnt bei der Grösse des Themas. */
