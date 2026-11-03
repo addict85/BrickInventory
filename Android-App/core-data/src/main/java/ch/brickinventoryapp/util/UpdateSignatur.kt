@@ -40,9 +40,9 @@ fun signaturGilt(daten: ByteArray, signatur: ByteArray, zertifikat: ByteArray): 
     val verfahren = when (schluessel.algorithm) {
         "RSA" -> "SHA256withRSA"
         "EC" -> "SHA256withECDSA"
-        else -> return false
+        else -> null
     }
-    Signature.getInstance(verfahren).run {
+    verfahren != null && Signature.getInstance(verfahren).run {
         initVerify(schluessel)
         update(daten)
         verify(signatur)

@@ -59,11 +59,13 @@ internal object WidgetAblage {
         EntryPointAccessors.fromApplication(ctx, WidgetArbeiter.Zugang::class.java).ablage().fuer("widget")
     }
 
-    fun lies(ctx: Context): WidgetZahlen? = runCatching {
+    fun lies(ctx: Context): WidgetZahlen? {
         val roh = ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).getString(SCHLUESSEL, null) ?: return null
-        val text = chiffre(ctx).entschluessle(Base64.decode(roh, Base64.NO_WRAP)) ?: return null
-        ApiJson.decodeFromString(WidgetZahlen.serializer(), text.toString(Charsets.UTF_8))
-    }.getOrNull()
+        return runCatching {
+            chiffre(ctx).entschluessle(Base64.decode(roh, Base64.NO_WRAP))
+                ?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it.toString(Charsets.UTF_8)) }
+        }.getOrNull()
+    }
 
     fun leeren(ctx: Context) {
         ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit { remove(SCHLUESSEL) }
