@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Merkliste waehlt den Zustand mit Segmenten
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
-index 2174b87..0060ce3 100644
+index 0ea2187..f8ab003 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
-@@ -130,7 +130,7 @@ fun MerklisteScreen(
+@@ -139,7 +139,7 @@ fun MerklisteScreen(
  
              // Der Zustand ist eine Einfachwahl mit drei Antworten — „beide“ ist die
              // Vorgabe, weil ein Filter sie immer hat (Zustandszeile kennt nur zwei).
--            if (anzeige != Ladeanzeige.FEHLER) ch.brickinventoryapp.ui.components.SegmentWahl(
-+            if (anzeige != Ladeanzeige.FEHLER) ch.brickinventoryapp.ui.components.WahlChips(
+-            if (mitKopf) ch.brickinventoryapp.ui.components.SegmentWahl(
++            if (mitKopf) ch.brickinventoryapp.ui.components.WahlChips(
                  optionen = listOf("" to stringResource(R.string.filter_condition_all),
                                    "N" to stringResource(R.string.condition_new),
                                    "U" to stringResource(R.string.condition_used)),

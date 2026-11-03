@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Telefon navigiert ohne Schublade
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index a83e4df..f64a2c7 100644
+index ddbdb93..ce62878 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 @@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
@@ -15,10 +15,10 @@ index a83e4df..f64a2c7 100644
  import androidx.compose.runtime.*
  import androidx.compose.ui.Alignment
  import androidx.compose.ui.Modifier
-@@ -134,6 +135,11 @@ fun MainScaffold(
-                         titleContentColor = if (isBrick) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                         actionIconContentColor = if (isBrick) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+@@ -140,6 +141,11 @@ fun MainScaffold(
+                         scrolledContainerColor = akzent.leiste,
                      ),
+                     scrollBehavior = einklappen,
 +                    actions = {
 +                        IconButton(onClick = {}) {
 +                            Icon(androidx.compose.material.icons.Icons.Default.AccountCircle, stringResource(R.string.konto_title))
