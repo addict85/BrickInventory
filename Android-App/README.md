@@ -439,6 +439,24 @@ signiert ohnehin nur Commits, die auf `main` liegen.
 braucht sie nicht mehr; solange sie bestehen, könnte jeder Job auf `main` sie
 lesen, auch ohne Freigabe.
 
+### Release-Zertifikat und Fassung
+
+Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
+(`tools/release-pruefen.py`):
+
+- **Zertifikat:** Das APK muss mit einem der Zertifikate in
+  `tools/release-zertifikat.sha256` signiert sein. Den Wert liefert
+  `keytool -list -v -keystore brick.jks` (Zeile `SHA256:`; Doppelpunkte und
+  Grossschreibung sind gleichgültig). Wird der Schlüssel je gewechselt
+  (Rotation), kommt der neue Wert als zweite Zeile dazu. Ein Lauf ohne Etikett
+  signiert mit einem Wegwerfschlüssel und muss genau an dieser Prüfung
+  scheitern; so läuft sie bei jedem Bau.
+- **Fassung:** Der versionCode muss über dem des veröffentlichten
+  `version.json` liegen (gleich nur für denselben Commit). Ein Etikett auf einem
+  älteren Commit von `main` wird so nicht zum „neusten APK“. Der Job `release`
+  prüft dasselbe unmittelbar vor dem Hochladen noch einmal; zwei Etiketten
+  laufen dort nacheinander (`concurrency: apk-neuste`).
+
 Dazu gehört eine Branch-Protection (oder ein Ruleset) auf `main`: Merge nur
 über Pull-Request mit grüner CI, kein Force-Push. Sonst genügt ein direkter
 Push, um Code bis vor die Freigabe zu bringen.
