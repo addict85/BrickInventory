@@ -1,0 +1,18 @@
+Gegenprobe: Kauf der Zeile wieder je Stück neben dem Wert aller Stück
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Finanzen nennen
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt
+index 61c8789..0ce8344 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/Finanzzeilen.kt
+@@ -31,7 +31,7 @@ data class FinanzZeile(
+      * „Kauf: 400“ neben „899.90“ bei zwei Stück wie ein Gewinn von 125 %.
+      */
+     val kaufGesamt: Double?
+-        get() = kaufpreis?.let { BigDecimal.valueOf(it).multiply(BigDecimal(menge.coerceAtLeast(1))).toDouble() }
++        get() = kaufpreis
+ 
+     /** Gewinn oder Verlust in Geld, auf derselben Grundlage wie [pnlProzent]. */
+     val gewinn: Double?

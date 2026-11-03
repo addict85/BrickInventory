@@ -1,0 +1,17 @@
+Gegenprobe: CSV-Import wieder mit Kartenkopf unter der App-Leiste
+Modul: app
+Test: ch.brickinventoryapp.UnterseitenTest
+Rot: CSV-Import zeigt
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenCsv.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenCsv.kt
+index f8e9603..bfcb9d4 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenCsv.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenCsv.kt
+@@ -52,6 +52,7 @@ internal fun CsvImportCard(
+     val typen = arrayOf("text/csv", "text/comma-separated-values", "text/plain",
+                         "application/vnd.ms-excel", "application/octet-stream")
+ 
++    Text(stringResource(R.string.csv_upload_title).uppercase())
+     Text(
+         stringResource(R.string.csv_upload_hint,
+             (ch.brickinventoryapp.ui.viewmodel.CSV_MAX_BYTES / 1024 / 1024).toInt()),

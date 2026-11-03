@@ -4,13 +4,13 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Galerie zeigt ohne Bild das Ersatzbild
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
-index d5d6584..832eda0 100644
+index 9e501f6..13776f9 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ProduktBild.kt
-@@ -51,7 +51,7 @@ fun ProduktBild(
-     val ziel = (model as? ImageRequest)?.data ?: model
-     var geladen by remember(ziel) { mutableStateOf(false) }
-     Box(modifier, contentAlignment = Alignment.Center) {
+@@ -68,7 +68,7 @@ fun ProduktBild(
+         drawContent(); drawRect(Color.Black, alpha = SCHLEIER_DUNKEL)
+     } else Modifier
+     Box(modifier.then(grund).then(schleier), contentAlignment = Alignment.Center) {
 -        if (!geladen) BildErsatz(Modifier.matchParentSize(), ersatzGroesse)
 +        if (false && !geladen) BildErsatz(Modifier.matchParentSize(), ersatzGroesse)
          if (model != null) {
