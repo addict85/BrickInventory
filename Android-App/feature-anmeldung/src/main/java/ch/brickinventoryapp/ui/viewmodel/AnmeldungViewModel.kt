@@ -179,8 +179,10 @@ class AnmeldungViewModel @Inject constructor(
         pinWechselEingabe: String? = null,
     ) {
         val neu = NetworkPolicy.normalisiere(serverUrl)
-        if (NetworkPolicy.adressfehler(neu, NetworkPolicy.entwicklung) != null) {
-            _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(R.string.setup_qr_klartext_abgelehnt)) }
+        val fehler = NetworkPolicy.adressfehler(serverUrl, NetworkPolicy.entwicklung)
+        if (fehler != null) {
+            val satz = if (fehler == NetworkPolicy.Adressfehler.KLARTEXT) R.string.setup_qr_klartext_abgelehnt else R.string.setup_invalid_qr
+            _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(satz)) }
             return
         }
         val schluessel = if (fingerabdruck != null) pinSchluessel(neu) else null

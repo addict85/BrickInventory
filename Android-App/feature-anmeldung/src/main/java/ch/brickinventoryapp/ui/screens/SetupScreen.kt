@@ -52,6 +52,7 @@ import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ui.QrLoginPayload
 import ch.brickinventoryapp.ui.parseQrPayload
+import ch.brickinventoryapp.ui.qrWechseltServer
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -114,7 +115,22 @@ fun SetupScreen(
                 // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
                 ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
                 Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(stringResource(R.string.setup_qr_text, vorschlag.url))
+                    // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
+                    // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
+                    val ansicht = remember(vorschlag) { NetworkPolicy.ansicht(vorschlag.url) }
+                    val bisherHost = remember(vorschlag, currentUrl) { qrWechseltServer(currentUrl, vorschlag.url) }
+                    Text(stringResource(R.string.setup_qr_ziel))
+                    if (ansicht != null) {
+                        Text(ansicht.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium)
+                        Text(ansicht.adresse, fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        if (ansicht.international) Text(stringResource(R.string.setup_qr_international),
+                            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text(stringResource(R.string.setup_qr_hinweis))
+                    if (bisherHost != null) Text(stringResource(R.string.setup_qr_anderer_server, bisherHost),
+                        color = MaterialTheme.colorScheme.error)
                     val fp = vorschlag.fingerabdruck
                     if (bisher != null && fp != null) {
                         Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
@@ -277,6 +293,10 @@ fun SetupScreen(
                                 Text(stringResource(R.string.setup_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                             NetworkPolicy.Adressfehler.UNLESBAR ->
                                 Text(stringResource(R.string.setup_url_unlesbar), color = MaterialTheme.colorScheme.error)
+                            NetworkPolicy.Adressfehler.BENUTZERANGABE ->
+                                Text(stringResource(R.string.setup_url_benutzerangabe), color = MaterialTheme.colorScheme.error)
+                            NetworkPolicy.Adressfehler.ZUSATZ ->
+                                Text(stringResource(R.string.setup_url_zusatz), color = MaterialTheme.colorScheme.error)
                             null -> Text(stringResource(R.string.setup_url_supporting))
                         }
                     },

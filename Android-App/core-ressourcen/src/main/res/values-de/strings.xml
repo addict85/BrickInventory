@@ -40,7 +40,12 @@
     <string name="nutzer_ca_frage_text">Die App nimmt dann für deinen Server auch Zertifikate an, die eine vom Nutzer installierte Zertifizierungsstelle ausgestellt hat.\n\nEine solche Stelle kann von deiner Firma, einem Netzwerkverwalter oder von Schadsoftware stammen. Wer sie kontrolliert, kann den Verkehr mitlesen und verändern, auch Passwort und Anmeldetoken. Schutz bleibt dann nur der Vergleich des Fingerabdrucks mit der Webapp.\n\nUpdates von GitHub prüft die App weiter nur gegen die Zertifizierungsstellen des Systems.\n\nNur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
     <string name="nutzer_ca_frage_ja">Trotzdem einschalten</string>
     <string name="setup_qr_titel">Diesen Server übernehmen?</string>
-    <string name="setup_qr_text">Der QR-Code zeigt auf:\n%1$s\n\nDie App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
+    <string name="setup_qr_ziel">Der QR-Code führt zu diesem Server:</string>
+    <string name="setup_qr_hinweis">Die App sendet die Anmeldung nur dorthin. Nur fortfahren, wenn das dein Server ist.</string>
+    <string name="setup_qr_international">Der Servername enthält Zeichen aus anderen Schriften und steht hier in seiner technischen Form (xn--…). Solche Buchstaben sehen bekannten zum Verwechseln ähnlich: Vergleiche den Namen Zeichen für Zeichen mit deinem Server.</string>
+    <string name="setup_qr_anderer_server">Dieser Code führt zu einem anderen Server als dem bisherigen (%1$s). Fährst du fort, wirst du dort abgemeldet, und alles, was du ab jetzt erfasst, geht an den neuen Server.</string>
+    <string name="setup_url_benutzerangabe">Eine Adresse mit Benutzername (…@…) wird nicht angenommen. Gib nur die Serveradresse ein, z. B. https://brick.fritz.box</string>
+    <string name="setup_url_zusatz">Die Adresse darf keine Leerzeichen, Zeilenumbrüche, \\, ? oder # enthalten. Gib nur die Serveradresse ein, z. B. https://brick.fritz.box</string>
     <string name="setup_qr_uebernehmen">Übernehmen und anmelden</string>
 
     <!-- ══════════════ CSV import banner ══════════════ -->

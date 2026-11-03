@@ -35,8 +35,12 @@ object NetworkPolicy {
     fun verbindungErlaubt(url: HttpUrl, entwicklung: Boolean): Boolean =
         url.isHttps || (entwicklung && url.host.lowercase() in ENTWICKLUNGS_HOSTS)
 
-    /** Warum die Einrichtung eine Adresse nicht annimmt. */
-    enum class Adressfehler { UNLESBAR, KLARTEXT }
+    /**
+     * Warum die Einrichtung eine Adresse nicht annimmt. BENUTZERANGABE und ZUSATZ:
+     * `a@b`, Zeilenumbrüche, `\`, `?` oder `#` lassen eine Adresse nach einem Server
+     * aussehen und zu einem anderen führen; eine Serveradresse braucht nichts davon.
+     */
+    enum class Adressfehler { UNLESBAR, KLARTEXT, BENUTZERANGABE, ZUSATZ }
 
     /** Eingabe ohne Schema gilt als https: „nas.fritz.box“ heisst https://nas.fritz.box. */
     fun normalisiere(eingabe: String): String {
@@ -44,10 +48,30 @@ object NetworkPolicy {
         return (if (t.isEmpty() || t.contains("://")) t else "https://$t").trimEnd('/')
     }
 
-    /** null heisst: Die Einrichtung nimmt die Adresse an. */
+    /** null heisst: Die Einrichtung nimmt die Adresse an. Leerraum am Rand trägt die Eingabe von Hand. */
     fun adressfehler(serverUrl: String, entwicklung: Boolean): Adressfehler? {
-        val url = normalisiere(serverUrl).toHttpUrlOrNull() ?: return Adressfehler.UNLESBAR
+        val roh = normalisiere(serverUrl)
+        if (roh.any { it.isWhitespace() || it.isISOControl() || it == '\\' }) return Adressfehler.ZUSATZ
+        val url = roh.toHttpUrlOrNull() ?: return Adressfehler.UNLESBAR
+        val autoritaet = roh.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore('#')
+        if ('@' in autoritaet || url.username.isNotEmpty() || url.password.isNotEmpty()) return Adressfehler.BENUTZERANGABE
+        if (url.query != null || url.fragment != null) return Adressfehler.ZUSATZ
         return if (verbindungErlaubt(url, entwicklung)) null else Adressfehler.KLARTEXT
+    }
+
+    /**
+     * Was die App unter einer Adresse versteht, zum Bestätigen: Host in ASCII
+     * (Punycode), weil ein kyrillisches „і“ im Unicode-Bild nicht von „i“ zu
+     * unterscheiden ist. [international]: Der Host enthält ein `xn--`-Label.
+     */
+    data class Adressansicht(val host: String, val adresse: String, val international: Boolean)
+
+    fun ansicht(serverUrl: String): Adressansicht? {
+        val url = normalisiere(serverUrl).toHttpUrlOrNull() ?: return null
+        val host = if (':' in url.host) "[${url.host}]" else url.host
+        val port = if (url.port == HttpUrl.defaultPort(url.scheme)) "" else ":${url.port}"
+        val pfad = url.encodedPath.trimEnd('/')
+        return Adressansicht(host, "${url.scheme}://$host$port$pfad", url.host.split('.').any { it.startsWith("xn--") })
     }
 
     /**
