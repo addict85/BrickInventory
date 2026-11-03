@@ -72,6 +72,8 @@ class AppViewModel @Inject constructor(
     /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
     val passwortPflicht: ch.brickinventoryapp.data.PasswortPflicht,
     private val abmeldung: ch.brickinventoryapp.data.Abmeldung,
+    /** Zeichnet das Startbildschirm-Widget neu (AppModule); core-zustand kennt es nicht. */
+    private val widget: Widgetanstoss,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -138,6 +140,15 @@ class AppViewModel @Inject constructor(
     fun setVorschauVerbergen(an: Boolean) {
         prefs.setzeVorschauVerbergen(an)
         _vorschauVerbergen.value = an
+    }
+
+    /** Je Gerät: Geldwerte im Startbildschirm-Widget, Vorgabe aus (sec8 H5). */
+    private val _widgetWerte = MutableStateFlow(prefs.widgetWerteZeigen())
+    val widgetWerte: StateFlow<Boolean> = _widgetWerte.asStateFlow()
+    fun setWidgetWerte(an: Boolean) {
+        prefs.setzeWidgetWerteZeigen(an)
+        _widgetWerte.value = an
+        viewModelScope.launch { runCatching { widget.aktualisiere() } }
     }
 
     /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. Ohne bekannte CA oder geändert nur mit [eingabe]. */

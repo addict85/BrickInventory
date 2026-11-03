@@ -3,9 +3,11 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.model.PnlResponse
 import ch.brickinventoryapp.data.model.PortfolioHistoryResponse
+import ch.brickinventoryapp.widget.WIDGET_VERDECKT
 import ch.brickinventoryapp.widget.WidgetZahlen
 import ch.brickinventoryapp.widget.gvText
 import ch.brickinventoryapp.widget.widgetAnzeige
+import ch.brickinventoryapp.widget.widgetWerte
 import ch.brickinventoryapp.widget.widgetZahlen
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -23,6 +25,9 @@ import org.junit.Test
  *   C  in gvText() das Pluszeichen entfernt → rot „ein Gewinn trägt ein Plus“
  *   D  (01.11.2026) widgetAnzeige() gibt immer `abgelegt` zurück → rot
  *      „abgemeldet zeigt das Widget keine Zahlen“
+ *   E  (03.11.2026, sec8 H5, kotlinc lokal) widgetWerte() ohne die Abfrage von
+ *      `zeigen` → rot „ohne Erlaubnis sind die Betraege verdeckt“;
+ *      gegenproben/widget-zeigt-betraege.patch
  */
 class WidgetZahlenTest {
 
@@ -69,6 +74,16 @@ class WidgetZahlenTest {
         assertTrue(gvText(250.5, 25.05, "CHF").contains("%"))
         assertTrue(gvText(-3.0, null, "CHF").contains("3.00") || gvText(-3.0, null, "CHF").contains("3,00"))
         assertTrue(!gvText(-3.0, null, "CHF").startsWith("+"))
+    }
+
+    @Test
+    fun `ohne Erlaubnis sind die Betraege verdeckt`() {
+        val z = widgetZahlen(pnl, verlauf, jetzt = 7)!!
+        val verdeckt = widgetWerte(z, zeigen = false)
+        assertEquals(Triple(WIDGET_VERDECKT, WIDGET_VERDECKT, WIDGET_VERDECKT), verdeckt)
+        val offen = widgetWerte(z, zeigen = true)
+        assertTrue("Mit Erlaubnis steht der Wert da", offen.first.contains("1") && offen.first != WIDGET_VERDECKT)
+        assertTrue(offen.third.startsWith("+"))
     }
 
     @Test

@@ -35,6 +35,10 @@ object AppModule {
 
     /** Das Widget zeigt nach dem Abmelden sonst die Zahlen des alten Kontos. */
     @Provides
+    fun provideWidgetanstoss(@ApplicationContext ctx: Context): ch.brickinventoryapp.ui.Widgetanstoss =
+        ch.brickinventoryapp.ui.Widgetanstoss { SammlungsWidget().updateAll(ctx) }
+
+    @Provides
     fun provideAbmeldehaken(@ApplicationContext ctx: Context): Abmeldehaken = Abmeldehaken {
         WidgetAblage.leeren(ctx)
         SammlungsWidget().updateAll(ctx)

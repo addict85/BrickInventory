@@ -51,6 +51,21 @@ fun widgetZahlen(pnl: PnlResponse?, verlauf: PortfolioHistoryResponse?, jetzt: L
 fun widgetAnzeige(abgelegt: WidgetZahlen?, angemeldet: Boolean): WidgetZahlen? =
     if (angemeldet) abgelegt else null
 
+/** Statt eines Betrags, solange der Nutzer Geldwerte im Widget nicht erlaubt hat. */
+const val WIDGET_VERDECKT = "••••"
+
+/**
+ * Wert, G&V heute und gesamt als Text. Ohne Erlaubnis ([zeigen]) verdeckt: Das Widget
+ * liegt auf dem Startbildschirm, lesbar für jeden, der das Telefon sieht.
+ */
+fun widgetWerte(z: WidgetZahlen, zeigen: Boolean): Triple<String, String, String> =
+    if (!zeigen) Triple(WIDGET_VERDECKT, WIDGET_VERDECKT, WIDGET_VERDECKT)
+    else Triple(
+        z.wert?.let { fmtMoney(it, z.waehrung) } ?: "—",
+        gvText(z.heute, z.heuteProzent, z.waehrung),
+        gvText(z.gesamt, z.gesamtProzent, z.waehrung),
+    )
+
 /** Ein Betrag mit Vorzeichen und, wenn bekannt, der Prozentzahl daneben. */
 fun gvText(betrag: Double?, prozent: Double?, waehrung: String): String {
     if (betrag == null) return "—"

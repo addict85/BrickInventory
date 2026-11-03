@@ -939,6 +939,8 @@
     <string name="settings_systemfarben_hint">Colors from your wallpaper instead of the design\'s colors. Shapes and fonts stay.</string>
     <string name="settings_vorschau_verbergen">Hide preview in the app overview</string>
     <string name="settings_vorschau_verbergen_hint">No preview in the recent apps overview and no screenshots of the app. Applies to this device.</string>
+    <string name="settings_widget_werte">Show amounts in the widget</string>
+    <string name="settings_widget_werte_hint">Otherwise the collection value and gains are hidden on the home screen, where anyone who sees the phone can read them. Applies to this device.</string>
     <string name="zert_titel_erstkontakt">Trust this server?</string>
     <string name="zert_titel_unbekannt">Unknown certificate</string>
     <string name="zert_titel_geaendert">The server\'s certificate has changed</string>

@@ -35,11 +35,12 @@ import javax.crypto.spec.GCMParameterSpec
  * nur, dass er sich nicht wiederholt, und dafür sorgt der Keystore selbst
  * (setRandomizedEncryptionRequired ist Vorgabe und bleibt an).
  */
-class KeystoreTokenTresor : TokenVerschluesselung {
+// [alias]: Die lokalen Ablagen umhüllen ihren Schlüssel unter einem eigenen (Ablageschluessel).
+class KeystoreTokenTresor(private val alias: String = ALIAS) : TokenVerschluesselung {
 
     private fun schluessel(): SecretKey {
         val ks = KeyStore.getInstance(KEYSTORE).apply { load(null) }
-        (ks.getEntry(ALIAS, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
+        (ks.getEntry(alias, null) as? KeyStore.SecretKeyEntry)?.let { return it.secretKey }
 
         val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
         // StrongBox (eigener Sicherheitschip) wo vorhanden: Der Schlüssel bleibt
@@ -63,7 +64,7 @@ class KeystoreTokenTresor : TokenVerschluesselung {
      * Token heisst hier „abgemeldet“ (siehe oben) — die App meldete sich selbst ab.
      */
     private fun spezifikation() = KeyGenParameterSpec.Builder(
-        ALIAS,
+        alias,
         KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
     )
         .setBlockModes(KeyProperties.BLOCK_MODE_GCM)

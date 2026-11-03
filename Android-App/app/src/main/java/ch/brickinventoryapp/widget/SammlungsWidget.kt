@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.widget
 
 import android.content.Context
+import android.util.Base64
 import androidx.core.content.edit
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
@@ -36,8 +37,9 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.util.AblageChiffre
+import ch.brickinventoryapp.util.Ablageschluessel
 import ch.brickinventoryapp.util.LanguageManager
-import ch.brickinventoryapp.util.fmtMoney
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -46,15 +48,21 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Die zuletzt geholten Zahlen. Das Widget liest nur hier und zeigt so auch ohne
- * Netz den letzten Stand; holen tut allein [WidgetArbeiter].
+ * Netz den letzten Stand; holen tut allein [WidgetArbeiter]. Verschlüsselt wie die
+ * übrigen Ablagen (sec8 N5); ein Klartext-Altbestand gilt als leer.
  */
 internal object WidgetAblage {
     private const val DATEI = "widget"
     private const val SCHLUESSEL = "zahlen"
 
+    private fun chiffre(ctx: Context) = AblageChiffre {
+        EntryPointAccessors.fromApplication(ctx, WidgetArbeiter.Zugang::class.java).ablage().fuer("widget")
+    }
+
     fun lies(ctx: Context): WidgetZahlen? = runCatching {
-        ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).getString(SCHLUESSEL, null)
-            ?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it) }
+        val roh = ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).getString(SCHLUESSEL, null) ?: return null
+        val text = chiffre(ctx).entschluessle(Base64.decode(roh, Base64.NO_WRAP)) ?: return null
+        ApiJson.decodeFromString(WidgetZahlen.serializer(), text.toString(Charsets.UTF_8))
     }.getOrNull()
 
     fun leeren(ctx: Context) {
@@ -63,7 +71,8 @@ internal object WidgetAblage {
 
     fun schreibe(ctx: Context, z: WidgetZahlen) {
         ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit {
-            putString(SCHLUESSEL, ApiJson.encodeToString(WidgetZahlen.serializer(), z))
+            val text = ApiJson.encodeToString(WidgetZahlen.serializer(), z).toByteArray(Charsets.UTF_8)
+            putString(SCHLUESSEL, Base64.encodeToString(chiffre(ctx).verschluessle(text), Base64.NO_WRAP))
         }
     }
 }
@@ -80,6 +89,7 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
     interface Zugang {
         fun finanzen(): FinanzenRepository
         fun prefs(): PreferencesManager
+        fun ablage(): Ablageschluessel
     }
 
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =
@@ -119,19 +129,20 @@ class WidgetArbeiter(context: Context, params: WorkerParameters) : CoroutineWork
 /** Sammlungswert, G&V heute und gesamt; ein Tipp öffnet die App. */
 class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val angemeldet = runCatching {
-            EntryPointAccessors.fromApplication(context, WidgetArbeiter.Zugang::class.java)
-                .prefs().tokenJetzt().isNotBlank()
-        }.getOrDefault(false)
+        val prefs = runCatching { EntryPointAccessors.fromApplication(context, WidgetArbeiter.Zugang::class.java).prefs() }.getOrNull()
+        val angemeldet = runCatching { prefs?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
+        // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt (sec8 H5).
+        val zeigen = prefs?.widgetWerteZeigen() == true
         val zahlen = widgetAnzeige(WidgetAblage.lies(context), angemeldet)
         // Die Texte in der Sprache der App, nicht des Systems (LanguageManager).
         val ctx = LanguageManager.localizedContext(context)
         val titel = ctx.getString(R.string.widget_titel)
         val zeilen = zahlen?.let {
+            val (wert, heute, gesamt) = widgetWerte(it, zeigen)
             listOf(
-                ctx.getString(R.string.widget_wert) to (it.wert?.let { w -> fmtMoney(w, it.waehrung) } ?: "—"),
-                ctx.getString(R.string.widget_heute) to gvText(it.heute, it.heuteProzent, it.waehrung),
-                ctx.getString(R.string.widget_gesamt) to gvText(it.gesamt, it.gesamtProzent, it.waehrung),
+                ctx.getString(R.string.widget_wert) to wert,
+                ctx.getString(R.string.widget_heute) to heute,
+                ctx.getString(R.string.widget_gesamt) to gesamt,
             )
         }
         val leer = ctx.getString(R.string.widget_leer)

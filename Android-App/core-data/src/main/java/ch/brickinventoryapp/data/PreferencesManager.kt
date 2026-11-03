@@ -60,6 +60,7 @@ class PreferencesManager @Inject constructor(
         const val SYSTEMFARBEN = "systemfarben"
         const val VORSCHAU_VERBERGEN = "vorschau_verbergen"
         const val ENTWERTUNG_GESCHEITERT = "entwertung_gescheitert"
+        const val WIDGET_WERTE = "widget_werte"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -478,6 +479,15 @@ class PreferencesManager @Inject constructor(
     override fun halteVor(schluessel: String, fingerabdruck: String) { vorgehalten[schluessel] = fingerabdruck }
     override fun vergissVorgehaltenen(schluessel: String) { vorgehalten.remove(schluessel) }
     private val vorgehalten = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /**
+     * Geldwerte im Startbildschirm-Widget zeigen? Je Gerät, Vorgabe aus: Das Widget
+     * ist ohne Entsperren für jeden lesbar, der das Telefon sieht.
+     */
+    fun widgetWerteZeigen(): Boolean = designSpiegel.getBoolean(WIDGET_WERTE, false)
+    fun setzeWidgetWerteZeigen(an: Boolean) {
+        designSpiegel.edit { putBoolean(WIDGET_WERTE, an) }
+    }
 
     /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */
     fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)

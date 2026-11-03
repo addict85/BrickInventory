@@ -60,3 +60,8 @@ class Ausgangsmelder @Inject constructor(
         Bestandsart.GUTSCHEINE -> null
     }
 }
+
+/** Das Startbildschirm-Widget neu zeichnen; die App setzt es (AppModule), core-zustand kennt es nicht. */
+fun interface Widgetanstoss {
+    suspend fun aktualisiere()
+}

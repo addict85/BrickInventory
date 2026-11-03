@@ -7,6 +7,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.KSerializer
+import ch.brickinventoryapp.util.AblageChiffre
+import ch.brickinventoryapp.util.Ablageschluessel
 import kotlinx.serialization.json.Json
 import java.io.File
 import javax.inject.Inject
@@ -40,6 +42,11 @@ class ResponseCache(
     /** Ein früherer Ablageort, der beim ersten Zugriff geräumt wird. */
     private val altlast: () -> File? = { null },
     /**
+     * Verschlüsselt jede Datei (sec8 N5): Inventar und Preise liegen sonst bei Root
+     * oder einem ausgelesenen Datenverzeichnis offen. Null nur in Tests ohne Keystore.
+     */
+    private val chiffre: AblageChiffre? = null,
+    /**
      * Woher der Ablageordner kommt. Eine Funktion, damit `context` erst beim
      * ersten Zugriff gefragt wird und der Test ein Wegwerf-Verzeichnis geben kann.
      */
@@ -50,9 +57,10 @@ class ResponseCache(
      * leeren — offline wäre die App dann leer. Ohne Sicherung, weil die
      * Antworten zum Konto gehören und das Gerät nicht verlassen sollen.
      */
-    @Inject constructor(@ApplicationContext context: Context, besitzer: CacheBesitzer) : this(
+    @Inject constructor(@ApplicationContext context: Context, besitzer: CacheBesitzer, ablage: Ablageschluessel) : this(
         bereichQuelle = { besitzer.cacheBereich() },
         altlast = { File(context.cacheDir, "api-1") },
+        chiffre = AblageChiffre { ablage.fuer("antworten") },
         ordnerQuelle = { context.noBackupFilesDir },
     )
 
@@ -61,6 +69,11 @@ class ResponseCache(
 
     private val basis: File by lazy {
         runCatching { altlast()?.deleteRecursively() }
+        // Frühere Fassungen der Ablage (bis 2 im Klartext) gleich mit räumen, nicht nur übergehen.
+        runCatching {
+            ordnerQuelle().listFiles()?.filter { it.isDirectory && it.name.startsWith("api-") && it.name != "api-$VERSION" }
+                ?.forEach { it.deleteRecursively() }
+        }
         File(ordnerQuelle(), "api-$VERSION").apply { mkdirs() }
     }
 
@@ -86,7 +99,8 @@ class ResponseCache(
                 basis.listFiles()?.filter { it.isDirectory && it.name != fach.name }?.forEach { it.deleteRecursively() }
                 val ziel = fileFor(bereich, key)
                 val tmp = File(fach, ziel.name + ".tmp")
-                tmp.writeText(json.encodeToString(serializer, value))
+                val text = json.encodeToString(serializer, value).toByteArray(Charsets.UTF_8)
+                tmp.writeBytes(chiffre?.verschluessle(text) ?: text)
                 tmp.renameTo(ziel)      // atomar, nie halbe Dateien lesen
             }
         } catch (_: Throwable) { /* Best effort */ }
@@ -105,7 +119,9 @@ class ResponseCache(
                 if (!f.exists()) return@withContext null
                 val stand = f.lastModified()
                 if (System.currentTimeMillis() - stand > maxAgeMs) return@withContext null
-                json.decodeFromString(serializer, f.readText()) to stand
+                val roh = f.readBytes()
+                val text = if (chiffre == null) roh else chiffre.entschluessle(roh) ?: return@withContext null
+                json.decodeFromString(serializer, text.toString(Charsets.UTF_8)) to stand
             } catch (_: Throwable) {
                 null
             }
@@ -121,7 +137,7 @@ class ResponseCache(
          * Bei jeder Änderung an den gecachten Modellen oder am Aufbau der
          * Ablage erhöhen; alte Stände werden dadurch schlicht nicht gefunden.
          */
-        private const val VERSION = 2
+        private const val VERSION = 3
 
         /** Sieben Tage. Der Cache ist Rückfallebene, kein Ersatz für den Abruf. */
         private const val MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000
