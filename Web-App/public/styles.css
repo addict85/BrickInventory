@@ -1117,6 +1117,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .sp-110{width:110px}.sp-235{width:235px}.sp-380{width:380px}
 /* Köpfe brechen nicht um; die Spalten sind dafür breit genug (Kurzform G/V). */
 .dt-fin th{white-space:nowrap;padding-left:8px;padding-right:8px}
+.acq-legende{font-size:var(--fs-0);color:var(--mut);margin-top:2px}
 .fin-je{display:block;font-size:var(--fs-0);color:var(--mut);white-space:nowrap}
 /* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
 .dt-fin .zahl,.dt-fin th.zahl,.dt-fin .fin-fuss-wert{text-align:right}
