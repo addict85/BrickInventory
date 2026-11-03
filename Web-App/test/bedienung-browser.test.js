@@ -2,8 +2,8 @@
  * Einzelne Bedienbefunde in Chrome, an der echten App:
  *   - Bestätigungsdialog: Escape gibt den Fokus an den Auslöser zurück; ist
  *     „Weitere Aktionen“ inzwischen zugeklappt, an dessen <summary>;
- *   - Set-Ansicht: „Teile neu importieren“ ist ein beschrifteter Knopf von
- *     mindestens 24 × 24 px ohne Inline-Stil;
+ *   - Set-Ansicht: „Teile neu importieren“ (unter „Weitere Aktionen“) ist ein
+ *     beschrifteter Knopf von mindestens 24 × 24 px ohne Inline-Stil;
  *   - Konto: das Häkchen „Auch alle Passkeys entfernen“ ist selbst 24 × 24 px;
  *   - jede :hover-Regel der geladenen Stylesheets steht in @media (hover:hover):
  *     Auf Touchgeräten bleibt sonst der Hover-Zustand nach dem Tippen kleben;
@@ -48,10 +48,11 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
   const fokus = () => b.auswerten(`(() => { const a = document.activeElement; return a.id || a.tagName.toLowerCase() + '.' + a.className; })()`);
 
   await b.auswerten(`document.querySelector('#gallery .sc[data-click="openModal"]').click(); true`);
-  await bis(`document.getElementById('set-modal').classList.contains('open') && !!document.querySelector('#set-modal [data-click="reimportParts"]')`, 'Set-Ansicht');
+  await bis(`document.getElementById('set-modal').classList.contains('open') && !!document.getElementById('m-det').querySelector('.dr')`, 'Set-Ansicht');
 
   await t.test('Teile neu importieren: beschriftet, 24 px, ohne Inline-Stil', async () => {
-    const k = await b.auswerten(`(() => { const k = document.querySelector('#set-modal [data-click="reimportParts"]'); const r = k.getBoundingClientRect();
+    const k = await b.auswerten(`(() => { document.querySelector('#set-modal details.mehr-menue').open = true;
+      const k = document.querySelector('#set-modal [data-click="teileNeuImportieren"]'); const r = k.getBoundingClientRect();
       return { text: k.textContent.trim(), b: r.width, h: r.height, stil: k.getAttribute('style') }; })()`);
     assert.match(k.text, /Teile neu/);
     assert.ok(k.b >= 24 && k.h >= 24, `nur ${k.b}×${k.h}`);
