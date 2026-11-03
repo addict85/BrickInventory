@@ -127,7 +127,7 @@ class ServerWaechter(
         }
 
         val ausgehend = reqBuilder.build()
-        var antwort = chain.proceed(ausgehend)
+        var antwort = senden(chain, ausgehend)
         var tokenMitgeschickt = mitToken && ausgehend.header("Authorization") != null
         // Die Sitzung des Tokens, der zuletzt hinausging; nur sie darf die Antwort auswerten.
         var sitzung = generation
@@ -140,7 +140,7 @@ class ServerWaechter(
             tokenFuer(ausgehend.url)?.let { (jetzt, g) ->
                 antwort.close()
                 gesendet = ausgehend.newBuilder().header("Authorization", "Bearer $jetzt").build()
-                antwort = chain.proceed(gesendet)
+                antwort = senden(chain, gesendet)
                 tokenMitgeschickt = true
                 sitzung = g
             }
@@ -157,7 +157,7 @@ class ServerWaechter(
                 ?.takeIf { dieselbeSitzung() }?.let { neu ->
                     // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
                     antwort.close()
-                    antwort = chain.proceed(gesendet.newBuilder().header("Authorization", "Bearer $neu").build())
+                    antwort = senden(chain, gesendet.newBuilder().header("Authorization", "Bearer $neu").build())
                 }
         } else if (rotierbar && antwort.header("X-Token-Rotation") == "faellig" && dieselbeSitzung()) {
             gesendet.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation.faellig(it) }
@@ -195,4 +195,42 @@ class ServerWaechter(
             herkunft == NetworkPolicy.herkunft(ziel.toString())
         return if (passt && lage.generation() == g) token to g else null
     }
+
+    /**
+     * Umleitungen folgt der Client nicht (ServerClient.kt): Er schickte Methode und
+     * Rumpf — Passwort, Gutschein-PIN — an jeden Host, auf den ein Proxy zeigt. Hier
+     * nur innerhalb derselben Herkunft; jede andere Umleitung erreicht den Aufrufer
+     * als 3xx und damit als Fehler.
+     */
+    private fun senden(chain: Interceptor.Chain, anfrage: Request): Response {
+        var raus = anfrage
+        var antwort = chain.proceed(raus)
+        repeat(MAX_UMLEITUNGEN) {
+            val ziel = naechsteUmleitung(raus, antwort) ?: return antwort
+            antwort.close()
+            raus = ziel
+            antwort = chain.proceed(raus)
+        }
+        return antwort
+    }
+
+    private companion object {
+        const val MAX_UMLEITUNGEN = 5
+    }
+}
+
+/**
+ * Wohin eine Antwort umleitet, als nächste Anfrage — nur bei gleicher Herkunft
+ * (Schema, Host, Port). Wie ein Browser: 307/308 behalten Methode und Rumpf,
+ * 301/302/303 werden zu GET ohne Rumpf (HEAD bleibt HEAD).
+ */
+internal fun naechsteUmleitung(anfrage: Request, antwort: Response): Request? {
+    if (antwort.code !in setOf(301, 302, 303, 307, 308)) return null
+    val ziel = antwort.header("Location")?.let(anfrage.url::resolve) ?: return null
+    if (ziel.scheme != anfrage.url.scheme || !ziel.host.equals(anfrage.url.host, ignoreCase = true) ||
+        ziel.port != anfrage.url.port) return null
+    val neu = anfrage.newBuilder().url(ziel)
+    val behalten = antwort.code == 307 || antwort.code == 308 || anfrage.method == "GET" || anfrage.method == "HEAD"
+    if (!behalten) neu.method("GET", null).removeHeader("Content-Type").removeHeader("Content-Length")
+    return neu.build()
 }

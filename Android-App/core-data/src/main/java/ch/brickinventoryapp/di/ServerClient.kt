@@ -84,8 +84,9 @@ internal fun buildInterceptorClient(
                 addInterceptor(ch.brickinventoryapp.util.netzMitschnitt())
             }
         }
-        // Eine Umleitung von https auf http liefe am Wächter vorbei, der nur die
-        // erste Anfrage sieht.
+        // Keine Umleitung am Wächter vorbei: Er sieht nur, was er selbst schickt, und
+        // folgt nur innerhalb derselben Herkunft (ServerWaechter.senden).
+        .followRedirects(false)
         .followSslRedirects(false)
         .addInterceptor(ServerWaechter(GeraeteZugang(prefs), isApiClient, NetworkPolicy.entwicklung,
             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung,
