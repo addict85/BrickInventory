@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eingabe } from '../validate';
-import { type Route, zeit, Erfolg, ganz } from './grund';
+import { type Route, zeit, Erfolg, ganz, bestaetigt } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const AppToken = z.looseObject({
@@ -176,14 +176,14 @@ const txt = (n: number) => z.string().max(n).optional();
 const txtLeer = (n: number) => z.string().max(n).nullable().optional();
 const PASSWORT = 1024;
 const code = z.union([z.string().max(64), z.number()]).nullable().optional();
-const Verwalter = { admin_password: txt(PASSWORT) };
 const Anmeldedaten = z.looseObject({ username: txt(254), password: txt(PASSWORT), code, ohne_token: z.boolean().optional(),
   never_expires: z.boolean().optional(), scope: txt(20), passkey: z.record(z.string(), z.unknown()).nullable().optional() });
 const Registrierung = z.looseObject({ username: txt(64), email: txt(254), first_name: txtLeer(100), last_name: txtLeer(100),
   password: txt(PASSWORT), language: txt(10) });
 const ProfilAenderung = z.looseObject({ username: txt(64), email: txtLeer(254), first_name: txtLeer(100), last_name: txtLeer(100),
   password_current: txt(PASSWORT), code });
-const NurPasswort = z.looseObject({ password: txt(PASSWORT), code });
+const NurCode = z.looseObject({ code });
+const verwalterBestaetigt = (felder: Record<string, z.ZodType> = {}) => bestaetigt(felder, 'admin_password');
 
 export const routen = {
   'GET /api/v1/auth/registration-status': { antwort: RegistrationStatusResponse },
@@ -197,29 +197,29 @@ export const routen = {
   'POST /api/v1/auth/register': { antwort: RegisterResponse, eingabe: Registrierung },
   'POST /api/v1/auth/forgot-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
   'POST /api/v1/auth/bestaetigung-erneut': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
-  'PUT /api/v1/auth/profile': { antwort: ProfilGespeichert, eingabe: ProfilAenderung },
-  'POST /api/v1/auth/change-password': { antwort: GenericResponse, eingabe: z.looseObject({ current: txt(PASSWORT), newPassword: txt(PASSWORT), code }) },
-  'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, eingabe: NurPasswort },
-  'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurPasswort },
-  'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse, eingabe: NurPasswort },
-  'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes, eingabe: NurPasswort },
+  'PUT /api/v1/auth/profile': { antwort: ProfilGespeichert, ...bestaetigt(ProfilAenderung.shape, 'password_current') },
+  'POST /api/v1/auth/change-password': { antwort: GenericResponse, ...bestaetigt({ newPassword: z.string().max(PASSWORT).optional() }, 'current') },
+  'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, ...bestaetigt() },
+  'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurCode },
+  'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse, ...bestaetigt() },
+  'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes, eingabe: NurCode },
   'DELETE /api/v1/settings/tokens/:tokenId': { antwort: TokenWiderruf },
   'POST /api/v1/auth/token-rotieren': { antwort: TokenRotation },
   'GET /api/v1/auth/users': { antwort: KontenListe },
-  'POST /api/v1/auth/users': { antwort: Erfolg, eingabe: z.looseObject({ is_admin: eingabe.schalter('is_admin', false), username: txt(64), password: txt(PASSWORT), ...Verwalter }) },
-  'PUT /api/v1/auth/users/:id/admin': { antwort: Erfolg, eingabe: z.looseObject({ is_admin: eingabe.schalter('is_admin'), ...Verwalter }) },
-  'PUT /api/v1/auth/users/:id/aktiv': { antwort: KontoAktiv, eingabe: z.looseObject({ is_active: eingabe.schalter('is_active'), ...Verwalter }) },
-  'PUT /api/v1/auth/users/:id/password': { antwort: Erfolg, eingabe: z.looseObject({ password: txt(PASSWORT), ...Verwalter }) },
-  'DELETE /api/v1/auth/users/:id': { antwort: Erfolg },
-  'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: Erfolg },
-  'POST /api/v1/auth/token-create': { antwort: TokenErstellt, eingabe: z.looseObject({ password: txt(PASSWORT), scope: txt(20) }) },
-  'POST /api/v1/auth/qr-token': { antwort: QrToken, eingabe: z.looseObject({ password: txt(PASSWORT) }) },
+  'POST /api/v1/auth/users': { antwort: Erfolg, ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin', false), username: z.string().max(64).optional(), password: z.string().max(PASSWORT).optional() }) },
+  'PUT /api/v1/auth/users/:id/admin': { antwort: Erfolg, ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin') }) },
+  'PUT /api/v1/auth/users/:id/aktiv': { antwort: KontoAktiv, ...verwalterBestaetigt({ is_active: eingabe.schalter('is_active') }) },
+  'PUT /api/v1/auth/users/:id/password': { antwort: Erfolg, ...verwalterBestaetigt({ password: z.string().max(PASSWORT).optional() }) },
+  'DELETE /api/v1/auth/users/:id': { antwort: Erfolg, ...verwalterBestaetigt() },
+  'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: Erfolg, ...verwalterBestaetigt() },
+  'POST /api/v1/auth/token-create': { antwort: TokenErstellt, ...bestaetigt({ scope: z.string().max(20).optional() }) },
+  'POST /api/v1/auth/qr-token': { antwort: QrToken, ...bestaetigt() },
   'POST /api/v1/auth/reset-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ token: txt(200), password: txt(PASSWORT) }) },
   'GET /api/v1/auth/passkeys': { antwort: PasskeyListe },
-  'DELETE /api/v1/auth/passkeys/:id': { antwort: Geloescht, eingabe: NurPasswort },
-  'POST /api/v1/auth/passkey/registrieren/optionen': { antwort: PasskeyOptionen },
+  'DELETE /api/v1/auth/passkeys/:id': { antwort: Geloescht, ...bestaetigt() },
+  'POST /api/v1/auth/passkey/registrieren/optionen': { antwort: PasskeyOptionen, ...bestaetigt() },
   'POST /api/v1/auth/passkey/registrieren': { antwort: PasskeyAngelegt, eingabe: z.looseObject({ name: txtLeer(100) }) },
   'POST /api/v1/auth/passkey/anmelden/optionen': { antwort: PasskeyOptionen },
   'POST /api/v1/auth/passkey/anmelden': { antwort: PasskeyAnmeldung },
-  'POST /api/v1/settings/sessions/andere-beenden': { antwort: Geloescht },
+  'POST /api/v1/settings/sessions/andere-beenden': { antwort: Geloescht, ...bestaetigt() },
 } satisfies Record<string, Route>;

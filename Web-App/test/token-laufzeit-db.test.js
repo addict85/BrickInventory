@@ -231,7 +231,7 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   const einst = ohneKommentare(
     fs.readFileSync(path.join(ROOT, 'public/js/05-settings.js'), 'utf8'));
 
-  assert.ok(/api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit, password: /.test(einst),
+  assert.ok(/api\('POST', '\/v1\/auth\/qr-token', \{ gueltigkeit, password\b/.test(einst),
     'Die Webapp soll die gewaehlte Laufzeit beim Erzeugen des Codes mitschicken');
   assert.ok(!/qr-login/.test(einst),
     'Die Webapp loest keine QR-Codes ein — taete sie es, waere hier die zweite Stelle, ' +

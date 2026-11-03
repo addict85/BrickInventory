@@ -36,8 +36,8 @@ test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async (
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
     VALUES ($1, $2, true, true) RETURNING id`, [NAME, bcrypt.hashSync('richtig-geheim', 4)])).id;
-  const aufraeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key = $3`,
-    [`%|${NAME}`, `%konto:${uid}`, `passwort-bestaetigen|${uid}`]);
+  const aufraeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2 OR key LIKE $3`,
+    [`%|${NAME}`, `%konto:${uid}`, `%-bestaetigen|${uid}|%`]);
   await aufraeumen();
   t.after(async () => {
     await aufraeumen();

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { VerwaltungZustand, VerwaltungDesign } from './verwaltung';
-import { type Route, Erfolg, ganz, zeit } from './grund';
+import { type Route, Erfolg, ganz, zeit, bestaetigt } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const AppThemeResponse = z.looseObject({
@@ -85,7 +85,7 @@ export const routen = {
   'GET /api/v1/settings/raw': { antwort: RoheEinstellungen },
   'GET /api/v1/settings/tls': { antwort: TlsStand },
   'GET /api/v1/settings/user/default-condition': { antwort: DefaultConditionResponse },
-  'POST /api/v1/settings': { antwort: Erfolg },
+  'POST /api/v1/settings': { antwort: Erfolg, ...bestaetigt({}, 'admin_password') },
   'GET /api/v1/settings/export': { antwort: Sicherung },
   'POST /api/v1/settings/import': { antwort: SicherungEingespielt },
   'GET /api/v1/health': { antwort: Gesundheit },

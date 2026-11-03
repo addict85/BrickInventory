@@ -220,13 +220,22 @@ export async function zaehleAnfrage(bucket: string, ip: string, windowMs: number
   }
 }
 
-/** Je KONTO, nicht je Adresse: Mit erbeutetem Token soll das Passwort auch von
- * wechselnden Adressen aus nicht unbegrenzt zu raten sein. */
-const _bestaetigungKey = (uid: number) => `passwort-bestaetigen|${uid}`;
+/** Je Konto UND Zugang (Sitzung oder Token-Familie): Fehlversuche aus einem
+ * erbeuteten Zugang sperren nicht die Notbremsen des Inhabers in seinem eigenen.
+ * Codes zählen getrennt und länger; nur ein richtiger Code setzt sie zurück. */
+export type Bremse = 'passwort' | 'faktor';
+const FAKTOR_FENSTER_MIN = 60;
+const _bestaetigungKey = (art: Bremse, uid: number, zugang: string) =>
+  `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen|${uid}|${zugang}`;
+const fenster = (art: Bremse) => (art === 'faktor' ? FAKTOR_FENSTER_MIN : WINDOW_MIN);
 
-export async function bestaetigungGesperrt(uid: number): Promise<Sperre | null> {
-  const r = await _reserviere(_bestaetigungKey(uid), WINDOW_MIN, s => s.count + s.laufend < MAX_ATTEMPTS);
+export async function bestaetigungGesperrt(art: Bremse, uid: number, zugang: string): Promise<Sperre | null> {
+  const r = await _reserviere(_bestaetigungKey(art, uid, zugang), fenster(art), s => s.count + s.laufend < MAX_ATTEMPTS);
   return r.ok ? null : { code: 'zu_viele_fehlversuche', vars: { minuten: r.stand.waitMin } };
 }
-export async function bestaetigungFehlgeschlagen(uid: number): Promise<void> { await _bump(_bestaetigungKey(uid), WINDOW_MIN); }
-export async function bestaetigungGelungen(uid: number): Promise<void> { await _clear(_bestaetigungKey(uid)); }
+export async function bestaetigungFehlgeschlagen(art: Bremse, uid: number, zugang: string): Promise<void> {
+  await _bump(_bestaetigungKey(art, uid, zugang), fenster(art));
+}
+export async function bestaetigungGelungen(art: Bremse, uid: number, zugang: string): Promise<void> {
+  await _clear(_bestaetigungKey(art, uid, zugang));
+}

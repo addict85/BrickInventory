@@ -43,7 +43,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
     await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_insecure_tls', 'gutschein_land')");
     if (landVorher !== undefined)
       await db.run("INSERT INTO global_settings (key, value) VALUES ('gutschein_land', $1)", [landVorher]);
-    await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`passwort-bestaetigen|${uid}`]);
+    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${uid}|%`]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });

@@ -25,14 +25,13 @@ import { DAILY_JOBS } from '../../src/auftraege/zeitplan';
 import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen, protokolliere } from '../../src/verwaltung/dienst';
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
 import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
-import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigePasswort } from '../../src/konto/http/anmeldung';
+import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
 import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/infra/mailer';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { tlsStand } from '../../src/infra/tlsWurzel';
 import { konfig } from '../../src/infra/konfig';
 import { invalidateTheme } from '../../src/konto/indexHtml';
-import { istAktiv as zweiterFaktorAktiv } from '../../src/konto/zweiterFaktor';
 import { jsonOderNull } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
@@ -87,7 +86,7 @@ router.delete('/settings/tokens/:tokenId', requireLoginOrToken, async (req: Logg
 
 // Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
 router.post('/settings/sessions/andere-beenden', requireLogin, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/sessions/andere-beenden'>) => {
-  if (!await bestaetigePasswort(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.password)) return;
   const { beendet, version } = await andereSitzungenBeenden(angemeldeteNutzerId(req), req.sessionID);
   req.session.sitzungsVersion = version;
   res.json({ success: true, deleted: beendet });
@@ -175,8 +174,7 @@ router.post('/settings/household/invite', requireToken, async (req: AuthedReques
 router.post('/settings/household/redeem', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/redeem'>) => {
   const uid = req.apiUser.user_id;
   // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
-  const zusatz = await zweiterFaktorAktiv(uid) ? { zweiterFaktor: req.body?.faktor_code } : {};
-  if (!await bestaetigePasswort(req, res, uid, req.body?.password, zusatz)) return;
+  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password, 'faktor_code')) return;
   const r = await redeemInvite(uid, String(req.body?.code || ''));
   if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
   const ich = await profil(uid);
@@ -233,7 +231,7 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
       if (neu === undefined || (SECRET_KEYS.has(key) && isMaskedValue(neu))) continue;
       if (String(neu) !== String(await getGlobalSetting(key) ?? '')) smtpGeaendert.push(key);
     }
-    if (smtpGeaendert.length && !await bestaetigePasswort(req, res, uid, req.body.admin_password)) return;
+    if (smtpGeaendert.length && !await bestaetigeMitFaktor(req, res, uid, req.body.admin_password)) return;
 
     const oldBricksetLimit = req.body.api_limit_brickset !== undefined
       ? parseInt(await getGlobalSetting('api_limit_brickset') || '100')

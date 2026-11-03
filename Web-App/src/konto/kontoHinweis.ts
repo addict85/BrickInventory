@@ -6,18 +6,30 @@ import { logAndContinue } from '../infra/httpError';
 import { householdStatus } from '../haushalt/haushalt';
 import { profil } from './konten';
 import { getSetting } from './settings';
+import { aktiveVerwalter } from './repository/konten';
 
-export async function meldeKontoaenderung(uid: number, art: KontoHinweis, passkey?: string): Promise<boolean> {
+type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };
+
+export async function meldeKontoaenderung(uid: number, art: KontoHinweis, angaben: Angaben = {}): Promise<boolean> {
   if (!await mailEingerichtet()) return false;
   const k = await profil(uid);
   if (!k?.email) return false;
   const lang = String(await getSetting(uid, 'language', 'de'));
   const haushalt = (await householdStatus(uid)).parents.map(p => p.username);
-  const r = await sendKontoHinweisMail(k.email, k.username, art, { lang, haushalt, ...(passkey ? { passkey } : {}) });
+  const r = await sendKontoHinweisMail(k.email, k.username, art, { lang, haushalt,
+    ...(angaben.name ? { passkey: angaben.name } : {}), konto: angaben.konto, durch: angaben.durch });
   return r.success;
 }
 
 /** Nebenher: Die Antwort wartet nicht auf den Mailserver, und ein Fehler macht die Änderung nicht rückgängig. */
-export function hinweisNebenher(uid: number, art: KontoHinweis, passkey?: string): void {
-  meldeKontoaenderung(uid, art, passkey).catch(logAndContinue(`konto:hinweismail ${art}`));
+export function hinweisNebenher(uid: number, art: KontoHinweis, name?: string, angaben: Angaben = {}): void {
+  meldeKontoaenderung(uid, art, { ...angaben, name }).catch(logAndContinue(`konto:hinweismail ${art}`));
+}
+
+/** An alle Verwalter: Einer allein soll keinen neuen Verwalter und keinen
+ * abgebauten Schutz unbemerkt hinterlassen. */
+export function verwalterHinweisNebenher(art: KontoHinweis, angaben: Angaben): void {
+  aktiveVerwalter()
+    .then(ids => Promise.all(ids.map(id => meldeKontoaenderung(id, art, angaben))))
+    .catch(logAndContinue(`konto:verwalterhinweis ${art}`));
 }

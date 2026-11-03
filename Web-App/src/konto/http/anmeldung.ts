@@ -5,10 +5,13 @@ import { pruefeToken, rotationFaellig, pruefeAnmeldedaten } from '../auth';
 import type { TokenPruefung, AnmeldeErgebnis } from '../auth';
 import { zaehleAnfrage } from '../loginLimiter';
 import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetigung';
-import { sendeFehler } from '../../infra/fehlerTexte';
+import type { BestaetigungsAbsage, Faktor } from '../passwortBestaetigung';
+import { createHash } from 'crypto';
+import { konfig } from '../../infra/konfig';
+import { routeZu } from '../../infra/vertrag';
+import { sendeFehler, fehlerText, antwortSprache } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/httpError';
 import { sitzungsVersionAusDb } from '../sitzungsVersion';
-import * as zf from '../zweiterFaktor';
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
  * einem vertrauten Proxy kommt.
@@ -126,25 +129,36 @@ export function ipThrottle(bucket: string, max: number, windowMs: number) {
   };
 }
 
-/** Antwortet selbst, wenn es nicht stimmt. */
-export async function bestaetigePasswort(req: Request, res: Response, uid: number, passwort: unknown,
-                                         zusatz: { zweiterFaktor?: unknown } = {}): Promise<boolean> {
-  const absage = await pruefeBestaetigung(uid, passwort, zusatz);
-  if (absage) sendeFehler(req, res, absage.status, absage.code, absage.vars);
+/** Bremsschlüssel des Zugangs: die Sitzung (gehasht, die ID ist ein Geheimnis)
+ * oder die Token-Familie; `created_at` erbt jeder Nachfolger beim Tausch. */
+export function zugangVon(req: Request): string {
+  if (req.session?.userId) return `s:${createHash('sha256').update(String(req.sessionID ?? '')).digest('hex').slice(0, 16)}`;
+  const seit = req.apiUser?.created_at;
+  return `t:${seit ? new Date(seit).getTime() : '?'}`;
+}
+
+function absagen(req: Request, res: Response, absage: BestaetigungsAbsage): void {
+  if (!absage.passkey) return sendeFehler(req, res, absage.status, absage.code, absage.vars);
+  res.status(absage.status).json({ success: false, code: absage.code, passkey: true,
+    error: fehlerText(absage.code, antwortSprache(req), absage.vars) });
+}
+
+/** Passwort und, bei aktivem zweitem Faktor, Code oder Passkey; antwortet
+ * selbst, wenn etwas fehlt. Nur für Routen mit `bestaetigung` im Vertrag:
+ * Dort prüft test/bestaetigung-vertrag-db.test.js jede einzelne. */
+export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: unknown,
+                                          codeFeld = 'code'): Promise<boolean> {
+  const schluessel = req.route ? `${req.method} ${req.baseUrl}${req.route.path}` : '';
+  if (konfig().vertragPruefen && routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
+    throw new Error(`${schluessel} bestätigt, ohne \`bestaetigung\` im Vertrag`);
+  const faktor: Faktor = { code: req.body?.[codeFeld], passkey: req.body?.passkey };
+  const absage = await pruefeBestaetigung(uid, zugangVon(req), passwort, faktor);
+  if (absage) absagen(req, res, absage);
   return !absage;
 }
 
-/** Bei aktivem zweitem Faktor auch der Code. Fehlt er, kommt die Absage vor
- * jeder Prüfung: Ein Erfolg des Passworts setzte sonst die Bremse zurück. */
-export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: unknown,
-                                          code: unknown): Promise<boolean> {
-  if (!await zf.istAktiv(uid)) return bestaetigePasswort(req, res, uid, passwort);
-  if (!String(code ?? '').trim()) { sendeFehler(req, res, 400, 'zweiter_faktor_noetig'); return false; }
-  return bestaetigePasswort(req, res, uid, passwort, { zweiterFaktor: code });
-}
-
 export async function bestaetigeCode(req: Request, res: Response, uid: number, code: unknown): Promise<boolean> {
-  const absage = await pruefeCodeBestaetigung(uid, code);
-  if (absage) sendeFehler(req, res, absage.status, absage.code, absage.vars);
+  const absage = await pruefeCodeBestaetigung(uid, zugangVon(req), code);
+  if (absage) absagen(req, res, absage);
   return !absage;
 }

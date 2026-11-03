@@ -39,17 +39,29 @@ export function bestaetigeMitPasswort(title, msg, icon) {
 export async function mitZweitemFaktor(ruf) {
   const d = await ruf({});
   if (d?.code !== 'zweiter_faktor_noetig') return d;
-  const code = await dialogOeffnen(tRaw('zf.title'), tRaw('zf.code_noetig'), 'schloss', false, true);
-  return code === null ? null : ruf({ code: code.trim() });
+  const mitPasskey = !!(d.passkey && passkeyHolen);
+  const code = await dialogOeffnen(tRaw('zf.title'), tRaw(mitPasskey ? 'zf.code_oder_passkey' : 'zf.code_noetig'),
+    'schloss', false, true, mitPasskey);
+  if (code === null) return null;
+  if (code !== MIT_PASSKEY) return ruf({ code: code.trim() });
+  const passkey = await passkeyHolen();
+  return passkey ? ruf({ passkey }) : null;
 }
 
-function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false) {
+/** 23-passkeys.js meldet sich hier an, wenn der Browser Passkeys kann: Ein
+ * Import in die Gegenrichtung schlösse einen Kreis über 01-core.js. */
+let passkeyHolen = null;
+export function setzePasskeyHolen(fn) { passkeyHolen = fn; }
+const MIT_PASSKEY = Symbol('passkey');
+
+function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasskey = false) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
     const pwWrap = G('cd-pw-wrap'), pw = G('cd-pw');
-    const codeWrap = G('cd-code-wrap'), codeFeld = G('cd-code');
+    const codeWrap = G('cd-code-wrap'), codeFeld = G('cd-code'), pkKnopf = G('cd-passkey');
     if (pwWrap) pwWrap.hidden = !mitPasswort;
     if (codeWrap) codeWrap.hidden = !mitCode;
+    if (pkKnopf) pkKnopf.hidden = !mitPasskey;
     if (pw) pw.value = '';
     if (codeFeld) codeFeld.value = '';
     G('cd-title').textContent = title || t('common.delete_title');
@@ -67,10 +79,12 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false) {
       btnYes.onclick = null;
       btnNo.onclick  = null;
       modal.onclick  = null;
+      if (pkKnopf) pkKnopf.onclick = null;
       resolve(result);
     }
     const wert = () => (mitPasswort ? (pw?.value || '') : mitCode ? (codeFeld?.value || '') : '');
     btnYes.onclick = () => { const w = wert(); cleanup(w); };
+    if (pkKnopf && mitPasskey) pkKnopf.onclick = () => cleanup(MIT_PASSKEY);
     btnNo.onclick  = () => cleanup(null);
     modal.onclick  = e => { if (e.target === modal) cleanup(null); };
   });

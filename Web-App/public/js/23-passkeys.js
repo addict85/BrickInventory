@@ -1,7 +1,7 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { ico, G, api, esc, toast } from './01-core.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './07-admin.js';
 
 // ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
 // Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der
@@ -130,6 +130,7 @@ export async function passkeyLoeschen(id, name) {
 {
   const k = G('btn-passkey');
   if (k) k.hidden = !passkeysMoeglich();
+  if (passkeysMoeglich()) setzePasskeyHolen(() => bestaetige('zweiter_faktor'));
 }
 
 registerActions({ passkeyAnmelden, passkeyZweiterFaktor, ladePasskeys, passkeyHinzufuegen, passkeyLoeschen });
