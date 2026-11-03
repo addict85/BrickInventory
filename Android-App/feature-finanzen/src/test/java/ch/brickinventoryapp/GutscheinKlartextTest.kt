@@ -12,6 +12,7 @@ import ch.brickinventoryapp.ui.viewmodel.DateiLeser
 import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.ui.viewmodel.eingabeUeberMaske
 import ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse
+import ch.brickinventoryapp.ui.viewmodel.pdfMitEinmalTicket
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -45,6 +46,8 @@ import java.io.File
  *  F  bearbeiteGutschein() nimmt `g.pin` nicht mehr, sondern "" → rot
  *     „Bearbeiten schickt die Maske …“ (PIN würde gelöscht bzw. fehlt).
  *  G  eingabeUeberMaske() gibt immer `neu` zurück → rot „die Maske ist ein Ganzes“.
+ *  H  pdfMitEinmalTicket() immer false → rot „PDF und Export …“ (der Betrachter
+ *     versuchte ein verbrauchtes Ticket erneut).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GutscheinKlartextTest {
@@ -162,6 +165,8 @@ class GutscheinKlartextTest {
         assertEquals("POST /api/v1/vouchers/1/pdf-freigabe", server.takeRequest().let { "${it.method} ${it.path}" })
         assertEquals("https://brick.example/api/v1/vouchers/1/pdf?ticket=t%2F1%2B",
             gutscheinPdfAdresse("https://brick.example/", vm.state.value.pdfZiel!!))
+        assertTrue(pdfMitEinmalTicket(gutscheinPdfAdresse("https://brick.example/", vm.state.value.pdfZiel!!)))
+        assertFalse(pdfMitEinmalTicket("https://brick.example/api/v1/instructions/4/file"))
         vm.gutscheinPdfQuittieren()
 
         vm.oeffneGutscheinExport()

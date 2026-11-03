@@ -15,6 +15,11 @@ fun gutscheinExportAdresse(serverUrl: String, ticket: String? = null): String =
 fun gutscheinPdfAdresse(serverUrl: String, ziel: ch.brickinventoryapp.ui.GutscheinPdfZiel): String =
     if (ziel.id == null) gutscheinExportAdresse(serverUrl, ziel.ticket) else gutscheinPdfAdresse(serverUrl, ziel.id, ziel.ticket)
 
+/** Trägt die Adresse ein Ticket? Dann lädt der Betrachter in einem Zug, ohne Wiederholung. */
+fun pdfMitEinmalTicket(pdfUrl: String): Boolean =
+    runCatching { java.net.URI(pdfUrl.trim()).rawQuery }.getOrNull()
+        ?.split('&')?.any { it.substringBefore('=') == "ticket" } == true
+
 private fun mitTicket(adresse: String, ticket: String?): String =
     if (ticket == null) adresse else adresse + "?ticket=" + java.net.URLEncoder.encode(ticket, "UTF-8")
 

@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Gutschein hinzufuegen oeffnet das Formular
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-index fdd124a..831fbf8 100644
+index 3c822bb..6cbfffa 100644
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-@@ -202,7 +202,7 @@ fun GutscheineCard(
-       }
+@@ -239,7 +239,7 @@ fun GutscheineCard(
+         )
      }
  
 -    if (neu || zustand.bearbeitet != null) {

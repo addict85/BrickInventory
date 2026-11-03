@@ -609,7 +609,7 @@ private suspend fun ladeUndZaehle(
             }
             return cacheFile to anzahl
         } catch (e: Exception) {
-            if (versuch >= 2) throw e
+            if (versuch >= 2 || ch.brickinventoryapp.ui.viewmodel.pdfMitEinmalTicket(url)) throw e
             withContext(Dispatchers.IO) {
                 cacheFile.delete()
                 File(cacheFile.path + ".part").delete()
@@ -678,7 +678,8 @@ private suspend fun downloadPdfWithResume(
     // unterscheiden (siehe util/PdfCache.kt).
     val teil = File(dest.path + ".part")
 
-    val maxAttempts = 8
+    // Ein Ticket gilt für genau einen Abruf: kein zweiter Versuch, kein Range-Fortsetzen.
+    val maxAttempts = if (ch.brickinventoryapp.ui.viewmodel.pdfMitEinmalTicket(url)) 1 else 8
     var lastError: Exception? = null
     for (attempt in 1..maxAttempts) {
         when (val schritt = pdfSchritt(

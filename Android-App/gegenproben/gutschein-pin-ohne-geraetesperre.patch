@@ -4,10 +4,10 @@ Test: ch.brickinventoryapp.AblaufTest
 Rot: ohne Bestaetigung der Geraetesperre bleibt der PIN verdeckt
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-index fe09338..7047ba7 100644
+index 3c822bb..36fa1c1 100644
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/GutscheineCard.kt
-@@ -178,9 +178,7 @@ fun GutscheineCard(
+@@ -184,9 +184,7 @@ fun GutscheineCard(
                  g = g,
                  pinSichtbar = g.id in zustand.pinSichtbar,
                  // Verdecken braucht keine Bestätigung, aufdecken schon.
@@ -16,5 +16,5 @@ index fe09338..7047ba7 100644
 -                },
 +                onPinSchalten = { onPinSchalten(g.id) },
                  onBearbeiten = { geschuetzt { onBearbeiten(g.id) } },
-                 onLoeschen = { onLoeschen(g.id) },
+                 onLoeschen = { geschuetzt { onLoeschen(g.id) } },
                  onPdfOeffnen = { geschuetzt { onPdfOeffnen(g.id) } },
