@@ -6,7 +6,7 @@ import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
-import { zielGedrosselt } from '../src/konto/zielDrossel';
+import { zielGedrosselt, kontoGedrosselt } from '../src/konto/zielDrossel';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
@@ -211,21 +211,24 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
   if (!nameGueltig(first_name) || !nameGueltig(last_name)) return sendeFehler(req, res, 400, 'name_ungueltig');
 
-  // Case-insensitiv und auch gegen die E-Mail-Spalte, weil der Login mit LOWER()
-  // beide Felder vergleicht.
-  if (username && username.toLowerCase() !== String(user.username || '').toLowerCase()) {
-    if (await K.nameVergeben(username, user.id)) return sendeFehler(req, res, 400, 'benutzername_vergeben');
-  }
-
+  const nameNeu = username && username.toLowerCase() !== String(user.username || '').toLowerCase();
   const emailChanged = email && email.toLowerCase() !== String(user.email || '').toLowerCase();
   if (emailChanged) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       return sendeFehler(req, res, 400, 'email_ungueltig');
-    if (await K.emailVergeben(email, user.id)) return sendeFehler(req, res, 400, 'email_vergeben');
     // Über die neue Adresse liesse sich danach das Passwort zurücksetzen —
-    // wer kurz eine fremde Sitzung hat, übernähme so das Konto.
+    // wer kurz eine fremde Sitzung hat, übernähme so das Konto. Vor der
+    // Vergabeprüfung, damit nur der Inhaber erfährt, ob eine Adresse belegt ist.
     if (!password_current) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
     if (!await bestaetigeMitFaktor(req, res, user.id, String(password_current))) return;
+  }
+  if (nameNeu || emailChanged) {
+    // Jede Vergabeprüfung verrät, ob es ein Konto gibt; die Registrierung verbirgt das.
+    const zuOft = await kontoGedrosselt('profil-vergabe', user.id, 10, 60 * 60 * 1000);
+    if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
+    // Case-insensitiv und auch gegen die E-Mail-Spalte, weil der Login mit LOWER() beide vergleicht.
+    if (nameNeu && await K.nameVergeben(username, user.id)) return sendeFehler(req, res, 400, 'benutzername_vergeben');
+    if (emailChanged && await K.emailVergeben(email, user.id)) return sendeFehler(req, res, 400, 'email_vergeben');
   }
 
   const felder: Record<string, unknown> = {};
@@ -336,6 +339,10 @@ router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /a
   if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
   if (!await K.setzeFremdesPasswort(targetId, password)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
   await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
+  // Wie beim entfernten Faktor: Eine Übernahme durch eine erbeutete Verwaltersitzung bliebe sonst unbemerkt.
+  const durch = nutzerName(req) ?? '';
+  hinweisNebenher(targetId, 'passwort_durch_verwalter', undefined, { durch });
+  verwalterHinweisNebenher('verwaltung_passwort_gesetzt', { konto: (await K.kontoKurz(targetId))?.username ?? String(targetId), durch });
 
   res.json({ success: true });
 });

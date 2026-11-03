@@ -11,6 +11,8 @@
  *      „ernannter Verwalter"
  *   D  in aktiveVerwalter() `is_admin AND` entfernt → rot: „neues
  *      Verwalterkonto" (die Mail ging auch an das gewöhnliche Konto)
+ *   E  hinweisNebenher() in PUT /users/:id/password entfernt → rot:
+ *      „fremdes Passwort durch einen Verwalter“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -98,6 +100,13 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async (t) => {
     await ruf('DELETE', `/users/${zwei}/zweiter-faktor`, { admin_password: PASS });
     assert.deepEqual((await mails('zweiter_faktor_entfernt', 1)).map(m => [m.an, m.durch]), [[NAMEN[1], NAMEN[0]]]);
     assert.deepEqual((await mails('verwaltung_faktor_entfernt', 3)).map(m => [m.an, m.konto]),
+      [[NAMEN[0], NAMEN[1]], [NAMEN[2], NAMEN[1]], [NAMEN[1], NAMEN[1]]]);
+  });
+
+  await t.test('fremdes Passwort durch einen Verwalter', async () => {
+    await ruf('PUT', `/users/${zwei}/password`, { password: 'Neues-Langes-Passwort-9', admin_password: PASS });
+    assert.deepEqual((await mails('passwort_durch_verwalter', 1)).map(m => [m.an, m.durch]), [[NAMEN[1], NAMEN[0]]]);
+    assert.deepEqual((await mails('verwaltung_passwort_gesetzt', 3)).map(m => [m.an, m.konto]),
       [[NAMEN[0], NAMEN[1]], [NAMEN[2], NAMEN[1]], [NAMEN[1], NAMEN[1]]]);
   });
 });

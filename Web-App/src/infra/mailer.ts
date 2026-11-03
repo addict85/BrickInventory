@@ -472,7 +472,8 @@ export async function mailEingerichtet(): Promise<boolean> {
 }
 
 export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt' | 'token_neu' | 'qr_zugang_neu'
-  | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet';
+  | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet'
+  | 'passwort_durch_verwalter' | 'verwaltung_passwort_gesetzt';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
@@ -496,6 +497,10 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
                           : `„${o.durch ?? ''}“ hat das Konto „${o.konto ?? ''}“ zum Verwalter gemacht.`,
     verwaltung_faktor_entfernt: en ? `“${o.durch ?? ''}” removed the second factor of the account “${o.konto ?? ''}”.`
                                    : `„${o.durch ?? ''}“ hat den zweiten Faktor des Kontos „${o.konto ?? ''}“ entfernt.`,
+    passwort_durch_verwalter: en ? `the administrator “${o.durch ?? ''}” set a new password for your account. All sign-ins and app tokens were ended.`
+                                 : `der Verwalter „${o.durch ?? ''}“ hat ein neues Passwort für dein Konto gesetzt. Alle Anmeldungen und App-Zugänge wurden beendet.`,
+    verwaltung_passwort_gesetzt: en ? `“${o.durch ?? ''}” set a new password for the account “${o.konto ?? ''}”.`
+                                    : `„${o.durch ?? ''}“ hat ein neues Passwort für das Konto „${o.konto ?? ''}“ gesetzt.`,
     token_wiederverwendet: en ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
                               : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   }[art];
