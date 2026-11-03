@@ -1,0 +1,17 @@
+Gegenprobe: Der Selbst-Updater liest die Fassungsbeschreibung, ohne ihre Signatur zu prüfen (Stand vor sec8 N4)
+Modul: core-data
+Test: ch.brickinventoryapp.UpdateSignaturTest
+Rot: fremder Schluessel
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt
+index 7cc67be..7362185 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/UpdateSignatur.kt
+@@ -30,7 +30,6 @@ fun gepruefteBeschreibung(roh: String, zertifikate: List<ByteArray>): UpdateBesc
+     val huelle = runCatching { beschreibungsJson.decodeFromString<SignierteBeschreibung>(roh) }.getOrNull() ?: return null
+     val daten = runCatching { Base64.getDecoder().decode(huelle.daten) }.getOrNull() ?: return null
+     val signatur = runCatching { Base64.getDecoder().decode(huelle.signatur) }.getOrNull() ?: return null
+-    if (zertifikate.none { signaturGilt(daten, signatur, it) }) return null
+     return runCatching { beschreibungsJson.decodeFromString<UpdateBeschreibung>(daten.decodeToString()) }.getOrNull()
+ }
+ 

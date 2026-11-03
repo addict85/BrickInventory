@@ -14,11 +14,31 @@
       von main als „neustes APK“ hinaus. ALT_VERSION_JSON `-`: noch nichts
       veröffentlicht.
 
+  release-pruefen.py beschreibung DATEN_JSON APK OUTPUT_METADATA COMMIT ABLAGE
+      DATEN_JSON ist der signierte Inhalt von version-signiert.json (die
+      Signatur prüft openssl im Workflow). Er muss genau dieses APK beschreiben:
+      versionCode und versionName wie in AGPs output-metadata.json, Grösse und
+      SHA-256 der Datei, der Commit, und die Adresse
+      ABLAGE/BrickInventory-<versionCode>.apk — der unveränderliche Anhang
+      dieser Fassung. Sonst signierte der Workflow eine Beschreibung, die die
+      App beim Laden ablehnt.
+
+  release-pruefen.py beschreibung DATEN_JSON APK OUTPUT_METADATA COMMIT ABLAGE
+      DATEN_JSON ist der signierte Inhalt von version-signiert.json (die
+      Signatur prüft openssl im Workflow). Er muss genau dieses APK beschreiben:
+      versionCode und versionName wie in AGPs output-metadata.json, Grösse und
+      SHA-256 der Datei, der Commit, und die Adresse
+      ABLAGE/BrickInventory-<versionCode>.apk — der unveränderliche Anhang
+      dieser Fassung. Sonst signierte der Workflow eine Beschreibung, die die
+      App beim Laden ablehnt.
+
 Rückgabe 0 = in Ordnung, 1 = abgelehnt, 2 = Eingabe unbrauchbar. Die Meldung
 geht auf stdout; das ::error:: setzt der Workflow, denn ein erwartetes Nein
 (Probe-Schlüssel) ist dort kein Fehler.
 """
+import hashlib
 import json
+import os
 import re
 import sys
 
@@ -80,11 +100,41 @@ def fassung(alt_pfad, neu_code, commit):
     return 1
 
 
+def beschreibung(daten_pfad, apk_pfad, meta_pfad, commit, ablage):
+    try:
+        with open(daten_pfad, encoding='utf-8') as f:
+            daten = json.load(f)
+        with open(meta_pfad, encoding='utf-8') as f:
+            element = json.load(f)['elements'][0]
+        with open(apk_pfad, 'rb') as f:
+            pruefsumme = hashlib.sha256(f.read()).hexdigest()
+        groesse = os.path.getsize(apk_pfad)
+    except (OSError, ValueError, KeyError, IndexError, TypeError) as e:
+        print(f'Eingabe unlesbar: {e}')
+        return 2
+    soll = {
+        'versionCode': element.get('versionCode'),
+        'versionName': element.get('versionName'),
+        'commit': commit,
+        'apkSize': groesse,
+        'apkSha256': pruefsumme,
+        'apkUrl': f"{ablage.rstrip('/')}/BrickInventory-{element.get('versionCode')}.apk",
+    }
+    falsch = [f'{k}: {daten.get(k)!r} statt {v!r}' for k, v in soll.items() if daten.get(k) != v]
+    if falsch:
+        print('Die Beschreibung passt nicht zum APK: ' + '; '.join(falsch))
+        return 1
+    print(f'Beschreibung passt zum APK (versionCode {soll["versionCode"]}).')
+    return 0
+
+
 def main(argv):
     if len(argv) == 4 and argv[1] == 'zertifikat':
         return zertifikat(argv[2], argv[3])
     if len(argv) == 5 and argv[1] == 'fassung':
         return fassung(argv[2], argv[3], argv[4])
+    if len(argv) == 7 and argv[1] == 'beschreibung':
+        return beschreibung(*argv[2:7])
     print(__doc__)
     return 2
 

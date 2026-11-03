@@ -795,6 +795,8 @@
     <string name="update_signatur_falsch">Die geladene App ist nicht mit demselben Schlüssel signiert wie diese und wurde gelöscht. Installiert wurde nichts.</string>
     <string name="update_fassung_falsch">Die geladene App trägt eine andere Version als angekündigt und wurde gelöscht. Installiert wurde nichts.</string>
     <string name="update_fremde_adresse">Das Update zeigt auf eine Adresse ausserhalb unseres Release. Es wurde nichts geladen.</string>
+    <string name="update_beschreibung_unsigniert">Die Beschreibung des Updates ist nicht mit dem Schlüssel dieser App signiert. Es wird nichts angeboten.</string>
+    <string name="update_pruefsumme_falsch">Die geladene App ist nicht die in der signierten Beschreibung angekündigte und wurde gelöscht. Installiert wurde nichts.</string>
     <string name="update_installer_fehlt">Die Installation liess sich nicht starten.</string>
     <string name="update_installation_fehlgeschlagen">Die Installation ist gescheitert: %1$s</string>
 

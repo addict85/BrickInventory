@@ -809,6 +809,8 @@
     <string name="update_signatur_falsch">The downloaded app is not signed with the same key as this one and was deleted. It was not installed.</string>
     <string name="update_fassung_falsch">The downloaded app carries a different version than announced and was deleted. It was not installed.</string>
     <string name="update_fremde_adresse">The update points to an address outside our release. Nothing was downloaded.</string>
+    <string name="update_beschreibung_unsigniert">The update description is not signed with this app’s key. Nothing is offered.</string>
+    <string name="update_pruefsumme_falsch">The downloaded app is not the one announced in the signed description and was deleted. It was not installed.</string>
     <string name="update_installer_fehlt">The installation could not be started.</string>
     <string name="update_installation_fehlgeschlagen">The installation failed: %1$s</string>
 

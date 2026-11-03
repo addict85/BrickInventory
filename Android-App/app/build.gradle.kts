@@ -155,10 +155,12 @@ android {
                 storePassword = signaturWert("BRICK_KEYSTORE_PASSWORT", "brickKeystorePasswort")
                 keyAlias      = signaturWert("BRICK_KEY_ALIAS", "brickKeyAlias")
                 keyPassword   = signaturWert("BRICK_KEY_PASSWORT", "brickKeyPasswort")
-                // Beide Schemata: v1 für Android 6 und älter (minSdk ist 26,
-                // also eigentlich entbehrlich), v2/v3 für alles darüber.
-                enableV1Signing = true
+                // Wie die CI (apksigner im Job signieren): kein v1 — ab minSdk 30
+                // prüft kein Gerät mehr die JAR-Signatur —, v3 für eine spätere
+                // Schlüsselrotation.
+                enableV1Signing = false
                 enableV2Signing = true
+                enableV3Signing = true
             }
         }
     }

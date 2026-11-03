@@ -8,6 +8,7 @@ import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.net.toUri
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.File
@@ -18,22 +19,32 @@ import java.security.MessageDigest
  * prüfen, nie von allein laden. Es geht, weil der versionCode monoton steigt
  * (VERSION_CODE_BASE + Anzahl Commits, app/build.gradle.kts).
  *
- * 1. version.json aus dem Release lesen
+ * 1. version-signiert.json aus dem Release lesen und ihre Signatur gegen die
+ *    Signierer der installierten App prüfen ([gepruefteBeschreibung])
  * 2. versionCode vergleichen — echt grösser, nie „ungleich“
- * 3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage prüfen
+ * 3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage und die
+ *    signierte Prüfsumme prüfen ([pruefsummePasst])
  * 4. Signatur mit der installierten App vergleichen und den versionCode IM APK
- *    gegen version.json ([fassungPasst]), erst dann anbieten
+ *    gegen die Beschreibung ([fassungPasst]), erst dann anbieten
  *
  * Schritt 4 ersetzt Androids Prüfung nicht, er kommt früher: Ein fremdes APK wird
  * gar nicht erst angeboten.
  */
 
-/** Die Release-Ablage — EIN Ort, aus dem beide Adressen entstehen. */
-const val UPDATE_RELEASE_BASIS =
-    "https://github.com/addict85/BrickInventory/releases/download/apk-neuste"
+/** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */
+const val UPDATE_RELEASE_WURZEL = "https://github.com/addict85/BrickInventory/releases/download"
 
-/** Die Beschreibung der neusten Fassung; geschrieben vom Android-Workflow. */
-const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version.json"
+/** Die Release-Ablage der neusten Fassung — EIN Ort, aus dem die Adressen entstehen. */
+const val UPDATE_RELEASE_BASIS = "$UPDATE_RELEASE_WURZEL/apk-neuste"
+
+/**
+ * Die signierte Beschreibung der neusten Fassung; geschrieben vom Signierjob. Die
+ * unsignierte version.json daneben bleibt nur für ältere installierte Fassungen.
+ */
+const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version-signiert.json"
+
+/** Ein Fassungsetikett des Workflows (android-v…); sein Anhang wird nie ersetzt. */
+private val FASSUNGS_ETIKETT = Regex("android-v[0-9A-Za-z._-]{1,40}")
 
 /**
  * Absolute Obergrenze für das APK: Die erwartete Grösse steht in version.json, und
@@ -70,6 +81,11 @@ data class UpdateBeschreibung(
      */
     @SerialName("commit") val commit: String = "",
     @SerialName("apkSize") val apkSize: Long = 0,
+    /**
+     * SHA-256 des APK. Trägt nur, weil die Beschreibung signiert ist
+     * ([gepruefteBeschreibung]); in einer unsignierten Datei fälschte man sie mit.
+     */
+    @SerialName("apkSha256") val apkSha256: String = "",
 )
 
 /**
@@ -79,8 +95,23 @@ data class UpdateBeschreibung(
  */
 fun istNeuer(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
 
-/** Zeigt die Adresse in unsere Release-Ablage? Geparst verglichen, siehe [liegtUnter]. */
-fun istErlaubteApkAdresse(url: String): Boolean = liegtUnter(url, UPDATE_RELEASE_BASIS)
+/**
+ * Zeigt die Adresse in unsere Release-Ablage — die neuste oder das Etikett einer
+ * Fassung? Geparst verglichen, siehe [liegtUnter].
+ */
+fun istErlaubteApkAdresse(url: String): Boolean {
+    if (liegtUnter(url, UPDATE_RELEASE_BASIS)) return true
+    val etikett = url.toHttpUrlOrNull()?.pathSegments?.dropLast(1)?.lastOrNull() ?: return false
+    return FASSUNGS_ETIKETT.matches(etikett) && liegtUnter(url, "$UPDATE_RELEASE_WURZEL/$etikett")
+}
+
+/** Die Signierzertifikate der installierten App (DER); gegen sie wird die Beschreibung geprüft. */
+fun eigeneZertifikate(ctx: Context): List<ByteArray> {
+    val info = runCatching {
+        ctx.packageManager.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+    }.getOrNull() ?: return emptyList()
+    return info.signingInfo?.apkContentsSigners.orEmpty().map { it.toByteArray() }
+}
 
 /**
  * Die Signatur eines APK als Fingerabdruck. `null`, wenn nicht lesbar oder nicht

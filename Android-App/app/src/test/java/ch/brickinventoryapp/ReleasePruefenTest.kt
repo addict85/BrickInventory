@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit
  *   C  das Muster auf `SHA256 digest` statt `SHA-256 digest` → rot „das hinterlegte
  *      Zertifikat wird angenommen“ (Rückgabe 2 statt 0)
  *   D  tools/release-zertifikat.sha256 ohne Wert → rot „die hinterlegte Datei nennt …“
+ *   E  (sec8 N4) in beschreibung() `apkSha256` aus `soll` gestrichen → rot „die
+ *      signierte Beschreibung muss genau dieses APK nennen“ (ein anderes APK ging durch)
  */
 class ReleasePruefenTest {
 
@@ -74,5 +76,28 @@ class ReleasePruefenTest {
         assertEquals(1, pruefe("fassung", version(200001444, "aaa"), "200001444", "bbb"))
         assertEquals(2, pruefe("fassung", datei("kaputt").path, "200001445", "bbb"))
         assertEquals(2, pruefe("fassung", version(200001444, "aaa"), "abc", "bbb"))
+    }
+
+    @Test
+    fun `die signierte Beschreibung muss genau dieses APK nennen`() {
+        val apk = datei("apk-inhalt")
+        val anderes = datei("anderes-apk")
+        val meta = datei("""{"elements":[{"versionCode":200001445,"versionName":"1.2.3"}]}""").path
+        val ablage = "https://github.com/addict85/BrickInventory/releases/download/android-v1.2.3"
+        // sha256("apk-inhalt"), Länge 10
+        val sha = java.security.MessageDigest.getInstance("SHA-256").digest("apk-inhalt".toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        fun daten(code: Long = 200001445, url: String = "$ablage/BrickInventory-200001445.apk", pruefsumme: String = sha) = datei(
+            """{"versionCode":$code,"versionName":"1.2.3","commit":"bbb","apkUrl":"$url","apkSize":10,"apkSha256":"$pruefsumme"}"""
+        ).path
+        assertEquals(0, pruefe("beschreibung", daten(), apk.path, meta, "bbb", ablage))
+        assertEquals("Ein anderes APK", 1, pruefe("beschreibung", daten(), anderes.path, meta, "bbb", ablage))
+        assertEquals("Eine falsche Prüfsumme", 1, pruefe("beschreibung", daten(pruefsumme = "0".repeat(64)), apk.path, meta, "bbb", ablage))
+        assertEquals("Der veränderliche Anhang statt des Fassungsanhangs", 1,
+            pruefe("beschreibung", daten(url = "https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk"),
+                apk.path, meta, "bbb", ablage))
+        assertEquals("Eine andere Fassung", 1, pruefe("beschreibung", daten(code = 200001444), apk.path, meta, "bbb", ablage))
+        assertEquals("Ein anderer Commit", 1, pruefe("beschreibung", daten(), apk.path, meta, "ccc", ablage))
+        assertEquals(2, pruefe("beschreibung", datei("kaputt").path, apk.path, meta, "bbb", ablage))
     }
 }

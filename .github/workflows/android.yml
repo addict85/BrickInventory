@@ -80,6 +80,12 @@ jobs:
     permissions:
       contents: read
 
+    # Die Prüfsummen des unsignierten Ergebnisses, gemessen gleich nach dem Bau:
+    # Der Signierjob signiert nur genau das (sec8 H10).
+    outputs:
+      sha256_apk: ${{ steps.pruefsumme.outputs.pruefsumme_apk }}
+      sha256_aab: ${{ steps.pruefsumme.outputs.pruefsumme_aab }}
+
     steps:
       # Volle Historie samt Tags: versionCode zählt die Commits, versionName
       # kommt aus `git describe` (app/build.gradle.kts). Flach geklont wäre
@@ -291,6 +297,18 @@ jobs:
           # da sind. Das ausgelieferte APK wird deshalb immer frisch gerechnet.
           ./gradlew --no-daemon --no-build-cache assembleRelease bundleRelease 2>&1 \
             | tee "$RUNNER_TEMP/bau.log"
+
+      # Gleich nach dem Bau, bevor Lint und weitere Gradle-Läufe Projektcode und
+      # Plugins ausführen: Was danach am APK ändert, fällt im Signierjob auf.
+      - name: Prüfsummen des unsignierten Ergebnisses
+        id: pruefsumme
+        run: |
+          set -euo pipefail
+          APK=$(sha256sum app/build/outputs/apk/release/app-release-unsigned.apk | cut -d' ' -f1)
+          AAB=$(sha256sum app/build/outputs/bundle/release/app-release.aab | cut -d' ' -f1)
+          echo "pruefsumme_apk=$APK" >> "$GITHUB_OUTPUT"
+          echo "pruefsumme_aab=$AAB" >> "$GITHUB_OUTPUT"
+          echo "unsigniert: APK $APK, AAB $AAB"
 
       # ── Warum ZUSÄTZLICH ein Bundle (.aab) ──────────────────────────────────
       #
@@ -532,6 +550,54 @@ jobs:
           name: apk-unsigniert
           path: ${{ runner.temp }}/eingang
 
+      # Signiert wird nur, was der Baujob gleich nach dem Bau gemessen hat (sec8
+      # H10): nicht, was spätere Schritte dort oder die Ablage daraus machten.
+      - name: Artefakt gegen die Prüfsummen des Baujobs
+        env:
+          APK_SOLL: ${{ needs.build.outputs.sha256_apk }}
+          AAB_SOLL: ${{ needs.build.outputs.sha256_aab }}
+        run: |
+          set -euo pipefail
+          EIN="$RUNNER_TEMP/eingang"
+          if ! printf '%s' "$APK_SOLL" | grep -Eq '^[0-9a-f]{64}$' || ! printf '%s' "$AAB_SOLL" | grep -Eq '^[0-9a-f]{64}$'; then
+            echo "::error::Der Baujob hat keine Prüfsummen gemeldet. Nichts wird signiert."
+            exit 1
+          fi
+          printf '%s  %s\n' "$APK_SOLL" "$EIN/apk/release/app-release-unsigned.apk" | sha256sum -c -
+          printf '%s  %s\n' "$AAB_SOLL" "$EIN/bundle/release/app-release.aab" | sha256sum -c -
+
+      # Die Schutzregeln der Environment stehen nicht im Repository; ohne sie
+      # genügte ein Etikett, um zu signieren. Darum hier erzwungen statt nur
+      # beschrieben (README, Release signieren): mindestens ein Pflichtprüfer und
+      # als einzige Bereitstellungsregel das Etikett android-v*.
+      - name: Environment release ist geschützt
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! U=$(gh api "repos/$GITHUB_REPOSITORY/environments/release"); then
+            echo "::error::Die Schutzregeln der Environment release liessen sich nicht lesen (actions: read). Nichts wird signiert."
+            exit 1
+          fi
+          PRUEFER=$(printf '%s' "$U" | jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length')
+          EIGENE=$(printf '%s' "$U" | jq -r '.deployment_branch_policy.custom_branch_policies // false')
+          if [ "$PRUEFER" -lt 1 ]; then
+            echo "::error::Die Environment release hat keinen Pflichtprüfer (Settings → Environments → release → Required reviewers). Nichts wird signiert."
+            exit 1
+          fi
+          if [ "$EIGENE" != true ]; then
+            echo "::error::Die Environment release lässt jeden Zweig zu (Deployment branches and tags: Selected, nur das Etikett android-v*). Nichts wird signiert."
+            exit 1
+          fi
+          REGELN=$(gh api "repos/$GITHUB_REPOSITORY/environments/release/deployment-branch-policies" \
+            --jq '[.branch_policies[] | "\(.type // "branch"):\(.name)"] | sort | join(",")')
+          if [ "$REGELN" != "tag:android-v*" ]; then
+            echo "::error::Die Environment release erlaubt „$REGELN“ statt nur des Etiketts android-v*. Nichts wird signiert."
+            exit 1
+          fi
+          echo "Environment release: $PRUEFER Pflichtprüfer, nur Etiketten android-v*."
+
       # Die Secrets nennt nur dieser Schritt, und er läuft nur dort, wo der Job in
       # der Environment `release` steht. Gleichnamige Repository-Secrets fände
       # GitHub sonst ebenfalls — sie gehören gelöscht (README, Release signieren).
@@ -595,14 +661,42 @@ jobs:
           # Ausrichten VOR dem Signieren; -P 16 hält native Bibliotheken auf
           # 16-KB-Seiten (geprüft im Job `apk-pruefen`).
           "$WERKZEUGE/zipalign" -f -P 16 4 "$EIN/apk/release/app-release-unsigned.apk" "$RUNNER_TEMP/ausgerichtet.apk"
+          # v1 (JAR) braucht kein Gerät ab minSdk 30; v3 trägt eine spätere Schlüsselrotation.
           "$WERKZEUGE/apksigner" sign --ks "$KS" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" \
-            --key-pass env:KEY_PASS --out "$AUS/apk/release/BrickInventory.apk" "$RUNNER_TEMP/ausgerichtet.apk"
+            --key-pass env:KEY_PASS --v1-signing-enabled false --v2-signing-enabled true --v3-signing-enabled true \
+            --out "$AUS/apk/release/BrickInventory.apk" "$RUNNER_TEMP/ausgerichtet.apk"
           "$WERKZEUGE/apksigner" verify --print-certs "$AUS/apk/release/BrickInventory.apk" > "$RUNNER_TEMP/zertifikat.txt"
           head -3 "$RUNNER_TEMP/zertifikat.txt"
           install -m 644 "$EIN/apk/release/output-metadata.json" "$AUS/apk/release/output-metadata.json"
           install -m 644 "$EIN/bundle/release/app-release.aab" "$RUNNER_TEMP/bundle.aab"
           jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$RUNNER_TEMP/bundle.aab" "$KEY_ALIAS" >/dev/null
           jarsigner -verify "$RUNNER_TEMP/bundle.aab" >/dev/null
+
+          # ── Signierte Fassungsbeschreibung (sec8 N4) ──────────────────────────
+          #
+          # Mit demselben Schlüssel wie das APK: Die App prüft sie gegen die
+          # Signierer der installierten Fassung, ohne zweiten Anker. Schreibrecht
+          # am Repository allein reicht so nicht, um ein Update zu unterdrücken,
+          # auf ein anderes APK zu zeigen oder eine ältere Fassung anzubieten. Die
+          # Adresse zeigt auf den unveränderlichen Anhang dieser Fassung.
+          META="$EIN/apk/release/output-metadata.json"
+          APK_AUS="$AUS/apk/release/BrickInventory.apk"
+          V_CODE=$(jq -r '.elements[0].versionCode' "$META")
+          jq -n --argjson code "$V_CODE" --arg name "$(jq -r '.elements[0].versionName' "$META")" \
+                --arg commit "$GITHUB_SHA" \
+                --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/BrickInventory-${V_CODE}.apk" \
+                --argjson size "$(stat -c%s "$APK_AUS")" --arg pruefsumme "$(sha256sum "$APK_AUS" | cut -d' ' -f1)" \
+                '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size, apkSha256:$pruefsumme}' \
+                > "$AUS/version-daten.json"
+          keytool -importkeystore -noprompt -srckeystore "$KS" -srcstorepass:env KS_PASS -srcalias "$KEY_ALIAS" \
+            -srckeypass:env KEY_PASS -destkeystore "$S/schluessel.p12" -deststoretype PKCS12 \
+            -deststorepass:env KS_PASS -destkeypass:env KS_PASS >/dev/null
+          openssl pkcs12 -in "$S/schluessel.p12" -nocerts -nodes -passin env:KS_PASS -out "$S/schluessel.pem"
+          openssl dgst -sha256 -sign "$S/schluessel.pem" -out "$S/version.sig" "$AUS/version-daten.json"
+          keytool -exportcert -rfc -keystore "$KS" -storepass:env KS_PASS -alias "$KEY_ALIAS" > "$AUS/signierzertifikat.pem"
+          jq -n --arg daten "$(base64 -w0 "$AUS/version-daten.json")" --arg signatur "$(base64 -w0 "$S/version.sig")" \
+                '{daten:$daten, signatur:$signatur}' > "$AUS/version-signiert.json"
+
           if [ "$ECHT" = "true" ]; then
             install -m 644 "$RUNNER_TEMP/bundle.aab" "$AUS/bundle/release/app-release.aab"
             echo "signiert mit dem Release-Schlüssel"
@@ -691,6 +785,27 @@ jobs:
             echo "::error::Das Probe-signierte APK muss am Release-Zertifikat scheitern, die Prüfung gab $ERGEBNIS zurück."
             exit 1
           fi
+
+      # Die signierte Beschreibung (sec8 N4): vom selben Zertifikat wie das APK
+      # signiert, und sie beschreibt genau dieses APK. Sonst böte die App nichts an
+      # oder lehnte das geladene APK ab — beides fiele erst auf den Geräten auf.
+      - name: Signierte Beschreibung prüfen
+        run: |
+          set -euo pipefail
+          A=app/build/outputs
+          T="$RUNNER_TEMP/beschreibung"; mkdir -p "$T"
+          ZERT=$(openssl x509 -in "$A/signierzertifikat.pem" -outform DER | sha256sum | cut -d' ' -f1)
+          if ! grep -qi "certificate SHA-256 digest: $ZERT" "$RUNNER_TEMP/zertifikat.txt"; then
+            echo "::error::Die Beschreibung ist mit einem anderen Zertifikat signiert als das APK."
+            exit 1
+          fi
+          openssl x509 -in "$A/signierzertifikat.pem" -pubkey -noout > "$T/schluessel.pem"
+          jq -r .daten "$A/version-signiert.json" | base64 -d > "$T/daten.json"
+          jq -r .signatur "$A/version-signiert.json" | base64 -d > "$T/daten.sig"
+          openssl dgst -sha256 -verify "$T/schluessel.pem" -signature "$T/daten.sig" "$T/daten.json"
+          python3 tools/release-pruefen.py beschreibung "$T/daten.json" "$A/apk/release/BrickInventory.apk" \
+            "$A/apk/release/output-metadata.json" "$GITHUB_SHA" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME"
 
       # Ein Etikett auf einem älteren Commit von main brächte einen älteren Stand
       # als „neustes APK“ zu jeder Neuinstallation. versionCode zählt die Commits.
@@ -866,11 +981,39 @@ jobs:
           else
             gh release create "$ETIKETT" --title "BrickInventory — neustes APK" --notes "$TEXT"
           fi
-          # --clobber: Der Anhang heisst immer gleich; ohne das lehnt gh den
-          # zweiten Lauf ab, weil die Datei schon da haengt.
-          gh release upload "$ETIKETT" "$APK" --clobber
+          # ── Unveränderlich je Fassung (sec8 N4) ───────────────────────────
+          #
+          # Die signierte Beschreibung zeigt auf BrickInventory-<versionCode>.apk
+          # im Release dieses Etiketts. Der Anhang wird nie ersetzt; ein erneuter
+          # Lauf findet ihn und vergleicht nur. Im Repository zusätzlich
+          # „Immutable releases“ einschalten (README).
+          FASSUNG="BrickInventory-${V_CODE}.apk"
+          cp "$APK" "$RUNNER_TEMP/$FASSUNG"
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --latest=false \
+              --title "BrickInventory $V_NAME" --notes "Fassung $V_CODE aus $GITHUB_SHA. $LINK zeigt immer auf die neuste."
+          fi
+          if gh release view "$GITHUB_REF_NAME" --json assets --jq '.assets[].name' | grep -qxF "$FASSUNG"; then
+            gh release download "$GITHUB_REF_NAME" -p "$FASSUNG" -O "$RUNNER_TEMP/vorhanden.apk"
+            if ! cmp -s "$RUNNER_TEMP/vorhanden.apk" "$APK"; then
+              echo "::error::$GITHUB_REF_NAME trägt schon ein anderes $FASSUNG; ein Fassungsanhang wird nie ersetzt."
+              exit 1
+            fi
+          else
+            gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP/$FASSUNG"
+          fi
 
-          # ── version.json: damit die App das Update FINDEN kann ─────────────
+          # Der stabile Link für Neuinstallationen: Hier darf ersetzt werden, die App
+          # lädt ihre Updates vom Fassungsanhang oben.
+          gh release upload "$ETIKETT" "$APK" --clobber
+          # Signiert im Job signieren; ersetzt wird nur der Zeiger auf die neuste.
+          gh release upload "$ETIKETT" app/build/outputs/version-signiert.json --clobber
+
+          # ── version.json: für Fassungen vor sec8 N4 ────────────────────────
+          #
+          # Neue Fassungen lesen nur version-signiert.json (oben). Diese Datei
+          # bleibt, damit schon installierte ältere Fassungen das Update noch
+          # finden; ihr APK prüfen sie weiterhin gegen die eigene Signatur.
           #
           # Der Release-Text oben nennt Zweig und Commit, aber als Fliesstext.
           # Eine App, die wissen will „gibt es etwas Neueres als mich?", braucht
