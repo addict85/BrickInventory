@@ -58,7 +58,7 @@
     <string name="setup_qr_titel">Use this server?</string>
     <string name="setup_qr_ziel">The QR code points to this server:</string>
     <string name="setup_qr_hinweis">The app will only send your login there. Continue only if this is your server.</string>
-    <string name="setup_qr_international">The server name contains characters from other alphabets and is shown in its technical form (xn--…). Such letters can look exactly like familiar ones: compare the name character by character with your server.</string>
+    <string name="setup_qr_international" tools:ignore="TypographyDashes">The server name contains characters from other alphabets and is shown in its technical form (xn--…). Such letters can look exactly like familiar ones: compare the name character by character with your server.</string>
     <string name="setup_qr_anderer_server">This code leads to a different server than the current one (%1$s). If you continue, you will be logged out there and everything you enter from now on goes to the new server.</string>
     <string name="setup_url_benutzerangabe">An address with a user name (…@…) is not accepted. Enter only the server address, e.g. https://brick.fritz.box</string>
     <string name="setup_url_zusatz">The address must not contain spaces, line breaks, \\, ? or #. Enter only the server address, e.g. https://brick.fritz.box</string>
