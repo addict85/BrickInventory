@@ -54,6 +54,11 @@ export function alleKonten(): Promise<KontoInListe[]> {
        FROM users u ORDER BY u.id`);
 }
 
+export async function aktiveVerwalter(): Promise<number[]> {
+  return (await db.all<{ id: number }>('SELECT id FROM users WHERE is_admin AND is_active AND email IS NOT NULL ORDER BY id'))
+    .map(z => z.id);
+}
+
 export async function fuegeKontoEin(username: string, hash: string, verwalter: boolean): Promise<number | null> {
   const neu = await db.get('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
     [username, hash, verwalter]);

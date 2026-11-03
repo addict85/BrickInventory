@@ -256,7 +256,7 @@ test('Passkeys', { concurrency: 1 }, async (t) => {
     const c = (await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true, code: annaCodes[0] })).cookie;
     const ohne = await ruf('/passkey/registrieren/optionen', { password: PASS }, c);
     assert.equal(ohne.status, 400, 'Passwort allein prägt einen Passkey am zweiten Faktor vorbei');
-    assert.equal(ohne.body.code, 'zweiter_faktor_falsch');
+    assert.equal(ohne.body.code, 'zweiter_faktor_noetig');
     const mit = await ruf('/passkey/registrieren/optionen', { password: PASS, code: annaCodes[1] }, c);
     assert.equal(mit.status, 200, JSON.stringify(mit.body));
     const r = await ruf('/passkey/registrieren', { antwort: authenticator().registrieren(mit.body.optionen.challenge) }, c);

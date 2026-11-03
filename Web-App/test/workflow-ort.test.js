@@ -360,4 +360,24 @@ test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy'
   const dependabot = fs.readFileSync(path.join(WURZEL, '.github', 'dependabot.yml'), 'utf8');
   assert.match(dependabot, /package-ecosystem: docker-compose\n\s+directory: \/Web-App\n/,
     'Die Images in compose.yaml stehen ohne Update-Pfad fest');
+  // Gegenprobe (03.11.2026 gemessen): wieder exit-code '0' → rot „nicht scharf".
+  assert.match(trivy, /exit-code: '1'/, 'Trivy für die Betriebs-Images ist nicht scharf');
+  const liste = trivy.match(/trivyignores: (\S+)/)?.[1];
+  assert.ok(liste && fs.existsSync(path.join(WURZEL, liste)), `Ausnahmeliste fehlt: ${liste}`);
+});
+
+// Gegenprobe (03.11.2026 gemessen): persist-credentials im Checkout von
+// web-ci.yml gestrichen → rot, die Liste nennt „web-ci.yml:test".
+test('Checkouts behalten keine Zugangsdaten, ausser wo der Job schreibt', () => {
+  const ohne = [];
+  for (const datei of fs.readdirSync(ECHTER_ORT).filter(n => n.endsWith('.yml'))) {
+    const z = fs.readFileSync(path.join(ECHTER_ORT, datei), 'utf8').split('\n');
+    let job = '';
+    z.forEach((l, i) => {
+      job = l.match(/^ {2}([\w-]+):\s*$/)?.[1] ?? job;
+      if (/uses: actions\/checkout@/.test(l) && !/persist-credentials: false/.test(z.slice(i + 1, i + 6).join('\n')))
+        ohne.push(`${datei}:${job}`);
+    });
+  }
+  assert.deepEqual(ohne.sort(), ['android.yml:bildschirmfotos-einchecken', 'android.yml:pruefsummen-vorschlagen']);
 });

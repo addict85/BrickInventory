@@ -12,6 +12,8 @@ export interface Route {
   art?: 'pdf' | 'datei' | 'strom' | 'csv' | 'zip';
   /** Die Anfrage ist ein Formular mit Datei (multipart). */
   formular?: true;
+  /** Felder von Passwort und Code der erneuten Bestätigung (bestaetigeMitFaktor). */
+  bestaetigung?: { passwort: string; code: string };
 }
 
 export const ganz = z.number().int();
@@ -33,6 +35,15 @@ export const Fehler = z.looseObject({
 });
 
 export const Erfolg = z.looseObject({ success: z.literal(true) });
+
+const faktorFelder = { code: z.union([z.string().max(64), z.number()]).nullable().optional(),
+  passkey: z.record(z.string(), z.unknown()).nullable().optional() };
+/** Marke und Eingabe aus einer Hand: Der Wächtertest schickt genau diese Felder. */
+export function bestaetigt(felder: Record<string, z.ZodType> = {}, passwort = 'password', code = 'code') {
+  return { bestaetigung: { passwort, code },
+    eingabe: z.looseObject({ ...felder, [passwort]: z.string().max(1024).optional(),
+      [code]: faktorFelder.code, passkey: faktorFelder.passkey }) };
+}
 
 /** Ein Konto in Besitzerlisten. */
 export const KontoName = z.looseObject({ id: ganz, username: z.string() });

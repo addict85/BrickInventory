@@ -42,6 +42,8 @@ jobs:
             bau: manual
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: JDK einrichten
         if: matrix.bau == 'manual'
@@ -86,6 +88,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       # Lockfiles im Baum, praktisch Web-App/package-lock.json: Die App hat keine
       # gradle.lockfile (siehe Job android-abhaengigkeiten). Nur behebbare
@@ -117,9 +121,9 @@ jobs:
 
   # ── Fremde Images aus compose.yaml ────────────────────────────────────────
   # Die Liste kommt aus compose.yaml, damit Dependabot (docker-compose) die
-  # einzige Stelle pflegt. Vorerst ein Bericht wie bei den Android-Abhängigkeiten:
-  # Eine Lücke in Caddy, Postgres oder pgweb beheben wir mit dem nächsten Digest,
-  # nicht im eigenen Code.
+  # einzige Stelle pflegt. Eine behebbare Lücke ab high macht den Lauf rot:
+  # Behoben wird sie mit dem nächsten Digest. Bis dahin steht sie mit Grund und
+  # Ablaufdatum in .github/trivy-betrieb.ignore — danach ist sie wieder rot.
   compose-images:
     name: Images aus compose.yaml
     runs-on: ubuntu-latest
@@ -148,7 +152,7 @@ jobs:
           done < images.txt
 
   trivy-compose:
-    name: Trivy (${{ matrix.image }}, nur Bericht)
+    name: Trivy (${{ matrix.image }})
     needs: compose-images
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -157,6 +161,10 @@ jobs:
       matrix:
         image: ${{ fromJSON(needs.compose-images.outputs.images) }}
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          sparse-checkout: .github
       - name: Bekannte Lücken
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -167,7 +175,8 @@ jobs:
           ignore-unfixed: true
           format: table
           output: trivy-image.txt
-          exit-code: '0'
+          trivyignores: .github/trivy-betrieb.ignore
+          exit-code: '1'
       - name: Bericht
         if: always()
         env:
@@ -202,6 +211,8 @@ jobs:
           --health-retries 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:

@@ -123,6 +123,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       # pg_dump/psql für test/backup-restore-db.test.js. Der Postgres-DIENST
       # oben ist ein Container — die Klienten laufen auf dem Runner.
@@ -182,6 +184,10 @@ jobs:
             echo "::error::pg_dump ist nicht Version ${haupt} — backup-restore-db kann nicht laufen"
             exit 1
           }
+
+      # age für test/backup-verschluesselt.test.js (scripts/backup.sh mit BACKUP_AGE_EMPFAENGER).
+      - name: age bereitstellen
+        run: command -v age || { sudo apt-get update -qq && sudo apt-get install -y -qq age; }
 
       # v4 und v5 nachgesehen statt geraten (dieselbe Methode wie in android.yml):
       #     actions/setup-node@v4 -> runs.using: node20   (warnt)

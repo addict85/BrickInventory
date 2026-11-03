@@ -9,6 +9,12 @@
  *      (und die übrigen bösen Eingaben)
  *   B  im merge-Job wieder `${{ inputs.tag }}` statt der Ausgabe → rot:
  *      „inputs.tag steht nur in env"
+ * Der Handstart baut nur auf main und nur mit grünem CI-Lauf auf dem Commit
+ * (`gh` ist hier ein Ersatz, der die Zahl grüner Läufe nennt).
+ * Gegenproben (03.11.2026 gemessen, je einzeln):
+ *   C  die Abfrage der grünen CI gestrichen → rot: „ohne grüne CI kein Image"
+ *   D  die Prüfung auf refs/heads/main gestrichen → rot: „Handstart auf einem
+ *      Nebenzweig"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,11 +39,14 @@ function pruefSkript() {
   return rumpf.join('\n');
 }
 
-function lauf(tag) {
+function lauf(tag, { ref = 'refs/heads/main', gruen = '1' } = {}) {
   const aus = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'wf-tag-')), 'ausgabe');
   fs.writeFileSync(aus, '');
+  const gh = path.join(path.dirname(aus), 'gh');
+  fs.writeFileSync(gh, gruen === null ? '#!/bin/sh\nexit 1\n' : `#!/bin/sh\necho ${gruen}\n`, { mode: 0o755 });
   const r = spawnSync('bash', ['-e', '-c', pruefSkript()], { encoding: 'utf8', cwd: __dirname,
-    env: { ...process.env, GITHUB_OUTPUT: aus, EREIGNIS: 'workflow_dispatch', ERGEBNIS: '', TAG_EINGABE: tag } });
+    env: { ...process.env, PATH: `${path.dirname(aus)}:${process.env.PATH}`, GITHUB_OUTPUT: aus,
+      EREIGNIS: 'workflow_dispatch', ERGEBNIS: '', TAG_EINGABE: tag, REF: ref, REPO: 'probe/probe' } });
   const ausgabe = fs.readFileSync(aus, 'utf8');
   fs.rmSync(path.dirname(aus), { recursive: true, force: true });
   return { status: r.status, ausgabe };
@@ -68,6 +77,20 @@ for (const [fall, tag] of Object.entries(BOESE)) {
     assert.doesNotMatch(r.ausgabe, /^tag=/m);
   });
 }
+
+test('ohne grüne CI kein Image', () => {
+  for (const [fall, gruen] of [['keiner grün', '0'], ['Abfrage gescheitert', null], ['Unsinn', 'x']]) {
+    const r = lauf('', { gruen });
+    assert.notEqual(r.status, 0, `ohne grüne CI kein Image: ${fall}`);
+    assert.doesNotMatch(r.ausgabe, /^bauen=true$/m, fall);
+  }
+});
+
+test('Handstart auf einem Nebenzweig', () => {
+  const r = lauf('', { ref: 'refs/heads/probe' });
+  assert.notEqual(r.status, 0, 'Handstart auf einem Nebenzweig');
+  assert.doesNotMatch(r.ausgabe, /^bauen=true$/m);
+});
 
 test('inputs.tag steht nur in env', () => {
   const ohneKommentare = YML.split('\n').filter(z => !z.trimStart().startsWith('#')).join('\n');

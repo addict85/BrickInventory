@@ -1,0 +1,12 @@
+# Bewusst hingenommene Lücken in den Betriebs-Images aus Web-App/compose.yaml
+# (Caddy, PostgreSQL, pgweb). Gelesen vom Job trivy-compose in
+# .github/workflows/sicherheit.yml; jede Lücke, die hier nicht steht, macht
+# den Lauf rot.
+#
+# Eine Zeile je Lücke, immer mit Ablaufdatum und Grund darüber:
+#
+#   # caddy: betrifft nur den ACME-Client, wir nutzen die interne CA; neuer Digest folgt
+#   CVE-2026-12345 exp:2026-12-31
+#
+# Nach dem Datum gilt die Ausnahme nicht mehr und der Lauf wird wieder rot.
+# Eine Ausnahme ersetzt nie den neuen Digest, sie überbrückt nur die Zeit bis dahin.
