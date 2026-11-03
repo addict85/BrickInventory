@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -199,15 +200,20 @@ fun SetupScreen(
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))
+            // Ein Hinweis mit Anleitung, kein Fehler: in der Infofarbe (primaryContainer)
+            // mit Symbol. Im Fehlerrot las sich der lange Text wie eine Störung.
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
             ) {
-                Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onErrorContainer)
-                    Text(stringResource(R.string.setup_altbestand_text, currentUrl),
-                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onErrorContainer)
+                Row(Modifier.padding(Abstaende.gross), horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+                    Icon(Icons.Default.Info, null)
+                    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                        Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.setup_altbestand_text, currentUrl),
+                            style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
             }
         }

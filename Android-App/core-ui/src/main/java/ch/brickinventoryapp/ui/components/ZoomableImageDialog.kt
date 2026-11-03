@@ -4,6 +4,7 @@ import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -33,7 +34,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ch.brickinventoryapp.ressourcen.R
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -90,12 +90,14 @@ fun ZoomableImageDialog(
                     }
                 }
         ) {
-            AsyncImage(
+            ProduktBild(
                 model = imageUrl,
                 imageLoader = imageLoader,
                 contentDescription = contentDescription,
+                ersatzGroesse = 96.dp,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .aspectRatio(1f)
                     .align(Alignment.Center)
                     .padding(Abstaende.sehrGross)
                     .graphicsLayer(

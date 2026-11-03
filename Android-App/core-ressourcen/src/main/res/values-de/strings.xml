@@ -22,7 +22,7 @@
     <string name="settings_language_de">Deutsch</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
-    <string name="login_title">Willkommen zurück</string>
+    <string name="login_title">Bei deinem Server anmelden</string>
     <string name="login_username">Benutzername</string>
     <string name="login_password">Passwort</string>
     <string name="login_button">Anmelden</string>
@@ -119,7 +119,9 @@
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_delete_title">Set löschen?</string>
-    <string name="gallery_delete_text">%1$s und alle Teile werden entfernt.</string>
+    <string name="gallery_delete_text">%1$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</string>
+    <string name="gallery_set_deleted_undo">%1$s gelöscht</string>
+    <string name="common_undo">Rückgängig</string>
     <string name="gallery_pieces_suffix"> Teile</string>
     <string name="gallery_scan_barcode">Barcode scannen</string>
     <string name="offline_stand">Offline – Stand von %1$s</string>
@@ -137,9 +139,9 @@
     <string name="gallery_add">Hinzufügen</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
-    <string name="minifigs_stat_types">Typen</string>
+    <string name="minifigs_stat_types">Figurenarten</string>
     <string name="minifigs_stat_total">Figuren gesamt</string>
-    <string name="minifigs_stat_manual">Manuell</string>
+    <string name="minifigs_stat_manual">selbst erfasst</string>
     <string name="minifigs_search_placeholder">Suchen…</string>
     <string name="minifigs_manual_section">Manuell erfasste Minifiguren</string>
     <string name="minifigs_sets_section">Aus Sets</string>
@@ -210,12 +212,14 @@
     <string name="detail_alert_saved">Gespeichert: Preis %1$s %2$s · %3$s</string>
     <string name="detail_price_none_yet">noch kein Preis</string>
     <string name="detail_purchase_none">nicht erfasst</string>
+    <string name="detail_storage_none">Kein Lagerort</string>
     <string name="detail_storage_ph">z. B. Kiste 3</string>
-    <string name="filter_condition_all">Alle Zustände</string>
+    <string name="filter_condition_all">Alle</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Zurücksetzen</string>
+    <string name="sort_menu_cd">Sortieren: %1$s</string>
     <string name="filter_section_sort">Sortierung</string>
     <string name="filter_section_spare">Ersatzteile</string>
     <string name="filter_section_color_category">Farbe und Kategorie</string>
@@ -276,7 +280,7 @@
     <string name="finance_market_avg">Marktwert der Sammlung</string>
 
     <!-- ══════════════ Parts screen ══════════════ -->
-    <string name="parts_stat_types">Typen</string>
+    <string name="parts_stat_types">Teilearten</string>
     <string name="parts_stat_colors">Farben</string>
     <string name="parts_stat_total">Stück gesamt</string>
     <string name="parts_manual_section">Manuell erfasste Teile</string>
@@ -866,7 +870,7 @@
     </plurals>
     <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
     <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App merkt es sich für diese Adresse und nimmt danach nur noch dieses an. Nur fortfahren, wenn du den Code eben selbst in deiner Webapp erzeugt hast; dort steht unter Einstellungen → Server-Zertifikat derselbe Anfang.</string>
-    <string name="setup_altbestand_text">Gespeichert ist %1$s – eine unverschlüsselte Adresse. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.\n\nSo geht es weiter:\n1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und hier oben scannen.\n2. Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.\n\nDanach meldest du dich einmal neu an.</string>
+    <string name="setup_altbestand_text">Gespeichert ist %1$s – eine unverschlüsselte Adresse. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.\n\nSo geht es weiter:\n1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und mit dem Knopf darunter scannen.\n2. Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.\n\nDanach meldest du dich einmal neu an.</string>
     <string name="setup_altbestand_titel">Nur noch verschlüsselte Verbindungen</string>
     <string name="setup_qr_klartext_abgelehnt">Dieser QR-Code nennt eine unverschlüsselte Adresse (http). Die App verbindet sich nur über https: Den Server auf https umstellen (README, „HTTPS mit eigener CA“) und den Code danach neu erzeugen.</string>
     <string name="setup_url_unlesbar">Diese Adresse lässt sich nicht lesen. Beispiel: https://brick.fritz.box</string>
@@ -902,6 +906,9 @@
     <string name="common_no_results_hint">Suche oder Filter lockern.</string>
     <string name="cd_set_delete">%1$s löschen</string>
     <string name="settings_hell_fest">Dieses Design ist immer dunkel; Hell und Dunkel wirken hier nicht.</string>
+    <string name="vouchers_cd_menu">Aktionen für Gutschein %1$s</string>
+    <string name="vouchers_menu_balance">Guthaben bei LEGO abfragen</string>
+    <string name="vouchers_menu_pdf">PDF öffnen</string>
     <string name="vouchers_cd_delete">Gutschein %1$s löschen</string>
     <string name="vouchers_cd_edit">Gutschein %1$s bearbeiten</string>
     <string name="vouchers_cd_pdf">PDF von Gutschein %1$s öffnen</string>
@@ -915,7 +922,7 @@
     <string name="chart_change_year">%1$s dieses Jahr</string>
     <string name="chart_change_month">%1$s diesen Monat</string>
     <string name="chart_change_week">%1$s diese Woche</string>
-    <string name="finance_range_label">Wert der Sets heute, vom tiefsten bis zum höchsten Marktpreis</string>
+    <string name="finance_range_label">Spanne heute: alle Sets zum Tiefst- bzw. Höchstpreis</string>
     <string name="wanted_add_first">Set merken</string>
     <string name="wanted_empty_hint">Merke dir Sets, die du noch kaufen willst. Die App zeigt ihren Marktpreis und meldet sich auf Wunsch, wenn er sich ändert.</string>
     <string name="fehler_anmeldung_text">Deine Sitzung ist abgelaufen.</string>
@@ -971,4 +978,8 @@
     <string name="hintergrund_wiederholt_ok">Auftrag wird wiederholt</string>
     <string name="hintergrund_gestartet">%1$s startet</string>
     <string name="hintergrund_nichts_gestartet">%1$s: nichts zu starten</string>
+    <plurals name="gallery_delete_text_exemplare">
+        <item quantity="one">%1$d Exemplar von %2$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</item>
+        <item quantity="other">Alle %1$d Exemplare von %2$s und ihre Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</item>
+    </plurals>
 </resources>

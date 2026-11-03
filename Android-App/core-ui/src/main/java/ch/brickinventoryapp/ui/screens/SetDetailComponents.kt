@@ -51,6 +51,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -62,7 +63,6 @@ import ch.brickinventoryapp.ui.theme.LocalChartColors
 import ch.brickinventoryapp.ui.theme.BrickStudCap
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.ui.theme.SlateBlue
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.fmtProzent
@@ -72,31 +72,24 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 // Merkposten-, Teile- und Finanzansicht zeigen sie gleich, darum in core-ui.
 // ── Shared composables ─────────────────────────────────────────────────────────
 
+/**
+ * Eine Angabe in der Kennzahlen-Fläche einer Detailseite: Bezeichnung, dann der Wert
+ * fett („Jahr 2017“). Als Text in [KennzahlenReihe], nicht als erhabene Pille — die
+ * sah antippbar aus.
+ */
 @Composable
 fun StatChipV2(label: String, value: String) {
-    Surface(
-        shape = Formen.chip,
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 1.dp,
-        tonalElevation = 1.dp
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = Abstaende.klein)
-        ) {
-            Text(
-                value,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    Text(
+        androidx.compose.ui.text.buildAnnotatedString {
+            append(label)
+            append(' ')
+            pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface))
+            append(value)
+            pop()
+        },
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
@@ -348,39 +341,77 @@ fun PriceStatCell(label: String, value: String) {
     }
 }
 
+/** Wie die drei Wert-Kacheln stehen: nebeneinander, Marktwert über den zwei anderen oder untereinander. */
+enum class KachelAnordnung { DREI, EINS_UEBER_ZWEI, UNTEREINANDER }
+
+/**
+ * Die Anordnung, in der der breiteste Betrag ([bedarf], samt Innenabstand) in
+ * seiner Kachel einzeilig Platz hat. Gemessen statt an der Schriftgrösse
+ * entschieden: „CHF 1’712.40“ passte schon bei 100 % auf 360 dp nicht in ein Drittel.
+ */
+fun kachelAnordnung(breite: Dp, bedarf: Dp, abstand: Dp): KachelAnordnung = when {
+    bedarf <= (breite - abstand * 2) / 3 -> KachelAnordnung.DREI
+    bedarf <= (breite - abstand) / 2 -> KachelAnordnung.EINS_UEBER_ZWEI
+    else -> KachelAnordnung.UNTEREINANDER
+}
+
 /**
  * Marktwert, Kaufpreis und G&V oben auf jeder Detailseite, in jedem Design: Die Frage
- * „was ist es wert?“ beantwortet die Seite zuerst. Bei grosser Schrift untereinander,
- * damit kein Betrag zeichenweise umbricht.
+ * „was ist es wert?“ beantwortet die Seite zuerst. Ein Betrag bricht nie um; reicht
+ * die Breite nicht, rückt erst der Marktwert über die beiden anderen, dann alles
+ * untereinander. Kacheln einer Reihe sind gleich hoch.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = Modifier) {
     val farben = MaterialTheme.colorScheme
-    val brick = LocalIsBrickTheme.current
-    val dekor = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current
+    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
     val status = LocalStatusFarben.current
-    FlowRow(
-        modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        maxItemsInEachRow = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 1 else 3,
-    ) {
-        WertKachel(stringResource(R.string.detail_section_market), markt,
-            if (brick) Petrol else farben.primaryContainer, if (brick) Color.White else farben.onPrimaryContainer,
-            Modifier.weight(1f))
-        WertKachel(stringResource(R.string.detail_purchase_price), kauf,
-            if (brick) dekor.schiefer else farben.surfaceContainerHigh, if (brick) dekor.aufSchiefer else farben.onSurface,
-            Modifier.weight(1f))
-        // Die Statusfarben halten 4,5:1 nur auf surface — deshalb diese Fläche mit Rand.
-        WertKachel(stringResource(R.string.detail_pnl_tile), pnl?.let { fmtProzent(it) } ?: "—",
-            farben.surface,
+    val pnlText = pnl?.let { fmtProzent(it) } ?: "—"
+    val marktKachel: @Composable (Modifier) -> Unit = { m ->
+        WertKachel(stringResource(R.string.detail_section_market), markt, akzent.markt, akzent.aufMarkt, m)
+    }
+    val kaufKachel: @Composable (Modifier) -> Unit = { m ->
+        WertKachel(stringResource(R.string.detail_purchase_price), kauf, akzent.kauf, akzent.aufKauf, m)
+    }
+    // Die Statusfarben halten 4,5:1 nur auf surface — deshalb diese Fläche mit Rand.
+    val pnlKachel: @Composable (Modifier) -> Unit = { m ->
+        WertKachel(stringResource(R.string.detail_pnl_tile), pnlText, farben.surface,
             when { pnl == null -> farben.onSurfaceVariant; pnl < 0 -> status.fehler; else -> status.erfolg },
-            Modifier.weight(1f), rand = farben.outline)
+            m, rand = farben.outline)
+    }
+    val messer = androidx.compose.ui.text.rememberTextMeasurer()
+    val stil = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+    val dichte = androidx.compose.ui.platform.LocalDensity.current
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val breitester = listOf(markt, kauf, pnlText).maxOf {
+            messer.measure(it, stil, softWrap = false, maxLines = 1).size.width
+        }
+        val bedarf = with(dichte) { breitester.toDp() } + Abstaende.mittel * 2 + 2.dp
+        val abstand = Abstaende.klein
+        val gleichHoch = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+        when (kachelAnordnung(maxWidth, bedarf, abstand)) {
+            KachelAnordnung.DREI -> Row(gleichHoch, horizontalArrangement = Arrangement.spacedBy(abstand)) {
+                marktKachel(Modifier.weight(1f).fillMaxHeight())
+                kaufKachel(Modifier.weight(1f).fillMaxHeight())
+                pnlKachel(Modifier.weight(1f).fillMaxHeight())
+            }
+            KachelAnordnung.EINS_UEBER_ZWEI -> Column(verticalArrangement = Arrangement.spacedBy(abstand)) {
+                marktKachel(Modifier.fillMaxWidth())
+                Row(gleichHoch, horizontalArrangement = Arrangement.spacedBy(abstand)) {
+                    kaufKachel(Modifier.weight(1f).fillMaxHeight())
+                    pnlKachel(Modifier.weight(1f).fillMaxHeight())
+                }
+            }
+            KachelAnordnung.UNTEREINANDER -> Column(verticalArrangement = Arrangement.spacedBy(abstand)) {
+                marktKachel(Modifier.fillMaxWidth())
+                kaufKachel(Modifier.fillMaxWidth())
+                pnlKachel(Modifier.fillMaxWidth())
+            }
+        }
     }
 }
 
-/** Eine Kachel der Wertreihe: Bezeichnung klein, Betrag gross. */
+/** Eine Kachel der Wertreihe: Bezeichnung klein, Betrag gross und immer in einer Zeile. */
 @Composable
 private fun WertKachel(label: String, wert: String, flaeche: Color, schrift: Color, modifier: Modifier = Modifier, rand: Color? = null) {
     Column(
@@ -392,6 +423,7 @@ private fun WertKachel(label: String, wert: String, flaeche: Color, schrift: Col
             .semantics(mergeDescendants = true) {},
     ) {
         Text(label, color = schrift, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(wert, color = schrift, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(wert, color = schrift, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+            maxLines = 1, softWrap = false)
     }
 }

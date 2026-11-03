@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.Density
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.runtime.getValue
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.SetAnlegenSchritt
 import ch.brickinventoryapp.data.SetAnleger
@@ -61,7 +63,9 @@ import java.util.Locale
  * Was BildschirmFotoTest nicht abdeckt, je einmal statt im vollen Raster (die
  * Laufzeit wächst mit jedem Bild): die drei übrigen Designs, Englisch (en-GB),
  * Schrift 130 % und 200 %, das Gerüst mit App-Leiste und der Seite „Mehr“,
- * zwei Dialoge sowie Lade-, Fehler- und Leerzustand. Wie dort auf Deutsch (de-CH),
+ * Dialoge, Lade-, Fehler- und Leerzustand, das Detail mit vierstelligen Beträgen
+ * auf 360 dp, Liste und Detail auf dem Tablet sowie die Unterseiten Lagerorte,
+ * Haushalt, CSV-Import und die Bauliste. Wie dort auf Deutsch (de-CH),
  * wo nicht `-en` im Namen steht. Namen wie dort:
  * `<bildschirm>[-variante]_<design>_<hell|dunkel>_<gerät>.png`.
  *
@@ -118,7 +122,11 @@ class BildschirmFotoVariantenTest {
         sprache: String? = DEUTSCH, schrift: Float = 1f, bereit: () -> Boolean = { true }, zustand: () -> Any? = { null },
         warten: Boolean = true, inhalt: @Composable () -> Unit,
     ) {
-        val maske = if (geraet == "tablet") "w1280dp-h800dp-land-xhdpi" else "w411dp-h891dp-port-xxhdpi"
+        val maske = when (geraet) {
+            "tablet" -> "w1280dp-h800dp-land-xhdpi"
+            "schmal" -> "w360dp-h740dp-port-xxhdpi"
+            else -> "w411dp-h891dp-port-xxhdpi"
+        }
         RuntimeEnvironment.setQualifiers(if (sprache != null) "$sprache-$maske" else maske)
         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
         if (warten) bereitstellen(name, bereit, zustand)
@@ -202,6 +210,23 @@ class BildschirmFotoVariantenTest {
     @Test fun detailHochglanzDunkel() = detailFoto("set-detail", "hochglanz", dunkel = true)
     @Test fun detailWerkbank() = detailFoto("set-detail", "werkbank")
 
+    // ── Vierstellige Beträge auf schmalem Telefon (360 dp) ──
+    // Ein Kaufpreis über CHF 1’000 in den Wert-Kacheln: Dort brach „CHF 700.0 / 0“
+    // um, und mit vier Stellen wurde es nur enger.
+
+    private fun detailTeuerFoto(name: String, schrift: Float) {
+        welt.pfade.antworten["/api/v1/sets/75192-1/price"] =
+            """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":1249.9,"min_price":1180.0,"max_price":1320.0,"qty_avg_price":1249.9}"""
+        welt.pfade.antworten["/api/v1/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
+            {"id":1,"quantity":1,"purchase_price":1049.0,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"}]}"""
+        val vm = welt.setDetail().also { it.ladeAlles() }
+        zeige(name, geraet = "schmal", schrift = schrift, bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
+        foto(name, geraet = "schmal")
+    }
+
+    @Test fun detailVierstelligSchmal() = detailTeuerFoto("set-detail-vierstellig", 1f)
+    @Test fun detailVierstelligSchmalSchrift200() = detailTeuerFoto("set-detail-vierstellig-schrift200", 2f)
+
     // ── Englisch (en-GB): Texte, Zahlen, Beträge und Achsen ──
 
     @Test fun galerieEnglisch() = galerieFoto("galerie-en", sprache = ENGLISCH)
@@ -275,8 +300,12 @@ class BildschirmFotoVariantenTest {
                 Triple(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, "Mehr"),
             )
         }
+        // Der Titel folgt dem Ziel wie in der App (ToolsGraph setzt nav_more): Fest
+        // „Sammlung“ zeigte das Foto von „Mehr“ mit dem falschen Titel.
+        val ziel by nav.currentBackStackEntryAsState()
+        val titel = if (ziel?.destination?.route == Screen.Mehr.route) "Mehr" else "Sammlung"
         MainScaffold(
-            title = "Sammlung", navController = nav, bottomNavItems = reiter,
+            title = titel, navController = nav, bottomNavItems = reiter,
             snackbarHostState = remember { SnackbarHostState() },
             csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
             onCsvAbbrechen = {}, serverUrl = "", updateVerfuegbar = true, onTabAngetippt = {},
@@ -317,7 +346,7 @@ class BildschirmFotoVariantenTest {
     fun dialogSetLoeschen() {
         val vm = welt.setDetail().also { it.ladeAlles() }
         zeige("dialog-set-loeschen", design = "noppe", bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
-        compose.onNodeWithContentDescription("Löschen").performClick()
+        compose.onNodeWithContentDescription("Millennium Falcon löschen").performClick()
         compose.waitForIdle()
         compose.onNode(isDialog()).captureRoboImage(pfad("dialog-set-loeschen", "noppe", false, "telefon"))
     }
@@ -339,6 +368,95 @@ class BildschirmFotoVariantenTest {
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
         }
         compose.onNode(isDialog()).captureRoboImage(pfad("dialog-merkposten", "classic", true, "telefon"))
+    }
+
+    // ── Liste und Detail nebeneinander (Tablet) ──
+
+    @Test
+    fun merklisteMitDetailTablet() {
+        val vm = welt.merkliste().also { it.ladeMerkliste() }
+        zeige("merkliste-detail", geraet = "tablet", bereit = { vm.merklisteState.value.merkposten.isNotEmpty() },
+            zustand = { vm.merklisteState.value }) {
+            ch.brickinventoryapp.ui.screens.MerklisteUndDetail(vm = vm, imageLoader = bilder, nebeneinander = true,
+                onScan = {}, onOeffnenEinzeln = { _, _ -> })
+        }
+        compose.onNode(androidx.compose.ui.test.hasText("Titanic", substring = true) and
+            androidx.compose.ui.test.hasClickAction()).performClick()
+        bereitstellen("merkliste-detail (offen)", { true }, { vm.merklisteState.value })
+        compose.waitForIdle()
+        foto("merkliste-detail", geraet = "tablet")
+    }
+
+    // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
+
+    private fun einstellungen() = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
+        ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache),
+        ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
+        SetsRepository(welt.t.api, welt.t.cache),
+        ch.brickinventoryapp.data.repository.TeileRepository(welt.t.api, welt.t.cache),
+        object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
+            override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
+        }))
+
+    /** Wartet, bis eine Anfrage an [pfad] gestellt ist; danach ruht der Server 0,5 s. */
+    private fun angefragt(pfad: String): () -> Boolean = { welt.pfade.anfragen.any { pfad in it } }
+
+    @Test
+    fun lagerorte() {
+        welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[
+            {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
+        val vm = einstellungen()
+        zeige("lagerorte", bereit = angefragt("/api/v1/storage/locations")) {
+            ch.brickinventoryapp.ui.screens.LagerorteUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
+        }
+        foto("lagerorte")
+    }
+
+    @Test
+    fun csvImport() {
+        val vm = einstellungen()
+        zeige("csv-import") {
+            ch.brickinventoryapp.ui.screens.CsvImportUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
+        }
+        foto("csv-import")
+    }
+
+    @Test
+    fun haushalt() {
+        welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
+            "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
+        val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
+            ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
+            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache)))
+        zeige("haushalt", bereit = angefragt("/api/v1/settings/household")) {
+            ch.brickinventoryapp.ui.screens.HaushaltUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {})
+        }
+        foto("haushalt")
+    }
+
+    @Test
+    fun bauliste() {
+        zeige("bauliste") {
+            ch.brickinventoryapp.ui.screens.PartsListScreen(serverUrl = "", imageLoader = bilder, onScanBarcode = {},
+                onResolveSet = { error("im Foto wird nichts aufgelöst") })
+        }
+        foto("bauliste")
+    }
+
+    /** Erfassen: der Dialog der Galerie mit Nummer, Menge, Preis, Zustand und Lagerort. */
+    @Test
+    fun dialogSetErfassen() {
+        zeige("dialog-set-erfassen", warten = false) {
+            ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {}, onAdd = { _, _, _, _, _, _ -> },
+                lagerorte = listOf("Keller", "Estrich"))
+        }
+        // Der Dialog fokussiert sein erstes Feld; der Cursor blinkt — Uhr anhalten wie oben.
+        compose.mainClock.autoAdvance = false
+        repeat(3) {
+            compose.mainClock.advanceTimeBy(200)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        }
+        compose.onNode(isDialog()).captureRoboImage(pfad("dialog-set-erfassen", "classic", false, "telefon"))
     }
 
     // ── Laden, Fehler, leer ──

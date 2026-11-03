@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material3.Icon
@@ -21,6 +22,12 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.Text
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -78,6 +85,14 @@ import ch.brickinventoryapp.ressourcen.R
  *   teile-raster-fest               Teileraster wieder fest 110 dp → rot „Teile bei 200 Prozent …“
  *   finanzen-einspaltig             Finanzen auch auf dem Tablet einspaltig → rot „Finanzen stehen auf dem Tablet …“
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
+ *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
+ *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
+ *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
+ *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
+ *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
+ *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
+ *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
+ *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -119,13 +134,51 @@ class OberflaechenRegelnTest {
         zeige(schrift = 2f) {
             Box(Modifier.width(188.dp)) {
                 SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon", theme = "Star Wars"),
-                    serverUrl = "", imageLoader = bilder, onClick = {}, onDelete = {},
+                    serverUrl = "", imageLoader = bilder, onClick = {},
                     preis = KachelPreis(812.5, 16.1), waehrung = "CHF")
             }
         }
         assertEquals("Prozent", 1, zeilen(compose.onNodeWithText(fmtProzent(16.1), useUnmergedTree = true)))
         assertEquals("Betrag", 1, zeilen(compose.onNodeWithText(fmtMoney(812.5, "CHF"), useUnmergedTree = true)))
     }
+
+    /**
+     * Prüft je Betrag: eine Zeile, nichts ausgelassen und nicht breiter als seine
+     * Kachel (mit softWrap = false liefe er sonst über den Rand). Kacheln derselben
+     * Reihe sind gleich hoch.
+     */
+    private fun wertKachelnGanz(schrift: Float) {
+        val markt = fmtMoney(1712.4, "CHF")
+        val kauf = fmtMoney(1500.0, "CHF")
+        val pnl = fmtProzent(14.2)
+        zeige(schrift) {
+            Box(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
+                ch.brickinventoryapp.ui.screens.WertKacheln(markt, kauf, 14.2)
+            }
+        }
+        for (betrag in listOf(markt, kauf, pnl)) {
+            val ergebnis = mutableListOf<TextLayoutResult>()
+            compose.onNodeWithText(betrag, useUnmergedTree = true).fetchSemanticsNode()
+                .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
+            val t = ergebnis.single()
+            assertEquals("$betrag in einer Zeile", 1, t.lineCount)
+            assertTrue("$betrag ist abgeschnitten (rechts ${t.getLineRight(0)} von ${t.size.width})",
+                !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == betrag.length &&
+                    t.getLineRight(0) <= t.size.width + 0.5f)
+        }
+        val kacheln = listOf(R.string.detail_section_market, R.string.detail_purchase_price, R.string.detail_pnl_tile)
+            .map { compose.onNodeWithText(ctx.getString(it), substring = true).fetchSemanticsNode().boundsInRoot }
+        kacheln.groupBy { it.top }.values.filter { it.size > 1 }.forEach { reihe ->
+            assertTrue("Kacheln einer Reihe gleich hoch: ${reihe.map { it.height }}",
+                reihe.all { kotlin.math.abs(it.height - reihe[0].height) < 1f })
+        }
+    }
+
+    @Test
+    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent ganz`() = wertKachelnGanz(1f)
+
+    @Test
+    fun `Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 200 Prozent ganz`() = wertKachelnGanz(2f)
 
     @Test
     fun `Kaufpreis bei 200 Prozent steht unter der Bezeichnung in einer Zeile`() {
@@ -165,6 +218,41 @@ class OberflaechenRegelnTest {
         val reiterRechts = (0 until 2).map { leiste[it].fetchSemanticsNode().boundsInRoot }.minBy { it.left }.right
         assertTrue("Der Umschalter beginnt rechts der Seitenleiste",
             compose.onNodeWithText(teile).fetchSemanticsNode().boundsInRoot.left >= reiterRechts)
+    }
+
+    @Test
+    fun `App-Leiste weicht beim Rollen und kommt beim Zurueckrollen wieder`() {
+        zeige {
+            val nav = rememberNavController()
+            val reiter = remember {
+                listOf<Triple<Screen, @Composable () -> Unit, String>>(
+                    Triple(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+            }
+            MainScaffold(
+                title = "Finanzen", navController = nav, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+            ) {
+                NavHost(nav, startDestination = Screen.Finance.route) {
+                    composable(Screen.Finance.route) {
+                        androidx.compose.foundation.lazy.LazyColumn(Modifier.testTag("liste")) {
+                            items(80) { i -> Text("Zeile $i", Modifier.padding(16.dp)) }
+                        }
+                    }
+                }
+            }
+        }
+        fun oben() = compose.onNodeWithTag("liste").fetchSemanticsNode().boundsInRoot.top
+        val vorher = oben()
+        compose.onNodeWithTag("liste").performTouchInput { swipeUp() }
+        compose.waitForIdle()
+        val dichte = ctx.resources.displayMetrics.density
+        assertTrue("Die Liste rückt nach oben, wenn die Leiste weicht (${vorher / dichte} → ${oben() / dichte} dp)",
+            oben() < vorher - 40 * dichte)
+        compose.onNodeWithTag("liste").performTouchInput { swipeDown() }
+        compose.waitForIdle()
+        assertEquals("Zurückgerollt steht die Leiste wieder da", vorher, oben(), dichte)
     }
 
     @Test
@@ -241,6 +329,62 @@ class OberflaechenRegelnTest {
         }
     }
 
+    /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
+    private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader) {
+        val vm = welt.galerie().also { it.loadSets() }
+        val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
+            ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
+            ch.brickinventoryapp.data.repository.KatalogRepository(welt.t.api, welt.t.cache),
+            object : ch.brickinventoryapp.data.SetAnleger {
+                override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
+                                     ownerUserId: Int?, storage: String?) =
+                    kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
+            }))
+        zeige {
+            ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
+                imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
+        }
+        warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
+    }
+
+    private fun ersatzbilder() = compose.onAllNodes(
+        androidx.compose.ui.test.hasTestTag(ch.brickinventoryapp.ui.components.BILD_ERSATZ), useUnmergedTree = true)
+        .fetchSemanticsNodes().size
+
+    @Test
+    fun `Galerie zeigt ohne Bild das Ersatzbild auf jeder Kachel`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            // Jede Anfrage scheitert, wie offline oder bei fehlender Vorschau.
+            val kaputt = coil3.ImageLoader.Builder(ctx).components {
+                add(object : coil3.intercept.Interceptor {
+                    override suspend fun intercept(chain: coil3.intercept.Interceptor.Chain) =
+                        coil3.request.ErrorResult(null, chain.request, IllegalStateException("kein Bild"))
+                })
+            }.build()
+            galerieMit(welt, kaputt)
+            val kacheln = compose.onAllNodes(hasClickAction() and hasText("Millennium Falcon", substring = true))
+                .fetchSemanticsNodes().size
+            assertTrue("Die erste Kachel ist sichtbar", kacheln >= 1)
+            val namen = listOf("Millennium Falcon", "Titanic", "Baumhaus")
+            val sichtbar = namen.count { compose.onAllNodesWithText(it, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals("Ersatzbild je sichtbarer Kachel", sichtbar, ersatzbilder())
+        } finally {
+            welt.close()
+        }
+    }
+
+    @Test
+    fun `Galerie zeigt mit Bild kein Ersatzbild`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            galerieMit(welt, Beispielbilder.loader(ctx))
+            warte("Bilder") { ersatzbilder() == 0 }
+        } finally {
+            welt.close()
+        }
+    }
+
     @Test
     fun `Galerie hat einen schwebenden Knopf und Scannen neben der Suche`() {
         val welt = Beispiele.Welt(KontextTexte())
@@ -304,6 +448,30 @@ class OberflaechenRegelnTest {
         }
     }
 
+    /**
+     * Farben auf Deutsch wie in der Webapp („Trans-Klar“), Teilenamen bleiben englisch,
+     * sind aber als Englisch ausgezeichnet, damit TalkBack sie richtig ausspricht.
+     */
+    @Test
+    fun `Teile nennen Farben auf Deutsch und Namen als Englisch`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.teile().also { it.loadParts() }
+            zeige { ch.brickinventoryapp.ui.screens.PartsScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            compose.onAllNodesWithText("Trans-Klar", useUnmergedTree = true).fetchSemanticsNodes().let {
+                assertTrue("Trans-Klar steht da", it.isNotEmpty())
+            }
+            compose.onAllNodesWithText("Trans-Clear", useUnmergedTree = true).assertCountEquals(0)
+            val name = compose.onNodeWithText("Brick 2 x 4", useUnmergedTree = true).fetchSemanticsNode()
+                .config[androidx.compose.ui.semantics.SemanticsProperties.Text].single()
+            assertTrue("Teilename als Englisch ausgezeichnet: ${name.spanStyles}",
+                name.spanStyles.any { it.item.localeList == androidx.compose.ui.text.intl.LocaleList("en") })
+        } finally {
+            welt.close()
+        }
+    }
+
     @Test
     fun `Finanzen stehen auf dem Tablet in zwei Spalten`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
@@ -322,16 +490,97 @@ class OberflaechenRegelnTest {
         }
     }
 
+    /**
+     * Jeder Gutschein trägt EIN Menü (statt fünf Symbole in unregelmässigen Abständen);
+     * Menü und Einträge nennen die Nummer, die PIN-Zeile ist 48 dp hoch.
+     */
     @Test
     fun `Gutschein-Knoepfe nennen die Nummer und der PIN hat 48 dp`() {
         zeige { Gutscheine() }
         val nummer = ch.brickinventoryapp.util.inVierergruppen("6061 2345 6789")
-        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, nummer)).fetchSemanticsNode()
-        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_edit, nummer)).fetchSemanticsNode()
         val pin = compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, nummer))
             .fetchSemanticsNode().boundsInRoot
         val dichte = ctx.resources.displayMetrics.density
         assertTrue("PIN-Zeile nur ${pin.height / dichte} dp hoch", pin.height / dichte >= 47.5f)
+        compose.onAllNodesWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, nummer)).assertCountEquals(0)
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_menu, nummer)).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_delete, nummer)).fetchSemanticsNode()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_edit, nummer)).fetchSemanticsNode()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_balance, nummer)).fetchSemanticsNode()
+    }
+
+    /** Das Formular steht nicht dauerhaft unter der Liste, sondern öffnet als Blatt. */
+    @Test
+    fun `Gutschein hinzufuegen oeffnet das Formular erst auf Wunsch`() {
+        zeige { Gutscheine() }
+        compose.onAllNodesWithText(ctx.getString(R.string.vouchers_number)).assertCountEquals(0)
+        compose.onNode(hasText(ctx.getString(R.string.vouchers_add)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.vouchers_number)).fetchSemanticsNode()
+    }
+
+    /**
+     * Ein Bauteil je Entscheidungstyp: Der Zustand ist eine Einfachwahl und steht als
+     * Segmentschaltfläche da (gleich breite, aneinanderstossende Segmente mit der
+     * Rolle RadioButton); die Sortierung ist ein Menü hinter einem Symbol.
+     */
+    @Test
+    fun `Merkliste waehlt den Zustand mit Segmenten und sortiert ueber ein Menue`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.merkliste().also { it.ladeMerkliste() }
+            zeige { MerklisteScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScan = {}, onOeffnen = { _, _ -> }) }
+            warte("Merkliste") { vm.merklisteState.value.merkposten.isNotEmpty() }
+            val segmente = listOf(R.string.filter_condition_all, R.string.condition_new, R.string.condition_used).map {
+                compose.onNode(hasText(ctx.getString(it)) and
+                    androidx.compose.ui.test.SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role,
+                        androidx.compose.ui.semantics.Role.RadioButton)).fetchSemanticsNode().boundsInRoot
+            }
+            val dichte = ctx.resources.displayMetrics.density
+            segmente.zipWithNext().forEach { (a, b) ->
+                assertTrue("Segmente stossen aneinander (${a.right / dichte} / ${b.left / dichte} dp)",
+                    kotlin.math.abs(b.left - a.right) <= 2 * dichte && kotlin.math.abs(a.top - b.top) < 1f)
+            }
+            // Die Sortierung steht nicht als Chip mit ihrem Namen da, sondern hinter dem Symbol.
+            val vorgabe = ctx.getString(R.string.gallery_sort_added_desc)
+            compose.onAllNodesWithText(vorgabe).assertCountEquals(0)
+            compose.onNodeWithContentDescription(ctx.getString(R.string.sort_menu_cd, vorgabe)).performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText(ctx.getString(R.string.gallery_sort_name)).fetchSemanticsNode()
+        } finally {
+            welt.close()
+        }
+    }
+
+    /**
+     * List-Detail auf dem Tablet: Der geöffnete Merkposten steht rechts neben der
+     * Liste, die Liste bleibt sichtbar, und seine Karte ist als gewählt markiert.
+     */
+    @Test
+    fun `Tablet zeigt Merkliste und Detail nebeneinander`() {
+        RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.merkliste().also { it.ladeMerkliste() }
+            zeige {
+                ch.brickinventoryapp.ui.screens.MerklisteUndDetail(vm = vm,
+                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), nebeneinander = true,
+                    onScan = {}, onOeffnenEinzeln = { _, _ -> error("auf dem Tablet keine eigene Seite") })
+            }
+            warte("Merkliste") { vm.merklisteState.value.merkposten.isNotEmpty() }
+            val karte = compose.onNode(hasText("Titanic", substring = true) and hasClickAction())
+            karte.performClick()
+            compose.waitForIdle()
+            val zurueck = compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).fetchSemanticsNode().boundsInRoot
+            val liste = compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+            assertTrue("Das Detail steht rechts der Liste ($liste / $zurueck)", zurueck.left >= liste.right)
+            compose.onNode(hasText("Titanic", substring = true) and hasClickAction() and
+                androidx.compose.ui.test.SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Selected, true))
+                .fetchSemanticsNode()
+        } finally {
+            welt.close()
+        }
     }
 
     @Test
@@ -351,6 +600,9 @@ class OberflaechenRegelnTest {
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.wanted_add_first)).fetchSemanticsNode()
             compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).fetchSemanticsNode()
+            // Nur diese beiden Wege: kein schwebender Knopf und kein Scan-Symbol darüber.
+            compose.onAllNodesWithContentDescription(ctx.getString(R.string.wanted_add_title)).assertCountEquals(0)
+            compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode)).assertCountEquals(0)
         } finally {
             welt.close()
         }

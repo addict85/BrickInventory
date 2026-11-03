@@ -459,25 +459,14 @@ internal fun DesignCard(design: ch.brickinventoryapp.ui.DesignWahl?, onWahl: (St
     SettingsCard(title = stringResource(R.string.monitoring_theme), icon = Icons.Default.Palette) {
         Text(stringResource(R.string.konto_design_hint), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        ) {
-            val vorgabe = namen[design.vorgabe]?.let { stringResource(it) } ?: design.vorgabe
-            AuswahlChip(
-                selected = design.eigenes == null,
-                onClick = { if (design.eigenes != null) onWahl("") },
-                label = { Text(stringResource(R.string.konto_design_vorgabe, vorgabe), style = MaterialTheme.typography.labelMedium) },
-                shape = Formen.chip,
-            )
-            for ((wert, text) in ch.brickinventoryapp.ui.DESIGN_NAMEN) {
-                AuswahlChip(
-                    selected = design.eigenes == wert,
-                    onClick = { if (design.eigenes != wert) onWahl(wert) },
-                    label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
-                    shape = Formen.chip,
-                )
-            }
-        }
+        // Eine Wahl aus mehreren — dieselben Radio-Chips wie in den Einstellungen;
+        // "" steht für „die Vorgabe des Servers“.
+        val vorgabe = namen[design.vorgabe]?.let { stringResource(it) } ?: design.vorgabe
+        ch.brickinventoryapp.ui.components.WahlChips(
+            optionen = listOf("" to stringResource(R.string.konto_design_vorgabe, vorgabe)) +
+                ch.brickinventoryapp.ui.DESIGN_NAMEN.map { (wert, text) -> wert to stringResource(text) },
+            gewaehlt = design.eigenes ?: "",
+            onWahl = { wert -> if (wert != (design.eigenes ?: "")) onWahl(wert) },
+        )
     }
 }

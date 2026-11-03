@@ -29,7 +29,6 @@ import ch.brickinventoryapp.util.fmtInt
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
@@ -263,7 +262,6 @@ fun ManualFigTile(fig: ManuelleFigurAnsicht, serverUrl: String, imageLoader: Ima
         preis = fig.avgPurchasePrice ?: fig.unitPrice ?: fig.purchasePrice,
         waehrung = waehrung,
         onEdit = onEdit,
-        platzhalter = { LeerSymbol(Icons.Default.Person, 32.dp) },
     )
 }
 
@@ -363,27 +361,17 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 // Vorschaubild mit Rückfall auf volle Auflösung — siehe
                 // util/BildRueckfall.kt, rememberTileImageWithFallback().
                 val (figImg, onFigImgError) = rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
-                if (figImg != null) {
-                    AsyncImage(
-                        model = figImg,
-                        imageLoader = imageLoader,
-                        contentDescription = fig.figName,
-                        onState = { st ->
-                            if (st is coil3.compose.AsyncImagePainter.State.Error) onFigImgError()
-                        },
-                        modifier = Modifier.fillMaxSize()
-                            .clip(Formen.kachelBildEcken),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.fillMaxSize()
-                            .clip(Formen.kachelBildEcken)
-                    ) {
-                        Box(Modifier.fillMaxSize(), Alignment.Center) { LeerSymbol(Icons.Default.Person, 36.dp) }
-                    }
-                }
+                ch.brickinventoryapp.ui.components.ProduktBild(
+                    model = figImg,
+                    imageLoader = imageLoader,
+                    contentDescription = fig.figName,
+                    onState = { st ->
+                        if (st is coil3.compose.AsyncImagePainter.State.Error) onFigImgError()
+                    },
+                    modifier = Modifier.fillMaxSize()
+                        .clip(Formen.kachelBildEcken),
+                    contentScale = ContentScale.Fit,
+                )
                 if (qty > 1) {
                     Surface(
                         color = MaterialTheme.colorScheme.primary,
@@ -426,7 +414,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 // Die Nummer steht schon darüber; ohne Namen dieselbe Nummer noch einmal sah wie ein Name aus.
                 val figName = fig.figName
                 if (figName != null) {
-                    Text(figName,
+                    Text(ch.brickinventoryapp.ui.components.katalogName(figName),
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
                         maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -118,14 +119,16 @@ fun MerkpostenDetailScreen(
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
             item {
-                coil3.compose.AsyncImage(
+                ch.brickinventoryapp.ui.components.ProduktBild(
                     model = bildUrl,
                     contentDescription = merkposten.name,
                     imageLoader = imageLoader,
                     // Antippen oeffnet den Zoom — dasselbe Verhalten wie im
                     // Set- und im Katalog-Detail.
                     modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5)
+                        .clip(MaterialTheme.shapes.medium)
                         .clickable(enabled = bildUrl != null, role = Role.Button) { zoomOffen = true },
+                    ersatzGroesse = Abstaende.riesig * 2,
                 )
             }
 

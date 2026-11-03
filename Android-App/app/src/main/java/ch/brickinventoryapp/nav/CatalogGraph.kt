@@ -76,16 +76,21 @@ fun NavGraphBuilder.catalogGraph(
         // dem Katalog näher — von dort kommt der häufigste Weg hinein, und wie er zeigt
         // sie Sets, die einem nicht gehören.
         composable(Screen.Wanted.route) {
-            ReiterGeruest(stringResource(R.string.nav_wanted), vm, navController, bottomNavItems, snackbarHostState) {
-                val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
-                ch.brickinventoryapp.ui.screens.MerklisteScreen(
-                    vm = hiltViewModel<MerklisteViewModel>(),
-                    imageLoader = imageLoader,
-                    onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner.route) },
-                    onOeffnen = { sn, zustand ->
-                        navController.navigate(Screen.MerkpostenDetail.createRoute(sn, zustand))
-                    },
-                )
+            // Auf breiten Fenstern Liste und Detail nebeneinander (Lesebreite.kt).
+            androidx.compose.foundation.layout.BoxWithConstraints {
+                val nebeneinander = ch.brickinventoryapp.ui.listeUndDetail(maxWidth.value)
+                ReiterGeruest(stringResource(R.string.nav_wanted), vm, navController, bottomNavItems, snackbarHostState) {
+                    val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+                    ch.brickinventoryapp.ui.screens.MerklisteUndDetail(
+                        vm = hiltViewModel<MerklisteViewModel>(),
+                        imageLoader = imageLoader,
+                        nebeneinander = nebeneinander,
+                        onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner.route) },
+                        onOeffnenEinzeln = { sn, zustand ->
+                            navController.navigate(Screen.MerkpostenDetail.createRoute(sn, zustand))
+                        },
+                    )
+                }
             }
         }
         composable(

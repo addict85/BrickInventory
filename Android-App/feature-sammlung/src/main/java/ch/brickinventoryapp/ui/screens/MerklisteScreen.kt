@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.draw.clip
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
@@ -9,6 +10,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
@@ -61,6 +65,8 @@ fun MerklisteScreen(
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
     onOeffnen: (String, String) -> Unit,
+    /** Setnummer und Zustand des Merkpostens, dessen Detail daneben offen ist. */
+    gewaehlt: Pair<String, String>? = null,
 ) {
     val zustand by vm.merklisteState.collectAsStateWithLifecycle()
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
@@ -85,7 +91,6 @@ fun MerklisteScreen(
     // Entprellung liegt im ViewModel. Wechselt der Wert von aussen, zieht das
     // Feld nach — dieselbe Zeile wie in der Galerie.
     var sucheInput by remember(zustand.query) { mutableStateOf(zustand.query) }
-    var sortMenueOffen by rememberSaveable { mutableStateOf(false) }
 
     // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die Liste,
     // „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
@@ -94,8 +99,9 @@ fun MerklisteScreen(
         scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
     val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
-        // Kopf und Liste auf derselben Lesebreite, damit sie auf dem Tablet fluchten.
-        Column(Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste)) {
+        // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
+        // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
+        Column(Modifier.fillMaxSize()) {
 
             ScopeFilterZeile(
                 members  = blick.householdMembers,
@@ -105,7 +111,10 @@ fun MerklisteScreen(
 
             // Scannen neben der Suche wie in der Galerie: unten schwebt nur EIN Knopf. Im
             // Fehlerzustand weder Suche noch Filter — es gibt nichts zu durchsuchen.
-            if (anzeige != Ladeanzeige.FEHLER) Row(
+            // Ohne Merkposten weder Suche noch Filter: Die Leermeldung bietet Merken und
+            // Scannen an, ein zweiter Scan-Knopf darüber wäre derselbe Weg noch einmal.
+            val mitKopf = anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER
+            if (mitKopf) Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -115,53 +124,29 @@ fun MerklisteScreen(
                     platzhalter = stringResource(R.string.wanted_search),
                     modifier = Modifier.weight(1f),
                 )
+                // Dieselben Werte wie MERK_SORTS am Server und dieselbe Auswahl wie in
+                // der Webapp. qty_* fehlt in beiden: Ein Merkposten hat keine Anzahl.
+                ch.brickinventoryapp.ui.components.SortierMenue(
+                    optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
+                                      "year_desc", "price_desc", "price_asc").map { it to gallerySortLabel(it) },
+                    gewaehlt = zustand.sortierung,
+                    onWahl = { vm.setzeMerklisteSortierung(it) },
+                    modifier = Modifier.padding(end = Abstaende.winzig),
+                    vorgabe = MERKLISTE_DEFAULT_SORT,
+                )
                 ch.brickinventoryapp.ui.components.ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
             }
 
-            if (anzeige != Ladeanzeige.FEHLER) LazyRow(
-                contentPadding = PaddingValues(horizontal = Abstaende.rand),
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig),
-                modifier = Modifier.padding(bottom = Abstaende.klein),
-            ) {
-                item {
-                    Box {
-                        AuswahlChip(
-                            selected = zustand.sortierung != MERKLISTE_DEFAULT_SORT,
-                            onClick = { sortMenueOffen = true },
-                            label = { Text(gallerySortLabel(zustand.sortierung), style = MaterialTheme.typography.labelMedium) },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(16.dp)) },
-                            shape = Formen.chip,
-                        )
-                        DropdownMenu(sortMenueOffen, { sortMenueOffen = false }) {
-                            // Dieselben Werte wie MERK_SORTS am Server und
-                            // dieselbe Auswahl wie in der Webapp. qty_* fehlt
-                            // in beiden: Ein Merkposten hat keine Anzahl.
-                            listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                                   "year_desc", "price_desc", "price_asc").forEach { w ->
-                                DropdownMenuItem(
-                                    text = { Text(gallerySortLabel(w)) },
-                                    onClick = { sortMenueOffen = false; vm.setzeMerklisteSortierung(w) },
-                                    trailingIcon = { if (zustand.sortierung == w) Icon(Icons.Default.Check, null, Modifier.size(16.dp)) },
-                                )
-                            }
-                        }
-                    }
-                }
-                // Drei Chips statt Zustandszeile(): Dort gibt es nur „neu" und
-                // „gebraucht", weil ein ERFASSTER Merkposten sich entscheiden
-                // muss. Ein Filter hat immer eine dritte Antwort — „beide" —,
-                // und die ist hier die Vorgabe.
-                items(listOf("" to R.string.filter_condition_all,
-                             "N" to R.string.condition_new,
-                             "U" to R.string.condition_used)) { (wert, text) ->
-                    AuswahlChip(
-                        selected = zustand.zustandFilter == wert,
-                        onClick = { vm.setzeMerklisteZustand(wert) },
-                        label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
-                        shape = Formen.chip,
-                    )
-                }
-            }
+            // Der Zustand ist eine Einfachwahl mit drei Antworten — „beide“ ist die
+            // Vorgabe, weil ein Filter sie immer hat (Zustandszeile kennt nur zwei).
+            if (mitKopf) ch.brickinventoryapp.ui.components.SegmentWahl(
+                optionen = listOf("" to stringResource(R.string.filter_condition_all),
+                                  "N" to stringResource(R.string.condition_new),
+                                  "U" to stringResource(R.string.condition_used)),
+                gewaehlt = zustand.zustandFilter,
+                onWahl = { vm.setzeMerklisteZustand(it) },
+                modifier = Modifier.padding(horizontal = Abstaende.rand).padding(bottom = Abstaende.klein),
+            )
 
             Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.rand)) {
                 Ladezustand(
@@ -187,16 +172,18 @@ fun MerklisteScreen(
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
                     fehlerKlasse = zustand.fehlerKlasse,
                 ) {
-                    LazyColumn(
-                        // Die Lesebreite setzt die Spalte darüber, für Kopf und Liste zugleich.
+                    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(340.dp),
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         // Platz für den Erfassen-Knopf: Ohne ihn verdeckt er die letzte Zeile.
                         contentPadding = PaddingValues(bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                     ) {
                         items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
                             Bewegt {
                                 MerkpostenZeile(w, appState.serverUrl, imageLoader,
+                                    gewaehlt = gewaehlt == w.setNumber to w.condition,
                                     onOeffnen = { onOeffnen(w.setNumber, w.condition) })
                             }
                         }
@@ -205,8 +192,9 @@ fun MerklisteScreen(
             }
         }
 
-        // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand nicht.
-        if (anzeige != Ladeanzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+        // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand
+        // nicht, und leer auch nicht: Dort steht „Set merken“ schon mitten im Bild.
+        if (anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
             stringResource(R.string.wanted_add_title), { maskeOffen = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
@@ -224,6 +212,40 @@ fun MerklisteScreen(
         )
     }
 
+}
+
+/**
+ * Die Merkliste mit dem Detail des geöffneten Merkpostens daneben, wenn
+ * [nebeneinander] (breites Fenster, listeUndDetail()); sonst öffnet [onOeffnenEinzeln]
+ * das Detail als eigene Seite. Ein Zustand für beide Hälften: dasselbe ViewModel.
+ */
+@Composable
+fun MerklisteUndDetail(
+    vm: MerklisteViewModel,
+    imageLoader: coil3.ImageLoader,
+    nebeneinander: Boolean,
+    onScan: () -> Unit,
+    onOeffnenEinzeln: (String, String) -> Unit,
+) {
+    var offen by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    val auswahl = offen?.let { it[0] to it[1] }
+    val liste: @Composable () -> Unit = {
+        MerklisteScreen(vm = vm, imageLoader = imageLoader, onScan = onScan,
+            onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z) else onOeffnenEinzeln(sn, z) },
+            gewaehlt = auswahl.takeIf { nebeneinander })
+    }
+    if (nebeneinander && auswahl != null) {
+        ch.brickinventoryapp.ui.components.ListeUndDetail(
+            liste = liste,
+            detail = {
+                // key: Ein anderer Merkposten ist ein anderes Detail (Dialoge, Zoom zu).
+                androidx.compose.runtime.key(auswahl) {
+                    MerkpostenDetailScreen(vm = vm, setNumber = auswahl.first, condition = auswahl.second,
+                        imageLoader = imageLoader, onBack = { offen = null })
+                }
+            },
+        )
+    } else liste()
 }
 
 /**
@@ -326,7 +348,9 @@ private fun MerkpostenErfassenDialog(
                     value = nummer,
                     onValueChange = { nummer = NumericInput.setNumber(it) },
                     label = { Text(stringResource(R.string.gallery_set_number)) },
-                    placeholder = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
+                    // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
+                    // Fokus, und der Dialog fokussiert das Feld sofort.
+                    supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
                     singleLine = true,
                     shape = Formen.knopf,
                     // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
@@ -363,25 +387,28 @@ private fun MerkpostenErfassenDialog(
 @Composable
 private fun MerkpostenZeile(
     w: MerkpostenAnsicht, serverUrl: String, imageLoader: coil3.ImageLoader,
+    gewaehlt: Boolean,
     onOeffnen: () -> Unit,
 ) {
     // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie
     // trägt keinen Knopf, tut also auf ihrer ganzen Fläche dasselbe;
-    // Übernehmen und Löschen stehen im Detail.
-    Card(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOeffnen)) {
+    // Übernehmen und Löschen stehen im Detail. Steht das Detail daneben, trägt
+    // die geöffnete Karte einen Rahmen in der Hauptfarbe.
+    Card(
+        Modifier.fillMaxWidth()
+            .semantics { selected = gewaehlt }
+            .clickable(role = Role.Button, onClick = onOeffnen),
+        border = if (gewaehlt) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+    ) {
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
-                // Ohne Bild oder beim Fehler das Logo wie in der Galerie, statt eines leeren Flecks.
-                val ersatz = androidx.compose.ui.res.painterResource(R.drawable.ic_logo)
-                coil3.compose.AsyncImage(
+                ch.brickinventoryapp.ui.components.ProduktBild(
                     model = resolveThumbUrl(serverUrl, w.imageLocal, w.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,
-                    placeholder = ersatz,
-                    error = ersatz,
-                    fallback = ersatz,
-                    modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross),
+                    modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross).clip(MaterialTheme.shapes.small),
+                    ersatzGroesse = 28.dp,
                 )
                 Column(Modifier.weight(1f)) {
                     // Kein Name heisst: Der Katalog kennt das Set nicht. Der

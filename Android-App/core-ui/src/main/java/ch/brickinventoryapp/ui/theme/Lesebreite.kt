@@ -9,24 +9,21 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Wie breit Inhalte höchstens werden. Auf dem Tablet stand das Anmeldeformular
- * 1900 px breit, Bezeichnung und Wert einer Zeile weit auseinander; eine Zeile
- * liest sich nur bis zu einer gewissen Länge.
+ * Die eine Regel für breite Fenster — vorher standen Raster linksbündig, Listen
+ * mittig und Werkzeugleisten endeten mitten im Bild:
+ *
+ *  - Raster (Galerie, Teile, Figuren, Katalog, Merkliste) nutzen die volle Breite;
+ *    Such- und Filterleiste sind so breit wie das Raster darunter.
+ *  - Liste und Detail stehen ab „expanded“ nebeneinander (ListeUndDetail).
+ *  - Formulare und Textseiten stehen mittig auf ihrer Lesebreite ([mittigBis]).
  */
 object Lesebreite {
-    /** Formulare: Anmelden, Einrichten, Einstellungen. */
+    /** Formulare: Anmelden, Einrichten, Einstellungen, „Mehr“. */
     val formular = 560.dp
 
-    /** Listen und Suchfelder, die über die ganze Fläche liefen. */
+    /** Unterseiten mit Zeilen aus Bezeichnung und Wert. */
     val liste = 840.dp
 }
-
-/**
- * Volle Breite bis [max], darüber linksbündig: Für Bedienelemente über einem Raster,
- * das selbst links beginnt — mittig stünden sie versetzt zu den Kacheln darunter.
- */
-fun Modifier.linksBis(max: Dp): Modifier =
-    fillMaxWidth().wrapContentWidth(Alignment.Start).widthIn(max = max).fillMaxWidth()
 
 /** Volle Breite bis [max], darüber mittig. */
 fun Modifier.mittigBis(max: Dp): Modifier =

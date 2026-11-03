@@ -38,7 +38,7 @@
     <string name="settings_language_de">German</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
-    <string name="login_title">Welcome back</string>
+    <string name="login_title">Sign in to your server</string>
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
@@ -135,7 +135,9 @@
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_delete_title">Delete set?</string>
-    <string name="gallery_delete_text">%1$s and all parts will be removed.</string>
+    <string name="gallery_delete_text">%1$s and its parts will be removed. You can still undo it for a moment afterwards.</string>
+    <string name="gallery_set_deleted_undo">%1$s deleted</string>
+    <string name="common_undo">Undo</string>
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
     <string name="offline_stand">Offline – data as of %1$s</string>
@@ -153,9 +155,9 @@
     <string name="gallery_add">Add</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
-    <string name="minifigs_stat_types">Types</string>
+    <string name="minifigs_stat_types">Figure types</string>
     <string name="minifigs_stat_total">Figures in total</string>
-    <string name="minifigs_stat_manual">Manual</string>
+    <string name="minifigs_stat_manual">Added by you</string>
     <string name="minifigs_search_placeholder">Search…</string>
     <string name="minifigs_manual_section">Manually added minifigures</string>
     <string name="minifigs_sets_section">From sets</string>
@@ -227,11 +229,13 @@
     <string name="detail_price_none_yet">no price yet</string>
     <string name="detail_purchase_none">not recorded</string>
     <string name="detail_storage_ph">e.g. box 3</string>
-    <string name="filter_condition_all">All conditions</string>
+    <string name="detail_storage_none">No storage location</string>
+    <string name="filter_condition_all">All</string>
     <string name="filter_storage_all">All locations</string>
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Reset</string>
+    <string name="sort_menu_cd">Sort: %1$s</string>
     <string name="filter_section_sort">Sort</string>
     <string name="filter_section_spare">Spare parts</string>
     <string name="filter_section_color_category">Color and category</string>
@@ -291,7 +295,7 @@
     <string name="finance_market_avg">Collection market value</string>
 
     <!-- ══════════════ Parts screen ══════════════ -->
-    <string name="parts_stat_types">Types</string>
+    <string name="parts_stat_types">Part types</string>
     <string name="parts_stat_colors">Colors</string>
     <string name="parts_stat_total">Pieces in total</string>
     <string name="parts_manual_section">Manually added parts</string>
@@ -885,7 +889,7 @@
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
     <string name="setup_qr_pin">The code also names the server\'s certificate. The app remembers it for this address and from then on accepts only this one. Only continue if you have just created the code yourself in your web app; under Settings → Server certificate it shows the same beginning.</string>
-    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it above.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
+    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it with the button below.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
     <string name="setup_altbestand_titel">Encrypted connections only</string>
     <string name="setup_qr_klartext_abgelehnt">This QR code names an unencrypted address (http). The app only connects via https: switch the server to https (README, “HTTPS with your own CA”) and create the code again.</string>
     <string name="setup_url_unlesbar">This address cannot be read. Example: https://brick.fritz.box</string>
@@ -921,6 +925,9 @@
     <string name="common_no_results_hint">Loosen the search or the filter.</string>
     <string name="cd_set_delete">Delete %1$s</string>
     <string name="settings_hell_fest">This design is always dark; light and dark have no effect here.</string>
+    <string name="vouchers_cd_menu">Actions for voucher %1$s</string>
+    <string name="vouchers_menu_balance">Check balance with LEGO</string>
+    <string name="vouchers_menu_pdf">Open PDF</string>
     <string name="vouchers_cd_delete">Delete voucher %1$s</string>
     <string name="vouchers_cd_edit">Edit voucher %1$s</string>
     <string name="vouchers_cd_pdf">Open PDF of voucher %1$s</string>
@@ -934,7 +941,7 @@
     <string name="chart_change_year">%1$s this year</string>
     <string name="chart_change_month">%1$s this month</string>
     <string name="chart_change_week">%1$s this week</string>
-    <string name="finance_range_label">Value of your sets today, from lowest to highest market price</string>
+    <string name="finance_range_label">Range today: all sets at their lowest or highest price</string>
     <string name="wanted_add_first">Add a set to the list</string>
     <string name="wanted_empty_hint">Note the sets you still want to buy. The app shows their market price and can alert you when it changes.</string>
     <string name="fehler_anmeldung_text">Your session has expired.</string>
@@ -990,4 +997,8 @@
     <string name="hintergrund_wiederholt_ok">Job will be retried</string>
     <string name="hintergrund_gestartet">%1$s is starting</string>
     <string name="hintergrund_nichts_gestartet">%1$s: nothing to start</string>
+    <plurals name="gallery_delete_text_exemplare">
+        <item quantity="one">%1$d copy of %2$s and its parts will be removed. You can still undo it for a moment afterwards.</item>
+        <item quantity="other">All %1$d copies of %2$s and their parts will be removed. You can still undo it for a moment afterwards.</item>
+    </plurals>
 </resources>

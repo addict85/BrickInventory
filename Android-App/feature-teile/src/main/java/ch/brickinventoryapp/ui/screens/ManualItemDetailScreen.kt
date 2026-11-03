@@ -37,7 +37,6 @@ import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.theme.Petrol
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import androidx.compose.material.icons.filled.Person
@@ -116,7 +115,7 @@ fun ManualItemDetailScreen(
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
-    val isBrick = LocalIsBrickTheme.current
+    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -136,10 +135,10 @@ fun ManualItemDetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = if (isBrick) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.surface,
-                    titleContentColor = if (isBrick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurface,
-                    navigationIconContentColor = if (isBrick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    actionIconContentColor = if (isBrick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    containerColor = akzent.detailLeiste,
+                    titleContentColor = akzent.aufDetailLeiste,
+                    navigationIconContentColor = akzent.aufDetailLeiste,
+                    actionIconContentColor = akzent.aufDetailLeiste,
                 )
             )
         },
@@ -160,31 +159,19 @@ fun ManualItemDetailScreen(
                     elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
-                    if (imageUrl != null) {
-                        AsyncImage(
-                            model = imageUrl,
-                            imageLoader = imageLoader,
-                            contentDescription = title,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .clip(Formen.chip)
-                                .clickable(role = Role.Button) { showImageZoom = true }
-                                .padding(Abstaende.mittel),
-                            contentScale = ContentScale.Fit
-                        )
-                    } else {
-                        Box(
-                            Modifier.fillMaxWidth().height(160.dp).background(
-                                Brush.linearGradient(listOf(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.secondaryContainer))),
-                            Alignment.Center
-                        ) {
-                            LeerSymbol(if (isFig) Icons.Default.Person else Icons.Default.ViewInAr, 42.dp,
-                                MaterialTheme.colorScheme.onPrimaryContainer)
-                        }
-                    }
+                    ch.brickinventoryapp.ui.components.ProduktBild(
+                        model = imageUrl,
+                        imageLoader = imageLoader,
+                        contentDescription = title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(Formen.chip)
+                            .clickable(enabled = imageUrl != null, role = Role.Button) { showImageZoom = true }
+                            .padding(Abstaende.mittel),
+                        contentScale = ContentScale.Fit,
+                        ersatzGroesse = 64.dp,
+                    )
                 }
             }
 
@@ -193,17 +180,14 @@ fun ManualItemDetailScreen(
                 val labelNumber = stringResource(
                     if (isFig) R.string.detail_fig_number else R.string.detail_part_number)
                 val labelColor  = stringResource(R.string.detail_color)
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    contentPadding = PaddingValues(horizontal = Abstaende.gross),
-                    modifier = Modifier.padding(bottom = Abstaende.mittel)
-                ) {
-                    val chips = buildList {
-                        add(labelNumber to id)
-                        part?.colorName?.let { add(labelColor to it) }
-                        fig?.blFigNumber?.let { add("BrickLink" to it) }
-                    }
-                    items(chips) { (label, value) -> StatChipV2(label = label, value = value) }
+                val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
+                val chips = buildList {
+                    add(labelNumber to id)
+                    part?.colorName?.let { add(labelColor to farbe(it)) }
+                    fig?.blFigNumber?.let { add("BrickLink" to it) }
+                }
+                KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
+                    chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
                 }
             }
 

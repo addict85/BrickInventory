@@ -42,7 +42,6 @@ import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.core.graphics.toColorInt
-import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -137,11 +136,12 @@ fun PartsScreen(
     // Farbe und Kategorie — die beiden Filterlisten der Webapp (03-parts.js,
     // loadPartsFilters). Die Umrechnung auf die gemeinsame Form steht hier: Die beiden
     // Antworten tragen verschiedene Feldnamen, alles andere ist gleich.
-    val farbEintraege = remember(partsState.partsFilterColors) {
+    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
+    val farbEintraege = remember(partsState.partsFilterColors, farbe) {
         partsState.partsFilterColors.mapNotNull { f ->
             f.colorName?.takeIf { it.isNotBlank() }?.let { name ->
                 TeileFilterEintrag(
-                    wert = name, text = name, anzahl = f.uniqueParts,
+                    wert = name, text = farbe(name), anzahl = f.uniqueParts,
                     farbe = f.colorHex?.let {
                         try { Color("#$it".toColorInt()) }
                         catch (_: Exception) { null }
@@ -366,11 +366,7 @@ fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: I
         waehrung = waehrung,
         onEdit = onEdit,
         farbe = farbe,
-        farbname = part.colorName,
-        platzhalter = {
-            Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null,
-                Modifier.size(28.dp), tint = Color.Unspecified)
-        },
+        farbname = part.colorName?.let { ch.brickinventoryapp.ui.components.farbUebersetzer()(it) },
     )
 }
 
@@ -399,21 +395,18 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     ) {
         Column {
             Box(Modifier.fillMaxWidth().height(90.dp)) {
-                if (imageUrl != null) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(ctx).data(imageUrl).crossfade(true).build(),
-                        imageLoader = imageLoader,
-                        contentDescription = part.partName,
-                        onState = { st ->
-                            if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
-                        },
-                        modifier = Modifier.fillMaxSize()
-                            .clip(Formen.kachelBildEcken),
-                        contentScale = ContentScale.Fit
-                    )
-                } else {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) { Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(28.dp), tint = Color.Unspecified) }
-                }
+                ch.brickinventoryapp.ui.components.ProduktBild(
+                    model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                    imageLoader = imageLoader,
+                    contentDescription = part.partName,
+                    onState = { st ->
+                        if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
+                    },
+                    modifier = Modifier.fillMaxSize()
+                        .clip(Formen.kachelBildEcken),
+                    contentScale = ContentScale.Fit,
+                    ersatzGroesse = 32.dp,
+                )
                 // Qty badge
                 Surface(
                     color = MaterialTheme.colorScheme.primary,
@@ -437,12 +430,13 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold)
-                Text(part.partName ?: stringResource(R.string.name_unknown),
+                Text(part.partName?.let { ch.brickinventoryapp.ui.components.katalogName(it) }
+                        ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                     maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
                 part.colorName?.let {
-                    Text(it, style = MaterialTheme.typography.labelSmall,
+                    Text(ch.brickinventoryapp.ui.components.farbUebersetzer()(it), style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                 }
                 // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es

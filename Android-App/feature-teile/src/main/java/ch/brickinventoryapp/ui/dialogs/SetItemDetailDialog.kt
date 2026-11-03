@@ -3,6 +3,7 @@ package ch.brickinventoryapp.ui.dialogs
 // Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
 // SetPruefungDialog.kt): `Modifier.size` steckt in foundation.layout, und das
 // `by` vor collectAsStateWithLifecycle braucht runtime.getValue.
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -23,7 +24,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
@@ -56,6 +56,7 @@ fun SetItemDetailDialog(
     onOpenSet: (String) -> Unit,
 ) {
     val zustand by vm.setItemState.collectAsStateWithLifecycle()
+    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
     // `lagerZustand`, nicht `lager`: UiStateFieldsTest bestimmt den Typ je NAME
     // und Datei — dieselbe Namensfalle wie bei `state` in SettingsScreen.kt.
     val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
@@ -94,7 +95,7 @@ fun SetItemDetailDialog(
             Column {
                 Text(kopf?.name ?: zustand.nummer, fontWeight = FontWeight.SemiBold)
                 Text(
-                    zustand.nummer + (kopf?.colorName?.let { " · $it" } ?: ""),
+                    zustand.nummer + (kopf?.colorName?.let { " · " + farbe(it) } ?: ""),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -111,26 +112,25 @@ fun SetItemDetailDialog(
                         color = MaterialTheme.colorScheme.error,
                     )
                     else -> {
-                        if (bild != null) {
-                            // Tippen vergrössert — dasselbe Bauteil wie im Set-Detail
-                            // und im Dialog für manuell erfasste Teile.
-                            AsyncImage(
-                                model = bild,
-                                contentDescription = kopf.name,
-                                imageLoader = imageLoader,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(140.dp)
-                                    .clickable(role = Role.Button) { zeigeZoom = true },
-                            )
-                            Spacer(Modifier.height(Abstaende.mittel))
-                        }
+                        // Tippen vergrössert — dasselbe Bauteil wie im Set-Detail
+                        // und im Dialog für manuell erfasste Teile.
+                        ch.brickinventoryapp.ui.components.ProduktBild(
+                            model = bild,
+                            imageLoader = imageLoader,
+                            contentDescription = kopf?.name,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                                .clip(MaterialTheme.shapes.medium)
+                                .clickable(enabled = bild != null, role = Role.Button) { zeigeZoom = true },
+                        )
+                        Spacer(Modifier.height(Abstaende.mittel))
                         SetItemZeile(
                             stringResource(R.string.setitem_total_qty),
                             ch.brickinventoryapp.ui.mengeAusSet(kopf?.totalQuantity ?: 0))
                         kopf?.colorName?.let {
-                            SetItemZeile(stringResource(R.string.setitem_color), it)
+                            SetItemZeile(stringResource(R.string.setitem_color), farbe(it))
                         }
                         kopf?.categoryName?.let {
                             SetItemZeile(stringResource(R.string.setitem_category), it)

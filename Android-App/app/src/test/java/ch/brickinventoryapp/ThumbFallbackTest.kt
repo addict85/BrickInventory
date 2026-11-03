@@ -81,23 +81,13 @@ class ThumbFallbackTest {
     }
 
     @Test
-    fun `CatalogSetCard mischt onError statt onState mit dem Platzhalter-Painter`() {
-        // Compile-Fehler: "error" (Platzhalter-Painter) und "onState" gehören
-        // zu zwei unterschiedlichen, sich gegenseitig ausschliessenden
-        // AsyncImage-Überladungen von Coil. Mit "imageLoader" UND "error"
-        // gesetzt bleibt nur die Painter-Überladung übrig — die kennt
-        // "onError", nicht "onState". Die anderen Kacheln (Gallery, Parts,
-        // Minifigs) setzen kein "error" und benutzen deshalb weiterhin
-        // "onState" — das ist dort korrekt und soll so bleiben.
+    fun `CatalogSetCard faellt bei einem Fehler auf die volle Aufloesung zurueck`() {
+        // Das Ersatzbild steht seit ProduktBild (ui/components) an EINER Stelle; die
+        // Katalogkachel reicht nur noch den Fehler an den Rückfall weiter.
         val src = read("ui/screens/CatalogScreen.kt")
-        assert(src.contains("error = painterResource(R.drawable.ic_logo)")) {
-            "Der Logo-Platzhalter darf nicht verloren gegangen sein"
-        }
-        assert(src.contains("onError = { onThumbError() }")) {
-            "Zusammen mit \"error\" muss \"onError\" verwendet werden, nicht \"onState\""
-        }
-        assert(!src.contains("onState = { st ->")) {
-            "onState ist mit dem error-Parameter nicht kombinierbar — genau das verursachte den Compile-Fehler"
+        assert(src.contains("ProduktBild(")) { "Die Katalogkachel benutzt das gemeinsame Bild mit Ersatz" }
+        assert(src.contains("AsyncImagePainter.State.Error) onThumbError()")) {
+            "Ein Fehler muss den Rückfall auf die volle Auflösung auslösen"
         }
     }
 }

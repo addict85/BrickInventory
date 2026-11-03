@@ -37,7 +37,6 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.util.resolveThumbUrl
-import coil3.compose.AsyncImage
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
@@ -273,7 +272,6 @@ fun LazyListScope.financeCategoryFilter(
                     selected = aktive.isEmpty(),
                     onClick = onAlle,
                     label = { Text(stringResource(R.string.finance_filter_all), style = MaterialTheme.typography.labelMedium) },
-                    shape = Formen.chip
                 )
             }
             item { KategorieChip("sets",  R.string.finance_filter_sets,     aktive, onUmschalten) }
@@ -295,7 +293,6 @@ private fun KategorieChip(
         selected = schluessel in aktive,
         onClick = { onUmschalten(schluessel) },
         label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
-        shape = Formen.chip
     )
 }
 

@@ -117,21 +117,26 @@ class DunkelTokensTest {
     }
 
     /**
-     * Ein Akzent je Design: Gewählte Chips und der kleine Knopf (secondaryContainer)
-     * stehen im Farbton der Hauptfarbe — classic zeigte dunkel Bernstein neben Blau.
-     * Nur brick hat auch hell eine sandfarbene Zweitfläche und darf sie behalten.
+     * Ein Akzent je Design: Gewählte Chips und der Tonal-Knopf (secondaryContainer)
+     * stehen im Dunkeln im Farbton der Hauptfarbe oder neutral — classic und brick
+     * zeigten Bernstein neben Hellblau („Weiter“ braun/gold unter dem blauen QR-Knopf).
      * Gegenprobe (02.11.2026, kotlinc): classic wieder auf a100/a-schrift → rot.
+     * Gegenprobe (03.11.2026, thema.py): brick wieder auf a100/a-schrift → rot
+     * „brick dunkel: Zweitfläche 171° neben der Hauptfarbe“.
      */
     @Test
-    fun `im Dunkeln traegt classic einen Akzent`() {
-        fun farbton(argb: Long): Float {
+    fun `im Dunkeln traegt jedes Design einen Akzent`() {
+        fun hsb(argb: Long): FloatArray {
             val c = argb.toInt()
-            val hsb = java.awt.Color.RGBtoHSB((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, null)
-            return hsb[0] * 360f
+            return java.awt.Color.RGBtoHSB((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, null)
         }
-        val r = dunkleRollen("classic")
-        val abstand = kotlin.math.abs(farbton(r.secondaryContainer) - farbton(r.primary)).let { minOf(it, 360f - it) }
-        assertTrue("classic dunkel: Zweitfläche %.0f° neben der Hauptfarbe".format(abstand), abstand < 30f)
-        assertTrue("lesbar", k(r.onSecondaryContainer, r.secondaryContainer) >= 4.5)
+        for (design in DunkelTokens.designs.keys) {
+            val r = dunkleRollen(design)
+            val zweit = hsb(r.secondaryContainer)
+            val abstand = kotlin.math.abs(zweit[0] * 360f - hsb(r.primary)[0] * 360f).let { minOf(it, 360f - it) }
+            assertTrue("$design dunkel: Zweitfläche %.0f° neben der Hauptfarbe".format(abstand),
+                zweit[1] < 0.35f || abstand < 30f)
+            assertTrue("$design lesbar", k(r.onSecondaryContainer, r.secondaryContainer) >= 4.5)
+        }
     }
 }

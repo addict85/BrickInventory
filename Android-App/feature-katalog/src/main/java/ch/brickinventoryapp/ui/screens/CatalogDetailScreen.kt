@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.draw.clip
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
@@ -36,7 +37,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -117,22 +117,17 @@ fun CatalogDetailScreen(
                             // in der Katalog-Liste.
                             resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)
                         }
-                        if (fullUrl != null) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(ctx).data(fullUrl).crossfade(true).build(),
-                                imageLoader = imageLoader,
-                                contentDescription = detail.name,
-                                // Kaputte/fehlende CDN-Bilder -> Logo-Platzhalter statt leerer Fläche
-                                error = androidx.compose.ui.res.painterResource(R.drawable.ic_logo),
-                                // Antippen öffnet den Zoom — gleiches Verhalten wie im
-                                // Set-Detail des eigenen Bestands.
-                                modifier = Modifier.fillMaxSize().padding(10.dp)
-                                    .clickable(role = Role.Button) { showImageZoom = true },
-                                contentScale = androidx.compose.ui.layout.ContentScale.Fit
-                            )
-                        } else {
-                            LeerSymbol(Icons.Default.ViewInAr, 56.dp)
-                        }
+                        // Antippen öffnet den Zoom — gleiches Verhalten wie im
+                        // Set-Detail des eigenen Bestands.
+                        ch.brickinventoryapp.ui.components.ProduktBild(
+                            model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                            imageLoader = imageLoader,
+                            contentDescription = detail.name,
+                            modifier = Modifier.fillMaxSize().padding(10.dp).clip(MaterialTheme.shapes.medium)
+                                .clickable(enabled = fullUrl != null, role = Role.Button) { showImageZoom = true },
+                            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                            ersatzGroesse = 64.dp,
+                        )
                     }
                 }
 
@@ -388,13 +383,12 @@ private fun MerkpostenDialog(
                 HorizontalDivider()
                 Text(stringResource(R.string.detail_alert),
                      style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    AuswahlChip(selected = richtung == "unter", onClick = { richtung = "unter" },
-                               label = { Text(stringResource(R.string.detail_alert_chip_below)) })
-                    AuswahlChip(selected = richtung == "ueber", onClick = { richtung = "ueber" },
-                               label = { Text(stringResource(R.string.detail_alert_chip_above)) })
-                }
+                ch.brickinventoryapp.ui.components.SegmentWahl(
+                    optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
+                                      "ueber" to stringResource(R.string.detail_alert_chip_above)),
+                    gewaehlt = richtung,
+                    onWahl = { richtung = it },
+                )
                 // Eine Schwelle ist ein Preis — dieselbe Eingaberegel und
                 // dieselbe Tastatur wie ueberall (util/NumericInput.kt).
                 OutlinedTextField(

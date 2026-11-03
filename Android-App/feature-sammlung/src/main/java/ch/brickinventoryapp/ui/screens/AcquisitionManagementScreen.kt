@@ -345,6 +345,7 @@ private fun AcquisitionManagementRow(
         }
     }
 
+    Column(Modifier.fillMaxWidth()) {
     Row(
         Modifier.fillMaxWidth().padding(bottom = Abstaende.winzig),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -367,12 +368,6 @@ private fun AcquisitionManagementRow(
                 onDone = { focusManager.clearFocus(); flushPending() }
             ),
             shape = Formen.etikett
-        )
-
-        // Condition toggle
-        ConditionToggle(
-            selected = condition,
-            onSelect = { newCond -> condition = newCond; onSave(null, newCond, null, null) }
         )
 
         // Price
@@ -406,5 +401,13 @@ private fun AcquisitionManagementRow(
             Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
                 tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
         }
+    }
+    // Der Zustand unter Anzahl und Preis über die volle Breite: In der Zeile liess
+    // die Segmentschaltfläche dem Preis auf dem Telefon kaum Platz.
+    ConditionToggle(
+        selected = condition,
+        onSelect = { newCond -> condition = newCond; onSave(null, newCond, null, null) },
+        modifier = Modifier.padding(bottom = Abstaende.klein),
+    )
     }
 }
