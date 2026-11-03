@@ -1151,7 +1151,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 
 
 /* ── Dialog „Set hinzufügen“: zwei Spalten, Knopf rechts unten ─────────── */
-.erfassen-raster{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,max(10em,calc(50% - .5rem))),1fr));gap:.75rem 1rem;align-items:end}
+.erfassen-raster{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,max(10em,calc(50% - .5rem))),1fr));gap:.75rem 1rem;align-items:start}
 .erfassen-raster .fg{min-width:0}
 .erfassen-raster .fg select,.erfassen-raster .fg input{width:100%}
 .erfassen-raster .zeile > select{flex:1 1 auto;min-width:0}
@@ -1179,6 +1179,9 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .diagramm-flaeche{min-height:80px}
 .diagramm-hinweis{color:var(--mut);font-size:var(--fs-2);padding:1rem}
 .zeitraum-wahl{display:flex;gap:6px;margin-top:.75rem;justify-content:center;flex-wrap:wrap}
+/* Die Veränderung im gewählten Zeitraum gehört zum Diagramm, nicht neben die Kennzahl zum Einstand (N3). */
+.zeitraum-wert{display:flex;justify-content:center;margin-top:.5rem;font-size:var(--fs-2)}
+.zeitraum-wert:has(#portfolio-pnl:empty){display:none}
 .fin-banner{display:flex;background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:.85rem 1.25rem;margin-bottom:.75rem;align-items:center;justify-content:space-between}
 .chip-reihe{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem}
 .rechts-buendig{margin-left:auto}
@@ -1283,7 +1286,7 @@ p.mon-leise{margin:0 0 .35rem}
 .mon-knoepfe{display:flex;flex-wrap:wrap;gap:.35rem;justify-content:flex-start}
 .mon-knoepfe .btn{flex:0 1 auto}
 .mon-plan{display:inline-flex;align-items:center;gap:.35rem;flex-wrap:wrap;font-size:var(--fs-2);color:var(--mut)}
-.mon-plan input{width:5.5em;min-height:32px;padding:4px 8px;border:1px solid var(--feldrand);border-radius:6px;background:var(--sur);color:var(--txt);font:inherit;font-variant-numeric:tabular-nums}
+.mon-plan input{min-height:32px;padding:4px 8px;border:1px solid var(--feldrand);border-radius:6px;background:var(--sur);color:var(--txt);font:inherit;font-variant-numeric:tabular-nums}
 .mon-plan input[aria-invalid="true"]{border-color:var(--r500)}
 .mon-panel{margin-top:.75rem}
 
@@ -1321,3 +1324,66 @@ p.mon-leise{margin:0 0 .35rem}
   :is(#tab-profil,#tab-gutscheine,#tab-alarme,#tab-lagerorte,#tab-haushalt) > .ssec{max-width:none;margin:0 0 1.25rem}
   #tab-profil > .gefahrenzone{max-width:none}
 }
+
+/* Kacheln einer Reihe gleich hoch: Name höchstens zwei Zeilen, Jahr/Thema und
+   Plaketten je eine eigene Zeile, Preis und Datum unten bündig (N1). */
+#gallery .sc{display:flex;flex-direction:column}
+#gallery .sc > .scb{flex:1 1 auto;display:flex;flex-direction:column}
+#gallery .sname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.6em}
+#gallery .smeta{flex-direction:column;align-items:flex-start;gap:4px}
+#gallery .scb > .price-badge{margin-top:auto}
+#gallery .scb > .price-badge[hidden] + .kachel-datum{margin-top:auto}
+.unbekannt-badge{display:inline-block;padding:1px 7px;border-radius:999px;border:1px dashed var(--feldrand);color:var(--txt);font-size:var(--fs-0);font-weight:600}
+.erfassen-unbekannt{grid-column:1 / -1;margin:0}
+.erfassen-unbekannt[hidden]{display:none}
+
+/* Set-Detail: Felder und Knöpfe in einer Höhe wie in den übrigen Formularen (N6). */
+@media (min-width:641px){
+  #set-modal .detail-knopf,#set-modal select.alarm-feld,#set-modal input.alarm-feld,#set-modal .detail-feld,#set-modal .dr select{min-height:36px}
+  #set-modal .menge-knopf{min-width:36px}
+}
+#set-modal .detail-knopf{font-size:var(--fs-2);padding:4px 12px}
+#set-modal .menge-knopf{font-size:var(--fs-4);padding:0 10px;line-height:1}
+#set-modal .menge-feld{flex:0 0 auto;width:5em}
+.menge-feld{width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:4px;font-weight:600;background:var(--sur);color:var(--txt)}
+input.alarm-feld[inputmode=decimal]{width:7.5em}
+#set-modal .mehr-liste{flex-wrap:wrap}
+
+/* Bauliste: der Leerzustand mittig über die volle Breite, Zurücksetzen erst
+   mit Inhalt — ein gesperrter roter Knopf las sich wie ein aktiver (N4). */
+#pl-sets > .empty{flex:1 1 100%}
+#btn-pl-reset:disabled{display:none}
+#tab-gallery.sammlung-leer .filterleiste{display:none}
+
+/* Einstellungen: eine Seitennavigation mit aktivem Balken statt einer Reihe
+   kleiner Umrandungsknöpfe (I5). Am Telefon eine rollende Reihe von Reitern. */
+.einst-link{display:flex;align-items:center;min-height:40px;padding:8px 12px;border-left:3px solid transparent;border-radius:0 8px 8px 0;
+  color:var(--txt);font-size:var(--fs-3);font-weight:600;text-decoration:none}
+@media (hover:hover){.einst-link:hover{background:var(--s100)}}
+#global-settings-grid > .einst-nav .einst-link[aria-current="page"]{background:var(--b50);color:var(--b700,var(--b600));border-left-color:var(--b600)}
+#global-settings-grid > .einst-nav{gap:2px;border-right:1px solid var(--bdr);padding-right:.5rem}
+@media(max-width:700px){
+  #global-settings-grid > .einst-nav{border-right:0;border-bottom:1px solid var(--bdr);padding:0;gap:0}
+  .einst-link{min-height:44px;border-left:0;border-bottom:3px solid transparent;border-radius:0;white-space:nowrap}
+  #global-settings-grid > .einst-nav .einst-link[aria-current="page"]{border-bottom-color:var(--b600)}
+}
+
+/* Einrichtung: ein Dienst je Schritt, die Knöpfe in einer festen Fussleiste (M8). */
+.ew-titel{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;font-size:var(--fs-4);font-weight:700;margin:0 0 .5rem}
+.ew-pflicht{font-size:var(--fs-0);font-weight:700;padding:1px 8px;border-radius:999px;background:var(--b50);color:var(--b700,var(--b600));border:1px solid var(--b600)}
+.ew-pflicht.ew-optional{background:none;color:var(--mut);border-color:var(--feldrand)}
+.ew-schritt > p{margin:0 0 .75rem}
+.ew-aktion{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;margin-top:.75rem}
+.ew-aktion .btn{flex:0 0 auto}
+.ew-link{display:inline-flex;align-items:center;min-height:24px;font-size:var(--fs-2)}
+.ew-fuss{display:flex;justify-content:space-between;align-items:center;gap:.5rem;flex-wrap:wrap}
+.ew-fuss-rechts{display:flex;gap:.5rem;margin-left:auto}
+.ew-fuss .btn{flex:0 0 auto}
+#ew-spaeter[hidden]{display:none}
+@media (max-width:640px){.ew-link{min-height:44px}}
+.diagramm-preis .kaufpunkt{pointer-events:none}
+.mk-preis-offen{font-size:var(--fs-1)}
+.mon-arten td:first-child{font-weight:600}
+.mon-plan input.mon-zeit{width:5em}
+.mon-plan input.mon-minuten{width:4.5em}
+.hinweis-band .hinweis-zu{flex:none}

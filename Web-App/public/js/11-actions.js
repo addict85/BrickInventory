@@ -1,5 +1,5 @@
 import { istVertraut, registerActions, resolveAction } from './00-registry.js';
-import { G, bildPlatzhalter, fullUrl, setLang, toast } from './01-core.js';
+import { G, bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl, setLang, toast } from './01-core.js';
 import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
@@ -189,6 +189,7 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     // fängt genau diese Aussetzer ab.
     if (!el.dataset.retried && el.src) {
       el.dataset.retried = '1';
+      if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);
       const src = el.src;
       // removeAttribute statt src='': Ein leeres src zeigt auf die SEITE, und
       // der Browser wuerde sie als Bild zu laden versuchen.
@@ -226,6 +227,8 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     if (el && el.tagName === 'IMG' && el.getAttribute('loading') === 'lazy') {
       el.classList.add('loaded');
     }
+    const bild = /** @type {HTMLImageElement} */ (el);
+    if (bild?.tagName === 'IMG' && bild.hidden && bild.dataset.ph) bildGeladen(bild);
   }
 
   document.addEventListener('load', ev => markLoaded(ev.target), true);

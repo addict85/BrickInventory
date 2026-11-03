@@ -169,19 +169,45 @@ export function bildTag(o) {
 export function platzhalterInhalt(art) {
   // Dasselbe dezente Symbol wie bei Teilen und Figuren; das rote Logo füllte
   // ohne Bilder jede Karte gleich.
-  return ico(art === 'set' ? 'set' : art === 'figur' ? 'figur' : 'teil');
+  // Sets nehmen die Datei: Sie sieht in jedem Design gleich aus (UI-Prüfung 6, M3).
+  if (art === 'set') return '<img src="/assets/set-placeholder.svg" alt="" aria-hidden="true">';
+  return ico(art === 'figur' ? 'figur' : 'teil');
+}
+
+/**
+ * Zeigt den Platzhalter, solange ein Bild noch einmal versucht wird; das Bild
+ * bleibt verborgen daneben und ersetzt ihn, sobald es doch lädt. Ohne das
+ * stand während des zweiten Versuchs das Symbol des Browsers in der Kachel.
+ */
+export function bildVorlaeufig(img) {
+  if (img.previousElementSibling?.classList.contains('bild-ph-vorlaeufig')) return;
+  bildPlatzhalter(img, true);
+  img.hidden = true; img.style.display = 'none';
+  // Verborgen lädt ein lazy-Bild nie; der zweite Versuch soll aber laufen.
+  img.setAttribute('loading', 'eager');
+}
+
+/** Das Bild hat doch geladen: vorläufigen Platzhalter entfernen. */
+export function bildGeladen(img) {
+  const ph = img.previousElementSibling;
+  if (!ph?.classList.contains('bild-ph-vorlaeufig')) return;
+  ph.remove(); img.hidden = false; img.style.display = '';
 }
 
 /** Ersetzt ein Bild, das nicht lädt, durch seinen Platzhalter in derselben Grösse. */
-export function bildPlatzhalter(img) {
+export function bildPlatzhalter(img, vorlaeufig = false) {
+  const alt = img.previousElementSibling;
+  if (!vorlaeufig && alt?.classList.contains('bild-ph-vorlaeufig')) { alt.classList.remove('bild-ph-vorlaeufig'); img.remove(); return; }
   const ph = document.createElement('span');
   ph.className = ('bild-ph ' + (img.getAttribute('class') || '').replace(/\bloaded\b/, '')).trim();
   ph.setAttribute('role', 'img');
   ph.setAttribute('aria-label', img.getAttribute('alt') || '');
   if (!img.getAttribute('alt')) ph.setAttribute('aria-hidden', 'true');
   const cs = getComputedStyle(img);
-  for (const k of ['width', 'height', 'borderRadius', 'margin']) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
+  // In der Kachel füllt der Platzhalter die Bildfläche; ein kaputtes Bild misst nur sein Symbol.
+  if (!img.closest('.sci')) for (const k of ['width', 'height', 'borderRadius', 'margin']) if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
   ph.innerHTML = platzhalterInhalt(img.dataset.ph);
+  if (vorlaeufig) { ph.classList.add('bild-ph-vorlaeufig'); img.before(ph); return; }
   img.replaceWith(ph);
 }
 
