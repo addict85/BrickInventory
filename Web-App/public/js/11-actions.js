@@ -1,5 +1,6 @@
 import { istVertraut, registerActions, resolveAction } from './00-registry.js';
-import { G, bildPlatzhalter, fullUrl, setLang } from './01-core.js';
+import { G, bildPlatzhalter, fullUrl, setLang, toast } from './01-core.js';
+import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 import { autosaveSet, closeImageLightbox, delSet, hideProgress, openImageLightbox } from './02-gallery.js';
@@ -54,11 +55,11 @@ import { merkpostenLoeschen } from './16-merkliste.js';
       'manQtySave', 'merkpostenInhaberGewaehlt', 'onScopeChange', 'onStorageChange',
       'plFuelleBestand', 'renderFigsAll', 'renderGallery', 'saveJobMinutes', 'saveJobTime',
       'saveRegEnabled', 'setCatFilter', 'setColorFilter', 'setLangFromEl', 'setzeDunkel',
-      'setzeEigenesDesign', 'speichereAlarm', 'speichereSetLagerort', 'speichereTeilFarbe',
-      'speichereTeilLagerort', 'startSetCsvImport', 'updateColorDot', 'uploadInstr',
+      'setzeEigenesDesign', 'speichereAlarm', 'speichereWaehrung', 'speichereZustand', 'speichereSetLagerort', 'speichereTeilFarbe',
+      'speichereTeilLagerort', 'startSetCsvImport', 'updateColorDot', 'uploadInstr', 'waehrungPruefen',
       'wantedKorrekturFarbe', 'wantedKorrekturNummer', 'wantedKorrekturWert',
       'wantedXmlGewaehlt', 'wechsleAlarmZustand']),
-    input: new Set(['alarmGetippt', 'filterFigs']),
+    input: new Set(['alarmGetippt', 'emailGetippt', 'filterFigs']),
     blur: new Set(['acqSave', 'lagerortGetippt', 'manAcqSave', 'saveManualFigBl']),
     keydown: new Set(['blurOnEnter', 'lagerortTaste']),
   };
@@ -309,7 +310,14 @@ export function blurOnEnter(ev) { if (ev?.key === 'Enter') this.blur(); }
 export function clickJobTrigger() { document.getElementById('btn-job-trigger')?.click(); }
 
 /** War: onchange="saveJobSchedule('${k}',{time:this.value})" */
-export function saveJobTime(k) { saveJobSchedule(k, { time: this.value }); }
+export function saveJobTime(k) {
+  const m = /^\s*(\d{1,2})\s*[:.]?\s*(\d{2})\s*$/.exec(this.value);
+  const gueltig = !!m && +m[1] < 24 && +m[2] < 60;
+  this.setAttribute('aria-invalid', String(!gueltig));
+  if (!gueltig) { toast(tRaw('monitor.sched.ungueltig'), 'error'); return; }
+  this.value = m[1].padStart(2, '0') + ':' + m[2];
+  saveJobSchedule(k, { time: this.value });
+}
 
 /** War: onchange="saveJobSchedule('${k}',{minutes:this.value})" */
 export function saveJobMinutes(k) { saveJobSchedule(k, { minutes: this.value }); }

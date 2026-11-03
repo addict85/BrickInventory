@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, esc, toast } from './01-core.js';
+import { ico, G, api, esc, toast, fmtDatum, ME } from './01-core.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 
 // ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
@@ -85,12 +85,12 @@ export async function ladePasskeys() {
     ? `<div class="tw"><table class="dt"><thead><tr><th>${t('pk.col.name')}</th><th>${t('tokens.col.created')}</th>
         <th>${t('tokens.col.last_used')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
         d.passkeys.map(p => `<tr><td><strong>${esc(p.name || '—')}</strong></td>
-          <td>${new Date(p.created_at).toLocaleString()}</td>
-          <td>${p.last_used ? new Date(p.last_used).toLocaleString() : '—'}</td>
+          <td>${fmtDatum(p.created_at, 'tagzeit')}</td>
+          <td>${p.last_used ? fmtDatum(p.last_used, 'tagzeit') : '—'}</td>
           <td><button class="btn bd btn-sm" data-click="passkeyLoeschen"${echt()} data-arg="${esc(p.id)}" data-arg2="${esc(p.name || '')}" aria-label="${esc(tRaw('common.delete'))}">${ico('loeschen')}</button></td></tr>`).join('')
       }</tbody></table></div>`
     : `<p class="hinweis-absatz">${t('pk.none')}</p>`;
-  const neu = !d.verfuegbar ? `<p class="text-klein hinweis-warnung">${t('pk.ohne_domain')}</p>`
+  const neu = !d.verfuegbar ? `<p class="text-klein hinweis-warnung">${t(ME?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
     : !passkeysMoeglich() ? `<p class="text-klein hinweis-warnung">${t('pk.browser')}</p>`
     : `<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">
         <div class="fg"><label for="pk-name">${t('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>

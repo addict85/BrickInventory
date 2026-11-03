@@ -943,7 +943,7 @@ export function fmtBig(n){
 }
 
 /**
- * Ein Datum überall gleich: „05.01.2024“ (de), „05/01/2024“ (en). Vorher
+ * Ein Datum überall gleich: „05.01.2024“ (de), „5 Jan 2024“ (en). Vorher
  * stand je Stelle toLocaleDateString() („5.1.2024“) neben eigenen Formen.
  * @param {string|number|Date|null|undefined} v
  * @param {'tag'|'zeit'|'tagzeit'|'lang'} [art]  lang: „1. Juni 2026“
@@ -952,7 +952,10 @@ export function fmtDatum(v, art = 'tag'){
   if (v === null || v === undefined || v === '') return '';
   const d = v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
   if (isNaN(d.getTime())) return '';
-  const tag = { day: '2-digit', month: '2-digit', year: 'numeric' }, zeit = { hour: '2-digit', minute: '2-digit' };
+  // Englisch mit Monatsnamen: „03/11/2026“ liest sich in den USA als 11. März.
+  // Deutsch immer 24 Stunden, auch bei einem Browser mit 12-h-Vorgabe.
+  const tag = LANG === 'en' ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: '2-digit', month: '2-digit', year: 'numeric' };
+  const zeit = LANG === 'en' ? { hour: '2-digit', minute: '2-digit' } : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
   const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : art === 'lang' ? { day: 'numeric', month: 'long', year: 'numeric' } : tag;
   return new Intl.DateTimeFormat(locale(), /** @type {Intl.DateTimeFormatOptions} */ (o)).format(d);
 }
@@ -1362,7 +1365,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   setLangValue(localStorage.getItem('bim_lang') || LANG);
   applyLang(LANG, false);
   // Load settings — also picks up server-stored language preference
-  api('GET','/v1/settings/raw').then(d=>{
+  const einstellungen = api('GET','/v1/settings/raw').then(d=>{
     if(d.success&&d.settings){
       _settingsCache=d.settings;
       CURRENCY=d.settings.currency||'EUR';
@@ -1387,17 +1390,13 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in
   // die Einstellungen bei jeder Anmeldung nimmt dem Verwalter seine Startseite.
   // Ein Band weist einmal je Sitzung darauf hin.
-  if(ME.isAdmin) {
-    const checkRbKey = () => {
-      rbHinweisZeigen();
-      loadGallery();
-    };
-    if(_settingsCache) checkRbKey();
-    else setTimeout(checkRbKey, 600); // wait for the parallel fetch above
-  } else {
+  // Erst die Einstellungen, dann Beträge: Sonst stünden die Preise kurz in
+  // der Vorgabewährung und sprängen dann um (UI-Prüfung 6, N12).
+  einstellungen.catch(() => {}).finally(() => {
+    if (ME?.isAdmin) rbHinweisZeigen();
     loadGallery();
-  }
-  loadStats();
+    loadStats();
+  });
   routeBeimStart();
 }
 G('btn-login').onclick=doLogin;

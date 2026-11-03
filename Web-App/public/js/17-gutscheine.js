@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
+import { fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld, CURRENCY, _settingsCache } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 
 // ═══ Gutscheine (LEGO-Geschenkkarten) ══════════════════════════════════════
@@ -65,6 +65,22 @@ export function gruppiereNummer(roh) {
   return String(roh ?? '').replace(/[\s-]/g, '').replace(/(.{4})(?=.)/g, '$1 ');
 }
 
+/** Die Währung der Karten des Ausgabelandes; ohne Land die des Kontos. */
+const LAND_WAEHRUNG = { 'de-CH': 'CHF', 'de-DE': 'EUR', 'de-AT': 'EUR', 'fr-FR': 'EUR', 'it-IT': 'EUR', 'nl-NL': 'EUR', 'en-GB': 'GBP', 'en-US': 'USD' };
+export function landWaehrung() {
+  const land = G('gutschein-land')?.value || _settingsCache?.gutschein_land || '';
+  return LAND_WAEHRUNG[land] || CURRENCY;
+}
+
+/** Vorschlag im Formular und der Satz darunter, wenn die gewählte Währung abweicht. */
+function waehrungPruefen() {
+  const feld = G('v-currency'), hinweis = el('v-currency-hinweis');
+  if (!feld || !hinweis) return;
+  const soll = landWaehrung();
+  hinweis.hidden = feld.value === soll;
+  hinweis.textContent = tRaw('vouchers.waehrung_hinweis', { w: soll });
+}
+
 function zeile(g) {
   const pinOffen = _sichtbar.has(g.id);
   // Die Nummer in Vierergruppen: 19 Ziffern am Stück sind beim Abtippen an
@@ -83,6 +99,8 @@ function zeile(g) {
         </div>
         <div class="voucher-meta">
           <span class="voucher-amount">${fmtN(g.amount, g.currency)}</span>
+          ${landWaehrung() && g.currency !== landWaehrung() ? `<span class="voucher-abweichung">${t('vouchers.waehrung_abweichend', { w: landWaehrung() })}</span>` : ''}
+          ${g.hat_pdf ? '' : `<span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}
           <!-- Der Stand NEBEN dem Betrag, nicht statt ihm: „250 CHF" allein
                ist keine Auskunft, „250 CHF, abgefragt am 15.10." ist eine.
                Und eine Karte, deren Guthaben noch nie abgefragt wurde, sagt
@@ -105,22 +123,17 @@ function zeile(g) {
                      aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}</button>` : ''}
       </div>
       <div class="voucher-actions">
-        <!-- Guthaben abfragen. NUR mit PIN: LEGO fragt Nummer UND PIN ab, und
-             ein Knopf, der ohne PIN immer dieselbe Absage erzeugt, waere eine
-             Falle. Ohne PIN steht in der Zeile ohnehin schon „–". -->
-        ${g.pin ? `
-          <button class="v-btn" data-click="guthabenAbfragen" data-arg="${g.id}"
-                  title="${tRaw('vouchers.balance_one')}"
-                  aria-label="${tRaw('vouchers.balance_one')}">${ico('aktualisieren')}</button>` : ''}
-        ${g.hat_pdf ? `
-          <button class="v-btn" data-click="gutscheinPdfOeffnen" data-arg="${g.id}"
-                  title="${tRaw('vouchers.pdf_open')}"
-                  aria-label="${tRaw('vouchers.pdf_open')}">${ico('datei')}</button>`
-        : `<span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}
-        <button class="v-btn" data-click="gutscheinBearbeiten" data-arg="${g.id}"
-                title="${tRaw('vouchers.edit_title')}" aria-label="${tRaw('vouchers.edit_title')}">${ico('bearbeiten')}</button>
-        <button class="v-btn v-btn-gefahr" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
-                title="${tRaw('vouchers.delete_title')}" aria-label="${tRaw('vouchers.delete_title')}">${ico('loeschen')}</button>
+        <button class="btn bs btn-sm v-text" type="button" data-click="gutscheinBearbeiten" data-arg="${g.id}"
+                aria-label="${t('common.edit')}: ${esc(nummer)}">${ico('bearbeiten')}<span>${t('common.edit')}</span></button>
+        <details class="mehr-menue v-mehr">
+          <summary class="btn bs btn-sm v-text" aria-label="${t('vouchers.mehr')}: ${esc(nummer)}">${ico('menue')}<span>${t('vouchers.mehr')}</span></summary>
+          <div class="mehr-liste">
+            ${g.pin ? `<button class="btn bs btn-sm v-text" type="button" data-click="guthabenAbfragen" data-arg="${g.id}">${ico('aktualisieren')}<span>${t('vouchers.balance_one')}</span></button>` : ''}
+            ${g.hat_pdf ? `<button class="btn bs btn-sm v-text" type="button" data-click="gutscheinPdfOeffnen" data-arg="${g.id}">${ico('datei')}<span>${t('vouchers.pdf_open')}</span></button>` : ''}
+            <button class="btn bs btn-sm v-text v-btn-gefahr" type="button" data-click="gutscheinLoeschen"${echt()} data-arg="${g.id}"
+                    aria-label="${t('common.delete')}: ${esc(nummer)}">${ico('loeschen')}<span>${t('common.delete')}</span></button>
+          </div>
+        </details>
       </div>
     </div>`;
 }
@@ -132,6 +145,10 @@ export async function ladeGutscheine() {
   const d = await api('GET', '/v1/vouchers');
   if (!d?.success) { liste.innerHTML = `<div class="voucher-leer">${t('vouchers.load_error')}</div>`; return; }
   _gutscheine = d.vouchers || [];
+  zeigeLandWaehrung();
+  const cur = G('v-currency');
+  if (cur && !_bearbeitet && !G('v-amount')?.value) cur.value = landWaehrung();
+  waehrungPruefen();
   liste.innerHTML = _gutscheine.length
     ? _gutscheine.map(zeile).join('')
     : `<div class="voucher-leer" data-i18n="vouchers.empty">${t('vouchers.empty')}</div>`;
@@ -152,6 +169,8 @@ export async function ladeGutscheine() {
 
 function formularLeeren() {
   _bearbeitet = null;
+  const cur = G('v-currency'); if (cur) cur.value = landWaehrung();
+  waehrungPruefen();
   for (const id of ['v-number', 'v-pin', 'v-amount']) { const e = el(id); if (e) e.value = ''; }
   const datei = el('v-pdf'); if (datei) { datei.value = ''; gutscheinDateiGewaehlt.call(datei); }
   const titel = el('vouchers-form-title');
@@ -584,6 +603,10 @@ export async function gutscheinLandSpeichern() {
   const feld = el('gutschein-land');
   if (!feld) return;
   const d = await api('POST', '/v1/settings', { gutschein_land: feld.value });
+  if (!_bearbeitet) { const cur = G('v-currency'); if (cur) cur.value = landWaehrung(); }
+  waehrungPruefen();
+  zeigeLandWaehrung();
+  await ladeGutscheine();
   toast(d?.success ? tRaw('settings.saved') : (d?.error || tRaw('settings.error')),
     d?.success ? 'success' : 'error');
 }
@@ -596,7 +619,14 @@ function gutscheinDateiGewaehlt() {
   name.textContent = datei ? datei.name : tRaw('vouchers.pdf_none');
 }
 
+/** Unter dem Ausgabeland: in welcher Währung dessen Karten lauten. */
+function zeigeLandWaehrung() {
+  const z = el('gutschein-land-waehrung');
+  if (z) z.textContent = tRaw('vouchers.land_waehrung', { w: landWaehrung() });
+}
+
 registerActions({
+  waehrungPruefen,
   gutscheinDateiGewaehlt,
   gutscheineExportieren,
   ladeGutscheine,
@@ -611,3 +641,19 @@ registerActions({
   guthabenAlleAbfragen,
   gutscheinLandSpeichern,
 });
+
+// „Mehr“ klappt zu, sobald daneben getippt, darin gewählt oder Escape gedrückt wird.
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (ev) => {
+    const ziel = ev.target instanceof Element ? ev.target : null;
+    for (const d of document.querySelectorAll('details.v-mehr[open]'))
+      if (!d.contains(ziel) || ziel?.closest('.mehr-liste button')) /** @type {HTMLDetailsElement} */ (d).open = false;
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    for (const d of document.querySelectorAll('details.v-mehr[open]')) {
+      /** @type {HTMLDetailsElement} */ (d).open = false;
+      if (d.contains(document.activeElement)) /** @type {HTMLElement|null} */ (d.querySelector('summary'))?.focus();
+    }
+  });
+}
