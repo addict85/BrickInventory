@@ -103,9 +103,11 @@ fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFi
                 blId = fig.blFigNumber ?: fig.figNumber,
                 quantity = zeile.menge,
                 priceStr = fmtWert(zeile.wert),
-                purchaseStr = zeile.kaufpreis?.let { fmtWert(it) },
+                purchaseStr = zeile.kaufGesamt?.let { fmtWert(it) },
+                purchaseGesamt = zeile.menge > 1,
                 condition = zeile.zustand,
-                pnlProzent = zeile.pnlProzent
+                pnlProzent = zeile.pnlProzent,
+                gewinnStr = zeile.gewinn?.let { gewinnText(it, fmtWert) },
             )
         }
         item {
@@ -146,9 +148,11 @@ fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showPa
                 blId = part.blPartNumber ?: part.partNumber,
                 quantity = zeile.menge,
                 priceStr = fmtWert(zeile.wert),
-                purchaseStr = zeile.kaufpreis?.let { fmtWert(it) },
+                purchaseStr = zeile.kaufGesamt?.let { fmtWert(it) },
+                purchaseGesamt = zeile.menge > 1,
                 condition = zeile.zustand,
-                pnlProzent = zeile.pnlProzent
+                pnlProzent = zeile.pnlProzent,
+                gewinnStr = zeile.gewinn?.let { gewinnText(it, fmtWert) },
             )
         }
         item {
@@ -186,7 +190,7 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
     items(setZeilen(valuation.sets), key = { it.second.schluessel }) { (set, zeile) ->
         val priceStr    = fmtWert(zeile.wert)
         val rowQty      = zeile.menge
-        val rowPurchase = zeile.kaufpreis
+        val rowPurchase = zeile.kaufGesamt
         val rowPnl      = zeile.pnlProzent
         val imageUrl = resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)
         Card(
@@ -232,7 +236,8 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
                     }
                     rowPurchase?.let {
                         Text(
-                            stringResource(R.string.finance_purchase_short, fmtWert(it)),
+                            if (rowQty > 1) stringResource(R.string.finance_purchase_total, fmtWert(it))
+                            else stringResource(R.string.finance_purchase_short, fmtWert(it)),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -240,7 +245,7 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
                     // Entwicklung gegen den Kaufpreis DIESER Erfassung —
                     // vom Server, hier wird nichts nachgerechnet.
                     rowPnl?.let {
-                        Box(Modifier.padding(top = Abstaende.haar)) { PnlBadge(it) }
+                        Box(Modifier.padding(top = Abstaende.haar)) { PnlBadge(it, zeile.gewinn?.let { g -> gewinnText(g, fmtWert) }) }
                     }
                 }
             }

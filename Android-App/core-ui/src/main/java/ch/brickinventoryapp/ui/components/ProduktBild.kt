@@ -2,7 +2,11 @@ package ch.brickinventoryapp.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -45,19 +49,32 @@ fun ProduktBild(
     contentScale: ContentScale = ContentScale.Fit,
     ersatzGroesse: Dp = 40.dp,
     onState: ((AsyncImagePainter.State) -> Unit)? = null,
+    /**
+     * Die ganze Fläche als Bildgrund (Sets): Setbilder stehen auf Weiss, und mit
+     * weissem Grund geht ihr Rand in der Fläche auf, statt als Kasten in der Karte
+     * zu stehen. Im Dunkeln liegt ein Schleier darüber, damit die Fläche nicht blendet.
+     */
+    bildgrund: Boolean = false,
+    /** Abstand des Bilds zum Rand seiner Fläche; der Grund reicht bis an den Rand. */
+    innenAbstand: Dp = 0.dp,
 ) {
     // Am Ziel festgemacht, nicht an der Anfrage: Eine neu gebaute ImageRequest je
     // Zusammensetzung setzte den Zustand sonst ständig zurück.
     val ziel = (model as? ImageRequest)?.data ?: model
     var geladen by remember(ziel) { mutableStateOf(false) }
-    Box(modifier, contentAlignment = Alignment.Center) {
+    val dunkel = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val grund = if (bildgrund && geladen) Modifier.background(BILDGRUND) else Modifier
+    val schleier = if (bildgrund && geladen && dunkel) Modifier.drawWithContent {
+        drawContent(); drawRect(Color.Black, alpha = SCHLEIER_DUNKEL)
+    } else Modifier
+    Box(modifier.then(grund).then(schleier), contentAlignment = Alignment.Center) {
         if (!geladen) BildErsatz(Modifier.matchParentSize(), ersatzGroesse)
         if (model != null) {
             AsyncImage(
                 model = model,
                 imageLoader = imageLoader,
                 contentDescription = contentDescription,
-                modifier = Modifier.matchParentSize(),
+                modifier = Modifier.matchParentSize().padding(innenAbstand),
                 contentScale = contentScale,
                 onState = { st ->
                     geladen = st is AsyncImagePainter.State.Success
@@ -67,6 +84,12 @@ fun ProduktBild(
         }
     }
 }
+
+/** Der Grund der Setbilder: Weiss wie ihr eigener Hintergrund. */
+private val BILDGRUND = Color.White
+
+/** Deckkraft des Schleiers im Dunkeln: hell genug zum Erkennen, ohne zu blenden. */
+private const val SCHLEIER_DUNKEL = 0.22f
 
 /** Das Ersatzbild allein — auch für Flächen, die gar keine Adresse haben. */
 @Composable

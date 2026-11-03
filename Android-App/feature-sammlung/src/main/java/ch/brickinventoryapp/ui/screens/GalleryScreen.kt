@@ -458,28 +458,20 @@ fun SetCard(
                                     onImageError()
                                 }
                             },
-                            // Unten Platz für Zustands- und Besitzer-Etiketten, damit sie das Bild
-                            // nicht verdecken; ContentScale.Fit rückt es nach oben statt es zu
-                            // beschneiden.
+                            // Randlos bis an die Kartenkanten: Der weisse Bildgrund nimmt die Fläche
+                            // ein, die ContentScale.Fit neben dem Bild frei lässt.
                             modifier = bild
-                                .fillMaxSize().padding(bottom = 44.dp)
+                                .fillMaxSize()
                                 .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
                             contentScale = ContentScale.Fit,
                             ersatzGroesse = 48.dp,
+                            bildgrund = true,
+                            innenAbstand = Abstaende.klein,
                         )
                     }
                     // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
                     // Menü, damit die Bedienelemente auf eigener Fläche stehen (lichtStreifen()).
                     if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
-                    // Column statt Box: Eine Box stapelt, die Besitzer-Etiketten verdeckten die
-                    // Zustandsplaketten. Untereinander bleibt beides lesbar.
-                    Column(Modifier.align(Alignment.BottomStart).padding(6.dp),
-                           verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                        ConditionBadges(set.conditions, set.condition)
-                        // Wem gehört dieses Exemplar? Ohne die Angabe verschiebt
-                        // man im Haushalt das falsche.
-                        OwnerBadges(set.owners)
-                    }
                     // Die Kachel trägt keine zerstörerische Aktion: Gelöscht wird im Detail,
                     // mit Rückfrage und danach „Rückgängig“. Neben „×2“ lag der Mülleimer
                     // als einzige sichtbare Aktion der Kachel.
@@ -495,21 +487,27 @@ fun SetCard(
                         }
                     }
                 }
+                // Zustand und Besitzer unter dem Bild statt darüber: Über dem Bild brauchten sie
+                // einen freien Streifen, der als Lücke zwischen Bild und „Neu“ stand.
                 Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Column(Modifier.padding(bottom = Abstaende.haar), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                        ConditionBadges(set.conditions, set.condition)
+                        // Wem gehört dieses Exemplar? Ohne die Angabe verschiebt
+                        // man im Haushalt das falsche.
+                        OwnerBadges(set.owners)
+                    }
                     Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Zwei Zeilen, Thema und Teilezahl immer: Kacheln einer Reihe sind dann
+                    // gleich hoch, auch wenn ein Name kurz ist oder eine Angabe fehlt.
                     Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
                         lineHeight = 16.sp)
-                    set.theme?.let { thema ->
-                        Text(thema, style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary, maxLines = 1)
-                    }
-                    set.pieces?.let { teile ->
-                        Text(fmtInt(teile) + stringResource(R.string.gallery_pieces_suffix),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Text(set.theme.orEmpty(), style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }.orEmpty(),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                     // FlowRow und je eine Zeile: Reicht die Breite nicht für beide, rückt die
                     // Prozentzahl unter den Betrag, statt Zeichen für Zeichen umzubrechen.
                     val betrag = kachelBetrag(set, preis)
@@ -518,12 +516,18 @@ fun SetCard(
                             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
                             maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.align(Alignment.CenterVertically))
+                        // Der Betrag gilt je Stück; die Finanzen zeigen dasselbe Set mit dem Wert
+                        // aller Stück, und ohne Hinweis passten die Zahlen nicht zusammen.
+                        if (set.quantity > 1) Text(stringResource(R.string.gallery_price_each),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
                         val pct = preis?.pnlPct
                         if (pct != null) Text(fmtProzent(pct),
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
                             color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error,
                             maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
-                    }
+                    } else Text("", style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
@@ -587,51 +591,47 @@ fun AddSetDialog(
         }
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Default.Add, null, tint = MaterialTheme.colorScheme.primary) },
-        title = { Text(stringResource(R.string.gallery_add_set_title), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OwnerPicker(householdMembers, owner, { owner = it })
-                OutlinedTextField(
-                    value = setNumber,
-                    onValueChange = { setNumber = NumericInput.setNumber(it) },
-                    label = { Text(stringResource(R.string.gallery_set_number)) },
-                    placeholder = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
-                    modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
-                )
-                OutlinedTextField(
-                    value = quantity,
-                    onValueChange = { quantity = NumericInput.quantity(it) },
-                    label = { Text(stringResource(R.string.common_quantity)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
-                )
-                OutlinedTextField(
-                    value = purchasePrice,
-                    onValueChange = { purchasePrice = NumericInput.price(it) },
-                    label = { Text(stringResource(R.string.gallery_purchase_price)) },
-                    placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
-                    modifier = Modifier.fillMaxWidth(), singleLine = true,
-                    shape = Formen.knopf,
-                    keyboardOptions = NumericInput.preisTastatur(),
-                    keyboardActions = KeyboardActions(onDone = { keyboard?.hide(); submit() })
-                )
-                Zustandszeile(zustand = condition, onZustand = { condition = it })
-                LagerortErfassung(lagerort, lagerorte, { lagerort = it })
-            }
-        },
-        confirmButton = {
-            Button(onClick = { submit() },
-                enabled = setNumber.isNotBlank(), shape = Formen.knopf) { Text(stringResource(R.string.gallery_add)) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
-        shape = Formen.chip
-    )
+    // Derselbe Rahmen wie jede Erfassung (ErfassenDialog): Titel links, ohne Symbol.
+    ch.brickinventoryapp.ui.components.ErfassenDialog(
+        titel = stringResource(R.string.gallery_add_set_title),
+        bestaetigen = stringResource(R.string.gallery_add),
+        onBestaetigen = { submit() },
+        onAbbrechen = onDismiss,
+        bestaetigenAn = setNumber.isNotBlank(),
+    ) {
+        OwnerPicker(householdMembers, owner, { owner = it })
+        OutlinedTextField(
+            value = setNumber,
+            onValueChange = { setNumber = NumericInput.setNumber(it) },
+            label = { Text(stringResource(R.string.gallery_set_number)) },
+            // Als Hilfetext wie im Merkposten-Dialog: Der Platzhalter verschwand mit
+            // dem Fokus, und der Dialog fokussiert das Feld sofort.
+            supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
+            modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
+            shape = Formen.knopf,
+            keyboardOptions = NumericInput.ganzzahlTastatur()
+        )
+        OutlinedTextField(
+            value = quantity,
+            onValueChange = { quantity = NumericInput.quantity(it) },
+            label = { Text(stringResource(R.string.common_quantity)) },
+            modifier = Modifier.fillMaxWidth(), singleLine = true,
+            shape = Formen.knopf,
+            keyboardOptions = NumericInput.ganzzahlTastatur()
+        )
+        OutlinedTextField(
+            value = purchasePrice,
+            onValueChange = { purchasePrice = NumericInput.price(it) },
+            label = { Text(stringResource(R.string.gallery_purchase_price)) },
+            placeholder = { Text(stringResource(R.string.common_unit_price_placeholder)) },
+            modifier = Modifier.fillMaxWidth(), singleLine = true,
+            shape = Formen.knopf,
+            keyboardOptions = NumericInput.preisTastatur(),
+            keyboardActions = KeyboardActions(onDone = { keyboard?.hide(); submit() })
+        )
+        Zustandszeile(zustand = condition, onZustand = { condition = it })
+        LagerortErfassung(lagerort, lagerorte, { lagerort = it })
+    }
 }
 
 /**

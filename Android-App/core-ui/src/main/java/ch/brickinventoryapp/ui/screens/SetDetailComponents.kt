@@ -93,8 +93,13 @@ fun StatChipV2(label: String, value: String) {
 }
 
 @Composable
-fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
+fun SectionCard(
+    title: String,
+    /** Ohne, wenn die Liste selbst einen Rand hat: Die Karte stand sonst schmaler als ihre Nachbarn. */
+    aussenAbstand: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    AppKarte(if (aussenAbstand) Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp) else Modifier) {
         Column(Modifier.padding(horizontal = Abstaende.gross, vertical = 14.dp)) {
             Text(
                 title.uppercase(),
@@ -317,7 +322,11 @@ fun PreisLaedtZeile(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun PnlBadge(pct: Double) {
+fun PnlBadge(
+    pct: Double,
+    /** Derselbe Wert in Geld; mit ihm sagt die Plakette, wie viel, nicht nur wie stark. */
+    betrag: String? = null,
+) {
     val color = when {
         pct > 0 -> LocalStatusFarben.current.erfolg
         pct < 0 -> MaterialTheme.colorScheme.error
@@ -325,7 +334,7 @@ fun PnlBadge(pct: Double) {
     }
     Surface(shape = Formen.chip, color = color.copy(alpha = 0.12f)) {
         Text(
-            fmtProzent(pct),
+            if (betrag != null) "$betrag · ${fmtProzent(pct)}" else fmtProzent(pct),
             color = color, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium,
             modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp)
         )

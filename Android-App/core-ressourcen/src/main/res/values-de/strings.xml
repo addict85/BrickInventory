@@ -65,7 +65,7 @@
 
     <!-- ══════════════ Comparison screen ══════════════ -->
     <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
-    <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">z.B. 75192-1 oder Barcode</string>
+    <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">z. B. 75192-1 oder Barcode</string>
     <string name="comparison_search">Suchen</string>
     <string name="comparison_scan_new">Neu</string>
     <string name="comparison_scan">Scan</string>
@@ -118,6 +118,7 @@
     <string name="gallery_refresh">Neu laden</string>
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>
+    <string name="gallery_price_each">je Stück</string>
     <string name="gallery_delete_title">Set löschen?</string>
     <string name="gallery_delete_text">%1$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</string>
     <string name="gallery_set_deleted_undo">%1$s gelöscht</string>
@@ -134,7 +135,7 @@
     <string name="gallery_add_set">Set hinzufügen</string>
     <string name="gallery_add_set_title">Set hinzufügen</string>
     <string name="gallery_set_number">Set-Nummer</string>
-    <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">z.B. 75192-1 oder 75192</string>
+    <string name="gallery_set_number_placeholder" tools:ignore="TypographyDashes">z. B. 75192-1 oder 75192</string>
     <string name="gallery_purchase_price">Kaufpreis (optional)</string>
     <string name="gallery_add">Hinzufügen</string>
 
@@ -151,9 +152,9 @@
     <string name="minifigs_add">Minifigur hinzufügen</string>
     <string name="minifigs_add_title">Minifigur erfassen</string>
     <string name="minifigs_fig_number">Minifigur-Nummer</string>
-    <string name="minifigs_fig_number_placeholder">z.B. fig-007357 (Rebrickable)</string>
+    <string name="minifigs_fig_number_placeholder">z. B. fig-007357 (Rebrickable)</string>
     <string name="minifigs_bl_number">BrickLink-Nr. (optional)</string>
-    <string name="minifigs_bl_number_placeholder">z.B. sw0001 — für Marktpreis</string>
+    <string name="minifigs_bl_number_placeholder">z. B. sw0001 — für Marktpreis</string>
     <string name="minifigs_bl_hint">Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis näherungsweise aus den einzelnen Teilen der Figur berechnet.</string>
     <string name="minifigs_add_button">Hinzufügen</string>
     <string name="minifigs_delete_title">Minifigur löschen?</string>
@@ -297,7 +298,7 @@
     <string name="parts_delete_text">%1$s wird aus deiner Sammlung entfernt.</string>
     <string name="parts_add_title">Teil erfassen</string>
     <string name="parts_part_number">Teilenummer</string>
-    <string name="parts_part_number_placeholder">z.B. 3001</string>
+    <string name="parts_part_number_placeholder">z. B. 3001</string>
     <string name="parts_no_color">Keine Farbe</string>
     <string name="parts_color_label">Farbe (optional)</string>
     <string name="parts_color_unknown">Farbe %1$d</string>
@@ -532,6 +533,7 @@
     <string name="catalog_buy_bricklink">Auf BrickLink kaufen</string>
     <string name="catalog_search_bricklink">Auf BrickLink suchen</string>
     <string name="finance_purchase_short">Kauf: %1$s</string>
+    <string name="finance_purchase_total">Kauf gesamt: %1$s</string>
     <string name="household_scope_label">Konten</string>
     <string name="household_scope_all">Alle Konten</string>
     <string name="household_scope_own">Eigene</string>

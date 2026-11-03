@@ -437,6 +437,10 @@ fun LazyListScope.setDetailHeroImage(
                         .clickable(enabled = imageUrl != null, role = Role.Button) { onZoom() },
                     contentScale = ContentScale.Fit,
                     ersatzGroesse = 64.dp,
+                    // Weisser Grund über die ganze Kartenbreite: Das Bild stand sonst schmaler
+                    // als seine Karte, mit harten Kanten links und rechts.
+                    bildgrund = true,
+                    innenAbstand = Abstaende.mittel,
                 )
             }
         }
@@ -455,6 +459,8 @@ fun LazyListScope.setDetailAlarmSection(
     alarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht>,
     currency: String,
     onSetze: (setNumber: String, richtung: String, roh: String, zustand: String) -> Unit,
+    /** Aus, wo die Liste selbst schon einen Rand hat (Merkposten-Detail). */
+    aussenAbstand: Boolean = true,
 ) {
     item {
         // Fuer WELCHEN Zustand der Alarm gilt. Neu und gebraucht liegen oft
@@ -464,7 +470,7 @@ fun LazyListScope.setDetailAlarmSection(
             mutableStateOf(ch.brickinventoryapp.ui.ALARM_ZUSTAND_VORGABE)
         }
         val alarm = alarme.firstOrNull { it.condition == zustand }
-        SectionCard(title = stringResource(R.string.detail_alert)) {
+        SectionCard(title = stringResource(R.string.detail_alert), aussenAbstand = aussenAbstand) {
             // Der Zustandswechsel LAEDT nur — er speichert nicht. Ein Wechsel
             // ist die Frage „was steht fuer gebraucht?", keine Eingabe. Wuerde
             // hier gespeichert, legte schon das Umschalten einen Alarm im
