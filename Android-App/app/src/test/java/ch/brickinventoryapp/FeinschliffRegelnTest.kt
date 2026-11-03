@@ -117,6 +117,14 @@ class FeinschliffRegelnTest {
         ziele.forEach { (_, text) -> ganzEineZeile(text, "Reiterleiste") }
     }
 
+    // Gegenprobe zustand-feste-spalte: Beschriftung bei jeder Schrift in der festen
+    // 90-dp-Spalte → rot „Zustandszeile: „Zustand“ steht in 2 Zeilen“.
+    @Test
+    fun `Zustandszeile bricht bei 200 Prozent kein Wort um`() {
+        zeige(schrift = 2f) { ch.brickinventoryapp.ui.screens.Zustandszeile(zustand = "N", onZustand = {}) }
+        ganzEineZeile(ctx.getString(R.string.common_condition), "Zustandszeile")
+    }
+
     @Test
     fun `Such-Platzhalter der Galerie steht auf dem Telefon ganz da`() {
         val welt = Beispiele.Welt(KontextTexte())

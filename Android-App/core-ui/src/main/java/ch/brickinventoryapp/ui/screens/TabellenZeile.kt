@@ -203,6 +203,15 @@ fun Zustandszeile(
     /** Durchgereicht an [ConditionToggle] — siehe dort. */
     optionen: List<Pair<String, Int>> = ZUSTAND_NEU_GEBRAUCHT,
 ) {
+    // Ab 130 % Schrift steht die Beschriftung über der Wahl: In der festen Spalte
+    // daneben brach „Zustan|d“ mitten im Wort.
+    if (androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+            Text(stringResource(R.string.common_condition), style = MaterialTheme.typography.bodyMedium)
+            ConditionToggle(selected = zustand, onSelect = onZustand, optionen = optionen)
+        }
+        return
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier.fillMaxWidth(),
