@@ -123,6 +123,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       # pg_dump/psql für test/backup-restore-db.test.js. Der Postgres-DIENST
       # oben ist ein Container — die Klienten laufen auf dem Runner.

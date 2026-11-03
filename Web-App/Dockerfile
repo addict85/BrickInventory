@@ -166,8 +166,9 @@ FROM node:26-alpine@sha256:40cd011b55415bc894e45b02fdd5a5dfde056921b7d23a64c74f8
 
 WORKDIR /app
 
-# su-exec for privilege dropping
-RUN apk add --no-cache su-exec
+# su-exec gibt die Rechte ab. Feste Fassung (Alpine 3.24 des Basis-Images): Ein
+# neues Basis-Image mit anderer Fassung scheitert hier sichtbar, statt still zu wechseln.
+RUN apk add --no-cache su-exec=0.3-r0
 # Zur Laufzeit startet nur `node`; npm, corepack und yarn des Basis-Images
 # brächten fremde Pakete mit eigenen Lücken ins Image (Trivy).
 RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
