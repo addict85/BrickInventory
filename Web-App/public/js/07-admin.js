@@ -34,7 +34,7 @@ export function bestaetigeMitPasswort(title, msg, icon) {
 
 /** Bei aktivem zweitem Faktor verlangt der Server für heikle Änderungen den
  * Code (zweiter_faktor_noetig); dann einmal fragen und mit `code` wiederholen.
- * @param {(zusatz: object) => Promise<any>} ruf
+ * @param {(zusatz: { code?: string, passkey?: object }) => Promise<any>} ruf
  * @returns die Antwort, oder null, wenn der Dialog abgebrochen wurde */
 export async function mitZweitemFaktor(ruf) {
   const d = await ruf({});

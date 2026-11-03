@@ -135,11 +135,11 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
   await t.test('kein zweiter Weg zum Passwortvergleich', () => {
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
-    const dateien = ['routes', 'src', 'jobs', 'utils'].flatMap(d => fs.existsSync(path.join(ROOT, d))
-      ? fs.readdirSync(path.join(ROOT, d), { recursive: true }).map(f => path.join(d, String(f))) : [])
-      .filter(f => f.endsWith('.ts')).concat('server.ts');
-    const treffer = dateien.filter(f => /\bbcrypt\.compare\(/.test(ohneKommentare(fs.readFileSync(path.join(ROOT, f), 'utf8'))))
-      .map(f => f.replace(/\\/g, '/')).sort();
+    const ordner = [path.join(ROOT, 'routes'), path.join(ROOT, 'src'), path.join(ROOT, 'jobs')];
+    const dateien = ordner.flatMap(o => fs.readdirSync(o, { recursive: true }).map(f => path.resolve(o, String(f))))
+      .filter(f => f.endsWith('.ts')).concat(path.join(ROOT, 'server.ts'));
+    const treffer = dateien.filter(f => /\bbcrypt\.compare\(/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
+      .map(f => path.relative(ROOT, f).replace(/\\/g, '/')).sort();
     assert.deepEqual(treffer, ['src/konto/auth.ts', 'src/konto/passwortBestaetigung.ts']);
   });
 
