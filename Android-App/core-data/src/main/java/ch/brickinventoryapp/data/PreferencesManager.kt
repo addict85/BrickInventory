@@ -254,15 +254,18 @@ class PreferencesManager @Inject constructor(
         // Zuerst in den Speicher, dann auf die Platte (siehe serverUrlState).
         // Ein anderer Server beendet die Sitzung: Der Token gehört dem alten.
         val neueHerkunft: suspend () -> Boolean = {
-            val anders = !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(serverUrlJetzt(), normalized)
+            val anders = !ch.brickinventoryapp.util.NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized)
             // Laufende Aufrufe gehören dem alten Server; ihre Antworten sollen nichts mehr auslösen.
             if (anders) serverwechselHoerer.forEach { it() }
             anders
         }
         tokenSchranke.schreibe(neueSitzung = neueHerkunft) {
+            // Die Herkunft hält nur Schema, Host und Port; ein anderer Pfad auf demselben
+            // Host ist eine andere Anwendung, also zählt die bisherige Adresse mit.
             val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
             val anderer = tokenJetzt().isNotBlank() &&
-                !ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(herkunft, normalized)
+                (!ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
+                    !ch.brickinventoryapp.util.NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized))
             if (anderer) { _authTokenState.value = ""; _tokenHerkunftState.value = null }
             _serverUrlState.value = normalized
             context.dataStore.edit {

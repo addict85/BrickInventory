@@ -99,6 +99,23 @@ object NetworkPolicy {
         val ha = herkunft(a) ?: return false
         return ha == herkunft(b)
     }
+
+    /** Der Pfad des Servers hinter einem Proxy („/brick“), ohne Schrägstrich am Ende; "" ohne Präfix. */
+    fun basisPfad(serverUrl: String): String? =
+        serverUrl.trim().trimEnd('/').toHttpUrlOrNull()?.encodedPath?.trimEnd('/')
+
+    /**
+     * Liegt [url] unter dem Pfad des Servers? Teilen sich mehrere Anwendungen einen
+     * Host, gehört der Token nur dieser; segmentweise, `/brick` deckt `/brickfremd` nicht.
+     */
+    fun imBasisPfad(url: HttpUrl, serverUrl: String): Boolean {
+        val basis = basisPfad(serverUrl) ?: return false
+        return basis.isEmpty() || url.encodedPath == basis || url.encodedPath.startsWith("$basis/")
+    }
+
+    /** Derselbe Server: Herkunft und Pfad. Ein anderer Pfad auf demselben Host ist eine andere Anwendung. */
+    fun gleicherServer(a: String, b: String): Boolean =
+        gleicheHerkunft(a, b) && basisPfad(a) == basisPfad(b)
 }
 
 /**

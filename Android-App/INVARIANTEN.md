@@ -830,8 +830,11 @@ Nachfassen prüft er die Bindung zum Zeitpunkt des Nachfassens neu.
 `TokenTausch.noetig` liefert nur einen Token derselben Herkunft und
 Generation. Beim Wechsel auf eine andere Herkunft brechen alle Server-Clients
 ihre laufenden Aufrufe ab. Umleitungen folgen die Server-Clients nur innerhalb
-derselben Herkunft. Geprüft: `ServerwechselTest`, `UmleitungTest`,
-`TokenTauschTest`.
+derselben Herkunft. Liegt der Server unter einem Pfad (`https://host/brick`),
+geht der Token nur an Adressen darunter, Umleitungen eigener Anfragen bleiben
+darunter, und ein anderer Pfad auf demselben Host gilt als anderer Server
+(`NetworkPolicy.imBasisPfad`, `gleicherServer`). Geprüft: `ServerwechselTest`,
+`UmleitungTest`, `TokenTauschTest`, `BasisPfadTest`.
 
 ## Delegierte Zustands-Properties erlauben keinen Smart Cast
 

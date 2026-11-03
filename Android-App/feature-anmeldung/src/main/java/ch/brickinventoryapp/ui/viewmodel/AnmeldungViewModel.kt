@@ -61,7 +61,7 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     private suspend fun richteEin(neu: String, abmelden: suspend () -> Unit) {
-        if (dienste.sitzung.state.value.isLoggedIn && !NetworkPolicy.gleicheHerkunft(ablage.serverUrlJetzt(), neu)) {
+        if (dienste.sitzung.state.value.isLoggedIn && !NetworkPolicy.gleicherServer(ablage.serverUrlJetzt(), neu)) {
             abmelden()
         }
         ablage.saveServerUrl(neu)

@@ -107,7 +107,10 @@ class ServerWaechter(
 
         val finalUrl = reqBuilder.build().url
         if (!NetworkPolicy.verbindungErlaubt(finalUrl, entwicklung)) throw KlartextAbgelehnt(finalUrl.host)
-        val unserServer = serverUrl.isNotBlank() && NetworkPolicy.isSameOrigin(finalUrl, serverUrl)
+        val unserServer = serverUrl.isNotBlank() && NetworkPolicy.isSameOrigin(finalUrl, serverUrl) &&
+            NetworkPolicy.imBasisPfad(finalUrl, serverUrl)
+        // Umleitungen eigener Anfragen nur innerhalb des Pfads: Sie tragen den Token weiter.
+        val basis = if (unserServer) NetworkPolicy.basisPfad(serverUrl).orEmpty() else ""
         // Nach einem Serverwechsel trägt der alte Token nichts beim neuen aus.
         val herkunft = lage.tokenHerkunft()
         val tokenGehoertHierher = herkunft == null || herkunft == NetworkPolicy.herkunft(finalUrl.toString())
@@ -127,7 +130,7 @@ class ServerWaechter(
         }
 
         val ausgehend = reqBuilder.build()
-        var antwort = senden(chain, ausgehend)
+        var antwort = senden(chain, ausgehend, basis)
         var tokenMitgeschickt = mitToken && ausgehend.header("Authorization") != null
         // Die Sitzung des Tokens, der zuletzt hinausging; nur sie darf die Antwort auswerten.
         var sitzung = generation
@@ -140,7 +143,7 @@ class ServerWaechter(
             tokenFuer(ausgehend.url)?.let { (jetzt, g) ->
                 antwort.close()
                 gesendet = ausgehend.newBuilder().header("Authorization", "Bearer $jetzt").build()
-                antwort = senden(chain, gesendet)
+                antwort = senden(chain, gesendet, basis)
                 tokenMitgeschickt = true
                 sitzung = g
             }
@@ -157,7 +160,7 @@ class ServerWaechter(
                 ?.takeIf { dieselbeSitzung() }?.let { neu ->
                     // Der neue Token ist gespeichert; diese Anfrage geht einmal mit ihm.
                     antwort.close()
-                    antwort = senden(chain, gesendet.newBuilder().header("Authorization", "Bearer $neu").build())
+                    antwort = senden(chain, gesendet.newBuilder().header("Authorization", "Bearer $neu").build(), basis)
                 }
         } else if (rotierbar && antwort.header("X-Token-Rotation") == "faellig" && dieselbeSitzung()) {
             gesendet.header("Authorization")?.removePrefix("Bearer ")?.trim()?.let { rotation.faellig(it) }
@@ -192,7 +195,7 @@ class ServerWaechter(
         val token = lage.token()
         val herkunft = lage.tokenHerkunft() ?: NetworkPolicy.herkunft(server)
         val passt = token.isNotBlank() && server.isNotBlank() && NetworkPolicy.isSameOrigin(ziel, server) &&
-            herkunft == NetworkPolicy.herkunft(ziel.toString())
+            NetworkPolicy.imBasisPfad(ziel, server) && herkunft == NetworkPolicy.herkunft(ziel.toString())
         return if (passt && lage.generation() == g) token to g else null
     }
 
@@ -202,11 +205,11 @@ class ServerWaechter(
      * nur innerhalb derselben Herkunft; jede andere Umleitung erreicht den Aufrufer
      * als 3xx und damit als Fehler.
      */
-    private fun senden(chain: Interceptor.Chain, anfrage: Request): Response {
+    private fun senden(chain: Interceptor.Chain, anfrage: Request, basisPfad: String): Response {
         var raus = anfrage
         var antwort = chain.proceed(raus)
         repeat(MAX_UMLEITUNGEN) {
-            val ziel = naechsteUmleitung(raus, antwort) ?: return antwort
+            val ziel = naechsteUmleitung(raus, antwort, basisPfad) ?: return antwort
             antwort.close()
             raus = ziel
             antwort = chain.proceed(raus)
@@ -221,14 +224,16 @@ class ServerWaechter(
 
 /**
  * Wohin eine Antwort umleitet, als nächste Anfrage — nur bei gleicher Herkunft
- * (Schema, Host, Port). Wie ein Browser: 307/308 behalten Methode und Rumpf,
- * 301/302/303 werden zu GET ohne Rumpf (HEAD bleibt HEAD).
+ * (Schema, Host, Port) und unter [basisPfad] (leer: der ganze Host). Wie ein
+ * Browser: 307/308 behalten Methode und Rumpf, 301/302/303 werden zu GET ohne
+ * Rumpf (HEAD bleibt HEAD).
  */
-internal fun naechsteUmleitung(anfrage: Request, antwort: Response): Request? {
+internal fun naechsteUmleitung(anfrage: Request, antwort: Response, basisPfad: String = ""): Request? {
     if (antwort.code !in setOf(301, 302, 303, 307, 308)) return null
     val ziel = antwort.header("Location")?.let(anfrage.url::resolve) ?: return null
     if (ziel.scheme != anfrage.url.scheme || !ziel.host.equals(anfrage.url.host, ignoreCase = true) ||
         ziel.port != anfrage.url.port) return null
+    if (basisPfad.isNotEmpty() && ziel.encodedPath != basisPfad && !ziel.encodedPath.startsWith("$basisPfad/")) return null
     val neu = anfrage.newBuilder().url(ziel)
     val behalten = antwort.code == 307 || antwort.code == 308 || anfrage.method == "GET" || anfrage.method == "HEAD"
     if (!behalten) neu.method("GET", null).removeHeader("Content-Type").removeHeader("Content-Length")

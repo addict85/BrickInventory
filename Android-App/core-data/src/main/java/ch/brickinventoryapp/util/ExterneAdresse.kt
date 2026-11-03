@@ -14,14 +14,15 @@ fun externeAdresse(url: String?): HttpUrl? =
 
 /**
  * Ein Pfad des eigenen Servers als volle Adresse — aufgelöst statt verkettet, und
- * nur, wenn er auf demselben Server bleibt: `//fremd.example/x` oder eine volle
- * Adresse in `local_path` führten sonst den Token-Client zu einem fremden Host.
- * Relativ zur Serveradresse samt Unterpfad, wie es die Verkettung vorher war.
+ * nur, wenn er auf demselben Server und unter dessen Unterpfad bleibt:
+ * `//fremd.example/x`, `../andere-app/x` oder eine volle Adresse in `local_path`
+ * führten sonst den Token-Client zu einer fremden Anwendung.
  */
 fun eigeneAdresse(serverUrl: String, pfad: String): String? {
     val basis = (serverUrl.trim().trimEnd('/') + "/").toHttpUrlOrNull() ?: return null
     val ziel = basis.resolve(pfad.trim().removePrefix("/")) ?: return null
-    return ziel.takeIf { it.scheme == basis.scheme && it.host == basis.host && it.port == basis.port }?.toString()
+    return ziel.takeIf { it.scheme == basis.scheme && it.host == basis.host && it.port == basis.port &&
+        NetworkPolicy.imBasisPfad(it, serverUrl) }?.toString()
 }
 
 /**
@@ -31,7 +32,7 @@ fun eigeneAdresse(serverUrl: String, pfad: String): String? {
  */
 fun pdfImBetrachter(pdfUrl: String, serverUrl: String): Boolean {
     val ziel = pdfUrl.trim().toHttpUrlOrNull() ?: return false
-    return serverUrl.isNotBlank() && NetworkPolicy.isSameOrigin(ziel, serverUrl)
+    return serverUrl.isNotBlank() && NetworkPolicy.isSameOrigin(ziel, serverUrl) && NetworkPolicy.imBasisPfad(ziel, serverUrl)
 }
 
 /**
