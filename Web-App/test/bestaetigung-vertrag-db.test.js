@@ -55,7 +55,7 @@ const PFLICHT = ['POST /api/v1/auth/token-create', 'POST /api/v1/auth/qr-token',
   'POST /api/v1/auth/passkey/registrieren/optionen', 'POST /api/v1/auth/zweiter-faktor/abschalten',
   'POST /api/v1/settings/household/redeem', 'POST /api/v1/settings', 'POST /api/v1/settings/sessions/andere-beenden',
   'DELETE /api/v1/papierkorb', 'DELETE /api/v1/papierkorb/:id', 'DELETE /api/v1/vouchers/:id',
-  'POST /api/v1/vouchers/:id/klartext'];
+  'POST /api/v1/vouchers/:id/klartext', 'POST /api/v1/vouchers/:id/pdf-freigabe', 'POST /api/v1/vouchers/export/pdf-freigabe'];
 /** Vor der Anmeldung gibt es nichts zu bestätigen. */
 const OEFFENTLICH = ['POST /api/v1/auth/login', 'POST /api/v1/auth/register', 'POST /api/v1/auth/reset-password'];
 const PASSWORTFELDER = ['password', 'admin_password', 'current', 'password_current'];

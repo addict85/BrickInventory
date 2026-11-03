@@ -153,11 +153,12 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async (t) => {
     assert.equal(r.status, 200, JSON.stringify(b));
     assert.deepEqual([(await klartext(haupt, b.voucher.id))[0], b.voucher.hat_pdf], [NR1, true]);
     assert.ok(!(await zeileAlsText(b.voucher.id)).includes(NR1));
-    const datei = await fetch(`${haupt.base}/api/v1/vouchers/${b.voucher.id}/pdf?download=1`);
+    const ticket = async (weg) => (await ruf(haupt, 'POST', weg, { password: PASS })).body.ticket;
+    const datei = await fetch(`${haupt.base}/api/v1/vouchers/${b.voucher.id}/pdf?download=1&ticket=${await ticket(`/vouchers/${b.voucher.id}/pdf-freigabe`)}`);
     await datei.arrayBuffer();
-    assert.equal(datei.headers.get('content-disposition'), `attachment; filename="gutschein-${NR1}.pdf"`);
+    assert.equal(datei.headers.get('content-disposition'), `attachment; filename="gutschein-${b.voucher.id}.pdf"`, 'die Nummer steht nicht im Dateinamen');
 
-    const ex = await fetch(`${haupt.base}/api/v1/vouchers/export/pdf`);
+    const ex = await fetch(`${haupt.base}/api/v1/vouchers/export/pdf?ticket=${await ticket('/vouchers/export/pdf-freigabe')}`);
     assert.equal(ex.status, 200);
     const pdf = Buffer.from(await ex.arrayBuffer());
     const { seitenweiseLesen } = _req('src/gutscheine/gutscheinPdfSchreiben.js');

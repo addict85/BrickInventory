@@ -240,6 +240,8 @@ export const FEHLER = {
   // `keine_gutscheine` ist eine Auskunft: lieber das lesen als ein leeres PDF.
   keine_gutscheine:            { de: 'Es sind keine Gutscheine erfasst.',
                                  en: 'No vouchers have been added.' },
+  pdf_freigabe_noetig:         { de: 'Das PDF braucht eine frische Bestätigung mit dem Passwort.',
+                                 en: 'The PDF needs a fresh confirmation with your password.' },
   // Getrennt von `gutschein_unvollstaendig`: Dort war es ein PDF ohne Werte —
   // der Nutzer tut jeweils Verschiedenes.
   pdf_unlesbar:                { de: 'Die Datei liess sich nicht als PDF lesen.',

@@ -354,9 +354,24 @@ export async function gutscheinPinUmschalten(id) {
  * PDFs im PdfViewerScreen, demselben, der auch Anleitungen und Teilelisten
  * zeigt. Genau das meint „analog".
  */
-export function gutscheinPdfOeffnen(id) {
+export async function gutscheinPdfOeffnen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
-  openPdfViewer(`/api/v1/vouchers/${id}/pdf`, g ? g.number : 'PDF');
+  const ticket = await pdfFreigabe(`/v1/vouchers/${id}/pdf-freigabe`);
+  if (!ticket) return;
+  const r = await fetch(`/api/v1/vouchers/${id}/pdf?ticket=${encodeURIComponent(ticket)}`);
+  if (!r.ok) { toast((await r.json().catch(() => ({}))).error || tRaw('settings.error'), 'error'); return; }
+  const daten = await r.arrayBuffer();
+  openPdfViewer(URL.createObjectURL(new Blob([daten], { type: 'application/pdf' })), g ? g.number : 'PDF',
+    { daten, dateiname: `gutschein-${id}.pdf` });
+}
+
+/** Bestätigung, dann ein Ticket für genau einen Abruf des PDFs (60 s). */
+async function pdfFreigabe(pfad) {
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.pdf_freigabe_title'), tRaw('vouchers.pdf_freigabe_text'), 'schloss');
+  if (password === null) return null;
+  const d = await mitZweitemFaktor(z => api('POST', pfad, { password, ...z }));
+  if (!d?.success) { if (d) toast(d.error || tRaw('settings.error'), 'error'); return null; }
+  return d.ticket;
 }
 
 /**
@@ -430,9 +445,11 @@ export async function gutscheinKopieren(id, feld) {
  * noch das, was wirklich offen ist — und das sagt die Meldung.
  */
 async function gutscheineExportieren() {
+  const ticket = await pdfFreigabe('/v1/vouchers/export/pdf-freigabe');
+  if (!ticket) return;
   toast(tRaw('vouchers.export_running'), 'info');
   try {
-    const r = await fetch('/api/v1/vouchers/export/pdf');
+    const r = await fetch(`/api/v1/vouchers/export/pdf?ticket=${encodeURIComponent(ticket)}`);
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       toast(d.error || tRaw('settings.error'), 'error');

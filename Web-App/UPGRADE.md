@@ -1176,3 +1176,14 @@ unbeschränkte Wurzel an (Schritte 3–4).
   dem Löschen das Passwort ab; „Rückgängig“ nach dem Löschen gibt es nur,
   wenn der Klartext vorher abgerufen wurde. Die Android-App zeigt bis zu
   ihrem Nachzug nur die Maske (Kopieren liefert „…1234“).
+- **Gutschein-PDFs nur mit Einmal-Ticket**: `GET /vouchers/:id/pdf` und
+  `GET /vouchers/export/pdf` verlangen `?ticket=…`, sonst 403
+  `pdf_freigabe_noetig`. Das Ticket gibt `POST /vouchers/:id/pdf-freigabe`
+  bzw. `POST /vouchers/export/pdf-freigabe` mit `password` (bei aktivem
+  zweitem Faktor dazu `code` oder `passkey`): `{ success: true, ticket,
+  gueltig_sek: 60 }`. Es gilt für genau einen Abruf, 60 Sekunden, nur für
+  dieses Konto und dieses PDF (bzw. den Export); jede Freigabe steht im
+  Verwaltungsprotokoll. Der Dateiname ist jetzt `gutschein-<id>.pdf`, ohne
+  Kartennummer. Die Web-App lädt das PDF einmal und zeigt es aus dem
+  Speicher. Die Android-App muss nachziehen: Bis dahin öffnet sie keine
+  Gutschein-PDFs (403).

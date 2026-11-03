@@ -16,6 +16,8 @@
  *      Gutschein löschen …" (der Passwortdialog erscheint nicht)
  *   E  in gutscheinPinUmschalten() holeKlartext() übergangen → rot: „die
  *      Gutscheinliste zeigt die Maske …" (kein Passwortdialog)
+ *   F  gutscheinPdfOeffnen() wieder openPdfViewer() direkt → rot: „das
+ *      Gutschein-PDF öffnet erst nach Bestätigung …"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -121,6 +123,28 @@ test('einen Gutschein löschen fragt Passwort und Code', async () => {
     await bestaetige(d, { passwort: 'Mein-Passwort-1', code: '135790' });
     assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
     assert.deepEqual(rufe[1], { password: 'Mein-Passwort-1', code: '135790' });
+  } finally { w.close(); }
+});
+
+test('das Gutschein-PDF öffnet erst nach Bestätigung, mit dem Ticket', async () => {
+  const freigaben = [], abrufe = [];
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: true }] },
+    '/v1/vouchers/3/pdf-freigabe': (_u, o) => { freigaben.push(JSON.parse(o.body)); return { success: true, ticket: 'T-123', gueltig_sek: 60 }; },
+    '/v1/vouchers/3/pdf': (u) => { abrufe.push(String(u)); return { $status: 403, success: false, error: 'abgelehnt' }; },
+  });
+  try {
+    await sicht(w, 'gutscheine');
+    assert.ok(await warte(() => d.querySelector('[data-click="gutscheinPdfOeffnen"]')), 'Gutscheinliste');
+    d.querySelector('[data-click="gutscheinPdfOeffnen"]').click();
+    const modal = d.getElementById('confirm-modal');
+    assert.ok(await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden), 'der Passwortdialog erscheint');
+    assert.deepEqual(abrufe, [], 'das PDF wird vor der Bestätigung abgerufen');
+    d.getElementById('cd-pw').value = 'Mein-Passwort-1';
+    d.getElementById('cd-confirm').click();
+    assert.ok(await warte(() => abrufe.length === 1), 'kein Abruf des PDFs');
+    assert.deepEqual(freigaben, [{ password: 'Mein-Passwort-1' }]);
+    assert.match(abrufe[0], /\/api\/v1\/vouchers\/3\/pdf\?ticket=T-123$/);
   } finally { w.close(); }
 });
 

@@ -206,10 +206,10 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
 
     await t.test('ein fremdes Konto kann den Gutschein nicht lesen, aendern oder loeschen', async () => {
       for (const [methode, pfad, keks, wer] of [
-        ['GET',    `/api/v1/vouchers/${opasGutschein}/pdf`, keksEnkel, 'Haushalt'],
+        ['POST',   `/api/v1/vouchers/${opasGutschein}/pdf-freigabe`, keksEnkel, 'Haushalt'],
         ['PUT',    `/api/v1/vouchers/${opasGutschein}`,     keksEnkel, 'Haushalt'],
         ['DELETE', `/api/v1/vouchers/${opasGutschein}`,     keksEnkel, 'Haushalt'],
-        ['GET',    `/api/v1/vouchers/${opasGutschein}/pdf`, keksChef,  'Administrator'],
+        ['POST',   `/api/v1/vouchers/${opasGutschein}/pdf-freigabe`, keksChef,  'Administrator'],
         ['PUT',    `/api/v1/vouchers/${opasGutschein}`,     keksChef,  'Administrator'],
         ['DELETE', `/api/v1/vouchers/${opasGutschein}`,     keksChef,  'Administrator'],
       ]) {
@@ -258,7 +258,8 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const mitPdf = liste.vouchers.find(v => v.hat_pdf);
       assert.ok(mitPdf, 'Vorbedingung: ein Gutschein mit PDF');
 
-      const anzeigen = await hole(`/api/v1/vouchers/${mitPdf.id}/pdf`, keksOpa);
+      const ticket = async () => (await (await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })).json()).ticket;
+      const anzeigen = await hole(`/api/v1/vouchers/${mitPdf.id}/pdf?ticket=${await ticket()}`, keksOpa);
       assert.equal(anzeigen.status, 200);
       assert.match(anzeigen.headers.get('content-type') || '', /application\/pdf/);
       assert.match(anzeigen.headers.get('content-disposition') || '', /^inline/,
@@ -266,10 +267,48 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const bytes = Buffer.from(await anzeigen.arrayBuffer());
       assert.equal(bytes.subarray(0, 5).toString(), '%PDF-', 'es muss wirklich ein PDF zurueckkommen');
 
-      const laden = await hole(`/api/v1/vouchers/${mitPdf.id}/pdf?download=1`, keksOpa);
+      const laden = await hole(`/api/v1/vouchers/${mitPdf.id}/pdf?download=1&ticket=${await ticket()}`, keksOpa);
       assert.match(laden.headers.get('content-disposition') || '', /^attachment/);
-      assert.match(laden.headers.get('content-disposition') || '', /gutschein-5045076374450019999\.pdf/,
-        'der Dateiname traegt die Kartennummer — sonst heissen alle gleich');
+      assert.equal(laden.headers.get('content-disposition'), `attachment; filename="gutschein-${mitPdf.id}.pdf"`,
+        'der Dateiname trägt die id, nicht die Kartennummer');
+    });
+
+    // Gegenproben (03.11.2026 gemessen, je einzeln): in GET /vouchers/:id/pdf die
+    // Ticketprüfung entfernt → rot „ohne Ticket kein PDF“; in loeseTicketEin() das
+    // Löschen weggelassen → rot „ein Ticket gilt einmal“; den Vergleich des Ziels
+    // gestrichen → rot „… nur für sein PDF“; bestaetigeMitFaktor() in der Freigabe
+    // entfernt → rot „Freigabe nur mit Passwort“; protokolliere() entfernt → rot
+    // „die Freigabe steht im Protokoll“; Frist auf -1 s → rot „… 60 Sekunden“.
+    await t.test('das PDF nur mit einem Einmal-Ticket aus einer bestätigten Freigabe', async () => {
+      const liste = await (await hole('/api/v1/vouchers', keksOpa)).json();
+      const mitPdf = liste.vouchers.find(v => v.hat_pdf);
+      const pdf = (ticket) => hole(`/api/v1/vouchers/${mitPdf.id}/pdf${ticket ? `?ticket=${ticket}` : ''}`, keksOpa);
+      const ohneTicket = await pdf();
+      assert.deepEqual([ohneTicket.status, (await ohneTicket.json()).code], [403, 'pdf_freigabe_noetig'], 'ohne Ticket kein PDF');
+      const ohnePw = await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', {});
+      assert.deepEqual([ohnePw.status, (await ohnePw.json()).code], [400, 'aktuelles_passwort_falsch'], 'Freigabe nur mit Passwort');
+      await db.run("DELETE FROM verwaltungsprotokoll WHERE aktion IN ('gutschein_pdf', 'gutschein_export')");
+      const f = await (await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })).json();
+      assert.deepEqual([f.success, typeof f.ticket, f.gueltig_sek], [true, 'string', 60]);
+      assert.ok(f.ticket.length >= 32);
+      assert.equal((await hole(`/api/v1/vouchers/${opasGutschein}/pdf?ticket=${f.ticket}`, keksOpa)).status, 403, 'ein Ticket gilt nur für sein PDF');
+      const f2 = await (await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })).json();
+      assert.equal((await hole(`/api/v1/vouchers/${mitPdf.id}/pdf?ticket=${f2.ticket}`, keksEnkel)).status, 403, 'ein Ticket gilt nur für sein Konto');
+      const f3 = await (await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })).json();
+      const erst = await pdf(f3.ticket);
+      assert.equal(erst.status, 200);
+      await erst.arrayBuffer();
+      assert.equal((await pdf(f3.ticket)).status, 403, 'ein Ticket gilt einmal');
+      const alt = await (await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })).json();
+      const echteZeit = Date.now;
+      Date.now = () => echteZeit() + 61_000;
+      try { assert.equal((await pdf(alt.ticket)).status, 403, 'ein Ticket gilt 60 Sekunden'); } finally { Date.now = echteZeit; }
+      const ex = await jsonAn('/api/v1/vouchers/export/pdf-freigabe', keksOpa, 'POST', { password: PASS });
+      const exTicket = (await ex.json()).ticket;
+      assert.equal((await hole('/api/v1/vouchers/export/pdf', keksOpa)).status, 403, 'der Export ohne Ticket');
+      assert.equal((await hole(`/api/v1/vouchers/${mitPdf.id}/pdf?ticket=${exTicket}`, keksOpa)).status, 403, 'das Export-Ticket öffnet kein einzelnes PDF');
+      assert.deepEqual((await db.all("SELECT aktion, ziel_id FROM verwaltungsprotokoll WHERE aktion IN ('gutschein_pdf', 'gutschein_export') ORDER BY id")).map(z => z.aktion),
+        ['gutschein_pdf', 'gutschein_pdf', 'gutschein_pdf', 'gutschein_pdf', 'gutschein_export'], 'die Freigabe steht im Protokoll');
     });
 
     await t.test('ein PDF ohne lesbare Werte gibt 422 und legt nichts an', async () => {

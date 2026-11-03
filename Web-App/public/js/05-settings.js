@@ -743,6 +743,8 @@ const AKTIONEN = {
   konto_deaktiviert:       () => t('users.aktion.konto_deaktiviert'),
   konto_reaktiviert:       () => t('users.aktion.konto_reaktiviert'),
   gutschein_klartext:      () => t('users.aktion.gutschein_klartext'),
+  gutschein_pdf:           () => t('users.aktion.gutschein_pdf'),
+  gutschein_export:        () => t('users.aktion.gutschein_export'),
 };
 /** Wer hat an welchem fremden Konto was geändert — die letzten Einträge. */
 async function ladeProtokoll(){

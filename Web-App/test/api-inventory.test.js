@@ -321,6 +321,9 @@ const C = {
   'POST /api/v1/vouchers/:id/guthaben': 'nur-v1',
   // Klartext von Nummer und PIN, bestätigt und protokolliert; die Liste zeigt nur die Maske.
   'POST /api/v1/vouchers/:id/klartext': 'nur-v1',
+  // Einmal-Ticket für die PDF-Abrufe (bestätigt, protokolliert, 60 s, ein Abruf).
+  'POST /api/v1/vouchers/:id/pdf-freigabe': 'nur-v1',
+  'POST /api/v1/vouchers/export/pdf-freigabe': 'nur-web',
   // Die PDF-Ausgabe ruft die Android-App nicht ueber Retrofit, sondern ueber
   // die Adresse im PdfViewerScreen (derselbe angemeldete OkHttpClient). Fuer
   // dieses Inventar ist das derselbe Fall: eine Umsetzung, beide Apps.

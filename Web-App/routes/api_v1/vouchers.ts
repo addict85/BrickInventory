@@ -13,6 +13,7 @@ import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, li
 import { requireToken } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { protokolliere } from '../../src/verwaltung/dienst';
+import { stelleTicketAus, loeseTicketEin, TICKET_SEK } from '../../src/gutscheine/pdfTicket';
 import { werteAusPdf, PdfZuGross } from '../../src/gutscheine/gutscheinPdf';
 import { verbindeGutscheine, seitenweiseLesen, seitenOderKeine } from '../../src/gutscheine/gutscheinPdfSchreiben';
 import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
@@ -195,8 +196,22 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
 
 // Die Sammelwege VOR den :id-Wegen: Sonst fängt `:id` das Wort „export".
 
+// Die PDFs tragen Nummer und PIN: erst bestätigen und protokollieren, dann ein Ticket für genau einen Abruf.
+async function pdfFreigabe(req: AuthedRequest, res: express.Response, ziel: string, aktion: 'gutschein_pdf' | 'gutschein_export', was: string) {
+  await protokolliere(req.apiUser.user_id, req.apiUser.user_id, aktion, was);
+  res.json({ success: true, ticket: stelleTicketAus(req.apiUser.user_id, ziel), gueltig_sek: TICKET_SEK });
+}
+
+router.post('/vouchers/export/pdf-freigabe', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/export/pdf-freigabe'>) => {
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
+  const zeilen = await gutscheineDesKontos(req.apiUser.user_id, 'aelteste');
+  if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
+  await pdfFreigabe(req, res, 'export', 'gutschein_export', `${zeilen.length}`);
+});
+
 router.get('/vouchers/export/pdf', requireToken, async (req: AuthedRequest, res) => {
   const uid = req.apiUser.user_id;
+  if (!loeseTicketEin(req.query.ticket, uid, 'export')) return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
   const zeilen = await gutscheineDesKontos(uid, 'aelteste');
   if (!zeilen.length) return sendeFehler(req, res, 404, 'keine_gutscheine');
 
@@ -274,9 +289,19 @@ router.post('/vouchers/:id/klartext', requireToken, async (req: AuthedRequest, r
   res.json({ success: true, id: z.id, number: z.number, pin: z.pin });
 });
 
+router.post('/vouchers/:id/pdf-freigabe', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/:id/pdf-freigabe'>) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
+  const z = await gutschein(req.apiUser.user_id, id);
+  if (!z?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  await pdfFreigabe(req, res, String(id), 'gutschein_pdf', maskiert(z).number);
+});
+
 router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (!loeseTicketEin(req.query.ticket, req.apiUser.user_id, String(id))) return sendeFehler(req, res, 403, 'pdf_freigabe_noetig');
   const zeile = await gutschein(req.apiUser.user_id, id);
   if (!zeile?.pdf_path) return sendeFehler(req, res, 404, 'nicht_gefunden');
   const datei = gutscheinDatei(req.apiUser.user_id, zeile.pdf_path);
@@ -285,9 +310,9 @@ router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) =>
 
   res.type('application/pdf');
   const alsDownload = String(req.query.download ?? '') === '1';
-  // Mit Kartennummer, sonst hiessen heruntergeladene Gutscheine alle „12.pdf".
+  // Ohne Kartennummer: Dateinamen landen in Download-Listen und Protokollen.
   res.setHeader('Content-Disposition',
-    `${alsDownload ? 'attachment' : 'inline'}; filename="gutschein-${zeile.number}.pdf"`);
+    `${alsDownload ? 'attachment' : 'inline'}; filename="gutschein-${zeile.id}.pdf"`);
   // Ein Gutschein gehört in keinen geteilten Zwischenspeicher.
   res.setHeader('Cache-Control', 'private, no-store');
   res.end(pdf);

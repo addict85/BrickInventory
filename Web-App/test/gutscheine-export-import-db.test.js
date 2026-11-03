@@ -69,13 +69,16 @@ function baueGutschein(betragText, nummer, pin) {
   });
 }
 
+const PASS = 'Export-Passwort-1';
+
 async function aufbau() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
   const c = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('fremd','x')`);
+  const hash = require('bcryptjs').hashSync(PASS, 4);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt',$1),('fremd',$1)`, [hash]);
   HAUPT = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
 
@@ -109,9 +112,13 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   });
 
   let pdf = null, befunde = null;
+  /** Erst die bestätigte Freigabe, dann der eine Abruf mit dem Ticket. */
+  const freigabe = () => fetch(`${srv.base}/api/v1/vouchers/export/pdf-freigabe`, { method: 'POST',
+    headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: PASS }) });
+  const exportiere = async () => fetch(`${srv.base}/api/v1/vouchers/export/pdf?ticket=${(await (await freigabe()).json()).ticket}`);
 
   await t.test('1. der Export liefert EIN PDF mit allen eigenen Gutscheinen', async () => {
-    const r = await fetch(`${srv.base}/api/v1/vouchers/export/pdf`);
+    const r = await exportiere();
     assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
     assert.equal(r.headers.get('content-type'), 'application/pdf');
     pdf = Buffer.from(await r.arrayBuffer());
@@ -215,7 +222,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
 
   await t.test('6. ohne Gutschein kommt eine Auskunft, kein leeres PDF', async () => {
     await db.run('DELETE FROM vouchers WHERE user_id=$1', [HAUPT]);
-    const r = await fetch(`${srv.base}/api/v1/vouchers/export/pdf`);
+    const r = await freigabe();
     assert.equal(r.status, 404, `Erwartet 404, bekam ${r.status}`);
     const b = await r.json().catch(() => ({}));
     assert.match(String(b.error || ''), /keine Gutscheine/i,
