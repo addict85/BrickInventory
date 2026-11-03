@@ -15315,6 +15315,20 @@
               "number",
               "null"
             ]
+          },
+          "kachel_quelle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "markt",
+                  "kauf"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -15372,6 +15386,41 @@
               "string",
               "null"
             ]
+          },
+          "positionen": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "positionen_bewertet": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "positionen_ohne_marktpreis": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "positionen_ohne_kaufpreis": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "basis_einstand": {
+            "type": "string"
+          },
+          "basis_marktwert": {
+            "type": "string"
+          },
+          "basis_guv_betrag": {
+            "type": "string"
+          },
+          "ohne_marktpreis_einstand": {
+            "type": "string"
+          },
+          "ohne_kaufpreis_marktwert": {
+            "type": "string"
           }
         },
         "required": [

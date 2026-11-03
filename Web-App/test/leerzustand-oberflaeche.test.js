@@ -1,13 +1,11 @@
 /**
- * Eine leere Sammlung zeigt „Set hinzufügen“ genau einmal sichtbar: im
- * Leerzustand, wie bei Teilen und Minifiguren; der Knopf der Erfassen-Leiste
- * tritt dann zurück (styles.css). Am echten Bündel in jsdom, mit styles.css.
+ * Eine leere Sammlung zeigt „Set hinzufügen“ genau einmal sichtbar: oben in
+ * der Erfassen-Leiste, auch bei wenig Höhe im Bild; der Leerzustand verweist
+ * darauf. Am echten Bündel in jsdom, mit styles.css.
  *
- * Gegenproben (02.11.2026 gemessen):
- *   A  Knopf im Leerzustand entfernt → rot: „Set hinzufügen genau einmal“
- *      (sichtbar nur in der Leiste)
- *   B  Regel .tab:has(.empty.leer …) in styles.css entfernt → rot: „Set
- *      hinzufügen genau einmal“ (2) und „Teile und Minifiguren ebenso“ (2)
+ * Gegenproben (03.11.2026 gemessen):
+ *   A  Knopf im Leerzustand der Sammlung wieder eingefügt → rot: „Set
+ *      hinzufügen genau einmal“ (2 sichtbar)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,8 +26,8 @@ test('Set hinzufügen genau einmal', async () => {
     await warte(() => !!d.querySelector('#gallery .empty.leer'));
     const knoepfe = sichtbar(w, '#tab-gallery [data-click="oeffneErfassen"][data-arg="set"]');
     assert.equal(knoepfe.length, 1);
-    assert.ok(knoepfe[0].closest('.empty.leer'), 'der sichtbare Knopf steht nicht im Leerzustand');
-    assert.match(d.querySelector('#gallery .empty.leer').textContent, /Noch keine Sets.*Set hinzufügen/s);
+    assert.ok(knoepfe[0].closest('.erfassen-leiste'), 'der sichtbare Knopf steht nicht oben in der Leiste');
+    assert.match(d.querySelector('#gallery .empty.leer').textContent, /Noch keine Sets.*oben/s);
   } finally { w.close(); }
 });
 

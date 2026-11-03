@@ -3,7 +3,7 @@ import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
-import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
+import { handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
 
 // ═══ Katalog: Rebrickable-Set-Katalog browsen, suchen, filtern ═══
@@ -358,8 +358,9 @@ function catCard(s){
     ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: s.name || s.set_number, fade: true, ph: 'set' })
     : `<span class="bild-ph" role="img" aria-label="${esc(s.name || s.set_number)}">${platzhalterInhalt('set')}</span>`;
   const themeShort = s.theme_name ? s.theme_name.split(' › ').pop() : '';
+  // Besitz als Wort, nicht nur als Haken: Ein title erreicht am Telefon niemand.
   const ownedBadge = s.owned
-    ? `<span class="ibadge" title="${t('catalog.owned')}">${ico('ok')}${s.owned_quantity>1?'×'+s.owned_quantity:''}</span>`
+    ? `<span class="ibadge besitz-badge">${ico('ok')}${t('catalog.owned_badge')}${s.owned_quantity>1?' ×'+s.owned_quantity:''}</span>`
     : '';
   // Der Thementon fuer das Design "farbfaecher" (themes/farbfaecher.css liest
   // ihn als --faecher-ton). Immer gesetzt, nicht nur bei aktivem Design: Die
@@ -375,8 +376,8 @@ function catCard(s){
       <div class="sname">${esc(s.name)||'—'}</div>
       <div class="smeta">
         <span class="smeta-text"${themeShort ? ` title="${esc(themeShort)}"` : ''}>${s.year||'—'}${themeShort?' · '+esc(themeShort):''}</span>
-        <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
-          ${s.num_parts?`<span class="qbadge">${PARTS_ICON_SVG}${s.num_parts.toLocaleString(locale())}</span>`:''}
+        <div class="splaketten">
+          ${s.num_parts?`<span class="teile-zahl">${t('catalog.pieces_n', { n: s.num_parts.toLocaleString(locale()) })}</span>`:''}
           ${ownedBadge}
         </div>
       </div>

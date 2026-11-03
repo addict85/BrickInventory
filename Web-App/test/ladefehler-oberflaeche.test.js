@@ -9,7 +9,7 @@
  *     Meldung sagt, dass es der letzte Stand ist.
  *   - Ein Netzfehler beim Erfassen meldet „Server nicht erreichbar“ statt
  *     des Browsertexts „Failed to fetch“.
- *   - Ohne Verbindung steht ein Band „Keine Verbindung – Anzeige vom …“; mit
+ *   - Ohne Verbindung steht ein Band „Keine Verbindung seit …“; mit
  *     Verbindung verschwindet es.
  *
  * Gegenproben (am 29.10.2026 gemessen):
@@ -76,7 +76,7 @@ test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
       await warte(() => d.querySelector(`${ziel} .fehler-zustand`));
       const box = d.querySelector(`${ziel} .fehler-zustand`);
       assert.ok(box, `${tab}: kein Fehlerzustand — „${d.querySelector(ziel)?.textContent.trim().slice(0, 60)}“`);
-      assert.match(box.textContent, /Server nicht erreichbar/, `${tab}: Grund fehlt`);
+      assert.match(box.textContent, /Keine Verbindung zum Server/, `${tab}: Grund fehlt`);
       assert.doesNotMatch(box.textContent, /Failed to fetch/, `${tab}: roher Browsertext`);
       assert.ok(box.querySelector('button[data-click]'), `${tab}: kein „Erneut versuchen“`);
     }
@@ -96,7 +96,7 @@ test('Netzfehler beim Erfassen: „Server nicht erreichbar“ statt „Failed to
   } finally { w.close(); }
 });
 
-test('Band ohne Verbindung: „Keine Verbindung – Anzeige vom …“', async () => {
+test('Band ohne Verbindung: „Keine Verbindung seit …“', async () => {
   const { w, d } = await oeffneOberflaeche();
   try {
     const band = d.getElementById('offline-band');
@@ -105,7 +105,7 @@ test('Band ohne Verbindung: „Keine Verbindung – Anzeige vom …“', async (
     w.dispatchEvent(new w.Event('offline'));
     await takt(10);
     assert.equal(band.hidden, false, 'ohne Verbindung kein Band');
-    assert.match(band.textContent, /^Keine Verbindung – Anzeige vom \d{2}\.\d{2}\.\d{4}/);
+    assert.match(band.textContent, /^Keine Verbindung seit \d{2}\.\d{2}\.\d{4}/);
     Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
     w.dispatchEvent(new w.Event('online'));
     await takt(10);

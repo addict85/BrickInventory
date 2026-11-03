@@ -84,7 +84,7 @@ test('Teile-Zahl: Sammlung und Teile-Reiter zeigen dieselbe Summe mit Aufschlüs
 });
 
 test('Preis auf der Kachel ist beschriftet, Zustand und Datum benannt (de und en)', async () => {
-  for (const [sprache, art, zustand, gekauft, unbekannt] of [['de', 'Kauf', 'Neuware', 'Gekauft', 'Unbekannt'], ['en', 'Paid', 'New', 'Bought', 'Unknown']]) {
+  for (const [sprache, art, zustand, gekauft, unbekannt] of [['de', 'Kaufpreis', 'Neuware', 'Gekauft', 'Unbekannt'], ['en', 'Purchase price', 'New', 'Bought', 'Unknown']]) {
     const { w, d } = await oeffneOberflaeche({ '/v1/sets': { success: true, sets: [SET], total: 1, themes: ['Ideas'] } }, { sprache });
     try {
       await warte(() => d.querySelector('#gallery .sc'));

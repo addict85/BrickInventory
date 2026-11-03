@@ -38,7 +38,7 @@ import { IMG_PROXY_PFAD } from './src/katalog/bilder/images';
 import { safeDataPath } from './src/infra/datenPfad';
 import { generateThumb } from './src/katalog/bilder/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
-import { renderIndexHtml } from './src/konto/indexHtml';
+import { renderIndexHtml, startStilHash } from './src/konto/indexHtml';
 import { meldeSmtpAltlast } from './src/infra/mailer';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
@@ -132,8 +132,8 @@ app.use((req, res, next) => {
     // Ohne 'unsafe-inline': Alle Handler laufen über den Dispatcher in
     // js/11-actions.js, die CSP ist damit eine echte zweite Verteidigungslinie.
     "script-src 'self'",
-    // Stile setzt js/00-stile.js per CSSOM, das die CSP nicht betrifft.
-    "style-src 'self'",
+    // Stile setzt js/00-stile.js per CSSOM; inline nur das Startgerüst, per Hash.
+    `style-src 'self'${startStilHash() ? ' ' + startStilHash() : ''}`,
     "font-src 'self'",
     // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
     // <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.

@@ -4,6 +4,7 @@
 import { konfig } from '../infra/konfig';
 import { meldeUndLiefere } from '../infra/httpError';
 import fs from 'fs';
+import { createHash } from 'crypto';
 import {  PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
 import { DESIGNS, designFuer, nutzerEinstellungen } from './settings';
@@ -11,6 +12,17 @@ import { getGlobalSetting } from './settings';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');
+
+let _stil: { mtime: number; hash: string } | null = null;
+
+/** CSP-Quelle für den einen Inline-Block <style id="startstil"> (Startgerüst), sonst ''. */
+export function startStilHash(): string {
+  const mtime = konfig().produktion && _stil ? _stil.mtime : fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0;
+  if (_stil && _stil.mtime === mtime) return _stil.hash;
+  const m = /<style id="startstil">([\s\S]*?)<\/style>/.exec(fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf8') : '');
+  _stil = { mtime, hash: m ? `'sha256-${createHash('sha256').update(m[1] ?? '').digest('base64')}'` : '' };
+  return _stil.hash;
+}
 
 let _html: string | null = null;
 let _mtime = 0;

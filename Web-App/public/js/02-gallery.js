@@ -966,9 +966,8 @@ export function renderGallery(){
     c.innerHTML = gefiltert
       ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
                       knopf: zuruecksetzenKnopf('gallery') })
-      // Ohne eigenen Knopf: „Set hinzufügen“ steht direkt darüber in der Erfassen-Leiste.
-      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint'),
-                      knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
+      // Ohne eigenen Knopf: „Set hinzufügen“ steht oben in der Erfassen-Leiste, auch bei wenig Höhe sichtbar.
+      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint') });
     return;
   }
   if(curView==='grid'){
@@ -1009,14 +1008,15 @@ export function updateGalleryPrices(){
  */
 function preisZeile(s){
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
-  const markt = !!s._price;
-  const betrag = markt ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : '');
+  // Der Server sagt, woher kachel_preis stammt: Ohne Marktpreis ist es der Kaufpreis.
+  const markt = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
+  const betrag = markt ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : (s._price ? fmtGeld(s._price, CURRENCY) : ''));
   const pnl = pnlBadge(s._pnl_pct, kauf);
   if (!betrag && !pnl) return '';
-  const art = betrag ? `<span class="preis-art">${t(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span> ` : '';
+  const art = betrag ? `<span class="preis-art">${t(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span>` : '';
   const pct = pnl && !istGeschenk(kauf)
     ? `<span title="${esc(tRaw('gallery.card.pnl_hint'))}"><span class="vh">${t('gallery.card.pnl_hint')}: </span>${pnl}</span>` : pnl;
-  return `<span>${art}<span class="preis">${betrag}</span></span>${pct}`;
+  return `${art}<span class="preis">${betrag}</span>${pct ? `<span class="preis-pnl">${pct}</span>` : ''}`;
 }
 
 /**
@@ -1109,7 +1109,7 @@ function gridCard(s){
       <div class="sname">${esc(s.name)||t('common.unknown')}</div>
       <div class="smeta">
         <span class="smeta-text"${s.theme ? ` title="${esc(s.theme)}"` : ''}>${s.year||'—'}${s.theme?' · '+esc(s.theme):''}</span>
-        <div data-stil="display:flex;gap:3px;align-items:center;flex-wrap:wrap">
+        <div class="splaketten">
           ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
           ${condBadge}
@@ -1118,7 +1118,7 @@ function gridCard(s){
         </div>
       </div>
       <div class="price-badge" data-price-for="${esc(s.set_number)}"${preis ? '' : ' hidden'}>${preis}</div>
-      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span>${t('detail.added')}</span> ${kaufFmt}</div>` : ''}
+      ${kaufFmt ? `<div class="kachel-datum" title="${esc(t('gallery.card.bought'))}">${ico('kalender')} <span>${t('detail.added')}</span> ${kaufFmt}</div>` : '<div class="kachel-datum" aria-hidden="true"></div>'}
     </div>
   </div>`;
 }

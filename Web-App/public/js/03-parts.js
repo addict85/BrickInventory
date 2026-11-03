@@ -104,8 +104,7 @@ export function teileLeerAbgleichen(manuelleLeer){
     ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'),
                     knopf: zuruecksetzenKnopf('parts') })
     : leerZustand({ ico: 'teil', titel: tRaw('parts.empty'),
-                    text: tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
-                    knopf: { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
+                    text: tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint') });
 }
 
 /** Suche, Ersatzteil-, Farb- und Kategoriefilter leeren (Knopf im Leerzustand). */

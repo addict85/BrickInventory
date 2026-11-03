@@ -210,7 +210,7 @@ export async function loadFinance(){
   // 02-gallery.js (dort für Kacheln mit mehreren Zuständen).
   const condBadge = c => condBadges({ conditions: [c] });
   const pmColgroup = `<colgroup>
-    <col class="sp-60"><col class="sp-380"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-55">
+    <col class="sp-60"><col class="sp-325"><col class="sp-70"><col class="sp-100"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55">
   </colgroup>`;
   // Wie bei den Sets: eine VOLLSTÄNDIGE Zeile je Kaufpreis-Erfassung, jede mit
   // dem Marktpreis ihres Zustands und ihrer eigenen Entwicklung. Ein Teil, das
@@ -339,7 +339,7 @@ export async function loadFinance(){
     return `<tr class="zeiger" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td class="fin-bild">${s.image_local||s.image_url?bildTag({ src: imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
     <td class="fin-detail"><span class="nummer-klein">${esc(s.set_number)}</span></td>
-    <td class="fin-name">${esc(s.name)||'—'}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td><td class="fin-detail">${s.year||'—'}</td>
+    <td class="fin-name">${esc(s.name)||'—'}${s.year?` <span class="fin-jahr">${s.year}</span>`:''}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${dateSrc?fmtDatum(dateSrc):'—'}</td>
     <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
@@ -367,17 +367,20 @@ export async function loadFinance(){
   // pnl-Abfrage scheitert — dann steht lieber eine leicht abweichende Zahl da
   // als gar keine.
   const grandTotal = parseFloat(pnlData?.totals?.grand_total || 0) || (setsQtyAvg + extra);
+  const basis = basisAus(pt, ohnePreis);
   window._finPartsExtra = extra;
-  window._finGrandTotal  = grandTotal; // used by chart to scale last point
-  if(G('portfolio-current')) G('portfolio-current').textContent = fmtN(grandTotal, cur);
-  _einstand = einstand.alle; _waehrung = cur;
+  // Diagramm, Kopfzahl und Karten zeigen denselben Marktwert und Einstand.
+  const kopfWert = basis.bewertet > 0 ? basis.wert : grandTotal;
+  window._finGrandTotal  = kopfWert;
+  if(G('portfolio-current')) G('portfolio-current').textContent = kopfWert > 0 ? fmtN(kopfWert, cur) : '—';
+  _einstand = basis.bewertet > 0 ? basis.einstand : einstand.alle; _waehrung = cur;
+  const leer = !d.sets.length && !partsItems.length && !figsItems.length;
+  G('tab-finance')?.classList.toggle('finanzen-leer', leer);
   loadPortfolioChart();
-  zeigeKennzahlen({ einstand: einstand.alle, wert: grandTotal, guv: gesamtGuv, ohnePreis, cur,
-    fremdeWaehrung: pnlData?.totals?.kaufpreise_fremde_waehrung || 0,
-    guvKauf: parseFloat(pnlData?.totals?.pnl_purchase) || 0, guvMarkt: parseFloat(pnlData?.totals?.pnl_current) || 0,
-                    min: parseFloat(d.totals.min||0) + extra, max: parseFloat(d.totals.max||0) + extra });
+  zeigeKennzahlen({ basis, einstandAlle: einstand.alle, wertAlle: grandTotal, guv: gesamtGuv, cur,
+    fremdeWaehrung: pnlData?.totals?.kaufpreise_fremde_waehrung || 0 });
   // Nichts erfasst: ein Leerzustand statt Tabellen, die fünfmal „Preis fehlt“ melden.
-  if (!d.sets.length && !partsItems.length && !figsItems.length) {
+  if (leer) {
     G('fin-tbl').innerHTML = leerZustand({ ico: 'finanzen', titel: tRaw('finance.empty'), text: tRaw('finance.empty_text') });
     return;
   }
@@ -393,8 +396,9 @@ export async function loadFinance(){
         </tbody>
         <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal)}</tfoot>
       </table>
+      ${basis.ohneMarkt > 0 ? `<p class="fin-fussnote">${esc(tRaw('finance.summe_ohne_markt', { n: basis.ohneMarkt }))}</p>` : ''}
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-235"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-235"><col class="sp-70"><col class="sp-100"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
   // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
   // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
   // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine
@@ -454,41 +458,60 @@ function summenZellen(kauf, wert, cur, luecke) {
   return k + '<td></td>'.repeat(luecke) + w;
 }
 
+/** Die gemeinsame Basis der Karten vom Server; ohne sie (pnl gescheitert) keine G/V. */
+function basisAus(pt, ohnePreis) {
+  const z = v => parseFloat(v) || 0;
+  if (pt.basis_einstand == null) return { bewertet: 0, ohneMarkt: ohnePreis, ohneKauf: 0, einstand: 0, wert: 0, betrag: 0 };
+  return {
+    gesamt: pt.positionen || 0, bewertet: pt.positionen_bewertet || 0,
+    ohneMarkt: pt.positionen_ohne_marktpreis || 0, ohneKauf: pt.positionen_ohne_kaufpreis || 0,
+    einstand: z(pt.basis_einstand), wert: z(pt.basis_marktwert), betrag: z(pt.basis_guv_betrag),
+    ohneMarktEinstand: z(pt.ohne_marktpreis_einstand), ohneKaufWert: z(pt.ohne_kaufpreis_marktwert),
+  };
+}
+
 /**
- * Die Kacheln über der Tabelle. Der Einstand ist immer bekannt; Gesamtwert
- * und G&V nur, wenn es Marktpreise gibt — sonst sagt die Kachel, für wie
- * viele Positionen der Preis fehlt, statt „—“ zu zeigen.
+ * Die Karten über der Tabelle. Einstand, Marktwert und G/V rechnen über
+ * dieselben Positionen (mit Kauf- und Marktpreis), damit Einstand + G/V =
+ * Marktwert gilt; die Zeile darunter nennt, was nicht gerechnet ist.
+ * Ohne eine solche Position stehen die Summen aller Positionen da, ohne G/V.
  */
-function zeigeKennzahlen({ einstand, wert, guv, ohnePreis, cur, min, max, guvKauf = 0, guvMarkt = 0, fremdeWaehrung = 0 }) {
+function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehrung = 0 }) {
   G('fin-sum').dataset.geladen = '1';
   G('fin-sum').removeAttribute('aria-busy');
-  G('fin-einstand').textContent = einstand > 0 ? fmtN(einstand, cur) : '—';
-  // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse);
-  // die Zahl dazu steht unter der Summe statt still zu fehlen.
+  const mitBasis = basis.bewertet > 0;
+  const einstand = mitBasis ? basis.einstand : einstandAlle;
+  const wert = mitBasis ? basis.wert : wertAlle;
+  G('fin-einstand').textContent = einstand > 0 || mitBasis ? fmtN(einstand, cur) : '—';
+  // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse).
   G('fin-einstand-sub').textContent = fremdeWaehrung > 0
     ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung }) : tRaw('finance.stat.purchase_hint');
-  const fehlt = ohnePreis > 0 ? tRaw('finance.price_missing_n', { n: ohnePreis }) : '';
+  const fehlt = basis.ohneMarkt > 0 ? tRaw('finance.price_missing_n', { n: basis.ohneMarkt }) : '';
   if (wert > 0) {
     G('fin-wert').textContent = fmtN(wert, cur);
-    const spanne = min > 0 && max > min ? tRaw('finance.range', { min: fmtN(min, cur), max: fmtN(max, cur) }) : '';
-    G('fin-wert-sub').textContent = [spanne, fehlt].filter(Boolean).join(' · ');
+    G('fin-wert-sub').textContent = tRaw('finance.stat.value_hint');
   } else {
     // Ohne Positionen fehlt kein Preis — dann einfach „—“.
     if (fehlt) G('fin-wert').innerHTML = `<span class="fval-hinweis">${esc(fehlt)}</span>`;
     else G('fin-wert').textContent = '—';
     G('fin-wert-sub').textContent = '';
   }
-  // Die Kachel bleibt stehen, damit die Reihe nicht springt; ohne Preise mit Hinweis.
-  if (guv != null && wert > 0) {
+  if (mitBasis && guv != null) {
     G('fin-total-pnl').innerHTML = pnlBadge(guv);
-    // Betrag und Prozent aus denselben Posten (mit Kauf- UND Marktpreis).
-    // „gegenüber dem Einstand“: Das Prozent im Diagramm rechnet gegen den Anfang des Zeitraums.
-    G('fin-pnl-sub').textContent = guvKauf > 0
-      ? tRaw('finance.pnl_vs_purchase', { betrag: `${guvMarkt >= guvKauf ? '+' : '−'}${fmtN(Math.abs(guvMarkt - guvKauf), cur)}` }) : '';
+    const b = basis.betrag;
+    G('fin-pnl-sub').textContent = tRaw('finance.pnl_vs_purchase', { betrag: `${b >= 0 ? '+' : '−'}${fmtN(Math.abs(b), cur)}` });
   } else {
     G('fin-total-pnl').textContent = '—';
     G('fin-pnl-sub').textContent = tRaw('finance.pnl_needs_prices');
   }
+  const zeile = G('fin-basis');
+  if (!zeile) return;
+  const teile = [];
+  if (basis.ohneMarkt > 0) teile.push(tRaw('finance.basis.ohne_markt', { n: basis.ohneMarkt, betrag: fmtN(basis.ohneMarktEinstand || 0, cur) }));
+  if (basis.ohneKauf > 0) teile.push(tRaw('finance.basis.ohne_kauf', { n: basis.ohneKauf, betrag: fmtN(basis.ohneKaufWert || 0, cur) }));
+  if (!mitBasis || !teile.length) { zeile.hidden = true; zeile.textContent = ''; return; }
+  zeile.hidden = false;
+  zeile.innerHTML = `${ico('info')}<span><strong>${esc(tRaw('finance.basis.gerechnet', { n: basis.bewertet, von: basis.gesamt }))}</strong> ${esc(teile.join(' · '))}</span>`;
 }
 
 // ── Kategoriefilter: dieselbe Regel wie in der Android-App ──────────────────

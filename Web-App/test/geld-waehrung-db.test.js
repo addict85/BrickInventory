@@ -133,8 +133,8 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async (t) =>
       { set_number: 'A', quantity: 1, current_price: 750, purchase_price: 600, baseline_price: 600, pnl_pct: '25.0', baseline_pnl_pct: '25.0' },
       { set_number: 'B', quantity: 2, current_price: 0, purchase_price: 40, baseline_price: 40, pnl_pct: null, baseline_pnl_pct: null },
     ]);
-    assert.deepEqual(w.get('A'), { kachel_preis: 750, kachel_pnl_pct: 114.3 });
-    assert.deepEqual(w.get('B'), { kachel_preis: 40, kachel_pnl_pct: null });
+    assert.deepEqual(w.get('A'), { kachel_preis: 750, kachel_pnl_pct: 114.3, kachel_quelle: 'markt' });
+    assert.deepEqual(w.get('B'), { kachel_preis: 40, kachel_pnl_pct: null, kachel_quelle: 'kauf' });
   });
 
   await t.test('ohne Kontowährung gilt die der Installation — für Erfassungen und Gutscheine', async () => {

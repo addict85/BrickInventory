@@ -145,12 +145,13 @@ export async function enrichGalleryWithPrices(){
   // kachel_pnl_pct in /finance/pnl, src/finanzen/setValue.ts kachelWerte); im
   // Haushalt tragen alle Zeilen eines Sets dieselben Werte.
   for(const s of pnl.sets){
-    if(!_pnlCache[s.set_number]) _pnlCache[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct };
+    if(!_pnlCache[s.set_number]) _pnlCache[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
   }
   // Inject price data into cached sets
   setAllSets(allSets.map(s => ({
     ...s,
     _price:   _pnlCache[s.set_number]?.price || 0,
+    _quelle:  _pnlCache[s.set_number]?.quelle,
     _pnl_pct: _pnlCache[s.set_number]?.pnl_pct ?? undefined
   })));
   // Nur die Preis-Container nachtragen statt die ganze Galerie neu zu bauen —

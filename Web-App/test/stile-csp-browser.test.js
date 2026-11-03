@@ -116,7 +116,8 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   for (let i = 0; i < 240 && !/localhost:\d+|Startup complete/.test(server.log()); i++) await warte(250);
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++) await warte(250);
   const csp = (await fetch(`http://127.0.0.1:${port}/`)).headers.get('content-security-policy') || '';
-  assert.match(csp, /style-src 'self'(;|$)/, `Die CSP erlaubt Inline-Stile: ${csp}`);
+  // Inline nur der eine Block des Startgerüsts, über seinen Hash — kein 'unsafe-inline'.
+  assert.match(csp, /style-src 'self'( 'sha256-[A-Za-z0-9+/]+=*')?(;|$)/, `Die CSP erlaubt Inline-Stile: ${csp}`);
 
   const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'stile-'));
   t.after(() => fs.rmSync(profil, { recursive: true, force: true }));

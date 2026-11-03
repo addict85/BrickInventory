@@ -278,7 +278,9 @@ export function setnummerFeldGueltig(id, wert) {
  */
 export function leerZustand(o) {
   const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
-  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2>${esc(o.titel)}</h2>${o.text ? `<p>${esc(o.text)}</p>` : ''}${knopf}</div>`;
+  // Mit Schlüssel übersetzt applyLang den Text nach, wenn die Kontosprache erst später feststeht.
+  const k = (key) => key ? ` data-i18n="${esc(key)}"` : '';
+  return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${k(o.titelKey)}>${esc(o.titelKey ? tRaw(o.titelKey) : o.titel)}</h2>${o.text || o.textKey ? `<p${k(o.textKey)}>${esc(o.textKey ? tRaw(o.textKey) : o.text)}</p>` : ''}${knopf}</div>`;
 }
 
 /** Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer. */
@@ -711,6 +713,8 @@ export async function api(method, path, body) {
     // Netzfehler: offline, Verbindungsabbruch, DNS. Kein Status vorhanden.
     console.warn('[api]', method, path, e);
     zeigeVerbindung(false);
+    const alt = method === 'GET' ? ausZwischenspeicher(path) : null;
+    if (alt) return { ...alt, ausZwischenspeicher: true };
     return { success:false, error:tRaw('api.unreachable'), networkError:true, status:0 };
   }
   _letzteAntwort = new Date();
@@ -732,6 +736,7 @@ export async function api(method, path, body) {
              error: daten.error || tRaw('api.server_error', { status:res.status }) };
   }
   if (daten && typeof daten === 'object') daten.status = res.status;
+  if (method === 'GET' && res.ok && daten?.success !== false) inZwischenspeicher(path, daten);
   if (res.status === 401) meldeSitzungBeendet(path);
   if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') zeigePflichtwechsel();
   return daten;
@@ -780,6 +785,24 @@ function rbHinweisWeg() {
   G('inhalt')?.focus({ preventScroll: true });
 }
 
+// ── Zwischenspeicher für Lesezugriffe ──────────────────────────────────────
+// Ohne Netz zeigen Listen den zuletzt geladenen Stand dieses Tabs statt eines
+// Fehlers. sessionStorage: nur dieser Tab, weg beim Abmelden (leereZwischenspeicher).
+const ZS = 'bim_api:';
+const ZS_PFADE = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
+/** @param {string} pfad @param {unknown} daten */
+function inZwischenspeicher(pfad, daten) {
+  if (!ZS_PFADE.test(pfad)) return;
+  try { const s = JSON.stringify(daten); if (s.length < 400_000) sessionStorage.setItem(ZS + pfad, s); } catch (_) { /* voll oder gesperrt: dann ohne */ }
+}
+/** @param {string} pfad */
+function ausZwischenspeicher(pfad) {
+  try { const s = sessionStorage.getItem(ZS + pfad); return s ? JSON.parse(s) : null; } catch (_) { return null; }
+}
+export function leereZwischenspeicher() {
+  try { for (const k of Object.keys(sessionStorage)) if (k.startsWith(ZS)) sessionStorage.removeItem(k); } catch (_) { /* ohne Speicher nichts zu leeren */ }
+}
+
 // ── Verbindung ──────────────────────────────────────────────────────────────
 // Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es
 // einer ist und von wann — sonst hält man alte Zahlen für aktuell.
@@ -793,6 +816,8 @@ export function zeigeVerbindung(erreichbar) {
   if (erreichbar) {
     if (_offline) toast(tRaw('net.back'), 'success');
     if (_offline) schreibenSperren(false);
+    // Was ohne Netz nicht laden konnte, lädt jetzt von selbst.
+    if (_offline) document.querySelectorAll('.tab.active .fehler-zustand [data-lesend]').forEach(k => /** @type {HTMLElement} */ (k).click());
     _offline = false; band.hidden = true; return;
   }
   _offline = true;
@@ -809,7 +834,7 @@ export function zeigeVerbindung(erreichbar) {
 const BEDIENT = 'button, input[type=file], .import-menue > summary';
 const IMMER_SCHREIBEND = 'button.bp, button.bd, input[type=file], .import-menue > summary';
 const SCHREIB_VERBEN = /speicher|save|loesch|delete|import|hinzufueg|add|anleg|erfass|uebernehm|eintrag|abfrag|aktualis|refresh|sync|hochlad|upload|rotier|widerruf|einlad|verknuepf|aendere|bearbeit|entfern|wiederherst|restore|generier|erzeug|verschieb|qty|menge|alarm/i;
-const NICHT_SPERREN = '#login-screen, .toast, [data-dialog-zu], .hinweis-zu';
+const NICHT_SPERREN = '#login-screen, .toast, [data-dialog-zu], .hinweis-zu, [data-lesend]';
 /** @param {Element} k */
 function schreibt(k) {
   if (k.closest(NICHT_SPERREN)) return false;
@@ -1068,7 +1093,7 @@ if (typeof document !== 'undefined') document.addEventListener('input', (ev) => 
 });
 
 function zeigePflichtwechsel(){
-  G('login-screen').style.display='flex'; G('app').style.display='none';
+  G('login-screen').style.display='flex'; startgeruestWeg(); G('app').style.display='none';
   showPanel('pflichtwechsel');
 }
 function oeffneApp(){ if(ME?.mustChangePassword) zeigePflichtwechsel(); else showApp(); }
@@ -1234,7 +1259,7 @@ export async function checkAuth(){
   // unverändert bleibt.
   if(d.loggedIn){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; oeffneApp(); }
   else {
-    G('login-screen').style.display='flex';
+    G('login-screen').style.display='flex'; startgeruestWeg();
     G('app').style.display='none';
     // Don't override reset/verified panels that were already set from URL params
     if(!_resetToken && !G('verified-msg')?.style.display.includes('block')){
@@ -1243,9 +1268,11 @@ export async function checkAuth(){
     checkRegistrationEnabled();
   }
 }
+/** Das statische Startgerüst aus index.html weicht, sobald Anmeldung, App oder Startfortschritt dastehen. */
+function startgeruestWeg() { G('startgeruest')?.remove(); }
+
 async function waitForStartup() {
   const ss = G('startup-screen');
-  if (ss) ss.style.display = 'flex';
   const startedAt = Date.now();
   // Kein hartes Gesamt-Timeout mehr: Download/Import der Rebrickable-CSVs kann
   // bei einer Neuinstallation viele Minuten dauern. Stattdessen nur abbrechen,
@@ -1296,6 +1323,8 @@ async function waitForStartup() {
       const sig = `${s.step}|${s.progress}|${s.total}|${s.sub || ''}`;
       if (sig !== lastSig) { lastSig = sig; lastChangeAt = Date.now(); }
       if (s.ready) break;
+      // Den Fortschritt erst zeigen, wenn der Server wirklich noch startet.
+      if (ss && ss.style.display !== 'flex') { startgeruestWeg(); ss.style.display = 'flex'; }
       if (Date.now() - lastChangeAt > STALL_TIMEOUT) { console.warn('[startup] stalled — no progress'); break; }
     } catch(e) { console.warn('[startup] poll error:', e.message); }
     await new Promise(r => setTimeout(r, 600));
@@ -1308,6 +1337,7 @@ function showLogin(){
   // Protokoll geleert). Hier stand früher sein Innenleben ausgeschrieben.
   gibZuruecksetzen();
   sessionStorage.removeItem('webToken');
+  leereZwischenspeicher();
   // Clear sensitive data from all tabs before hiding
   ['fin-tbl','portfolio-chart-section','gallery-grid','parts-main','monitor-content'].forEach(id=>{
     const el=G(id); if(el) el.innerHTML='';
@@ -1319,7 +1349,7 @@ function showLogin(){
   const plSetsEl=G('pl-sets'); if(plSetsEl) plSetsEl.innerHTML='';
   const plStatus=G('pl-status'); if(plStatus) plStatus.textContent='';
   ['btn-pl-pdf','btn-pl-bl','pl-bl-condition','pl-bestand-zeile'].forEach(id=>{const el=G(id);if(el)el.style.display='none';});
-  G('login-screen').style.display='flex';
+  G('login-screen').style.display='flex'; startgeruestWeg();
   G('app').style.display='none';
   showPanel('login');
   checkRegistrationEnabled();
@@ -1372,7 +1402,7 @@ export function zeigeBenutzernamen(){
 }
 
 function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 1000);
-  G('login-screen').style.display='none'; G('app').style.display='block';
+  G('login-screen').style.display='none'; G('app').style.display='block'; startgeruestWeg();
   zeigeBenutzernamen();
   initDefaultCondition();
   // Kontoauswahl beim Erfassen — bleibt verborgen, wenn es nichts zu wählen
@@ -1472,7 +1502,7 @@ async function doLogin(){
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
     formularFehler(G('lerr'), '');
-    oeffneApp(); } else { const err=d.error||tRaw('settings.error'); formularFehler(G('lerr'), err, ['lp','lu']); if(d.code==='anmeldedaten_ungueltig'){ G('lerr').innerHTML=esc(err)+' <a href="#" data-click="bestaetigungErneut" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
+    oeffneApp(); } else { const err=d.error||tRaw('settings.error'); formularFehler(G('lerr'), err, ['lp','lu']); if(d.unverified||d.code==='email_nicht_bestaetigt'){ G('lerr').innerHTML=esc(err)+' <a href="#" data-click="bestaetigungErneut" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.

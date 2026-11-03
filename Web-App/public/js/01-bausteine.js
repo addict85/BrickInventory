@@ -122,7 +122,7 @@ export function fehlerZustand(o) {
   const arg = o.arg ? ` data-arg="${esc(o.arg)}"` : '';
   return `<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>` +
     `<h2>${esc(tRaw('liste.fehler_titel'))}</h2><p>${esc(o.grund || tRaw('common.unknown_error'))}</p>` +
-    `<button type="button" class="btn bp" data-click="${esc(o.erneut)}"${arg}>${ico('aktualisieren')}<span>${esc(tRaw('liste.erneut'))}</span></button></div>`;
+    `<button type="button" class="btn bp" data-lesend data-click="${esc(o.erneut)}"${arg}>${ico('aktualisieren')}<span>${esc(tRaw('liste.erneut'))}</span></button></div>`;
 }
 
 /**
@@ -135,7 +135,7 @@ export function fehlerZustand(o) {
  */
 export function listeLadefehler(ziel, d, o) {
   if (d && d.success !== false) return false;
-  const grund = d?.error || tRaw('api.unreachable');
+  const grund = d?.networkError ? tRaw('net.liste_offline') : d?.error || tRaw('api.unreachable');
   const nochmal = () => { const f = resolveAction(o.erneut); if (f) o.arg !== undefined ? f(o.arg) : f(); };
   if (o.behalten) toast(`${grund} ${tRaw('liste.alter_stand')}`, 'error', { text: tRaw('liste.erneut'), fn: nochmal });
   else if (ziel) ziel.innerHTML = fehlerZustand({ grund, erneut: o.erneut, arg: o.arg });
