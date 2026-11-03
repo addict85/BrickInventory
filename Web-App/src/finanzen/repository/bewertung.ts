@@ -2,6 +2,7 @@ import * as db from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
+import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 /** Eine Erfassung eines manuellen Teils oder einer Figur, Kaufpreis in der Kontowährung. */
 export interface ManuelleErfassung {
@@ -57,11 +58,11 @@ export function manuelleFigurenZurBewertung(uids: number[]) {
            ${blNummerSql('m.fig_number', 'blzf')} AS bl_fig_number,
            ${teilmengeAus('m', 'fig')} AS quantity,
            m.source, m.storage_id,
-           mc.fig_name, mc.image_url, mc.image_local
+           ${FIGUR.name} AS fig_name, ${FIGUR.bild} AS image_url, ${FIGUR.bildDatei} AS image_local
       FROM minifigs m
       ${teilmengeJoin('m', 'fig')}
       ${blJoin('m.fig_number', 'fig', 'blzf')}
-      LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
+      ${figurSichtJoin('m.user_id', 'm.fig_number')}
      WHERE m.user_id = ANY($1) AND m.source='manual'`, [uids]);
 }
 
@@ -80,13 +81,12 @@ export function manuelleTeileZurBewertung(uids: number[]) {
            ${teilmengeAus('p', 'part')} AS quantity,
            p.source,
            p.storage_id, p.added_at,
-           pc.part_name, pc.category_name,
-           pcc.color_name, pcc.color_hex, pcc.image_url, pcc.image_local
+           ${TEIL.name} AS part_name, ${TEIL.kategorie} AS category_name,
+           ${TEIL.farbname} AS color_name, ${TEIL.farbcode} AS color_hex,
+           ${TEIL.bild} AS image_url, ${TEIL.bildDatei} AS image_local
       FROM parts p
       ${teilmengeJoin('p', 'part')}
       ${blJoin('p.part_number', 'part')}
-      LEFT JOIN part_catalog pc ON pc.part_number = p.part_number
-      LEFT JOIN part_color_catalog pcc ON pcc.part_number = p.part_number
-                                      AND pcc.color_id    = p.color_id
+      ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
      WHERE p.user_id = ANY($1) AND p.source = 'manual'`, [uids]);
 }

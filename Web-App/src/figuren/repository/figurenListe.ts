@@ -1,6 +1,7 @@
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
 import * as db from '../../../db/database';
+import { figurSichtJoin, FIGUR } from '../../../db/katalogSicht';
 
 // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#figurensuche
 function figurenSuche(nummer: string, name: string, pi: number) {
@@ -20,9 +21,9 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
   if (source === 'set')    where += " AND m.source = 'set'";
   if (source === 'manual') where += " AND m.source = 'manual'";
   if (search) {
-    // Der Figurenname steht im Katalog; der Alias mc hängt an jeder Abfrage, die
-    // diese Bedingung benutzt.
-    where += ` AND ${figurenSuche('m.fig_number', 'mc.fig_name', pi)}`;
+    // Der Figurenname steht im Katalog; figurSichtJoin hängt an jeder Abfrage,
+    // die diese Bedingung benutzt.
+    where += ` AND ${figurenSuche('m.fig_number', FIGUR.name, pi)}`;
     params.push(`%${search}%`); pi++;
   }
   const figParams = [...params];
@@ -35,7 +36,7 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
   const figCount = f.seite
     ? await db.get(`SELECT COUNT(*)::int AS c FROM (
          SELECT 1 FROM minifigs m
-         LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
+         ${figurSichtJoin('m.user_id', 'm.fig_number')}
          WHERE ${where} GROUP BY LOWER(TRIM(m.fig_number)), m.source) g`, params)
     : null;
 
@@ -51,17 +52,14 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
            -- manuelle Figuren JA, Set-Figuren nein.
            array_agg(DISTINCT m.user_id) AS owner_ids,
            MIN(TRIM(m.fig_number)) AS fig_number,
-           -- Name und Bild aus minifigs_catalog (Migration 0034): Sie
-           -- haengen an der Figur, nicht am Konto, das sie besitzt. MAX
-           -- bleibt, weil die Gruppe mehrere Schreibweisen derselben
-           -- Figurennummer zusammenfasst.
-           MAX(mc.fig_name) AS fig_name,
+           -- MAX, weil die Gruppe mehrere Schreibweisen derselben Nummer zusammenfasst.
+           MAX(${FIGUR.name}) AS fig_name,
            -- Die Stückzahl der Bestandszeile (Migration 0038): manuell die
            -- Summe der Erfassungen, aus einem Set die Katalogzahl. Hier
            -- stand m.quantity.
            SUM(${teilmengeAus('m', 'fig')})::int AS quantity,
-           MAX(mc.image_url) AS image_url,
-           MAX(mc.image_local) AS image_local,
+           MAX(${FIGUR.bild}) AS image_url,
+           MAX(${FIGUR.bildDatei}) AS image_local,
            m.source,
            -- Preis aus der neuesten Erfassung. Hier stand
            -- MAX(m.unit_price) — eine Abschrift an der Bestandszeile, die
@@ -102,13 +100,8 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
     -- Der Name aus dem Vorrat (Migration 0031: die Zeile traegt eine ID).
     -- LEFT JOIN, damit eine Figur ohne Ort nicht aus der Liste faellt.
     LEFT JOIN storage_locations lo ON lo.id = m.storage_id
-    -- Beschreibung aus dem Katalog. Verbunden ueber den Primaerschluessel,
-    -- also hoechstens eine Zeile je Treffer — die Gruppierung und die
-    -- Gesamtzahl bleiben unberuehrt. Genau (nicht ueber LOWER(TRIM(...))):
-    -- Migration 0034 fuellt den Katalog aus denselben Zeichenketten, die in
-    -- minifigs stehen, und eine Normalisierung im Join haette den
-    -- Primaerschluessel umgangen.
-    LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
+    -- Über den Primärschlüssel, also höchstens eine Zeile je Treffer.
+    ${figurSichtJoin('m.user_id', 'm.fig_number')}
     -- Die neueste Erfassung je Figur — dieselbe Ordnung wie latestSql in
     -- routes/api_v1/acquisitions.ts, damit „neuester Preis" und „neueste
     -- Erfassung" dasselbe heissen.
@@ -124,7 +117,7 @@ export async function figurenGruppiert(uids: number[], f: { search?: string | nu
     -- dieselbe Figurennummer mit Whitespace-/Case-Varianten liefern — die
     -- würden die Gruppierung sonst unsichtbar aushebeln.
     GROUP BY LOWER(TRIM(m.fig_number)), m.source
-    ORDER BY MAX(mc.fig_name) ASC, LOWER(TRIM(m.fig_number)) ASC${figLimit}`, figParams);
+    ORDER BY MAX(${FIGUR.name}) ASC, LOWER(TRIM(m.fig_number)) ASC${figLimit}`, figParams);
   return { figCount, figs };
 }
 
@@ -134,7 +127,7 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
   let suche = '';
   if (search) {
     params.push(`%${search}%`);
-    suche = ` AND ${figurenSuche('m.fig_number', 'mc.fig_name', params.length)}`;
+    suche = ` AND ${figurenSuche('m.fig_number', FIGUR.name, params.length)}`;
   }
   let limit = '';
   if (seite) {
@@ -142,7 +135,7 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
     limit = ` LIMIT $${params.length - 1} OFFSET $${params.length}`;
   }
   const figs = await db.all(
-    // Name und Bild aus minifigs_catalog: Sie hängen an der Figur, nicht am Konto.
+    // Name und Bild: geprüft aus dem Katalog, sonst die eigene Angabe des Kontos.
     // Ausführlich: docs/begruendungen/src/figuren/abfragen.ts.md#getmanualminifigs
     `SELECT m.id, m.user_id, m.set_number, m.fig_number,
             -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
@@ -161,12 +154,12 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
             neu.unit_price,
             COALESCE(neu.unit_price, 0) AS purchase_price,
             COALESCE(neu.condition, 'N') AS condition,
-            mc.fig_name, mc.image_url, mc.image_local,
+            ${FIGUR.name} AS fig_name, ${FIGUR.bild} AS image_url, ${FIGUR.bildDatei} AS image_local,
             lo.name AS storage
        FROM minifigs m
        ${teilmengeJoin('m', 'fig')}
        ${blJoin('m.fig_number', 'fig')}
-       LEFT JOIN minifigs_catalog mc ON mc.fig_number = m.fig_number
+       ${figurSichtJoin('m.user_id', 'm.fig_number')}
        LEFT JOIN storage_locations lo ON lo.id = m.storage_id
        LEFT JOIN LATERAL (
          SELECT a.unit_price, a.condition
@@ -176,7 +169,7 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
           LIMIT 1
        ) neu ON TRUE
       WHERE m.user_id = ANY($1) AND m.source = 'manual'${suche}
-      ORDER BY mc.fig_name ASC, m.fig_number ASC${limit}`,
+      ORDER BY ${FIGUR.name} ASC, m.fig_number ASC${limit}`,
     params);
   return figs;
 }

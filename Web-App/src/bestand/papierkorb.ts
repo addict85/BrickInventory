@@ -25,7 +25,7 @@ export async function legeInPapierkorb(
   const stamm = repo.tabellenDerArt(art)[0] ?? '';
   if (!zeilen[stamm]?.length) return null;
 
-  const name = await repo.bezeichnung(tx, art, nummer, farbeId);
+  const name = await repo.bezeichnung(tx, art, userId, nummer, farbeId);
   return repo.legeEintragAn(tx, userId, art, nummer, art === 'teil' ? farbeId : null, name, zeilen);
 }
 

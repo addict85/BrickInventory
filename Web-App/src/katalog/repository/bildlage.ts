@@ -10,7 +10,7 @@ export async function setsMitFehlendenKatalogbildern(): Promise<string[]> {
   return rows.map(r => r.set_number);
 }
 
-/** Nur geprüfte Adressen (bild_von IS NULL): Die Datei gilt für alle Konten. */
+/** Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten. */
 export async function manuelleTeileOhneBild(): Promise<{ part_number: string; color_id: number; image_url: string }[]> {
   return db.all(
     `SELECT DISTINCT pcc.part_number, pcc.color_id, pcc.image_url
@@ -18,13 +18,13 @@ export async function manuelleTeileOhneBild(): Promise<{ part_number: string; co
        JOIN parts p ON p.part_number = pcc.part_number
                    AND p.color_id    = pcc.color_id
                    AND p.source      = 'manual'
-      WHERE pcc.image_url IS NOT NULL AND pcc.image_local IS NULL AND pcc.bild_von IS NULL`);
+      WHERE pcc.image_url IS NOT NULL AND pcc.image_local IS NULL`);
 }
 
 export async function figurenOhneBild(): Promise<{ fig_number: string; image_url: string }[]> {
   return db.all(
     `SELECT mc.fig_number, mc.image_url FROM minifigs_catalog mc
-      WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL AND mc.bild_von IS NULL
+      WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
         AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)
       ORDER BY mc.fig_number`);
 }
@@ -49,16 +49,15 @@ export async function lokaleKatalogbilder(): Promise<string[]> {
 
 export interface Bildstand { image_local: string | null; image_url: string | null }
 
-/** Eine Adresse nur, wenn sie geprüft ist. */
 export async function teilbilder(teile: string[]): Promise<(Bildstand & { part_number: string; color_id: number })[]> {
   return db.all(
-    `SELECT part_number, color_id, image_local, CASE WHEN bild_von IS NULL THEN image_url END AS image_url
+    `SELECT part_number, color_id, image_local, image_url
        FROM part_color_catalog WHERE part_number = ANY($1)`, [teile]);
 }
 
 export async function figurenbilder(figuren: string[]): Promise<(Bildstand & { fig_number: string })[]> {
   return db.all(
-    `SELECT fig_number, image_local, CASE WHEN bild_von IS NULL THEN image_url END AS image_url
+    `SELECT fig_number, image_local, image_url
        FROM minifigs_catalog WHERE fig_number = ANY($1)`, [figuren]);
 }
 

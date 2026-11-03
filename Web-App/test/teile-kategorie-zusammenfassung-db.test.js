@@ -44,7 +44,7 @@ test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async (t) => {
   await db.run(`INSERT INTO rb_parts (part_num, name, part_cat_id) VALUES ('kz2', 'Zwei', 98701) ON CONFLICT (part_num) DO UPDATE SET part_cat_id = 98701`);
   await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name)
                 VALUES ('kz1', 'Eins', '98701'), ('kz2', 'Zwei', NULL), ('kz3', 'Drei', '98702')
-                ON CONFLICT (part_number) DO UPDATE SET category_name = EXCLUDED.category_name, name_von = NULL, kategorie_von = NULL`);
+                ON CONFLICT (part_number) DO UPDATE SET category_name = EXCLUDED.category_name`);
   await db.run(`INSERT INTO set_teile (set_number, part_number, color_id, quantity, is_spare)
                 VALUES ($1, 'kz1', 5, 4, false), ($1, 'kz2', 5, 2, true), ($1, 'kz3', 1, 3, false)`, [SN]);
   await haeltSet(db, U, SN, 2);

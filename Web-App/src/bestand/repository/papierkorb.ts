@@ -1,5 +1,6 @@
 import * as db from '../../../db/database';
 import type { DbSchnittstelle } from '../../../db/database';
+import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 /** Ein Eintrag hält die gelöschten Zeilen aller Tabellen eines Bestands als
  * JSON; Wiederherstellen schreibt sie Spalte für Spalte zurück. */
@@ -35,17 +36,18 @@ export async function bestandsZeilen(tx: DbSchnittstelle, art: PapierArt, werte:
 }
 
 const BEZEICHNUNG: Record<PapierArt, string> = {
-  set:   'SELECT name AS b FROM set_catalog WHERE set_number = $1',
-  teil:  `SELECT concat_ws(' · ', pc.part_name, pcc.color_name) AS b
-            FROM part_catalog pc
-            LEFT JOIN part_color_catalog pcc ON pcc.part_number = pc.part_number AND pcc.color_id = $2
-           WHERE pc.part_number = $1`,
-  figur: 'SELECT fig_name AS b FROM minifigs_catalog WHERE fig_number = $1',
+  set:   'SELECT name AS b FROM set_catalog WHERE set_number = $1 AND $2::int IS NOT NULL',
+  teil:  `SELECT concat_ws(' · ', ${TEIL.name}, ${TEIL.farbname}) AS b
+            FROM (SELECT $1::text AS nr, $2::int AS konto, $3::int AS farbe) x
+            ${teilSichtJoin('x.konto', 'x.nr', 'x.farbe')}`,
+  figur: `SELECT ${FIGUR.name} AS b
+            FROM (SELECT $1::text AS nr, $2::int AS konto) x
+            ${figurSichtJoin('x.konto', 'x.nr')}`,
 };
 
 /** Damit die Liste auch ohne Katalogzeile lesbar bleibt. */
-export async function bezeichnung(tx: DbSchnittstelle, art: PapierArt, nummer: string, farbeId: number | null): Promise<string | null> {
-  const r = await tx.get<{ b: string | null }>(BEZEICHNUNG[art], art === 'teil' ? [nummer, farbeId] : [nummer]);
+export async function bezeichnung(tx: DbSchnittstelle, art: PapierArt, userId: number, nummer: string, farbeId: number | null): Promise<string | null> {
+  const r = await tx.get<{ b: string | null }>(BEZEICHNUNG[art], art === 'teil' ? [nummer, userId, farbeId] : [nummer, userId]);
   return r?.b || null;
 }
 
