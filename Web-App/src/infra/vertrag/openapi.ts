@@ -60,6 +60,7 @@ export function openapi(): Record<string, unknown> {
         op.requestBody = { content: { 'application/json': { schema } } };
       }
       if (r.bestaetigung) op['x-bestaetigung'] = r.bestaetigung;
+      if (r.geheim) op['x-geheim'] = true;
       const oaPfad = pfad.replace(/:(\w+)/g, '{$1}');
       (paths[oaPfad] ??= {})[methode.toLowerCase()] = op;
     }

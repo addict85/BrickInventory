@@ -14,6 +14,14 @@ export interface Route {
   formular?: true;
   /** Felder von Passwort und Code der erneuten Bestätigung (bestaetigeMitFaktor). */
   bestaetigung?: { passwort: string; code: string };
+  /** Die Antwort trägt einen Zugang, Code oder Klartext: Sie wird nie gespeichert. */
+  geheim?: true;
+}
+
+/** Bestätigte und geheime Antworten wiederholt die Idempotenz nie: Eine
+ * Wiederholung mit falschem Passwort bekäme sonst die gespeicherte Antwort. */
+export function nichtWiederholbar(route: Route | undefined): boolean {
+  return !!(route?.geheim || route?.bestaetigung);
 }
 
 export const ganz = z.number().int();

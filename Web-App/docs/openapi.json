@@ -1292,7 +1292,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/logout": {
@@ -1379,7 +1380,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/passkey/anmelden/optionen": {
@@ -1851,7 +1853,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/qr-token": {
@@ -1932,7 +1935,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/register": {
@@ -2174,7 +2178,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/token-rotieren": {
@@ -2203,7 +2208,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/users": {
@@ -3004,7 +3010,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/zweiter-faktor/codes": {
@@ -3063,7 +3070,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/zweiter-faktor/einrichten": {
@@ -3144,7 +3152,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/bestand": {
@@ -7151,7 +7160,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/settings/household/redeem": {
@@ -8242,7 +8252,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/vouchers/{id}/pdf": {
@@ -8368,7 +8379,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/vouchers/export/pdf": {
@@ -8474,7 +8486,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/vouchers/pdf": {
