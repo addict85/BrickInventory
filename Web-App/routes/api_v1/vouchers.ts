@@ -6,8 +6,8 @@ import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { fehlerAntwort, ohneFehlendeDatei } from '../../src/infra/httpError';
 import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
-import { getGlobalSetting } from '../../src/konto/settings';
-import { landErlaubt, LAND_STANDARD } from '../../src/gutscheine/gutscheinGuthaben';
+import { getGlobalSetting, getSetting } from '../../src/konto/settings';
+import { landErlaubt, landFuerWaehrung } from '../../src/gutscheine/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
 import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts } from '../../src/gutscheine/gutscheinDateien';
 import { requireToken } from './middleware';
@@ -333,7 +333,8 @@ router.post('/vouchers/:id/guthaben', requireToken, async (req: AuthedRequest, r
 
   // EINE Einstellung für die Installation: Eine Karte gilt nur im Shop ihres
   // Ausgabelandes.
-  const land = String(await getGlobalSetting('gutschein_land', LAND_STANDARD) || LAND_STANDARD);
+  const land = String(await getGlobalSetting('gutschein_land', '')
+    || landFuerWaehrung(await getSetting(req.apiUser.user_id, 'currency', 'EUR')));
   if (!landErlaubt(land)) return sendeFehler(req, res, 400, 'guthaben_land_ungueltig');
 
   const ergebnis = await frageGuthabenAb(req.apiUser.user_id, alt.number, alt.pin, { locale: land });

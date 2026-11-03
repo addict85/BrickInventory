@@ -861,9 +861,9 @@ html::-webkit-scrollbar{width:0;height:0}
        Bedeutung haengt nirgends an der FARBE: Jeder Knopf traegt ein Symbol
        und einen Titel, der verdeckte PIN steht als Punkte da, nicht als
        graues Feld. */
-    .voucher-list{display:flex;flex-direction:column;gap:.45rem}
-    .voucher-row{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;
-                 padding:.55rem .7rem;border:1px solid var(--bdr);
+    .voucher-list{display:flex;flex-direction:column;gap:.75rem}
+    .voucher-row{display:flex;flex-wrap:wrap;align-items:center;gap:.75rem 1rem;
+                 padding:.9rem 1rem;border:1px solid var(--bdr);
                  border-radius:var(--rad);background:var(--sur)}
     .voucher-main{flex:1 1 12rem;min-width:0}
     /* Tabellenziffern: Die Vierergruppen stehen sonst je nach Ziffer
@@ -871,8 +871,8 @@ html::-webkit-scrollbar{width:0;height:0}
     .voucher-num{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
                  font-size:var(--fs-3);font-variant-numeric:tabular-nums;
                  overflow-wrap:anywhere}
-    .voucher-meta{font-size:var(--fs-1);color:var(--mut);margin-top:2px}
-    .voucher-amount{font-weight:600;color:var(--txt)}
+    .voucher-meta{font-size:var(--fs-1);color:var(--mut);margin-top:.35rem;display:flex;flex-direction:column;gap:.25rem}
+    .voucher-amount{font-weight:600;color:var(--txt);font-size:var(--fs-3)}
     /* Der Stand der Guthaben-Abfrage. Eigene Zeile und KEINE eigene
        Farbe: Die Aussage steht im Wort („abgefragt am …" bzw. „noch nie
        abgefragt"), nicht in einem Farbton — Marco sieht Rot und Gruen
@@ -882,7 +882,7 @@ html::-webkit-scrollbar{width:0;height:0}
     .voucher-pin-label{color:var(--mut);text-transform:uppercase;
                        letter-spacing:.5px;font-size:var(--fs-0)}
     .voucher-pin code{font-size:var(--fs-2);letter-spacing:.08em}
-    .voucher-nopdf{color:var(--mut);font-size:var(--fs-1);padding:0 .35rem;white-space:nowrap}
+    .voucher-nopdf{white-space:nowrap}
     .v-btn.v-btn-gefahr{color:var(--r700)}
     [data-nur-mit-gutscheinen][hidden]{display:none}
     .voucher-actions{display:flex;align-items:center;gap:.3rem;margin-left:auto}

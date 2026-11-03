@@ -316,7 +316,8 @@ export function zeitpunkt(s) {
 
 /**
  * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem
- * Tag, Tage bis drei Monate („29. Okt.“), darüber Monate („Nov. 25“).
+ * Tag, Tage bis drei Monate („29. Okt.“), darüber Monate mit ganzem Jahr
+ * („Nov. 2025“) — „Juli 26“ las sich auch als 26. Juli.
  * @param {number} von @param {number} bis  Millisekunden
  * @param {number} maxStriche
  * @returns {{ t: number, text: string }[]}
@@ -337,7 +338,7 @@ export function zeitTeilung(von, bis, maxStriche) {
   } else {
     const monate = spanne / (30.44 * TAG);
     const n = [1, 2, 3, 6, 12, 24].find(x => monate / x <= max) ?? 24;
-    const f = fmt({ month: 'short', year: '2-digit' });
+    const f = fmt({ month: 'short', year: 'numeric' });
     const d = new Date(von); d.setDate(1); d.setHours(0, 0, 0, 0);
     if (d.getTime() < von) d.setMonth(d.getMonth() + 1);
     while (d.getMonth() % n) d.setMonth(d.getMonth() + 1);
@@ -381,11 +382,16 @@ function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur) {
   return striche + achse + bruch;
 }
 
-/** Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung am rechten Ende. */
-function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)') {
+/**
+ * Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung
+ * am rechten Ende. `endeY` ist die Höhe der Kurve dort: Läge die Schrift auf
+ * ihr, steht sie auf der anderen Seite der Linie.
+ */
+function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)', endeY = null) {
   const y = yOf(wert);
+  const darunter = endeY != null && endeY < y && y - endeY < 26;
   return `<g class="einstand-linie"><line x1="${links}" y1="${y.toFixed(1)}" x2="${rechts}" y2="${y.toFixed(1)}" stroke="${farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
-    <text x="${rechts - 4}" y="${(y - 6).toFixed(1)}" font-size="12" font-weight="600" fill="var(--txt)" text-anchor="end" font-family="inherit"
+    <text x="${rechts - 4}" y="${(darunter ? y + 16 : y - 6).toFixed(1)}" font-size="12" font-weight="600" fill="var(--txt)" text-anchor="end" font-family="inherit"
       paint-order="stroke" stroke="var(--sur)" stroke-width="4" stroke-linejoin="round">${esc(text)}</text></g>`;
 }
 
@@ -527,7 +533,9 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
   const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b, unten = PAD.t + ih;
 
   const toTime = zeitpunkt;
-  const first = axis[0], last = axis[axis.length - 1];
+  // Die Achse beginnt beim ersten Marktpreis; ein früherer Kauf steht als Punkt am linken Rand.
+  const ersterPunkt = series.flatMap(sd => sd.pts.map(p => p.x)).sort((a, b) => toTime(a) - toTime(b))[0];
+  const first = toTime(ersterPunkt) < toTime(axis[axis.length - 1]) ? ersterPunkt : axis[0], last = axis[axis.length - 1];
   const span = Math.max(1, toTime(last) - toTime(first));
   const xOf = d => PAD.l + ((toTime(d) - toTime(first)) / span) * iw;
 
@@ -555,10 +563,11 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
   }).join('');
 
   const kaufLinien = kaeufe.map(sd => bezugsLinie(sd.kauf, yOf, PAD.l, W - PAD.r,
-    `${tRaw('detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, CURRENCY)}`, sd.color)).join('');
+    `${tRaw('detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, CURRENCY)}`, sd.color,
+    yOf(sd.pts[sd.pts.length - 1].y))).join('');
 
   const kaufPunkte = kaeufe.filter(sd => sd.kaufTag).map(sd =>
-    `<circle cx="${xOf(sd.kaufTag).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="4.5" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="kaufpunkt"><title>${esc(tRaw('detail.purchase_price'))} ${esc(fmtN(sd.kauf, CURRENCY))}</title></circle>`).join('');
+    `<circle cx="${Math.max(PAD.l, xOf(sd.kaufTag)).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="4.5" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="kaufpunkt"><title>${esc(tRaw('detail.purchase_price'))} ${esc(fmtN(sd.kauf, CURRENCY))}</title></circle>`).join('');
 
   const fmtDay = d => fmtDatum(new Date(toTime(d)));
   const xTicks = zeitTeilung(toTime(first), toTime(last), Math.floor(iw / 80)).map(s => {
@@ -633,7 +642,7 @@ export function portfolioChartSVG(data, period, breite = 700, einstand = 0, cur 
 
   const wann = (i) => mitZeit ? fmtDatum(new Date(data[i].zeit)) : data[i].day;
   const letzter = `<circle cx="${px(n-1).toFixed(1)}" cy="${py(vals[n-1]).toFixed(1)}" r="4" fill="${color}" stroke="var(--sur)" stroke-width="1.5"/>`;
-  const linie = mitEinstand ? bezugsLinie(einstand, py, PAD.l, W - PAD.r, `${tRaw('finance.stat.purchase')} ${fmtN(einstand, cur)}`) : '';
+  const linie = mitEinstand ? bezugsLinie(einstand, py, PAD.l, W - PAD.r, `${tRaw('finance.stat.purchase')} ${fmtN(einstand, cur)}`, 'var(--txt)', py(vals[n-1])) : '';
   const fk = fadenkreuzTeile(vals.map((v, i) => ({ x: +px(i).toFixed(1), y: [+py(v).toFixed(1)], t: [wann(i), fmtN(v, cur)] })), [color], PAD.t, unten);
 
   const zusammenfassung = [tRaw('finance.chart.summary', { titel: tRaw('finance.chart.label'),

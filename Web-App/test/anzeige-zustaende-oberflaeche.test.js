@@ -71,7 +71,8 @@ test('Wertdiagramm: Teilung nach 1-2-5, echte Zeitachse, Monatsnamen', async () 
     assert.ok(y.every(v => v % schritt === 0), `krumme Werte: ${y}`);
     const x = texte.filter(t => +t.getAttribute('y') > 160).map(t => t.textContent);
     assert.ok(x.length >= 3, `nur ${x.length} Beschriftungen an der Zeitachse`);
-    assert.ok(x.every(t => /^[A-Za-zäÄ]{3,4}\.? \d{2}$/.test(t)), `uneinheitlich: ${x.join(' | ')}`);
+    // Ganzes Jahr: „Juli 26“ las sich auch als 26. Juli.
+    assert.ok(x.every(t => /^[A-Za-zäÄ]{3,5}\.? \d{4}$/.test(t)), `uneinheitlich: ${x.join(' | ')}`);
     // Zwischen den letzten beiden Punkten liegt ein Tag, davor ein Monat.
     const cx = JSON.parse(svg.dataset.punkte).map(p => p.x);
     const tag = cx[13] - cx[12], monat = cx[12] - cx[11];

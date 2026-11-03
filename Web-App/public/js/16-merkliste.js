@@ -84,7 +84,7 @@ function zeile(w) {
     ? `<span class="mk-etikett">
          ${ico(w.alarm.ausgeloest ? 'alarm' : 'uhr')}
          ${esc(tRaw(w.alarm.richtung === 'ueber' ? 'detail.alert_above' : 'detail.alert_below'))}
-         ${esc(String(w.alarm.schwelle))}
+         ${esc(fmtN(Number(w.alarm.schwelle), CURRENCY))}
        </span>` : '';
 
   // „Habe ich das inzwischen?" ist die Frage, die in der Liste sofort

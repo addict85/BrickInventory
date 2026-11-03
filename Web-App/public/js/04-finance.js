@@ -425,7 +425,7 @@ function einstandZelle(stueck, menge, cur) {
  */
 function preisKoepfe() {
   const kurz = (lang, kurzTxt) => `<th class="zahl" title="${esc(tRaw(lang))}"><span aria-hidden="true">${kurzTxt}</span><span class="vh">${t(lang)}</span></th>`;
-  return `<th class="zahl">${t('finance.stat.purchase')}</th>`
+  return `<th class="zahl"><abbr title="${esc(tRaw('finance.stat.purchase_hint'))}">${t('finance.stat.purchase')}</abbr></th>`
     + `<th class="zahl" title="${esc(tRaw('finance.market_price_stueck'))}">${t('detail.market_price')}</th>`
     + `<th class="zahl">${t('finance.grand.value')}</th>`
     + kurz('finance.total_pnl', t('finance.pnl_kurz'));

@@ -869,7 +869,7 @@ window.I18N_DE = {
   'settings.smtp.test_to': 'Test-E-Mail senden an',
   'settings.global_title': 'Globale Einstellungen',
   'settings.danger_zone': 'Gefahrenzone',
-  'monitor.logs_btn': 'Logs anzeigen',
+  'monitor.logs_btn': 'Protokoll anzeigen',
   'monitor.api_calls': 'Kontingente heute',
   'monitor.cache_status': 'Zwischenspeicher',
   'monitor.cache_duration': 'Preise aufbewahren',
