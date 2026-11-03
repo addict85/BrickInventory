@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.util
 
+import ch.brickinventoryapp.di.naechsteUmleitung
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Protocol
@@ -31,7 +32,11 @@ fun istEigenerBildServer(url: HttpUrl, serverUrl: String, entwicklung: Boolean):
  * andere Host nichts — auch nicht über eine Umleitung. Darum folgt dieser Wächter
  * Umleitungen selbst; der Client folgt keinen (NetzModule).
  */
-class BildHostWaechter(private val eigenerServer: (HttpUrl) -> Boolean) : Interceptor {
+class BildHostWaechter(
+    /** Pfad des Servers hinter einem Proxy ("" ohne): Nur darunter darf der Token mit umziehen. */
+    private val basisPfad: () -> String = { "" },
+    private val eigenerServer: (HttpUrl) -> Boolean,
+) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
         var anfrage = chain.request()
@@ -40,10 +45,12 @@ class BildHostWaechter(private val eigenerServer: (HttpUrl) -> Boolean) : Interc
             val antwort = chain.proceed(raus)
             val ziel = antwort.header("Location")?.takeIf { antwort.isRedirect }?.let(antwort.request.url::resolve)
                 ?: return antwort
+            // Köpfe (samt Token) ziehen nur mit, wo auch der ServerWaechter sie hinschickte:
+            // gleiche Herkunft und unter dem Basispfad. Sonst teilt sich ein Proxy-Host mit
+            // einer fremden Anwendung, und eine Umleitung dorthin trüge den Token hinaus.
+            val mitgenommen = if (eigenerServer(raus.url)) naechsteUmleitung(raus, antwort, basisPfad()) else null
             antwort.close()
-            // Zu einem anderen Host ohne Token: Er gehört nur dem eigenen Server.
-            anfrage = if (ziel.host == anfrage.url.host) anfrage.newBuilder().url(ziel).build()
-                      else Request.Builder().url(ziel).build()
+            anfrage = mitgenommen ?: Request.Builder().url(ziel).build()
         }
         return gesperrt(anfrage)
     }

@@ -35,6 +35,9 @@ import org.junit.Test
  *      bekommt die Anfrage unveraendert“ und beide Umleitungstests
  *   E  istEigenerBildServer() ohne `entwicklung &&` → rot „localhost gilt nur
  *      im Debug-Build als eigener Server“ (200 statt 403)
+ *   F  in intercept() naechsteUmleitung ohne basisPfad() aufgerufen (Stand vor
+ *      sec8 N1: gleicher Host genügte) → rot „eine Umleitung aus dem Basispfad
+ *      heraus geht ohne Token“; gegenproben/bild-umleitung-verlaesst-basispfad.patch
  */
 class BildHostWaechterTest {
 
@@ -105,6 +108,50 @@ class BildHostWaechterTest {
         val r = gesehen.single()
         assertNull("Der Token des eigenen Servers ging ans CDN", r.header("Authorization"))
         assertTrue(r.header("User-Agent").orEmpty().contains("Chrome/120"))
+    }
+
+    /** Der Server liegt hinter einem Proxy unter [basis]; derselbe Host trägt andere Anwendungen. */
+    private fun mitBasis(basis: String) = OkHttpClient.Builder()
+        .addInterceptor(BildHostWaechter(
+            eigenerServer = { it.host == server.hostName && it.port == server.port },
+            basisPfad = { basis },
+        ))
+        .addInterceptor(cdnAttrappe)
+        .followRedirects(false)
+        .build()
+
+    private fun holeMitBasis(basis: String, pfad: String) = mitBasis(basis).newCall(
+        Request.Builder().url(server.url(pfad)).header("Authorization", "Bearer GEHEIM").build()
+    ).execute().use { it.code }
+
+    @Test
+    fun `eine Umleitung aus dem Basispfad heraus geht ohne Token`() {
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/fremd/bild.png"))
+        server.enqueue(MockResponse().setBody("bild"))
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brickfremd/bild.png"))
+        server.enqueue(MockResponse().setBody("bild"))
+        assertEquals(200, holeMitBasis("/brick", "/brick/api/v1/bild.png"))
+        assertEquals("Bearer GEHEIM", server.takeRequest().getHeader("Authorization"))
+        val fremd = server.takeRequest()
+        assertEquals("/fremd/bild.png", fremd.path)
+        assertNull("Der Token verliess den Basispfad", fremd.getHeader("Authorization"))
+        // Segmentweise: /brick deckt /brickfremd nicht.
+        assertEquals(200, holeMitBasis("/brick", "/brick/a.png"))
+        server.takeRequest()
+        val nachbar = server.takeRequest()
+        assertEquals("/brickfremd/bild.png", nachbar.path)
+        assertNull("Der Token ging an /brickfremd", nachbar.getHeader("Authorization"))
+    }
+
+    @Test
+    fun `eine Umleitung innerhalb des Basispfads behaelt den Token`() {
+        server.enqueue(MockResponse().setResponseCode(302).setHeader("Location", "/brick/bilder/b.png"))
+        server.enqueue(MockResponse().setBody("bild"))
+        assertEquals(200, holeMitBasis("/brick", "/brick/api/v1/bild.png"))
+        server.takeRequest()
+        val ziel = server.takeRequest()
+        assertEquals("/brick/bilder/b.png", ziel.path)
+        assertEquals("Bearer GEHEIM", ziel.getHeader("Authorization"))
     }
 
     @Test
