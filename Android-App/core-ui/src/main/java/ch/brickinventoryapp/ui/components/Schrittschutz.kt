@@ -48,7 +48,12 @@ val LocalSchrittschutz = staticCompositionLocalOf { Schrittschutz { _, _ -> } }
  * (androidx.biometric). Ein Gerät ohne Sperre hat nichts zu fragen und lässt
  * durch — der Schritt wäre dort ohnehin jedem offen.
  */
-class GeraeteSchrittschutz(private val activity: FragmentActivity) : Schrittschutz {
+// [untertitel] kommt von aussen: Unter Android 13 trägt die Activity die
+// System- statt der App-Sprache, den lokalisierten Context kennt core-ui nicht.
+class GeraeteSchrittschutz(
+    private val activity: FragmentActivity,
+    private val untertitel: () -> String,
+) : Schrittschutz {
     private val frist = Bestaetigungsfrist(uhr = SystemClock::elapsedRealtime)
 
     /** Beim Verlassen der App (MainActivity.onStop): Danach wird wieder gefragt. */
@@ -67,7 +72,7 @@ class GeraeteSchrittschutz(private val activity: FragmentActivity) : Schrittschu
         }
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(grund)
-            .setSubtitle(activity.getString(R.string.schritt_untertitel))
+            .setSubtitle(untertitel())
             .setAllowedAuthenticators(erlaubteVerfahren())
             .build()
         BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), rueckruf).authenticate(info)

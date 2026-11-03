@@ -76,7 +76,10 @@ def miss(projekt, wurzel, patch, gradle):
     if zurueck.returncode != 0:
         return False, f'{name}: Patch liess sich nicht zurücknehmen — {zurueck.stderr.strip()}'
     if not os.path.exists(bericht):
-        ende = '\n'.join((lauf.stdout + lauf.stderr).splitlines()[-15:])
+        zeilen = (lauf.stdout + lauf.stderr).splitlines()
+        # Die eigentliche Ursache (Übersetzer, KSP) steht weit vor Gradles Schlusszeilen.
+        ursache = [z for z in zeilen if z.startswith(('e: ', 'w: [ksp]')) or '[ksp]' in z or 'error:' in z][:20]
+        ende = '\n'.join(ursache + zeilen[-15:])
         return False, f'{name}: kein Testbericht für {klasse} — der Test lief nicht (übersetzt der Patch?)\n{ende}'.rstrip()
     rot = fehlschlaege(bericht)
     erwartet = k.get('Rot')

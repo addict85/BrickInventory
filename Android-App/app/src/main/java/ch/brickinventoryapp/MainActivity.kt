@@ -81,7 +81,12 @@ class MainActivity : NurLauncherStart() {
     @Inject lateinit var imageLoader: ImageLoader
 
     /** Rückfrage per Gerätesperre vor heiklen Schritten; gilt bis die App in den Hintergrund geht. */
-    private val schrittschutz by lazy { ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this) }
+    private val schrittschutz by lazy {
+        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this) {
+            ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
+                .getString(R.string.schritt_untertitel)
+        }
+    }
 
     /** Das Ziel einer angetippten Meldung; abgelegt nur vom nicht exportierten MeldungsEinstieg. */
     @Inject lateinit var meldungseingang: ch.brickinventoryapp.ui.Meldungseingang
