@@ -183,6 +183,7 @@ jobs:
           IMAGE: ${{ matrix.image }}
         run: |
           [ -f trivy-image.txt ] || exit 0
+          cat trivy-image.txt
           { echo "## $IMAGE (Trivy)"; echo '```'; cat trivy-image.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
           if grep -qE 'Total: [1-9]' trivy-image.txt; then
             echo "::warning title=Lücken in ${IMAGE%%@*}::Trivy meldet behebbare Lücken ab high, siehe Zusammenfassung."
