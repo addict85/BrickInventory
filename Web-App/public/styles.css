@@ -608,9 +608,9 @@
     .man-tile-row input{width:64px;text-align:right;border:1px solid var(--bdr);border-radius:6px;padding:2px 6px;font-size:var(--fs-1);font-weight:600;background:var(--sur);color:var(--txt)}
     .man-tile-kp{font-size:var(--fs-1);color:var(--mut);text-align:center;margin-top:4px;padding-top:6px;border-top:1px dashed var(--bdr)}
     /* Ein Gruppenkopf für Farben, „Aus Sets“ und „Manuell erfasst“: getönte Leiste über die volle Breite. */
-    .group-hd{display:flex;align-items:center;gap:10px;margin:0 0 .75rem;padding:.45rem .75rem;border-left:4px solid var(--s300);border-radius:8px;background:var(--s100)}
+    .group-hd{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;margin:0 0 .75rem;padding:.45rem .75rem;border-left:4px solid var(--s300);border-radius:8px;background:var(--s100)}
     .group-hd > .ico{width:18px;height:18px;flex:none;color:var(--mut)}
-    .group-title{font-size:var(--fs-3);font-weight:700;color:var(--txt);margin:0;white-space:nowrap;hyphens:manual;overflow-wrap:normal}
+    .group-title{font-size:var(--fs-3);font-weight:700;color:var(--txt);margin:0;hyphens:manual;overflow-wrap:normal}
     .group-sub{font-size:var(--fs-2);color:var(--s600)}
     .no-parts{text-align:center;padding:3rem;color:var(--mut)}
     .no-parts .icon{font-size:var(--fs-8);margin-bottom:.75rem}
@@ -885,7 +885,7 @@ html::-webkit-scrollbar{width:0;height:0}
     .voucher-nopdf{white-space:nowrap}
     .v-btn.v-btn-gefahr{color:var(--r700)}
     [data-nur-mit-gutscheinen][hidden]{display:none}
-    .voucher-actions{display:flex;align-items:center;gap:.3rem;margin-left:auto}
+    .voucher-actions{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem;margin-left:auto}
     .v-btn{width:1.625rem;height:1.625rem;border-radius:6px;border:1px solid var(--bedienrand);
            cursor:pointer;background:transparent;color:var(--txt);font-size:var(--fs-2);
            display:flex;align-items:center;justify-content:center;

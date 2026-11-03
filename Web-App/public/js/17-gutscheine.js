@@ -654,7 +654,7 @@ export async function gutscheinLandSpeichern() {
   const feld = el('gutschein-land');
   if (!feld) return;
   const d = await api('POST', '/v1/settings', { gutschein_land: feld.value });
-  if (d?.success && _settingsCache) _settingsCache.gutschein_land = feld.value;
+  if (d?.success && _settingsCache) _settingsCache.gutschein_land = G('gutschein-land')?.value;
   if (!_bearbeitet) { const cur = G('v-currency'); if (cur) cur.value = landWaehrung(); }
   waehrungPruefen();
   zeigeLandWaehrung();

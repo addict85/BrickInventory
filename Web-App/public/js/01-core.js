@@ -273,8 +273,8 @@ export function setnummerFeldGueltig(id, wert) {
 
 /**
  * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
- * Schritt als Knopf. Texte kommen fertig übersetzt; maskiert wird hier.
- * @param {{ ico: string, titel: string, text?: string, knopf?: { text: string, click: string, arg?: string, ico?: string, art?: string } }} o
+ * Schritt als Knopf. Texte kommen fertig übersetzt oder als Schlüssel; maskiert wird hier.
+ * @param {{ ico: string, titel?: string, text?: string, titelKey?: string, textKey?: string, knopf?: { text: string, click: string, arg?: string, ico?: string, art?: string } }} o
  */
 export function leerZustand(o) {
   const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}<span>${esc(o.knopf.text)}</span></button>` : '';

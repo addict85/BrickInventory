@@ -21,6 +21,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { startStilHash, renderIndexHtml } = _req('src/konto/indexHtml.js');
 const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+// renderIndexHtml() fragt das Design aus der Datenbank; offen hielte der Pool den Lauf an.
+test.after(() => _req('db/database.js').pool.end().catch(() => {}));
 
 test('der Hash passt zum ausgelieferten Block', async () => {
   const html = await renderIndexHtml();

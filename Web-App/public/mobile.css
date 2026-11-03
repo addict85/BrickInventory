@@ -417,6 +417,7 @@
 @container haupt (max-width: 20.5em) {
   .merk-erfassen > .fg { flex: 1 1 100%; max-width: none !important; }
   .merk-erfassen > .btn { flex: 1 1 100%; }
+  .voucher-row { padding: .6rem .7rem; gap: .5rem; }
   .zeitraum-wahl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   main :is(.filterleiste, .filterzeile) > :is(input.si, input.suchfeld) { flex: 1 1 100%; width: 100% !important; }
   /* Lagerorte: das Feld über die ganze Zeile, Belegung und Knöpfe darunter. */
