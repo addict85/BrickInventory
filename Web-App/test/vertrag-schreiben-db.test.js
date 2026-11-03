@@ -184,7 +184,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
         await db.run(`UPDATE global_settings SET value = '1' WHERE key = 'registration_enabled'`).catch(() => {});
       }, body: { username: `${NAME}_reg`, email: `${NAME}_reg@example.org`, password: PASS, language: 'de' } },
     { m: 'POST', p: '/api/v1/auth/forgot-password', body: { email: `${NAME}@example.org` } },
-    { m: 'PUT',  p: '/api/v1/auth/profile', body: { username: NAME, email: `${NAME}@example.org`, first_name: 'Vera', last_name: 'Trag' } },
+    { m: 'PUT',  p: '/api/v1/auth/profile', body: { username: NAME, email: `${NAME}@example.org`, first_name: 'Vera', last_name: 'Trag', password_current: PASS } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/einrichten', body: { password: PASS },
       danach: (j) => { w.geheimnis = j.geheimnis; } },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/bestaetigen', body: () => {

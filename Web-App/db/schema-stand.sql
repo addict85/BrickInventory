@@ -153,6 +153,16 @@ CREATE TABLE catalog_cache (
 );
 CREATE TRIGGER catalog_cache_setnummer BEFORE INSERT OR UPDATE OF set_number ON catalog_cache FOR EACH ROW EXECUTE FUNCTION setnummer_normalisieren();
 
+CREATE TABLE figur_eigen (
+  user_id integer NOT NULL,
+  fig_number text NOT NULL,
+  fig_name text,
+  image_url text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT figur_eigen_pkey PRIMARY KEY (user_id, fig_number),
+  CONSTRAINT figur_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE global_settings (
   key text NOT NULL,
   value text NOT NULL,
@@ -339,8 +349,6 @@ CREATE TABLE minifigs_catalog (
   image_url text,
   image_local text,
   updated_at timestamp with time zone DEFAULT now(),
-  name_von integer,
-  bild_von integer,
   CONSTRAINT minifigs_catalog_pkey PRIMARY KEY (fig_number)
 );
 CREATE INDEX idx_minifigs_catalog_bild_stamm ON minifigs_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
@@ -389,8 +397,6 @@ CREATE TABLE part_catalog (
   part_name text,
   category_name text,
   updated_at timestamp with time zone DEFAULT now(),
-  name_von integer,
-  kategorie_von integer,
   CONSTRAINT part_catalog_pkey PRIMARY KEY (part_number)
 );
 CREATE INDEX idx_part_catalog_category ON part_catalog USING btree (category_name);
@@ -407,9 +413,6 @@ CREATE TABLE part_color_catalog (
   image_url text,
   image_local text,
   updated_at timestamp with time zone DEFAULT now(),
-  farbname_von integer,
-  farbcode_von integer,
-  bild_von integer,
   CONSTRAINT part_color_catalog_pkey PRIMARY KEY (part_number, color_id)
 );
 CREATE INDEX idx_part_color_catalog_bild_stamm ON part_color_catalog USING btree (bild_stamm(image_local)) WHERE (image_local IS NOT NULL);
@@ -831,6 +834,34 @@ CREATE TABLE subsets_cache (
   fetched_at timestamp with time zone DEFAULT now(),
   CONSTRAINT subsets_cache_pkey PRIMARY KEY (set_number)
 );
+
+CREATE TABLE teil_eigen (
+  user_id integer NOT NULL,
+  part_number text NOT NULL,
+  part_name text,
+  category_name text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teil_eigen_pkey PRIMARY KEY (user_id, part_number),
+  CONSTRAINT teil_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON teil_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON teil_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON teil_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+
+CREATE TABLE teil_farbe_eigen (
+  user_id integer NOT NULL,
+  part_number text NOT NULL,
+  color_id integer NOT NULL,
+  color_name text,
+  color_hex text,
+  image_url text,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT teil_farbe_eigen_pkey PRIMARY KEY (user_id, part_number, color_id),
+  CONSTRAINT teil_farbe_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON teil_farbe_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON teil_farbe_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON teil_farbe_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
 
 CREATE TABLE user_sessions (
   sid character varying NOT NULL,

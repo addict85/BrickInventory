@@ -12,7 +12,7 @@ import { KEINE_FARBE } from '../infra/validate';
 export async function bilderFuerNachlauf() {
   const [sets, teile, figuren] = await Promise.all([
     repo.setsMitFehlendenKatalogbildern().catch(meldeUndLiefere('bild-nachlauf:sets', [])),
-    // Nur geprüfte Adressen (bild_von IS NULL): Die Datei gilt für alle Konten.
+    // Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten.
     // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-manualparts
     repo.manuelleTeileOhneBild().catch(meldeUndLiefere('bild-nachlauf:manualParts', [])),
     // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-figstofetch

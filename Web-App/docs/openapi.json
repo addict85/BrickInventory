@@ -1292,7 +1292,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/logout": {
@@ -1379,7 +1380,37 @@
               }
             }
           }
-        }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "antwort": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "mit_token": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/passkey/anmelden/optionen": {
@@ -1851,7 +1882,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/qr-token": {
@@ -1932,7 +1964,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/register": {
@@ -2174,7 +2207,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/token-rotieren": {
@@ -2203,7 +2237,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/users": {
@@ -3004,7 +3039,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/zweiter-faktor/codes": {
@@ -3063,7 +3099,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/auth/zweiter-faktor/einrichten": {
@@ -3144,7 +3181,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/bestand": {
@@ -5260,6 +5298,40 @@
               }
             }
           }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "teile": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "part_number": {
+                          "type": [
+                            "string",
+                            "number"
+                          ]
+                        },
+                        "color_id": {
+                          "type": [
+                            "string",
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "additionalProperties": {}
+                    }
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
         }
       }
     },
@@ -5881,6 +5953,21 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
                 }
               }
             }
@@ -7151,7 +7238,8 @@
               }
             }
           }
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/settings/household/redeem": {
@@ -8242,7 +8330,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/vouchers/{id}/pdf": {
@@ -8368,7 +8457,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/vouchers/export/pdf": {
@@ -8474,7 +8564,8 @@
         "x-bestaetigung": {
           "passwort": "password",
           "code": "code"
-        }
+        },
+        "x-geheim": true
       }
     },
     "/api/v1/vouchers/pdf": {

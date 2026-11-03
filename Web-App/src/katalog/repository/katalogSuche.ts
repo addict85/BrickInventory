@@ -1,4 +1,5 @@
 import * as db from '../../../db/database';
+import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
 import { mengeJoin, mengeAus } from '../../../db/bestandsmenge';
 import { ausTabelle } from '../../infra/validate';
 
@@ -27,7 +28,7 @@ export interface KatalogWahl { q: string; themenIds: number[] | null; vonJahr?: 
 function katalogWo(f: KatalogWahl, params: unknown[]): string {
   const where: string[] = [];
   // "75192" trifft auch "75192-1".
-  if (f.q) { params.push(`%${f.q}%`); where.push(`(rb.set_num ILIKE $${params.length} OR rb.name ILIKE $${params.length})`); }
+  if (f.q) { params.push(enthaeltMuster(f.q)); where.push(`(rb.set_num ILIKE $${params.length}${E} OR rb.name ILIKE $${params.length}${E})`); }
   if (f.themenIds) { params.push(f.themenIds); where.push(`rb.theme_id = ANY($${params.length})`); }
   if (f.vonJahr) { params.push(f.vonJahr); where.push(`rb.year >= $${params.length}`); }
   if (f.bisJahr) { params.push(f.bisJahr); where.push(`rb.year <= $${params.length}`); }

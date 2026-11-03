@@ -38,3 +38,17 @@ export function routeZu(schluessel: string): Route | undefined {
   return Object.prototype.hasOwnProperty.call(VERTRAG, schluessel)
     ? (VERTRAG as Record<string, Route>)[schluessel] : undefined;
 }
+
+/** Wörtliche Abschnitte vor Platzhaltern, wie Express es für diese Pfade hält. */
+const MUSTER = Object.entries(VERTRAG as Record<string, Route>).map(([k, route]) => {
+  const [methode, pfad] = k.split(' ') as [string, string];
+  const teile = pfad.split('/');
+  return { methode, teile, route, offen: teile.filter(t => t.startsWith(':')).length };
+}).sort((a, b) => a.offen - b.offen);
+
+/** Die Vertragsroute zu einer Anfrage, bevor Express sie zugeordnet hat. */
+export function routeFuerAnfrage(methode: string, pfad: string): Route | undefined {
+  const teile = pfad.replace(/\/+$/, '').split('/');
+  return MUSTER.find(m => m.methode === methode && m.teile.length === teile.length
+    && m.teile.every((t, i) => t === teile[i] || (t.startsWith(':') && teile[i] !== '')))?.route;
+}

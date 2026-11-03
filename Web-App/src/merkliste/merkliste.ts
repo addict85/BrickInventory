@@ -2,6 +2,7 @@
  * statt Code in den Routen, weil beide Oberflächen und mehrere Erfassungswege
  * dieselben Regeln brauchen. */
 import { nacharbeit } from '../auftraege/nacharbeit';
+import { LIKE_ESCAPE, enthaeltMuster } from '../../db/likeSuche';
 import { addSet, sanitizeSetNumber } from '../sets/setService';
 import { findSetInScope } from '../sets/setAdd';
 import { loescheAlarm } from '../finanzen/preisalarm';
@@ -142,12 +143,9 @@ export async function merkpostenVon(
   // Nummer UND Name, wie in der Galerie; der Name kommt aus dem JOIN auf rb_sets.
   const suche = String(filter?.suche ?? '').trim();
   if (suche) {
-    // %, _ und \ maskieren, sonst fände ein Prozentzeichen jeden Eintrag. ESCAPE
-    // ausdrücklich, damit es nicht an standard_conforming_strings hängt.
-    const roh = suche.replace(/[\\%_]/g, (z) => '\\' + z);
-    params.push(`%${roh}%`);
-    wo += ` AND (w.set_number ILIKE $${params.length} ESCAPE '\\'`
-        + ` OR COALESCE(rb.name, sc.name) ILIKE $${params.length} ESCAPE '\\')`;
+    params.push(enthaeltMuster(suche));
+    wo += ` AND (w.set_number ILIKE $${params.length}${LIKE_ESCAPE}`
+        + ` OR COALESCE(rb.name, sc.name) ILIKE $${params.length}${LIKE_ESCAPE})`;
   }
 
   // Unbekannt heisst „beide", nicht „keine": Eine geleerte Liste sähe aus wie

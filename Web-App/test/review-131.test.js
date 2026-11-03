@@ -187,6 +187,28 @@ test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', 
   assert.equal(csvField('=A1,B1'), `"'=A1,B1"`);
 });
 
+/**
+ * Semikolon, Tabulator und Wagenrücklauf trennen in Excel Felder bzw. Zeilen:
+ * Ungequotet begänne die nächste Zelle mit einer Formel. Gegenproben
+ * (03.11.2026 gemessen): A  csvField quotet wieder nur bei `",\n` → rot:
+ * „Rot;=1+1 bleibt eine Zelle“; B  FORMEL_START ohne Leerraum und volle
+ * Breite → rot: „ =1+1 …“.
+ */
+test('CSV-Export: Trennzeichen im Feld werden gequotet, Formeln auch nach Leerraum entschärft', () => {
+  const { csvField, toCsv, entschaerfe, entschaerfungRueckgaengig, csvZeilenAusAnfrage } = _reqCsv('src/infra/csvExport.js');
+  assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 bleibt eine Zelle');
+  for (const t of ['a\rb', 'a\tb', 'a\nb', 'a,b', 'a"b']) assert.equal(csvField(t)[0], '"', JSON.stringify(t));
+  for (const boese of [' =1+1', '\u3000=1+1', '＝1+1', '＋1', '\n=1']) {
+    assert.equal(entschaerfe(boese)[0], "'", `${JSON.stringify(boese)} nicht entschärft`);
+    assert.equal(entschaerfungRueckgaengig(entschaerfe(boese)), boese);
+  }
+  assert.equal(entschaerfe(' -5 '), ' -5 ', 'Zahlen mit Leerraum bleiben Zahlen');
+  const csv = toCsv(['a', 'b'], [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }]);
+  assert.deepEqual(csvZeilenAusAnfrage(csv).bereinigt, [{ a: 'Rot;=1+1\r=2', b: ' @SUMME(1)' }], 'Rundlauf');
+  const zeile = csv.split('\r\n')[1];
+  assert.ok(zeile.startsWith('"Rot;=1+1\r=2",') && zeile.includes("' @SUMME(1)"), JSON.stringify(zeile));
+});
+
 test('alle drei CSV-Importwege entschärfen zurück', () => {
   // Die Zeilenleser der Importe laufen hier selbst: der der Sets und der
   // gemeinsame für Teile und Figuren (csvZeilenAusAnfrage). Dass beide

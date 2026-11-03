@@ -383,7 +383,6 @@ export async function loadProfile() {
   G('prof-last').value  = u.last_name  || '';
   G('prof-user').value  = u.username   || '';
   G('prof-email').value = u.email      || '';
-  G('prof-email').dataset.bisher = u.email || '';
   // Ohne Adresse gibt es nichts zu bestätigen — „verifiziert“ neben einem
   // leeren Feld widerspräche sich.
   const vEl = G('prof-email-verified');
@@ -448,25 +447,19 @@ async function speichereZustand() {
   toast(tRaw('settings.saved'), 'success');
 }
 
-/** Eine neue E-Mail-Adresse verlangt das aktuelle Passwort; das Feld steht erst dann da. */
-function emailGetippt() {
-  const neu = G('prof-email').value.trim().toLowerCase() !== (G('prof-email').dataset.bisher || '').toLowerCase();
-  const zeile = G('prof-pw-zeile'); if (zeile) zeile.hidden = !neu;
-}
-
 G('btn-sav-prof').onclick = async () => {
   const first_name = G('prof-first').value.trim();
   const last_name  = G('prof-last').value.trim();
   const username   = G('prof-user').value.trim();
   const email      = G('prof-email').value.trim();
   const pwC = G('prof-pw')?.value || '';
-  const emailChanged = email.toLowerCase() !== (G('prof-email').dataset.bisher || '').toLowerCase();
   if (!username) { toast(tRaw('profile.username_empty'), 'error'); return; }
-  if (emailChanged && !pwC) { emailGetippt(); toast(tRaw('profile.email_needs_password'), 'error'); G('prof-pw')?.focus(); return; }
+  // Jede Profiländerung bestätigt der Server mit dem Passwort; sonst verriete sie, ob ein Name vergeben ist.
+  if (!pwC) { toast(tRaw('profile.needs_password'), 'error'); G('prof-pw')?.focus(); return; }
   const btn = G('btn-sav-prof'); btn.disabled = true;
   try {
     const d = await mitZweitemFaktor(z => api('PUT', '/v1/auth/profile', { username, email, first_name, last_name,
-                                                      ...(emailChanged ? { password_current: pwC, ...z } : {}) }));
+                                                      password_current: pwC, ...z }));
     if (!d) return;
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
     if (d.emailChanged) {
@@ -475,7 +468,6 @@ G('btn-sav-prof').onclick = async () => {
     }
     if (G('prof-pw')) G('prof-pw').value = '';
     await loadProfile();
-    emailGetippt();
     // Der Namenszug in der Kopfzeile wird sonst nur beim Start gesetzt.
     if (ME) { ME.username = username; zeigeBenutzernamen(); }
     toast(d.emailChanged ? t('profile.saved_mail') : t('settings.saved'), 'success');
@@ -1191,7 +1183,6 @@ registerActions({
   legeAlarmAn,
   speichereWaehrung,
   speichereZustand,
-  emailGetippt,
   setzeEigenesDesign,
   einstAbschnitt,
   geheimUmschalten,

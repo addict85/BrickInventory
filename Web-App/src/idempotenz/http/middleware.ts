@@ -6,20 +6,16 @@ import { nutzerId } from '../../konto/http/anmeldung';
 import { sendeFehler } from '../../infra/fehlerTexte';
 import { meldeUndWeiter } from '../../infra/httpError';
 import * as dienst from '../dienst';
+import { routeFuerAnfrage } from '../../infra/vertrag';
+import { nichtWiederholbar } from '../../infra/vertrag/grund';
 
 const SCHREIBEND = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-/** Antworten mit Zugängen oder Codes landen nie in der Tabelle, auch nicht
- * verschlüsselt. Ihre Wiederholung bekommt 409 statt eines zweiten Laufs: der
- * prägte einen weiteren gültigen Zugang oder entwertete die eben gezeigten Codes. */
-const GEHEIME_ANTWORTEN: readonly RegExp[] = [
-  /^\/auth\/(login|qr-login|qr-token|token-create|token-rotieren|passkey\/anmelden)$/,
-  /^\/auth\/zweiter-faktor\/(einrichten|bestaetigen|codes)$/,
-  /^\/settings\/household\/invite$/,
-];
-
-export function antwortIstGeheim(pfad: string): boolean {
-  return GEHEIME_ANTWORTEN.some(re => re.test(pfad));
+/** Antworten geheimer oder bestätigter Routen (Vertrag: `geheim`,
+ * `bestaetigung`) landen nie in der Tabelle, auch nicht verschlüsselt. Ihre
+ * Wiederholung bekommt 409 statt eines zweiten Laufs oder der alten Antwort. */
+export function antwortIstGeheim(methode: string, pfad: string): boolean {
+  return nichtWiederholbar(routeFuerAnfrage(methode, pfad));
 }
 
 export async function idempotenz(req: Request, res: Response, next: NextFunction) {
@@ -38,7 +34,7 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
     return res.status(ausgang.status).type('application/json').send(ausgang.antwort);
   }
 
-  const geheim = antwortIstGeheim(req.path);
+  const geheim = antwortIstGeheim(req.method, req.baseUrl + req.path);
   let gemerkt = false;
   const json = res.json.bind(res);
   res.json = (rumpf: unknown) => {

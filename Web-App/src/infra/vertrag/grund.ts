@@ -14,6 +14,14 @@ export interface Route {
   formular?: true;
   /** Felder von Passwort und Code der erneuten Bestätigung (bestaetigeMitFaktor). */
   bestaetigung?: { passwort: string; code: string };
+  /** Die Antwort trägt einen Zugang, Code oder Klartext: Sie wird nie gespeichert. */
+  geheim?: true;
+}
+
+/** Bestätigte und geheime Antworten wiederholt die Idempotenz nie: Eine
+ * Wiederholung mit falschem Passwort bekäme sonst die gespeicherte Antwort. */
+export function nichtWiederholbar(route: Route | undefined): boolean {
+  return !!(route?.geheim || route?.bestaetigung);
 }
 
 export const ganz = z.number().int();
@@ -44,6 +52,12 @@ export function bestaetigt(felder: Record<string, z.ZodType> = {}, passwort = 'p
     eingabe: z.looseObject({ ...felder, [passwort]: z.string().max(1024).optional(),
       [code]: faktorFelder.code, passkey: faktorFelder.passkey }) };
 }
+
+const EINFACH = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+/** Für jede schreibende Route ohne eigenes Schema: nur einfache Werte und Listen
+ * davon. Ein Objekt statt eines Textes ({"$ne":1}) landete sonst als
+ * "[object Object]" in der Tabelle oder an einer Prüfung vorbei. */
+export const FLACHE_EINGABE = z.record(z.string(), z.union([EINFACH, z.array(EINFACH)]));
 
 /** Ein Konto in Besitzerlisten. */
 export const KontoName = z.looseObject({ id: ganz, username: z.string() });

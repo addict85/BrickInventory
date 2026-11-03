@@ -16,18 +16,18 @@ const router = express.Router();
 // Ausführlich: docs/begruendungen/server.ts.md#servedatafile
 router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardRequest, res: Response) => {
   const userId = angemeldeteNutzerId(req);
+  // Rechnungen und Gutscheine: nie in einen Zwischenspeicher, auch keine Absage.
+  res.setHeader('Cache-Control', 'private, no-store');
   const segments = req.params.pfad.filter(Boolean);
   const filePath = safeDataPath('uploads', segments);
   if (!filePath || !/^\d+$/.test(segments[0] ?? '')) return res.status(404).send('Datei nicht gefunden');
   const besitzer = Number(segments[0]);
-  // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht: Die
-  // Verwaltung der Konten braucht deren Inhalt nicht.
+  // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
+  // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
   if (besitzer !== userId) {
     const erlaubt = await scopeIds(userId).catch(() => [userId]);
-    if (!erlaubt.includes(besitzer)) return res.status(403).send('Kein Zugriff');
+    if (!erlaubt.includes(besitzer)) return res.status(404).send('Datei nicht gefunden');
   }
-  // Rechnungen und Gutscheine: nie in einen Zwischenspeicher.
-  res.setHeader('Cache-Control', 'private, no-store');
   liefereDatei(res, filePath);
 });
 

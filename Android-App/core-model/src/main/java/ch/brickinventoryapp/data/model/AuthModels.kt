@@ -256,7 +256,7 @@ data class ProfilResponse(
 
 /**
  * Profil ändern — PUT /api/v1/auth/profile. Das Passwort ändert nur
- * /change-password; eine neue E-Mail-Adresse verlangt `passwordCurrent`.
+ * /change-password; jede Änderung verlangt `passwordCurrent`.
  */
 @Serializable
 data class ProfilAenderung(
@@ -264,9 +264,9 @@ data class ProfilAenderung(
     val email: String,
     @SerialName("first_name") val firstName: String? = null,
     @SerialName("last_name") val lastName: String? = null,
-    /** Nur bei neuer E-Mail-Adresse: Der Server verlangt dann das Passwort. */
+    /** Das aktuelle Passwort: Der Server bestätigt damit jede Profiländerung. */
     @SerialName("password_current") val passwordCurrent: String? = null,
-    /** Bei aktivem zweitem Faktor und neuer E-Mail-Adresse: TOTP- oder Wiederherstellungscode. */
+    /** Bei aktivem zweitem Faktor: TOTP- oder Wiederherstellungscode. */
     val code: String? = null,
 )
 

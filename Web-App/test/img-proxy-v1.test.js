@@ -177,15 +177,21 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
     `Nur ${nachzuegler.length} spaetere Tabellen mit image_url gefunden ` +
     '(gemessen sind es zwei: part_color_catalog und minifigs_catalog) — Muster veraltet?');
 
+  // Gültige Quelle ist auch eine spätere Tabelle, die selbst aus einer solchen liest.
+  const quellen = new Set(umgeschrieben);
+  const liestAusQuelle = (tab, txt) => {
+    // Der INSERT, der diese Tabelle fuellt, und woraus er liest.
+    const bloecke = [...txt.matchAll(
+      new RegExp(`INSERT\\s+INTO\\s+${tab}\\s*\\([^)]*image_url[^)]*\\)([\\s\\S]*?)(?=INSERT\\s+INTO|ALTER\\s+TABLE|CREATE\\s|\\$sql\\$|$)`, 'gi'))];
+    return bloecke.some(b => [...quellen].some(q => new RegExp(`FROM\\s+${q}\\b`, 'i').test(b[1])));
+  };
+  for (let neu = true; neu;) {
+    neu = false;
+    for (const [tab, , txt] of nachzuegler)
+      if (!quellen.has(tab) && liestAusQuelle(tab, txt)) { quellen.add(tab); neu = true; }
+  }
   const ohneHerkunft = nachzuegler
-    .filter(([tab, , txt]) => {
-      // Der INSERT, der diese Tabelle fuellt, und woraus er liest.
-      const bloecke = [...txt.matchAll(
-        new RegExp(`INSERT\\s+INTO\\s+${tab}\\s*\\([^)]*image_url[^)]*\\)([\\s\\S]*?)(?=INSERT\\s+INTO|ALTER\\s+TABLE|CREATE\\s|\\$sql\\$|$)`, 'gi'))];
-      if (!bloecke.length) return true;
-      return !bloecke.some(b => umgeschrieben.some(
-        q => new RegExp(`FROM\\s+${q}\\b`, 'i').test(b[1])));
-    })
+    .filter(([tab]) => !quellen.has(tab))
     .map(([tab, f]) => `${tab} (${f})`)
     .sort();
   assert.deepEqual(ohneHerkunft, [],

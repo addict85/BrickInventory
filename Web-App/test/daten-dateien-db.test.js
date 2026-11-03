@@ -13,6 +13,8 @@
  *   B  scopeIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
  *   C  (28.10.) die Verwalter-Ausnahme wieder eingebaut → rot: „auch ein
  *      Verwalter liest fremde Uploads nicht"
+ *   D  (03.11.) für fremde Konten wieder 403 „Kein Zugriff“ → rot: „fremd und
+ *      fehlend antworten gleich“ und die drei Teiltests davor
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -84,16 +86,22 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async (t)
   });
 
   await t.test('Unterkonto liest Hauptkonto nicht', async () => {
-    assert.equal((await hole(U, `/data/uploads/${H}/a.pdf`)).status, 403);
+    assert.equal((await hole(U, `/data/uploads/${H}/a.pdf`)).status, 404);
   });
 
   await t.test('Fremde lesen nicht', async () => {
-    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`)).status, 403);
+    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`)).status, 404);
+  });
+
+  await t.test('fremd und fehlend antworten gleich', async () => {
+    const fremd = await hole(F, `/data/uploads/${H}/a.pdf`);
+    const fehlt = await hole(F, `/data/uploads/${F}/gibt-es-nicht.pdf`);
+    assert.deepEqual(fremd, fehlt);
   });
 
   await t.test('auch ein Verwalter liest fremde Uploads nicht', async () => {
     await db.run('UPDATE users SET is_admin = true WHERE id = $1', [F]);
-    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`, true)).status, 403,
+    assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`, true)).status, 404,
       'Rechnungen und Gutscheine anderer gehen die Kontoverwaltung nichts an');
   });
 

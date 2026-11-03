@@ -10,3 +10,10 @@ export async function zielGedrosselt(bucket: string, email: string, max: number,
   const st = await zaehleAnfrage(bucket, `ziel:${ziel}`, fensterMs);
   return st.count > max ? { waitMin: st.waitMin } : null;
 }
+
+/** Je angemeldetem Konto, gleich über welche Adresse es fragt. */
+export async function kontoGedrosselt(bucket: string, uid: number, max: number, fensterMs: number)
+  : Promise<{ waitMin: number } | null> {
+  const st = await zaehleAnfrage(bucket, `konto:${uid}`, fensterMs);
+  return st.count > max ? { waitMin: st.waitMin } : null;
+}

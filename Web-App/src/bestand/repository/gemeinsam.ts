@@ -1,6 +1,7 @@
 import type { DbSchnittstelle } from '../../../db/database';
 import * as db from '../../../db/database';
 import { inKontowaehrung, kontowaehrungJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
+import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
 export function erfassungsKennzahlen(art: 'part' | 'fig', uids: number[]) {
@@ -33,28 +34,26 @@ const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
 /** Figuren haben weder Farbe noch Kategorie; feste NULL, damit beide Zweige
  * dieselbe Form liefern. */
 const KOPFFELDER = {
-  parts: `x.part_number AS nummer, MAX(pc.part_name) AS name,
-          MAX(x.color_id) AS color_id, MAX(pcc.color_name) AS color_name,
-          MAX(pcc.color_hex) AS color_hex, MAX(pc.category_name) AS category_name,
-          MAX(pcc.image_local) AS teil_image_local, MAX(pcc.image_url) AS teil_image_url,
+  parts: `x.part_number AS nummer, MAX(${TEIL.name}) AS name,
+          MAX(x.color_id) AS color_id, MAX(${TEIL.farbname}) AS color_name,
+          MAX(${TEIL.farbcode}) AS color_hex, MAX(${TEIL.kategorie}) AS category_name,
+          MAX(${TEIL.bildDatei}) AS teil_image_local, MAX(${TEIL.bild}) AS teil_image_url,
           bool_or(COALESCE(spc.is_spare, false)) AS is_spare,
           NULLIF(STRING_AGG(DISTINCT lo.name, ', '), '') AS storage`,
-  minifigs: `x.fig_number AS nummer, MAX(mc.fig_name) AS name,
+  minifigs: `x.fig_number AS nummer, MAX(${FIGUR.name}) AS name,
           NULL::int AS color_id, NULL::text AS color_name,
           NULL::text AS color_hex, NULL::text AS category_name,
-          MAX(mc.image_local) AS teil_image_local, MAX(mc.image_url) AS teil_image_url,
+          MAX(${FIGUR.bildDatei}) AS teil_image_local, MAX(${FIGUR.bild}) AS teil_image_url,
           false AS is_spare, NULL::text AS storage`,
 } as const;
 
 // Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#katalogjoin
 const KATALOGJOIN = {
-  parts: `LEFT JOIN part_catalog pc ON pc.part_number = x.part_number
-          LEFT JOIN part_color_catalog pcc ON pcc.part_number = x.part_number
-                                          AND pcc.color_id    = x.color_id
+  parts: `${teilSichtJoin('x.user_id', 'x.part_number', 'x.color_id')}
           LEFT JOIN set_teile spc ON spc.set_number  = x.set_number
                                          AND spc.part_number = x.part_number
                                          AND spc.color_id    = x.color_id`,
-  minifigs: `LEFT JOIN minifigs_catalog mc ON mc.fig_number = x.fig_number`,
+  minifigs: figurSichtJoin('x.user_id', 'x.fig_number'),
 } as const;
 
 const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as const;

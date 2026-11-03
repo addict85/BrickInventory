@@ -51,12 +51,11 @@ internal fun KontoCard(
     // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
     // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
     var pwAktuell    by remember { mutableStateOf("") }
-    var pwFuerEmail  by remember(profil) { mutableStateOf("") }
+    var pwProfil     by remember(profil) { mutableStateOf("") }
     var pwNeu        by remember { mutableStateOf("") }
     var faktorCode   by remember { mutableStateOf("") }
     val code = faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }
 
-    val emailNeu = profil != null && !email.trim().equals(profil.email.orEmpty(), ignoreCase = true)
     val geaendert = profil != null && (
         benutzername != profil.username.orEmpty() || email != profil.email.orEmpty() ||
         vorname != profil.firstName.orEmpty() || nachname != profil.lastName.orEmpty())
@@ -107,19 +106,18 @@ internal fun KontoCard(
                     label = { Text(stringResource(R.string.register_last_name)) },
                     modifier = Modifier.weight(1f), singleLine = true, shape = Formen.feld)
             }
-            // Über eine neue Adresse liesse sich das Passwort zurücksetzen —
-            // darum fragt der Server dann nach dem aktuellen.
-            if (emailNeu) {
-                OutlinedTextField(
-                    value = pwFuerEmail, onValueChange = { pwFuerEmail = it; tippen(it) },
-                    label = { Text(stringResource(R.string.konto_email_password)) },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld)
-            }
+            // Der Server bestätigt jede Profiländerung mit dem Passwort: Sonst liesse
+            // sich über eine neue Adresse das Passwort zurücksetzen oder durchprobieren,
+            // welche Namen vergeben sind.
+            OutlinedTextField(
+                value = pwProfil, onValueChange = { pwProfil = it; tippen(it) },
+                label = { Text(stringResource(R.string.konto_profil_password)) },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld)
             Button(
-                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwFuerEmail.takeIf { emailNeu }, code) },
-                enabled = geaendert && !kontoZustand.speichert && (!emailNeu || pwFuerEmail.isNotEmpty()),
+                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwProfil, code) },
+                enabled = geaendert && !kontoZustand.speichert && pwProfil.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
 

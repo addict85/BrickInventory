@@ -65,6 +65,11 @@ class KontoViewModel @Inject constructor(
         benutzername: String, email: String, vorname: String, nachname: String, passwort: String? = null,
         code: String? = null,
     ) {
+        // Der Server verlangt das Passwort für jede Profiländerung; ohne es gar nicht erst fragen.
+        if (passwort.isNullOrBlank()) {
+            _kontoState.update { it.copy(fehler = texte.text(R.string.konto_profil_password_needed), meldung = null) }
+            return
+        }
         viewModelScope.launch {
             _kontoState.update { it.copy(speichert = true, fehler = null, meldung = null) }
             val aenderung = ProfilAenderung(
@@ -73,7 +78,7 @@ class KontoViewModel @Inject constructor(
                 // Leer heisst „nicht angegeben", nicht „leerer Vorname".
                 firstName = vorname.trim().ifBlank { null },
                 lastName = nachname.trim().ifBlank { null },
-                passwordCurrent = passwort?.ifBlank { null },
+                passwordCurrent = passwort,
                 code = code?.trim()?.ifBlank { null },
             )
             when (val r = konto.updateProfil(aenderung)) {

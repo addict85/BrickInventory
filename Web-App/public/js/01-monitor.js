@@ -28,7 +28,6 @@ export let _monitorTimer = null;
 function openLogViewer() {
   const win = window.open('', '_blank', 'width=1200,height=750,resizable=yes,scrollbars=yes');
   if (!win) { alert(tRaw('popup.blocked')); return; }
-  const token = localStorage.getItem('authToken') || '';
   const base  = window.location.origin;
 
   // Die Zeitspannen als Daten statt als sechs ausgeschriebene <option>: So
@@ -47,7 +46,6 @@ function openLogViewer() {
     '<link rel="stylesheet" href="/tokens.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
     '<link rel="stylesheet" href="/logviewer.css?v=' + (window.__APP_VERSION || Date.now()) + '">' +
     '</head><body' +
-      ' data-auth="' + escHtmlAttr(token) + '"' +
       ' data-base="' + escHtmlAttr(base) + '"' +
       ' data-i18n="' + escHtmlAttr(JSON.stringify({
         'common.loading':       t('common.loading'),

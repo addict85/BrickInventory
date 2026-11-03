@@ -59,7 +59,7 @@ import { merkpostenLoeschen } from './16-merkliste.js';
       'speichereTeilLagerort', 'startSetCsvImport', 'updateColorDot', 'uploadInstr', 'waehrungPruefen',
       'wantedKorrekturFarbe', 'wantedKorrekturNummer', 'wantedKorrekturWert',
       'wantedXmlGewaehlt', 'wechsleAlarmZustand']),
-    input: new Set(['alarmGetippt', 'emailGetippt', 'filterFigs']),
+    input: new Set(['alarmGetippt', 'filterFigs']),
     blur: new Set(['acqSave', 'lagerortGetippt', 'manAcqSave', 'saveManualFigBl']),
     keydown: new Set(['blurOnEnter', 'lagerortTaste']),
   };

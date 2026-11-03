@@ -45,6 +45,8 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async (t) => 
       await c.query(`ALTER TABLE parts ALTER COLUMN color_id DROP NOT NULL;
                      DROP INDEX idx_parts_eindeutig;
                      CREATE UNIQUE INDEX idx_parts_eindeutig ON parts (user_id, COALESCE(set_number, ''), part_number, COALESCE(color_id, 0))`);
+      // Die Herkunftsspalten bis Migration 0093.
+      await c.query('ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer');
       const konto = async (n) => (await c.query(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`farbe-${n}-${process.pid}`])).rows[0].id;
       const A = await konto('a'), B = await konto('b');
       await c.query(`INSERT INTO rb_colors (id,name,rgb) VALUES (0,'Black','05131D'),(13,'Pink','FC97AC')
