@@ -411,7 +411,11 @@ class BildschirmFotoVariantenTest {
         sammle(wurzel.semanticsOwner.unmergedRootSemanticsNode)
         org.junit.Assert.assertTrue("$name: Schrift erreicht den Dialog nicht (Skalen $skalen)",
             skalen.isNotEmpty() && skalen.all { it >= schrift - 0.05f })
-        fenster.captureRoboImage(pfad(name, design, dunkel, geraet))
+        // Selbst gezeichnet: captureRoboImage(View) sucht die Ansicht über Espresso in der
+        // Activity und findet das Dialogfenster dort nicht.
+        val bild = android.graphics.Bitmap.createBitmap(fenster.width, fenster.height, android.graphics.Bitmap.Config.ARGB_8888)
+        fenster.draw(android.graphics.Canvas(bild))
+        bild.captureRoboImage(pfad(name, design, dunkel, geraet))
     }
 
     /** Die Compose-Wurzel in einem Fensterbaum, ohne auf Ruhe zu warten. */
