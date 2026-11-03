@@ -374,20 +374,14 @@ fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
         val labelPieces   = stringResource(R.string.detail_pieces)
         val labelMinifigs = stringResource(R.string.detail_minifigs)
         val labelTheme    = stringResource(R.string.detail_theme)
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            contentPadding = PaddingValues(horizontal = Abstaende.gross),
-            modifier = Modifier.padding(bottom = Abstaende.mittel)
-        ) {
-            val chips = buildList {
-                set.year?.let     { add(labelYear     to "$it")  }
-                set.pieces?.let   { add(labelPieces   to ch.brickinventoryapp.util.fmtInt(it)) }
-                set.minifigs?.let { add(labelMinifigs to "$it")  }
-                set.theme?.let    { add(labelTheme    to it)     }
-            }
-            items(chips) { (label, value) ->
-                StatChipV2(label = label, value = value)
-            }
+        val chips = buildList {
+            set.year?.let     { add(labelYear     to "$it")  }
+            set.pieces?.let   { add(labelPieces   to ch.brickinventoryapp.util.fmtInt(it)) }
+            set.minifigs?.let { add(labelMinifigs to "$it")  }
+            set.theme?.let    { add(labelTheme    to it)     }
+        }
+        if (chips.isNotEmpty()) KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
+            chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
         }
     }
 

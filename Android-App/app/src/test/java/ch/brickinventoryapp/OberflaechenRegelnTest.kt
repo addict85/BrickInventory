@@ -22,6 +22,12 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeDown
+import androidx.compose.ui.test.swipeUp
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.Text
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -81,6 +87,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
  *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
  *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
+ *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -206,6 +213,41 @@ class OberflaechenRegelnTest {
         val reiterRechts = (0 until 2).map { leiste[it].fetchSemanticsNode().boundsInRoot }.minBy { it.left }.right
         assertTrue("Der Umschalter beginnt rechts der Seitenleiste",
             compose.onNodeWithText(teile).fetchSemanticsNode().boundsInRoot.left >= reiterRechts)
+    }
+
+    @Test
+    fun `App-Leiste weicht beim Rollen und kommt beim Zurueckrollen wieder`() {
+        zeige {
+            val nav = rememberNavController()
+            val reiter = remember {
+                listOf<Triple<Screen, @Composable () -> Unit, String>>(
+                    Triple(Screen.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
+            }
+            MainScaffold(
+                title = "Finanzen", navController = nav, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+            ) {
+                NavHost(nav, startDestination = Screen.Finance.route) {
+                    composable(Screen.Finance.route) {
+                        androidx.compose.foundation.lazy.LazyColumn(Modifier.testTag("liste")) {
+                            items(80) { i -> Text("Zeile $i", Modifier.padding(16.dp)) }
+                        }
+                    }
+                }
+            }
+        }
+        fun oben() = compose.onNodeWithTag("liste").fetchSemanticsNode().boundsInRoot.top
+        val vorher = oben()
+        compose.onNodeWithTag("liste").performTouchInput { swipeUp() }
+        compose.waitForIdle()
+        val dichte = ctx.resources.displayMetrics.density
+        assertTrue("Die Liste rückt nach oben, wenn die Leiste weicht (${vorher / dichte} → ${oben() / dichte} dp)",
+            oben() < vorher - 40 * dichte)
+        compose.onNodeWithTag("liste").performTouchInput { swipeDown() }
+        compose.waitForIdle()
+        assertEquals("Zurückgerollt steht die Leiste wieder da", vorher, oben(), dichte)
     }
 
     @Test

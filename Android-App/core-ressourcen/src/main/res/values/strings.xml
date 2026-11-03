@@ -153,9 +153,9 @@
     <string name="gallery_add">Add</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
-    <string name="minifigs_stat_types">Types</string>
+    <string name="minifigs_stat_types">Figure types</string>
     <string name="minifigs_stat_total">Figures in total</string>
-    <string name="minifigs_stat_manual">Manual</string>
+    <string name="minifigs_stat_manual">Added by you</string>
     <string name="minifigs_search_placeholder">Search…</string>
     <string name="minifigs_manual_section">Manually added minifigures</string>
     <string name="minifigs_sets_section">From sets</string>
@@ -291,7 +291,7 @@
     <string name="finance_market_avg">Collection market value</string>
 
     <!-- ══════════════ Parts screen ══════════════ -->
-    <string name="parts_stat_types">Types</string>
+    <string name="parts_stat_types">Part types</string>
     <string name="parts_stat_colors">Colors</string>
     <string name="parts_stat_total">Pieces in total</string>
     <string name="parts_manual_section">Manually added parts</string>

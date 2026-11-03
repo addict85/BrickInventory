@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,6 +66,11 @@ fun MainScaffold(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDest = navBackStackEntry?.destination
     val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
+    // Die App-Leiste weicht beim Rollen nach unten und kommt beim Zurückrollen wieder:
+    // Auf dem Telefon standen sonst Titel und Umschalter dauerhaft über dem Inhalt.
+    // Ein neues Ziel beginnt mit sichtbarer Leiste.
+    val einklappen = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    LaunchedEffect(currentDest?.route) { einklappen.state.heightOffset = 0f }
 
     fun istGewaehlt(screen: Screen) =
         currentDest?.hierarchy?.any { d -> d.route?.let { it in zieleVon(screen) } == true } == true
@@ -106,7 +112,7 @@ fun MainScaffold(
             }
         }
         Scaffold(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).nestedScroll(einklappen.nestedScrollConnection),
             topBar = {
               Column {
                 TopAppBar(
@@ -132,7 +138,9 @@ fun MainScaffold(
                         containerColor = akzent.leiste,
                         titleContentColor = akzent.aufLeiste,
                         actionIconContentColor = akzent.aufLeiste,
+                        scrolledContainerColor = akzent.leiste,
                     ),
+                    scrollBehavior = einklappen,
                 )
                 if (art == Navigationsart.LEISTE_UNTEN && currentDest?.route?.let { it in SAMMLUNG } == true) {
                     SammlungUmschalter(currentDest.route, onWahl = { ziel ->

@@ -137,9 +137,9 @@
     <string name="gallery_add">Hinzufügen</string>
 
     <!-- ══════════════ Minifigs screen ══════════════ -->
-    <string name="minifigs_stat_types">Typen</string>
+    <string name="minifigs_stat_types">Figurenarten</string>
     <string name="minifigs_stat_total">Figuren gesamt</string>
-    <string name="minifigs_stat_manual">Manuell</string>
+    <string name="minifigs_stat_manual">selbst erfasst</string>
     <string name="minifigs_search_placeholder">Suchen…</string>
     <string name="minifigs_manual_section">Manuell erfasste Minifiguren</string>
     <string name="minifigs_sets_section">Aus Sets</string>
@@ -276,7 +276,7 @@
     <string name="finance_market_avg">Marktwert der Sammlung</string>
 
     <!-- ══════════════ Parts screen ══════════════ -->
-    <string name="parts_stat_types">Typen</string>
+    <string name="parts_stat_types">Teilearten</string>
     <string name="parts_stat_colors">Farben</string>
     <string name="parts_stat_total">Stück gesamt</string>
     <string name="parts_manual_section">Manuell erfasste Teile</string>

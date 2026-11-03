@@ -180,17 +180,13 @@ fun ManualItemDetailScreen(
                 val labelNumber = stringResource(
                     if (isFig) R.string.detail_fig_number else R.string.detail_part_number)
                 val labelColor  = stringResource(R.string.detail_color)
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    contentPadding = PaddingValues(horizontal = Abstaende.gross),
-                    modifier = Modifier.padding(bottom = Abstaende.mittel)
-                ) {
-                    val chips = buildList {
-                        add(labelNumber to id)
-                        part?.colorName?.let { add(labelColor to it) }
-                        fig?.blFigNumber?.let { add("BrickLink" to it) }
-                    }
-                    items(chips) { (label, value) -> StatChipV2(label = label, value = value) }
+                val chips = buildList {
+                    add(labelNumber to id)
+                    part?.colorName?.let { add(labelColor to it) }
+                    fig?.blFigNumber?.let { add("BrickLink" to it) }
+                }
+                KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
+                    chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
                 }
             }
 

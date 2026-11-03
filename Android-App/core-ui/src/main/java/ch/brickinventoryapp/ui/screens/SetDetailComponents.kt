@@ -72,31 +72,24 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 // Merkposten-, Teile- und Finanzansicht zeigen sie gleich, darum in core-ui.
 // ── Shared composables ─────────────────────────────────────────────────────────
 
+/**
+ * Eine Angabe in der Kennzahlen-Fläche einer Detailseite: Bezeichnung, dann der Wert
+ * fett („Jahr 2017“). Als Text in [KennzahlenReihe], nicht als erhabene Pille — die
+ * sah antippbar aus.
+ */
 @Composable
 fun StatChipV2(label: String, value: String) {
-    Surface(
-        shape = Formen.chip,
-        color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 1.dp,
-        tonalElevation = 1.dp
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = Abstaende.klein)
-        ) {
-            Text(
-                value,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
+    Text(
+        androidx.compose.ui.text.buildAnnotatedString {
+            append(label)
+            append(' ')
+            pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface))
+            append(value)
+            pop()
+        },
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
