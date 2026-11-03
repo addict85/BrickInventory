@@ -1,6 +1,7 @@
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
 import { antwortFehler, feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
+import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
 import { allSets, loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -514,7 +515,7 @@ function applySettings(s){
   // ihn durch) — gesetzt werden darf er nur von einem Verwalter, und
   // deshalb ist das Feld selbst `admin-only` (index.html). Ohne diese Zeile
   // stuende im Auswahlfeld immer der erste Eintrag, egal was gespeichert ist.
-  _set('gutschein-land', s.gutschein_land || 'de-CH');
+  _set('gutschein-land', s.gutschein_land || LAND_ZUR_WAEHRUNG[CURRENCY] || 'de-CH');
   if(ME?.isAdmin){
     _set('bl-ck',  s.bricklink_consumer_key||'');
     _set('bl-cs',  s.bricklink_consumer_secret||'');

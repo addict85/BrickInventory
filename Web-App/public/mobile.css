@@ -85,6 +85,9 @@
   .filterleiste > input.si, .filterleiste > input.suchfeld { flex: 1 1 140px; width: auto !important; min-width: 0; }
   .filterleiste > select { display: none; }
   .filterleiste.offen > select { display: block; flex: 1 1 100%; max-width: none; }
+  /* Filterknopf und Ansicht teilen sich die erste Zeile, die Suche hat die zweite ganz. */
+  .filterleiste > .filter-knopf { order: -2; }
+  .filterleiste > .vtgl { order: -1; margin-left: auto; }
 
   /* Die Statistikzahlen in der Kopfzeile brauchen den Platz nicht */
   .hstats             { display: none; }
@@ -139,7 +142,7 @@
   /* Zwei Spalten ab etwa 360 px, darunter und bei grosser Schrift eine. */
   .sgrid       { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: .7rem; }
   .parts-grid, .parts-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.75rem), 1fr)); gap: .6rem; }
-  .man-grid    { grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr)); gap: .6rem; }
+  .man-grid    { grid-template-columns: repeat(auto-fill, minmax(min(100%, 6.75rem), 1fr)); gap: .6rem; }
   /* minmax(0, …) statt 1fr: Eine Spalte darf schmaler werden als ihre längste
      Zahl, die dann umbricht — sonst schob „Gesamtwert“ die Kachel über den Rand. */
   .fgrid       { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
@@ -315,6 +318,7 @@
   .dt-fin td.fin-name > span:first-child { max-width: none !important; white-space: normal !important; }
   .dt-fin td.fin-wert { grid-area: wert; text-align: right; font-weight: 700; }
   .dt-fin td.fin-guv  { grid-area: guv;  text-align: right; }
+  .dt-fin .fin-jahr { display: none; }
   .fin-unter { display: block !important; font-size: var(--fs-0); font-weight: 400; color: var(--mut); margin-top: 2px; }
   /* Summen: Name oben, darunter Einstand und Marktwert mit eigener Beschriftung. */
   .dt-summe tfoot { display: block; }
@@ -413,6 +417,7 @@
 @container haupt (max-width: 20.5em) {
   .merk-erfassen > .fg { flex: 1 1 100%; max-width: none !important; }
   .merk-erfassen > .btn { flex: 1 1 100%; }
+  .voucher-row { padding: .6rem .7rem; gap: .5rem; }
   .zeitraum-wahl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   main :is(.filterleiste, .filterzeile) > :is(input.si, input.suchfeld) { flex: 1 1 100%; width: 100% !important; }
   /* Lagerorte: das Feld über die ganze Zeile, Belegung und Knöpfe darunter. */
@@ -462,14 +467,16 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 640px) {
 
-  /* Kennzahlen (alle Designs) kompakt in zwei Spalten: untereinander füllten
-     sie den ersten Bildschirm; eine rollende Reihe versteckte die Hälfte. */
-  .brick-stats { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: .5rem; margin-bottom: var(--sp-4); }
-  .brick-stats:has(> :nth-child(3):last-child) { grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.5rem), 1fr)); }
-  .bstat { padding: 8px 12px; }
-  .bstat .bstat-v { font-size: var(--fs-5); }
-  [data-theme="brick"] .bstat { padding: 8px 12px; }
-  [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-5); }
+  /* Kennzahlen (alle Designs) als eine kompakte Zeile „4 Sets · 394 Teile …“:
+     Als Kacheln füllten sie am Telefon den ersten Bildschirm. Die Aufschlüsselung
+     darunter steht im jeweiligen Reiter. */
+  .brick-stats { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: var(--sp-4); }
+  .bstat, [data-theme="brick"] .bstat { display: inline-flex; flex-direction: row-reverse; align-items: baseline; gap: .35em;
+    flex: 0 0 auto; padding: 5px 12px; border-radius: 999px; box-shadow: none; }
+  .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-4); margin: 0; line-height: 1.3; }
+  .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { text-transform: none; letter-spacing: 0; font-size: var(--fs-2); }
+  .bstat .bstat-s { display: none; }
+  [data-theme="brick"] .bstat::before { display: none; }
 
   /* Die Pills des Stein-Designs werden unten zur Leiste wie in den anderen. */
   [data-theme="brick"] nav {

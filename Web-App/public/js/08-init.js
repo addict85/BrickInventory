@@ -151,7 +151,7 @@ function plRenderSets() {
   // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
   if (!_plSets.length) {
-    c.innerHTML = leerZustand({ ico: 'liste', titel: tRaw('pl.no_sets'), text: tRaw('pl.no_sets_hint') });
+    c.innerHTML = leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.no_sets_hint' });
     G('btn-pl-gen').disabled = true; return;
   }
   G('btn-pl-gen').disabled = false;

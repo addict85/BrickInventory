@@ -50,9 +50,9 @@ test("die CSP erlaubt kein 'unsafe-inline' für script-src mehr", () => {
   assert.doesNotMatch(line, /unsafe-eval/, "'unsafe-eval' wäre dasselbe Problem in Grün");
 });
 
-test('kein style-Attribut und kein <style> im Markup — die CSP verbietet beide', () => {
+test('kein style-Attribut und kein <style> im Markup — ausser dem Startgerüst, das die CSP per Hash erlaubt', () => {
   // Gegenprobe: ein data-stil in index.html wieder als style= → rot.
-  const strip = t => t.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
+  const strip = t => t.replace(/<!--[\s\S]*?-->/g, '').replace(/<style id="startstil">[\s\S]*?<\/style>/, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
   const found = [];
   for (const [name, src] of [['index.html', HTML], ['logviewer.js', fs.readFileSync(path.join(PUB, 'js', 'logviewer.js'), 'utf8')],
        ...JS_FILES.map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')])]) {

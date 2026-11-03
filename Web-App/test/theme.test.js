@@ -45,9 +45,10 @@ test('Theme wird vor dem ersten Paint gesetzt', () => {
   const boot = path.join(PUB, 'js', '00-theme-boot.js');
   assert.ok(fs.existsSync(boot), 'js/00-theme-boot.js fehlt');
 
-  const head = html.slice(0, html.indexOf('</head>'));
-  assert.match(head, /00-theme-boot\.js/,
-    'Das Boot-Skript muss im <head> geladen werden, sonst blitzt das falsche Design auf');
+  // Vor Start-, Anmelde- und App-Markup; davor steht nur das neutrale Startgerüst.
+  const vorher = html.slice(0, html.indexOf('id="startup-screen"'));
+  assert.match(vorher, /<script src="\/js\/00-theme-boot\.js/,
+    'Das Boot-Skript muss vor Anmeldung und App geladen werden, sonst blitzt das falsche Design auf');
 
   const src = fs.readFileSync(boot, 'utf8');
   assert.match(src, /setAttribute\(\s*'data-theme'/, 'Boot-Skript setzt kein data-theme');

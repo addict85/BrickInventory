@@ -232,7 +232,7 @@ export function renderFigs(list, target) {
   el.innerHTML = Object.entries(groups).map(([label, figs]) => `
     <div class="parts-group">
       <div class="group-hd">
-        <span class="group-title">${label}</span>
+        ${ico('set')}<span class="group-title">${label}</span>
         <span class="group-sub">${t('parts.group_types', { n: figs.length })}</span>
       </div>
       <div class="parts-grid">
@@ -313,14 +313,15 @@ let _manuelleFigurenLeer = null;
 function figurenLeerAbgleichen() {
   const box = G('manual-figs-box');
   if (box) box.style.display = _manuelleFigurenLeer === false ? '' : 'none';
+  const n = manualFigsCache.length;
+  if (G('manual-figs-n')) G('manual-figs-n').textContent = n ? tRaw('parts.group_types', { n }) : '';
   if (_setFigurenLeer !== true) return;
   const el = G('figs-list');
   if (_manuelleFigurenLeer === false) { el.innerHTML = ''; return; }
   const q = G('fig-search')?.value.trim() || '';
   el.innerHTML = q
     ? leerZustand({ ico: 'suche', titel: tRaw('common.no_hits', { query: q }), knopf: zuruecksetzenKnopf('minifigs') })
-    : leerZustand({ ico: 'figur', titel: tRaw('figs.empty'), text: tRaw('figs.auto_hint'),
-                    knopf: { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } });
+    : leerZustand({ ico: 'figur', titel: tRaw('figs.empty'), text: tRaw('figs.auto_hint') });
 }
 
 /** Die Suche leeren (Knopf im Leerzustand). */
@@ -653,6 +654,7 @@ export function renderManualParts() {
   zeichneTeileFilter();
   const teile = manualPartsCache.filter(teilPasstZumFilter);
   teileLeerAbgleichen(!teile.length);
+  if (G('manual-parts-n')) G('manual-parts-n').textContent = teile.length ? tRaw('parts.group_types', { n: teile.length }) : '';
   if (!teile.length) { el.innerHTML = ''; return; }
   if (tabellenAnsicht('parts-view')) {
     el.innerHTML = manuelleTabelle(teile, 'part');

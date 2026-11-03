@@ -75,6 +75,8 @@ export function gruppiereNummer(roh) {
 
 /** Die Währung der Karten des Ausgabelandes; ohne Land die des Kontos. */
 const LAND_WAEHRUNG = { 'de-CH': 'CHF', 'de-DE': 'EUR', 'de-AT': 'EUR', 'fr-FR': 'EUR', 'it-IT': 'EUR', 'nl-NL': 'EUR', 'en-GB': 'GBP', 'en-US': 'USD' };
+/** Ohne gespeichertes Ausgabeland das Land zur Kontowährung (wie landFuerWaehrung im Server). */
+export const LAND_ZUR_WAEHRUNG = { CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' };
 export function landWaehrung() {
   const land = G('gutschein-land')?.value || _settingsCache?.gutschein_land || '';
   return LAND_WAEHRUNG[land] || CURRENCY;
@@ -109,7 +111,6 @@ function zeile(g) {
         <div class="voucher-meta">
           <span class="voucher-amount">${fmtN(g.amount, g.currency)}</span>
           ${landWaehrung() && g.currency !== landWaehrung() ? `<span class="voucher-abweichung">${t('vouchers.waehrung_abweichend', { w: landWaehrung() })}</span>` : ''}
-          ${g.hat_pdf ? '' : `<span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}
           <!-- Der Stand NEBEN dem Betrag, nicht statt ihm: „250 CHF" allein
                ist keine Auskunft, „250 CHF, abgefragt am 15.10." ist eine.
                Und eine Karte, deren Guthaben noch nie abgefragt wurde, sagt
@@ -117,7 +118,7 @@ function zeile(g) {
           <span class="voucher-stand">${g.guthaben_geprueft_am
             ? t('vouchers.balance_as_of',
                 { datum: fmtDatum(g.guthaben_geprueft_am) })
-            : t('vouchers.balance_never')}</span>
+            : t('vouchers.balance_never')}${g.hat_pdf ? '' : ` · <span class="voucher-nopdf">${t('vouchers.no_pdf_kurz')}</span>`}</span>
         </div>
       </div>
       <div class="voucher-pin">
@@ -154,6 +155,8 @@ export async function ladeGutscheine() {
   const d = await api('GET', '/v1/vouchers');
   if (!d?.success) { liste.innerHTML = `<div class="voucher-leer">${t('vouchers.load_error')}</div>`; return; }
   _gutscheine = d.vouchers || [];
+  const landFeld = G('gutschein-land');
+  if (landFeld) landFeld.value = _settingsCache?.gutschein_land || LAND_ZUR_WAEHRUNG[CURRENCY] || 'de-CH';
   zeigeLandWaehrung();
   const cur = G('v-currency');
   if (cur && !_bearbeitet && !G('v-amount')?.value) cur.value = landWaehrung();
@@ -651,6 +654,7 @@ export async function gutscheinLandSpeichern() {
   const feld = el('gutschein-land');
   if (!feld) return;
   const d = await api('POST', '/v1/settings', { gutschein_land: feld.value });
+  if (d?.success && _settingsCache) _settingsCache.gutschein_land = G('gutschein-land')?.value;
   if (!_bearbeitet) { const cur = G('v-currency'); if (cur) cur.value = landWaehrung(); }
   waehrungPruefen();
   zeigeLandWaehrung();

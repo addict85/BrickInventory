@@ -121,7 +121,7 @@ export async function computePnl(viewerId: number, ids: Blickfeld) {
     const hasCost = p.purchase_price != null;
     const purchasePrice = parseFloat(p.purchase_price || 0);
     const pnlPct = hasCost ? entwicklungProzent(purchasePrice, currentPrice) : null;
-    return { purchase_price: purchasePrice, current_price: currentPrice, quantity: qty, pnl_pct: pnlPct?.toFixed(1) ?? null };
+    return { purchase_price: hasCost ? purchasePrice : null, current_price: currentPrice, quantity: qty, pnl_pct: pnlPct?.toFixed(1) ?? null };
   });
   const figsResults = figsVal.figs.map(f => {
     const qty = f.quantity || 1;
@@ -129,7 +129,7 @@ export async function computePnl(viewerId: number, ids: Blickfeld) {
     const hasCost = f.purchase_price != null;
     const purchasePrice = parseFloat(f.purchase_price || 0);
     const pnlPct = hasCost ? entwicklungProzent(purchasePrice, currentPrice) : null;
-    return { purchase_price: purchasePrice, current_price: currentPrice, quantity: qty, pnl_pct: pnlPct?.toFixed(1) ?? null };
+    return { purchase_price: hasCost ? purchasePrice : null, current_price: currentPrice, quantity: qty, pnl_pct: pnlPct?.toFixed(1) ?? null };
   });
 
   // In Zehntausendsteln summiert, erst am Ende auf Rappen gerundet.
@@ -138,8 +138,10 @@ export async function computePnl(viewerId: number, ids: Blickfeld) {
   const totalPurchase = aufRappen((inZehntel4(kauf(setResults)) ?? 0) + (inZehntel4(kauf(partsResults)) ?? 0) + (inZehntel4(kauf(figsResults)) ?? 0));
   const totalCurrent = summeAus([...setResults, ...partsResults, ...figsResults]
     .map(r => ({ preis: r.current_price || 0, menge: r.quantity || 1 })));
-  const vergleichbar = vergleichbareSummen([...setResults, ...partsResults, ...figsResults]);
-  const totalPnlPct = gesamtGuvProzent([...setResults, ...partsResults, ...figsResults]);
+  const alleZeilen = [...setResults, ...partsResults, ...figsResults];
+  const vergleichbar = vergleichbareSummen(alleZeilen);
+  const totalPnlPct = gesamtGuvProzent(alleZeilen);
+  const basis = basisDerKennzahlen(alleZeilen);
 
   return {
     currency, sets: setZeilen,
@@ -159,13 +161,14 @@ export async function computePnl(viewerId: number, ids: Blickfeld) {
       sets_purchase: kauf(setResults).toFixed(2),
       parts_purchase: kauf(partsResults).toFixed(2),
       figs_purchase: kauf(figsResults).toFixed(2),
+      ...basis,
     },
   };
 }
 
 /** Nur über Posten mit Kaufpreis UND Marktpreis: Ein fehlender Marktpreis ist
- * kein Wert 0; mitgezählt ergäbe er −100 %.
- * @returns null, wenn kein Posten beides hat */
+ * kein Wert 0; mitgezählt ergäbe er −100 %. Ein Geschenk (Kaufpreis 0) zählt mit.
+ * @returns null, wenn der Einstand dieser Posten 0 ist */
 export function gesamtGuvProzent(zeilen: GuvZeile[]): string | null {
   const { kauf, markt } = vergleichbareSummen(zeilen);
   return kauf > 0 ? ((markt - kauf) / kauf * 100).toFixed(1) : null;
@@ -176,9 +179,32 @@ type GuvZeile = { purchase_price: number | null; current_price: number; quantity
 export function vergleichbareSummen(zeilen: GuvZeile[]): { kauf: number; markt: number } {
   let kauf = 0, markt = 0;
   for (const z of zeilen) {
-    const k = z.purchase_price || 0, m = z.current_price || 0, n = z.quantity || 1;
-    if (k > 0 && m > 0) { kauf += k * n; markt += m * n; }
+    const m = z.current_price || 0, n = z.quantity || 1;
+    if (z.purchase_price != null && z.purchase_price >= 0 && m > 0) { kauf += z.purchase_price * n; markt += m * n; }
   }
   return { kauf, markt };
+}
+
+/** Einstand, Marktwert und G/V der Finanzkarten über dieselben Posten, dazu was fehlt.
+ * So gilt immer Einstand + G/V = Marktwert, und die Karte nennt die ausgelassenen Posten. */
+export function basisDerKennzahlen(zeilen: GuvZeile[]) {
+  const { kauf, markt } = vergleichbareSummen(zeilen);
+  let ohneMarkt = 0, ohneMarktKauf = 0, ohneKauf = 0, ohneKaufMarkt = 0;
+  for (const z of zeilen) {
+    const n = z.quantity || 1;
+    if (!(z.current_price > 0)) { ohneMarkt++; ohneMarktKauf += (z.purchase_price || 0) * n; }
+    else if (z.purchase_price == null) { ohneKauf++; ohneKaufMarkt += z.current_price * n; }
+  }
+  return {
+    positionen: zeilen.length,
+    positionen_bewertet: zeilen.length - ohneMarkt - ohneKauf,
+    positionen_ohne_marktpreis: ohneMarkt,
+    positionen_ohne_kaufpreis: ohneKauf,
+    basis_einstand: kauf.toFixed(2),
+    basis_marktwert: markt.toFixed(2),
+    basis_guv_betrag: (markt - kauf).toFixed(2),
+    ohne_marktpreis_einstand: ohneMarktKauf.toFixed(2),
+    ohne_kaufpreis_marktwert: ohneKaufMarkt.toFixed(2),
+  };
 }
 

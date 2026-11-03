@@ -63,7 +63,7 @@ test('ohne Kaufpreis und ohne Marktpreis steht kein Prozentwert und kein Betrag'
     { set_number: '10290-1', quantity: 1, baseline_price: null, current_price: 0, baseline_pnl_pct: null },
     { set_number: '10290-1', quantity: 1, baseline_price: null, current_price: 0, baseline_pnl_pct: null },
   ], '10290-1');
-  assert.deepEqual(k, { kachel_preis: null, kachel_pnl_pct: null });
+  assert.deepEqual(k, { kachel_preis: null, kachel_pnl_pct: null, kachel_quelle: null });
 });
 
 test('das Web übernimmt die Werte des Servers', () => {
@@ -76,8 +76,8 @@ test('das Web übernimmt die Werte des Servers', () => {
   const _pnlCache = {};
   // eslint-disable-next-line no-new-func
   new Function('pnl', '_pnlCache', 'set_pnlCache', src.slice(von, bis))(
-    { sets: [{ set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3 },
-             { set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3 }] },
+    { sets: [{ set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3, kachel_quelle: 'kauf' },
+             { set_number: 'A-1', current_price: 99, kachel_preis: 10.5, kachel_pnl_pct: 12.3, kachel_quelle: 'kauf' }] },
     _pnlCache, () => {});
-  assert.deepEqual(_pnlCache, { 'A-1': { price: 10.5, pnl_pct: 12.3 } });
+  assert.deepEqual(_pnlCache, { 'A-1': { price: 10.5, pnl_pct: 12.3, quelle: 'kauf' } });
 });

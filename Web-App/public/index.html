@@ -17,6 +17,37 @@
   <script defer src="/vendor/qrcode/qrcode.min.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BrickInventory Manager</title>
+  <!-- Startgerüst: Kopf, Leiste und Kacheln als Platzhalter, bis Stile, Sprache
+       und Bündel da sind. Diese Regeln stehen im Dokument, weil jede externe Datei
+       bei langsamem Netz eine weitere Rundreise kostet; die CSP erlaubt genau
+       diesen Block über seinen Hash (src/konto/indexHtml.ts). -->
+  <style id="startstil">
+#startgeruest{--sg-bg:#f6f7f9;--sg-sur:#fff;--sg-bdr:#e3e6ea;--sg-ph:#eceff3;--sg-txt:#1e293b;position:fixed;inset:0;z-index:2;overflow:hidden;background:var(--sg-bg);font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+@media (prefers-color-scheme:dark){#startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee}}
+[data-theme=werkbank] #startgeruest{--sg-bg:#14181d;--sg-sur:#1b2027;--sg-bdr:#2f3843;--sg-ph:#262d36;--sg-txt:#e6e9ee}
+.sg-kopf{display:flex;align-items:center;gap:9px;height:58px;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr);color:var(--sg-txt);font-weight:800;font-size:17px}
+.sg-leiste{display:flex;gap:28px;height:46px;align-items:center;padding:0 1.5rem;background:var(--sg-sur);border-bottom:1px solid var(--sg-bdr)}
+.sg-leiste i,.sg-titel,.sg-karten i,.sg-kacheln i{display:block;background:var(--sg-ph);border-radius:8px}
+.sg-leiste i{width:84px;height:12px}
+.sg-inhalt{max-width:1720px;margin:0 auto;padding:2rem 1.5rem}
+.sg-titel{width:min(260px,60%);height:28px;margin-bottom:1.5rem}
+.sg-karten{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-bottom:1.75rem}
+.sg-karten i{height:84px;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
+.sg-kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(11.5rem,1fr));gap:1rem}
+.sg-kacheln i{aspect-ratio:3/4;background:var(--sg-sur);border:1px solid var(--sg-bdr)}
+@media (max-width:640px){.sg-leiste{display:none}.sg-inhalt{padding:1rem}.sg-karten{grid-template-columns:repeat(2,1fr)}.sg-kacheln{grid-template-columns:1fr}.sg-kacheln i{aspect-ratio:auto;height:120px}}
+@media (prefers-reduced-motion:no-preference){.sg-inhalt i,.sg-titel{animation:sg-puls 1.4s ease-in-out infinite alternate}}
+@keyframes sg-puls{from{opacity:1}to{opacity:.55}}
+  </style>
+</head>
+<body>
+<a class="sprunglink" href="#inhalt" data-i18n="a11y.skip_to_content">Zum Inhalt</a>
+<div id="startgeruest" aria-hidden="true">
+  <div class="sg-kopf"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/></svg>BrickInventory</div>
+  <div class="sg-leiste"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="sg-inhalt"><i class="sg-titel"></i><div class="sg-karten"><i></i><i></i><i></i><i></i></div><div class="sg-kacheln"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+</div>
+<!-- Erst nach dem Startgerüst: Stile und Design-Skript halten nur den Rest der Seite an. -->
   <link rel="stylesheet" href="/vendor/fonts/fonts.css?v=2026.10.27.1901">
   <!-- Gemeinsame Farbtokens, ERZEUGT aus shared/design-tokens.json. Zuerst
        geladen: Sie sind die Grundlage, styles.css und die Designs bauen
@@ -32,20 +63,10 @@
   <!-- Responsive-Regeln, nach beiden Designs geladen: das Layout ist in
        classic und brick identisch, die Regeln gelten daher für beide. -->
   <link rel="stylesheet" href="/mobile.css?v=2026.10.27.1901">
-  <!-- Setzt data-theme aus dem localStorage-Cache VOR dem ersten Paint und
-       gleicht danach gegen GET /api/v1/settings/theme ab. Blockierend und im
-       <head>, sonst blitzt auf Login-/Startup-Screen kurz das falsche Design auf. -->
+  <!-- Setzt data-theme aus dem localStorage-Cache, bevor Anmeldung oder App
+       gezeichnet werden, und gleicht danach gegen GET /api/v1/settings/theme ab.
+       Blockierend, sonst blitzt kurz das falsche Design auf. -->
   <script src="/js/00-theme-boot.js?v=2026.10.27.1901"></script>
-  <!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
-       Auswerten window.I18N_DE / window.I18N_EN erwartet.
-       Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
-       anhand der gespeicherten Sprache — genauso wie beim Design darüber.
-       Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
-       (loadLang() in i18n.js). -->
-  <script src="/locales/de.js?v=2026.10.27.1901" data-i18n-locale></script>
-</head>
-<body>
-<a class="sprunglink" href="#inhalt" data-i18n="a11y.skip_to_content">Zum Inhalt</a>
 <!-- Die Symbolfamilie: Strichsymbole auf 24er-Raster, Farbe aus dem Text.
      Verwendung: <svg class="ico" aria-hidden="true"><use href="#i-NAME"/></svg> -->
 <svg xmlns="http://www.w3.org/2000/svg" data-stil="display:none" aria-hidden="true">
@@ -586,7 +607,7 @@
       </div>
       <div class="brick-stats" id="parts-stats-bar">
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="parts.stat.total_label">Teile gesamt</div><div class="bstat-v" id="ps-total">—</div><div class="bstat-s" id="ps-total-sub"></div></div>
-        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="parts.stat.unique">Sorten</div><div class="bstat-v" id="ps-unique">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="parts.stat.unique">Teilesorten</div><div class="bstat-v" id="ps-unique">—</div></div>
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="parts.stat.colors">Farben</div><div class="bstat-v" id="ps-colors">—</div></div>
       </div>
       <!-- ── Manuell erfasste Teile — vor den Set-Teilen ──────────────────── -->
@@ -647,10 +668,10 @@
            (Nachtrag 34, Marcos Hinweis): Der Filter wirkt auf beide Listen —
            auf die manuellen und die aus Sets. Stünde er darunter, sähe es aus,
            als beträfe er nur die Set-Teile. -->
-      <div class="bereich-karte" id="manual-parts-box" data-stil="display:none">
-        <div class="bereich-titel" data-i18n="parts.manual_section">Manuell erfasste Teile</div>
+      <section class="parts-group gruppe-manuell" id="manual-parts-box" aria-labelledby="manual-parts-titel" data-stil="display:none">
+        <div class="group-hd"><svg class="ico" aria-hidden="true"><use href="#i-bearbeiten"/></svg><h2 class="group-title" id="manual-parts-titel" data-i18n="parts.manual_section">Manuell erfasste Teile</h2><span class="group-sub" id="manual-parts-n"></span></div>
         <div id="manual-parts-list"></div>
-      </div>
+      </section>
 
       <!-- ── Teile aus Sets ──────────────────────────────────────────────────── -->
       <div id="parts-main">
@@ -673,8 +694,8 @@
 
       <!-- Stats (farbig, wie Galerie) -->
       <div class="brick-stats">
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.types">Figurtypen</div><div class="bstat-v" id="mf-unique">—</div></div>
-        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.total_qty">Gesamtmenge</div><div class="bstat-v" id="mf-total">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="figs.stat.types">Figurensorten</div><div class="bstat-v" id="mf-unique">—</div></div>
+        <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="figs.stat.total_qty">Figuren gesamt</div><div class="bstat-v" id="mf-total">—</div></div>
       </div>
       <span id="mf-val" data-stil="display:none"></span>
 
@@ -713,10 +734,10 @@
 
       <!-- Wie bei den Teilen: Die manuell erfassten Minifiguren stehen UNTER
            der Filterleiste, weil der Filter beide Listen betrifft. -->
-      <div class="bereich-karte" id="manual-figs-box" data-stil="display:none">
-        <div class="bereich-titel" data-i18n="figs.manual_section">Manuell erfasste Minifiguren</div>
+      <section class="parts-group gruppe-manuell" id="manual-figs-box" aria-labelledby="manual-figs-titel" data-stil="display:none">
+        <div class="group-hd"><svg class="ico" aria-hidden="true"><use href="#i-bearbeiten"/></svg><h2 class="group-title" id="manual-figs-titel" data-i18n="figs.manual_section">Manuell erfasste Minifiguren</h2><span class="group-sub" id="manual-figs-n"></span></div>
         <div id="manual-figs-list"></div>
-      </div>
+      </section>
 
       <div id="figs-list"></div>
       <!-- Ladepunkt für den Endlos-Scroll der Minifiguren. Steht NEBEN
@@ -774,6 +795,7 @@
         <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
         <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Einstand</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
+      <p id="fin-basis" class="fin-basis" role="note" hidden></p>
       <!-- Kategoriefilter — dieselben vier Chips wie im Finanzen-Reiter der
            Android-App (FinanceSections.financeCategoryFilter). Additiv, und
            „Alle" ist kein vierter Zustand, sondern die LEERE Auswahl: Der Chip
@@ -1588,7 +1610,7 @@
     <div class="tab" id="tab-monitor">
       <div class="ph zeile mittig verteilt umbruch luecke-05">
         <h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hintergrund­arbeiten</span></h1>
-        <button class="btn bs btn-sm schrift-2" data-click="openLogViewer" data-i18n="monitor.logs_btn" data-ico="liste">Logs anzeigen</button>
+        <button class="btn bs btn-sm schrift-2" data-click="openLogViewer" data-i18n="monitor.logs_btn" data-ico="liste">Protokoll anzeigen</button>
       </div>
       <!-- Hidden stubs so existing JS references don't break -->
       <div data-stil="display:none">
@@ -1641,8 +1663,8 @@
           <button class="btn bp btn-speichern" type="button" id="btn-save-cache-ttl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
         </div>
         <div class="mon-aktionen">
-          <button class="btn bs" type="button" id="btn-clr-prices" data-i18n="settings.clear_price_cache">Preis-Cache leeren</button>
-          <button class="btn bs" type="button" id="btn-clr-all-cache" data-i18n="monitor.clear_all">Alle Caches leeren (Preise, Teile, Katalog)</button>
+          <button class="btn bs" type="button" id="btn-clr-prices" data-i18n="settings.clear_price_cache">Gespeicherte Preise löschen</button>
+          <button class="btn bs" type="button" id="btn-clr-all-cache" data-i18n="monitor.clear_all">Zwischenspeicher ganz leeren (Preise, Teile, Katalog)</button>
         </div>
       </section>
 
@@ -2195,6 +2217,13 @@
 <!-- Vorleser hören jede Meldung; Fehler unterbrechen (role="alert" am Eintrag). -->
 <div id="toasts" role="status" aria-live="polite"></div>
 
+<!-- Aktive Sprachdatei. Blockierend und VOR dem Bündel, weil i18n.js beim
+       Auswerten window.I18N_DE / window.I18N_EN erwartet.
+       Welche Datei hier steht, entscheidet der Server (utils/indexHtml.ts)
+       anhand der gespeicherten Sprache — genauso wie beim Design darüber.
+       Der Wechsel zur anderen Sprache lädt sie zur Laufzeit nach
+       (loadLang() in i18n.js). -->
+  <script src="/locales/de.js?v=2026.10.27.1901" data-i18n-locale></script>
 <script type="module" src="/js/pdfjs-boot.js?v=2026.10.27.1901"></script>
 <!-- Ein Bündel statt zwölf Einzeldateien.
      i18n.js und js/01-*.js … js/11-*.js werden von scripts/build-frontend.js in
@@ -2202,7 +2231,7 @@
      bleiben im Repo lesbar und einzeln editierbar; nach einer Änderung an
      public/js/ oder public/i18n.js muss `npm run build:frontend` laufen
      (npm run dev und der Docker-Build tun das automatisch).
-     00-theme-boot.js bleibt oben im <head> (muss vor dem ersten Rendern laufen),
+     00-theme-boot.js bleibt oben (muss vor Anmeldung und App laufen),
      pdfjs-boot.js bleibt separat (ES-Modul), logviewer.js wird bei Bedarf
      zur Laufzeit nachgeladen. -->
 <script src="/js/app.bundle.js?v=2026.10.27.1901"></script>

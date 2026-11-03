@@ -59,6 +59,15 @@ export const PnlTotals = z.looseObject({
   parts_purchase: z.string().nullable().optional(),
   figs_purchase: z.string().nullable().optional(),
   grand_total: z.string().nullable().optional(),
+  positionen: z.number().int().optional(),
+  positionen_bewertet: z.number().int().optional(),
+  positionen_ohne_marktpreis: z.number().int().optional(),
+  positionen_ohne_kaufpreis: z.number().int().optional(),
+  basis_einstand: z.string().optional(),
+  basis_marktwert: z.string().optional(),
+  basis_guv_betrag: z.string().optional(),
+  ohne_marktpreis_einstand: z.string().optional(),
+  ohne_kaufpreis_marktwert: z.string().optional(),
 });
 
 export const PnlSetZeile = z.looseObject({
@@ -73,6 +82,7 @@ export const PnlSetZeile = z.looseObject({
   baseline_pnl_prozent: z.number().nullable().optional(),
   kachel_preis: z.number().nullable().optional(),
   kachel_pnl_pct: z.number().nullable().optional(),
+  kachel_quelle: z.enum(['markt', 'kauf']).nullable().optional(),
 });
 
 export const PnlResponse = z.looseObject({
