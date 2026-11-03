@@ -266,7 +266,7 @@ fun NavGraphBuilder.toolsGraph(
         }
 
         composable(Screen.Konto.route) {
-            KontoUnterseite(vm, snackbarHostState) { navController.popBackStack() }
+            KontoUnterseite({ vm.logout() }, snackbarHostState) { navController.popBackStack() }
         }
 
         composable(Screen.Monitoring.route) {

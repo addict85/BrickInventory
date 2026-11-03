@@ -310,7 +310,12 @@ class BildschirmFotoVariantenTest {
     // ── Gerüst: App-Leiste mit vier Bestandszielen und „Mehr“ ──
 
     @Composable
-    private fun Geruest(galerie: ch.brickinventoryapp.ui.viewmodel.GalerieViewModel) {
+    private fun Geruest(
+        galerie: ch.brickinventoryapp.ui.viewmodel.GalerieViewModel,
+        snackbar: SnackbarHostState = remember { SnackbarHostState() },
+        offeneAenderungen: Int = 0,
+        offlineStand: Long? = null,
+    ) {
         val nav = rememberNavController()
         val reiter = remember {
             listOf<Triple<Screen, @Composable () -> Unit, String>>(
@@ -327,12 +332,18 @@ class BildschirmFotoVariantenTest {
         val titel = if (ziel?.destination?.route == Screen.Mehr.route) "Mehr" else "Sammlung"
         MainScaffold(
             title = titel, navController = nav, bottomNavItems = reiter,
-            snackbarHostState = remember { SnackbarHostState() },
+            snackbarHostState = snackbar,
             csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
             onCsvAbbrechen = {}, serverUrl = "", updateVerfuegbar = true, onTabAngetippt = {},
+            offeneAenderungen = offeneAenderungen,
         ) {
             NavHost(nav, startDestination = Screen.Gallery.route) {
-                composable(Screen.Gallery.route) { Galerie(galerie) }
+                composable(Screen.Gallery.route) {
+                    androidx.compose.foundation.layout.Column {
+                        ch.brickinventoryapp.ui.components.OfflineHinweis(offlineStand)
+                        Galerie(galerie)
+                    }
+                }
                 composable(Screen.Mehr.route) {
                     MehrBildschirm(navController = nav, isAdmin = true, updateVerfuegbar = true, onAbmelden = {})
                 }
@@ -584,5 +595,130 @@ class BildschirmFotoVariantenTest {
             MerklisteScreen(vm = vm, imageLoader = bilder, onScan = {}, onOeffnen = { _, _ -> })
         }
         foto("merkliste-leer", dunkel = true)
+    }
+
+    // ── Bildschirme, die bisher kein Foto hatten (M6) ──
+
+    private val katalogDetail = ch.brickinventoryapp.ui.model.KatalogDetailAnsicht(
+        setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, themeId = 721, themeName = "Icons",
+        numParts = 4514, imageLocal = "/beispiel/set1.png", minifigs = 22,
+        bricklink = ch.brickinventoryapp.ui.model.BrickLinkAnsicht(number = "10305-1",
+            url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
+
+    private fun katalogDetailFoto(dunkel: Boolean, geraet: String) {
+        zeige("katalog-detail", dunkel = dunkel, geraet = geraet) {
+            ch.brickinventoryapp.ui.screens.CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
+                isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
+                onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
+                onOpenInGallery = {}, onBack = {})
+        }
+        anhalten()
+        foto("katalog-detail", dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun katalogDetailTelefon() = katalogDetailFoto(false, "telefon")
+    @Test fun katalogDetailTabletDunkel() = katalogDetailFoto(true, "tablet")
+
+    @Test
+    fun vergleich() {
+        zeige("vergleich") { ch.brickinventoryapp.ui.screens.ComparisonScreen() }
+        anhalten()
+        foto("vergleich")
+    }
+
+    /** Konto: Profil, Design, zweiter Faktor und zwei angemeldete Geräte. */
+    private fun kontoFoto(dunkel: Boolean, geraet: String) {
+        welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+            "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
+        welt.pfade.antworten["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
+        welt.pfade.antworten["/api/v1/settings/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic"}"""
+        welt.pfade.antworten["/api/v1/settings/tokens"] = """{"success":true,"tokens":[
+            {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
+            {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
+        val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
+            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            welt.t.meldungen, welt.t.sitzung))
+        zeige("konto", dunkel = dunkel, geraet = geraet) {
+            ch.brickinventoryapp.ui.screens.KontoUnterseite(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+                konto = konto, onZurueck = {})
+        }
+        anhalten()
+        foto("konto", dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun kontoTelefon() = kontoFoto(false, "telefon")
+    @Test fun kontoTabletDunkel() = kontoFoto(true, "tablet")
+
+    /** Preisalarme: einer scharf, einer schon ausgelöst. */
+    private fun preisalarmeFoto(dunkel: Boolean, geraet: String) {
+        welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
+            {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"},
+            {"set_number":"10294-1","condition":"N","richtung":"ueber","schwelle":440.0,"currency_code":"CHF",
+             "ausgeloest":true,"zuletzt_am":"2026-10-30T09:00:00Z","zuletzt_preis":449.95}]}"""
+        val vm = einstellungen()
+        zeige("preisalarme", dunkel = dunkel, geraet = geraet) {
+            ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite(vm = vm, imageLoader = bilder, serverUrl = "",
+                snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
+        }
+        anhalten()
+        foto("preisalarme", dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun preisalarmeTelefon() = preisalarmeFoto(false, "telefon")
+    @Test fun preisalarmeTabletDunkel() = preisalarmeFoto(true, "tablet")
+
+    /** Teil aus Sets: auf dem Tablet rechts neben der Liste, auf dem Telefon als Dialog. */
+    private fun teilDetailFoto(geraet: String, dunkel: Boolean) {
+        welt.pfade.antworten["/api/v1/parts/3001/5/sets"] = """{"success":true,
+            "item":{"nummer":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","category_name":"Bricks",
+                    "image_local":"/beispiel/teil1.png","total_quantity":12},
+            "sets":[{"set_number":"75192-1","set_name":"Millennium Falcon","quantity":8,"image_local":"/beispiel/set1.png","owner_user_id":1},
+                    {"set_number":"21318-1","set_name":"Baumhaus","quantity":4,"image_local":"/beispiel/set3.png","owner_user_id":1}]}"""
+        val vm = welt.teile().also { it.loadParts() }
+        zeige("teil-detail", dunkel = dunkel, geraet = geraet, bereit = { vm.partsState.value.parts.isNotEmpty() },
+            zustand = { vm.partsState.value }) {
+            ch.brickinventoryapp.nav.TeileListeUndDetail(vm, bilder, "", rememberNavController()) { _ ->
+                PartsScreen(vm = vm, imageLoader = bilder)
+            }
+        }
+        compose.onNode(androidx.compose.ui.test.hasText("Brick 2 x 4", substring = true) and
+            androidx.compose.ui.test.hasClickAction()).performClick()
+        bereitstellen("teil-detail (offen)", { !vm.setItemState.value.laedt }, { vm.setItemState.value })
+        anhalten()
+        if (geraet == "telefon") compose.onNode(isDialog()).captureRoboImage(pfad("teil-detail", "classic", dunkel, geraet))
+        else foto("teil-detail", dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun teilDetailTelefon() = teilDetailFoto("telefon", false)
+    @Test fun teilDetailTablet() = teilDetailFoto("tablet", false)
+
+    /** Die Meldung nach dem Löschen mit „Rückgängig“ — über der unteren Leiste. */
+    private fun snackbarFoto(geraet: String, dunkel: Boolean) {
+        val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
+        val meldung = SnackbarHostState()
+        zeige("snackbar", dunkel = dunkel, geraet = geraet, bereit = galerieFertig(galerie),
+            zustand = { galerie.galleryState.value }) {
+            Geruest(galerie, snackbar = meldung)
+            androidx.compose.runtime.LaunchedEffect(Unit) {
+                meldung.showSnackbar("„Millennium Falcon“ gelöscht", actionLabel = "Rückgängig",
+                    duration = androidx.compose.material3.SnackbarDuration.Indefinite)
+            }
+        }
+        anhalten()
+        foto("snackbar", dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun snackbarTelefon() = snackbarFoto("telefon", false)
+    @Test fun snackbarTabletDunkel() = snackbarFoto("tablet", true)
+
+    /** Ohne Netz: Hinweis mit Stand über der Liste, drei Änderungen warten im Ausgang. */
+    @Test
+    fun offline() {
+        val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
+        zeige("offline", bereit = galerieFertig(galerie), zustand = { galerie.galleryState.value }) {
+            Geruest(galerie, offeneAenderungen = 3, offlineStand = 1_793_000_000_000L)
+        }
+        anhalten()
+        foto("offline")
     }
 }

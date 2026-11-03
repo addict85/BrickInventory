@@ -43,9 +43,11 @@ fun PreisalarmeUnterseite(
     snackbarHostState: SnackbarHostState,
     onSetClick: (String) -> Unit,
     onZurueck: () -> Unit,
+    /** Der Melde-Schalter; als Platz, weil er die Geräte-Einstellungen der Aktivität liest. */
+    meldeSchalter: @Composable () -> Unit = { PreisalarmCard(aktivitaetsViewModel()) },
 ) {
     Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck) {
-        PreisalarmCard(aktivitaetsViewModel())
+        meldeSchalter()
         PreisalarmeCard(vm, imageLoader, serverUrl, onSetClick)
     }
 }
@@ -88,7 +90,8 @@ fun HaushaltUnterseite(
 /** Konto und angemeldete Geraete — beides betrifft den Zugang. */
 @Composable
 fun KontoUnterseite(
-    vm: AppViewModel,
+    /** Nach einem geänderten Passwort abmelden — der Rest der Sitzung gilt dann nicht mehr. */
+    onAbmelden: () -> Unit,
     snackbarHostState: SnackbarHostState,
     // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
     // zweiter Faktor leben nur, solange die Seite offen ist.
@@ -108,7 +111,7 @@ fun KontoUnterseite(
         KontoCard(
             kontoZustand = kontoZustand,
             onSpeichern = { b, e, v, n, p, c -> konto.speichereProfil(b, e, v, n, p, c) },
-            onPasswort = { alt, neu, c -> konto.aenderePasswort(alt, neu, c) { vm.logout() } },
+            onPasswort = { alt, neu, c -> konto.aenderePasswort(alt, neu, c) { onAbmelden() } },
             onMeldungWeg = { konto.kontoMeldungWeg() },
         )
         DesignCard(design = kontoZustand.design, onWahl = { konto.waehleDesign(it) })
