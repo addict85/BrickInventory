@@ -652,13 +652,10 @@ class OberflaechenRegelnTest {
             if (offen.value) ch.brickinventoryapp.ui.screens.AddSetDialog(onDismiss = {},
                 onAdd = { _, _, _, _, _, _ -> }, lagerorte = listOf("Keller"), sofortFokus = false)
         }
-        // Ohne Fokus blinkt kein Cursor; fetchSemanticsNode wartet sonst ewig auf Ruhe.
-        compose.mainClock.autoAdvance = false
+        // Ohne Fokus blinkt kein Cursor, Compose wird von selbst ruhig. Eine angehaltene Uhr
+        // hielte dagegen jeden angefangenen Frame offen, und fetchSemanticsNode wartete ewig.
         offen.value = true
-        repeat(3) {
-            compose.mainClock.advanceTimeBy(200)
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
-        }
+        compose.waitForIdle()
         fun breite(label: Int) = compose.onNode(androidx.compose.ui.test.hasSetTextAction() and
             hasText(ctx.getString(label))).fetchSemanticsNode().boundsInRoot.width
         val nummer = breite(R.string.gallery_set_number)
