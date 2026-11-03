@@ -5,7 +5,6 @@ mlkitBarcode                = "18.3.1"   # unbundled (Play-Dienste) — siehe 16
 # Marcos Wunsch — kein Nachladen über Play, funktioniert sofort und offline.
 # Kostet rund 4 MB APK, dafür keine Überraschung beim ersten Scan.
 mlkitTextRec                = "16.0.1"   # bundled — liegt IM APK, kein Play-Nachladen
-accompanistPermissions      = "0.37.3"
 
 # 9.5.0 bleibt aus: Damit fehlten im Release-APK Texte, die erreichbarer Code
 # benutzt (Monitoring, Kaufpreise) – die Prüfung „APK gegen R8-Verluste“ war
@@ -257,7 +256,6 @@ camerax-lifecycle                   = { group = "androidx.camera",            na
 camerax-view                        = { group = "androidx.camera",            name = "camera-view",                       version.ref = "camerax" }
 mlkit-barcode                       = { group = "com.google.android.gms",     name = "play-services-mlkit-barcode-scanning", version.ref = "mlkitBarcode" }
 mlkit-textrec                       = { group = "com.google.mlkit",           name = "text-recognition",                     version.ref = "mlkitTextRec" }
-accompanist-permissions             = { group = "com.google.accompanist",     name = "accompanist-permissions",           version.ref = "accompanistPermissions" }
 robolectric                         = { group = "org.robolectric",            name = "robolectric",                       version.ref = "robolectric" }
 roborazzi                           = { group = "io.github.takahirom.roborazzi", name = "roborazzi",                    version.ref = "roborazzi" }
 roborazzi-compose                   = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose",            version.ref = "roborazzi" }
@@ -278,7 +276,7 @@ compose = [
     "coil-compose",
 ]
 unit-tests = ["junit", "json", "kotlinx-coroutines-test", "okhttp-mockwebserver"]
-camera = ["camerax-core", "camerax-camera2", "camerax-lifecycle", "camerax-view", "accompanist-permissions"]
+camera = ["camerax-core", "camerax-camera2", "camerax-lifecycle", "camerax-view"]
 
 [plugins]
 android-application     = { id = "com.android.application",                    version.ref = "agp" }

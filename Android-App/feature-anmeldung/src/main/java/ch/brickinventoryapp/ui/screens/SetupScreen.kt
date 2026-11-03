@@ -37,9 +37,6 @@ import androidx.compose.foundation.border
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
-import com.google.accompanist.permissions.rememberPermissionState
 import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -296,19 +293,18 @@ fun SetupScreen(
 }
 
 /** QR scanner for setup — reuses the proven CameraPreviewBarcode with QR_CODE format */
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
-    val cameraPermission = rememberPermissionState(android.Manifest.permission.CAMERA)
+    val cameraPermission = rememberKameraErlaubnis()
     var frozen by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (!cameraPermission.status.isGranted) cameraPermission.launchPermissionRequest()
+        if (!cameraPermission.erteilt) cameraPermission.anfragen()
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            cameraPermission.status.isGranted -> {
+            cameraPermission.erteilt -> {
                 // Reuse proven camera implementation with QR-only scanner
                 QrCameraPreview(
                     frozen = frozen,
@@ -333,7 +329,7 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                 }
             }
             else -> {
-                KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
+                KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
         IconButton(onClick = onDismiss, Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {

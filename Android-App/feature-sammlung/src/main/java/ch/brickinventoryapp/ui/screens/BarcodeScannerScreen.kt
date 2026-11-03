@@ -35,7 +35,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.viewinterop.AndroidView
-import com.google.accompanist.permissions.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import android.view.MotionEvent
@@ -45,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ui.theme.Abstaende
 
-@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun BarcodeScannerScreen(
     onResult: (String) -> Unit,
@@ -59,7 +57,7 @@ fun BarcodeScannerScreen(
     onSetNumberResult: (String) -> Unit = onResult,
     onDismiss: () -> Unit
 ) {
-    val cameraPermission = rememberPermissionState(android.Manifest.permission.CAMERA)
+    val cameraPermission = rememberKameraErlaubnis()
     val defaultHint = stringResource(R.string.scanner_hint_default)
     val detectedHintFmt = stringResource(R.string.scanner_hint_detected)
     val confirmingHint = stringResource(R.string.scanner_hint_confirming)
@@ -71,7 +69,7 @@ fun BarcodeScannerScreen(
     var cameraCtrl by remember { mutableStateOf<CameraControl?>(null) }
 
     LaunchedEffect(Unit) {
-        if (!cameraPermission.status.isGranted) cameraPermission.launchPermissionRequest()
+        if (!cameraPermission.erteilt) cameraPermission.anfragen()
     }
 
     // Toggle torch when state changes
@@ -88,7 +86,7 @@ fun BarcodeScannerScreen(
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            cameraPermission.status.isGranted -> {
+            cameraPermission.erteilt -> {
                 CameraPreviewBarcode(
                     frozen = frozen,
                     ocrEnabled = ocrEnabled,
@@ -162,7 +160,7 @@ fun BarcodeScannerScreen(
                 }
             }
             else -> {
-                KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
+                KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
         IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {
