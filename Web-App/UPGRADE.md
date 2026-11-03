@@ -1077,6 +1077,55 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
   auf eine neue PostgreSQL-Hauptversion kommt erst nach Freigabe im
   Dependency-Dashboard: Er braucht einen Umzug der Daten (`POSTGRES-18.md`).
 
+**Eigene, auf BRICK_HOST beschränkte CA (empfohlen, nicht automatisch)**
+
+Caddys eigene Wurzel gilt auf jedem Gerät, das sie installiert hat, für jede
+Adresse: Wer ihren Schlüssel aus `./caddy/data/caddy/pki/authorities/local/`
+oder aus einer Sicherung von `./caddy/` bekommt, stellt Zertifikate für Bank
+und Mail aus, denen diese Geräte trauen. `scripts/ca-einrichten.sh` legt
+stattdessen eine Wurzel an, die nur für `BRICK_HOST` gilt (Name Constraints),
+und eine Zwischenstelle für Caddy; der Schlüssel der Wurzel bleibt nicht auf
+dem Server. Ohne diese Schritte läuft alles wie bisher.
+
+1. Im Ordner mit `compose.yaml`:
+   ```
+   sudo sh scripts/ca-einrichten.sh
+   ```
+   Mit sudo, weil Caddy im Container als root ohne Capabilities nur Dateien
+   liest, die root gehören. Es liest `BRICK_HOST` aus `.env` (oder
+   `sudo sh scripts/ca-einrichten.sh nas.example.lan`)
+   und schreibt `./caddy/ca/root.crt`, `zwischen.crt`, `zwischen-kette.crt`
+   und `zwischen.key`. Den Schlüssel der Wurzel verwirft es; wer ihn behalten
+   will: `sudo WURZEL_SCHLUESSEL=/media/usb/brickinventory-wurzel.key sh scripts/ca-einrichten.sh`
+   — die Datei danach vom Server wegbringen. Die Ausgabe nennt den neuen
+   Fingerabdruck. Braucht `openssl` auf dem Server.
+2. Caddy mit der neuen CA starten und die alte CA samt ihren Zertifikaten
+   entfernen, sonst liefert Caddy bis zur nächsten Erneuerung noch das alte
+   Blatt aus (vorher eine Kopie offline ablegen, wer zurück will):
+   ```
+   docker compose stop caddy
+   sudo rm -rf caddy/data/caddy/pki/authorities/local caddy/data/caddy/certificates/local
+   docker compose up -d caddy
+   ```
+   `compose.yaml` hängt `./caddy/ca` nur lesend ein; das Startskript nimmt
+   die eigene CA, sobald `zwischen.key` dort liegt, und gibt der App deren
+   Wurzel (`/ca.crt`, QR-Code). Prüfen: Einstellungen → Sicherheit zeigt den
+   Fingerabdruck aus Schritt 1.
+3. Auf jedem Gerät die alte Wurzel „BrickInventory“ entfernen und die neue
+   von `http://<BRICK_HOST>/ca.crt` installieren (Abschnitt 14, Fingerabdruck
+   vergleichen).
+4. Die Android-App einmal neu verknüpfen (QR-Code): Sie meldet sonst ein
+   geändertes Zertifikat und verlangt den neuen Fingerabdruck.
+5. Sicherungen von `./caddy/` aus der Zeit davor enthalten den Schlüssel der
+   alten, unbeschränkten Wurzel: löschen oder wie ein Passwort verwahren.
+   Ist die alte Wurzel von allen Geräten entfernt, ist er wertlos.
+
+Die Zwischenstelle gilt 3649 Tage. Danach (oder bei Verdacht auf einen
+abgeflossenen `zwischen.key`) mit `sudo NEU=1 sh scripts/ca-einrichten.sh` eine
+neue CA anlegen und die Schritte 2–4 wiederholen. Zurück zu Caddys CA:
+`./caddy/ca` umbenennen und Caddy neu starten; er legt dann eine neue,
+unbeschränkte Wurzel an (Schritte 3–4).
+
 **Beim Update** (`docker compose up -d --build`)
 
 - **pgweb** startet mit `--lock-session`: Die Oberfläche bietet keinen

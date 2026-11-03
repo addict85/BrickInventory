@@ -176,7 +176,7 @@ test('die App ist nur über Caddy erreichbar', () => {
 test('Caddy: interne CA, Wurzel in der Kette, eigene Anfragekennung, /ca.crt im Klartext', () => {
   const datei = fs.readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
     .split('\n').filter(z => !/^\s*#/.test(z)).join('\n');
-  assert.match(datei, /issuer internal \{\s*sign_with_root\s*\}/, 'Caddy liefert die Wurzel nicht in der Kette aus');
+  assert.match(datei, /issuer internal \{\s*\{\$BRICK_CA_SIGNIEREN:sign_with_root\}\s*\}/, 'Caddy liefert die Wurzel nicht in der Kette aus');
   assert.match(datei, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
   assert.match(datei, /http:\/\/ \{[\s\S]*handle \/ca\.crt[\s\S]*redir /, 'Port 80 leitet nicht um');
   assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
