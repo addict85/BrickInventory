@@ -1171,7 +1171,7 @@ window.I18N_EN = {
   'wanted.preis_offen_hint': 'The market price is fetched with the next daily price run.',
   'setup.required': 'required',
   'setup.optional': 'optional',
-  'setup.rb_hint': 'Rebrickable supplies sets, parts and images. Without this key the collection stays empty. It is free.',
+  'setup.rb_hint': 'Rebrickable supplies sets, parts and images. Without this key no new sets, parts or images are added. It is free.',
   'setup.bl_hint': 'BrickLink supplies the market prices for finances and price alerts. It needs four values from the API access.',
   'setup.bs_hint': 'Brickset supplies building instructions when Rebrickable has none.',
   'setup.check': 'Check key',

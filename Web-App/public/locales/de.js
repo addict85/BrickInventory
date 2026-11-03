@@ -1182,7 +1182,7 @@ window.I18N_DE = {
   'wanted.preis_offen_hint': 'Der Marktpreis wird beim nächsten täglichen Preislauf geholt.',
   'setup.required': 'notwendig',
   'setup.optional': 'freiwillig',
-  'setup.rb_hint': 'Rebrickable liefert Sets, Teile und Bilder. Ohne diesen Schlüssel bleibt die Sammlung leer. Er ist kostenlos.',
+  'setup.rb_hint': 'Rebrickable liefert Sets, Teile und Bilder. Ohne diesen Schlüssel kommen keine neuen Sets, Teile und Bilder dazu. Er ist kostenlos.',
   'setup.bl_hint': 'BrickLink liefert die Marktpreise für Finanzen und Preisalarme. Dafür braucht es vier Werte aus dem API-Zugang.',
   'setup.bs_hint': 'Brickset liefert Bauanleitungen, wenn Rebrickable keine hat.',
   'setup.check': 'Schlüssel prüfen',
