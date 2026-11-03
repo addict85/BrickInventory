@@ -70,6 +70,16 @@ CREATE INDEX idx_api_tokens_hard ON api_tokens USING btree (hard_expires_at) WHE
 CREATE INDEX idx_api_tokens_idle ON api_tokens USING btree (last_used) WHERE (expires_at IS NULL);
 CREATE INDEX idx_api_tokens_user_created ON api_tokens USING btree (user_id, created_at DESC);
 
+CREATE TABLE api_tokens_verbraucht (
+  token text NOT NULL,
+  user_id integer NOT NULL,
+  familie timestamp with time zone NOT NULL,
+  verbraucht_am timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT api_tokens_verbraucht_pkey PRIMARY KEY (token),
+  CONSTRAINT api_tokens_verbraucht_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_api_tokens_verbraucht_familie ON api_tokens_verbraucht USING btree (user_id, familie);
+
 CREATE TABLE app_logs (
   id bigint NOT NULL DEFAULT nextval('app_logs_id_seq'::regclass),
   level character varying(10) NOT NULL DEFAULT 'info'::character varying,

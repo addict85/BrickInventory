@@ -135,7 +135,7 @@ BEGIN
                     ELSE ARRAY[]::text[] END)) AS spalten
              FROM pg_catalog.pg_class c JOIN pg_catalog.pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
             WHERE c.relnamespace = 'public'::pg_catalog.regnamespace AND c.relkind IN ('r', 'p', 'v', 'm')
-              AND c.relname <> ALL (ARRAY['api_tokens', 'qr_login_tokens', 'user_sessions', 'webauthn_challenges',
+              AND c.relname <> ALL (ARRAY['api_tokens', 'api_tokens_verbraucht', 'qr_login_tokens', 'user_sessions', 'webauthn_challenges',
                                           'zweiter_faktor_codes', 'account_link_invites'])
             GROUP BY c.oid, c.relname LOOP
     EXECUTE pg_catalog.format('GRANT SELECT (%s) ON %s TO %I', pg_catalog.array_to_string(r.spalten, ', '), r.name, lesen);

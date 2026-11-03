@@ -472,7 +472,7 @@ export async function mailEingerichtet(): Promise<boolean> {
 }
 
 export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt' | 'token_neu' | 'qr_zugang_neu'
-  | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt';
+  | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
@@ -496,6 +496,8 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
                           : `„${o.durch ?? ''}“ hat das Konto „${o.konto ?? ''}“ zum Verwalter gemacht.`,
     verwaltung_faktor_entfernt: en ? `“${o.durch ?? ''}” removed the second factor of the account “${o.konto ?? ''}”.`
                                    : `„${o.durch ?? ''}“ hat den zweiten Faktor des Kontos „${o.konto ?? ''}“ entfernt.`,
+    token_wiederverwendet: en ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
+                              : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   }[art];
   const subject = en ? 'BrickInventory Manager — Change to your account' : 'BrickInventory Manager — Änderung an deinem Konto';
   const haushalt = o.haushalt?.length

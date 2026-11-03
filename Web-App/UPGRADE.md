@@ -1105,3 +1105,12 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
   beides ab. Die Android-App muss beim Löschen eines Gutscheins nachziehen
   (Passwortdialog, Rumpf am `DELETE`); bis dahin scheitert das Löschen dort
   mit der Meldung des Servers.
+- **Kopierte App-Tokens fallen auf** (Migration 0092): Ein durch
+  `POST /auth/token-rotieren` ersetzter Token bleibt als Hash in
+  `api_tokens_verbraucht` stehen, solange sein Gerät angemeldet ist. Kommt er
+  mehr als 60 Sekunden nach der ersten Nutzung des Nachfolgers wieder (als
+  Anfrage oder zum Tausch), endet die ganze Kette dieses Geräts samt
+  Nachfolger, und der Inhaber bekommt die Mail „ein schon ersetzter
+  App-Zugang wurde erneut benutzt“. Andere Geräte bleiben angemeldet. Für
+  Clients heisst das: den neuen Token speichern, bevor er benutzt wird, und
+  den alten danach nicht mehr schicken — die Android-App tut das schon.

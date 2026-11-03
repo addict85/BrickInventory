@@ -4,9 +4,8 @@ import { mailEingerichtet, sendKontoHinweisMail } from '../infra/mailer';
 import type { KontoHinweis } from '../infra/mailer';
 import { logAndContinue } from '../infra/httpError';
 import { householdStatus } from '../haushalt/haushalt';
-import { profil } from './konten';
 import { getSetting } from './settings';
-import { aktiveVerwalter } from './repository/konten';
+import { aktiveVerwalter, profilZeile as profil } from './repository/konten';
 
 type Angaben = { name?: string | undefined; konto?: string | undefined; durch?: string | undefined };
 

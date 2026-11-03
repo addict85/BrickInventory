@@ -27,6 +27,8 @@
  *      „die Leserolle sieht keine Geheimnisse“
  *   J  (03.11.2026) `REVOKE TEMPORARY … FROM PUBLIC` gestrichen → rot:
  *      „die Leserolle legt temporäre Tabellen an“
+ *   K  (03.11.2026) `api_tokens_verbraucht` aus der Sperrliste gestrichen →
+ *      rot: „SELECT token FROM api_tokens_verbraucht“
  *
  * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
  * Rolle an) und psql ab Version 15 (\getenv).
@@ -207,7 +209,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     try {
       assert.deepEqual((await l.query(`SELECT username, is_admin FROM users WHERE username = 'leseprobe'`)).rows, [{ username: 'leseprobe', is_admin: false }]);
       for (const sql of ['SELECT password_hash FROM users', 'SELECT reset_token FROM users', 'SELECT * FROM users',
-        'SELECT token FROM api_tokens', 'SELECT sid FROM user_sessions', 'SELECT geheimnis FROM zweiter_faktor',
+        'SELECT token FROM api_tokens', 'SELECT token FROM api_tokens_verbraucht', 'SELECT sid FROM user_sessions', 'SELECT geheimnis FROM zweiter_faktor',
         'SELECT value FROM global_settings'])
         await assert.rejects(l.query(sql), /permission denied/, sql);
       await assert.rejects(l.query(`UPDATE users SET is_admin = true`), /read-only|permission denied/);
