@@ -210,6 +210,7 @@ private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, onClick: ()
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AnmeldeFelder(
     username: String, onUsername: (String) -> Unit,
@@ -289,11 +290,13 @@ private fun AnmeldeFelder(
     if (error != null) FormularMeldung(error, fehler = true)
 
     // Ohne Häkchen ein Token ohne Verwalterrechte, auch für ein Verwalterkonto.
-    Row(verticalAlignment = Alignment.CenterVertically,
+    // Oben bündig: Das Häkchen gehört zur ersten Zeile, nicht zur Mitte des Blocks
+    // (bei grosser Schrift drei Zeilen).
+    Row(verticalAlignment = Alignment.Top,
         modifier = Modifier.fillMaxWidth().toggleable(value = vollerZugriff, role = Role.Checkbox,
             onValueChange = onVollerZugriff)) {
         Checkbox(checked = vollerZugriff, onCheckedChange = null)
-        Column(Modifier.padding(start = 8.dp)) {
+        Column(Modifier.padding(start = 8.dp, top = 1.dp)) {
             Text(stringResource(R.string.login_full_access), style = MaterialTheme.typography.bodyMedium)
             Text(stringResource(R.string.login_full_access_hint), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -327,15 +330,17 @@ private fun AnmeldeFelder(
     // Der Registrier-Link erscheint NUR bei einem ausdruecklichen `true`.
     // `null` heisst „noch nicht gefragt" oder „der Server hat nicht
     // geantwortet" — in beiden Faellen fuehrte der Knopf ins Leere.
-    if (registrierungOffen == true) {
-        TextButton(onClick = { onFormular(AnmeldeFormular.REGISTRIEREN) },
-            modifier = Modifier.fillMaxWidth()) {
-            Text(stringResource(R.string.login_no_account))
+    // Beide Verweise in einer umbrechenden Reihe: untereinander lag zwischen ihnen der
+    // doppelte Abstand des Formulars.
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        if (registrierungOffen == true) {
+            TextButton(onClick = { onFormular(AnmeldeFormular.REGISTRIEREN) }) {
+                Text(stringResource(R.string.login_no_account))
+            }
         }
-    }
-    TextButton(onClick = { onFormular(AnmeldeFormular.PASSWORT_VERGESSEN) },
-        modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.login_forgot))
+        TextButton(onClick = { onFormular(AnmeldeFormular.PASSWORT_VERGESSEN) }) {
+            Text(stringResource(R.string.login_forgot))
+        }
     }
 }
 

@@ -180,7 +180,7 @@ fun GalleryScreen(
             // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster. Scannen
             // sitzt daneben, damit unten nur EIN Knopf schwebt. Im Fehlerzustand nicht:
             // Ohne Sammlung gibt es nichts zu suchen.
-            if (anzeige != GalerieAnzeige.FEHLER) SucheMitFilter(
+            if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) SucheMitFilter(
                 wert = searchInput,
                 onWert = { searchInput = it; onQueryChange(it) },
                 platzhalter = stringResource(R.string.gallery_search_placeholder),
@@ -276,7 +276,8 @@ fun GalleryScreen(
 
         // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
         // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
-        if (anzeige != GalerieAnzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+        // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
+        if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
             stringResource(R.string.gallery_add_set), { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )

@@ -38,7 +38,7 @@
     <string name="settings_language_de">German</string>
 
     <!-- ══════════════ Login screen ══════════════ -->
-    <string name="login_title">Welcome back</string>
+    <string name="login_title">Sign in to your server</string>
     <string name="login_username">Username</string>
     <string name="login_password">Password</string>
     <string name="login_button">Sign in</string>
@@ -229,6 +229,7 @@
     <string name="detail_price_none_yet">no price yet</string>
     <string name="detail_purchase_none">not recorded</string>
     <string name="detail_storage_ph">e.g. box 3</string>
+    <string name="detail_storage_none">No storage location</string>
     <string name="filter_condition_all">All</string>
     <string name="filter_storage_all">All locations</string>
     <string name="filter_button">Filter</string>
@@ -881,7 +882,7 @@
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
     <string name="setup_qr_pin">The code also names the server\'s certificate. The app will accept only that one.</string>
-    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it above.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
+    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it with the button below.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
     <string name="setup_altbestand_titel">Encrypted connections only</string>
     <string name="setup_qr_klartext_abgelehnt">This QR code names an unencrypted address (http). The app only connects via https: switch the server to https (README, “HTTPS with your own CA”) and create the code again.</string>
     <string name="setup_url_unlesbar">This address cannot be read. Example: https://brick.fritz.box</string>

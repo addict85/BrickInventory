@@ -41,6 +41,12 @@ fun LagerortFeld(
     vorrat: List<String>,
     onWert: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /**
+     * Was im leeren Feld steht. In den Detailansichten „Kein Lagerort“ — ein Beispiel
+     * wie „z. B. Kiste 3“ im Auswahlrahmen las sich dort wie ein gesetzter Ort; das
+     * Beispiel steht nur beim Erfassen (LagerortErfassung).
+     */
+    platzhalter: String = stringResource(R.string.detail_storage_none),
 ) {
     // Schluessel ist der Wert von aussen: Kommt ein anderer (anderes Set, oder
     // der normalisierte Wert nach dem Speichern), soll das Feld ihn zeigen
@@ -65,7 +71,7 @@ fun LagerortFeld(
                 if (it.length <= 60) { text = it; offen = true; onWert(it) }
             },
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.detail_storage_ph), style = MaterialTheme.typography.bodySmall,
+            placeholder = { Text(platzhalter, style = MaterialTheme.typography.bodySmall,
                 maxLines = 1, overflow = TextOverflow.Ellipsis) },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen)
@@ -106,6 +112,6 @@ fun LagerortErfassung(
         Text(stringResource(R.string.detail_storage),
              style = MaterialTheme.typography.labelLarge)
         LagerortFeld(wert = wert, vorrat = vorrat, onWert = onWert,
-                     modifier = Modifier.fillMaxWidth())
+                     modifier = Modifier.fillMaxWidth(), platzhalter = stringResource(R.string.detail_storage_ph))
     }
 }

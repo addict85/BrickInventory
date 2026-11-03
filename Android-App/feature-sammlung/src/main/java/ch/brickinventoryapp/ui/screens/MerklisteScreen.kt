@@ -111,7 +111,10 @@ fun MerklisteScreen(
 
             // Scannen neben der Suche wie in der Galerie: unten schwebt nur EIN Knopf. Im
             // Fehlerzustand weder Suche noch Filter — es gibt nichts zu durchsuchen.
-            if (anzeige != Ladeanzeige.FEHLER) Row(
+            // Ohne Merkposten weder Suche noch Filter: Die Leermeldung bietet Merken und
+            // Scannen an, ein zweiter Scan-Knopf darüber wäre derselbe Weg noch einmal.
+            val mitKopf = anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER
+            if (mitKopf) Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -136,7 +139,7 @@ fun MerklisteScreen(
 
             // Der Zustand ist eine Einfachwahl mit drei Antworten — „beide“ ist die
             // Vorgabe, weil ein Filter sie immer hat (Zustandszeile kennt nur zwei).
-            if (anzeige != Ladeanzeige.FEHLER) ch.brickinventoryapp.ui.components.SegmentWahl(
+            if (mitKopf) ch.brickinventoryapp.ui.components.SegmentWahl(
                 optionen = listOf("" to stringResource(R.string.filter_condition_all),
                                   "N" to stringResource(R.string.condition_new),
                                   "U" to stringResource(R.string.condition_used)),
@@ -189,8 +192,9 @@ fun MerklisteScreen(
             }
         }
 
-        // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand nicht.
-        if (anzeige != Ladeanzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+        // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand
+        // nicht, und leer auch nicht: Dort steht „Set merken“ schon mitten im Bild.
+        if (anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
             stringResource(R.string.wanted_add_title), { maskeOffen = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
@@ -344,7 +348,9 @@ private fun MerkpostenErfassenDialog(
                     value = nummer,
                     onValueChange = { nummer = NumericInput.setNumber(it) },
                     label = { Text(stringResource(R.string.gallery_set_number)) },
-                    placeholder = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
+                    // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
+                    // Fokus, und der Dialog fokussiert das Feld sofort.
+                    supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
                     singleLine = true,
                     shape = Formen.knopf,
                     // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld

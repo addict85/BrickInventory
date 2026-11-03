@@ -1,0 +1,27 @@
+Gegenprobe: Leere Merkliste wieder mit schwebendem Knopf und Suchzeile samt Scan-Symbol
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: leere Merkliste bietet Merken und Scannen
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
+index 0ea2187..51bc7db 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/MerklisteScreen.kt
+@@ -113,7 +113,7 @@ fun MerklisteScreen(
+             // Fehlerzustand weder Suche noch Filter — es gibt nichts zu durchsuchen.
+             // Ohne Merkposten weder Suche noch Filter: Die Leermeldung bietet Merken und
+             // Scannen an, ein zweiter Scan-Knopf darüber wäre derselbe Weg noch einmal.
+-            val mitKopf = anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER
++            val mitKopf = anzeige != Ladeanzeige.FEHLER
+             if (mitKopf) Row(
+                 Modifier.fillMaxWidth(),
+                 verticalAlignment = Alignment.CenterVertically,
+@@ -194,7 +194,7 @@ fun MerklisteScreen(
+ 
+         // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand
+         // nicht, und leer auch nicht: Dort steht „Set merken“ schon mitten im Bild.
+-        if (anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
++        if (anzeige != Ladeanzeige.FEHLER) ch.brickinventoryapp.ui.components.ErfassenFab(
+             stringResource(R.string.wanted_add_title), { maskeOffen = true },
+             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+         )
