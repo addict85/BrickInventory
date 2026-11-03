@@ -8,6 +8,9 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
@@ -85,6 +88,8 @@ fun GalleryScreen(
     onSetClick: (String) -> Unit,
     /** Scroll-Zustand von aussen, damit er den Weg in die Detailansicht übersteht. */
     gridState: LazyGridState = rememberLazyGridState(),
+    /** Das Set, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert. */
+    gewaehlt: String? = null,
 ) {
     // Zustand und Aktionen vom ViewModel statt über Parameter (wie PartsScreen); die
     // Namen bleiben dieselben, damit der Rumpf darunter unverändert ist.
@@ -249,7 +254,8 @@ fun GalleryScreen(
                         itemsIndexed(sets, key = { _, s -> s.setNumber }) { index, set ->
                             Bewegt {
                                 SetCard(set, serverUrl, imageLoader, onSetClick, index,
-                                    preis = preise[set.setNumber], waehrung = currency)
+                                    preis = preise[set.setNumber], waehrung = currency,
+                                    ausgewaehlt = set.setNumber == gewaehlt)
                             }
                         }
                         if (loadingMore) {
@@ -377,6 +383,8 @@ fun SetCard(
     /** Marktpreis und G&V; fehlt beides, steht der Kaufpreis da (wie im Web). */
     preis: KachelPreis? = null,
     waehrung: String = "EUR",
+    /** Steht das Detail dieses Sets daneben? Dann trägt die Kachel einen Rahmen. */
+    ausgewaehlt: Boolean = false,
 ) {
     val ctx = LocalContext.current
     // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
@@ -405,7 +413,9 @@ fun SetCard(
             // Die Mindesthöhe gibt dem Bild Raum über den Etiketten; der Zuwachs geht an den
             // Bildbereich, die Textzeilen bleiben.
             modifier = Modifier.heightIn(min = 272.dp)
-                .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
+                .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier)
+                .semantics { selected = ausgewaehlt }
+                .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.karte) else Modifier),
             onClick = { onClick(set.setNumber) }
         ) {
             Column {

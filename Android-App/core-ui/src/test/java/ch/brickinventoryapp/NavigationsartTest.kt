@@ -3,6 +3,7 @@ package ch.brickinventoryapp
 import ch.brickinventoryapp.ui.Navigationsart
 import ch.brickinventoryapp.ui.navigationsart
 import ch.brickinventoryapp.ui.zweiSpaltig
+import ch.brickinventoryapp.ui.listeUndDetail
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -13,6 +14,8 @@ import org.junit.Test
  *   A  `>=` durch `>` ersetzt → rot: „genau an der Schwelle steht die Seitenleiste"
  *   B  Schwelle auf 840 gesetzt → rot: dieselbe Prüfung und „ein kleines Tablet"
  *   C  (01.11.2026) GROSSE_BREITE_DP auf 600 → rot „zwei Spalten erst ab 840 dp“
+ *   D  (03.11.2026, modbau) in listeUndDetail() `>` statt `>=` → rot „Liste und
+ *      Detail nebeneinander ab 840 dp“
  */
 class NavigationsartTest {
 
@@ -31,6 +34,14 @@ class NavigationsartTest {
     fun `ein kleines Tablet und ein grosses haben die Seitenleiste`() {
         assertEquals(Navigationsart.SEITENLEISTE, navigationsart(700f))
         assertEquals(Navigationsart.SEITENLEISTE, navigationsart(1280f))
+    }
+
+    @Test
+    fun `Liste und Detail nebeneinander ab 840 dp`() {
+        assertEquals(false, listeUndDetail(411f))
+        assertEquals(false, listeUndDetail(839.5f))
+        assertEquals(true, listeUndDetail(840f))
+        assertEquals(true, listeUndDetail(1280f))
     }
 
     @Test

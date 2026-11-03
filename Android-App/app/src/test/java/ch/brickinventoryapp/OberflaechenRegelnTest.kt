@@ -89,6 +89,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
  *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
+ *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -502,6 +503,36 @@ class OberflaechenRegelnTest {
             compose.onNodeWithContentDescription(ctx.getString(R.string.sort_menu_cd, vorgabe)).performClick()
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.gallery_sort_name)).fetchSemanticsNode()
+        } finally {
+            welt.close()
+        }
+    }
+
+    /**
+     * List-Detail auf dem Tablet: Der geöffnete Merkposten steht rechts neben der
+     * Liste, die Liste bleibt sichtbar, und seine Karte ist als gewählt markiert.
+     */
+    @Test
+    fun `Tablet zeigt Merkliste und Detail nebeneinander`() {
+        RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.merkliste().also { it.ladeMerkliste() }
+            zeige {
+                ch.brickinventoryapp.ui.screens.MerklisteUndDetail(vm = vm,
+                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), nebeneinander = true,
+                    onScan = {}, onOeffnenEinzeln = { _, _ -> error("auf dem Tablet keine eigene Seite") })
+            }
+            warte("Merkliste") { vm.merklisteState.value.merkposten.isNotEmpty() }
+            val karte = compose.onNode(hasText("Titanic", substring = true) and hasClickAction())
+            karte.performClick()
+            compose.waitForIdle()
+            val zurueck = compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).fetchSemanticsNode().boundsInRoot
+            val liste = compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
+            assertTrue("Das Detail steht rechts der Liste ($liste / $zurueck)", zurueck.left >= liste.right)
+            compose.onNode(hasText("Titanic", substring = true) and hasClickAction() and
+                androidx.compose.ui.test.SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Selected, true))
+                .fetchSemanticsNode()
         } finally {
             welt.close()
         }

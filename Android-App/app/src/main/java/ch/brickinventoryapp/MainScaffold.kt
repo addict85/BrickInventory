@@ -13,7 +13,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import ch.brickinventoryapp.ui.theme.linksBis
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -175,13 +174,14 @@ fun MainScaffold(
             val csvImport by csvImportState.collectAsStateWithLifecycle()
             Row(Modifier.fillMaxSize().padding(padding)) {
                 Column(Modifier.weight(1f).fillMaxHeight()) {
-                    // Auf dem Tablet gehört der Umschalter zum Inhalt: linksbündig über
-                    // Suchfeld und Raster, auf deren Lesebreite begrenzt.
-                    if (art == Navigationsart.SEITENLEISTE && currentDest?.route?.let { it in SAMMLUNG } == true) {
-                        SammlungUmschalter(currentDest.route, onWahl = { ziel ->
-                            onTabAngetippt(ziel)
-                            navController.zuReiter(ziel.route)
-                        }, modifier = Modifier.linksBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste))
+                    // Auf dem Tablet gehört der Umschalter zum Inhalt, so breit wie Suchfeld
+                    // und Raster darunter. Neben einem offenen Set-Detail bleibt „Sets“ gewählt.
+                    if (art == Navigationsart.SEITENLEISTE && currentDest?.route?.let { it in SAMMLUNG || it == Screen.SetDetail.route } == true) {
+                        SammlungUmschalter(currentDest.route.takeUnless { it == Screen.SetDetail.route } ?: Screen.Gallery.route,
+                            onWahl = { ziel ->
+                                onTabAngetippt(ziel)
+                                navController.zuReiter(ziel.route)
+                            })
                     }
                     ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
                     if (csvImport.running) {
@@ -243,7 +243,7 @@ private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Setti
 
 /** Die Routen, bei denen ein Ziel der Leiste als gewaehlt gilt. */
 private fun zieleVon(screen: Screen): Set<String> = when (screen) {
-    Screen.Gallery -> SAMMLUNG
+    Screen.Gallery -> SAMMLUNG + Screen.SetDetail.route
     Screen.Mehr -> MEHR
     else -> setOf(screen.route)
 }

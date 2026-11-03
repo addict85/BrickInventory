@@ -42,7 +42,6 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.theme.linksBis
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -66,9 +65,9 @@ fun SucheMitFilter(
     /** Das Sortiermenü (SortierMenue) zwischen Filter und Scannen; null = keine Sortierung. */
     sortierung: (@Composable () -> Unit)? = null,
 ) {
-    // Auf dem Tablet nicht über die ganze Breite: Ein Suchfeld von 1900 px ist keines mehr.
-    // Linksbündig wie Kennzahlen und Raster darunter, die ebenfalls links beginnen.
-    BoxWithConstraints(Modifier.linksBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste)) {
+    // So breit wie das Raster darunter (Lesebreite.kt): Endete die Leiste bei 840 dp,
+    // stand sie auf dem Tablet mitten über den Kacheln.
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
         // Wenig Platz oder grosse Schrift: Der Filter wird zum Symbol, damit dem
         // Suchfeld genug Breite für seinen Platzhalter bleibt.
         val nurSymbol = maxWidth < 360.dp || ch.brickinventoryapp.ui.components.grosseSchrift()

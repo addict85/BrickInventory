@@ -160,7 +160,7 @@ fun NavGraphBuilder.collectionGraph(
             }
             val vorschauName = vorschau?.name
             val detailVm: SetDetailViewModel = hiltViewModel()
-            ch.brickinventoryapp.ui.components.MitZiel(this) {
+            val detail: @Composable () -> Unit = {
             SetDetailScreen(
                 setNumber = setNumber,
                 vm = detailVm,
@@ -182,6 +182,34 @@ fun NavGraphBuilder.collectionGraph(
                     navController.navigate(Screen.PdfViewer.createRoute(url, title))
                 }
             )
+            }
+            // Auf breiten Fenstern steht die Galerie links daneben (Lesebreite.kt); ein
+            // anderes Set ersetzt dieses Detail, statt sich darüber zu stapeln. Ohne
+            // gemeinsames Bild: Kachel und Detail sind dann beide zu sehen.
+            androidx.compose.foundation.layout.BoxWithConstraints {
+                if (galerieUnten != null && ch.brickinventoryapp.ui.listeUndDetail(maxWidth.value)) {
+                    val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+                    ReiterGeruest(stringResource(R.string.nav_gallery), vm, navController, bottomNavItems, snackbarHostState) {
+                        ch.brickinventoryapp.ui.components.ListeUndDetail(
+                            liste = {
+                                GalleryScreen(
+                                    vm = galerieUnten,
+                                    erfassung = erfassung,
+                                    imageLoader = imageLoader,
+                                    onScanBarcode = { erfassung.setScannerSource("gallery_search"); navController.navigate(Screen.BarcodeScanner.route) },
+                                    onSetClick = { sn ->
+                                        if (sn != setNumber) navController.navigate(Screen.SetDetail.createRoute(sn)) {
+                                            popUpTo(Screen.SetDetail.route) { inclusive = true }
+                                        }
+                                    },
+                                    gridState = galleryGridState,
+                                    gewaehlt = setNumber,
+                                )
+                            },
+                            detail = detail,
+                        )
+                    }
+                } else ch.brickinventoryapp.ui.components.MitZiel(this@composable) { detail() }
             }
         }
         composable(Screen.Parts.route) {

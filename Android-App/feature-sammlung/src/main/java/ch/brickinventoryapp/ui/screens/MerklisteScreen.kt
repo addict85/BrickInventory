@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
@@ -62,6 +65,8 @@ fun MerklisteScreen(
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
     onOeffnen: (String, String) -> Unit,
+    /** Setnummer und Zustand des Merkpostens, dessen Detail daneben offen ist. */
+    gewaehlt: Pair<String, String>? = null,
 ) {
     val zustand by vm.merklisteState.collectAsStateWithLifecycle()
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
@@ -94,8 +99,9 @@ fun MerklisteScreen(
         scopeModus != ch.brickinventoryapp.data.ScopeFilter.ALL
     val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.laedt, zustand.fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
-        // Kopf und Liste auf derselben Lesebreite, damit sie auf dem Tablet fluchten.
-        Column(Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.liste)) {
+        // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
+        // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
+        Column(Modifier.fillMaxSize()) {
 
             ScopeFilterZeile(
                 members  = blick.householdMembers,
@@ -163,16 +169,18 @@ fun MerklisteScreen(
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
                     fehlerKlasse = zustand.fehlerKlasse,
                 ) {
-                    LazyColumn(
-                        // Die Lesebreite setzt die Spalte darüber, für Kopf und Liste zugleich.
+                    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
+                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(340.dp),
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         // Platz für den Erfassen-Knopf: Ohne ihn verdeckt er die letzte Zeile.
                         contentPadding = PaddingValues(bottom = ch.brickinventoryapp.ui.components.FabPlatz),
                     ) {
                         items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
                             Bewegt {
                                 MerkpostenZeile(w, appState.serverUrl, imageLoader,
+                                    gewaehlt = gewaehlt == w.setNumber to w.condition,
                                     onOeffnen = { onOeffnen(w.setNumber, w.condition) })
                             }
                         }
@@ -200,6 +208,40 @@ fun MerklisteScreen(
         )
     }
 
+}
+
+/**
+ * Die Merkliste mit dem Detail des geöffneten Merkpostens daneben, wenn
+ * [nebeneinander] (breites Fenster, listeUndDetail()); sonst öffnet [onOeffnenEinzeln]
+ * das Detail als eigene Seite. Ein Zustand für beide Hälften: dasselbe ViewModel.
+ */
+@Composable
+fun MerklisteUndDetail(
+    vm: MerklisteViewModel,
+    imageLoader: coil3.ImageLoader,
+    nebeneinander: Boolean,
+    onScan: () -> Unit,
+    onOeffnenEinzeln: (String, String) -> Unit,
+) {
+    var offen by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    val auswahl = offen?.let { it[0] to it[1] }
+    val liste: @Composable () -> Unit = {
+        MerklisteScreen(vm = vm, imageLoader = imageLoader, onScan = onScan,
+            onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z) else onOeffnenEinzeln(sn, z) },
+            gewaehlt = auswahl.takeIf { nebeneinander })
+    }
+    if (nebeneinander && auswahl != null) {
+        ch.brickinventoryapp.ui.components.ListeUndDetail(
+            liste = liste,
+            detail = {
+                // key: Ein anderer Merkposten ist ein anderes Detail (Dialoge, Zoom zu).
+                androidx.compose.runtime.key(auswahl) {
+                    MerkpostenDetailScreen(vm = vm, setNumber = auswahl.first, condition = auswahl.second,
+                        imageLoader = imageLoader, onBack = { offen = null })
+                }
+            },
+        )
+    } else liste()
 }
 
 /**
@@ -339,12 +381,19 @@ private fun MerkpostenErfassenDialog(
 @Composable
 private fun MerkpostenZeile(
     w: MerkpostenAnsicht, serverUrl: String, imageLoader: coil3.ImageLoader,
+    gewaehlt: Boolean,
     onOeffnen: () -> Unit,
 ) {
     // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie
     // trägt keinen Knopf, tut also auf ihrer ganzen Fläche dasselbe;
-    // Übernehmen und Löschen stehen im Detail.
-    Card(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onOeffnen)) {
+    // Übernehmen und Löschen stehen im Detail. Steht das Detail daneben, trägt
+    // die geöffnete Karte einen Rahmen in der Hauptfarbe.
+    Card(
+        Modifier.fillMaxWidth()
+            .semantics { selected = gewaehlt }
+            .clickable(role = Role.Button, onClick = onOeffnen),
+        border = if (gewaehlt) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+    ) {
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
