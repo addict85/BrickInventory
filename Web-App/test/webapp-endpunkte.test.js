@@ -274,6 +274,10 @@ const NUR_WEB = new Map([
    EINRICHTUNG],
   ['/api/v1/bestand',
    ALLES_LOESCHEN],
+  ['/api/v1/vouchers/:X/klartext',
+   'Nummer und PIN im Klartext, bestätigt und protokolliert. Die App zieht nach: Seit die ' +
+   'Liste nur die Maske trägt, braucht sie die Route zum Anzeigen und Kopieren (UPGRADE.md, ' +
+   'Abschnitt 32). Danach diese Zeile streichen.'],
 ]);
 
 test('was nur die Webapp kann, hat einen Grund', () => {

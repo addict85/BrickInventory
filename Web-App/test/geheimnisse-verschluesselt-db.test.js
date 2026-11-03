@@ -67,11 +67,10 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
       body: JSON.stringify({ number: '5045076374450012121', pin: '8642', amount: 50, currency: 'CHF' }) });
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
-    assert.equal(b.voucher.pin, '8642');
+    assert.equal(b.voucher.pin, '•••', 'nach aussen nur die Maske');
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
     assert.ok(roh.startsWith('v2:') && !roh.includes('8642'), roh);
-    const liste = await (await fetch(`${base}/api/v1/vouchers`)).json();
-    assert.equal(liste.vouchers.find(v => v.id === b.voucher.id).pin, '8642');
+    assert.equal((await _req('src/gutscheine/dienst.js').gutschein(uid, b.voucher.id)).pin, '8642', 'entschlüsselt lesbar');
   });
 
   await t.test('TOTP-Geheimnis', async () => {

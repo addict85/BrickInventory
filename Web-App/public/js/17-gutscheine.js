@@ -38,15 +38,22 @@ const el = (id) => document.getElementById(id);
 // Reihenfolge durch und haengt das Ereignis ZULETZT an. Ein `(ev, id)` waere
 // also still verdreht — die id landete in `ev`.
 
-/**
- * Die PIN-Anzeige.
- *
- * Standardmässig verdeckt. Nicht aus Sicherheitsglauben — wer die Seite offen
- * hat, ist angemeldet und kann ihn einblenden —, sondern gegen die Schulter
- * daneben und gegen Bildschirmfotos: Eine Liste mit allen PINs im Klartext
- * ist genau das, was man nicht versehentlich herumzeigen will.
- */
+/** Eingeblendete PINs: auch nach dem Abruf nur auf Wunsch, gegen die Schulter daneben. */
 const _sichtbar = new Set();
+
+/** Nummer und PIN im Klartext je id: Die Liste des Servers trägt nur die Maske,
+ * den Klartext gibt es bestätigt und protokolliert, einmal je Gutschein und Seite. */
+const _klartext = new Map();
+
+async function holeKlartext(id) {
+  if (_klartext.has(id)) return _klartext.get(id);
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.klartext_title'), tRaw('vouchers.klartext_text'), 'schloss');
+  if (password === null) return null;
+  const d = await mitZweitemFaktor(z => api('POST', `/v1/vouchers/${id}/klartext`, { password, ...z }));
+  if (!d?.success) { if (d) toast(d.error || tRaw('vouchers.load_error'), 'error'); return null; }
+  _klartext.set(id, { number: d.number, pin: d.pin });
+  return _klartext.get(id);
+}
 
 /**
  * Das Kopieren-Symbol — zwei Blaetter, wie ueberall sonst auch.
@@ -63,7 +70,7 @@ const KOPIE_ICON_SVG =
 
 /** „6123-4567-8901“ und „612345678901“ → „6123 4567 8901“. */
 export function gruppiereNummer(roh) {
-  return String(roh ?? '').replace(/[\s-]/g, '').replace(/(.{4})(?=.)/g, '$1 ');
+  return String(roh ?? '').replace(/[\s-]/g, '').replace(/(\d{4})(?=\d)/g, '$1 ');
 }
 
 /** Die Währung der Karten des Ausgabelandes; ohne Land die des Kontos. */
@@ -83,17 +90,18 @@ function waehrungPruefen() {
 }
 
 function zeile(g) {
-  const pinOffen = _sichtbar.has(g.id);
+  const k = _klartext.get(g.id);
+  const pinOffen = _sichtbar.has(g.id) && !!k;
   // Die Nummer in Vierergruppen: 19 Ziffern am Stück sind beim Abtippen an
   // der Kasse nicht zu lesen, und genau dafür ist sie da. Erst die eigenen
   // Trenner weg, sonst zählen sie mit („6123 -456 7-89“). Kopiert wird
   // trotzdem die ROHE Nummer — mit Leerzeichen nimmt sie kein Bezahlfeld an.
-  const nummer = gruppiereNummer(g.number);
+  const nummer = gruppiereNummer(k ? k.number : g.number);
   return `
     <div class="voucher-row" data-id="${g.id}">
       <div class="voucher-main">
         <div class="voucher-num-row">
-          <span class="voucher-num" title="${esc(g.number)}">${esc(nummer)}</span>
+          <span class="voucher-num">${esc(nummer)}</span>
           <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="nummer"
                   title="${tRaw('vouchers.copy_number')}"
                   aria-label="${tRaw('vouchers.copy_number')}">${KOPIE_ICON_SVG}</button>
@@ -114,7 +122,7 @@ function zeile(g) {
       </div>
       <div class="voucher-pin">
         <span class="voucher-pin-label">${t('vouchers.pin')}</span>
-        <code>${g.pin ? (pinOffen ? esc(g.pin) : '••••') : '–'}</code>
+        <code>${g.pin ? (pinOffen ? esc(k.pin) : '••••') : '–'}</code>
         ${g.pin ? `<button class="v-btn" data-click="gutscheinPinUmschalten" data-arg="${g.id}"
                      title="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}"
                      aria-label="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}">
@@ -184,8 +192,10 @@ export function gutscheinBearbeiten(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
   _bearbeitet = g.id;
-  el('v-number').value = g.number;
-  el('v-pin').value    = g.pin || '';
+  // Ohne Abruf trägt das Formular die Maske; der Server lässt sie als „unverändert“ stehen.
+  const k = _klartext.get(g.id);
+  el('v-number').value = k ? k.number : g.number;
+  el('v-pin').value    = (k ? k.pin : g.pin) || '';
   el('v-amount').value = betragFuerFeld(g.amount);
   const cur = el('v-currency'); if (cur) cur.value = g.currency;
   el('vouchers-form-title').textContent = tRaw('vouchers.edit');
@@ -223,6 +233,7 @@ export async function gutscheinSpeichern() {
   if (_bearbeitet) {
     const d = await api('PUT', `/v1/vouchers/${_bearbeitet}`, { number, pin, amount, currency });
     if (!d?.success) { toast(d?.error || tRaw('vouchers.save_error'), 'error'); return; }
+    _klartext.delete(_bearbeitet);
     toast(tRaw('vouchers.saved'), 'success');
     formularLeeren(); el('v-pdf').parentElement.style.display = '';
     await ladeGutscheine();
@@ -299,9 +310,11 @@ export async function gutscheinLoeschen(id) {
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/vouchers/${id}`, { password, ...z }));
   if (d === null) return;
   if (!d?.success) { toast(d?.error || tRaw('vouchers.delete_error'), 'error'); return; }
-  // Rückgängig legt die Karte mit Nummer, PIN und Betrag neu an; ein PDF ginge dabei verloren.
-  toast(tRaw('vouchers.deleted'), 'success', g.hat_pdf ? undefined : { text: tRaw('trash.undo'), fn: async () => {
-    const r = await api('POST', '/v1/vouchers', { number: g.number, pin: g.pin || '', amount: g.amount, currency: g.currency });
+  // Rückgängig legt die Karte neu an: nur mit abgerufenem Klartext und ohne PDF, das verloren ginge.
+  const k = _klartext.get(g.id);
+  _klartext.delete(g.id);
+  toast(tRaw('vouchers.deleted'), 'success', g.hat_pdf || !k ? undefined : { text: tRaw('trash.undo'), fn: async () => {
+    const r = await api('POST', '/v1/vouchers', { number: k.number, pin: k.pin || '', amount: g.amount, currency: g.currency });
     if (!r?.success) { toast(r?.error || tRaw('vouchers.save_error'), 'error'); return; }
     toast(tRaw('trash.restored'), 'success');
     await ladeGutscheine();
@@ -309,9 +322,11 @@ export async function gutscheinLoeschen(id) {
   await ladeGutscheine();
 }
 
-export function gutscheinPinUmschalten(id) {
+export async function gutscheinPinUmschalten(id) {
   const n = Number(id);
-  if (_sichtbar.has(n)) _sichtbar.delete(n); else _sichtbar.add(n);
+  if (_sichtbar.has(n)) _sichtbar.delete(n);
+  else if (await holeKlartext(n)) _sichtbar.add(n);
+  else return;
   ladeGutscheine();
 }
 
@@ -362,7 +377,9 @@ export function gutscheinPdfOeffnen(id) {
 export async function gutscheinKopieren(id, feld) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
-  const wert = feld === 'pin' ? (g.pin || '') : String(g.number);
+  const k = await holeKlartext(g.id);
+  if (!k) return;
+  const wert = feld === 'pin' ? (k.pin || '') : String(k.number);
   if (!wert) return;
   let geklappt = false;
   try {

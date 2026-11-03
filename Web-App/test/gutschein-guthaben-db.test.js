@@ -322,7 +322,10 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async (t) => {
     assert.equal(p.status, 200,
       `Ändern antwortete ${p.status}: ${JSON.stringify(pd)} — eine leergekaufte ` +
       'Karte liesse sich dann nicht mehr bearbeiten.');
-    assert.equal(pd.voucher.pin, '9999');
+    assert.equal(pd.voucher.pin, '•••', 'nach aussen nur die Maske');
+    const gespeichert = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [MIT_PIN]);
+    assert.equal(_req('src/infra/geheimnis.js').entschluessele(gespeichert.pin,
+      _req('src/gutscheine/repository/gutscheine.js').pinKontext(gespeichert.user_id, MIT_PIN)), '9999');
     assert.equal(pd.voucher.amount, 0, 'Und der Betrag bleibt, was er war');
     // Ein von Hand eingetippter Nullbetrag bleibt verboten.
     const n = await fetch(`${srv.base}/api/v1/vouchers/${MIT_PIN}`, {

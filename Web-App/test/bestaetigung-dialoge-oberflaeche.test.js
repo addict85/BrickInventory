@@ -14,6 +14,8 @@
  *   D  in 20-papierkorb.js bzw. 17-gutscheine.js wieder confirmDelete() und
  *      api() ohne Passwort → rot: „den Papierkorb leeren …" bzw. „einen
  *      Gutschein löschen …" (der Passwortdialog erscheint nicht)
+ *   E  in gutscheinPinUmschalten() holeKlartext() übergangen → rot: „die
+ *      Gutscheinliste zeigt die Maske …" (kein Passwortdialog)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -119,5 +121,26 @@ test('einen Gutschein löschen fragt Passwort und Code', async () => {
     await bestaetige(d, { passwort: 'Mein-Passwort-1', code: '135790' });
     assert.ok(await warte(() => rufe.length === 2), `nur ${rufe.length} Anfrage(n)`);
     assert.deepEqual(rufe[1], { password: 'Mein-Passwort-1', code: '135790' });
+  } finally { w.close(); }
+});
+
+test('die Gutscheinliste zeigt die Maske, Nummer und PIN erst nach Bestätigung', async () => {
+  const rufe = [];
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/vouchers': { success: true, vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }] },
+    '/v1/vouchers/3/klartext': (_u, o) => { rufe.push(JSON.parse(o.body)); return { success: true, id: 3, number: '6123456789012', pin: '4711' }; },
+  });
+  try {
+    await sicht(w, 'gutscheine');
+    assert.ok(await warte(() => d.querySelector('.voucher-row')), 'Gutscheinliste');
+    assert.equal(d.querySelector('.voucher-num').textContent, '…9012');
+    d.querySelector('[data-click="gutscheinPinUmschalten"]').click();
+    const modal = d.getElementById('confirm-modal');
+    assert.ok(await warte(() => modal.style.display === 'flex' && !d.getElementById('cd-pw-wrap').hidden), 'der Passwortdialog erscheint');
+    d.getElementById('cd-pw').value = 'Mein-Passwort-1';
+    d.getElementById('cd-confirm').click();
+    assert.ok(await warte(() => d.querySelector('.voucher-pin code')?.textContent === '4711'), 'die PIN erscheint nach der Bestätigung');
+    assert.equal(d.querySelector('.voucher-num').textContent, '6123 4567 8901 2');
+    assert.deepEqual(rufe, [{ password: 'Mein-Passwort-1' }]);
   } finally { w.close(); }
 });

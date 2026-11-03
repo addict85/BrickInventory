@@ -150,8 +150,8 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
         { number: '5045076374450011166', pin: '5225', amount: 400, currency: 'CHF' });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
-      assert.equal(b.voucher.number, '5045076374450011166');
-      assert.equal(b.voucher.pin, '5225');
+      assert.equal(b.voucher.number, '…1166');
+      assert.equal(b.voucher.pin, '•••');
       assert.equal(b.voucher.amount, 400, 'der Betrag kommt als ZAHL zurueck, nicht als Zeichenkette');
       assert.equal(b.voucher.currency, 'CHF');
       assert.equal(b.voucher.hat_pdf, false);
@@ -240,8 +240,8 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
-      assert.equal(b.voucher.number, '5045076374450019999');
-      assert.equal(b.voucher.pin, '4711');
+      assert.equal(b.voucher.number, '…9999');
+      assert.equal(b.voucher.pin, '•••');
       assert.equal(b.voucher.amount, 250);
       assert.equal(b.voucher.hat_pdf, true, 'der Gutschein muss sein PDF behalten');
       assert.equal(b.gelesen.number, '5045076374450019999', 'was gelesen wurde, kommt mit zurueck');
@@ -300,7 +300,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
-      assert.equal(b.voucher.number, '5045076374450017777', 'die Nummer kam aus dem PDF');
+      assert.equal(b.gelesen.number, '5045076374450017777', 'die Nummer kam aus dem PDF');
       assert.equal(b.voucher.amount, 125, 'der Betrag kam von Hand');
       assert.equal(b.voucher.currency, 'EUR');
     });
@@ -333,9 +333,38 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async (t) => {
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
       assert.equal(b.voucher.amount, 350, 'der neue Betrag');
-      assert.equal(b.voucher.number, '5045076374450011166', 'die Nummer darf nicht verschwinden');
-      assert.equal(b.voucher.pin, '5225', 'der PIN darf nicht verschwinden');
-      assert.equal(b.voucher.pin, '5225', 'der PIN darf nicht verschwinden');
+      const k = await (await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksOpa, 'POST', { password: PASS })).json();
+      assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225'], 'Nummer und PIN dürfen nicht verschwinden');
+    });
+
+    // Gegenprobe (03.11.2026 gemessen): in PUT die Maske nicht erkannt → rot
+    // „die Maske aus dem Formular ändert nichts“ (400 nummer_ungueltig).
+    await t.test('die Maske aus dem Formular ändert nichts', async () => {
+      const r = await jsonAn(`/api/v1/vouchers/${opasGutschein}`, keksOpa, 'PUT', { number: '…1166', pin: '•••', amount: 360 });
+      assert.equal(r.status, 200, await r.text());
+      const k = await (await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksOpa, 'POST', { password: PASS })).json();
+      assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225']);
+    });
+
+    // Gegenproben (03.11.2026 gemessen, je einzeln): fuerAussen() wieder mit
+    // z.number/z.pin → rot „die Liste zeigt nur das Ende“; bestaetigeMitFaktor()
+    // in /klartext entfernt → rot „Klartext nur mit Passwort“; protokolliere()
+    // entfernt → rot „… steht im Protokoll“.
+    await t.test('die Liste zeigt nur das Ende, Klartext nur mit Passwort, und er steht im Protokoll', async () => {
+      const liste = (await (await hole('/api/v1/vouchers', keksOpa)).json()).vouchers;
+      const mitPin = liste.find(v => v.id === opasGutschein);
+      assert.deepEqual([mitPin.number, mitPin.pin], ['…1166', '•••'], 'die Liste zeigt nur das Ende');
+      assert.ok(!JSON.stringify(liste).includes('5045076374450011166') && !JSON.stringify(liste).includes('5225'),
+        'Nummer oder PIN im Klartext in der Liste');
+      const ohne = await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksOpa, 'POST', {});
+      assert.deepEqual([ohne.status, (await ohne.json()).code], [400, 'aktuelles_passwort_falsch'], 'Klartext nur mit Passwort');
+      const fremd = await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksEnkel, 'POST', { password: PASS });
+      assert.equal(fremd.status, 404, 'ein fremdes Konto liest den Klartext');
+      await db.run("DELETE FROM verwaltungsprotokoll WHERE aktion = 'gutschein_klartext'");
+      const k = await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksOpa, 'POST', { password: PASS });
+      assert.deepEqual(await k.json(), { success: true, id: opasGutschein, number: '5045076374450011166', pin: '5225' });
+      assert.deepEqual(await db.all("SELECT verwalter_id, ziel_id, einzelheiten FROM verwaltungsprotokoll WHERE aktion = 'gutschein_klartext'"),
+        [{ verwalter_id: U.opa, ziel_id: U.opa, einzelheiten: '…1166' }], 'der Abruf steht im Protokoll');
     });
 
     await t.test('eine Karte auf die Nummer einer anderen umschreiben gibt 409', async () => {
@@ -467,7 +496,7 @@ testOberflaeche('Gutscheine in der Webapp: Marcos Nachbesserungen', async (t) =>
     // blieb bei der Gegenprobe gruen — die Anzeigefunktion darueber enthaelt
     // denselben Ausdruck, also bestand sie aus dem falschen Grund.
     const kopierRumpf = js.slice(js.indexOf('function gutscheinKopieren'));
-    assert.match(kopierRumpf.slice(0, 400), /String\(g\.number\)/,
+    assert.match(kopierRumpf.slice(0, 400), /String\(k\.number\)/,
       'in gutscheinKopieren wird nicht die rohe Nummer genommen');
     assert.ok(!/\.replace\(\/\(\.\{4\}\)\//.test(kopierRumpf.slice(0, 400)),
       'die Kopierfunktion gruppiert die Nummer — ein Bezahlfeld nimmt das nicht an');

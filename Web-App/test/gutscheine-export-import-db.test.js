@@ -255,7 +255,8 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     assert.equal(b.mehrere, undefined,
       `Ein einzelner Gutschein darf nicht als Stapel gelten: ${JSON.stringify(b)}`);
     assert.ok(b.voucher, 'Der Einzelfall antwortet mit `voucher`');
-    assert.equal(b.voucher.number, KARTEN[0].nr);
+    assert.equal(b.gelesen.number, KARTEN[0].nr);
+    assert.equal(b.voucher.number, '…' + KARTEN[0].nr.slice(-4), 'nach aussen nur das Ende');
     assert.equal(b.voucher.hat_pdf, true,
       'Beim Einzelgutschein wird die Datei als sein Original gespeichert');
   });

@@ -12,6 +12,7 @@ import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuth
 import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts } from '../../src/gutscheine/gutscheinDateien';
 import { requireToken } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
+import { protokolliere } from '../../src/verwaltung/dienst';
 import { werteAusPdf, PdfZuGross } from '../../src/gutscheine/gutscheinPdf';
 import { verbindeGutscheine, seitenweiseLesen, seitenOderKeine } from '../../src/gutscheine/gutscheinPdfSchreiben';
 import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
@@ -38,12 +39,17 @@ const upload = multer({
   },
 });
 
+/** Nach aussen nur das Ende: Ein erbeutetes App-Token soll nicht alle Codes samt PIN
+ * abgreifen. Den Klartext gibt POST /vouchers/:id/klartext, bestätigt und protokolliert. */
+const PIN_MASKE = '•••';
+const maskiert = (z: { number: string; pin: string | null }) =>
+  ({ number: '…' + z.number.slice(-4), pin: z.pin ? PIN_MASKE : null });
+
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#fueraussen
 function fuerAussen(z: GutscheinZeile) {
   return {
     id: z.id,
-    number: z.number,
-    pin: z.pin,
+    ...maskiert(z),
     amount: Number(z.amount),
     currency: z.currency,
     hat_pdf: !!z.pdf_path,
@@ -224,11 +230,12 @@ router.put('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Antwor
     const alt = await gutschein(req.apiUser.user_id, id);
     if (!alt) return sendeFehler(req, res, 404, 'nicht_gefunden');
 
-    // Was nicht mitkommt, bleibt stehen, sonst löschte ein Formular mit nur dem
-    // Betrag Nummer und PIN.
+    // Was nicht mitkommt oder maskiert zurückkommt, bleibt stehen: Das Formular
+    // kennt nur die Maske, und ein Formular mit nur dem Betrag löschte sonst Nummer und PIN.
+    const maske = maskiert(alt);
     const w = pruefeWerte({
-      number:   req.body?.number   ?? alt.number,
-      pin:      req.body?.pin      ?? alt.pin,
+      number:   req.body?.number === maske.number ? alt.number : req.body?.number ?? alt.number,
+      pin:      req.body?.pin === PIN_MASKE ? alt.pin : req.body?.pin ?? alt.pin,
       amount:   req.body?.amount   ?? alt.amount,
       currency: req.body?.currency ?? alt.currency,
     }, { nullBetragErlaubt: req.body?.amount === undefined });
@@ -255,6 +262,16 @@ router.delete('/vouchers/:id', requireToken, async (req: AuthedRequest, res: Ant
     if (p) await fs.promises.unlink(p).catch(() => { /* schon weg: in Ordnung */ });
   }
   res.json({ success: true });
+});
+
+router.post('/vouchers/:id/klartext', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/:id/klartext'>) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
+  if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.body?.password)) return;
+  const z = await gutschein(req.apiUser.user_id, id);
+  if (!z) return sendeFehler(req, res, 404, 'nicht_gefunden');
+  await protokolliere(req.apiUser.user_id, req.apiUser.user_id, 'gutschein_klartext', maskiert(z).number);
+  res.json({ success: true, id: z.id, number: z.number, pin: z.pin });
 });
 
 router.get('/vouchers/:id/pdf', requireToken, async (req: AuthedRequest, res) => {

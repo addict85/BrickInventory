@@ -5,7 +5,7 @@ import * as db from '../../../db/database';
 
 export type VerwalterAktion = 'konto_angelegt' | 'passwort_gesetzt' | 'zweiter_faktor_entfernt'
   | 'verwalter_ernannt' | 'verwalter_entzogen' | 'konto_geloescht' | 'konto_deaktiviert' | 'konto_reaktiviert'
-  | 'einstellungen_geaendert';
+  | 'einstellungen_geaendert' | 'gutschein_klartext';
 
 /** Vor dem Löschen aufrufen — danach ist der Name nicht mehr zu ermitteln. */
 export async function protokolliere(verwalterId: number, zielId: number, aktion: VerwalterAktion, einzelheiten: string | null = null): Promise<void> {

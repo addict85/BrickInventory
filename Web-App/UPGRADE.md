@@ -1114,3 +1114,16 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
   App-Zugang wurde erneut benutzt“. Andere Geräte bleiben angemeldet. Für
   Clients heisst das: den neuen Token speichern, bevor er benutzt wird, und
   den alten danach nicht mehr schicken — die Android-App tut das schon.
+- **Gutscheine nur maskiert**: Jede Antwort mit einem Gutschein
+  (`GET /vouchers`, `POST`/`PUT /vouchers`, `POST /vouchers/pdf`,
+  `POST /vouchers/:id/guthaben`) trägt als `number` nur `…` und die letzten
+  vier Ziffern und als `pin` `•••` (oder `null` ohne PIN). Den Klartext gibt
+  `POST /vouchers/:id/klartext` mit `password` (bei aktivem zweitem Faktor
+  dazu `code` oder `passkey`): `{ success, id, number, pin }`. Jeder Abruf
+  steht im Verwaltungsprotokoll („Gutscheinnummer und PIN angezeigt“, mit
+  den letzten vier Ziffern). `PUT /vouchers/:id` nimmt die Maske als
+  „unverändert“: Ein Formular, das sie zurückschickt, ändert Nummer und PIN
+  nicht. Die Web-App fragt beim Einblenden der PIN, beim Kopieren und vor
+  dem Löschen das Passwort ab; „Rückgängig“ nach dem Löschen gibt es nur,
+  wenn der Klartext vorher abgerufen wurde. Die Android-App zeigt bis zu
+  ihrem Nachzug nur die Maske (Kopieren liefert „…1234“).

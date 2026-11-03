@@ -53,6 +53,13 @@ export const GutscheinListe = z.looseObject({
   vouchers: z.array(Gutschein),
 });
 
+export const GutscheinKlartext = z.looseObject({
+  success: z.literal(true),
+  id: z.number().int(),
+  number: z.string(),
+  pin: z.string().nullable(),
+});
+
 export const routen = {
   'GET /api/v1/vouchers': { antwort: GutscheinListe },
   'POST /api/v1/vouchers': { antwort: GutscheinAntwort },
@@ -60,6 +67,7 @@ export const routen = {
   'DELETE /api/v1/vouchers/:id': { antwort: GenericResponse, ...bestaetigt() },
   'POST /api/v1/vouchers/pdf': { antwort: GutscheinAntwort },
   'POST /api/v1/vouchers/:id/guthaben': { antwort: GuthabenAntwort },
+  'POST /api/v1/vouchers/:id/klartext': { antwort: GutscheinKlartext, ...bestaetigt() },
   'GET /api/v1/vouchers/:id/pdf': { art: 'pdf' },
   'GET /api/v1/vouchers/export/pdf': { art: 'pdf' },
 } satisfies Record<string, Route>;

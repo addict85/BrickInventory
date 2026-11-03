@@ -319,6 +319,8 @@ const C = {
   // Guthaben bei LEGO abfragen. 'nur-v1' wie die uebrigen Gutschein-Wege:
   // Beide Oberflaechen rufen sie, es gibt keine Alt-Adresse daneben.
   'POST /api/v1/vouchers/:id/guthaben': 'nur-v1',
+  // Klartext von Nummer und PIN, bestätigt und protokolliert; die Liste zeigt nur die Maske.
+  'POST /api/v1/vouchers/:id/klartext': 'nur-v1',
   // Die PDF-Ausgabe ruft die Android-App nicht ueber Retrofit, sondern ueber
   // die Adresse im PdfViewerScreen (derselbe angemeldete OkHttpClient). Fuer
   // dieses Inventar ist das derselbe Fall: eine Umsetzung, beide Apps.
