@@ -25,8 +25,31 @@ interface GutscheineApi {
         @Body request: GutscheinRequest,
     ): Response<GutscheinAntwort>
 
-    @DELETE("api/v1/vouchers/{id}")
-    suspend fun loescheGutschein(@Path("id") id: Int): Response<GenericResponse>
+    // @HTTP statt @DELETE: Retrofit erlaubt bei @DELETE keinen Rumpf, der Server
+    // verlangt darin Passwort und Code.
+    @HTTP(method = "DELETE", path = "api/v1/vouchers/{id}", hasBody = true)
+    suspend fun loescheGutschein(
+        @Path("id") id: Int,
+        @Body bestaetigung: ZweiterFaktorAnfrage,
+    ): Response<GenericResponse>
+
+    /** Nummer und PIN im Klartext; die Liste trägt nur die Maske. */
+    @POST("api/v1/vouchers/{id}/klartext")
+    suspend fun gutscheinKlartext(
+        @Path("id") id: Int,
+        @Body bestaetigung: ZweiterFaktorAnfrage,
+    ): Response<GutscheinKlartext>
+
+    /** Ein Ticket für GET /vouchers/{id}/pdf?ticket=…; siehe GutscheineRepository.pdfFreigabe(). */
+    @POST("api/v1/vouchers/{id}/pdf-freigabe")
+    suspend fun gutscheinPdfFreigabe(
+        @Path("id") id: Int,
+        @Body bestaetigung: ZweiterFaktorAnfrage,
+    ): Response<GutscheinPdfFreigabe>
+
+    /** Dasselbe für das PDF aller Gutscheine (GET /vouchers/export/pdf?ticket=…). */
+    @POST("api/v1/vouchers/export/pdf-freigabe")
+    suspend fun gutscheinExportFreigabe(@Body bestaetigung: ZweiterFaktorAnfrage): Response<GutscheinPdfFreigabe>
 
     /**
      * Einen Gutschein aus seinem PDF anlegen. Mitgeschickte Werte gewinnen gegen das
@@ -54,12 +77,7 @@ interface GutscheineApi {
     @POST("api/v1/vouchers/{id}/guthaben")
     suspend fun frageGuthabenAb(@Path("id") id: Int): Response<GuthabenAntwort>
 
-    // Kein `GET /vouchers/export/pdf`: Der Export ist eine Datei zum Behalten, und die
-    // App kann Dateien nicht speichern oder weitergeben (begründet in
-    // test/webapp-endpunkte.test.js, NUR_WEB).
-
-    // Eine Methode fuer `GET /vouchers/{id}/pdf` steht hier mit Absicht NICHT:
-    // Das PDF holt der PdfViewerScreen selbst ueber seine Adresse, mit dem
-    // angemeldeten Client der App. Siehe gutscheinPdfAdresse() in
-    // ui/viewmodel/GutscheinAdressen.kt.
+    // Keine Methode fuer `GET /vouchers/{id}/pdf` und `GET /vouchers/export/pdf`:
+    // Das PDF holt der PdfViewerScreen selbst ueber seine Adresse (mit Ticket),
+    // mit dem angemeldeten Client der App. Siehe ui/viewmodel/GutscheinAdressen.kt.
 }

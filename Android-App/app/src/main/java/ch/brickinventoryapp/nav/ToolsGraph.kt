@@ -222,26 +222,18 @@ fun NavGraphBuilder.toolsGraph(
         composable(Screen.Gutscheine.route) {
             val state by vm.state.collectAsStateWithLifecycle()
             val gutscheine by gutscheinVm.state.collectAsStateWithLifecycle()
-            // Ein angetipptes Gutschein-PDF: Das Ziel steht im Zustand, die
-            // Navigation macht der Graph. Der Betrachter ist der vorhandene
-            // PdfViewerScreen — er laedt die Adresse mit dem angemeldeten
-            // Client der App und kann drucken und speichern.
-            LaunchedEffect(gutscheine.pdfZiel) {
-                val id = gutscheine.pdfZiel ?: return@LaunchedEffect
-                val nummer = gutscheine.gutscheine.find { it.id == id }?.number.orEmpty()
-                navController.navigate(Screen.PdfViewer.createRoute(
-                    ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse(state.serverUrl, id), nummer))
-                gutscheinVm.gutscheinPdfQuittieren()
-            }
-            // Dasselbe fuer den Export ALLER Gutscheine. Der Titel wird
-            // AUSSERHALB des LaunchedEffect gelesen: stringResource ist
-            // @Composable und in einem Effekt nicht aufrufbar.
+            // Ein freigegebenes Gutschein-PDF (eines oder alle): Das Ziel mit Ticket
+            // steht im Zustand, die Navigation macht der Graph. Der Betrachter ist der
+            // vorhandene PdfViewerScreen mit dem angemeldeten Client der App. Der Titel
+            // wird AUSSERHALB des LaunchedEffect gelesen: stringResource ist @Composable.
             val exportTitel = stringResource(R.string.vouchers_export)
-            LaunchedEffect(gutscheine.exportZeigen) {
-                if (!gutscheine.exportZeigen) return@LaunchedEffect
+            LaunchedEffect(gutscheine.pdfZiel) {
+                val ziel = gutscheine.pdfZiel ?: return@LaunchedEffect
+                val titel = if (ziel.id == null) exportTitel
+                    else gutscheine.gutscheine.find { it.id == ziel.id }?.number.orEmpty()
                 navController.navigate(Screen.PdfViewer.createRoute(
-                    ch.brickinventoryapp.ui.viewmodel.gutscheinExportAdresse(state.serverUrl), exportTitel))
-                gutscheinVm.gutscheinExportQuittieren()
+                    ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse(state.serverUrl, ziel), titel))
+                gutscheinVm.gutscheinPdfQuittieren()
             }
             GutscheineUnterseite(gutscheinVm, snackbarHostState) { navController.popBackStack() }
         }

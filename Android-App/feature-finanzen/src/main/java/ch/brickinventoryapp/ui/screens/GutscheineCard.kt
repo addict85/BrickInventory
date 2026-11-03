@@ -36,6 +36,7 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.fmtTag
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.inVierergruppen
+import ch.brickinventoryapp.ui.viewmodel.eingabeUeberMaske
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil, möglichst einfach erreichbar
@@ -53,8 +54,8 @@ fun GutscheineCard(
     onSpeichern: (android.net.Uri?) -> Unit,
     onLoeschen: (Int) -> Unit,
     onPdfOeffnen: (id: Int) -> Unit,
-    /** Nummer oder PIN in die Zwischenablage; `istNummer` steuert die Meldung. */
-    onKopieren: (wert: String, istNummer: Boolean) -> Unit,
+    /** Nummer oder PIN dieses Gutscheins in die Zwischenablage; braucht den Klartext. */
+    onKopieren: (id: Int, istNummer: Boolean) -> Unit,
     /**
      * Das Guthaben dieser Karte bei LEGO abfragen und speichern. Der Server erlaubt
      * eine Abfrage je 30 Sekunden über alle Benutzer; der Lauf über alle Karten taktet
@@ -69,6 +70,9 @@ fun GutscheineCard(
     onGuthabenAbbrechen: () -> Unit,
     /** Die Liste nach einem Ladefehler neu holen. */
     onErneut: () -> Unit,
+    /** Passwort und Code der offenen Rückfrage ([GutscheinUiState.bestaetigung]). */
+    onBestaetigen: (passwort: String, code: String?) -> Unit,
+    onBestaetigungAbbrechen: () -> Unit,
 ) {
     // Die gewählte Datei lebt nur im Formular — eine Uri ist eine Berechtigung dieses
     // Bildschirms, kein Datum des Kontos. rememberSaveable, weil sie eine Wahl des
@@ -77,8 +81,8 @@ fun GutscheineCard(
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> pdfUri = uri }
-    // PIN aufdecken, kopieren, bearbeiten und die PDFs zeigen Geld: erst nach der
-    // Gerätesperre (Schrittschutz). Die Nummer allein löst nichts ein.
+    // Nummer und PIN, die PDFs und Löschen: erst nach der Gerätesperre (Schrittschutz),
+    // danach fragt das ViewModel nach Passwort und Code.
     val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
     val grund = stringResource(R.string.schritt_gutschein)
     val geschuetzt: (() -> Unit) -> Unit = { schritt -> schutz.bestaetige(grund, schritt) }
@@ -184,11 +188,10 @@ fun GutscheineCard(
                     if (g.id in zustand.pinSichtbar) onPinSchalten(g.id) else geschuetzt { onPinSchalten(g.id) }
                 },
                 onBearbeiten = { geschuetzt { onBearbeiten(g.id) } },
-                onLoeschen = { onLoeschen(g.id) },
+                onLoeschen = { geschuetzt { onLoeschen(g.id) } },
                 onPdfOeffnen = { geschuetzt { onPdfOeffnen(g.id) } },
-                onKopieren = { wert, istNummer ->
-                    if (istNummer) onKopieren(wert, true) else geschuetzt { onKopieren(wert, false) }
-                },
+                onKopieren = { istNummer -> geschuetzt { onKopieren(g.id, istNummer) } },
+                klartext = zustand.klartext[g.id],
                 onGuthaben = { onGuthaben(g.id) },
                 guthabenLaeuft = zustand.guthabenLaeuft == g.id,
                 modifier = m,
@@ -212,6 +215,28 @@ fun GutscheineCard(
         }
         }
       }
+    }
+
+    val frage = zustand.bestaetigung
+    if (frage != null) {
+        val nummer = zustand.gutscheine.find { it.id == frage.id }?.number.orEmpty()
+        val loeschen = frage.schritt == ch.brickinventoryapp.ui.GutscheinSchritt.LOESCHEN
+        val pdf = frage.schritt == ch.brickinventoryapp.ui.GutscheinSchritt.PDF ||
+            frage.schritt == ch.brickinventoryapp.ui.GutscheinSchritt.EXPORT
+        ch.brickinventoryapp.ui.components.PasswortRueckfrage(
+            titel = stringResource(if (loeschen) R.string.common_delete else R.string.vouchers_confirm_title),
+            text = when {
+                loeschen -> stringResource(R.string.vouchers_delete_confirm, nummer)
+                pdf -> stringResource(R.string.vouchers_confirm_pdf)
+                else -> stringResource(R.string.vouchers_confirm_klartext)
+            },
+            bestaetigen = stringResource(if (loeschen) R.string.common_delete else R.string.vouchers_confirm_button),
+            codeNoetig = frage.codeNoetig,
+            fehler = frage.fehler,
+            laeuft = frage.laeuft,
+            onBestaetigen = onBestaetigen,
+            onAbbrechen = onBestaetigungAbbrechen,
+        )
     }
 
     if (neu || zustand.bearbeitet != null) {
@@ -253,19 +278,26 @@ private fun GutscheinFormularBlatt(
         // Bitte an die Tastatur-App, keine Zusicherung: Eine angestoepselte
         // Tastatur und die Zwischenablage liefern trotzdem Buchstaben. Die
         // Regel steht in ZahlentastaturTest, der Filter in NumericInput.kt.
+        // Beim Bearbeiten steht die Maske des Servers im Feld; eingabeUeberMaske()
+        // behandelt sie als Ganzes, gespeichert heisst sie „unverändert“.
+        val nummerMaske = ch.brickinventoryapp.data.model.istGutscheinMaske(zustand.nummer)
         OutlinedTextField(
             value = zustand.nummer,
-            onValueChange = { onFeld(NumericInput.quantity(it), null, null, null) },
+            onValueChange = {
+                onFeld(NumericInput.quantity(eingabeUeberMaske(zustand.nummer, it, nummerMaske)), null, null, null)
+            },
             label = { Text(stringResource(R.string.vouchers_number)) },
+            supportingText = if (nummerMaske) { { Text(stringResource(R.string.vouchers_mask_hint)) } } else null,
             singleLine = true,
             keyboardOptions = NumericInput.ganzzahlTastatur(),
             modifier = Modifier.fillMaxWidth(),
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+            val pinMaske = zustand.pin == ch.brickinventoryapp.data.model.GUTSCHEIN_PIN_MASKE
             OutlinedTextField(
                 value = zustand.pin,
-                onValueChange = { onFeld(null, NumericInput.quantity(it), null, null) },
+                onValueChange = { onFeld(null, NumericInput.quantity(eingabeUeberMaske(zustand.pin, it, pinMaske)), null, null) },
                 label = { Text(stringResource(R.string.vouchers_pin)) },
                 singleLine = true,
                 keyboardOptions = NumericInput.ganzzahlTastatur(),
@@ -340,22 +372,23 @@ private fun GutscheinKarte(
     onBearbeiten: () -> Unit,
     onLoeschen: () -> Unit,
     onPdfOeffnen: () -> Unit,
-    onKopieren: (wert: String, istNummer: Boolean) -> Unit,
+    onKopieren: (istNummer: Boolean) -> Unit,
     onGuthaben: () -> Unit,
     guthabenLaeuft: Boolean,
+    /** Nummer und PIN im Klartext, wenn sie auf dieser Seite schon geholt sind. */
+    klartext: ch.brickinventoryapp.data.model.GutscheinKlartext?,
     modifier: Modifier = Modifier,
 ) {
-    var loeschFrage by rememberSaveable { mutableStateOf(false) }
     var menue by rememberSaveable { mutableStateOf(false) }
-    val nummer = inVierergruppen(g.number)
+    // Die ganze Nummer nur bei aufgedecktem PIN; sonst die Maske des Servers.
+    val nummer = inVierergruppen(if (pinSichtbar && klartext != null) klartext.number else g.number)
 
     OutlinedCard(modifier) {
       Column(Modifier.padding(start = Abstaende.mittel, top = Abstaende.winzig, bottom = Abstaende.klein),
              verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Die rohe Nummer in die Zwischenablage: Ein Bezahlfeld nimmt die
-            // Vierergruppen nicht an.
-            KopierZeile(stringResource(R.string.vouchers_cd_copy_number, nummer), { onKopieren(g.number, true) },
+            // Kopiert wird der Klartext ohne Vierergruppen: Ein Bezahlfeld nimmt sie nicht an.
+            KopierZeile(stringResource(R.string.vouchers_cd_copy_number, nummer), { onKopieren(true) },
                 Modifier.weight(1f)) {
                 Text(nummer, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             }
@@ -377,7 +410,7 @@ private fun GutscheinKarte(
                     MenueEintrag(stringResource(R.string.common_edit),
                         stringResource(R.string.vouchers_cd_edit, nummer), Icons.Default.Edit) { menue = false; onBearbeiten() }
                     MenueEintrag(stringResource(R.string.common_delete),
-                        stringResource(R.string.vouchers_cd_delete, nummer), Icons.Default.Delete) { menue = false; loeschFrage = true }
+                        stringResource(R.string.vouchers_cd_delete, nummer), Icons.Default.Delete) { menue = false; onLoeschen() }
                 }
             }
         }
@@ -399,8 +432,8 @@ private fun GutscheinKarte(
         val pin = g.pin
         if (pin != null) Row(verticalAlignment = Alignment.CenterVertically) {
             // Der PIN ist auch VERDECKT antippbar: Kopieren heisst nicht ansehen.
-            val pinText = stringResource(R.string.vouchers_pin) + ": " + if (pinSichtbar) pin else "••••"
-            KopierZeile(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(pin, false) }) {
+            val pinText = stringResource(R.string.vouchers_pin) + ": " + if (pinSichtbar) klartext?.pin ?: pin else "••••"
+            KopierZeile(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(false) }) {
                 Text(pinText, style = MaterialTheme.typography.bodyMedium)
             }
             IconButton(onClick = onPinSchalten) {
@@ -411,26 +444,6 @@ private fun GutscheinKarte(
             }
         }
       }
-    }
-
-    if (loeschFrage) {
-        AlertDialog(
-            onDismissRequest = { loeschFrage = false },
-            title = { Text(stringResource(R.string.common_delete)) },
-            // Die Nummer steht in der Frage: Bei mehreren Gutscheinen ist
-            // sonst nicht zu sehen, welcher gerade verschwindet.
-            text = { Text(stringResource(R.string.vouchers_delete_confirm, g.number)) },
-            confirmButton = {
-                TextButton(onClick = { loeschFrage = false; onLoeschen() }) {
-                    Text(stringResource(R.string.common_delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { loeschFrage = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            },
-        )
     }
 }
 

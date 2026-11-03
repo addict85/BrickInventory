@@ -229,6 +229,7 @@ internal fun Gutscheine() {
             zustand = gutscheine, onFeld = { _, _, _, _ -> }, onPinSchalten = {}, onBearbeiten = {},
             onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {}, onKopieren = { _, _ -> },
             onGuthaben = {}, onExportieren = {}, onGuthabenAlle = {}, onGuthabenAbbrechen = {}, onErneut = {},
+            onBestaetigen = { _, _ -> }, onBestaetigungAbbrechen = {},
         )
     }
 }

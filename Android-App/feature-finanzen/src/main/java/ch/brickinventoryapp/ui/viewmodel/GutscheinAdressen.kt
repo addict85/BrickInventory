@@ -3,13 +3,20 @@ package ch.brickinventoryapp.ui.viewmodel
 /**
  * Die Adressen für den vorhandenen PDF-Betrachter. Er lädt sie mit dem
  * angemeldeten Client; eine eigene Kopie im Cache des Geräts wäre ein zweiter
- * Ort für Nummer und PIN, der das Abmelden überlebt.
+ * Ort für Nummer und PIN, der das Abmelden überlebt. Das [ticket] kommt aus
+ * GutscheineRepository.pdfFreigabe() und gilt für einen Abruf.
  */
-fun gutscheinPdfAdresse(serverUrl: String, id: Int): String =
-    serverUrl.trimEnd('/') + "/api/v1/vouchers/" + id + "/pdf"
+fun gutscheinPdfAdresse(serverUrl: String, id: Int, ticket: String? = null): String =
+    mitTicket(serverUrl.trimEnd('/') + "/api/v1/vouchers/" + id + "/pdf", ticket)
 
-fun gutscheinExportAdresse(serverUrl: String): String =
-    serverUrl.trimEnd('/') + "/api/v1/vouchers/export/pdf"
+fun gutscheinExportAdresse(serverUrl: String, ticket: String? = null): String =
+    mitTicket(serverUrl.trimEnd('/') + "/api/v1/vouchers/export/pdf", ticket)
+
+fun gutscheinPdfAdresse(serverUrl: String, ziel: ch.brickinventoryapp.ui.GutscheinPdfZiel): String =
+    if (ziel.id == null) gutscheinExportAdresse(serverUrl, ziel.ticket) else gutscheinPdfAdresse(serverUrl, ziel.id, ziel.ticket)
+
+private fun mitTicket(adresse: String, ticket: String?): String =
+    if (ticket == null) adresse else adresse + "?ticket=" + java.net.URLEncoder.encode(ticket, "UTF-8")
 
 /**
  * Zeigt der Betrachter Nummer und PIN eines Gutscheins? Dann gilt derselbe

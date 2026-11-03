@@ -864,6 +864,12 @@
     <string name="vouchers_amount_invalid">Bitte einen gültigen Betrag eingeben</string>
     <string name="vouchers_only_pdf">Es lassen sich nur PDF-Dateien lesen</string>
     <string name="vouchers_pdf_incomplete">Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.</string>
+    <string name="vouchers_confirm_title">Mit Passwort bestätigen</string>
+    <string name="vouchers_confirm_klartext">Nummer und PIN stehen erst nach der Bestätigung da. Die Abfrage wird protokolliert.</string>
+    <string name="vouchers_confirm_pdf">Das PDF zeigt Nummer und PIN. Bitte mit deinem Passwort bestätigen.</string>
+    <string name="vouchers_confirm_button">Bestätigen</string>
+    <string name="vouchers_delete_offline">Löschen geht nur mit Verbindung zum Server: Das Passwort wird nicht auf dem Gerät gespeichert.</string>
+    <string name="vouchers_mask_hint">Bleibt unverändert, solange du nichts Neues eintippst</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
     <string name="vouchers_balance_all">Guthaben aller Karten abfragen</string>

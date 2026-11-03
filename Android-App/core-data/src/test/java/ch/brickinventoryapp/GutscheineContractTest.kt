@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.GutscheinRequest
+import ch.brickinventoryapp.data.model.ZweiterFaktorAnfrage
 import ch.brickinventoryapp.data.repository.GutscheineRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -36,6 +37,14 @@ import org.junit.Test
  * mit cached("gutscheine", …) umhüllt → rot „die Liste wird nicht
  * zwischengespeichert“; @PUT("api/v1/vouchers/{id}") auf POST → rot „die App
  * ruft dieselben Adressen wie die Webapp“.
+ *
+ * Gegenproben (03.11.2026, kotlinc lokal, Runde 8):
+ *  - Löschen wieder als @DELETE ohne Rumpf (Bestätigung nicht mitgeschickt) → rot
+ *    „Löschen, Klartext und PDF-Freigabe tragen Passwort und Code“.
+ *  - pdfFreigabe() ruft für id=null die Route des einzelnen PDFs (mit id 0) → rot
+ *    „die App ruft dieselben Adressen wie die Webapp“.
+ *  - Klartext in liste() mit cached("gutscheine-klartext", …) abgelegt → rot
+ *    „der Klartext wird nicht zwischengespeichert“.
  */
 class GutscheineContractTest {
 
@@ -70,15 +79,49 @@ class GutscheineContractTest {
     @Test
     fun `die App ruft dieselben Adressen wie die Webapp`() = mitServer { pfade, repo, _ ->
         val g = GutscheinRequest(number = "1234-5678", pin = "9876", amount = 50.0)
+        val b = ZweiterFaktorAnfrage(password = "geheim")
         runBlocking {
             repo.liste()
             repo.anlegen(g)
             repo.aendern(5, g)
-            repo.loeschen(5)
+            repo.loeschen(5, b)
             repo.ausPdf("karte.pdf", "application/pdf", byteArrayOf(1, 2, 3))
+            repo.klartext(5, b)
+            repo.pdfFreigabe(5, b)
+            repo.pdfFreigabe(null, b)
         }
         assertEquals(listOf("GET /api/v1/vouchers", "POST /api/v1/vouchers", "PUT /api/v1/vouchers/5",
-            "DELETE /api/v1/vouchers/5", "POST /api/v1/vouchers/pdf"), pfade.anfragen.toList())
+            "DELETE /api/v1/vouchers/5", "POST /api/v1/vouchers/pdf", "POST /api/v1/vouchers/5/klartext",
+            "POST /api/v1/vouchers/5/pdf-freigabe", "POST /api/v1/vouchers/export/pdf-freigabe"), pfade.anfragen.toList())
+    }
+
+    /** Ohne Rumpf antwortet der Server mit 400: Löschen und Klartext verlangen die Bestätigung. */
+    @Test
+    fun `Loeschen, Klartext und PDF-Freigabe tragen Passwort und Code`() = mitServer { pfade, repo, _ ->
+        val b = ZweiterFaktorAnfrage(password = "geheim", code = "123456")
+        runBlocking {
+            repo.loeschen(5, b)
+            repo.klartext(5, b)
+            repo.pdfFreigabe(5, b)
+            repo.pdfFreigabe(null, b)
+        }
+        assertEquals(4, pfade.koerper.size)
+        for ((i, k) in pfade.koerper.withIndex()) {
+            val o = org.json.JSONObject(k)
+            assertEquals("${pfade.anfragen[i]}: Passwort", "geheim", o.getString("password"))
+            assertEquals("${pfade.anfragen[i]}: Code", "123456", o.getString("code"))
+        }
+    }
+
+    @Test
+    fun `der Klartext wird nicht zwischengespeichert`() = mitServer { pfade, repo, ordner ->
+        pfade.antworten["/api/v1/vouchers/5/klartext"] =
+            """{"success":true,"id":5,"number":"6000111122223333","pin":"9876"}"""
+        val r = runBlocking { repo.liste(); repo.klartext(5, ZweiterFaktorAnfrage(password = "geheim")) }
+        assertEquals("6000111122223333", (r as ch.brickinventoryapp.data.repository.Result.Success).data.number)
+        val abgelegt = ordner.walkTopDown().filter { it.isFile }
+            .filter { it.readText().let { t -> "6000111122223333" in t || "9876" in t } }.toList()
+        assertTrue("Klartext liegt auf der Platte: $abgelegt", abgelegt.isEmpty())
     }
 
     @Test
@@ -161,10 +204,10 @@ class GutscheineContractTest {
         assert(karte.contains("clickable(role = Role.Button, onClickLabel = beschreibung, onClick = onKopieren)")) {
             "Die Kopierzeile ist nicht mehr antippbar."
         }
-        assert(karte.contains("{ onKopieren(g.number, true) }")) {
+        assert(karte.contains("{ onKopieren(true) }")) {
             "Die Gutscheinnummer laesst sich nicht durch Antippen kopieren."
         }
-        assert(karte.contains("{ onKopieren(pin, false) }")) {
+        assert(karte.contains("{ onKopieren(false) }")) {
             "Der PIN laesst sich nicht durch Antippen kopieren."
         }
         // Die ROHE Nummer, nicht die in Vierergruppen gezeigte: Die

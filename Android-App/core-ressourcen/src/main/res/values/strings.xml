@@ -878,6 +878,12 @@
     <string name="vouchers_amount_invalid">Please enter a valid amount</string>
     <string name="vouchers_only_pdf">Only PDF files can be read</string>
     <string name="vouchers_pdf_incomplete">Not all values could be read from the PDF. Please fill in the rest and save again.</string>
+    <string name="vouchers_confirm_title">Confirm with password</string>
+    <string name="vouchers_confirm_klartext">The number and PIN are only shown after you confirm. The request is logged.</string>
+    <string name="vouchers_confirm_pdf">The PDF shows the number and PIN. Please confirm with your password.</string>
+    <string name="vouchers_confirm_button">Confirm</string>
+    <string name="vouchers_delete_offline">Deleting needs a connection to the server: your password is not stored on the device.</string>
+    <string name="vouchers_mask_hint">Stays unchanged unless you type something new</string>
     <!-- Guthaben bei LEGO abfragen. "%1$s: %2$s" ist Nummer und Betrag —
          kein Zaehlwort darin, deshalb auch kein Plural-Fall. -->
     <!-- Alle Platzhalter sind %s und nicht %d, auch wo Zahlen eingesetzt

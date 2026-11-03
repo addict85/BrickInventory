@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
@@ -22,6 +23,8 @@ import androidx.compose.ui.test.performTextReplacement
 import ch.brickinventoryapp.data.model.Gutschein
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.AnmeldeFormular
+import ch.brickinventoryapp.ui.GutscheinBestaetigung
+import ch.brickinventoryapp.ui.GutscheinSchritt
 import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.screens.AddSetDialog
 import ch.brickinventoryapp.ui.screens.GutscheineCard
@@ -57,6 +60,10 @@ import org.robolectric.annotation.GraphicsMode
  *   (e) in GutscheineCard das Aufdecken ohne Schrittschutz (`onPinSchalten(g.id)`
  *       direkt) → rot „ohne Bestaetigung der Geraetesperre bleibt der PIN verdeckt“
  *       (gegenproben/gutschein-pin-ohne-geraetesperre.patch)
+ *   (f) die Nummer ohne Schrittschutz kopiert → rot „ohne Geraetesperre wird auch die
+ *       Nummer nicht kopiert“ (gegenproben/gutschein-nummer-ohne-geraetesperre.patch)
+ *   (g) in PasswortRueckfrage das Codefeld nie gezeigt → rot „die Rueckfrage zeigt das
+ *       Codefeld erst auf Verlangen“ (gegenproben/gutschein-rueckfrage-ohne-code.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 // NATIVE wie bei den Bildschirmfotos: Die Kontrastprüfung des ATF liest ein
@@ -133,18 +140,20 @@ class AblaufTest {
         assertTrue(w.pfade.koerper.any { it.contains("\"quantity_delta\":1") })
     }
 
+    /** Der Zustand der Gutscheinkarte; die Tests der Rückfrage setzen ihn um. */
+    private var zustand by mutableStateOf(GutscheinUiState(gutscheine = listOf(
+        Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF").alsAnsicht())))
+
     /** Ein Gutschein mit PIN 4711; [schutz] steht für die Gerätesperre. */
     private fun zeigeGutschein(schutz: Schrittschutz, kopiert: MutableList<String> = mutableListOf()) {
-        var zustand by mutableStateOf(GutscheinUiState(gutscheine = listOf(
-            Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = "CHF").alsAnsicht())))
         zeige {
             CompositionLocalProvider(LocalSchrittschutz provides schutz) {
                 GutscheineCard(
                     zustand = zustand, onFeld = { _, _, _, _ -> },
                     onPinSchalten = { id -> zustand = zustand.copy(pinSichtbar = zustand.pinSichtbar + id) },
                     onBearbeiten = {}, onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {},
-                    onKopieren = { wert, _ -> kopiert += wert }, onGuthaben = {}, onExportieren = {}, onGuthabenAlle = {},
-                    onGuthabenAbbrechen = {}, onErneut = {},
+                    onKopieren = { id, _ -> kopiert += id.toString() }, onGuthaben = {}, onExportieren = {}, onGuthabenAlle = {},
+                    onGuthabenAbbrechen = {}, onErneut = {}, onBestaetigen = { _, _ -> }, onBestaetigungAbbrechen = {},
                 )
             }
         }
@@ -170,5 +179,34 @@ class AblaufTest {
             .performClick()
         assertEquals("Ohne Bestätigung nichts kopiert", emptyList<String>(), kopiert)
         assertEquals(List(2) { ctx.getString(R.string.schritt_gutschein) }, gefragt)
+    }
+
+    /** Runde 8: Die Nummer allein ist kein Geld mehr, aber Klartext — auch sie erst nach der Sperre. */
+    @Test
+    fun `ohne Geraetesperre wird auch die Nummer nicht kopiert`() {
+        val gefragt = mutableListOf<String>()
+        val kopiert = mutableListOf<String>()
+        zeigeGutschein({ grund, _ -> gefragt += grund }, kopiert)
+        compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_number, "6061 2345 6789"))
+            .performClick()
+        assertEquals("Ohne Bestätigung nichts kopiert", emptyList<String>(), kopiert)
+        assertEquals(listOf(ctx.getString(R.string.schritt_gutschein)), gefragt)
+    }
+
+    /**
+     * Runde 8: Die Rückfrage fragt nach dem Passwort; das Codefeld kommt erst, wenn der
+     * Server es verlangt hat. Ohne Eingabe bleibt „Bestätigen“ aus. Getippt wird nicht:
+     * Ein fokussiertes Feld blinkt, und Robolectric käme nie zur Ruhe.
+     */
+    @Test
+    fun `die Rueckfrage zeigt das Codefeld erst auf Verlangen`() {
+        zustand = zustand.copy(bestaetigung = GutscheinBestaetigung(GutscheinSchritt.PIN_ZEIGEN, 7))
+        zeigeGutschein(schutz = { _, weiter -> weiter() })
+        compose.onNodeWithText(ctx.getString(R.string.konto_password_current)).assertIsDisplayed()
+        compose.onNodeWithText(ctx.getString(R.string.login_code)).assertDoesNotExist()
+        compose.onNodeWithText(ctx.getString(R.string.vouchers_confirm_button)).assertIsNotEnabled()
+        zustand = zustand.copy(bestaetigung = zustand.bestaetigung?.copy(codeNoetig = true, fehler = "Bitte den Code eingeben."))
+        compose.onNodeWithText(ctx.getString(R.string.login_code)).assertIsDisplayed()
+        compose.onNodeWithText("Bitte den Code eingeben.").assertIsDisplayed()
     }
 }

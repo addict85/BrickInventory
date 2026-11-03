@@ -17,9 +17,12 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Gutschein(
     val id: Int = 0,
-    /** Die aufgedruckte Kartennummer. Zeichenkette, weil fuehrende Nullen zaehlen. */
+    /**
+     * Die Kartennummer, vom Server nur als Maske („…1234“); den Klartext gibt
+     * [GutscheinKlartext]. Zeichenkette, weil fuehrende Nullen zaehlen.
+     */
     val number: String = "",
-    /** Kann fehlen: Nicht jede Karte traegt einen PIN. */
+    /** [GUTSCHEIN_PIN_MASKE] oder null: Nicht jede Karte traegt einen PIN. */
     val pin: String? = null,
     val amount: Double = 0.0,
     val currency: String = "CHF",
@@ -115,4 +118,34 @@ data class GutscheinRequest(
     val pin: String? = null,
     val amount: Double,
     val currency: String = "CHF",
+)
+
+/** So steht ein vorhandener PIN in jeder Gutschein-Antwort; PUT nimmt ihn als „unverändert“. */
+const val GUTSCHEIN_PIN_MASKE = "•••"
+
+/** Ob [nummer] die Maske des Servers ist („…1234“) und nicht die Kartennummer. */
+fun istGutscheinMaske(nummer: String): Boolean = nummer.startsWith("…")
+
+/**
+ * Nummer und PIN im Klartext (POST /vouchers/{id}/klartext). Nur nach Passwort
+ * und gegebenenfalls Code, und nur im ViewModel gehalten: Die Liste trägt die
+ * Maske, damit ein erbeutetes Token nicht alle Karten samt PIN hergibt.
+ */
+@Serializable
+data class GutscheinKlartext(
+    val success: Boolean = false,
+    val id: Int = 0,
+    val number: String = "",
+    val pin: String? = null,
+)
+
+/**
+ * Ein einmaliges Ticket für ein Gutschein-PDF (POST …/pdf-freigabe). Der
+ * Betrachter hängt es an die Adresse; es gilt [gueltigSek] Sekunden und einen Abruf.
+ */
+@Serializable
+data class GutscheinPdfFreigabe(
+    val success: Boolean = false,
+    val ticket: String = "",
+    @SerialName("gueltig_sek") val gueltigSek: Int = 0,
 )

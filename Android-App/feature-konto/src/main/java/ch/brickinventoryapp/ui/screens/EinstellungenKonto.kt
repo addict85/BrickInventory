@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.components.AuswahlChip
+import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
 import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
@@ -158,17 +159,6 @@ internal fun KontoCard(
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
         }
     }
-}
-
-/** Der Code des zweiten Faktors, den der Server für Passwort und E-Mail verlangt. */
-@Composable
-internal fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
-    OutlinedTextField(
-        value = code, onValueChange = { onCode(it.take(24)) },
-        label = { Text(stringResource(R.string.login_code)) },
-        supportingText = { Text(stringResource(R.string.login_code_hint)) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.knopf,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
 }
 
 /**

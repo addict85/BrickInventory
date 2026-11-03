@@ -35,6 +35,17 @@ fun GutscheineUnterseite(
     // Beim Oeffnen DIESER Seite laden und nicht mehr beim Oeffnen der
     // Einstellungen: Wer die Sprache umstellt, braucht keine Gutscheinliste.
     LaunchedEffect(Unit) { gvm.ladeGutscheine() }
+    // Der Klartext lebt nur, solange die Seite vorne steht.
+    DisposableEffect(Unit) { onDispose { gvm.verlasseGutscheine() } }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { gvm.vergissKlartext() }
+    // Nummer und PIN zusammen sind Geld: als Geheimnis markiert, nach einer Minute weg.
+    val auftrag = gutscheinZustand.zuKopieren
+    LaunchedEffect(auftrag) {
+        if (auftrag == null) return@LaunchedEffect
+        ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, etikett, auftrag.wert)
+        gvm.meldeGutscheinKopiert(auftrag.istNummer)
+        gvm.kopierenQuittieren()
+    }
     Unterseite(stringResource(R.string.vouchers_title), snackbarHostState, onZurueck) {
         GutscheineCard(
             zustand = gutscheinZustand,
@@ -45,16 +56,14 @@ fun GutscheineUnterseite(
             onSpeichern = { gvm.speichereGutschein(it) },
             onLoeschen = { gvm.loescheGutschein(it) },
             onPdfOeffnen = { gvm.oeffneGutscheinPdf(it) },
-            onKopieren = { wert, istNummer ->
-                // Nummer und PIN zusammen sind Geld: als Geheimnis markiert.
-                ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, etikett, wert)
-                gvm.meldeGutscheinKopiert(istNummer)
-            },
+            onKopieren = { id, istNummer -> gvm.kopiereGutschein(id, istNummer) },
             onGuthaben = { gvm.frageGuthabenAb(it) },
             onExportieren = { gvm.oeffneGutscheinExport() },
             onGuthabenAlle = { gvm.frageAlleGuthabenAb() },
             onGuthabenAbbrechen = { gvm.guthabenLaufAbbrechen() },
             onErneut = { gvm.ladeGutscheine() },
+            onBestaetigen = { passwort, code -> gvm.bestaetige(passwort, code) },
+            onBestaetigungAbbrechen = { gvm.bestaetigungAbbrechen() },
         )
     }
 }
