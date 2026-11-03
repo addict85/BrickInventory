@@ -600,12 +600,12 @@ fun AddSetDialog(
         bestaetigenAn = setNumber.isNotBlank(),
     ) {
         OwnerPicker(householdMembers, owner, { owner = it })
+        // Das Beispiel als Hilfetext wie im Merkposten-Dialog: Ein Platzhalter verschwand
+        // mit dem Fokus, und der Dialog fokussiert das Feld sofort.
         OutlinedTextField(
             value = setNumber,
             onValueChange = { setNumber = NumericInput.setNumber(it) },
             label = { Text(stringResource(R.string.gallery_set_number)) },
-            // Als Hilfetext wie im Merkposten-Dialog: Der Platzhalter verschwand mit
-            // dem Fokus, und der Dialog fokussiert das Feld sofort.
             supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
             modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
             shape = Formen.knopf,

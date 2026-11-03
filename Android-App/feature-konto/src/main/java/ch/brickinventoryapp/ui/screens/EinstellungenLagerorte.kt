@@ -111,7 +111,7 @@ private fun LagerortZeile(
     onUmbenennen: () -> Unit,
     onLoeschen: () -> Unit,
 ) {
-    var menue by remember { mutableStateOf(false) }
+    var menue by rememberSaveable { mutableStateOf(false) }
     ListItem(
         headlineContent = { Text(ort.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         supportingContent = if (istVorgabe) ({ Text(stringResource(R.string.storage_default_label)) }) else null,

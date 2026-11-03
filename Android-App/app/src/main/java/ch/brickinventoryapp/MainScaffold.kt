@@ -263,10 +263,10 @@ private fun androidx.navigation.NavController.zuReiter(route: String) =
 @Composable
 private fun SammlungUmschalter(aktuell: String?, onWahl: (Screen) -> Unit, modifier: Modifier = Modifier) {
     val ziele = listOf(
-        Screen.Gallery to stringResource(R.string.gallery_stat_sets),
-        Screen.Parts to stringResource(R.string.nav_parts),
-        Screen.Minifigs to stringResource(R.string.nav_minifigs),
-    )
+        Screen.Gallery to R.string.gallery_stat_sets,
+        Screen.Parts to R.string.nav_parts,
+        Screen.Minifigs to R.string.nav_minifigs,
+    ).map { (ziel, text) -> ziel to stringResource(text) }
     ch.brickinventoryapp.ui.components.SegmentWahl<Screen?>(
         optionen = ziele,
         gewaehlt = ziele.firstOrNull { it.first.route == aktuell }?.first,
