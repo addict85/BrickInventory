@@ -273,7 +273,21 @@ data class PnlTotals(
      * Server, damit die Regel „was zählt dazu“ an einer Stelle steht. Nullbar für
      * ältere Server; dann addiert der Aufrufer selbst.
      */
-    @SerialName("grand_total") val grandTotal: String? = null
+    @SerialName("grand_total") val grandTotal: String? = null,
+    /**
+     * Die gemeinsame Basis der Kopfkarten: nur Positionen mit Kauf- UND Marktpreis,
+     * damit Einstand + G/V = Marktwert gilt; pnl_prozent rechnet auf ihr. Ältere
+     * Server liefern sie nicht (null) — dann bleibt die Karte, wie sie war.
+     */
+    val positionen: Int? = null,
+    @SerialName("positionen_bewertet") val positionenBewertet: Int? = null,
+    @SerialName("positionen_ohne_marktpreis") val positionenOhneMarktpreis: Int? = null,
+    @SerialName("positionen_ohne_kaufpreis") val positionenOhneKaufpreis: Int? = null,
+    @SerialName("basis_einstand") val basisEinstand: String? = null,
+    @SerialName("basis_marktwert") val basisMarktwert: String? = null,
+    @SerialName("basis_guv_betrag") val basisGuvBetrag: String? = null,
+    @SerialName("ohne_marktpreis_einstand") val ohneMarktpreisEinstand: String? = null,
+    @SerialName("ohne_kaufpreis_marktwert") val ohneKaufpreisMarktwert: String? = null,
 )
 
 /** Eine Zeile je Set und Zustand aus /finance/pnl — die Galerie liest daraus Preis und G&V. */
@@ -294,6 +308,8 @@ data class PnlSetZeile(
      */
     @SerialName("kachel_preis") val kachelPreis: Double? = null,
     @SerialName("kachel_pnl_pct") val kachelPnlPct: Double? = null,
+    /** Woher kachel_preis stammt: "markt" oder "kauf" (kein Marktpreis); null bei älteren Servern. */
+    @SerialName("kachel_quelle") val kachelQuelle: String? = null,
 )
 
 @Serializable

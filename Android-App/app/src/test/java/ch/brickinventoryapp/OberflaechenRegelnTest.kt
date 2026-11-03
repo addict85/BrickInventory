@@ -96,6 +96,8 @@ import ch.brickinventoryapp.ressourcen.R
  *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
  *   kachel-hoehe-nach-inhalt        Name ohne zwei feste Zeilen → rot „Kacheln einer Reihe …“
  *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
+ *   finanzen-kopf-ohne-basis        Kopfkarte aus allen Positionen statt der Basis → rot „Finanzkopf …“
+ *   kachel-quelle-ignoriert         Kachel nennt auch den Kaufpreis „Marktpreis“ → rot „Galeriekachel …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -683,5 +685,66 @@ class OberflaechenRegelnTest {
         } finally {
             welt.close()
         }
+    }
+
+    private fun stehtDa(text: String, substring: Boolean = false) =
+        compose.onAllNodesWithText(text, substring = substring, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
+
+    /**
+     * Die Kopfkarte zeigt Einstand, G/V und Marktwert aus einer Basis, so dass sie
+     * aufgehen, und nennt darunter die Position ohne Marktpreis — wie das Web.
+     */
+    @Test
+    fun `Finanzkopf zeigt Einstand plus G und V gleich Marktwert und die Basiszeile`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.finanzen().also { it.loadValuation() }
+            zeige { ch.brickinventoryapp.ui.screens.FinanceScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            warte("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.valuationLoading } }
+            compose.waitForIdle()
+            // Die Zahlen der Beispiele, nicht aus finanzKopf: Sonst prüfte der Test die Rechnung mit sich selbst.
+            val einstand = java.math.BigDecimal("1500.00")
+            val guv = java.math.BigDecimal("212.40")
+            val wert = java.math.BigDecimal("1712.40")
+            assertEquals(0, einstand.add(guv).compareTo(wert))
+            val einstandText = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(einstand.toDouble(), "CHF"))
+            assertTrue(einstandText, stehtDa(einstandText))
+            val guvText = ctx.getString(R.string.finance_guv_zeile, "+" + fmtMoney(guv.toDouble(), "CHF"))
+            assertTrue(guvText, stehtDa(guvText))
+            assertTrue("Marktwert", stehtDa(fmtMoney(wert.toDouble(), "CHF")))
+            // Der Einstand ALLER Positionen (mit dem Baumhaus) stünde neben einem Marktwert ohne es.
+            val alle = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(1680.0, "CHF"))
+            assertTrue("kein Einstand aller Positionen", !stehtDa(alle))
+            val gerechnet = ctx.resources.getQuantityString(R.plurals.finance_basis_gerechnet, 3, 2, 3)
+            val ohne = ctx.resources.getQuantityString(R.plurals.finance_basis_ohne_markt, 1, 1, fmtMoney(180.0, "CHF"))
+            assertTrue(gerechnet, stehtDa(gerechnet, substring = true))
+            assertTrue(ohne, stehtDa(ohne, substring = true))
+        } finally {
+            welt.close()
+        }
+    }
+
+    /** Ohne Marktpreis liefert der Server den Kaufpreis (kachel_quelle "kauf"); die Kachel sagt es. */
+    @Test
+    fun `Galeriekachel nennt den Kaufpreis als Kaufpreis`() {
+        val bilder = coil3.ImageLoader.Builder(ctx).build()
+        val markt = ctx.getString(R.string.gallery_card_market)
+        val kauf = ctx.getString(R.string.gallery_card_paid)
+        zeige {
+            androidx.compose.foundation.layout.Row(Modifier.width(380.dp)) {
+                Box(Modifier.weight(1f)) {
+                    SetCard(SetAnsicht(setNumber = "21318-1", name = "Baumhaus"), "", bilder, {},
+                        preis = KachelPreis(180.0, null, "kauf"), waehrung = "CHF")
+                }
+                // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
+                Box(Modifier.weight(1f)) {
+                    SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon"), "", bilder, {},
+                        preis = KachelPreis(812.5, 16.1), waehrung = "CHF")
+                }
+            }
+        }
+        compose.onAllNodesWithText(kauf, useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithText(markt, useUnmergedTree = true).assertCountEquals(1)
+        assertTrue(stehtDa(fmtMoney(180.0, "CHF")))
     }
 }

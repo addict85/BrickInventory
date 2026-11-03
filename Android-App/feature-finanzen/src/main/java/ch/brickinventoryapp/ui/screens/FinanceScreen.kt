@@ -143,10 +143,13 @@ fun FinanceScreen(
                 }
             }
             item {
+                // Ohne Marktwert keine Entwicklung, wie im Web: Der Verlauf trüge dann nur
+                // Kaufpreise, und „+0.0 %“ neben „—“ behauptete Stillstand.
+                val mitWert = finanzKopf(valuation, partsValuation, figsValuation, pnl).wert.signum() > 0
                 PortfolioChart(
                     points = historyPoints, yAxis = historyYAxis,
                     currency = currencyCode, isLoading = historyLoading,
-                    selectedPeriod = historyPeriod, periodChangePct = historyPeriodChangePct,
+                    selectedPeriod = historyPeriod, periodChangePct = historyPeriodChangePct.takeIf { mitWert },
                     onPeriodChange = onPeriodChange
                 )
             }

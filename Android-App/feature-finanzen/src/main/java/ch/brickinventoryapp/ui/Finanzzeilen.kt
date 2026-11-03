@@ -108,3 +108,58 @@ fun fremdeKaufpreise(valuation: BewertungAnsicht?, parts: TeileBewertungAnsicht?
     pnl?.totals?.kaufpreiseFremdeWaehrung
         ?: ((valuation?.kaufpreiseFremdeWaehrung ?: 0) + (parts?.kaufpreiseFremdeWaehrung ?: 0) +
             (figs?.kaufpreiseFremdeWaehrung ?: 0))
+
+/**
+ * Was die Kopfkarte zeigt. [mitBasis]: Der Server hat Positionen mit Kauf- UND
+ * Marktpreis gerechnet; dann stammen Einstand, Marktwert und G/V aus dieser einen
+ * Basis, damit Einstand + G/V = Marktwert gilt (wie im Web, basisAus).
+ * [basisBekannt] ist false bei älteren Servern ohne diese Felder.
+ */
+data class FinanzKopf(
+    val basisBekannt: Boolean,
+    val mitBasis: Boolean,
+    /** null = nicht bekannt (älterer Server). */
+    val einstand: BigDecimal?,
+    val wert: BigDecimal,
+    /** null = keine G/V (ohne Basis). */
+    val guvBetrag: BigDecimal?,
+    val guvProzent: Double?,
+    val gesamt: Int = 0,
+    val bewertet: Int = 0,
+    val ohneMarkt: Int = 0,
+    val ohneMarktEinstand: BigDecimal = BigDecimal.ZERO,
+    val ohneKauf: Int = 0,
+    val ohneKaufWert: BigDecimal = BigDecimal.ZERO,
+) {
+    /** Die Basiszeile steht nur, wenn gerechnet wurde und etwas fehlt — sonst sagt sie nichts. */
+    val basisZeileSichtbar: Boolean get() = mitBasis && (ohneMarkt > 0 || ohneKauf > 0)
+}
+
+/**
+ * Ohne Basisfelder (älterer Server) bleibt die Karte, wie sie war: Gesamtwert und
+ * pnl_prozent. Mit Basis, aber ohne eine bewertete Position, stehen die Summen aller
+ * Positionen da und keine G/V — eine Prozentzahl gegen nichts wäre erfunden.
+ */
+fun finanzKopf(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanzKopf {
+    val alle = finanzSummen(valuation, parts, figs, pnl).gesamt
+    val t = pnl?.totals
+    if (t?.basisEinstand == null)
+        return FinanzKopf(basisBekannt = false, mitBasis = false, einstand = null, wert = alle,
+            guvBetrag = null, guvProzent = t?.pnlProzent)
+    val bewertet = t.positionenBewertet ?: 0
+    val mitBasis = bewertet > 0
+    return FinanzKopf(
+        basisBekannt = true,
+        mitBasis = mitBasis,
+        einstand = if (mitBasis) betrag(t.basisEinstand) else t.purchase.trim().toBigDecimalOrNull(),
+        wert = if (mitBasis) betrag(t.basisMarktwert) else alle,
+        guvBetrag = if (mitBasis) betrag(t.basisGuvBetrag) else null,
+        guvProzent = if (mitBasis) t.pnlProzent else null,
+        gesamt = t.positionen ?: 0,
+        bewertet = bewertet,
+        ohneMarkt = t.positionenOhneMarktpreis ?: 0,
+        ohneMarktEinstand = betrag(t.ohneMarktpreisEinstand),
+        ohneKauf = t.positionenOhneKaufpreis ?: 0,
+        ohneKaufWert = betrag(t.ohneKaufpreisMarktwert),
+    )
+}

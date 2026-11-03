@@ -529,6 +529,16 @@ fun SetCard(
                     // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
                     // den Betrag, statt Zeichen für Zeichen umzubrechen.
                     val betrag = kachelBetrag(set, preis)
+                    // Wie im Web eine Zeile darüber, was der Betrag ist: Ohne Marktpreis ist es
+                    // der Kaufpreis (kachel_quelle), unbeschriftet las er sich als Marktwert.
+                    // Leer ohne Betrag, damit Kacheln einer Reihe gleich hoch bleiben.
+                    Text(when (if (betrag != null) kachelQuelle(set, preis) else null) {
+                            KachelQuelle.MARKT -> stringResource(R.string.gallery_card_market)
+                            KachelQuelle.KAUF -> stringResource(R.string.gallery_card_paid)
+                            null -> ""
+                        }, style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,

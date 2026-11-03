@@ -142,6 +142,8 @@
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_price_each">each</string>
+    <string name="gallery_card_market">Market price</string>
+    <string name="gallery_card_paid">Purchase price</string>
     <string name="gallery_delete_title">Delete set?</string>
     <string name="gallery_delete_text">%1$s and its parts will be removed. You can still undo it for a moment afterwards.</string>
     <string name="gallery_set_deleted_undo">%1$s deleted</string>
@@ -286,7 +288,7 @@
     <string name="finance_price_error">Price error</string>
     <string name="finance_no_sets">No sets</string>
     <string name="finance_load_prompt">→ Load prices</string>
-    <string name="finance_total_pnl">%1$s vs. purchase price</string>
+    <string name="finance_total_pnl">%1$s vs. cost basis</string>
     <string name="finance_parts_extra">incl. parts &amp; minifigures: %1$s</string>
     <plurals name="finance_fremde_waehrung">
         <item quantity="one">%1$d purchase price in another currency not included</item>
@@ -309,6 +311,25 @@
     <string name="finance_total_manual_minifigs">Manually added minifigures</string>
     <string name="finance_grand_total">Total</string>
     <string name="finance_market_avg">Collection market value</string>
+    <string name="finance_einstand_zeile">Cost basis: %1$s</string>
+    <string name="finance_guv_zeile">Profit/loss: %1$s</string>
+    <string name="finance_pnl_needs_prices">needs purchase and market prices</string>
+    <plurals name="finance_basis_gerechnet">
+        <item quantity="one">Based on %1$d of %2$d item with purchase and market price.</item>
+        <item quantity="other">Based on %1$d of %2$d items with purchase and market price.</item>
+    </plurals>
+    <plurals name="finance_basis_ohne_markt">
+        <item quantity="one">%1$d item without market price not included (cost basis %2$s)</item>
+        <item quantity="other">%1$d items without market price not included (cost basis %2$s)</item>
+    </plurals>
+    <plurals name="finance_basis_ohne_kauf">
+        <item quantity="one">%1$d item without purchase price not included (market value %2$s)</item>
+        <item quantity="other">%1$d items without purchase price not included (market value %2$s)</item>
+    </plurals>
+    <plurals name="finance_summe_ohne_markt">
+        <item quantity="one">The total excludes %1$d item without a market price.</item>
+        <item quantity="other">The total excludes %1$d items without a market price.</item>
+    </plurals>
 
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Part types</string>

@@ -1,0 +1,18 @@
+Gegenprobe: Widget rechnet die G und V wieder aus allen Positionen neben der Prozentzahl der Basis
+Modul: app
+Test: ch.brickinventoryapp.WidgetZahlenTest
+Rot: mit Basis stehen Wert
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/widget/WidgetZahlen.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/widget/WidgetZahlen.kt
+index 8fcc929..1405f88 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/widget/WidgetZahlen.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/widget/WidgetZahlen.kt
+@@ -38,7 +38,7 @@ fun widgetZahlen(pnl: PnlResponse?, verlauf: PortfolioHistoryResponse?, jetzt: L
+         ?: verlauf?.points?.lastOrNull()?.value
+     val kauf = t?.purchase?.toDoubleOrNull()
+     val gesamt = when {
+-        mitBasis -> t?.basisGuvBetrag?.toDoubleOrNull()
++        mitBasis -> wert?.let { w -> kauf?.let { w - it } }
+         t?.basisEinstand != null -> null
+         wert != null && kauf != null -> wert - kauf
+         else -> null
