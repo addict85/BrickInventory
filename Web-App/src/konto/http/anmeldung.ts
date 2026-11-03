@@ -143,9 +143,8 @@ function absagen(req: Request, res: Response, absage: BestaetigungsAbsage): void
     error: fehlerText(absage.code, antwortSprache(req), absage.vars) });
 }
 
-/** Passwort und, bei aktivem zweitem Faktor, Code oder Passkey; antwortet
- * selbst, wenn etwas fehlt. Nur für Routen mit `bestaetigung` im Vertrag:
- * Dort prüft test/bestaetigung-vertrag-db.test.js jede einzelne. */
+/** Passwort, bei aktivem zweitem Faktor auch Code oder Passkey; nur für Routen
+ * mit `bestaetigung` im Vertrag, die der Wächtertest einzeln prüft. */
 export async function bestaetigeMitFaktor(req: Request, res: Response, uid: number, passwort: unknown,
                                           codeFeld = 'code'): Promise<boolean> {
   const schluessel = req.route ? `${req.method} ${req.baseUrl}${req.route.path}` : '';

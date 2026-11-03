@@ -318,11 +318,12 @@ app.use(express.static(PUBLIC_DIR, {
 // Migrationen noch laufen und der /api/v1-Router noch nicht steht.
 
 app.use('/api/v1', vertragPruefen);
-app.get('/api/v1/startup-status', async (_req, res) => {
+app.get('/api/v1/startup-status', async (req, res) => {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
-  res.json(oeffentlicherStartZustand(await aktuellerStartZustand()));
+  const angemeldet = !!(await resolveUserId(req).catch(logAndContinue('startup-status:anmeldung')));
+  res.json(oeffentlicherStartZustand(await aktuellerStartZustand(), angemeldet));
 });
 
 // Ohne Anmeldung (compose.yaml): anonym nur der Status; live = Prozess, ready = Datenbank.

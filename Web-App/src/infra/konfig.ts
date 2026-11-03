@@ -2,8 +2,28 @@
  * Startfehler mit Namen und Grund, statt still auf eine Vorgabe zu fallen.
  * Die Liste mit Erklärung steht in .env.example. */
 import { proxyVertrauen } from './proxyVertrauen';
+import { readFileSync } from 'node:fs';
 
 type Umgebung = Record<string, string | undefined>;
+
+/** Docker-Secrets: Steht X_FILE, kommt X aus der Datei statt aus der Umgebung,
+ * die `docker inspect` und /proc/<pid>/environ jedem zeigen, der dort hinsieht. */
+export const DATEI_VARIABLEN = ['SESSION_SECRET', 'PGPASSWORD', 'DATABASE_URL', 'ADMIN_PASSWORD'] as const;
+
+/** Übernimmt jede lesbare X_FILE nach X und streicht X_FILE; ein zweiter Aufruf ändert nichts. */
+export function geheimnisseAusDateien(env: Umgebung): string[] {
+  const fehler: string[] = [];
+  for (const name of DATEI_VARIABLEN) {
+    const datei = env[`${name}_FILE`]?.trim();
+    if (!datei) continue;
+    if (env[name]) { fehler.push(`${name} und ${name}_FILE sind beide gesetzt — nur eines davon`); continue; }
+    try {
+      env[name] = readFileSync(datei, 'utf8').replace(/\r?\n$/, '');
+      delete env[`${name}_FILE`];
+    } catch (e) { fehler.push(`${name}_FILE="${datei}" ist nicht lesbar (${(e as NodeJS.ErrnoException).code ?? e})`); }
+  }
+  return fehler;
+}
 
 export interface Konfig {
   produktion: boolean;
@@ -76,7 +96,7 @@ export const VARIABLEN = [
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB', 'BILD_ABRUFE_JE_MINUTE',
   'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
-  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET',
+  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
 ] as const;
 
 /** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
@@ -154,7 +174,7 @@ function zoneAus(env: Umgebung, fehler: string[]): string {
 
 /** Wirft KonfigFehler mit allen Fehlern auf einmal. */
 export function ladeKonfig(env: Umgebung = process.env): Konfig {
-  const f: string[] = [];
+  const f: string[] = geheimnisseAusDateien(env);
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
 
   const basis = env.APP_BASE_URL?.trim().replace(/\/+$/, '') || null;
@@ -243,6 +263,7 @@ export function pruefeKonfigBeimStart(): Konfig {
 /** Für Server, Worker und Skripte gleich: Eigene Vorgaben verbanden sich
  * ausserhalb von Docker mit einer anderen Datenbank. */
 export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
+  geheimnisseAusDateien(env);
   if (env.DATABASE_URL) return { connectionString: env.DATABASE_URL };
   return {
     host:     env.PGHOST     || 'postgres',

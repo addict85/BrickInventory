@@ -185,6 +185,10 @@ jobs:
             exit 1
           }
 
+      # age für test/backup-verschluesselt.test.js (scripts/backup.sh mit BACKUP_AGE_EMPFAENGER).
+      - name: age bereitstellen
+        run: command -v age || { sudo apt-get update -qq && sudo apt-get install -y -qq age; }
+
       # v4 und v5 nachgesehen statt geraten (dieselbe Methode wie in android.yml):
       #     actions/setup-node@v4 -> runs.using: node20   (warnt)
       #     actions/setup-node@v5 -> runs.using: node24    (still)

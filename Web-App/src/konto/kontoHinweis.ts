@@ -26,8 +26,7 @@ export function hinweisNebenher(uid: number, art: KontoHinweis, name?: string, a
   meldeKontoaenderung(uid, art, { ...angaben, name }).catch(logAndContinue(`konto:hinweismail ${art}`));
 }
 
-/** An alle Verwalter: Einer allein soll keinen neuen Verwalter und keinen
- * abgebauten Schutz unbemerkt hinterlassen. */
+/** An alle Verwalter: Keiner soll unbemerkt einen Verwalter ernennen oder Schutz abbauen. */
 export function verwalterHinweisNebenher(art: KontoHinweis, angaben: Angaben): void {
   aktiveVerwalter()
     .then(ids => Promise.all(ids.map(id => meldeKontoaenderung(id, art, angaben))))

@@ -193,7 +193,7 @@ COPY --from=builder /app/package.json ./package.json
 # public/ kommt minifiziert aus dem Build-Stage
 COPY --from=builder /app/public ./public/
 
-COPY docker-entrypoint.sh ./
+COPY docker-entrypoint.sh schluessel-anlegen.sh ./
 RUN chmod +x docker-entrypoint.sh
 
 # ── App ───────────────────────────────────────────────────────────────────────

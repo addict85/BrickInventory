@@ -26,8 +26,35 @@
 # data/.datenschluessel) kommt NICHT ins Archiv: Neben dem Dump machte er die
 # Verschlüsselung wertlos. Mit BACKUP_SCHLUESSEL_ZIEL=<Ordner an einem anderen
 # Ort> legt das Skript ihn dort ab; sonst meldet es ihn.
+#
+# Verschlüsselt (für Kopien ausser Haus): BACKUP_AGE_EMPFAENGER=<öffentlicher
+# age-Schlüssel, age1…> oder BACKUP_AGE_EMPFAENGER_DATEI=<Datei mit einem je
+# Zeile>. Dann entstehen nur *.age-Dateien; den privaten Schlüssel braucht erst
+# restore.sh (BACKUP_AGE_IDENTITAET) und er gehört nicht auf diesen Rechner.
 set -eu
 umask 077
+
+AGE="${AGE:-age}"
+VERSCHLUESSELN=""
+if [ -n "${BACKUP_AGE_EMPFAENGER:-}" ] || [ -n "${BACKUP_AGE_EMPFAENGER_DATEI:-}" ]; then
+  command -v "$AGE" >/dev/null 2>&1 || { echo "[backup] FEHLER: age fehlt (apt install age) — nichts gesichert." >&2; exit 1; }
+  if [ -n "${BACKUP_AGE_EMPFAENGER_DATEI:-}" ]; then
+    [ -r "$BACKUP_AGE_EMPFAENGER_DATEI" ] || { echo "[backup] FEHLER: $BACKUP_AGE_EMPFAENGER_DATEI nicht lesbar." >&2; exit 1; }
+  fi
+  VERSCHLUESSELN=1
+fi
+# Verschlüsselt eine fertige Datei nach <datei>.age und entfernt den Klartext.
+verschluessele() {
+  [ -n "$VERSCHLUESSELN" ] || return 0
+  if [ -n "${BACKUP_AGE_EMPFAENGER_DATEI:-}" ]; then
+    "$AGE" -R "$BACKUP_AGE_EMPFAENGER_DATEI" -o "$1.age" "$1"
+  else
+    "$AGE" -r "$BACKUP_AGE_EMPFAENGER" -o "$1.age" "$1"
+  fi
+  [ -s "$1.age" ] || { echo "[backup] FEHLER: $1.age ist leer." >&2; rm -f "$1.age"; exit 1; }
+  rm -f "$1"
+  echo "[backup] verschlüsselt → $1.age"
+}
 
 TARGET="${1:-./backups}"
 STAMP="$(date +%Y-%m-%d_%H%M)"
@@ -72,6 +99,7 @@ if ! gunzip -c "$TARGET/db_$STAMP.sql.gz" | tail -n 5 | grep -q 'PostgreSQL data
   rm -f "$TARGET/db_$STAMP.sql.gz"
   exit 1
 fi
+verschluessele "$TARGET/db_$STAMP.sql.gz"
 
 echo "[backup] Laufzeitdaten → $TARGET/data_$STAMP.tar.gz"
 # data/ enthält Uploads, Anleitungen und heruntergeladene Bilder.
@@ -86,6 +114,7 @@ tar czf "$TARGET/data_$STAMP.tar.gz" \
   --exclude='data/img_proxy_cache' \
   --exclude='data/.datenschluessel' \
   data 2>/dev/null || echo "[backup] Warnung: data/ nicht vollständig gesichert"
+verschluessele "$TARGET/data_$STAMP.tar.gz"
 
 SCHLUESSEL=schluessel/datenschluessel
 if [ ! -f "$SCHLUESSEL" ] && [ -f data/.datenschluessel ]; then
@@ -109,8 +138,8 @@ else
 fi
 
 echo "[backup] Alte Sicherungen (> $KEEP_DAYS Tage) entfernen"
-find "$TARGET" -name 'db_*.sql.gz'    -mtime "+$KEEP_DAYS" -delete
-find "$TARGET" -name 'data_*.tar.gz'  -mtime "+$KEEP_DAYS" -delete
+find "$TARGET" \( -name 'db_*.sql.gz' -o -name 'db_*.sql.gz.age' \) -mtime "+$KEEP_DAYS" -delete
+find "$TARGET" \( -name 'data_*.tar.gz' -o -name 'data_*.tar.gz.age' \) -mtime "+$KEEP_DAYS" -delete
 
 echo "[backup] fertig:"
 ls -lh "$TARGET" | tail -n 4

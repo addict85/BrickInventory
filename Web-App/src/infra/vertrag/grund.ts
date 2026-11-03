@@ -12,8 +12,7 @@ export interface Route {
   art?: 'pdf' | 'datei' | 'strom' | 'csv' | 'zip';
   /** Die Anfrage ist ein Formular mit Datei (multipart). */
   formular?: true;
-  /** Die Route bestätigt mit Passwort und zweitem Faktor (bestaetigeMitFaktor);
-   * genannt sind die Felder im Rumpf. */
+  /** Felder von Passwort und Code der erneuten Bestätigung (bestaetigeMitFaktor). */
   bestaetigung?: { passwort: string; code: string };
 }
 
@@ -39,8 +38,7 @@ export const Erfolg = z.looseObject({ success: z.literal(true) });
 
 const faktorFelder = { code: z.union([z.string().max(64), z.number()]).nullable().optional(),
   passkey: z.record(z.string(), z.unknown()).nullable().optional() };
-/** Eine Route mit erneuter Bestätigung: Marke und Eingabe aus einer Hand, damit
- * die Felder im Vertrag stehen, die der Wächtertest schickt. */
+/** Marke und Eingabe aus einer Hand: Der Wächtertest schickt genau diese Felder. */
 export function bestaetigt(felder: Record<string, z.ZodType> = {}, passwort = 'password', code = 'code') {
   return { bestaetigung: { passwort, code },
     eingabe: z.looseObject({ ...felder, [passwort]: z.string().max(1024).optional(),
