@@ -30,6 +30,10 @@ name: Android-App
 on:
   push:
     branches: ['**']
+    # Veröffentlicht wird nur aus einem Etikett android-v… auf einem Commit von
+    # main (Job `signieren`), nicht aus jedem Push auf main. Für Etiketten wertet
+    # GitHub den paths-Filter nicht aus.
+    tags: ['android-v*']
     paths:
       - 'Android-App/**'
       # shared/ ist der gemeinsame Pruefkorpus beider Apps (siehe shared/README.md).
@@ -494,16 +498,17 @@ jobs:
   #
   # Der Schlüssel sieht weder Gradle noch ein Plugin noch ein Werkzeug aus dem
   # Repository: kein Checkout, nur das Artefakt des Bau-Jobs und apksigner/
-  # zipalign aus dem SDK des Runners (Prüfsummen im Protokoll). Auf main mit
-  # der Environment `release`: Nur dort liegen die Secrets, und ihre Regeln
-  # (nur main, Pflichtprüfer) gelten. Auf Zweigen derselbe Ablauf mit einem
-  # Wegwerfschlüssel, ohne Environment und ohne Secrets.
+  # zipalign aus dem SDK des Runners (Prüfsummen im Protokoll). Nur für ein
+  # Etikett android-v… mit der Environment `release`: Nur dort liegen die
+  # Secrets, und ihre Regeln (nur diese Etiketten, Pflichtprüfer) gelten. Sonst
+  # derselbe Ablauf mit einem Wegwerfschlüssel, ohne Environment und ohne Secrets.
   signieren:
     needs: build
     runs-on: ubuntu-latest
-    environment: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'release' || '' }}
+    environment: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') && 'release' || '' }}
     permissions:
       actions: read
+      contents: read
     steps:
       - name: Unsigniertes APK holen
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
@@ -514,8 +519,22 @@ jobs:
       # Die Secrets nennt nur dieser Schritt, und er läuft nur dort, wo der Job in
       # der Environment `release` steht. Gleichnamige Repository-Secrets fände
       # GitHub sonst ebenfalls — sie gehören gelöscht (README, Release signieren).
+      # Ein Etikett kann jeder mit Schreibrecht auf jeden Commit setzen; signiert
+      # wird nur, was schon auf main liegt, also durch Review und CI ging.
+      - name: Etikett liegt auf main
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          STAND=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" --jq .status)
+          case "$STAND" in
+            identical|behind) echo "$GITHUB_REF_NAME ($GITHUB_SHA) liegt auf main." ;;
+            *) echo "::error::$GITHUB_REF_NAME zeigt auf $GITHUB_SHA, der nicht auf main liegt ($STAND). Nichts wird signiert."; exit 1 ;;
+          esac
+
       - name: Release-Schlüssel bereitstellen
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORT }}
@@ -524,7 +543,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
-            echo "::error::Auf main fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — sie gehören in die Environment release; Repository-Secrets gleichen Namens löschen. Ohne Signatur wird nichts veröffentlicht."
+            echo "::error::Für das Etikett fehlen Signier-Secrets (KEYSTORE_BASE64, KEYSTORE_PASSWORT, KEY_ALIAS, KEY_PASSWORT) — sie gehören in die Environment release; Repository-Secrets gleichen Namens löschen. Ohne Signatur wird nichts veröffentlicht."
             exit 1
           fi
           S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
@@ -532,7 +551,7 @@ jobs:
           printf '%s' "$KS_PASS" > "$S/ks_pass"; printf '%s' "$KEY_PASS" > "$S/key_pass"; printf '%s' "$KEY_ALIAS" > "$S/alias"
 
       - name: Probe-Schlüssel erzeugen
-        if: github.ref != 'refs/heads/main' || github.event_name == 'pull_request'
+        if: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')) }}
         run: |
           set -euo pipefail
           S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
@@ -543,7 +562,7 @@ jobs:
 
       - name: Signieren
         env:
-          ECHT: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          ECHT: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') }}
         run: |
           set -euo pipefail
           WERKZEUGE=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)
@@ -676,14 +695,17 @@ jobs:
   #
   # Was hier landet, holt sich jede installierte App als Update. Darum hängt
   # auch dieser Job an der Environment `release`: Ihre Pflichtprüfer geben die
-  # Veröffentlichung frei, nicht schon der Push auf main allein.
+  # Veröffentlichung frei, nicht schon das Etikett allein. id-token und
+  # attestations nur für die Herkunftsbescheinigung des APK.
   release:
     needs: [signieren, apk-pruefen]
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
     environment: release
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     defaults:
       run:
         working-directory: Android-App
@@ -727,11 +749,18 @@ jobs:
       # ausgecheckt haben kann — woher das APK stammt, steht deshalb im TEXT
       # des Release und wird bei jedem Lauf neu geschrieben.
       #
-      # NUR von main, auch nicht von Hand auf einem Zweig: Sonst ueberschriebe
-      # ein ungeprueftes Zweig-APK die Datei hinter dem stabilen Link, und die
-      # App holte es sich als Update.
+      # NUR aus einem Etikett android-v… auf main, auch nicht von Hand auf einem
+      # Zweig: Sonst ueberschriebe ein ungeprueftes APK die Datei hinter dem
+      # stabilen Link, und die App holte es sich als Update.
+      # Bescheinigt, aus welchem Lauf, Commit und Workflow das signierte APK
+      # stammt (Sigstore, öffentlich prüfbar mit `gh attestation verify`).
+      - name: Herkunft des APK bescheinigen
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: Android-App/app/build/outputs/apk/release/BrickInventory.apk
+
       - name: BrickInventory.apk als Release bereitstellen
-        if: success() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -739,7 +768,8 @@ jobs:
           ETIKETT=apk-neuste
           APK=app/build/outputs/apk/release/BrickInventory.apk
           LINK="https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT/BrickInventory.apk"
-          TEXT="Gebaut aus \`$GITHUB_REF_NAME\` ($GITHUB_SHA) am $(date -u '+%d.%m.%Y %H:%M UTC').
+          TEXT="Gebaut aus dem Etikett \`$GITHUB_REF_NAME\` ($GITHUB_SHA) am $(date -u '+%d.%m.%Y %H:%M UTC').
+          Herkunft prüfen: gh attestation verify BrickInventory.apk --repo $GITHUB_REPOSITORY
 
           Direkter Download (immer die neuste Fassung, kein Zip):
           $LINK"
