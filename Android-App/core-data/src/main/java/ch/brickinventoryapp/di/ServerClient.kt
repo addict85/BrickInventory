@@ -34,6 +34,18 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
  * eigenen Server; darüber dessen Pinning (util/ServerVertrauen.kt).
  */
 private var gemeinsamesVertrauen: ch.brickinventoryapp.util.PinVertrauen? = null
+private var gemeinsameTls: ch.brickinventoryapp.util.ErneuerbareTlsFabrik? = null
+
+/** Ein SSLContext für alle Server-Clients; neu, sobald die Nutzer-CAs umschalten. */
+@Synchronized
+private fun serverTls(prefs: PreferencesManager, tm: ch.brickinventoryapp.util.PinVertrauen): ch.brickinventoryapp.util.ErneuerbareTlsFabrik {
+    gemeinsameTls?.let { return it }
+    val fabrik = ch.brickinventoryapp.util.ErneuerbareTlsFabrik {
+        javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory
+    }
+    prefs.beimNutzerCaWechsel { fabrik.erneuere() }
+    return fabrik.also { gemeinsameTls = it }
+}
 
 @Synchronized
 private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventoryapp.util.ZertifikatsFrage): ch.brickinventoryapp.util.PinVertrauen {
@@ -99,8 +111,7 @@ internal fun buildInterceptorClient(
             passwortWechselNoetig = { pflicht?.melde() }))
         .apply {
             val tm = serverVertrauen(prefs, frage)
-            val tls = javax.net.ssl.SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
-            sslSocketFactory(tls.socketFactory, tm)
+            sslSocketFactory(serverTls(prefs, tm), tm)
         }
         .connectTimeout(15, TimeUnit.SECONDS)
         // Ein Zwischen-Byte-Timeout; die PDF-Erzeugung läuft über Job-Polling.
@@ -111,9 +122,11 @@ internal fun buildInterceptorClient(
 }
 
 /**
- * Beim Wechsel auf einen anderen Server laufende Aufrufe abbrechen: Ihre Antworten
- * gehören dem alten Server. Für jeden Client mit eigenem Dispatcher (der Bild-Client hat einen).
+ * Beim Wechsel auf einen anderen Server laufende Aufrufe abbrechen; nach dem
+ * Umschalten der Nutzer-CAs keine Verbindung mit dem alten Vertrauen weiterbenutzen.
+ * Für jeden Client mit eigenem Dispatcher oder Pool (der Bild-Client hat einen).
  */
 internal fun folgtDemServer(prefs: PreferencesManager, client: OkHttpClient) {
     prefs.beimServerwechsel { client.dispatcher.cancelAll() }
+    prefs.beimNutzerCaWechsel { client.connectionPool.evictAll() }
 }

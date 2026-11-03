@@ -194,7 +194,8 @@ class PinVertrauen(
         sitzung?.peerHost?.let { "${it.lowercase()}:${sitzung.peerPort}" }
 
     private fun pruefe(chain: Array<X509Certificate>, schluessel: String?, mit: (X509ExtendedTrustManager) -> Unit) {
-        if (schluessel == null || chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
+        if (schluessel == null) return ohneHost(chain) { mit(fremdeHosts) }
+        if (chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
         val pin = pins.pin(schluessel)
         if (pin != null && passtZumPin(chain, pin)) return
         // Öffentlich heisst: allein mit den System-CAs, nie über eine Nutzer-CA.
@@ -235,12 +236,17 @@ class PinVertrauen(
     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String, engine: SSLEngine?) =
         pruefe(chain, schluessel(engine?.handshakeSession)) { it.checkServerTrusted(chain, authType, engine) }
 
-    // Ohne Socket kein Host (Android ruft die Fassung mit Socket). Hat der eigene
-    // Server einen Pin, gilt er auch hier: Sonst genügte eine System-CA, wo der Pin
-    // eine bestimmte Stelle verlangt.
-    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) {
+    override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) =
+        ohneHost(chain) { fremdeHosts.checkServerTrusted(chain, authType) }
+
+    /**
+     * Ohne Host (keine Handshake-Sitzung, keine Fassung mit Socket) ist nicht zu
+     * sagen, ob es der eigene Server ist. Hat er einen eigenen Pin, muss die Kette
+     * ihn tragen: Sonst genügte eine System-CA, wo der Pin eine bestimmte Stelle verlangt.
+     */
+    private fun ohneHost(chain: Array<X509Certificate>, system: () -> Unit) {
         val pin = eigenerServer()?.let(pins::pin)
-        if (pin == null || pin in systemWurzeln) return fremdeHosts.checkServerTrusted(chain, authType)
+        if (pin == null || pin in systemWurzeln) return system()
         if (!passtZumPin(chain, pin)) throw CertificateException("Ohne Host kein Abgleich mit dem Pin des eigenen Servers")
     }
 

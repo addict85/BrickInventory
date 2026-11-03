@@ -306,9 +306,13 @@ class PreferencesManager @Inject constructor(
     fun tokenGeneration(): Long = tokenSchranke.generation
 
     private val serverwechselHoerer = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val nutzerCaHoerer = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
 
     /** Die Server-Clients brechen beim Wechsel auf eine andere Herkunft ihre Aufrufe ab (di/ServerClient). */
     fun beimServerwechsel(hoerer: () -> Unit) { serverwechselHoerer += hoerer }
+
+    /** Nach dem Umschalten der Nutzer-CAs: neuer TLS-Kontext, offene Verbindungen weg (di/ServerClient). */
+    fun beimNutzerCaWechsel(hoerer: () -> Unit) { nutzerCaHoerer += hoerer }
 
     /** Für den Tausch: Herkunft wie im Wächter — ohne Bindung die eingetragene Adresse. */
     suspend fun tokenStand(): TokenStand {
@@ -440,6 +444,7 @@ class PreferencesManager @Inject constructor(
     fun nutzerCaErlaubt(): Boolean = designSpiegel.getBoolean(NUTZER_CA, false)
     fun setzeNutzerCa(an: Boolean) {
         designSpiegel.edit { putBoolean(NUTZER_CA, an) }
+        nutzerCaHoerer.forEach { it() }
     }
 
     /**
