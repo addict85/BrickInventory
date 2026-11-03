@@ -356,9 +356,9 @@ export async function gutscheinPinUmschalten(id) {
  */
 export async function gutscheinPdfOeffnen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
-  const ticket = await pdfFreigabe(`/v1/vouchers/${id}/pdf-freigabe`);
-  if (!ticket) return;
-  const r = await fetch(`/api/v1/vouchers/${id}/pdf?ticket=${encodeURIComponent(ticket)}`);
+  const f = await pdfFreigabe(`/v1/vouchers/${id}/pdf-freigabe`);
+  if (!f) return;
+  const r = await fetch(`/api/v1/vouchers/${id}/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
   if (!r.ok) { toast((await r.json().catch(() => ({}))).error || tRaw('settings.error'), 'error'); return; }
   const daten = await r.arrayBuffer();
   openPdfViewer(URL.createObjectURL(new Blob([daten], { type: 'application/pdf' })), g ? g.number : 'PDF',
@@ -371,7 +371,8 @@ async function pdfFreigabe(pfad) {
   if (password === null) return null;
   const d = await mitZweitemFaktor(z => api('POST', pfad, { password, ...z }));
   if (!d?.success) { if (d) toast(d.error || tRaw('settings.error'), 'error'); return null; }
-  return d.ticket;
+  // Nach der Frist gilt das Ticket nicht mehr; ein hängender Abruf bricht dann ab.
+  return { ticket: d.ticket, frist: AbortSignal.timeout(d.gueltig_sek * 1000) };
 }
 
 /**
@@ -445,11 +446,11 @@ export async function gutscheinKopieren(id, feld) {
  * noch das, was wirklich offen ist — und das sagt die Meldung.
  */
 async function gutscheineExportieren() {
-  const ticket = await pdfFreigabe('/v1/vouchers/export/pdf-freigabe');
-  if (!ticket) return;
+  const f = await pdfFreigabe('/v1/vouchers/export/pdf-freigabe');
+  if (!f) return;
   toast(tRaw('vouchers.export_running'), 'info');
   try {
-    const r = await fetch(`/api/v1/vouchers/export/pdf?ticket=${encodeURIComponent(ticket)}`);
+    const r = await fetch(`/api/v1/vouchers/export/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       toast(d.error || tRaw('settings.error'), 'error');
