@@ -48,7 +48,7 @@ fun GalleryStatChip(value: String, label: String, detail: String? = null) {
 fun KennzahlenReihe(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit) {
     Surface(modifier.fillMaxWidth(), shape = Formen.leiste, color = MaterialTheme.colorScheme.surfaceContainerLow) {
         FlowRow(
-            Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            Modifier.padding(horizontal = Abstaende.rand, vertical = Abstaende.klein),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
         ) { inhalt() }

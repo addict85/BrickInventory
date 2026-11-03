@@ -88,9 +88,9 @@ fun GalleryScreen(
     onSetClick: (String) -> Unit,
     /** Scroll-Zustand von aussen, damit er den Weg in die Detailansicht übersteht. */
     gridState: LazyGridState = rememberLazyGridState(),
-    /** Das Set, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert. */
-    gewaehlt: String? = null,
 ) {
+    // Das Set, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
+    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
     // Zustand und Aktionen vom ViewModel statt über Parameter (wie PartsScreen); die
     // Namen bleiben dieselben, damit der Rumpf darunter unverändert ist.
     val state by vm.state.collectAsStateWithLifecycle()

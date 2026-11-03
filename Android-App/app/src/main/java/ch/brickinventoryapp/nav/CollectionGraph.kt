@@ -192,6 +192,8 @@ fun NavGraphBuilder.collectionGraph(
                     ReiterGeruest(stringResource(R.string.nav_gallery), vm, navController, bottomNavItems, snackbarHostState) {
                         ch.brickinventoryapp.ui.components.ListeUndDetail(
                             liste = {
+                                androidx.compose.runtime.CompositionLocalProvider(
+                                    ch.brickinventoryapp.ui.components.LocalOffenesDetail provides setNumber) {
                                 GalleryScreen(
                                     vm = galerieUnten,
                                     erfassung = erfassung,
@@ -203,8 +205,8 @@ fun NavGraphBuilder.collectionGraph(
                                         }
                                     },
                                     gridState = galleryGridState,
-                                    gewaehlt = setNumber,
                                 )
+                                }
                             },
                             detail = detail,
                         )

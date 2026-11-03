@@ -145,7 +145,7 @@ fun MerklisteScreen(
                                   "U" to stringResource(R.string.condition_used)),
                 gewaehlt = zustand.zustandFilter,
                 onWahl = { vm.setzeMerklisteZustand(it) },
-                modifier = Modifier.padding(horizontal = 14.dp).padding(bottom = Abstaende.klein),
+                modifier = Modifier.padding(horizontal = Abstaende.rand).padding(bottom = Abstaende.klein),
             )
 
             Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.rand)) {

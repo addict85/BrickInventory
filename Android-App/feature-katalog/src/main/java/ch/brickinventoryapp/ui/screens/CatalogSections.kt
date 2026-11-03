@@ -87,7 +87,7 @@ fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, o
                 .map { it to sortLabel(it) },
             gewaehlt = state.sort,
             onWahl = onSortChange,
-            modifier = Modifier.padding(end = 14.dp),
+            modifier = Modifier.padding(end = Abstaende.rand),
             vorgabe = "year_desc",
         )
     }

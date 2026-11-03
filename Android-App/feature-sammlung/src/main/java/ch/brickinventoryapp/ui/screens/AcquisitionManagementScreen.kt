@@ -345,6 +345,7 @@ private fun AcquisitionManagementRow(
         }
     }
 
+    Column(Modifier.fillMaxWidth()) {
     Row(
         Modifier.fillMaxWidth().padding(bottom = Abstaende.winzig),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -408,4 +409,5 @@ private fun AcquisitionManagementRow(
         onSelect = { newCond -> condition = newCond; onSave(null, newCond, null, null) },
         modifier = Modifier.padding(bottom = Abstaende.klein),
     )
+    }
 }

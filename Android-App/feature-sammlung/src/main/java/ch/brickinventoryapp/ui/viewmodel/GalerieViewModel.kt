@@ -18,6 +18,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -55,7 +58,20 @@ class GalerieViewModel @Inject constructor(
                 scopeFor(ScopeFilter.View.GALLERY) == null && lagerFor(ScopeFilter.View.GALLERY).isNullOrBlank()
         },
     )
+    /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
+    data class VorgemerktesLoeschen(val setNumber: String, val name: String)
+
+    private val _vorgemerkt = MutableStateFlow<VorgemerktesLoeschen?>(null)
+    val vorgemerkt: StateFlow<VorgemerktesLoeschen?> = _vorgemerkt
+
+    /**
+     * Die Galerie ohne das vorgemerkte Set: Kommt die Liste während der Snackbar neu
+     * (Signal, Ziehen zum Neuladen), stünde es sonst wieder da, obwohl es gleich
+     * gelöscht wird.
+     */
     val galleryState: StateFlow<GalleryUiState> = galerie.state
+        .combine(_vorgemerkt) { st, v -> if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber }) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, galerie.state.value)
 
     private val _preise = MutableStateFlow<Map<String, KachelPreis>>(emptyMap())
     /** Marktpreis und G&V je Set; eigener Fluss, weil er nach der Liste kommt. */
@@ -116,12 +132,6 @@ class GalerieViewModel @Inject constructor(
             dienste.blickfeld.ladeLagerorte()
         }
     }
-
-    /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
-    data class VorgemerktesLoeschen(val setNumber: String, val name: String)
-
-    private val _vorgemerkt = kotlinx.coroutines.flow.MutableStateFlow<VorgemerktesLoeschen?>(null)
-    val vorgemerkt: kotlinx.coroutines.flow.StateFlow<VorgemerktesLoeschen?> = _vorgemerkt
 
     /**
      * Löschen mit „Rückgängig“: Die Kachel verschwindet sofort, der Server erfährt

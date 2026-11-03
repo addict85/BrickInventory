@@ -43,6 +43,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.heading
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
@@ -70,46 +71,6 @@ fun <T> SegmentWahl(
                 // Zwei Zeilen statt Auslassung: Bei grosser Schrift wurde „Gebraucht“ zu „Gebr…“.
                 Text(text, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            }
-        }
-    }
-}
-
-/**
- * Die Sortierung: ein Symbol mit Menü, überall dieselbe Bauform (Galerie, Merkliste,
- * Katalog). Sortieren schränkt nichts ein und steht deshalb nicht zwischen den
- * Filter-Chips; ein Punkt am Symbol sagt, dass von [vorgabe] abgewichen wird.
- */
-@Composable
-fun SortierMenue(
-    optionen: List<Pair<String, String>>,
-    gewaehlt: String,
-    onWahl: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    vorgabe: String? = null,
-) {
-    var offen by rememberSaveable { mutableStateOf(false) }
-    val aktuell = optionen.firstOrNull { it.first == gewaehlt }?.second ?: ""
-    Box(modifier) {
-        BadgedBox(badge = { if (vorgabe != null && gewaehlt != vorgabe) Badge() }) {
-            OutlinedIconButton(
-                onClick = { offen = true },
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.sort_menu_cd, aktuell))
-            }
-        }
-        DropdownMenu(offen, { offen = false }) {
-            optionen.forEach { (wert, text) ->
-                DropdownMenuItem(
-                    text = { Text(text) },
-                    onClick = { offen = false; if (wert != gewaehlt) onWahl(wert) },
-                    leadingIcon = {
-                        if (wert == gewaehlt) Icon(Icons.Default.Check, null, Modifier.size(18.dp))
-                        else Spacer(Modifier.size(18.dp))
-                    },
-                    modifier = Modifier.semantics { selected = wert == gewaehlt },
-                )
             }
         }
     }
@@ -156,6 +117,50 @@ fun <T> WahlChips(
                     if (an) Icon(Icons.Default.Check, null, Modifier.size(18.dp))
                     Text(text, style = MaterialTheme.typography.labelLarge)
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Die Sortierung: ein Symbol mit Menü, überall dieselbe Bauform (Galerie, Merkliste,
+ * Katalog). Sortieren schränkt nichts ein und steht deshalb nicht zwischen den
+ * Filter-Chips; ein Punkt am Symbol sagt, dass von [vorgabe] abgewichen wird.
+ */
+@Composable
+fun SortierMenue(
+    optionen: List<Pair<String, String>>,
+    gewaehlt: String,
+    onWahl: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    vorgabe: String? = null,
+) {
+    var offen by rememberSaveable { mutableStateOf(false) }
+    val aktuell = optionen.firstOrNull { it.first == gewaehlt }?.second ?: ""
+    Box(modifier) {
+        BadgedBox(badge = { if (vorgabe != null && gewaehlt != vorgabe) Badge() }) {
+            OutlinedIconButton(
+                onClick = { offen = true },
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.sort_menu_cd, aktuell))
+            }
+        }
+        DropdownMenu(offen, { offen = false }) {
+            // Eine Überschrift sagt, wonach die Einträge fragen.
+            Text(stringResource(R.string.filter_section_sort), style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein).semantics { heading() })
+            optionen.forEach { (wert, text) ->
+                DropdownMenuItem(
+                    text = { Text(text) },
+                    onClick = { offen = false; if (wert != gewaehlt) onWahl(wert) },
+                    leadingIcon = {
+                        if (wert == gewaehlt) Icon(Icons.Default.Check, null, Modifier.size(18.dp))
+                        else Spacer(Modifier.size(18.dp))
+                    },
+                    modifier = Modifier.semantics { selected = wert == gewaehlt },
+                )
             }
         }
     }

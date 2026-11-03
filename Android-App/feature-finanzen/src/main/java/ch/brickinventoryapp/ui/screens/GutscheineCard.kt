@@ -82,8 +82,10 @@ fun GutscheineCard(
     // solange ein Gutschein bearbeitet wird; nach erfolgreichem Speichern (Felder
     // leer) geht es von selbst zu, bei einer Absage bleibt es mit den Eingaben offen.
     var neu by rememberSaveable { mutableStateOf(false) }
-    var gesendet by remember { mutableStateOf(false) }
-    LaunchedEffect(zustand.speichert) {
+    var gesendet by rememberSaveable { mutableStateOf(false) }
+    // An den Feldern festgemacht, nicht nur an `speichert`: Ein schneller Server
+    // wechselt true → false, ohne dass eine Zusammensetzung dazwischen liegt.
+    LaunchedEffect(gesendet, zustand.speichert, zustand.nummer, zustand.bearbeitet) {
         if (gesendet && !zustand.speichert) {
             gesendet = false
             if (zustand.nummer.isEmpty() && zustand.bearbeitet == null) neu = false
@@ -334,7 +336,7 @@ private fun GutscheinKarte(
     modifier: Modifier = Modifier,
 ) {
     var loeschFrage by rememberSaveable { mutableStateOf(false) }
-    var menue by remember { mutableStateOf(false) }
+    var menue by rememberSaveable { mutableStateOf(false) }
     val nummer = inVierergruppen(g.number)
 
     OutlinedCard(modifier) {
