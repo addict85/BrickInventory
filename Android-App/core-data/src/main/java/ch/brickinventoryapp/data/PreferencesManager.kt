@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ch.brickinventoryapp.util.TokenVerschluesselung
+import ch.brickinventoryapp.util.liesToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -123,10 +125,12 @@ class PreferencesManager @Inject constructor(
      * Das Bearer-Token im Klartext. Erst der verschlüsselte Wert, sonst der alte
      * Klartext — sonst wäre jede ältere Installation nach dem Update abgemeldet.
      * Umgeschrieben wird in uebernehmeAltesToken(); ein Lesepfad schreibt nicht.
+     * Ein gesperrter Keystore wird abgewartet und nachgeholt (util/Tresorbefund.liesToken).
      */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val authToken: Flow<String> = context.dataStore.data.map { prefs -> prefs[AUTH_TOKEN_ENC] to prefs[AUTH_TOKEN] }
         .distinctUntilChanged()
-        .map { (geheim, alt) -> geheim?.let { tresor.entschluessle(it) } ?: alt ?: "" }
+        .transformLatest { (geheim, alt) -> liesToken(tresor, geheim, alt, melde = { emit(it) }) }
     val username:  Flow<String> = context.dataStore.data.map { it[USERNAME]   ?: "" }
     val currency:  Flow<String> = context.dataStore.data.map { it[CURRENCY]   ?: "EUR" }
     val language:  Flow<String> = context.dataStore.data.map { it[LANGUAGE]   ?: "system" }
