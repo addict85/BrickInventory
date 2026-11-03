@@ -23,6 +23,7 @@ Rückgabe 0 nur, wenn jede Gegenprobe rot war und es mindestens eine gab.
 import glob
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -68,9 +69,17 @@ def miss(projekt, wurzel, patch, gradle):
     if os.path.exists(bericht):
         os.remove(bericht)
     git(wurzel, 'apply', os.path.abspath(patch))
+    befehl = gradle + [f':{k["Modul"]}:testDebugUnitTest', '--rerun', '--tests', klasse]
     try:
-        lauf = subprocess.run(gradle + [f':{k["Modul"]}:testDebugUnitTest', '--rerun', '--tests', klasse],
-                              cwd=projekt, capture_output=True, text=True)
+        lauf = subprocess.run(befehl, cwd=projekt, capture_output=True, text=True)
+        # KSP verliert nach einem Patch in einem Vormodul sporadisch dessen Klassen
+        # („… could not be resolved“), in einem frischen Bau nie. Dann einmal mit
+        # leerem KSP-Stand wiederholen; ein echter Übersetzungsfehler bleibt rot.
+        if not os.path.exists(bericht) and 'could not be resolved' in lauf.stdout + lauf.stderr:
+            for alt in glob.glob(os.path.join(projekt, '*', 'build', 'kspCaches')) + \
+                       glob.glob(os.path.join(projekt, '*', 'build', 'generated', 'ksp')):
+                shutil.rmtree(alt, ignore_errors=True)
+            lauf = subprocess.run(befehl, cwd=projekt, capture_output=True, text=True)
     finally:
         zurueck = git(wurzel, 'apply', '-R', os.path.abspath(patch))
     if zurueck.returncode != 0:
