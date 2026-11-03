@@ -126,6 +126,8 @@
     <string name="gallery_no_results">Keine Treffer für „%1$s“</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_price_each">je Stück</string>
+    <string name="gallery_card_market">Marktpreis</string>
+    <string name="gallery_card_paid">Kaufpreis</string>
     <string name="gallery_delete_title">Set löschen?</string>
     <string name="gallery_delete_text">%1$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</string>
     <string name="gallery_set_deleted_undo">%1$s gelöscht</string>
@@ -271,7 +273,7 @@
     <string name="finance_price_error">Preisfehler</string>
     <string name="finance_no_sets">Keine Sets</string>
     <string name="finance_load_prompt">→ Preise laden</string>
-    <string name="finance_total_pnl">%1$s gegenüber Kaufpreis</string>
+    <string name="finance_total_pnl">%1$s gegenüber dem Einstand</string>
     <string name="finance_parts_extra">davon Teile &amp; Minifiguren: %1$s</string>
     <plurals name="finance_fremde_waehrung">
         <item quantity="one">%1$d Kaufpreis in anderer Währung nicht eingerechnet</item>
@@ -294,6 +296,25 @@
     <string name="finance_total_manual_minifigs">Manuell erfasste Minifiguren</string>
     <string name="finance_grand_total">Total</string>
     <string name="finance_market_avg">Marktwert der Sammlung</string>
+    <string name="finance_einstand_zeile">Einstand: %1$s</string>
+    <string name="finance_guv_zeile">Gewinn/Verlust: %1$s</string>
+    <string name="finance_pnl_needs_prices">braucht Kauf- und Marktpreise</string>
+    <plurals name="finance_basis_gerechnet">
+        <item quantity="one">Gerechnet über %1$d von %2$d Position mit Kauf- und Marktpreis.</item>
+        <item quantity="other">Gerechnet über %1$d von %2$d Positionen mit Kauf- und Marktpreis.</item>
+    </plurals>
+    <plurals name="finance_basis_ohne_markt">
+        <item quantity="one">%1$d Position ohne Marktpreis nicht gerechnet (Einstand %2$s)</item>
+        <item quantity="other">%1$d Positionen ohne Marktpreis nicht gerechnet (Einstand %2$s)</item>
+    </plurals>
+    <plurals name="finance_basis_ohne_kauf">
+        <item quantity="one">%1$d Position ohne Kaufpreis nicht gerechnet (Marktwert %2$s)</item>
+        <item quantity="other">%1$d Positionen ohne Kaufpreis nicht gerechnet (Marktwert %2$s)</item>
+    </plurals>
+    <plurals name="finance_summe_ohne_markt">
+        <item quantity="one">Das Total enthält %1$d Position ohne Marktpreis nicht.</item>
+        <item quantity="other">Das Total enthält %1$d Positionen ohne Marktpreis nicht.</item>
+    </plurals>
 
     <!-- ══════════════ Parts screen ══════════════ -->
     <string name="parts_stat_types">Teilearten</string>

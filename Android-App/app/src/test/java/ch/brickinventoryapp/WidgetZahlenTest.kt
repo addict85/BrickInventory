@@ -28,6 +28,9 @@ import org.junit.Test
  *   E  (03.11.2026, sec8 H5, kotlinc lokal) widgetWerte() ohne die Abfrage von
  *      `zeigen` → rot „ohne Erlaubnis sind die Betraege verdeckt“;
  *      gegenproben/widget-zeigt-betraege.patch
+ *   F  (03.11.2026, nur CI) gegenproben/widget-guv-aus-allen.patch: Basis
+ *      übergangen → rot „mit Basis stehen Wert und G&V wie in der Finanzkarte“
+ *      (32.40 statt 212.40)
  */
 class WidgetZahlenTest {
 
@@ -84,6 +87,20 @@ class WidgetZahlenTest {
         val offen = widgetWerte(z, zeigen = true)
         assertTrue("Mit Erlaubnis steht der Wert da", offen.first.contains("1") && offen.first != WIDGET_VERDECKT)
         assertTrue(offen.third.startsWith("+"))
+    }
+
+    /** Die Prozentzahl rechnet der Server auf der Basis; der Betrag daneben muss es auch. */
+    @Test
+    fun `mit Basis stehen Wert und G&V wie in der Finanzkarte`() {
+        val basis = ApiJson.decodeFromString(PnlResponse.serializer(), """{"success":true,"currency":"CHF","totals":{
+            "purchase":"1680.00","current":"1712.40","pnl_prozent":14.2,"positionen":3,"positionen_bewertet":2,
+            "positionen_ohne_marktpreis":1,"positionen_ohne_kaufpreis":0,"basis_einstand":"1500.00",
+            "basis_marktwert":"1712.40","basis_guv_betrag":"212.40","ohne_marktpreis_einstand":"180.00",
+            "ohne_kaufpreis_marktwert":"0.00"}}""")
+        val z = widgetZahlen(basis, verlauf, jetzt = 7)!!
+        assertEquals(1712.4, z.wert!!, 1e-9)
+        assertEquals(212.4, z.gesamt!!, 1e-9)
+        assertEquals(14.2, z.gesamtProzent!!, 1e-9)
     }
 
     @Test

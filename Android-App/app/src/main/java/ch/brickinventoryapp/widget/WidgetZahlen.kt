@@ -24,16 +24,25 @@ data class WidgetZahlen(
 )
 
 /**
- * Gesamt-G&V aus der G&V-Übersicht des Servers (aktueller Wert minus Kaufpreis,
- * über Sets, Teile und Figuren). Für „heute“ gibt es keinen eigenen Abruf: Der
- * Wochenverlauf hat einen Punkt je Tag, heute ist die Differenz der letzten zwei.
+ * Gesamt-G&V aus der G&V-Übersicht des Servers. Liefert er die Basis (nur Positionen
+ * mit Kauf- und Marktpreis), stehen Wert und G&V wie in der Finanzkarte auf ihr, denn
+ * pnl_prozent rechnet dort; ältere Server: aktueller Wert minus Kaufpreis. Für „heute“
+ * gibt es keinen eigenen Abruf: Der Wochenverlauf hat einen Punkt je Tag.
  */
 fun widgetZahlen(pnl: PnlResponse?, verlauf: PortfolioHistoryResponse?, jetzt: Long): WidgetZahlen? {
     if (pnl == null && verlauf == null) return null
     val waehrung = pnl?.currency ?: verlauf?.currency ?: "EUR"
-    val wert = pnl?.totals?.current?.toDoubleOrNull() ?: verlauf?.points?.lastOrNull()?.value
-    val kauf = pnl?.totals?.purchase?.toDoubleOrNull()
-    val gesamt = if (wert != null && kauf != null) wert - kauf else null
+    val t = pnl?.totals
+    val mitBasis = t?.basisEinstand != null && (t.positionenBewertet ?: 0) > 0
+    val wert = (if (mitBasis) t?.basisMarktwert else t?.current)?.toDoubleOrNull()
+        ?: verlauf?.points?.lastOrNull()?.value
+    val kauf = t?.purchase?.toDoubleOrNull()
+    val gesamt = when {
+        mitBasis -> t?.basisGuvBetrag?.toDoubleOrNull()
+        t?.basisEinstand != null -> null
+        wert != null && kauf != null -> wert - kauf
+        else -> null
+    }
     val punkte = verlauf?.points.orEmpty()
     val (heute, heuteProzent) = if (punkte.size >= 2) {
         val vorher = punkte[punkte.size - 2].value

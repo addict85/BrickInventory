@@ -71,6 +71,13 @@ fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsValuation:
                     BezeichnungUndWert(stringResource(R.string.finance_grand_total), fmtPrice(summen.gesamt.toPlainString()),
                         stil = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         bezeichnungFarbe = MaterialTheme.colorScheme.onSurface, wertGewicht = FontWeight.Bold)
+                    // Wie die Fussnote im Web: Ohne den Hinweis las sich das Total als Wert aller Positionen.
+                    val ohneMarkt = finanzKopf(valuation, partsValuation, figsValuation, pnl).ohneMarkt
+                    if (ohneMarkt > 0) Text(
+                        pluralStringResource(R.plurals.finance_summe_ohne_markt, ohneMarkt, ohneMarkt),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -314,11 +321,14 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                 // totals.avg statt qtyAvg: Marktpreis ist avg_price, der mengengewichtete
                 // Schnitt liegt systematisch darunter (gleiche Umstellung wie in der Webapp).
                 val summen = finanzSummen(valuation, partsValuation, figsValuation, pnl)
+                // Einstand, Marktwert und G/V aus einer Basis (finanzKopf), sonst passten die drei
+                // Zahlen nicht zusammen; ältere Server ohne Basis zeigen den Gesamtwert wie bisher.
+                val kopf = finanzKopf(valuation, partsValuation, figsValuation, pnl)
                 // FlowRow: Bei grosser Schrift rückt die Gewinn-Plakette unter den Betrag,
                 // statt ihn zu quetschen.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        if (summen.gesamt.signum() > 0) fmtPrice(summen.gesamt.toPlainString())
+                        if (kopf.wert.signum() > 0) fmtPrice(kopf.wert.toPlainString())
                         else if (valuation.sets.any { it.error != null }) stringResource(R.string.finance_price_error)
                         else if (valuation.sets.isEmpty()) stringResource(R.string.finance_no_sets)
                         else stringResource(R.string.finance_load_prompt),
@@ -327,7 +337,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                         style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.align(Alignment.CenterVertically)
                     )
-                    val pnlPct = pnl?.totals?.pnlProzent
+                    val pnlPct = kopf.guvProzent
                     if (pnlPct != null) {
                         // Gewinn grün, Verlust rot wie überall sonst; auf weissem Grund, weil die
                         // Statusfarben nur auf surface 4,5:1 zusagen (TextKontrastTest), nicht auf primary.
@@ -347,12 +357,42 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                         }
                     }
                 }
-                if (summen.teileUndFiguren.signum() > 0) {
+                // „davon Teile“ nur ohne Basis: Der Basis-Marktwert lässt Positionen ohne
+                // Kaufpreis aus, ein „davon“ aus allen Teilen könnte grösser sein als er.
+                if (!kopf.mitBasis && summen.teileUndFiguren.signum() > 0) {
                     Spacer(Modifier.height(Abstaende.winzig))
                     Text(
                         stringResource(R.string.finance_parts_extra, fmtPrice(summen.teileUndFiguren.toPlainString())),
                         color = auf,
                         style = MaterialTheme.typography.labelSmall
+                    )
+                }
+                if (kopf.basisBekannt) {
+                    Spacer(Modifier.height(Abstaende.winzig))
+                    kopf.einstand?.let {
+                        Text(stringResource(R.string.finance_einstand_zeile, fmtPrice(it.toPlainString())),
+                            color = auf, style = MaterialTheme.typography.bodySmall)
+                    }
+                    val guv = kopf.guvBetrag
+                    Text(
+                        stringResource(R.string.finance_guv_zeile,
+                            if (guv == null) stringResource(R.string.finance_pnl_needs_prices)
+                            else (if (guv.signum() > 0) "+" else "") + fmtPrice(guv.toPlainString())),
+                        color = auf, style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                // Was nicht gerechnet ist, steht unter den Zahlen — wie die Zeile im Web (fin-basis).
+                if (kopf.basisZeileSichtbar) {
+                    Spacer(Modifier.height(Abstaende.winzig))
+                    val ohneMarkt = if (kopf.ohneMarkt > 0) pluralStringResource(R.plurals.finance_basis_ohne_markt,
+                        kopf.ohneMarkt, kopf.ohneMarkt, fmtPrice(kopf.ohneMarktEinstand.toPlainString())) else null
+                    val ohneKauf = if (kopf.ohneKauf > 0) pluralStringResource(R.plurals.finance_basis_ohne_kauf,
+                        kopf.ohneKauf, kopf.ohneKauf, fmtPrice(kopf.ohneKaufWert.toPlainString())) else null
+                    val teile = listOfNotNull(ohneMarkt, ohneKauf)
+                    Text(
+                        pluralStringResource(R.plurals.finance_basis_gerechnet, kopf.gesamt, kopf.bewertet, kopf.gesamt) +
+                            " " + teile.joinToString(" · "),
+                        color = auf, style = MaterialTheme.typography.labelSmall,
                     )
                 }
                 // Wie das Web (finance.fremde_waehrung_n): fehlende Kaufpreise nennen statt still weglassen.
