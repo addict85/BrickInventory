@@ -3,6 +3,7 @@ import { esc } from './00-escapen.js';
 import { resetScopeModes } from './14-scope.js';
 import { LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
 import { setAllSets, bindTabs, loadGallery, loadStats } from './02-gallery.js';
+import { routeBeimStart } from './24-router.js';
 import { plInit, resetPartsList } from './08-init.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
 import { mitZweitemFaktor } from './07-admin.js';
@@ -1397,6 +1398,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
     loadGallery();
   }
   loadStats();
+  routeBeimStart();
 }
 G('btn-login').onclick=doLogin;
 ['lu','lp','lc'].forEach(id=>G(id).addEventListener('keydown',e=>e.key==='Enter'&&doLogin()));

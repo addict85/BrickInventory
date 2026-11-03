@@ -1125,6 +1125,7 @@ export async function openModal(sn){
   const bild = G('m-img'); bild.src = '/assets/set-placeholder.svg';
   G('m-det').innerHTML = skelettZeilen(4, t('common.loading'));
   G('m-instr').innerHTML = '';
+  G('set-modal').dataset.nummer = sn;
   G('set-modal').classList.add('open');
   const [d, ad] = await Promise.all([
     api('GET',`/v1/sets/${sn}`),

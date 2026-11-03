@@ -5,6 +5,7 @@ import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
+import { meldeAbschnitt } from './24-router.js';
 
 // ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -1151,6 +1152,7 @@ export function einstAbschnitt(id, ev){
     else l.removeAttribute('aria-current');
   }
   try { localStorage.setItem(EINST_KEY, ziel.id); } catch (_) { /* nur Komfort */ }
+  if (ev) meldeAbschnitt();
 }
 einstAbschnitt((() => { try { return localStorage.getItem(EINST_KEY); } catch (_) { return null; } })());
 

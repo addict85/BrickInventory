@@ -20,6 +20,7 @@ import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13
 import { ladeMerkliste, merklisteZuruecksetzen } from './16-merkliste.js';
 import { initCatalog, katalogZuruecksetzen } from './09-catalog.js';
 import { delSetStop, openPdfViewerLink, stopEvent } from './11-actions.js';
+import { meldeAnsicht, meldeFilter } from './24-router.js';
 
 // ═══ Navigation, Stats, Progress-Overlay, Galerie, CSV-Polling, Set-Detail-Modal ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -123,6 +124,7 @@ export function bindTabs(){
       if (unter) G('btn-umenu')?.setAttribute('aria-current', 'page'); else G('btn-umenu')?.removeAttribute('aria-current');
       t.classList.add('active'); G('tab-'+t.dataset.tab).classList.add('active');
       const tab = t.dataset.tab;
+      meldeAnsicht(tab);
       markiereGruppe(tab);
       zeigeSeitenname(G('tab-'+tab), unter);
       syncTabTitleIcon(tab);
@@ -208,6 +210,7 @@ export function oeffneSicht(name){
   markiereGruppe(null);
   zeigeSeitenname(flaeche, true);
   menueSchliessen();
+  meldeAnsicht(name);
   // Die Sichten liegen im Kontomenü, nicht in der Leiste: Dann zeigt der
   // Menüknopf, wo man ist — sonst wäre kein Reiter als aktiv markiert.
   G('btn-umenu')?.classList.add('aktiv');
@@ -650,6 +653,7 @@ function filterZuruecksetzen(ansicht) {
   else if (ansicht === 'catalog') katalogZuruecksetzen();
   else if (ansicht === 'parts') teileFilterZuruecksetzen();
   else if (ansicht === 'minifigs') figurenFilterZuruecksetzen();
+  meldeFilter();
 }
 
 export function onStorageChange(view) {
