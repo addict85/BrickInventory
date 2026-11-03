@@ -1,0 +1,18 @@
+Gegenprobe: Galeriekachel nennt auch den Kaufpreis „Marktpreis“ (kachel_quelle übergangen)
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Galeriekachel
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+index cf29f3a..e5c7095 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+@@ -534,7 +534,7 @@ fun SetCard(
+                     // Leer ohne Betrag, damit Kacheln einer Reihe gleich hoch bleiben.
+                     Text(when (if (betrag != null) kachelQuelle(set, preis) else null) {
+                             KachelQuelle.MARKT -> stringResource(R.string.gallery_card_market)
+-                            KachelQuelle.KAUF -> stringResource(R.string.gallery_card_paid)
++                            KachelQuelle.KAUF -> stringResource(R.string.gallery_card_market)
+                             null -> ""
+                         }, style = MaterialTheme.typography.labelSmall,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
