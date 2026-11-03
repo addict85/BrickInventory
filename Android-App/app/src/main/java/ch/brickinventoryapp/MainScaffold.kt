@@ -87,7 +87,7 @@ fun MainScaffold(
     // Das Symbol eines Ziels, an „Mehr“ mit dem Punkt für eine neue Version.
     @Composable
     fun Symbol(screen: Screen, icon: @Composable () -> Unit) {
-        if (screen == Screen.Mehr && updateVerfuegbar) BadgedBox(badge = { Badge() }) { icon() } else icon()
+        if (screen == Screen.Mehr && updateVerfuegbar) BadgedBox(badge = { ch.brickinventoryapp.ui.components.UpdatePunkt() }) { icon() } else icon()
     }
 
     // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten

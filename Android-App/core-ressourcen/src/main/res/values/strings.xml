@@ -193,7 +193,6 @@
         <item quantity="one">%1$d part</item>
         <item quantity="other">%1$d parts</item>
     </plurals>
-    <string name="partslist_set_number_placeholder">Set number (e.g. 75192)</string>
     <string name="partslist_scan">Scan</string>
     <string name="partslist_generate">Generate</string>
     <string name="partslist_pdf_error_title">PDF error</string>
@@ -201,14 +200,20 @@
     <string name="partslist_reset">Reset</string>
     <string name="partslist_fill_owned">My parts</string>
     <string name="storage_manage">Storage locations</string>
-    <string name="storage_manage_hint">The places offered when you file a set or a part. You can also add new ones right there.</string>
+    <string name="storage_manage_hint">These locations are offered when adding items. The star marks the preselected one.</string>
     <string name="storage_new">New storage location</string>
     <string name="storage_add">Add</string>
     <string name="storage_empty">No storage locations yet.</string>
-    <string name="storage_default_hint">The star marks the storage location that is preselected when adding items. Tap again to switch it off.</string>
     <string name="storage_default_set">Set as default when adding</string>
     <string name="storage_default_is">Default when adding — tap to switch off</string>
-    <string name="storage_delete">Delete storage location</string>
+    <string name="storage_default_label">Preselected when adding</string>
+    <string name="storage_add_button">Add storage location</string>
+    <string name="storage_name">Location name</string>
+    <string name="storage_rename">Rename</string>
+    <string name="storage_rename_title">Rename storage location</string>
+    <string name="storage_menu_cd">Actions for %1$s</string>
+    <string name="storage_delete_title">Delete storage location?</string>
+    <string name="storage_delete_text">“%1$s” will be deleted. This only works while nothing is stored there.</string>
     <string name="detail_storage">Storage</string>
     <string name="detail_alert">Price alert</string>
     <string name="alert_channel_name">Price alerts</string>
@@ -256,7 +261,8 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Collects the parts of one or more sets — for rebuilding or ordering what is missing.</string>
+    <string name="partslist_empty_hint">Add one or more sets above and tap “Generate” — for rebuilding or ordering what is missing.</string>
+    <string name="partslist_empty_title">No build list yet</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
         <item quantity="one">×%1$d  ·  %2$d type</item>
@@ -394,6 +400,9 @@
     <string name="main_barcode_figs">Minifigures</string>
     <string name="main_menu_monitoring">Background work</string>
     <string name="main_menu_logout">Log out</string>
+    <string name="logout_confirm_title">Log out?</string>
+    <string name="logout_confirm_text">You will be logged out on this device. To continue, log in again with your password.</string>
+    <string name="update_badge">Update available</string>
     <string name="main_menu_change_server">Change server</string>
     <string name="vm_settings_saved">Settings saved</string>
 
@@ -538,7 +547,15 @@
     <string name="household_for_account">For account</string>
     <string name="household_self">(me)</string>
     <string name="household_title">Household</string>
-    <string name="household_intro">Link accounts into a household: a main account sees the sets, parts and minifigures of its direct sub-accounts combined. An account can belong to several main accounts if it accepts each invitation itself. Both accounts must use the same currency.</string>
+    <string name="household_intro_more">A main account only sees its direct sub-accounts, not theirs. An account can belong to several main accounts if it accepts each invitation itself.</string>
+    <string name="household_linked">Linked accounts</string>
+    <string name="household_invite_section">Invite an account</string>
+    <string name="household_unlink_title">Unlink account?</string>
+    <string name="household_unlink_text">You will no longer belong to the main account “%1$s”. Linking again needs a new invitation.</string>
+    <string name="household_remove_title">Remove sub-account?</string>
+    <string name="household_remove_text">You will no longer see the collection of “%1$s”. Linking again needs a new invitation.</string>
+    <string name="common_learn_more">Learn more</string>
+    <string name="household_intro">A main account sees the sets, parts and minifigures of its sub-accounts combined. Both accounts need the same currency.</string>
     <string name="household_state_none">This account is not linked to any other.</string>
     <string name="household_state_main">Sub-accounts</string>
     <string name="household_state_parents">Belongs to these main accounts</string>
@@ -546,7 +563,7 @@
     <string name="household_former_via">previously via %1$s</string>
     <string name="household_former_dismiss">Dismiss</string>
     <string name="household_invite_create">Create invitation code</string>
-    <string name="household_invite_hint">Enter the code in the other account under Settings. Valid for 24 hours, usable once.</string>
+    <string name="household_invite_hint">Enter the code in the other account under “Household”. Valid for 24 hours, usable once.</string>
     <string name="household_invite_copy">Copy</string>
     <string name="household_invite_label">Invitation code</string>
     <string name="household_redeem_title">Accept an invitation</string>
@@ -704,13 +721,18 @@
 
     <!-- ══════════════ CSV upload ══════════════ -->
     <string name="csv_upload_title">Import CSV</string>
-    <string name="csv_upload_sets">Sets</string>
-    <string name="csv_upload_parts">Parts</string>
-    <string name="csv_upload_figs">Minifigures</string>
-    <string name="csv_upload_wanted">Watchlist</string>
-    <string name="csv_upload_alerts">Price alerts</string>
+    <string name="csv_format_sets">Columns: set_number, quantity, purchase_price, condition, acquired_at</string>
+    <string name="csv_format_parts">Columns: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
+    <string name="csv_format_figs">Columns: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
+    <string name="csv_format_wanted">Columns: set_number, condition, created_at</string>
+    <string name="csv_format_alerts">Columns: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_upload_sets">Import sets …</string>
+    <string name="csv_upload_parts">Import parts …</string>
+    <string name="csv_upload_figs">Import minifigures …</string>
+    <string name="csv_upload_wanted">Import watchlist …</string>
+    <string name="csv_upload_alerts">Import price alerts …</string>
     <string name="vouchers_import_done">%1$s, %2$s</string>
-    <string name="csv_upload_hint">Same files as in the web app. Maximum %1$d MB.</string>
+    <string name="csv_upload_hint">The same files as in the web app, with a header row, at most %1$d MB.</string>
     <string name="csv_upload_unreadable">The selected file could not be read.</string>
     <string name="csv_upload_too_big">The file is larger than %1$d MB.</string>
     <string name="csv_upload_result">%1$s: %2$s, %3$s, %4$s</string>

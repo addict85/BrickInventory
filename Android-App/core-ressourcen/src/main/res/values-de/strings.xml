@@ -177,7 +177,6 @@
         <item quantity="one">%1$d Teil</item>
         <item quantity="other">%1$d Teile</item>
     </plurals>
-    <string name="partslist_set_number_placeholder">Set-Nummer (z.B. 75192)</string>
     <string name="partslist_scan">Scan</string>
     <string name="partslist_generate">Erstellen</string>
     <string name="partslist_pdf_error_title">PDF Fehler</string>
@@ -185,14 +184,20 @@
     <string name="partslist_reset">Zurücksetzen</string>
     <string name="partslist_fill_owned">Mein Bestand</string>
     <string name="storage_manage">Lagerorte</string>
-    <string name="storage_manage_hint">Die Orte, die beim Set und beim Teil zur Auswahl stehen. Neue lassen sich auch direkt dort eintragen.</string>
+    <string name="storage_manage_hint">Diese Orte stehen beim Erfassen zur Auswahl. Der Stern markiert den vorausgewählten.</string>
     <string name="storage_new">Neuer Lagerort</string>
     <string name="storage_add">Hinzufügen</string>
     <string name="storage_empty">Noch keine Lagerorte angelegt.</string>
-    <string name="storage_default_hint">Der Stern markiert den Lagerort, der beim Erfassen schon vorausgewählt ist. Nochmal tippen schaltet ihn ab.</string>
     <string name="storage_default_set">Als Vorgabe beim Erfassen setzen</string>
     <string name="storage_default_is">Vorgabe beim Erfassen — tippen schaltet sie ab</string>
-    <string name="storage_delete">Lagerort löschen</string>
+    <string name="storage_default_label">Vorgabe beim Erfassen</string>
+    <string name="storage_add_button">Lagerort hinzufügen</string>
+    <string name="storage_name">Name des Lagerorts</string>
+    <string name="storage_rename">Umbenennen</string>
+    <string name="storage_rename_title">Lagerort umbenennen</string>
+    <string name="storage_menu_cd">Aktionen für %1$s</string>
+    <string name="storage_delete_title">Lagerort löschen?</string>
+    <string name="storage_delete_text">„%1$s“ wird gelöscht. Das geht nur, solange nichts darin liegt.</string>
     <string name="detail_storage">Lagerort</string>
     <string name="detail_alert">Preisalarm</string>
     <string name="alert_channel_name">Preisalarme</string>
@@ -240,7 +245,8 @@
         <item quantity="other">%1$d verschiedene</item>
     </plurals>
     <string name="partslist_owned_error">Der eigene Bestand liess sich nicht laden.</string>
-    <string name="partslist_empty_hint">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</string>
+    <string name="partslist_empty_hint">Füge oben ein oder mehrere Sets hinzu und tippe auf „Erstellen“ — für den Nachbau oder um Fehlendes zu bestellen.</string>
+    <string name="partslist_empty_title">Noch keine Bauliste</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
     <plurals name="partslist_group_summary">
         <item quantity="one">×%1$d  ·  %2$d Typ</item>
@@ -377,6 +383,9 @@
     <string name="main_barcode_figs">Minifiguren</string>
     <string name="main_menu_monitoring">Hintergrundarbeiten</string>
     <string name="main_menu_logout">Abmelden</string>
+    <string name="logout_confirm_title">Abmelden?</string>
+    <string name="logout_confirm_text">Du meldest dich auf diesem Gerät ab. Zum Weiterarbeiten meldest du dich wieder mit deinem Passwort an.</string>
+    <string name="update_badge">Update verfügbar</string>
     <string name="main_menu_change_server">Server ändern</string>
     <string name="vm_settings_saved">Einstellungen gespeichert</string>
 
@@ -529,7 +538,15 @@
     <string name="household_for_account">Für Konto</string>
     <string name="household_self">(ich)</string>
     <string name="household_title">Haushalt</string>
-    <string name="household_intro">Verknüpfe Konten zu einem Haushalt: Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner direkten Unterkonten zusammengefasst. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt. Beide Konten müssen dieselbe Währung verwenden.</string>
+    <string name="household_intro_more">Ein Hauptkonto sieht nur seine direkten Unterkonten, nicht deren Unterkonten. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt.</string>
+    <string name="household_linked">Verknüpfte Konten</string>
+    <string name="household_invite_section">Konto einladen</string>
+    <string name="household_unlink_title">Verknüpfung lösen?</string>
+    <string name="household_unlink_text">Du gehörst danach nicht mehr zum Hauptkonto „%1$s“. Wieder verknüpfen geht nur mit einer neuen Einladung.</string>
+    <string name="household_remove_title">Unterkonto entfernen?</string>
+    <string name="household_remove_text">Du siehst die Sammlung von „%1$s“ danach nicht mehr. Wieder verknüpfen geht nur mit einer neuen Einladung.</string>
+    <string name="common_learn_more">Mehr erfahren</string>
+    <string name="household_intro">Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner Unterkonten zusammengefasst. Beide Konten brauchen dieselbe Währung.</string>
     <string name="household_state_none">Dieses Konto ist mit keinem anderen verknüpft.</string>
     <string name="household_state_main">Unterkonten</string>
     <string name="household_state_parents">Gehört zu diesen Hauptkonten</string>
@@ -537,7 +554,7 @@
     <string name="household_former_via">bisher über %1$s</string>
     <string name="household_former_dismiss">Ausblenden</string>
     <string name="household_invite_create">Einladungscode erzeugen</string>
-    <string name="household_invite_hint">Gib den Code im anderen Konto unter Einstellungen ein. 24 Stunden gültig, einmal verwendbar.</string>
+    <string name="household_invite_hint">Gib den Code im anderen Konto unter „Haushalt“ ein. 24 Stunden gültig, einmal verwendbar.</string>
     <string name="household_invite_copy">Kopieren</string>
     <string name="household_invite_label">Einladungscode</string>
     <string name="household_redeem_title">Einladung annehmen</string>
@@ -690,13 +707,18 @@
 
     <!-- ══════════════ CSV hochladen ══════════════ -->
     <string name="csv_upload_title">CSV importieren</string>
-    <string name="csv_upload_sets">Sets</string>
-    <string name="csv_upload_parts">Teile</string>
-    <string name="csv_upload_figs">Minifiguren</string>
-    <string name="csv_upload_wanted">Merkliste</string>
-    <string name="csv_upload_alerts">Preisalarme</string>
+    <string name="csv_format_sets">Spalten: set_number, quantity, purchase_price, condition, acquired_at</string>
+    <string name="csv_format_parts">Spalten: part_number, quantity, color_id, color_name, unit_price, condition, acquired_at</string>
+    <string name="csv_format_figs">Spalten: fig_number, bl_fig_number, quantity, unit_price, condition, acquired_at</string>
+    <string name="csv_format_wanted">Spalten: set_number, condition, created_at</string>
+    <string name="csv_format_alerts">Spalten: set_number, condition, richtung, schwelle, currency_code</string>
+    <string name="csv_upload_sets">Sets importieren …</string>
+    <string name="csv_upload_parts">Teile importieren …</string>
+    <string name="csv_upload_figs">Minifiguren importieren …</string>
+    <string name="csv_upload_wanted">Merkliste importieren …</string>
+    <string name="csv_upload_alerts">Preisalarme importieren …</string>
     <string name="vouchers_import_done">%1$s, %2$s</string>
-    <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp. Höchstens %1$d MB.</string>
+    <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp, mit Kopfzeile, höchstens %1$d MB.</string>
     <string name="csv_upload_unreadable">Die gewählte Datei liess sich nicht lesen.</string>
     <string name="csv_upload_too_big">Die Datei ist grösser als %1$d MB.</string>
     <string name="csv_upload_result">%1$s: %2$s, %3$s, %4$s</string>

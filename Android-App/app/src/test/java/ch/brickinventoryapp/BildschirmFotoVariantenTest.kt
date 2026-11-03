@@ -375,6 +375,17 @@ class BildschirmFotoVariantenTest {
         compose.onNode(isDialog()).captureRoboImage(pfad("dialog-set-loeschen", "noppe", false, "telefon"))
     }
 
+    /** Die Rückfrage vor dem Abmelden — dieselbe Bauform wie beim Löschen eines Sets. */
+    @Test
+    fun dialogAbmelden() {
+        zeige("dialog-abmelden", dunkel = true) {
+            MehrBildschirm(rememberNavController(), isAdmin = false, updateVerfuegbar = true, onAbmelden = {})
+        }
+        compose.onNodeWithText("Abmelden").performClick()
+        compose.waitForIdle()
+        compose.onNode(isDialog()).captureRoboImage(pfad("dialog-abmelden", "classic", true, "telefon"))
+    }
+
     @Test
     fun dialogMerkpostenAnlegen() {
         val vm = welt.merkliste().also { it.ladeMerkliste() }

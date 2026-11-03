@@ -1,20 +1,24 @@
 package ch.brickinventoryapp.ui.screens
 
-import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.components.Abschnitt
+import ch.brickinventoryapp.ui.components.ErfassenDialog
+import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.model.LagerortEintragAnsicht
+import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
-import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
  * Die eigenen Lagerorte verwalten, je Benutzer.
@@ -23,95 +27,148 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Enkels wählt der Grossvater aus dessen Liste, aber fremde Regale umzubenennen
  * wäre ein Versehen — lesen weit, schreiben eng.
  *
- * Löschen nur bei einem leeren Ort: Der Server sagt Nein, solange etwas darin
- * liegt (lagerort_in_benutzung). Stilles Leeren verlöre die Zuordnung von Sets,
- * die der Löschende nicht im Blick hatte, ohne Weg zurück.
+ * Löschen nur bei einem leeren Ort und nach Rückfrage: Der Server sagt Nein, solange
+ * etwas darin liegt (lagerort_in_benutzung).
  */
 @Composable
 internal fun LagerorteCard(vm: EinstellungenViewModel) {
     val lager by vm.lagerState.collectAsStateWithLifecycle()
-    var neuerOrt by rememberSaveable { mutableStateOf("") }
+    // Welcher Dialog offen ist, überlebt eine Drehung: Wer gerade umbenennt, soll
+    // danach nicht vor der Liste stehen.
+    var neu by rememberSaveable { mutableStateOf(false) }
+    var umbenennen by rememberSaveable { mutableStateOf<Int?>(null) }
+    var loeschen by rememberSaveable { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(Unit) { vm.ladeEigeneLagerorte() }
 
-    SettingsCard(
-        title = stringResource(R.string.storage_manage),
-        icon = Icons.Default.Inventory2,
-    ) {
-        Text(stringResource(R.string.storage_manage_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = Abstaende.haar))
-        // ── Der Stern: Vorgabe für Neuerfassungen ──
-        //
-        // Der Hinweis steht da, weil ein Stern allein nicht sagt, was er tut — und niemand
-        // erraten soll, dass ein zweiter Druck ihn abschaltet.
-        Text(stringResource(R.string.storage_default_hint),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = Abstaende.klein))
+    Text(stringResource(R.string.storage_manage_hint),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
 
+    Abschnitt(titel = null, innenAbstand = false) {
         if (lager.eigene.isEmpty()) {
-            Text(stringResource(R.string.storage_empty),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ListItem(headlineContent = { Text(stringResource(R.string.storage_empty)) },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent))
         }
-        for (ort in lager.eigene) {
-            // Schluessel ist der Name: Kommt er nach dem Umbenennen anders vom
-            // Server zurueck (getrimmt), soll das Feld ihn zeigen.
-            var name by rememberSaveable(ort.name) { mutableStateOf(ort.name) }
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { if (it.length <= 60) name = it },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
-                // ── Der Stern: gefüllt oder umrissen ──
-                //
-                // Der Unterschied liegt in der Form, nicht in der Farbe: Bei Rot-Grün-Schwäche
-                // wäre ein farbig hervorgehobener Eintrag kein Unterschied. Die Beschreibung sagt
-                // dasselbe in Worten — für die Sprachausgabe und für jeden, der den Stern nicht
-                // deutet.
-                val istVorgabe = lager.vorgabe?.id == ort.id
-                IconButton(onClick = { vm.schalteLagerortVorgabe(ort.id, istVorgabe) }) {
-                    Icon(
-                        if (istVorgabe) Icons.Default.Star else Icons.Default.StarBorder,
-                        stringResource(if (istVorgabe) R.string.storage_default_is
-                                       else R.string.storage_default_set),
-                    )
-                }
-                // Umbenennen auf Knopfdruck, NICHT beim Tippen: Anders als beim
-                // Lagerort am Set schreibt ein Umbenennen hier alle Zuordnungen
-                // mit um. Das nebenbei zu tun, waehrend jemand einen Buchstaben
-                // aendert, waere zu viel Wirkung fuer zu wenig Geste.
-                IconButton(
-                    onClick = { vm.benenneLagerortUm(ort.id, name) },
-                    enabled = name.isNotBlank() && name != ort.name,
-                ) { Icon(Icons.Default.Save, stringResource(R.string.settings_save)) }
-                IconButton(
-                    onClick = { vm.loescheLagerort(ort.id) },
-                ) { Icon(Icons.Default.Delete, stringResource(R.string.storage_delete)) }
-            }
-        }
-
-        Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein)) {
-            OutlinedTextField(
-                value = neuerOrt,
-                onValueChange = { if (it.length <= 60) neuerOrt = it },
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.storage_new), style = MaterialTheme.typography.bodySmall) },
-                modifier = Modifier.weight(1f),
+        lager.eigene.forEachIndexed { i, ort ->
+            if (i > 0) HorizontalDivider()
+            LagerortZeile(
+                ort = ort,
+                istVorgabe = lager.vorgabe?.id == ort.id,
+                onVorgabe = { vm.schalteLagerortVorgabe(ort.id, it) },
+                onUmbenennen = { umbenennen = ort.id },
+                onLoeschen = { loeschen = ort.id },
             )
-            Button(
-                onClick = { val n = neuerOrt.trim(); neuerOrt = ""; vm.legeLagerortAn(n) },
-                enabled = neuerOrt.isNotBlank(),
-                shape = Formen.knopf,
-            ) { Text(stringResource(R.string.storage_add), style = MaterialTheme.typography.labelMedium) }
         }
+    }
+
+    Button(onClick = { neu = true }, shape = Formen.knopf) {
+        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(stringResource(R.string.storage_add_button))
+    }
+
+    if (neu) LagerortNameDialog(
+        titel = stringResource(R.string.storage_new),
+        start = "",
+        bestaetigen = stringResource(R.string.storage_add),
+        onFertig = { name -> neu = false; vm.legeLagerortAn(name) },
+        onAbbrechen = { neu = false },
+    )
+    lager.eigene.firstOrNull { it.id == umbenennen }?.let { ort ->
+        // Umbenennen schreibt alle Zuordnungen mit um — darum ein eigener Schritt mit
+        // „Speichern“ statt Speichern beim Tippen.
+        LagerortNameDialog(
+            titel = stringResource(R.string.storage_rename_title),
+            start = ort.name,
+            bestaetigen = stringResource(R.string.settings_save),
+            onFertig = { name -> umbenennen = null; if (name != ort.name) vm.benenneLagerortUm(ort.id, name) },
+            onAbbrechen = { umbenennen = null },
+        )
+    }
+    lager.eigene.firstOrNull { it.id == loeschen }?.let { ort ->
+        Rueckfrage(
+            titel = stringResource(R.string.storage_delete_title),
+            text = stringResource(R.string.storage_delete_text, ort.name),
+            bestaetigen = stringResource(R.string.common_delete),
+            onBestaetigen = { loeschen = null; vm.loescheLagerort(ort.id) },
+            onAbbrechen = { loeschen = null },
+            symbol = Icons.Default.Delete,
+        )
+    }
+}
+
+/**
+ * Eine Zeile: Name, darunter „Vorgabe“, rechts Stern und Menü. Der Stern unterscheidet
+ * sich in der Form (gefüllt/umrissen), nicht nur in der Farbe, und seine Beschreibung
+ * sagt, was ein Tipp tut.
+ */
+@Composable
+private fun LagerortZeile(
+    ort: LagerortEintragAnsicht,
+    istVorgabe: Boolean,
+    onVorgabe: (Boolean) -> Unit,
+    onUmbenennen: () -> Unit,
+    onLoeschen: () -> Unit,
+) {
+    var menue by remember { mutableStateOf(false) }
+    ListItem(
+        headlineContent = { Text(ort.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        supportingContent = if (istVorgabe) ({ Text(stringResource(R.string.storage_default_label)) }) else null,
+        leadingContent = { Icon(Icons.Default.Inventory2, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        trailingContent = {
+            Row {
+                IconButton(onClick = { onVorgabe(istVorgabe) }) {
+                    Icon(if (istVorgabe) Icons.Default.Star else Icons.Default.StarBorder,
+                        stringResource(if (istVorgabe) R.string.storage_default_is else R.string.storage_default_set),
+                        tint = if (istVorgabe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Box {
+                    IconButton(onClick = { menue = true }) {
+                        Icon(Icons.Default.MoreVert, stringResource(R.string.storage_menu_cd, ort.name))
+                    }
+                    DropdownMenu(menue, { menue = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.storage_rename)) },
+                            leadingIcon = { Icon(Icons.Default.Edit, null) },
+                            onClick = { menue = false; onUmbenennen() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.common_delete)) },
+                            leadingIcon = { Icon(Icons.Default.Delete, null) },
+                            onClick = { menue = false; onLoeschen() },
+                        )
+                    }
+                }
+            }
+        },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+    )
+}
+
+/** Name eines Lagerorts eingeben — für Neu und Umbenennen dieselbe Maske. */
+@Composable
+private fun LagerortNameDialog(
+    titel: String,
+    start: String,
+    bestaetigen: String,
+    onFertig: (String) -> Unit,
+    onAbbrechen: () -> Unit,
+) {
+    var name by rememberSaveable { mutableStateOf(start) }
+    ErfassenDialog(
+        titel = titel,
+        bestaetigen = bestaetigen,
+        onBestaetigen = { onFertig(name.trim()) },
+        onAbbrechen = onAbbrechen,
+        bestaetigenAn = name.isNotBlank(),
+    ) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = { if (it.length <= 60) name = it },
+            label = { Text(stringResource(R.string.storage_name)) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }
