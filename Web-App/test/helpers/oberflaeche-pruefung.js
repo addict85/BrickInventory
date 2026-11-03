@@ -128,19 +128,22 @@ const LEISTE = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkV
 /**
  * Alle Ansichten bei 320 px und 200 % Schrift, in allen sechs Designs hell
  * und dunkel. `modus` 'browser' vergrössert wie die Browsereinstellung
- * (Page.setFontSizes), 'seite' setzt die Grundschrift der Seite auf 200 %.
+ * (Page.setFontSizes), 'seite' setzt die Grundschrift der Seite auf 200 %,
+ * 'schmal' misst 320 px bei normaler Schrift auf Englisch.
  */
 function pruefeGrosseSchrift(modus) {
-  test(`Oberfläche 320 px, 200 % (${modus}): alle Ansichten, alle Designs`, { concurrency: 1, timeout: 300_000 }, async (t) => {
-    const app = await starteApp(t, { name: `ofl_gross_${modus}_${process.pid}`, bestand: musterSammlung });
+  test(`Oberfläche 320 px (${modus}): alle Ansichten`, { concurrency: 1, timeout: 300_000 }, async (t) => {
+    // Schmal auf Englisch: Die längeren Beschriftungen sind dort der enge Fall.
+    const app = await starteApp(t, { name: `ofl_gross_${modus}_${process.pid}`, bestand: musterSammlung, sprache: modus === 'schmal' ? 'en' : 'de' });
     if (app.grund) { t.skip(app.grund); return; }
     const { b } = app;
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 320, height: 640, deviceScaleFactor: 1, mobile: true });
     await warte(1000);
     await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
     if (modus === 'browser') await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
-    else await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
-    const designs = modus === 'browser' ? ['classic', 'brick', 'noppe', 'werkbank', 'farbfaecher', 'hochglanz'] : ['classic'];
+    else if (modus === 'seite') await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
+    const designs = modus === 'browser' ? ['classic', 'brick', 'noppe', 'werkbank', 'farbfaecher', 'hochglanz']
+      : modus === 'schmal' ? ['classic', 'noppe'] : ['classic'];
     for (const [ansicht, schritte] of ANSICHTEN) {
       const funde = [];
       await b.auswerten(SCHLIESSEN);
