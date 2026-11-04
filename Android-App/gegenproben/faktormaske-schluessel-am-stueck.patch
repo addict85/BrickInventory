@@ -1,0 +1,18 @@
+Gegenprobe: Der Schlüssel steht am Stück statt in Vierergruppen
+Modul: app
+Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
+Rot: waehrend der Einrichtung
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
+index 5b00b3f..6004097 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
+@@ -111,7 +111,7 @@ fun ZweiterFaktorPflichtMaske(
+                         Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodyMedium,
+                             color = MaterialTheme.colorScheme.error)
+                     }
+-                    Text(geheimnis.chunked(4).joinToString(" "), fontFamily = FontFamily.Monospace,
++                    Text(geheimnis, fontFamily = FontFamily.Monospace,
+                         style = MaterialTheme.typography.bodyLarge)
+                     OutlinedButton(
+                         onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, geheimnis) },

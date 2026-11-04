@@ -72,7 +72,7 @@ class MainActivity : NurLauncherStart() {
     // Ebenso: Eine Guthabenabfrage über alle Karten soll weiterlaufen, wenn
     // man die Gutschein-Seite verlässt.
     private val gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel by viewModels()
-    // Nur für die Maske „Startpasswort ersetzen“, die über allem liegt.
+    // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.
     private val startKontoVm: ch.brickinventoryapp.ui.viewmodel.KontoViewModel by viewModels()
 
     // ImageLoader als Hilt-Singleton aus NetzModule — eine Instanz je Prozess statt je
@@ -171,12 +171,24 @@ class MainActivity : NurLauncherStart() {
                     // und StateFlow.value in der Komposition verbietet Lint.
                     val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
                         .collectAsStateWithLifecycle(false)
+                    // Ebenso Verwalterrechte ohne zweiten Faktor; das Startpasswort kommt zuerst.
+                    val faktorPflicht by vm.zweiterFaktorPflicht.noetig.collectAsStateWithLifecycle()
                     if (startpasswort && angemeldet) {
                         val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
                         ch.brickinventoryapp.ui.screens.StartpasswortMaske(
                             kontoZustand = kontoZustand,
                             onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) { vm.logout() } },
                             onAbmelden = { vm.logout() },
+                        )
+                    } else if (faktorPflicht && angemeldet) {
+                        val faktorZustand by startKontoVm.zweiterFaktorState.collectAsStateWithLifecycle()
+                        LaunchedEffect(Unit) { startKontoVm.ladeZweitenFaktor() }
+                        ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske(
+                            zustand = faktorZustand,
+                            onEinrichten = startKontoVm::richteZweitenFaktorEin,
+                            onBestaetigen = startKontoVm::bestaetigeZweitenFaktor,
+                            onWeiter = { startKontoVm.zweiterFaktorZurueck(); vm.zweiterFaktorEingerichtet() },
+                            onAbmelden = { startKontoVm.zweiterFaktorZurueck(); vm.logout() },
                         )
                     }
                     // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.

@@ -1,0 +1,17 @@
+Gegenprobe: Der Wächter übersieht 403 zweiter_faktor_pflicht
+Modul: core-zustand
+Test: ch.brickinventoryapp.ServerWaechterTest
+Rot: ein 403 zweiter_faktor_pflicht verlangt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
+index d597f05..88d45c1 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/di/ServerWaechter.kt
+@@ -177,7 +177,6 @@ class ServerWaechter(
+             if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
+             if (antwort.code == 403 && code == NUR_ADMINS) rechteEntzogen()
+             if (antwort.code == 403 && code == PASSWORT_WECHSEL_NOETIG) passwortWechselNoetig()
+-            if (antwort.code == 403 && code == ZWEITER_FAKTOR_PFLICHT) zweiterFaktorPflicht()
+         }
+ 
+         val melden = versionsMeldung

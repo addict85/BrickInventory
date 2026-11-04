@@ -650,6 +650,9 @@
     <string name="err_session_expired">Sitzung abgelaufen — bitte neu anmelden</string>
     <string name="err_klartext">Die Server-Adresse ist unverschlüsselt (http). Die App verbindet sich nur über https – bitte unter „Server wechseln“ die https-Adresse eintragen oder den QR-Code neu scannen.</string>
     <string name="err_unknown">Etwas ist schiefgelaufen</string>
+    <string name="err_upload_laeuft">Für dieses Konto läuft schon ein Upload dieser Art. Bitte warten, bis er fertig ist.</string>
+    <string name="err_zu_viele_verbindungen">Zu viele offene Verbindungen für dieses Konto. Bitte andere Fenster oder Geräte schliessen und es gleich noch einmal versuchen.</string>
+    <string name="err_pdf_zu_viele_seiten">Das PDF hat zu viele Seiten. Bitte in kleinere Dateien teilen.</string>
     <string name="pdfview_print">Drucken</string>
     <string name="pdfview_zoom_in">Vergrössern</string>
     <string name="pdfview_zoom_out">Verkleinern</string>
@@ -937,6 +940,11 @@
     <string name="zf_disable">Abschalten</string>
     <string name="zf_enabled">Zweiter Faktor eingerichtet</string>
     <string name="zf_disabled">Zweiter Faktor abgeschaltet</string>
+    <string name="zf_pflicht_titel">Zweiten Faktor einrichten</string>
+    <string name="zf_pflicht_text">Dieses Konto hat Verwalterrechte. Dafür verlangt der Server neben dem Passwort einen Code aus einer Authenticator-App. Bis er eingerichtet ist, bleibt der Rest der App gesperrt.</string>
+    <string name="zf_pflicht_passwort">Zuerst mit dem Passwort bestätigen; danach zeigt die App den Schlüssel für die Authenticator-App.</string>
+    <string name="zf_pflicht_codes_titel">Codes für den Notfall</string>
+    <string name="zf_pflicht_weiter">Weiter zur App</string>
     <plurals name="zf_active">
         <item quantity="one">Eingerichtet · %d Wiederherstellungscode übrig</item>
         <item quantity="other">Eingerichtet · %d Wiederherstellungscodes übrig</item>

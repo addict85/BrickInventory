@@ -103,10 +103,17 @@ class GutscheineRepository @Inject constructor(
             // Satz und Code, deshalb wird die Antwort hier zu success=false.
             if (antwort.code() == 422) {
                 val roh = antwort.errorBody()?.string()
-                val geparst = roh?.let {
+                // Zu viele Seiten: Gelesen wurde nichts, das Formular hat nichts vorzubelegen.
+                // Ein Fehler mit Satz und Code, sonst hiesse es „unvollständig gelesen“.
+                val zuLang = Fehlerrumpf.lies(roh).code == PDF_ZU_VIELE_SEITEN
+                val geparst = roh?.takeIf { !zuLang }?.let {
                     runCatching { nachsichtigesJson.decodeFromString<GutscheinAntwort>(it) }.getOrNull()
                 }
-                if (geparst != null) retrofit2.Response.success(geparst) else antwort
+                when {
+                    geparst != null -> retrofit2.Response.success(geparst)
+                    zuLang -> retrofit2.Response.error<GutscheinAntwort>(antwort.code(), (roh ?: "").toResponseBody("application/json".toMediaType()))
+                    else -> antwort
+                }
             } else antwort
         }
     }
@@ -128,6 +135,9 @@ class GutscheineRepository @Inject constructor(
         /** Was offline von einem Gutschein bleibt: keine PIN, von der Nummer die letzten vier Ziffern. */
         fun ohneGeheimnis(g: Gutschein): Gutschein =
             g.copy(number = if (g.number.length > 4) "…" + g.number.takeLast(4) else g.number, pin = null)
+
+        /** 422 auf ein PDF über der Seitengrenze des Servers. */
+        private const val PDF_ZU_VIELE_SEITEN = "pdf_zu_viele_seiten"
 
         /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */
         private val GUTHABEN_GESPERRT = setOf("guthaben_abstand", "guthaben_botschutz")

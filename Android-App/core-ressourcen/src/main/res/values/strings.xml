@@ -664,6 +664,9 @@
     <string name="err_session_expired">Session expired — please sign in again</string>
     <string name="err_klartext">The server address is unencrypted (http). The app only connects via https – please enter the https address under “Change server” or scan the QR code again.</string>
     <string name="err_unknown">Something went wrong</string>
+    <string name="err_upload_laeuft">An upload of this kind is already running for this account. Please wait until it has finished.</string>
+    <string name="err_zu_viele_verbindungen">Too many open connections for this account. Please close other windows or devices and try again shortly.</string>
+    <string name="err_pdf_zu_viele_seiten">The PDF has too many pages. Please split it into smaller files.</string>
     <string name="pdfview_print">Print</string>
     <string name="pdfview_zoom_in">Zoom in</string>
     <string name="pdfview_zoom_out">Zoom out</string>
@@ -956,6 +959,11 @@
     <string name="zf_disable">Turn off</string>
     <string name="zf_enabled">Two-factor authentication set up</string>
     <string name="zf_disabled">Two-factor authentication turned off</string>
+    <string name="zf_pflicht_titel">Set up two-factor authentication</string>
+    <string name="zf_pflicht_text">This account has administrator rights. For these the server requires a code from an authenticator app in addition to the password. Until it is set up, the rest of the app stays locked.</string>
+    <string name="zf_pflicht_passwort">First confirm with your password; then the app shows the key for your authenticator app.</string>
+    <string name="zf_pflicht_codes_titel">Codes for emergencies</string>
+    <string name="zf_pflicht_weiter">Continue to the app</string>
     <plurals name="zf_active">
         <item quantity="one">Set up · %d recovery code left</item>
         <item quantity="other">Set up · %d recovery codes left</item>

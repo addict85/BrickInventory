@@ -80,6 +80,8 @@ internal fun buildInterceptorClient(
     rechte: ch.brickinventoryapp.data.RechteSignal? = null,
     /** Nur der API-Client: Mit Startpasswort weist der Server jeden Abruf ab. */
     pflicht: ch.brickinventoryapp.data.PasswortPflicht? = null,
+    /** Nur der API-Client: Verwalterrechte ohne zweiten Faktor weist der Server ab. */
+    faktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht? = null,
 ): OkHttpClient {
     val versionsMeldung: ((VersionsHinweis) -> Unit)? = meldungen?.let { kanal ->
         { hinweis: VersionsHinweis ->
@@ -108,7 +110,7 @@ internal fun buildInterceptorClient(
                     ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx)
                         .getString(ch.brickinventoryapp.ressourcen.R.string.lang_code))
             }, rotation = rotation, rechteEntzogen = { rechte?.melde() },
-            passwortWechselNoetig = { pflicht?.melde() }))
+            passwortWechselNoetig = { pflicht?.melde() }, zweiterFaktorPflicht = { faktorPflicht?.melde() }))
         .apply {
             val tm = serverVertrauen(prefs, frage)
             sslSocketFactory(serverTls(prefs, tm), tm)

@@ -1,0 +1,18 @@
+Gegenprobe: Jedes /auth/me meldet die Pflicht, auch ohne Feld
+Modul: core-zustand
+Test: ch.brickinventoryapp.ZweiterFaktorUebernahmeTest
+Rot: auth me ohne Pflicht
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
+index c30cf96..dd1d4e1 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Sitzung.kt
+@@ -92,7 +92,7 @@ suspend fun Sitzung.kontoUebernehmen(
+     if (me !is ch.brickinventoryapp.data.repository.Result.Success) return
+     val nutzer = me.data.user
+     aendere { it.copy(isAdmin = nutzer?.isAdmin == true) }
+-    if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.melde()
++    faktorPflicht.melde()
+ }
+ 
+ /** Das wirksame Design, z. B. nach einer Wahl im Konto; das AppViewModel merkt es sich für den Kaltstart. */

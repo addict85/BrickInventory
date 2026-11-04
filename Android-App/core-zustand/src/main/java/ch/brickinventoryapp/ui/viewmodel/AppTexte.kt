@@ -3,6 +3,7 @@ package ch.brickinventoryapp.ui.viewmodel
 import android.content.Context
 import android.net.Uri
 import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.api.fehlerTextZuCode
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
 import ch.brickinventoryapp.ui.fehlerTextId
@@ -30,6 +31,7 @@ class AppTexte @Inject constructor(
 
     override fun meldung(fehler: Result.Error): String {
         if (fehler.message.isNotBlank()) return fehler.message
+        fehlerTextZuCode(fehler.code)?.let { return text(it) }
         val id = fehlerTextId(fehler.art)
         val satz = if (fehlerTextBrauchtCode(fehler.art)) text(id, fehler.httpCode ?: 0) else text(id)
         return mitTechnischerUrsache(satz, fehler.art, fehler.technisch)

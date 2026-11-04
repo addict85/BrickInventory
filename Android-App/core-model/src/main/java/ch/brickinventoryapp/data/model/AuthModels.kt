@@ -77,7 +77,12 @@ data class LoginResponse(
 data class User(
     val id: Int,
     val username: String,
-    @SerialName("is_admin") val isAdmin: Boolean = false
+    @SerialName("is_admin") val isAdmin: Boolean = false,
+    /**
+     * Anmeldung und /auth/me: Verwalterrechte ohne zweiten Faktor. Bis er eingerichtet
+     * ist, beantwortet der Server nur /auth/me und die Einrichtung (ZweiterFaktorPflicht).
+     */
+    val zweiterFaktorPflicht: Boolean = false,
 )
 
 @Serializable

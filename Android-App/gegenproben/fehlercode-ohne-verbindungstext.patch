@@ -1,0 +1,17 @@
+Gegenprobe: zu_viele_verbindungen hat keinen eigenen Satz mehr
+Modul: core-data
+Test: ch.brickinventoryapp.FehlercodeTest
+Rot: Upload-Sperre, Verbindungsgrenze
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/FehlercodeTexte.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/FehlercodeTexte.kt
+index c9af9ae..a22dce2 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/FehlercodeTexte.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/api/FehlercodeTexte.kt
+@@ -9,7 +9,6 @@ import ch.brickinventoryapp.ressourcen.R
+  */
+ fun fehlerTextZuCode(code: String?): Int? = when (code) {
+     "upload_laeuft" -> R.string.err_upload_laeuft
+-    "zu_viele_verbindungen" -> R.string.err_zu_viele_verbindungen
+     "pdf_zu_viele_seiten" -> R.string.err_pdf_zu_viele_seiten
+     else -> null
+ }

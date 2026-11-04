@@ -168,7 +168,7 @@ internal fun KontoCard(
  * sonst unbemerkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
  */
 /** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
-private fun oeffneMitAuswahl(ctx: android.content.Context, uri: String, titel: String): Boolean {
+internal fun oeffneMitAuswahl(ctx: android.content.Context, uri: String, titel: String): Boolean {
     val ansicht = android.content.Intent(android.content.Intent.ACTION_VIEW, uri.toUri())
     if (ansicht.resolveActivity(ctx.packageManager) == null) return false
     return runCatching { ctx.startActivity(android.content.Intent.createChooser(ansicht, titel)) }.isSuccess

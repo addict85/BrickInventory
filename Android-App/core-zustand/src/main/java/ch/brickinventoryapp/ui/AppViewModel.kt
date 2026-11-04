@@ -71,6 +71,8 @@ class AppViewModel @Inject constructor(
     private val abmeldehaken: Abmeldehaken,
     /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
     val passwortPflicht: ch.brickinventoryapp.data.PasswortPflicht,
+    /** Verwalterrechte ohne zweiten Faktor: MainActivity zeigt statt der App dessen Einrichtung. */
+    val zweiterFaktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht,
     private val abmeldung: ch.brickinventoryapp.data.Abmeldung,
     /** Zeichnet das Startbildschirm-Widget neu (AppModule); core-zustand kennt es nicht. */
     private val widget: Widgetanstoss,
@@ -193,10 +195,7 @@ class AppViewModel @Inject constructor(
                     // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
                     if (token.isNotBlank() && url.isNotBlank() &&
                         !ch.brickinventoryapp.util.NetworkPolicy.klartextAltbestand(url, ch.brickinventoryapp.util.NetworkPolicy.entwicklung)) {
-                        launch {
-                            val me = repo.konto.getMe()
-                            if (me is Result.Success) sitzung.aendere { it.copy(isAdmin = me.data.user?.isAdmin == true) }
-                        }
+                        launch { sitzung.kontoUebernehmen(repo.konto, zweiterFaktorPflicht) }
                         nachAnmeldung()
                         loadSettings()
                         vorwaermenAnstossen()
@@ -245,6 +244,16 @@ class AppViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Der zweite Faktor ist bestätigt: Was bis dahin mit 403 abgewiesen wurde,
+     * jetzt laden. Die Codes hat die Maske vorher gezeigt; der Token bleibt gültig.
+     */
+    fun zweiterFaktorEingerichtet() {
+        zweiterFaktorPflicht.erledigt()
+        nachAnmeldung()
+        loadSettings()
+    }
+
     /** Nach dem Anmelden: Filter, Konten und Orte; die Bereiche laden ihre Listen selbst. */
     private fun nachAnmeldung() {
         _csvImportState.value = CsvImportUiState()
@@ -273,6 +282,7 @@ class AppViewModel @Inject constructor(
             }
             prefs.clearSession()
             passwortPflicht.erledigt()
+            zweiterFaktorPflicht.erledigt()
             repo.clearCache()
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }
