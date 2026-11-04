@@ -5,12 +5,13 @@ Kotlin + Jetpack Compose App für den BrickInventory Manager Server.
 ## Voraussetzungen
 - **JDK 17** (JDK 21 funktioniert ebenfalls) — `java -version` muss 17 oder
   höher melden
-- **Android SDK** mit Plattform **36** und Build-Tools **36.x**
-  (`compileSdk = targetSdk = 36`, siehe `app/build.gradle.kts`)
-- Android Studio in einer Fassung, die **AGP 9.2** versteht — nur nötig, wenn
+- **Android SDK** mit Plattform **37** (`compileSdk = targetSdk = 37`,
+  `minSdk = 30`, siehe `build-logic/…/Sdk.kt`); die passenden Build-Tools holt
+  AGP beim ersten Bau selbst, sobald die SDK-Lizenzen angenommen sind
+- Android Studio in einer Fassung, die **AGP 9.4** versteht — nur nötig, wenn
   in der IDE gearbeitet wird; auf der Kommandozeile reichen JDK und SDK
 - Gradle muss **nicht** installiert sein: der mitgelieferte Wrapper holt
-  Gradle 9.6.1 selbst (siehe *Gradle-Wrapper* weiter unten)
+  Gradle 9.8.2 selbst (siehe *Gradle-Wrapper* weiter unten)
 - BrickInventory Manager Server läuft und ist erreichbar
 
 ## Öffnen in Android Studio
@@ -43,7 +44,7 @@ Ohne Android Studio lässt sich das SDK mit den
 einrichten:
 
 ```bash
-sdkmanager --install "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+sdkmanager --install "platform-tools" "platforms;android-37"
 sdkmanager --licenses
 ```
 
@@ -74,7 +75,7 @@ unter *Release signieren*.
 
 ### Erster Lauf dauert lange
 
-Der Wrapper lädt beim ersten Aufruf Gradle 9.6.1 (~140 MB), danach ziehen AGP,
+Der Wrapper lädt beim ersten Aufruf Gradle 9.8.2 (~140 MB), danach ziehen AGP,
 Kotlin, KSP und die Abhängigkeiten nochmals einige hundert MB. Das passiert
 einmal pro Rechner; Gradle legt alles unter `~/.gradle/` ab.
 
@@ -263,6 +264,25 @@ Geheimnis nur, wenn man sie dort auswählt.
 Abhängigkeiten nur in diese Richtung: `app → feature-* → core-*`; kein Bereich
 kennt einen anderen (`ModulgrenzenTest` prüft es an den Build-Dateien).
 
+Den gemeinsamen Android-Block setzen Konventions-Plugins aus `build-logic/`
+(ein eigener Gradle-Bau, eingebunden in `settings.gradle.kts`, Plugin-IDs im
+Versionskatalog). Ein Modulskript nennt nur seine Plugins, den Namespace, seine
+Modulkanten und echte Zusatzabhängigkeiten:
+
+| Plugin | setzt |
+| --- | --- |
+| `brickinventory.android.library` | `com.android.library`, compileSdk/minSdk aus `Sdk.kt`, Java und Kotlin 17 |
+| `brickinventory.android.application` | dasselbe für `com.android.application`, dazu targetSdk |
+| `brickinventory.android.unittests` | JVM-Tests: `isReturnDefaultValues`, voller Stack im Protokoll, Gruppe `unit-tests` |
+| `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
+| `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
+| `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |
+
+Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
+des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
+`build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
+`core-model` bleibt reines Kotlin und braucht keine Konvention.
+
 | Modul | Inhalt |
 | --- | --- |
 | `core-model` | Server- und UI-Modelle, reine Regeln — reines Kotlin, ohne Android |
@@ -291,17 +311,14 @@ dem anderen zeigt, ist öffentlich, der Rest `internal`.
 ```
 
 Die Tests liegen neben dem Code ihres Moduls; was mehrere Bereiche zusammen
-prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`.
+prüft (Bildschirmfotos, Abläufe, Struktur), liegt in `app/src/test`. Robolectric
+und Roborazzi laufen auf der JVM, ein Gerät braucht kein Test.
 
-- **CatalogYearMathTest** — Mathematik des Jahres-Scrubbers (Position ↔ Jahr,
-  Klemmen, Monotonie, Roundtrip, degenerierte Layouts). Die Logik ist dafür aus
-  der Composable nach `ui/CatalogYearMath.kt` extrahiert.
-- **CatalogSerializationTest** — Client-seitiger API-Vertrag: die Katalog-Modelle
-  parsen realistische Server-Antworten (gleiche Payload-Form wie im Server-
-  Integrationstest), inkl. unbekannter Zusatzfelder und fehlender Optionalfelder.
-  Nutzt dieselbe Json-Konfiguration wie `di/AppModule`.
-- **BrickLinkUrlsTest** — Kauf-Link-Format identisch zur Webapp
-  (`util/BrickLinkUrls.kt`).
+- `QuelltextRatscheTest` hält fest, wie viele Testdateien nur Quelltext lesen;
+  die Zahl darf sinken, nie steigen (siehe *Zwei Arten von Tests*).
+- `gegenproben/` enthält je Test einen Patch, der etwas kaputt macht; der
+  CI-Job `gegenproben` misst, dass der genannte Test dann rot wird
+  (`tools/gegenproben.py`).
 
 ## Abhängigkeiten und Lieferkette
 
@@ -328,8 +345,8 @@ gradle/wrapper/gradle-wrapper.properties   welche Fassung, und ihr Hash
 
 `gradle-wrapper.jar` wird bei **jedem** Build ausgeführt. Eine untergeschobene
 Fassung wäre beliebiger Code auf jedem Entwicklerrechner und in der CI —
-`.github/workflows/android.yml` prüft die Datei deshalb mit
-`gradle/actions/wrapper-validation` gegen die von Gradle veröffentlichten
+`gradle/actions/setup-gradle` prüft die Datei in jedem Gradle-Job von
+`.github/workflows/android.yml` gegen die von Gradle veröffentlichten
 Prüfsummen.
 
 Die Zeilenenden der beiden Startskripte hält `.gitattributes` fest: `gradlew`
@@ -343,12 +360,9 @@ heruntergeladene Gradle-Distribution gegen einen erwarteten Hash geprüft, statt
 blind ausgepackt zu werden — bei einer App, die einen langlebigen Bearer-Token
 hält, ist das die billigste Absicherung, die es gibt.
 
-Der eingetragene Wert stammt aus Gradles Veröffentlichung und gilt für
-`gradle-9.6.1-bin.zip`:
-
-```
-distributionSha256Sum=9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14
-```
+Der eingetragene Wert stammt aus Gradles Veröffentlichung und gilt nur für die
+Fassung in `distributionUrl` derselben Datei. Ob er die amtliche Prüfsumme ist,
+misst `tools/gradle-wrapper-pruefen.py` in jedem CI-Job, bevor Gradle startet.
 
 **Beim Anheben der Gradle-Fassung muss die Zeile mitwandern**, sonst bricht der
 nächste Build mit „Verification of Gradle distribution failed" ab. Die neue
@@ -389,16 +403,15 @@ Pull-Request wird von Hand gestellt. Die CI des Zweigs startet nicht von selbst
 
 Diese Sprünge sind Umbauten und gehören einzeln gebaut und ausprobiert:
 
-- **Coil 2 → 3**: anderer Paketname (`coil3`), anderer `ImageLoader`-Aufbau.
-  Betrifft `di/AppModule.kt` und jede Kachel.
-- **OkHttp 4 → 5**: Interceptor-Stack und `okhttp-sse` sind betroffen; der
-  CSV-Import hängt daran.
 - **Navigation 2 → 3**: anderes Navigationsmodell, betrifft alle vier
   Teilgraphen.
-- **Compose BOM**: Der Sprung von `2024.09.03` auf eine aktuelle BOM zieht
-  Material3 und Foundation mehrere Minor-Versionen weiter. Einmal gross
-  springen und danach die Bildschirme durchklicken ist ehrlicher, als es in
-  einem Sammel-PR mitlaufen zu lassen.
+- **AGP 9.5**: Mit 9.5.0 fehlten im Release-APK Texte, die erreichbarer Code
+  benutzt; AGP bleibt auf 9.4.1, bis das geklärt ist (Begründung im
+  Versionskatalog bei `agp`).
+
+Die Stände stehen in `gradle/libs.versions.toml`; welche neuere Fassung es
+gibt, meldet der CI-Schritt „Sind die Abhängigkeiten auf der neuesten Fassung?“
+(`tools/fassungen-pruefen.py`).
 
 ## Zwei Arten von Tests
 

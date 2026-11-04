@@ -23,6 +23,10 @@ import java.io.File
  *      „jeder Modulordner ist eingebunden“
  *   E  (02.11.2026) in dependencyResolutionManagement wieder `google()` → rot
  *      „google() liefert nur Googles Gruppen“ (Ohne Inhaltsfilter)
+ *   F  (04.11.2026) gegenproben/konvention-mit-modulkante.patch: die Bereichs-Konvention
+ *      trägt core-ui ein → rot „Konventionen tragen keine Modulkanten ein“
+ *   G  (04.11.2026) in build-logic/settings.gradle.kts `google()` ohne Filter →
+ *      rot „Ohne Inhaltsfilter in build-logic/settings.gradle.kts“
  */
 class ModulgrenzenTest {
 
@@ -107,11 +111,29 @@ class ModulgrenzenTest {
     /** Plugins wie Abhängigkeiten: google() nur für Googles Gruppen, sonst mavenCentral. */
     @Test
     fun `google() liefert nur Googles Gruppen`() {
-        val settings = File(projekt, "settings.gradle.kts").readText().lines()
-            .filterNot { it.trim().startsWith("//") }.joinToString("\n")
-        val google = Regex("""\bgoogle\b[^\n]*""").findAll(settings).map { it.value }.toList()
-        assertEquals("pluginManagement und dependencyResolutionManagement: $google", 2, google.size)
-        for (z in google) assertTrue("Ohne Inhaltsfilter: $z", z.startsWith("google { content {") &&
-            listOf("com\\\\.android.*", "com\\\\.google.*", "androidx.*").all { z.contains("includeGroupByRegex(\"$it\")") })
+        // build-logic löst AGP und Kotlin für die Konventionen selbst auf.
+        for (datei in listOf("settings.gradle.kts", "build-logic/settings.gradle.kts")) {
+            val settings = File(projekt, datei).readText().lines()
+                .filterNot { it.trim().startsWith("//") }.joinToString("\n")
+            val google = Regex("""\bgoogle\b[^\n]*""").findAll(settings).map { it.value }.toList()
+            assertEquals("$datei, pluginManagement und dependencyResolutionManagement: $google", 2, google.size)
+            for (z in google) assertTrue("Ohne Inhaltsfilter in $datei: $z", z.startsWith("google { content {") &&
+                listOf("com\\\\.android.*", "com\\\\.google.*", "androidx.*").all { z.contains("includeGroupByRegex(\"$it\")") })
+        }
+    }
+
+    /**
+     * Die Kanten liest dieser Test aus den Modulskripten. Trüge eine Konvention
+     * selbst eine ein, gälte sie für jedes Modul mit diesem Plugin und stünde
+     * hier nirgends.
+     */
+    @Test
+    fun `Konventionen tragen keine Modulkanten ein`() {
+        val quellen = File(projekt, "build-logic").walkTopDown()
+            .filter { it.isFile && (it.extension == "kt" || it.name.endsWith(".gradle.kts")) }.toList()
+        assertTrue("Nur ${quellen.size} Dateien unter build-logic — Suche veraltet?", quellen.size >= 4)
+        val kante = Regex("""\bproject\s*\(""")
+        val mitKante = quellen.filter { kante.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.name }
+        assertTrue("Konventionen tragen keine Modulkanten ein: $mitKante", mitKante.isEmpty())
     }
 }

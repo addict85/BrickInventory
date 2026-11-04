@@ -2,10 +2,10 @@
 // die Hilt-Module dafür. Kennt keine Oberfläche: Was die App beisteuern muss
 // (Startziel, AppFassung), kommt über Hilt herein.
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.brickinventory.android.library)
+    alias(libs.plugins.brickinventory.android.unittests)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
-    alias(libs.plugins.hilt)
+    alias(libs.plugins.brickinventory.android.hilt)
 }
 
 ksp {
@@ -16,39 +16,13 @@ ksp {
 
 android {
     namespace = "ch.brickinventoryapp.core.data"
-    compileSdk = 37
-
-    defaultConfig {
-        minSdk = 30
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
 
     buildFeatures {
         buildConfig = true
     }
 
-    testOptions {
-        // Wie in app/: android.util.Log & Co. laufen im JVM-Test still ins Leere.
-        unitTests.isReturnDefaultValues = true
-        unitTests.isIncludeAndroidResources = true
-        unitTests.all { test ->
-            test.testLogging {
-                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-                showCauses = true
-                showStackTraces = true
-            }
-        }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-    }
+    // Die Room-Tests laufen unter Robolectric und lesen die Ressourcen.
+    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
@@ -56,8 +30,6 @@ dependencies {
     implementation(project(":core-ressourcen"))
     implementation(libs.androidx.core.ktx)
     api(libs.kotlinx.coroutines.android)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
     // In der öffentlichen Schnittstelle: Repositories und Dienste reichen
     // OkHttpClient, ImageLoader und Retrofit-Antworten nach oben.
     api(libs.retrofit)
@@ -76,7 +48,6 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     testImplementation(project(":core-testing"))
-    testImplementation(libs.bundles.unit.tests)
     // Room-Tests laufen unter Robolectric (BestandDatenbankTest, BestandMigrationTest).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)

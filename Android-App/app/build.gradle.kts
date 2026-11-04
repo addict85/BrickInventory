@@ -4,11 +4,11 @@ plugins {
     // Built-in Kotlin: Seit AGP 9 kompiliert com.android.application Kotlin
     // selbst — org.jetbrains.kotlin.android darf nicht mehr angewendet werden
     // (führt sonst zu "extension 'kotlin' already registered").
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.hilt)
+    alias(libs.plugins.brickinventory.android.application)
+    alias(libs.plugins.brickinventory.android.unittests)
+    alias(libs.plugins.brickinventory.android.compose)
+    alias(libs.plugins.brickinventory.android.hilt)
     alias(libs.plugins.kotlin.serialization)
-    alias(libs.plugins.ksp)
     alias(libs.plugins.roborazzi)
 }
 
@@ -52,67 +52,14 @@ ksp {
 }
 
 android {
-    // JVM-Unit-Tests: android.util.Log & Co. sind im Test-Jar nur Attrappen und
-    // WERFEN standardmässig ("Method w in android.util.Log not mocked").
-    // returnDefaultValues lässt solche Aufrufe still ins Leere laufen, damit ein
-    // Test nicht an einer Protokollzeile scheitert statt an der geprüften Regel.
-    testOptions {
-        unitTests.isReturnDefaultValues = true
-        // Robolectric liest Ressourcen, Schriften und Manifest der App.
-        unitTests.isIncludeAndroidResources = true
-        // Der volle Stack im CI-Protokoll: Der Testbericht liegt als Artefakt, das
-        // aus der Entwicklungsumgebung nicht lesbar ist, und „NullPointerException
-        // at Datei:Zeile“ allein sagt nicht, wo es wirklich brach.
-        unitTests.all { test ->
-            test.testLogging {
-                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-                showCauses = true
-                showStackTraces = true
-            }
-        }
-    }
+    // Robolectric liest Ressourcen, Schriften und Manifest der App.
+    testOptions.unitTests.isIncludeAndroidResources = true
 
     namespace  = "ch.brickinventoryapp"
-    // compileSdk = targetSdk: gegen SDK 37 (Android 17) kompilieren UND das
-    // Verhalten von 37 übernehmen. Ein compileSdk über dem targetSdk wäre
-    // ebenfalls zulässig, verdeckt aber, welche Verhaltensänderungen bereits
-    // aktiv sind — hier bewusst gleichgezogen.
-    //
-    // ── Warum 37 und nicht weiter 36 ────────────────────────────────────────
-    //
-    // Nicht der Neuheit wegen, sondern weil zwei Bibliotheken es verlangen.
-    // GEMESSEN an ihren AAR-Metadaten:
-    //   okhttp-android 5.5.0      → minCompileSdk=37
-    //   coil-core-android 3.6.x   → minCompileSdk=37
-    // Mit compileSdk 36 bricht `checkDebugAarMetadata` ab, bevor ein
-    // einziger Test läuft — das ist in diesem Baum schon einmal passiert.
-    compileSdk = 37
 
+    // compileSdk, minSdk und targetSdk setzt brickinventory.android.application.
     defaultConfig {
         applicationId = "ch.brickinventoryapp"
-        minSdk        = 30
-        // targetSdk 37 (Android 17). Relevante Verhaltensänderungen gegenüber 36
-        // sind hier NICHT aufgezählt, und das ist eine Lücke, die benannt
-        // gehört: Die Liste darunter beschreibt den Schritt 35 → 36. Was 37
-        // mitbringt, liess sich in dieser Umgebung nicht nachlesen —
-        // developer.android.com ist erreichbar, dl.google.com nicht, und die
-        // Verhaltensänderungen stehen in den Release-Notes zum SDK.
-        //
-        // Der Sprung erfolgt, weil okhttp 5.5.0 und coil 3.6.x ihn verlangen
-        // (siehe compileSdk oben). Was er am VERHALTEN ändert, muss am Gerät
-        // nachgeprüft werden; ein grüner Lauf sagt dazu nichts.
-        //
-        // Die Änderungen von 35 → 36, weiterhin gültig:
-        //  - Vorhersagendes Zurück ("predictive back") ist standardmässig AN.
-        //    Unkritisch hier: Die App hat keinen einzigen BackHandler und
-        //    überlässt Zurück komplett der Navigation-Compose-Voreinstellung.
-        //    Falls die Animation doch stört, unten im Manifest
-        //    android:enableOnBackInvokedCallback auf "false" setzen.
-        //  - Bildschirmausrichtung lässt sich auf grossen Displays nicht mehr
-        //    erzwingen. Ebenfalls unkritisch: Das Manifest setzt weder
-        //    screenOrientation noch resizeableActivity.
-        //  - Edge-to-edge war schon unter 35 erzwungen, ändert sich also nicht.
-        targetSdk     = 37
         versionCode   = generatedVersionCode
         versionName   = generatedVersionName
     }
@@ -181,11 +128,6 @@ android {
         }
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
     lint {
         // Lint läuft auf Release-Builds und bricht bei einem Fehler ab: Ein
         // Befund der Stufe Error ist kein Bericht, sondern ein Mangel. Warnungen
@@ -233,7 +175,6 @@ android {
     }
 
     buildFeatures {
-        compose = true
         // BuildConfig wird fuer BuildConfig.DEBUG benoetigt (Logging nur im Debug-Build)
         buildConfig = true
     }
@@ -276,14 +217,6 @@ androidComponents {
             output.versionCode.set(1)
             output.versionName.set("debug")
         }
-    }
-}
-
-// Ersetzt das veraltete kotlinOptions { jvmTarget = "17" } im android-Block
-// (Deprecation-Warnung seit Kotlin 2.x, wird mit KGP 3.0 entfernt).
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -369,50 +302,13 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     // Startbild statt weissem Fenster beim Kaltstart (MainActivity.installSplashScreen).
     implementation(libs.androidx.core.splashscreen)
-    testImplementation(libs.junit)
-    // Nachtrag 117: Damit Verhalten prüfbar wird statt nur Quelltext.
-    //  - coroutines-test: runTest für suspend-Funktionen, ohne Thread.sleep
-    //  - mockwebserver: ein echter HTTP-Server im Test. Damit lässt sich die
-    //    Fehlerabbildung des Repositories gegen echte Antworten prüfen —
-    //    404 mit Fehlerrumpf, 500 ohne, Zeitüberschreitung, leerer Rumpf.
-    //    Kommt aus derselben OkHttp-Version wie der Produktionsclient, es gibt
-    //    also keine zweite Netzwerkbibliothek im Testpfad.
-    // org.json — NUR für Tests.
-    //
-    // BrickRepository liest den Fehlerrumpf des Servers mit
-    // org.json.JSONObject. Auf dem Gerät ist das die Fassung aus Android; im
-    // JVM-Test liefert android.jar nur eine Attrappe, und zusammen mit
-    // testOptions { unitTests.isReturnDefaultValues = true } gibt
-    // optString("error") stillschweigend "" zurück statt zu parsen.
-    //
-    // Folge: BrickRepositoryErrorMappingTest sah nie die Servermeldung und
-    // meldete rot, obwohl App UND Test richtig sind. Diese echte Fassung liegt
-    // im Klassenpfad VOR android.jar und macht die Prüfung damit aussagekräftig.
-    //
-    // Alternative wäre, im Repository auf kotlinx.serialization umzustellen
-    // (ohnehin Abhängigkeit) — das wäre eine Änderung am Produktionscode und
-    // gehört nicht in denselben Schritt wie das Reparieren der Tests.
-    testImplementation(libs.json)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.okhttp.mockwebserver)
+    // junit, org.json, coroutines-test und mockwebserver: brickinventory.android.unittests.
     testImplementation(libs.retrofit)
     testImplementation(libs.retrofit.kotlinx.serialization)
+    // Compose-BOM und die Gruppe compose (ui, material3, hilt-navigation-compose,
+    // coil-compose …): brickinventory.android.compose; Hilt: …android.hilt.
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
-
-    // Hilt — KSP (kein kapt mehr)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
-    implementation(libs.hilt.navigation.compose)
 
     // Network
     implementation(libs.retrofit)
@@ -455,8 +351,7 @@ dependencies {
     // nicht und kann bleiben, bis eine ausgerichtete Fassung erscheint.
     implementation(libs.androidx.graphics.path)
 
-    // Image loading
-    implementation(libs.coil.compose)
+    // Image loading (coil-compose kommt mit der Gruppe compose).
     // Siehe den Kommentar im Versionskatalog: Coil 3 laedt ohne dieses
     // Artefakt NICHT aus dem Netz. Das Fehlen ergaebe keine Fehlermeldung,
     // sondern leere Bildflaechen.

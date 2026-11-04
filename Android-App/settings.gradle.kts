@@ -1,4 +1,7 @@
 pluginManagement {
+    // Konventions-Plugins (brickinventory.android.*): der gemeinsame Android-Block
+    // der Module steht dort einmal statt in jedem build.gradle.kts.
+    includeBuild("build-logic")
     repositories {
         google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
         mavenCentral()
