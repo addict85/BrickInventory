@@ -13882,7 +13882,8 @@
                 "required": [
                   "id",
                   "username",
-                  "is_admin"
+                  "is_admin",
+                  "zweiterFaktorPflicht"
                 ],
                 "additionalProperties": {}
               },
