@@ -61,8 +61,8 @@ import org.robolectric.annotation.GraphicsMode
  *   preisalarm-nummer-zuerst     Rückfrage nennt wieder nur die Nummer → rot „Preisalarme nennen …“
  *   konto-ohne-wiederholung      Passwort ändern ohne passende Wiederholung frei → rot „Konto wechselt …“
  *   bauliste-zweistufig          Erstellen erst nach „+“ → rot „Bauliste entsteht …“
- *   konto-dialog-behaelt-fokus   Speichern ohne clearFocus → rot „Konto wechselt …“ (AppNotIdle:
- *                                das getippte Feld bleibt hinter dem Dialog fokussiert)
+ *   konto-dialog-behaelt-fokus   Speichern ohne clearFocus → rot „Konto wechselt …“ (das getippte
+ *                                Feld bleibt hinter dem Dialog fokussiert)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -283,8 +283,16 @@ class UnterseitenTest {
         // Profil: kein Passwortfeld auf der Seite, gefragt wird beim Speichern.
         feld(R.string.register_first_name).performTextClearance()
         feld(R.string.register_first_name).performTextInput("Marc")
-        compose.onNode(hasText(ctx.getString(R.string.konto_save)) and hasClickAction()).performScrollTo().performClick()
-        compose.waitForIdle()
+        val speichern = compose.onNode(hasText(ctx.getString(R.string.konto_save)) and hasClickAction())
+        speichern.performScrollTo()
+        // Ein Dialog mit Passwortfeld wird unter Robolectric nie ruhig (wie in
+        // BildschirmFotoVariantenTest): Uhr anhalten, Fenster über den Hauptlooper aufbauen.
+        compose.mainClock.autoAdvance = false
+        speichern.performClick()
+        repeat(3) {
+            compose.mainClock.advanceTimeBy(200)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        }
         compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).fetchSemanticsNode("Kein Passwortfeld im Dialog")
         feld(R.string.register_first_name).assertIsNotFocused()
         assertTrue("Gespeichert ohne Passwort: ${welt.pfade.anfragen}", welt.pfade.anfragen.none { it.startsWith("PUT") })
