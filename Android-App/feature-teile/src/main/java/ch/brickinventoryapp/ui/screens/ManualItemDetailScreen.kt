@@ -128,8 +128,10 @@ fun ManualItemDetailScreen(
                     actionIconContentColor = akzent.aufDetailLeiste,
                 ),
                 actions = {
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_delete)) {
+                        IconButton(onClick = { showDeleteConfirm = true }) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                        }
                     }
                 },
             )
@@ -215,6 +217,7 @@ fun ManualItemDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+                            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_decrease)) {
                             FilledTonalIconButton(
                                 onClick = {
                                     if (qty > 1) {
@@ -229,8 +232,10 @@ fun ManualItemDetailScreen(
                                 },
                                 shape = Formen.etikett
                             ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                            }
                             Text("$qty", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge,
                                 modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
+                            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_increase)) {
                             FilledTonalIconButton(
                                 onClick = {
                                     qty++
@@ -239,6 +244,7 @@ fun ManualItemDetailScreen(
                                 },
                                 shape = Formen.etikett
                             ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                            }
                         }
                     }
 

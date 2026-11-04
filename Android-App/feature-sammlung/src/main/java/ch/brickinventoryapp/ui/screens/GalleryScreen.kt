@@ -79,6 +79,7 @@ import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Bewegt
 import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.components.SortierMenue
+import ch.brickinventoryapp.ui.components.ansagen
 
 @OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
 @Composable
@@ -178,6 +179,9 @@ fun GalleryScreen(
     }
 
     val anzeige = galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())
+    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
+    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val erfassenText = stringResource(R.string.gallery_add_set)
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
 
@@ -192,6 +196,7 @@ fun GalleryScreen(
                 aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme),
                 onFilter = { zeigeFilter = true },
                 onScannen = onScanBarcode,
+                erfassen = erfassenText to { showAddDialog = true },
                 sortierung = {
                     // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
                     // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
@@ -285,8 +290,8 @@ fun GalleryScreen(
         // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
         // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
         // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
-        if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
-            stringResource(R.string.gallery_add_set), { showAddDialog = true },
+        if (!gross && anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
+            erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
     }
@@ -358,7 +363,7 @@ private fun GalerieFilterBlatt(
         LagerortFilterAbschnitt(orte, lager, onLager)
         if (themen.isNotEmpty()) {
             FilterAbschnitt(stringResource(R.string.catalog_filter_theme)) {
-                FilterWahl(stringResource(R.string.gallery_all), thema.isEmpty()) { if (thema.isNotEmpty()) onThema("") }
+                FilterWahl(stringResource(R.string.catalog_all_themes), thema.isEmpty()) { if (thema.isNotEmpty()) onThema("") }
                 themen.forEach { t -> FilterWahl(t, thema == t) { onThema(if (thema == t) "" else t) } }
             }
         }
@@ -418,6 +423,164 @@ fun SetCard(
     val ton = if (ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme.current)
         ch.brickinventoryapp.ui.theme.faecherTon(set.theme?.hashCode()) else null
 
+    // Ab grosser Schrift eine Listenzeile, Bild links und Text rechts, wie die Merkliste:
+    // Über die volle Breite nahm das Bild zwei Drittel der Höhe, und es stand ein Set je
+    // Bildschirm. Die Plaketten rücken dann vom Bild in den Text, das Bild ist zu klein.
+    val zeile = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val pct = preis?.pnlPct
+    val betrag = kachelBetrag(set, preis)
+    val guv: (@Composable () -> Unit)? = if (pct != null && betrag != null) ({
+            // G&V als Marke: In der Preiszeile brach sie neben „je Stück“ um, und die Kachel
+            // wurde höher als ihre Nachbarin. Pfeil und Ansage „Gewinn …“: Eine nackte Zahl
+            // sagte nur, wer die Finanzen kennt.
+            val farbe = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error
+            val ansage = stringResource(if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust,
+                fmtProzent(pct))
+            Surface(color = MaterialTheme.colorScheme.surface, shape = Formen.etikett) {
+                Row(Modifier.padding(horizontal = Abstaende.winzig + Abstaende.haar, vertical = Abstaende.haar),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                    Icon(if (pct >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
+                        null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(12.dp)), tint = farbe)
+                    Text(fmtProzent(pct), Modifier.semantics { contentDescription = ansage },
+                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                        color = farbe, maxLines = 1, softWrap = false)
+                }
+            }
+    }) else null
+    val menge: (@Composable () -> Unit)? = if (set.quantity > 1) ({
+            Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.etikett) {
+                Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+            }
+    }) else null
+    // Weich einblenden nur, wenn Bewegung erwünscht ist (bewegungReduziert).
+    val weich = !ch.brickinventoryapp.ui.components.bewegungReduziert()
+
+    // Die Bildfläche; in der Zeile ohne Plaketten und links statt oben gerundet.
+    val bildflaeche: @Composable (Modifier) -> Unit = { flaeche ->
+        Box(flaeche) {
+            ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
+                    ch.brickinventoryapp.ui.components.ProduktBild(
+                    model = imageUrl?.let { ImageRequest.Builder(ctx).data(it)
+                        .memoryCacheKeyExtra("retry", retryNonce.toString())
+                        .crossfade(weich).build() },
+                    imageLoader = imageLoader,
+                    // Ohne Beschreibung: Die Kachel fasst ihren Inhalt zusammen, und der
+                    // Name stand darunter schon als Text — TalkBack las ihn zweimal.
+                    contentDescription = null,
+                    onState = { st ->
+                        if (st is coil3.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
+                            // Verzögert, nicht im selben Moment: Direkt nach
+                            // dem Erfassen erzeugt der Server die Vorschau
+                            // erst noch.
+                            scope.launch {
+                                kotlinx.coroutines.delay(1000)
+                                retryNonce = 1
+                            }
+                        } else if (st is coil3.compose.AsyncImagePainter.State.Error) {
+                            // Auch der zweite Versuch scheiterte — jetzt auf
+                            // die volle Auflösung ausweichen (fehlende
+                            // _thumb-Datei ist der häufigste Grund).
+                            onImageError()
+                        }
+                    },
+                    // Randlos bis an die Kartenkanten: Der weisse Bildgrund nimmt die Fläche
+                    // ein, die ContentScale.Fit neben dem Bild frei lässt.
+                    modifier = bild
+                        .fillMaxSize()
+                        .then(when {
+                            isBrick -> Modifier
+                            zeile -> Modifier.clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp))
+                            else -> Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                        }),
+                    contentScale = ContentScale.Fit,
+                    ersatzGroesse = if (zeile) 32.dp else 48.dp,
+                    bildgrund = true,
+                    innenAbstand = Abstaende.klein,
+                )
+            }
+            // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
+            // Menü, damit die Bedienelemente auf eigener Fläche stehen (lichtStreifen()).
+            if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
+            // Die Kachel trägt keine zerstörerische Aktion: Gelöscht wird im Detail,
+            // mit Rückfrage und danach „Rückgängig“. Plaketten mit Abstand innerhalb
+            // des Bilds (PLAKETTE_RAND): Auf dessen Rand sassen sie über der Ecke.
+            if (!zeile) {
+                if (guv != null) Box(Modifier.align(Alignment.TopStart).padding(PLAKETTE_RAND)) { guv() }
+                if (menge != null) Box(Modifier.align(Alignment.TopEnd).padding(PLAKETTE_RAND)) { menge() }
+            }
+        }
+    }
+
+    // Zustand und Besitzer unter dem Bild statt darüber: Über dem Bild brauchten sie
+    // einen freien Streifen, der als Lücke zwischen Bild und „Neu“ stand.
+    val texte: @Composable (Modifier) -> Unit = { spalte ->
+        Column(spalte.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Column(Modifier.padding(bottom = Abstaende.haar), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                // In der Zeile stehen die Plaketten vor dem Zustand in einer Reihe: Jede
+                // eigene Zeile kostete bei 200 % ein Drittel der nächsten Zeile.
+                if (zeile) FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.haar),
+                ) {
+                    guv?.invoke()
+                    menge?.invoke()
+                    ConditionBadges(set.conditions, set.condition)
+                } else ConditionBadges(set.conditions, set.condition)
+                // Wem gehört dieses Exemplar? Ohne die Angabe verschiebt
+                // man im Haushalt das falsche.
+                OwnerBadges(set.owners)
+            }
+            Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            // Im Raster zwei Zeilen, Thema und Preis immer: Kacheln einer Reihe sind dann
+            // gleich hoch. Die Zeile muss niemandem gleichen und spart die Leerzeilen.
+            Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
+                maxLines = 2, minLines = if (zeile) 1 else 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
+                lineHeight = 16.sp)
+            // Thema und Teilezahl in einer Zeile: Getrennt stand meist eine davon leer.
+            // Im Farbfächer ein Punkt im Ton der Kartenleiste davor: So liest sich die
+            // Leiste als Thema, nicht nur als Farbe.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                if (ton != null && !set.theme.isNullOrBlank()) Box(Modifier.size(8.dp).background(ton, CircleShape))
+                Text(themaUndTeile(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            // Wie im Web eine Zeile darüber, was der Betrag ist: Ohne Marktpreis ist es
+            // der Kaufpreis (kachel_quelle), unbeschriftet las er sich als Marktwert.
+            // Leer ohne Betrag, damit Kacheln einer Reihe gleich hoch bleiben; in der
+            // Zeile steht die Bezeichnung vor dem Betrag, wenn die Breite reicht.
+            val quelle = when (if (betrag != null) kachelQuelle(set, preis) else null) {
+                KachelQuelle.MARKT -> stringResource(R.string.gallery_card_market)
+                KachelQuelle.KAUF -> stringResource(R.string.gallery_card_paid)
+                null -> ""
+            }
+            if (!zeile) Text(quelle, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
+            // den Betrag, statt Zeichen für Zeichen umzubrechen.
+            if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                if (zeile) Text(quelle, style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
+                    modifier = Modifier.align(Alignment.CenterVertically))
+                Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
+                    maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.align(Alignment.CenterVertically))
+                // Der Betrag gilt je Stück; die Finanzen zeigen dasselbe Set mit dem Wert
+                // aller Stück, und ohne Hinweis passten die Zahlen nicht zusammen.
+                if (set.quantity > 1) Text(stringResource(R.string.gallery_price_each),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
+            } else if (!zeile) Text("", style = MaterialTheme.typography.labelMedium)
+        }
+    }
+
     // Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
     // Deshalb rückt die Karte um die Noppenhöhe nach unten, und die Reihe wird daneben
     // gezeichnet und darübergelegt — wie `top:-6px` im CSS.
@@ -447,137 +610,12 @@ fun SetCard(
                 if (ton != null) Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
                 // 4:3 wie die Setbilder selbst: Eine feste Höhe liess bei ContentScale.Fit
                 // eine Lücke zwischen Bild und Text.
-                Box(Modifier.fillMaxWidth().aspectRatio(BILD_SEITENVERHAELTNIS)) {
-                    ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
-                            ch.brickinventoryapp.ui.components.ProduktBild(
-                            model = imageUrl?.let { ImageRequest.Builder(ctx).data(it)
-                                .memoryCacheKeyExtra("retry", retryNonce.toString())
-                                .crossfade(true).build() },
-                            imageLoader = imageLoader,
-                            // Ohne Beschreibung: Die Kachel fasst ihren Inhalt zusammen, und der
-                            // Name stand darunter schon als Text — TalkBack las ihn zweimal.
-                            contentDescription = null,
-                            onState = { st ->
-                                if (st is coil3.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
-                                    // Verzögert, nicht im selben Moment: Direkt nach
-                                    // dem Erfassen erzeugt der Server die Vorschau
-                                    // erst noch.
-                                    scope.launch {
-                                        kotlinx.coroutines.delay(1000)
-                                        retryNonce = 1
-                                    }
-                                } else if (st is coil3.compose.AsyncImagePainter.State.Error) {
-                                    // Auch der zweite Versuch scheiterte — jetzt auf
-                                    // die volle Auflösung ausweichen (fehlende
-                                    // _thumb-Datei ist der häufigste Grund).
-                                    onImageError()
-                                }
-                            },
-                            // Randlos bis an die Kartenkanten: Der weisse Bildgrund nimmt die Fläche
-                            // ein, die ContentScale.Fit neben dem Bild frei lässt.
-                            modifier = bild
-                                .fillMaxSize()
-                                .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
-                            contentScale = ContentScale.Fit,
-                            ersatzGroesse = 48.dp,
-                            bildgrund = true,
-                            innenAbstand = Abstaende.klein,
-                        )
-                    }
-                    // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
-                    // Menü, damit die Bedienelemente auf eigener Fläche stehen (lichtStreifen()).
-                    if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
-                    // Die Kachel trägt keine zerstörerische Aktion: Gelöscht wird im Detail,
-                    // mit Rückfrage und danach „Rückgängig“. Neben „×2“ lag der Mülleimer
-                    // als einzige sichtbare Aktion der Kachel.
-                    // G&V als Marke auf dem Bild: In der Preiszeile brach sie neben „je Stück“
-                    // um, und die Kachel wurde höher als ihre Nachbarin. Plaketten mit Abstand
-                    // innerhalb des Bilds (PLAKETTE_RAND): Auf dessen Rand sassen sie über der Ecke.
-                    // Pfeil und Ansage „Gewinn …“: Eine nackte Zahl sagte nur, wer die Finanzen kennt.
-                    val pct = preis?.pnlPct
-                    if (pct != null && kachelBetrag(set, preis) != null) {
-                        val farbe = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error
-                        val ansage = stringResource(if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust,
-                            fmtProzent(pct))
-                        Surface(
-                            color = MaterialTheme.colorScheme.surface,
-                            shape = Formen.etikett,
-                            modifier = Modifier.align(Alignment.TopStart).padding(PLAKETTE_RAND),
-                        ) {
-                            Row(Modifier.padding(horizontal = Abstaende.winzig + Abstaende.haar, vertical = Abstaende.haar),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                                Icon(if (pct >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-                                    null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(12.dp)), tint = farbe)
-                                // Vorgelesen „Gewinn +16.1%“ statt der nackten Zahl.
-                                Text(fmtProzent(pct), Modifier.semantics { contentDescription = ansage },
-                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                                    color = farbe, maxLines = 1, softWrap = false)
-                            }
-                        }
-                    }
-                    if (set.quantity > 1) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary,
-                            shape = Formen.etikett,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(PLAKETTE_RAND),
-                        ) {
-                            Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-                // Zustand und Besitzer unter dem Bild statt darüber: Über dem Bild brauchten sie
-                // einen freien Streifen, der als Lücke zwischen Bild und „Neu“ stand.
-                Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                    Column(Modifier.padding(bottom = Abstaende.haar), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                        ConditionBadges(set.conditions, set.condition)
-                        // Wem gehört dieses Exemplar? Ohne die Angabe verschiebt
-                        // man im Haushalt das falsche.
-                        OwnerBadges(set.owners)
-                    }
-                    Text(set.setNumber, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // Zwei Zeilen, Thema und Preis immer: Kacheln einer Reihe sind dann
-                    // gleich hoch, auch wenn ein Name kurz ist oder eine Angabe fehlt.
-                    Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
-                        maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
-                        lineHeight = 16.sp)
-                    // Thema und Teilezahl in einer Zeile: Getrennt stand meist eine davon leer.
-                    // Im Farbfächer ein Punkt im Ton der Kartenleiste davor: So liest sich die
-                    // Leiste als Thema, nicht nur als Farbe.
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                        if (ton != null && !set.theme.isNullOrBlank()) Box(Modifier.size(8.dp).background(ton, CircleShape))
-                        Text(themaUndTeile(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
-                    // den Betrag, statt Zeichen für Zeichen umzubrechen.
-                    val betrag = kachelBetrag(set, preis)
-                    // Wie im Web eine Zeile darüber, was der Betrag ist: Ohne Marktpreis ist es
-                    // der Kaufpreis (kachel_quelle), unbeschriftet las er sich als Marktwert.
-                    // Leer ohne Betrag, damit Kacheln einer Reihe gleich hoch bleiben.
-                    Text(when (if (betrag != null) kachelQuelle(set, preis) else null) {
-                            KachelQuelle.MARKT -> stringResource(R.string.gallery_card_market)
-                            KachelQuelle.KAUF -> stringResource(R.string.gallery_card_paid)
-                            null -> ""
-                        }, style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                        Text(fmtMoney(betrag, waehrung), style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary,
-                            maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.align(Alignment.CenterVertically))
-                        // Der Betrag gilt je Stück; die Finanzen zeigen dasselbe Set mit dem Wert
-                        // aller Stück, und ohne Hinweis passten die Zahlen nicht zusammen.
-                        if (set.quantity > 1) Text(stringResource(R.string.gallery_price_each),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
-                    } else Text("", style = MaterialTheme.typography.labelMedium)
+                if (zeile) Row(verticalAlignment = Alignment.Top) {
+                    bildflaeche(Modifier.width(ZEILE_BILD_BREITE).aspectRatio(BILD_SEITENVERHAELTNIS))
+                    texte(Modifier.weight(1f))
+                } else {
+                    bildflaeche(Modifier.fillMaxWidth().aspectRatio(BILD_SEITENVERHAELTNIS))
+                    texte(Modifier)
                 }
             }
         }
@@ -588,6 +626,9 @@ fun SetCard(
         )
     }
 }
+
+/** Breite des Vorschaubilds, wenn die Kachel bei grosser Schrift eine Listenzeile ist. */
+private val ZEILE_BILD_BREITE = 96.dp
 
 /** Seitenverhältnis der Bildfläche einer Kachel — das der Setbilder. */
 private const val BILD_SEITENVERHAELTNIS = 4f / 3f
@@ -650,9 +691,15 @@ fun AddSetDialog(
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
     val keyboard  = LocalSoftwareKeyboardController.current
+    // Hinzufügen bleibt antippbar und markiert dann das leere Feld: Grau ohne Grund liess
+    // raten, warum nichts geschah.
+    var nummerFehlt by remember { mutableStateOf(false) }
 
     fun submit() {
-        if (setNumber.isNotBlank()) {
+        if (setNumber.isBlank()) {
+            nummerFehlt = true
+            if (sofortFokus) try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+        } else {
             onAdd(setNumber, quantity.toIntOrNull() ?: 1,
                   purchasePrice.replace(',', '.').toDoubleOrNull(), condition,
                   // Ohne Haushalt gar nichts mitschicken — der Server bleibt
@@ -668,9 +715,8 @@ fun AddSetDialog(
         bestaetigen = stringResource(R.string.gallery_add),
         onBestaetigen = { submit() },
         onAbbrechen = onDismiss,
-        // Ohne Zeile „Bitte Set-Nummer eingeben“: Beschriftung und Beispiel am Feld sagen es
-        // schon, und dreimal derselbe Hinweis schob bei 200 % die Knöpfe aus dem Bild.
-        bestaetigenAn = setNumber.isNotBlank(),
+        // Ohne eigene Zeile „Bitte Set-Nummer eingeben“: Dreimal derselbe Hinweis schob bei
+        // 200 % die Knöpfe aus dem Bild; was fehlt, sagt das Feld erst beim Tippen.
     ) {
         OwnerPicker(householdMembers, owner, { owner = it })
         // Das Beispiel als Hilfetext wie im Merkposten-Dialog: Ein Platzhalter verschwand
@@ -679,7 +725,11 @@ fun AddSetDialog(
             value = setNumber,
             onValueChange = { setNumber = NumericInput.setNumber(it) },
             label = { Text(stringResource(R.string.gallery_set_number)) },
-            supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
+            isError = nummerFehlt && setNumber.isBlank(),
+            supportingText = {
+                if (nummerFehlt && setNumber.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.ansagen())
+                else Text(stringResource(R.string.gallery_set_number_placeholder))
+            },
             modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = NumericInput.ganzzahlTastatur()

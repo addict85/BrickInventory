@@ -40,6 +40,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
@@ -96,6 +97,10 @@ import org.robolectric.annotation.GraphicsMode
  *   markenkopf-immer-gross      Markenkopf auch bei 200 % gross → rot „Markenkopf bei 200 Prozent …“
  *   bewegung-immer-an           bewegungReduziert() liefert immer false → rot „reduzierte Bewegung …“
  *   einrichtung-einspaltig      Einrichtung auch quer einspaltig → rot „Einrichtung im Querformat …“
+ *   kennzahlen-pfeil-ueber-text Pfeil wieder über dem Rand der Zeile → rot „Kennzahlen der Sammlung …“
+ *   detailzeile-volle-breite    Detailzeile ohne Lesebreite → rot „Detailkarten stehen auf dem Tablet …“
+ *   bewegung-ohne-beobachter    Einstellung nur einmal gelesen → rot „reduzierte Bewegung folgt einer Aenderung …“
+ *   startpasswort-ohne-grund    gesperrter Knopf ohne Grund → rot „Startpasswort-Maske sagt …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -336,6 +341,40 @@ class GeruestUndFormularTest {
         android.provider.Settings.Global.putFloat(aufloesung, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
     }
 
+    /** Umgestellt wird bei offener App in den Systemeinstellungen; die Bewegung folgt sofort. */
+    @Test
+    fun `reduzierte Bewegung folgt einer Aenderung zur Laufzeit`() {
+        val aufloesung = ctx.contentResolver
+        val dauer = android.provider.Settings.Global.ANIMATOR_DURATION_SCALE
+        android.provider.Settings.Global.putFloat(aufloesung, dauer, 1f)
+        var ruhig: Boolean? = null
+        zeige { ruhig = ch.brickinventoryapp.ui.components.bewegungReduziert() }
+        assertEquals("Mit Animator-Dauer 1 bewegt sich alles", false, ruhig)
+        try {
+            android.provider.Settings.Global.putFloat(aufloesung, dauer, 0f)
+            aufloesung.notifyChange(android.provider.Settings.Global.getUriFor(dauer), null)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+            compose.waitForIdle()
+            assertEquals("Nach dem Umstellen ruht alles", true, ruhig)
+        } finally {
+            android.provider.Settings.Global.putFloat(aufloesung, dauer, 1f)
+        }
+    }
+
+    /** Ein gesperrter Hauptknopf sagt, was fehlt, bis alles da ist. */
+    @Test
+    fun `Startpasswort-Maske sagt, was zum Aendern fehlt`() {
+        zeige { ch.brickinventoryapp.ui.screens.StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
+        val grund = ctx.getString(R.string.passwort_aendern_fehlt)
+        compose.onNodeWithText(grund).fetchSemanticsNode()
+        val felder = compose.onAllNodes(hasSetTextAction())
+        felder[0].performTextInput("altes-passwort-1")
+        felder[1].performTextInput("neues-passwort-12")
+        felder[2].performTextInput("neues-passwort-12")
+        compose.waitForIdle()
+        compose.onAllNodesWithText(grund).assertCountEquals(0)
+    }
+
     @Test
     fun `Verwalterrechte stehen eingeklappt unter Erweitert`() {
         zeige {
@@ -378,6 +417,12 @@ class GeruestUndFormularTest {
         assertTrue("Kennzahlen in einer Zeile: $oben", oben.all { kotlin.math.abs(it - oben[0]) < 1f })
         // Rechts steht noch etwas: Der Pfeil sagt es, bis ans Ende gewischt ist.
         assertEquals("Pfeil auf weitere Kennzahlen", 1, mehrPfeil().size)
+        // Der Pfeil steht neben dem Text, nicht auf ihm: Darunter lag sonst „82 Tei“.
+        val pfeil = mehrPfeil().single().boundsInRoot
+        val sichtbar = zahlen.map { (wert, text) ->
+            compose.onNodeWithText("$wert $text", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        }.filter { it.width > 0f }
+        assertTrue("Kein Text unter dem Pfeil ($pfeil / $sichtbar)", sichtbar.all { it.right <= pfeil.left + 0.5f })
         val (wert, text) = zahlen.last()
         compose.onNodeWithText("$wert $text", useUnmergedTree = true).performScrollTo()
         compose.waitForIdle()
@@ -445,6 +490,31 @@ class GeruestUndFormularTest {
         numParts = 4514, imageLocal = "/beispiel/set1.png", minifigs = 22,
         bricklink = ch.brickinventoryapp.ui.model.BrickLinkAnsicht(number = "10305-1",
             url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
+
+    /**
+     * Auf dem Tablet stehen Bezeichnung und Wert nahe beieinander und die Knöpfe in
+     * Bedienbreite; die Teilezahl trägt den Tausendertrenner wie überall.
+     */
+    @Test
+    fun `Detailkarten stehen auf dem Tablet in Lesebreite`() {
+        RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
+        zeige {
+            ch.brickinventoryapp.ui.screens.CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
+                isLoading = false, imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "", onLoad = {},
+                onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
+                onOpenInGallery = {}, onBack = {})
+        }
+        val dichte = ctx.resources.displayMetrics.density
+        val jahr = compose.onNodeWithText(ctx.getString(R.string.catalog_detail_year)).fetchSemanticsNode().boundsInRoot
+        val wert = compose.onNodeWithText("2022").fetchSemanticsNode().boundsInRoot
+        val zeile = (wert.right - jahr.left) / dichte
+        assertTrue("Bezeichnung und Wert über $zeile dp", zeile <= ch.brickinventoryapp.ui.theme.Lesebreite.wertzeile.value + 1f)
+        val aufnehmen = compose.onNode(hasText(ctx.getString(R.string.catalog_add_to_gallery)) and hasClickAction())
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue("Knopf ${aufnehmen.width / dichte} dp breit",
+            aufnehmen.width / dichte <= ch.brickinventoryapp.ui.theme.Lesebreite.bedienung.value + 1f)
+        compose.onNodeWithText(ch.brickinventoryapp.util.fmtInt(4514)).fetchSemanticsNode()
+    }
 
     @Test
     fun `Katalog-Detail steht auf dem Tablet in zwei Spalten, Aufnehmen vor BrickLink`() {

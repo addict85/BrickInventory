@@ -122,7 +122,7 @@ AlertDialog(
             val imgUrl = barcodeState.imageLocal?.let { "${state.serverUrl}$it" } ?: barcodeState.imageUrl
             val ctx = androidx.compose.ui.platform.LocalContext.current
             ch.brickinventoryapp.ui.components.ProduktBild(
-                model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                 imageLoader = imageLoader,
                 contentDescription = barcodeState.setName,
                 modifier = Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium),

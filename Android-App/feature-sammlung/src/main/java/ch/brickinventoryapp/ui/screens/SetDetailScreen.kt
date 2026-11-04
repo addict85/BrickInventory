@@ -108,11 +108,13 @@ fun SetDetailScreen(
                     // Kein Verschieben-Knopf: Verschoben wird über den Kaufpreis, Zeile für Zeile —
                     // ein Set mit drei Erfassungen sind drei Käufe, die verschiedenen Kindern gehören
                     // können. Der Server erzwingt dasselbe (move ohne acquisition_ids: 400).
-                    IconButton(onClick = {
-                        haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                        if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
-                    }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
+                        IconButton(onClick = {
+                            haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
+                        }) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
+                        }
                     }
                 },
             )

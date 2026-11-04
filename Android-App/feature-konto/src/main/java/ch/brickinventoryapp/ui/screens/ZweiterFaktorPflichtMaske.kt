@@ -84,6 +84,7 @@ fun ZweiterFaktorPflichtMaske(
     val kontext = LocalContext.current
     val auswahlTitel = stringResource(R.string.zf_open_app)
     val etikett = stringResource(R.string.app_name)
+    val teilenTitel = stringResource(R.string.zf_share_title)
     val schutz = LocalSchrittschutz.current
     val codesGrund = stringResource(R.string.schritt_codes)
     val geheimnis = zustand.geheimnis
@@ -120,6 +121,12 @@ fun ZweiterFaktorPflichtMaske(
                             colors = nebenKnopfFarben(),
                             border = nebenKnopfRand(),
                         ) { Text(stringResource(R.string.zf_copy)) }
+                        OutlinedButton(
+                            onClick = { teileCodes(kontext, teilenTitel, zustand.codes) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = nebenKnopfFarben(),
+                            border = nebenKnopfRand(),
+                        ) { Text(stringResource(R.string.zf_share)) }
                         CodesGesichert(gesichert) { gesichert = it }
                         Button(onClick = onWeiter, enabled = gesichert, modifier = Modifier.fillMaxWidth()) {
                             Text(stringResource(R.string.zf_pflicht_weiter))
@@ -171,7 +178,10 @@ fun ZweiterFaktorPflichtMaske(
                     }
                     else -> {
                         AnmeldeTitel(stringResource(R.string.zf_pflicht_titel))
-                        Text(stringResource(R.string.zf_pflicht_text), style = MaterialTheme.typography.bodyMedium)
+                        // Der Grund kurz, die Einzelheiten auf Wunsch: Bei 200 % Schrift
+                        // füllten drei Absätze den Bildschirm vor dem Passwortfeld.
+                        ch.brickinventoryapp.ui.components.ErklaerText(stringResource(R.string.zf_pflicht_kurz),
+                            stringResource(R.string.zf_pflicht_text), farbe = MaterialTheme.colorScheme.onSurface)
                         Text(stringResource(R.string.zf_pflicht_passwort), style = MaterialTheme.typography.bodyMedium)
                         PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
                             Modifier.fillMaxWidth())
@@ -180,7 +190,8 @@ fun ZweiterFaktorPflichtMaske(
                             onClick = { schutz.bestaetige(codesGrund) { onEinrichten(pwAktuell) } },
                             enabled = pwAktuell.isNotEmpty() && !zustand.laedt,
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text(stringResource(R.string.zf_setup)) }
+                        // „Weiter“ wie Schritt 1 von 3: Eingerichtet ist danach noch nichts.
+                        ) { Text(stringResource(R.string.setup_continue)) }
                     }
                 }
             }

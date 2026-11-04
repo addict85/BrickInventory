@@ -89,6 +89,8 @@ fun StartpasswortMaske(
                     fehlerhaft = verschieden)
                 kontoZustand.fehler?.let { FehlerZeile(it) }
                 if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
+                if (pwAktuell.isEmpty() || pwNeu.isEmpty() || pwWiederholt.isEmpty())
+                    ch.brickinventoryapp.ui.components.SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
                 Button(
                     onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
                     enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,

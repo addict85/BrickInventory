@@ -58,12 +58,13 @@ fun ErfassenFab(beschreibung: String, onClick: () -> Unit, modifier: Modifier = 
 /** Scannen als Symbolknopf neben einem Eingabefeld — mit Rand in `outline` (≥ 3:1). */
 @Composable
 fun ScanKnopf(onClick: () -> Unit, modifier: Modifier = Modifier, beschreibung: String = stringResource(R.string.gallery_scan_barcode)) {
-    OutlinedIconButton(
-        onClick = onClick,
-        modifier = modifier,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-    ) { Icon(BarcodeSymbol, contentDescription = beschreibung) }
+    MitTooltip(beschreibung, modifier) {
+        OutlinedIconButton(
+            onClick = onClick,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            colors = IconButtonDefaults.outlinedIconButtonColors(contentColor = MaterialTheme.colorScheme.primary),
+        ) { Icon(BarcodeSymbol, contentDescription = beschreibung) }
+    }
 }
 
 /**

@@ -91,10 +91,12 @@ fun MerkpostenDetailScreen(
                 // wieder eingetragen. `let`, weil der Merkposten hier oben noch nullbar ist.
                 actions = {
                     merkposten?.let { w ->
-                        IconButton(onClick = {
-                            vm.loescheMerkposten(w.setNumber, w.condition, w.userId)
-                        }) {
-                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_delete)) {
+                            IconButton(onClick = {
+                                vm.loescheMerkposten(w.setNumber, w.condition, w.userId)
+                            }) {
+                                Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                            }
                         }
                     }
                 },
@@ -134,7 +136,9 @@ fun MerkpostenDetailScreen(
 
             item {
                 ch.brickinventoryapp.ui.theme.AppKarte {
-                    Column(Modifier.padding(Abstaende.mittel)) {
+                    // Mit Abstand zwischen den Zeilen wie im Katalog-Detail: Dicht gestapelt
+                    // las sich die Karte als ein Block.
+                    Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         // Nur Zeilen mit Wert: Vier Gedankenstriche untereinander sagten nur,
                         // dass der Katalog das Set nicht kennt.
                         CatalogDetailRow(stringResource(R.string.detail_set_number), merkposten.setNumber)
@@ -216,9 +220,11 @@ fun MerkpostenDetailScreen(
                             ?.takeIf { it.isNotBlank() }
                             ?.let { R.string.detail_compare to it },
                     )
+                    // Höchstens Bedienbreite: Auf dem Tablet liefen die Knöpfe sonst über die ganze Spalte.
+                    val breite = Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.bedienung).fillMaxWidth()
                     if (adressen.isNotEmpty()) {
                         Row(
-                            Modifier.fillMaxWidth(),
+                            breite,
                             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         ) {
                             for ((beschriftung, url) in adressen) {
@@ -248,7 +254,7 @@ fun MerkpostenDetailScreen(
 
                     Button(
                         onClick = { uebernahmeOffen = true },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = breite,
                     ) {
                         Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                         Spacer(Modifier.width(Abstaende.winzig))

@@ -169,8 +169,10 @@ fun BarcodeScannerScreen(
                 KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
-        IconButton(onClick = onDismiss, modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {
-            Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+            IconButton(onClick = onDismiss, modifier = Modifier.padding(Abstaende.gross)) {
+                Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+            }
         }
     }
 }

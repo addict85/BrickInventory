@@ -44,9 +44,11 @@ fun Unterseite(
                 // Überschrift der Unterseite: Vorleseprogramme springen dorthin.
                 title = { Text(titel, maxLines = 1, modifier = Modifier.semantics { heading() }) },
                 navigationIcon = {
-                    IconButton(onClick = onZurueck) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                             stringResource(R.string.common_back))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                        IconButton(onClick = onZurueck) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack,
+                                 stringResource(R.string.common_back))
+                        }
                     }
                 },
             )

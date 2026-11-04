@@ -106,14 +106,15 @@ fun ZoomableImageDialog(
                     ),
                 contentScale = ContentScale.Fit
             )
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(20.dp)
-                    .background(Color.Black.copy(alpha = 0.08f), shape = CircleShape)
-            ) {
-                Icon(Icons.Default.Close, stringResource(R.string.detail_close), tint = Color.Black)
+            MitTooltip(stringResource(R.string.detail_close), Modifier.align(Alignment.TopEnd)) {
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .background(Color.Black.copy(alpha = 0.08f), shape = CircleShape)
+                ) {
+                    Icon(Icons.Default.Close, stringResource(R.string.detail_close), tint = Color.Black)
+                }
             }
             if (zoomScale > 1.01f) {
                 Text(

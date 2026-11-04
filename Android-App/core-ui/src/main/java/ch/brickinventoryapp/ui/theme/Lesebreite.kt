@@ -23,6 +23,15 @@ object Lesebreite {
 
     /** Unterseiten mit Zeilen aus Bezeichnung und Wert. */
     val liste = 840.dp
+
+    /**
+     * Eine Zeile aus Bezeichnung und Wert in einer Detailkarte. Über die ganze Tablet-
+     * spalte gezogen, lagen 500 dp zwischen „Jahr“ und „2022“, und das Auge verlor die Zeile.
+     */
+    val wertzeile = 440.dp
+
+    /** Knöpfe und Eingabefelder in Detailkarten: Mit Telefon-Proportionen über 900 dp wirkten sie unfertig. */
+    val bedienung = 400.dp
 }
 
 /** Volle Breite bis [max], darüber mittig. */

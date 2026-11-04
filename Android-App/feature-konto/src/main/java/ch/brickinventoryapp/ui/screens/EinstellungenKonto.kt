@@ -156,6 +156,8 @@ internal fun KontoCard(
                 Modifier.fillMaxWidth(), art = PasswortArt.WIEDERHOLUNG,
                 hinweis = if (verschieden) stringResource(R.string.startpasswort_verschieden) else null,
                 fehlerhaft = verschieden)
+            if (pwAktuell.isBlank() || pwNeu.isEmpty() || pwWiederholt.isEmpty())
+                ch.brickinventoryapp.ui.components.SperrGrund(stringResource(R.string.passwort_aendern_fehlt))
             // Tonal statt umrandet: Ein deaktivierter umrandeter Knopf war kaum zu sehen.
             FilledTonalButton(
                 onClick = { onPasswort(pwAktuell, pwNeu, code) },
@@ -186,6 +188,19 @@ internal fun KontoCard(
  * Geheimnis, und eine App, die sich als Standard dafür eingetragen hat, bekäme es
  * sonst unbemerkt. Fehlt eine, bleibt der Schluessel zum Kopieren.
  */
+/**
+ * Die Notfallcodes an eine App der Wahl (Passwortmanager, Notizen): nur auf Tipp und
+ * über die Auswahl des Systems, nicht über die Zwischenablage, deren Verlauf sie behielte.
+ */
+internal fun teileCodes(ctx: android.content.Context, titel: String, codes: List<String>) {
+    val senden = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(android.content.Intent.EXTRA_TEXT, codes.joinToString("\n"))
+        putExtra(android.content.Intent.EXTRA_TITLE, titel)
+    }
+    runCatching { ctx.startActivity(android.content.Intent.createChooser(senden, titel)) }
+}
+
 /** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
 internal fun oeffneMitAuswahl(ctx: android.content.Context, uri: String, titel: String): Boolean {
     val ansicht = android.content.Intent(android.content.Intent.ACTION_VIEW, uri.toUri())
@@ -210,6 +225,7 @@ internal fun ZweiterFaktorCard(
     val auswahlTitel = stringResource(R.string.zf_open_app)
     val kontext = androidx.compose.ui.platform.LocalContext.current
     val schluesselEtikett = stringResource(R.string.app_name)
+    val teilenTitel = stringResource(R.string.zf_share_title)
     val kopieren: (String) -> Unit = { text ->
         ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, schluesselEtikett, text)
     }
@@ -249,6 +265,7 @@ internal fun ZweiterFaktorCard(
                 Text(zfZustand.codes.joinToString("\n"),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
                 OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_copy)) }
+                OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, zfZustand.codes) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_share)) }
                 CodesGesichert(gesichert) { gesichert = it }
                 Button(onClick = onZurueck, enabled = gesichert) { Text(stringResource(R.string.zf_codes_done)) }
             }
@@ -376,10 +393,12 @@ internal fun GeraeteCard(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        if (!g.aktuell) IconButton(onClick = { fragt = g.tokenId }) {
-                            Icon(Icons.Default.Delete,
-                                stringResource(R.string.tokens_revoke_title),
-                                tint = MaterialTheme.colorScheme.error)
+                        if (!g.aktuell) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.tokens_revoke_title)) {
+                            IconButton(onClick = { fragt = g.tokenId }) {
+                                Icon(Icons.Default.Delete,
+                                    stringResource(R.string.tokens_revoke_title),
+                                    tint = MaterialTheme.colorScheme.error)
+                            }
                         }
                     }
                 }

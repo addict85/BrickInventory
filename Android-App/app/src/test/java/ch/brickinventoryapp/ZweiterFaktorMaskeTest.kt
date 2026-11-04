@@ -54,6 +54,7 @@ import org.robolectric.annotation.GraphicsMode
  *   faktormaske-hinweis-stumm      Hinweis ohne App ohne ansagen() → rot „ohne Authenticator-App …“
  *   faktormaske-abmelden-nur-anfangs  Abmelden nur im ersten Schritt → rot „Abmelden bleibt …“
  *   faktormaske-riesentitel        Überschrift in schmaler Spalte → rot „bei 200 Prozent …“
+ *   codes-teilen-ueber-ablage      „Teilen“ legt die Codes in die Zwischenablage → rot „die Notfallcodes lassen sich teilen …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -113,9 +114,9 @@ class ZweiterFaktorMaskeTest {
     fun `ohne Passwort richtet die Maske nichts ein, mit Passwort schon`() {
         zustand.value = ZweiterFaktorUiState(aktiv = false)
         zeige()
-        knopf(R.string.zf_setup).assertIsNotEnabled()
+        knopf(R.string.setup_continue).assertIsNotEnabled()
         compose.onNode(hasSetTextAction()).performTextInput("geheim-123")
-        knopf(R.string.zf_setup).assertIsEnabled().performScrollTo().performClick()
+        knopf(R.string.setup_continue).assertIsEnabled().performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(listOf("geheim-123"), eingerichtet)
     }
@@ -145,6 +146,28 @@ class ZweiterFaktorMaskeTest {
         knopf(R.string.zf_pflicht_weiter).assertIsEnabled().performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(1, weiterGetippt)
+    }
+
+    /**
+     * Die Codes gehen auf Tipp an eine App der Wahl (Passwortmanager) — über die Auswahl
+     * des Systems, nicht über die Zwischenablage, deren Verlauf sie behielte.
+     */
+    @Test
+    fun `die Notfallcodes lassen sich teilen, ohne die Zwischenablage zu fuellen`() {
+        zustand.value = codes
+        zeige()
+        assertEquals("Vor dem Tipp wird nichts geteilt", null,
+            org.robolectric.Shadows.shadowOf(compose.activity).peekNextStartedActivity())
+        knopf(R.string.zf_share).performScrollTo().performClick()
+        compose.waitForIdle()
+        val auswahl = org.robolectric.Shadows.shadowOf(compose.activity).nextStartedActivity
+        assertEquals(android.content.Intent.ACTION_CHOOSER, auswahl?.action)
+        val senden = androidx.core.content.IntentCompat.getParcelableExtra(auswahl!!, android.content.Intent.EXTRA_INTENT,
+            android.content.Intent::class.java)
+        assertEquals(android.content.Intent.ACTION_SEND, senden?.action)
+        assertEquals("aaaa-bbbb\ncccc-dddd", senden?.getStringExtra(android.content.Intent.EXTRA_TEXT))
+        val ablage = compose.activity.getSystemService(android.content.ClipboardManager::class.java)
+        assertTrue("Teilen legt nichts in die Zwischenablage", !ablage.hasPrimaryClip())
     }
 
     @Test
@@ -187,12 +210,12 @@ class ZweiterFaktorMaskeTest {
     @Test
     fun `bei 200 Prozent Schrift bricht kein Text mitten im Wort um`() {
         val je = listOf(
-            ZweiterFaktorUiState(aktiv = false) to listOf(R.string.zf_pflicht_titel, R.string.zf_pflicht_text,
-                R.string.zf_pflicht_passwort, R.string.zf_setup, R.string.settings_logout),
+            ZweiterFaktorUiState(aktiv = false) to listOf(R.string.zf_pflicht_titel, R.string.zf_pflicht_kurz,
+                R.string.common_learn_more, R.string.zf_pflicht_passwort, R.string.setup_continue, R.string.settings_logout),
             einrichtung to listOf(R.string.zf_pflicht_titel, R.string.zf_step_app, R.string.zf_open_app,
                 R.string.zf_copy_key, R.string.zf_confirm),
             codes to listOf(R.string.zf_pflicht_codes_titel, R.string.zf_codes_hint, R.string.zf_copy,
-                R.string.zf_codes_gesichert, R.string.zf_pflicht_weiter),
+                R.string.zf_share, R.string.zf_codes_gesichert, R.string.zf_pflicht_weiter),
         )
         zeige(schrift = 2f)
         val gebrochen = mutableListOf<String>()

@@ -126,8 +126,10 @@ private fun LagerortZeile(
                         tint = if (istVorgabe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Box {
-                    IconButton(onClick = { menue = true }) {
-                        Icon(Icons.Default.MoreVert, stringResource(R.string.storage_menu_cd, ort.name))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.storage_menu_cd, ort.name)) {
+                        IconButton(onClick = { menue = true }) {
+                            Icon(Icons.Default.MoreVert, stringResource(R.string.storage_menu_cd, ort.name))
+                        }
                     }
                     DropdownMenu(menue, { menue = false }) {
                         DropdownMenuItem(

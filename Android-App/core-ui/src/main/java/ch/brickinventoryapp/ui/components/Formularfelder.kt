@@ -36,6 +36,15 @@ import ch.brickinventoryapp.ui.theme.Formen
  */
 fun Modifier.ansagen(): Modifier = semantics { liveRegion = LiveRegionMode.Polite }
 
+/**
+ * Steht über einem gesperrten Hauptknopf und sagt, was fehlt: Blass allein liess
+ * raten, warum er nicht geht (wie beim Anmelden).
+ */
+@Composable
+fun SperrGrund(text: String) {
+    Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+}
+
 /** Eine Fehlerzeile unter einem Formular, in Fehlerfarbe und angesagt. */
 @Composable
 fun FehlerZeile(text: String, modifier: Modifier = Modifier) {
@@ -82,11 +91,11 @@ fun PasswortFeld(
         // auf jeder Seite gleich.
         leadingIcon = { Icon(Icons.Default.Lock, null) },
         trailingIcon = {
-            IconButton(onClick = { sichtbar = !sichtbar }) {
-                Icon(
-                    if (sichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    stringResource(if (sichtbar) R.string.cd_password_hide else R.string.cd_password_show),
-                )
+            val umschalten = stringResource(if (sichtbar) R.string.cd_password_hide else R.string.cd_password_show)
+            MitTooltip(umschalten) {
+                IconButton(onClick = { sichtbar = !sichtbar }) {
+                    Icon(if (sichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = umschalten)
+                }
             }
         },
         visualTransformation = if (sichtbar) VisualTransformation.None else PasswordVisualTransformation(),

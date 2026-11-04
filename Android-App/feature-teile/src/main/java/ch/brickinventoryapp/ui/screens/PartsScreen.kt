@@ -162,6 +162,9 @@ fun PartsScreen(
         }
     }
 
+    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
+    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val erfassenText = stringResource(R.string.parts_add)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Suche und „Filter“: Konto, Lagerort, Ersatzteile, Farbe, Kategorie
@@ -177,6 +180,7 @@ fun PartsScreen(
             aktiveFilter = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus,
                 partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter),
             onFilter = { zeigeFilter = true },
+            erfassen = erfassenText to { showAddDialog = true },
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.teileOfflineStand)
@@ -266,8 +270,8 @@ fun PartsScreen(
         }
     }
 
-        ch.brickinventoryapp.ui.components.ErfassenFab(
-            stringResource(R.string.parts_add), { showAddDialog = true },
+        if (!gross) ch.brickinventoryapp.ui.components.ErfassenFab(
+            erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
     }
@@ -392,10 +396,78 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
     // den Server-Proxy, nicht direkt zum CDN — anders als bei Sets/Katalog.
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
+    // Ab grosser Schrift eine Listenzeile wie die Sets: Das Bild über die volle Breite
+    // liess ein Teil je Bildschirm. Die Menge rückt dann vom Bild in den Text.
+    val zeile = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val weich = !ch.brickinventoryapp.ui.components.bewegungReduziert()
+    val menge: @Composable () -> Unit = {
+        Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.marke) {
+            Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+        }
+    }
+
+    // Mit der Kachel wachsend statt fest 90 dp: Auf dem Tablet stand sonst ein kleines
+    // Bild über einer breiten Kachel.
+    val bildflaeche: @Composable (Modifier) -> Unit = { flaeche ->
+        Box(flaeche) {
+            ch.brickinventoryapp.ui.components.ProduktBild(
+                model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(weich).build() },
+                imageLoader = imageLoader,
+                contentDescription = part.partName,
+                onState = { st ->
+                    if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
+                },
+                modifier = Modifier.fillMaxSize()
+                    .clip(Formen.kachelBildEcken),
+                contentScale = ContentScale.Fit,
+                ersatzGroesse = 32.dp,
+                // Der Bildgrund über die ganze Kachelbreite wie bei den Sets: Ein schmales
+                // Bild stand sonst als Kasten mit weissen Rändern in der Karte.
+                bildgrund = true,
+                innenAbstand = Abstaende.winzig,
+            )
+            if (!zeile) Box(Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)) { menge() }
+            // Color dot
+            if (colorObj != null) {
+                Box(
+                    Modifier.size(14.dp).align(Alignment.BottomStart).padding(3.dp)
+                        .clip(CircleShape).background(colorObj)
+                )
+            }
+        }
+    }
+
+    val texte: @Composable (Modifier) -> Unit = { spalte ->
+        Column(spalte.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            if (zeile) menge()
+            Text(part.blPartNumber ?: part.partNumber,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold)
+            Text(part.partName?.let { ch.brickinventoryapp.ui.components.katalogName(it) }
+                    ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
+                style = MaterialTheme.typography.labelSmall,
+                color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                // Im Raster immer zwei Zeilen Platz: Kacheln einer Reihe sind gleich hoch,
+                // auch wenn ein Name kurz ist. Die Zeile muss niemandem gleichen.
+                minLines = if (zeile) 1 else 2,
+                maxLines = if (zeile) 4 else 2, overflow = TextOverflow.Ellipsis)
+            part.colorName?.let {
+                Text(ch.brickinventoryapp.ui.components.farbUebersetzer()(it), style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+            // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
+            // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
+            // waere Rauschen.
+            if (part.isSpare) ErsatzteilPlakette(Modifier.padding(top = Abstaende.haar))
+        }
+    }
 
     Card(
         // Antippen öffnet den Detail-Dialog, wie bei manuell erfassten Teilen.
-        modifier = Modifier.fillMaxWidth().heightIn(min = 164.dp)
+        modifier = Modifier.fillMaxWidth().heightIn(min = if (zeile) 0.dp else 164.dp)
             .semantics { selected = ausgewaehlt }
             .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
@@ -403,68 +475,18 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        Column {
-            // Mit der Kachel wachsend statt fest 90 dp: Auf dem Tablet stand sonst ein kleines
-            // Bild über einer breiten Kachel.
-            Box(Modifier.fillMaxWidth().aspectRatio(TEIL_BILD_VERHAELTNIS)) {
-                ch.brickinventoryapp.ui.components.ProduktBild(
-                    model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
-                    imageLoader = imageLoader,
-                    contentDescription = part.partName,
-                    onState = { st ->
-                        if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
-                    },
-                    modifier = Modifier.fillMaxSize()
-                        .clip(Formen.kachelBildEcken),
-                    contentScale = ContentScale.Fit,
-                    ersatzGroesse = 32.dp,
-                    // Der Bildgrund über die ganze Kachelbreite wie bei den Sets: Ein schmales
-                    // Bild stand sonst als Kasten mit weissen Rändern in der Karte.
-                    bildgrund = true,
-                    innenAbstand = Abstaende.winzig,
-                )
-                // Qty badge
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = Formen.marke,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)
-                ) {
-                    Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
-                // Color dot
-                if (colorObj != null) {
-                    Box(
-                        Modifier.size(14.dp).align(Alignment.BottomStart).padding(3.dp)
-                            .clip(CircleShape).background(colorObj)
-                    )
-                }
-            }
-            Column(Modifier.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(part.blPartNumber ?: part.partNumber,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold)
-                Text(part.partName?.let { ch.brickinventoryapp.ui.components.katalogName(it) }
-                        ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                    // Immer zwei Zeilen Platz: Kacheln einer Reihe sind gleich hoch, auch wenn ein Name kurz ist.
-                    minLines = 2,
-                    maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
-                part.colorName?.let {
-                    Text(ch.brickinventoryapp.ui.components.farbUebersetzer()(it), style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
-                }
-                // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
-                // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
-                // waere Rauschen.
-                if (part.isSpare) ErsatzteilPlakette(Modifier.padding(top = Abstaende.haar))
-            }
+        if (zeile) Row(verticalAlignment = Alignment.Top) {
+            bildflaeche(Modifier.width(ZEILE_BILD_BREITE).aspectRatio(TEIL_BILD_VERHAELTNIS))
+            texte(Modifier.weight(1f))
+        } else Column {
+            bildflaeche(Modifier.fillMaxWidth().aspectRatio(TEIL_BILD_VERHAELTNIS))
+            texte(Modifier)
         }
     }
 }
+
+/** Breite des Vorschaubilds, wenn die Kachel bei grosser Schrift eine Listenzeile ist. */
+private val ZEILE_BILD_BREITE = 96.dp
 
 /** Sektions-Überschrift innerhalb der Grids (Manuell erfasst / Aus Sets). */
 @Composable

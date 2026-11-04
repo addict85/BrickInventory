@@ -132,7 +132,6 @@
     <string name="gallery_stat_minifigs">Minifigures</string>
     <string name="gallery_stat_instructions">Instructions</string>
     <string name="gallery_search_placeholder">Search…</string>
-    <string name="gallery_all">All</string>
     <string name="gallery_no_sets">No sets yet</string>
     <string name="gallery_empty_hint">Add your first set by its number or scan the barcode on the box.</string>
     <string name="gallery_add_first">Add your first set</string>
@@ -390,7 +389,7 @@
 
     <!-- ══════════════ Set detail screen ══════════════ -->
     <string name="detail_year">Year</string>
-    <string name="detail_pieces">Pieces</string>
+    <string name="detail_pieces">Parts</string>
     <string name="detail_minifigs">Minifigures</string>
     <string name="detail_theme">Theme</string>
     <string name="detail_section_details">Set details</string>
@@ -764,7 +763,7 @@
     <string name="konto_password_button">Change password</string>
     <string name="startpasswort_titel">Replace the initial password</string>
     <string name="startpasswort_text">This account still uses the initial password it was created with. Choose your own password before you continue. Afterwards you sign in again with the new one.</string>
-    <string name="startpasswort_wiederholen">Repeat new password</string>
+    <string name="startpasswort_wiederholen">Repeat</string>
     <string name="startpasswort_verschieden">The two entries differ.</string>
     <string name="konto_design_hint">Applies to this account on every device.</string>
     <string name="design_text_classic">Light and plain, blue accents.</string>
@@ -894,7 +893,7 @@
     <string name="detail_compare">Compare prices</string>
     <string name="wanted_since">On the list since</string>
     <string name="alerts_group">Price alerts</string>
-    <string name="alerts_intro">Every threshold you have set. You can change the value here or remove the alert. You are notified once per crossing — the same alert can only fire again after the price has moved back to the other side.</string>
+    <string name="alerts_intro">Change a threshold here or remove the alert.</string>
     <string name="alerts_empty">No price alert set yet. You set one in the detail view of a set.</string>
     <string name="alerts_armed">Active</string>
     <string name="alerts_fired">Triggered</string>
@@ -980,7 +979,7 @@
     <string name="zf_enabled">Two-factor authentication set up</string>
     <string name="zf_disabled">Two-factor authentication turned off</string>
     <string name="zf_pflicht_titel">Set up two-factor authentication</string>
-    <string name="zf_pflicht_text">This account has administrator rights. For these the server requires a code from an authenticator app in addition to the password. Until it is set up, the rest of the app stays locked.</string>
+    <string name="zf_pflicht_text">Besides the password, the server then asks for a code from an authenticator app. Until it is set up, the rest of the app stays locked.</string>
     <string name="zf_pflicht_passwort">First confirm with your password; then the app shows the key for your authenticator app.</string>
     <string name="zf_pflicht_codes_titel">Codes for emergencies</string>
     <string name="zf_pflicht_weiter">Continue to the app</string>
@@ -1134,4 +1133,10 @@
         <item quantity="one">Step %1$d of %2$d: %3$s</item>
         <item quantity="other">Step %1$d of %2$d: %3$s</item>
     </plurals>
+    <string name="alerts_intro_more">You are notified once per crossing — the same alert can only fire again after the price has moved back to the other side.</string>
+    <string name="zf_pflicht_kurz">Administrator rights require a second factor.</string>
+    <string name="zf_share">Share</string>
+    <string name="zf_share_title">Recovery codes</string>
+    <string name="passwort_aendern_fehlt">Enter the current password, the new one and its repetition, then change it.</string>
+    <string name="erfassen_nummer_fehlt">Enter a set number first.</string>
 </resources>

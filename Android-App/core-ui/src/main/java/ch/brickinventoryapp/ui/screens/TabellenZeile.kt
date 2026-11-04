@@ -80,7 +80,7 @@ fun TabellenZeile(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 ch.brickinventoryapp.ui.components.ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                     imageLoader = imageLoader,
                     contentDescription = name,
                     onState = { st ->
@@ -177,8 +177,10 @@ fun Suchfeld(
         leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp))) },
         trailingIcon = {
             if (wert.isNotEmpty()) {
-                IconButton(onClick = { onWert("") }) {
-                    Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear))
+                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_search_clear)) {
+                    IconButton(onClick = { onWert("") }) {
+                        Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear))
+                    }
                 }
             }
         },

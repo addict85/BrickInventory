@@ -405,9 +405,11 @@ private fun GutscheinKarte(
                 Text(nummer, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             }
             Box {
-                IconButton(onClick = { menue = true }) {
-                    if (guthabenLaeuft) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    else Icon(Icons.Default.MoreVert, stringResource(R.string.vouchers_cd_menu, nummer))
+                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.vouchers_cd_menu, nummer)) {
+                    IconButton(onClick = { menue = true }) {
+                        if (guthabenLaeuft) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else Icon(Icons.Default.MoreVert, stringResource(R.string.vouchers_cd_menu, nummer))
+                    }
                 }
                 DropdownMenu(menue, { menue = false }) {
                     // Guthaben NUR mit PIN: LEGO fragt Nummer UND PIN ab; ohne PIN wäre
@@ -448,13 +450,16 @@ private fun GutscheinKarte(
             KopierZeile(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(false) }) {
                 Text(pinText, style = MaterialTheme.typography.bodyMedium)
             }
-            IconButton(onClick = onPinSchalten) {
-                // In primary wie das Kopiersymbol daneben: gleichrangige Handlungen, eine Farbe.
-                Icon(
-                    if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show),
-                    tint = MaterialTheme.colorScheme.primary,
-                )
+            val pinSchalter = stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show)
+            ch.brickinventoryapp.ui.components.MitTooltip(pinSchalter) {
+                IconButton(onClick = onPinSchalten) {
+                    // In primary wie das Kopiersymbol daneben: gleichrangige Handlungen, eine Farbe.
+                    Icon(
+                        if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                        contentDescription = pinSchalter,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
       }

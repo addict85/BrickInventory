@@ -317,6 +317,7 @@ class SplitFileImportsTest {
             "TopAppBarDefaults" to "ExperimentalMaterial3Api",
             "PullToRefreshBox" to "ExperimentalMaterial3Api",
             "SearchBar" to "ExperimentalMaterial3Api",
+            "TooltipBox" to "ExperimentalMaterial3Api",
             "combinedClickable" to "ExperimentalFoundationApi",
             "stickyHeader" to "ExperimentalFoundationApi",
             "FlowRow" to "ExperimentalLayoutApi",

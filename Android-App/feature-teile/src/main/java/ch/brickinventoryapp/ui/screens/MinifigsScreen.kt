@@ -100,6 +100,9 @@ fun MinifigsScreen(
 
     var zeigeFilter by rememberSaveable { mutableStateOf(false) }
 
+    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
+    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val erfassenText = stringResource(R.string.minifigs_add)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
@@ -114,6 +117,7 @@ fun MinifigsScreen(
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
             aktiveFilter = Filterzahl.konto(householdMembers, scopeMode),
             onFilter = { zeigeFilter = true },
+            erfassen = erfassenText to { showAddDialog = true },
         )
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.figurenOfflineStand)
@@ -199,8 +203,8 @@ fun MinifigsScreen(
         }
     }
 
-        ch.brickinventoryapp.ui.components.ErfassenFab(
-            stringResource(R.string.minifigs_add), { showAddDialog = true },
+        if (!gross) ch.brickinventoryapp.ui.components.ErfassenFab(
+            erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
     }

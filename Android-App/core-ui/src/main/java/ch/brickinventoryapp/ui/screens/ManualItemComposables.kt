@@ -310,7 +310,7 @@ fun ManuelleKachel(
         Column {
             Box(Modifier.fillMaxWidth().height(76.dp)) {
                 ch.brickinventoryapp.ui.components.ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                     imageLoader = imageLoader,
                     contentDescription = name,
                     onState = { st ->
@@ -338,9 +338,11 @@ fun ManuelleKachel(
                         .clip(CircleShape).background(farbe))
                 }
                 Row(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
-                    IconButton(onClick = onEdit) {
-                        Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
-                            Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_edit)) {
+                        IconButton(onClick = onEdit) {
+                            Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
+                                Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
                 // Kein Papierkorb auf der Kachel: Die Karte öffnet das Detail, und dort steht er
