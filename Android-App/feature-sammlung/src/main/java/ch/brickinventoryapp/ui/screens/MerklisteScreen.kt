@@ -335,7 +335,7 @@ private fun MerkpostenErfassenDialog(
 
     // „Auf die Merkliste“ bleibt antippbar und markiert dann das leere Feld: Grau ohne
     // Grund liess raten, warum nichts geschah.
-    var nummerFehlt by remember { mutableStateOf(false) }
+    var nummerFehlt by rememberSaveable { mutableStateOf(false) }
     val nummerFokus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)

@@ -693,7 +693,7 @@ fun AddSetDialog(
     val keyboard  = LocalSoftwareKeyboardController.current
     // Hinzufügen bleibt antippbar und markiert dann das leere Feld: Grau ohne Grund liess
     // raten, warum nichts geschah.
-    var nummerFehlt by remember { mutableStateOf(false) }
+    var nummerFehlt by rememberSaveable { mutableStateOf(false) }
 
     fun submit() {
         if (setNumber.isBlank()) {
