@@ -153,11 +153,12 @@ class UmbruchWaechterTest {
                     befunde += "$wo nur ${l.size.width} px breit (Schrift ${em.toInt()} px)"
                 if (l.lineCount >= 3 && l.lineCount > 2 * woerter)
                     befunde += "$wo in ${l.lineCount} Zeilen bei $woerter Wörtern"
-                // Nicht hasVisualOverflow: Darin steckt auch die Höhe, und die ragt unter
-                // Robolectric bei fast jedem Text um Bruchteile über (Schriftmetrik).
-                val gekuerzt = l.didOverflowWidth || l.multiParagraph.didExceedMaxLines ||
-                    (0 until l.lineCount).any { l.isLineEllipsized(it) }
-                if ((knopf || kopf) && gekuerzt) befunde += "$wo gekürzt (${if (knopf) "Knopf" else "Überschrift"})"
+                // Nur die Auslassung zählt: Breite, Höhe und maxLines melden unter
+                // Robolectric auch bei ungekürzten Texten einen Überlauf (Schriftmetrik).
+                val gekuerzt = (0 until l.lineCount).any { l.isLineEllipsized(it) }
+                if ((knopf || kopf) && gekuerzt) befunde += "$wo gekürzt (${if (knopf) "Knopf" else "Überschrift"}; " +
+                    "Zeilen ${l.lineCount}, Breite ${l.size.width}/${l.multiParagraph.width.toInt()}, " +
+                    "Überlauf B ${l.didOverflowWidth} H ${l.didOverflowHeight}, maxLines ${l.multiParagraph.didExceedMaxLines})"
             }
             n.children.forEach { lauf(it, knopf, kopf) }
         }
