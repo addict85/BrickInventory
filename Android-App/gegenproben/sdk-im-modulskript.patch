@@ -1,0 +1,17 @@
+Gegenprobe: app/build.gradle.kts setzt minSdk selbst, an build-logic vorbei
+Modul: app
+Test: ch.brickinventoryapp.TargetSdkConfigTest
+Rot: kein Modulskript setzt die SDK-Stände selbst
+
+diff --git a/Android-App/app/build.gradle.kts b/Android-App/app/build.gradle.kts
+index 854a8ae..49c0d43 100644
+--- a/Android-App/app/build.gradle.kts
++++ b/Android-App/app/build.gradle.kts
+@@ -60,6 +60,7 @@ android {
+     // compileSdk, minSdk und targetSdk setzt brickinventory.android.application.
+     defaultConfig {
+         applicationId = "ch.brickinventoryapp"
++        minSdk = 31
+         versionCode   = generatedVersionCode
+         versionName   = generatedVersionName
+     }
