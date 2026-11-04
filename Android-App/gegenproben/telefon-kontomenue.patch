@@ -4,24 +4,24 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Telefon navigiert ohne Schublade
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index ddbdb93..ce62878 100644
+index e1f0ac6..ea595ce 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
- import androidx.compose.foundation.layout.Arrangement
+@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
  import androidx.compose.foundation.layout.Column
- import androidx.compose.material3.*
+ import androidx.compose.material.icons.Icons
+ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 +import androidx.compose.material.icons.filled.AccountCircle
+ import androidx.compose.material3.*
  import androidx.compose.runtime.*
- import androidx.compose.ui.Alignment
  import androidx.compose.ui.Modifier
-@@ -140,6 +141,11 @@ fun MainScaffold(
+@@ -158,6 +159,11 @@ fun MainScaffold(
                          scrolledContainerColor = akzent.leiste,
                      ),
                      scrollBehavior = einklappen,
 +                    actions = {
 +                        IconButton(onClick = {}) {
-+                            Icon(androidx.compose.material.icons.Icons.Default.AccountCircle, stringResource(R.string.konto_title))
++                            Icon(Icons.Default.AccountCircle, stringResource(R.string.konto_title))
 +                        }
 +                    },
                  )

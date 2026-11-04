@@ -115,7 +115,7 @@ fun CatalogDetailScreen(
                 // gedämpft — wie das Set-Detail, statt einer grellen Fläche.
                 val bild: @Composable (Modifier) -> Unit = { m ->
                     ch.brickinventoryapp.ui.components.ProduktBild(
-                        model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                        model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                         imageLoader = imageLoader,
                         contentDescription = detail.name,
                         modifier = m.clip(Formen.karte)
@@ -236,7 +236,7 @@ private fun ColumnScope.KatalogAngaben(
         Column(Modifier.padding(Abstaende.rand), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             CatalogDetailRow(stringResource(R.string.catalog_detail_year),   detail.year?.toString() ?: "—")
             CatalogDetailRow(stringResource(R.string.catalog_detail_theme),  detail.themeName ?: "—")
-            CatalogDetailRow(stringResource(R.string.catalog_detail_parts),  detail.numParts?.takeIf { it > 0 }?.toString() ?: "—")
+            CatalogDetailRow(stringResource(R.string.catalog_detail_parts),  detail.numParts?.takeIf { it > 0 }?.let { ch.brickinventoryapp.util.fmtInt(it) } ?: "—")
             CatalogDetailRow(stringResource(R.string.catalog_detail_minifigs), if (detail.minifigs > 0) detail.minifigs.toString() else "—")
             if (detail.owned) {
                 CatalogDetailRow(stringResource(R.string.catalog_owned), "✓ ×${detail.ownedQuantity}")
@@ -247,19 +247,21 @@ private fun ColumnScope.KatalogAngaben(
     // Untereinander in voller Breite wie im Merkposten-Detail: Nebeneinander war
     // „Zur Sammlung hinzufügen“ schon bei normaler Schrift gekürzt. Aufnehmen ist die
     // häufigere Handlung und steht oben und gefüllt, Merken darunter umrandet.
-    Button(onClick = onAufnehmen, modifier = Modifier.fillMaxWidth()) {
+    // Höchstens Bedienbreite: Auf dem Tablet liefen die Knöpfe sonst über die ganze Spalte.
+    val knopf = Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.bedienung).fillMaxWidth()
+    Button(onClick = onAufnehmen, modifier = knopf) {
         Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
         Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
             textAlign = TextAlign.Center)
     }
-    OutlinedButton(onClick = onMerken, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+    OutlinedButton(onClick = onMerken, modifier = knopf, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
         Icon(Icons.Default.BookmarkAdd, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
         Text(stringResource(R.string.wanted_add_submit), textAlign = TextAlign.Center)
     }
     if (detail.owned) {
-        OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+        OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = knopf, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
             Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.catalog_open_in_gallery))

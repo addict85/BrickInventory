@@ -493,7 +493,7 @@ fun CatalogSetCard(
                     val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
                     // Kaputte oder fehlende CDN-Bilder: das gemeinsame Ersatzbild statt leerer Fläche.
                     ch.brickinventoryapp.ui.components.ProduktBild(
-                        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
                         imageLoader = imageLoader,
                         contentDescription = set.name,
                         onState = { if (it is coil3.compose.AsyncImagePainter.State.Error) onThumbError() },

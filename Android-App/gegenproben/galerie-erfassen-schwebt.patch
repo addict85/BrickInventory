@@ -1,0 +1,18 @@
+Gegenprobe: Erfassen schwebt auch bei 200 % über der Liste
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Galerie bei 200 Prozent zeigt mehrere Sets ganz
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+index 1d44fe6..5dfa7d3 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+@@ -290,7 +290,7 @@ fun GalleryScreen(
+         // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
+         // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
+         // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
+-        if (!gross && anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
++        if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
+             erfassenText, { showAddDialog = true },
+             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
+         )

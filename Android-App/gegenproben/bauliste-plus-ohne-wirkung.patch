@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.UnterseitenTest
 Rot: Bauliste nimmt Sets ueber das Plus im Feld
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-index d993591..b6cf5b3 100644
+index 7a34a9a..5c4f6ab 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-@@ -243,7 +243,7 @@ fun PartsListScreen(
-                         singleLine = true,
+@@ -244,7 +244,7 @@ fun PartsListScreen(
                          shape = MaterialTheme.shapes.large,
                          trailingIcon = {
--                            if (setInput.isNotBlank()) IconButton(onClick = { addSet(setInput) }) {
-+                            if (setInput.isNotBlank()) IconButton(onClick = { }) {
-                                 Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
+                             if (setInput.isNotBlank()) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.partslist_add_set)) {
+-                                IconButton(onClick = { addSet(setInput) }) {
++                                IconButton(onClick = { }) {
+                                     Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
+                                 }
                              }
-                         }

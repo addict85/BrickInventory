@@ -4,23 +4,27 @@ Test: ch.brickinventoryapp.MediaAuthTest
 Rot: der Herunterladen-Knopf erscheint erst
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-index 7cdb166..8e9e838 100644
+index 997d73a..c21d133 100644
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-@@ -373,11 +373,13 @@ fun PdfViewerScreen(
+@@ -375,13 +375,15 @@ fun PdfViewerScreen(
                      // Datei, ein eigener Download kennte den Bearer-Token nicht. Beide nur,
                      // wo Speichern erlaubt ist: Der Druckdialog bietet „Als PDF speichern“.
                      val s = state
 +                    if (speicherbar) {
-+                        IconButton(onClick = { (s as? PdfLoadState.Ready)?.let { melde(savePdfToDownloads(ctx, it.quelle, title)) } }) {
-+                            Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
++                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_download)) {
++                            IconButton(onClick = { (s as? PdfLoadState.Ready)?.let { melde(savePdfToDownloads(ctx, it.quelle, title)) } }) {
++                                Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
++                            }
 +                        }
 +                    }
                      if (s is PdfLoadState.Ready) {
                          if (speicherbar) {
--                            IconButton(onClick = { melde(savePdfToDownloads(ctx, s.quelle, title)) }) {
--                                Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
+-                            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_download)) {
+-                                IconButton(onClick = { melde(savePdfToDownloads(ctx, s.quelle, title)) }) {
+-                                    Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
+-                                }
 -                            }
-                             IconButton(onClick = { melde(printPdf(ctx, s.quelle, title)) }) {
-                                 Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
-                             }
+                             ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_print)) {
+                                 IconButton(onClick = { melde(printPdf(ctx, s.quelle, title)) }) {
+                                     Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))

@@ -105,8 +105,9 @@ fun ComparisonScreen() {
                         // „Clear“, und TalkBack sagte am Suche-leeren-Knopf das Wort für „Bestand
                         // vernichten“. Dieses Feld ist kein `Suchfeld`, weil es die Suchtaste der
                         // Tastatur braucht, und nimmt den Text deshalb von Hand.
-                        if (searchText.isNotEmpty())
+                        if (searchText.isNotEmpty()) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_search_clear)) {
                             IconButton(onClick = { searchText = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear)) }
+                        }
                     },
                     modifier = Modifier.weight(1f),
                     singleLine = true,

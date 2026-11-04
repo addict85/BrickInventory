@@ -66,6 +66,8 @@ import org.robolectric.annotation.GraphicsMode
  *       Codefeld erst auf Verlangen“ (gegenproben/gutschein-rueckfrage-ohne-code.patch)
  *   (h) im Set-Detail der Papierkorb immer mit Rückfrage → rot „ein Set loescht mit
  *       Rueckgaengig sofort …“ (gegenproben/set-loeschen-doppelt-gesichert.patch)
+ *   (i) Hinzufügen ohne Nummer markiert das Feld nicht → rot „ein Set ohne Nummer sagt …“
+ *       (gegenproben/erfassen-ohne-grund.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 // NATIVE wie bei den Bildschirmfotos: Die Kontrastprüfung des ATF liest ein
@@ -118,6 +120,17 @@ class AblaufTest {
         compose.onNodeWithText(ctx.getString(R.string.common_quantity)).performTextReplacement("3")
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
         assertEquals("75192" to 3, erfasst)
+    }
+
+    /** Hinzufügen ohne Nummer erfasst nichts, sagt aber am Feld, was fehlt (statt grau ohne Grund). */
+    @Test
+    fun `ein Set ohne Nummer sagt beim Tippen auf Hinzufuegen, was fehlt`() {
+        var erfasst = 0
+        zeige { AddSetDialog(onDismiss = {}, onAdd = { _, _, _, _, _, _ -> erfasst++ }, sofortFokus = false) }
+        compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        assertEquals("Ohne Nummer wird nichts erfasst", 0, erfasst)
+        compose.onNodeWithText(ctx.getString(R.string.erfassen_nummer_fehlt), useUnmergedTree = true).assertIsDisplayed()
     }
 
     @Test

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import ch.brickinventoryapp.ui.components.Bewegt
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.HinweisText
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.Ladezustand
@@ -332,6 +333,9 @@ private fun MerkpostenErfassenDialog(
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
 
+    // „Auf die Merkliste“ bleibt antippbar und markiert dann das leere Feld: Grau ohne
+    // Grund liess raten, warum nichts geschah.
+    var nummerFehlt by remember { mutableStateOf(false) }
     val nummerFokus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)
@@ -343,9 +347,11 @@ private fun MerkpostenErfassenDialog(
         bestaetigen = stringResource(R.string.wanted_add_submit),
         // Nur mitschicken, wenn es ueberhaupt eine Wahl gab — sonst schreibt der
         // Server auf das eigene Konto.
-        onBestaetigen = { onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null) },
+        onBestaetigen = {
+            if (nummer.isBlank()) nummerFehlt = true
+            else onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null)
+        },
         onAbbrechen = onDismiss,
-        bestaetigenAn = nummer.isNotBlank(),
     ) {
         OutlinedTextField(
             value = nummer,
@@ -353,7 +359,11 @@ private fun MerkpostenErfassenDialog(
             label = { Text(stringResource(R.string.gallery_set_number)) },
             // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
             // Fokus, und der Dialog fokussiert das Feld sofort.
-            supportingText = { Text(stringResource(R.string.gallery_set_number_placeholder)) },
+            isError = nummerFehlt && nummer.isBlank(),
+            supportingText = {
+                if (nummerFehlt && nummer.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.ansagen())
+                else Text(stringResource(R.string.gallery_set_number_placeholder))
+            },
             singleLine = true,
             shape = Formen.feld,
             // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld

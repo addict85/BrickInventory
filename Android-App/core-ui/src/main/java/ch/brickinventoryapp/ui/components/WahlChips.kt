@@ -148,11 +148,13 @@ fun SortierMenue(
     val aktuell = optionen.firstOrNull { it.first == gewaehlt }?.second ?: ""
     Box(modifier) {
         BadgedBox(badge = { if (vorgabe != null && gewaehlt != vorgabe) Badge() }) {
-            OutlinedIconButton(
-                onClick = { offen = true },
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.sort_menu_cd, aktuell))
+            MitTooltip(stringResource(R.string.sort_menu_cd, aktuell)) {
+                OutlinedIconButton(
+                    onClick = { offen = true },
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, stringResource(R.string.sort_menu_cd, aktuell))
+                }
             }
         }
         DropdownMenu(offen, { offen = false }) {

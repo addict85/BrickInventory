@@ -243,8 +243,10 @@ fun PartsListScreen(
                         singleLine = true,
                         shape = MaterialTheme.shapes.large,
                         trailingIcon = {
-                            if (setInput.isNotBlank()) IconButton(onClick = { addSet(setInput) }) {
-                                Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
+                            if (setInput.isNotBlank()) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.partslist_add_set)) {
+                                IconButton(onClick = { addSet(setInput) }) {
+                                    Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
+                                }
                             }
                         }
                     )
@@ -504,7 +506,7 @@ fun PartListRow(
     ) {
         // Image
         ch.brickinventoryapp.ui.components.ProduktBild(
-            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
             imageLoader = imageLoader,
             contentDescription = part.partName,
             modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),

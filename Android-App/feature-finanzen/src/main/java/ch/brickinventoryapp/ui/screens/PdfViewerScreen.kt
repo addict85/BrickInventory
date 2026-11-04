@@ -364,8 +364,10 @@ fun PdfViewerScreen(
             TopAppBar(
                 title = { Text(title.ifBlank { "PDF" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
+                        }
                     }
                 },
                 actions = {
@@ -375,11 +377,15 @@ fun PdfViewerScreen(
                     val s = state
                     if (s is PdfLoadState.Ready) {
                         if (speicherbar) {
-                            IconButton(onClick = { melde(savePdfToDownloads(ctx, s.quelle, title)) }) {
-                                Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
+                            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_download)) {
+                                IconButton(onClick = { melde(savePdfToDownloads(ctx, s.quelle, title)) }) {
+                                    Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
+                                }
                             }
-                            IconButton(onClick = { melde(printPdf(ctx, s.quelle, title)) }) {
-                                Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
+                            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_print)) {
+                                IconButton(onClick = { melde(printPdf(ctx, s.quelle, title)) }) {
+                                    Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
+                                }
                             }
                         }
                     }
@@ -476,11 +482,13 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
         // Am Anschlag abgeschaltet. `enabled` ist fuer Tastatur und Screenreader
         // verbindlich; die Ausgrauung ist nur die Begleitung davon, nicht das
         // Signal.
-        IconButton(
-            onClick = { setzeZoom(zoom / PDF_ZOOM_SCHRITT) },
-            enabled = zoom > PDF_ZOOM_MIN + 0.01f
-        ) {
-            Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.pdfview_zoom_out))
+        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_zoom_out)) {
+            IconButton(
+                onClick = { setzeZoom(zoom / PDF_ZOOM_SCHRITT) },
+                enabled = zoom > PDF_ZOOM_MIN + 0.01f
+            ) {
+                Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.pdfview_zoom_out))
+            }
         }
         // Der Faktor ist zugleich der Knopf „zurück auf 100 %“. defaultMinSize, damit er
         // ein 48-dp-Berührungsziel ist wie die Knöpfe daneben.
@@ -503,11 +511,13 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
                 style = MaterialTheme.typography.labelMedium
             )
         }
-        IconButton(
-            onClick = { setzeZoom(zoom * PDF_ZOOM_SCHRITT) },
-            enabled = zoom < PDF_ZOOM_MAX - 0.01f
-        ) {
-            Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.pdfview_zoom_in))
+        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_zoom_in)) {
+            IconButton(
+                onClick = { setzeZoom(zoom * PDF_ZOOM_SCHRITT) },
+                enabled = zoom < PDF_ZOOM_MAX - 0.01f
+            ) {
+                Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.pdfview_zoom_in))
+            }
         }
     }
 }

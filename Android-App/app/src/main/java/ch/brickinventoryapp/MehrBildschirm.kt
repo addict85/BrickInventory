@@ -105,7 +105,6 @@ fun MehrBildschirm(
                 MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) {
                     navController.navigate(Screen.Settings.route) { launchSingleTop = true }
                 }
-                MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { fragtAbmelden = true }
             }
             else -> {
                 MehrGruppe(R.string.nav_group_server, trenner)
@@ -119,6 +118,13 @@ fun MehrBildschirm(
             }
         }
     }
+    // Abmelden für sich am Ende, abgesetzt: Zwischen den Einstellungen sah es aus wie
+    // eine von ihnen, beendet aber die Sitzung.
+    @Composable
+    fun Abmelden() {
+        HorizontalDivider(Modifier.padding(top = Abstaende.klein, bottom = Abstaende.klein))
+        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { fragtAbmelden = true }
+    }
     // Die Servergruppe nur für Verwalter.
     val gruppen = if (isAdmin) 5 else 4
     // Auf dem Tablet zwei Spalten: Einspaltig stand die Liste schmal in der Mitte einer
@@ -129,8 +135,8 @@ fun MehrBildschirm(
             .mittigBis(if (zweispaltig) Lesebreite.liste else Lesebreite.formular).padding(vertical = Abstaende.klein)
         if (zweispaltig) Row(rahmen, horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
             Column(Modifier.weight(1f)) { for (i in 0 until 2) Gruppe(i, trenner = i > 0) }
-            Column(Modifier.weight(1f)) { for (i in 2 until gruppen) Gruppe(i, trenner = i > 2) }
-        } else Column(rahmen) { for (i in 0 until gruppen) Gruppe(i, trenner = i > 0) }
+            Column(Modifier.weight(1f)) { for (i in 2 until gruppen) Gruppe(i, trenner = i > 2); Abmelden() }
+        } else Column(rahmen) { for (i in 0 until gruppen) Gruppe(i, trenner = i > 0); Abmelden() }
     }
 }
 

@@ -82,9 +82,11 @@ fun detailSchluessel(art: String, nummer: String, farbe: Int? = null) = "$art|$n
  */
 @Composable
 fun ZurueckKnopf(onClick: () -> Unit, schliessen: Boolean = LocalImDetailBereich.current) {
-    IconButton(onClick = onClick) {
-        if (schliessen) Icon(Icons.Default.Close, stringResource(R.string.detail_close))
-        else Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+    val text = stringResource(if (schliessen) R.string.detail_close else R.string.common_back)
+    MitTooltip(text) {
+        IconButton(onClick = onClick) {
+            Icon(if (schliessen) Icons.Default.Close else Icons.AutoMirrored.Filled.ArrowBack, contentDescription = text)
+        }
     }
 }
 

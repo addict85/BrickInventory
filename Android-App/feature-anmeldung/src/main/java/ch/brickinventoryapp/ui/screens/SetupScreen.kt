@@ -218,7 +218,11 @@ fun SetupScreen(
                         listOf(R.string.setup_altbestand_schritt_qr, R.string.setup_altbestand_schritt_adresse)
                             .forEachIndexed { i, schritt ->
                                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                                    Text("${i + 1}.", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    // Feste Ziffernspalte mit Tabellenziffern: „1.“ ist schmaler als
+                                    // „2.“, und die Schritte begannen verschieden weit rechts.
+                                    Text("${i + 1}.", Modifier.width(ch.brickinventoryapp.ui.components.mitSchrift(20.dp)),
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+                                        fontWeight = FontWeight.SemiBold)
                                     Text(stringResource(schritt), style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
@@ -399,8 +403,10 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                 KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
-        IconButton(onClick = onDismiss, Modifier.align(Alignment.TopEnd).padding(Abstaende.gross)) {
-            Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+            IconButton(onClick = onDismiss, Modifier.padding(Abstaende.gross)) {
+                Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
+            }
         }
     }
 }

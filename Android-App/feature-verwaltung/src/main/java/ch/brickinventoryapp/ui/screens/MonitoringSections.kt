@@ -75,17 +75,21 @@ internal fun BricksetQueueRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                    FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
-                        Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.monitoring_icon_retry)) {
+                        FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
+                            Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_icon_retry), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
+                        }
                     }
-                    FilledTonalIconButton(
-                        onClick = { onDelete(entry.setNumber) },
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)),
-                            tint = MaterialTheme.colorScheme.onErrorContainer)
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_delete)) {
+                        FilledTonalIconButton(
+                            onClick = { onDelete(entry.setNumber) },
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.common_delete), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)),
+                                tint = MaterialTheme.colorScheme.onErrorContainer)
+                        }
                     }
                 }
             }
@@ -339,8 +343,10 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                             },
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                         ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
-                        IconButton(onClick = { editingTtl = false }) {
-                            Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_cancel)) {
+                            IconButton(onClick = { editingTtl = false }) {
+                                Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                            }
                         }
                     }
                 } else {
@@ -349,9 +355,11 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(stringResource(R.string.monitoring_cache_ttl_hours, cacheTtl), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                        FilledTonalIconButton(
-                            onClick = { editingTtl = true },
-                        ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_edit_cache_ttl)) {
+                            FilledTonalIconButton(
+                                onClick = { editingTtl = true },
+                            ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                        }
                     }
                 }
             }
@@ -410,9 +418,11 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.monitoring_api_calls))
-                FilledTonalIconButton(
-                    onClick = { editingLimits = !editingLimits },
-                ) { Icon(if (editingLimits) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_edit_limits)) {
+                    FilledTonalIconButton(
+                        onClick = { editingLimits = !editingLimits },
+                    ) { Icon(if (editingLimits) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                }
             }
 
             cacheStats?.rateLimits?.let { rl ->
@@ -539,11 +549,14 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                     if (verwaltung.protokollLaden) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else if (offen) {
-                        IconButton(onClick = { protokollScope.launch { mon.ladeProtokoll() } }) {
-                            Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
-                                Modifier.size(18.dp))
+                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.admin_log_reload)) {
+                            IconButton(onClick = { protokollScope.launch { mon.ladeProtokoll() } }) {
+                                Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
+                                    Modifier.size(18.dp))
+                            }
                         }
                     }
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(if (offen) R.string.common_collapse else R.string.common_expand)) {
                     IconButton(onClick = {
                         offen = !offen
                         if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { mon.ladeProtokoll() }
@@ -554,6 +567,7 @@ internal fun ProtokollSection(mon: MonitoringViewModel) {
                             if (offen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                             stringResource(
                                 if (offen) R.string.common_collapse else R.string.common_expand))
+                    }
                     }
                 }
             }
@@ -709,8 +723,10 @@ fun ZeitplanZeile(
                     },
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                 ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
-                IconButton(onClick = { bearbeiten = false }) {
-                    Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_cancel)) {
+                    IconButton(onClick = { bearbeiten = false }) {
+                        Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                    }
                 }
             }
         } else {
@@ -721,9 +737,11 @@ fun ZeitplanZeile(
                     else stringResource(R.string.monitoring_schedule_minutes, plan.minutes ?: 60),
                     fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                 )
-                FilledTonalIconButton(
-                    onClick = { bearbeiten = true },
-                ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_edit_schedule)) {
+                    FilledTonalIconButton(
+                        onClick = { bearbeiten = true },
+                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                }
             }
         }
     }

@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.FilterAlt
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -66,6 +68,11 @@ fun SucheMitFilter(
     onScannen: (() -> Unit)? = null,
     /** Das Sortiermenü (SortierMenue) zwischen Filter und Scannen; null = keine Sortierung. */
     sortierung: (@Composable () -> Unit)? = null,
+    /**
+     * Erfassen mit seiner Beschreibung; steht nur bei grosser Schrift hier, sonst schwebt
+     * es als ErfassenFab. Null = dieser Bildschirm erfasst nichts.
+     */
+    erfassen: Pair<String, () -> Unit>? = null,
 ) {
     // So breit wie das Raster darunter (Lesebreite.kt): Endete die Leiste bei 840 dp,
     // stand sie auf dem Tablet mitten über den Kacheln.
@@ -75,16 +82,23 @@ fun SucheMitFilter(
         // sagt weiter, wie viele Filter wirken.
         val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
         val nurSymbol = maxWidth < FILTER_TEXT_AB || gross
+        // Bei grosser Schrift steht Erfassen in dieser Zeile statt schwebend: Über einer
+        // Liste, die nur zwei Einträge zeigt, verdeckte der schwebende Knopf ihren Text.
+        val erfassenHier = erfassen.takeIf { gross }
         val knoepfe: @Composable () -> Unit = {
-            val folgt = onScannen != null || sortierung != null
+            val folgt = onScannen != null || sortierung != null || erfassenHier != null
             FilterKnopf(aktiveFilter, onFilter, nurSymbol, Modifier.padding(end = if (folgt) Abstaende.winzig else 14.dp))
-            if (sortierung != null) Box(Modifier.padding(end = if (onScannen != null) Abstaende.winzig else 14.dp)) { sortierung() }
-            if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen, Modifier.padding(end = 14.dp))
+            if (sortierung != null) Box(Modifier.padding(end = if (onScannen != null || erfassenHier != null) Abstaende.winzig else 14.dp)) { sortierung() }
+            if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen,
+                Modifier.padding(end = if (erfassenHier != null) Abstaende.winzig else 14.dp))
+            if (erfassenHier != null) ch.brickinventoryapp.ui.components.MitTooltip(erfassenHier.first, Modifier.padding(end = 14.dp)) {
+                FilledIconButton(onClick = erfassenHier.second) { Icon(Icons.Default.Add, contentDescription = erfassenHier.first) }
+            }
         }
         // Bei grosser Schrift die Knöpfe unter das Feld: Daneben blieb vom Platzhalter
         // nur „Suche…“. Ein Filterknopf allein bleibt daneben; auf eigener Zeile stand
         // er verloren über dem Raster (Teile, Figuren).
-        val untereinander = gross && (onScannen != null || sortierung != null)
+        val untereinander = gross && (onScannen != null || sortierung != null || erfassenHier != null)
         if (untereinander) Column {
             Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
@@ -115,12 +129,14 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, mod
         modifier = modifier,
     ) {
         if (nurSymbol) {
-            OutlinedIconButton(
-                onClick = onClick,
-                modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
-                border = rand,
-            ) {
-                Icon(Icons.Default.FilterList, stringResource(R.string.filter_button))
+            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.filter_button)) {
+                OutlinedIconButton(
+                    onClick = onClick,
+                    modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
+                    border = rand,
+                ) {
+                    Icon(Icons.Default.FilterAlt, stringResource(R.string.filter_button))
+                }
             }
         } else OutlinedButton(
             onClick = onClick,
@@ -128,7 +144,7 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, mod
             border = rand,
             colors = nebenKnopfFarben(),
         ) {
-            Icon(Icons.Default.FilterList, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+            Icon(Icons.Default.FilterAlt, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.winzig))
             Text(stringResource(R.string.filter_button))
         }

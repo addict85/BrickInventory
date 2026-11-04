@@ -100,6 +100,10 @@ import ch.brickinventoryapp.ressourcen.R
  *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
  *   finanzen-kopf-ohne-basis        Kopfkarte aus allen Positionen statt der Basis → rot „Finanzkopf …“
  *   kachel-quelle-ignoriert         Kachel nennt auch den Kaufpreis „Marktpreis“ → rot „Galeriekachel …“
+ *   mehr-ohne-vergleich             Vergleich nicht unter „Mehr“ → rot „Vergleich und Bauliste markieren …“
+ *   galerie-kachel-gross            Setkachel auch bei 200 % mit Bild über die Breite → rot „Galerie bei 200 Prozent …“
+ *   galerie-erfassen-schwebt        Erfassen auch bei 200 % schwebend → rot „Galerie bei 200 Prozent …“
+ *   teile-kachel-gross              Teilekachel auch bei 200 % mit Bild über die Breite → rot „Teile bei 200 Prozent zeigen …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -337,7 +341,7 @@ class OberflaechenRegelnTest {
     }
 
     /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
-    private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader) {
+    private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
         val vm = welt.galerie().also { it.loadSets() }
         val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
             ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
@@ -347,11 +351,121 @@ class OberflaechenRegelnTest {
                                      ownerUserId: Int?, storage: String?) =
                     kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
             }))
-        zeige {
+        zeige(schrift) {
             ch.brickinventoryapp.ui.screens.GalleryScreen(vm = vm, erfassung = erfassung,
                 imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
         warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
+    }
+
+    /**
+     * Wie viele der [namen] stehen ganz im Raster? Ungekürzte Lage statt boundsInRoot: Das
+     * Raster schneidet eine halb sichtbare Kachel ab, und abgeschnitten läge sie scheinbar drin.
+     */
+    private fun ganzSichtbar(namen: List<String>): Int {
+        val raster = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
+        return namen.count { name ->
+            compose.onAllNodes(hasClickAction() and hasText(name, substring = true)).fetchSemanticsNodes().any { k ->
+                val oben = k.positionInRoot.y
+                k.size.height > 0 && oben >= raster.top - 0.5f && oben + k.size.height <= raster.bottom + 0.5f
+            }
+        }
+    }
+
+    /** Was beim Erfassen-Knopf mit [beschreibung] unter ihm liegt: die Kacheln mit den [namen]. */
+    private fun erfassenUeber(beschreibung: String, namen: List<String>): List<String> {
+        val knoepfe = compose.onAllNodesWithContentDescription(beschreibung).fetchSemanticsNodes().map { it.boundsInRoot }
+        assertTrue("Erfassen ist da", knoepfe.isNotEmpty())
+        return namen.filter { name ->
+            compose.onAllNodes(hasClickAction() and hasText(name, substring = true)).fetchSemanticsNodes()
+                .any { k -> knoepfe.any { it.overlaps(k.boundsInRoot) } }
+        }
+    }
+
+    /**
+     * Bei 200 % Schrift ist eine Kachel eine Listenzeile, und Erfassen steht über der Liste:
+     * Mit dem Bild über die volle Breite stand ein Set je Bildschirm, und der schwebende
+     * Knopf lag auf dem Text der untersten Kachel.
+     */
+    @Test
+    fun `Galerie bei 200 Prozent zeigt mehrere Sets ganz und Erfassen liegt auf keinem`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            galerieMit(welt, coil3.ImageLoader.Builder(ctx).build(), schrift = 2f)
+            val namen = listOf("Millennium Falcon", "Titanic", "Baumhaus")
+            val ganz = ganzSichtbar(namen)
+            assertTrue("Nur $ganz Set(s) ganz sichtbar", ganz >= 2)
+            val verdeckt = erfassenUeber(ctx.getString(R.string.gallery_add_set), namen)
+            assertTrue("Erfassen liegt auf $verdeckt", verdeckt.isEmpty())
+        } finally {
+            welt.close()
+        }
+    }
+
+    @Test
+    fun `Teile bei 200 Prozent zeigen mehrere Teile ganz und Erfassen liegt auf keinem`() {
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            val vm = welt.teile().also { it.loadParts() }
+            zeige(schrift = 2f) {
+                ch.brickinventoryapp.ui.screens.PartsScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
+            }
+            warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
+            val namen = vm.partsState.value.parts.mapNotNull { it.partName }
+            assertTrue(namen.size >= 3)
+            val ganz = ganzSichtbar(namen)
+            assertTrue("Nur $ganz Teil(e) ganz sichtbar", ganz >= 2)
+            val verdeckt = erfassenUeber(ctx.getString(R.string.parts_add), namen)
+            assertTrue("Erfassen liegt auf $verdeckt", verdeckt.isEmpty())
+        } finally {
+            welt.close()
+        }
+    }
+
+    /**
+     * Vergleich und Bauliste erreicht man über „Mehr“: Dort bleibt „Mehr“ gewählt, und der
+     * Pfeil oben führt dorthin zurück wie auf den übrigen Mehr-Unterseiten.
+     */
+    @Test
+    fun `Vergleich und Bauliste markieren Mehr und fuehren mit Zurueck dorthin`() {
+        val mehr = ctx.getString(R.string.nav_more)
+        zeige {
+            val nav = rememberNavController()
+            val reiter = remember {
+                listOf<Triple<Screen, @Composable () -> Unit, String>>(
+                    Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
+                    Triple(Screen.Mehr, { Icon(Icons.Default.ViewInAr, null) }, mehr))
+            }
+            MainScaffold(
+                title = "Seite", navController = nav, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+            ) {
+                NavHost(nav, startDestination = Screen.Gallery.route) {
+                    composable(Screen.Gallery.route) { }
+                    composable(Screen.Mehr.route) { MehrBildschirm(nav, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
+                    composable(Screen.Comparison.route) { Text("Vergleichsseite") }
+                    composable(Screen.PartsList.route) { Text("Baulistenseite") }
+                }
+            }
+        }
+        val zurueck = ctx.getString(R.string.common_back)
+        // Auf einem Reiter selbst kein Zurück: Er ist eine Wurzel.
+        compose.onAllNodesWithContentDescription(zurueck).assertCountEquals(0)
+        for ((eintrag, inhalt) in listOf(R.string.nav_comparison to "Vergleichsseite", R.string.nav_partslist to "Baulistenseite")) {
+            compose.onNode(hasText(mehr) and hasClickAction()).performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText(ctx.getString(eintrag)).performClick()
+            compose.waitForIdle()
+            compose.onNodeWithText(inhalt).fetchSemanticsNode()
+            compose.onNode(hasText(mehr) and androidx.compose.ui.test.isSelected())
+                .fetchSemanticsNode("„Mehr“ ist auf ${ctx.getString(eintrag)} nicht gewählt")
+            compose.onNodeWithContentDescription(zurueck).performClick()
+            compose.waitForIdle()
+            // Zurück auf „Mehr“: dessen Einträge stehen wieder da.
+            compose.onNodeWithText(ctx.getString(R.string.vouchers_title)).fetchSemanticsNode()
+        }
     }
 
     private fun ersatzbilder() = compose.onAllNodes(

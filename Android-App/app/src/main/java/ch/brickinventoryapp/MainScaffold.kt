@@ -4,11 +4,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -83,6 +83,13 @@ fun MainScaffold(
     fun istGewaehlt(screen: Screen) =
         currentDest?.hierarchy?.any { d -> d.route?.let { it in zieleVon(screen) } == true } == true
 
+    // Unterseiten von „Mehr“ mit unterer Leiste tragen den Zurück-Pfeil wie die übrigen
+    // Mehr-Unterseiten; er führt auf „Mehr“, auch wenn die Seite nicht von dort kam.
+    val mehrUnterseite = currentDest?.route.let { it != null && it in MEHR && it != Screen.Mehr.route }
+    fun zurueckZuMehr() {
+        if (!navController.popBackStack(Screen.Mehr.route, inclusive = false)) navController.zuReiter(Screen.Mehr.route)
+    }
+
     // Leiste unten und Seitenleiste teilen sich diesen Weg, damit beide die
     // Rollposition gleich behandeln.
     fun reiterWaehlen(screen: Screen) {
@@ -105,7 +112,7 @@ fun MainScaffold(
     // klein neben grossem „Mehr“.
     val reiterSchrift = remember(LocalDensity.current.fontScale) { mutableStateOf(REITER_SCHRIFT_START) }
     // Passt eine Beschriftung auch in Normalgrösse nicht, stehen nur Symbole da (Name für
-    // TalkBack); das gewählte Ziel nennt der Titel oben mit demselben Symbol.
+    // TalkBack); das gewählte Ziel nennt der Titel oben.
     val beschriftet = remember(LocalDensity.current.fontScale) { mutableStateOf(true) }
     // Die Snackbar liegt über dem Inhalt; ihre Höhe hebt den Erfassen-Knopf darüber.
     var snackbarHoehe by remember { mutableIntStateOf(0) }
@@ -133,27 +140,20 @@ fun MainScaffold(
             topBar = {
               Column {
                 TopAppBar(
-                    title = {
-                        // Der Seitentitel ist die Überschrift der Ansicht — Vorleseprogramme
-                        // springen dorthin.
-                        Row(Modifier.semantics(mergeDescendants = true) { heading() },
-                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Dasselbe Symbol wie in der unteren Leiste, damit oben und unten
-                            // zusammenpassen.
-                            val currentTabIcon = bottomNavItems.firstOrNull { (screen, _, _) ->
-                                istGewaehlt(screen)
-                            }?.second
-                            if (currentTabIcon != null) {
-                                Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) {
-                                    currentTabIcon()
-                                }
+                    // Reiner Text wie jeder Material-Titel: Ein Symbol davor las sich bei
+                    // „Mehr“ als Menüknopf. Vorleseprogramme springen zur Überschrift.
+                    title = { Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) },
+                    navigationIcon = {
+                        if (mehrUnterseite) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                            IconButton(onClick = { zurueckZuMehr() }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
-                            Text(title, fontWeight = FontWeight.SemiBold)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = akzent.leiste,
                         titleContentColor = akzent.aufLeiste,
+                        navigationIconContentColor = akzent.aufLeiste,
                         actionIconContentColor = akzent.aufLeiste,
                         scrolledContainerColor = akzent.leiste,
                     ),
@@ -300,7 +300,8 @@ private const val REITER_SCHRIFT_SCHRITT = 0.5f
 private val SAMMLUNG = setOf(Screen.Gallery.route, Screen.Parts.route, Screen.Minifigs.route)
 
 /** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
-private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Settings.route, Screen.Monitoring.route)
+private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Comparison.route, Screen.Settings.route,
+    Screen.Monitoring.route)
 
 /** Die Routen, bei denen ein Ziel der Leiste als gewaehlt gilt. */
 private fun zieleVon(screen: Screen): Set<String> = when (screen) {

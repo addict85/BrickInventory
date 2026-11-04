@@ -62,21 +62,11 @@ internal fun HouseholdCard(
     // Gemerkt wird Konto-ID und ob es ein Hauptkonto ist.
     var trennen by rememberSaveable { mutableStateOf<Int?>(null) }
     var trenntEltern by rememberSaveable { mutableStateOf(false) }
-    var mehr by rememberSaveable { mutableStateOf(false) }
 
     // Zwei Sätze vorn, der Rest auf Wunsch: Sechs Zeilen Erklärung vor dem ersten
     // Knopf las niemand.
-    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-        Text(stringResource(R.string.household_intro),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (mehr) Text(stringResource(R.string.household_intro_more),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
-        else TextButton(onClick = { mehr = true }, contentPadding = PaddingValues(horizontal = 0.dp)) {
-            Text(stringResource(R.string.common_learn_more))
-        }
-    }
+    ch.brickinventoryapp.ui.components.ErklaerText(stringResource(R.string.household_intro),
+        stringResource(R.string.household_intro_more))
 
     // Ein Konto kann zugleich Unterkonto (auch mehrerer Hauptkonten) und
     // Hauptkonto eigener Unterkonten sein: beide Listen unabhängig.
@@ -151,9 +141,11 @@ internal fun HouseholdCard(
                 label = { Text(stringResource(R.string.household_invite_label)) },
                 modifier = Modifier.fillMaxWidth(), shape = Formen.feld,
                 trailingIcon = {
-                    IconButton(onClick = {
-                        ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c)
-                    }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.household_invite_copy)) {
+                        IconButton(onClick = {
+                            ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c)
+                        }) { Icon(Icons.Default.ContentCopy, stringResource(R.string.household_invite_copy)) }
+                    }
                 }
             )
         }

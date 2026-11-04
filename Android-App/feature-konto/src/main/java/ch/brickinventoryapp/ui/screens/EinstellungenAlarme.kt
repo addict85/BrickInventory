@@ -56,10 +56,8 @@ internal fun PreisalarmeCard(
         title = stringResource(R.string.alerts_liste_titel),
         icon = Icons.Default.NotificationsActive,
     ) {
-        Text(stringResource(R.string.alerts_intro),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = Abstaende.klein))
+        ch.brickinventoryapp.ui.components.ErklaerText(stringResource(R.string.alerts_intro),
+            stringResource(R.string.alerts_intro_more), stil = MaterialTheme.typography.bodySmall)
 
         // `geladen` und nicht nur „Liste leer": Beim Aufbau stuende sonst kurz
         // „keine Alarme gesetzt", obwohl noch gar nichts abgerufen wurde.
@@ -120,9 +118,13 @@ internal fun PreisalarmeCard(
                             }
                         }
                     }
-                    IconButton(onClick = { fragtLoeschen = a }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber),
-                            tint = MaterialTheme.colorScheme.error)
+                    // Leise wie jede Zeilenaktion: Rot je Zeile übertönte die Preise; die
+                    // Rückfrage danach trägt das Gewicht.
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber)) {
+                        IconButton(onClick = { fragtLoeschen = a }) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
                 // Ein Speichermodell wie im Set- und Merkposten-Detail: Getipptes speichert nach
@@ -140,12 +142,14 @@ internal fun PreisalarmeCard(
                     label = { Text(stringResource(if (a.richtung == "unter") R.string.detail_alert_chip_below
                                                   else R.string.detail_alert_chip_above)) },
                     suffix = { Text(a.currencyCode) },
+                    // Nur „Gespeichert“: Richtung, Betrag und Zustand stehen schon in Feld und
+                    // Plakette, die ganze Wiederholung darunter verdoppelte jede Zeile.
                     supportingText = {
-                        Text(if (zahl == a.schwelle) stringResource(R.string.detail_alert_saved,
-                                stringResource(if (a.richtung == "ueber") R.string.detail_alert_above else R.string.detail_alert_below),
-                                ch.brickinventoryapp.util.fmtMoney(a.schwelle, a.currencyCode),
-                                stringResource(if (a.ausgeloest) R.string.detail_alert_fired else R.string.detail_alert_armed))
-                             else stringResource(R.string.detail_alert_hint))
+                        if (zahl == a.schwelle) Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                            Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
+                            Text(stringResource(R.string.vm_saved))
+                        } else Text(stringResource(R.string.detail_alert_hint))
                     },
                     keyboardOptions = NumericInput.preisTastatur(),
                     // „Fertig“ speichert sofort, ohne die Ruhezeit abzuwarten.

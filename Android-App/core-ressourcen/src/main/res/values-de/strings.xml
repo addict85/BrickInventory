@@ -116,7 +116,6 @@
     <string name="gallery_stat_minifigs">Minifiguren</string>
     <string name="gallery_stat_instructions">Anleitungen</string>
     <string name="gallery_search_placeholder">Suchen…</string>
-    <string name="gallery_all">Alle</string>
     <string name="gallery_no_sets">Keine Sets vorhanden</string>
     <string name="gallery_empty_hint">Erfasse dein erstes Set über die Setnummer oder scanne den Barcode auf der Schachtel.</string>
     <string name="gallery_add_first">Erstes Set erfassen</string>
@@ -375,7 +374,7 @@
 
     <!-- ══════════════ Set detail screen ══════════════ -->
     <string name="detail_year">Jahr</string>
-    <string name="detail_pieces">Steine</string>
+    <string name="detail_pieces">Teile</string>
     <string name="detail_minifigs">Minifiguren</string>
     <string name="detail_theme">Thema</string>
     <string name="detail_section_details">Set-Details</string>
@@ -750,7 +749,7 @@
     <string name="konto_password_button">Passwort ändern</string>
     <string name="startpasswort_titel">Startpasswort ersetzen</string>
     <string name="startpasswort_text">Dieses Konto meldet sich noch mit dem Startpasswort an, mit dem es angelegt wurde. Wähle zuerst ein eigenes Passwort. Danach meldest du dich mit dem neuen an.</string>
-    <string name="startpasswort_wiederholen">Neues Passwort wiederholen</string>
+    <string name="startpasswort_wiederholen">Wiederholen</string>
     <string name="startpasswort_verschieden">Die beiden Eingaben unterscheiden sich.</string>
     <string name="konto_design_hint">Gilt für dieses Konto auf allen Geräten.</string>
     <string name="design_text_classic">Hell und sachlich, blaue Akzente.</string>
@@ -880,7 +879,7 @@
     <string name="detail_compare">Preisvergleich</string>
     <string name="wanted_since">Auf der Liste seit</string>
     <string name="alerts_group">Preisalarme</string>
-    <string name="alerts_intro">Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
+    <string name="alerts_intro">Hier änderst du die Schwelle eines Alarms oder entfernst ihn.</string>
     <string name="alerts_empty">Noch kein Preisalarm gesetzt. Du setzt einen in der Detailansicht eines Sets.</string>
     <string name="alerts_armed">Aktiv</string>
     <string name="alerts_fired">Ausgelöst</string>
@@ -961,7 +960,7 @@
     <string name="zf_enabled">Zweiter Faktor eingerichtet</string>
     <string name="zf_disabled">Zweiter Faktor abgeschaltet</string>
     <string name="zf_pflicht_titel">Zweiten Faktor einrichten</string>
-    <string name="zf_pflicht_text">Dieses Konto hat Verwalterrechte. Dafür verlangt der Server neben dem Passwort einen Code aus einer Authenticator-App. Bis er eingerichtet ist, bleibt der Rest der App gesperrt.</string>
+    <string name="zf_pflicht_text">Neben dem Passwort verlangt der Server dann einen Code aus einer Authenticator-App. Bis er eingerichtet ist, bleibt der Rest der App gesperrt.</string>
     <string name="zf_pflicht_passwort">Zuerst mit dem Passwort bestätigen; danach zeigt die App den Schlüssel für die Authenticator-App.</string>
     <string name="zf_pflicht_codes_titel">Codes für den Notfall</string>
     <string name="zf_pflicht_weiter">Weiter zur App</string>
@@ -1115,4 +1114,10 @@
         <item quantity="one">Schritt %1$d von %2$d: %3$s</item>
         <item quantity="other">Schritt %1$d von %2$d: %3$s</item>
     </plurals>
+    <string name="alerts_intro_more">Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
+    <string name="zf_pflicht_kurz">Verwalterrechte brauchen einen zweiten Faktor.</string>
+    <string name="zf_share">Teilen</string>
+    <string name="zf_share_title">Wiederherstellungscodes</string>
+    <string name="passwort_aendern_fehlt">Aktuelles Passwort, neues Passwort und Wiederholung eingeben, dann ändern.</string>
+    <string name="erfassen_nummer_fehlt">Zuerst eine Set-Nummer eingeben.</string>
 </resources>

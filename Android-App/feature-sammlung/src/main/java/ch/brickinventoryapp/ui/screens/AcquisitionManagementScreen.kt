@@ -89,8 +89,10 @@ fun AcquisitionManagementScreen(
             TopAppBar(
                 title = { Text(title, fontWeight = FontWeight.Bold, maxLines = 1) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
+                        }
                     }
                 }
             )
@@ -397,9 +399,11 @@ private fun AcquisitionManagementRow(
         )
 
         // Delete
-        IconButton(onClick = { showDeleteConfirm = true }) {
-            Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
-                tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.acq_delete_title)) {
+            IconButton(onClick = { showDeleteConfirm = true }) {
+                Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
+                    tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+            }
         }
     }
     // Der Zustand unter Anzahl und Preis über die volle Breite: In der Zeile liess

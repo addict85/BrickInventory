@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.GeruestUndFormularTest
 Rot: Kennzahlen der Sammlung
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
-index 32ab610..9adf96e 100644
+index e5d0529..0fcecee 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
-@@ -72,7 +72,7 @@ fun KennzahlenReihe(modifier: Modifier = Modifier, umbrechen: Boolean = false, i
+@@ -76,7 +76,7 @@ fun KennzahlenReihe(modifier: Modifier = Modifier, umbrechen: Boolean = false, i
                          .horizontalScroll(rolle),
                      horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
                  ) { inhalt() }
 -                if (rolle.canScrollForward) Icon(
 +                if (rolle.canScrollForward && false) Icon(
                      Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null,
-                     modifier = Modifier.align(Alignment.CenterEnd).testTag(KENNZAHLEN_MEHR).padding(end = Abstaende.winzig).size(mitSchrift(20.dp)),
+                     modifier = pfeil.testTag(KENNZAHLEN_MEHR),
                      tint = MaterialTheme.colorScheme.onSurfaceVariant,

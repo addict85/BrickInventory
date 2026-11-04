@@ -139,8 +139,10 @@ private fun VollbildErfassen(
             Column(Modifier.fillMaxSize().imePadding()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig, vertical = Abstaende.klein),
                     verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onAbbrechen) {
-                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_cancel))
+                    MitTooltip(stringResource(R.string.common_cancel)) {
+                        IconButton(onClick = onAbbrechen) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.common_cancel))
+                        }
                     }
                     Text(titel, style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.weight(1f).semantics { heading() })

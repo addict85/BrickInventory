@@ -66,17 +66,21 @@ fun KennzahlenReihe(modifier: Modifier = Modifier, umbrechen: Boolean = false, i
         val innen = Modifier.padding(horizontal = Abstaende.rand, vertical = Abstaende.klein)
         if (ch.brickinventoryapp.ui.components.grosseSchrift() && !umbrechen) {
             val rolle = rememberScrollState()
-            Box(Modifier.fillMaxWidth()) {
+            // Der Pfeil in eigener Spalte neben der Zeile, nicht darüber: Über dem
+            // Verlauf stand er auf halben Buchstaben („82 Tei›“). Die Spalte bleibt,
+            // solange gewischt werden kann, damit die Zeile am Ende nicht springt.
+            val pfeil = Modifier.padding(end = Abstaende.winzig).size(mitSchrift(20.dp))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Row(
-                    innen.fillMaxWidth().randVerlauf(flaeche, links = rolle.canScrollBackward, rechts = rolle.canScrollForward)
+                    innen.weight(1f).randVerlauf(flaeche, links = rolle.canScrollBackward, rechts = rolle.canScrollForward)
                         .horizontalScroll(rolle),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
                 ) { inhalt() }
                 if (rolle.canScrollForward) Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null,
-                    modifier = Modifier.align(Alignment.CenterEnd).testTag(KENNZAHLEN_MEHR).padding(end = Abstaende.winzig).size(mitSchrift(20.dp)),
+                    modifier = pfeil.testTag(KENNZAHLEN_MEHR),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                ) else if (rolle.maxValue > 0) Spacer(pfeil)
             }
         } else FlowRow(
             innen,

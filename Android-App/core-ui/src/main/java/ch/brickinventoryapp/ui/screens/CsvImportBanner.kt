@@ -77,10 +77,12 @@ fun CsvImportBanner(
                     if (running) {
                         // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
                         // trifft man das Abbrechen auch unterwegs.
-                        IconButton(onClick = onAbbrechen) {
-                            Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
-                                Modifier.size(16.dp),
-                                tint = MaterialTheme.colorScheme.onPrimary)
+                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.csv_cancel)) {
+                            IconButton(onClick = onAbbrechen) {
+                                Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
+                                    Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimary)
+                            }
                         }
                     }
                     Text(

@@ -1,0 +1,18 @@
+Gegenprobe: Vergleich steht nicht unter „Mehr“ (kein gewählter Reiter, kein Zurück)
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Vergleich und Bauliste markieren Mehr
+
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
+index e1f0ac6..4f41312 100644
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
+@@ -300,7 +300,7 @@ private const val REITER_SCHRIFT_SCHRITT = 0.5f
+ private val SAMMLUNG = setOf(Screen.Gallery.route, Screen.Parts.route, Screen.Minifigs.route)
+ 
+ /** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
+-private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Comparison.route, Screen.Settings.route,
++private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Settings.route,
+     Screen.Monitoring.route)
+ 
+ /** Die Routen, bei denen ein Ziel der Leiste als gewaehlt gilt. */

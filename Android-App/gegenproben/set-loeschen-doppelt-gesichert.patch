@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.AblaufTest
 Rot: ein Set loescht mit Rueckgaengig sofort
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
-index d132f25..99bfa9a 100644
+index 06f449a..902e029 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
-@@ -110,7 +110,7 @@ fun SetDetailScreen(
-                     // können. Der Server erzwingt dasselbe (move ohne acquisition_ids: 400).
-                     IconButton(onClick = {
-                         haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
--                        if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
-+                        showSetDeleteConfirm = true
-                     }) {
-                         Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
-                     }
+@@ -111,7 +111,7 @@ fun SetDetailScreen(
+                     ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
+                         IconButton(onClick = {
+                             haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+-                            if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
++                            showSetDeleteConfirm = true
+                         }) {
+                             Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
+                         }
