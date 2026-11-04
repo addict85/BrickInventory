@@ -1689,3 +1689,51 @@ Telefon die Webseite.
   gegebenenfalls den zweiten Faktor und ist auf 10 je Stunde und Konto
   gebremst; eine stille Antwort liesse den Nutzer dagegen im Unklaren,
   warum seine Adresse nie gilt.
+
+## 40. Runde 14 – Anmeldung hinter Caddy, Bestätigungslink, bcrypt-Pool
+
+**1. Caddy reicht die Anmeldewege ohne Verbindungsgrenze weiter**
+
+- Im Block `(anmeldung)` des `Caddyfile` entfällt `max_conns_per_host 4`
+  (Abschnitt 33.5 gilt insoweit nicht mehr). Die Grenze stellte eine Flut aus
+  vielen Adressen bei Caddy in eine Schlange ohne Ende, Frist und Vorrang;
+  die Schranke des Servers (Vorrang bekannter Anmeldungen aus 38.6, 503
+  `server_ausgelastet` bei Überlast) kam nie zum Zug.
+- `max_size 16KB` und `request_buffers 32KB` bleiben: Überlange Rümpfe enden
+  mit 413, langsame erreichen die App erst vollständig.
+- Wer ein eigenes Caddyfile pflegt, streicht dort `transport http {
+  max_conns_per_host … }` im Anmeldeblock ebenso. Unter einer Flut sehen
+  Clients jetzt schneller 503 statt langer Wartezeit.
+
+**2. Bestätigungsseite nennt das Konto des Links**
+
+- Neu: `POST /api/v1/auth/email-bestaetigen/vorschau` mit `{ token }` antwortet
+  `{ success: true, username }`, ohne den Link einzulösen (30 je Stunde und
+  Adresse); ein ungültiger Link antwortet 400 `bestaetigungslink_ungueltig`.
+- Die Seite `/verify` nennt vor dem Klick den Benutzernamen, angemeldet unter
+  einem anderen Konto beide Namen; der Knopf heisst „Ja, „…“ ist mein Konto –
+  bestätigen“ und ist bis dahin gesperrt.
+- Nennen mehrere offene Registrierungen dieselbe Adresse, trägt die
+  Bestätigungsmail einen Hinweis darauf (ohne Namen: Die Mail geht an eine
+  unbestätigte Adresse und enthält keinen gewählten Text).
+- Unverändert: Eine offene Registrierung meldet sich nicht an (39.1), kann
+  also vor der Bestätigung auch keinen zweiten Faktor oder Passkey
+  einrichten. Nichts zu tun.
+
+**3. Höchstens 4 bcrypt-Arbeiter, untätige enden**
+
+- Die Zahl der Worker-Threads und der gleichzeitigen Passwortprüfungen ist
+  `min(Kerne, cgroup-CPU-Kontingent, 4)`, mindestens 2 (vorher: alle Kerne
+  des Hosts, Abschnitt 39.3). Das Kontingent liest der Server aus
+  `/sys/fs/cgroup/cpu.max` (v2) oder `cpu.cfs_quota_us` (v1); `cpus:` in
+  `compose.yaml` wirkt so mit.
+- Optional: `BCRYPT_ARBEITER=<1–64>` setzt die Zahl ausdrücklich (z. B. auf
+  einem grossen Host mit vielen gleichzeitigen Anmeldungen); ein Wert
+  ausserhalb davon hält den Start an. Jeder Arbeiter belegt gut 12 MB;
+  `mem_limit` im Blick behalten.
+- Ein Arbeiter ohne Auftrag endet nach 60 s und gibt seinen Speicher frei.
+
+**4. Prüfung eines Haushaltscodes gebremst**
+
+- `POST /api/v1/settings/household/redeem/pruefen` antwortet nach 30
+  Prüfungen je Stunde und Konto mit 429 `zu_viele_anfragen`. Nichts zu tun.

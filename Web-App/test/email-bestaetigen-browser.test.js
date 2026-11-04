@@ -10,6 +10,15 @@
  *      „abgemeldet …“ (Zeitüberschreitung: Erfolgsmeldung)
  *   C  der Knopf schickt `token: null` → rot: beide Teilfälle
  *      („Zeitüberschreitung: Anwendung“ bzw. „Erfolgsmeldung …“)
+ *
+ * Vor dem Knopf nennt die Seite das Konto des Links (Sicherheitsprüfung 14, H1).
+ * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
+ *   D  zeigeBestaetigungsziel() ohne Vorschau (Text wie zuvor aus dem Profil)
+ *      → rot: beide Teilfälle („Zeitüberschreitung: eigenes Konto genannt“ bzw.
+ *      „… Konto des Links genannt“)
+ *   E  der Zweig `verify.fremdes_konto` gestrichen → rot: „ein fremder Link …“
+ *   F  die Vorschau-Route löst den Link ein (verifiziereEmailToken) → rot: „das
+ *      Öffnen des Links bestätigt nichts“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,6 +26,10 @@ const crypto = require('node:crypto');
 const { starteApp } = require('./helpers/app-browser');
 
 const sichtbar = (id) => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
+const text = (id) => `(document.getElementById('${id}')?.textContent || '')`;
+/** Der Knopf ist frei, sobald die Seite das Konto des Links nennt. */
+const kontoGenannt = (name) => `!document.getElementById('btn-verify').disabled && ${text('verify-ziel')}.includes('„${name}“')
+  && ${text('btn-verify')}.includes('„${name}“')`;
 
 test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async (t) => {
   const app = await starteApp(t, { name: `bestaetigen_${process.pid}` });
@@ -33,6 +46,7 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async (t) => {
   await t.test('angemeldet (neue Adresse im Profil): erst der Knopf, dann die Anwendung', async () => {
     await app.b.tab('Page.navigate', { url: await neuerLink(app.uid) });
     await app.bis(`${sichtbar('login-screen')} && ${sichtbar('panel-verify')}`, 'Bestätigungsseite');
+    await app.bis(kontoGenannt(`bestaetigen_${process.pid}`), 'eigenes Konto genannt');
     assert.equal(await bestaetigt(app.uid), false, 'das Öffnen des Links bestätigt nichts');
     assert.equal(await app.b.auswerten(`location.search`), '', 'das Token bleibt nicht in der Adresszeile');
     await app.b.auswerten(`document.getElementById('btn-verify').click(); true`);
@@ -44,14 +58,18 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async (t) => {
     const zweiter = (await app.db.get(`INSERT INTO users (username, password_hash, is_active, registrierung_offen)
       VALUES ($1, 'x', true, true) RETURNING id`, [`bestaetigen2_${process.pid}`])).id;
     st.after(() => app.db.run('DELETE FROM users WHERE id = $1', [zweiter]));
-    await app.b.auswerten(`fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => true)`);
     const link = await neuerLink(zweiter);
+    await app.b.tab('Page.navigate', { url: link });
+    await app.bis(kontoGenannt(`bestaetigen2_${process.pid}`), 'Konto des Links genannt');
+    assert.match(await app.b.auswerten(text('verify-ziel')), new RegExp(`als „bestaetigen_${process.pid}“`),
+      'ein fremder Link nennt beide Konten');
+    await app.b.auswerten(`fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => true)`);
     await app.b.tab('Page.navigate', { url: link.replace(/token=[0-9a-f]+/, 'token=falsch') });
     await app.bis(sichtbar('panel-verify'), 'Bestätigungsseite');
-    await app.b.auswerten(`document.getElementById('btn-verify').click(); true`);
     await app.bis(`/ungültig/.test(document.getElementById('verify-err').textContent)`, 'Fehlertext bei falschem Link');
+    assert.equal(await app.b.auswerten(`document.getElementById('btn-verify').disabled`), true, 'ein falscher Link lässt sich nicht bestätigen');
     await app.b.tab('Page.navigate', { url: link });
-    await app.bis(sichtbar('panel-verify'), 'Bestätigungsseite');
+    await app.bis(kontoGenannt(`bestaetigen2_${process.pid}`), 'Konto des Links genannt');
     assert.equal(await bestaetigt(zweiter), false);
     await app.b.auswerten(`document.getElementById('btn-verify').click(); true`);
     await app.bis(`${sichtbar('panel-login')} && ${sichtbar('verified-msg')}`, 'Erfolgsmeldung über der Anmeldung');

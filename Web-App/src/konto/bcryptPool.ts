@@ -17,9 +17,11 @@ export interface Pool {
   beende(): Promise<void>;
 }
 
-export function neuerPool(groesse: number, datei = path.join(__dirname, 'bcryptArbeiter.js')): Pool {
+/** leerlaufMs: Ein untätiger Arbeiter endet danach und gibt seinen Speicher frei. */
+export function neuerPool(groesse: number, datei = path.join(__dirname, 'bcryptArbeiter.js'), leerlaufMs = 60_000): Pool {
   let hauptthread = !fs.existsSync(datei);
   const frei: Worker[] = [], alle = new Set<Worker>(), schlange: Offen[] = [];
+  const ruhe = new Map<Worker, NodeJS.Timeout>();
   const laufend = new Map<Worker, { id: number; o: Offen }>();
   let naechsteId = 0, beendet = false;
 
@@ -34,7 +36,15 @@ export function neuerPool(groesse: number, datei = path.join(__dirname, 'bcryptA
   const naechster = (w: Worker) => {
     laufend.delete(w);
     const o = schlange.shift();
-    if (o) starte(w, o); else { w.unref(); frei.push(w); }
+    if (o) { starte(w, o); return; }
+    w.unref();
+    frei.push(w);
+    ruhe.set(w, setTimeout(() => { ruhe.delete(w); frei.splice(frei.indexOf(w), 1); void w.terminate(); }, leerlaufMs).unref());
+  };
+  const nimmFrei = (): Worker | undefined => {
+    const w = frei.pop();
+    if (w) { clearTimeout(ruhe.get(w)); ruhe.delete(w); }
+    return w;
   };
   const neu = (): Worker => {
     const w = new Worker(datei);
@@ -50,6 +60,8 @@ export function neuerPool(groesse: number, datei = path.join(__dirname, 'bcryptA
     w.on('error', (e: Error) => { grund = e; });
     w.on('exit', () => {
       alle.delete(w);
+      clearTimeout(ruhe.get(w));
+      ruhe.delete(w);
       if (frei.includes(w)) frei.splice(frei.indexOf(w), 1);
       const l = laufend.get(w);
       laufend.delete(w);
@@ -69,7 +81,7 @@ export function neuerPool(groesse: number, datei = path.join(__dirname, 'bcryptA
     if (hauptthread) return imHauptthread(a);
     return new Promise((ok, fehler) => {
       const o = { auftrag: a, ok, fehler };
-      const w = frei.pop() ?? (alle.size < groesse ? neu() : undefined);
+      const w = nimmFrei() ?? (alle.size < groesse ? neu() : undefined);
       if (w) starte(w, o); else schlange.push(o);
     });
   };

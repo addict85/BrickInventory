@@ -1341,18 +1341,24 @@ export async function checkAuth(){
   }
 }
 /**
- * Was der Link bestätigt: Angemeldet die ausstehende Adresse des eigenen
- * Kontos, sonst ein Hinweis. So fällt ein fremder oder alter Link auf, bevor
- * jemand ihn bestätigt; das Ziel des Links selbst kennt nur der Server.
+ * Vor dem Einlösen nennt der Server das Konto des Links, und der Knopf nennt es
+ * noch einmal: Wer von zwei gleichen Mails die eines fremden Kontos öffnet,
+ * sieht dessen Namen, bevor er dessen Adresse bestätigt.
  */
 async function zeigeBestaetigungsziel(angemeldet) {
-  const el = G('verify-ziel');
-  if (!el) return;
+  const el = G('verify-ziel'), btn = G('btn-verify');
+  if (!el || !btn) return;
+  btn.disabled = true;
+  const v = await api('POST', '/v1/auth/email-bestaetigen/vorschau', { token: _verifyToken });
+  if (!v?.success) { formularFehler(G('verify-err'), v?.error || tRaw('settings.error')); return; }
   const p = angemeldet ? await api('GET', '/v1/auth/profile') : null;
   const u = p?.success ? p.user : null;
-  el.textContent = !u ? tRaw('verify.ohne_anmeldung')
-    : u.email_neu ? tRaw('verify.ausstehend', { email: u.email_neu, konto: u.username })
-    : tRaw('verify.nichts_ausstehend', { konto: u.username });
+  el.textContent = u && u.username !== v.username ? tRaw('verify.fremdes_konto', { konto: v.username, ich: u.username })
+    : u?.email_neu ? tRaw('verify.ausstehend', { email: u.email_neu, konto: u.username })
+    : tRaw('verify.konto', { konto: v.username });
+  btn.removeAttribute('data-i18n');
+  btn.textContent = tRaw('verify.button_konto', { konto: v.username });
+  btn.disabled = false;
 }
 /** Das statische Startgerüst aus index.html weicht, sobald Anmeldung, App oder Startfortschritt dastehen. */
 function startgeruestWeg() { G('startgeruest')?.remove(); }

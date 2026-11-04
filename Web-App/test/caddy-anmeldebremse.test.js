@@ -1,20 +1,20 @@
 /**
- * Caddy bremst die Anmeldewege: höchstens vier gleichzeitige Anfragen gehen an
- * die App, der Rest wartet bei Caddy; Rümpfe über 16 KB weist er ab. Andere
- * Routen bleiben unbegrenzt. Das echte Caddyfile läuft in einem echten Caddy
- * (CADDY_BIN oder `caddy` im Pfad) vor einem Node-Server, der mitzählt; ohne
- * Caddy wird übersprungen (das Standard-Image hat kein Modul für Raten, siehe
- * Caddyfile).
+ * Caddy lässt die Anmeldewege ungebremst zur App, damit deren bcrypt-Schranke
+ * die Last sieht (Vorrang, 503); er weist nur Rümpfe über 16 KB ab und reicht
+ * einen Rumpf erst ganz gelesen weiter. Das echte Caddyfile läuft in einem
+ * echten Caddy (CADDY_BIN oder `caddy` im Pfad) vor einem Node-Server, der
+ * mitzählt; ohne Caddy wird übersprungen.
  *
- * Gegenproben (03.11.2026 gemessen mit Caddy aus `go install`, je einzeln):
- *   A  `max_conns_per_host 4` gestrichen → rot: „höchstens vier Anmeldungen
- *      zugleich bei der App“ (12 gleichzeitig)
- *   B  `import anmeldung` gestrichen → rot: dieselbe Prüfung
+ * Gegenproben (04.11.2026 gemessen mit Caddy aus `go install`, je einzeln):
+ *   A  `transport http { max_conns_per_host 4 }` wieder eingesetzt → rot:
+ *      „Caddy lässt die Anmeldungen ungebremst zur App“ (4 zugleich); mit
+ *      `max_conns_per_host 8` ebenso (8 zugleich)
+ *   B  `import anmeldung` gestrichen → rot: „der Block (anmeldung) ist nicht
+ *      eingebunden“
  *   C  `request_body { max_size 16KB }` gestrichen → rot: „ein Rumpf über 16 KB …“
- *   D  `request_buffers 32KB` gestrichen → rot: „acht langsame Rümpfe halten die
- *      Anmeldung nicht an“ (Zeitüberschreitung nach 3 s); gemessen 04.11.2026
- *      mit Caddy 2.11.7 aus `go install`
- *   E  `request_buffers 16KB` (= max_size) → rot: dieselbe Prüfung; die vier
+ *   D  `request_buffers 32KB` gestrichen → rot: „kein angefangener Rumpf
+ *      erreicht die App“ (alle acht)
+ *   E  `request_buffers 16KB` (= max_size) → rot: dieselbe; die vier
  *      Rümpfe mit 16 000 Byte strömen ab der Puffergrenze doch zur App
  *   F  `read_header 10s` gestrichen → rot: „Caddy schliesst eine Verbindung,
  *      deren Kopf stockt …“ (Vorgabe von Caddy ist eine Minute)
@@ -32,13 +32,14 @@ const { spawn, spawnSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
 
-test('die Anmeldewege sind an Caddy gebremst', { skip: !CADDY && 'kein Caddy (CADDY_BIN)', timeout: 60_000 }, async (t) => {
+test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter', { skip: !CADDY && 'kein Caddy (CADDY_BIN)', timeout: 60_000 }, async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-bremse-'));
-  let jetzt = 0, hoechst = 0, angekommen = 0;
+  let jetzt = 0, hoechst = 0, halten = 300;
+  const laengen = [];
   const app = http.createServer((req, res) => {
-    jetzt++; hoechst = Math.max(hoechst, jetzt); angekommen++;
+    jetzt++; hoechst = Math.max(hoechst, jetzt); laengen.push(req.headers['content-length']);
     req.resume();
-    req.on('end', () => setTimeout(() => { jetzt--; res.end('ok'); }, 300));
+    req.on('end', () => setTimeout(() => { jetzt--; res.end('ok'); }, halten));
   });
   await new Promise(r => app.listen(0, '127.0.0.1', r));
   let caddy = null;
@@ -48,7 +49,7 @@ test('die Anmeldewege sind an Caddy gebremst', { skip: !CADDY && 'kein Caddy (CA
   const datei = fs.readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
     .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`).replace('http:// {', `http://:${port + 1} {`)
     .replaceAll('app:3000', `127.0.0.1:${app.address().port}`);
-  assert.ok(datei.includes('import anmeldung'), 'die Bremse ist nicht eingebunden');
+  assert.ok(datei.includes('import anmeldung'), 'der Block (anmeldung) ist nicht eingebunden');
   fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
   caddy = spawn(CADDY, ['run', '--config', path.join(tmp, 'Caddyfile'), '--adapter', 'caddyfile'], {
     stdio: 'ignore', env: { PATH: process.env.PATH, XDG_DATA_HOME: path.join(tmp, 'd'), XDG_CONFIG_HOME: path.join(tmp, 'c'),
@@ -71,16 +72,12 @@ test('die Anmeldewege sind an Caddy gebremst', { skip: !CADDY && 'kein Caddy (CA
   }
   assert.equal(bereit, 200, 'Caddy antwortet nicht');
 
-  jetzt = 0; hoechst = 0;
-  const anmeldungen = await Promise.all(Array.from({ length: 12 }, () => anfrage('POST', '/api/v1/auth/login')));
-  assert.deepEqual(anmeldungen, Array(12).fill(200), 'wartende Anmeldungen gehen verloren');
-  assert.ok(hoechst <= 4, `höchstens vier Anmeldungen zugleich bei der App (waren ${hoechst})`);
-  assert.ok(hoechst >= 2, `Vorbedingung: Anfragen liefen überhaupt parallel (${hoechst})`);
-
-  jetzt = 0; hoechst = 0;
-  const andere = await Promise.all(Array.from({ length: 12 }, () => anfrage('GET', '/api/v1/sets')));
-  assert.deepEqual(andere, Array(12).fill(200));
-  assert.ok(hoechst > 4, `andere Routen sind nicht gebremst (${hoechst} zugleich)`);
+  // Lange gehalten, damit auch ein langsamer Lauf alle 16 zugleich offen hat.
+  jetzt = 0; hoechst = 0; halten = 1500;
+  const anmeldungen = await Promise.all(Array.from({ length: 16 }, () => anfrage('POST', '/api/v1/auth/login')));
+  halten = 300;
+  assert.deepEqual(anmeldungen, Array(16).fill(200), 'Anmeldungen gehen verloren');
+  assert.ok(hoechst > 8, `Caddy lässt die Anmeldungen ungebremst zur App (${hoechst} zugleich)`);
 
   assert.equal(await anfrage('POST', '/api/v1/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })), 413,
     'ein Rumpf über 16 KB erreicht die Anmeldung');
@@ -97,13 +94,9 @@ test('die Anmeldewege sind an Caddy gebremst', { skip: !CADDY && 'kein Caddy (CA
   });
   await Promise.all([...Array(4)].map(() => langsam(200, 1)).concat([...Array(4)].map(() => langsam(17_000, 16_000))));
   await new Promise(r => setTimeout(r, 500));
-  angekommen = 0;
-  const beginn = Date.now();
-  const frist = new Promise(r => setTimeout(() => r('Zeitüberschreitung'), 3000));
-  assert.equal(await Promise.race([anfrage('POST', '/api/v1/auth/login'), frist]), 200,
-    'acht langsame Rümpfe halten die Anmeldung nicht an');
-  assert.ok(Date.now() - beginn < 1500, `die Anmeldung antwortet zügig (${Date.now() - beginn} ms)`);
-  assert.equal(angekommen, 1, 'kein angefangener Rumpf erreicht die App');
+  assert.equal(await anfrage('POST', '/api/v1/auth/login'), 200, 'Vorbedingung: Caddy nimmt Anmeldungen an');
+  const langsame = laengen.filter(l => l === '200' || l === '17000');
+  assert.deepEqual(langsame, [], 'kein angefangener Rumpf erreicht die App');
 
   const kopfBeginn = Date.now();
   const kopfZu = await new Promise((fertig) => {

@@ -176,8 +176,10 @@ test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async 
   });
 
   await t.test('Bestätigungsseite nennt Konto und Adresse', async () => {
-    await db.run(`UPDATE users SET email_neu = $2 WHERE id = $1`, [app.uid, `neu-${process.pid}@example.org`]);
-    await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=unbekannt` });
+    const roh = `r13-${process.pid}-link`;
+    await db.run(`UPDATE users SET email_neu = $2, email_neu_token = encode(sha256($3::bytea), 'hex'),
+      email_neu_bis = NOW() + INTERVAL '1 hour' WHERE id = $1`, [app.uid, `neu-${process.pid}@example.org`, roh]);
+    await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${roh}` });
     await bis(`/neu-${process.pid}@example\\.org/.test(document.getElementById('verify-ziel')?.textContent || '')`, 'Ziel genannt');
     assert.match(await b.auswerten(text('#verify-ziel')), new RegExp(`Konto „${NAME}“`));
   });

@@ -44,14 +44,17 @@ den Commits, nicht hier.
   das Caddyfile ungültig. Das Protokoll von Caddy und `ca-einrichten.sh`
   nennen den SHA-256-Fingerabdruck der Wurzel zum Abgleich auf dem Gerät —
   `ca-eigene-wurzel`.
-- Anmeldewege (Passwort, Passkey, QR, Registrierung, Rücksetzen) gehen
-  höchstens zu viert gleichzeitig an die App, Rümpfe bis 16 KB; der Rest
-  wartet bei Caddy. Das Standard-Image von Caddy hat kein Modul für
-  Anfrage-Raten; die Raten je Adresse und Konto zählt der Server —
-  `caddy-anmeldebremse`.
-- Langsame Clients belegen die Bremse nicht: Caddy liest den Rumpf der
+- Anmeldewege (Passwort, Passkey, QR, Registrierung, Rücksetzen) nehmen an
+  Caddy Rümpfe bis 16 KB an und gehen ohne Verbindungsgrenze an die App: Die
+  Zahl gleichzeitiger Passwortprüfungen begrenzt die bcrypt-Schranke des
+  Servers (Vorrang bekannter Anmeldungen, sonst 503), die Raten je Adresse
+  und Konto zählt der Server — `caddy-anmeldebremse`, `bcrypt-schranke-db`.
+- bcrypt rechnet in höchstens 4 Worker-Threads (weniger bei kleinerem
+  cgroup-Kontingent, mehr mit `BCRYPT_ARBEITER`); untätige enden nach 60 s —
+  `bcrypt-pool`.
+- Langsame Clients erreichen die App nicht: Caddy liest den Rumpf der
   Anmeldewege ganz (`request_buffers 32KB`, grösser als `max_size`), bevor er
-  eine der vier Verbindungen nimmt; Köpfe müssen in 10 s da sein. Die App
+  ihn weiterreicht; Köpfe müssen in 10 s da sein. Die App
   selbst: Kopf 15 s, ganze Anfrage 5 min (Uploads), ohne Anmeldung Rumpf
   10 s (sonst 408 `anfrage_zu_langsam`): `Caddyfile`, `server.ts`,
   `rumpfFrist` in `routes/api_v1/middleware.ts` — `caddy-anmeldebremse`,
@@ -270,6 +273,13 @@ den Commits, nicht hier.
   `utils/apiKontingent.ts`, `utils/auftraege.ts` — `api-kontingent-konto-db`.
 - Je Zieladresse (gehasht): Registrierung 3/h (429), „Passwort vergessen“ 3/h
   (still keine Mail): `src/konto/zielDrossel.ts` — `mail-fremder-text-db`.
+- Prüfung eines Haushaltscodes (`redeem/pruefen`) 30/h je Konto —
+  `haushalt-beitreten-db`.
+- Bestätigungslink: Vor dem Einlösen nennt `POST /auth/email-bestaetigen/vorschau`
+  nur den Benutzernamen des Kontos (30/h je Adresse), die Seite und ihr Knopf
+  nennen ihn; nennen mehrere offene Registrierungen die Adresse, verweist die
+  Mail ohne Namen darauf — `email-neu-db`, `email-bestaetigen-browser`,
+  `mail-fremder-text-db`.
 - Teile-Import 30/h je Konto, leere Rebrickable-Antworten 10 min gemerkt;
   Währungswechsel 5/h je Konto (jeder zieht den Preislauf vor).
 - Rumpf höchstens 256 KB, nur der PDF-Auftrag 4 MB (pfadgenau vor dem

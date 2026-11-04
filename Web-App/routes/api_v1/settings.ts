@@ -25,6 +25,7 @@ import { DAILY_JOBS } from '../../src/auftraege/zeitplan';
 import { quellePruefen, bricksetLimitGesetzt, zeitplanNeuPlanen, protokolliere } from '../../src/verwaltung/dienst';
 import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswortAendern, profil } from '../../src/konto/konten';
 import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
+import { kontoGedrosselt } from '../../src/konto/zielDrossel';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
 import { householdStatus, createInvite, redeemInvite, pruefeEinladung, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
@@ -170,6 +171,8 @@ router.post('/settings/household/invite', requireToken, async (req: AuthedReques
 });
 
 router.post('/settings/household/redeem/pruefen', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/redeem/pruefen'>) => {
+  const zuOft = await kontoGedrosselt('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
+  if (zuOft) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: zuOft.waitMin });
   const r = await pruefeEinladung(req.apiUser.user_id, String(req.body?.code || ''));
   if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler);
   res.json({ success: true, ...r });

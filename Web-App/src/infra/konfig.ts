@@ -65,6 +65,8 @@ export interface Konfig {
   bildAbrufeJeMinute: number;
   csvZeileFristMs: number;
   auftragParallel: number;
+  /** null: nach Kernen und cgroup-Kontingent (src/konto/bcryptSchranke.ts). */
+  bcryptArbeiter: number | null;
   auftragFristSek: number;
   /** PEM; null: keine eigene CA. */
   caZertifikat: string | null;
@@ -99,7 +101,7 @@ export const VARIABLEN = [
   'APP_BASE_URL', 'APP_BASE_URL_FEHLT_OK', 'APP_ROOT', 'APP_VERSION', 'DATA_KEY', 'DATA_KEY_FILE', 'ERFASSUNG_ZEITZONE', 'TZ',
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB', 'BILD_ABRUFE_JE_MINUTE',
-  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
+  'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'BCRYPT_ARBEITER', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
   'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', 'DB_SUPERUSER_ERLAUBT', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
 ] as const;
 
@@ -227,6 +229,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     bildAbrufeJeMinute: ganzzahl(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
     csvZeileFristMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
     auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', 4, 1, 64, f),
+    bcryptArbeiter: env.BCRYPT_ARBEITER?.trim() ? ganzzahl(env, 'BCRYPT_ARBEITER', 4, 1, 64, f) : null,
     auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', 300, 1, 86_400, f),
     caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
