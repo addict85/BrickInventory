@@ -2,11 +2,16 @@ import * as db from '../../../db/database';
 
 export type Art = 'part' | 'fig' | 'set';
 
-/** Zuordnungen zu BrickLink-Nummern; `bl_id IS NULL` heisst „gleich vermerkt“. */
-export function zuordnungen(blNummern: string[]) {
-  return db.all<{ art: Art; rb_id: string; bl_id: string | null }>(
-    `SELECT art, rb_id, bl_id FROM bl_zuordnung
-      WHERE (bl_id = ANY($1) OR (bl_id IS NULL AND rb_id = ANY($1)))`, [blNummern]);
+/** Zuordnungen zu BrickLink-Nummern; `bl_id IS NULL` heisst „gleich vermerkt“.
+ * Die eigenen des Kontos stehen vorn (`eigen`), damit sie Vorrang haben. */
+export function zuordnungen(blNummern: string[], uid: number | null = null) {
+  return db.all<{ art: Art; rb_id: string; bl_id: string | null; eigen: boolean }>(
+    `SELECT art, rb_id, NULLIF(bl_id, rb_id) AS bl_id, true AS eigen FROM bl_zuordnung_eigen
+      WHERE user_id = $2 AND bl_id = ANY($1)
+     UNION ALL
+     SELECT art, rb_id, bl_id, false FROM bl_zuordnung
+      WHERE (bl_id = ANY($1) OR (bl_id IS NULL AND rb_id = ANY($1)))
+     ORDER BY eigen DESC`, [blNummern, uid]);
 }
 
 const KATALOG: Record<Art, string> = {

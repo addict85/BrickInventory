@@ -98,6 +98,7 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
     VALUES ($1, $2, $3, true, true, true) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
+  const [wiederherstellung] = await require('./helpers/verwalter').verwalterMitFaktor(_req, uid);
   // Mit heutigen Stempeln lädt der Start den Rebrickable-Katalog nicht herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
@@ -147,6 +148,7 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
+    document.getElementById('lc').value = ${JSON.stringify(wiederherstellung)};
     document.getElementById('btn-login').click(); true`);
   await bis(`document.body.innerText.includes(${JSON.stringify(NAME + ' (Admin)')})`, 'angemeldet als Verwalter');
   const reiter = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);

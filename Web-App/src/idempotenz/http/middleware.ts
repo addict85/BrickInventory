@@ -18,9 +18,13 @@ export function antwortIstGeheim(methode: string, pfad: string): boolean {
   return nichtWiederholbar(routeFuerAnfrage(methode, pfad));
 }
 
+/** Nur Routen mit Vertragseintrag: Ohne ihn ist nicht bekannt, ob die Antwort
+ * geheim ist, also wird nichts gespeichert und nichts wiederholt. */
 export async function idempotenz(req: Request, res: Response, next: NextFunction) {
   const schluessel = req.get('Idempotency-Key');
   if (schluessel === undefined || !SCHREIBEND.has(req.method)) return next();
+  const route = routeFuerAnfrage(req.method, req.baseUrl + req.path);
+  if (!route) return next();
   if (!dienst.SCHLUESSEL_MUSTER.test(schluessel)) return sendeFehler(req, res, 400, 'idempotenz_schluessel_ungueltig');
   const uid = nutzerId(req);
   if (uid === null) return next();
@@ -34,7 +38,7 @@ export async function idempotenz(req: Request, res: Response, next: NextFunction
     return res.status(ausgang.status).type('application/json').send(ausgang.antwort);
   }
 
-  const geheim = antwortIstGeheim(req.method, req.baseUrl + req.path);
+  const geheim = nichtWiederholbar(route);
   let gemerkt = false;
   const json = res.json.bind(res);
   res.json = (rumpf: unknown) => {

@@ -13,6 +13,9 @@
  *      Verwalterkonto" (die Mail ging auch an das gewöhnliche Konto)
  *   E  hinweisNebenher() in PUT /users/:id/password entfernt → rot:
  *      „fremdes Passwort durch einen Verwalter“
+ * Gegenprobe (04.11.2026 gemessen):
+ *   F  hinweisNebenher() in angemeldetAntworten() (routes/auth.ts) entfernt →
+ *      rot: „Token aus der Anmeldung (neues Gerät)“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -108,5 +111,11 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async (t) => {
     assert.deepEqual((await mails('passwort_durch_verwalter', 1)).map(m => [m.an, m.durch]), [[NAMEN[1], NAMEN[0]]]);
     assert.deepEqual((await mails('verwaltung_passwort_gesetzt', 3)).map(m => [m.an, m.konto]),
       [[NAMEN[0], NAMEN[1]], [NAMEN[2], NAMEN[1]], [NAMEN[1], NAMEN[1]]]);
+  });
+
+  await t.test('Token aus der Anmeldung (neues Gerät)', async () => {
+    gesendet.length = 0;
+    await ruf('POST', '/login', { username: NAMEN[2], password: PASS, label: 'Handy' });
+    assert.deepEqual(await mails('token_neu', 1), [{ an: NAMEN[2], konto: undefined, durch: undefined, name: 'Handy' }]);
   });
 });

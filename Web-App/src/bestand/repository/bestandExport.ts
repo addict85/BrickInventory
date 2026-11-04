@@ -35,7 +35,7 @@ const FIGS_CSV_SQL = `
          -- stand COALESCE(f.bl_fig_number,''), eine Abschrift je Konto.
          -- Das leere Feld bleibt die Ausgabe fuer „keine abweichende
          -- Nummer" — in der Zuordnung ist das eine leere bl_id.
-         COALESCE(z.bl_id,'') AS bl_fig_number,
+         COALESCE(CASE WHEN ze.rb_id IS NULL THEN z.bl_id ELSE NULLIF(ze.bl_id, f.fig_number) END, '') AS bl_fig_number,
          -- Der Rueckfall auf die Stammzeile ist weg: Migration 0035 hat
          -- f.unit_price und f.condition geloescht und traegt fuer jede
          -- manuelle Figur eine Erfassung nach. Dieselbe Aenderung wie bei
@@ -49,6 +49,7 @@ const FIGS_CSV_SQL = `
               ELSE TO_CHAR(${erfassungsTagSql('a')}, 'YYYY-MM-DD') END AS acquired_at
     FROM minifigs f
     LEFT JOIN bl_zuordnung z ON z.art = 'fig' AND z.rb_id = f.fig_number
+    LEFT JOIN bl_zuordnung_eigen ze ON ze.user_id = f.user_id AND ze.art = 'fig' AND ze.rb_id = f.fig_number
     LEFT JOIN minifig_acquisitions a
            ON a.user_id = f.user_id AND a.fig_number = f.fig_number
     ${figurSichtJoin('f.user_id', 'f.fig_number')}

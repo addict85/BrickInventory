@@ -78,9 +78,11 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async (
   };
   const gilt = async (token) => { auth.leereTokenCache(); return (await ruf('/me', token)).status === 200; };
   const verbraucht = async () => (await db.all('SELECT token FROM api_tokens_verbraucht WHERE user_id = $1', [uid])).map(z => z.token);
+  // Jede Anmeldung meldet ihren neuen Zugang (token_neu); gezählt wird hier die Warnung.
+  const warnungen = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.art !== 'token_neu');
   const mails = async (anzahl) => {
-    for (let i = 0; i < 60 && gesendet.length < anzahl; i++) await new Promise(r => setTimeout(r, 25));
-    return gesendet.filter(m => m.an === `${NAME}@example.org`);
+    for (let i = 0; i < 60 && warnungen().length < anzahl; i++) await new Promise(r => setTimeout(r, 25));
+    return warnungen();
   };
 
   const a = await anmelden('Pixel');

@@ -44,7 +44,9 @@ export const TokenAngaben = z.looseObject({
 export const TokenInfo = TokenAngaben.extend({ rotation_faellig: z.boolean() });
 
 /** Die QR-Anmeldung gibt nur App-Rechte; sie nennt kein is_admin. */
-export const AnmeldeNutzer = User.extend({ is_admin: z.boolean().optional(), mustChangePassword: z.boolean().optional() });
+/** zweiterFaktorPflicht: Verwalterrechte ohne TOTP; bis zur Einrichtung antwortet alles andere 403. */
+export const AnmeldeNutzer = User.extend({ is_admin: z.boolean().optional(), mustChangePassword: z.boolean().optional(),
+  zweiterFaktorPflicht: z.boolean().optional() });
 
 export const LoginResponse = z.looseObject({
   success: z.boolean(),
@@ -59,7 +61,7 @@ export const LoginResponse = z.looseObject({
 export const MeResponse = z.looseObject({
   success: z.boolean(),
   loggedIn: z.boolean(),
-  user: User.extend({ mustChangePassword: z.boolean().optional() }).nullable().optional(),
+  user: User.extend({ mustChangePassword: z.boolean().optional(), zweiterFaktorPflicht: z.boolean().optional() }).nullable().optional(),
   token_expires: zeit.nullable().optional(),
   token_last_used: zeit.nullable().optional(),
   token_info: TokenInfo.nullable().optional(),
@@ -160,7 +162,8 @@ export const PasskeyAngelegt = z.looseObject({ success: z.literal(true), passkey
 /** Wie die Passwort-Anmeldung: Mit `mit_token` (App) kommt auch der Token. */
 export const PasskeyAnmeldung = LoginResponse.extend({
   success: z.literal(true),
-  user: z.looseObject({ id: ganz, username: z.string(), is_admin: z.boolean(), mustChangePassword: z.boolean().optional() }),
+  user: z.looseObject({ id: ganz, username: z.string(), is_admin: z.boolean(), mustChangePassword: z.boolean().optional(),
+    zweiterFaktorPflicht: z.boolean().optional() }),
 });
 /** Anzahl gelöschter Zeilen, wie beim Widerruf eines Tokens. */
 export const Geloescht = z.looseObject({ success: z.literal(true), deleted: ganz });
@@ -211,6 +214,7 @@ export const routen = {
   'PUT /api/v1/auth/users/:id/aktiv': { antwort: KontoAktiv, ...verwalterBestaetigt({ is_active: eingabe.schalter('is_active') }) },
   'PUT /api/v1/auth/users/:id/password': { antwort: Erfolg, ...verwalterBestaetigt({ password: z.string().max(PASSWORT).optional() }) },
   'DELETE /api/v1/auth/users/:id': { antwort: Erfolg, ...verwalterBestaetigt() },
+  'DELETE /api/v1/auth/konto': { antwort: Erfolg, ...bestaetigt() },
   'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: Erfolg, ...verwalterBestaetigt() },
   'POST /api/v1/auth/token-create': { antwort: TokenErstellt, ...bestaetigt({ scope: z.string().max(20).optional() }), geheim: true },
   'POST /api/v1/auth/qr-token': { antwort: QrToken, ...bestaetigt(), geheim: true },

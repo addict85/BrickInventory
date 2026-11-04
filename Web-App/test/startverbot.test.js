@@ -11,9 +11,17 @@
  *      „TRUST_PROXY=docker“
  *   C  startVerbote() ohne die Abfrage auf NODE_ENV → rot: „ausserhalb von
  *      Produktion kein Verbot“
+ * Gegenproben (04.11.2026 gemessen):
+ *   D  sitzungsGeheimnis() wieder mit `!konfig().produktion` statt
+ *      `konfig().entwicklung` → rot: „ohne NODE_ENV kein öffentliches
+ *      Sitzungsgeheimnis“ (beide Fälle starten)
+ *   E  der frühe Aufruf von sitzungsGeheimnis() in starte() gestrichen → rot:
+ *      dieselbe Prüfung (der Start scheitert erst an der Datenbank, ohne Grund)
+ *   F  `start` in package.json ohne NODE_ENV=production → rot: „npm start …“
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
+const fs     = require('node:fs');
 const path   = require('node:path');
 const { spawn } = require('node:child_process');
 
@@ -50,6 +58,25 @@ test('TRUST_PROXY=docker: Start verweigert', { timeout: 30_000 }, async () => {
   const { code, log } = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', TRUST_PROXY: 'docker' });
   assert.equal(code, 1, log.slice(-400));
   assert.match(log, /TRUST_PROXY enthält „docker/);
+});
+
+test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, async () => {
+  const ohne = { NODE_ENV: undefined, DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x' };
+  for (const geheimnis of [undefined, 'brickinventory-manager-dev-secret']) {
+    const { code, log } = await starte({ ...ohne, SESSION_SECRET: geheimnis });
+    assert.equal(code, 1, log.slice(-400));
+    assert.match(log, /SESSION_SECRET .*Start verweigert/);
+  }
+  // Ausdrücklich in der Entwicklung gilt das Entwicklungsgeheimnis; der Start
+  // scheitert dann erst an der Datenbank, die es hier nicht gibt.
+  const { log } = await starte({ ...ohne, NODE_ENV: 'development', SESSION_SECRET: undefined });
+  assert.doesNotMatch(log, /SESSION_SECRET/);
+  assert.match(log, /Database initialisation failed/);
+});
+
+test('npm start setzt NODE_ENV=production', () => {
+  const start = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts.start;
+  assert.match(start, /^NODE_ENV=production node dist\/server\.js$/);
 });
 
 test('ausserhalb von Produktion kein Verbot, mit eigenem Passwort keines', () => {

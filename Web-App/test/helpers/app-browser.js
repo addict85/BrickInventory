@@ -97,6 +97,10 @@ async function starteApp(t, opt = {}) {
     VALUES ($1, $2, $3, true, true, true) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [uid, opt.sprache || 'de']);
   if (opt.bestand) await opt.bestand(db, uid);
+  // Verwalter ohne Code-Generator kämen nur bis zu dessen Einrichtung; angemeldet
+  // wird mit einem Wiederherstellungscode im Codefeld.
+  const verwalter = (await db.get('SELECT is_admin FROM users WHERE id = $1', [uid])).is_admin;
+  const [wiederherstellung = ''] = verwalter ? await require('./verwalter').verwalterMitFaktor(_req, uid) : [];
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
                   ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`, [k]);
@@ -172,6 +176,7 @@ async function starteApp(t, opt = {}) {
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
+    document.getElementById('lc').value = ${JSON.stringify(wiederherstellung)};
     document.getElementById('btn-login').click(); true`);
   // 30 s wie beim Chrome-Start: Die Anmeldung rechnet bcrypt mit 12 Runden und
   // schreibt die Sitzung; auf einem ausgelasteten Läufer dauerte das über 10 s.

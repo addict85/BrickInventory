@@ -28,6 +28,10 @@ export function geheimnisseAusDateien(env: Umgebung): string[] {
 export interface Konfig {
   produktion: boolean;
   nodeEnv: string;
+  /** Nur ausdrücklich development oder test: ohne NODE_ENV gelten die Regeln des Betriebs. */
+  entwicklung: boolean;
+  /** Ausweg für den Start als Datenbank-Superuser in Produktion (UPGRADE.md). */
+  dbSuperuserErlaubt: boolean;
   port: number;
   hstsMaxAge: number;
   trustProxy: string | undefined;
@@ -96,7 +100,7 @@ export const VARIABLEN = [
   'PRICE_HISTORY_KEEP_DAYS', 'UPLOAD_KONTINGENT_MB', 'MAIL_KONSOLE_MIT_TOKEN', 'IMG_USER_AGENT',
   'BILD_CACHE_MAX_MB', 'BILD_ABRUFE_JE_MINUTE',
   'CSV_ZEILE_FRIST_MS', 'AUFTRAG_PARALLEL', 'AUFTRAG_FRIST_SEK', 'CA_ZERTIFIKAT', 'VERTRAG_PRUEFEN',
-  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
+  'PASSKEY_ANDROID_ZERTIFIKATE', 'PASSKEY_ANDROID_PAKET', 'DB_SUPERUSER_ERLAUBT', ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
 ] as const;
 
 /** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
@@ -190,6 +194,8 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const k: Konfig = {
     produktion: nodeEnv === 'production',
     nodeEnv,
+    entwicklung: ['development', 'test'].includes(env.NODE_ENV?.trim() ?? ''),
+    dbSuperuserErlaubt: schalter(env, 'DB_SUPERUSER_ERLAUBT', f) === true,
     port: ganzzahl(env, 'PORT', 3000, 1, 65535, f),
     hstsMaxAge: ganzzahl(env, 'HSTS_MAX_AGE', 31_536_000, 0, 2 ** 31 - 1, f),
     trustProxy: env.TRUST_PROXY,

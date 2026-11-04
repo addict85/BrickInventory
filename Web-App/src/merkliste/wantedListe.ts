@@ -126,7 +126,7 @@ export interface Aufloesung {
 /** Ohne fremden Abruf; die drei Stufen bleiben getrennt, weil sie verschieden
  * sicher sind.
  * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#loeselokalauf */
-export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[]> {
+export async function loeseLokalAuf(posten: WantedPosten[], uid: number | null = null): Promise<Aufloesung[]> {
   if (!posten.length) return [];
 
   // Drei Abfragen für die ganze Liste statt eine je Posten.
@@ -134,10 +134,13 @@ export async function loeseLokalAuf(posten: WantedPosten[]): Promise<Aufloesung[
   const farben = [...new Set(posten.map(p => p.blFarbe).filter((f): f is number => f !== null))];
 
   const zuordnung = new Map<string, { rbId: string; sicherheit: Sicherheit }>();
-  for (const z of await repo.zuordnungen(nummern).catch(meldeUndLiefere('wanted:zuordnung', []))) {
+  const eigene = new Set<string>();
+  for (const z of await repo.zuordnungen(nummern, uid).catch(meldeUndLiefere('wanted:zuordnung', []))) {
     const schluessel = `${z.art}:${z.bl_id ?? z.rb_id}`;
     const stufe: Sicherheit = z.bl_id ? 'zuordnung' : 'gleich_vermerkt';
     const schon = zuordnung.get(schluessel);
+    if (z.eigen) eigene.add(schluessel);
+    else if (eigene.has(schluessel)) continue;
     if (!schon || (schon.sicherheit !== 'zuordnung' && stufe === 'zuordnung')) {
       zuordnung.set(schluessel, { rbId: z.rb_id, sicherheit: stufe });
     }
@@ -458,7 +461,7 @@ export async function importiereWantedListe(
     korrekturen?: Korrektur[];
     /** Hereingegeben, damit diese Funktion bis auf den Anleger schreibfrei bleibt.
      * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste */
-    merkeNummer?: (art: WantedArt, rbId: string, blId: string) => Promise<unknown>;
+    merkeNummer?: (art: WantedArt, rbId: string, blId: string, quelle: 'korrigiert' | 'rebrickable') => Promise<unknown>;
     /** Wird SYNCHRON gerufen und darf nichts werfen.
      * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-2 */
     fortschritt?: (stand: WantedFortschritt) => void;
@@ -469,7 +472,7 @@ export async function importiereWantedListe(
   } = {},
 ): Promise<WantedBericht> {
   const gelesen = leseWantedListe(xml);
-  let auf = await loeseLokalAuf(gelesen.posten);
+  let auf = await loeseLokalAuf(gelesen.posten, uid);
 
   let rebrickable: WantedBericht['rebrickable'];
   if (opt.ueberRebrickable) {
@@ -585,7 +588,7 @@ export async function importiereWantedListe(
       // gesuchte BL-Nummer, es ist eine Abbildung, keine Vermutung.
       // Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-4
       if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.merkeNummer) {
-        await opt.merkeNummer(a.posten.art, rbId, a.posten.blId)
+        await opt.merkeNummer(a.posten.art, rbId, a.posten.blId, a.sicherheit)
           .catch(() => { /* siehe oben */ });
       }
     } catch (e: unknown) {

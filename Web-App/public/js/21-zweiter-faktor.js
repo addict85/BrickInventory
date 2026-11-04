@@ -8,7 +8,10 @@ import { loadUsers } from './05-settings.js';
 // Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn
 // Wiederherstellungscodes einmal zeigen. Danach: abschalten oder neue Codes.
 
-const flaeche = () => G('zf-flaeche');
+// Im Anmeldebildschirm, solange ein Verwalter ihn einrichten muss (js/01-core.js).
+let pflicht = false;
+const flaeche = () => pflicht ? G('zf-pflicht-flaeche') : G('zf-flaeche');
+if (typeof document !== 'undefined') document.addEventListener('zweitpflicht', () => { pflicht = true; void ladeZweitenFaktor(); });
 
 function zeichne(html) { const f = flaeche(); if (f) f.innerHTML = html; }
 
@@ -71,7 +74,7 @@ function zeigeCodes(codes) {
       <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.map(esc).join('\n')}</pre>
       <div data-stil="display:flex;gap:.5rem;flex-wrap:wrap">
         ${knopf('zfCodesKopieren', t('zf.copy'))}
-        <button type="button" class="btn bp btn-sm" data-click="ladeZweitenFaktor">${t('zf.codes_done')}</button>
+        <button type="button" class="btn bp btn-sm" data-click="${pflicht ? 'zfPflichtFertig' : 'ladeZweitenFaktor'}">${t('zf.codes_done')}</button>
       </div>
     </div>`);
 }
@@ -115,4 +118,7 @@ export async function zfZuruecksetzen(uid, name) {
   loadUsers();
 }
 
-registerActions({ ladeZweitenFaktor, zfEinrichten, zfBestaetigen, zfNeueCodes, zfAbschalten, zfCodesKopieren, zfZuruecksetzen });
+/** Eingerichtet: Mit dem Neuladen öffnet sich die Anwendung. */
+function zfPflichtFertig() { location.reload(); }
+
+registerActions({ ladeZweitenFaktor, zfPflichtFertig, zfEinrichten, zfBestaetigen, zfNeueCodes, zfAbschalten, zfCodesKopieren, zfZuruecksetzen });

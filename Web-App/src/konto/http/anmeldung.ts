@@ -12,6 +12,16 @@ import { routeZu } from '../../infra/vertrag';
 import { sendeFehler, fehlerText, antwortSprache } from '../../infra/fehlerTexte';
 import { meldeUndLiefere } from '../../infra/httpError';
 import { sitzungsVersionAusDb } from '../sitzungsVersion';
+import { istAktiv } from '../zweiterFaktor';
+
+/** Verwalterrechte ohne TOTP: Das Passwort allein soll sie nicht tragen, bis zur
+ * Einrichtung geht nur diese (anmeldungAmEingang). Ein Passkey zählt nicht, denn
+ * die Anmeldung mit Passwort verlangt nur bei aktivem TOTP einen zweiten Faktor. */
+export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
+  const uid = nutzerId(req);
+  const verwalter = req.session?.userId ? !!req.session.isAdmin : Number(req.apiUser?.is_admin) === 1;
+  return uid !== null && verwalter && !await istAktiv(uid);
+}
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
  * einem vertrauten Proxy kommt.

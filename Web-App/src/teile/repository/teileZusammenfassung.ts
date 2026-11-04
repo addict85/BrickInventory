@@ -42,7 +42,7 @@ function zusammenfassungEinfuegen(nurGruppen: boolean): string {
         FROM parts p
         ${mengeJoin('p', 'sm', '= $1')}
         ${teilmengeJoin('p', 'part', 'tm', '= $1')}
-        ${blJoin('p.part_number', 'part')}
+        ${blJoin('p.part_number', 'part', 'p.user_id')}
         LEFT JOIN storage_locations lo ON lo.id = p.storage_id
         ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
        WHERE p.user_id = $1 AND COALESCE(p.source, 'set') <> 'manual'${nurGruppen ? `
@@ -96,7 +96,7 @@ export function betroffeneGruppen(tx: DbSchnittstelle, nummern: string[]) {
   return tx.all<{ user_id: number; part_key: string }>(`
       SELECT DISTINCT p.user_id, ${blNummerSql('p.part_number')} AS part_key
         FROM parts p
-        ${blJoin('p.part_number', 'part')}
+        ${blJoin('p.part_number', 'part', 'p.user_id')}
         JOIN parts_summary_state st ON st.user_id = p.user_id
        WHERE COALESCE(p.source, 'set') <> 'manual'
          AND (p.part_number = ANY($1) OR ${blNummerSql('p.part_number')} = ANY($1))

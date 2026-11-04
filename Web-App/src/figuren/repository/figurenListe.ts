@@ -159,7 +159,7 @@ export async function manuelleFigurenListe(uids: number[], search: string | null
             lo.name AS storage
        FROM minifigs m
        ${teilmengeJoin('m', 'fig')}
-       ${blJoin('m.fig_number', 'fig')}
+       ${blJoin('m.fig_number', 'fig', 'm.user_id')}
        ${figurSichtJoin('m.user_id', 'm.fig_number')}
        LEFT JOIN storage_locations lo ON lo.id = m.storage_id
        LEFT JOIN LATERAL (

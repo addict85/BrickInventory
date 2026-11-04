@@ -64,10 +64,10 @@ async function backfillFigurenErfassungen() {
   let done = 0;
   for (const row of rows) {
     try {
-      // Die BrickLink-Nummer hängt an der Figur, nicht am Konto.
+      // Die eigene BrickLink-Nummer des Kontos vor der gemeinsamen.
       const price = await getCurrentFigMarketPrice(
         row.fig_number, row.user_id,
-        await blAbrufNummer('fig', row.fig_number), row.condition || null);
+        await blAbrufNummer('fig', row.fig_number, row.user_id), row.condition || null);
       if (price) {
         if (await setzeGeschaetztenPreis('fig', row.id, price)) done++;
       }

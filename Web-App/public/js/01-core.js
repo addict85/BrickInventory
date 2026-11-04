@@ -44,7 +44,7 @@ import { mitZweitemFaktor } from './07-admin.js';
  * unvermeidbar (drei Laufzeiten) — test/passwortlaenge.test.js haelt sie
  * zusammen, damit aus „unvermeidbar" nicht „auseinandergelaufen" wird.
  */
-export const PASSWORT_MIN_ZEICHEN = 8;
+export const PASSWORT_MIN_ZEICHEN = 12;
 
 /**
  * Ist dieses Passwort zu kurz?
@@ -739,6 +739,7 @@ export async function api(method, path, body) {
   if (method === 'GET' && res.ok && daten?.success !== false) inZwischenspeicher(path, daten);
   if (res.status === 401) meldeSitzungBeendet(path);
   if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') zeigePflichtwechsel();
+  if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') zeigeZweitpflicht();
   return daten;
 }
 
@@ -1053,7 +1054,7 @@ function _updateLangChips() { _updateLangSelect(); }
 let _resetToken = null;
 
 function showPanel(name){
-  ['login','register','forgot','reset','pflichtwechsel'].forEach(p => {
+  ['login','register','forgot','reset','pflichtwechsel','zweitpflicht'].forEach(p => {
     const el = G('panel-'+p); if(el) el.style.display = p===name?'block':'none';
   });
 }
@@ -1096,7 +1097,19 @@ function zeigePflichtwechsel(){
   G('login-screen').style.display='flex'; startgeruestWeg(); G('app').style.display='none';
   showPanel('pflichtwechsel');
 }
-function oeffneApp(){ if(ME?.mustChangePassword) zeigePflichtwechsel(); else showApp(); }
+// Verwalter ohne zweiten Faktor: Der Server lässt nur dessen Einrichtung zu (403
+// zweiter_faktor_pflicht); js/21-zweiter-faktor.js zeichnet sie in das Feld.
+function zeigeZweitpflicht(){
+  G('login-screen').style.display='flex'; startgeruestWeg(); G('app').style.display='none';
+  showPanel('zweitpflicht');
+  document.dispatchEvent(new CustomEvent('zweitpflicht'));
+}
+function pflichtAbmelden(){ G('btn-logout')?.click(); }
+function oeffneApp(){
+  if(ME?.mustChangePassword) zeigePflichtwechsel();
+  else if(ME?.zweiterFaktorPflicht) zeigeZweitpflicht();
+  else showApp();
+}
 G('btn-pflicht')?.addEventListener('click', async () => {
   const alt=G('pflicht-alt').value, neu=G('pflicht-neu').value, err=G('pflicht-err');
   formularFehler(err, '');
@@ -1546,6 +1559,7 @@ async function bestaetigungErneut(){
 
 registerActions({
   showPanel, rbHinweisOeffnen, rbHinweisWeg, bestaetigungErneut,
+  pflichtAbmelden,
 });
 
 /**

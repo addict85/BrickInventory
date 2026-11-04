@@ -183,7 +183,7 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'sperre-test-geheimnis-lang-genug-1234',
-           PORT: String(port), NODE_ENV: 'production', TRUST_PROXY: 'false' },
+           PORT: String(port), NODE_ENV: 'production', TRUST_PROXY: 'false', DB_SUPERUSER_ERLAUBT: '1' },
   });
   let log = '';
   srv.stdout.on('data', d => { log += d; });

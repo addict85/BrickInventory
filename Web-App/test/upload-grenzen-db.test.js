@@ -17,6 +17,12 @@
  *      PDF-Auftrags darf grösser sein“ (413 statt 200)
  *   E  sein Limit auf alle Pfade (app.use statt app.post auf den Pfad) → rot:
  *      „… andere Routen nicht“ (200 statt 413)
+ * Gegenproben (04.11.2026 gemessen):
+ *   F  rumpfLesen wieder vor Sitzung und Eingang (server.ts) → rot: „ohne
+ *      Anmeldung wird kein Rumpf gelesen“ und „die Teileliste …“ (vor der
+ *      Sitzung gilt jede Anfrage als unangemeldet)
+ *   G  in rumpfLesen die 16-KB-Grenze für Unangemeldete gestrichen → rot:
+ *      „… und auf den Anmelderouten höchstens 16 KB“ (401 statt 413)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -122,5 +128,23 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async (t) =
 
   await t.test('… andere Routen nicht', async () => {
     assert.deepEqual(await json('/settings', { currency: 'EUR', ballast: teile }), { status: 413, code: 'anfrage_zu_gross' });
+  });
+
+  const anonym = async (pfad, rumpf) => {
+    const r = await fetch(`http://127.0.0.1:${port}/api/v1${pfad}`, { method: 'POST',
+      headers: { 'content-type': 'application/json' }, body: rumpf });
+    const j = await r.json().catch(() => null);
+    return { status: r.status, code: j?.code ?? null };
+  };
+
+  await t.test('ohne Anmeldung wird kein Rumpf gelesen', async () => {
+    // Kaputtes JSON: Gelesen gäbe es 400, ungelesen bleibt es bei der 401 des Eingangs.
+    assert.equal((await anonym('/sets/partslist-pdf', '{' + ' '.repeat(1024 * 1024))).status, 401);
+  });
+
+  await t.test('… und auf den Anmelderouten höchstens 16 KB', async () => {
+    const mit = (n) => JSON.stringify({ username: 'niemand', password: 'x'.repeat(20), ballast: 'y'.repeat(n) });
+    assert.equal((await anonym('/auth/login', mit(10 * 1024))).status, 401, 'eine gewöhnliche Anmeldung passt');
+    assert.deepEqual(await anonym('/auth/login', mit(20 * 1024)), { status: 413, code: 'anfrage_zu_gross' });
   });
 });

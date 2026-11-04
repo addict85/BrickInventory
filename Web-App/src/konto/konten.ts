@@ -7,7 +7,7 @@ import * as passkeyRepo from './repository/passkeys';
 import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 
-export { aendereProfil, aktivesKontoNachEmail, erneuereEmailTokenWennFrei, emailVergeben, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameVergeben, raeumeQrTokensAuf, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
+export { aendereProfil, aktivesKontoNachEmail, erneuereEmailTokenWennFrei, emailVergeben, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameVergeben, loescheEigenesKonto, raeumeQrTokensAuf, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
 
 /** Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
 export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<{ beendet: number; version: number }> {
@@ -55,6 +55,12 @@ export async function setzePasswortZurueck(uid: number, passwort: unknown): Prom
 /** Dieselbe Rechenzeit wie registriere(): Die Antwortzeit verriete sonst eine vergebene Adresse. */
 export async function rechneWieRegistrierung(passwort: unknown): Promise<void> {
   await hashe(passwort);
+}
+
+/** Länger als jeder Bestätigungslink gilt; danach sind Name und Adresse wieder frei. */
+export const REGISTRIERUNG_FRIST_TAGE = 7;
+export function raeumeOffeneRegistrierungenAuf(): Promise<number> {
+  return repo.loescheOffeneRegistrierungen(REGISTRIERUNG_FRIST_TAGE);
 }
 
 export async function legeKontoAn(username: string, passwort: unknown, verwalter: boolean): Promise<number | null> {

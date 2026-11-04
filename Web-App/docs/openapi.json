@@ -1204,6 +1204,87 @@
         }
       }
     },
+    "/api/v1/auth/konto": {
+      "delete": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "code": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "passkey": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "x-bestaetigung": {
+          "passwort": "password",
+          "code": "code"
+        }
+      }
+    },
     "/api/v1/auth/login": {
       "post": {
         "tags": [
@@ -9363,6 +9444,9 @@
           },
           "mustChangePassword": {
             "type": "boolean"
+          },
+          "zweiterFaktorPflicht": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -13790,6 +13874,9 @@
                   },
                   "mustChangePassword": {
                     "type": "boolean"
+                  },
+                  "zweiterFaktorPflicht": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -14972,6 +15059,9 @@
                 "type": "boolean"
               },
               "mustChangePassword": {
+                "type": "boolean"
+              },
+              "zweiterFaktorPflicht": {
                 "type": "boolean"
               }
             },

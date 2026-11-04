@@ -52,8 +52,8 @@ export const FEHLER = {
   name_ungueltig:              { de: 'Vor- und Nachname: höchstens 100 Zeichen, ohne Steuerzeichen und ohne Webadressen.',
                                  en: 'First and last name: at most 100 characters, without control characters or web addresses.' },
   email_erforderlich:          { de: 'E-Mail erforderlich.', en: 'Email address required.' },
-  passwort_zu_kurz:            { de: 'Passwort muss mindestens 8 Zeichen lang sein.',
-                                 en: 'The password must be at least 8 characters long.' },
+  passwort_zu_kurz:            { de: 'Passwort muss mindestens 12 Zeichen lang sein.',
+                                 en: 'The password must be at least 12 characters long.' },
   passwort_zu_lang:            { de: 'Das Passwort ist zu lang: höchstens 72 Byte (Umlaute und Sonderzeichen zählen doppelt).',
                                  en: 'The password is too long: at most 72 bytes (accented letters and symbols count double).' },
   passwort_zu_haeufig:         { de: 'Dieses Passwort ist zu häufig oder aus Datenlecks bekannt. Bitte ein anderes wählen.',
@@ -74,6 +74,10 @@ export const FEHLER = {
                                  en: 'The server restarted while importing this set — please check the quantity.' },
   aktuelles_passwort_falsch:   { de: 'Aktuelles Passwort falsch', en: 'Current password is wrong' },
   passwort_wechsel_noetig:     { de: 'Bitte zuerst das Startpasswort ändern.', en: 'Please change the initial password first.' },
+  letzter_verwalter:           { de: 'Das letzte Verwalterkonto kann sich nicht selbst löschen. Bitte zuerst ein anderes Konto zum Verwalter machen.',
+                                 en: 'The last administrator account cannot delete itself. Please make another account an administrator first.' },
+  zweiter_faktor_pflicht:      { de: 'Verwalterkonten brauchen einen zweiten Faktor. Bitte zuerst einen Code-Generator einrichten.',
+                                 en: 'Administrator accounts need a second factor. Please set up an authenticator app first.' },
   alle_felder_erforderlich:    { de: 'Alle Felder erforderlich', en: 'All fields are required' },
   passwort_reset_nicht_eingerichtet: {
     de: 'Passwort-Zurücksetzen per E-Mail ist auf diesem Server nicht eingerichtet. Bitte wende dich an die Person, die ihn betreibt.',
@@ -218,6 +222,10 @@ export const FEHLER = {
   gutschein_existiert:         { de: 'Diesen Gutschein gibt es bereits.',
                                  en: 'This voucher already exists.' },
   nur_pdf:                     { de: 'Nur PDF-Dateien', en: 'PDF files only' },
+  pdf_zu_viele_seiten:         { de: 'Das PDF hat {seiten} Seiten, höchstens {max} sind möglich. Bitte in kleinere Dateien teilen.',
+                                 en: 'The PDF has {seiten} pages; at most {max} are possible. Please split it into smaller files.' },
+  upload_laeuft:               { de: 'Für dieses Konto läuft schon ein Upload dieser Art — bitte warten, bis er fertig ist.',
+                                 en: 'An upload of this kind is already running for this account — please wait until it has finished.' },
 
   // ── Einrichtung ──────────────────────────────────────────────────────────
   quelle_unbekannt:            { de: 'Unbekannte Quelle', en: 'Unknown source' },

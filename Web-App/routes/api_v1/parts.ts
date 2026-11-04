@@ -1,5 +1,5 @@
 import { fehlerAntwort } from '../../src/infra/httpError';
-import { requireToken } from './middleware';
+import { requireToken, kontoSchranke } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
 import { csvEmpfang } from '../../src/infra/dateiEmpfang';
@@ -32,7 +32,7 @@ router.get('/parts/categories', requireToken, async (req: AuthedRequest, res: An
   res.json({ success: true, categories: await getPartsCategories(uids) });
 });
 
-router.post('/parts/import/csv', requireToken, csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/parts/import/csv'>) => {
+router.post('/parts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/parts/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   csvImportAntwort(res, await importiereTeileCsv(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
 });

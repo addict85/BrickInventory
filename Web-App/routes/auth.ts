@@ -7,7 +7,7 @@ import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
 import { zielGedrosselt, kontoGedrosselt } from '../src/konto/zielDrossel';
-import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName } from '../src/konto/http/anmeldung';
+import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import { bestaetigeEinrichtungGebremst } from '../src/konto/passwortBestaetigung';
@@ -74,16 +74,21 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
   if (mitToken) try {
     token = await createToken(uid, tokenLabel(label, 'webapp-session'), dauerhaft, dauerhaft ? APP_HOECHSTDAUER_TAGE : null,
                               { scope: tokenScope(scope), ip: req.ip });
+    // Ein neues Gerät wie bei token-create und qr-token: Der Inhaber soll es merken.
+    hinweisNebenher(uid, 'token_neu', tokenLabel(label, 'webapp-session'));
   } catch (e) {
     console.warn('[login] Token konnte nicht gespeichert werden:', fehlertext(e));
     return sendeFehler(req, res, 500, 'token_nicht_ausgestellt');
   }
+  // Verwalterrechte trägt die Sitzung und ein Token mit Scope `voll`, nicht `app`.
+  const verwalter = user.is_admin && (!mitToken || tokenScope(scope) === 'voll');
   // `never_expires` nennt, was gilt: Mit gleitender Frist ist nichts unbegrenzt.
   res.json({ success: true, ...(token ? { token } : {}), ...(token ? { token_info: await tokenAngaben(token) } : {}),
     never_expires: false,
     user: { id: user.id, username: user.username, is_admin: user.is_admin,
     // Nur beim automatisch erzeugten Admin-Passwort gesetzt (db/database.ts).
-    mustChangePassword: user.must_change_password } });
+    mustChangePassword: user.must_change_password,
+    zweiterFaktorPflicht: verwalter && !await zf.istAktiv(uid) } });
 }
 
 /** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen.
@@ -138,7 +143,8 @@ router.get('/me', async (req, res: Antwort<'GET /api/v1/auth/me'>) => {
     if (req.session?.userId) {
       const user = await K.kontoKurz(req.session.userId);
       if (user) return res.json({ success: true, loggedIn: true,
-        user: { id: user.id, username: user.username, is_admin: user.is_admin, mustChangePassword: user.must_change_password } });
+        user: { id: user.id, username: user.username, is_admin: user.is_admin, mustChangePassword: user.must_change_password,
+                zweiterFaktorPflicht: await zweiterFaktorPflicht(req) } });
     }
     const p = token ? await pruefeToken(token, { ip: req.ip }) : { nutzer: null };
     const u = p.nutzer;
@@ -147,7 +153,8 @@ router.get('/me', async (req, res: Antwort<'GET /api/v1/auth/me'>) => {
       if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
       // is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false.
       return res.json({ success: true, loggedIn: true,
-        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1, mustChangePassword: u.muss_passwort_aendern === true },
+        user: { id: u.user_id, username: u.username, is_admin: u.is_admin === 1, mustChangePassword: u.muss_passwort_aendern === true,
+                zweiterFaktorPflicht: u.is_admin === 1 && !await zf.istAktiv(u.user_id) },
         token_expires: u.expires_at, token_last_used: u.last_used,
         token_info: { scope: u.scope, expires_at: u.expires_at, hard_expires_at: u.hard_expires_at ?? null,
                       never_expires: u.never_expires === true, rotiert_am: u.rotiert_am,
@@ -363,6 +370,19 @@ router.delete('/users/:id', requireAdmin, async (req, res: Antwort<'DELETE /api/
   // erfährt; sonst bliebe das Unterkonto bis zu fünf Minuten im Blickfeld.
   meldeHaushaltsaenderung();
   res.json({ success: true });
+});
+
+// Das eigene Konto, endgültig: Passwort und, falls eingerichtet, zweiter Faktor.
+router.delete('/konto', requireLogin, async (req: LoggedInRequest, res: Antwort<'DELETE /api/v1/auth/konto'>) => {
+  const uid = angemeldeteNutzerId(req);
+  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
+  if (!await K.loescheEigenesKonto(uid)) return sendeFehler(req, res, 409, 'letzter_verwalter');
+  await revokeAllSessions(uid);
+  await loescheKontoDateien(uid);
+  leereTokenCache();
+  meldeHaushaltsaenderung();
+  console.log(`[konto] Konto ${uid} hat sich selbst gelöscht`);
+  req.session.destroy(() => res.clearCookie(sitzungsKeksName(), sitzungsKeksOptionen()).json({ success: true }));
 });
 
 router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/auth/change-password'>) => {

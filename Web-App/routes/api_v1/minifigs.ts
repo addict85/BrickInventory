@@ -1,5 +1,5 @@
 import { fehlerAntwort, pfadParam } from '../../src/infra/httpError';
-import { requireToken } from './middleware';
+import { requireToken, kontoSchranke } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../src/haushalt/haushalt';
 import { getManualMinifigs, getMinifigStats, getMinifigs } from '../../src/figuren/abfragen';
 import { addManualFig, updateManualFig, importiereFigurenCsv } from '../../src/figuren/manuelleFiguren';
@@ -84,7 +84,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
   res.json({ success: true, ...await teileDerFigur(String(req.params.figNumber)) }); 
 });
 
-router.post('/minifigs/import/csv', requireToken, csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/minifigs/import/csv'>) => {
+router.post('/minifigs/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/minifigs/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   csvImportAntwort(res, await importiereFigurenCsv(req.apiUser.user_id, req.file.buffer.toString('utf-8')));
 });

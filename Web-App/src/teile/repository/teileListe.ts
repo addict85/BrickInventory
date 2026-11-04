@@ -152,7 +152,7 @@ export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
     : `SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int`;
   const joinClause = (f.set_number ? 'FROM parts p' : `FROM parts p ${mengeJoin('p')}`)
     + ` ${teilmengeJoin('p', 'part', 'tm', '= ANY($1)')}`
-    + ` ${blJoin('p.part_number', 'part')}`
+    + ` ${blJoin('p.part_number', 'part', 'p.user_id')}`
     + ' LEFT JOIN storage_locations lo ON lo.id = p.storage_id'
     + ` ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}`;
   // Dieselben Joins wie die Hauptabfrage: Jeder hängt am Primärschlüssel und ändert die Zahl nicht.
@@ -194,7 +194,7 @@ export function gebrauchteManuelle(uids: number[]) {
     `SELECT ${blNummerSql('p.part_number')} AS pid, p.color_id,
             MAX(CASE WHEN pa.condition='U' THEN 1 ELSE 0 END) AS any_used
      FROM parts p
-     ${blJoin('p.part_number', 'part')}
+     ${blJoin('p.part_number', 'part', 'p.user_id')}
      JOIN part_acquisitions pa ON pa.user_id=p.user_id AND pa.part_number=p.part_number AND pa.color_id=p.color_id
      WHERE p.user_id = ANY($1) AND p.source='manual'
      GROUP BY ${blNummerSql('p.part_number')}, p.color_id`, [uids]);
@@ -334,7 +334,7 @@ export function manuelleTeile(uids: number[], f: { search?: string | null; stora
            t.added_at AS created_at
     FROM parts t
     ${teilmengeJoin('t', 'part')}
-    ${blJoin('t.part_number', 'part')}
+    ${blJoin('t.part_number', 'part', 't.user_id')}
     ${teilSichtJoin('t.user_id', 't.part_number', 't.color_id')}
     LEFT JOIN storage_locations lo ON lo.id = t.storage_id
     -- Die neueste Erfassung: dieselbe Ordnung wie überall, sonst hätten

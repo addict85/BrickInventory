@@ -42,7 +42,7 @@ const ARTEN: Record<ErfassungsArt, Art> = {
   fig: {
     notFound: 'nicht_gefunden',
     resolvePrice: async (uid, [fn], cond) =>
-      getCurrentFigMarketPrice(String(fn), uid, await blAbrufNummer('fig', String(fn)), cond),
+      getCurrentFigMarketPrice(String(fn), uid, await blAbrufNummer('fig', String(fn), uid), cond),
     cleanupWhenEmpty: (tx, ownerId, [fn]) => loescheManuelleFigur(tx, ownerId, String(fn)),
   },
 };

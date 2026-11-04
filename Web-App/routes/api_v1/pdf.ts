@@ -2,7 +2,7 @@
  * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt.
  * Ausführlich: docs/begruendungen/routes/api_v1/pdf.ts.md#abschnitt */
 import { fehlerAntwort, streamFileToResponse, meldeUndWeiter, meldeUndLiefere, ohneFehlendeDatei, pfadParam } from '../../src/infra/httpError';
-import { requireToken } from './middleware';
+import { requireToken, kontoSchranke } from './middleware';
 import { registerSse } from '../../src/infra/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
@@ -59,7 +59,7 @@ router.get('/sets/partslist-pdf/status/:jobId', requireToken, async (req: Authed
 });
 
 // SSE statt Polling; der Rückfall sendet nur bei Änderung.
-router.get('/sets/partslist-pdf/stream/:jobId', requireToken, async (req: AuthedRequest, res) => {
+router.get('/sets/partslist-pdf/stream/:jobId', requireToken, kontoSchranke('strom'), async (req: AuthedRequest, res) => {
   const jobId = String(req.params.jobId);
   if (!validJobId(jobId)) return sendeFehler(req, res, 400, 'job_id_ungueltig');
   const initial = await pdfJobReadFor(jobId, req.apiUser.user_id);

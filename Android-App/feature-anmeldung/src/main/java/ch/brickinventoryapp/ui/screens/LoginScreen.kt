@@ -424,7 +424,7 @@ private fun RegistrierFelder(
 
         LadeKnopf(stringResource(R.string.register_button), laeuft = laeuft, aktiv = true) {
             // Dieselben drei Prüfungen wie im Web-Formular, in derselben Reihenfolge; die
-            // Längengrenze von 8 Zeichen ist die des Servers (routes/auth.ts). Hier
+            // Längengrenze (PASSWORT_MIN_ZEICHEN) ist die des Servers (routes/auth.ts). Hier
             // vorweggenommen, damit man dafür keine Runde über das Netz braucht.
             eigenerFehler = when {
                 nutzer.isBlank() || email.isBlank() || pw1.isBlank() -> reqFields

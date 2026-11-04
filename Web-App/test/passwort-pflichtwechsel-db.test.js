@@ -87,10 +87,13 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
     assert.equal((await ruf('/settings/tokens', { cookie })).status, 403);
   });
 
-  await t.test('der Wechsel selbst geht, danach alles', async () => {
+  await t.test('der Wechsel selbst geht, danach (als Verwalter mit zweitem Faktor) alles', async () => {
     const w = await ruf('/auth/change-password', { cookie, body: { current: PASS, newPassword: NEU } });
     assert.equal(w.status, 200, JSON.stringify(w.body));
     const neu = w.cookie ?? cookie;
+    // Seit dem 04.11.2026 verlangen Verwalterrechte danach einen Code-Generator.
+    assert.equal((await ruf('/settings/tokens', { cookie: neu })).body.code, 'zweiter_faktor_pflicht');
+    await require('./helpers/verwalter').verwalterMitFaktor(_req, uid);
     assert.equal((await ruf('/settings/tokens', { cookie: neu })).status, 200);
     assert.equal((await ruf('/auth/me', { cookie: neu })).body.user.mustChangePassword, false);
   });

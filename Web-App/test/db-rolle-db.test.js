@@ -16,6 +16,9 @@
  *      Passwort wird abgewiesen“
  *   E  in warneBeiSuperuser() rolsuper nicht mehr beachtet → rot:
  *      „bestehende Installation“ (der Start warnt auch als App-Rolle)
+ *   O  (04.11.2026) in warneBeiSuperuser() das Startverbot ohne
+ *      DB_SUPERUSER_ERLAUBT gestrichen → rot: „bestehende Installation“
+ *      (als Superuser startet die Produktion)
  *   F  PGOPTIONS und `SET search_path` entfernt → rot: „die App-Rolle schiebt
  *      dem Superuser nichts unter“ (Operator der App-Rolle legt eine
  *      Superuser-Rolle an)
@@ -148,11 +151,14 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     assert.equal(m.status, 0, `Schema und Migrationen als App: ${m.stderr}`);
     assert.equal(rolleEinrichten(alt).status, 0, 'ein zweiter Lauf scheitert');
 
-    const warnung = (dbUrl) => spawnSync(process.execPath, ['-e',
+    const warnung = (dbUrl, env = {}) => spawnSync(process.execPath, ['-e',
       "require('./dist/startup/datenbank.js').warneBeiSuperuser().then(w => { console.log('WARNUNG=' + w); return require('./dist/db/database.js').pool.end(); })"],
-    { cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: dbUrl } }).stdout;
-    assert.match(warnung(url(alt)), /WARNUNG=true/, 'als Superuser warnt der Start nicht');
-    assert.match(warnung(url(alt, ROLLE, PASSWORT)), /WARNUNG=false/);
+    { cwd: ROOT, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DATABASE_URL: dbUrl, ...env } });
+    const verbot = warnung(url(alt));
+    assert.equal(verbot.status, 1, `als Superuser startet die Produktion: ${verbot.stdout}`);
+    assert.match(verbot.stderr, /Superuser — Start verweigert.*DB_SUPERUSER_ERLAUBT=1/);
+    assert.match(warnung(url(alt), { DB_SUPERUSER_ERLAUBT: '1' }).stdout, /WARNUNG=true/, 'mit Ausweg warnt der Start nicht');
+    assert.match(warnung(url(alt, ROLLE, PASSWORT)).stdout, /WARNUNG=false/);
   });
 
   await t.test('neue Installation', async () => {

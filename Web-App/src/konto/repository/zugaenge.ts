@@ -195,7 +195,7 @@ export function kontoZuEmailToken(hash: string) {
 
 /** Token-Felder mit abräumen: Ein zweiter Klick meldet keinen zweiten Erfolg. */
 export async function bestaetigeEmail(id: number): Promise<void> {
-  await db.run('UPDATE users SET email_verified=true, verification_token=NULL, token_expires=NULL WHERE id=$1', [id]);
+  await db.run('UPDATE users SET email_verified=true, verification_token=NULL, token_expires=NULL, registrierung_offen=false WHERE id=$1', [id]);
 }
 
 /** Zwei Treffer (ein Name gleich der Adresse eines anderen Kontos, nur im
