@@ -10,6 +10,7 @@ import ch.brickinventoryapp.util.UPDATE_JSON_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_MAX_BYTES
 import ch.brickinventoryapp.util.UPDATE_VERSION_URL
 import ch.brickinventoryapp.util.apkFassung
+import ch.brickinventoryapp.util.beschreibungsSchluessel
 import ch.brickinventoryapp.util.darfInstallieren
 import ch.brickinventoryapp.util.eigeneZertifikate
 import ch.brickinventoryapp.util.gepruefteBeschreibung
@@ -99,10 +100,13 @@ class UpdateViewModel @Inject constructor(
                             antwort.peekBody(UPDATE_JSON_MAX_BYTES).string()
                         }
                 }
-                // Nur eine vom Release-Schlüssel signierte Beschreibung zählt: Schreibrecht
-                // am Repository allein reicht dann nicht, um ein Update zu unterdrücken
-                // oder umzuleiten. Danach wird die Adresse trotzdem geprüft, nicht geglaubt.
-                val beschreibung = withContext(Dispatchers.IO) { gepruefteBeschreibung(roh, eigeneZertifikate(ctx)) }
+                // Nur eine signierte Beschreibung zählt: Schreibrecht am Repository allein
+                // reicht dann nicht, um ein Update zu unterdrücken oder umzuleiten. Danach
+                // wird die Adresse trotzdem geprüft, nicht geglaubt.
+                val beschreibung = withContext(Dispatchers.IO) {
+                    val pem = ctx.resources.openRawResource(R.raw.beschreibungs_schluessel).bufferedReader().use { it.readText() }
+                    gepruefteBeschreibung(roh, eigeneZertifikate(ctx), beschreibungsSchluessel(pem))
+                }
                 if (beschreibung == null || !istErlaubteApkAdresse(beschreibung.apkUrl)) {
                     _state.update {
                         it.copy(laedtPruefung = false, geprueft = true, neuereFassung = null,

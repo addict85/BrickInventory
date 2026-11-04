@@ -137,6 +137,8 @@ class PdfExportManager @Inject constructor(
                 is Result.Success -> {
                     val file = teilelistenAblage(context.filesDir, context.getExternalFilesDir(null))
                     file.outputStream().use { it.write(r.data) }
+                    // Das Inventar liegt im Klartext, solange die Ziel-App es lesen muss, nicht länger.
+                    runCatching { TeilelistenAufraeumer.plane(context) }
                     _state.value = PdfExportState.Done(file)
                 }
                 is Result.Error -> _state.value = PdfExportState.Error(r.message)

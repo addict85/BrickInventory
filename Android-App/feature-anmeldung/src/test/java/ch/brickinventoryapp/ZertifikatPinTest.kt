@@ -86,6 +86,10 @@ import javax.net.ssl.X509ExtendedTrustManager
  *      Handshake-Sitzung gilt der Pin des eigenen Servers“
  *   S  ErneuerbareTlsFabrik.erneuere() ohne Wirkung → rot „nach dem Erneuern prueft
  *      eine neue Verbindung die Kette wieder“ (die Sitzung wurde wiederaufgenommen)
+ * Gegenprobe (04.11.2026, gemessen mit kotlinc lokal; sec11 H6):
+ *   T  in pruefe() wieder `if (pin != null && passtZumPin(chain, pin)) return` (auch
+ *      für eine System-Wurzel) → rot „ein Pin auf eine System-Wurzel gilt nur mit der
+ *      System-Pruefung …“; gegenproben/wurzelpin-ohne-ct.patch
  */
 class ZertifikatPinTest {
 
@@ -369,6 +373,36 @@ class ZertifikatPinTest {
         assertFalse("Eine eigene CA bleibt an ihren Schlüssel gebunden", hole(system(OEFF_WURZEL, OEFF2_WURZEL)))
         assertEquals(ZertifikatUngeklaert.Art.GEAENDERT, frage.offen.value?.art)
         assertEquals("Nur die eine gültige Anfrage kam an", 1, server.requestCount)
+    }
+
+    /**
+     * Ein Pin auf eine System-Wurzel heisst „öffentlich gültig“, und dazu gehört die
+     * CT-Prüfung des Systems. Schickt der Server die Wurzel mit, darf der Abgleich mit
+     * dem Pin diese Prüfung nicht ersetzen. Das „System“ hier kennt die Wurzel, lehnt
+     * aber jede Kette ab, wie es eine nicht protokollierte Ausstellung täte.
+     */
+    @Test
+    fun `ein Pin auf eine System-Wurzel gilt nur mit der System-Pruefung, auch wenn der Server sie mitschickt`() {
+        starte(WURZEL_BLATT_KEY, listOf(WURZEL_BLATT, WURZEL))
+        val basis = system(WURZEL)
+        val ohneCt = object : X509ExtendedTrustManager() {
+            private fun nein(): Nothing = throw java.security.cert.CertificateException("nicht in den CT-Protokollen")
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) { nein() }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) { nein() }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String) { nein() }
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) = basis.checkClientTrusted(c, a, s)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) = basis.checkClientTrusted(c, a, e)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = basis.checkClientTrusted(c, a)
+            override fun getAcceptedIssuers(): Array<X509Certificate> = basis.acceptedIssuers
+        }
+        pins.merkePin(eigener(), spkiFingerabdruck(zert(WURZEL)))
+        assertFalse("Die mitgeschickte Wurzel ersetzt die System-Prüfung", hole(basis, fremd = ohneCt))
+        assertEquals(0, server.requestCount)
+        assertEquals(ZertifikatUngeklaert.Art.GEAENDERT, frage.offen.value?.art)
+
+        frage.verwerfen()
+        assertTrue("Mit bestandener System-Prüfung gilt der Pin", hole(basis, fremd = basis))
+        assertNull(frage.offen.value)
     }
 
     /** Die Fassung ohne Socket kennt den Host nicht; ein Pin des eigenen Servers gilt trotzdem. */

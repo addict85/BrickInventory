@@ -22,10 +22,21 @@ import java.util.concurrent.TimeUnit
  *   F  (sec10 N1) in beschreibung() die Zeile `falsch += frist(…)` gestrichen → rot
  *      „eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht“;
  *      gegenproben/beschreibung-ohne-frist.patch
+ *   G  (04.11.2026, sec11 H1) in schluessel() die Zeile `if geliefert[0] not in app`
+ *      samt Rückgabe gestrichen → rot „ein Beschreibungsschluessel, den die App nicht
+ *      kennt, wird abgelehnt“; gegenproben/beschreibungsschluessel-ungeprueft.patch
  */
 class ReleasePruefenTest {
 
     private val release = "a51ff2f425d94b6f31a06b7805013cc801791b28e58404dc26c7c8298380af06"
+
+    /** Ein öffentlicher EC-Schlüssel als PEM, wie `openssl pkey -pubout` ihn schreibt. */
+    private fun pem(): String {
+        val paar = java.security.KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
+        return "-----BEGIN PUBLIC KEY-----\n" +
+            java.util.Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(paar.public.encoded) +
+            "\n-----END PUBLIC KEY-----\n"
+    }
     private val fremd = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
     private fun datei(inhalt: String): File = File.createTempFile("release", ".txt").apply {
@@ -62,6 +73,24 @@ class ReleasePruefenTest {
     @Test
     fun `die hinterlegte Datei nennt das Release-Zertifikat`() {
         assertEquals(0, pruefe("zertifikat", apksigner(release).path, "../tools/release-zertifikat.sha256"))
+    }
+
+    @Test
+    fun `ein Beschreibungsschluessel, den die App nicht kennt, wird abgelehnt`() {
+        val alt = pem()
+        val neu = pem()
+        val app = datei("# Kommentar\n$alt$neu").path
+        assertEquals("Einer der beiden Schlüssel der App", 0, pruefe("schluessel", datei(neu).path, app))
+        assertEquals("Ein fremder Schlüssel", 1, pruefe("schluessel", datei(pem()).path, app))
+        assertEquals("Keine Beschreibungssignatur, obwohl die App eine verlangt", 1, pruefe("schluessel", "/gibt/es/nicht.pem", app))
+        assertEquals("Die App kennt noch keinen: Übergangsweg", 0, pruefe("schluessel", datei(neu).path, datei("# leer\n").path))
+        assertEquals("Ein kaputter Block", 2, pruefe("schluessel", datei(neu).path, datei("-----BEGIN PUBLIC KEY-----\n%%%\n-----END PUBLIC KEY-----").path))
+    }
+
+    @Test
+    fun `die Schluesseldatei der App ist fuer den Workflow lesbar`() {
+        val rueckgabe = pruefe("schluessel", "/gibt/es/nicht.pem", "../core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem")
+        assertEquals("Der Workflow kann res/raw/beschreibungs_schluessel.pem nicht lesen", false, rueckgabe == 2)
     }
 
     private fun version(code: Long, commit: String) = datei("""{"versionCode":$code,"versionName":"x","commit":"$commit"}""").path

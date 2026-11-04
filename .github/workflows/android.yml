@@ -622,6 +622,7 @@ jobs:
           KS_PASS: ${{ secrets.KEYSTORE_PASSWORT }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASS: ${{ secrets.KEY_PASSWORT }}
+          BESCHREIBUNG_SCHLUESSEL: ${{ secrets.BESCHREIBUNG_SCHLUESSEL }}
         run: |
           set -euo pipefail
           if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KS_PASS" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASS" ]; then
@@ -631,6 +632,12 @@ jobs:
           S="$RUNNER_TEMP/schluessel"; (umask 077; mkdir -p "$S")
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$S/signatur.jks"
           printf '%s' "$KS_PASS" > "$S/ks_pass"; printf '%s' "$KEY_PASS" > "$S/key_pass"; printf '%s' "$KEY_ALIAS" > "$S/alias"
+          # Eigener Schlüssel für die Fassungsbeschreibung (sec11 H1), verschlüsselt abgelegt.
+          # Fehlt er, trägt die Beschreibung nur die Signatur des APK-Schlüssels; ob die App
+          # schon einen verlangt, prüft der Job apk-pruefen.
+          if [ -n "$BESCHREIBUNG_SCHLUESSEL" ]; then
+            printf '%s\n' "$BESCHREIBUNG_SCHLUESSEL" | openssl pkey -aes256 -passout env:KS_PASS -out "$S/beschreibung.pem"
+          fi
 
       - name: Probe-Schlüssel erzeugen
         if: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v')) }}
@@ -641,6 +648,7 @@ jobs:
           keytool -genkeypair -keystore "$S/signatur.jks" -storepass "$P" -keypass "$P" \
             -alias probe -keyalg RSA -keysize 2048 -validity 1 -dname CN=Probe >/dev/null
           printf '%s' "$P" > "$S/ks_pass"; printf '%s' "$P" > "$S/key_pass"; printf probe > "$S/alias"
+          openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -aes256 -pass "file:$S/ks_pass" -out "$S/beschreibung.pem"
 
       - name: Signieren
         env:
@@ -672,13 +680,14 @@ jobs:
           jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$RUNNER_TEMP/bundle.aab" "$KEY_ALIAS" >/dev/null
           jarsigner -verify "$RUNNER_TEMP/bundle.aab" >/dev/null
 
-          # ── Signierte Fassungsbeschreibung (sec8 N4) ──────────────────────────
+          # ── Signierte Fassungsbeschreibung (sec8 N4, sec11 H1) ────────────────
           #
-          # Mit demselben Schlüssel wie das APK: Die App prüft sie gegen die
-          # Signierer der installierten Fassung, ohne zweiten Anker. Schreibrecht
-          # am Repository allein reicht so nicht, um ein Update zu unterdrücken,
-          # auf ein anderes APK zu zeigen oder eine ältere Fassung anzubieten. Die
-          # Adresse zeigt auf den unveränderlichen Anhang dieser Fassung.
+          # Schreibrecht am Repository allein reicht so nicht, um ein Update zu
+          # unterdrücken, auf ein anderes APK zu zeigen oder eine ältere Fassung
+          # anzubieten. Die Adresse zeigt auf den unveränderlichen Anhang dieser
+          # Fassung. `beschreibungssignatur` kommt vom eigenen Beschreibungsschlüssel;
+          # eine App, die ihn kennt, nimmt nur sie. `signatur` (APK-Schlüssel) bleibt für
+          # Fassungen ohne ihn (README, „Beschreibungsschlüssel“).
           # `ausgestellt`/`gueltigBis` (sec10 N1): Ohne Frist liesse sich eine ältere,
           # echt signierte Beschreibung still wieder hochladen. Auffrischen heisst:
           # ein neues Etikett, auch auf denselben Commit (README, „Frist“).
@@ -701,8 +710,15 @@ jobs:
           openssl pkcs12 -in "$S/schluessel.p12" -nocerts -passin env:KS_PASS -passout env:KS_PASS -out "$S/schluessel.pem"
           openssl dgst -sha256 -sign "$S/schluessel.pem" -passin env:KS_PASS -out "$S/version.sig" "$AUS/version-daten.json"
           keytool -exportcert -rfc -keystore "$KS" -storepass:env KS_PASS -alias "$KEY_ALIAS" > "$AUS/signierzertifikat.pem"
-          jq -n --arg daten "$(base64 -w0 "$AUS/version-daten.json")" --arg signatur "$(base64 -w0 "$S/version.sig")" \
-                '{daten:$daten, signatur:$signatur}' > "$AUS/version-signiert.json"
+          BSIG=""
+          if [ -f "$S/beschreibung.pem" ]; then
+            openssl dgst -sha256 -sign "$S/beschreibung.pem" -passin env:KS_PASS -out "$S/beschreibung.sig" "$AUS/version-daten.json"
+            openssl pkey -in "$S/beschreibung.pem" -passin env:KS_PASS -pubout -out "$AUS/beschreibungsschluessel.pem"
+            BSIG=$(base64 -w0 "$S/beschreibung.sig")
+          fi
+          jq -n --arg daten "$(base64 -w0 "$AUS/version-daten.json")" --arg signatur "$(base64 -w0 "$S/version.sig")" --arg bsig "$BSIG" \
+                '{daten:$daten, signatur:$signatur} + (if $bsig == "" then {} else {beschreibungssignatur:$bsig} end)' \
+                > "$AUS/version-signiert.json"
 
           if [ "$ECHT" = "true" ]; then
             install -m 644 "$RUNNER_TEMP/bundle.aab" "$AUS/bundle/release/app-release.aab"
@@ -794,9 +810,13 @@ jobs:
           fi
 
       # Die signierte Beschreibung (sec8 N4): vom selben Zertifikat wie das APK
-      # signiert, und sie beschreibt genau dieses APK. Sonst böte die App nichts an
-      # oder lehnte das geladene APK ab — beides fiele erst auf den Geräten auf.
+      # signiert, und sie beschreibt genau dieses APK. Nennt die App Beschreibungs-
+      # schlüssel (sec11 H1), muss ein Etikett mit einem davon signiert sein. Sonst böte
+      # die App nichts an oder lehnte das geladene APK ab, und beides fiele erst auf
+      # den Geräten auf.
       - name: Signierte Beschreibung prüfen
+        env:
+          ECHT: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v') }}
         run: |
           set -euo pipefail
           A=app/build/outputs
@@ -810,6 +830,15 @@ jobs:
           jq -r .daten "$A/version-signiert.json" | base64 -d > "$T/daten.json"
           jq -r .signatur "$A/version-signiert.json" | base64 -d > "$T/daten.sig"
           openssl dgst -sha256 -verify "$T/schluessel.pem" -signature "$T/daten.sig" "$T/daten.json"
+          if jq -e .beschreibungssignatur "$A/version-signiert.json" >/dev/null; then
+            jq -r .beschreibungssignatur "$A/version-signiert.json" | base64 -d > "$T/beschreibung.sig"
+            openssl dgst -sha256 -verify "$A/beschreibungsschluessel.pem" -signature "$T/beschreibung.sig" "$T/daten.json"
+          fi
+          if [ "$ECHT" = "true" ] && ! python3 tools/release-pruefen.py schluessel "$A/beschreibungsschluessel.pem" \
+              core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem; then
+            echo "::error::Die App verlangt einen Beschreibungsschlüssel, die Beschreibung trägt keinen davon (Secret BESCHREIBUNG_SCHLUESSEL). Nichts wird veröffentlicht."
+            exit 1
+          fi
           python3 tools/release-pruefen.py beschreibung "$T/daten.json" "$A/apk/release/BrickInventory.apk" \
             "$A/apk/release/output-metadata.json" "$GITHUB_SHA" \
             "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME"

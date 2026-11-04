@@ -754,9 +754,6 @@ braucht, ist eine Erlaubnis, die niemand mehr prüft.
 
 Damit der nächste Durchgang nicht dieselben Fragen neu aufwirft:
 
-- **Keine Verschlüsselung von `bestand.db`, Antwort-Cache und Vorschaubildern**
-  (SQLCipher o. ä.). Begründung und Datenklassen unter „Daten auf dem Gerät“.
-  Der Token dagegen liegt nur verschlüsselt (`util/TokenTresor.kt`, Keystore).
 - **Kein `SavedStateHandle`.** Nach Prozesstod sind Filter und Rollposition
   weg. Alles lädt ohnehin vom Server nach, und der Scroll-Merker ist eine
   Bequemlichkeit innerhalb einer Sitzung — nicht etwas, das einen Prozesstod
@@ -776,33 +773,25 @@ Handlungsmacht.
 | Klasse | Inhalt | Ablage |
 |---|---|---|
 | geheim | Token | nur AES-GCM mit Keystore-Schlüssel (`TokenTresor`) |
-| geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), Gutschein-PDFs liegen in einem eigenen Ordner und werden beim Verlassen gelöscht |
-| vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`, Fächer in `Bestandsart`), Ausgang | unverschlüsselt, App-Sandbox |
-| vertraulich | Katalog-Metadaten und Statistik (`ResponseCache`, nur diese zwei Schlüssel) | unverschlüsselt, `noBackupFilesDir` |
-| öffentlich | Vorschaubilder der Sets | unverschlüsselt, `filesDir/vorschau` |
+| geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), ein Gutschein-PDF liegt nur im Speicher (memfd, `PdfViewerScreen`) |
+| vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
+| vertraulich | API-Antworten, Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
+| vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
 
 Für alle gilt: `allowBackup="false"`, Cloud-Sicherung und Geräteumzug
 ausgeschlossen (`NetzsicherheitTest`), beim Abmelden geleert, und jede Ablage
-gehört Server und Konto (`CacheBereichTest`).
-
-**Warum nicht verschlüsselt (pruef6 N3):** Gegen ein verlorenes, gesperrtes
-Gerät schützt die dateibasierte Verschlüsselung von Android (ab Android 10
-Pflicht): Vor dem ersten Entsperren ist der Speicher der App unlesbar. Gegen
-Root oder fremden Code in der App hülfe SQLCipher nicht: Der Schlüssel müsste
-ohne Nutzerauthentisierung im Keystore liegen, weil Abgleich, Widget und
-Preisalarm im Hintergrund lesen — dort käme ein Angreifer an ihn wie die App.
-Dafür brächte es native Bibliotheken (16-KB-Ausrichtung, R8, Prüfsummen) und
-eine Migration des Ausgangs. Darum gilt stattdessen: Geheimes kommt gar nicht
-erst auf die Platte; ein neues Fach in `Bestandsart` lässt `CacheBereichTest`
-scheitern, bis es hier eingeordnet ist.
+gehört Server und Konto (`CacheBereichTest`). Ein neues Fach in `Bestandsart`
+lässt `CacheBereichTest` scheitern, bis es hier eingeordnet ist.
 
 ## Restrisiken, bewusst getragen (pruef6)
 
 - **H2 — Pin auf eine System-Wurzel:** Hat der Nutzer beim Erstkontakt ein
   öffentlich gültiges Zertifikat bestätigt, gilt danach jede öffentlich gültige
-  Kette für diesen Host. Sonst fragte die App bei jedem Wechsel der
-  Zwischenstelle (Let's Encrypt) neu. Restrisiko: ein fehlausgestelltes
-  öffentliches Zertifikat für den Host. Wer das ausschliessen will, betreibt
+  Kette für diesen Host, und zwar nur über die System-Prüfung samt Certificate
+  Transparency, auch wenn der Server die Wurzel mitschickt (sec11 H6,
+  `ZertifikatPinTest`). Sonst fragte die App bei jedem Wechsel der
+  Zwischenstelle (Let's Encrypt) neu. Restrisiko: ein fehlausgestelltes, aber
+  protokolliertes öffentliches Zertifikat für den Host. Wer das ausschliessen will, betreibt
   eine eigene CA (Caddy `sign_with_root`); deren Pin bleibt an ihren Schlüssel
   gebunden.
 - **H7 — keine Root- oder Integritätserkennung:** Die App wird ausserhalb von
@@ -824,11 +813,13 @@ scheitern, bis es hier eingeordnet ist.
   ohne dass jemand entsperren könnte. Wer Code mit der UID der App ausführt,
   kommt an das Token wie die App; dagegen stehen 180 Tage Höchstdauer,
   Rotation und Entwertung beim Abmelden.
-- **Ein Schlüssel für APK und Update-Beschreibung (sec10 H4):** Ein eigener
-  Update-Schlüssel nähme dem APK-Schlüssel nichts: Wer diesen hat, signiert
-  ohnehin installierbare Updates. Ein zweiter Schlüssel brauchte einen zweiten
-  Anker in jeder installierten Fassung. Auf dem Runner liegt er nur
-  verschlüsselt (PKCS12, PEM mit Passwort) und wird nach dem Schritt gelöscht.
+- **Eigener Schlüssel für die Update-Beschreibung (sec11 H1):** Kennt die App
+  einen Beschreibungsschlüssel (`res/raw/beschreibungs_schluessel.pem`), gilt
+  nur dessen Signatur; der APK-Schlüssel signiert dann nichts, was sie als
+  Beschreibung annimmt. Bis der Betreiber ihn einrichtet (README,
+  „Beschreibungsschlüssel“), gilt der Übergangsweg über die Signierer der App.
+  Auf dem Runner liegen beide nur verschlüsselt und werden nach dem Schritt
+  gelöscht.
 
 ## Token nur an die eigene Herkunft
 

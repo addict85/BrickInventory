@@ -27,6 +27,9 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             // Gutschein-PDFs eines abgebrochenen Laufs: Das Verlassen des Betrachters kam nie.
             runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(cacheDir) }
+            // Bild-Zwischenspeicher älterer Fassungen (Klartext) und eine abgelaufene Teileliste.
+            runCatching { ch.brickinventoryapp.util.raeumeKlartextBildcachesAuf(cacheDir) }
+            runCatching { ch.brickinventoryapp.util.raeumeAlteTeilelisteAuf(filesDir, System.currentTimeMillis()) }
             runCatching { preferencesManager.uebernehmeAltesToken() }
             // Den Preisalarm-Abruf wieder einplanen: Zurückgesetzte App-Daten oder ein
             // „Force Stop“ verwerfen die Aufträge, der Schalter stünde sonst auf „an“

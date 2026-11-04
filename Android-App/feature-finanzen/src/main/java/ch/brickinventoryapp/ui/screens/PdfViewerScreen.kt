@@ -12,6 +12,8 @@ import android.os.Bundle
 import android.os.CancellationSignal
 import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
+import android.system.Os
+import android.system.OsConstants
 import android.print.PageRange
 import android.print.PrintAttributes
 import android.print.PrintDocumentAdapter
@@ -65,16 +67,19 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.ByteArrayInputStream
+import java.io.Closeable
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.io.RandomAccessFile
 import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.PdfSchritt
+import ch.brickinventoryapp.util.ladePdfInDenSpeicher
 import ch.brickinventoryapp.util.pdfAblage
 import ch.brickinventoryapp.util.pdfSchritt
-import ch.brickinventoryapp.util.vergissPdf
 import ch.brickinventoryapp.ui.theme.Formen
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -82,7 +87,8 @@ import kotlin.math.sqrt
 
 /**
  * In-App PDF-Viewer für grosse Anleitungen: Der Download läuft streamend auf die
- * Platte, PdfRenderer rendert die Seiten einzeln, es liegt nur das Sichtbare als
+ * Platte (Gutscheine nur in den Speicher, [PdfQuelle.Speicher]), PdfRenderer
+ * rendert die Seiten einzeln, es liegt nur das Sichtbare als
  * Bitmap im Speicher. „Herunterladen“ kopiert die geladene Datei, statt sie über
  * den DownloadManager neu zu holen — der kennt den Bearer-Token nicht.
  */
@@ -133,8 +139,73 @@ internal fun bitmapMasse(breitePx: Int, ratio: Float): Pair<Int, Int> {
 private sealed class PdfLoadState {
     data class Downloading(val pct: Int, val bytes: Long, val total: Long) : PdfLoadState()
     object Rendering : PdfLoadState()
-    data class Ready(val file: File, val pageCount: Int) : PdfLoadState()
+    data class Ready(val quelle: PdfQuelle, val pageCount: Int) : PdfLoadState()
     data class Error(val message: String) : PdfLoadState()
+}
+
+/** Woher der Betrachter liest: eine Datei im Zwischenspeicher oder nur der Speicher. */
+private sealed interface PdfQuelle : Closeable {
+    /** Ein eigener Deskriptor je Zugriff: PdfRenderer schliesst ihn mit. */
+    fun oeffne(): ParcelFileDescriptor
+    fun eingang(): InputStream
+
+    class Datei(private val datei: File) : PdfQuelle {
+        override fun oeffne(): ParcelFileDescriptor = ParcelFileDescriptor.open(datei, ParcelFileDescriptor.MODE_READ_ONLY)
+        override fun eingang(): InputStream = datei.inputStream()
+        override fun close() = Unit
+    }
+
+    /**
+     * Ein Gutschein-PDF (Nummer und PIN) in einem memfd: PdfRenderer braucht einen
+     * Deskriptor, in dem er springen kann, aber keinen Namen auf der Platte. Der Bereich
+     * vergeht mit [close] oder spätestens mit dem Prozess, auch nach einem Absturz.
+     */
+    class Speicher(private val inhalt: ByteArray) : PdfQuelle {
+        private val bereich: ParcelFileDescriptor = run {
+            val fd = Os.memfd_create("pdf", 0)
+            try {
+                var geschrieben = 0
+                while (geschrieben < inhalt.size) geschrieben += Os.write(fd, inhalt, geschrieben, inhalt.size - geschrieben)
+                ParcelFileDescriptor.dup(fd)
+            } finally {
+                Os.close(fd)
+            }
+        }
+
+        // Alle Duplikate teilen die Leseposition: vorn beginnen, wie bei einer frisch geöffneten Datei.
+        override fun oeffne(): ParcelFileDescriptor =
+            bereich.dup().also { Os.lseek(it.fileDescriptor, 0, OsConstants.SEEK_SET) }
+
+        override fun eingang(): InputStream = ByteArrayInputStream(inhalt)
+        override fun close() = bereich.close()
+    }
+}
+
+/**
+ * Hält die Quelle, solange der Betrachter steht. Kommt sie erst nach dem Verlassen an
+ * (der Download lief noch), wird sie sofort geschlossen statt bis zum Prozessende zu leben.
+ */
+private class OffenePdfQuelle : Closeable {
+    private var quelle: PdfQuelle? = null
+    private var zu = false
+
+    @Synchronized
+    fun halte(neu: PdfQuelle): Boolean {
+        if (zu) {
+            neu.close()
+            return false
+        }
+        quelle?.close()
+        quelle = neu
+        return true
+    }
+
+    @Synchronized
+    override fun close() {
+        zu = true
+        quelle?.close()
+        quelle = null
+    }
 }
 
 // PdfRenderer ist nicht thread-safe und öffnet nur eine Seite gleichzeitig →
@@ -164,13 +235,15 @@ fun PdfViewerScreen(
     // drei Stellen, eine Wahrheit. Zurueck auf 1x bei einem anderen PDF.
     var zoom by remember(pdfUrl) { mutableFloatStateOf(PDF_ZOOM_MIN) }
     val anker = remember(pdfUrl) { ZoomAnker() }
-    // Ein Gutschein-PDF trägt Nummer und PIN: eigener Ordner, und beim Verlassen weg
-    // (dazu FLAG_SECURE über Sichtschutz im Graphen). Anleitungen bleiben im Zwischenspeicher.
+    // Ein Gutschein-PDF trägt Nummer und PIN: keine Datei (ablage == null), nur ein
+    // Speicherbereich, der mit dem Betrachter vergeht (dazu FLAG_SECURE über Sichtschutz
+    // im Graphen). Anleitungen bleiben im Zwischenspeicher.
     val vertraulich = remember(pdfUrl) { ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine(pdfUrl) }
     val ablage = remember(pdfUrl) { pdfAblage(ctx.cacheDir, pdfUrl, vertraulich) }
     val speicherbar = remember(pdfUrl) { ch.brickinventoryapp.ui.viewmodel.pdfDarfGespeichertWerden(pdfUrl) }
-    DisposableEffect(ablage) {
-        onDispose { if (vertraulich) vergissPdf(ablage) }
+    val offen = remember(pdfUrl) { OffenePdfQuelle() }
+    DisposableEffect(offen) {
+        onDispose { offen.close() }
     }
     // Geste und Doppeltipp zoomen um ihren Punkt, die Knoepfe (null) um die Mitte.
     val setzeZoom = { neu: Float, punkt: Offset? ->
@@ -203,14 +276,17 @@ fun PdfViewerScreen(
             ?.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "brickinv:pdf")
         try {
             try { wifiLock?.acquire() } catch (_: Exception) {}
-            val cacheFile = ablage
-            withContext(Dispatchers.IO) { cacheFile.parentFile?.mkdirs() }
-            val (file, pageCount) = ladeUndZaehle(
-                pdfUrl, cacheFile, httpClient,
-                ladefehlerText,
-                aufraeumen = { prunePdfCache(ctx.cacheDir, keep = cacheFile) },
-            ) { state = it }
-            state = PdfLoadState.Ready(file, pageCount)
+            val (quelle, pageCount) = if (ablage == null) {
+                ladeInDenSpeicherUndZaehle(pdfUrl, httpClient, offen) { state = it }
+            } else {
+                withContext(Dispatchers.IO) { ablage.parentFile?.mkdirs() }
+                ladeUndZaehle(
+                    pdfUrl, ablage, httpClient,
+                    ladefehlerText,
+                    aufraeumen = { prunePdfCache(ctx.cacheDir, keep = ablage) },
+                ) { state = it }
+            }
+            state = PdfLoadState.Ready(quelle, pageCount)
         } catch (e: Exception) {
             state = PdfLoadState.Error(e.message ?: unbekannterFehlerText)
         } finally {
@@ -233,11 +309,11 @@ fun PdfViewerScreen(
                     // Herunterladen nur, wo es erlaubt ist (pdfDarfGespeichertWerden).
                     val s = state
                     if (s is PdfLoadState.Ready) {
-                        IconButton(onClick = { printPdf(ctx, s.file, title) }) {
+                        IconButton(onClick = { printPdf(ctx, s.quelle, title) }) {
                             Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
                         }
                         if (speicherbar) {
-                            IconButton(onClick = { savePdfToDownloads(ctx, s.file, title) }) {
+                            IconButton(onClick = { savePdfToDownloads(ctx, s.quelle, title) }) {
                                 Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
                             }
                         }
@@ -255,7 +331,7 @@ fun PdfViewerScreen(
             when (val s = state) {
                 is PdfLoadState.Downloading -> DownloadProgress(s)
                 is PdfLoadState.Rendering -> CenteredLoading(stringResource(R.string.pdfview_rendering))
-                is PdfLoadState.Ready -> PdfPages(s.file, s.pageCount, zoom, anker, setzeZoom)
+                is PdfLoadState.Ready -> PdfPages(s.quelle, s.pageCount, zoom, anker, setzeZoom)
                 is PdfLoadState.Error -> Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Text(
                         stringResource(R.string.pdfview_load_failed, s.message),
@@ -396,7 +472,7 @@ private class ZoomAnker {
 
 @Composable
 private fun PdfPages(
-    file: File, pageCount: Int, zoom: Float, anker: ZoomAnker, setzeZoom: (Float, Offset?) -> Unit,
+    quelle: PdfQuelle, pageCount: Int, zoom: Float, anker: ZoomAnker, setzeZoom: (Float, Offset?) -> Unit,
 ) {
     val dichte = LocalDensity.current
     val waagrecht = rememberScrollState()
@@ -498,7 +574,7 @@ private fun PdfPages(
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
             ) {
                 items((0 until pageCount).toList()) { index ->
-                    PdfPage(file, index, renderBreitePx)
+                    PdfPage(quelle, index, renderBreitePx)
                 }
             }
         }
@@ -506,14 +582,14 @@ private fun PdfPages(
 }
 
 @Composable
-private fun PdfPage(file: File, index: Int, renderBreitePx: Int) {
-    var bitmap by remember(file, index) { mutableStateOf<Bitmap?>(null) }
+private fun PdfPage(quelle: PdfQuelle, index: Int, renderBreitePx: Int) {
+    var bitmap by remember(quelle, index) { mutableStateOf<Bitmap?>(null) }
 
     // remember ohne, LaunchedEffect mit renderBreitePx: Beim Stufenwechsel bleibt die
     // alte Bitmap stehen, bis die neue da ist. Ein Ladekreis hätte eine andere Höhe
     // und verlöre beim Zoomen die Stelle in der Anleitung.
-    LaunchedEffect(file, index, renderBreitePx) {
-        val neu = withContext(Dispatchers.IO) { renderPdfPage(file, index, renderBreitePx) }
+    LaunchedEffect(quelle, index, renderBreitePx) {
+        val neu = withContext(Dispatchers.IO) { renderPdfPage(quelle, index, renderBreitePx) }
         if (neu != null) bitmap = neu
     }
 
@@ -539,12 +615,12 @@ private fun PdfPage(file: File, index: Int, renderBreitePx: Int) {
     }
 }
 
-private suspend fun renderPdfPage(file: File, index: Int, targetWidthPx: Int): Bitmap? =
+private suspend fun renderPdfPage(quelle: PdfQuelle, index: Int, targetWidthPx: Int): Bitmap? =
     pdfRenderMutex.withLock {
         var pfd: ParcelFileDescriptor? = null
         var renderer: PdfRenderer? = null
         try {
-            pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            pfd = quelle.oeffne()
             renderer = PdfRenderer(pfd)
             if (index >= renderer.pageCount) return@withLock null
             val page = renderer.openPage(index)
@@ -585,7 +661,7 @@ private suspend fun ladeUndZaehle(
     fehlerText: String,
     aufraeumen: () -> Unit,
     onZustand: (PdfLoadState) -> Unit,
-): Pair<File, Int> {
+): Pair<PdfQuelle, Int> {
     var versuch = 0
     while (true) {
         versuch++
@@ -606,7 +682,7 @@ private suspend fun ladeUndZaehle(
                 pfd.close()
                 count
             }
-            return cacheFile to anzahl
+            return PdfQuelle.Datei(cacheFile) to anzahl
         } catch (e: Exception) {
             if (versuch >= 2 || ch.brickinventoryapp.ui.viewmodel.pdfMitEinmalTicket(url)) throw e
             withContext(Dispatchers.IO) {
@@ -617,6 +693,46 @@ private suspend fun ladeUndZaehle(
         }
     }
 }
+
+/**
+ * Der Weg für vertrauliche PDFs: ganz in den Speicher ([ladePdfInDenSpeicher]), ohne
+ * Teildatei und ohne Wiederaufnahme, dann in einen memfd ([PdfQuelle.Speicher]).
+ */
+private suspend fun ladeInDenSpeicherUndZaehle(
+    url: String,
+    httpClient: OkHttpClient,
+    offen: OffenePdfQuelle,
+    onZustand: (PdfLoadState) -> Unit,
+): Pair<PdfQuelle, Int> {
+    val inhalt = withContext(Dispatchers.IO) {
+        ladePdfInDenSpeicher(ladeClient(httpClient), url) { geladen, gesamt ->
+            val pct = if (gesamt > 0) (geladen * 100 / gesamt).toInt() else 0
+            onZustand(PdfLoadState.Downloading(pct, geladen, if (gesamt > 0) gesamt else 0L))
+        }
+    }
+    onZustand(PdfLoadState.Rendering)
+    return withContext(Dispatchers.IO) {
+        val quelle = PdfQuelle.Speicher(inhalt)
+        if (!offen.halte(quelle)) throw kotlinx.coroutines.CancellationException("Betrachter verlassen")
+        val pfd = quelle.oeffne()
+        val renderer = PdfRenderer(pfd)
+        val anzahl = renderer.pageCount
+        renderer.close()
+        pfd.close()
+        quelle to anzahl
+    }
+}
+
+/**
+ * Vom geteilten api-Client abgeleitet: newBuilder() übernimmt die Interceptors
+ * (Bearer-Token, Klartext-Verbot, 401-Meldung) und die Pools; nur die Zeitgrenzen weichen ab.
+ */
+private fun ladeClient(baseClient: OkHttpClient): OkHttpClient = baseClient.newBuilder()
+    .connectTimeout(30, TimeUnit.SECONDS)
+    .readTimeout(120, TimeUnit.SECONDS)
+    .callTimeout(0, TimeUnit.SECONDS)
+    .retryOnConnectionFailure(true)
+    .build()
 
 /**
  * Hält den PDF-Ansichts-Cache unter [PDF_CACHE_BUDGET_BYTES]. Angesehene
@@ -662,15 +778,7 @@ private suspend fun downloadPdfWithResume(
     fehlerText: String,
     onProgress: (downloaded: Long, total: Long) -> Unit
 ) {
-    // Vom geteilten api-Client abgeleitet: newBuilder() übernimmt die Interceptors
-    // (Bearer-Token, Klartext-Verbot, 401-Meldung) und die Pools; nur die Zeitgrenzen
-    // weichen ab.
-    val client = baseClient.newBuilder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(120, TimeUnit.SECONDS)
-        .callTimeout(0, TimeUnit.SECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+    val client = ladeClient(baseClient)
 
     // Der laufende Download schreibt in `<name>.part`; erst der Abschluss benennt um.
     // Ohne diese Trennung wäre eine fertige Datei nicht von einer abgebrochenen zu
@@ -756,7 +864,7 @@ private suspend fun downloadPdfWithResume(
 }
 
 // Druckt die bereits geladene PDF-Datei über das System-Druckframework.
-private fun printPdf(ctx: Context, file: File, title: String) {
+private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String) {
     try {
         val printManager = ctx.getSystemService(Context.PRINT_SERVICE) as PrintManager
         val jobName = title.ifBlank { ctx.getString(R.string.pdfview_default_name) }
@@ -785,7 +893,7 @@ private fun printPdf(ctx: Context, file: File, title: String) {
                 callback: WriteResultCallback?
             ) {
                 try {
-                    file.inputStream().use { input ->
+                    quelle.eingang().use { input ->
                         FileOutputStream(destination.fileDescriptor).use { output ->
                             input.copyTo(output)
                         }
@@ -812,7 +920,7 @@ private fun printPdf(ctx: Context, file: File, title: String) {
  * als „anleitung.pdf“ ab. Kopieren geht auch offline. Über den MediaStore, der
  * keine Berechtigung braucht.
  */
-private fun savePdfToDownloads(ctx: Context, file: File, title: String) {
+private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String) {
     try {
         val safe = (title.ifBlank { "anleitung" }).replace(Regex("[^A-Za-z0-9._-]"), "_")
         val name = if (safe.endsWith(".pdf", true)) safe else "$safe.pdf"
@@ -828,7 +936,7 @@ private fun savePdfToDownloads(ctx: Context, file: File, title: String) {
         val resolver = ctx.contentResolver
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
             ?: throw IllegalStateException(ctx.getString(R.string.pdfview_no_target))
-        resolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
+        resolver.openOutputStream(uri)?.use { out -> quelle.eingang().use { it.copyTo(out) } }
             ?: throw IllegalStateException(ctx.getString(R.string.pdfview_write_failed))
         values.clear()
         values.put(MediaStore.Downloads.IS_PENDING, 0)

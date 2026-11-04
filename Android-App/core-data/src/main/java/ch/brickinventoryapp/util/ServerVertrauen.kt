@@ -206,12 +206,15 @@ class PinVertrauen(
         if (schluessel == null) return ohneHost(chain) { mit(fremdeHosts) }
         if (chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
         val pin = pins.pin(schluessel)
-        if (pin != null && passtZumPin(chain, pin)) return
+        // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate
+        // Transparency: Schickt der Server die Wurzel mit, umginge der Abgleich die CT-Prüfung.
+        val oeffentlicherPin = pin != null && pin in systemWurzeln
+        if (pin != null && !oeffentlicherPin && passtZumPin(chain, pin)) return
         // Öffentlich heisst: allein mit den System-CAs, nie über eine Nutzer-CA.
         val oeffentlich = runCatching { mit(fremdeHosts) }.isSuccess
         // Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel:
         // Wechselt die CA ihre Wurzel (Let's Encrypt X1 → X2), fragt die App nicht neu.
-        if (pin != null && oeffentlich && pin in systemWurzeln) return
+        if (oeffentlicherPin && oeffentlich) return
         val ueberNutzerCa = !oeffentlich && runCatching { mit(kette) }.isSuccess
         val wurzel = when {
             oeffentlich -> anker(chain, fremdeHosts.acceptedIssuers)
@@ -221,7 +224,7 @@ class PinVertrauen(
         val fp = spkiFingerabdruck(wurzel ?: chain.last())
         if (pin != null) {
             // Gepinnte Nutzer-CA: Die Kette hat eben bis zu ihr gegolten.
-            if (ueberNutzerCa && wurzel != null && fp == pin) return
+            if (ueberNutzerCa && wurzel != null && fp == pin && !oeffentlicherPin) return
             throw gemeldet(ZertifikatUngeklaert(schluessel, fp, ZertifikatUngeklaert.Art.GEAENDERT, erwartet = pin))
         }
         val art = when {

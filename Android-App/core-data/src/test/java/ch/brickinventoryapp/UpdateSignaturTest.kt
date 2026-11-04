@@ -2,6 +2,7 @@ package ch.brickinventoryapp
 
 import ch.brickinventoryapp.util.UPDATE_RELEASE_BASIS
 import ch.brickinventoryapp.util.UPDATE_RELEASE_WURZEL
+import ch.brickinventoryapp.util.beschreibungsSchluessel
 import ch.brickinventoryapp.util.gepruefteBeschreibung
 import ch.brickinventoryapp.util.istErlaubteApkAdresse
 import ch.brickinventoryapp.util.pruefsummePasst
@@ -12,6 +13,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.Signature
 import java.util.Base64
 
 /**
@@ -22,12 +26,19 @@ import java.util.Base64
  * ein üblicher APK-Schlüssel, einmal ECDSA; die Zertifikate sind feste Testdaten.
  *
  * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
- *   A  gepruefteBeschreibung() ohne die Zeile `if (zertifikate.none { … }) return null`
+ *   A  gepruefteBeschreibung() ohne die Zeile `if (!echt) return null` (bis sec11: `if (zertifikate.none { … })`)
  *      → rot „ein fremder Schluessel …“, „veraenderte Daten …“ und „eine
  *      unsignierte version.json …“; gegenproben/update-beschreibung-ungeprueft.patch
  *   B  pruefsummePasst() vergleicht nur als Präfix (`startsWith`) und ohne die
  *      Leer-Abfrage → rot „das APK muss die signierte Pruefsumme tragen“
  *   C  istErlaubteApkAdresse() ohne FASSUNGS_ETIKETT.matches → rot „nur Fassungsetiketten …“
+ * Gegenproben (04.11.2026, gemessen mit kotlinc lokal; sec11 H1, Schlüsseltrennung):
+ *   D  gepruefteBeschreibung() nimmt die APK-Signatur auch dann, wenn die App
+ *      Beschreibungsschlüssel kennt (`|| zertifikate.any { … }`) → rot „kennt die App
+ *      einen Beschreibungsschluessel, gilt die APK-Signatur nicht mehr“;
+ *      gegenproben/beschreibung-ohne-schluesseltrennung.patch
+ *   E  beschreibungsSchluessel() nur den ersten Block (`.take(1)`) → rot „waehrend
+ *      eines Schluesselwechsels gelten alter und neuer Schluessel“
  */
 class UpdateSignaturTest {
 
@@ -40,18 +51,18 @@ class UpdateSignaturTest {
 
     @Test
     fun `die vom Release-Schluessel signierte Beschreibung gilt`() {
-        val b = gepruefteBeschreibung(huelle(), listOf(release))
+        val b = gepruefteBeschreibung(huelle(), listOf(release), emptyList())
         assertNotNull("Die mit openssl signierte Beschreibung wird nicht erkannt", b)
         assertEquals(200001234, b!!.versionCode)
         assertEquals("9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08", b.apkSha256)
         assertTrue(istErlaubteApkAdresse(b.apkUrl))
-        assertNotNull("ECDSA wie RSA", gepruefteBeschreibung(huelle(signatur = FREMD_SIG), listOf(fremd)))
+        assertNotNull("ECDSA wie RSA", gepruefteBeschreibung(huelle(signatur = FREMD_SIG), listOf(fremd), emptyList()))
     }
 
     @Test
     fun `ein fremder Schluessel gilt nicht`() {
-        assertNull(gepruefteBeschreibung(huelle(signatur = FREMD_SIG), listOf(release)))
-        assertNull("Ohne bekannte Signierer gilt nichts", gepruefteBeschreibung(huelle(), emptyList()))
+        assertNull(gepruefteBeschreibung(huelle(signatur = FREMD_SIG), listOf(release), emptyList()))
+        assertNull("Ohne bekannte Signierer gilt nichts", gepruefteBeschreibung(huelle(), emptyList(), emptyList()))
     }
 
     @Test
@@ -59,14 +70,63 @@ class UpdateSignaturTest {
         val echt = String(b64.decode(DATEN))
         val umgeleitet = echt.replace("BrickInventory-200001234.apk", "Anderes-200001234.apk")
         val enc = Base64.getEncoder().encodeToString(umgeleitet.toByteArray())
-        assertNull(gepruefteBeschreibung(huelle(daten = enc), listOf(release)))
+        assertNull(gepruefteBeschreibung(huelle(daten = enc), listOf(release), emptyList()))
     }
 
     @Test
     fun `eine unsignierte version-json gilt nicht`() {
         val alt = """{"versionCode":200009999,"versionName":"9","apkUrl":"$UPDATE_RELEASE_BASIS/BrickInventory.apk"}"""
-        assertNull(gepruefteBeschreibung(alt, listOf(release)))
-        assertNull(gepruefteBeschreibung(huelle(signatur = ""), listOf(release)))
+        assertNull(gepruefteBeschreibung(alt, listOf(release), emptyList()))
+        assertNull(gepruefteBeschreibung(huelle(signatur = ""), listOf(release), emptyList()))
+    }
+
+    private fun ecSchluessel(): KeyPair = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
+
+    /** Signiert wie der Signierjob: `openssl dgst -sha256 -sign` mit einem EC-Schlüssel. */
+    private fun signiere(paar: KeyPair): String = Base64.getEncoder().encodeToString(
+        Signature.getInstance("SHA256withECDSA").run { initSign(paar.private); update(b64.decode(DATEN)); sign() })
+
+    private fun pem(vararg paare: KeyPair) = "# Kommentar wie in res/raw\n" + paare.joinToString("\n") {
+        "-----BEGIN PUBLIC KEY-----\n" + Base64.getMimeEncoder(64, "\n".toByteArray()).encodeToString(it.public.encoded) +
+            "\n-----END PUBLIC KEY-----"
+    }
+
+    private fun mitBeschreibungssignatur(signatur: String, apkSignatur: String = RELEASE_SIG) =
+        """{"daten":"$DATEN","signatur":"$apkSignatur","beschreibungssignatur":"$signatur"}"""
+
+    @Test
+    fun `kennt die App einen Beschreibungsschluessel, gilt die APK-Signatur nicht mehr`() {
+        val eigen = ecSchluessel()
+        val schluessel = beschreibungsSchluessel(pem(eigen))
+        assertNotNull("Vom Beschreibungsschlüssel signiert",
+            gepruefteBeschreibung(mitBeschreibungssignatur(signiere(eigen)), listOf(release), schluessel))
+        assertNull("Nur die APK-Signatur genügt nicht mehr", gepruefteBeschreibung(huelle(), listOf(release), schluessel))
+        assertNull("Eine Beschreibungssignatur eines fremden Schlüssels gilt nicht",
+            gepruefteBeschreibung(mitBeschreibungssignatur(signiere(ecSchluessel())), listOf(release), schluessel))
+        assertNotNull("Ohne Beschreibungsschlüssel gilt der Übergangsweg",
+            gepruefteBeschreibung(mitBeschreibungssignatur(signiere(eigen)), listOf(release), emptyList()))
+    }
+
+    @Test
+    fun `waehrend eines Schluesselwechsels gelten alter und neuer Schluessel`() {
+        val alt = ecSchluessel()
+        val neu = ecSchluessel()
+        val beide = beschreibungsSchluessel(pem(alt, neu))
+        assertEquals(2, beide.size)
+        assertNotNull(gepruefteBeschreibung(mitBeschreibungssignatur(signiere(alt)), emptyList(), beide))
+        assertNotNull(gepruefteBeschreibung(mitBeschreibungssignatur(signiere(neu)), emptyList(), beide))
+        assertNull("Nach dem Wechsel gilt der alte nicht mehr",
+            gepruefteBeschreibung(mitBeschreibungssignatur(signiere(alt)), emptyList(), beschreibungsSchluessel(pem(neu))))
+    }
+
+    /** Die Datei, die die App liest: nur Kommentare oder lesbare EC-Schlüssel. */
+    @Test
+    fun `die Schluesseldatei der App enthaelt nur lesbare Schluessel`() {
+        val datei = File(Quellen.projekt, "core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem")
+        val text = datei.readText()
+        val schluessel = beschreibungsSchluessel(text)
+        assertEquals("Ein Block ist kein lesbarer Schlüssel", text.split("-----BEGIN PUBLIC KEY-----").size - 1, schluessel.size)
+        for (s in schluessel) java.security.KeyFactory.getInstance("EC").generatePublic(java.security.spec.X509EncodedKeySpec(s))
     }
 
     @Test
