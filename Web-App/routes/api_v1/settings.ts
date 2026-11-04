@@ -28,7 +28,7 @@ import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
 import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/infra/mailer';
-import { sendeFehler } from '../../src/infra/fehlerTexte';
+import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsStand } from '../../src/infra/tlsWurzel';
 import { konfig } from '../../src/infra/konfig';
 import { invalidateTheme } from '../../src/konto/indexHtml';
@@ -405,8 +405,10 @@ router.post('/settings/einrichtung/fertig', async (req, res: Antwort<'POST /api/
 // Prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
 router.post('/settings/quelle-testen', async (req, res: Antwort<'POST /api/v1/settings/quelle-testen'>) => {
   if (!istVerwalter(req)) return sendeFehler(req, res, 403, 'nur_admins');
-  await quellePruefen(String(req.body?.quelle ?? ''));
-  res.json({ success: true });
+  const absage = await quellePruefen(String(req.body?.quelle ?? ''));
+  if (!absage) return res.json({ success: true });
+  res.status(400).json({ success: false, code: absage.code, details: absage.grund,
+    error: fehlerText(absage.code, antwortSprache(req), { quelle: absage.quelle, grund: absage.grund }) });
 });
 
 // Leer heisst „Vorgabe des Verwalters".

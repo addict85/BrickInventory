@@ -1,8 +1,9 @@
 import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, toast, passwortRegelText, rbHinweisVerbergen, rbHinweisZeigen } from './01-core.js';
+import { ico, G, api, esc, toast, passwortRegelText, rbHinweisVerbergen, rbHinweisZeigen, formularFehler, verwirfToasts } from './01-core.js';
 import { oeffneErfassen } from './02-gallery.js';
 import { mitZweitemFaktor } from './07-admin.js';
+import { verstaendlicherGrund } from './01-bausteine.js';
 
 // ═══ Einrichtung beim ersten Start (Server: routes/settings.ts /einrichtung) ═
 // Nur für Verwalter, nur solange etwas fehlt. „Später" schliesst bloss — beim
@@ -11,6 +12,8 @@ import { mitZweitemFaktor } from './07-admin.js';
 /** Die Schritte dieses Durchgangs; „passwort" nur, wenn es noch das Startpasswort ist. */
 let _schritte = [];
 let _jetzt = 0;
+/** Welche Quellen schon einen gespeicherten Zugang haben; dann prüft ein leeres Feld diesen. */
+let _gespeichert = {};
 
 const QUELLEN_FELDER = {
   rebrickable: { rebrickable_api_key: 'ew-rb' },
@@ -27,11 +30,25 @@ function zeige() {
   G('ew-spaeter').hidden = _jetzt === _schritte.length - 1;
   G('ew-zurueck').style.display = _jetzt > 0 ? '' : 'none';
   G('ew-weiter').textContent = _jetzt === _schritte.length - 1 ? tRaw('setup.finish') : tRaw('setup.next');
+  // Meldungen gehören zum Schritt, in dem sie entstanden; am Feld stehen sie ohnehin.
+  verwirfToasts();
 }
 
+/** ✓ oder ✗ neben dem Titel; null heisst „noch nicht geprüft“. */
 function setzeStand(quelle, ok) {
   const el = G(`ew-stand-${quelle}`);
-  if (el) el.innerHTML = ok ? ico('ok') : '';
+  if (!el) return;
+  el.className = ok === null ? '' : ok ? 'ew-stand ok' : 'ew-stand fehlt';
+  el.innerHTML = ok === null ? '' : `${ico(ok ? 'ok' : 'fehler')}<span class="vh">${esc(tRaw(ok ? 'setup.test_ok' : 'setup.test_failed'))}</span>`;
+}
+
+/** Meldung am Abschnitt; der rohe Grund steht aufklappbar darunter. */
+function quellenFehler(quelle, text, details = '', felder = []) {
+  const box = G(`ew-fehler-${quelle}`);
+  if (!box) return;
+  formularFehler(box, text, felder);
+  if (text && details && details !== text)
+    box.insertAdjacentHTML('beforeend', `<details class="fehler-details"><summary>${esc(tRaw('liste.details'))}</summary><code>${esc(details)}</code></details>`);
 }
 
 /**
@@ -49,7 +66,8 @@ export async function pruefeEinrichtung() {
   }
   _schritte = [...(d.passwort_aendern ? ['passwort'] : []), 'rebrickable', 'bricklink', 'brickset', 'erstes-set'];
   _jetzt = 0;
-  for (const [q, ok] of Object.entries(d.quellen || {})) setzeStand(q, ok);
+  _gespeichert = { ...(d.quellen || {}) };
+  for (const [q, ok] of Object.entries(_gespeichert)) setzeStand(q, ok ? true : null);
   zeige();
   G('einrichtung-modal').classList.add('open');
   rbHinweisVerbergen();
@@ -66,7 +84,7 @@ async function abschliessen() {
 export function einrichtungSpaeter() {
   schliessen();
   // Im Assistenten gespeichert, steht der Haken; der Zwischenspeicher weiss es noch nicht.
-  if (!G('ew-stand-rebrickable')?.innerHTML) rbHinweisZeigen();
+  if (!G('ew-stand-rebrickable')?.classList.contains('ok')) rbHinweisZeigen();
 }
 
 export function einrichtungZurueck() {
@@ -80,11 +98,16 @@ export async function einrichtungWeiter() {
 
 export async function einrichtungPasswort() {
   const alt = G('ew-pw-alt').value, neu = G('ew-pw-neu').value, wdh = G('ew-pw-wdh').value;
-  if (neu !== wdh) { toast(tRaw('settings.password.mismatch'), 'error'); return; }
-  if (passwortRegelText(neu)) { toast(passwortRegelText(neu), 'error'); return; }
+  const box = G('ew-pw-fehler');
+  formularFehler(box, '');
+  if (passwortRegelText(neu)) { formularFehler(box, passwortRegelText(neu), ['ew-pw-neu']); return; }
+  if (neu !== wdh) { formularFehler(box, tRaw('settings.password.mismatch'), ['ew-pw-wdh']); return; }
   const d = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password', { current: alt, newPassword: neu, ...z }));
   if (!d) return;
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  if (!d?.success) {
+    formularFehler(box, d?.error || tRaw('settings.error'), [d?.code === 'aktuelles_passwort_falsch' ? 'ew-pw-alt' : 'ew-pw-neu']);
+    return;
+  }
   ['ew-pw-alt', 'ew-pw-neu', 'ew-pw-wdh'].forEach(id => { G(id).value = ''; });
   toast(tRaw('setup.pw_done'), 'success');
   await einrichtungWeiter();
@@ -94,18 +117,28 @@ export async function einrichtungPasswort() {
 export async function einrichtungQuelle(quelle) {
   const felder = QUELLEN_FELDER[quelle];
   if (!felder) return;
-  const werte = {};
+  const werte = {}, leer = [];
   for (const [schluessel, id] of Object.entries(felder)) {
     const v = G(id).value.trim();
-    if (v) werte[schluessel] = v;
+    if (v) werte[schluessel] = v; else leer.push(id);
+  }
+  quellenFehler(quelle, '');
+  // Leer und nichts gespeichert: am Feld sagen, statt den Server „nicht konfiguriert“ melden zu lassen.
+  if (leer.length && !_gespeichert[quelle]) {
+    quellenFehler(quelle, tRaw(leer.length > 1 ? 'setup.fields_missing' : 'setup.key_missing'), '', leer);
+    setzeStand(quelle, null);
+    return;
   }
   if (Object.keys(werte).length) {
     const s = await api('POST', '/v1/settings', werte);
-    if (!s?.success) { toast(s?.error || tRaw('settings.error'), 'error'); return; }
+    if (!s?.success) { quellenFehler(quelle, s?.error || tRaw('settings.error'), '', Object.values(felder)); return; }
+    if (!leer.length) _gespeichert[quelle] = true;
   }
   const d = await api('POST', '/v1/settings/quelle-testen', { quelle });
   setzeStand(quelle, !!d?.success);
-  toast(d?.success ? tRaw('setup.test_ok') : (d?.error || tRaw('settings.error')), d?.success ? 'success' : 'error');
+  if (d?.success) { toast(tRaw('setup.test_ok'), 'success'); return; }
+  const { grund, details } = d?.code ? { grund: d.error, details: d.details } : verstaendlicherGrund(d);
+  quellenFehler(quelle, grund || tRaw('settings.error'), details || '', d?.code === 'quelle_abgelehnt' ? Object.values(felder) : []);
 }
 
 /** Letzter Schritt: dorthin, wo das erste Set entsteht. */

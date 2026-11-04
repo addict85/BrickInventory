@@ -39,7 +39,7 @@ export function anmelden(req: Request, username: unknown, password: unknown, cod
  * Anfrage die neue ID schon kennt.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#establishsession */
 export async function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
-                                                       mussPasswortAendern?: boolean }): Promise<void> {
+                                                       mussPasswortAendern?: boolean; passwortBestaetigtAm?: number }): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
   const sitzungsVersion = await sitzungsVersionAusDb(data.userId)
     .catch(meldeUndLiefere<number | null>('anmeldung:sitzungsVersion', 0)) ?? 0;
@@ -55,6 +55,21 @@ export async function establishSession(req: Request, data: { userId: number; use
       req.session.save((e2?: Error) => (e2 ? reject(e2) : resolve(undefined)));
     });
   });
+}
+
+/** Wie lange nach einer Passworteingabe in derselben Sitzung das Einrichten des
+ * zweiten Faktors ohne erneute Eingabe geht. Kurz, weil eine in dieser Zeit
+ * erbeutete Sitzung sonst den Faktor setzen und das Konto aussperren könnte. */
+export const PASSWORT_GNADENFRIST_MS = 5 * 60 * 1000;
+
+/** Gilt die Gnadenfrist noch? Nur mit Sitzung (nie mit Token), und nur einmal:
+ * Der Aufruf verbraucht sie, ein zweiter Versuch fragt wieder nach dem Passwort. */
+export function gnadenfristVerbrauchen(req: Request): boolean {
+  const s = req.session, am = s?.passwortBestaetigtAm;
+  if (!s?.userId || req.tokenUserId || typeof am !== 'number') return false;
+  delete s.passwortBestaetigtAm;
+  const alter = Date.now() - am;
+  return alter >= 0 && alter < PASSWORT_GNADENFRIST_MS;
 }
 
 /** Der ganze Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler nicht, ob

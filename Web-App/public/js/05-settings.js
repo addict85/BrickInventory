@@ -414,8 +414,11 @@ function zeigeDesignWahl(d) {
   const aktiv = d.eigenes || d.vorgabe || 'classic';
   const BESCHREIBUNG = { classic: 'settings.theme_desc.classic', brick: 'settings.theme_desc.brick', werkbank: 'settings.theme_desc.werkbank',
     farbfaecher: 'settings.theme_desc.farbfaecher', noppe: 'settings.theme_desc.noppe', hochglanz: 'settings.theme_desc.hochglanz' };
-  if (hinweis) hinweis.textContent = [BESCHREIBUNG[aktiv] ? tRaw(BESCHREIBUNG[aktiv]) : '',
-    window.__bimNurDunkel?.(aktiv) ? tRaw('settings.werkbank_hint') : ''].filter(Boolean).join(' ');
+  if (hinweis) hinweis.textContent = BESCHREIBUNG[aktiv] ? tRaw(BESCHREIBUNG[aktiv]) : '';
+  // Bei einem Design ohne helle Fassung wirkt die Wahl darunter nicht; das steht dort, wo man sie trifft.
+  const nurDunkel = !!window.__bimNurDunkel?.(aktiv), dw = G('dunkel-wahl'), dh = G('dunkel-hinweis');
+  if (dw) dw.disabled = nurDunkel;
+  if (dh) dh.hidden = !nurDunkel;
 }
 
 async function setzeEigenesDesign() {
@@ -713,20 +716,10 @@ export async function loadUsers(){
   const d=await api('GET','/v1/auth/users'); if(!d.success) return;
   G('users-tbl').innerHTML=`<div class="tw"><table class="dt user-tbl"><thead><tr><th>ID</th><th>${t('users.col.username')}</th><th>${t('users.col.role')}</th><th>${t('users.col.created')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
     d.users.map(u=>`<tr><td>${u.id}</td><td><strong>${esc(u.username)}</strong></td>
-      <td><span class="rb ${u.is_admin?'ra':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span>
+      <td><span class="rb ${u.is_admin?'rv':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span>
         ${u.is_active === false ? `<span class="rb ru">${t('users.status.inaktiv')}</span>` : ''}</td>
       <td>${fmtDatum(u.created_at)}</td>
-      <td><div class="nutzer-aktionen">
-        ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title')}
-        ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
-            u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
-            u.is_admin ? 'users.action.make_user_title' : 'users.action.make_admin_title', u.is_admin ? 1 : 0)}
-        ${nutzerKnopf(u, 'bs', 'toggleAktiv', u.is_active === false ? 'ok' : 'pause',
-            u.is_active === false ? 'users.action.activate' : 'users.action.deactivate',
-            u.is_active === false ? 'users.action.activate_title' : 'users.action.deactivate_title', u.is_active === false ? 0 : 1)}
-        ${u.zweiter_faktor && u.id !== ME?.id ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : ''}
-        ${nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username)}
-      </div></td></tr>`).join('')
+      <td>${nutzerAktionen(u)}</td></tr>`).join('')
   }</tbody></table></div>`;
   ladeProtokoll();
 }
@@ -755,6 +748,30 @@ async function ladeProtokoll(){
       <td>${(AKTIONEN[e.aktion] || (() => esc(e.aktion)))()}${e.einzelheiten ? `: ${esc(e.einzelheiten)}` : ''}</td><td>${esc(e.ziel_name||'#'+e.ziel_id)}</td></tr>`).join('')
   }</tbody></table></div>` : `<p data-stil="color:var(--mut);font-size:var(--fs-2)">${t('users.protokoll.leer')}</p>`;
 }
+/**
+ * Gegen das eigene Konto gibt es hier nichts zu tun (der Server lehnt es
+ * ohnehin ab); das sagt die Zeile. Die seltenen und harten Aktionen stehen
+ * hinter „Weitere“, damit eine Zeile nicht aus fünf Rahmenknöpfen besteht.
+ */
+function nutzerAktionen(u) {
+  if (ME && u.id === ME.id) return `<span class="text-klein">${t('users.selbst')}</span>`;
+  const selten = [
+    nutzerKnopf(u, 'bs', 'toggleAktiv', u.is_active === false ? 'ok' : 'pause',
+      u.is_active === false ? 'users.action.activate' : 'users.action.deactivate',
+      u.is_active === false ? 'users.action.activate_title' : 'users.action.deactivate_title', u.is_active === false ? 0 : 1),
+    u.zweiter_faktor ? nutzerKnopf(u, 'bs', 'zfZuruecksetzen', 'schloss', 'users.action.2fa', 'zf.reset_title', u.username) : '',
+    nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username),
+  ].join('');
+  return `<div class="nutzer-aktionen">
+    ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title')}
+    ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
+      u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
+      u.is_admin ? 'users.action.make_user_title' : 'users.action.make_admin_title', u.is_admin ? 1 : 0)}
+    <details class="mehr-menue v-mehr"><summary class="btn bs btn-sm" aria-label="${esc(tRaw('users.weitere', { name: u.username }))}">${ico('menue')}<span>${t('users.weitere_kurz')}</span></summary>
+      <div class="mehr-liste">${selten}</div></details>
+  </div>`;
+}
+
 /**
  * Ein Knopf der Benutzertabelle: Symbol und Wort sichtbar, die längere
  * Beschreibung als Tooltip, der Name des Kontos für Vorleser im Namen.

@@ -1,7 +1,7 @@
 /**
  * Einzelne Bedienbefunde in Chrome, an der echten App:
  *   - Bestätigungsdialog: Escape gibt den Fokus an den Auslöser zurück; ist
- *     „Weitere Aktionen“ inzwischen zugeklappt, an dessen <summary>;
+ *     „Weitere Aktionen“ zugeklappt (es klappt bei der Wahl zu), an dessen <summary>;
  *   - Set-Ansicht: „Teile neu importieren“ (unter „Weitere Aktionen“) ist ein
  *     beschrifteter Knopf von mindestens 24 × 24 px ohne Inline-Stil;
  *   - Konto: das Häkchen „Auch alle Passkeys entfernen“ ist selbst 24 × 24 px;
@@ -21,6 +21,9 @@
  *      „Hover nur bei Zeigergeräten“
  *   E  .bs wieder mit border var(--bdr) → rot: „Anmeldemaske“ classic, brick,
  *      werkbank, farbfaecher (Knopfgrenze „Mit Passkey anmelden“)
+ *   F  (04.11.) im Set-Dialog die Klasse v-mehr entfernt (Menü bleibt bei
+ *      der Wahl offen) → rot: „Escape im Bestätigungsdialog: Fokus zurück
+ *      auf Weitere Aktionen“ („Menü klappt bei der Wahl zu“)
  *   (Erstlauf: rot an „Passwort vergessen?“ 131×20, „Build …“ 2,97:1 und
  *   brick dunkel „Anmelden“ 2,11:1 — behoben, siehe Commit.)
  */
@@ -59,12 +62,15 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
     assert.equal(k.stil, null);
   });
 
-  await t.test('Escape im Bestätigungsdialog: Fokus zurück auf „Löschen“', async () => {
+  await t.test('Escape im Bestätigungsdialog: Fokus zurück auf „Weitere Aktionen“', async () => {
+    // Das Menü klappt bei der Wahl zu; der sichtbare Auslöser ist dann sein Knopf.
     await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open = true; document.getElementById('btn-md').focus(); document.getElementById('btn-md').click(); true`);
     await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
+    assert.equal(await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open`), false, 'Menü klappt bei der Wahl zu');
     await escape();
     assert.equal(await b.auswerten(`document.getElementById('confirm-modal').style.display`), 'none');
-    assert.equal(await fokus(), 'btn-md');
+    assert.equal(await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`), true,
+      `Fokus auf ${await fokus()}`);
   });
 
   await t.test('Escape bei zugeklapptem Menü: Fokus auf Weitere Aktionen', async () => {

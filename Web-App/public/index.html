@@ -264,8 +264,9 @@
       <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Konto hat noch das Startpasswort aus dem Protokoll. Bitte zuerst ein eigenes setzen.</div>
       <div class="lerr" id="pflicht-err" role="alert"></div>
       <form class="sform" data-submit="btn-pflicht">
-        <div class="fg"><label for="pflicht-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
-        <div class="fg"><label for="pflicht-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pflicht-neu" autocomplete="new-password" /></div>
+        <div class="fg" id="pflicht-alt-zeile"><label for="pflicht-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
+        <div class="fg"><label for="pflicht-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pflicht-neu" autocomplete="new-password" aria-describedby="pflicht-regel" />
+          <div class="text-klein" id="pflicht-regel" data-i18n="pflicht.regel" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
         <div class="fg"><label for="pflicht-wdh" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pflicht-wdh" autocomplete="new-password" /></div>
         <button type="button" class="btn bp knopf-breit" id="btn-pflicht" data-i18n="reset.button">Passwort ändern</button>
       </form>
@@ -273,7 +274,7 @@
     <div id="panel-zweitpflicht" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="zfpflicht.title">Zweiten Faktor einrichten</p>
       <div class="text-klein abstand-u-075" data-i18n="zfpflicht.hint">Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.</div>
-      <div id="zf-pflicht-flaeche"></div>
+      <div id="zf-pflicht-flaeche" class="abstand-u-075"></div>
       <button type="button" class="btn bs knopf-breit" data-click="pflichtAbmelden" data-i18n="zfpflicht.logout">Abmelden</button>
     </div>
   </div>
@@ -421,8 +422,8 @@
   <div class="offline-band" id="offline-band" role="status" hidden></div>
   <div class="hinweis-band" id="rb-hinweis" role="region" aria-labelledby="rb-hinweis-text" hidden>
     <svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>
-    <span id="rb-hinweis-text"><span class="hinweis-lang" data-i18n="rb_key.banner">Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.</span><span class="hinweis-kurz" data-i18n="rb_key.banner_short">Rebrickable-Schlüssel fehlt.</span></span>
-    <button type="button" class="btn bp btn-sm" data-click="rbHinweisOeffnen"><span class="hinweis-lang" data-i18n="rb_key.banner_link">Schlüssel eintragen</span><span class="hinweis-kurz" data-i18n="rb_key.banner_link_short">Rebrickable-Schlüssel eintragen</span></button>
+    <span id="rb-hinweis-text"><span class="hinweis-lang" data-i18n="rb_key.banner">Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.</span><span class="hinweis-kurz" data-i18n="rb_key.banner_short">Ohne Rebrickable-Schlüssel keine neuen Sets.</span></span>
+    <button type="button" class="btn bp btn-sm" data-click="rbHinweisOeffnen"><span class="hinweis-lang" data-i18n="rb_key.banner_link">Schlüssel eintragen</span><span class="hinweis-kurz" data-i18n="rb_key.banner_link_short">Schlüssel eintragen</span></button>
     <button type="button" class="btn bs btn-sm hinweis-zu" data-click="rbHinweisWeg" aria-label="Hinweis ausblenden" data-i18n="rb_key.banner_close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
   </div>
   <main id="inhalt" tabindex="-1">
@@ -502,7 +503,7 @@
            (Nachtrag 34). Der Katalog hat keine Erfassung, hier steht die
            Leiste also direkt unter der Überschrift. -->
       <div class="filterzeile">
-          <input type="text" class="si suchfeld" id="cat-search" placeholder="Setnummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" / aria-label="Setnummer / Name">
+          <input type="text" class="si suchfeld" id="cat-search" placeholder="Set-Nummer / Name…" data-i18n="catalog.search" data-i18n-attr="placeholder" aria-label="Set-Nummer / Name">
           <select class="w-auto max-240" id="cat-theme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="catalog.filter.all_themes">Alle Themen</option>
           </select>
@@ -551,9 +552,7 @@
         der Übernahme in die Galerie gefragt.
       -->
       <div class="merk-kasten">
-        <div class="zeile mittig verteilt abstand-u-075">
-          <h2 class="merk-kasten-titel" data-i18n="wanted.add.title">Merkposten hinzufügen</h2>
-        </div>
+        <h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Merkposten hinzufügen</h2>
         <div class="zeile luecke-8 unten umbruch merk-erfassen">
           <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
           <div class="fg max-110"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
@@ -800,7 +799,7 @@
       </div>
       <!-- Kennzahlen: der Einstand steht immer da, Gesamtwert und G&V nur mit Marktpreisen. -->
       <div class="fgrid" id="fin-sum">
-        <div class="fstat"><div class="flbl" data-i18n="finance.stat.purchase">Kaufpreis gesamt</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
+        <div class="fstat"><div class="flbl" id="fin-einstand-titel" data-i18n="finance.stat.purchase">Kaufpreis gesamt</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
         <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
         <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Kaufpreis</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
@@ -1074,10 +1073,11 @@
             <div class="text-klein" id="design-hinweis"></div>
           </div>
           <div class="fg"><label for="dunkel-wahl" data-i18n="settings.dark.label">Darstellung auf diesem Gerät</label>
-            <select id="dunkel-wahl" data-change="setzeDunkel">
+            <select id="dunkel-wahl" data-change="setzeDunkel" aria-describedby="dunkel-hinweis">
               <option value="system" data-i18n="settings.dark.system">Wie das System (hell/dunkel)</option>
               <option value="server" data-i18n="settings.dark.server">Ohne Dunkelmodus</option>
             </select>
+            <div class="text-klein" id="dunkel-hinweis" hidden data-i18n="settings.werkbank_hint">Werkbank gibt es nur dunkel — die Darstellung hell/dunkel wirkt bei diesem Design nicht.</div>
           </div>
           <div class="fg"><label for="lang-select" data-i18n="settings.language">Sprache</label>
             <select id="lang-select" data-change="setLangFromEl">
@@ -1155,7 +1155,7 @@
       <div class="ssec gefahrenzone">
         <p class="text-mittel abstand-u-075" data-i18n="settings.danger.hint">Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.</p>
         <button class="btn bd" id="btn-dall" data-i18n="settings.delete_all_btn" data-ico="loeschen">Alle meine Daten löschen</button>
-        <p class="text-mittel abstand-u-075" data-i18n="settings.delete_account.hint">Das Konto selbst löschen: endgültig, ohne Papierkorb, mit Passwort und zweitem Faktor.</p>
+        <p class="text-mittel abstand-o-125 abstand-u-075" data-i18n="settings.delete_account.hint">Das Konto selbst löschen: endgültig, ohne Papierkorb, mit Passwort und zweitem Faktor.</p>
         <button class="btn bd" id="btn-konto-loeschen" data-i18n="settings.delete_account.btn" data-ico="loeschen">Konto endgültig löschen</button>
       </div>
     </div>
@@ -1198,7 +1198,7 @@
                Konten. -->
           <div class="admin-only voucher-land" data-stil="display:none">
             <div class="fg max-17rem">
-              <label for="gutschein-land" data-i18n="vouchers.country">Ausgabeland</label>
+              <label for="gutschein-land"><span data-i18n="vouchers.country">Ausgabeland</span> <span class="rb rv" data-i18n="vouchers.fuer_alle">für alle Konten</span></label>
               <select id="gutschein-land" data-change="gutscheinLandSpeichern">
                 <option value="de-CH" data-i18n="vouchers.country_de_ch">Schweiz</option>
                 <option value="de-DE" data-i18n="vouchers.country_de_de">Deutschland</option>
@@ -1354,7 +1354,7 @@
         <form class="sform nur-inhalt" data-submit="alarm-neu-knopf">
           <h2 class="stit" data-i18n="alerts.new_title">Preisalarm anlegen</h2>
           <div class="profil-raster">
-            <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Setnummer</label>
+            <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Set-Nummer</label>
               <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" inputmode="text" placeholder="10294-1" /></div>
             <div class="fg"><label for="alarm-neu-zustand" data-i18n="common.condition">Zustand</label>
               <select id="alarm-neu-zustand"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
@@ -1429,7 +1429,7 @@
       </div>
       <div class="ssec abstand-u-125 sform" id="household-invite-box" data-stil="display:none">
             <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg> <span data-i18n="household.invite_title">Konto einladen</span></h2>
-            <div class="text-klein abstand-u-075" data-i18n="household.invite_hint">
+            <div class="text-mittel abstand-u-075" data-i18n="household.invite_hint">
               Erzeuge einen Einladungscode. Im anderen Konto unter Menü → Haushalt → „Einladung annehmen“ eingeben. Der Code gilt 24 Stunden und nur einmal.
             </div>
             <button class="btn bp oben-buendig" data-click="createHouseholdInvite">
@@ -1447,7 +1447,7 @@
           <!-- Als eigenständiges Konto: Code einlösen -->
       <div class="ssec abstand-u-125 sform" id="household-redeem-box" data-stil="display:none">
             <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> <span data-i18n="household.redeem_title">Einladung annehmen</span></h2>
-            <div class="text-klein abstand-u-075" data-i18n="household.redeem_hint">
+            <div class="text-mittel abstand-u-075" data-i18n="household.redeem_hint">
               Gib den Code aus dem Hauptkonto ein. Dieses Konto wird danach im Hauptkonto mit angezeigt; deine Daten bleiben deine.
             </div>
             <div class="fg">
@@ -1565,9 +1565,10 @@
           <!-- Wie lange soll der Zugang gelten, den DIESER Code eroeffnet?
                Die Wahl trifft die angemeldete Sitzung hier; sie wandert mit der
                Nonce zum Server. Siehe db/migrations/0016-token-laufzeit.sql. -->
-          <div data-stil="display:flex;align-items:center;gap:.5rem;font-size:var(--fs-2)">
+          <form class="sform qr-form" data-submit="btn-gen-qr">
+          <div class="fg">
             <label for="qr-validity" data-i18n="qr.validity_label">Zugang gültig für</label>
-            <select id="qr-validity" data-stil="font-size:var(--fs-2);padding:4px 8px">
+            <select id="qr-validity">
               <option value="" data-i18n="qr.validity_default">Standard (6 Monate, 90 Tage ungenutzt)</option>
               <option value="1m" data-i18n="qr.validity_1m">1 Monat</option>
               <option value="2m" data-i18n="qr.validity_2m">2 Monate</option>
@@ -1576,12 +1577,11 @@
               <option value="unbegrenzt" data-i18n="qr.validity_unlimited">Unbegrenzt (nur HTTPS, mit Rotation)</option>
             </select>
           </div>
-          <form class="durchlaessig" data-submit="btn-gen-qr">
-          <div class="passwort-zeile">
+          <div class="fg">
             <label for="qr-password" data-i18n="qr.password_label">Dein Passwort</label>
             <input type="password" id="qr-password" autocomplete="current-password">
           </div>
-          <button type="button" class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button>
+          <div><button type="button" class="btn bp" id="btn-gen-qr" data-i18n="settings.qr.generate" data-ico="aktualisieren">QR-Code generieren</button></div>
           </form>
           <div id="qr-code" data-stil="background:#fff;padding:12px;border-radius:8px;border:1px solid var(--bdr);display:inline-block"></div>
           <div class="text-klein" id="qr-hint"></div>
@@ -1804,7 +1804,7 @@
     <div class="mfooter verteilt umbruch luecke-8">
       <!-- Löschen ist die einzige Aktion hier; hinter „Weitere Aktionen“ steht
            sie nicht mehr allein und rot im Daumenbereich. -->
-      <details class="mehr-menue">
+      <details class="mehr-menue v-mehr nach-oben">
         <summary class="btn bs" data-i18n="common.more_actions" data-ico="menue">Weitere Aktionen</summary>
         <div class="mehr-liste">
       <button class="btn bs" type="button" data-click="teileNeuImportieren"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="detail.reimport_parts">Teile neu importieren</span></button>
@@ -2144,6 +2144,7 @@
 
     <section class="ew-schritt" data-schritt="passwort">
       <p class="schrift-3" data-i18n="setup.pw_hint">Das Startpasswort stand nur im Protokoll des Servers. Bitte jetzt ein eigenes setzen.</p>
+      <div class="lerr" id="ew-pw-fehler" role="alert"></div>
       <form class="sform" data-submit="ew-pw-setzen">
         <div class="fg"><label for="ew-pw-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="ew-pw-alt" autocomplete="current-password" data-erstfokus /></div>
         <div class="fg"><label for="ew-pw-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="ew-pw-neu" autocomplete="new-password" /></div>
@@ -2156,6 +2157,7 @@
       <h2 class="ew-titel">Rebrickable <span class="ew-pflicht" data-i18n="setup.required">notwendig</span> <span id="ew-stand-rebrickable"></span></h2>
       <p class="schrift-3" data-i18n="setup.rb_hint">Rebrickable liefert Sets, Teile und Bilder. Ohne diesen Schlüssel kommen keine neuen Sets, Teile und Bilder dazu. Er ist kostenlos.</p>
       <div class="fg"><label for="ew-rb" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-rb" autocomplete="off" spellcheck="false" /></div>
+      <div class="lerr" id="ew-fehler-rebrickable" role="alert"></div>
       <div class="ew-aktion">
         <button type="button" class="btn bs" data-click="einrichtungQuelle" data-arg="rebrickable" data-i18n="setup.check">Schlüssel prüfen</button>
         <a class="ew-link" href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_rb">Schlüssel bei rebrickable.com anlegen (Konto → Einstellungen → API)</a>
@@ -2171,6 +2173,7 @@
         <div class="fg"><label for="ew-bl-tv">Token Value</label><input type="text" id="ew-bl-tv" autocomplete="off" spellcheck="false" /></div>
         <div class="fg"><label for="ew-bl-ts">Token Secret</label><input type="text" id="ew-bl-ts" autocomplete="off" spellcheck="false" /></div>
       </div>
+      <div class="lerr" id="ew-fehler-bricklink" role="alert"></div>
       <div class="ew-aktion">
         <button type="button" class="btn bs" data-click="einrichtungQuelle" data-arg="bricklink" data-i18n="setup.check_bl">Zugang prüfen</button>
         <a class="ew-link" href="https://www.bricklink.com/v2/api/register_consumer.page" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_bl">Zugang bei bricklink.com registrieren</a>
@@ -2181,6 +2184,7 @@
       <h2 class="ew-titel">Brickset <span class="ew-pflicht ew-optional" data-i18n="setup.optional">freiwillig</span> <span id="ew-stand-brickset"></span></h2>
       <p class="schrift-3" data-i18n="setup.bs_hint">Brickset liefert Bauanleitungen, wenn Rebrickable keine hat.</p>
       <div class="fg"><label for="ew-bs" data-i18n="setup.key">API-Schlüssel</label><input type="text" id="ew-bs" autocomplete="off" spellcheck="false" /></div>
+      <div class="lerr" id="ew-fehler-brickset" role="alert"></div>
       <div class="ew-aktion">
         <button type="button" class="btn bs" data-click="einrichtungQuelle" data-arg="brickset" data-i18n="setup.check">Schlüssel prüfen</button>
         <a class="ew-link" href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer" data-i18n="setup.where_bs">Schlüssel bei brickset.com anfordern</a>

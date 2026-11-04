@@ -1376,3 +1376,16 @@ docker compose exec postgres psql -U brickinventory -c "DELETE FROM bl_zuordnung
   Datenbankhost). Richtig ist eine eigene Rolle (Abschnitt 29; in Docker
   richtet `db-rolle` sie ein). Wer bewusst als Superuser betreibt, setzt
   `DB_SUPERUSER_ERLAUBT=1`; der Start warnt dann bei jedem Lauf.
+
+## 35. Runde 11 – Erststart des Verwalters ohne dritte Passwortabfrage
+
+- `POST /api/v1/auth/zweiter-faktor/einrichten` geht bis fünf Minuten nach
+  einer Anmeldung mit Passwort (oder einem Passwortwechsel) in **derselben
+  Sitzung** einmal ohne `password`. Mit App-Token gibt es diese Frist nie; die
+  Android-App schickt das Passwort wie bisher mit.
+- Ohne Passwort und ohne Frist antwortet die Route jetzt mit 400
+  `aktuelles_passwort_erforderlich` (vorher `aktuelles_passwort_falsch`); die
+  Bremse für Fehlversuche zählt das nicht mehr mit.
+- Eingerichtet ist der zweite Faktor weiterhin erst mit dem Code aus der App.
+  Sitzungen von vor dem Update haben keine Frist; nach dem Update genügt eine
+  neue Anmeldung.
