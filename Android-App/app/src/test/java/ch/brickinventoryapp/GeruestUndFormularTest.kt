@@ -286,7 +286,9 @@ class GeruestUndFormularTest {
             }
         }
         val oben = zahlen.map { (wert, text) ->
-            compose.onNodeWithText("$wert $text", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.top
+            // positionInRoot statt boundsInRoot: Was rechts aus der wischbaren Zeile ragt,
+            // wäre abgeschnitten und stünde scheinbar bei 0.
+            compose.onNodeWithText("$wert $text", useUnmergedTree = true).fetchSemanticsNode().positionInRoot.y
         }
         assertTrue("Kennzahlen in einer Zeile: $oben", oben.all { kotlin.math.abs(it - oben[0]) < 1f })
     }
