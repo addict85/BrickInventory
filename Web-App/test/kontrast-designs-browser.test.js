@@ -25,12 +25,7 @@ const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css', 'themes/bri
   'themes/farbfaecher.css', 'themes/noppe.css', 'themes/hochglanz.css'];
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
-function chrome() {
-  const kandidaten = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium', '/usr/bin/chromium-browser', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome'];
-  return kandidaten.find(k => k && fs.existsSync(k)) ?? null;
-}
+const { chrome } = require('./helpers/app-browser');
 
 /** Die Bausteine, wie sie in Sammlung und Finanzen stehen; `n` ist das Präfix des Namens. */
 function abschnitt(n) {

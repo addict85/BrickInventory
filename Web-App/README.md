@@ -12,21 +12,45 @@ Vollständige Node.js Webapp zur Verwaltung deiner Klemmbaustein-Sammlung.
 
 ## Docker (empfohlen)
 
+Im Ordner mit `compose.yaml`, Schritt für Schritt:
+
 ```bash
-cp .env.example .env    # BRICK_HOST eintragen
-sh scripts/geheimnisse-einrichten.sh   # Sitzungsgeheimnis und DB-Passwörter als Docker-Secrets
-sudo sh scripts/ca-einrichten.sh   # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
-docker compose up -d --build
-# → https://<BRICK_HOST>   (Port 80 leitet auf HTTPS um)
+cp .env.example .env
+echo BRICK_HOST=nas.example.lan >> .env   # Name oder IP-Adresse des Servers
+sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
+sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
+docker compose pull                       # das signierte Image von Docker Hub
+docker compose up -d
+docker compose logs app jobs | grep -A2 Standard-Admin   # Erstpasswort von admin
 ```
 
-Pflicht in `.env` ist nur `BRICK_HOST` — der Name oder die IP-Adresse, unter
-der Geräte den Server erreichen. Sitzungsgeheimnis und Passwörter stehen nicht
-in `.env`, sondern als Dateien in `./geheimnisse/` (Ordner 700); `compose.yaml`
-hängt sie als Docker-Secrets unter `/run/secrets/` ein, `docker inspect` zeigt
-sie so nicht. Ohne eigene CA startet Caddy nur mit `BRICK_TLS=acme`
-(öffentlicher Name, Let's Encrypt) oder dem ausdrücklichen Schalter
-`CA_OHNE_NAMENSBESCHRAENKUNG=ja` (UPGRADE.md, Abschnitt 33).
+Danach unter `https://<BRICK_HOST>` (Port 80 leitet auf HTTPS um). Was dabei
+entsteht und warum:
+
+1. **`.env`** braucht nur `BRICK_HOST`: den Namen oder die IP-Adresse, unter
+   der Geräte den Server erreichen (für Passkeys ein Name). Alle anderen
+   Variablen haben Vorgaben (`.env.example`).
+2. **`./geheimnisse/`** (Ordner 700) hält Sitzungsgeheimnis und Passwörter als
+   Dateien; `compose.yaml` hängt sie als Docker-Secrets unter `/run/secrets/`
+   ein, `docker inspect` zeigt sie so nicht. In `.env` gehören sie nicht.
+3. **`./caddy/ca/`** hält die eigene CA (Abschnitt unten). Ohne sie startet
+   Caddy nur mit `BRICK_TLS=acme` (öffentlicher Name, Let's Encrypt) oder dem
+   ausdrücklichen Schalter `CA_OHNE_NAMENSBESCHRAENKUNG=ja` (UPGRADE.md,
+   Abschnitt 33). Die App selbst veröffentlicht keinen Port.
+4. **Das Image** `addict85/brickinventory` gilt für `app`, `jobs` und
+   `schluessel`. `docker compose pull` holt die signierte Fassung (Tag aus
+   `BRICK_TAG`, Vorgabe `latest`; prüfen mit `cosign verify`, siehe
+   `README.md` im Wurzelordner). Wer selbst baut, nimmt
+   `docker compose up -d --build`; das lokale Image ersetzt dann das gezogene,
+   bis zum nächsten `pull`.
+5. **Das Konto `admin`** bekommt beim allerersten Start ein Zufallspasswort,
+   das nur in diesem Protokoll steht und bei der ersten Anmeldung geändert
+   werden muss. Den ersten Start migriert `app` oder `jobs`, je nachdem, wer
+   zuerst kommt; deshalb beide Protokolle.
+
+**Update:** `docker compose pull && docker compose up -d` (selbst gebaut:
+`docker compose up -d --build`). Vorher `UPGRADE.md` lesen; die Abschnitte
+stehen in zeitlicher Reihenfolge.
 
 ### HTTPS mit eigener CA (Caddy)
 
@@ -130,18 +154,31 @@ environment:
 ## Manuell starten (ohne Compose)
 
 ```bash
-npm ci             # exakt die Lockfile (statt npm install)
+npm ci --ignore-scripts && npm rebuild esbuild   # exakt die Lockfile, Install-Skripte nur für esbuild
 npm run build      # .ts → dist/, Frontend → public/js/app.bundle.js
 npm start          # → node dist/server.js
 # → http://localhost:3000  (PostgreSQL muss separat laufen)
 ```
 
-Zum Entwickeln:
+## Entwickeln
+
 ```bash
 npm run dev        # tsx watch, baut das Frontend-Bündel selbst
 npm run typecheck
-npm test
+npm test           # siehe „Tests“
 ```
+
+**Fassungen.** Massgeblich ist, was ausgeliefert und in der CI geprüft wird:
+
+| | Image (`Dockerfile`, `compose.yaml`) | CI (`web-ci.yml`) | lokal |
+|---|---|---|---|
+| Node | 26 | 26 | `.nvmrc` nennt 26 (`nvm use`) |
+| PostgreSQL | 18 | 18 (Dienst), `pg_dump` 18 | auch 16 läuft; `db-rolle-db` braucht `psql` ab 15, `backup-restore-db` ein `pg_dump` in der Hauptversion des Servers |
+
+Ein lokaler Lauf mit einer älteren Fassung (etwa Node 22, PostgreSQL 16) ist
+eine Plausibilisierung; ein Unterschied zwischen den Hauptversionen zeigt sich
+erst in der CI. `test/build-tooling.test.js` hält Dockerfile, CI, `.nvmrc` und
+`@types/node` auf derselben Node-Hauptversion.
 
 Nach Änderungen an `public/js/*` oder `public/i18n.js` muss
 `npm run build:frontend` laufen — der Server liefert das gebündelte
@@ -301,7 +338,7 @@ für pgweb unlesbar, bis sie dort eingetragen ist.
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank: `openssl rand -base64 32`. Geht `DATA_KEY_FILE` vor. |
 | `DATA_KEY_FILE` | Datei mit dem Schlüssel, ausserhalb von `data/` (compose.yaml: `/app/schluessel/datenschluessel`, Vorgabe `<APP_ROOT>/schluessel/datenschluessel`). Fehlt sie, legt der erste Start sie an (nur für den Besitzer lesbar). |
-| `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
+| `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins (nur `npm start`; `compose.yaml` reicht es nicht durch). Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). Mit Docker als Datei: `SESSION_SECRET_FILE` (setzt `compose.yaml`). |
 | `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Nur dort setzen. |
 | `BRICK_HOST` | Name oder IP-Adresse des Servers für Caddy (Pflicht mit `compose.yaml`). Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Passkeys brauchen einen Namen, keine IP-Adresse. |
@@ -329,65 +366,45 @@ set_number,quantity
 ## Tests
 
 ```bash
-npm test            # komplette Suite (Node-Test-Runner, keine Zusatz-Tools nötig)
-npm run test:api    # nur die Postgres-Integrationstests
+export TEST_DATABASE_URL=postgres://tester:tester@127.0.0.1:5432/cattest
+REQUIRE_DB=1 npm test                         # ganze Suite, parallel
+REQUIRE_DB=1 npm test -- test/datei.test.js   # einzelne Dateien, gleicher Aufbau
+npm run test:seriell                          # alles nacheinander auf der Basis-DB
 ```
 
-### Zwei Arten von Tests — und wofür jede taugt
+`npm test` (`scripts/test-lauf.js`) baut einmal nach `dist/`, legt aus
+`TEST_DATABASE_URL` eine Vorlage-Datenbank `<name>_vorlage` an (Basis und
+Migrationen) und gibt jeder Testdatei eine eigene Kopie davon. Die Dateien
+laufen parallel (`TEST_PARALLEL`, Vorgabe doppelte Kernzahl, höchstens 8),
+Browser-Tests und Dateien mit der Marke `@einzeln` danach einzeln. Was die
+Suite an Datenbanken und Rollen anlegt, heisst `<name>_vorlage_…`; der nächste
+Lauf räumt Reste davon ab. Der Benutzer der Test-DB braucht `CREATEDB`, einige
+Dateien (Datenbankrolle, Sicherung) Superuser-Rechte.
 
-Der grössere Teil der Suite prüft den **Quelltext**: liest eine Datei und
-verlangt ein Muster darin. Das ist billig, braucht keine Datenbank und eignet
-sich, um eine Regel samt Begründung dort festzuhalten, wo sie gilt.
+| Variable | Wirkung |
+|---|---|
+| `TEST_DATABASE_URL` | Basis-Datenbank. Ohne sie laufen nur die Tests ohne Datenbank. |
+| `REQUIRE_DB=1` | Eine fehlende Datenbank (oder fehlende Rechte, `psql`, `pg_dump`) ist ein Fehler statt eines Überspringens. In der CI gesetzt. |
+| `REQUIRE_BROWSER=1` | Dasselbe für Chrome: Ohne Browser schlagen die Browser-Tests fehl, statt still zu überspringen. In der CI gesetzt. |
+| `CHROME_BIN` | Pfad zu Chrome/Chromium, falls nicht unter `/usr/bin/google-chrome` oder `/usr/bin/chromium`. |
+| `CADDY_BIN` | Pfad zu `caddy` für die Caddyfile-Tests; ohne ihn übersprungen. |
 
-Es hat eine Grenze, die man kennen muss: Eine Quelltext-Prüfung sieht Zeichen,
-kein Verhalten. Sie kann grün bleiben, während die Regel nicht mehr wirkt.
-Genau das ist passiert — ein Test verlangte einen Ausdruck
-(`to_regclass('public.session')`), der auf eine Tabelle zeigte, die es nie gab.
-Der Ausdruck stand im Code, der Test war grün, und ein Passwort-Reset beendete
-die Sitzung des Angreifers nicht. Der Test hatte die Lücke *festgeschrieben*
-statt sie zu finden.
+Ohne `REQUIRE_DB=1` und `REQUIRE_BROWSER=1` ist ein grüner Lauf kein Beleg:
+Die betroffenen Dateien überspringen sich dann selbst.
 
-Daraus zwei Regeln für neue Tests:
+**Aufbau** (gezählt am 04.11.2026, 578 Testdateien, flach in `test/`):
 
-1. **Sicherheitsregeln brauchen einen Verhaltenstest.** Nicht „das DELETE steht
-   im Code", sondern „die Sitzung ist danach wirklich weg" — gegen echte
-   Datenbank und echten Store (`test/auth-sessions-db.test.js`,
-   `test/household-db.test.js`). Die Quelltext-Prüfung darf daneben stehen und
-   die Begründung tragen; sie ersetzt den Nachweis nicht.
-2. **Keine Namen von Zwischenvariablen festnageln.** Ein Muster wie
-   `String(curMain) !== String(curSub)` macht eine folgenlose Umbenennung rot.
-   Ein Test, der bei harmlosen Umbenennungen anschlägt, wird beim nächsten
-   Refactoring angepasst statt gelesen — und verliert die Warnwirkung, für die
-   er da ist. Auf die Struktur zielen, nicht auf die Schreibweise.
+| Art | Dateien | Woran erkennbar |
+|---|---|---|
+| mit Datenbank | 280 | Name endet auf `-db.test.js` |
+| im echten Chrome (Layout, Tastatur, CSP) | 31 | `CHROME_BIN` oder `helpers/app-browser` |
+| Oberfläche in jsdom | 61 | `jsdom` |
+| liest nur Quelltext (Struktur, Verbote) | 86 | Ratsche in `test/ratschen.test.js`, darf nur sinken |
 
-Die Gegenprobe für beides ist billig und lohnt sich bei jedem neuen Test:
-Regel im Code brechen und schauen, ob er rot wird. Wird er es nicht, prüft er
-etwas anderes als gedacht.
+Die API gibt es nur unter `/api/v1/`. Ihr Vertrag (zod-Schemata in
+`src/infra/vertrag/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich
+mit der Android-App liest deren Retrofit-Schnittstelle (`app-endpunkte`).
 
-- **test/auth-sessions-db.test.js** — Passwortwechsel gegen echten
-  connect-pg-simple-Store: Admin-Reset, eigener Wechsel und Bearer-Token. Prüft
-  das VERHALTEN (Sitzung danach wirklich weg), nicht den Wortlaut im Code —
-  siehe Abschnitt oben.
-- **test/api-inventory.test.js** — API-Inventar: parst beide Router-Familien und
-  verlangt für JEDEN Endpunkt eine Klassifikation (paritaet / paritaet-schreib /
-  paar-extern / nur-v1 / nur-web). Neue Endpunkte ohne Einordnung machen die
-  Suite rot — keine API kommt mehr ungeprüft dazu.
-- **test/api-parity.test.js** — Paritätstest über alle Lese-Endpunkte: die
-  Session-Routen der Webapp (/api/...) und die Token-Routen der Android-App
-  (/api/v1/...) müssen für dieselben Daten dieselben Informationen liefern
-  (Envelope-Felder wie success/count/page werden ignoriert, der Rest muss
-  deep-equal sein). Läuft gegen den echten Stack (beide Router-Familien,
-  gemeinsame Handler, echte DB, echte Auth-Middlewares — nur die Session wird
-  injiziert) und prüft zusätzlich den Bearer-Token-Pfad der Android-App
-  end-to-end. Enthält zudem Schreib-Paritäten (PUT Set, PUT Erfassung,
-  DELETE Set über beide Familien -> gleicher DB-Effekt). Gleiche
-  DB-Voraussetzung wie catalog-api.
-- **test/catalog-api.test.js** — Integrationstest der /api/v1/catalog-Endpunkte gegen
-  echtes PostgreSQL (nur Auth gestubbt). Braucht eine Test-DB (Inhalt wird geleert!):
-  `TEST_DATABASE_URL`, Default `postgres://tester:test@localhost/cattest`.
-  Ohne erreichbare DB wird die Suite übersprungen, nicht rot.
-- **test/catalog-frontend.test.js** — jsdom-Test des Katalog-Frontends
-  (Von-Bis-Slider, Filter, Debounce, Platzhalter, Reset) gegen ein Mini-Backend.
-- **test/dom-ids.test.js** — jede statisch per `G('...')` referenzierte ID muss in
-  index.html oder einem JS-Template existieren.
-- **test/i18n.test.js** — DE/EN-Schlüsselparität und Platzhalter-Konsistenz.
+Regeln für neue Tests stehen in `CLAUDE.md` im Wurzelordner: Ein Test prüft
+Verhalten, nicht Quelltext; er nennt im Kopf seine Gegenprobe (was kaputt
+gemacht wurde und welcher Teil dann rot war); leere Listen prüfen nichts.

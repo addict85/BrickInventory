@@ -14,10 +14,20 @@ const { spawn } = require('node:child_process');
 const ROOT = path.join(__dirname, '..', '..');
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
+/**
+ * Pfad zu Chrome oder null (der Test überspringt). Mit REQUIRE_BROWSER=1 wirft
+ * ein fehlender Browser, wie REQUIRE_DB=1 bei der Datenbank: In der CI wäre
+ * ein grüner Lauf ohne Browser-Tests sonst kein Beleg.
+ * Gegenprobe (04.11.2026): CHROME_BIN leer, REQUIRE_BROWSER=1 → telefon-browser
+ * und anmeldefelder-leer-browser rot; ohne die Variable übersprungen.
+ */
 function chrome() {
   const kandidaten = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
     '/usr/bin/chromium', '/usr/bin/chromium-browser', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'];
-  return kandidaten.find(k => k && fs.existsSync(k)) ?? null;
+  const bin = kandidaten.find(k => k && fs.existsSync(k)) ?? null;
+  if (!bin && process.env.REQUIRE_BROWSER === '1')
+    throw new Error(`REQUIRE_BROWSER=1, aber kein Chrome gefunden (CHROME_BIN=${process.env.CHROME_BIN || 'leer'})`);
+  return bin;
 }
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
@@ -192,4 +202,4 @@ async function starteApp(t, opt = {}) {
   return { b, bis, warte, port, uid, db, abgewiesen, weitereCodes };
 }
 
-module.exports = { starteApp, warte };
+module.exports = { starteApp, warte, chrome };

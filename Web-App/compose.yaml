@@ -1,39 +1,23 @@
 # ════════════════════════════════════════════════════════════════════════════════
 # BrickInventory Manager — Docker Compose
 #
-# Alle Standardwerte sind im Dockerfile gesetzt und müssen hier nicht wiederholt
-# werden. Nur was du anpassen möchtest, muss hier stehen.
+# Einrichten und Starten: README.md, Abschnitt „Docker“. Kurz:
+#   docker compose pull && docker compose up -d     signiertes Image von Docker Hub
+#   docker compose up -d --build                    selbst aus diesem Ordner bauen
 #
-# Start:
-#   docker compose up -d --build
-#
-# Ressourcengrenzen (mem_limit, pids_limit, cpus) je Dienst: Ein Fehler in
-# einer nativen Bibliothek (sharp, pdf-lib) oder eine Flut von Anfragen soll
-# einen Container füllen, nicht den ganzen Rechner. NODE_OPTIONS begrenzt nur
-# den JavaScript-Heap, nicht den Speicher von sharp. Die Vorgaben passen auf
-# einen Raspberry Pi 4 mit 4 GB; auf einem kleineren Gerät oder bei grossen
-# Sammlungen in .env anpassen (APP_MEM_LIMIT, JOBS_MEM_LIMIT, DB_MEM_LIMIT …,
-# UPGRADE.md, Runde 7). Wer an eine Grenze stösst, sieht im Protokoll
-# „OOMKilled" (docker inspect) bzw. „Resource temporarily unavailable".
+# Ressourcengrenzen je Dienst, damit ein Fehler in sharp/pdf-lib oder eine
+# Anfrageflut einen Container füllt und nicht den Rechner. Die Vorgaben passen
+# auf einen Raspberry Pi 4 mit 4 GB; anpassen in .env (APP_MEM_LIMIT, …).
 # ════════════════════════════════════════════════════════════════════════════════
 
 services:
 
   # ── PostgreSQL Datenbank ─────────────────────────────────────────────────────
   postgres:
-    # PostgreSQL 18.
-    #
-    # ⚠️  ACHTUNG BEIM UPDATE VON 16: Ein blosser Tausch des Tags reicht NICHT
-    # und schlägt mit einer Fehlermeldung fehl. Ab Version 18 legt das offizielle
-    # Image seine Daten in einem versionsspezifischen Unterverzeichnis ab
-    # (/var/lib/postgresql/18/docker), und der Mount-Punkt ist deshalb das
-    # ELTERNVERZEICHNIS /var/lib/postgresql statt wie bisher .../data.
-    # Das Datenformat einer Hauptversion ist ausserdem nie direkt lesbar.
-    #
-    # Der Weg von 16 auf 18 steht Schritt für Schritt in UPGRADE.md unter
-    # "PostgreSQL 18". Kurz: pg_dumpall mit dem ALTEN Container, neues
-    # Verzeichnis, einspielen. Das alte ./pgdata bleibt dabei unangetastet und
-    # ist die Rückfallebene.
+    # Eine neue Hauptversion liest die Daten der alten nicht, und ab 18 liegt
+    # PGDATA eine Ebene tiefer: Ein Tausch des Tags allein schlägt fehl. Der
+    # Weg (pg_dumpall, neues Verzeichnis, einspielen) steht in UPGRADE.md unter
+    # „PostgreSQL 18“; ./pgdata (16) bleibt als Rückfallebene liegen.
     image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
     container_name: brickinventory-db
     restart: unless-stopped
@@ -59,8 +43,6 @@ services:
     cap_drop: [ALL]
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
     volumes:
-      # Neuer Pfad UND neues Verzeichnis: ./pgdata (Version 16) bleibt liegen,
-      # damit ein Rückfall auf die alte compose.yaml jederzeit möglich ist.
       - ./pgdata18:/var/lib/postgresql
       - ./postgres/app-rolle.sh:/docker-entrypoint-initdb.d/10-app-rolle.sh:ro
     healthcheck:
@@ -114,9 +96,9 @@ services:
   # danach nur lesend. Liegt noch ein alter Schlüssel in data/.datenschluessel,
   # legt er keinen neuen an: Der Server meldet dann den Umzug (UPGRADE.md).
   schluessel:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Dasselbe Image wie app (siehe dort).
+    image: addict85/brickinventory:${BRICK_TAG:-latest}
+    pull_policy: missing
     container_name: brickinventory-schluessel
     restart: "no"
     user: root
@@ -136,6 +118,12 @@ services:
 
   # ── BrickInventory Manager App ───────────────────────────────────────────────
   app:
+    # Ein Image für schluessel, app und jobs. `docker compose pull` holt das
+    # signierte von Docker Hub (BRICK_TAG, Vorgabe latest); fehlt es lokal und
+    # ist es nicht abrufbar, baut `app` es aus diesem Ordner. Nur `app` hat
+    # `build:`, damit `--build` das Dockerfile einmal baut und nicht dreimal.
+    image: addict85/brickinventory:${BRICK_TAG:-latest}
+    pull_policy: missing
     build:
       context: .
       dockerfile: Dockerfile
@@ -165,30 +153,15 @@ services:
       schluessel:
         condition: service_completed_successfully
     # Kein veröffentlichter Port: Von aussen geht es nur über Caddy (HTTPS).
-    #
-    # BEWUSSTE AUSNAHME Klartext (z. B. ohne Namen/IP für Caddy, zum Testen):
-    # die drei Zeilen einkommentieren und in .env COOKIE_SECURE=0 und
-    # APP_BASE_URL=http://… setzen. Passwort, Sitzung und App-Token gehen dann
-    # lesbar durchs LAN; „unbegrenzt“ beim QR-Code und Passkeys gibt es dann
-    # nicht (README.md, „Ohne HTTPS“).
+    # Bewusste Klartext-Ausnahme zum Ausprobieren: die zwei Zeilen
+    # einkommentieren, in .env COOKIE_SECURE=0 und APP_BASE_URL=http://…
+    # setzen (README.md, „Ohne HTTPS“). Passwörter gehen dann lesbar durchs LAN.
     # ports:
     #   - "${APP_BIND:-127.0.0.1}:3000:3000"
     volumes:
-      # EIN Volume genügt. Set-, Teile- und Minifiguren-Bilder liegen unter
-      # data/images/ (siehe src/infra/appPaths.ts) und sind damit von ./data
-      # miterfasst — inklusive der Vorschaubilder, die als <name>_thumb.jpg
-      # NEBEN dem Original liegen, nicht in einem eigenen Unterordner.
-      #
-      # VORHER stand hier zusätzlich `- ./images:/app/public/images/sets`.
-      # Das war der alte Ablageort. Der Code schreibt dort längst nicht mehr
-      # hin, die Zeile blieb aber stehen — Ergebnis: ein Ordner ./images neben
-      # ./data, der nach der einmaligen Migration leer zurückbleibt und nur
-      # noch verwirrt. Ausserdem mountete er in public/, das seit dem
-      # dist/-Umbau wieder reiner, unveränderlicher Build-Inhalt sein soll.
-      #
-      # Wer ./images noch aus einer älteren Installation hat: siehe UPGRADE.md,
-      # Abschnitt 10 — die Dateien einmal von Hand nach ./data/images/sets/
-      # verschieben, danach kann der Ordner weg.
+      # Alle Bilder samt Vorschaubildern liegen unter data/ (src/infra/appPaths.ts);
+      # eine Sicherung von ./data erfasst sie mit. Ein altes ./images: UPGRADE.md,
+      # Abschnitt 10.
       - ./data:/app/data
       # Der Datenschlüssel für gespeicherte Geheimnisse, getrennt von ./data:
       # Eine Sicherung von data/ (scripts/backup.sh) enthält ihn so nie. Nur
@@ -266,9 +239,9 @@ services:
   # an. Beim Beenden gibt er laufende Aufträge zurück; der nächste Start setzt
   # sie fort. Die Migrationen macht, wer zuerst startet — der andere wartet.
   jobs:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Dasselbe Image wie app (siehe dort).
+    image: addict85/brickinventory:${BRICK_TAG:-latest}
+    pull_policy: missing
     container_name: brickinventory-jobs
     restart: unless-stopped
     init: true
@@ -416,30 +389,10 @@ services:
         ipv4_address: 172.28.73.10
 
   # ── pgweb — Datenbank im Browser ansehen (OPTIONAL) ──────────────────────────
-  #
-  # Start NUR auf Anforderung:
-  #     docker compose --profile tools up -d pgweb
-  # Danach im Browser:  http://localhost:8081
-  # Wieder abschalten:  docker compose --profile tools down pgweb
-  #
-  # Warum ein Profil? Ohne `--profile tools` startet dieser Dienst NICHT mit —
-  # `docker compose up -d` bringt weiterhin nur Datenbank und App hoch. Ein
-  # Werkzeug, das man dreimal im Jahr braucht, soll nicht dauerhaft mitlaufen.
-  #
-  # ⚠️  SICHERHEIT — der wichtigste Punkt an diesem Dienst:
-  # Wer pgweb erreicht und anmeldet, liest, was die Allowlist der Leserolle
-  # freigibt (brickinventory_lesen, postgres/app-rolle.sh): Konten und Daten,
-  # keine Passwort-Hashes, Tokens, Sitzungen und Schlüssel. Deshalb eine
-  # Anmeldung (PGWEB_USER, Vorgabe „pgweb", Passwort in
-  # ./geheimnisse/pgweb_password — ohne startet der Dienst nicht) und:
-  #   • Die Portangabe beginnt mit 127.0.0.1 — damit ist der Dienst NUR auf dem
-  #     Server selbst erreichbar, nicht aus dem Netz. Ein blosses "8081:8081"
-  #     würde ihn an alle Schnittstellen binden und wäre je nach Router von
-  #     aussen offen. Diese Bindung bitte nicht ändern.
-  #   • Von einem anderen Rechner aus per SSH-Tunnel arbeiten:
-  #         ssh -L 8081:127.0.0.1:8081 <benutzer>@<server>
-  #     Dann im lokalen Browser http://localhost:8081 öffnen.
-  #   • Nach getaner Arbeit wieder herunterfahren (Befehl oben).
+  # Nur auf Anforderung (Profil tools): docker compose --profile tools up -d pgweb,
+  # danach http://localhost:8081, von einem anderen Rechner per
+  # ssh -L 8081:127.0.0.1:8081. Wer angemeldet ist, liest die Allowlist der
+  # Leserolle (postgres/app-rolle.sh); deshalb nur an 127.0.0.1 gebunden.
   pgweb:
     # Fest per Digest: Ein Werkzeug mit Zugang zur ganzen Datenbank soll nicht
     # unbemerkt durch ein umgehängtes Tag ersetzt werden.

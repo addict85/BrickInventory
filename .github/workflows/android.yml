@@ -1,32 +1,9 @@
 name: Android-App
 
-# Läuft bei jedem Push auf JEDEN Zweig, bei jedem Pull-Request, der die App
-# berührt — und von Hand über den Knopf "Run workflow".
-#
-# Zweck: Der Übersetzungs- und Testbefund kommt automatisch, ohne dass jemand
-# lokal bauen muss. Am Ende steht eine installierbare BrickInventory.apk.
-#
-# ── Warum `'**'` und nicht mehr nur `main` (Nachtrag 125) ───────────────────
-#
-# Hier stand `branches: [main]`. Die Web-CI stand daneben auf `branches: ['**']`
-# — dieselbe Regel in zwei Fassungen, und die App zog den Kürzeren: Ein Zweig
-# ist genau der Ort, an dem man den Befund BRAUCHT, nämlich bevor etwas nach
-# main geht.
-#
-# GEMESSEN an dieser Sitzung: vier Pushes auf einen Zweig, alle mit Änderungen
-# unter Android-App/. Die Web-CI lief viermal von selbst. Der Android-Lauf kein
-# einziges Mal — er musste jedes Mal von Hand angestossen werden. Dreimal wurde
-# er dabei rot (Läufe 88, 89, 90), und jedes dieser drei Male stand der Fehler
-# schon im gepushten Zweig, ohne dass irgendetwas es gesagt hätte.
-#
-# Android übersetzt in der Entwicklungsumgebung dieses Projekts nicht
-# (dl.google.com antwortet mit 403). Diese Action ist damit der EINZIGE Ort, an
-# dem Kotlin überhaupt übersetzt wird. Ein Übersetzer, der nur auf main läuft,
-# sagt es erst, wenn es zu spät ist.
-#
-# Der concurrency-Block unten bricht ältere Läufe desselben Zweigs ab, die
-# `paths`-Filter halten Läufe fern, die die App gar nicht berühren — die Kosten
-# bleiben also da, wo sie hingehören.
+# Übersetzt und testet die App bei jedem Push auf jeden Zweig (paths-Filter
+# unten) und von Hand. Nur hier wird Kotlin überhaupt übersetzt, denn die
+# Entwicklungsumgebung erreicht dl.google.com nicht; ein Lauf nur auf main
+# meldete einen Fehler erst nach dem Merge. Am Ende steht BrickInventory.apk.
 on:
   push:
     branches: ['**']
@@ -107,18 +84,8 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # ── Vorabprüfung ────────────────────────────────────────────────────────
-      #
-      # Der Gradle-Wrapper besteht aus DREI Dateien, und zwei davon sind binär:
-      # `gradle-wrapper.jar` kommt beim Zippen eines Projekts oft nicht mit, und
-      # dann fehlt sie im Repository, ohne dass es jemandem auffällt.
-      #
-      # Ohne diese Prüfung scheitert der Lauf ein paar Schritte später mit einer
-      # Meldung, die nicht sagt, was fehlt — `setup-gradle` prüft ab v4 die
-      # Prüfsumme der Wrapper-JAR und bricht ab, `chmod` findet die Datei nicht,
-      # oder Java meldet "Could not find or load main class
-      # org.gradle.wrapper.GradleWrapperMain". Drei verschiedene Fehlerbilder für
-      # dieselbe Ursache.
+      # Vorabprüfung: gradle-wrapper.jar fehlt nach dem Zippen eines Projekts
+      # oft, und die späteren Fehlerbilder nennen die Ursache nicht.
       - name: Gradle-Wrapper vorhanden?
         run: |
           set -eu
@@ -141,25 +108,10 @@ jobs:
           fi
           echo "Wrapper vollständig."
 
-      # ── Ist die festgenagelte Gradle-Prüfsumme die amtliche? ──────────────
-      #
-      # gradle-wrapper.properties nagelt die Verteilung auf eine sha256 fest.
-      # Das ist der Riegel gegen ein ausgetauschtes Archiv — nur hat nie etwas
-      # geprüft, ob die Zahl daneben die richtige IST. Eine beim Heben
-      # verdrehte Ziffer bricht sofort und laut; eine Prüfsumme, die zu einem
-      # FREMDEN Archiv passt, nicht.
-      #
-      # Der Schritt liest zusätzlich, welche Fassung die neueste ist und wie
-      # IHRE Prüfsumme lautet — das ist die Zahl, die zum Heben nötig ist.
-      # downloads.gradle.org ist aus der Entwicklungsumgebung gesperrt
-      # (HTTP 000), von hier erreichbar. Erfinden ist keine Möglichkeit: Eine
-      # falsche Zahl bricht jeden Build, eine entfernte Zeile wäre ein
-      # geschwächter Riegel.
-      #
-      # Der Hinweis auf die neuere Fassung färbt NICHT rot — ob gehoben wird,
-      # entscheidet ein Mensch. Rot ist die Abweichung, und rot ist auch ein
-      # ausgefallener Abruf: ein stillschweigend übergangener Riegel ist
-      # schlimmer als keiner.
+      # Die festgenagelte sha256 der Gradle-Verteilung wird gegen die amtliche
+      # geprüft: Eine Zahl, die zu einem fremden Archiv passt, fiele sonst nie
+      # auf. Rot bei Abweichung und bei gescheitertem Abruf; eine neuere Fassung
+      # wird nur gemeldet, heben entscheidet ein Mensch.
       - name: Gradle-Prüfsumme gegen die amtliche
         run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
 
@@ -190,17 +142,9 @@ jobs:
       # Zuerst die Tests: rund fünfzig Testdateien, die in Sekunden laufen und
       # das meiste abfangen, bevor der lange Übersetzungslauf beginnt.
       - name: Unit-Tests
-        # tee: Gradle schreibt den Namen des roten Tests EINMAL, mitten in
-        # hunderte Zeilen Aufgabenprotokoll. Ohne Mitschnitt ist er hinterher
-        # nur ueber den Testbericht zu finden, und der liegt als Artefakt in
-        # einer Ablage, die von hier aus nicht erreichbar ist.
-        #
-        # set -o pipefail: Ohne das bestimmt tee den Rueckgabewert, und ein
-        # roter Testlauf ginge als Erfolg durch. Dieselbe Falle wie im
-        # Web-Workflow.
-        #
-        # testDebugUnitTest läuft in jedem Android-Modul; core-model ist reines
-        # Kotlin und hat stattdessen `test`.
+        # Mitschnitt, weil Gradle den roten Test einmal mitten ins Protokoll
+        # schreibt; pipefail, sonst bestimmt tee den Rückgabewert. core-model
+        # ist reines Kotlin und hat `test` statt testDebugUnitTest.
         run: |
           set -o pipefail
           ./gradlew --no-daemon testDebugUnitTest :core-model:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
@@ -234,21 +178,9 @@ jobs:
             exit 1
           fi
 
-      # ── Was rot war, als ANNOTATION ─────────────────────────────────────────
-      #
-      # Warum das noetig ist: Zweimal hintereinander war der Lauf rot, und die
-      # einzige Annotation lautete „Process completed with exit code 1". Der
-      # Testbericht liegt als Artefakt in einer Blob-Ablage, die der Proxy hier
-      # mit 403 abweist — die Ursache war nur zu finden, indem das ganze
-      # Protokoll durchgelesen wurde. GEMESSEN an den Laeufen 80 und 81.
-      #
-      # Der Web-Workflow macht das seit web-ci.yml genauso; hier fehlte es.
-      #
-      # BEIDE Faelle, aus demselben Grund wie dort: Ein Lauf kann rot sein,
-      # OHNE dass ein einzelner Test fehlschlaegt — Lauf 81 scheiterte beim
-      # UEBERSETZEN (ein fehlender Import), da gibt es keine „FAILED"-Zeile.
-      # Eine Diagnose, die nur den erwarteten Ausgang abdeckt, schweigt genau
-      # dann, wenn etwas Unerwartetes passiert.
+      # Was rot war, als Annotation: Testbericht und Rohprotokoll sind von
+      # aussen nicht abrufbar. Auch der Fall „rot ohne roten Test“ (Fehler beim
+      # Übersetzen) wird gemeldet, sonst schwiege die Diagnose genau dann.
       - name: Rote Tests auflisten
         if: failure()
         run: |
@@ -310,24 +242,12 @@ jobs:
           echo "pruefsumme_aab=$SUMME_AAB" >> "$GITHUB_OUTPUT"
           echo "unsigniert: APK $SUMME_APK, AAB $SUMME_AAB"
 
-      # ── Warum ZUSÄTZLICH ein Bundle (.aab) ──────────────────────────────────
-      #
-      # Play nimmt seit August 2021 für neue Apps kein APK mehr an, nur noch ein
-      # Android App Bundle. Das APK bleibt trotzdem: Es ist das, was man sich
-      # hier aus den Artefakten zieht und direkt aufs Gerät schiebt. Ein .aab
-      # lässt sich NICHT installieren — daraus schneidet erst Play die
-      # geräte-passenden APKs.
-      #
-      # Beides entsteht im selben Gradle-Aufruf oben, damit der lange
-      # Übersetzungslauf nur einmal stattfindet.
+      # Das Bundle (.aab) entsteht im selben Gradle-Aufruf wie das APK: Das APK
+      # ist installierbar, das Bundle fällt auf, wenn nur es bricht.
 
-      # R8 läuft nur im Release-Build (isMinifyEnabled = true). Der Lint-Bericht
-      # ist deshalb gerade hier interessant; abbrechen soll er nicht, das
-      # entspricht abortOnError = false im Buildskript.
-      #
-      # Nur :app: — mit checkDependencies prüft sein Lauf alle Module mit, und
-      # ein Bericht bleibt einer. Je Modul einzeln hielte Lint jeden Text in
-      # core-ressourcen für unbenutzt, weil erst die Bereiche ihn lesen.
+      # Lint auf dem Release-Build (dort läuft R8), ohne abzubrechen
+      # (abortOnError = false). Nur :app: mit checkDependencies: Je Modul hielte
+      # Lint jeden Text in core-ressourcen für unbenutzt.
       - name: Lint
         id: lint
         run: |
@@ -335,84 +255,27 @@ jobs:
           ./gradlew --no-daemon :app:lintRelease 2>&1 | tee "$RUNNER_TEMP/lint.log"
         continue-on-error: true
 
-      # ── Wie viele Warnungen wirft der Übersetzer? ──────────────────────────
-      #
-      # Auf die Frage „sind alle Warnungen beim Kompilieren gelöst" gab es hier
-      # keine Antwort, nur zwei Zeilen, die das Gegenteil festlegen:
-      #
-      #     app/build.gradle.kts:177   abortOnError     = false
-      #     app/build.gradle.kts:178   warningsAsErrors = false
-      #
-      # und `allWarningsAsErrors` für Kotlin ist nirgends gesetzt. Es gab also
-      # keine Regel, die Warnungen verbietet — und niemand hat sie je GEZÄHLT.
-      # Die Zahl stand in hunderten Zeilen Gradle-Protokoll, das GitHub nur als
-      # Ganzes von einem Host ausliefert, den der Proxy hier mit 403 abweist.
-      #
-      # Warum nicht einfach allWarningsAsErrors = true: Das bricht den Bau ab
-      # der ersten Warnung ab, auch bei einer aus generiertem Code (Hilt, KSP),
-      # die hier niemand beheben kann. Eine Regel, die man danach sofort mit
-      # Ausnahmen durchlöchern muss, ist keine. Stattdessen: zählen, jede
-      # Warnung beim Namen nennen, und rot werden, sobald die Zahl STEIGT.
-      #
-      # `!cancelled()`: Der Befund ist gerade dann interessant, wenn der Bau
-      # rot war — ein abgebrochener Lauf braucht ihn nicht mehr.
-      # `steps.bau.outcome != 'skipped'`: Im Lauf 37584609538 waren die
-      # Unit-Tests rot, der Bau lief damit nie — und dieser Schritt wurde
-      # trotzdem rot, weil er kein Protokoll fand. Das ist ein zweiter roter
-      # Schritt fuer EINEN Fehler, und er zeigt in die falsche Richtung.
-      #
-      # Das Werkzeug bleibt dabei rot bei fehlendem Protokoll: Lief der Bau und
-      # ging der Mitschnitt verloren, ist „0 Warnungen" eine Falschaussage, und
-      # genau die soll auffallen. Nur gefragt wird es nicht mehr, wenn gar nicht
-      # gebaut wurde.
+      # Warnungen zählen statt allWarningsAsErrors: Generierter Code (Hilt, KSP)
+      # warnt, ohne dass es hier zu beheben wäre. Rot, sobald die Zahl über der
+      # Obergrenze liegt oder das Protokoll eines gelaufenen Baus fehlt. Lief
+      # der Bau nicht, schweigt der Schritt (ein Fehler, ein roter Schritt).
       - name: Warnungen zählen
         if: ${{ !cancelled() && steps.bau.outcome != 'skipped' }}
         run: |
           python3 tools/warnungen-zaehlen.py tools/warnungen-obergrenze.txt \
             "$RUNNER_TEMP/bau.log" "$RUNNER_TEMP/lint.log"
 
-      # ── Die Lint-Befunde: benannt, nicht nur gezählt ───────────────────────
-      #
-      # Der Schritt darüber meldet „Lint-Warnungen: 58 (nicht in der Summe)" —
-      # eine Zahl und sonst nichts. WELCHE 58 stand nur im XML-Bericht, und der
-      # liegt als Artefakt in einer Ablage, die der Proxy der
-      # Entwicklungsumgebung mit 403 abweist. Damit war die Zahl nicht
-      # handhabbar: Sie sagt, DASS etwas da ist, nicht was zu tun wäre.
-      #
-      # Warum KEINE lint-Baseline: Eine Baseline macht bestehende Befunde
-      # unsichtbar — sie stehen dann in einer Datei, die niemand liest, und
-      # verschwinden aus jedem Bericht. Man sieht nicht mehr, dass es sie gibt,
-      # und also auch nicht, dass man sie beheben könnte. Dieser Schritt macht
-      # das Gegenteil: Er nennt jeden Befund nach Prüferkennung, mit Anzahl und
-      # Fundorten, und wird rot, sobald die Summe steigt.
-      #
-      # Error und Fatal fallen NICHT unter die Obergrenze: Da ist die richtige
-      # Zahl null, und sie unter einer Summe zu verstecken wäre genau die Art
-      # Riegel, die nichts hält.
-      #
-      # `steps.lint.outcome != 'skipped'`: Lief Lint nicht, gibt es keinen
-      # Bericht — dann wäre ein roter Schritt hier ein zweiter roter für EINEN
-      # Fehler und zeigte in die falsche Richtung. Dieselbe Lehre wie beim
-      # Schritt darüber (Lauf 37584609538).
+      # Lint-Befunde nach Prüferkennung mit Fundorten, statt nur einer Zahl;
+      # keine Baseline, weil sie bestehende Befunde unsichtbar macht. Rot, wenn
+      # die Summe steigt; Error und Fatal zählen nicht unter die Obergrenze.
       - name: Lint-Befunde zählen
         if: ${{ !cancelled() && steps.lint.outcome != 'skipped' }}
         run: |
           python3 tools/lint-zaehlen.py tools/lint-obergrenze.txt \
             app/build/reports/lint-results-release.xml
 
-      # Den Namen vergibt GRADLE (Aufgabe copyReleaseApkAsBrickInventory in
-      # app/build.gradle.kts), nicht dieser Schritt. Hier wird nur nachgesehen,
-      # was dabei herausgekommen ist.
-      #
-      # Vorher stand die Regel doppelt: Gradle legte "Brickinventory.apk" ab
-      # (kleines i), dieser Schritt schob app-release.apk nach
-      # "BrickInventory.apk" (grosses I). Auf Linux sind das zwei Dateien; im
-      # Protokoll lagen beide nebeneinander. Und das `mv` verschob genau die
-      # Original-APK, die Gradle ausdrücklich stehen lässt, damit nachgelagerte
-      # Schritte sie noch finden. Ein Name gehört an eine Stelle.
-      #
-      # Ein lokaler Bau bekommt damit denselben Dateinamen wie der Lauf hier —
-      # vorher unterschied er sich in einem Buchstaben.
+      # Den Dateinamen vergibt Gradle (copyReleaseApkAsBrickInventory), damit
+      # ein lokaler Bau denselben Namen trägt; hier wird nur nachgesehen.
       - name: APK abgelegt?
         run: |
           set -eu
@@ -423,70 +286,16 @@ jobs:
             exit 1
           fi
 
-      # ── Sind die Abhängigkeiten aktuell? Gemessen, nicht geschätzt ─────────
-      #
-      # Die Frage „sind alle Libs auf der neuesten Major- und Minor-Version"
-      # kam mehrfach, und ein Teil der Antwort war jedes Mal GESCHÄTZT: Die
-      # androidx-Nummern stammten aus einer Doku-Seite, weil Google-Maven aus
-      # der Entwicklungsumgebung nicht erreichbar ist — dl.google.com antwortet
-      # dort mit HTTP 000, und maven.google.com leitet genau dorthin um.
-      #
-      # Dieser Runner erreicht es sehr wohl; von dort lädt der Build ja seine
-      # Abhängigkeiten. Also wird hier gemessen, direkt aus group-index.xml
-      # (Google) und maven-metadata.xml (Central).
-      #
-      # Der Schritt macht den Lauf NICHT rot, wenn etwas hinterherhinkt — ob
-      # eine ältere Fassung richtig ist, entscheidet ein Mensch (bei okhttp und
-      # coil entschied es `minCompileSdk`, nicht die Nummer). Rot wird er nur,
-      # wenn er gar nichts messen konnte und sein Bericht damit nichts aussagt.
-      #
-      # `!cancelled()` statt `always()`: Der Bericht soll auch dann kommen,
-      # wenn der Bau vorher rot war — aber ein abgebrochener Lauf (neuer Push
-      # auf denselben Zweig) braucht ihn nicht mehr.
+      # Fassungen der Abhängigkeiten messen: Nur dieser Runner erreicht
+      # Google-Maven. Ein Rückstand färbt nicht rot (manche Fassung ist an
+      # minCompileSdk gebunden); rot nur, wenn nichts gemessen werden konnte.
       - name: Sind die Abhängigkeiten auf der neuesten Fassung?
         if: ${{ !cancelled() }}
         run: python3 tools/fassungen-pruefen.py gradle/libs.versions.toml
 
-      # `always()`: Die Berichte sind gerade dann interessant, wenn der Lauf rot
-      # ist. Ohne das lädt GitHub sie bei einem Fehlschlag nicht hoch.
-      # upload-artifact auf v6 (vorher v4).
-      #
-      # v4 läuft auf Node 20 und erzeugt seit dessen Abkündigung bei jedem Lauf
-      # die Warnung "being forced to run on Node.js 24". Nachgesehen statt
-      # geraten — und das Nachsehen hat sich gelohnt:
-      #
-      #     v4 -> runs.using: node20      (warnt)
-      #     v5 -> runs.using: node20      (warnt EBENFALLS)
-      #     v6 -> runs.using: node24      (still)
-      #
-      # Der naheliegende Sprung auf die nächste Hauptversion hätte die Warnung
-      # also NICHT beseitigt. Wer hier wieder anfasst: Die Fassung am Tag
-      # abrufen und in action.yml unter runs.using nachsehen, welches Node sie
-      # startet — die Versionsnummer allein sagt es nicht.
-      #
-      #     curl https://raw.githubusercontent.com/actions/upload-artifact/v6/action.yml
-      #
-      # ── Nachtrag: eine Hauptversion weiter, aus anderem Grund ─────────────
-      #
-      # Die Tabelle darueber bleibt richtig. Gehoben wurde jetzt NICHT wegen
-      # einer Warnung, sondern weil die Frage „sind alle verwendeten Fassungen
-      # die neuesten" auch fuer die Actions gilt — und die standen in keinem
-      # Katalog und in keiner package.json, also hat sie niemand gemessen.
-      #
-      # Gemessen wurde mit demselben Handgriff wie oben, nur umgedreht: ob ein
-      # hoeherer Haupt-Tag UEBERHAUPT existiert. api.github.com ist aus dieser
-      # Umgebung gesperrt (403), raw.githubusercontent.com nicht:
-      #
-      #     raw.githubusercontent.com/<action>/v7/action.yml  -> 200 = gibt es
-      #                                      .../v9, v42, v99 -> 404 = gibt es nicht
-      #
-      # Die Gegenprobe mit v9, v42, v99 und vXYZ war noetig: Ohne sie waere
-      # „200 bei jedem geprueften Tag" nicht von „der Abruf antwortet immer
-      # 200" zu unterscheiden gewesen.
-      #
-      # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
-      # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
-      # einzufangen.
+      # `always()`: Die Berichte zählen gerade bei einem roten Lauf. Die
+      # Hauptversion von upload-artifact ist an der Laufzeit (runs.using in
+      # action.yml) nachgesehen; erst v6 läuft auf Node 24.
       # Aufgenommen (ohne Referenz) liegen die Bilder unter src/test; beim
       # Vergleich legt Roborazzi Ist-Bild und Unterschied unter build/outputs ab.
       - name: Bildschirmfotos sichern
@@ -682,17 +491,10 @@ jobs:
           jarsigner -keystore "$KS" -storepass:env KS_PASS -keypass:env KEY_PASS "$RUNNER_TEMP/bundle.aab" "$KEY_ALIAS" >/dev/null
           jarsigner -verify "$RUNNER_TEMP/bundle.aab" >/dev/null
 
-          # ── Signierte Fassungsbeschreibung (sec8 N4, sec11 H1) ────────────────
-          #
-          # Schreibrecht am Repository allein reicht so nicht, um ein Update zu
-          # unterdrücken, auf ein anderes APK zu zeigen oder eine ältere Fassung
-          # anzubieten. Die Adresse zeigt auf den unveränderlichen Anhang dieser
-          # Fassung. `beschreibungssignatur` kommt vom eigenen Beschreibungsschlüssel;
-          # eine App, die ihn kennt, nimmt nur sie. `signatur` (APK-Schlüssel) bleibt für
-          # Fassungen ohne ihn (README, „Beschreibungsschlüssel“).
-          # `ausgestellt`/`gueltigBis` (sec10 N1): Ohne Frist liesse sich eine ältere,
-          # echt signierte Beschreibung still wieder hochladen. Auffrischen heisst:
-          # ein neues Etikett, auch auf denselben Commit (README, „Frist“).
+          # Signierte Fassungsbeschreibung: Schreibrecht am Repository allein
+          # unterdrückt kein Update und bietet keine ältere Fassung an. Die App
+          # prüft `beschreibungssignatur` (sonst `signatur`) und die Frist
+          # `gueltigBis`; auffrischen heisst ein neues Etikett (README, „Frist“).
           META="$EIN/apk/release/output-metadata.json"
           APK_AUS="$AUS/apk/release/BrickInventory.apk"
           V_CODE=$(jq -r '.elements[0].versionCode' "$META")
@@ -740,19 +542,9 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      # Das Bundle wird hier nur GEBAUT und gesichert, nicht veroeffentlicht.
-      #
-      # Hier stand, dass das Hochladen zu Play in android-playstore.yml stehe.
-      # Diesen Workflow gibt es nicht mehr: Die App wird als APK ueber die
-      # GitHub-Releases ausgeliefert (Schritt „BrickInventory.apk als Release
-      # bereitstellen" im Job `release`) und aktualisiert sich daraus selbst
-      # (util/AppUpdate.kt). Der Play-Weg war gebaut, aber nie benutzt.
-      #
-      # Der Bau hier bleibt trotzdem, und zwar aus dem Grund, der schon vorher
-      # der zweite war: Er faellt auf, wenn das Bundle bricht, waehrend das APK
-      # noch durchlaeuft. Das kommt vor — R8 und die Ressourcen-Aufteilung
-      # arbeiten fuer die beiden Formate nicht gleich. Als Artefakt ist es
-      # ausserdem da, falls der Play-Weg je wieder gewollt ist.
+      # Das Bundle wird nur gesichert, nicht veröffentlicht; ausgeliefert wird
+      # das APK über die Releases. Es fällt auf, wenn nur das Bundle bricht
+      # (R8 und Ressourcen-Aufteilung arbeiten je Format anders).
       - name: App-Bundle (.aab) sichern
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
@@ -870,34 +662,17 @@ jobs:
             exit 1
           fi
 
-      # ── Das fertige APK gegen R8 prüfen ─────────────────────────────────────
-      #
-      # Der Unit-Test-Lauf oben ist `testDebugUnitTest` — auf der JVM, ohne R8.
-      # Zwischen "470 Tests grün" und "auf dem Gerät passiert etwas" lag damit
-      # niemand, und genau dort ging es schief: Im APK von main (120c998) hatte
-      # PreisalarmWorker nur noch seinen Konstruktor, doWork() war weg. Der
-      # Preisalarm konnte nie laufen, und kein Test hat es gemerkt.
-      #
-      # Diese Prüfung liest das APK, das gleich hochgeladen wird — nicht den
-      # Quelltext, aus dem es entstanden ist. Das ist der Punkt: Was R8 gemacht
-      # hat, steht nur im Ergebnis.
+      # Das fertige APK lesen, nicht den Quelltext: Die Unit-Tests laufen ohne
+      # R8, und was R8 entfernt (etwa doWork() eines Workers), steht nur im
+      # Ergebnis.
       - name: APK gegen R8-Verluste prüfen
         run: |
           python3 tools/apk-pruefen.py \
             app/build/outputs/apk/release/BrickInventory.apk \
             */src/main/java
 
-      # ── 16-KB-Speicherseiten am ERGEBNIS messen ─────────────────────────────
-      #
-      # Bis hierher stand die 16-KB-Tauglichkeit auf einer ZAHL: datastore war
-      # auf 1.1.7 festgenagelt, weil 1.2.0 wieder 4-KB-ausgerichtet war, und
-      # ein Test verlangte genau diese Nummer.
-      #
-      # Das prüft die Nummer, nicht die Ausrichtung — und war in der
-      # Entwicklungsumgebung gar nicht nachprüfbar: Die AARs liegen auf
-      # dl.google.com, das von dort nicht erreichbar ist. Hier liegt das
-      # gebaute APK, also wird hier gemessen. Dieselbe Umkehrung wie beim
-      # Schritt darüber, der R8s Ergebnis liest statt des Quelltexts.
+      # 16-KB-Speicherseiten am gebauten APK messen statt an einer
+      # Versionsnummer; die AARs sind nur von diesem Runner aus erreichbar.
       - name: Native Bibliotheken auf 16 KB ausgerichtet?
         run: |
           python3 tools/apk-ausrichtung.py \
@@ -937,38 +712,11 @@ jobs:
           name: apk-signiert
           path: Android-App/app/build/outputs
 
-      # ── Warum ein Release und kein Artefakt ─────────────────────────────────
-      #
-      # Marcos Wunsch: am Ende kein Zip, sondern direkt das APK. Als Artefakt
-      # geht das NICHT — nachgelesen in der Anleitung von upload-artifact,
-      # nicht aus dem Gedaechtnis:
-      #
-      #   "When an Artifact is uploaded, all the files are assembled into an
-      #    immutable Zip archive. There is currently no way to download
-      #    artifacts in a format other than a Zip [...]"
-      #
-      # GitHub packt also selbst ein, auch bei einer einzigen Datei, und es gibt
-      # keinen Schalter dagegen. Ein Release-ANHANG wird dagegen roh
-      # ausgeliefert: ein Klick, und es ist das APK.
-      #
-      # Zwei Dinge kommen dazu: Ein Release-Anhang braucht KEIN GitHub-Konto
-      # (das Repository ist oeffentlich), und er verfaellt nicht nach 90 Tagen.
-      # Genau das waren die beiden Gruende fuer die frueher hier angehaengte
-      # Google-Drive-Ablage — sie ist deshalb entfallen (Marcos Entscheidung).
-      #
-      # ── Ein Etikett, nicht eins je Lauf ─────────────────────────────────────
-      #
-      # Die Datei wird ERSETZT, damit der Link stabil bleibt. Sonst braucht
-      # jeder nach jedem Bau einen neuen.
-      #
-      # Das Etikett bleibt auf dem Commit stehen, auf dem es angelegt wurde.
-      # Verschieben hiesse, ein Etikett umzuschreiben, das jemand schon
-      # ausgecheckt haben kann — woher das APK stammt, steht deshalb im TEXT
-      # des Release und wird bei jedem Lauf neu geschrieben.
-      #
-      # NUR aus einem Etikett android-v… auf main, auch nicht von Hand auf einem
-      # Zweig: Sonst ueberschriebe ein ungeprueftes APK die Datei hinter dem
-      # stabilen Link, und die App holte es sich als Update.
+      # Ein Release-Anhang statt eines Artefakts: Artefakte liefert GitHub nur
+      # als Zip, ein Anhang kommt roh, ohne Konto und ohne Verfall. Die Datei
+      # hinter dem festen Etikett wird ersetzt, damit der Link bleibt; woher
+      # sie stammt, steht im Text des Release. Nur aus android-v… auf main,
+      # sonst holte sich die App ein ungeprüftes APK als Update.
       # Bescheinigt, aus welchem Lauf, Commit und Workflow das signierte APK
       # stammt (Sigstore, öffentlich prüfbar mit `gh attestation verify`).
       - name: Herkunft des APK bescheinigen

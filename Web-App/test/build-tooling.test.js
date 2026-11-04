@@ -518,6 +518,10 @@ test('Dockerfile und CI laufen auf derselben, unterstützten Node-Version', () =
   assert.equal(imCi, imBild[0],
     `CI prüft auf Node ${imCi}, ausgeliefert wird Node ${imBild[0]} — ` +
     'dann sagt ein grüner Lauf nichts über das Image');
+  // .nvmrc für die lokale Entwicklung (`nvm use`). Gegenprobe (04.11.2026):
+  // .nvmrc auf 24 → rot „.nvmrc nennt Node 24“.
+  const nvmrc = read('.nvmrc').trim();
+  assert.equal(nvmrc, imBild[0], `.nvmrc nennt Node ${nvmrc}, ausgeliefert wird Node ${imBild[0]}`);
 
   // Abgelaufene Zeilen. Beim Ergänzen bitte das Datum dazuschreiben.
   const abgelaufen = {

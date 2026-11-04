@@ -37,6 +37,7 @@ const assert = require('node:assert/strict');
 const fs     = require('node:fs');
 const os     = require('node:os');
 const path   = require('node:path');
+const { testName, raeumeReste } = require('./helpers/testnamen');
 const { execFileSync, spawnSync } = require('node:child_process');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -364,7 +365,8 @@ test('restore.sh spielt als App-Rolle ein', { timeout: 240_000 }, async (t) => {
     if (process.env.REQUIRE_DB === '1') throw new Error('REQUIRE_DB=1, aber kein Superuser oder kein pg_dump');
     t.skip('kein Superuser oder pg_dump'); return;
   }
-  const name = `${decodeURIComponent(basis.pathname.slice(1))}_rst_${process.pid}`.toLowerCase();
+  const name = testName('rst');
+  await raeumeReste(admin, 'rst');
   const [ziel, alt, APP, LESEN, BOESE] = [name, `${name}_alt`, `${name}_app`, `${name}_lesen`, `${name}_boese`];
   const id = (s) => `"${s}"`;
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'restore-rolle-'));

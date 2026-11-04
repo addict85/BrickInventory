@@ -55,7 +55,8 @@ const BASIS = new URL(process.env.TEST_DB_BASIS || process.env.TEST_DATABASE_URL
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 require('./helpers/sources').buildAndRequire();
 
-const praefix = `${decodeURIComponent(BASIS.pathname.slice(1))}_rolle_${process.pid}`;
+const { testName, raeumeReste } = require('./helpers/testnamen');
+const praefix = testName('rolle');
 const ROLLE = `${praefix}_app`.toLowerCase();
 const LESEN = `${praefix}_lesen`.toLowerCase();
 const BOESE = `${praefix}_boese`.toLowerCase();
@@ -114,6 +115,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     if (process.env.REQUIRE_DB === '1') throw new Error(`REQUIRE_DB=1, aber Superuser=${su} und psql ${fassung || 'fehlt'}`);
     t.skip('kein Superuser oder psql unter 15'); return;
   }
+  await raeumeReste(admin, 'rolle');
   const alt = `${praefix}_alt`, neu = `${praefix}_neu`;
   t.after(async () => {
     for (const db of [alt, neu]) await admin.query(`DROP DATABASE IF EXISTS ${id(db)} WITH (FORCE)`).catch(() => {});
@@ -125,7 +127,9 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async (t) =
     await admin.query(`CREATE DATABASE ${id(alt)}`);
     const s = schemaAlsKonto(url(alt));
     assert.equal(s.status, 0, s.stderr);
-    await admin.query(`CREATE ROLE ${id(ROLLE)} LOGIN SUPERUSER CREATEROLE`);
+    // NOLOGIN: app-rolle.sh schaltet die Anmeldung selbst ein; ein Rest nach
+    // einem Abbruch ist so kein anmeldbarer Superuser.
+    await admin.query(`CREATE ROLE ${id(ROLLE)} NOLOGIN SUPERUSER CREATEROLE`);
     await admin.query(`GRANT pg_execute_server_program TO ${id(ROLLE)}`);
 
     const r = rolleEinrichten(alt);
