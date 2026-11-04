@@ -228,11 +228,14 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
       return sendeFehler(req, res, 400, 'wert_ungueltig');
     // Mailserver, Registrierung und API-Schlüssel nur mit Passwort: Eine erbeutete
     // Verwaltersitzung läse sonst Rücksetz-Mails mit oder öffnete still die Registrierung.
+    // Ein erster API-Schlüssel lenkt nichts um; der Einrichtungsassistent fragt dafür nicht nach.
     const heikel: string[] = [];
     for (const key of globalKeys.filter(istHeikel)) {
       const neu = req.body[key];
       if (neu === undefined || (SECRET_KEYS.has(key) && isMaskedValue(neu))) continue;
-      if (String(neu) !== String(await getGlobalSetting(key) ?? '')) heikel.push(key);
+      const alt = String(await getGlobalSetting(key) ?? '');
+      if (String(neu) === alt || (alt === '' && !key.startsWith('smtp_') && key !== 'registration_enabled')) continue;
+      heikel.push(key);
     }
     if (heikel.length && !req.body.admin_password) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
     if (heikel.length && !await bestaetigeMitFaktor(req, res, uid, req.body.admin_password)) return;

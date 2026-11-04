@@ -19,6 +19,11 @@
  *      Passwort bleibt der Mailserver“, „ohne Passwort bleiben Registrierung …“
  *      (aktuelles_passwort_falsch, zählt zur Bremse)
  *
+ * Ein erster API-Schlüssel (vorher leer) braucht kein Passwort: Er lenkt nichts
+ * um, und der Einrichtungsassistent fragt sonst mitten im Schritt nach.
+ * Gegenprobe (04.11.2026 gemessen): die Ausnahme für leere Werte entfernt → rot:
+ * „ein erster API-Schlüssel braucht kein Passwort“ (400 statt 200).
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -111,6 +116,13 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
   });
 
   const wert = async (k) => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
+  await t.test('ein erster API-Schlüssel braucht kein Passwort', async () => {
+    await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
+    const r = await speichern({ rebrickable_api_key: 'erster-schluessel' });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(await _req('src/konto/settings.js').getGlobalSetting('rebrickable_api_key'), 'erster-schluessel');
+  });
+
   await t.test('ohne Passwort bleiben Registrierung und API-Schlüssel', async () => {
     await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '0') ON CONFLICT (key) DO UPDATE SET value = '0'");
     for (const body of [{ registration_enabled: '1' }, { rebrickable_api_key: 'fremder-schluessel' }]) {
