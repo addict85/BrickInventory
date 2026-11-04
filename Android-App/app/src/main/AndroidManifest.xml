@@ -64,6 +64,11 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="otpauth" />
         </intent>
+        <!-- Den System-Installer sehen, um seinen Bestätigungsdialog zu prüfen
+             (installerZiel, util/AppUpdate.kt). -->
+        <intent>
+            <action android:name="android.content.pm.action.CONFIRM_INSTALL" />
+        </intent>
     </queries>
 
     <!--

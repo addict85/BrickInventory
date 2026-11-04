@@ -840,7 +840,12 @@ lässt `CacheBereichTest` scheitern, bis es hier eingeordnet ist.
 - **Endmarker im verschlüsselten Dateisystem (sec12 H9):** Jeder flush schliesst
   mit einem Marker ab, weil OkHttp sein Journal nach jeder Zeile flusht und nie
   schliesst. Eine Kürzung genau auf einen früheren flush bleibt darum unentdeckt;
-  sie setzt nur das Journal auf einen älteren Stand zurück.
+  sie setzt nur das Journal auf einen älteren Stand zurück. Ein Zähler oder die
+  Länge im Marker hülfe nicht (sec13 H7): Der frühere Marker trug den Stand, der
+  damals galt, und nach einem Absturz muss genau dieser Stand lesbar sein. Erkennen
+  liesse sich die Kürzung nur mit einer zweiten Ablage je Datei, die bei jedem flush
+  mitgeschrieben wird. Ein zurückgesetztes Journal ist für OkHttp ein Absturzfall
+  (fehlende Einträge sind Fehltreffer); eine gekürzte Anleitung ist kein gültiges PDF mehr.
 
 ## Token nur an die eigene Herkunft
 
