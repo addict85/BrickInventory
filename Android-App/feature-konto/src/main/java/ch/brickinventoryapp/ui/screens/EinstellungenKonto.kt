@@ -60,7 +60,6 @@ internal fun KontoCard(
     // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
     // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
     var pwAktuell    by remember { mutableStateOf("") }
-    var pwProfil     by remember(profil) { mutableStateOf("") }
     var pwNeu        by remember { mutableStateOf("") }
     var pwWiederholt by remember { mutableStateOf("") }
     // Das Passwort für eine Profiländerung fragt erst der Dialog beim Speichern ab.
@@ -164,26 +163,13 @@ internal fun KontoCard(
 
     // Der Server bestätigt jede Profiländerung mit dem Passwort: Sonst liesse sich über
     // eine neue Adresse das Passwort zurücksetzen. Gefragt wird erst beim Speichern.
-    if (fragtPasswort) AlertDialog(
-        onDismissRequest = { fragtPasswort = false; pwProfil = "" },
-        title = { Text(stringResource(R.string.konto_save)) },
-        text = {
-            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                Text(stringResource(R.string.konto_profil_password_needed), style = MaterialTheme.typography.bodyMedium)
-                PasswortFeld(pwProfil, { pwProfil = it }, stringResource(R.string.konto_password_current),
-                    Modifier.fillMaxWidth())
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { fragtPasswort = false; onSpeichern(benutzername, email, vorname, nachname, pwProfil, code) },
-                enabled = pwProfil.isNotEmpty(),
-            ) { Text(stringResource(R.string.konto_save)) }
-        },
-        dismissButton = {
-            TextButton(onClick = { fragtPasswort = false; pwProfil = "" }) { Text(stringResource(R.string.common_cancel)) }
-        },
+    if (fragtPasswort) ch.brickinventoryapp.ui.components.PasswortRueckfrage(
+        titel = stringResource(R.string.konto_save),
+        text = stringResource(R.string.konto_profil_password_needed),
+        bestaetigen = stringResource(R.string.konto_save),
+        codeNoetig = false, fehler = null, laeuft = kontoZustand.speichert,
+        onBestaetigen = { pw, _ -> fragtPasswort = false; onSpeichern(benutzername, email, vorname, nachname, pw, code) },
+        onAbbrechen = { fragtPasswort = false },
     )
 }
 
