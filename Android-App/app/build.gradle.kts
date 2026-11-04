@@ -282,7 +282,6 @@ androidComponents {
     }
 }
 
-
 dependencies {
     // Die App setzt zusammen: Navigation, Hilt-Einstieg, Widget. Alles andere
     // liegt in den Modulen darunter.

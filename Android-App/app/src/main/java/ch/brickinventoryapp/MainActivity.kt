@@ -1,8 +1,6 @@
 package ch.brickinventoryapp
 
-import android.app.Application
 import android.os.Bundle
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import androidx.activity.compose.setContent
@@ -10,54 +8,27 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material3.*
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.theme.darstellung
 import androidx.compose.foundation.isSystemInDarkTheme
 import coil3.ImageLoader
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.CompositionLocalProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.LocalAppFassung
 import ch.brickinventoryapp.util.AppFassung
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
-import androidx.compose.ui.res.stringResource
-import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
-
 
 @AndroidEntryPoint
 class MainActivity : NurLauncherStart() {
@@ -218,4 +189,3 @@ class MainActivity : NurLauncherStart() {
         }
     }
 }
-

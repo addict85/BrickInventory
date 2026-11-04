@@ -6,11 +6,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.AppKarte
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.AppViewModel
@@ -34,8 +30,6 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Helligkeit
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.WahlChips
-import androidx.compose.ui.draw.clip
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.util.quelleVeraltet

@@ -46,7 +46,6 @@ class ResourceAndCacheTest {
     // Thema dieser Datei (Aufraeumen von Ressourcen) und steht jetzt
     // vollstaendig in CameraFocusConfigTest.
 
-
     // ── PDF-Cache ────────────────────────────────────────────────────────────
 
     @Test

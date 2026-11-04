@@ -18,12 +18,6 @@ class CameraXUpgradeTest {
         "ui/screens/SetupScreen.kt",
     )
 
-    private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
-
     private fun code(src: String): String {
         val s = src.replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), "")
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
@@ -75,7 +69,6 @@ class CameraXUpgradeTest {
     // Aufgefallen ist die Doppelung, als der Kamera-Aufbau zusammengefasst
     // wurde und diese Pruefung rot wurde — nicht weil die Regel verletzt war,
     // sondern weil sie an Kopien gemessen hat, die es nicht mehr gibt.
-
 
     /**
      * Die Analyse läuft auf YUV. Wird das auf RGBA umgestellt, greift CameraX

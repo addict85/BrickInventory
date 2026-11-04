@@ -32,8 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -41,7 +39,6 @@ import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @Composable
@@ -162,7 +159,6 @@ fun BarcodeScannerScreen(
                         Box(Modifier.size(cs, ct).align(Alignment.BottomEnd).background(accent))
                         Box(Modifier.size(ct, cs).align(Alignment.BottomEnd).background(accent))
                     }
-
                 }
             }
             else -> {

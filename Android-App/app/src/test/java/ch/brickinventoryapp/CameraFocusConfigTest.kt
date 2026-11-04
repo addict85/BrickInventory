@@ -27,12 +27,6 @@ class CameraFocusConfigTest {
     private fun scanner(): String =
         java.io.File(Quellen.wurzel, "ui/screens/BarcodeScannerScreen.kt").readText()
 
-    private fun analyzer(): String =
-        java.io.File(Quellen.wurzel, "ui/screens/BarcodeAnalyzer.kt").readText()
-
-    private fun setup(): String =
-        java.io.File(Quellen.wurzel, "ui/screens/SetupScreen.kt").readText()
-
     private fun code(src: String) = src.lines()
         .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
 

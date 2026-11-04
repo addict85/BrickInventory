@@ -26,9 +26,6 @@ import org.junit.Test
  */
 class NumericInputTest {
 
-    private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
-
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 

@@ -60,9 +60,6 @@ import org.junit.Test
  */
 class MeldungsKanalTest {
 
-    private fun quelle(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
-
     /** Alle Kotlin-Dateien der App ohne Kommentare. */
     private fun alleOhneKommentare(): List<Pair<String, String>> =
         Quellen.alle().map { it.name to Quellen.ohneKommentare(it.readText()) }

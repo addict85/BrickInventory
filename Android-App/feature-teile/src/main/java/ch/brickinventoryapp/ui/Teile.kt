@@ -15,8 +15,6 @@ import ch.brickinventoryapp.data.model.PartsFilterColorsResponse
 import ch.brickinventoryapp.data.model.PartsResponse
 import ch.brickinventoryapp.data.model.PartsStatsResponse
 import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.ui.model.FarbeAnsicht
-import ch.brickinventoryapp.ui.model.OHNE_FARBE
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -273,4 +271,3 @@ internal class Teile(
         _state.value = PartsUiState()
     }
 }
-

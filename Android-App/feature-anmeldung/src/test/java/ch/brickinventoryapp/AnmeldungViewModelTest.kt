@@ -434,7 +434,6 @@ class AnmeldungViewModelTest {
         assertFalse(vm.anmeldeState.value.passkeyStattCode)
     }
 
-
     /** Optionen mit [rpId] (null: ohne Feld) für die Adresse https://brick.example.org. */
     private fun fremdeOptionen(rpId: String?): FakePasskey {
         val feld = rpId?.let { ",\"rpId\":\"$it\"" } ?: ""

@@ -4,7 +4,6 @@ import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.viewmodel.Texte
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import ch.brickinventoryapp.data.MeldungsKanal

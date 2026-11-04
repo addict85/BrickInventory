@@ -8,14 +8,8 @@ import ch.brickinventoryapp.data.lokal.Lokal
 import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.decodeFromString
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.Response
 import javax.inject.Inject
 import javax.inject.Singleton
 

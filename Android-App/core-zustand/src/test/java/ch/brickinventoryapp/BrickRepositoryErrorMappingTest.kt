@@ -6,7 +6,6 @@ import ch.brickinventoryapp.data.repository.KontoRepository
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.json.Json
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient

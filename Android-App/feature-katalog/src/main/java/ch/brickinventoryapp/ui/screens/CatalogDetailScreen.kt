@@ -3,14 +3,11 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
-import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
-import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -44,8 +41,6 @@ import kotlinx.coroutines.launch
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.LeerSymbol
-import androidx.compose.material.icons.filled.ViewInAr
 
 /**
  * Katalog-Detail: Bild, Metadaten (Jahr, Thema, Teile, Minifiguren) und
@@ -354,7 +349,6 @@ private fun CatalogAddDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } }
     )
-
 }
 
 /**

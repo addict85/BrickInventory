@@ -3,8 +3,6 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.JsonObject
 import javax.inject.Inject

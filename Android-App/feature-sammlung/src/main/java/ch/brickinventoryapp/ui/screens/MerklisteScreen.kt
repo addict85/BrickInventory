@@ -3,14 +3,11 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
-import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.ui.semantics.semantics
@@ -24,7 +21,6 @@ import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.ladeanzeige
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
@@ -43,8 +39,6 @@ import ch.brickinventoryapp.data.repository.MERKLISTE_DEFAULT_SORT
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import androidx.compose.material.icons.filled.NotificationsActive
@@ -105,7 +99,6 @@ fun MerklisteScreen(
         // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
         // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
         Column(Modifier.fillMaxSize()) {
-
             ScopeFilterZeile(
                 members  = blick.householdMembers,
                 current  = scopeModus,
@@ -216,7 +209,6 @@ fun MerklisteScreen(
             },
         )
     }
-
 }
 
 /**
@@ -379,8 +371,6 @@ private fun MerkpostenErfassenDialog(
         OwnerPicker(householdMembers, besitzer, { besitzer = it })
     }
 }
-
-
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

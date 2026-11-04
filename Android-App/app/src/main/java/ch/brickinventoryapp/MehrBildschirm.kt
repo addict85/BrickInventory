@@ -39,9 +39,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -161,4 +158,3 @@ private fun MehrEintrag(titel: Int, symbol: ImageVector, punkt: Boolean = false,
         modifier = Modifier.clickable(role = Role.Button, onClick = onKlick),
     )
 }
-

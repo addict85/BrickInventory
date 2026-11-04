@@ -38,8 +38,8 @@ private fun kachelPreisVorServer(z: List<PnlSetZeile>): KachelPreis {
     // Gewichteter Basispreis in BigDecimal: Er ist ein Geldbetrag, den die App selbst bildet.
     val mitBasis = z.filter { it.baselinePrice != null }
     val menge = mitBasis.sumOf { it.quantity.coerceAtLeast(1) }
-    val basis = if (menge > 0) mitBasis.fold(BigDecimal.ZERO) { s, it ->
-        s + BigDecimal.valueOf(it.baselinePrice!!) * BigDecimal(it.quantity.coerceAtLeast(1))
+    val basis = if (menge > 0) mitBasis.fold(BigDecimal.ZERO) { s, zeile ->
+        s + BigDecimal.valueOf(zeile.baselinePrice!!) * BigDecimal(zeile.quantity.coerceAtLeast(1))
     }.divide(BigDecimal(menge), 10, RoundingMode.HALF_UP) else null
     val markt = BigDecimal.valueOf(z[0].currentPrice ?: 0.0)
     // 0.01 wie PNL_EPS auf dem Server: Ein Kaufpreis von 0 teilt sonst durch null.

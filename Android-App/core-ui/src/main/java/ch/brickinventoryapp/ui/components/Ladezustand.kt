@@ -35,7 +35,6 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.Fehlerklasse
 import ch.brickinventoryapp.ui.Ladeanzeige
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
 
 /**
  * Laden, Fehler, Leer, Kein Treffer und Inhalt — derselbe Baustein für jeden

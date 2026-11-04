@@ -2,7 +2,6 @@ package ch.brickinventoryapp.data.repository
 
 import ch.brickinventoryapp.data.api.GutscheineApi
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.lokal.Bearbeitung
 import ch.brickinventoryapp.data.lokal.Faecher
 import ch.brickinventoryapp.data.lokal.Offlineablage
 import ch.brickinventoryapp.data.model.*
@@ -152,5 +151,4 @@ class GutscheineRepository @Inject constructor(
     /** Leer heisst „nicht mitschicken" — siehe die Begruendung bei ausPdf(). */
     private fun alsTeil(wert: String?): okhttp3.RequestBody? =
         wert?.trim()?.takeIf { it.isNotEmpty() }?.toRequestBody("text/plain".toMediaType())
-
 }

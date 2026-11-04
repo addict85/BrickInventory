@@ -17,7 +17,6 @@ import androidx.compose.ui.semantics.Role
 import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlinx.coroutines.launch
 
 /**
