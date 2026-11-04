@@ -200,7 +200,7 @@
       <div data-stil="display:flex;justify-content:space-between;margin-top:.85rem;font-size:var(--fs-2)">
         <a class="farbe-primaer" href="#" id="link-forgot" data-i18n="login.forgot">Passwort vergessen?</a>
         <span class="text-mut" id="forgot-verwalter" data-i18n="login.forgot_admin" hidden>Passwort vergessen? Der Verwalter kann es zurücksetzen.</span>
-        <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600">Registrieren</a></span>
+        <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600" data-i18n="login.register_link">Registrieren</a></span>
       </div>
       <div class="start-fuss">Build 2026.10.27.1901</div>
       <div id="verified-msg" role="status" data-stil="display:none;margin-top:.75rem;padding:.65rem .9rem;background:var(--g50);border:1px solid var(--g300);border-radius:7px;font-size:var(--fs-2);color:var(--g700)"><span data-i18n="verify.success" data-ico="ok">E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.</span></div>
@@ -208,7 +208,7 @@
 
     <!-- ── REGISTRIERUNG ─────────────────────────────────────────────── -->
     <div id="panel-register" data-stil="display:none">
-      <p class="login-unterzeile" data-i18n="register.title">Registrieren</p>
+      <h2 class="login-unterzeile" data-i18n="register.title">Registrieren</h2>
       <div class="lerr" id="reg-err" role="alert"></div>
       <div class="erfolg-box" id="reg-success" data-stil="display:none"></div>
       <form class="sform" id="reg-form" data-submit="btn-register">
@@ -216,10 +216,11 @@
           <div class="fg"><label for="reg-first" data-i18n="register.firstname">Vorname</label><input type="text" id="reg-first" autocomplete="given-name" /></div>
           <div class="fg"><label for="reg-last" data-i18n="register.lastname">Nachname</label><input type="text" id="reg-last" autocomplete="family-name" /></div>
         </div>
-        <div class="fg"><label for="reg-user" data-i18n="register.username">Benutzername *</label><input type="text" id="reg-user" autocomplete="username" /></div>
-        <div class="fg"><label for="reg-email" data-i18n="register.email_label">E-Mail *</label><input type="email" id="reg-email" autocomplete="email" /></div>
-        <div class="fg"><label for="reg-pass" data-i18n="register.password">Passwort * (min. 12 Zeichen, kein häufiges)</label><input type="password" id="reg-pass" autocomplete="new-password" /></div>
-        <div class="fg"><label for="reg-pass2" data-i18n="register.password_repeat">Passwort wiederholen *</label><input type="password" id="reg-pass2" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reg-user" data-i18n="register.username">Benutzername *</label><input type="text" id="reg-user" autocomplete="username" required aria-required="true" /></div>
+        <div class="fg"><label for="reg-email" data-i18n="register.email_label">E-Mail *</label><input type="email" id="reg-email" autocomplete="email" required aria-required="true" /></div>
+        <div class="fg"><label for="reg-pass" data-i18n="register.password">Passwort *</label><input type="password" id="reg-pass" autocomplete="new-password" required aria-required="true" aria-describedby="reg-pass-regel" />
+          <div class="text-klein" id="reg-pass-regel" data-i18n="pflicht.regel" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
+        <div class="fg"><label for="reg-pass2" data-i18n="register.password_repeat">Passwort wiederholen *</label><input type="password" id="reg-pass2" autocomplete="new-password" required aria-required="true" /></div>
         <div class="fg"><label for="reg-lang" data-i18n="register.language">Sprache</label>
           <select id="reg-lang">
             <option value="de">Deutsch</option>
@@ -448,7 +449,7 @@
       </div>
 
       <div class="brick-stats">
-        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.sets">Sets</div><div class="bstat-v" id="bstat-sets">—</div></div>
+        <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.sets">Sets</div><div class="bstat-v" id="bstat-sets">—</div><div class="bstat-s" id="bstat-sets-sub"></div></div>
         <div class="bstat bstat-petrol"><div class="bstat-l" data-i18n="nav.parts">Teile</div><div class="bstat-v" id="bstat-parts">—</div><div class="bstat-s" id="bstat-parts-sub"></div></div>
         <div class="bstat bstat-light"><div class="bstat-l" data-i18n="nav.minifigs">Minifiguren</div><div class="bstat-v" id="bstat-minifigs">—</div></div>
         <div class="bstat bstat-slate"><div class="bstat-l" data-i18n="header.instr">Anleitungen</div><div class="bstat-v" id="bstat-instr">—</div></div>
@@ -908,7 +909,7 @@
            (test/benutzername-menueknopf.test.js) und beim Profil-Symbol im
            Menue; dies hier war der einzige verbliebene Fall im ganzen
            index.html — nachgezaehlt. -->
-      <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis">(Admin)</span></div>
+      <div class="sgroup-label" id="global-settings-label" data-stil="display:none"><span data-i18n="settings.global_title" data-ico="globus">Globale Einstellungen</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></div>
       <div class="sgrid2" id="global-settings-grid" data-stil="display:none">
         <nav class="einst-nav full" aria-label="Abschnitte" data-i18n="settings.sections" data-i18n-attr="aria-label">
           <a class="einst-link" href="#einst-design" data-click="einstAbschnitt" data-arg="einst-design" data-i18n="settings.general_title">Erscheinungsbild</a>
@@ -937,7 +938,7 @@
           </div>
         </div>
         <div class="ssec" id="einst-bl">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
           <div class="sform">
             <div class="fg"><label for="bl-ck">Consumer Key</label><input type="text" id="bl-ck" autocomplete="off" /></div>
             <div class="fg"><label for="bl-cs">Consumer Secret</label><div class="geheim-feld"><input type="password" id="bl-cs" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-cs" aria-pressed="false" aria-controls="bl-cs" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -952,7 +953,7 @@
           </div>
         </div>
         <div class="ssec" id="einst-rb">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span class="schrift-1" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><div class="geheim-feld"><input type="password" id="rb-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="rb-key" aria-pressed="false" aria-controls="rb-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -965,7 +966,7 @@
           </div>
         </div>
         <div class="ssec" id="einst-bs">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span class="schrift-1" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
             <div class="fg"><label for="bs-key">Brickset API Key</label><div class="geheim-feld"><input type="password" id="bs-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bs-key" aria-pressed="false" aria-controls="bs-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -978,7 +979,7 @@
           </div>
         </div>
         <div class="ssec full" id="usermgmt" data-stil="display:none">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Admin)</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></div>
           <div data-stil="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:1rem">
             <div>
               <!-- Umschliessendes Label (die Checkbox liegt darin) — kein for= nötig. -->
@@ -986,7 +987,8 @@
                 <input class="w-auto" type="checkbox" id="reg-enabled" aria-label="Registrierung erlauben" data-i18n="settings.registration_label" data-i18n-attr="aria-label" data-change="saveRegEnabled" />
                 <span data-i18n="settings.public_reg">Öffentliche Registrierung erlauben</span>
               </label>
-              <div data-stil="font-size:var(--fs-1);color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Admins neue Benutzer anlegen.</div>
+              <div data-stil="font-size:var(--fs-1);color:var(--mut);margin-left:24px" data-i18n="settings.public_reg.hint">Wenn deaktiviert, können nur Verwalter neue Benutzer anlegen.</div>
+              <div class="text-klein reg-mail-hinweis" id="reg-mail-hinweis" role="status" hidden></div>
             </div>
           </div>
           <div class="abstand-u-125" id="users-tbl"></div>
@@ -1005,7 +1007,7 @@
               <div class="fg max-130-rechts">
                 <!-- Umschliessendes Label: die Checkbox liegt darin, ein for= wäre falsch
                      (und zeigte hier versehentlich auf ein fremdes Feld). -->
-                <label data-stil="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input class="w-auto" type="checkbox" id="nu-a" /> Admin</label>
+                <label data-stil="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:9px"><input class="w-auto" type="checkbox" id="nu-a" /> <span data-i18n="users.role.admin">Verwalter</span></label>
               </div>
               <button type="button" class="btn bp" id="btn-cu" data-i18n="settings.users_create" data-ico="plus">Erstellen</button>
             </div>
@@ -1013,7 +1015,7 @@
           </div>
         </div>
         <div class="ssec full" id="einst-smtp">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" data-stil="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Admins</span></div>
+          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" data-stil="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
           <div class="sform">
             <div class="ibox abstand-u-075" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
             <div class="host-port">

@@ -45,6 +45,7 @@ const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { mailserverEintragen } = require('./helpers/mail-attrappe');
 
 const post = [];
 const echt = _req('src/infra/mailer.js');
@@ -76,12 +77,14 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t)
   const regVorher = (await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'"))?.value;
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1')
                 ON CONFLICT (key) DO UPDATE SET value = '1'`);
+  const mailZurueck = await mailserverEintragen(db);
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
     VALUES ($1, $2, $3, true, true) RETURNING id`, [`carol_${P}`, adr('alt'), bcrypt.hashSync(PASS, 4)])).id;
   t.after(async () => {
     await raeumen();
     if (regVorher === undefined) await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
     else await db.run("UPDATE global_settings SET value = $1 WHERE key = 'registration_enabled'", [regVorher]);
+    await mailZurueck();
     await db.pool.end().catch(() => {});
   });
 

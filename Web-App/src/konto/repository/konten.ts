@@ -8,7 +8,7 @@ export interface Konto {
   must_change_password: boolean; created_at: Date; [spalte: string]: unknown;
 }
 export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'last_name' | 'email_verified'> & { email_neu: string | null };
-export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & { zweiter_faktor: boolean };
+export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & { zweiter_faktor: boolean; wartet_auf_bestaetigung: boolean };
 
 export function kontoKurz(id: number): Promise<KontoKurz | undefined> {
   return db.get('SELECT id, username, is_admin, must_change_password FROM users WHERE id = $1', [id]);
@@ -83,6 +83,20 @@ export async function offeneRegistrierungen(email: string): Promise<number> {
     [email]))?.n ?? 0);
 }
 
+/** Wie uebernimmEmailNeu, aber ohne Link: Die Adresse kann inzwischen ein anderes Konto haben. */
+export async function schalteRegistrierungFrei(id: number): Promise<'ok' | 'nicht_wartend' | 'vergeben'> {
+  return db.transaction(async (tx) => {
+    const k = await tx.get<{ email_neu: string | null }>(
+      'SELECT email_neu FROM users WHERE id = $1 AND registrierung_offen AND NOT email_verified FOR UPDATE', [id]);
+    if (!k) return 'nicht_wartend' as const;
+    if (k.email_neu && await tx.get('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
+      [k.email_neu, id])) return 'vergeben' as const;
+    await tx.run(`UPDATE users SET email = COALESCE(email_neu, email), email_verified = true, registrierung_offen = false,
+                   ${OHNE_EMAIL_NEU} WHERE id = $1`, [id]);
+    return 'ok' as const;
+  }).catch((e: { code?: string }) => { if (e?.code === '23505') return 'vergeben' as const; throw e; });
+}
+
 /** Altbestand aus Migration 0096: ausstehend ohne gültigen Link. */
 export async function ausstehendOhneLink(): Promise<number[]> {
   return (await db.all<{ id: number }>(
@@ -93,7 +107,8 @@ export async function ausstehendOhneLink(): Promise<number[]> {
 export function alleKonten(): Promise<KontoInListe[]> {
   return db.all<KontoInListe>(
     `SELECT u.id, u.username, u.is_admin, u.is_active, u.created_at,
-            EXISTS (SELECT 1 FROM zweiter_faktor z WHERE z.user_id = u.id AND z.aktiv) AS zweiter_faktor
+            EXISTS (SELECT 1 FROM zweiter_faktor z WHERE z.user_id = u.id AND z.aktiv) AS zweiter_faktor,
+            (u.registrierung_offen AND NOT u.email_verified) AS wartet_auf_bestaetigung
        FROM users u ORDER BY u.id`);
 }
 

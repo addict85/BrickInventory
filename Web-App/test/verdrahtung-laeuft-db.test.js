@@ -47,6 +47,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
 const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+mailAttrappe();
 
 test.after(async () => { await db.pool.end().catch(() => {}); });
 
@@ -132,6 +134,10 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     // die Routen die Funktion NENNEN.
     await db.run(`INSERT INTO global_settings (key,value) VALUES ('registration_enabled','1')
                   ON CONFLICT (key) DO UPDATE SET value='1'`);
+    await mailserverEintragen(db);
+    const basisVorher = process.env.APP_BASE_URL;
+    process.env.APP_BASE_URL = 'http://localhost';
+    t.after(() => { if (basisVorher === undefined) delete process.env.APP_BASE_URL; else process.env.APP_BASE_URL = basisVorher; });
     const r = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ username: 'neuling', email: 'n@example.org',

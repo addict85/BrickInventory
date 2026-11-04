@@ -29,7 +29,7 @@ import { kontoGedrosselt } from '../../src/konto/zielDrossel';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
 import { householdStatus, createInvite, redeemInvite, pruefeEinladung, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
-import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/infra/mailer';
+import { sendMail, testSmtp, sendHaushaltVerknuepftMail, mailBereit } from '../../src/infra/mailer';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsStand } from '../../src/infra/tlsWurzel';
 import { konfig } from '../../src/infra/konfig';
@@ -235,6 +235,8 @@ router.post('/settings', async (req: LoggedInRequest, res: Antwort<'POST /api/v1
   if (istVerwalter(req)) {
     if (globalKeys.some(k => req.body[k] !== undefined && !globalerWertGueltig(k, req.body[k])))
       return sendeFehler(req, res, 400, 'wert_ungueltig');
+    if (String(req.body.registration_enabled) === '1' && await getGlobalSetting('registration_enabled') !== '1' && !await mailBereit(req.body))
+      return sendeFehler(req, res, 400, 'registrierung_braucht_mail');
     // Mailserver, Registrierung und API-Schlüssel nur mit Passwort: Eine erbeutete
     // Verwaltersitzung läse sonst Rücksetz-Mails mit oder öffnete still die Registrierung.
     // Ein erster API-Schlüssel lenkt nichts um; nur der Einrichtungsassistent fragt dafür nicht nach.

@@ -27,11 +27,11 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 // Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
-// Die Konsole zeigt die Empfängeradresse sonst nur maskiert (src/infra/mailer.ts).
-process.env.MAIL_KONSOLE_MIT_TOKEN = '1';
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+const gesendet = mailAttrappe();
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
@@ -54,7 +54,9 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
   const regVorher = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
   await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'");
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%' OR key LIKE '%quer_%'");
+  const mailZurueck = await mailserverEintragen(db);
   t.after(async () => {
+    await mailZurueck();
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
     if (regVorher) await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regVorher.value]);
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NEU]]);
@@ -103,40 +105,32 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async (t
 
   await t.test('eine vergebene Adresse antwortet wie eine neue', async () => {
     const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
-    const meldungen = [], echt = console.log;
-    console.log = (...a) => { meldungen.push(a.join(' ')); };
     const registriere = (username, email) => fetch(`${base}/api/v1/auth/register`, { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }) })
       .then(async r => ({ status: r.status, body: await r.json() }));
-    try {
-      const vergeben = await registriere(NEU, MAIL.toUpperCase());
-      assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
-      assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEU]), undefined, 'Konto angelegt');
-      assert.ok(meldungen.some(m => m.includes(MAIL)), 'Der Inhaber bekommt keinen Hinweis');
-      const neu = await registriere(NEU, `anders_${MAIL}`);
-      assert.deepEqual(vergeben.body, neu.body);
-    } finally { console.log = echt; }
+    const vergeben = await registriere(NEU, MAIL.toUpperCase());
+    assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
+    assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [NEU]), undefined, 'Konto angelegt');
+    assert.ok(gesendet.some(m => m.to === MAIL), 'Der Inhaber bekommt keinen Hinweis');
+    const neu = await registriere(NEU, `anders_${MAIL}`);
+    assert.deepEqual(vergeben.body, neu.body);
   });
 
   await t.test('ein vergebener Name antwortet wie ein neuer, die Adresse erfährt es per Mail', async () => {
     const { base } = testServer(_req, { routen: { '/api/v1/auth': 'routes/auth.js' }, t });
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%'");
-    const meldungen = [], echt = console.log;
-    console.log = (...a) => { meldungen.push(a.join(' ')); };
     const registriere = (username, email) => fetch(`${base}/api/v1/auth/register`, { method: 'POST',
       headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, email, password: 'Neues-Passwort-1' }) })
       .then(async r => ({ status: r.status, body: await r.json() }));
-    try {
-      const andere = `name_${MAIL}`;
-      const vergeben = await registriere(NAME, andere);
-      assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
-      assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [andere]), undefined, 'Konto angelegt');
-      assert.ok(meldungen.some(m => m.includes(andere)) && meldungen.some(m => /Benutzername schon vergeben/.test(m)), meldungen.join(' | '));
-      const NEU2 = `${NEU}_2`;
-      const neu = await registriere(NEU2, `neu2_${MAIL}`);
-      await db.run('DELETE FROM users WHERE username = $1', [NEU2]);
-      assert.deepEqual(vergeben.body, neu.body);
-    } finally { console.log = echt; }
+    const andere = `name_${MAIL}`;
+    const vergeben = await registriere(NAME, andere);
+    assert.equal(vergeben.status, 200, JSON.stringify(vergeben.body));
+    assert.equal(await db.get('SELECT id FROM users WHERE email = $1', [andere]), undefined, 'Konto angelegt');
+    assert.ok(gesendet.some(m => m.to === andere && /Benutzername schon vergeben/.test(m.subject)), gesendet.map(m => m.subject).join(' | '));
+    const NEU2 = `${NEU}_2`;
+    const neu = await registriere(NEU2, `neu2_${MAIL}`);
+    await db.run('DELETE FROM users WHERE username = $1', [NEU2]);
+    assert.deepEqual(vergeben.body, neu.body);
   });
 });
 

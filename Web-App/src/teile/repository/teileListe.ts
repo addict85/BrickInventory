@@ -226,26 +226,28 @@ export function inventarAlsTeile(inventarId: number, setNumber: string) {
 }
 
 export function kategorien(uids: number[], ausZusammenfassung: boolean) {
-  type Kategorie = { category_name: string | null; label: string; unique_parts: number; total_quantity: number };
+  type Kategorie = { category_name: string | null; label: string | null; unique_parts: number; total_quantity: number };
   const kategorie = (spalte: string, nummer: string) => `
       LEFT JOIN rb_part_categories rc
              ON rc.id = (CASE WHEN ${spalte} ~ '^[0-9]+$' THEN ${spalte}::int ELSE NULL END)
       LEFT JOIN rb_parts rp ON rp.part_num = ${nummer}
       LEFT JOIN rb_part_categories rp_cat ON rp_cat.id = rp.part_cat_id`;
-  const gruppe = (k: string) => `GROUP BY COALESCE(rc.id::text, rp_cat.id::text, ${k}), COALESCE(rc.name, rp_cat.name, 'Unbekannt')
-      ORDER BY total_quantity DESC`;
+  // Ohne Katalog bleibt ein eingetragener Name („Bricks“); was keinen hat, steht als EIN Eintrag ohne Namen da.
+  const name = (k: string) => `COALESCE(rc.name, rp_cat.name, CASE WHEN ${k} ~ '^[0-9]+$' THEN NULL ELSE NULLIF(${k}, '') END)`;
+  const schluessel = (k: string) => `CASE WHEN ${name(k)} IS NULL THEN NULL ELSE COALESCE(rc.id::text, rp_cat.id::text, ${k}) END`;
+  const gruppe = 'GROUP BY 1, 2 ORDER BY total_quantity DESC';
   if (ausZusammenfassung) return db.all<Kategorie>(`
-      SELECT COALESCE(rc.id::text, rp_cat.id::text, ps.category_name) AS category_name,
-             COALESCE(rc.name, rp_cat.name, 'Unbekannt')                AS label,
+      SELECT ${schluessel('ps.category_name')}                         AS category_name,
+             ${name('ps.category_name')}                                AS label,
              COUNT(DISTINCT ps.part_key)::int AS unique_parts,
              SUM(ps.total_quantity)::int      AS total_quantity
         FROM parts_summary ps
         ${kategorie('ps.category_name', 'ps.part_number')}
        WHERE ps.user_id = ANY($1)
-      ${gruppe('ps.category_name')}`, [uids]);
+      ${gruppe}`, [uids]);
   return db.all<Kategorie>(`
-    SELECT COALESCE(rc.id::text, rp_cat.id::text, ${TEIL.kategorie}) AS category_name,
-           COALESCE(rc.name, rp_cat.name, 'Unbekannt')              AS label,
+    SELECT ${schluessel(TEIL.kategorie)}                             AS category_name,
+           ${name(TEIL.kategorie)}                                    AS label,
            COUNT(DISTINCT p.part_number)::int AS unique_parts,
            SUM(${teilmengeAus('p', 'part')} * ${mengeAus('sm', 1)})::int AS total_quantity
     FROM parts p
@@ -254,7 +256,7 @@ export function kategorien(uids: number[], ausZusammenfassung: boolean) {
     ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
     ${kategorie(TEIL.kategorie, 'p.part_number')}
     WHERE p.user_id = ANY($1) AND COALESCE(p.source,'set') <> 'manual'
-    ${gruppe(TEIL.kategorie)}`, [uids]);
+    ${gruppe}`, [uids]);
 }
 
 export async function kennzahlen(uids: number[], ausZusammenfassung: boolean) {

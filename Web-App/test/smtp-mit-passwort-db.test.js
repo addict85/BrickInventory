@@ -34,6 +34,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
+// Die Registrierung lässt sich nur mit Mailversand einschalten (mailBereit: Mailserver und Adresse).
+process.env.APP_BASE_URL = 'https://inventar.example.org';
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const S = require('./helpers/sources');
@@ -64,11 +66,11 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
     VALUES ($1, $3, $2, true, true, true) RETURNING id`, [NAME, bcrypt.hashSync(PASS, 4), `${NAME}@example.org`])).id;
   const HEIKEL = ['registration_enabled', 'rebrickable_api_key', 'brickset_api_key', 'einrichtung_erledigt'];
   const heikelVorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [HEIKEL]);
-  await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.alt.example')
+  await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.alt.example'), ('smtp_user', 'versand')
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
   const landVorher = (await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value;
   t.after(async () => {
-    await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_insecure_tls', 'gutschein_land')");
+    await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'smtp_insecure_tls', 'gutschein_land')");
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [HEIKEL]);
     for (const z of heikelVorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     if (landVorher !== undefined)
