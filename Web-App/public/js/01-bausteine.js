@@ -141,7 +141,7 @@ export function listeLadefehler(ziel, d, o) {
   if (d?.status === 401) return true;
   const { grund, details } = verstaendlicherGrund(d);
   const nochmal = () => { const f = resolveAction(o.erneut); if (f) o.arg !== undefined ? f(o.arg) : f(); };
-  if (o.behalten) toast(`${grund} ${tRaw('liste.alter_stand')}`, 'error', { text: tRaw('liste.erneut'), fn: nochmal });
+  if (o.behalten) toast(tRaw('liste.alter_stand_kurz'), 'error', { text: tRaw('liste.erneut'), fn: nochmal }, [grund, details].filter(Boolean).join(' — '));
   else if (ziel) ziel.innerHTML = fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg });
   return true;
 }

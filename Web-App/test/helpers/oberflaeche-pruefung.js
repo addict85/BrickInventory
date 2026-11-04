@@ -50,6 +50,15 @@
  *      → 390 px Seitenschrift 200 % „Sicht haushalt“ (Überlauf 432 px);
  *      mit musterSammlung statt musterHaushalt blieb dieselbe Prüfung grün —
  *      die Lücke, durch die der Befund der UI-Prüfung 12 rutschte.
+ * Gegenproben (04.11.2026, je einzeln; Wortbruch, Zeichenfläche, Auswahlfeld):
+ *   S  Zeitraumknöpfe wieder im 2×2-Raster ohne nowrap, Diagrammkarte mit
+ *      vollem Innenrand → 320 px Seitenschrift 200 % „Finanzen“ (Wortbruch
+ *      „Woch|e“, „Mona|t“); nur Raster und nowrap zurück blieb grün, weil der
+ *      schmalere Innenrand allein schon Platz schafft
+ *   T  achsenLage immer aussen → 320 px Seitenschrift 200 % „Finanzen“
+ *      (schmal (Diagramm) -2 px Kurve) und „Set-Detail“ (101 px)
+ *   U  Merklisten-Filter wieder je halbe Zeile → 320 px EN „Merkliste“
+ *      (Auswahl gekürzt „All conditions“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -139,8 +148,9 @@ function pruefeOberflaeche(design, geraet) {
   });
 }
 
-/** Funde, die grosse Schrift betreffen: Überlauf, Abschneiden, Überlappung, Tippziel, Leiste, schmaler oder verdeckter Text. */
-const GROSS = /^(Überlauf|abgeschnitten|Überlappung|Tippziel|Leiste|schmal|verdeckt)/;
+/** Funde, die grosse Schrift betreffen: Überlauf, Abschneiden, Überlappung, Tippziel, Leiste, schmaler oder verdeckter Text, Wortbruch.
+ * Ein gekürztes Auswahlfeld zählt nur bei normaler Schrift: Bei 200 % passt nicht jeder Eintrag in 320 px. */
+const GROSS = /^(Überlauf|abgeschnitten|Überlappung|Tippziel|Leiste|schmal|verdeckt|Wortbruch)/;
 const LEISTE = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisibility()).map(t => t.querySelector('.tab-label'))
   .filter(l => l.getBoundingClientRect().width <= 1 || l.scrollWidth > l.clientWidth + 1).map(l => 'Leiste: „' + l.textContent.trim() + '“ abgeschnitten')`;
 
@@ -174,7 +184,7 @@ function pruefeGrosseSchrift(modus, breite = 320) {
         await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`);
         await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
         const wo = `${design} ${dunkel ? 'dunkel' : 'hell'}`;
-        for (const f of [...await b.auswerten(LAYOUT(true)), ...await b.auswerten(LEISTE)]) if (GROSS.test(f)) funde.push(`${wo}: ${f}`);
+        for (const f of [...await b.auswerten(LAYOUT(true)), ...await b.auswerten(LEISTE)]) if (GROSS.test(f) || (modus === 'schmal' && f.startsWith('Auswahl'))) funde.push(`${wo}: ${f}`);
       }
       await t.test(ansicht, () => assert.deepEqual(funde, []));
     }

@@ -280,6 +280,9 @@ const NUR_WEB = new Map([
   ['/api/v1/auth/konto',
    'Das eigene Konto endgültig löschen (Sicherheitsprüfung Runde 9, H4): mit Passwort und ' +
    'zweitem Faktor in der Webapp; in der App wäre ein Fehlgriff auf dem Telefon zu teuer.'],
+  ['/api/v1/settings/household/redeem/pruefen',
+   'Nennt vor dem Annehmen einer Haushaltseinladung das einladende Konto (UI-Prüfung 13, M2). ' +
+   'Die App fragt beim Annehmen nur das Passwort ab; sie bekommt die Prüfung mit ihrem eigenen Befund.'],
   ['/api/v1/vouchers/:X/pdf',
    'Die App holt das Gutschein-PDF nicht über Retrofit, sondern über seine Adresse im ' +
    'PdfViewerScreen (gutscheinPdfAdresse); die Webapp lädt es seit dem Einmal-Ticket per fetch.'],

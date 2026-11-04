@@ -82,9 +82,23 @@ export async function householdMembers(uid: number) {
     .map(r => ({ id: r.id, username: r.username, is_self: r.id === self, tiefe: r.id === self ? 0 : 1 }));
 }
 
+/** Ohne 0/O, 1/I/L: Der Code wird oft abgetippt. 16 Zeichen tragen rund 79 Bit. */
+const CODE_ZEICHEN = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+
+function neuerCode(): string {
+  const z = Array.from({ length: 16 }, () => CODE_ZEICHEN[crypto.randomInt(CODE_ZEICHEN.length)]).join('');
+  return z.match(/.{4}/g)!.join('-');
+}
+
+/** Neue Codes ohne Striche und Gross/Klein; ältere (base64url) bleiben wörtlich gültig. */
+function einladungsSchluessel(code: string): string {
+  const kurz = code.trim().replace(/[\s-]/g, '').toUpperCase();
+  return new RegExp(`^[${CODE_ZEICHEN}]{16}$`).test(kurz) ? kurz : code.trim();
+}
+
 /** Im Klartext steht der Code nirgends. */
 function hash(token: string) {
-  return crypto.createHash('sha256').update(token).digest('hex');
+  return crypto.createHash('sha256').update(einladungsSchluessel(token)).digest('hex');
 }
 
 /** Abgelaufene und verbrauchte Codes werden dabei entsorgt; die Tabelle bleibt
@@ -99,9 +113,21 @@ export async function createInvite(uid: number) {
   if (await repo.offeneEinladungen(id) >= OFFENE_EINLADUNGEN_MAX)
     return { fehler: 'einladungen_zu_viele' as const, vars: { n: OFFENE_EINLADUNGEN_MAX } };
 
-  const code = crypto.randomBytes(24).toString('base64url');
+  const code = neuerCode();
   await repo.legeEinladungAn(hash(code), id, new Date(Date.now() + INVITE_TTL_MS));
   return { code, expires_in: INVITE_TTL_MS / 1000 };
+}
+
+/** Wer einlädt, bevor jemand mit dem Passwort zustimmt; nur wer den Code hat, erfährt den Namen. */
+export async function pruefeEinladung(uid: number, code: string) {
+  if (typeof code !== 'string' || code.trim().length < 8) return { fehler: 'einladungscode_ungueltig' as const };
+  const subId = parseInt(String(uid));
+  const mainId = await repo.einladenderZuCode(hash(code));
+  if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };
+  if (mainId === subId) return { fehler: 'konto_mit_sich_selbst' as const };
+  if (await repo.istVerknuepft(mainId, subId)) return { fehler: 'konto_bereits_verknuepft' as const };
+  if (await repo.istVerknuepft(subId, mainId)) return { fehler: 'verknuepfung_erzeugt_kreis' as const };
+  return { inviter: { id: mainId, username: (await repo.kontoName(mainId)) || String(mainId) } };
 }
 
 // Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#redeeminvite
@@ -110,7 +136,7 @@ export async function redeemInvite(uid: number, code: string) {
   if (typeof code !== 'string' || code.length < 8) {
     return { fehler: 'einladungscode_ungueltig' as const };
   }
-  const th = hash(code.trim());
+  const th = hash(code);
 
   const mainId = await repo.belegeEinladung(th, subId).catch(meldeUndLiefere('haushalt:claimed', null));
   if (mainId === null) return { fehler: 'einladungscode_abgelaufen' as const };

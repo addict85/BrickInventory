@@ -386,6 +386,7 @@ export async function loadProfile() {
   G('prof-last').value  = u.last_name  || '';
   G('prof-user').value  = u.username   || '';
   G('prof-email').value = u.email      || '';
+  G('prof-email').dataset.bisher = u.email || '';
   // Ohne Adresse gibt es nichts zu bestätigen — „verifiziert“ neben einem
   // leeren Feld widerspräche sich.
   const vEl = G('prof-email-verified');
@@ -465,8 +466,11 @@ G('btn-sav-prof').onclick = async () => {
   const btn = G('btn-sav-prof'); btn.disabled = true;
   try {
     // Jede Profiländerung bestätigt der Server mit dem Passwort; sonst verriete sie, ob ein Name vergeben ist.
-    const d = await mitPasswortBestaetigen(tRaw('konto.profil'), (pwC, z) => api('PUT', '/v1/auth/profile',
-      { username, email, first_name, last_name, password_current: pwC, ...z }));
+    // Eine neue Adresse nennt der Dialog, damit man sieht, was man bestätigt.
+    const neueAdresse = email && email !== (G('prof-email').dataset.bisher || '');
+    const d = await mitPasswortBestaetigen(tRaw(neueAdresse ? 'profile.email_aendern_titel' : 'profile.speichern_titel'), (pwC, z) => api('PUT', '/v1/auth/profile',
+      { username, email, first_name, last_name, password_current: pwC, ...z }),
+      neueAdresse ? tRaw('profile.email_aendern_text', { email }) : undefined);
     if (!d) return;
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
     await loadProfile();
@@ -638,8 +642,12 @@ export async function copyHouseholdInvite(){
 export async function redeemHouseholdInvite(){
   const code = (G('household-redeem-code')?.value || '').trim();
   if(!code){ toast(tRaw('household.redeem_empty'),'error'); return; }
+  // Erst den Code auflösen: Wer zustimmt, soll wissen, wem er Zugriff gibt.
+  const p = await api('POST','/v1/settings/household/redeem/pruefen',{ code });
+  if(!p.success){ toast(p.error || t('settings.error'),'error'); return; }
+  const name = p.inviter.username;
   // Das Hauptkonto sieht und ändert danach die eigene Sammlung — deshalb mit Passwort.
-  const password = await bestaetigeMitPasswort(tRaw('household.redeem_title'), tRaw('household.redeem_confirm_text'), 'link', { knopf: 'confirm.btn.einladung_annehmen', art: 'bp' });
+  const password = await bestaetigeMitPasswort(tRaw('household.redeem_frage', { name }), tRaw('household.redeem_confirm_text', { name }), 'link', { knopf: 'confirm.btn.einladung_annehmen', art: 'bp' });
   if(password === null) return;
   const faktor_code = (G('household-redeem-faktor-code')?.value || '').trim();
   const d = await mitZweitemFaktor(z => api('POST','/v1/settings/household/redeem',

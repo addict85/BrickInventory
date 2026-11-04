@@ -62,16 +62,17 @@ const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.passwo
  * wie ein Fehler aussah. Bei falschem Passwort fragt der Dialog erneut.
  * @param {string} titel
  * @param {(passwort: string, zusatz: { code?: string, passkey?: object }) => Promise<any>} ruf
+ * @param {string} [erklaerung] sagt, was bestätigt wird (statt nur „bitte Passwort“)
  * @returns die Antwort, oder null bei Abbruch
  */
-export async function mitPasswortBestaetigen(titel, ruf) {
-  let text = tRaw('konto.passwort_bestaetigen'), knopfArt = BESTAETIGEN;
+export async function mitPasswortBestaetigen(titel, ruf, erklaerung = tRaw('konto.passwort_bestaetigen')) {
+  let text = erklaerung, knopfArt = BESTAETIGEN;
   for (let versuch = 0; versuch < 5; versuch++) {
     const pw = await dialogOeffnen(titel, text, 'schloss', true, false, false, knopfArt);
     if (pw === null) return null;
     const d = await mitZweitemFaktor(z => ruf(pw, z));
     if (d?.code !== 'aktuelles_passwort_falsch' && d?.code !== 'aktuelles_passwort_erforderlich') return d;
-    text = d.error || tRaw('konto.passwort_bestaetigen');
+    text = d.error || erklaerung;
     knopfArt = { ...BESTAETIGEN, fehler: true };
   }
   return null;
@@ -357,6 +358,17 @@ function achsenRand(teilung, cur, fs) {
   return Math.ceil(laengste * fs * 0.62 + fs * 1.2);
 }
 
+/**
+ * Linker Rand und Lage der Achsenbeträge. Bliebe neben ihnen weniger als gut
+ * die Hälfte für die Kurve (Telefon, grosse Schrift), stehen die Beträge innen
+ * über ihren Rasterlinien: Sonst blieben bei 320 px und 200 % 15 px Kurve.
+ */
+function achsenLage(teilung, cur, fs, W, rechts) {
+  const rand = achsenRand(teilung, cur, fs);
+  const innen = W - rand - rechts < Math.max(160, W * 0.55);
+  return { innen, links: innen ? Math.round(fs * 0.5) : rand };
+}
+
 // ── Achsen der Diagramme ─────────────────────────────────────────────────────
 // Werte in Schritten von 1, 2 oder 5 mal einer Zehnerpotenz (4'219 / 4'441
 // liest niemand), die Zeit als echte Achse statt nach Index — sonst stünde
@@ -422,8 +434,20 @@ export function zeitTeilung(von, bis, maxStriche) {
   return raus;
 }
 
-/** Eine Beschriftung am rechten Rand endet dort, statt halb hinauszuragen. */
-function randAnker(x, rechts, f = 1) { return x > rechts - 28 * f ? 'end' : 'middle'; }
+/** Eine Beschriftung am Rand endet bzw. beginnt dort, statt halb hinauszuragen. */
+function randAnker(x, rechts, f = 1) { return x > rechts - 28 * f ? 'end' : x < 28 * f ? 'start' : 'middle'; }
+
+/** Zeitachse: Striche, deren Beschriftung die vorige berühren würde, entfallen (schmal und grosse Schrift). */
+function xBeschriftung(striche, y, rechts, f, fs) {
+  let frei = -Infinity;
+  return striche.map(({ x, text }) => {
+    const anker = randAnker(x, rechts, f), breite = String(text).length * fs * 0.6;
+    const links = anker === 'start' ? x : anker === 'end' ? x - breite : x - breite / 2;
+    if (links < frei) return '';
+    frei = links + breite + 8 * f;
+    return `<text x="${x.toFixed(1)}" y="${y}" font-size="${fs}" fill="var(--mut)" text-anchor="${anker}" font-family="inherit">${esc(text)}</text>`;
+  }).join('');
+}
 
 // ── Gemeinsame Teile der beiden Diagramme ───────────────────────────────────
 // Preisverlauf und Wertdiagramm teilen Achsen, Einstand-Linie und Fadenkreuz,
@@ -446,12 +470,12 @@ export function achsenBetrag(v, schritt, cur, kurz = false) {
  * Gitter und Beschriftung der y-Achse. Beginnt sie nicht bei 0, trägt sie unten
  * einen Achsenbruch: Sonst läse man eine Bewegung von 5 % als Verdopplung.
  */
-function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1) {
+function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1, innen = false) {
   const schritt = teilung.werte.length > 1 ? teilung.werte[1] - teilung.werte[0] : 1;
   const striche = teilung.werte.filter(v => v >= min).map(v => {
     const y = yOf(v).toFixed(1);
-    return `<line x1="${links}" y1="${y}" x2="${rechts}" y2="${y}" stroke="var(--mut)" stroke-opacity=".22" stroke-width="1"/>
-      <text x="${links - 8 * f}" y="${(yOf(v) + 4 * f).toFixed(1)}" font-size="${12 * f}" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(achsenBetrag(v, schritt, cur, f >= 1.5))}</text>`;
+    return `<line x1="${links}" y1="${y}" x2="${rechts}" y2="${y}" stroke="var(--mut)" stroke-opacity=".22" stroke-width="1"/>` + (innen ? ''
+      : `<text x="${links - 8 * f}" y="${(yOf(v) + 4 * f).toFixed(1)}" font-size="${12 * f}" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(achsenBetrag(v, schritt, cur, f >= 1.5))}</text>`);
   }).join('');
   const achse = `<line x1="${links}" y1="${oben}" x2="${links}" y2="${unten}" stroke="var(--mut)" stroke-width="1"/>`;
   const bruch = min > 0
@@ -459,6 +483,20 @@ function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1) {
         <path d="M${links - 6},${unten - 9} l12,-4 M${links - 6},${unten - 4} l12,-4" stroke="var(--mut)" stroke-width="1.2" fill="none"/></g>`
     : '';
   return striche + achse + bruch;
+}
+
+/**
+ * Die Beträge innen (achsenLage): nur unterste und oberste Linie, nach der
+ * Kurve gezeichnet und mit Rand in der Kartenfarbe; keiner dort, wo die
+ * Beschriftung einer Bezugslinie steht (`meiden`, y-Werte).
+ */
+function yBetraegeInnen(teilung, min, yOf, links, cur, f, meiden = []) {
+  const schritt = teilung.werte.length > 1 ? teilung.werte[1] - teilung.werte[0] : 1;
+  const werte = teilung.werte.filter(v => v >= min);
+  return [werte[0], werte[werte.length - 1]].filter((v, i, a) => a.indexOf(v) === i)
+    .filter(v => meiden.every(y => Math.abs(yOf(v) - y) > 30 * f)).map(v =>
+    `<text x="${links + 4 * f}" y="${(yOf(v) - 5 * f).toFixed(1)}" font-size="${12 * f}" fill="var(--mut)" font-family="inherit"
+      paint-order="stroke" stroke="var(--sur)" stroke-width="${4 * f}" stroke-linejoin="round">${esc(achsenBetrag(v, schritt, cur, f >= 1.5))}</text>`).join('');
 }
 
 /**
@@ -476,7 +514,8 @@ function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)', endeY
     if (zeilen.length && z.length * zeichen <= platz) zeilen[zeilen.length - 1] = z; else zeilen.push(wort);
   }
   const hoehe = 14 * f * (zeilen.length - 1);
-  const darunter = endeY != null && endeY < y && y - endeY < 26 * f + hoehe;
+  // Über der Linie, ausser die Kurve endet dort oder oben ist kein Platz (Linie am oberen Rand).
+  const darunter = (endeY != null && endeY < y && y - endeY < 26 * f + hoehe) || y - 6 * f - hoehe - 10 * f < 0;
   const erste = darunter ? y + 16 * f : y - 6 * f - hoehe;
   const tspans = zeilen.map((z, i) => i ? `<tspan x="${rechts - 4}" dy="${14 * f}">${esc(z)}</tspan>` : esc(z)).join('');
   return `<g class="einstand-linie"><line x1="${links}" y1="${y.toFixed(1)}" x2="${rechts}" y2="${y.toFixed(1)}" stroke="${farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
@@ -631,7 +670,8 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
   const min = Math.max(0, teilung.von), max = teilung.bis, range = max - min || 1;
   const f = schriftFaktor(), fs = 12 * f;
   const W = breite, H = Math.round(200 * (1 + (f - 1) * 0.6));
-  const PAD = { l: achsenRand(teilung, CURRENCY, fs), r: 14 * f, t: 12 * f, b: 46 * f };
+  const lage = achsenLage(teilung, CURRENCY, fs, W, 14 * f);
+  const PAD = { l: lage.links, r: lage.innen ? 6 * f : 14 * f, t: lage.innen ? 22 * f : 12 * f, b: 46 * f };
   const iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b, unten = PAD.t + ih;
   const yOf = v => PAD.t + ih - ((v - min) / range) * ih;
   const xOf = d => PAD.l + ((toTime(d) - toTime(first)) / span) * iw;
@@ -661,9 +701,8 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
     `<circle cx="${Math.max(PAD.l, xOf(sd.kaufTag)).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="${4.5 * f}" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="kaufpunkt"><title>${esc(tRaw('detail.purchase_price'))} ${esc(fmtN(sd.kauf, CURRENCY))}</title></circle>`).join('');
 
   const fmtDay = d => fmtDatum(new Date(toTime(d)));
-  const xTicks = zeitTeilung(toTime(first), toTime(last), Math.floor(iw / (80 * f))).map(s => {
-    const x = PAD.l + ((s.t - toTime(first)) / span) * iw;
-    return `<text x="${x.toFixed(1)}" y="${H - 26 * f}" font-size="${fs}" fill="var(--mut)" text-anchor="${randAnker(x, W - PAD.r, f)}" font-family="inherit">${esc(s.text)}</text>`; }).join('');
+  const xTicks = xBeschriftung(zeitTeilung(toTime(first), toTime(last), Math.floor(iw / (80 * f)))
+    .map(s => ({ x: PAD.l + ((s.t - toTime(first)) / span) * iw, text: s.text })), H - 26 * f, W - PAD.r, f, fs);
   const legend = series.map((sd, i) =>
     // Ab dem linken Rand statt ab der Achse: Bei grosser Schrift ist der Achsenrand so breit, dass „Neuware“ sonst rechts abbricht.
     `<g transform="translate(${4 + i * Math.min(120 * f, (W - 8) / series.length)}, ${H - 6 * f})">
@@ -683,11 +722,12 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
   const zusammenfassung = [tRaw('detail.chart.summary', { titel: tRaw('detail.price_history'), von: fmtDay(first), bis: fmtDay(last),
     reihen: series.map(sd => tRaw('detail.chart.series', { name: sd.name, wert: fmtN(sd.pts[sd.pts.length - 1].y, CURRENCY) })).join('; ') }),
     min > 0 ? tRaw('chart.axis_from', { wert: fmtN(min, CURRENCY) }) : '', tRaw('chart.keys')].filter(Boolean).join('. ');
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-preis" role="img" aria-label="${esc(zusammenfassung)}"${fk.attr}>
-    ${yAchse(teilung, min, yOf, PAD.l, W - PAD.r, PAD.t, unten, CURRENCY, f)}
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-preis" role="img" aria-label="${esc(zusammenfassung)}" data-flaeche="${iw.toFixed(0)}"${fk.attr}>
+    ${yAchse(teilung, min, yOf, PAD.l, W - PAD.r, PAD.t, unten, CURRENCY, f, lage.innen)}
     ${parts}
     ${kaufLinien}
     ${kaufPunkte}
+    ${lage.innen ? yBetraegeInnen(teilung, min, yOf, PAD.l, CURRENCY, f, kaeufe.map(sd => yOf(sd.kauf))) : ''}
     ${xTicks}
     ${legend}
     ${fk.svg}
@@ -708,7 +748,8 @@ export function portfolioChartSVG(data, period, breite = 700, einstand = 0, cur 
   const teilung = schoeneTeilung(Math.min(...vals, ...(mitEinstand ? [einstand] : [])), Math.max(...vals, ...(mitEinstand ? [einstand] : [])), 5);
   const min = Math.max(0, teilung.von), max = teilung.bis, range = max - min || 1;
   const f = schriftFaktor(), fs = 12 * f;
-  const W=breite, H=Math.round(180 * (1 + (f - 1) * 0.6)), PAD={l:achsenRand(teilung, cur, fs),r:16*f,t:14*f,b:32*f};
+  const W=breite, H=Math.round(180 * (1 + (f - 1) * 0.6)), lage=achsenLage(teilung, cur, fs, W, 16*f);
+  const PAD={l:lage.links,r:lage.innen?6*f:16*f,t:lage.innen?24*f:14*f,b:32*f};
   const iw=W-PAD.l-PAD.r, ih=H-PAD.t-PAD.b, unten=PAD.t+ih;
 
   const color = 'var(--chart-wert, var(--chart-new))';
@@ -726,8 +767,8 @@ export function portfolioChartSVG(data, period, breite = 700, einstand = 0, cur 
   // Je Beschriftung rund 70 px, damit sie sich am Telefon nicht überlappen.
   let xLabels = '';
   if (mitZeit) {
-    xLabels = zeitTeilung(t0, data[n-1].zeit, Math.floor(iw/(70*f))).map(s =>
-      `<text x="${pxZeit(s.t).toFixed(1)}" y="${H-8*f}" text-anchor="${randAnker(pxZeit(s.t), W - PAD.r, f)}" font-size="${fs}" fill="var(--mut)" font-family="inherit">${esc(s.text)}</text>`).join('');
+    xLabels = xBeschriftung(zeitTeilung(t0, data[n-1].zeit, Math.floor(iw/(70*f))).map(s => ({ x: pxZeit(s.t), text: s.text })),
+      H-8*f, W - PAD.r, f, fs);
   } else {
     const step  = Math.max(1, Math.ceil(n/Math.max(2, Math.min(7, Math.floor(iw/(70*f))))));
     for(let i=0; i<n; i+=step) if (data[i].day)
@@ -736,22 +777,25 @@ export function portfolioChartSVG(data, period, breite = 700, einstand = 0, cur 
 
   const wann = (i) => mitZeit ? fmtDatum(new Date(data[i].zeit)) : data[i].day;
   const letzter = `<circle cx="${px(n-1).toFixed(1)}" cy="${py(vals[n-1]).toFixed(1)}" r="${4 * f}" fill="${color}" stroke="var(--sur)" stroke-width="1.5"/>`;
-  const linie = mitEinstand ? bezugsLinie(einstand, py, PAD.l, W - PAD.r, `${einstandText} ${fmtN(einstand, cur)}`, 'var(--txt)', py(vals[n-1]), f) : '';
+  // Schmal nur „Kaufpreis“: Der Zusatz („nur bewertete Posten“) steht in der Kennzahl darunter.
+  const linienText = W < 560 ? tRaw('finance.chart.kaufpreis') : einstandText;
+  const linie = mitEinstand ? bezugsLinie(einstand, py, PAD.l, W - PAD.r, `${linienText} ${fmtN(einstand, cur)}`, 'var(--txt)', py(vals[n-1]), f) : '';
   const fk = fadenkreuzTeile(vals.map((v, i) => ({ x: +px(i).toFixed(1), y: [+py(v).toFixed(1)], t: [wann(i), fmtN(v, cur)] })), [color], PAD.t, unten, f);
 
   const zusammenfassung = [tRaw('finance.chart.summary', { titel: tRaw('finance.chart.label'),
     von: wann(0), bis: wann(n-1), start: fmtN(vals[0], cur), ende: fmtN(vals[n-1], cur) }),
     mitEinstand ? `${einstandText} ${fmtN(einstand, cur)}` : '',
     min > 0 ? tRaw('chart.axis_from', { wert: fmtN(min, cur) }) : '', tRaw('chart.keys')].filter(Boolean).join('. ');
-  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-wert" role="img" aria-label="${esc(zusammenfassung)}"${fk.attr}>
+  return `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-wert" role="img" aria-label="${esc(zusammenfassung)}" data-flaeche="${iw.toFixed(0)}"${fk.attr}>
   <defs><linearGradient id="pcg" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>
     <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
   </linearGradient></defs>
-  ${yAchse(teilung, min, py, PAD.l, W - PAD.r, PAD.t, unten, cur, f)}${xLabels}
+  ${yAchse(teilung, min, py, PAD.l, W - PAD.r, PAD.t, unten, cur, f, lage.innen)}${xLabels}
   <polygon points="${area}" fill="url(#pcg)"/>
   <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
   ${linie}${letzter}
+  ${lage.innen ? yBetraegeInnen(teilung, min, py, PAD.l, cur, f, mitEinstand ? [py(einstand)] : []) : ''}
   ${fk.svg}
 </svg>`;
 }

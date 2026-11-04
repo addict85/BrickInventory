@@ -434,7 +434,9 @@
   .merk-erfassen > .fg { flex: 1 1 100%; max-width: none !important; }
   .merk-erfassen > .btn { flex: 1 1 100%; }
   .voucher-row { padding: .6rem .7rem; gap: .5rem; }
-  .zeitraum-wahl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  /* Je Knopf so breit wie sein Wort, umgebrochen wird zwischen den Knöpfen („Woch|e“ las niemand). */
+  .zeitraum-wahl .period-btn { flex: 1 1 auto; overflow-wrap: normal; hyphens: manual; padding-inline: .6em; }
+  .diagramm-karte { padding: .75rem; }
   main :is(.filterleiste, .filterzeile) > :is(input.si, input.suchfeld) { flex: 1 1 100%; width: 100% !important; }
   /* Lagerorte: das Feld über die ganze Zeile, Belegung und Knöpfe darunter. */
   #storage-list .lager-raster { grid-template-columns: minmax(0, 1fr) max-content max-content !important; }
@@ -449,6 +451,8 @@
   main .btn { white-space: normal; max-width: 100%; }
   .voucher-row, .voucher-actions { flex-wrap: wrap; }
   .empty.leer :is(h2, p, .btn), .dt-summe td { overflow-wrap: anywhere; hyphens: auto; max-width: 100%; min-width: 0; }
+  /* Knöpfe brechen zwischen Wörtern: Mit „anywhere“ schrumpften sie bis auf ein Zeichen („Erneut versu|chen“). */
+  main .btn, .umenu-item > span { overflow-wrap: break-word; }
   .diagramm-werte > *, .apk-btn-txt, #household-state, #tab-haushalt .text-mittel { overflow-wrap: anywhere; white-space: normal; }
 }
 
@@ -592,8 +596,8 @@
     min-height: 52px; padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
   }
   .erfassen-leiste .btn.bp.knopf-schwebend { flex: none; }
-  /* Merkliste: Filter zu zweit je Zeile, gleich breit, statt zufällig umgebrochen. */
-  #tab-wanted .filterzeile > select { flex: 1 1 calc(50% - 4px); min-width: 0; }
+  /* Merkliste: Jeder Filter so breit wie sein längster Eintrag, sonst eine eigene Zeile („Alle Zuständ…“ bei 320 px). */
+  #tab-wanted .filterzeile > select { flex: 1 1 auto; min-width: 0; }
   /* Gesperrt (offline) deckend und grau: Halbtransparent lagen Knopf- und
      Kartentext übereinander und waren beide nicht zu lesen. */
   :root .btn.knopf-schwebend:disabled { opacity: 1; background: var(--s100); color: var(--mut); border-color: var(--bdr); }
@@ -614,11 +618,18 @@
   /* Das Kartenbild 4:3 statt quadratisch: eine Karte ist so ein Viertel kürzer. */
   #gallery .sc > .sci { aspect-ratio: 4 / 3; }
 }
-/* Grosse Schrift: Suche und Kennzahlen umbrechen; der schwebende Knopf zeigt nur das Symbol. */
+/* Grosse Schrift: Suche und Kennzahlen umbrechen; der schwebende Knopf zeigt nur das Symbol
+   (zweizeilig lag er über dem Suchfeld). Ebenso beim Rollen nach unten, wo er sonst Karten verdeckt;
+   den Namen trägt aria-label. */
 @container haupt (max-width: 20.5em) {
   #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 100%; }
   .brick-stats { flex-wrap: wrap; }
-  .knopf-schwebend { max-width: calc(100% - 32px); white-space: normal; text-align: left; }
+  .knopf-schwebend { width: 3.5rem; min-width: 3.5rem; padding: 0; justify-content: center; }
+  .knopf-schwebend > span { display: none; }
+}
+@media (max-width: 640px) {
+  .kopf-weg .knopf-schwebend { width: 56px; min-width: 56px; padding: 0; justify-content: center; }
+  .kopf-weg .knopf-schwebend > span { display: none; }
 }
 @container haupt (min-width: 15em) and (max-width: 22em) {
   #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }

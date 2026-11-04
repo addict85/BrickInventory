@@ -152,10 +152,12 @@ export function diagrammLeer(){
  * Beim Fehlerfall hängt die Meldung des Servers mit im Tooltip; sichtbar steht
  * sie ohnehin in der Summenspalte.
  */
-function priceStatusBadge(s){
+function priceStatusBadge(s, neutral = false){
+  // Fehlt der Preis fast überall (kein Zugang, Dienst noch nicht gelaufen), ist
+  // das kein Fehler dieser Zeile: grau statt rot, der Grund im Tooltip.
   if (s.error) {
     const titel = `${t('finance.price_failed')}: ${s.error}`;
-    return `<span class="pst pst-err" title="${esc(titel)}" role="img" aria-label="${esc(titel)}">${ico('warnung')}</span>`;
+    return `<span class="pst ${neutral ? 'pst-leer' : 'pst-err'}" title="${esc(titel)}" role="img" aria-label="${esc(titel)}">${neutral ? '–' : ico('warnung')}</span>`;
   }
   // Ohne Marktpreis kein Haken: Er sagte „vorhanden" über einer leeren Spalte.
   if (s.no_price) {
@@ -366,12 +368,14 @@ export async function loadFinance(){
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${dateSrc?fmtDatum(dateSrc):'—'}</td>
     <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
-    <td class="fin-detail zahl ${s.error?'':'price-cell'}">${s.error?`<span class="fin-fehlt" title="${esc(t('finance.price_failed'))}: ${esc(s.error)}">${t('finance.price_missing_short')}</span>`:fmtN(market,cur)}</td>
+    <td class="fin-detail zahl ${s.error?'':'price-cell'}">${s.error?`<span class="fin-fehlt${fehlerNeutral ? ' neutral' : ''}" title="${esc(t('finance.price_failed'))}: ${esc(s.error)}">${t('finance.price_missing_short')}</span>`:fmtN(market,cur)}</td>
     <td class="fin-wert zahl ${s.error?'':'price-total'}">${s.error?'<span class="text-mut">—</span>':fmtN(total,cur)}</td>
     <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
-    <td class="fin-status">${priceStatusBadge(s)}</td>
+    <td class="fin-status">${priceStatusBadge(s, fehlerNeutral)}</td>
   </tr>`;
   }
+  const fehlerZeilen = d.sets.filter(s => s.error).length;
+  const fehlerNeutral = fehlerZeilen >= 3 && fehlerZeilen * 2 >= d.sets.length;
   const rows=d.sets.map(s=>{
     const acqs = s.acquisitions || [];
     if (acqs.length <= 1) return setRow(s, acqs[0] || null);

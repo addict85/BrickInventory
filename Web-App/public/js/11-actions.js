@@ -135,6 +135,10 @@ import { merkpostenLoeschen } from './16-merkliste.js';
   document.addEventListener('keydown', ev => {
     const el = ev.target;
     if (!el || NATIV.has(el.tagName) || !el.hasAttribute?.('data-click') || !el.hasAttribute('tabindex')) return;
+    // Das Lösch-Kreuz der Karte ist ein Mauskürzel (aria-hidden, in der Karte kein Knopf erlaubt); Entf ist sein Tastaturweg.
+    const karte = /** @type {HTMLElement} */ (el);
+    const kreuz = ev.key === 'Delete' && karte.matches('[aria-keyshortcuts~="Delete"]') ? karte.querySelector(':scope > .ca > .delbtn') : null;
+    if (kreuz?.checkVisibility()) { ev.preventDefault(); /** @type {HTMLElement} */ (kreuz).click(); return; }
     const leer = ev.key === ' ' && el.getAttribute('role') === 'button';
     if (ev.key !== 'Enter' && !leer) return;
     ev.preventDefault();

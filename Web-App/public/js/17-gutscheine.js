@@ -320,7 +320,7 @@ export async function gutscheinLoeschen(id) {
   // Rückgängig legt die Karte neu an: nur mit abgerufenem Klartext und ohne PDF, das verloren ginge.
   const k = _klartext.get(g.id);
   _klartext.delete(g.id);
-  toast(tRaw('vouchers.deleted'), 'success', g.hat_pdf || !k ? undefined : { text: tRaw('trash.undo'), fn: async () => {
+  toast(tRaw('vouchers.deleted'), 'success', g.hat_pdf || !k ? undefined : { text: tRaw('trash.undo'), bleibt: true, fn: async () => {
     const r = await api('POST', '/v1/vouchers', { number: k.number, pin: k.pin || '', amount: g.amount, currency: g.currency });
     if (!r?.success) { toast(r?.error || tRaw('vouchers.save_error'), 'error'); return; }
     toast(tRaw('trash.restored'), 'success');

@@ -129,7 +129,7 @@ function zeile(w) {
          Template-Literals und wuerde es sonst beenden. Genau daran ist der
          erste Entwurf gescheitert — dieselbe Falle wie in
          src/teile/abfragen.ts, wo derselbe Hinweis steht. -->
-    <div class="mk-zeile" tabindex="0" role="button" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
+    <div class="mk-zeile" tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="oeffneMerkpostenDetail" data-arg="${arg}">
       <div class="ca"><span class="delbtn" data-click="merkpostenLoeschenStop"${echt()} aria-hidden="true" data-arg="${arg}"
            title="${esc(tRaw('wanted.remove'))}">${TRASH_ICON_SVG}</span></div>
       ${bild}
@@ -283,7 +283,7 @@ export async function merkpostenLoeschen(arg) {
     `/v1/wanted/${encodeURIComponent(set_number)}/${encodeURIComponent(condition)}?${p}`);
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Rückgängig legt den Posten neu an; er hat ausser Nummer, Zustand und Inhaber nichts Eigenes.
-  toast(tRaw('wanted.deleted'), 'success', { text: tRaw('trash.undo'), fn: async () => {
+  toast(tRaw('wanted.deleted'), 'success', { text: tRaw('trash.undo'), bleibt: true, fn: async () => {
     const r = await api('POST', '/v1/wanted', { set_number, condition, owner_user_id });
     if (!r?.success) { toast(r?.error || tRaw('settings.error'), 'error'); return; }
     toast(tRaw('trash.restored'), 'success');

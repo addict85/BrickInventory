@@ -262,6 +262,7 @@
     <!-- ── E-MAIL BESTÄTIGEN (Link aus der Mail, Bestätigung erst per Knopf) ─ -->
     <div id="panel-verify" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="verify.title">E-Mail-Adresse bestätigen</p>
+      <p class="text-klein abstand-u-075" id="verify-ziel"></p>
       <div class="lerr" id="verify-err" role="alert"></div>
       <button type="button" class="btn bp knopf-breit" id="btn-verify" data-i18n="verify.button">Adresse bestätigen</button>
       <div class="login-fuss">
@@ -407,7 +408,7 @@
                  inzwischen ab, denn dieser Text hier enthielt den Tag
                  ausgeschrieben und hat GENAU DAS ausgeloest.) -->
             <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="settings"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg><span data-i18n="nav.settings">Einstellungen</span></button>
-            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hintergrund­arbeiten</span></button>
+            <button class="umenu-item admin-only" role="menuitem" tabindex="-1" data-stil="display:none" data-click="oeffneReiter" data-arg="monitor"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg><span data-i18n="nav.monitoring">Hinter­grund­arbeiten</span></button>
             <hr class="umenu-trenner">
             <button class="umenu-item umenu-abmelden" role="menuitem" tabindex="-1" id="btn-logout"><svg class="ico" aria-hidden="true"><use href="#i-abmelden"/></svg><span data-i18n="settings.logout">Abmelden</span></button>
           </div>
@@ -427,7 +428,7 @@
     <button type="button" class="ntab" data-tab="catalog" data-i18n-tab="nav.catalog"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> <span class="tab-label">Katalog</span></button>
     <!-- Verwalterseiten: ohne Platz in der Leiste, geöffnet über das Benutzermenü. -->
     <button type="button" class="ntab ntab-unter" id="ntab-settings" data-tab="settings" data-i18n-tab="nav.settings" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-einstellungen"/></svg> <span class="tab-label">Einstellungen</span></button>
-    <button type="button" class="ntab ntab-unter" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg> <span class="tab-label">Hintergrund­arbeiten</span></button>
+    <button type="button" class="ntab ntab-unter" id="ntab-monitor" data-tab="monitor" data-i18n-tab="nav.monitoring" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-monitoring"/></svg> <span class="tab-label">Hinter­grund­arbeiten</span></button>
   </nav>
 
   <div class="offline-band" id="offline-band" role="status" hidden></div>
@@ -456,7 +457,7 @@
       <!-- Inhalt zuerst: Erfassen ist eine Handlung, kein Dauerformular.
            Das Formular steht im Dialog #add-set-modal. -->
       <div class="erfassen-leiste">
-        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="set"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
+        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="set" aria-label="Set hinzufügen" data-i18n="gallery.add.title" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
         <details class="import-menue">
           <summary class="btn bs"><svg class="ico import-datei" aria-hidden="true"><use href="#i-datei"/></svg><svg class="ico import-mehr" aria-hidden="true"><use href="#i-mehr"/></svg><span class="import-text" data-i18n="import.menu">Importieren</span><span class="vh nur-telefon" data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
           <div class="import-klappe">
@@ -478,7 +479,7 @@
             <option value="" data-i18n="gallery.filter.all">Alle Themen</option>
           </select>
           <select class="w-auto" id="gsort" aria-label="Sortierung" data-i18n="gallery.sort_label" data-i18n-attr="aria-label">
-            <option value="added_desc" data-i18n="gallery.sort.added">Zuletzt hinzugefügt</option>
+            <option value="added_desc" data-i18n="gallery.sort.added">Neueste zuerst</option>
             <option value="added_asc" data-i18n="gallery.sort.oldest">Älteste zuerst</option>
             <option value="name_asc" data-i18n="gallery.sort.name">Name A–Z</option>
             <option value="num_asc" data-i18n="gallery.sort.number">Nummer ↑</option>
@@ -605,7 +606,7 @@
           <option value="U" data-i18n="common.condition_used">Gebraucht</option>
         </select>
         <select class="w-auto" id="mksort" aria-label="Sortierung" data-i18n="gallery.sort_label" data-i18n-attr="aria-label" data-change="ladeMerkliste">
-          <option value="added_desc" data-i18n="gallery.sort.added">Zuletzt hinzugefügt</option>
+          <option value="added_desc" data-i18n="gallery.sort.added">Neueste zuerst</option>
           <option value="added_asc" data-i18n="gallery.sort.oldest">Älteste zuerst</option>
           <option value="name_asc" data-i18n="gallery.sort.name">Name A–Z</option>
           <option value="num_asc" data-i18n="gallery.sort.number">Nummer ↑</option>
@@ -632,7 +633,7 @@
       </div>
       <!-- ── Manuell erfasste Teile — vor den Set-Teilen ──────────────────── -->
       <div class="erfassen-leiste">
-        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="part"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="parts.add_title">Teil hinzufügen</span></button>
+        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="part" aria-label="Teil hinzufügen" data-i18n="parts.add_title" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="parts.add_title">Teil hinzufügen</span></button>
         <details class="import-menue">
           <summary class="btn bs"><svg class="ico import-datei" aria-hidden="true"><use href="#i-datei"/></svg><svg class="ico import-mehr" aria-hidden="true"><use href="#i-mehr"/></svg><span class="import-text" data-i18n="import.menu">Importieren</span><span class="vh nur-telefon" data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
           <div class="import-klappe">
@@ -721,7 +722,7 @@
 
       <!-- ── Manuell erfasste Minifiguren — grosse Box wie bei Teilen ──────── -->
       <div class="erfassen-leiste">
-        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="fig"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="figs.add_title">Minifigur hinzufügen</span></button>
+        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="fig" aria-label="Minifigur hinzufügen" data-i18n="figs.add_title" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="figs.add_title">Minifigur hinzufügen</span></button>
         <details class="import-menue">
           <summary class="btn bs"><svg class="ico import-datei" aria-hidden="true"><use href="#i-datei"/></svg><svg class="ico import-mehr" aria-hidden="true"><use href="#i-mehr"/></svg><span class="import-text" data-i18n="import.menu">Importieren</span><span class="vh nur-telefon" data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
           <div class="import-klappe">
@@ -990,7 +991,7 @@
           </div>
           <div class="abstand-u-125" id="users-tbl"></div>
           <details class="abstand-u-125">
-            <summary class="ctitle zeiger" data-i18n="users.protokoll">Protokoll der Verwalteraktionen</summary>
+            <summary class="ctitle zeiger" data-i18n="users.protokoll">Protokoll der Verwalter­aktionen</summary>
             <div id="vw-protokoll"></div>
           </details>
           <div class="trenner-oben">
@@ -1448,11 +1449,11 @@
       <div class="ssec abstand-u-125 sform" id="household-redeem-box" data-stil="display:none">
             <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> <span data-i18n="household.redeem_title">Einladung annehmen</span></h2>
             <div class="text-mittel abstand-u-075" data-i18n="household.redeem_hint">
-              Gib den Code aus dem Hauptkonto ein. Dieses Konto wird danach im Hauptkonto mit angezeigt; deine Daten bleiben deine.
+              Gib den Code aus dem Hauptkonto ein. Das Hauptkonto sieht und bearbeitet danach deine Sammlung; du kannst die Verknüpfung jederzeit lösen.
             </div>
             <div class="fg">
               <label for="household-redeem-code" data-i18n="household.invite_code">Einladungscode</label>
-              <input class="mono-2" type="text" id="household-redeem-code" autocomplete="off" />
+              <input class="mono-2" type="text" id="household-redeem-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" />
             </div>
             <div class="fg" id="household-redeem-faktor" data-stil="display:none">
               <label for="household-redeem-faktor-code" data-i18n="login.code">Code aus der Authenticator-App</label>
@@ -1616,7 +1617,7 @@
     <!-- MONITOR TAB -->
     <div class="tab" id="tab-monitor">
       <div class="ph zeile mittig verteilt umbruch luecke-05">
-        <h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hintergrund­arbeiten</span></h1>
+        <h1 class="ptitle" data-tab-title="monitor"><span class="ptitle-icon"></span><span data-i18n="monitor.title">Hinter­grund­arbeiten</span></h1>
         <button class="btn bs btn-sm schrift-2" data-click="openLogViewer" data-i18n="monitor.logs_btn" data-ico="liste">Protokoll anzeigen</button>
       </div>
       <!-- Hidden stubs so existing JS references don't break -->
