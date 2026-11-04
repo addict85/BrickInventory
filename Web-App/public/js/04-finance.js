@@ -1,4 +1,4 @@
-import { ladeAnzeige, listeLadefehler } from './01-bausteine.js';
+import { ladeAnzeige, listeLadefehler, verstaendlicherGrund } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw} from '../i18n.js';
 import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
@@ -46,9 +46,14 @@ window.addEventListener('resize', () => {
   el.innerHTML = portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || CURRENCY);
 });
 
-/** Hinweis statt Kurve, wenn der Verlauf nicht zu holen war. */
-function diagrammNichtDa(offline){
-  return `<div class="diagramm-hinweis">${t(offline ? 'chart.offline' : 'chart.unavailable')}</div>`;
+/** Hinweis statt Kurve, wenn der Verlauf nicht zu holen war — im selben
+ * Muster wie der Fehlerzustand einer Liste, nur kleiner. */
+function diagrammNichtDa(offline, d){
+  const { grund, details } = offline ? { grund: tRaw('api.unreachable') } : verstaendlicherGrund(d);
+  return `<div class="empty leer klein fehler-zustand" role="status"><div class="leer-ico">${ico('warnung')}</div>` +
+    `<h2>${esc(tRaw('chart.unavailable'))}</h2><p>${esc(grund)}</p>` +
+    (details ? `<details class="fehler-details"><summary>${esc(tRaw('liste.details'))}</summary><code>${esc(details)}</code></details>` : '') +
+    `<button type="button" class="btn bs" data-lesend data-click="loadPortfolioChart">${ico('aktualisieren')}<span>${esc(tRaw('liste.erneut'))}</span></button></div>`;
 }
 
 async function loadPortfolioChart(){
@@ -58,8 +63,8 @@ async function loadPortfolioChart(){
 
   const d = await api('GET', `/v1/finance/portfolio-history?period=${_chartPeriod}${scopeMode('finance') !== 'all' ? '&accounts=' + scopeMode('finance') : ''}`);
   if(!d.success){
-    el.innerHTML = d.networkError ? diagrammNichtDa(true)
-      : '<span class="diagramm-fehler">'+t('toast.error')+': '+esc(d.error||t('common.unknown'))+'</span>';
+    if (d.status === 401) return;
+    el.innerHTML = diagrammNichtDa(!!d.networkError, d);
     return;
   }
   // Weniger als zwei echte Messpunkte sind kein Verlauf: Der Server ergänzt
@@ -102,7 +107,10 @@ async function loadPortfolioChart(){
     // Kaufpreis, und „0.0 %" neben „—" behauptete Stillstand.
     const zeitraumText = { week: 'finance.change.week', month: 'finance.change.month',
                            year: 'finance.change.year', max: 'finance.change.max' }[_chartPeriod];
-    const zeitraum = zeitraumText ? `<span class="pnl-zeitraum">${t(zeitraumText)}</span>` : '';
+    // „seit 4. Sept.“ statt „seit Beginn“: Der Bezug der Prozentzahl steht dabei.
+    const start = finalChartData[0]?.zeit;
+    const seit = _chartPeriod === 'max' && Number.isFinite(start) ? tRaw('finance.change.seit', { datum: fmtDatum(new Date(start)) }) : '';
+    const zeitraum = zeitraumText ? `<span class="pnl-zeitraum">${seit ? esc(seit) : t(zeitraumText)}</span>` : '';
     if(!(window._finGrandTotal > 0)) pnlEl.innerHTML = '';
     else if(d.period_change_pct != null){
       pnlEl.innerHTML = pnlBadge(d.period_change_pct) + zeitraum;
@@ -176,8 +184,9 @@ export async function loadFinance(){
     api('GET','/v1/finance/pnl'+scopeQuery('finance')),
   ]);
   if (listeLadefehler(G('fin-tbl'), d, { erneut: 'loadFinance', behalten: hatteTabelle })) {
+    if (d?.status === 401) return;
     // Das Diagramm lädt erst nach den Werten; ohne sie bliebe „Laden…“ stehen.
-    if (!_letzteKurve) G('portfolio-chart').innerHTML = diagrammNichtDa(!!d.networkError);
+    if (!_letzteKurve) G('portfolio-chart').innerHTML = diagrammNichtDa(!!d.networkError, d);
     if (!G('fin-sum').dataset.geladen) {
       G('fin-sum').removeAttribute('aria-busy');
       for (const id of ['fin-einstand', 'fin-wert', 'portfolio-current']) G(id).textContent = '—';
@@ -381,24 +390,25 @@ export async function loadFinance(){
     fremdeWaehrung: pnlData?.totals?.kaufpreise_fremde_waehrung || 0 });
   // Nichts erfasst: ein Leerzustand statt Tabellen, die fünfmal „Preis fehlt“ melden.
   if (leer) {
-    G('fin-tbl').innerHTML = leerZustand({ ico: 'finanzen', titel: tRaw('finance.empty'), text: tRaw('finance.empty_text') });
+    G('fin-tbl').innerHTML = leerZustand({ ico: 'finanzen', titel: tRaw('finance.empty'), text: tRaw('finance.empty_text'),
+      knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
   }
-  const summenZeile = (name, kauf, wert) => `<tr><td class="fin-fuss-name">${name}</td>${summenZellen(kauf, wert, cur, 0)}</tr>`;
+  const summenZeile = (name, kauf, wert, zusatz) => `<tr><td class="fin-fuss-name">${name}</td>${summenZellen(kauf, wert, cur, 0, zusatz)}</tr>`;
   const grandTotalHtml = `
     <div class="tw abstand-o-125">
       <table class="dt dt-summe">
-        <thead><tr><th><span class="vh">${t('finance.bereich')}</span></th><th>${t('finance.stat.purchase')}</th><th>${t('finance.grand.value')}</th></tr></thead>
+        <thead><tr><th><span class="vh">${t('finance.bereich')}</span></th><th>${t('finance.col.purchase')}</th><th>${t('finance.grand.value')}</th></tr></thead>
         <tbody>
           ${summenZeile(t('finance.filter.sets'), einstand.sets, setsQtyAvg)}
           ${summenZeile(t('finance.grand.parts'), einstand.parts, partsTotal)}
           ${summenZeile(t('finance.figs_section'), einstand.figs, figsTotal)}
         </tbody>
-        <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal)}</tfoot>
+        <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal, basis.ohneMarkt > 0 ? tRaw('finance.ohne_n', { n: basis.ohneMarkt }) : '')}</tfoot>
       </table>
       ${basis.ohneMarkt > 0 ? `<p class="fin-fussnote">${esc(tRaw('finance.summe_ohne_markt', { n: basis.ohneMarkt }))}</p>` : ''}
     </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-235"><col class="sp-70"><col class="sp-100"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
+  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-235"><col class="sp-70"><col class="sp-100"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${legende()}${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
   // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
   // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
   // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine
@@ -425,10 +435,16 @@ function einstandZelle(stueck, menge, cur) {
  */
 function preisKoepfe() {
   const kurz = (lang, kurzTxt) => `<th class="zahl" title="${esc(tRaw(lang))}"><span aria-hidden="true">${kurzTxt}</span><span class="vh">${t(lang)}</span></th>`;
-  return `<th class="zahl"><abbr title="${esc(tRaw('finance.stat.purchase_hint'))}">${t('finance.stat.purchase')}</abbr></th>`
+  return `<th class="zahl">${t('finance.col.purchase')}</th>`
     + `<th class="zahl" title="${esc(tRaw('finance.market_price_stueck'))}">${t('detail.market_price')}</th>`
     + `<th class="zahl">${t('finance.grand.value')}</th>`
     + kurz('finance.total_pnl', t('finance.pnl_kurz'));
+}
+
+/** Was das Zeichen in der Spalte „Status“ heisst — ein Häkchen allein sagt es nicht. */
+function legende() {
+  return `<p class="fin-legende">${tRaw('finance.legende', { ok: `<span class="legende-zeichen pst pst-ok" aria-hidden="true">${ico('ok')}</span>`,
+    fehlt: '<span class="legende-zeichen pst pst-leer" aria-hidden="true">–</span>', fehler: `<span class="legende-zeichen pst pst-err" aria-hidden="true">${ico('warnung')}</span>` })}</p>`;
 }
 
 /** Zahl aus der Serverantwort, sonst der Ersatzwert. */
@@ -452,9 +468,9 @@ function einstandAus(liste) {
  * dazwischen halten die Spalten der Tabelle darüber (Kaufpreis | Marktpreis |
  * Total). Am Telefon tragen beide ihre Beschriftung selbst (data-kurz).
  */
-function summenZellen(kauf, wert, cur, luecke) {
-  const k = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.stat.purchase'))}">${kauf > 0 ? fmtN(kauf, cur) : '—'}</td>`;
-  const w = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.grand.value'))}">${wert > 0 ? fmtN(wert, cur) : `<span class="fin-fehlt-kurz">${t('finance.price_missing_short')}</span>`}</td>`;
+function summenZellen(kauf, wert, cur, luecke, zusatz = '') {
+  const k = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.col.purchase'))}">${kauf > 0 ? fmtN(kauf, cur) : '—'}</td>`;
+  const w = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.grand.value'))}">${wert > 0 ? fmtN(wert, cur) + (zusatz ? `<span class="fin-je">${esc(zusatz)}</span>` : '') : `<span class="fin-fehlt-kurz">${t('finance.price_missing_short')}</span>`}</td>`;
   return k + '<td></td>'.repeat(luecke) + w;
 }
 
@@ -569,6 +585,7 @@ function finFilter(art){
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 registerActions({
   loadFinance,
+  loadPortfolioChart,
   setChartPeriod,
   finFilter,
 });

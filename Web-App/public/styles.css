@@ -83,6 +83,8 @@
     /* Fehlermeldung direkt am Feld (feldFehler in 01-core.js). */
     .feld-fehler{color:var(--r700);font-size:var(--fs-2);margin-top:4px;flex-basis:100%}
     input[aria-invalid="true"]{border-color:var(--r500)}
+    .login-hinweis{background:var(--b50);color:var(--b700);border:1px solid var(--b200);padding:10px 14px;border-radius:8px;font-size:var(--fs-3);margin-bottom:1rem}
+    .login-hinweis[hidden]{display:none}
     .lerr{background:var(--r100);color:var(--r700);padding:10px 14px;border-radius:8px;font-size:var(--fs-3);margin-bottom:1rem;display:none}
 
     /* APP */
@@ -217,7 +219,7 @@
                   font-family:inherit;line-height:1.5;cursor:pointer;
                   max-width:min(14rem,28vw)}
     @media (hover:hover){.ubadge-knopf:hover{filter:brightness(.96)}}
-    .ubadge-knopf.aktiv{box-shadow:0 0 0 2px var(--b600)}
+    .ubadge-knopf.aktiv{box-shadow:inset 0 -3px 0 var(--b600)}
     .ubadge-knopf:focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:2px}
     /* Ein langer Benutzername kürzt sich, die Striche bleiben: Sie stehen in
        einem eigenen Feld, das nicht schrumpft. Lag das Überlaufen am Knopf,
@@ -580,6 +582,9 @@
     .part-card.skelett .skelett-bild{width:70px;height:70px;margin:0 auto}
     .skelett-zeile{height:12px;margin-top:10px}
     .skelett-zeile.kurz{width:60%}
+    .lade-geruest{padding:1rem 0;max-width:36rem}
+    .lade-geruest.klein{padding:0;max-width:none;height:100%;min-height:8rem;display:flex}
+    .skelett-flaeche{flex:1;border-radius:8px;background:linear-gradient(90deg,var(--s100) 25%,var(--s50) 50%,var(--s100) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
     .skelett-liste{display:grid;gap:.75rem}
     .skelett-listenzeile{display:grid;grid-template-columns:3.5rem 1fr;gap:.75rem;align-items:center}
     .skelett-listenzeile .skelett-bild{aspect-ratio:1;width:3.5rem}
@@ -761,7 +766,7 @@
     .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block}
     .cond-new{background:var(--b100);color:var(--b700)}
     .besitzer-badge{background:var(--b100);color:var(--b700)}
-    .admin-hinweis{font-size:var(--fs-1);color:var(--a-schrift);font-weight:400}
+    .admin-hinweis{font-size:var(--fs-1);color:var(--mut);font-weight:400}
     .cond-used{background:var(--a100);color:var(--a-schrift)}
     /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
        ein Ersatzteil ist eine Nebeninformation, kein Zustand. Gegenstueck zu
@@ -914,6 +919,7 @@ html::-webkit-scrollbar{width:0;height:0}
     .empty .icon .ico,.no-parts .icon .ico,.leer-ico .ico{width:2.75rem;height:2.75rem;color:var(--s400);stroke-width:1.6}
     .leer-ico{margin-bottom:.5rem}
     #cd-icon .ico{width:2.75rem;height:2.75rem;color:var(--r500);stroke-width:1.6}
+    #cd-icon.neutral .ico{color:var(--b600)}
     .step-icon .ico{width:1.125rem;height:1.125rem}
     .toast-ico{display:inline-flex}
     .toast.success .toast-ico{color:var(--g500)} .toast.error .toast-ico{color:var(--r500)} .toast.info .toast-ico{color:var(--b600)}
@@ -1108,6 +1114,10 @@ a{color:var(--b600);text-underline-offset:2px}
   .hinweis-band > .btn{flex:0 1 auto;min-width:44px}
   .hinweis-band .hinweis-lang{display:none}
   .hinweis-band .hinweis-kurz{display:inline}
+  /* Eine Zeile: Der Knopf sagt selbst, was fehlt; der Satz benennt das Band
+     weiter über aria-labelledby, das auch verborgenen Text liest. */
+  .hinweis-band > #rb-hinweis-text{display:none}
+  .hinweis-band > .btn.bp{flex:1 1 0;font-size:var(--fs-2);min-width:0;white-space:normal;overflow-wrap:anywhere;hyphens:auto}
 }
 /* Der Schlüssel betrifft Sammlung und Katalog; auf anderen Seiten wäre das Band nur Lärm. */
 body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #rb-hinweis{display:none}
@@ -1134,6 +1144,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .dt-fin th{white-space:nowrap;padding-left:8px;padding-right:8px}
 .acq-legende{font-size:var(--fs-0);color:var(--mut);margin-top:2px}
 .fin-je{display:block;font-size:var(--fs-0);color:var(--mut);white-space:nowrap}
+.fin-fuss-wert .fin-je{white-space:normal;font-weight:500;color:var(--txt)}
 /* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
 .dt-fin .zahl,.dt-fin th.zahl,.dt-fin .fin-fuss-wert{text-align:right}
 .dt-fin .zahl .qbadge{margin-left:auto}
@@ -1180,7 +1191,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 .profil-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:.75rem 1rem}
 .profil-raster .fg{min-width:0}
 .profil-raster-3{grid-template-columns:repeat(auto-fill,minmax(min(100%,12rem),1fr))}
-#tab-profil .btn{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4);min-height:38px}
+#tab-profil .btn{font-size:var(--fs-3);padding:var(--sp-2) var(--sp-4)}
 .email-status{font-size:var(--fs-1);margin-left:4px}
 .email-ok{color:var(--g700)}
 .email-offen{color:var(--a-schrift)}
@@ -1352,11 +1363,13 @@ p.mon-leise{margin:0 0 .35rem}
 .besitz-badge .ico{width:12px;height:12px}
 .teile-zahl{font-size:var(--fs-1);color:var(--mut);font-variant-numeric:tabular-nums}
 /* Preis in festen Zeilen: Art darüber, Betrag links, Entwicklung rechts — auch mit „Geschenk“. */
-#gallery .price-badge{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:0 6px;margin-top:auto}
+/* Flex mit Umbruch statt Raster: Passt der Gewinn nicht neben den Betrag,
+   rückt er in die nächste Zeile, statt in den Betrag zu laufen. */
+#gallery .price-badge{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:0 6px;margin-top:auto}
 #gallery .price-badge[hidden]{display:none}
-#gallery .price-badge .preis-art{grid-column:1 / -1;font-size:var(--fs-0);line-height:1.3}
+#gallery .price-badge .preis-art{flex:1 1 100%;font-size:var(--fs-0);line-height:1.3}
 #gallery .price-badge .preis{white-space:nowrap}
-#gallery .price-badge .preis-pnl{white-space:nowrap;text-align:right}
+#gallery .price-badge .preis-pnl{white-space:nowrap;text-align:right;margin-left:auto}
 #gallery .scb > .price-badge[hidden] + .kachel-datum{margin-top:auto}
 #gallery .kachel-datum{min-height:1.35em}
 .unbekannt-badge{display:inline-block;padding:1px 7px;border-radius:999px;border:1px dashed var(--feldrand);color:var(--txt);font-size:var(--fs-0);font-weight:600}
@@ -1381,6 +1394,9 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 #btn-pl-reset:disabled{display:none}
 /* Leere Sammlung und leere Finanzen: keine Nullkarten, Filter und Zeiträume ohne Wirkung. */
 #tab-gallery.sammlung-leer :is(.filterleiste,.brick-stats){display:none}
+/* Leer: Der Hauptknopf steht im Leerzustand; oben bliebe er doppelt. */
+.tab.sammlung-leer .erfassen-leiste > .btn.bp{display:none}
+.import-mehr,.nur-telefon{display:none}
 #tab-finance.finanzen-leer :is(#portfolio-chart-section,#fin-sum,#fin-basis,#fin-filter){display:none}
 
 /* Einstellungen: eine Seitennavigation mit aktivem Balken statt einer Reihe
@@ -1418,3 +1434,40 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 
 /* Ein Sinnbild aus data-ico klebt sonst am Text, wo der Behälter keinen Abstand setzt. */
 [data-ico]:not(.btn):not(.stit) > .ico + .ico-text{margin-left:.35em}
+/* Fehlerzustand: der Rohtext des Servers nur auf Wunsch, für die Meldung an den Verwalter. */
+.fehler-details{margin:-.5rem auto 1rem;max-width:42ch;font-size:var(--fs-2);color:var(--mut)}
+.fehler-details summary{cursor:pointer;min-height:24px}
+.fehler-details code{display:block;margin-top:.35rem;word-break:break-word}
+.empty.leer.klein{padding:1.25rem 1rem}
+.empty.leer.klein h2{font-size:var(--fs-3)}
+.empty.leer.klein .leer-ico .ico{width:2rem;height:2rem}
+
+/* Set-Dialog: Marktwert und Gewinn als Kopf über den Angaben. */
+.m-wertkopf{display:grid;gap:.6rem;padding:.75rem .9rem;margin-bottom:.5rem;background:var(--s50);border:1px solid var(--bdr);border-radius:10px}
+.m-wertkopf .skelett-zeile{margin-top:0}
+.wk-zeile{display:flex;flex-wrap:wrap;align-items:baseline;gap:.1rem .6rem}
+.wk-label{flex:1 1 100%;font-size:var(--fs-1);color:var(--mut);font-weight:600}
+.wk-wert{font-size:var(--fs-5);font-weight:700;line-height:1.2}
+.wk-guv{font-size:var(--fs-2)}
+.wk-bezug{color:var(--mut);font-weight:500}
+.dr.dr-leise{font-size:var(--fs-2)}
+.fin-legende{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem;margin:.5rem 0 0;font-size:var(--fs-1);color:var(--mut)}
+.fin-legende .legende-zeichen{display:inline-flex;vertical-align:middle}
+@media (max-width:640px){.fin-legende{display:none}}
+
+/* Genau zwei Knopfgrössen: Standard 38 px wie die Eingabefelder, kompakt 32 px
+   (am Telefon beide 44 px, mobile.css). Vorher lagen sie zwischen 26 und 44 px. */
+@media (min-width:641px){
+  .btn:not(.btn-sm){min-height:38px}
+  .btn.btn-sm{min-height:32px}
+  #set-modal :is(.detail-knopf,select.alarm-feld,input.alarm-feld,.detail-feld,.dr select){min-height:32px}
+}
+/* Kartenköpfe: Haushalt, Gutscheine und Konto tragen denselben Kopf (.stit). */
+#tab-haushalt.tab.active{align-items:stretch}
+#tab-haushalt .stit,#tab-gutscheine .stit{margin-bottom:.75rem}
+.mon-einzeln > summary{cursor:pointer;min-height:32px;display:flex;align-items:center;gap:.4rem}
+.btn[aria-disabled="true"]{opacity:.6}
+/* Klappen öffnen mit kurzem Einblenden statt zu springen; bei reduzierter
+   Bewegung schaltet die Regel oben jede Animation ab. */
+@keyframes aufklappen{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.umenu-pop:not([hidden]),details[open] > :is(.import-klappe,.mehr-liste){animation:aufklappen .14s ease-out}

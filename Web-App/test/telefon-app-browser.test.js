@@ -276,7 +276,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.ok(d.anzahl >= 4, `nur ${d.anzahl} Beschriftungen`);
     assert.ok(d.kleinste >= 11, `kleinste Beschriftung ${d.kleinste.toFixed(1)} px`);
     assert.equal(d.rolle, 'img');
-    assert.match(d.name, /Wertentwicklung Portfolio, .+ bis .+: von .+ auf .+/);
+    assert.match(d.name, /Wert der Sammlung, .+ bis .+: von .+ auf .+/);
   });
 
   await t.test('Set-Ansicht: Diagramm, Löschen, Preisalarm', async () => {

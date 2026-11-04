@@ -97,13 +97,13 @@ test('Preis auf der Kachel ist beschriftet, Zustand und Datum benannt (de und en
   }
 });
 
-test('offline: Das Diagramm sagt „Nicht verfügbar – offline“ statt weiter „Laden…“', async () => {
+test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf statt weiter „Laden…“', async () => {
   const netzweg = () => { throw new TypeError('Failed to fetch'); };
   const { w, d } = await oeffneOberflaeche({ '/v1/finance/valuation': netzweg, '/v1/finance/portfolio-history': netzweg });
   try {
     await reiter(w, 'finance');
-    await warte(() => /offline/.test(text(d.getElementById('portfolio-chart'))));
-    assert.equal(text(d.getElementById('portfolio-chart')), 'Nicht verfügbar – offline');
+    await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
+    assert.match(text(d.getElementById('portfolio-chart')), /^Diagramm nicht verfügbar ?Server nicht erreichbar.*Erneut versuchen$/);
   } finally { w.close(); }
 });
 

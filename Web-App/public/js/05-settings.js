@@ -5,7 +5,7 @@ import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
 import { allSets, loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
-import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
+import { confirmDelete, bestaetigeMitPasswort, mitPasswortBestaetigen, mitZweitemFaktor } from './07-admin.js';
 import { meldeAbschnitt } from './24-router.js';
 
 // ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
@@ -453,21 +453,18 @@ G('btn-sav-prof').onclick = async () => {
   const last_name  = G('prof-last').value.trim();
   const username   = G('prof-user').value.trim();
   const email      = G('prof-email').value.trim();
-  const pwC = G('prof-pw')?.value || '';
   if (!username) { toast(tRaw('profile.username_empty'), 'error'); return; }
-  // Jede Profiländerung bestätigt der Server mit dem Passwort; sonst verriete sie, ob ein Name vergeben ist.
-  if (!pwC) { toast(tRaw('profile.needs_password'), 'error'); G('prof-pw')?.focus(); return; }
   const btn = G('btn-sav-prof'); btn.disabled = true;
   try {
-    const d = await mitZweitemFaktor(z => api('PUT', '/v1/auth/profile', { username, email, first_name, last_name,
-                                                      password_current: pwC, ...z }));
+    // Jede Profiländerung bestätigt der Server mit dem Passwort; sonst verriete sie, ob ein Name vergeben ist.
+    const d = await mitPasswortBestaetigen(tRaw('konto.profil'), (pwC, z) => api('PUT', '/v1/auth/profile',
+      { username, email, first_name, last_name, password_current: pwC, ...z }));
     if (!d) return;
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
     if (d.emailChanged) {
       const hint = G('prof-email-hint');
       if (hint) hint.textContent = tRaw('profile.mail_sent_hint');
     }
-    if (G('prof-pw')) G('prof-pw').value = '';
     await loadProfile();
     // Der Namenszug in der Kopfzeile wird sonst nur beim Start gesetzt.
     if (ME) { ME.username = username; zeigeBenutzernamen(); }
@@ -478,21 +475,21 @@ G('btn-sav-prof').onclick = async () => {
 };
 
 G('btn-sav-pw').onclick = async () => {
-  const pwC = G('pw-c').value, pwN = G('pw-n').value, pwR = G('pw-r').value;
-  if (!pwC || !pwN) { feldFehler(pwC ? 'pw-n' : 'pw-c', tRaw('settings.password.fill_all')); return; }
+  const pwN = G('pw-n').value, pwR = G('pw-r').value;
+  if (!pwN) { feldFehler('pw-n', tRaw('settings.password.fill_all')); return; }
   if (pwN !== pwR)  { feldFehler('pw-r', tRaw('settings.password.mismatch')); return; }
   if (passwortRegelText(pwN)) { feldFehler('pw-n', passwortRegelText(pwN)); return; }
   const btn = G('btn-sav-pw'); btn.disabled = true;
   try {
-    const dPw = await mitZweitemFaktor(z => api('POST', '/v1/auth/change-password',
+    const dPw = await mitPasswortBestaetigen(tRaw('settings.password.change'), (pwC, z) => api('POST', '/v1/auth/change-password',
       { current: pwC, newPassword: pwN, passkeys_widerrufen: !!G('pw-pk')?.checked, ...z }));
     if (!dPw) return;
     if (!dPw.success) {
-      antwortFehler(dPw, { aktuelles_passwort_falsch: 'pw-c', alle_felder_erforderlich: 'pw-c',
+      antwortFehler(dPw, { alle_felder_erforderlich: 'pw-n',
         passwort_zu_kurz: 'pw-n', passwort_zu_lang: 'pw-n', passwort_zu_haeufig: 'pw-n' }, tRaw('settings.error'));
       return;
     }
-    G('pw-c').value = G('pw-n').value = G('pw-r').value = '';
+    G('pw-n').value = G('pw-r').value = '';
     if (G('pw-pk')) G('pw-pk').checked = false;
     toast(tRaw('konto.passwort_geaendert'), 'success');
   } finally {

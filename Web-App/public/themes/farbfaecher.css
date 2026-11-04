@@ -61,3 +61,14 @@
 [data-theme="farbfaecher"] .cond-used{background:#fef3c7;color:var(--a-schrift)}
 [data-theme="farbfaecher"][data-dunkel] .cond-new{background:var(--b100);color:var(--b700)}
 [data-theme="farbfaecher"][data-dunkel] .cond-used{background:var(--a100);color:var(--a-schrift)}
+
+/* Hell etwas mehr Fächer: die Kennzahlen tragen je einen Ton als Kante, der
+   offene Reiter eine Unterlinie im Fächerverlauf. Die Bedienung bleibt grau. */
+[data-theme="farbfaecher"]:not([data-dunkel]) .bstat{border-top:4px solid var(--faecher-7)}
+[data-theme="farbfaecher"]:not([data-dunkel]) .bstat:nth-child(2){border-top-color:var(--faecher-4)}
+[data-theme="farbfaecher"]:not([data-dunkel]) .bstat:nth-child(3){border-top-color:var(--faecher-1)}
+[data-theme="farbfaecher"]:not([data-dunkel]) .bstat:nth-child(4){border-top-color:var(--faecher-9)}
+[data-theme="farbfaecher"] .sc::before{height:6px}
+[data-theme="farbfaecher"]:not([data-dunkel]) header{border-bottom:0;box-shadow:none;
+  background-image:linear-gradient(90deg,var(--faecher-0),var(--faecher-2),var(--faecher-4),var(--faecher-6),var(--faecher-8),var(--faecher-10));
+  background-size:100% 3px;background-repeat:no-repeat;background-position:bottom;background-color:var(--sur)}

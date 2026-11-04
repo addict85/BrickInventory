@@ -115,6 +115,7 @@
   <symbol id="i-uhr" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
   <symbol id="i-auge" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
   <symbol id="i-auge-zu" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3.1 3.9M6.6 6.6C3.8 8.4 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/></symbol>
+  <symbol id="i-mehr" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></symbol>
   <symbol id="i-menue" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
   <symbol id="i-idee" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.8.7 1 1.5 1 2.5h6c0-1 .2-1.8 1-2.5A6 6 0 0 0 12 3z"/></symbol>
   <symbol id="i-anhang" viewBox="0 0 24 24"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.5 8.5a2 2 0 0 1-3-3L15 7"/></symbol>
@@ -179,6 +180,7 @@
     <!-- ── LOGIN ─────────────────────────────────────────────────────── -->
     <div id="panel-login">
       <div class="lerr" id="lerr" role="alert"></div>
+      <div class="login-hinweis" id="login-hinweis" role="status" hidden></div>
       <!-- Ein FORM, damit Passwortmanager Speichern und Ausfuellen anbieten:
            Chrome meldet sonst „Password field is not contained in a form", und
            das Anbieten haengt dann an Heuristiken statt am Dokument.
@@ -196,6 +198,7 @@
       </form>
       <div data-stil="display:flex;justify-content:space-between;margin-top:.85rem;font-size:var(--fs-2)">
         <a class="farbe-primaer" href="#" id="link-forgot" data-i18n="login.forgot">Passwort vergessen?</a>
+        <span class="text-mut" id="forgot-verwalter" data-i18n="login.forgot_admin" hidden>Passwort vergessen? Der Verwalter kann es zurücksetzen.</span>
         <span id="link-register-wrap" data-stil="display:none"><span data-i18n="login.register_prompt">Neu hier?</span> <a href="#" id="link-register" data-stil="color:var(--b600);font-weight:600">Registrieren</a></span>
       </div>
       <div class="start-fuss">Build 2026.10.27.1901</div>
@@ -419,7 +422,7 @@
   <div class="hinweis-band" id="rb-hinweis" role="region" aria-labelledby="rb-hinweis-text" hidden>
     <svg class="ico" aria-hidden="true"><use href="#i-info"/></svg>
     <span id="rb-hinweis-text"><span class="hinweis-lang" data-i18n="rb_key.banner">Ohne Rebrickable-Schlüssel kommen keine neuen Sets, Teile und Bilder dazu.</span><span class="hinweis-kurz" data-i18n="rb_key.banner_short">Rebrickable-Schlüssel fehlt.</span></span>
-    <button type="button" class="btn bp btn-sm" data-click="rbHinweisOeffnen"><span class="hinweis-lang" data-i18n="rb_key.banner_link">Schlüssel eintragen</span><span class="hinweis-kurz" data-i18n="rb_key.banner_link_short">Eintragen</span></button>
+    <button type="button" class="btn bp btn-sm" data-click="rbHinweisOeffnen"><span class="hinweis-lang" data-i18n="rb_key.banner_link">Schlüssel eintragen</span><span class="hinweis-kurz" data-i18n="rb_key.banner_link_short">Rebrickable-Schlüssel eintragen</span></button>
     <button type="button" class="btn bs btn-sm hinweis-zu" data-click="rbHinweisWeg" aria-label="Hinweis ausblenden" data-i18n="rb_key.banner_close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
   </div>
   <main id="inhalt" tabindex="-1">
@@ -441,9 +444,9 @@
       <!-- Inhalt zuerst: Erfassen ist eine Handlung, kein Dauerformular.
            Das Formular steht im Dialog #add-set-modal. -->
       <div class="erfassen-leiste">
-        <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="set"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
+        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="set"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="gallery.add.title">Set hinzufügen</span></button>
         <details class="import-menue">
-          <summary class="btn bs"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
+          <summary class="btn bs"><svg class="ico import-datei" aria-hidden="true"><use href="#i-datei"/></svg><svg class="ico import-mehr" aria-hidden="true"><use href="#i-mehr"/></svg><span class="import-text" data-i18n="import.menu">Importieren</span><span class="vh nur-telefon" data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
           <div class="import-klappe">
             <label for="csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" class="datei-versteckt" data-change="startSetCsvImport" /></label>
             <a class="import-eintrag" id="btn-set-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
@@ -457,7 +460,7 @@
            direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div class="filterleiste filterzeile">
-          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="liste">Filter</button>
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-liste"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span></button>
           <input type="text" class="si suchfeld" id="gs" placeholder="Sets suchen…" data-i18n="gallery.search" data-i18n-attr="placeholder" / aria-label="Sets suchen">
           <select class="w-auto" id="gtheme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label" data-change="renderGallery">
             <option value="" data-i18n="gallery.filter.all">Alle Themen</option>
@@ -618,9 +621,9 @@
       </div>
       <!-- ── Manuell erfasste Teile — vor den Set-Teilen ──────────────────── -->
       <div class="erfassen-leiste">
-        <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="part"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="parts.add_title">Teil hinzufügen</span></button>
+        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="part"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="parts.add_title">Teil hinzufügen</span></button>
         <details class="import-menue">
-          <summary class="btn bs"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
+          <summary class="btn bs"><svg class="ico import-datei" aria-hidden="true"><use href="#i-datei"/></svg><svg class="ico import-mehr" aria-hidden="true"><use href="#i-mehr"/></svg><span class="import-text" data-i18n="import.menu">Importieren</span><span class="vh nur-telefon" data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
           <div class="import-klappe">
             <label for="part-csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="part-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importPartsCsv" /></label>
             <a class="import-eintrag" id="btn-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
@@ -681,7 +684,7 @@
 
       <!-- ── Teile aus Sets ──────────────────────────────────────────────────── -->
       <div id="parts-main">
-        <div class="loading"><div class="spin"></div><span data-i18n="parts.loading_label">Teile laden…</span></div>
+        <div class="lade-geruest" role="status" aria-busy="true"><span class="vh" data-i18n="parts.loading_label">Teile laden…</span><div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>
       </div>
       <!-- Ladepunkt für den Endlos-Scroll der Teileliste, analog cat-sentinel.
            Steht bewusst NEBEN #parts-main: dessen Inhalt wird bei jedem
@@ -707,9 +710,9 @@
 
       <!-- ── Manuell erfasste Minifiguren — grosse Box wie bei Teilen ──────── -->
       <div class="erfassen-leiste">
-        <button class="btn bp" type="button" data-click="oeffneErfassen" data-arg="fig"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="figs.add_title">Minifigur hinzufügen</span></button>
+        <button class="btn bp knopf-schwebend" type="button" data-click="oeffneErfassen" data-arg="fig"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg><span data-i18n="figs.add_title">Minifigur hinzufügen</span></button>
         <details class="import-menue">
-          <summary class="btn bs"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
+          <summary class="btn bs"><svg class="ico import-datei" aria-hidden="true"><use href="#i-datei"/></svg><svg class="ico import-mehr" aria-hidden="true"><use href="#i-mehr"/></svg><span class="import-text" data-i18n="import.menu">Importieren</span><span class="vh nur-telefon" data-i18n="import.menu">Importieren</span><svg class="ico import-pfeil" aria-hidden="true"><use href="#i-aufklappen"/></svg></summary>
           <div class="import-klappe">
             <label for="fig-csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="fig-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importFigsCsv" /></label>
             <a class="import-eintrag" id="btn-fig-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
@@ -754,7 +757,7 @@
     <!-- ══ FINANZEN ══ -->
     <div class="tab" id="tab-finance">
       <div class="ph">
-        <h1 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Portfolio-Wert</span></h1>
+        <h1 class="ptitle" data-tab-title="finance"><span class="ptitle-icon"></span><span data-i18n="finance.title">Finanzen</span></h1>
         <!-- margin-left:auto (Nachtrag 66, Marcos Wunsch „rechts ausgerichtet"):
              Die Kopfzeile ist flex mit space-between, also stand der Filter auf
              breiten Fenstern schon rechts. Sie bricht aber um (flex-wrap), und
@@ -766,7 +769,7 @@
       <!-- Portfolio Chart -->
       <div id="portfolio-chart-section" class="diagramm-karte">
         <div class="diagramm-kopf">
-          <div class="bereich-titel ohne-abstand-u" data-i18n="finance.chart.label">Wertentwicklung Portfolio</div>
+          <div class="bereich-titel ohne-abstand-u" data-i18n="finance.chart.label">Wert der Sammlung</div>
           <div class="diagramm-werte">
             <div class="text-klein"><span data-i18n="finance.market_label">Marktwert</span>: <span class="wert-primaer" id="portfolio-current">—</span></div>
           </div>
@@ -797,9 +800,9 @@
       </div>
       <!-- Kennzahlen: der Einstand steht immer da, Gesamtwert und G&V nur mit Marktpreisen. -->
       <div class="fgrid" id="fin-sum">
-        <div class="fstat"><div class="flbl" data-i18n="finance.stat.purchase">Einstand</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
+        <div class="fstat"><div class="flbl" data-i18n="finance.stat.purchase">Kaufpreis gesamt</div><div class="fval" id="fin-einstand">—</div><div class="fsub" id="fin-einstand-sub" data-i18n="finance.stat.purchase_hint">Summe der Kaufpreise</div></div>
         <div class="fstat hi"><div class="flbl" data-i18n="finance.stat.value">Marktwert</div><div class="fval" id="fin-wert">—</div><div class="fsub" id="fin-wert-sub"></div></div>
-        <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Einstand</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
+        <div class="fstat" id="fin-stat-pnl"><div class="flbl" data-i18n="finance.stat.pnl">Gewinn/Verlust zum Kaufpreis</div><div class="fval" id="fin-total-pnl">—</div><div class="fsub" id="fin-pnl-sub"></div></div>
       </div>
       <p id="fin-basis" class="fin-basis" role="note" hidden></p>
       <!-- Kategoriefilter — dieselben vier Chips wie im Finanzen-Reiter der
@@ -824,7 +827,7 @@
         <div class="zeile mittig luecke-05 umbruch">
         <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" data-stil="width:9em;max-width:100%;flex-shrink:0" aria-label="Set-Nr." />
         <button class="btn bp fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
-        <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" disabled data-i18n="pl.generate" data-ico="werkzeug">Erstellen</button>
+        <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" data-i18n="pl.generate" data-ico="werkzeug">Erstellen</button>
         <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
         <select id="pl-bl-condition" aria-label="Zustand" data-i18n="detail.condition" data-i18n-attr="aria-label" data-stil="display:none;width:auto;flex-shrink:0"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neuware</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select>
         <button class="btn bs fest" data-click="plExportBricklink" id="btn-pl-bl" data-stil="display:none"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="vertical-align:middle;margin-right:4px;flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>BrickLink XML</button>
@@ -1115,7 +1118,6 @@
               <input type="email" id="prof-email" autocomplete="email" />
               <div class="text-klein abstand-o-3" id="prof-email-hint"></div>
             </div>
-            <div class="fg" id="prof-pw-zeile"><label for="prof-pw" data-i18n="konto.profil_passwort">Aktuelles Passwort (zum Speichern)</label><input type="password" id="prof-pw" autocomplete="current-password" /></div>
           </div>
           <div class="konto-fuss"><button type="button" class="btn bp btn-speichern" id="btn-sav-prof" data-i18n="settings.save" data-ico="speichern">Speichern</button></div>
         </form>
@@ -1124,8 +1126,7 @@
       <section class="ssec abstand-u-125" aria-labelledby="konto-t-passwort">
         <h2 class="stit" id="konto-t-passwort"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></h2>
         <form class="nur-inhalt sform" data-submit="btn-sav-pw">
-          <div class="profil-raster profil-raster-3">
-            <div class="fg"><label for="pw-c" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pw-c" autocomplete="current-password" /></div>
+          <div class="profil-raster">
             <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" autocomplete="new-password" /></div>
             <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" autocomplete="new-password" /></div>
           </div>
@@ -1174,6 +1175,7 @@
       -->
 
       <div class="ssec abstand-u-125" id="vouchers-card">
+        <h2 class="stit" data-ico="gutschein" data-i18n="vouchers.meine">Meine Gutscheine</h2>
         <div class="sform">
 
           <!-- Das Ausgabeland. Marcos Vorgaben:
@@ -1267,7 +1269,7 @@
       <div class="ssec abstand-u-125" id="voucher-form-card">
         <div class="sform">
           <div>
-            <h2 class="stit" id="vouchers-form-title" data-i18n="vouchers.add">Gutschein hinzufügen</h2>
+            <h2 class="stit" id="vouchers-form-title" data-ico="plus" data-i18n="vouchers.add">Gutschein hinzufügen</h2>
 
             <div class="sgrid2 luecke-075 voucher-felder">
               <div class="fg">
@@ -1413,6 +1415,7 @@
       <!-- ── HAUSHALT: KONTEN VERKNÜPFEN ─────────────────────────────────── -->
 
       <div class="ssec abstand-u-125" id="household-card">
+        <h2 class="stit" data-ico="haushalt" data-i18n="household.verknuepft">Verknüpfte Konten</h2>
         <div class="sform">
           <div class="text-mittel" data-i18n="household.intro">
             Verknüpfe Konten zu einem Haushalt: Ein Hauptkonto sieht die Sets, Teile und Minifiguren seiner direkten Unterkonten zusammengefasst. Ein Konto kann zu mehreren Hauptkonten gehören, wenn es jede Einladung selbst annimmt. Beide Konten müssen dieselbe Währung verwenden.
@@ -1425,9 +1428,7 @@
         </div>
       </div>
       <div class="ssec abstand-u-125 sform" id="household-invite-box" data-stil="display:none">
-            <div class="etikett-titel">
-              <svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg> <span data-i18n="household.invite_title">Konto einladen</span>
-            </div>
+            <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-plus"/></svg> <span data-i18n="household.invite_title">Konto einladen</span></h2>
             <div class="text-klein abstand-u-075" data-i18n="household.invite_hint">
               Erzeuge einen Einladungscode. Im anderen Konto unter Menü → Haushalt → „Einladung annehmen“ eingeben. Der Code gilt 24 Stunden und nur einmal.
             </div>
@@ -1445,9 +1446,7 @@
 
           <!-- Als eigenständiges Konto: Code einlösen -->
       <div class="ssec abstand-u-125 sform" id="household-redeem-box" data-stil="display:none">
-            <div class="etikett-titel">
-              <svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> <span data-i18n="household.redeem_title">Einladung annehmen</span>
-            </div>
+            <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> <span data-i18n="household.redeem_title">Einladung annehmen</span></h2>
             <div class="text-klein abstand-u-075" data-i18n="household.redeem_hint">
               Gib den Code aus dem Hauptkonto ein. Dieses Konto wird danach im Hauptkonto mit angezeigt; deine Daten bleiben deine.
             </div>
@@ -1679,7 +1678,7 @@
       <section class="card mon-teil" aria-labelledby="mon-t-dienste">
         <h2 class="mon-titel" id="mon-t-dienste"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg><span data-i18n="monitor.services">Dienste und Zeitpläne</span></h2>
         <div id="monitor-content">
-          <div class="loading"><div class="spin"></div><span data-i18n="monitor.loading">Lade…</span></div>
+          <div class="lade-geruest" role="status" aria-busy="true"><span class="vh" data-i18n="monitor.loading">Lade…</span><div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>
         </div>
       </section>
 
@@ -1696,7 +1695,7 @@
     <p class="dialog-text-mitte" id="cd-msg"></p>
     <form class="ohne-rand" data-submit="cd-confirm">
     <div id="cd-pw-wrap" class="bestaetigung-passwort" hidden>
-      <label for="cd-pw" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
+      <label for="cd-pw" id="cd-pw-label" data-i18n="confirm.admin_password">Dein Passwort zur Bestätigung</label>
       <input type="password" id="cd-pw" autocomplete="current-password">
     </div>
     <div id="cd-code-wrap" class="bestaetigung-passwort" hidden>

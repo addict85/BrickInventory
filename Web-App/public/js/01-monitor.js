@@ -184,14 +184,14 @@ export async function loadMonitor() {
 
     el.innerHTML = `
       <p class="mon-hinweis">${t('monitor.services_hint')}</p>
-      <div class="tw"><table class="dt mon-tabelle">
+      <div class="tw"><table class="dt mon-tabelle mon-dienste">
         <thead><tr><th>${t('monitor.col.dienst')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeitplan')}</th><th>${t('monitor.col.zuletzt')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(([k, j]) => `<tr>
           <td><span class="mon-name">${k === 'bricksetRetry' ? jobIconSvg('brickset') : jobIconSvg(k)}${name(k, j)}</span></td>
           <td><span class="mon-zustand mon-${esc(j.status || 'idle')}">${statusIcon(j.status, j)} ${esc(jobZustand(j.status))}</span>
             ${j.sub ? `<div class="mon-leise">${translateJobSub(j.sub)}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedInput(k)}</td>
-          <td>${j.lastRun ? fmtDatum(j.lastRun, 'zeit') : '–'}</td>
+          <td>${j.lastRun ? fmtDatum(j.lastRun, 'zeit') : ''}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j) || '<span class="mon-leise">–</span>'}</div></td>
         </tr>`).join('')}</tbody>
       </table></div>
@@ -283,7 +283,7 @@ async function zeigeAuftraege() {
     `<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${esc(arg)}">${text}</button>`;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
   const status = (s) => Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : esc(s);
-  const ziffer = (n, klasse = '') => `<span class="mon-ziffer${n ? ' ' + klasse : ''}">${n || 0}</span>`;
+  const ziffer = (n, klasse = '') => `<span class="mon-ziffer${n ? ' ' + klasse : ' null'}">${n || 0}</span>`;
   const zeile = (a) => {
     const zeit = fmtDatum(a.status === 'laeuft' ? a.gestartet : a.faellig_ab, 'zeit');
     const wann = a.status === 'offen' ? t(a.geplant ? 'monitor.auftraege.geplant' : 'monitor.auftraege.faellig', { zeit }) : (a.status === 'laeuft' ? zeit : '');
@@ -296,8 +296,8 @@ async function zeigeAuftraege() {
     return `<tr>
       <td><strong>${artName(a.art)}</strong>${a.set_number ? ` <span class="mon-leise">${esc(a.set_number)}</span>` : ''}</td>
       <td><span class="mon-zustand mon-${esc(a.status)}">${status(a.status)}</span></td>
-      <td>${wann || '–'}</td>
-      <td>${hinweis || '–'}</td>
+      <td>${wann}</td>
+      <td>${hinweis}</td>
       <td><div class="mon-knoepfe">${aktion}</div></td>
     </tr>`;
   };
@@ -316,16 +316,26 @@ async function zeigeAuftraege() {
         <td class="zahl">${ziffer(zahl[art].offen)}</td>
         <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
         <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
-        <td>${naechster[art] ? fmtDatum(naechster[art], 'zeit') : '–'}</td>
+        <td>${naechster[art] ? fmtDatum(naechster[art], 'zeit') : ''}</td>
         <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren')) : ''}</div></td>
       </tr>`).join('')}</tbody></table></div>` : ''}
-    <h3 class="mon-untertitel">${t('monitor.auftraege.einzeln')}</h3>
-    ${d.auftraege.length ? `<div class="tw"><table class="dt mon-tabelle">
+    ${d.auftraege.length ? `<details class="mon-einzeln"${einzelnOffen() ? ' open' : ''}>
+      <summary class="mon-untertitel">${t('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
+      <div class="tw"><table class="dt mon-tabelle">
       <thead><tr><th>${t('monitor.col.auftrag')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeit')}</th><th>${t('monitor.col.hinweis')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
       <tbody>${d.auftraege.slice(0, 40).map(zeile).join('')}</tbody></table></div>
-      ${mehr > 0 ? `<p class="mon-leise">${t('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}`
-      : `<p class="mon-leise">${t('monitor.auftraege.leer')}</p>`}`;
+      ${mehr > 0 ? `<p class="mon-leise">${t('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>`
+      : `<h3 class="mon-untertitel">${t('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${t('monitor.auftraege.leer')}</p>`}`;
 }
+
+/** Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick
+ * gilt bis zum Neuladen, auch über das Nachzeichnen alle paar Sekunden. */
+let _einzelnOffen = null;
+const einzelnOffen = () => _einzelnOffen ?? !(typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches);
+if (typeof document !== 'undefined') document.addEventListener('toggle', (ev) => {
+  const d = ev.target;
+  if (d instanceof HTMLDetailsElement && d.classList.contains('mon-einzeln')) _einzelnOffen = d.open;
+}, true);
 
 async function auftragAbbrechen(id) {
   const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`).catch(() => null);

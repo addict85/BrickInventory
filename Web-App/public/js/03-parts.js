@@ -90,6 +90,7 @@ let _manuelleLeer = null;
  */
 export function teileLeerAbgleichen(manuelleLeer){
   if (manuelleLeer !== undefined) _manuelleLeer = manuelleLeer;
+  G('tab-parts')?.classList.remove('sammlung-leer');
   const box = G('manual-parts-box');
   // Erst sichtbar, wenn die Liste geladen ist und etwas zeigt: Vorher stand
   // die leere Box „Manuell erfasste Teile“ über dem Skelett.
@@ -100,11 +101,13 @@ export function teileLeerAbgleichen(manuelleLeer){
   const q = G('parts-search')?.value.trim() || '';
   const gefiltert = !!(activeColor || activeCat || q || G('parts-spare')?.value);
   // Wie in allen Listen: „Noch keine …“ ohne Filter, sonst „Keine Treffer“.
+  G('tab-parts')?.classList.toggle('sammlung-leer', !gefiltert);
   main.innerHTML = gefiltert
     ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'),
                     knopf: zuruecksetzenKnopf('parts') })
     : leerZustand({ ico: 'teil', titel: tRaw('parts.empty'),
-                    text: tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint') });
+                    text: tRaw(allSets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
+                    knopf: { text: tRaw('parts.add_title'), click: 'oeffneErfassen', arg: 'part' } });
 }
 
 /** Suche, Ersatzteil-, Farb- und Kategoriefilter leeren (Knopf im Leerzustand). */

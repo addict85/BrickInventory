@@ -72,11 +72,11 @@ test('der Baustein erzeugt das Markup, das die Stylesheets erwarten', () => {
   // müssen so herauskommen, wie styles.css sie anspricht — sonst sieht die
   // Zeile nach dem Umzug anders aus, und das fällt an keinem anderen Test auf.
   const src = fs.readFileSync(path.join(JS, BAUSTEIN), 'utf8');
-  for (const klasse of ['class="dr"', 'class="dl"', 'class="dv"', 'class="loading"', 'class="spin"']) {
+  for (const klasse of ['class="dr"', 'class="dl"', 'class="dv"', 'class="lade-geruest', 'class="skelett-zeile"']) {
     assert.ok(src.includes(klasse), `${BAUSTEIN} erzeugt ${klasse} nicht mehr`);
   }
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-  for (const regel of ['.dr', '.dl', '.dv', '.loading', '.spin']) {
+  for (const regel of ['.dr', '.dl', '.dv', '.lade-geruest', '.skelett-zeile']) {
     assert.ok(new RegExp('\\' + regel + '[\\s,{:]').test(css),
       `styles.css kennt ${regel} nicht — Baustein und Stylesheet passen nicht zusammen`);
   }

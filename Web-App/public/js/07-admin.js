@@ -41,11 +41,35 @@ export async function mitZweitemFaktor(ruf) {
   if (d?.code !== 'zweiter_faktor_noetig') return d;
   const mitPasskey = !!(d.passkey && passkeyHolen);
   const code = await dialogOeffnen(tRaw('zf.title'), tRaw(mitPasskey ? 'zf.code_oder_passkey' : 'zf.code_noetig'),
-    'schloss', false, true, mitPasskey);
+    'schloss', false, true, mitPasskey, BESTAETIGEN);
   if (code === null) return null;
   if (code !== MIT_PASSKEY) return ruf({ code: code.trim() });
   const passkey = await passkeyHolen();
   return passkey ? ruf({ passkey }) : null;
+}
+
+/** Ein Bestätigen ist kein Löschen: Knopf in der Hauptfarbe statt rot. */
+const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp' };
+
+/**
+ * Eine Kontoänderung mit dem eigenen Passwort bestätigen — einmal beim
+ * Speichern im Dialog statt je Abschnitt ein Feld „Aktuelles Passwort“, das
+ * wie ein Fehler aussah. Bei falschem Passwort fragt der Dialog erneut.
+ * @param {string} titel
+ * @param {(passwort: string, zusatz: { code?: string, passkey?: object }) => Promise<any>} ruf
+ * @returns die Antwort, oder null bei Abbruch
+ */
+export async function mitPasswortBestaetigen(titel, ruf) {
+  let text = tRaw('konto.passwort_bestaetigen'), knopfArt = BESTAETIGEN;
+  for (let versuch = 0; versuch < 5; versuch++) {
+    const pw = await dialogOeffnen(titel, text, 'schloss', true, false, false, knopfArt);
+    if (pw === null) return null;
+    const d = await mitZweitemFaktor(z => ruf(pw, z));
+    if (d?.code !== 'aktuelles_passwort_falsch' && d?.code !== 'aktuelles_passwort_erforderlich') return d;
+    text = d.error || tRaw('konto.passwort_bestaetigen');
+    knopfArt = { ...BESTAETIGEN, fehler: true };
+  }
+  return null;
 }
 
 /** 23-passkeys.js meldet sich hier an, wenn der Browser Passkeys kann: Ein
@@ -54,7 +78,7 @@ let passkeyHolen = null;
 export function setzePasskeyHolen(fn) { passkeyHolen = fn; }
 const MIT_PASSKEY = Symbol('passkey');
 
-function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasskey = false) {
+function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasskey = false, knopf = null) {
   return new Promise(resolve => {
     const modal = G('confirm-modal');
     const pwWrap = G('cd-pw-wrap'), pw = G('cd-pw');
@@ -70,6 +94,11 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');
     const btnNo  = G('cd-cancel');
+    btnYes.textContent = tRaw(knopf?.knopf || 'confirm.delete_btn');
+    btnYes.classList.toggle('bd', !knopf); btnYes.classList.toggle('bp', !!knopf);
+    G('cd-icon').classList.toggle('neutral', !!knopf);
+    G('cd-msg').classList.toggle('text-gefahr', !!knopf?.fehler);
+    G('cd-pw-label').textContent = tRaw(knopf ? 'settings.password.current' : 'confirm.admin_password');
     if (mitPasswort) setTimeout(() => pw?.focus(), 0);
     else if (mitCode) setTimeout(() => codeFeld?.focus(), 0);
     function cleanup(result) {
@@ -257,6 +286,19 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
   const el = G(targetId);
   if (!el) return;
   const LABEL = { N: t('common.condition_new'), U: t('common.condition_used') };
+  // Im Set-Dialog stehen Wert und Gewinn als Kopf oben: Sie sind, was man dort sucht.
+  if (el.dataset.kopf) {
+    const teile = ['N', 'U'].filter(c => ph?.by_condition?.[c]).map(c => {
+      const d = ph.by_condition[c];
+      const wert = d.market_price != null ? esc(fmtN(d.market_price, CURRENCY)) : esc(tRaw('detail.kein_marktpreis'));
+      const pnl = pnlBadge(d.pnl_pct, d.purchase_price);
+      const bezug = pnl && d.pnl_pct != null && !/pnl-geschenk/.test(pnl) ? ` <span class="wk-bezug">${esc(tRaw('detail.zum_kaufpreis'))}</span>` : '';
+      return `<div class="wk-zeile"><span class="wk-label">${esc(t('detail.market_price'))} · ${esc(LABEL[c])}</span>` +
+        `<span class="wk-wert${d.market_price != null ? ' preis' : ''}">${wert}</span>${pnl ? `<span class="wk-guv">${pnl}${bezug}</span>` : ''}</div>`;
+    });
+    el.innerHTML = teile.join('') || `<div class="wk-zeile"><span class="wk-label">${esc(t('detail.market_price'))}</span><span class="wk-wert text-mut">${esc(tRaw('detail.kein_marktpreis'))}</span></div>`;
+    return;
+  }
   const rows = ['N', 'U']
     .filter(c => ph?.by_condition?.[c])
     .map(c => {
@@ -280,8 +322,11 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
  * @param {Element|null} el
  */
 export function diagrammBreite(el, ersatz = 700) {
-  const b = Math.round(el?.clientWidth || 0);
-  return b > 0 ? Math.max(260, Math.min(1200, b)) : ersatz;
+  // Geteilt durch die Schriftvergrösserung: Bei 200 % hat die viewBox halb so
+  // viele Einheiten, und Schrift, Ränder und Abstände wachsen gleichmässig mit.
+  const wurzel = typeof getComputedStyle === 'function' ? parseFloat(getComputedStyle(document.documentElement).fontSize) : 16;
+  const b = Math.round((el?.clientWidth || 0) / Math.max(1, (wurzel || 16) / 16));
+  return b > 0 ? Math.max(220, Math.min(1200, b)) : ersatz;
 }
 
 // ── Achsen der Diagramme ─────────────────────────────────────────────────────
@@ -1184,7 +1229,7 @@ export async function openModal(sn){
   // Vorher standen hier zwei feste Zeilen aus _pnlCache — ein Wert für das
   // ganze Set. Wer ein Exemplar neu und eines gebraucht besitzt, sah damit eine
   // vermischte Entwicklung.
-  const priceRow = '<div id="m-market-rows"></div>';
+  const priceRow = `<div class="m-wertkopf" id="m-market-rows" data-kopf="1" role="group" aria-label="${esc(tRaw('detail.wert'))}"><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
   const pnlRow  = '';
   const qtyRow = detailZeile(t('detail.qty'), `
       <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}">−</button>
@@ -1202,12 +1247,13 @@ export async function openModal(sn){
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
 
   G('m-det').innerHTML = `
+    ${priceRow}${pnlRow}
+    ${acqRows}
     ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
     ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
     ${qtyRow}
     ${detailZeile(t('detail.pieces'), curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—')}
     ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
-    ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`)}
     ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
          zeilenStil: 'align-items:flex-start',
          wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
@@ -1215,8 +1261,7 @@ export async function openModal(sn){
         lagerortBlock('m-storage', curSet.storage,
                       `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`),
         { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
-    ${acqRows}
-    ${priceRow}${pnlRow}
+    ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`, { klasse: 'dr-leise' })}
     <div id="m-price-chart" data-stil="margin-top:.75rem">
       <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
       <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
