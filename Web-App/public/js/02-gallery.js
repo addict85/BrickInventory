@@ -231,6 +231,28 @@ function zeigeSeitenname(flaeche, imKopf){
   const kopf = G('kopf-sicht');
   if (kopf) { kopf.textContent = imKopf ? titel : ''; kopf.hidden = !(imKopf && titel); }
   document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';
+  beobachteTitel(flaeche);
+}
+
+/** Beim Start ist die Sammlung schon offen, ohne dass ein Reiter geklickt wurde: Titel trotzdem setzen. */
+export function seitennameAktualisieren(){
+  const flaeche = document.querySelector('.tab.active');
+  const reiter = flaeche && document.querySelector(`.ntab[data-tab="${flaeche.id.replace(/^tab-/, '')}"]`);
+  zeigeSeitenname(flaeche, !reiter || reiter.classList.contains('ntab-unter'));
+}
+
+/**
+ * Am Telefon steht der Seitenname nur dann im Kopf, wenn die Überschrift
+ * hinausgerollt ist; sonst stünde er zweimal untereinander.
+ */
+let _titelBeobachter = null;
+function beobachteTitel(flaeche){
+  const kopf = G('kopf-sicht'), h1 = flaeche?.querySelector('.ptitle');
+  _titelBeobachter?.disconnect();
+  if (!kopf || !h1 || typeof IntersectionObserver !== 'function') return;
+  _titelBeobachter = new IntersectionObserver(([e]) => kopf.classList.toggle('titel-sichtbar', e.isIntersecting),
+    { rootMargin: '-64px 0px 0px 0px' });
+  _titelBeobachter.observe(h1);
 }
 
 function menueSchliessen(fokusZurueck = false){
@@ -662,6 +684,13 @@ export function initStorageSelects(orte) {
  * gefiltert. Dieselbe Begruendung wie bei onScopeChange() darunter.
  */
 /** Alle Filter einer Ansicht leeren (Knopf im Leerzustand ohne Treffer). */
+/** Am Telefon steckt der Filter hinter einem Sinnbild; die Zahl sagt, dass gerade gefiltert wird. */
+function filterZahlZeigen() {
+  const zahl = G('gallery-filter-zahl'); if (!zahl) return;
+  const n = ['gtheme', 'storage-gallery'].filter(id => G(id)?.value).length;
+  zahl.textContent = n ? String(n) : ''; zahl.hidden = !n;
+}
+
 function filterZuruecksetzen(ansicht) {
   if (ansicht === 'gallery') {
     G('gs').value = ''; G('gtheme').value = '';
@@ -919,6 +948,7 @@ export function selectedOwner(selectId) {
  * und stellt die Scrollposition nach dem Zeichnen wieder her.
  */
 export async function loadGallery(opts = {}){
+  filterZahlZeigen();
   // Tiefe und Position merken, BEVOR irgendetwas zurückgesetzt wird.
   const tiefe   = opts.restore ? Math.max(1, _galPage) : 1;
   const scrollY = opts.restore ? window.scrollY : null;
@@ -1180,15 +1210,36 @@ function unbekanntZuruecksetzen() {
 async function setUnbekannt(num) {
   const nr = /-\d+$/.test(num) ? num : num + '-1';
   if (G('add-num').dataset.bestaetigt === nr) return false;
+  const box = G('add-unbekannt');
+  // Erst die eigene Sammlung: Ein vorhandenes Set ist nie „unbekannt“, und
+  // der Server legt es ohnehin nicht doppelt an, sondern öffnet es.
+  const eigen = await api('GET', `/v1/sets/${encodeURIComponent(nr)}`);
+  if (eigen?.success && eigen.set) {
+    G('add-num').dataset.bestaetigt = nr;
+    box.innerHTML = `${esc(tRaw('gallery.add.schon_da', { num: nr, name: eigen.set.name || nr, n: eigen.set.quantity || 1 }))}
+      <button type="button" class="btn bs btn-sm" data-click="erfassenZumSet" data-arg="${esc(nr)}">${ico('set')}${esc(tRaw('gallery.add.zum_set'))}</button>`;
+    box.hidden = false;
+    G('btn-add-text').textContent = tRaw('gallery.add.zum_set');
+    return true;
+  }
   const d = await api('GET', `/v1/catalog/sets/${encodeURIComponent(nr)}`);
   if (d?.success) return false;
-  if (d?.status && d.status !== 404 && d.code !== 'set_nicht_im_katalog') return false;
+  const ursache = d?.code === 'katalog_nicht_geladen' ? 'gallery.add.katalog_fehlt'
+    : d?.code === 'set_nicht_im_katalog' || d?.status === 404 ? 'gallery.add.unbekannt' : null;
+  if (!ursache) return false;
   G('add-num').dataset.bestaetigt = nr;
-  const box = G('add-unbekannt');
-  box.textContent = tRaw('gallery.add.unbekannt', { num: nr });
+  box.textContent = tRaw(ursache, { num: nr });
   box.hidden = false;
   G('btn-add-text').textContent = tRaw('gallery.add.trotzdem');
   return true;
+}
+
+/** Aus dem Erfassen-Dialog direkt zum vorhandenen Set. */
+export function erfassenZumSet(nr) {
+  G('add-num').value = '';
+  unbekanntZuruecksetzen();
+  schliesseErfassen();
+  openModal(nr);
 }
 
 async function doAddSet(){
@@ -1539,7 +1590,8 @@ export function renderInstructions(instr, sn) {
       <div data-stil="font-size:var(--fs-1);font-weight:600;color:var(--mut);margin-bottom:7px">${t('instr.upload_title')}</div>
       <div data-stil="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end">
         <div data-stil="flex:1;min-width:140px">
-          <input type="text" id="instr-desc" placeholder="${t('instr.desc_placeholder')}" data-stil="font-size:var(--fs-2);padding:6px 10px" />
+          <label for="instr-desc" class="feld-titel-klein">${t('instr.desc_placeholder')}</label>
+          <input type="text" id="instr-desc" data-stil="font-size:var(--fs-2);padding:6px 10px" />
         </div>
         <label class="btn bs btn-sm zeiger">
           ${ico('datei')} ${t('instr.choose_file')}
@@ -1687,6 +1739,7 @@ registerActions({
   oeffneReiter,
   oeffneErfassen,
   schliesseErfassen,
+  erfassenZumSet,
   onScopeChange,
   onStorageChange,
   autosaveSet,

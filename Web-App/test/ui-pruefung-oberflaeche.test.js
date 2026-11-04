@@ -103,7 +103,7 @@ test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf stat
   try {
     await reiter(w, 'finance');
     await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
-    assert.match(text(d.getElementById('portfolio-chart')), /^Diagramm nicht verfügbar ?Server nicht erreichbar.*Erneut versuchen$/);
+    assert.match(text(d.getElementById('portfolio-chart')), /^Diagramm nicht verfügbar ?Keine Verbindung zum Server.*Erneut versuchen$/);
   } finally { w.close(); }
 });
 

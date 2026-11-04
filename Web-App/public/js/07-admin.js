@@ -20,16 +20,21 @@ import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts
 // identisch zur frueheren Einzeldatei.
 
 // ── CONFIRM DIALOG ────────────────────────────────────────────
-export function confirmDelete(title, msg, icon) {
-  return dialogOeffnen(title, msg, icon, false).then(r => r !== null);
+/** Ohne `knopf` heisst der Hauptknopf rot „Löschen“; wer etwas anderes bestätigt, nennt sein Verb. */
+export function confirmDelete(title, msg, icon, knopf = null) {
+  return dialogOeffnen(title, msg, icon, false, false, false, knopf).then(r => r !== null);
 }
 
 /**
- * Wie confirmDelete, verlangt aber das eigene Passwort — für Verwalteraktionen
- * an fremden Konten. Liefert das Passwort oder null (abgebrochen).
+ * Wie confirmDelete, verlangt aber das eigene Passwort. Liefert das Passwort
+ * oder null (abgebrochen). `knopf` ist Pflicht ({ knopf: i18n-Schlüssel,
+ * art: 'bd' nur bei endgültigem Entfernen, sonst 'bp' }): Derselbe Dialog
+ * bestätigt Löschen wie Anzeigen, und ein rotes „Löschen“ vor einer PIN lehrt,
+ * rote Knöpfe ungelesen zu drücken.
  */
-export function bestaetigeMitPasswort(title, msg, icon) {
-  return dialogOeffnen(title, msg, icon, true);
+export function bestaetigeMitPasswort(title, msg, icon, knopf) {
+  if (!knopf?.knopf || !['bp', 'bd'].includes(knopf.art)) throw new Error('bestaetigeMitPasswort: Knopftext und Art fehlen');
+  return dialogOeffnen(title, msg, icon, true, false, false, { feld: 'confirm.admin_password', ...knopf });
 }
 
 /** Bei aktivem zweitem Faktor verlangt der Server für heikle Änderungen den
@@ -49,7 +54,7 @@ export async function mitZweitemFaktor(ruf) {
 }
 
 /** Ein Bestätigen ist kein Löschen: Knopf in der Hauptfarbe statt rot. */
-const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp' };
+const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.password.current' };
 
 /**
  * Eine Kontoänderung mit dem eigenen Passwort bestätigen — einmal beim
@@ -102,11 +107,12 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
     modal.style.display = 'flex';
     const btnYes = G('cd-confirm');
     const btnNo  = G('cd-cancel');
+    const gefahr = (knopf?.art || 'bd') === 'bd';
     btnYes.textContent = tRaw(knopf?.knopf || 'confirm.delete_btn');
-    btnYes.classList.toggle('bd', !knopf); btnYes.classList.toggle('bp', !!knopf);
-    G('cd-icon').classList.toggle('neutral', !!knopf);
+    btnYes.classList.toggle('bd', gefahr); btnYes.classList.toggle('bp', !gefahr);
+    G('cd-icon').classList.toggle('neutral', !gefahr);
     G('cd-msg').classList.toggle('text-gefahr', !!knopf?.fehler);
-    G('cd-pw-label').textContent = tRaw(knopf ? 'settings.password.current' : 'confirm.admin_password');
+    G('cd-pw-label').textContent = tRaw(knopf?.feld || 'confirm.admin_password');
     if (mitPasswort) setTimeout(() => pw?.focus(), 0);
     else if (mitCode) setTimeout(() => codeFeld?.focus(), 0);
     function cleanup(result) {
@@ -456,10 +462,20 @@ function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1) {
  */
 function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)', endeY = null, f = 1) {
   const y = yOf(wert);
-  const darunter = endeY != null && endeY < y && y - endeY < 26 * f;
+  // Breiter als die Zeichenfläche: umbrechen statt links über die Achse hinaus
+  // (am Telefon und bei grosser Schrift stand sonst nur „…rkpreis 2.149 €“).
+  const platz = rechts - links - 8, zeichen = 12 * f * 0.62, zeilen = [];
+  for (const wort of String(text).split(' ')) {
+    const z = zeilen.length ? zeilen[zeilen.length - 1] + ' ' + wort : wort;
+    if (zeilen.length && z.length * zeichen <= platz) zeilen[zeilen.length - 1] = z; else zeilen.push(wort);
+  }
+  const hoehe = 14 * f * (zeilen.length - 1);
+  const darunter = endeY != null && endeY < y && y - endeY < 26 * f + hoehe;
+  const erste = darunter ? y + 16 * f : y - 6 * f - hoehe;
+  const tspans = zeilen.map((z, i) => i ? `<tspan x="${rechts - 4}" dy="${14 * f}">${esc(z)}</tspan>` : esc(z)).join('');
   return `<g class="einstand-linie"><line x1="${links}" y1="${y.toFixed(1)}" x2="${rechts}" y2="${y.toFixed(1)}" stroke="${farbe}" stroke-width="1.5" stroke-dasharray="6 4"/>
-    <text x="${rechts - 4}" y="${(darunter ? y + 16 * f : y - 6 * f).toFixed(1)}" font-size="${12 * f}" font-weight="600" fill="var(--txt)" text-anchor="end" font-family="inherit"
-      paint-order="stroke" stroke="var(--sur)" stroke-width="4" stroke-linejoin="round">${esc(text)}</text></g>`;
+    <text x="${rechts - 4}" y="${erste.toFixed(1)}" font-size="${12 * f}" font-weight="600" fill="var(--txt)" text-anchor="end" font-family="inherit"
+      paint-order="stroke" stroke="var(--sur)" stroke-width="4" stroke-linejoin="round">${tspans}</text></g>`;
 }
 
 /**
@@ -643,7 +659,8 @@ export function priceChartSVG(data, uid = String(Math.random()).slice(2, 8), bre
     const x = PAD.l + ((s.t - toTime(first)) / span) * iw;
     return `<text x="${x.toFixed(1)}" y="${H - 26 * f}" font-size="${fs}" fill="var(--mut)" text-anchor="${randAnker(x, W - PAD.r, f)}" font-family="inherit">${esc(s.text)}</text>`; }).join('');
   const legend = series.map((sd, i) =>
-    `<g transform="translate(${PAD.l + i * 120 * f}, ${H - 6 * f})">
+    // Ab dem linken Rand statt ab der Achse: Bei grosser Schrift ist der Achsenrand so breit, dass „Neuware“ sonst rechts abbricht.
+    `<g transform="translate(${4 + i * Math.min(120 * f, (W - 8) / series.length)}, ${H - 6 * f})">
        <line x1="0" y1="${-4 * f}" x2="${16 * f}" y2="${-4 * f}" stroke="${sd.color}" stroke-width="2.5" stroke-linecap="round"/>
        <text x="${22 * f}" y="0" font-size="${fs}" fill="var(--txt)" font-family="inherit">${esc(sd.name)}</text>
      </g>`).join('');
@@ -846,9 +863,10 @@ export function alarmBlock(sn, praefix = 'm') {
         <option value="unter">${esc(tRaw('detail.alert_below'))}</option>
         <option value="ueber">${esc(tRaw('detail.alert_above'))}</option>
       </select>
-      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" placeholder="${esc(tRaw('detail.alert_preis_ph'))}" aria-label="${esc(tRaw('detail.alert_price'))}"
+      <label class="alarm-preis" for="${p}-alert-val"><span class="alarm-preis-titel">${esc(tRaw('detail.alert_preis_ph'))}</span>
+      <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${esc(tRaw('detail.alert_price'))}"
              data-input="alarmGetippt" data-arg="${escJs(sn)}"
-             data-change="speichereAlarm" />
+             data-change="speichereAlarm" /></label>
       <span id="${p}-alert-state" data-stil="font-size:var(--fs-1);color:var(--mut)"></span>
     `;
 }

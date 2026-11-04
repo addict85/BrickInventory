@@ -2,7 +2,7 @@ import { registerActions } from './00-registry.js';
 import { esc } from './00-escapen.js';
 import { resetScopeModes } from './14-scope.js';
 import { LANG, applyLang, locale, t , setLangValue, tRaw} from '../i18n.js';
-import { setAllSets, bindTabs, loadGallery, loadStats } from './02-gallery.js';
+import { setAllSets, bindTabs, loadGallery, loadStats, seitennameAktualisieren } from './02-gallery.js';
 import { routeBeimStart } from './24-router.js';
 import { plInit, resetPartsList } from './08-init.js';
 import { gibCheckOnLoad, gibZuruecksetzen } from './01-fortschritt.js';
@@ -1546,6 +1546,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
     loadStats();
   });
   routeBeimStart();
+  seitennameAktualisieren();
 }
 G('btn-login').onclick=doLogin;
 ['lu','lp','lc'].forEach(id=>G(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doLogin(); } }));

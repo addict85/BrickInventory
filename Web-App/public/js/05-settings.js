@@ -7,6 +7,7 @@ import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
 import { confirmDelete, bestaetigeMitPasswort, mitPasswortBestaetigen, mitZweitemFaktor, speichereEinstellungen } from './07-admin.js';
 import { meldeAbschnitt } from './24-router.js';
+import { verstaendlicherGrund } from './01-bausteine.js';
 
 // ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter
@@ -54,7 +55,7 @@ async function speichereSmtp() {
   // Mit dem Hinweis auf die alte Ausnahme auch unverändert speichern: Erst das räumt sie ab.
   const altlast = G('smtp-tls-altlast');
   if (JSON.stringify(werte) === geladeneSmtp && (!altlast || altlast.style.display === 'none')) return { success: true };
-  const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss');
+  const admin_password = await bestaetigeMitPasswort(tRaw('smtp.confirm_title'), tRaw('smtp.confirm_text'), 'schloss', { knopf: 'confirm.btn.speichern', art: 'bp' });
   if (admin_password === null) return null;
   const d = await mitZweitemFaktor(z => api('POST','/v1/settings', { ...werte, admin_password, ...z }));
   if (d === null) return null;
@@ -337,7 +338,7 @@ export async function ladeTls() {
 }
 
 async function revokeToken(tokenId, label) {
-  if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel')) return;
+  if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel', { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' })) return;
   const d = await tokenRuf('/tokens/' + encodeURIComponent(tokenId), 'DELETE');
   if (d.success) { toast(tRaw('tokens.revoked'), 'success'); loadTokens(); }
   else toast(d.error || t('settings.error'), 'error');
@@ -359,7 +360,7 @@ async function revokeOtherTokens() {
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   const andere = d.tokens.filter(tk => !tk.aktuell);
   const password = await bestaetigeMitPasswort(tRaw('tokens.revoke_others.title'),
-                                               tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden');
+                                               tRaw('tokens.revoke_others.text', { n: andere.length }), 'abmelden', { knopf: 'confirm.btn.abmelden', art: 'bp' });
   if (password === null) return;
   // Zuerst die übrigen Browser: Dort prüft der Server das Passwort.
   const s = await mitZweitemFaktor(z => api('POST', '/v1/settings/sessions/andere-beenden', { password, ...z }));
@@ -576,22 +577,22 @@ function renderHousehold(d){
   if(!stateEl) return;
 
   // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle
-  // Namen und alle Knöpfe in denselben zwei Spalten.
-  const liste = (eintraege, aktion) => `<ul data-stil="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${
+  // Namen und alle Knöpfe in denselben zwei Spalten; das Sinnbild macht die Namen als Konten kenntlich.
+  const liste = (eintraege, aktion) => `<ul class="haushalt-liste" data-stil="list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:max-content max-content;align-items:center;column-gap:.6rem">${
     eintraege.map(a => `<li data-stil="display:contents">
-      <span data-stil="font-weight:600;padding:.3rem 0">${esc(a.username)}</span>
-      <span data-stil="padding:.3rem 0">${aktion(a)}</span>
+      <span class="haushalt-name"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg>${esc(a.username)}</span>
+      <span class="haushalt-aktion">${aktion(a)}</span>
     </li>`).join('')}</ul>`;
 
   const teile = [];
   const eltern = d.parents || (d.linked_to ? [d.linked_to] : []);
   if(eltern.length){
     teile.push(`<div>${t('household.state_parents', { n: eltern.length })}${liste(eltern,
-      a => `<button class="btn" data-click="unlinkFromParent"${echt()} data-arg="${a.id}">${t('household.unlink_self')}</button>`)}</div>`);
+      a => `<button class="btn bs btn-sm" data-click="unlinkFromParent"${echt()} data-arg="${a.id}">${t('household.unlink_self')}</button>`)}</div>`);
   }
   if(d.sub_accounts?.length){
     teile.push(`${eltern.length ? '<div data-stil="margin-top:.6rem">' : '<div>'}${t('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
-      a => `<button class="btn" data-click="unlinkHousehold"${echt()} data-arg="${a.id}">${t('household.unlink_sub')}</button>`)}</div>`);
+      a => `<button class="btn bs btn-sm" data-click="unlinkHousehold"${echt()} data-arg="${a.id}">${t('household.unlink_sub')}</button>`)}</div>`);
   }
   if(!teile.length){
     teile.push(`<div data-stil="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
@@ -600,7 +601,7 @@ function renderHousehold(d){
     teile.push(`<div role="note" data-stil="margin-top:.8rem;padding:.6rem .8rem;border-radius:8px;background:var(--b100);color:var(--b600)">
       ${t('household.former_intro')}${liste(d.former_links,
         a => `<span data-stil="color:var(--mut)">${a.via ? t('household.former_via', { via: esc(a.via) }) : ''}</span>
-              <button class="btn" data-stil="margin-left:.4rem" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`)}
+              <button class="btn bs btn-sm" data-click="dismissFormerLink" data-arg="${a.id}">${t('household.former_dismiss')}</button>`)}
     </div>`);
   }
   stateEl.innerHTML = teile.join('');
@@ -638,7 +639,7 @@ export async function redeemHouseholdInvite(){
   const code = (G('household-redeem-code')?.value || '').trim();
   if(!code){ toast(tRaw('household.redeem_empty'),'error'); return; }
   // Das Hauptkonto sieht und ändert danach die eigene Sammlung — deshalb mit Passwort.
-  const password = await bestaetigeMitPasswort(tRaw('household.redeem_title'), tRaw('household.redeem_confirm_text'), 'link');
+  const password = await bestaetigeMitPasswort(tRaw('household.redeem_title'), tRaw('household.redeem_confirm_text'), 'link', { knopf: 'confirm.btn.einladung_annehmen', art: 'bp' });
   if(password === null) return;
   const faktor_code = (G('household-redeem-faktor-code')?.value || '').trim();
   const d = await mitZweitemFaktor(z => api('POST','/v1/settings/household/redeem',
@@ -654,7 +655,7 @@ export async function redeemHouseholdInvite(){
 }
 
 export async function unlinkFromParent(mainUserId){
-  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link')) return;
+  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link', { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' })) return;
   const d = await api('POST','/v1/settings/household/unlink', { main_user_id: parseInt(mainUserId) });
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   toast(tRaw('household.unlink_ok'),'success');
@@ -668,7 +669,7 @@ export async function dismissFormerLink(subUserId){
 }
 
 export async function unlinkHousehold(subUserId){
-  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link')) return;
+  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link', { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' })) return;
   const d = await api('POST','/v1/settings/household/unlink', subUserId ? { sub_user_id: parseInt(subUserId) } : {});
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   toast(tRaw('household.unlink_ok'),'success');
@@ -684,16 +685,23 @@ G('btn-save-theme').onclick=async()=>{
   if(d.success){ const w=await api('GET','/v1/settings/theme'); if(w.success){ applyTheme(w.theme); if(_settingsCache) _settingsCache.app_theme=w.theme; } }
   toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error');
 };
-G('btn-clr-prices').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'success'); loadCacheStats(); };
-G('btn-clr-all-cache').onclick=async()=>{
-  if(!await confirmDelete(tRaw('settings.all_cache.clear'),t('settings.all_cache.clear'),'daten')) return;
-  await api('POST','/v1/admin/cache-clear',{all:true});
-  toast(tRaw('settings.all_cache.cleared'),'success'); loadCacheStats();
-};
+/** Vor dem Leeren steht da, was verloren geht und was der Neuabruf kostet — mit den Zahlen von jetzt. */
+async function zwischenspeicherLeeren(alle) {
+  const z = await api('GET', '/v1/admin/cache-stats');
+  const n = { p: z?.prices || 0, s: z?.subsets || 0, c: z?.catalog || 0 };
+  const titel = tRaw(alle ? 'settings.all_cache.confirm_title' : 'settings.cache_prices.confirm_title');
+  if (!await confirmDelete(titel, tRaw(alle ? 'settings.all_cache.confirm_text' : 'settings.cache_prices.confirm_text', n),
+    'loeschen', { knopf: 'confirm.btn.leeren', art: 'bd' })) return;
+  const d = await api('POST', '/v1/admin/cache-clear', alle ? { all: true } : {});
+  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  toast(tRaw(alle ? 'settings.all_cache.cleared' : 'settings.cache_cleared'), 'success'); loadCacheStats();
+}
+G('btn-clr-prices').onclick = () => zwischenspeicherLeeren(false);
+G('btn-clr-all-cache').onclick = () => zwischenspeicherLeeren(true);
 G('btn-dall').onclick=async()=>{
   // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage
   // statt des früheren Eintippens von „LÖSCHEN". Nur das EIGENE Konto (Server).
-  const password=await bestaetigeMitPasswort(tRaw('settings.delete_all.title'),tRaw('settings.delete_all.text'),'loeschen');
+  const password=await bestaetigeMitPasswort(tRaw('settings.delete_all.title'),tRaw('settings.delete_all.text'),'loeschen', { knopf: 'confirm.btn.alles_loeschen', art: 'bd' });
   if(password===null) return;
   const d=await mitZweitemFaktor(z => api('DELETE','/v1/bestand',{password, ...z}));
   if(d===null) return;
@@ -704,7 +712,7 @@ G('btn-dall').onclick=async()=>{
 
 G('btn-konto-loeschen').onclick=async()=>{
   // Endgültig und ohne Papierkorb: Passwort und, falls eingerichtet, der zweite Faktor.
-  const password=await bestaetigeMitPasswort(tRaw('settings.delete_account.title'),tRaw('settings.delete_account.text'),'loeschen');
+  const password=await bestaetigeMitPasswort(tRaw('settings.delete_account.title'),tRaw('settings.delete_account.text'),'loeschen', { knopf: 'confirm.btn.konto_loeschen', art: 'bd' });
   if(password===null) return;
   const d=await mitZweitemFaktor(z => api('DELETE','/v1/auth/konto',{password, ...z}));
   if(d===null) return;
@@ -787,7 +795,7 @@ G('btn-cu').onclick=async()=>{
   const n=G('nu-n').value.trim(),p=G('nu-p').value,a=G('nu-a').checked;
   if(!n||!p){toast(tRaw('users.name_pw_req'),'error');return;}
   if(passwortRegelText(p)){toast(passwortRegelText(p),'error');return;}
-  const admin_password = await bestaetigeMitPasswort(tRaw('users.create_title'), tRaw('users.admin_confirm_text'), 'schloss');
+  const admin_password = await bestaetigeMitPasswort(tRaw('users.create_title'), tRaw('users.admin_confirm_text'), 'schloss', { knopf: 'confirm.btn.konto_anlegen', art: 'bp' });
   if (admin_password === null) return;
   const d=await mitZweitemFaktor(z => api('POST','/v1/auth/users',{username:n,password:p,is_admin:a,admin_password,...z}));
   if(d===null) return;
@@ -797,7 +805,7 @@ function openRpw(uid){ G('rpw-uid').value=uid; G('rpw-v').value=''; G('pw-modal'
 G('btn-rpw').onclick=async()=>{
   const neuesPw = G('rpw-v').value;
   if(passwortRegelText(neuesPw)){toast(passwortRegelText(neuesPw),'error');return;}
-  const admin_password = await bestaetigeMitPasswort(tRaw('users.reset_pw_title'), tRaw('users.admin_confirm_text'), 'schloss');
+  const admin_password = await bestaetigeMitPasswort(tRaw('users.reset_pw_title'), tRaw('users.admin_confirm_text'), 'schloss', { knopf: 'confirm.btn.passwort_setzen', art: 'bp' });
   if (admin_password === null) return;
   const d=await mitZweitemFaktor(z => api('PUT',`/v1/auth/users/${G('rpw-uid').value}/password`,{password:neuesPw, admin_password, ...z}));
   if(d===null) return;
@@ -807,21 +815,21 @@ async function toggleAdmin(uid,isAdmin){
   // isAdmin kommt seit der data-arg-Umstellung als Zeichenkette. `!"0"` ist
   // false — das Umschalten hätte damit IMMER auf "kein Admin" gesetzt.
   const cur = isAdmin === true || isAdmin === 1 || isAdmin === '1';
-  const admin_password = await bestaetigeMitPasswort(tRaw('users.role_title'), tRaw('users.admin_confirm_text'), 'schloss');
+  const admin_password = await bestaetigeMitPasswort(tRaw('users.role_title'), tRaw('users.admin_confirm_text'), 'schloss', { knopf: 'confirm.btn.rolle_aendern', art: 'bp' });
   if (admin_password === null) return;
   const d=await mitZweitemFaktor(z => api('PUT',`/v1/auth/users/${uid}/admin`,{is_admin:!cur, admin_password, ...z})); if(d===null) return; if(d.success){toast(tRaw('users.role_changed'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 /** Deaktivieren meldet das Konto auf allen Geräten ab; die Daten bleiben. */
 async function toggleAktiv(uid, aktiv){
   const istAktiv = String(aktiv) === '1';
   const admin_password = await bestaetigeMitPasswort(
-    tRaw(istAktiv ? 'users.deactivate_title' : 'users.activate_title'), tRaw('users.admin_confirm_text'), 'schloss');
+    tRaw(istAktiv ? 'users.deactivate_title' : 'users.activate_title'), tRaw('users.admin_confirm_text'), 'schloss', { knopf: istAktiv ? 'confirm.btn.deaktivieren' : 'confirm.btn.aktivieren', art: 'bp' });
   if (admin_password === null) return;
   const d = await mitZweitemFaktor(z => api('PUT', `/v1/auth/users/${uid}/aktiv`, { is_active: !istAktiv, admin_password, ...z }));
   if (d === null) return;
   if (d.success) { toast(tRaw(istAktiv ? 'users.deactivated' : 'users.activated'), 'success'); loadUsers(); }
   else toast(d.error || t('settings.error'), 'error');
 }
-async function delUser(uid,name){ const admin_password = await bestaetigeMitPasswort(tRaw('users.delete.title'),tRaw('users.delete.text'),'profil'); if(admin_password === null) return; const d=await mitZweitemFaktor(z => api('DELETE',`/v1/auth/users/${uid}`,{admin_password, ...z})); if(d===null) return; if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
+async function delUser(uid,name){ const admin_password = await bestaetigeMitPasswort(tRaw('users.delete.title'),tRaw('users.delete.text'),'profil', { knopf: 'confirm.btn.konto_loeschen', art: 'bd' }); if(admin_password === null) return; const d=await mitZweitemFaktor(z => api('DELETE',`/v1/auth/users/${uid}`,{admin_password, ...z})); if(d===null) return; if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 
 
 
@@ -891,7 +899,7 @@ export async function ladeAlarmUebersicht() {
   if (!d?.success) return;
   const alarme = d.alerts || [];
   if (!alarme.length) {
-    el.innerHTML = `<div data-stil="color:var(--mut)">${esc(tRaw('alerts.empty'))}</div>`;
+    el.innerHTML = `<p class="text-mut">${esc(tRaw('alerts.empty'))}</p>`;
     return;
   }
   el.innerHTML = alarme.map(a => {
@@ -935,25 +943,22 @@ export async function ladeAlarmUebersicht() {
     const oeffnet = a.besitzt
       ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"`
       : '';
-    return `<div data-stil="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--bdr);flex-wrap:wrap"${oeffnet}>
+    return `<div class="alarm-ue"${oeffnet}>
       ${bild}
-      <div data-stil="flex:1;min-width:180px">
-        <div><strong>${esc(a.set_number)}</strong> <span data-stil="color:var(--mut)">${esc(zustand)}</span></div>
-        <div data-stil="font-size:var(--fs-1);color:var(--mut)">${esc(a.name || '')}</div>
+      <div class="alarm-ue-text">
+        <div><strong>${esc(a.name || a.set_number)}</strong></div>
+        <div class="alarm-ue-unter">${a.name ? esc(a.set_number) + ' · ' : ''}${esc(zustand)}</div>
       </div>
-      <span data-stil="font-size:var(--fs-1);white-space:nowrap">${esc(richtung)}</span>
-      <input inputmode="decimal" type="text" autocomplete="off" value="${esc(betragFuerFeld(a.schwelle))}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
-             data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1"
-             data-click="stopEvent"
-             data-stil="width:7em;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)" />
-      <span data-stil="font-size:var(--fs-1);color:var(--mut);white-space:nowrap">${esc(a.currency_code)}</span>
-      <div data-stil="display:flex;flex-direction:column;align-items:flex-end;min-width:110px">
-        ${marke}
-        <span data-stil="font-size:var(--fs-0);color:var(--mut);white-space:nowrap">${esc(stand)}</span>
+      <div class="alarm-ue-stand">${marke}<span class="alarm-ue-zuletzt">${esc(stand)}</span></div>
+      <div class="alarm-ue-schwelle">
+        <span class="alarm-ue-richtung">${esc(richtung)}</span>
+        <input inputmode="decimal" type="text" autocomplete="off" value="${esc(betragFuerFeld(a.schwelle))}" aria-label="${esc(tRaw('detail.alert_price'))} ${esc(a.set_number)}"
+               data-change="aendereAlarmSchwelle" data-arg="${esc(schluessel)}" data-val="1" data-click="stopEvent" class="alarm-ue-feld" />
+        <span class="alarm-ue-waehrung">${esc(a.currency_code)}</span>
       </div>
-      <button class="btn bs btn-sm" data-click="loescheAlarm"${echt()} data-arg="${esc(schluessel)}"
+      <button class="btn bs btn-sm alarm-ue-loeschen" data-click="loescheAlarm"${echt()} data-arg="${esc(schluessel)}"
               aria-label="${esc(tRaw('common.delete'))}: ${esc(a.set_number)}" title="${esc(tRaw('common.delete'))}"
-              data-arg2="${esc(a.set_number)}" data-stil="padding:2px 8px">${ico('loeschen')}</button>
+              data-arg2="${esc(a.set_number)}">${ico('loeschen')}</button>
     </div>`;
   }).join('');
 }
@@ -1205,7 +1210,20 @@ export function einstAbschnitt(id, ev){
 }
 einstAbschnitt((() => { try { return localStorage.getItem(EINST_KEY); } catch (_) { return null; } })());
 
+/** Prüft den gespeicherten Zugang, wie der Einrichtungsassistent — auch später, ohne ihn erneut zu öffnen. */
+async function einstellungenQuellePruefen(quelle) {
+  const stand = G('pruef-' + quelle); if (!stand) return;
+  const frei = knopfBesetzt(this);
+  stand.className = 'quelle-stand'; stand.textContent = tRaw('settings.zugang_laeuft');
+  const d = await api('POST', '/v1/settings/quelle-testen', { quelle });
+  frei();
+  const { grund } = d?.success ? { grund: '' } : d?.code ? { grund: d.error } : verstaendlicherGrund(d);
+  stand.classList.add(d?.success ? 'quelle-ok' : 'quelle-fehler');
+  stand.innerHTML = `${ico(d?.success ? 'ok' : 'fehler')}<span>${esc(d?.success ? tRaw('setup.test_ok') : grund || tRaw('setup.test_failed'))}</span>`;
+}
+
 registerActions({
+  einstellungenQuellePruefen,
   legeAlarmAn,
   speichereWaehrung,
   speichereZustand,

@@ -2,7 +2,7 @@ import { fehlerAntwort } from '../../src/infra/httpError';
 import { requireToken } from './middleware';
 import { resolveMany } from '../../src/katalog/bricklinkLink';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { katalogMeta, jahrVerteilung, katalogSeite, katalogSet } from '../../src/katalog/dienst';
+import { katalogMeta, jahrVerteilung, katalogSeite, katalogSet, katalogGeladen } from '../../src/katalog/dienst';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 
@@ -31,7 +31,7 @@ router.get('/catalog/sets', requireToken, async (req: AuthedRequest, res: Antwor
 
 router.get('/catalog/sets/:setNumber', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/catalog/sets/:setNumber'>) => {
   const set = await katalogSet(req.apiUser.user_id, String(req.params.setNumber || ''));
-  if (!set) { sendeFehler(req, res, 404, 'set_nicht_im_katalog'); return; }
+  if (!set) { sendeFehler(req, res, 404, await katalogGeladen() ? 'set_nicht_im_katalog' : 'katalog_nicht_geladen'); return; }
   res.json({ success: true, set });
 });
 

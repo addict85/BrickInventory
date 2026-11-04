@@ -16,9 +16,10 @@
  *     geöffnet gleich breit.
  *   - Merkliste: Nummer, Zustand, „Auf die Merkliste“ und CSV sind gleich
  *     hoch und stehen am Rechner auf einer Linie.
- *   - Set-Detail: „Löschen“ steht hinter „Weitere Aktionen“; die drei Felder
- *     des Preisalarms stehen unter der Beschriftung in einer Zeile über
- *     (fast) die volle Breite, jedes mindestens 44 px hoch.
+ *   - Set-Detail: „Löschen“ steht hinter „Weitere Aktionen“; die Felder des
+ *     Preisalarms stehen unter der Beschriftung über (fast) die volle Breite,
+ *     Zustand und Richtung in einer Zeile, der Preis mit sichtbarer
+ *     Beschriftung „Grenzpreis“ in der zweiten, jedes mindestens 44 px hoch.
  *   - Während die Teile laden, steht ein Skelett aus zwölf Kacheln
  *     (role="status") da; Dialoge und Reiter blenden ein, ausser bei
  *     prefers-reduced-motion: reduce.
@@ -300,11 +301,13 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
       const titel = zeile.querySelector('.dl').getBoundingClientRect();
       const felder = [...zeile.querySelectorAll('.alarm-feld')].map(f => f.getBoundingClientRect());
       const z = zeile.getBoundingClientRect();
-      return { unterTitel: felder.every(f => f.top >= titel.bottom - 1), eineZeile: new Set(felder.map(f => Math.round(f.top))).size,
-               hoehe: Math.min(...felder.map(f => f.height)), breite: Math.round((felder.at(-1).right - felder[0].left) / z.width * 100) };
+      const preis = zeile.querySelector('.alarm-preis');
+      return { unterTitel: felder.every(f => f.top >= titel.bottom - 1), zeilen: new Set(felder.map(f => Math.round(f.top))).size,
+               beschriftung: preis?.textContent.trim(), hoehe: Math.min(...felder.map(f => f.height)),
+               breite: Math.round((felder[1].right - felder[0].left) / z.width * 100) };
     })()`);
-    assert.deepEqual({ ...alarm, breite: alarm.breite >= 90 }, { unterTitel: true, eineZeile: 1, hoehe: alarm.hoehe, breite: true },
-      `Preisalarm: ${JSON.stringify(alarm)}`);
+    assert.deepEqual({ ...alarm, breite: alarm.breite >= 90 },
+      { unterTitel: true, zeilen: 2, beschriftung: 'Grenzpreis', hoehe: alarm.hoehe, breite: true }, `Preisalarm: ${JSON.stringify(alarm)}`);
     assert.ok(alarm.hoehe >= 44, `Preisalarm-Felder ${alarm.hoehe} px hoch`);
     await b.auswerten(`document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });

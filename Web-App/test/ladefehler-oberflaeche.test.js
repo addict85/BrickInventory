@@ -7,7 +7,7 @@
  *     Katalog und Finanzen (ein Baustein: fehlerZustand).
  *   - Scheitert ein späteres Neuladen, bleibt die alte Liste stehen; eine
  *     Meldung sagt, dass es der letzte Stand ist.
- *   - Ein Netzfehler beim Erfassen meldet „Server nicht erreichbar“ statt
+ *   - Ein Netzfehler beim Erfassen meldet „Keine Verbindung zum Server“ statt
  *     des Browsertexts „Failed to fetch“.
  *   - Ohne Verbindung steht ein Band „Keine Verbindung seit …“; mit
  *     Verbindung verschwindet es.
@@ -83,7 +83,7 @@ test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
   } finally { w.close(); }
 });
 
-test('Netzfehler beim Erfassen: „Server nicht erreichbar“ statt „Failed to fetch“', async () => {
+test('Netzfehler beim Erfassen: „Keine Verbindung zum Server“ statt „Failed to fetch“', async () => {
   const { w, d } = await oeffneOberflaeche({ '/v1/sets/add-stream': () => { throw new TypeError('Failed to fetch'); } });
   try {
     d.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click();
@@ -91,7 +91,7 @@ test('Netzfehler beim Erfassen: „Server nicht erreichbar“ statt „Failed to
     d.getElementById('btn-add').click();
     await warte(() => d.querySelector('#toasts .toast.error'));
     const text = d.querySelector('#toasts .toast.error')?.textContent || '';
-    assert.match(text, /Server nicht erreichbar/);
+    assert.match(text, /Keine Verbindung zum Server/);
     assert.doesNotMatch(text, /Failed to fetch/);
   } finally { w.close(); }
 });

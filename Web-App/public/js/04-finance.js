@@ -64,6 +64,8 @@ async function loadPortfolioChart(){
   const d = await api('GET', `/v1/finance/portfolio-history?period=${_chartPeriod}${scopeMode('finance') !== 'all' ? '&accounts=' + scopeMode('finance') : ''}`);
   if(!d.success){
     if (d.status === 401) return;
+    // Ohne Verlauf wählt ein Zeitraum nichts; „Erneut versuchen“ ist die einzige Handlung.
+    document.querySelectorAll('.zeitraum-wahl .period-btn').forEach(b => { /** @type {HTMLButtonElement} */ (b).disabled = true; });
     el.innerHTML = diagrammNichtDa(!!d.networkError, d);
     return;
   }

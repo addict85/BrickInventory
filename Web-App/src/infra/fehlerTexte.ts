@@ -163,6 +163,8 @@ export const FEHLER = {
   setnummer_ungueltig:         { de: 'Das ist keine Setnummer (Buchstaben und Ziffern, z. B. 10294).',
                                  en: 'That is not a set number (letters and digits, e.g. 10294).' },
   set_nicht_im_katalog:        { de: 'Set nicht im Katalog gefunden', en: 'Set not found in the catalogue' },
+  katalog_nicht_geladen:       { de: 'Der Set-Katalog ist noch nicht geladen; Rebrickable war bisher nicht erreichbar oder der Schlüssel fehlt.',
+                                 en: 'The set catalogue has not been loaded yet; Rebrickable was not reachable so far or the key is missing.' },
   set_number_erforderlich:     { de: 'set_number erforderlich', en: 'set_number is required' },
   parameter_set_fehlt:         { de: 'Parameter set fehlt', en: 'Parameter “set” is missing' },
   barcode_kein_set:            { de: 'Kein Set für "{barcode}" gefunden. Bitte Set-Nummer manuell eingeben.',

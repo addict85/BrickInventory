@@ -87,6 +87,10 @@ export function katalogZeile(userId: number, setNumber: string) {
       WHERE rb.set_num = $2`, [userId, setNumber]);
 }
 
+export async function katalogLeer(): Promise<boolean> {
+  return !(await db.get<{ x: number }>('SELECT 1 AS x FROM rb_sets LIMIT 1'));
+}
+
 export function figurenImInventar(inventarId: number) {
   return db.get<{ n: number }>(
     'SELECT COALESCE(SUM(quantity), 0)::int AS n FROM rb_inventory_minifigs WHERE inventory_id = $1', [inventarId]);
