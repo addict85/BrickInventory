@@ -71,7 +71,9 @@ class ManualEntryAfterScanTest {
         // Der Anker muss am SET-Feld hängen, nicht an Menge oder Preis.
         val setFeld = fn.indexOf("value = setNumber")
         val ankerAmSetFeld = fn.indexOf("focusRequester(setFeldFokus)")
-        assert(setFeld >= 0 && ankerAmSetFeld > setFeld && ankerAmSetFeld - setFeld < 400) {
+        // Im selben Feld heisst: vor dem nächsten Eingabefeld (Menge, Preis).
+        val naechstesFeld = fn.indexOf("OutlinedTextField(", setFeld).let { if (it < 0) fn.length else it }
+        assert(setFeld >= 0 && ankerAmSetFeld in (setFeld + 1) until naechstesFeld) {
             "Der Fokus-Anker hängt nicht am Set-Feld"
         }
     }
