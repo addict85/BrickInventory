@@ -343,8 +343,7 @@ app.use('/api/v1/auth',     authRouter);
 // Links aus einer E-Mail: Erst ein Knopf auf der Seite wirkt (POST), sonst
 // bestätigte schon der Link-Scanner des Mailanbieters eine fremde Adresse.
 app.get(['/verify', '/reset-password'], async (_req, res) => {
-  // Die Adresse trägt das Token. Über den Renderer statt sendFile, sonst gingen
-  // die Assets ohne Stempel und im Standarddesign hinaus.
+  // Renderer statt sendFile, sonst gingen die Assets ohne Stempel hinaus.
   res.set('Cache-Control', 'no-store');
   try {
     res.type('html').send(await renderIndexHtml());
@@ -440,8 +439,7 @@ async function starte(): Promise<void> {
   if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
-  // Ganze Anfrage fünf Minuten: Eine Anleitung (50 MB) soll auch langsam hochkommen.
-  // Ohne kurzes Prüfintervall griffe die Kopffrist erst nach bis zu 45 s.
+  // Fünf Minuten für 50-MB-Uploads; ohne kurzes Prüfintervall griffe die Kopffrist erst nach 45 s.
   const fristen = { headersTimeout: 15_000, requestTimeout: 300_000, connectionsCheckingInterval: 1_000 };
   const httpServer = web ? http.createServer(fristen, baueApp()).listen(k.port, () => {
     console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);

@@ -15,6 +15,8 @@
  *      dem Ende geht es wieder“
  *   E  kontoSchranke('strom') am CSV-Strom gestrichen → rot: „höchstens sechs
  *      Ereignisströme je Konto“
+ *   F  in kontoSchranke() die Freigabe bei 'finish' gestrichen → rot: „der
+ *      Platz ist frei, sobald die Antwort übergeben ist“
  *
  * REQUIRE_DB=1.
  */
@@ -135,4 +137,27 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
       assert.equal(await strom(), 200, 'geschlossene Ströme geben ihren Platz frei');
     } finally { for (const r of offen) r.destroy(); }
   });
+});
+
+// Ein Client, der nach der Antwort sofort die nächste Datei schickt, kam im
+// Volllauf vor 'close' an und bekam 429. Hier ohne Netz, damit es nicht vom Takt abhängt.
+test('der Platz ist frei, sobald die Antwort übergeben ist', () => {
+  const { EventEmitter } = require('node:events');
+  const { kontoSchranke } = _req('routes/api_v1/middleware.js');
+  const schranke = kontoSchranke('gutscheinPdf');
+  const anfrage = () => {
+    const res = Object.assign(new EventEmitter(), {
+      statusCode: 200, status(c) { this.statusCode = c; return this; }, json() { return this; },
+      setHeader() {}, getHeader() {}, headersSent: false,
+    });
+    let weiter = false;
+    schranke({ session: { userId: 987654 }, headers: {}, get: () => undefined }, res, () => { weiter = true; });
+    return { res, weiter };
+  };
+  const erste = anfrage();
+  assert.equal(erste.weiter, true);
+  erste.res.emit('finish');
+  const zweite = anfrage();
+  assert.equal(zweite.weiter, true, `zweite Datei abgewiesen (${zweite.res.statusCode})`);
+  zweite.res.emit('finish');
 });

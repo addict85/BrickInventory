@@ -121,6 +121,7 @@ export function kontoSchranke(art: Schranke) {
     if (uid === null) return next();
     const frei = belegeKontoPlatz(art, uid);
     if (!frei) return sendeFehler(req, res, 429, art === 'strom' ? 'zu_viele_verbindungen' : 'upload_laeuft');
+    res.once('finish', frei); // ein sofort folgender Upload käme sonst vor 'close' an
     res.once('close', frei);
     next();
   };

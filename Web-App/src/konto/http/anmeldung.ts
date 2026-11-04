@@ -57,13 +57,11 @@ export async function establishSession(req: Request, data: { userId: number; use
   });
 }
 
-/** Wie lange nach einer Passworteingabe in derselben Sitzung das Einrichten des
- * zweiten Faktors ohne erneute Eingabe geht. Kurz, weil eine in dieser Zeit
- * erbeutete Sitzung sonst den Faktor setzen und das Konto aussperren könnte. */
+/** Gnadenfrist nach einer Passworteingabe; kurz, weil eine in dieser Zeit erbeutete
+ * Sitzung sonst den Faktor setzen und das Konto aussperren könnte. */
 export const PASSWORT_GNADENFRIST_MS = 5 * 60 * 1000;
 
-/** Gilt die Gnadenfrist noch? Nur mit Sitzung (nie mit Token), und nur einmal:
- * Der Aufruf verbraucht sie, ein zweiter Versuch fragt wieder nach dem Passwort. */
+/** Nur mit Sitzung, nie mit Token, und nur einmal: Der Aufruf verbraucht die Frist. */
 export function gnadenfristVerbrauchen(req: Request): boolean {
   const s = req.session, am = s?.passwortBestaetigtAm;
   if (!s?.userId || req.tokenUserId || typeof am !== 'number') return false;
