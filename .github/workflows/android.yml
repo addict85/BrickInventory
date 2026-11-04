@@ -403,6 +403,22 @@ jobs:
           python3 tools/lint-zaehlen.py tools/lint-obergrenze.txt \
             app/build/reports/lint-results-release.xml
 
+      # detekt je Modul (build-logic, Detekt.kt; Regeln in config/detekt/detekt.yml),
+      # ohne Baseline: Jeder Fund macht den Lauf rot. Fehlen die Prüfsummen der
+      # detekt-Artefakte, scheitert schon die Auflösung, und der Schritt sagt, was zu tun ist.
+      - name: Kotlin prüfen (detekt)
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          if ! ./gradlew --no-daemon --continue detekt 2>&1 | tee "$RUNNER_TEMP/detekt.log"; then
+            if grep -q "Dependency verification failed" "$RUNNER_TEMP/detekt.log"; then
+              echo "::error title=detekt ohne Prüfsummen::Die detekt-Artefakte fehlen in gradle/verification-metadata.xml. Workflow von Hand mit pruefsummen=true anstossen; pruefsummen-vorschlagen legt einen Pull-Request mit den Einträgen an."
+            else
+              echo "::error title=detekt meldet Funde::Liste oben im Protokoll und in */build/reports/detekt/detekt.txt (Artefakt testberichte)."
+            fi
+            exit 1
+          fi
+
       # Den Namen vergibt GRADLE (Aufgabe copyReleaseApkAsBrickInventory in
       # app/build.gradle.kts), nicht dieser Schritt. Hier wird nur nachgesehen,
       # was dabei herausgekommen ist.
@@ -510,6 +526,7 @@ jobs:
           name: testberichte
           path: |
             Android-App/*/build/reports/tests/
+            Android-App/*/build/reports/detekt/
             Android-App/app/build/reports/lint-results-release.html
           # Scheitert der Lauf VOR den Tests, gibt es keine Berichte. Das ist
           # dann kein zusätzlicher Fehler, sondern nur eine Folge — ohne diese
@@ -1180,7 +1197,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys \
-            testDebugUnitTest :core-model:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease \
+            testDebugUnitTest :core-model:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys

@@ -56,6 +56,7 @@ Danach:
 | `./gradlew assembleDebug` | `app/build/outputs/apk/debug/app-debug.apk` — mit dem Debug-Schlüssel signiert, direkt installierbar |
 | `./gradlew assembleRelease` | `app/build/outputs/apk/release/BrickInventory.apk` — minifiziert; signiert nur, wenn die Schlüsselwerte gesetzt sind (siehe unten) |
 | `./gradlew lintRelease` | `app/build/reports/lint-results-release.html` |
+| `./gradlew detekt` | Kotlin-Prüfung je Modul, Funde unter `*/build/reports/detekt/detekt.txt`; rot bei jedem Fund |
 | `./gradlew installDebug` | baut und installiert auf dem angeschlossenen Gerät (`adb devices`) |
 | `./gradlew clean` | löscht `app/build/` |
 
@@ -277,11 +278,12 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
 | `brickinventory.android.feature` | die vier oben und `core-ktx` — ein Bereich |
+| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, ohne Baseline); kommt mit library/application, `core-model` nennt es selbst |
 
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
 des Moduls, wo `ModulgrenzenTest` sie liest. Ein SDK-Sprung ist eine Zeile in
 `build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Sdk.kt`.
-`core-model` bleibt reines Kotlin und braucht keine Konvention.
+`core-model` bleibt reines Kotlin und braucht ausser detekt keine Konvention.
 
 | Modul | Inhalt |
 | --- | --- |
