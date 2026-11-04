@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -162,6 +163,47 @@ fun PartsListScreen(
     // gespeichert. Die Sets bleiben, „Erzeugen“ stellt alles wieder her.
     LaunchedEffect(Unit) { if (parts.isEmpty()) generated = false }
 
+    // Ein Schritt statt zwei: Was im Feld steht, kommt beim Erstellen (oder mit der
+    // Eingabetaste) dazu; „+“ braucht es nur für weitere Sets.
+    fun erstellen() {
+        if (setInput.isNotBlank()) addSet(setInput)
+        if (sets.isEmpty() || isLoading) return
+        isLoading = true; generated = false; parts = listOf()
+        scope.launch {
+            val combined = mutableMapOf<String, PlPart>()
+            sets.toList().forEachIndexed { i, s ->
+                status = String.format(loadingSetFmt, s.setNumber, i+1, sets.size)
+                try {
+                    val (name, newParts) = onResolveSet(s.setNumber)
+                    sets = sets.toMutableList().also { it[i] = s.copy(name = name) }
+                    newParts.forEach { p ->
+                        val key = "${p.blPartNumber ?: p.partNumber}|${p.colorName}"
+                        combined[key] = combined[key]?.copy(quantity = combined[key]!!.quantity + p.quantity) ?: p
+                    }
+                } catch (_: Exception) { status = String.format(errorForSetFmt, s.setNumber) }
+            }
+            parts = combined.values.sortedWith(
+                Comparator { a, b ->
+                    val cmp = plColorCollator.compare(a.colorName, b.colorName)
+                    if (cmp != 0) cmp
+                    else comparePartNumbers(
+                        a.blPartNumber ?: a.partNumber,
+                        b.blPartNumber ?: b.partNumber
+                    )
+                }
+            )
+            // Zwei Zahlen, zwei Uebereinstimmungen: ein
+            // <plurals> stimmt nur mit EINER ueberein,
+            // darum zwei Bruchstuecke und ein Rahmen.
+            val typen = parts.size
+            val stueck = parts.sumOf { it.quantity }
+            status = mengen.getString(R.string.partslist_summary,
+                mengen.getQuantityString(R.plurals.partslist_summary_types, typen, typen),
+                mengen.getQuantityString(R.plurals.partslist_summary_parts, stueck, stueck))
+            isLoading = false; generated = true
+        }
+    }
+
     fun reset() {
         sets = listOf(); parts = listOf(); status = ""; generated = false
     }
@@ -185,9 +227,10 @@ fun PartsListScreen(
                     OutlinedTextField(
                         value = setInput,
                         // Filter und Tastaturwahl wie jedes Setnummernfeld (util/NumericInput.kt).
-                        // Done statt Next, weil rechts der Knopf „+“ kommt, kein Feld.
+                        // „Fertig“ erstellt die Liste gleich mit diesem Set.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
                         keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { erstellen() }),
                         // Beschriftung statt Platzhalter: Der lange Platzhalter brach im Feld
                         // zweizeilig um und verschwand beim Tippen.
                         label = { Text(stringResource(R.string.gallery_set_number)) },
@@ -231,43 +274,8 @@ fun PartsListScreen(
                 // Action buttons
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Button(
-                        onClick = {
-                            isLoading = true; generated = false; parts = listOf()
-                            scope.launch {
-                                val combined = mutableMapOf<String, PlPart>()
-                                sets.toList().forEachIndexed { i, s ->
-                                    status = String.format(loadingSetFmt, s.setNumber, i+1, sets.size)
-                                    try {
-                                        val (name, newParts) = onResolveSet(s.setNumber)
-                                        sets = sets.toMutableList().also { it[i] = s.copy(name = name) }
-                                        newParts.forEach { p ->
-                                            val key = "${p.blPartNumber ?: p.partNumber}|${p.colorName}"
-                                            combined[key] = combined[key]?.copy(quantity = combined[key]!!.quantity + p.quantity) ?: p
-                                        }
-                                    } catch (_: Exception) { status = String.format(errorForSetFmt, s.setNumber) }
-                                }
-                                parts = combined.values.sortedWith(
-                                    Comparator { a, b ->
-                                        val cmp = plColorCollator.compare(a.colorName, b.colorName)
-                                        if (cmp != 0) cmp
-                                        else comparePartNumbers(
-                                            a.blPartNumber ?: a.partNumber,
-                                            b.blPartNumber ?: b.partNumber
-                                        )
-                                    }
-                                )
-                                // Zwei Zahlen, zwei Uebereinstimmungen: ein
-                                // <plurals> stimmt nur mit EINER ueberein,
-                                // darum zwei Bruchstuecke und ein Rahmen.
-                                val typen = parts.size
-                                val stueck = parts.sumOf { it.quantity }
-                                status = mengen.getString(R.string.partslist_summary,
-                                    mengen.getQuantityString(R.plurals.partslist_summary_types, typen, typen),
-                                    mengen.getQuantityString(R.plurals.partslist_summary_parts, stueck, stueck))
-                                isLoading = false; generated = true
-                            }
-                        },
-                        enabled = sets.isNotEmpty() && !isLoading,
+                        onClick = { erstellen() },
+                        enabled = (sets.isNotEmpty() || setInput.isNotBlank()) && !isLoading,
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
                         // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst

@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -40,13 +41,17 @@ import org.robolectric.annotation.GraphicsMode
 /**
  * Die Maske für den Pflicht-Faktor der Verwalter, ausgeführt: Einrichten erst mit
  * Passwort, der Schlüssel in Vierergruppen, nur Ziffern gehen als Code hinaus, die
- * Notfallcodes vor dem Weiter, Abmelden in jedem Schritt, und bei 200 % Schrift
- * bricht kein Text mitten im Wort um.
+ * Notfallcodes vor dem Weiter (und erst mit dem Haken „gesichert“), die Schrittanzeige,
+ * der angesagte Hinweis ohne Authenticator-App, Abmelden in jedem Schritt, und bei
+ * 200 % Schrift bricht kein Text mitten im Wort um.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   faktormaske-ohne-passwort      Einrichten auch ohne Passwort → rot „ohne Passwort richtet …“
  *   faktormaske-schluessel-am-stueck  Schlüssel ohne Gruppen → rot „waehrend der Einrichtung …“
  *   faktormaske-ohne-codes         die Codes nie gezeigt → rot „nach der Bestaetigung …“
+ *   faktormaske-weiter-ohne-haken  „Weiter“ auch ohne Haken frei → rot „nach der Bestaetigung …“
+ *   faktormaske-schritt-fest       Schrittanzeige immer bei Schritt 1 → rot „die Schrittanzeige …“
+ *   faktormaske-hinweis-stumm      Hinweis ohne App ohne ansagen() → rot „ohne Authenticator-App …“
  *   faktormaske-abmelden-nur-anfangs  Abmelden nur im ersten Schritt → rot „Abmelden bleibt …“
  *   faktormaske-riesentitel        Überschrift in schmaler Spalte → rot „bei 200 Prozent …“
  */
@@ -129,14 +134,41 @@ class ZweiterFaktorMaskeTest {
     }
 
     @Test
-    fun `nach der Bestaetigung stehen die Notfallcodes da, erst dann geht es weiter`() {
+    fun `nach der Bestaetigung stehen die Notfallcodes da, weiter erst mit dem Haken gesichert`() {
         zustand.value = codes
         zeige()
         compose.onNodeWithText("aaaa-bbbb\ncccc-dddd").assertExists()
         assertTrue("Die Codes stehen im Klartext da: kein Bildschirmfoto", geschuetzt())
-        knopf(R.string.zf_pflicht_weiter).performScrollTo().performClick()
+        knopf(R.string.zf_pflicht_weiter).assertIsNotEnabled()
+        knopf(R.string.zf_codes_gesichert).performScrollTo().performClick()
+        compose.waitForIdle()
+        knopf(R.string.zf_pflicht_weiter).assertIsEnabled().performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(1, weiterGetippt)
+    }
+
+    @Test
+    fun `die Schrittanzeige nennt Schritt und Namen`() {
+        val je = listOf(ZweiterFaktorUiState(aktiv = false) to (1 to R.string.zf_schritt_passwort),
+            einrichtung to (2 to R.string.zf_schritt_app), codes to (3 to R.string.zf_schritt_codes))
+        zeige()
+        for ((schritt, erwartet) in je) {
+            zustand.value = schritt
+            compose.waitForIdle()
+            val (nummer, name) = erwartet
+            compose.onNodeWithText(compose.activity.resources.getQuantityString(R.plurals.zf_schritt, 3, nummer, 3, text(name)))
+                .assertExists()
+        }
+    }
+
+    @Test
+    fun `ohne Authenticator-App wird der Hinweis angesagt`() {
+        zustand.value = einrichtung
+        zeige()
+        knopf(R.string.zf_open_app).performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNode(hasText(text(R.string.zf_no_app)) and SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion),
+            useUnmergedTree = true).assertExists()
     }
 
     @Test
@@ -160,7 +192,7 @@ class ZweiterFaktorMaskeTest {
             einrichtung to listOf(R.string.zf_pflicht_titel, R.string.zf_step_app, R.string.zf_open_app,
                 R.string.zf_copy_key, R.string.zf_confirm),
             codes to listOf(R.string.zf_pflicht_codes_titel, R.string.zf_codes_hint, R.string.zf_copy,
-                R.string.zf_pflicht_weiter),
+                R.string.zf_codes_gesichert, R.string.zf_pflicht_weiter),
         )
         zeige(schrift = 2f)
         val gebrochen = mutableListOf<String>()

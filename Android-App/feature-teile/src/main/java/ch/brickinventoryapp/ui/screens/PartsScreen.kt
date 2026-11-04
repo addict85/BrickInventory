@@ -406,6 +406,10 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                         .clip(Formen.kachelBildEcken),
                     contentScale = ContentScale.Fit,
                     ersatzGroesse = 32.dp,
+                    // Der Bildgrund über die ganze Kachelbreite wie bei den Sets: Ein schmales
+                    // Bild stand sonst als Kasten mit weissen Rändern in der Karte.
+                    bildgrund = true,
+                    innenAbstand = Abstaende.winzig,
                 )
                 // Qty badge
                 Surface(
@@ -434,6 +438,8 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                         ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    // Immer zwei Zeilen Platz: Kacheln einer Reihe sind gleich hoch, auch wenn ein Name kurz ist.
+                    minLines = 2,
                     maxLines = if (ch.brickinventoryapp.ui.components.grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis)
                 part.colorName?.let {
                     Text(ch.brickinventoryapp.ui.components.farbUebersetzer()(it), style = MaterialTheme.typography.labelSmall,

@@ -307,9 +307,9 @@ fun GalleryScreen(
 }
 
 /**
- * Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. Sie brechen
- * um statt seitlich zu rollen: Eine abgeschnittene fünfte Kachel ohne Hinweis
- * übersah man, und bei grosser Schrift war schon die dritte halb weg.
+ * Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. Bei grosser
+ * Schrift wischbar, mit Verlauf und Pfeil am Rand (KennzahlenReihe): Umgebrochen
+ * schoben fünf Kennzahlen das erste Set aus dem Blick.
  */
 @Composable
 private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
@@ -482,12 +482,13 @@ fun SetCard(
                     // mit Rückfrage und danach „Rückgängig“. Neben „×2“ lag der Mülleimer
                     // als einzige sichtbare Aktion der Kachel.
                     // G&V als Marke auf dem Bild: In der Preiszeile brach sie neben „je Stück“
-                    // um, und die Kachel wurde höher als ihre Nachbarin.
+                    // um, und die Kachel wurde höher als ihre Nachbarin. Plaketten mit Abstand
+                    // innerhalb des Bilds (PLAKETTE_RAND): Auf dessen Rand sassen sie über der Ecke.
                     val pct = preis?.pnlPct
                     if (pct != null && kachelBetrag(set, preis) != null) Surface(
                         color = MaterialTheme.colorScheme.surface,
                         shape = Formen.etikett,
-                        modifier = Modifier.align(Alignment.TopStart).padding(Abstaende.klein),
+                        modifier = Modifier.align(Alignment.TopStart).padding(PLAKETTE_RAND),
                     ) {
                         Text(fmtProzent(pct), Modifier.padding(horizontal = Abstaende.winzig + Abstaende.haar, vertical = Abstaende.haar),
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
@@ -498,7 +499,7 @@ fun SetCard(
                         Surface(
                             color = MaterialTheme.colorScheme.primary,
                             shape = Formen.etikett,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.klein),
+                            modifier = Modifier.align(Alignment.TopEnd).padding(PLAKETTE_RAND),
                         ) {
                             Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
                                 color = MaterialTheme.colorScheme.onPrimary,
@@ -523,9 +524,14 @@ fun SetCard(
                         maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
                         lineHeight = 16.sp)
                     // Thema und Teilezahl in einer Zeile: Getrennt stand meist eine davon leer.
-                    Text(themaUndTeile(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // Im Farbfächer ein Punkt im Ton der Kartenleiste davor: So liest sich die
+                    // Leiste als Thema, nicht nur als Farbe.
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                        if (ton != null && !set.theme.isNullOrBlank()) Box(Modifier.size(8.dp).background(ton, CircleShape))
+                        Text(themaUndTeile(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                     // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
                     // den Betrag, statt Zeichen für Zeichen umzubrechen.
                     val betrag = kachelBetrag(set, preis)
@@ -564,6 +570,9 @@ fun SetCard(
 
 /** Seitenverhältnis der Bildfläche einer Kachel — das der Setbilder. */
 private const val BILD_SEITENVERHAELTNIS = 4f / 3f
+
+/** Plaketten auf dem Bild: Innenabstand des Bilds plus ein Rand, damit sie nicht auf seiner Ecke sitzen. */
+private val PLAKETTE_RAND = Abstaende.klein + Abstaende.winzig
 
 /** „Star Wars · 7’541 Teile“ — das Thema in der Hauptfarbe, die Teilezahl leiser. */
 @Composable

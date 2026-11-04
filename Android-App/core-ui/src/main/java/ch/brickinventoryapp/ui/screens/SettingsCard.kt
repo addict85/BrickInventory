@@ -18,10 +18,12 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 /**
  * Der Rahmen einer Einstellungs-Rubrik. Öffentlich in core-ui, weil Einstellungen
  * und Gutscheine ihn teilen — eine zweite Fassung sähe irgendwann anders aus.
+ * Ohne [title] kein Kopf: Ist die Karte allein auf ihrer Seite, nennt die Leiste
+ * darüber sie schon, und derselbe Titel zweimal las sich wie ein Fehler.
  */
 @Composable
 fun SettingsCard(
-    title: String,
+    title: String?,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -32,7 +34,7 @@ fun SettingsCard(
             Modifier.padding(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
-            ch.brickinventoryapp.ui.components.Abschnittstitel(title, Modifier.padding(bottom = Abstaende.mittel), symbol = icon)
+            if (title != null) ch.brickinventoryapp.ui.components.Abschnittstitel(title, Modifier.padding(bottom = Abstaende.mittel), symbol = icon)
             content()
         }
     }

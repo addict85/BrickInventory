@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
 Rot: nach der Bestaetigung
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-index 5b00b3f..dc313b7 100644
+index 1301ce6..9f55a1d 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -81,7 +81,7 @@ fun ZweiterFaktorPflichtMaske(
-             MarkenKopf(Modifier.fillMaxWidth())
+@@ -104,7 +104,7 @@ fun ZweiterFaktorPflichtMaske(
+             if (schritt != null) Schrittanzeige(schritt)
              when {
                  // Die Codes stehen einmal im Klartext da: kein Bildschirmfoto davon.
 -                zustand.codes.isNotEmpty() -> {

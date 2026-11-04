@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -78,24 +79,31 @@ fun AusgangLeiste(anzahl: Int, modifier: Modifier = Modifier) {
     )
 }
 
-/** Fläche in tertiaryContainer: hebt sich in jedem Design ab, ohne nach Fehler auszusehen. */
+/**
+ * Neutrale Fläche mit Rahmen: Offline ist kein Fehler, die Änderungen sind gesichert.
+ * tertiaryContainer war in Classic und Noppe rot und meldete einen Fehler, wo keiner
+ * ist; Rot bleibt dem verworfenen Abgleich (Snackbar aus dem Ausgangsmelder).
+ */
 @Composable
 private fun Hinweisbanner(symbol: ImageVector, titel: String, text: String?, modifier: Modifier = Modifier) {
     Surface(
         modifier.fillMaxWidth().padding(horizontal = Abstaende.mittel, vertical = Abstaende.winzig).ansagen(),
         shape = Formen.leiste,
-        color = MaterialTheme.colorScheme.tertiaryContainer,
-        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(
             Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(symbol, contentDescription = null, modifier = Modifier.size(mitSchrift(18.dp)))
+            Icon(symbol, contentDescription = null, modifier = Modifier.size(mitSchrift(18.dp)),
+                tint = MaterialTheme.colorScheme.primary)
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                 Text(titel, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
-                if (text != null) Text(text, style = MaterialTheme.typography.bodySmall)
+                if (text != null) Text(text, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

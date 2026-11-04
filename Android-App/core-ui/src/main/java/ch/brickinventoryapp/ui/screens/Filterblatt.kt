@@ -86,7 +86,10 @@ fun SucheMitFilter(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically) { knoepfe() }
         } else Row(verticalAlignment = Alignment.CenterVertically) {
-            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
+            // Höchstens SUCHE_MAX breit, die Knöpfe gleich daneben: Über die ganze Tabletbreite
+            // war das Feld 1 800 px lang und die Knöpfe standen weit weg.
+            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter,
+                modifier = Modifier.weight(1f, fill = false).widthIn(max = SUCHE_MAX).fillMaxWidth())
             knoepfe()
         }
     }
@@ -94,6 +97,9 @@ fun SucheMitFilter(
 
 /** Ab dieser Breite (Tablet, Querformat) trägt der Filterknopf seinen Namen. */
 private val FILTER_TEXT_AB = 600.dp
+
+/** Breiteste Suchzeile: genug für jeden Suchbegriff, ohne über das ganze Tablet zu laufen. */
+private val SUCHE_MAX = 720.dp
 
 @Composable
 private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, modifier: Modifier = Modifier) {

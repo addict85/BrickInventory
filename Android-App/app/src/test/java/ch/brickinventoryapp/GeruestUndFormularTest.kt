@@ -24,6 +24,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasTestTag
@@ -34,6 +38,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
@@ -62,12 +67,13 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Befunde der zehnten UI-Prüfung (Android), als Verhalten ausgeführt: Der
- * Erfassen-Knopf steigt über die Snackbar, offline steht ein Banner statt zweier
+ * Befunde der zehnten und elften UI-Prüfung (Android), als Verhalten ausgeführt: Der
+ * Erfassen-Knopf steigt über die Snackbar, offline steht ein neutrales Banner statt zweier
  * widersprüchlicher Zeilen, Fehler in Formularen werden angesagt, Passwortfelder
- * kennen Autofill und Auge, Verwalterrechte stehen unter „Erweitert“, die Kennzahlen
- * bleiben bei 200 % in einer Zeile, das Katalog-Detail nutzt das Tablet, und die
- * Finanzen nennen den Marktwert vor dem Verlauf.
+ * kennen Autofill und Auge, Verwalterrechte stehen unter „Erweitert“, der Server-Chip
+ * sagt, was er tut, die Kennzahlen wischen in der Sammlung mit Hinweis und brechen im
+ * Detail um, das Katalog-Detail nutzt das Tablet, und die Finanzen nennen den Marktwert
+ * vor dem Verlauf.
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   fab-unter-snackbar          ErfassenFab ohne Abstand zur Snackbar → rot „Erfassen-Knopf steigt …“
@@ -77,7 +83,11 @@ import org.robolectric.annotation.GraphicsMode
  *   passwortfeld-ohne-autofill  PasswortFeld ohne contentType → rot „Startpasswort-Maske fuellt …“
  *   startpasswort-volle-breite  Maske ohne Lesebreite → rot „Startpasswort-Maske steht auf dem Tablet …“
  *   verwalterrechte-offen       „Erweitert“ von Anfang an offen → rot „Verwalterrechte stehen eingeklappt …“
- *   kennzahlen-umbrechen        Kennzahlen auch bei 200 % als FlowRow → rot „Kennzahlen stehen …“
+ *   kennzahlen-umbrechen        Kennzahlen der Sammlung auch bei 200 % als FlowRow → rot „Kennzahlen der Sammlung …“
+ *   kennzahlen-ohne-hinweis     Pfeil am Rand nie gezeigt → rot „Kennzahlen der Sammlung …“
+ *   kennzahlen-detail-wischt    `umbrechen` überhört → rot „Kennzahlen im Detail …“
+ *   offline-in-fehlerrot        Banner wieder in tertiaryContainer (Classic: rot) → rot „Offline-Hinweis meldet …“
+ *   server-chip-ohne-aufgabe    Chip ohne Beschreibung → rot „Server-Chip nennt …“
  *   katalog-einspaltig          Katalog-Detail auch auf dem Tablet einspaltig → rot „Katalog-Detail steht …“
  *   finanzen-verlauf-zuerst     Verlauf wieder vor der Kopfkachel → rot „Finanzen nennen den Marktwert …“
  */
@@ -273,11 +283,16 @@ class GeruestUndFormularTest {
         compose.onAllNodesWithText(voll, substring = true).assertCountEquals(1)
     }
 
+    private val kennzahlen get() = listOf("12" to R.string.gallery_stat_sets, "15" to R.string.gallery_stat_units,
+        "9'090" to R.string.gallery_stat_parts, "22" to R.string.gallery_stat_minifigs,
+        "4" to R.string.gallery_stat_instructions).map { (wert, text) -> wert to ctx.getString(text) }
+
+    private fun mehrPfeil() = compose.onAllNodes(hasTestTag(ch.brickinventoryapp.ui.screens.KENNZAHLEN_MEHR),
+        useUnmergedTree = true).fetchSemanticsNodes()
+
     @Test
-    fun `Kennzahlen stehen bei 200 Prozent in einer Zeile`() {
-        val zahlen = listOf("12" to R.string.gallery_stat_sets, "15" to R.string.gallery_stat_units,
-            "9'090" to R.string.gallery_stat_parts, "22" to R.string.gallery_stat_minifigs,
-            "4" to R.string.gallery_stat_instructions).map { (wert, text) -> wert to ctx.getString(text) }
+    fun `Kennzahlen der Sammlung stehen bei 200 Prozent in einer Zeile mit Hinweis auf mehr`() {
+        val zahlen = kennzahlen
         zeige(schrift = 2f) {
             Box(Modifier.width(360.dp)) {
                 ch.brickinventoryapp.ui.screens.KennzahlenReihe {
@@ -291,6 +306,68 @@ class GeruestUndFormularTest {
             compose.onNodeWithText("$wert $text", useUnmergedTree = true).fetchSemanticsNode().positionInRoot.y
         }
         assertTrue("Kennzahlen in einer Zeile: $oben", oben.all { kotlin.math.abs(it - oben[0]) < 1f })
+        // Rechts steht noch etwas: Der Pfeil sagt es, bis ans Ende gewischt ist.
+        assertEquals("Pfeil auf weitere Kennzahlen", 1, mehrPfeil().size)
+        val (wert, text) = zahlen.last()
+        compose.onNodeWithText("$wert $text", useUnmergedTree = true).performScrollTo()
+        compose.waitForIdle()
+        assertEquals("Am Ende kein Pfeil mehr", 0, mehrPfeil().size)
+    }
+
+    @Test
+    fun `Kennzahlen im Detail brechen bei 200 Prozent um und bleiben ganz sichtbar`() {
+        val werte = listOf(ctx.getString(R.string.detail_year) to "2017", ctx.getString(R.string.detail_minifigs) to "7",
+            ctx.getString(R.string.detail_theme) to "Star Wars")
+        zeige(schrift = 2f) {
+            Box(Modifier.width(360.dp)) {
+                ch.brickinventoryapp.ui.screens.KennzahlenReihe(umbrechen = true) {
+                    werte.forEach { (label, wert) -> ch.brickinventoryapp.ui.screens.StatChipV2(label, wert) }
+                }
+            }
+        }
+        val rand = 360f * ctx.resources.displayMetrics.density
+        werte.forEach { (label, wert) ->
+            val b = compose.onNodeWithText("$label $wert", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+            assertTrue("„$label $wert“ ragt über den Rand ($b, Rand $rand)", b.right <= rand + 1f && b.width > 0f)
+        }
+        assertEquals("Umgebrochen braucht es keinen Pfeil", 0, mehrPfeil().size)
+    }
+
+    /**
+     * Offline ist kein Fehler (die Änderungen sind gesichert): Die Fläche des Banners
+     * ist nicht rot. Gemessen am Bild, einen Fleck innen am rechten Rand.
+     */
+    @Test
+    fun `Offline-Hinweis meldet keinen Fehler mit roter Flaeche`() {
+        zeige {
+            Geruest(remember { SnackbarHostState() }, offen = 3) {
+                Column { ch.brickinventoryapp.ui.components.OfflineHinweis(1_793_000_000_000L) }
+            }
+        }
+        val warten = ctx.resources.getQuantityString(R.plurals.offline_warten, 3, 3)
+        val bild = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion) and
+            hasAnyDescendant(hasText(warten)), useUnmergedTree = true).captureToImage().toPixelMap()
+        val p = bild[bild.width - 12, bild.height / 2]
+        assertTrue("Banner-Fläche rötlich: $p", p.red - p.blue < 0.08f)
+    }
+
+    /** Der Chip über der Anmeldung wechselt den Server: Das hört TalkBack als Schaltfläche. */
+    @Test
+    fun `Server-Chip nennt seine Aufgabe als Schaltflaeche`() {
+        var geaendert = 0
+        zeige(schrift = 2f) {
+            ch.brickinventoryapp.ui.screens.LoginScreen(
+                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
+                formular = AnmeldeFormular.ANMELDEN, registrierungOffen = false, kontoLaeuft = false,
+                kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> },
+                onFormular = {}, onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = { geaendert++ },
+            )
+        }
+        val chip = compose.onNodeWithContentDescription(ctx.getString(R.string.login_server_aendern, "https://brick.example.org"))
+        assertEquals(androidx.compose.ui.semantics.Role.Button, chip.fetchSemanticsNode().config.getOrNull(SemanticsProperties.Role))
+        chip.performClick()
+        compose.waitForIdle()
+        assertEquals("Ein Tipp öffnet den Serverwechsel", 1, geaendert)
     }
 
     private val katalogDetail = ch.brickinventoryapp.ui.model.KatalogDetailAnsicht(

@@ -52,7 +52,7 @@ internal fun PreisalarmeCard(
     LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
 
     SettingsCard(
-        title = stringResource(R.string.alerts_group),
+        title = stringResource(R.string.alerts_liste_titel),
         icon = Icons.Default.NotificationsActive,
     ) {
         Text(stringResource(R.string.alerts_intro),
@@ -95,19 +95,17 @@ internal fun PreisalarmeCard(
                     FinanzBild(bildUrl, imageLoader, a.name)
                     Column(Modifier.weight(1f),
                            verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                        // Erst benennen, dann setzen: Eine Zeichenkette mit
-                        // mehrzeiliger Interpolation ist gueltig und trotzdem
-                        // die Zeile, die beim naechsten Anfassen kippt.
+                        // Der Name zuerst wie in der Sammlung; Nummer und Zustand leiser
+                        // darunter. Ohne Namen trägt die Nummer die Zeile.
                         val zustand = if (a.condition == "U")
                             stringResource(R.string.condition_used)
                         else stringResource(R.string.condition_new)
-                        Text("${a.setNumber}  $zustand",
+                        Text(a.name ?: a.setNumber,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold)
-                        a.name?.let {
-                            Text(it, style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        Text(if (a.name != null) "${a.setNumber} · $zustand" else zustand,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                             AlarmZustandPlakette(a.ausgeloest)
@@ -120,7 +118,7 @@ internal fun PreisalarmeCard(
                         }
                     }
                     IconButton(onClick = { fragtLoeschen = a }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete),
+                        Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber),
                             tint = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -164,7 +162,7 @@ internal fun PreisalarmeCard(
         AlertDialog(
             onDismissRequest = { fragtLoeschen = null },
             title = { Text(stringResource(R.string.alerts_delete)) },
-            text = { Text(stringResource(R.string.alerts_confirm_delete, a.setNumber)) },
+            text = { Text(stringResource(R.string.alerts_confirm_delete, a.name ?: a.setNumber)) },
             confirmButton = {
                 TextButton(onClick = {
                     fragtLoeschen = null

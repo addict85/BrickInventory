@@ -1,24 +1,27 @@
 Gegenprobe: Beschriftung der Reiter wieder als Text ohne Zeilengrenze
 Modul: app
 Test: ch.brickinventoryapp.FeinschliffRegelnTest
-Rot: Reiterleiste
+Rot: Reiterleiste bricht
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 9bc9efb..c955ef4 100644
+index 8a3960b..e5a2527 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -253,13 +253,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>) {
-     // Jede Messung mit Überstand verkleinert die gemeinsame Grösse um einen halben
-     // Punkt, bis jedes Wort ganz in eine Zeile passt.
+@@ -272,16 +272,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, be
+     val stil = MaterialTheme.typography.labelSmall
+     val boden = stil.fontSize / LocalDensity.current.fontScale.coerceAtLeast(1f)
      val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
 -    Text(
 -        text, style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
 -        overflow = TextOverflow.Clip,
 -        onTextLayout = { l ->
--            if (l.hasVisualOverflow && aktuell > REITER_SCHRIFT_MIN) groesse.value = (aktuell.value - 0.5f).sp
+-            if (l.hasVisualOverflow) {
+-                if (aktuell.value - REITER_SCHRIFT_SCHRITT >= boden.value) groesse.value = (aktuell.value - REITER_SCHRIFT_SCHRITT).sp
+-                else beschriftet.value = false
+-            }
 -        },
 -    )
-+    Text(text, style = stil.copy(fontSize = aktuell))
++    Text(text, style = stil.copy(fontSize = aktuell), onTextLayout = { if (beschriftet.value && boden.value < 0f) groesse.value = aktuell })
  }
  
- /** Unbestimmt: Die Beschriftung beginnt bei der Grösse des Themas. */
+ /** Ohne Beschriftung trägt das Symbol den Namen des Ziels. */

@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -98,14 +99,19 @@ fun LoginScreen(
             ch.brickinventoryapp.ui.components.MarkenKopf()
             Spacer(Modifier.height(Abstaende.mittel))
 
-            // Server chip
+            // Der Chip wechselt den Server: TalkBack nennt das samt Adresse (der Chip fasst
+            // die Beschreibung mit seiner Rolle „Schaltfläche“ zusammen), sonst hörte man nur
+            // die Adresse. Beide Symbole wachsen mit der Schrift; die 48-dp-Zielfläche bringt
+            // der Chip selbst mit (minimumInteractiveComponentSize).
+            val serverAendern = stringResource(R.string.login_server_aendern, serverUrl)
             AssistChip(
                 onClick = onChangeServer,
                 // Eine Zeile mit Auslassung: Bei 200 % Schrift lief die Adresse sonst aus dem Chip.
-                label = { Text(serverUrl, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                label = { Text(serverUrl, Modifier.semantics { contentDescription = serverAendern },
+                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     style = MaterialTheme.typography.labelMedium) },
-                leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) },
-                trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(12.dp)) },
+                leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp))) },
+                trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp))) },
                 shape = Formen.chip
             )
 

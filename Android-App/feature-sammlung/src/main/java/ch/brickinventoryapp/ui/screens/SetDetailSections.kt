@@ -291,7 +291,8 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                     wert = set.storage ?: "",
                     vorrat = lagerZustand.vorrat.map { it.name },
                     onWert = { vm.setzeSetLagerort(setNumber, it) },
-                    modifier = Modifier.padding(start = Abstaende.gross).widthIn(max = 180.dp),
+                    // Der Rest der Zeile statt fester 180 dp: „No storage location“ war abgeschnitten.
+                    modifier = Modifier.padding(start = Abstaende.gross).weight(1f).widthIn(max = 320.dp),
                 )
             }
             HorizontalDivider(
@@ -382,7 +383,7 @@ fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
             set.minifigs?.let { add(labelMinifigs to "$it")  }
             set.theme?.let    { add(labelTheme    to it)     }
         }
-        if (chips.isNotEmpty()) KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
+        if (chips.isNotEmpty()) KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel), umbrechen = true) {
             chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
         }
     }

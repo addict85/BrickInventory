@@ -125,7 +125,7 @@ fun NavGraphBuilder.collectionGraph(
                 }
             }
             val ziel = this
-            ReiterGeruest(stringResource(R.string.nav_gallery), vm, navController, bottomNavItems, snackbarHostState) {
+            ReiterGeruest(stringResource(R.string.nav_collection), vm, navController, bottomNavItems, snackbarHostState) {
                 ch.brickinventoryapp.ui.components.MitZiel(ziel) {
                 GalleryScreen(
                     vm = galerieVm,
@@ -189,7 +189,7 @@ fun NavGraphBuilder.collectionGraph(
             androidx.compose.foundation.layout.BoxWithConstraints {
                 if (galerieUnten != null && ch.brickinventoryapp.ui.listeUndDetail(maxWidth.value)) {
                     val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
-                    ReiterGeruest(stringResource(R.string.nav_gallery), vm, navController, bottomNavItems, snackbarHostState) {
+                    ReiterGeruest(stringResource(R.string.nav_collection), vm, navController, bottomNavItems, snackbarHostState) {
                         ch.brickinventoryapp.ui.components.ListeUndDetail(
                             liste = {
                                 androidx.compose.runtime.CompositionLocalProvider(
@@ -241,7 +241,7 @@ fun NavGraphBuilder.collectionGraph(
                     speicher = vm.scrollMemory,
                     obenNachziehend = partsState.manualParts?.size ?: 0)
                 // Das Detail eines Teils (aus Sets oder manuell) steht auf dem Tablet neben
-                // der Liste, auf dem Telefon als Dialog bzw. eigene Seite. Hier und nicht im
+                // der Liste, auf dem Telefon als Blatt bzw. eigene Seite. Hier und nicht im
                 // Bildschirm, weil nur der Graph den NavController kennt.
                 TeileListeUndDetail(teileVm, imageLoader, state.serverUrl, navController) { oeffneManuell ->
                     PartsScreen(
@@ -361,7 +361,7 @@ fun NavGraphBuilder.collectionGraph(
  * Teile und Minifiguren auf breiten Fenstern: Liste links, Detail rechts, wie in der
  * Merkliste. Drei kleine Kacheln oben links auf leerer Fläche boten dem Tablet nichts;
  * jetzt bleibt die Liste stehen, während man Teil um Teil ansieht. Auf dem Telefon
- * bleibt es beim Dialog (Teil aus Sets) bzw. der eigenen Seite (manuell erfasst).
+ * bleibt es beim Blatt (Teil aus Sets) bzw. der eigenen Seite (manuell erfasst).
  */
 @Composable
 internal fun TeileListeUndDetail(

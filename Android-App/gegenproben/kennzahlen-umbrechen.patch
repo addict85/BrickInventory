@@ -1,18 +1,18 @@
-Gegenprobe: Kennzahlen auch bei 200 Prozent umbrechend
+Gegenprobe: Kennzahlen der Sammlung auch bei 200 Prozent umbrechend
 Modul: app
 Test: ch.brickinventoryapp.GeruestUndFormularTest
-Rot: Kennzahlen stehen bei 200 Prozent in einer Zeile
+Rot: Kennzahlen der Sammlung
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
-index d47fdf6..555caab 100644
+index 32ab610..81ce043 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
-@@ -53,7 +53,7 @@ fun GalleryStatChip(value: String, label: String, detail: String? = null) {
- fun KennzahlenReihe(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit) {
-     Surface(modifier.fillMaxWidth(), shape = Formen.leiste, color = MaterialTheme.colorScheme.surfaceContainerLow) {
+@@ -64,7 +64,7 @@ fun KennzahlenReihe(modifier: Modifier = Modifier, umbrechen: Boolean = false, i
+     val flaeche = MaterialTheme.colorScheme.surfaceContainerLow
+     Surface(modifier.fillMaxWidth(), shape = Formen.leiste, color = flaeche) {
          val innen = Modifier.padding(horizontal = Abstaende.rand, vertical = Abstaende.klein)
--        if (ch.brickinventoryapp.ui.components.grosseSchrift()) Row(
-+        if (false) Row(
-             innen.horizontalScroll(rememberScrollState()),
-             horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
-         ) { inhalt() } else FlowRow(
+-        if (ch.brickinventoryapp.ui.components.grosseSchrift() && !umbrechen) {
++        if (false && !umbrechen) {
+             val rolle = rememberScrollState()
+             Box(Modifier.fillMaxWidth()) {
+                 Row(

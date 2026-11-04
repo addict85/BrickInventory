@@ -9,12 +9,13 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -204,19 +205,31 @@ fun SetupScreen(
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))
-            // Ein Hinweis mit Anleitung, kein Fehler: in der Infofarbe (primaryContainer)
-            // mit Symbol. Im Fehlerrot las sich der lange Text wie eine Störung.
+            // Ein Hinweis mit Anleitung, kein Fehler: neutrale Fläche mit Rahmen und Schloss,
+            // denn es geht um Verschlüsselung. primaryContainer war in Noppe rosa und sah
+            // mit dem Infosymbol nach Störung aus. Die Schritte als Liste statt Fliesstext.
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Row(Modifier.padding(Abstaende.gross), horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                    Icon(Icons.Default.Info, null)
+                    Icon(Icons.Default.Lock, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(24.dp)),
+                        tint = MaterialTheme.colorScheme.primary)
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.setup_altbestand_text, currentUrl),
                             style = MaterialTheme.typography.bodyMedium)
+                        listOf(R.string.setup_altbestand_schritt_qr, R.string.setup_altbestand_schritt_adresse)
+                            .forEachIndexed { i, schritt ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                                    Text("${i + 1}.", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                    Text(stringResource(schritt), style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        Text(stringResource(R.string.setup_altbestand_danach), style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }

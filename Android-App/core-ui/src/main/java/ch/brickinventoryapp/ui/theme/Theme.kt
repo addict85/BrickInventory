@@ -374,7 +374,9 @@ internal fun akzentflaechen(theme: String, dunkel: Boolean, s: ColorScheme): Akz
         leiste = if (stein) s.primary else s.surface, aufLeiste = if (stein) s.onPrimary else s.onSurface,
         detailLeiste = if (stein) s.secondary else s.surface, aufDetailLeiste = if (stein) s.onSecondary else s.onSurface,
         markt = markt, aufMarkt = if (stein) Color.White else if (nacht) s.onSurface else s.onPrimary,
-        kauf = s.surfaceContainerHigh, aufKauf = s.onSurface,
+        // Kaufpreis wie G&V auf surface mit Rand: zwei Stufen (Marktwert hervorgehoben,
+        // der Rest ruhig) statt dreier Kartenstile nebeneinander.
+        kauf = s.surface, aufKauf = s.onSurface,
     )
 }
 

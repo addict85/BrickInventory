@@ -26,6 +26,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -263,6 +265,13 @@ fun LazyListScope.financeCategoryFilter(
     onUmschalten: (String) -> Unit,
     onAlle: () -> Unit,
 ) {
+    item {
+        // Beschriftet und direkt über den Zeilen: Unter dem Diagramm war unklar, ob die
+        // Chips auch die Kurve filtern. Sie wählen nur die Positionen darunter.
+        Text(stringResource(R.string.finance_positionen), style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = Abstaende.klein).semantics { heading() })
+    }
     item {
         LazyRow(
             contentPadding = PaddingValues(horizontal = 0.dp),

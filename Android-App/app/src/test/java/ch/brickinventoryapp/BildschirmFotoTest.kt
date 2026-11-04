@@ -15,6 +15,8 @@ import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.GutscheinUiState
+import ch.brickinventoryapp.ui.KontoUiState
+import ch.brickinventoryapp.ui.ZweiterFaktorUiState
 import ch.brickinventoryapp.ui.screens.FinanceScreen
 import ch.brickinventoryapp.ui.screens.GalleryScreen
 import ch.brickinventoryapp.ui.screens.GutscheineCard
@@ -24,6 +26,8 @@ import ch.brickinventoryapp.ui.screens.MinifigsScreen
 import ch.brickinventoryapp.ui.screens.PartsScreen
 import ch.brickinventoryapp.ui.screens.SetDetailScreen
 import ch.brickinventoryapp.ui.screens.SetupScreen
+import ch.brickinventoryapp.ui.screens.StartpasswortMaske
+import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -215,6 +219,29 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     @Test
     fun gutscheine() {
         foto("gutscheine") { Gutscheine() }
+    }
+
+    @Test
+    fun registrieren() {
+        foto("registrieren") {
+            LoginScreen(
+                serverUrl = "https://brick.example.org", isLoading = false, error = null, codeNoetig = false,
+                formular = AnmeldeFormular.REGISTRIEREN, registrierungOffen = true, kontoLaeuft = false,
+                kontoMeldung = null, kontoFehler = null, onLogin = { _, _, _ -> }, onFormular = {},
+                onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
+            )
+        }
+    }
+
+    /** Die Pflichtmasken sind Sackgassen bis zum Ende — deshalb in jedem Design. */
+    @Test
+    fun startpasswort() {
+        foto("startpasswort") { StartpasswortMaske(KontoUiState(), { _, _, _ -> }, {}) }
+    }
+
+    @Test
+    fun zweiterFaktor() {
+        foto("zweiter-faktor") { ZweiterFaktorPflichtMaske(ZweiterFaktorUiState(aktiv = false), {}, {}, {}, {}) }
     }
 }
 

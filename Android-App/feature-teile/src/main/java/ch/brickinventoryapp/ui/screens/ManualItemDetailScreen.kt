@@ -182,7 +182,7 @@ fun ManualItemDetailScreen(
                     part?.colorName?.let { add(labelColor to farbe(it)) }
                     fig?.blFigNumber?.let { add("BrickLink" to it) }
                 }
-                KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel)) {
+                KennzahlenReihe(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.mittel), umbrechen = true) {
                     chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
                 }
             }
@@ -295,7 +295,7 @@ fun ManualItemDetailScreen(
                             vorrat = lagerZustand.eigene.map { it.name },
                             onWert = { vm.setzeManuellenLagerort(type, id, colorId, it) },
                             modifier = Modifier.padding(start = Abstaende.gross)
-                                .widthIn(max = 180.dp),
+                                .weight(1f).widthIn(max = 320.dp),
                         )
                     }
 

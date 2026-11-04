@@ -52,7 +52,7 @@ fun ProduktBild(
     ersatzGroesse: Dp = 40.dp,
     onState: ((AsyncImagePainter.State) -> Unit)? = null,
     /**
-     * Die ganze Fläche als Bildgrund (Sets): Setbilder stehen auf Weiss, und mit
+     * Die ganze Fläche als Bildgrund (Kacheln): Produktbilder stehen auf Weiss, und mit
      * weissem Grund geht ihr Rand in der Fläche auf, statt als Kasten in der Karte
      * zu stehen. Im Dunkeln liegt ein Schleier darüber, damit die Fläche nicht blendet.
      */
@@ -81,7 +81,7 @@ fun ProduktBild(
                 contentDescription = contentDescription,
                 modifier = Modifier.matchParentSize().padding(innenAbstand),
                 contentScale = contentScale,
-                // Ohne Bildgrund (Teile, Figuren, Katalog) dämpft der Schleier nur die Bildpunkte
+                // Ohne Bildgrund (Katalog, kleine Vorschauen) dämpft der Schleier nur die Bildpunkte
                 // selbst; ein Rechteck darüber dunkelte auch die Karte um ein freigestelltes Bild.
                 colorFilter = if (dunkel && !bildgrund) DAEMPFUNG_DUNKEL else null,
                 onState = { st ->

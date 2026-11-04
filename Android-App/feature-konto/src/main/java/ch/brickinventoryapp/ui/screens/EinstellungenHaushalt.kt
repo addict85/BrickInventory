@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ressourcen.R
@@ -220,13 +221,16 @@ internal fun HouseholdCard(
     }
 }
 
-/** Ein verknüpftes Konto mit seiner einen Aktion. */
+/** Ein verknüpftes Konto mit seiner einen Aktion; TalkBack hört „Entfernen: lena“, nicht nur „Entfernen“. */
 @Composable
 private fun KontoZeile(name: String, aktion: String, onAktion: () -> Unit) {
+    val beschreibung = stringResource(R.string.aktion_fuer, aktion, name)
     Row(verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-        TextButton(onClick = onAktion) { Text(aktion, color = MaterialTheme.colorScheme.error) }
+        TextButton(onClick = onAktion, modifier = Modifier.semantics { contentDescription = beschreibung }) {
+            Text(aktion, color = MaterialTheme.colorScheme.error)
+        }
     }
 }
