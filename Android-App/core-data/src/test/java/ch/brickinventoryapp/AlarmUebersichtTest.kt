@@ -67,8 +67,8 @@ import org.junit.Test
  *        → „vor dem Loeschen wird gefragt" rot
  *   d) `border` der Plakette auf null — nur noch Farbe traegt den Unterschied
  *        → „der Alarmzustand steht als Plakette da" rot
- *   e) 'alerts_fired' zurueck auf „○ hat gemeldet" — kein Wortpaar mehr
- *        → „die beiden Alarmzustaende sind als Wortpaar erkennbar" rot
+ *   e) 'alerts_fired' zurueck auf „○ hat gemeldet" — Zeichen statt Wort
+ *        → „die beiden Alarmzustaende sagen ohne Farbe und Zeichen, was gilt" rot
  *
  * Ergebnis: 501 Tests, GENAU 5 rot — einer je Eingriff, keiner zusaetzlich.
  * Jeder Anker war vorher auf Eindeutigkeit geprueft (je genau 1 Fundstelle);
@@ -326,43 +326,29 @@ class AlarmUebersichtTest {
     }
 
     /**
-     * Das Wort ist ein Paar — „scharf" gegen „unscharf".
-     *
-     * Vorher stand „scharf" gegen „hat gemeldet": zwei Aussagen ueber
-     * verschiedene Dinge. Wer die Farbe nicht lesen kann, musste daraus
-     * schliessen, dass das eine das Gegenteil des anderen sei.
-     *
-     * Geprueft wird in BEIDEN Sprachdateien — genau hier wurde schon einmal
-     * eine Seite nachgezogen und die andere vergessen.
+     * Ohne Farbe muss der Text allein sagen, was gilt: „Aktiv“ gegen „Ausgelöst –
+     * wartet, bis der Preis zurückkehrt“. Kreiszeichen las TalkBack als „schwarzer
+     * Kreis“ vor (UI-Prüfung 10, N4). Geprüft in BEIDEN Sprachdateien.
      */
     @Test
-    fun `die beiden Alarmzustaende sind als Wortpaar erkennbar`() {
+    fun `die beiden Alarmzustaende sagen ohne Farbe und Zeichen, was gilt`() {
         for (datei in listOf("values/strings.xml", "values-de/strings.xml")) {
-            val xml = java.io.File(Quellen.res, "$datei").readText()
-            // Kein dreifaches Anfuehrungszeichen und keine Konstante dafuer:
-            // Ein einfaches Muster mit maskierten Anfuehrungszeichen reicht,
-            // und der erste Entwurf hatte hier tatsaechlich die drei Zeichen
-            // IN das Muster geschrieben statt um es herum.
+            val xml = java.io.File(Quellen.res, datei).readText()
             fun text(name: String) =
                 Regex("<string name=\"" + name + "\">(.*?)</string>")
                     .find(xml)?.groupValues?.get(1) ?: ""
-            val scharf = text("alerts_armed")
-            val unscharf = text("alerts_fired")
-            assert(scharf.isNotBlank() && unscharf.isNotBlank()) {
-                "Die Zustandstexte fehlen in $datei."
+            val aktiv = text("alerts_armed")
+            val ausgeloest = text("alerts_fired")
+            assert(aktiv.isNotBlank() && ausgeloest.isNotBlank()) { "Die Zustandstexte fehlen in $datei." }
+            assert(aktiv.lowercase() != ausgeloest.lowercase()) { "Beide Zustaende heissen in $datei gleich." }
+            // Geometrische Formen (U+25A0–U+25FF) sind Bild, nicht Wort.
+            for (t in listOf(aktiv, ausgeloest)) {
+                assert(t.none { it in '\u25A0'..'\u25FF' }) { "„$t“ in $datei traegt ein Sinnbildzeichen." }
+                assert(t.count { it.isLetter() } >= 4) { "„$t“ in $datei ist kein Wort." }
             }
-            // Gefuelltes gegen hohles Zeichen — der dritte Unterschied neben
-            // Wort und Flaeche.
-            assert(scharf.contains("\u25CF")) { "In $datei fehlt das gefuellte Zeichen." }
-            assert(unscharf.contains("\u25CB")) { "In $datei fehlt das hohle Zeichen." }
-            // Das eine Wort muss im anderen stecken (scharf/unscharf,
-            // armed/not armed): Ohne Farbe ist das der einzige Hinweis darauf,
-            // dass der eine Zustand das Gegenteil des anderen ist.
-            val a = scharf.filter { it.isLetter() }.lowercase()
-            val b = unscharf.filter { it.isLetter() }.lowercase()
-            assert(a.isNotEmpty() && b.contains(a)) {
-                "Die beiden Zustaende in $datei sind kein erkennbares Gegensatzpaar."
-            }
+            // Der ausgeloeste Zustand sagt, worauf er wartet — sonst bliebe offen,
+            // ob der Alarm noch etwas tut.
+            assert(ausgeloest.trim().contains(' ')) { "„$ausgeloest“ in $datei erklaert nicht, was als Naechstes geschieht." }
         }
     }
 
