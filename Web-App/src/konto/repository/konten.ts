@@ -28,16 +28,10 @@ export async function nameVergeben(name: string, ausser: number): Promise<boolea
     'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2', [name, ausser]);
 }
 
-/** Eine offene Registrierung hält ihre Adresse nur so lange wie ihr erster Link.
- * Ein erneuerter Link verlängert das nicht, sonst hielte ein Fremder sie beliebig. */
-export const REGISTRIERUNG_HAELT_STD = 24;
-const belegt = (u: string) => `(${u}.email_verified OR ${u}.is_admin OR NOT ${u}.registrierung_offen
-  OR ${u}.created_at > NOW() - make_interval(hours => ${REGISTRIERUNG_HAELT_STD}))`;
-const VERFALLENE_REGISTRIERUNG = `DELETE FROM users u WHERE LOWER(u.email) = LOWER($1) AND u.id <> $2 AND NOT ${belegt('u')}`;
-
+/** Nur users.email zählt: Eine Registrierung oder Profiländerung legt ihre Adresse
+ * erst nach email_neu, vergeben wird sie mit der ersten Bestätigung. */
 export async function emailVergeben(email: string, ausser: number): Promise<boolean> {
-  return !!await db.get(`SELECT id FROM users u WHERE (LOWER(u.username) = LOWER($1)
-    OR (LOWER(u.email) = LOWER($1) AND ${belegt('u')})) AND u.id != $2`, [email, ausser]);
+  return nameVergeben(email, ausser);
 }
 
 /** Die Namen gehen in die Anweisung, nicht als Parameter — deshalb eine feste Liste. */
@@ -67,11 +61,10 @@ export async function uebernimmEmailNeu(hash: string): Promise<{ id: number; ok:
     const neu = await tx.get<{ email_neu: string }>(
       'SELECT email_neu FROM users WHERE id = $1 AND email_neu_token = $2 FOR UPDATE', [k.id, hash]);
     if (!neu) return false;
-    await tx.run(VERFALLENE_REGISTRIERUNG, [neu.email_neu, k.id]);
     if (await tx.get('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
       [neu.email_neu, k.id])) return false;
-    await tx.run(`UPDATE users SET email = email_neu, email_verified = true, ${OHNE_EMAIL_NEU}, ${OHNE_RUECKSETZLINK}
-                   WHERE id = $1`, [k.id]);
+    await tx.run(`UPDATE users SET email = email_neu, email_verified = true, registrierung_offen = false,
+                   ${OHNE_EMAIL_NEU}, ${OHNE_RUECKSETZLINK} WHERE id = $1`, [k.id]);
     return true;
   }).catch((e: { code?: string }) => { if (e?.code === '23505') return false; throw e; });
   if (!ok) await db.run(`UPDATE users SET ${OHNE_EMAIL_NEU} WHERE id = $1 AND email_neu_token = $2`, [k.id, hash]);
@@ -80,7 +73,8 @@ export async function uebernimmEmailNeu(hash: string): Promise<{ id: number; ok:
 
 /** Altbestand aus Migration 0096: ausstehend ohne gültigen Link. */
 export async function ausstehendOhneLink(): Promise<number[]> {
-  return (await db.all<{ id: number }>('SELECT id FROM users WHERE email_neu IS NOT NULL AND email_neu_bis IS NULL ORDER BY id'))
+  return (await db.all<{ id: number }>(
+    'SELECT id FROM users WHERE email_neu IS NOT NULL AND email_neu_bis IS NULL AND NOT registrierung_offen ORDER BY id'))
     .map(z => z.id);
 }
 
@@ -172,17 +166,17 @@ export function loeseQrTokenEin(hash: string): Promise<{ user_id: number; token_
 }
 
 export function kontoMitEmail(email: string): Promise<Omit<KontoKurz, 'must_change_password'> & { email: string } | undefined> {
-  return db.get(`SELECT id, username, is_admin, email FROM users u WHERE LOWER(email) = LOWER($1) AND ${belegt('u')}`, [email]);
+  return db.get('SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
 }
 
 /** Ohne RETURNING: Die Kompatschicht hängt an ein INSERT ohne ON CONFLICT
  * selbst `ON CONFLICT DO NOTHING` an, dahinter wäre RETURNING ein Syntaxfehler. */
 export async function registriereKonto(k: { username: string; email: string; first_name?: string | null | undefined;
   last_name?: string | null | undefined; hash: string; tokenHash: string; bis: Date }): Promise<number | null> {
-  await db.run(VERFALLENE_REGISTRIERUNG, [k.email, 0]);
   await db.run(
-    'INSERT INTO users (username, email, first_name, last_name, password_hash, is_admin, is_active, email_verified, verification_token, token_expires, registrierung_offen) VALUES ($1,$2,$3,$4,$5,false,true,false,$6,$7,true)',
-    [k.username, k.email, k.first_name || null, k.last_name || null, k.hash, k.tokenHash, k.bis]);
+    `INSERT INTO users (username, email_neu, email_neu_token, email_neu_bis, first_name, last_name, password_hash,
+                        is_admin, is_active, email_verified, registrierung_offen) VALUES ($1,$2,$3,$4,$5,$6,$7,false,true,false,true)`,
+    [k.username, k.email, k.tokenHash, k.bis, k.first_name || null, k.last_name || null, k.hash]);
   const neu = await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [k.username]);
   return neu?.id ?? null;
 }
@@ -202,13 +196,16 @@ export async function setzeRuecksetzTokenWennFrei(id: number, hash: string, guel
     [hash, gueltigMin, id, pauseMin])).changes;
 }
 
-/** Wie setzeRuecksetzTokenWennFrei, für den Bestätigungslink eines aktiven, unbestätigten Kontos. */
+/** Wie setzeRuecksetzTokenWennFrei. Nur wenn genau eine offene Registrierung die Adresse
+ * nennt: Bei mehreren ginge ein Link zu einem fremd angelegten Konto an ihren Inhaber. */
 export function erneuereEmailTokenWennFrei(email: string, hash: string, gueltigStd: number, pauseMin: number) {
   return db.get<{ id: number; email: string }>(
-    `UPDATE users SET verification_token = $2, token_expires = NOW() + make_interval(hours => $3::int)
-      WHERE LOWER(email) = LOWER($1) AND is_active AND NOT email_verified
-        AND (token_expires IS NULL OR token_expires < NOW() + make_interval(hours => $3::int, mins => -$4::int))
-      RETURNING id, email`, [email, hash, gueltigStd, pauseMin]);
+    `UPDATE users u SET email_neu_token = $2, email_neu_bis = NOW() + make_interval(hours => $3::int)
+       FROM (SELECT MIN(id) AS id FROM users WHERE registrierung_offen AND LOWER(email_neu) = LOWER($1)
+             HAVING COUNT(*) = 1) e
+      WHERE u.id = e.id AND u.is_active
+        AND (u.email_neu_bis IS NULL OR u.email_neu_bis < NOW() + make_interval(hours => $3::int, mins => -$4::int))
+      RETURNING u.id, u.email_neu AS email`, [email, hash, gueltigStd, pauseMin]);
 }
 
 export function kontoNachRuecksetzToken(hash: string): Promise<{ id: number } | undefined> {

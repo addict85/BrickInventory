@@ -127,7 +127,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
 
   await t.test('unbestätigt: dieselbe Absage, neuer Link ohne Kontoauskunft', async () => {
     const adresse = `deakt_${process.pid}@example.org`;
-    await db.run('UPDATE users SET email = $2, email_verified = false, verification_token = NULL, token_expires = NULL WHERE id = $1', [nutzer, adresse]);
+    await db.run('UPDATE users SET email = NULL, email_neu = $2, registrierung_offen = true WHERE id = $1', [nutzer, adresse]);
     const a = await anmelden(NUTZER);
     const falsch = await rufe('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
     assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'unbestätigt antwortet wie ein falsches Passwort');
@@ -136,12 +136,13 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async (t) => {
     const bekannt = await erneut(adresse.toUpperCase());
     assert.deepEqual([bekannt.status, bekannt.body], [unbekannt.status, unbekannt.body], 'die Antwort verrät das Konto');
     assert.equal(bekannt.status, 200);
-    const z = await db.get('SELECT verification_token, token_expires > NOW() + interval \'23 hours\' AS frisch FROM users WHERE id = $1', [nutzer]);
-    assert.ok(z.verification_token && z.frisch, 'kein neuer Link für das unbestätigte Konto');
+    const z = await db.get('SELECT email_neu_token, email_neu_bis > NOW() + interval \'23 hours\' AS frisch FROM users WHERE id = $1', [nutzer]);
+    assert.ok(z.email_neu_token && z.frisch, 'kein neuer Link für das unbestätigte Konto');
     await erneut(adresse);
-    assert.equal((await db.get('SELECT verification_token FROM users WHERE id = $1', [nutzer])).verification_token,
-      z.verification_token, 'ein zweiter Link sofort danach');
-    await db.run('UPDATE users SET email = NULL, email_verified = true, verification_token = NULL, token_expires = NULL WHERE id = $1', [nutzer]);
+    assert.equal((await db.get('SELECT email_neu_token FROM users WHERE id = $1', [nutzer])).email_neu_token,
+      z.email_neu_token, 'ein zweiter Link sofort danach');
+    await db.run(`UPDATE users SET email_verified = true, registrierung_offen = false, email_neu = NULL, email_neu_token = NULL,
+      email_neu_bis = NULL WHERE id = $1`, [nutzer]);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   });
 

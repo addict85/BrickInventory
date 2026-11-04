@@ -55,6 +55,7 @@ const _key = (ip: string, name: unknown) => `login|${drosselAdresse(ip)}|${einze
 const _adressKey = (ip: string) => `login-adresse|${drosselAdresse(ip)}`;
 const _nameKey = (name: unknown) => `login-name|${einzelwert(name).toLowerCase()}`;
 const _bekanntKey = (ip: string, name: unknown) => `login-bekannt|${drosselAdresse(ip)}|${einzelwert(name).toLowerCase()}`;
+const _erfolgKey = (ip: string, kennung: string) => `login-erfolg|${drosselAdresse(ip)}|${kennung}`;
 
 function _prune() {
   if (_attempts.size <= 5000) return;
@@ -208,11 +209,18 @@ export async function recordLoginSuccess(ip: string, username: unknown): Promise
   // Fehlversuchen gegen andere Konten nicht zurücksetzen.
   await _freigeben(_adressKey(ip));
   await _bump(_bekanntKey(ip, kennung), BEKANNT_MIN);
+  await _bump(_erfolgKey(ip, kennung), WINDOW_MIN);
 }
 
-/** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet. */
+/** Weiche Grenze: Wer sich öfter anmeldet, verliert nur den Vorrang. Eine harte träfe
+ * den Inhaber, und gegen die Last wirken schon Sperren und Schranke. */
+export const ERFOLGE_MIT_VORRANG = 30;
+
+/** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet, und nicht zu oft. */
 export async function bekannteAnmeldung(ip: string, username: unknown): Promise<boolean> {
-  return !!await _read(_bekanntKey(ip, await kontoKennung(username)), BEKANNT_MIN);
+  const kennung = await kontoKennung(username);
+  if (!await _read(_bekanntKey(ip, kennung), BEKANNT_MIN)) return false;
+  return ((await _read(_erfolgKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < ERFOLGE_MIT_VORRANG;
 }
 
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */

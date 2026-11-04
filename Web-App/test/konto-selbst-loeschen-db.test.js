@@ -13,7 +13,7 @@
  *      „unbestätigte Registrierungen …“ (das Konto mit neuer Adresse ist weg)
  *   D  der Schritt fehlt in aufraeumenTaeglich() → rot: dieselbe Prüfung
  *      (die alte Registrierung bleibt)
- * Gemessen grün blieb: bestaetigeEmail() ohne `registrierung_offen=false` —
+ * Gemessen grün blieb (04.11.2026): uebernimmEmailNeu() ohne `registrierung_offen = false` —
  * das Löschen verlangt zusätzlich NOT email_verified.
  *
  * REQUIRE_DB=1.

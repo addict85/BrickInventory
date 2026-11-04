@@ -23,11 +23,12 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async (t) => {
   if (app.grund) { t.skip(app.grund); return; }
   const neuerLink = async (uid) => {
     const roh = crypto.randomBytes(32).toString('hex');
-    await app.db.run(`UPDATE users SET email_verified = false, verification_token = $2,
-      token_expires = NOW() + INTERVAL '1 day' WHERE id = $1`, [uid, crypto.createHash('sha256').update(roh).digest('hex')]);
+    await app.db.run(`UPDATE users SET email_neu = $3, email_neu_token = $2, email_neu_bis = NOW() + INTERVAL '1 day' WHERE id = $1`,
+      [uid, crypto.createHash('sha256').update(roh).digest('hex'), `neu${uid}_${process.pid}@example.org`]);
     return `http://127.0.0.1:${app.port}/verify?token=${roh}`;
   };
-  const bestaetigt = async (uid) => (await app.db.get('SELECT email_verified FROM users WHERE id = $1', [uid])).email_verified;
+  const bestaetigt = async (uid) => (await app.db.get(
+    'SELECT email_neu IS NULL AND email IS NOT NULL AND email_verified AS ok FROM users WHERE id = $1', [uid])).ok;
 
   await t.test('angemeldet (neue Adresse im Profil): erst der Knopf, dann die Anwendung', async () => {
     await app.b.tab('Page.navigate', { url: await neuerLink(app.uid) });
@@ -40,8 +41,8 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async (t) => {
   });
 
   await t.test('abgemeldet: die Erfolgsmeldung steht über der Anmeldung', async (st) => {
-    const zweiter = (await app.db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
-      VALUES ($1, $2, 'x', true, false) RETURNING id`, [`bestaetigen2_${process.pid}`, `b2_${process.pid}@example.org`])).id;
+    const zweiter = (await app.db.get(`INSERT INTO users (username, password_hash, is_active, registrierung_offen)
+      VALUES ($1, 'x', true, true) RETURNING id`, [`bestaetigen2_${process.pid}`])).id;
     st.after(() => app.db.run('DELETE FROM users WHERE id = $1', [zweiter]));
     await app.b.auswerten(`fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => true)`);
     const link = await neuerLink(zweiter);

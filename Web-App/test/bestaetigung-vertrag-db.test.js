@@ -142,7 +142,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async (t) => {
       .filter(f => f.endsWith('.ts')).concat(path.join(ROOT, 'server.ts'));
     const treffer = dateien.filter(f => /\bbcrypt\.compare\(/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
       .map(f => path.relative(ROOT, f).replace(/\\/g, '/')).sort();
-    assert.deepEqual(treffer, ['src/konto/auth.ts', 'src/konto/passwortBestaetigung.ts']);
+    assert.deepEqual(treffer, ['src/konto/bcryptPool.ts'], 'nur der Rückfall des Pools; alle anderen über passwortPasst()');
   });
 
   await t.test('ohne Marke keine Bestätigung', async () => {

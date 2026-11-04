@@ -145,6 +145,19 @@ export async function loescheTokensDesKontos(userId: number, ausser: string | nu
   else await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
 }
 
+/** Behält die `behalten` zuletzt benutzten neben `eigene`; die übrigen fallen. */
+export async function kappeSitzungen(userId: number, eigene: string, behalten: number): Promise<number> {
+  return (await db.run(`DELETE FROM user_sessions WHERE sid IN (SELECT sid FROM user_sessions
+    WHERE sess::jsonb->>'userId' = $1 AND sid <> $2 ORDER BY expire DESC OFFSET $3)`, [String(userId), eigene, behalten])).changes || 0;
+}
+
+/** Zählt nur Tokens ohne Nachfolger: Ein getauschter in seiner Überlappung ist dasselbe Gerät. */
+export async function kappeTokens(userId: number, eigener: string, behalten: number): Promise<number> {
+  return (await db.run(`DELETE FROM api_tokens WHERE token IN (SELECT token FROM api_tokens
+    WHERE user_id = $1 AND token <> $2 AND ersetzt_durch IS NULL
+    ORDER BY COALESCE(last_used, created_at) DESC OFFSET $3)`, [userId, eigener, behalten])).changes || 0;
+}
+
 export async function loescheSitzungenDesKontos(userId: number, ausser: string | null = null): Promise<void> {
   if (ausser === null) await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(userId)]);
   else await db.run("DELETE FROM user_sessions WHERE sess::jsonb->>'userId' = $1 AND sid IS DISTINCT FROM $2",
@@ -186,16 +199,6 @@ export async function loescheUngenutzte(leerlaufTage: number): Promise<number> {
     `DELETE FROM api_tokens
       WHERE expires_at IS NULL AND NOT never_expires
         AND COALESCE(last_used, created_at) < NOW() - make_interval(days => $1)`, [leerlaufTage])).changes || 0;
-}
-
-export function kontoZuEmailToken(hash: string) {
-  return db.get<{ id: number }>(
-    'SELECT id FROM users WHERE verification_token = $1 AND token_expires > NOW() AND NOT email_verified', [hash]);
-}
-
-/** Token-Felder mit abräumen: Ein zweiter Klick meldet keinen zweiten Erfolg. */
-export async function bestaetigeEmail(id: number): Promise<void> {
-  await db.run('UPDATE users SET email_verified=true, verification_token=NULL, token_expires=NULL, registrierung_offen=false WHERE id=$1', [id]);
 }
 
 /** Zwei Treffer (ein Name gleich der Adresse eines anderen Kontos, nur im

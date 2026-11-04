@@ -4,7 +4,9 @@ import type { KatalogTeil, ListenTeil, SetStamm } from '../dienst';
 import * as db from '../../../db/database';
 
 export function setStamm(setNumber: string) {
-  return db.get<SetStamm>('SELECT name, year, theme, pieces, image_url, image_local FROM set_stamm WHERE set_number = $1', [setNumber]);
+  return db.get<SetStamm>(`SELECT name, year, theme, pieces, image_url, image_local,
+    name = 'Set ' || set_number AND year IS NULL AND theme IS NULL AND pieces IS NULL AS platzhalter
+    FROM set_stamm WHERE set_number = $1`, [setNumber]);
 }
 
 export function setKatalog(setNumber: string) {

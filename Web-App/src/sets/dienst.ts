@@ -30,6 +30,8 @@ import * as repo from './repository/setDetail';
 export interface SetStamm {
   name: string | null; year: number | null; theme: string | null; pieces: number | null;
   minifigs?: number | null; image_url: string | null; image_local: string | null;
+  /** Von addSet ohne Katalogtreffer angelegt: sagt nur, dass irgendein Konto die Nummer erfasst hat. */
+  platzhalter?: boolean;
 }
 
 /** Ohne Eintrag null. */

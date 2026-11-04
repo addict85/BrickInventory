@@ -1616,3 +1616,76 @@ Telefon die Webseite.
   zuletzt von derselben Adresse (IPv6: /64) mit demselben Namen gelang, vorne
   in die Schlange und wird nicht wegen deren Länge abgewiesen. Eine Flut aus
   fremden Adressen sperrt bekannte Geräte so nicht aus. Nichts zu tun.
+
+## 39. Runde 13 – Registrierung ohne Adresssperre, Obergrenzen, Sicherung
+
+**1. Eine Registrierung belegt ihre Adresse erst mit der Bestätigung**
+
+- `POST /api/v1/auth/register` legt die Adresse wie eine Profiländerung nur
+  als *ausstehend* ab (`users.email_neu`, Link in `email_neu_token`, 24
+  Stunden). `users.email` bleibt bis zum Klick leer. Mehrere offene
+  Registrierungen mit derselben Adresse dürfen nebeneinander stehen; die
+  erste Bestätigung gewinnt, jede spätere antwortet `email_vergeben`. Damit
+  gilt Abschnitt 38.1 („eine offene Registrierung jünger als 24 Stunden
+  belegt“) nicht mehr: Eine fremde, unbestätigte Registrierung sperrt
+  niemanden.
+- Unverändert: Eine offene Registrierung meldet sich nicht an (Absage wie
+  ein falsches Passwort), *Passwort vergessen* findet nur bestätigte
+  Adressen, der Aufräumlauf löscht offene Registrierungen nach 7 Tagen, und
+  die Antwort der Registrierung verrät nichts. Die Mail „Registrierung mit
+  deiner E-Mail-Adresse“ geht nur noch an bestätigte Adressen und nennt
+  keinen Benutzernamen mehr.
+- *Bestätigung erneut senden* schickt einen neuen Link nur, wenn genau eine
+  offene Registrierung die Adresse nennt; sonst ginge ein Link zu einem fremd
+  angelegten Konto mit. Wer dann keinen gültigen Link hat, registriert sich
+  unter einem anderen Namen neu.
+- Migration 0097 verschiebt bestehende offene Registrierungen in diese Form
+  (ein gültiger Link gilt weiter). `verification_token` und `token_expires`
+  werden nicht mehr benutzt. Nichts zu tun; die Android-App registriert
+  unverändert (dieselbe Anfrage, dieselbe Antwort).
+
+**2. Höchstens 50 Sitzungen und 50 Tokens je Konto**
+
+- Bei jeder Anmeldung fallen über 50 hinaus die am längsten unbenutzten
+  Browser-Sitzungen weg, ebenso bei jedem neuen Token die am längsten
+  unbenutzten App-Tokens (ein gerade getauschter in seiner Überlappung zählt
+  nicht). Ein so entferntes Gerät muss sich neu anmelden.
+- Weiche Grenze: Nach 30 erfolgreichen Anmeldungen in 15 Minuten von
+  derselben Adresse mit demselben Konto entfällt der Vorrang aus Abschnitt
+  38.6; gesperrt wird nichts.
+
+**3. Passwortprüfung in Worker-Threads**
+
+- bcrypt rechnet nicht mehr im Hauptthread, sondern in höchstens so vielen
+  Worker-Threads, wie die Schranke gleichzeitig zulässt (Kerne, mindestens
+  2). Sie entstehen erst bei Bedarf; jeder kostet einige MB Speicher und
+  einen Thread (innerhalb von `pids_limit` und `mem_limit` reichlich Platz).
+  Startet ein Worker nicht, meldet das Protokoll `[bcrypt] Worker-Thread
+  startet nicht …`, und geprüft wird wie bisher im Hauptthread.
+
+**4. `backup.sh` bricht ab, statt unvollständig zu sichern**
+
+- Vor dem Dump prüft das Skript, ob alles unter `data/` lesbar ist, und
+  bricht sonst mit `data/ ist nicht vollständig lesbar (…)` und Exit 1 ab.
+  Ein Fehler von `tar` (auch „Datei hat sich beim Lesen geändert“) beendet
+  es ebenfalls mit Exit 1; das halbe Archiv wird entfernt.
+- Das Skript muss als **root** oder unter der UID des Dienstes (`brickinv`)
+  laufen, weil der Dienst seit Abschnitt 38.4 nur für sich lesbar schreibt.
+  Wer es bisher unter einem Benutzer der Gruppe `docker` aufrief, bekommt
+  jetzt diesen Fehler statt einer stillen Lücke: Cron-Eintrag auf root
+  umstellen (`sudo crontab -e`, Beispiel im Kopf von `scripts/backup.sh`).
+
+**5. `GET /api/v1/sets/info/:nummer` und fremde Platzhalter**
+
+- Ein Katalog-Platzhalter („Set <Nummer>“ ohne Jahr, Thema und Teilezahl),
+  den ein anderes Konto beim Erfassen einer unbekannten Nummer anlegte,
+  antwortet wie eine nie erfasste Nummer (`im_katalog: false`). Eigene Sets,
+  Sets des Haushalts und echte Katalogeinträge antworten wie bisher.
+
+**6. Bewusst unverändert: Vergabeprüfung beim Ändern der Adresse**
+
+- `PUT /profile` meldet weiter `email_vergeben`, wenn eine Adresse bestätigt
+  einem anderen Konto gehört. Die Auskunft verlangt Anmeldung, Passwort und
+  gegebenenfalls den zweiten Faktor und ist auf 10 je Stunde und Konto
+  gebremst; eine stille Antwort liesse den Nutzer dagegen im Unklaren,
+  warum seine Adresse nie gilt.
