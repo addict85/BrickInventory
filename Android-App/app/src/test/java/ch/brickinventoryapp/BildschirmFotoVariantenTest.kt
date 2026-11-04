@@ -504,6 +504,8 @@ class BildschirmFotoVariantenTest {
         }
         compose.onNode(androidx.compose.ui.test.hasText("Titanic", substring = true) and
             androidx.compose.ui.test.hasClickAction()).performClick()
+        // Erst komponieren: Das Detail startet sein Laden selbst (LaunchedEffect).
+        compose.waitForIdle()
         // Erst fotografieren, wenn Preis und Verlauf da sind — sonst stand „Preis wird geladen“
         // neben dem Preis in der Liste.
         bereitstellen("merkliste-detail (offen)", { vm.merkpostenDetailState.value.let { !it.laedt && it.preise != null } },

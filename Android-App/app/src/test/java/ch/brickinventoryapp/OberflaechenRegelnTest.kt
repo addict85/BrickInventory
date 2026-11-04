@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
@@ -435,6 +436,9 @@ class OberflaechenRegelnTest {
             val dichte = ctx.resources.displayMetrics.density
             for (name in namen) {
                 // Die Kachel ist mit der Schrift gewachsen (120 dp × 2) …
+                // Die Bilder wachsen mit der Kachel: Nicht jede Kachel liegt im sichtbaren Raster.
+                compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
+                    .performScrollToNode(hasText(name) and hasClickAction())
                 val kachel = compose.onNode(hasText(name) and hasClickAction()).fetchSemanticsNode().boundsInRoot
                 assertTrue("Kachel von $name nur ${kachel.width / dichte} dp breit", kachel.width / dichte >= 200f)
                 // … und der Name steht ganz da: Die letzte sichtbare Zeile endet mit dem
