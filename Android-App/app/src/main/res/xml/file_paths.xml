@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  FileProvider-Freigabe: nur pdf/, sonst nichts — nie cache-path oder files-path
-  mit ".", dort lägen API-Cache (Inventar) und Bild-Cache offen. Intern die
-  Teileliste (PdfExportManager), extern, was der PDF-Betrachter unter Android 8/9
-  zum Teilen ablegt — Anleitungen, keine Gutscheine. Das Update geht über eine
-  PackageInstaller-Sitzung und braucht keine Freigabe.
+  FileProvider-Freigabe: nur filesDir/pdf/, sonst nichts — nie cache-path oder
+  files-path mit ".", dort lägen API-Cache (Inventar) und Bild-Cache offen. Dort
+  liegt die Teileliste (PdfExportManager). Den externen App-Bereich braucht seit
+  minSdk 30 niemand mehr. Das Update geht über eine PackageInstaller-Sitzung.
 -->
 <paths>
-    <external-files-path name="pdf_external" path="pdf/" />
     <files-path name="pdf_internal" path="pdf/" />
 </paths>

@@ -1,0 +1,16 @@
+Gegenprobe: der FileProvider gibt wieder den externen App-Bereich frei (Stand vor sec12 H11)
+Modul: app
+Test: ch.brickinventoryapp.ServicePolishTest
+Rot: FileProvider teilt nur das pdf-Unterverzeichnis
+
+diff --git a/Android-App/app/src/main/res/xml/file_paths.xml b/Android-App/app/src/main/res/xml/file_paths.xml
+index ac6ddbf..4585f45 100644
+--- a/Android-App/app/src/main/res/xml/file_paths.xml
++++ b/Android-App/app/src/main/res/xml/file_paths.xml
+@@ -6,5 +6,6 @@
+   minSdk 30 niemand mehr. Das Update geht über eine PackageInstaller-Sitzung.
+ -->
+ <paths>
++    <external-files-path name="pdf_external" path="pdf/" />
+     <files-path name="pdf_internal" path="pdf/" />
+ </paths>

@@ -1,0 +1,17 @@
+Gegenprobe: die WorkManager-Datenbank geht beim Geräteumzug wieder mit (Stand vor sec12 H8)
+Modul: core-data
+Test: ch.brickinventoryapp.NetzsicherheitTest
+Rot: Kontodaten verlassen das Geraet nicht
+
+diff --git a/Android-App/app/src/main/res/xml/data_extraction_rules.xml b/Android-App/app/src/main/res/xml/data_extraction_rules.xml
+index 356473b..a5fc4d5 100644
+--- a/Android-App/app/src/main/res/xml/data_extraction_rules.xml
++++ b/Android-App/app/src/main/res/xml/data_extraction_rules.xml
+@@ -25,7 +25,6 @@
+     <device-transfer>
+         <exclude domain="file" path="datastore" />
+         <exclude domain="database" path="bestand.db" />
+-        <exclude domain="database" path="androidx.work.workdb" />
+         <exclude domain="sharedpref" path="widget.xml" />
+         <exclude domain="sharedpref" path="design_spiegel.xml" />
+         <exclude domain="file" path="vorschau" />

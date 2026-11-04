@@ -43,6 +43,12 @@ import java.io.File
  *      gegenproben/gutschein-pdf-auf-platte.patch
  *   I  im PdfViewerScreen `if (ablage == null)` durch `if (false)` ersetzt → rot
  *      „Betrachter, Abmelden und Start raeumen auf“ (Speicherweg nicht gewählt)
+ * Gegenproben (04.11.2026, sec12 H5 und N1):
+ *   J  im PdfViewerScreen den Drucken-Knopf vor `if (speicherbar)` gezogen → rot
+ *      „Betrachter, Abmelden und Start raeumen auf“ (Drucken ungeschützt);
+ *      gegenproben/gutschein-drucken.patch
+ *   K  in logout() die Zeile `raeumeAnleitungenAuf(` gestrichen → rot „Betrachter,
+ *      Abmelden und Start raeumen auf“ (Anleitungen überleben das Abmelden)
  */
 class GutscheinPdfAblageTest {
 
@@ -69,7 +75,7 @@ class GutscheinPdfAblageTest {
         val y = "https://brick.example/api/v1/vouchers/BB/pdf"
         assertEquals("Die Probe braucht zwei Adressen mit gleichem hashCode()", x.hashCode(), y.hashCode())
         assertTrue(pdfAblage(cache, x, false) != pdfAblage(cache, y, false))
-        assertEquals("pdfview_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.pdf", pdfAblage(cache, "", false)?.name)
+        assertEquals("anleitung_e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.bin", pdfAblage(cache, "", false)?.name)
     }
 
     @Test
@@ -112,11 +118,16 @@ class GutscheinPdfAblageTest {
             Regex("""onDispose\s*\{\s*offen\.close\(\)""").containsMatchIn(betrachter))
         assertTrue("Herunterladen steht ohne Prüfung da",
             Regex("""if \(speicherbar\) \{\s*IconButton\(onClick = \{ savePdfToDownloads\(""").containsMatchIn(betrachter))
+        // Der Druckdialog bietet „Als PDF speichern“: Drucken nur, wo auch Speichern erlaubt ist.
+        val geschuetzt = betrachter.substringAfter("if (speicherbar) {").substringBefore("\n                    }\n")
+        assertTrue("Drucken steht ohne Prüfung da", betrachter.split("printPdf(ctx,").size == 2 && "printPdf(ctx," in geschuetzt)
         val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt")), "fun logout(")
         assertTrue("Abmelden lässt Gutschein-PDFs liegen", abmelden.contains("raeumeVertraulichePdfsAuf("))
+        assertTrue("Abmelden lässt Anleitungen liegen", abmelden.contains("raeumeAnleitungenAuf(ctx.cacheDir)"))
         assertTrue("Abmelden lässt Teileliste und Update in filesDir liegen",
             abmelden.contains("raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null))"))
-        assertTrue("Der Start räumt Reste nicht weg",
-            Quellen.lies("BrickInventoryApp.kt").contains("raeumeVertraulichePdfsAuf(cacheDir)"))
+        val start = Quellen.lies("BrickInventoryApp.kt")
+        assertTrue("Der Start räumt Reste nicht weg", start.contains("raeumeVertraulichePdfsAuf(cacheDir)"))
+        assertTrue("Der Start lässt Klartext-Anleitungen liegen", start.contains("raeumeKlartextAnleitungenAuf(cacheDir)"))
     }
 }

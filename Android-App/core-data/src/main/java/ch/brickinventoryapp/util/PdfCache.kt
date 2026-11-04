@@ -46,16 +46,15 @@ fun pdfSchritt(fertigeGroesse: Long, teilGroesse: Long): PdfSchritt = when {
 const val PDF_VERTRAULICH_ORDNER = "pdf_vertraulich"
 
 /**
- * Wo der Betrachter ein PDF ablegt: Anleitungen im Zwischenspeicher (wieder öffnen,
- * fortsetzen). Ein vertrauliches PDF bekommt keine Datei (null) und bleibt im Speicher
- * ([ladePdfInDenSpeicher]); sonst läge es nach einem Absturz bis zum nächsten Start.
- * Der Name ist SHA-256 der Adresse: Bei 32 Bit (hashCode) teilten sich zwei Adressen
- * leicht eine Datei, und der Betrachter zeigte das PDF der anderen.
+ * Wo der Betrachter ein PDF ablegt: Anleitungen verschlüsselt im Zwischenspeicher
+ * ([AnleitungsAblage]). Ein vertrauliches PDF bekommt keine Datei (null) und bleibt im
+ * Speicher ([ladePdfInDenSpeicher]). Der Name ist SHA-256 der Adresse: Bei 32 Bit
+ * (hashCode) teilten sich zwei Adressen leicht eine Datei.
  */
 fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File? {
     if (vertraulich) return null
     val hash = java.security.MessageDigest.getInstance("SHA-256").digest(pdfUrl.toByteArray())
-    return File(cacheDir, "pdfview_${hash.joinToString("") { "%02x".format(it) }}.pdf")
+    return File(cacheDir, ANLEITUNG_PRAEFIX + hash.joinToString("") { "%02x".format(it) } + ANLEITUNG_ENDUNG)
 }
 
 /** Gutschein-PDFs älterer Fassungen löschen: beim Start und beim Abmelden. */

@@ -841,8 +841,8 @@
     <string name="update_pruefsumme_falsch">The downloaded app is not the one announced in the signed description and was deleted. It was not installed.</string>
     <string name="update_installer_fehlt">The installation could not be started.</string>
     <string name="update_installation_fehlgeschlagen">The installation failed: %1$s</string>
-    <string name="update_quelle_abgelaufen">The update description has expired: it was not re-signed in time. Either nothing has been released for a long while, or someone is holding updates back. Check the project\'s release page and this device\'s date and time.</string>
-    <string name="update_quelle_zurueckgesetzt">The update description is older than one this app has already seen. The update source is outdated or has been tampered with, and newer versions may be withheld from you. Check the project\'s release page.</string>
+    <string name="update_quelle_abgelaufen">The update description has expired: it was not re-signed in time. Either nothing has been released for a long while, or someone is holding updates back. That is why the app is not offering an update right now. Check the project\'s release page and this device\'s date and time.</string>
+    <string name="update_quelle_zurueckgesetzt">The update description is older than one this app has already seen. The update source is outdated or has been tampered with, and newer versions may be withheld from you. That is why the app is not offering an update right now. Check the project\'s release page.</string>
 
     <string name="price_from_other_condition_new">Purchase price taken from the "new" market price — BrickLink has no price for "used".</string>
     <string name="price_from_other_condition_used">Purchase price taken from the "used" market price — BrickLink has no price for "new".</string>

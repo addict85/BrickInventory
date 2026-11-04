@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.MediaAuthTest
 Rot: der Herunterladen-Knopf erscheint erst
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-index 8f9af0a..e7d273e 100644
+index 2403e79..28a03e4 100644
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-@@ -308,15 +308,15 @@ fun PdfViewerScreen(
-                     // Datei, ein eigener Download kennte den Bearer-Token nicht.
-                     // Herunterladen nur, wo es erlaubt ist (pdfDarfGespeichertWerden).
+@@ -367,11 +367,13 @@ fun PdfViewerScreen(
+                     // Datei, ein eigener Download kennte den Bearer-Token nicht. Beide nur,
+                     // wo Speichern erlaubt ist: Der Druckdialog bietet „Als PDF speichern“.
                      val s = state
 +                    if (speicherbar) {
 +                        IconButton(onClick = { (s as? PdfLoadState.Ready)?.let { savePdfToDownloads(ctx, it.quelle, title) } }) {
@@ -17,14 +17,10 @@ index 8f9af0a..e7d273e 100644
 +                        }
 +                    }
                      if (s is PdfLoadState.Ready) {
-                         IconButton(onClick = { printPdf(ctx, s.quelle, title) }) {
-                             Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
-                         }
--                        if (speicherbar) {
+                         if (speicherbar) {
 -                            IconButton(onClick = { savePdfToDownloads(ctx, s.quelle, title) }) {
 -                                Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
 -                            }
--                        }
-                     }
-                 }
-             )
+                             IconButton(onClick = { printPdf(ctx, s.quelle, title) }) {
+                                 Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
+                             }

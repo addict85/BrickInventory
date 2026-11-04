@@ -8,8 +8,8 @@ import org.junit.Test
  * ── Der Fehler, den diese Regel verhindert ──────────────────────────────────
  * `AppCompatDelegate.setApplicationLocales()` lokalisiert nur
  * AppCompat-ACTIVITIES. Der Application-Context behält unterhalb von
- * Android 13 die SYSTEM-Sprache — minSdk ist 26, betroffen sind also
- * Android 8 bis 12. Das steht seit Langem in LanguageManager.localizedContext()
+ * Android 13 die SYSTEM-Sprache — minSdk ist 30, betroffen sind also
+ * Android 11 und 12. Das steht seit Langem in LanguageManager.localizedContext()
  * und war für die Foreground-Services auch umgesetzt.
  *
  * Die ViewModels waren die Lücke: dort standen zweiunddreissig direkte

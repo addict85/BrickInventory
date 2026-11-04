@@ -57,6 +57,8 @@ class AppViewModel @Inject constructor(
     // Der PdfViewer leitet seinen Download-Client hiervon ab, damit Token,
     // Klartext-Verbot und 401-Meldung auch dort gelten.
     @param:Named("api") val apiHttpClient: okhttp3.OkHttpClient,
+    /** Die verschlüsselte Ablage der Anleitungen für den PdfViewer; geleert beim Abmelden. */
+    val anleitungen: ch.brickinventoryapp.util.AnleitungsAblage,
     // Nur für seinen Zwischenspeicher: Beim Abmelden geleert wie Coils eigene Caches.
     @param:Named("image") private val bildHttpClient: okhttp3.OkHttpClient,
     // Beim Abmelden mit geleert: Die Vorschaubilder gehören zum Konto.
@@ -286,6 +288,7 @@ class AppViewModel @Inject constructor(
             repo.clearCache()
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }
+                runCatching { ch.brickinventoryapp.util.raeumeAnleitungenAuf(ctx.cacheDir) }
                 runCatching { ch.brickinventoryapp.util.raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null)) }
                 // Bilder des Kontos liegen auch hier: HTTP-Zwischenspeicher und Vorschau-Ablage.
                 runCatching { bildHttpClient.cache?.evictAll() }

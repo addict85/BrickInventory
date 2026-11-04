@@ -297,6 +297,7 @@ fun NavGraphBuilder.toolsGraph(
                 title  = pdfTitle,
                 httpClient = vm.apiHttpClient,
                 serverUrl = state.serverUrl,
+                anleitungen = vm.anleitungen,
                 onBack = { navController.popBackStack() }
             )
         }

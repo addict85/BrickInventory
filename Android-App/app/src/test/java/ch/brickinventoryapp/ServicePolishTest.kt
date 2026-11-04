@@ -9,6 +9,10 @@ import org.junit.Test
  * PDF-Download.
  *
  * Alle Prüfungen lesen nur Quell- und Ressourcendateien.
+ *
+ * Gegenprobe (04.11.2026, sec12 H11): in file_paths.xml wieder
+ * `<external-files-path name="pdf_external" path="pdf/" />` → rot „FileProvider teilt
+ * nur das pdf-Unterverzeichnis“.
  */
 class ServicePolishTest {
 
@@ -122,6 +126,10 @@ class ServicePolishTest {
         assert(!fp.contains("cache-path")) {
             "file_paths.xml teilt den Cache — dort liegt nichts, das über den Provider " +
                 "weitergegeben wird"
+        }
+        // Der externe App-Bereich trägt seit minSdk 30 nichts mehr, was geteilt wird (sec12 H11).
+        assert(!fp.contains("external")) {
+            "file_paths.xml gibt wieder einen externen Bereich frei — dort liegt nichts, das geteilt wird"
         }
         assert(fp.contains("path=\"pdf/\"")) {
             "file_paths.xml deckt das pdf/-Verzeichnis nicht mehr ab — das Öffnen des " +

@@ -35,6 +35,9 @@ import java.io.IOException
  *      Namen gilt nicht …“
  *   C  raeumeKlartextBildcachesAuf() ohne die Zeile `if (klartext) http.deleteRecursively()`
  *      → rot „ein Klartext-Zwischenspeicher aelterer Fassungen verschwindet …“
+ *   D  (04.11.2026, sec12 H9, kotlinc lokal) im Eingang `if (!abgeschlossen) throw …`
+ *      gestrichen → rot „eine hinten gekuerzte Datei gilt nicht …“;
+ *      gegenproben/bildcache-ohne-endmarker.patch
  */
 class BildZwischenspeicherTest {
 
@@ -94,6 +97,35 @@ class BildZwischenspeicherTest {
         fs.sink(File(http.apply { mkdirs() }, "journal").toOkioPath()).buffer().use { it.writeUtf8("libcore.io.DiskLruCache\n") }
         raeumeKlartextBildcachesAuf(cacheDir)
         assertTrue("Der verschlüsselte Zwischenspeicher gilt nicht als Klartext", File(http, "journal").exists())
+    }
+
+    /** Ohne Endmarker gälte ein um ganze Abschnitte gekürztes Bild als vollständig. */
+    @Test
+    fun `eine hinten gekuerzte Datei gilt nicht, eine fortgeschriebene schon`() {
+        ordner.mkdirs()
+        val f = File(ordner, "bild.1")
+        val inhalt = ByteArray(200_000) { (it % 251).toByte() }
+        fs.sink(f.toOkioPath()).buffer().use { it.write(inhalt) }
+        val ganz = f.readBytes()
+        fun lies() = runCatching { fs.source(f.toOkioPath()).buffer().use { it.readByteArray() } }
+
+        assertArrayEquals(inhalt, lies().getOrThrow())
+        // Ohne den Endmarker (4 Bytes Länge, 32 Bytes Kennung, IV und Tag).
+        f.writeBytes(ganz.copyOf(ganz.size - 36))
+        assertTrue("Ohne Endmarker gilt die Datei", lies().exceptionOrNull() is IOException)
+        // Nur der erste Abschnitt (64 KiB Klartext) samt Längenfeld.
+        f.writeBytes(ganz.copyOf(4 + 65_536 + 32))
+        assertTrue("Ein gekürztes Bild gilt", lies().exceptionOrNull() is IOException)
+        f.writeBytes(ByteArray(0))
+        assertTrue("Eine leere Datei gilt", lies().exceptionOrNull() is IOException)
+
+        // Das Journal wird nach jeder Zeile geflusht und fortgeschrieben: Jeder Stand endet mit einem Marker.
+        f.writeBytes(ganz)
+        fs.appendingSink(f.toOkioPath()).buffer().use { aus ->
+            aus.writeUtf8("CLEAN a\n").flush()
+            aus.writeUtf8("CLEAN b\n").flush()
+        }
+        assertArrayEquals(inhalt + "CLEAN a\nCLEAN b\n".toByteArray(), lies().getOrThrow())
     }
 
     @Test
