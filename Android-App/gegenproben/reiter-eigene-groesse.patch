@@ -1,7 +1,7 @@
 Gegenprobe: Jede Reiterbeschriftung schrumpft für sich
 Modul: app
 Test: ch.brickinventoryapp.FeinschliffRegelnTest
-Rot: Reiterleiste in verschiedenen
+Rot: Reiterleiste bricht bei 200 Prozent
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 index 9bc9efb..c38c969 100644

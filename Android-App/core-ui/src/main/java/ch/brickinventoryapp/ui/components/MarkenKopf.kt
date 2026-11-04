@@ -31,7 +31,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Die Kachel liegt auf surface: Auf manchem primary verschwand der rote Stein.
  */
 @Composable
-fun MarkenKopf(untertitel: String? = null, modifier: Modifier = Modifier) {
+fun MarkenKopf(modifier: Modifier = Modifier, untertitel: String? = null) {
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
         Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,

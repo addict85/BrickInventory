@@ -195,7 +195,7 @@ fun SetupScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        ch.brickinventoryapp.ui.components.MarkenKopf(stringResource(R.string.setup_subtitle))
+        ch.brickinventoryapp.ui.components.MarkenKopf(untertitel = stringResource(R.string.setup_subtitle))
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))

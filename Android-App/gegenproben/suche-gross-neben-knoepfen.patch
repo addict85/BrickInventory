@@ -1,7 +1,7 @@
 Gegenprobe: Knöpfe auch bei grosser Schrift neben dem Suchfeld
 Modul: app
 Test: ch.brickinventoryapp.FeinschliffRegelnTest
-Rot: Such-Platzhalter 200
+Rot: Such-Platzhalter der Galerie steht auch bei 200 Prozent
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
 index f5ea255..f35c7e7 100644

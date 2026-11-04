@@ -12,7 +12,7 @@ index cf29f3a..139ea33 100644
                      // um, und die Kachel wurde höher als ihre Nachbarin.
                      val pct = preis?.pnlPct
 -                    if (pct != null && kachelBetrag(set, preis) != null) Surface(
-+                    if (false) Surface(
++                    if (false && pct != null) Surface(
                          color = MaterialTheme.colorScheme.surface,
                          shape = Formen.etikett,
                          modifier = Modifier.align(Alignment.TopStart).padding(Abstaende.klein),
