@@ -282,10 +282,7 @@ class UnterseitenTest {
         wechseln.assertIsEnabled()
     }
 
-    /**
-     * Geändert wird über die Textaktion, nicht durch Tippen: Ein fokussiertes Feld neben
-     * dem Dialogfenster lässt Robolectric nie zur Ruhe kommen (wie im AblaufTest).
-     */
+    /** Geändert wird über die Textaktion, nicht durch Tippen: kein fokussiertes Feld. */
     @Test
     fun `Konto fragt beim Speichern des Profils nach dem Passwort`() {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
@@ -301,10 +298,22 @@ class UnterseitenTest {
         compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(R.string.register_first_name)))[0]
             .performSemanticsAction(SemanticsActions.SetText) { it(AnnotatedString("Marc")) }
         compose.waitForIdle()
-        compose.onNode(hasText(ctx.getString(R.string.konto_save)) and hasClickAction()).performScrollTo().performClick()
-        compose.waitForIdle()
-        compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).fetchSemanticsNode("Kein Passwortfeld im Dialog")
+        val speichern = compose.onNode(hasText(ctx.getString(R.string.konto_save)) and hasClickAction())
+        speichern.performScrollTo()
+        // Steht auf dieser Seite ein Dialog mit Textfeld, wird Compose unter Robolectric
+        // nicht mehr ruhig. Darum ohne waitForIdle: Uhr anhalten, Looper leeren und das
+        // Dialogfenster bei Robolectric selbst nachsehen.
+        compose.mainClock.autoAdvance = false
+        speichern.performClick()
+        repeat(3) {
+            compose.mainClock.advanceTimeBy(200)
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        }
+        val dialog = org.robolectric.shadows.ShadowDialog.getLatestDialog()
+        assertTrue("Kein Passwortdialog beim Speichern", dialog?.isShowing == true)
         assertTrue("Gespeichert ohne Passwort: ${welt.pfade.anfragen}", welt.pfade.anfragen.none { it.startsWith("PUT") })
+        dialog?.dismiss()
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
     }
 
     @Test
