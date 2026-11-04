@@ -213,7 +213,7 @@ test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', (t) => {
     fs.copyFileSync(path.join(ROOT, 'scripts', 'backup.sh'), skript);
     fs.chmodSync(skript, 0o755);
     r = spawnSync('setpriv', ['--reuid=65534', '--regid=65534', '--clear-groups', 'sh', skript, a.ziel],
-      { cwd: a.arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${path.join(a.tmp, 'bin')}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja' } });
+      { cwd: a.arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${path.join(a.tmp, 'bin')}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', TMPDIR: a.tmp } });
   } else {
     fs.chmodSync(geheim, 0o000);
     // Der Aufbau räumt seinen Ordner zuerst weg; dann gibt es nichts mehr zurückzustellen.
