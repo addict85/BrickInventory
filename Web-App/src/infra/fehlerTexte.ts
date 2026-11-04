@@ -37,6 +37,10 @@ export const FEHLER = {
   // ── Registrierung und Passwort ───────────────────────────────────────────
   registrierung_deaktiviert:   { de: 'Registrierung ist deaktiviert.',
                                  en: 'Registration is disabled.' },
+  registrierung_braucht_mail:  { de: 'Die Registrierung braucht den E-Mail-Versand: Zuerst unter „E-Mail“ den Mailserver eintragen (und APP_BASE_URL setzen).',
+                                 en: 'Registration needs e-mail delivery: first set up the mail server under “E-mail” (and set APP_BASE_URL).' },
+  konto_nicht_wartend:         { de: 'Dieses Konto wartet nicht auf Freischaltung.',
+                                 en: 'This account is not waiting for approval.' },
   registrierung_felder:        { de: 'Benutzername, E-Mail und Passwort sind erforderlich.',
                                  en: 'Username, email address and password are required.' },
   benutzername_passwort:       { de: 'Benutzername und Passwort erforderlich',

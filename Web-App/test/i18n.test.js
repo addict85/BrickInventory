@@ -77,7 +77,6 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     'finance.filter.sets', 'finance.period.max',
     'gallery.sort.name', 'header.sets', 'log.auto', 'monitor.api.bricklink',
     'monitor.api.brickset', 'monitor.api.rebrickable',
-    'settings.users_admin_badge', 'users.admin_badge', 'users.role.admin',
     // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
     'vouchers.pin',
     // Die Rückmeldung der Guthaben-Abfrage: „{nummer}: {betrag}" — ein reiner

@@ -6,7 +6,7 @@ import { liesZustand, setzeZustand, zaehleZustand, zustaendeMitPraefix } from '.
 const JOB_DEFAULTS: Record<string, any> = {
   csvImport:     { label: 'CSV-Import (Rebrickable)', status: 'idle', progress: 0, total: 6 },
   blIds:         { label: 'BrickLink IDs nachladen',  status: 'idle', progress: 0, total: 0 },
-  instrQueue:    { label: 'Handbücher herunterladen', status: 'idle', progress: 0, total: 0 },
+  instrQueue:    { label: 'Anleitungen herunterladen', status: 'idle', progress: 0, total: 0 },
   priceJob:      { label: 'Preise aktualisieren',     status: 'idle', progress: 0, total: 0 },
   imgDl:         { label: '📥 Bild-Download (CDN)',   status: 'idle', progress: 0, total: 0 },
   pdfJobs:       { label: '📄 PDF-Jobs',              status: 'idle', progress: 0, total: 0 },

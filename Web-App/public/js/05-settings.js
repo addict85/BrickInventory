@@ -32,6 +32,18 @@ async function loadSmtpSettings(settings){
   if(G('smtp-tls-altlast')) G('smtp-tls-altlast').style.display = s.smtp_insecure_tls==='1' ? '' : 'none';
   if(G('reg-enabled')) G('reg-enabled').checked = s.registration_enabled==='1';
   geladeneSmtp = JSON.stringify(smtpFormular());
+  regMailHinweis();
+}
+
+/** Ohne Mailversand bliebe jede Registrierung unbestätigt; der Schalter sagt das, statt still zu ruhen. */
+async function regMailHinweis(){
+  const box = G('reg-enabled'), hinweis = G('reg-mail-hinweis');
+  if (!box || !hinweis) return;
+  const d = await api('GET', '/v1/auth/registration-status');
+  const ohne = d?.mail_versand === false;
+  box.disabled = ohne && !box.checked;
+  hinweis.hidden = !ohne;
+  hinweis.textContent = ohne ? tRaw(box.checked ? 'settings.reg_ruht' : 'settings.reg_braucht_mail') : '';
 }
 
 // Der Server verlangt das Verwalterpasswort, sobald sich ein SMTP-Wert ändert;
@@ -59,7 +71,7 @@ async function speichereSmtp() {
   if (admin_password === null) return null;
   const d = await mitZweitemFaktor(z => api('POST','/v1/settings', { ...werte, admin_password, ...z }));
   if (d === null) return null;
-  if (d.success) { geladeneSmtp = JSON.stringify(werte); if (altlast) altlast.style.display = 'none'; }
+  if (d.success) { geladeneSmtp = JSON.stringify(werte); if (altlast) altlast.style.display = 'none'; regMailHinweis(); }
   return d;
 }
 
@@ -95,9 +107,14 @@ G('btn-sav-smtp')?.addEventListener('click', async()=>{
 });
 
 async function saveRegEnabled(){
-  const d=await speichereEinstellungen(tRaw('settings.reg_title'), { registration_enabled: G('reg-enabled').checked?'1':'0' });
-  if(!d){ G('reg-enabled').checked=!G('reg-enabled').checked; return; }
-  toast(d.success?t('settings.reg_saved'):t('settings.error'),d.success?'success':'error');
+  // Der Haken folgt dem Server: Während der Passwortfrage gilt noch der alte Stand.
+  const box = G('reg-enabled'), soll = box.checked;
+  box.checked = !soll;
+  const d=await speichereEinstellungen(tRaw('settings.reg_title'), { registration_enabled: soll?'1':'0' });
+  if(!d) return;
+  if(d.success) box.checked = soll;
+  toast(d.success?t('settings.reg_saved'):(d.error||t('settings.error')),d.success?'success':'error');
+  regMailHinweis();
 }
 
 export async function loadCacheTtl() {
@@ -592,11 +609,11 @@ function renderHousehold(d){
   const eltern = d.parents || (d.linked_to ? [d.linked_to] : []);
   if(eltern.length){
     teile.push(`<div>${t('household.state_parents', { n: eltern.length })}${liste(eltern,
-      a => `<button class="btn bs btn-sm" data-click="unlinkFromParent"${echt()} data-arg="${a.id}">${t('household.unlink_self')}</button>`)}</div>`);
+      a => `<button class="btn bs btn-sm" data-click="unlinkFromParent"${echt()} data-arg="${a.id}" data-arg2="${esc(a.username || '')}">${t('household.unlink_self')}</button>`)}</div>`);
   }
   if(d.sub_accounts?.length){
     teile.push(`${eltern.length ? '<div data-stil="margin-top:.6rem">' : '<div>'}${t('household.state_main', { n: d.sub_accounts.length })}${liste(d.sub_accounts,
-      a => `<button class="btn bs btn-sm" data-click="unlinkHousehold"${echt()} data-arg="${a.id}">${t('household.unlink_sub')}</button>`)}</div>`);
+      a => `<button class="btn bs btn-sm" data-click="unlinkHousehold"${echt()} data-arg="${a.id}" data-arg2="${esc(a.username || '')}">${t('household.unlink_sub')}</button>`)}</div>`);
   }
   if(!teile.length){
     teile.push(`<div data-stil="color:var(--mut)">${t('household.state_none', { cur: esc(d.currency||'') })}</div>`);
@@ -662,8 +679,8 @@ export async function redeemHouseholdInvite(){
   loadHousehold();
 }
 
-export async function unlinkFromParent(mainUserId){
-  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link', { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' })) return;
+export async function unlinkFromParent(mainUserId, name){
+  if(!await confirmDelete(tRaw('household.unlink_confirm_title', { name }), tRaw('household.unlink_confirm_text_eltern', { name }), 'link', { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' })) return;
   const d = await api('POST','/v1/settings/household/unlink', { main_user_id: parseInt(mainUserId) });
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   toast(tRaw('household.unlink_ok'),'success');
@@ -676,8 +693,8 @@ export async function dismissFormerLink(subUserId){
   loadHousehold();
 }
 
-export async function unlinkHousehold(subUserId){
-  if(!await confirmDelete(tRaw('household.unlink_confirm_title'), t('household.unlink_confirm_text'), 'link', { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' })) return;
+export async function unlinkHousehold(subUserId, name){
+  if(!await confirmDelete(tRaw('household.unlink_confirm_title', { name }), tRaw('household.unlink_confirm_text', { name }), 'link', { knopf: 'confirm.btn.verknuepfung_loesen', art: 'bp' })) return;
   const d = await api('POST','/v1/settings/household/unlink', subUserId ? { sub_user_id: parseInt(subUserId) } : {});
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   toast(tRaw('household.unlink_ok'),'success');
@@ -735,7 +752,8 @@ export async function loadUsers(){
   G('users-tbl').innerHTML=`<div class="tw"><table class="dt user-tbl"><thead><tr><th>${t('users.col.username')}</th><th class="nutzer-id">ID</th><th>${t('users.col.role')}</th><th>${t('users.col.created')}</th><th>${t('users.col.actions')}</th></tr></thead><tbody>${
     d.users.map(u=>`<tr><td class="nutzer-name" data-label=""><strong>${esc(u.username)}</strong></td><td class="nutzer-id">${u.id}</td>
       <td><span class="rb ${u.is_admin?'rv':'ru'}">${u.is_admin?t('users.role.admin'):t('users.role.user')}</span>
-        ${u.is_active === false ? `<span class="rb ru">${t('users.status.inaktiv')}</span>` : ''}</td>
+        ${u.is_active === false ? `<span class="rb ru">${t('users.status.inaktiv')}</span>` : ''}
+        ${u.wartet_auf_bestaetigung ? `<span class="rb ru">${t('users.status.wartet')}</span>` : ''}</td>
       <td>${fmtDatum(u.created_at)}</td>
       <td>${nutzerAktionen(u)}</td></tr>`).join('')
   }</tbody></table></div>`;
@@ -753,6 +771,7 @@ const AKTIONEN = {
   konto_geloescht:         () => t('users.aktion.konto_geloescht'),
   konto_deaktiviert:       () => t('users.aktion.konto_deaktiviert'),
   konto_reaktiviert:       () => t('users.aktion.konto_reaktiviert'),
+  konto_freigeschaltet:    () => t('users.aktion.konto_freigeschaltet'),
   gutschein_klartext:      () => t('users.aktion.gutschein_klartext'),
   gutschein_pdf:           () => t('users.aktion.gutschein_pdf'),
   gutschein_export:        () => t('users.aktion.gutschein_export'),
@@ -781,6 +800,7 @@ function nutzerAktionen(u) {
     nutzerKnopf(u, 'bd', 'delUser', 'loeschen', 'common.delete', 'users.action.delete_title', u.username),
   ].join('');
   return `<div class="nutzer-aktionen">
+    ${u.wartet_auf_bestaetigung ? nutzerKnopf(u, 'bp', 'kontoFreischalten', 'ok', 'users.action.freischalten', 'users.action.freischalten_title', u.username) : ''}
     ${nutzerKnopf(u, 'bs', 'openRpw', 'schluessel', 'users.action.password', 'users.pw_reset_title', u.username)}
     ${nutzerKnopf(u, 'bs', 'toggleAdmin', u.is_admin ? 'runter' : 'hoch',
       u.is_admin ? 'users.action.make_user' : 'users.action.make_admin',
@@ -844,6 +864,15 @@ async function toggleAktiv(uid, aktiv, name){
   const d = await mitZweitemFaktor(z => api('PUT', `/v1/auth/users/${uid}/aktiv`, { is_active: !istAktiv, admin_password, ...z }));
   if (d === null) return;
   if (d.success) { toast(tRaw(istAktiv ? 'users.deactivated' : 'users.activated'), 'success'); loadUsers(); }
+  else toast(d.error || t('settings.error'), 'error');
+}
+async function kontoFreischalten(uid, name){
+  const admin_password = await bestaetigeMitPasswort(tRaw('users.freischalten_title', { name }), tRaw('users.freischalten_text', { name }), 'ok',
+    { knopf: 'confirm.btn.freischalten', art: 'bp' });
+  if (admin_password === null) return;
+  const d = await mitZweitemFaktor(z => api('PUT', `/v1/auth/users/${uid}/freischalten`, { admin_password, ...z }));
+  if (d === null) return;
+  if (d.success) { toast(tRaw('users.freigeschaltet', { name }), 'success'); loadUsers(); }
   else toast(d.error || t('settings.error'), 'error');
 }
 async function delUser(uid,name){
@@ -1265,6 +1294,7 @@ registerActions({
   copyHouseholdInvite,
   createHouseholdInvite,
   delUser,
+  kontoFreischalten,
   loadTokens,
   openRpw,
   redeemHouseholdInvite,

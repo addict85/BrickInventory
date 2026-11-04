@@ -74,7 +74,7 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     'revokeToken', 'revokeOtherTokens', 'passkeyHinzufuegen', 'passkeyLoeschen',
     'zfEinrichten', 'zfNeueCodes', 'zfAbschalten', 'zfZuruecksetzen',
     'createHouseholdInvite', 'redeemHouseholdInvite', 'unlinkHousehold', 'unlinkFromParent',
-    'delUser', 'toggleAdmin', 'toggleAktiv', 'openRpw', 'saveRegEnabled', 'importConfig',
+    'delUser', 'kontoFreischalten', 'toggleAdmin', 'toggleAktiv', 'openRpw', 'saveRegEnabled', 'importConfig',
     'auftragAbbrechen', 'auftragsArtLeeren',
   ]);
 

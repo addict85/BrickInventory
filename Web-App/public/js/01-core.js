@@ -843,7 +843,9 @@ export function zeigeVerbindung(erreichbar) {
     _offline = false; band.hidden = true; return;
   }
   _offline = true;
-  band.textContent = (_letzteAntwort ? tRaw('net.offline_since', { zeit: fmtDatum(_letzteAntwort, 'tagzeit') }) : tRaw('net.offline'))
+  const heute = _letzteAntwort && new Date(_letzteAntwort).toDateString() === new Date().toDateString();
+  const seit = heute ? tRaw('net.heute', { zeit: fmtDatum(_letzteAntwort, 'zeit') }) : fmtDatum(_letzteAntwort, 'tagzeit');
+  band.textContent = (_letzteAntwort ? tRaw('net.offline_since', { zeit: seit }) : tRaw('net.offline'))
     + ' ' + tRaw('net.offline_gesperrt');
   band.hidden = false;
   schreibenSperren(true);
@@ -1203,8 +1205,7 @@ G('btn-register')?.addEventListener('click', async () => {
   if(d.success){
     G('reg-form').style.display='none';
     G('reg-success').style.display='block';
-    G('reg-success').textContent = d.message;
-    if(d.console_mode) G('reg-success').textContent += t('register.console_hint');
+    G('reg-success').textContent = tRaw(d.email_sent === false ? 'register.nicht_gesendet' : 'register.gesendet');
   } else { formularFehler(err, d.error||tRaw('settings.error')); }
 });
 
@@ -1231,7 +1232,7 @@ G('btn-verify')?.addEventListener('click', async () => {
   btn.disabled=false;
   if(!d.success){ formularFehler(err, d.error||tRaw('settings.error')); return; }
   _verifyToken=null;
-  if(_verifyAngemeldet){ location.replace('/'); return; }
+  if(_verifyAngemeldet){ await bestaetigtAngemeldet(); return; }
   history.replaceState({},'','/');
   showPanel('login');
   const m=G('verified-msg'); if(m) m.style.display='block';
@@ -1353,6 +1354,25 @@ async function zeigeBestaetigungsziel(angemeldet) {
   el.textContent = !u ? tRaw('verify.ohne_anmeldung')
     : u.email_neu ? tRaw('verify.ausstehend', { email: u.email_neu, konto: u.username })
     : tRaw('verify.nichts_ausstehend', { konto: u.username });
+  if (u) bestaetigungAngemeldet(u.email_neu);
+}
+/**
+ * Angemeldet führt die Seite zurück in die Sammlung; wartet nichts, ist
+ * „Bestätigen“ nicht mehr der nahegelegte Schritt.
+ */
+let _verifyEmail = null;
+function bestaetigungAngemeldet(email) {
+  _verifyEmail = email || null;
+  const zurueck = G('link-verify-to-login');
+  if (zurueck) { zurueck.textContent = tRaw('verify.zur_sammlung'); zurueck.removeAttribute('data-i18n'); }
+  G('btn-verify')?.classList.toggle('bp', !!email);
+  G('btn-verify')?.classList.toggle('bs', !email);
+}
+/** Ohne Neuladen in die App, damit die Rückmeldung stehen bleibt. */
+async function bestaetigtAngemeldet() {
+  history.replaceState({}, '', '/');
+  await checkAuth();
+  toast(_verifyEmail ? tRaw('verify.bestaetigt', { email: _verifyEmail }) : tRaw('verify.bestaetigt_kurz'), 'success');
 }
 /** Das statische Startgerüst aus index.html weicht, sobald Anmeldung, App oder Startfortschritt dastehen. */
 function startgeruestWeg() { G('startgeruest')?.remove(); }
@@ -1506,6 +1526,7 @@ export function zeigeBenutzernamen(){
     ? `${ME.username} (${tRaw('users.admin_badge')})`
     : ME.username;
 }
+if (typeof document !== 'undefined') document.addEventListener('bim:sprache', () => { if (ME) zeigeBenutzernamen(); });
 
 function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 1000);
   G('login-screen').style.display='none'; G('app').style.display='block'; startgeruestWeg();

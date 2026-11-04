@@ -183,11 +183,15 @@ export async function ladeMerkliste() {
   // wert las sie „/v1/wanted:x" und meldete eine Route, die es nicht gibt.
   if (!_merkposten.length && !ziel.querySelector('.mk-zeile, .leer')) ziel.innerHTML = skelettZeilen(4, t('common.loading'));
   const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
-  if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) return;
+  const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
+  if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) {
+    // Das offene Formular schob die Fehlermeldung unter die Falz.
+    if (kasten && !kasten.dataset.entschieden) kasten.open = false;
+    return;
+  }
   _merkposten = d.merkposten || [];
   // Einmal je Laden der Seite: Am Telefon mit Einträgen zugeklappt, damit die
   // Liste im ersten Bild steht; danach bleibt, was der Nutzer gewählt hat.
-  const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
   if (kasten && !kasten.dataset.entschieden) {
     kasten.dataset.entschieden = '1';
     kasten.open = !(_merkposten.length && window.matchMedia?.('(max-width: 640px)').matches);

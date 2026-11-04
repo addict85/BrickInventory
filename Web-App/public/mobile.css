@@ -634,6 +634,13 @@
 @container haupt (min-width: 15em) and (max-width: 22em) {
   #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }
 }
+/* Sehr grosse Schrift: Schwebend lag der Knopf über Suchfeld und Kennzahlen;
+   er steht dann rechts beim Titel unter „•••“, der Titel behält seine Breite. */
+@container haupt (max-width: 15em) {
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { min-height: 96px; }
+  .erfassen-leiste .btn.bp.knopf-schwebend { position: absolute; top: 52px; right: 0; bottom: auto; width: 44px; min-width: 44px;
+    min-height: 44px; padding: 0; box-shadow: none; }
+}
 
 /* Set-Dialog am Telefon: kleines Bild links, Wert und Gewinn daneben; die
    übrigen Angaben darunter. Das Bild nahm vorher 270 px vor allem Wichtigen. */
@@ -692,26 +699,22 @@
   .mon-dienste td:has(> .mon-knoepfe > .mon-leise:only-child) { display: none; }
 }
 
-/* Gutscheine am Telefon: Ohne Mauszeiger gibt es keinen Tooltip, also steht
-   das Verb neben dem Sinnbild — nur wo Platz ist; bei grosser Schrift bliebe
-   für die Nummer sonst eine Spalte von drei Zeichen. */
-@container haupt (min-width: 17rem) {
-  .voucher-row .v-btn { width: auto; padding: 0 10px; gap: 6px; }
-  .voucher-row .v-btn-text { display: inline; }
-}
-/* Eine Knopfgrösse je Karte; die Nummer kopiert ein Sinnbild direkt daneben,
-   und die Aktionen teilen sich die volle Breite. */
+/* Gutscheine am Telefon, eine ruhige Karte: Nummer und PIN mit gleich grossen
+   Sinnbild-Knöpfen (der Name steht in aria-label), „Bearbeiten“ und „Mehr“
+   nebeneinander; erst bei sehr grosser Schrift untereinander. */
 @media (max-width: 640px) {
   .voucher-row :is(.v-btn, .btn) { font-size: var(--fs-2); }
-  .voucher-row .voucher-num-row .v-btn { width: 44px; padding: 0; }
-  .voucher-row .voucher-num-row .v-btn-text { display: none; }
+  .voucher-row .v-btn { width: 44px; padding: 0; }
+  .voucher-row .v-btn .v-btn-text { display: none; }
   .voucher-row .voucher-actions { flex: 1 1 100%; margin-left: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .voucher-actions > .mehr-menue { display: block; }
   .voucher-actions > .btn, .voucher-actions > .mehr-menue > summary { width: 100%; justify-content: center; }
+  :is([data-click="guthabenAlleAbfragen"], [data-click="gutscheineExportieren"]) { flex: 1 1 100%; }
   /* Daumengrosse Ziele auch in Toast und Bauliste-Chip. */
   .toast-aktion { min-height: 44px; }
   .pl-chip-weg { flex: none; min-width: 44px; min-height: 44px; }
 }
-@container haupt (max-width: 20.5em) {
+@container haupt (max-width: 15em) {
   .voucher-row .voucher-actions { grid-template-columns: minmax(0, 1fr); }
 }
 

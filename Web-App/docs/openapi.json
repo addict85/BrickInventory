@@ -2813,6 +2813,97 @@
         }
       }
     },
+    "/api/v1/auth/users/{id}/freischalten": {
+      "put": {
+        "tags": [
+          "konto"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DELETE_api_v1_papierkorb_id"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "admin_password": {
+                    "type": "string",
+                    "maxLength": 1024
+                  },
+                  "code": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 64
+                          },
+                          {
+                            "type": "number"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "passkey": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "x-bestaetigung": {
+          "passwort": "admin_password",
+          "code": "code"
+        }
+      }
+    },
     "/api/v1/auth/users/{id}/password": {
       "put": {
         "tags": [
@@ -13172,6 +13263,9 @@
           },
           "zweiter_faktor": {
             "type": "boolean"
+          },
+          "wartet_auf_bestaetigung": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -16860,6 +16954,9 @@
             "type": "boolean"
           },
           "passwort_vergessen": {
+            "type": "boolean"
+          },
+          "mail_versand": {
             "type": "boolean"
           }
         },

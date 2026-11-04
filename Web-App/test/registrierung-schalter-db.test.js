@@ -15,6 +15,11 @@
  *   D  (02.11.) passkey/passwort_vergessen fest true → rot: „Anmeldewege
  *      nur, wenn der Server sie kann" (ohne APP_BASE_URL true); nur
  *      basisUrl() ohne mailEingerichtet() → rot (ohne SMTP true)
+ *   F  (04.11.) registration-status und /register ohne mailBereit() → rot:
+ *      „ohne Mailversand bleibt sie zu …“; ebenso die Prüfung beim Einschalten
+ *      in POST /settings entfernt
+ *   G  (04.11.) schalteRegistrierungFrei() lässt registrierung_offen stehen oder
+ *      die Route protokolliert nicht → rot: „der Verwalter schaltet … frei“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -26,6 +31,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { mailAttrappe } = require('./helpers/mail-attrappe');
+mailAttrappe();
 const db = _req('db/database.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -97,6 +104,41 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async (t) =>
     const r = await registriere();
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(await db.get('SELECT id FROM users WHERE username = $1', [NEU]));
+  });
+
+  await t.test('ohne Mailversand bleibt sie zu und lässt sich nicht einschalten', async () => {
+    process.env.APP_BASE_URL = 'https://inventar.example.org';
+    await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user')");
+    const s = (await rufe('GET', '/auth/registration-status')).body;
+    assert.deepEqual([s.enabled, s.mail_versand], [false, false], 'trotz "1"');
+    const r = await rufe('POST', '/auth/register', { username: `${NEU}_x`, email: `${NEU}_x@example.org`, password: 'Neues-Passwort-1' });
+    assert.deepEqual([r.status, r.body.code], [403, 'registrierung_deaktiviert']);
+    await setze('0');
+    const ein = await rufe('POST', '/settings', { registration_enabled: '1', admin_password: PASS });
+    assert.deepEqual([ein.status, ein.body.code], [400, 'registrierung_braucht_mail']);
+    assert.equal(await gespeichert('registration_enabled'), '0');
+    const mitMail = await rufe('POST', '/settings', { registration_enabled: '1', smtp_host: 'mail.example.org', smtp_user: 'inventar', admin_password: PASS });
+    assert.equal(mitMail.status, 200, JSON.stringify(mitMail.body));
+    assert.equal(await gespeichert('registration_enabled'), '1');
+  });
+
+  await t.test('der Verwalter schaltet eine offene Registrierung frei', async () => {
+    const { assertLoginAllowed } = _req('src/konto/auth.js');
+    const neu = (await db.get('SELECT id FROM users WHERE username = $1', [NEU])).id;
+    const zeile = () => db.get('SELECT * FROM users WHERE id = $1', [neu]);
+    const inListe = async () => (await rufe('GET', '/auth/users')).body.users.find(u => u.id === neu);
+    assert.equal((await inListe()).wartet_auf_bestaetigung, true);
+    assert.equal(assertLoginAllowed(await zeile())?.code, 'email_nicht_bestaetigt');
+    assert.equal((await rufe('PUT', `/auth/users/${neu}/freischalten`, {})).status, 400, 'ohne Passwort');
+    const r = await rufe('PUT', `/auth/users/${neu}/freischalten`, { admin_password: PASS });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const z = await zeile();
+    assert.deepEqual([z.email, z.email_verified, z.registrierung_offen, z.email_neu], [`${NEU}@example.org`, true, false, null]);
+    assert.equal(assertLoginAllowed(z), null);
+    assert.equal((await inListe()).wartet_auf_bestaetigung, false);
+    assert.equal((await db.get('SELECT aktion FROM verwaltungsprotokoll WHERE ziel_id = $1 ORDER BY id DESC LIMIT 1', [neu])).aktion, 'konto_freigeschaltet');
+    const nochmal = await rufe('PUT', `/auth/users/${neu}/freischalten`, { admin_password: PASS });
+    assert.deepEqual([nochmal.status, nochmal.body.code], [409, 'konto_nicht_wartend']);
   });
 
   await t.test('das Formular nimmt nur 0 oder 1', async () => {

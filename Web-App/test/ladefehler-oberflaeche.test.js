@@ -105,7 +105,7 @@ test('Band ohne Verbindung: „Keine Verbindung seit …“', async () => {
     w.dispatchEvent(new w.Event('offline'));
     await takt(10);
     assert.equal(band.hidden, false, 'ohne Verbindung kein Band');
-    assert.match(band.textContent, /^Keine Verbindung seit \d{2}\.\d{2}\.\d{4}/);
+    assert.match(band.textContent, /^Keine Verbindung seit heute, \d{2}:\d{2}\./);
     Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
     w.dispatchEvent(new w.Event('online'));
     await takt(10);

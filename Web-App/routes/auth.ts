@@ -15,7 +15,7 @@ import { hinweisNebenher, verwalterHinweisNebenher } from '../src/konto/kontoHin
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
 import { passwortMangel } from '../src/infra/passwortRegel';
-import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail, mailEingerichtet } from '../src/infra/mailer';
+import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail, mailBereit } from '../src/infra/mailer';
 import type { Request, Response } from 'express';
 import { setUserSetting } from '../src/konto/settings';
 import { registrierungOffen } from '../src/konto/settings';
@@ -328,6 +328,17 @@ router.put('/users/:id/aktiv', requireAdmin, async (req, res: Antwort<'PUT /api/
   res.json({ success: true, is_active: soll });
 });
 
+// Für Registrierungen, deren Bestätigungsmail nie ankam: Der Verwalter bürgt für die Adresse.
+router.put('/users/:id/freischalten', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/freischalten'>) => {
+  const targetId = parseInt(pfadParam(req, 'id'));
+  if (!Number.isInteger(targetId) || !await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
+  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
+  const r = await K.schalteRegistrierungFrei(targetId);
+  if (r !== 'ok') return sendeFehler(req, res, 409, r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
+  await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_freigeschaltet');
+  res.json({ success: true });
+});
+
 /** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters.
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-password */
 router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
@@ -545,17 +556,18 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
     user: { id: user.id, username: user.username }, token_info: await tokenAngaben(bearerToken) });
 });
 
-// Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann.
+// Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
 router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
-  res.json({ enabled: await registrierungOffen(), passkey: !!P.vertrauenspartei(),
-             passwort_vergessen: !!basisUrl() && await mailEingerichtet() });
+  const mail = await mailBereit();
+  res.json({ enabled: mail && await registrierungOffen(), passkey: !!P.vertrauenspartei(),
+             passwort_vergessen: mail, mail_versand: mail });
 });
 
 router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/register'>) => {
   const { username, email, first_name, last_name, password, language } = req.body;
   const lang = ['de', 'en'].includes(language) ? language : 'de';
 
-  if (!await registrierungOffen()) return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
+  if (!await registrierungOffen() || !await mailBereit()) return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
 
   if (!username || !email || !password)
     return sendeFehler(req, res, 400, 'registrierung_felder');
@@ -598,16 +610,12 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
       : { success: false, mode: 'ohne_basis' };
   }
 
-    res.json({
-      success: true,
-      message: result.mode === 'ohne_basis'
-        ? 'Konto erstellt. Eine Bestätigung per E-Mail ist auf diesem Server nicht eingerichtet (APP_BASE_URL fehlt) — bitte den Verwalter fragen.'
-        : result.mode === 'console'
-        ? 'Konto erstellt. Der Server verschickt keine E-Mails (SMTP nicht eingerichtet) – bitte den Verwalter fragen.'
-        : 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.',
-      email_sent: result.success,
-      console_mode: result.mode === 'console',
-    });
+  res.json({
+    success: true,
+    message: result.success ? 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.'
+      : 'Konto erstellt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann das Konto freischalten.',
+    email_sent: result.success,
+  });
 });
 
 const RUECKSETZ_GUELTIG_MIN = 60, RUECKSETZ_PAUSE_MIN = 15, RUECKSETZ_MINDESTDAUER_MS = 400;

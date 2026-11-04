@@ -96,6 +96,7 @@ export const RegistrationStatusResponse = z.looseObject({
   enabled: z.boolean(),
   passkey: z.boolean().optional(),
   passwort_vergessen: z.boolean().optional(),
+  mail_versand: z.boolean().optional(),
 });
 
 export const TokenRotation = z.looseObject({
@@ -141,6 +142,7 @@ export const ZweiterFaktorStand = z.looseObject({
 export const KontoInListe = z.looseObject({
   id: ganz, username: z.string(), is_admin: z.boolean(), is_active: z.boolean(), created_at: zeit.nullable(),
   zweiter_faktor: z.boolean(),
+  wartet_auf_bestaetigung: z.boolean().optional(),
 });
 export const KontenListe = z.looseObject({ success: z.literal(true), users: z.array(KontoInListe) });
 export const KontoAktiv = z.looseObject({ success: z.literal(true), is_active: z.boolean() });
@@ -215,6 +217,7 @@ export const routen = {
   'POST /api/v1/auth/users': { antwort: Erfolg, ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin', false), username: z.string().max(64).optional(), password: z.string().max(PASSWORT).optional() }) },
   'PUT /api/v1/auth/users/:id/admin': { antwort: Erfolg, ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin') }) },
   'PUT /api/v1/auth/users/:id/aktiv': { antwort: KontoAktiv, ...verwalterBestaetigt({ is_active: eingabe.schalter('is_active') }) },
+  'PUT /api/v1/auth/users/:id/freischalten': { antwort: Erfolg, ...verwalterBestaetigt() },
   'PUT /api/v1/auth/users/:id/password': { antwort: Erfolg, ...verwalterBestaetigt({ password: z.string().max(PASSWORT).optional() }) },
   'DELETE /api/v1/auth/users/:id': { antwort: Erfolg, ...verwalterBestaetigt() },
   'DELETE /api/v1/auth/konto': { antwort: Erfolg, ...bestaetigt() },

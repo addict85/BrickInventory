@@ -23,10 +23,13 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+process.env.APP_BASE_URL = 'http://localhost';
 delete process.env.ADMIN_PASSWORD;
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
+const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+mailAttrappe();
 const db = _req('db/database.js');
 const { passwortMangel } = _req('src/infra/passwortRegel.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -62,9 +65,11 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     VALUES ($1, $2, true, true) RETURNING id`, [ZIEL, hash])).id;
   const regVorher = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
   await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'");
+  const mailZurueck = await mailserverEintragen(db);
   t.after(async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
     if (regVorher) await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regVorher.value]);
+    await mailZurueck();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, ziel]]);
   });
   const { base } = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true },

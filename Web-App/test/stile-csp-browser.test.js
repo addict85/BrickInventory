@@ -150,7 +150,7 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
     document.getElementById('lc').value = ${JSON.stringify(wiederherstellung)};
     document.getElementById('btn-login').click(); true`);
-  await bis(`document.body.innerText.includes(${JSON.stringify(NAME + ' (Admin)')})`, 'angemeldet als Verwalter');
+  await bis(`/${NAME} \\((Verwalter|Admin)\\)/.test(document.body.innerText)`, 'angemeldet als Verwalter');
   const reiter = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
   assert.ok(reiter.length >= 8, `nur ${reiter.length} Reiter`);
   for (const r of reiter) {

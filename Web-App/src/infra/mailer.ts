@@ -491,6 +491,12 @@ export async function mailEingerichtet(): Promise<boolean> {
   return !!(await getSetting('smtp_host')) && !!(await getSetting('smtp_user'));
 }
 
+/** Ein Link per Mail kommt nur mit Mailserver UND eigener Adresse an; `neu` sind Werte, die gerade gespeichert werden. */
+export async function mailBereit(neu: { smtp_host?: unknown; smtp_user?: unknown } = {}): Promise<boolean> {
+  const wert = async (k: 'smtp_host' | 'smtp_user') => neu[k] !== undefined ? String(neu[k] ?? '') : await getSetting(k);
+  return !!basisUrl() && !!(await wert('smtp_host')) && !!(await wert('smtp_user'));
+}
+
 export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt' | 'token_neu' | 'qr_zugang_neu'
   | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet'
   | 'passwort_durch_verwalter' | 'verwaltung_passwort_gesetzt' | 'zweiter_faktor_eingerichtet' | 'zweiter_faktor_abgeschaltet'

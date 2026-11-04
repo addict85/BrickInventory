@@ -358,6 +358,8 @@ export function applyLang(lang, persist) {
   // Sprache tatsächlich umstellt — oder die Servereinstellung von der lokal
   // gespeicherten abweicht — muss der aktive Tab neu geladen werden.
   if (!isRealSwitch) return;
+  // Was der Code zur Laufzeit schreibt (Kontoschild „Name (Verwalter)“), zieht hier nach.
+  document.dispatchEvent(new CustomEvent('bim:sprache', { detail: lang }));
 
   const activeTab = document.querySelector('.ntab.active')?.dataset?.tab;
   if (activeTab) {

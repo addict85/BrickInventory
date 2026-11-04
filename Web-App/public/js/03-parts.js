@@ -16,7 +16,9 @@ import { loadManualParts, manualPartsCache, renderManualParts } from './06-minif
 // ── PARTS ─────────────────────────────────────────────
 let partsColors=[], partsCats=[], activeColor=null, activeCat=null;
 // Kategorie-ID (part_cat_id) -> Klartextname via geladenem partsCats-Mapping.
-function catLabel(cn){ if(cn==null||cn==='') return '—'; const c=partsCats.find(x=>String(x.category_name)===String(cn)); return (c&&c.label)?c.label:String(cn); }
+// Ohne Namen ist eine bare ID unbekannt; ein eingetragener Name bleibt stehen, wie im Teiledetail.
+const katName = (cn, label) => label || (cn == null || cn === '' || /^\d+$/.test(String(cn)) ? tRaw('common.unknown') : String(cn));
+function catLabel(cn){ const c=partsCats.find(x=>String(x.category_name)===String(cn)); return katName(cn, c?.label); }
 
 export async function loadParts(){
   // Run stats + filters in parallel, then load data (needs filters first for UI)
@@ -57,7 +59,7 @@ async function loadPartsFilters(){
  */
 export function zeichneTeileFilter(){
   const farben = new Map(partsColors.map(c => [c.color_name, `${colorName(c.color_name)} (${c.unique_parts} ${t('parts.stat.types')})`]));
-  const kategorien = new Map(partsCats.map(c => [String(c.category_name), c.label || String(c.category_name)]));
+  const kategorien = new Map(partsCats.map(c => [String(c.category_name), katName(c.category_name, c.label)]));
   for (const p of manualPartsCache) {
     if (p.color_name && !farben.has(p.color_name)) farben.set(p.color_name, colorName(p.color_name));
     if (p.category_name != null && p.category_name !== '' && !kategorien.has(String(p.category_name)))

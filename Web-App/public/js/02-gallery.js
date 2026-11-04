@@ -363,7 +363,11 @@ export async function loadStats(){
   const d = await api('GET', '/v1/stats' + scopeQuery('gallery'));
   if (d.success) {
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung.
-    G('bstat-sets').textContent     = d.stats.total_sets;
+    // Stück wie Teile und Figuren daneben; die Zahl der verschiedenen Sets steht darunter.
+    const stueck = d.stats.total_quantity || d.stats.total_sets;
+    G('bstat-sets').textContent     = fmtBig(stueck);
+    const verschieden = G('bstat-sets').parentElement?.querySelector('.bstat-s');
+    if (verschieden) verschieden.textContent = stueck !== d.stats.total_sets ? tRaw('gallery.stat.verschieden', { n: d.stats.total_sets }) : '';
     G('bstat-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
     // 0 Teile trotz Sets heisst: Die Teilelisten fehlen noch. Ohne den Satz sähe es nach einem Fehler aus.
     const ohneListen = !d.stats.total_parts && d.stats.total_sets > 0;
