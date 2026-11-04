@@ -304,9 +304,10 @@ workflow* den Zweig wählen und `pruefsummen` ankreuzen. Der Lauf legt einen
 Zweig `pruefsummen/<Lauf>` und einen Pull-Request an; dessen Text listet neue
 Komponenten, geänderte Prüfsummen und neu vertraute Schlüssel — solche mit
 Gruppen-Regex zuerst, denn sie gelten für jedes künftige Paket der Gruppe.
-Solche Regex fasst Gradle selbst zusammen; `tools/vertrauen-eng.py` ersetzt sie
-im Lauf durch die Gruppen, die heute gebaut werden. Ein neues Paket aus einer
-neuen Gruppe braucht so einen neuen, im Pull-Request sichtbaren Eintrag.
+Solche Regex fasst Gradle selbst zusammen. Eine Liste einzelner Gruppen statt
+der Regex verfehlte Plugin-Marker (z. B. `com.android.library`), die nur über
+die Regex vertraut waren; deshalb bleibt es bei der Regex, und die Prüfsumme
+jedes Artefakts gilt zusätzlich.
 Dafür einmalig *Settings → Actions → General → Allow GitHub Actions to create
 and approve pull requests* einschalten; sonst bleibt nur der Zweig, und der
 Pull-Request wird von Hand gestellt. Die CI des Zweigs startet nicht von selbst

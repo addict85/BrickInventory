@@ -1143,10 +1143,6 @@ jobs:
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys
-      # Gradle fasst Gruppen eines Schlüssels zu einer Regex zusammen, die auch jedes
-      # künftige Paket deckt (sec10 H5). Übrig bleiben die Gruppen, die heute gebaut werden.
-      - name: Vertrauen auf die gebauten Gruppen begrenzen
-        run: python3 tools/vertrauen-eng.py gradle/verification-metadata.xml
       # Hier, ohne Schreibrecht: Das Werkzeug kommt aus dem Repository. Neu
       # vertraute Schlüssel mit Gruppen-Regex stehen hervorgehoben vorn.
       - name: Änderungen zusammenfassen
