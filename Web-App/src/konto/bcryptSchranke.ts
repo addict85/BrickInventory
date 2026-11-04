@@ -10,30 +10,31 @@ export class BcryptUeberlast extends Error {
 }
 
 export interface Schranke {
-  mit<T>(arbeit: () => Promise<T>): Promise<T>;
+  /** vorrang: vorne in die Schlange und nie wegen ihrer Länge abgewiesen. */
+  mit<T>(arbeit: () => Promise<T>, vorrang?: boolean): Promise<T>;
   stand(): { laufend: number; wartend: number };
 }
 
 export function neueSchranke(gleichzeitig: number, wartendHoechstens: number, wartezeitMs: number): Schranke {
   let laufend = 0;
   const warteschlange: (() => void)[] = [];
-  const platz = (): Promise<void> => {
+  const platz = (vorrang: boolean): Promise<void> => {
     if (laufend < gleichzeitig) { laufend++; return Promise.resolve(); }
-    if (warteschlange.length >= wartendHoechstens) return Promise.reject(new BcryptUeberlast());
+    if (!vorrang && warteschlange.length >= wartendHoechstens) return Promise.reject(new BcryptUeberlast());
     return new Promise((weiter, abbrechen) => {
       const los = () => { clearTimeout(frist); weiter(); };
       const frist = setTimeout(() => {
         warteschlange.splice(warteschlange.indexOf(los), 1);
         abbrechen(new BcryptUeberlast());
       }, wartezeitMs);
-      warteschlange.push(los);
+      if (vorrang) warteschlange.unshift(los); else warteschlange.push(los);
     });
   };
   // Der freie Platz geht direkt an den nächsten Wartenden, `laufend` bleibt dann gleich.
   const frei = () => { const naechster = warteschlange.shift(); if (naechster) naechster(); else laufend--; };
   return {
-    async mit(arbeit) {
-      await platz();
+    async mit(arbeit, vorrang = false) {
+      await platz(vorrang);
       try { return await arbeit(); } finally { frei(); }
     },
     stand: () => ({ laufend, wartend: warteschlange.length }),

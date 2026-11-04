@@ -100,7 +100,7 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
     const r = await profil({ email: `${NAME}@neu.example`, password_current: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.emailChanged, true);
-    assert.equal(await adresse(), `${NAME}@neu.example`);
+    assert.equal(await adresse(), `${NAME}@alt.example`, 'die neue gilt erst nach dem Link (email-neu-db)');
     assert.deepEqual(gesendet, [{ an: `${NAME}@alt.example`, name: NAME, neu: `${NAME}@neu.example` }],
       'Die bisherige Adresse muss erfahren, dass das Konto eine neue hat');
   });

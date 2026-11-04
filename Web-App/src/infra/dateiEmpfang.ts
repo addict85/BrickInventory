@@ -56,3 +56,12 @@ export function belegterPlatz(ordner: string): number {
     if (e.isFile()) summe += fs.statSync(path.join(ordner, e.name)).size;
   return summe;
 }
+
+/** Hochgeladenes kann privat sein (Rechnungen): nur für den Dienst lesbar, auch
+ * wenn der Ordner schon mit lockereren Rechten bestand. */
+export function privaterOrdner(wurzel: string, name: string): string {
+  const ordner = path.join(wurzel, name);
+  fs.mkdirSync(ordner, { recursive: true, mode: 0o700 });
+  for (const o of [wurzel, ordner]) fs.chmodSync(o, 0o700);
+  return ordner;
+}

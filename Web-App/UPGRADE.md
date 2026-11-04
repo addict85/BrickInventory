@@ -1543,4 +1543,76 @@ Telefon die Webseite.
   beim Start eine Fehlerzeile (`❌ [start] APP_BASE_URL fehlt im Betrieb …`):
   Der Host-Filter gegen DNS-Rebinding ist dann aus. Er startet trotzdem —
   `compose.yaml` setzt die Variable immer; wer ohne Compose startet, sollte
-  sie setzen.
+  sie setzen. (Seit Abschnitt 38, Punkt 5: Startverbot.)
+
+## 38. Runde 12 – Neue E-Mail-Adresse erst nach Bestätigung, Rechte und Startverbot
+
+**1. Eine geänderte E-Mail-Adresse gilt erst nach dem Link**
+
+- `PUT /api/v1/auth/profile` mit neuer Adresse trägt sie nur noch als
+  *ausstehend* ein (neue Spalten `users.email_neu`, `email_neu_token`,
+  `email_neu_bis`, Migration 0096). Der Link (24 Stunden) geht an die neue
+  Adresse, ein Hinweis an die bisherige. Bis zum Klick gelten die bisherige
+  Adresse, ihre Anmeldung und ihre Mails weiter; das Konto bleibt benutzbar.
+- Beim Einlösen wird erneut geprüft, ob die Adresse frei ist. Ist sie
+  inzwischen vergeben, antwortet `POST /auth/email-bestaetigen` mit
+  `email_vergeben`, und die ausstehende Adresse fällt weg.
+- `GET /api/v1/auth/profile` liefert zusätzlich `email_neu` (optional, `null`
+  ohne Antrag); die Weboberfläche zeigt sie unter dem Feld. Die Android-App
+  liest das Feld nicht; nach dem Speichern zeigt sie die bisherige Adresse,
+  bis der Link geöffnet ist.
+- Vergeben ist eine Adresse nur noch, wenn sie bestätigt ist, einem Verwalter
+  oder einem Konto ohne offene Registrierung gehört, oder einer offenen
+  Registrierung, die jünger als 24 Stunden ist. Eine ältere, nie bestätigte
+  Registrierung räumt eine neue Registrierung (oder Bestätigung) mit derselben
+  Adresse ab; sie war nie benutzbar. *Passwort vergessen* findet nur noch
+  Konten mit bestätigter Adresse.
+- Ohne Mailversand (kein SMTP, keine `APP_BASE_URL`) wird eine neue Adresse
+  nie gültig. Im Konsolenmodus (ohne SMTP) steht der Link nur mit
+  `MAIL_KONSOLE_MIT_TOKEN=1` lesbar im Server-Protokoll.
+
+**2. Altbestand: unbestätigte Adressen werden ausstehend**
+
+- Migration 0096 verschiebt jede unbestätigte Adresse, die nicht zu einer
+  offenen Registrierung gehört, nach `email_neu` (`users.email` wird leer).
+  Ein noch gültiger Link gilt weiter. So eine Adresse stammte aus einer
+  Profiländerung und konnte einer fremden Person gehören; gelöscht wird nichts.
+- Diese Konten melden sich danach ohne Adresse an (vorher waren
+  Nicht-Verwalter bis zur Bestätigung gesperrt). Verwalter darunter bekommen
+  Verwalter-Mails erst wieder nach der Bestätigung.
+- Der Start meldet Konten mit ausstehender Adresse ohne gültigen Link:
+  `⚠️ [konto] … nie bestätigten Adresse (IDs …)`. Abhilfe: Die Adresse im
+  Profil erneut eintragen, dann kommt ein neuer Link. Nachsehen:
+  `SELECT id, username, email_neu FROM users WHERE email_neu IS NOT NULL;`
+
+**3. Erster API-Schlüssel ohne Passwort nur im Einrichtungsassistenten**
+
+- Einen bisher leeren Rebrickable-, Brickset- oder BrickLink-Schlüssel setzt
+  ein Verwalter ohne Passwort nur noch, solange die Einrichtung nicht
+  abgeschlossen ist (`einrichtung_erledigt`). Danach fragt auch der erste
+  Schlüssel nach dem Passwort (`aktuelles_passwort_erforderlich`).
+
+**4. Hochgeladene Dateien nur für den Dienst lesbar**
+
+- Der Entrypoint setzt `umask 077`: Was der Dienst unter `./data` neu anlegt,
+  ist 0600 bzw. 0700. Bei jedem Start zieht er `data/uploads` nach
+  (`chmod -R go-rwx`, als `brickinv`). Der Upload selbst setzt Datei 0600 und
+  Ordner 0700, auch ohne Entrypoint; ohne Docker einmal von Hand:
+  `chmod -R go-rwx data/uploads`.
+- `backup.sh` liest neue Dateien unter `./data` daher nur als root (wie im
+  Cron-Beispiel) oder unter der UID von `brickinv`.
+
+**5. Ohne APP_BASE_URL im Betrieb startet der Web-Prozess nicht**
+
+- Mit `NODE_ENV=production`, ohne `APP_BASE_URL` und nicht als `ROLLE=jobs`
+  bricht der Start ab (`[start] APP_BASE_URL fehlt im Betrieb … Start
+  verweigert`). `compose.yaml` setzt die Variable immer; betroffen ist nur ein
+  Start ohne Compose. Wer bewusst ohne Host-Filter laufen will, setzt
+  `APP_BASE_URL_FEHLT_OK=1`; dann startet er mit der bisherigen Fehlerzeile.
+
+**6. Anmeldung unter Last**
+
+- Ist die Warteschlange der Passwortprüfungen voll, kommt eine Anmeldung, die
+  zuletzt von derselben Adresse (IPv6: /64) mit demselben Namen gelang, vorne
+  in die Schlange und wird nicht wegen deren Länge abgewiesen. Eine Flut aus
+  fremden Adressen sperrt bekannte Geräte so nicht aus. Nichts zu tun.

@@ -15,7 +15,7 @@ import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm, alarmeAusCsv } from '../../src/finanzen/preisalarm';
-import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
+import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN, privaterOrdner } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { withInventoryLock } from '../../db/txLock';
 import { addSet, updateSet } from '../../src/sets/setService';
@@ -433,7 +433,7 @@ const INSTR_EXT_BY_MIME = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'im
 
 const uploadInstr = multer({
   storage: multer.diskStorage({
-    destination: (req, _file, cb) => { const dir = path.join(DATA_DIR, 'uploads', String(angemeldeteNutzerId(req))); fs.mkdirSync(dir, { recursive: true }); cb(null, dir); },
+    destination: (req, _file, cb) => { cb(null, privaterOrdner(path.join(DATA_DIR, 'uploads'), String(angemeldeteNutzerId(req)))); },
     filename: (req, file, cb) => {
       const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi, '_');
       // ausTabelle: Ein geerbter Schlüssel wie 'constructor' ist keine Endung.
@@ -462,6 +462,7 @@ async function vorDemUpload(req: express.Request, res: express.Response, next: e
 
 router.post('/sets/:setNumber/instructions/upload', requireToken, kontoSchranke('upload'), vorDemUpload, uploadInstr.single('file'), async (req, res: Antwort<'POST /api/v1/sets/:setNumber/instructions/upload'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
+  fs.chmodSync(req.file.path, 0o600);
   const verwerfen = () => fs.rmSync(req.file!.path, { force: true });
   if (!inhaltPasstZuTyp(req.file.path, req.file.mimetype)) { verwerfen(); return sendeFehler(req, res, 400, 'datei_inhalt_falsch'); }
   // Noch einmal nach dem Schreiben: Ohne Content-Length (chunked) greift die Vorabprüfung nicht.

@@ -8,7 +8,7 @@ import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { bcryptSchranke, BcryptUeberlast } from './bcryptSchranke';
-import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, MAX_ATTEMPTS } from './loginLimiter';
+import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, MAX_ATTEMPTS } from './loginLimiter';
 import type { Anmeldeereignis } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
@@ -17,6 +17,7 @@ import { ausTabelle } from '../infra/validate';
 import * as V from '../infra/validate';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
+import * as kontenRepo from './repository/konten';
 import type { TokenScope } from './repository/zugaenge';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
 import { hinweisNebenher } from './kontoHinweis';
@@ -68,10 +69,12 @@ export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boole
   if (token === undefined || token === null || String(token).trim() === '') {
     return { ok: false, grund: 'fehlt' };
   }
-  const user = await repo.kontoZuEmailToken(hashToken(String(token)));
-  if (!user) return { ok: false, grund: 'ungueltig' };
-  await repo.bestaetigeEmail(user.id);
-  return { ok: true, userId: user.id };
+  const hash = hashToken(String(token));
+  const user = await repo.kontoZuEmailToken(hash);
+  if (user) { await repo.bestaetigeEmail(user.id); return { ok: true, userId: user.id }; }
+  const neu = await kontenRepo.uebernimmEmailNeu(hash);
+  if (!neu) return { ok: false, grund: 'ungueltig' };
+  return neu.ok ? { ok: true, userId: neu.id } : { ok: false, grund: 'vergeben', userId: neu.id };
 }
 
 const TOKEN_TTL_MS = 60 * 1000;       // Cache-Gültigkeit
@@ -319,9 +322,11 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   }
 
   const user = await repo.kontoZurAnmeldung(name);
-  // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen.
+  // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen. Wer sich von
+  // hier zuletzt angemeldet hat, wartet unter Last vorne: Eine Flut fremder Adressen sperrt ihn nicht aus.
+  const vorrang = await bekannteAnmeldung(ip, name);
   let passtDasPasswort: boolean;
-  try { passtDasPasswort = await bcryptSchranke.mit(() => bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH)); }
+  try { passtDasPasswort = await bcryptSchranke.mit(() => bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH), vorrang); }
   catch (e) {
     if (!(e instanceof BcryptUeberlast)) throw e;
     await gibAnmeldeplatzFrei(ip, name);

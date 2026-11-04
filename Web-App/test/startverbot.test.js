@@ -19,7 +19,13 @@
  *      dieselbe Prüfung (der Start scheitert erst an der Datenbank, ohne Grund)
  *   F  `start` in package.json ohne NODE_ENV=production → rot: „npm start …“
  *   G  die Meldung zu APP_BASE_URL in server.ts gestrichen → rot: „ohne
- *      APP_BASE_URL im Betrieb eine laute Meldung“
+ *      APP_BASE_URL im Betrieb …“ (mit der Ausnahme keine Meldung)
+ * Gegenproben H4 (04.11.2026 gemessen, je einzeln):
+ *   H  in startVerbote() den Zweig zu APP_BASE_URL entfernt → rot: „ohne
+ *      APP_BASE_URL im Betrieb …“ (Code statt 1: Datenbankfehler)
+ *   I  APP_BASE_URL_FEHLT_OK nicht ausgewertet → rot: dieselbe Prüfung (mit
+ *      der Ausnahme verweigert)
+ *   J  die Ausnahme für ROLLE=jobs entfernt → rot: dieselbe Prüfung ({"ROLLE":"jobs"})
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -76,14 +82,21 @@ test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, 
   assert.match(log, /Database initialisation failed/);
 });
 
-test('ohne APP_BASE_URL im Betrieb eine laute Meldung', { timeout: 30_000 }, async () => {
+test('ohne APP_BASE_URL im Betrieb: Start verweigert, nur ausdrücklich erlaubt', { timeout: 60_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x' };
   const ohne = await starte(db);
-  assert.match(ohne.log, /❌ \[start\] APP_BASE_URL fehlt im Betrieb: Der Host-Filter gegen DNS-Rebinding ist aus/);
-  const mit = await starte({ ...db, APP_BASE_URL: 'https://lego.example.org' });
-  assert.doesNotMatch(mit.log, /APP_BASE_URL fehlt/);
-  const entwicklung = await starte({ ...db, NODE_ENV: 'development' });
-  assert.doesNotMatch(entwicklung.log, /APP_BASE_URL fehlt im Betrieb/);
+  assert.equal(ohne.code, 1, ohne.log.slice(-400));
+  assert.match(ohne.log, /APP_BASE_URL fehlt im Betrieb: .*Start verweigert/);
+  assert.doesNotMatch(ohne.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
+  // Mit der Ausnahme startet er bis zur Datenbank, laut gemeldet.
+  const erlaubt = await starte({ ...db, APP_BASE_URL_FEHLT_OK: '1' });
+  assert.match(erlaubt.log, /❌ \[start\] APP_BASE_URL fehlt im Betrieb \(APP_BASE_URL_FEHLT_OK=1\): Der Host-Filter/);
+  assert.match(erlaubt.log, /Database initialisation failed/);
+  for (const env of [{ APP_BASE_URL: 'https://lego.example.org' }, { ROLLE: 'jobs' }, { NODE_ENV: 'development' }]) {
+    const r = await starte({ ...db, ...env });
+    assert.doesNotMatch(r.log, /APP_BASE_URL fehlt/, JSON.stringify(env));
+    assert.match(r.log, /Database initialisation failed/, JSON.stringify(env));
+  }
 });
 
 test('npm start setzt NODE_ENV=production', () => {
@@ -93,6 +106,7 @@ test('npm start setzt NODE_ENV=production', () => {
 
 test('ausserhalb von Produktion kein Verbot, mit eigenem Passwort keines', () => {
   assert.deepEqual(startVerbote({ NODE_ENV: 'development' }), [], 'ausserhalb von Produktion kein Verbot');
-  assert.deepEqual(startVerbote({ NODE_ENV: 'production', PGPASSWORD: 'eigenes', TRUST_PROXY: '172.28.73.10' }), []);
-  assert.equal(startVerbote({ NODE_ENV: 'production', PGPASSWORD: 'eigenes', TRUST_PROXY: '1' }).length, 1);
+  const basis = { NODE_ENV: 'production', PGPASSWORD: 'eigenes', APP_BASE_URL: 'https://lego.example.org' };
+  assert.deepEqual(startVerbote({ ...basis, TRUST_PROXY: '172.28.73.10' }), []);
+  assert.equal(startVerbote({ ...basis, TRUST_PROXY: '1' }).length, 1);
 });

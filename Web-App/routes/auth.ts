@@ -243,20 +243,17 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
   if (first_name !== undefined) felder.first_name = first_name || null;
   if (last_name  !== undefined) felder.last_name  = last_name  || null;
   if (emailChanged) {
-    const token   = crypto.randomBytes(32).toString('hex');
-    felder.email = email;
     // Auch für Verwalter: Ob die Adresse dem Inhaber gehört, zeigt erst der Link.
-    felder.email_verified = false;
-    // Nur der Hash in die DB, der Klartext geht ausschliesslich per Mail hinaus.
-    felder.verification_token = hashToken(token);
-    felder.token_expires = new Date(Date.now() + 24*60*60*1000);
+    // Bis dahin gilt die alte, und die neue belegt nichts.
+    const token   = crypto.randomBytes(32).toString('hex');
+    await K.merkeEmailNeu(user.id, email, hashToken(token), new Date(Date.now() + 24*60*60*1000));
     await K.aendereProfil(user.id, felder);
     // In der Sprache des Kontos, nicht in der Vorgabe.
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(() => 'de'));
     const basis = getBaseUrl();
-    if (basis) emailSent = await sendVerificationMail(email, token, basis, lang)
+    if (basis) emailSent = await sendVerificationMail(email, token, basis, lang, 'adresse')
       .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));
     // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
     if (user.email) await sendEmailGeaendertMail(user.email, user.username, email, lang)
@@ -639,7 +636,7 @@ router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60
 
 router.post('/email-bestaetigen', ipThrottle('email-bestaetigen', 30, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/email-bestaetigen'>) => {
   const e = await verifiziereEmailToken(req.body?.token);
-  if (!e.ok) return sendeFehler(req, res, 400, 'bestaetigungslink_ungueltig');
+  if (!e.ok) return sendeFehler(req, res, 400, e.grund === 'vergeben' ? 'email_vergeben' : 'bestaetigungslink_ungueltig');
   res.json({ success: true });
 });
 

@@ -17,6 +17,9 @@
  *      Prüfung („Technische Details“ fehlt)
  *   F  (04.11.) verwirfToasts in zeige() entfernt → rot: dieselbe Prüfung
  *      (Toast „Verbindung steht“ bleibt im nächsten Schritt stehen)
+ *   G  (04.11.) in POST /settings die Ausnahme für den ersten Schlüssel auch in
+ *      der Einrichtung abgeschaltet → rot: dieselbe Prüfung (Passwortfrage,
+ *      „Klartext statt Rohtext“ läuft ab)
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -71,6 +74,8 @@ test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeou
     await b.auswerten(pruefen);
     await bis(`/nicht erreichbar/.test(document.getElementById('ew-fehler-rebrickable').textContent)`, 'Klartext statt Rohtext', 100);
     const z = await b.auswerten(stand);
+    assert.ok(await db.get("SELECT 1 FROM global_settings WHERE key = 'rebrickable_api_key'"),
+      'in der Einrichtung speichert der Assistent den ersten Schlüssel ohne Passwortfrage');
     assert.match(z.fehler, /Technische Details/, 'die technische Ursache steht aufklappbar dabei');
     assert.match(z.zeichen, /fehlt/, '✗ neben dem Titel');
     assert.deepEqual(z.toasts, []);

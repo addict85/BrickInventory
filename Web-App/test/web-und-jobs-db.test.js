@@ -67,7 +67,7 @@ function starte(rolle, port) {
   const p = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'rollen-test-geheimnis-lang-genug-1234',
-           PORT: String(port), ROLLE: rolle, NODE_ENV: 'production', AUFTRAG_FRIST_SEK: '600', DB_SUPERUSER_ERLAUBT: '1' },
+           PORT: String(port), ROLLE: rolle, NODE_ENV: 'production', AUFTRAG_FRIST_SEK: '600', DB_SUPERUSER_ERLAUBT: '1', APP_BASE_URL_FEHLT_OK: '1' },
   });
   p.log = '';
   p.stdout.on('data', d => { p.log += d; });

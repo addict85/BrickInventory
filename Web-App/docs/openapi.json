@@ -16196,6 +16196,12 @@
           },
           "email_verified": {
             "type": "boolean"
+          },
+          "email_neu": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [

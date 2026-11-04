@@ -39,7 +39,7 @@ import { generateThumb } from './src/katalog/bilder/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
 import { renderIndexHtml, startStilHash } from './src/konto/indexHtml';
 import { meldeSmtpAltlast } from './src/infra/mailer';
-import { meldeUngueltigeAdressen } from './src/konto/konten';
+import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
 import { horcheAufTokenWiderruf } from './src/konto/auth';
 import * as pgNotify from './db/pgNotify';
 import { registerImgProxy } from './routes/imgProxy';
@@ -426,8 +426,8 @@ async function starte(): Promise<void> {
   for (const v of k.veraltet) console.warn(`⚠️ [start] ${v} wird nicht mehr ausgewertet und kann weg (siehe UPGRADE.md).`);
   if (!k.appBaseUrl) hinweisOhneBasisUrl('start', 'Mails enthalten keine Links (Bestätigung, Passwort vergessen), Passkeys und QR-Code der App sind aus.');
   const web = k.rolle !== 'jobs', jobs = k.rolle !== 'web';
-  if (!k.appBaseUrl && k.produktion && web) console.error('❌ [start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter gegen '
-    + 'DNS-Rebinding ist aus, jede Webseite im Heimnetz erreicht die Anmeldung. In .env setzen (README.md, UPGRADE.md).');
+  if (!k.appBaseUrl && k.produktion && web) console.error('❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): '
+    + 'Der Host-Filter gegen DNS-Rebinding ist aus, jede Webseite im Heimnetz erreicht die Anmeldung.');
   if (web) sitzungsGeheimnis();   // vor der Datenbank: Ein Startverbot soll nicht auf sie warten
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
   // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
@@ -442,6 +442,7 @@ async function starte(): Promise<void> {
   protokollInDieDatenbank(db.pool);
   if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
   if (web) await meldeUngueltigeAdressen().catch(logAndContinue('start:adressen'));
+  if (web) await meldeAusstehendeAdressen().catch(logAndContinue('start:ausstehende-adressen'));
   if (web) horcheAufTokenWiderruf();
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
