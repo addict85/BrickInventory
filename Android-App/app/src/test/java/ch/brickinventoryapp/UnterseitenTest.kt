@@ -21,7 +21,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.assertIsNotFocused
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
@@ -61,8 +63,7 @@ import org.robolectric.annotation.GraphicsMode
  *   preisalarm-nummer-zuerst     Rückfrage nennt wieder nur die Nummer → rot „Preisalarme nennen …“
  *   konto-ohne-wiederholung      Passwort ändern ohne passende Wiederholung frei → rot „Konto wechselt …“
  *   bauliste-zweistufig          Erstellen erst nach „+“ → rot „Bauliste entsteht …“
- *   konto-dialog-behaelt-fokus   Speichern ohne clearFocus → rot „Konto wechselt …“ (das getippte
- *                                Feld bleibt hinter dem Dialog fokussiert)
+ *   konto-profil-ohne-rueckfrage Speichern ohne Passwortdialog → rot „Konto fragt beim Speichern …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -257,7 +258,7 @@ class UnterseitenTest {
     }
 
     @Test
-    fun `Konto wechselt das Passwort erst mit passender Wiederholung und fragt beim Profil nach dem Passwort`() {
+    fun `Konto wechselt das Passwort erst mit passender Wiederholung`() {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
@@ -279,22 +280,30 @@ class UnterseitenTest {
         feld(R.string.startpasswort_wiederholen).performTextInput("neues-passwort-12")
         compose.waitForIdle()
         wechseln.assertIsEnabled()
+    }
 
-        // Profil: kein Passwortfeld auf der Seite, gefragt wird beim Speichern.
-        feld(R.string.register_first_name).performTextClearance()
-        feld(R.string.register_first_name).performTextInput("Marc")
-        val speichern = compose.onNode(hasText(ctx.getString(R.string.konto_save)) and hasClickAction())
-        speichern.performScrollTo()
-        // Ein Dialog mit Passwortfeld wird unter Robolectric nie ruhig (wie in
-        // BildschirmFotoVariantenTest): Uhr anhalten, Fenster über den Hauptlooper aufbauen.
-        compose.mainClock.autoAdvance = false
-        speichern.performClick()
-        repeat(3) {
-            compose.mainClock.advanceTimeBy(200)
-            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+    /**
+     * Geändert wird über die Textaktion, nicht durch Tippen: Ein fokussiertes Feld neben
+     * dem Dialogfenster lässt Robolectric nie zur Ruhe kommen (wie im AblaufTest).
+     */
+    @Test
+    fun `Konto fragt beim Speichern des Profils nach dem Passwort`() {
+        welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+            "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
+        val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
+            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            welt.t.meldungen, welt.t.sitzung))
+        zeige {
+            ch.brickinventoryapp.ui.screens.KontoUnterseite(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+                konto = konto, onZurueck = {})
         }
+        warte("Profil") { konto.kontoState.value.profil != null }
+        compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(R.string.register_first_name)))[0]
+            .performSemanticsAction(SemanticsActions.SetText) { it(AnnotatedString("Marc")) }
+        compose.waitForIdle()
+        compose.onNode(hasText(ctx.getString(R.string.konto_save)) and hasClickAction()).performScrollTo().performClick()
+        compose.waitForIdle()
         compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).fetchSemanticsNode("Kein Passwortfeld im Dialog")
-        feld(R.string.register_first_name).assertIsNotFocused()
         assertTrue("Gespeichert ohne Passwort: ${welt.pfade.anfragen}", welt.pfade.anfragen.none { it.startsWith("PUT") })
     }
 

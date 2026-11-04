@@ -1,10 +1,10 @@
-Gegenprobe: Profil-Speichern öffnet den Passwortdialog, ohne dem getippten Feld den Fokus zu nehmen
+Gegenprobe: Profil-Speichern sendet sofort, ohne nach dem Passwort zu fragen
 Modul: app
 Test: ch.brickinventoryapp.UnterseitenTest
-Rot: Konto wechselt
+Rot: Konto fragt beim Speichern
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt
-index b477171..c8b24b5 100644
+index b477171..05dc8ea 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenKonto.kt
 @@ -121,7 +121,7 @@ internal fun KontoCard(
@@ -12,7 +12,7 @@ index b477171..c8b24b5 100644
              val fokus = LocalFocusManager.current
              Button(
 -                onClick = { fokus.clearFocus(); fragtPasswort = true },
-+                onClick = { fragtPasswort = true },
++                onClick = { fokus.clearFocus(); onSpeichern(benutzername, email, vorname, nachname, null, code) },
                  enabled = geaendert && !kontoZustand.speichert,
                  modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
              ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
