@@ -7,7 +7,7 @@ export interface Konto {
   password_hash: string; is_admin: boolean; is_active: boolean; email_verified: boolean;
   must_change_password: boolean; created_at: Date; [spalte: string]: unknown;
 }
-export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'last_name' | 'email_verified'>;
+export type Profil = Pick<Konto, 'id' | 'username' | 'email' | 'first_name' | 'last_name' | 'email_verified'> & { email_neu: string | null };
 export type KontoInListe = Pick<Konto, 'id' | 'username' | 'is_admin' | 'is_active' | 'created_at'> & { zweiter_faktor: boolean };
 
 export function kontoKurz(id: number): Promise<KontoKurz | undefined> {
@@ -19,7 +19,7 @@ export function kontoVoll(id: number): Promise<Konto | undefined> {
 }
 
 export function profilZeile(id: number): Promise<Profil | undefined> {
-  return db.get<Profil>('SELECT id, username, email, first_name, last_name, email_verified FROM users WHERE id=$1', [id]);
+  return db.get<Profil>('SELECT id, username, email, first_name, last_name, email_verified, email_neu FROM users WHERE id=$1', [id]);
 }
 
 /** Der Login sucht Name ODER E-Mail ohne Gross/klein — beides muss deshalb über beide Spalten eindeutig sein. */
@@ -28,23 +28,60 @@ export async function nameVergeben(name: string, ausser: number): Promise<boolea
     'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2', [name, ausser]);
 }
 
+/** Eine offene Registrierung hält ihre Adresse nur so lange wie ihr erster Link.
+ * Ein erneuerter Link verlängert das nicht, sonst hielte ein Fremder sie beliebig. */
+export const REGISTRIERUNG_HAELT_STD = 24;
+const belegt = (u: string) => `(${u}.email_verified OR ${u}.is_admin OR NOT ${u}.registrierung_offen
+  OR ${u}.created_at > NOW() - make_interval(hours => ${REGISTRIERUNG_HAELT_STD}))`;
+const VERFALLENE_REGISTRIERUNG = `DELETE FROM users u WHERE LOWER(u.email) = LOWER($1) AND u.id <> $2 AND NOT ${belegt('u')}`;
+
 export async function emailVergeben(email: string, ausser: number): Promise<boolean> {
-  return !!await db.get(
-    'SELECT id FROM users WHERE (LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)) AND id != $2', [email, ausser]);
+  return !!await db.get(`SELECT id FROM users u WHERE (LOWER(u.username) = LOWER($1)
+    OR (LOWER(u.email) = LOWER($1) AND ${belegt('u')})) AND u.id != $2`, [email, ausser]);
 }
 
 /** Die Namen gehen in die Anweisung, nicht als Parameter — deshalb eine feste Liste. */
-const PROFILSPALTEN = new Set(['username', 'first_name', 'last_name', 'email', 'email_verified',
-  'verification_token', 'token_expires']);
+const PROFILSPALTEN = new Set(['username', 'first_name', 'last_name']);
 
 export async function aendereProfil(id: number, felder: Record<string, unknown>): Promise<void> {
   const spalten = Object.keys(felder);
   if (!spalten.length) return;
   for (const s of spalten) if (!PROFILSPALTEN.has(s)) throw new Error(`Profilspalte nicht erlaubt: ${s}`);
-  // Eine neue Adresse: Der Link an die alte gilt nicht mehr.
-  const zusatz = 'email' in felder ? `, ${OHNE_RUECKSETZLINK}` : '';
-  await db.run(`UPDATE users SET ${spalten.map((s, i) => `${s}=$${i + 1}`).join(',')}${zusatz} WHERE id=$${spalten.length + 1}`,
+  await db.run(`UPDATE users SET ${spalten.map((s, i) => `${s}=$${i + 1}`).join(',')} WHERE id=$${spalten.length + 1}`,
     [...spalten.map(s => felder[s]), id]);
+}
+
+export async function merkeEmailNeu(id: number, email: string, tokenHash: string, bis: Date): Promise<void> {
+  await db.run('UPDATE users SET email_neu = $2, email_neu_token = $3, email_neu_bis = $4 WHERE id = $1',
+    [id, email, tokenHash, bis]);
+}
+
+const OHNE_EMAIL_NEU = 'email_neu = NULL, email_neu_token = NULL, email_neu_bis = NULL';
+
+/** Erst hier wird die Adresse vergeben: Was beim Antrag frei war, kann inzwischen belegt sein.
+ * Auch ein Fehlschlag verbraucht den Link. @returns undefined bei ungültigem Link */
+export async function uebernimmEmailNeu(hash: string): Promise<{ id: number; ok: boolean } | undefined> {
+  const k = await db.get<{ id: number }>('SELECT id FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()', [hash]);
+  if (!k) return undefined;
+  const ok = await db.transaction(async (tx) => {
+    const neu = await tx.get<{ email_neu: string }>(
+      'SELECT email_neu FROM users WHERE id = $1 AND email_neu_token = $2 FOR UPDATE', [k.id, hash]);
+    if (!neu) return false;
+    await tx.run(VERFALLENE_REGISTRIERUNG, [neu.email_neu, k.id]);
+    if (await tx.get('SELECT 1 FROM users WHERE id <> $2 AND (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1))',
+      [neu.email_neu, k.id])) return false;
+    await tx.run(`UPDATE users SET email = email_neu, email_verified = true, ${OHNE_EMAIL_NEU}, ${OHNE_RUECKSETZLINK}
+                   WHERE id = $1`, [k.id]);
+    return true;
+  }).catch((e: { code?: string }) => { if (e?.code === '23505') return false; throw e; });
+  if (!ok) await db.run(`UPDATE users SET ${OHNE_EMAIL_NEU} WHERE id = $1 AND email_neu_token = $2`, [k.id, hash]);
+  return { id: k.id, ok };
+}
+
+/** Altbestand aus Migration 0096: ausstehend ohne gültigen Link. */
+export async function ausstehendOhneLink(): Promise<number[]> {
+  return (await db.all<{ id: number }>('SELECT id FROM users WHERE email_neu IS NOT NULL AND email_neu_bis IS NULL ORDER BY id'))
+    .map(z => z.id);
 }
 
 export function alleKonten(): Promise<KontoInListe[]> {
@@ -135,13 +172,14 @@ export function loeseQrTokenEin(hash: string): Promise<{ user_id: number; token_
 }
 
 export function kontoMitEmail(email: string): Promise<Omit<KontoKurz, 'must_change_password'> & { email: string } | undefined> {
-  return db.get('SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+  return db.get(`SELECT id, username, is_admin, email FROM users u WHERE LOWER(email) = LOWER($1) AND ${belegt('u')}`, [email]);
 }
 
 /** Ohne RETURNING: Die Kompatschicht hängt an ein INSERT ohne ON CONFLICT
  * selbst `ON CONFLICT DO NOTHING` an, dahinter wäre RETURNING ein Syntaxfehler. */
 export async function registriereKonto(k: { username: string; email: string; first_name?: string | null | undefined;
   last_name?: string | null | undefined; hash: string; tokenHash: string; bis: Date }): Promise<number | null> {
+  await db.run(VERFALLENE_REGISTRIERUNG, [k.email, 0]);
   await db.run(
     'INSERT INTO users (username, email, first_name, last_name, password_hash, is_admin, is_active, email_verified, verification_token, token_expires, registrierung_offen) VALUES ($1,$2,$3,$4,$5,false,true,false,$6,$7,true)',
     [k.username, k.email, k.first_name || null, k.last_name || null, k.hash, k.tokenHash, k.bis]);
@@ -150,7 +188,7 @@ export async function registriereKonto(k: { username: string; email: string; fir
 }
 
 export function aktivesKontoNachEmail(email: string): Promise<Konto | undefined> {
-  return db.get<Konto>('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active', [email]);
+  return db.get<Konto>('SELECT * FROM users WHERE LOWER(email) = LOWER($1) AND is_active AND email_verified', [email]);
 }
 
 /** Der Zeitpunkt des letzten Links ergibt sich aus seinem Ablauf; die Bedingung

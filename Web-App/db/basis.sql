@@ -1670,7 +1670,10 @@ CREATE TABLE public.users (
     must_change_password boolean DEFAULT false NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     sitzungs_version integer DEFAULT 0 NOT NULL,
-    registrierung_offen boolean DEFAULT false NOT NULL
+    registrierung_offen boolean DEFAULT false NOT NULL,
+    email_neu text,
+    email_neu_token text,
+    email_neu_bis timestamp with time zone
 );
 
 --
@@ -3873,6 +3876,7 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('009
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0093-eigene-katalogangaben.sql', '2026-11-03 20:20:13.943402+00', '6606e72e54fc2b3fe3abad35e3d2236d9bcf4d4a7bddbabc5d5b81bcf6167d46');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0094-bl-zuordnung-eigen.sql', '2026-11-04 00:03:46.442444+00', '9bdbdba4a0b83487d236fc8e8e6e3953a075112da3ecc40b9058b2d28ff91fed');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0095-registrierung-offen.sql', '2026-11-04 00:57:21.00727+00', '707e2679155f70b7d64048fe8bd01ebbad13e95e4d7a98e875a5d741677a3c88');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0096-email-neu.sql', '2026-11-04 16:14:17.013655+00', '01bf63d8a31f98e576e7c46c7023743fae6cba6d8e8cacee8c846d2c710d2c7a');
 
 --
 -- PostgreSQL database dump complete

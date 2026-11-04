@@ -334,21 +334,25 @@ const DIVIDER = `<table role="presentation" cellspacing="0" cellpadding="0" bord
 
 /** Ohne Namen: Die Adresse ist unbestätigt, und Name wie Benutzername wählt,
  * wer registriert — eine Anrede daraus trüge fremden Text in eine Mail des Servers. */
-export async function sendVerificationMail(to: string, token: string, baseUrl: string, lang = 'de') {
+export async function sendVerificationMail(to: string, token: string, baseUrl: string, lang = 'de',
+                                           art: 'registrierung' | 'adresse' = 'registrierung') {
   // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
   const theme = await getMailTheme();
   const url = `${baseUrl}/verify?token=${token}`;
+  const adresse = art === 'adresse';
   const L = lang === 'en' ? {
     subject: 'BrickInventory Manager — Confirm your email',
     text: `Hello,\n\nplease confirm your email address:\n${url}\n\nThe link is valid for 24 hours.\n\nBrickInventory Manager`,
     title: 'Confirm email',
     preheader: 'Please confirm your email address.',
     greetHtml: `<p style="margin:0 0 8px">Hello,</p>
-       <p style="margin:0 0 20px">welcome to BrickInventory Manager! Please confirm your email address to activate your account.</p>`,
+       <p style="margin:0 0 20px">${adresse
+         ? 'this address is to become the new email address of a BrickInventory Manager account. It only takes effect once you confirm it.'
+         : 'welcome to BrickInventory Manager! Please confirm your email address to activate your account.'}</p>`,
     btn: '✓  Confirm email',
     note: `<p style="margin:0;font-size:13px;color:#6b7280">
          The link is valid for <strong>24 hours</strong>.<br>
-         If you did not sign up, you can safely ignore this email.
+         ${adresse ? 'If you did not request this, ignore this email; nothing changes.' : 'If you did not sign up, you can safely ignore this email.'}
        </p>`,
   } : {
     subject: 'BrickInventory Manager — E-Mail bestätigen',
@@ -356,11 +360,13 @@ export async function sendVerificationMail(to: string, token: string, baseUrl: s
     title: 'E-Mail bestätigen',
     preheader: 'Bitte bestätige deine E-Mail-Adresse.',
     greetHtml: `<p style="margin:0 0 8px">Hallo,</p>
-       <p style="margin:0 0 20px">willkommen bei BrickInventory Manager! Bitte bestätige deine E-Mail-Adresse um dein Konto zu aktivieren.</p>`,
+       <p style="margin:0 0 20px">${adresse
+         ? 'diese Adresse soll die neue E-Mail-Adresse eines Kontos bei BrickInventory Manager werden. Sie gilt erst, wenn du sie bestätigst.'
+         : 'willkommen bei BrickInventory Manager! Bitte bestätige deine E-Mail-Adresse um dein Konto zu aktivieren.'}</p>`,
     btn: '✓  E-Mail bestätigen',
     note: `<p style="margin:0;font-size:13px;color:#6b7280">
          Der Link ist <strong>24 Stunden</strong> gültig.<br>
-         Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.
+         ${adresse ? 'Hast du das nicht veranlasst, ignoriere diese E-Mail; es ändert sich nichts.' : 'Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.'}
        </p>`,
   };
   return sendMail({
@@ -383,19 +389,19 @@ export async function sendVerificationMail(to: string, token: string, baseUrl: s
 export async function sendEmailGeaendertMail(to: string, username: string, neueAdresse: string, lang = 'de') {
   const theme = await getMailTheme();
   const L = lang === 'en' ? {
-    subject: 'BrickInventory Manager — Your email address was changed',
-    title: 'Email address changed',
-    text: `Hello ${username},\n\nthe email address of your account was changed to ${neueAdresse}.\n\nIf this was not you, sign in, change your password and set the old address again — or ask the administrator.\n\nBrickInventory Manager`,
+    subject: 'BrickInventory Manager — New email address requested',
+    title: 'Email address change requested',
+    text: `Hello ${username},\n\na change of your account's email address to ${neueAdresse} was requested. It takes effect once it is confirmed there; until then this address stays.\n\nIf this was not you, sign in and change your password — or ask the administrator.\n\nBrickInventory Manager`,
     html: `<p style="margin:0 0 8px">Hello <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">the email address of your account was changed to <strong>${esc(neueAdresse)}</strong>.</p>`,
-    note: 'If this was not you, sign in, change your password and set the old address again — or ask the administrator.',
+       <p style="margin:0 0 16px">a change of your account's email address to <strong>${esc(neueAdresse)}</strong> was requested. It takes effect once it is confirmed there; until then this address stays.</p>`,
+    note: 'If this was not you, sign in and change your password — or ask the administrator.',
   } : {
-    subject: 'BrickInventory Manager — Deine E-Mail-Adresse wurde geändert',
-    title: 'E-Mail-Adresse geändert',
-    text: `Hallo ${username},\n\ndie E-Mail-Adresse deines Kontos wurde auf ${neueAdresse} geändert.\n\nWarst du das nicht, melde dich an, ändere dein Passwort und trage die alte Adresse wieder ein — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
+    subject: 'BrickInventory Manager — Neue E-Mail-Adresse beantragt',
+    title: 'Neue E-Mail-Adresse beantragt',
+    text: `Hallo ${username},\n\nfür dein Konto wurde die E-Mail-Adresse ${neueAdresse} beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.\n\nWarst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Verwalter.\n\nBrickInventory Manager`,
     html: `<p style="margin:0 0 8px">Hallo <strong>${esc(username)}</strong>,</p>
-       <p style="margin:0 0 16px">die E-Mail-Adresse deines Kontos wurde auf <strong>${esc(neueAdresse)}</strong> geändert.</p>`,
-    note: 'Warst du das nicht, melde dich an, ändere dein Passwort und trage die alte Adresse wieder ein — oder wende dich an den Verwalter.',
+       <p style="margin:0 0 16px">für dein Konto wurde die E-Mail-Adresse <strong>${esc(neueAdresse)}</strong> beantragt. Sie gilt erst, wenn sie dort bestätigt ist; bis dahin bleibt diese Adresse eingetragen.</p>`,
+    note: 'Warst du das nicht, melde dich an und ändere dein Passwort — oder wende dich an den Verwalter.',
   };
   return sendMail({ to, subject: L.subject, text: L.text,
     html: emailTemplate(L.title, L.subject, `${L.html}${infoBox(L.note, theme)}`, theme) });

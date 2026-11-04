@@ -392,6 +392,9 @@ export async function loadProfile() {
   if (vEl) vEl.innerHTML = !u.email ? ''
     : u.email_verified ? `<span class="email-ok">${t('profile.verified')}</span>`
     : `<span class="email-offen">${t('profile.not_verified')}</span>`;
+  // Die neue Adresse gilt erst nach dem Link; bis dahin steht sie nur hier.
+  const hint = G('prof-email-hint');
+  if (hint) hint.textContent = u.email_neu ? tRaw('profile.email_pending', { email: u.email_neu }) : '';
 }
 
 /** Design-Wahl des Kontos: eigenes Design oder die Vorgabe des Verwalters. */
@@ -466,14 +469,11 @@ G('btn-sav-prof').onclick = async () => {
       { username, email, first_name, last_name, password_current: pwC, ...z }));
     if (!d) return;
     if (!d.success) { toast(d.error || t('profile.save_error'), 'error'); return; }
-    if (d.emailChanged) {
-      const hint = G('prof-email-hint');
-      if (hint) hint.textContent = tRaw('profile.mail_sent_hint');
-    }
     await loadProfile();
     // Der Namenszug in der Kopfzeile wird sonst nur beim Start gesetzt.
     if (ME) { ME.username = username; zeigeBenutzernamen(); }
-    toast(d.emailChanged ? t('profile.saved_mail') : t('settings.saved'), 'success');
+    if (d.emailChanged && !d.emailSent) toast(tRaw('profile.mail_not_sent'), 'error');
+    else toast(d.emailChanged ? t('profile.saved_mail') : t('settings.saved'), 'success');
   } finally {
     btn.disabled = false;
   }

@@ -210,6 +210,11 @@ export async function recordLoginSuccess(ip: string, username: unknown): Promise
   await _bump(_bekanntKey(ip, kennung), BEKANNT_MIN);
 }
 
+/** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet. */
+export async function bekannteAnmeldung(ip: string, username: unknown): Promise<boolean> {
+  return !!await _read(_bekanntKey(ip, await kontoKennung(username)), BEKANNT_MIN);
+}
+
 /** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */
 export async function raeumeAnmeldezaehlerAuf(): Promise<number> {
   return repo.raeumeAuf(BEKANNT_MIN);

@@ -28,6 +28,8 @@
  *      → rot: „kein Hinweis über dem Assistenten“ (02.11.2026 erneut gemessen)
  *   G  in setzeEigenesDesign applyTheme() entfernt → rot: „eigenes Design“
  *      (data-theme blieb classic)
+ *   H  (04.11.2026) in loadProfile den Hinweis auf email_neu entfernt → rot:
+ *      „ausstehende Adresse“ (der Hinweis blieb leer)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -120,6 +122,17 @@ test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
     await sicht(w, 'profil');
     await warte(() => d.getElementById('prof-user').value === 'anna');
     assert.equal(d.getElementById('prof-email-verified').textContent.trim(), '');
+  } finally { w.close(); }
+});
+
+test('Konto: eine ausstehende Adresse steht unter dem Feld, im Feld die geltende', async () => {
+  const { w, d } = await oeffneOberflaeche({ '/v1/auth/profile': { success: true, user: { username: 'anna',
+    email: 'alt@example.org', email_verified: true, email_neu: 'neu@example.org', first_name: '', last_name: '' } } });
+  try {
+    await sicht(w, 'profil');
+    await warte(() => d.getElementById('prof-user').value === 'anna');
+    assert.equal(d.getElementById('prof-email').value, 'alt@example.org');
+    assert.match(d.getElementById('prof-email-hint').textContent, /^Ausstehend: neu@example\.org\. Sie gilt erst/);
   } finally { w.close(); }
 });
 

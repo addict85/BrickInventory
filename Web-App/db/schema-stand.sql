@@ -913,6 +913,9 @@ CREATE TABLE users (
   created_at timestamp with time zone DEFAULT now(),
   sitzungs_version integer NOT NULL DEFAULT 0,
   registrierung_offen boolean NOT NULL DEFAULT false,
+  email_neu text,
+  email_neu_token text,
+  email_neu_bis timestamp with time zone,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_username_key UNIQUE (username)
 );

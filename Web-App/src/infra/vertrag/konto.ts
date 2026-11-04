@@ -74,6 +74,8 @@ export const Profil = z.looseObject({
   first_name: z.string().nullable().optional(),
   last_name: z.string().nullable().optional(),
   email_verified: z.boolean(),
+  /** Beantragt, aber noch nicht bestätigt; bis dahin gilt `email`. */
+  email_neu: z.string().nullable().optional(),
 });
 
 export const ProfilResponse = z.looseObject({

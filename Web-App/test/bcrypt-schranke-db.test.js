@@ -12,6 +12,14 @@
  *   C  pruefeBestaetigung() ohne bcryptSchranke.mit() → rot: „bei voller
  *      Schranke …“ (die Passwortbestätigung lief durch)
  *
+ * Wer sich von dieser Adresse mit diesem Namen zuletzt angemeldet hat, wartet
+ * vorne und wird nicht wegen der Länge der Schlange abgewiesen (Runde 12, H3).
+ * Gegenproben (04.11.2026 gemessen):
+ *   D  in neueSchranke() `vorrang` übergangen → rot: „Vorrang …“ und „bei
+ *      voller Schranke …“ (die bekannte Anmeldung steht nicht in der Schlange)
+ *   E  pruefeAnmeldedaten() ohne bekannteAnmeldung() (immer false) → rot:
+ *      „bei voller Schranke …“ (dasselbe)
+ *
  * REQUIRE_DB=1.
  */
 const test   = require('node:test');
@@ -49,6 +57,19 @@ test('die Schranke lässt n laufen, m warten und weist den Rest ab', async () =>
   await assert.rejects(s.mit(async () => 'z'), BcryptUeberlast);
   assert.deepEqual(s.stand(), { laufend: 2, wartend: 0 });
   offen.splice(0).forEach((r) => r()); await x; await y;
+});
+
+test('Vorrang: vorne in die Schlange, auch wenn sie voll ist', async () => {
+  const s = neueSchranke(1, 1, 1000);
+  const offen = [], reihe = [];
+  const a = s.mit(() => new Promise((r) => offen.push(r)));
+  const b = s.mit(async () => { reihe.push('b'); });
+  const v = s.mit(async () => { reihe.push('v'); }, true);
+  await assert.rejects(s.mit(async () => 'x'), BcryptUeberlast);
+  assert.deepEqual(s.stand(), { laufend: 1, wartend: 2 });
+  offen.shift()();
+  await Promise.all([a, b, v]);
+  assert.deepEqual(reihe, ['v', 'b']);
 });
 
 test('bei voller Schranke antwortet die Anmeldung 503 und die Passwortbestätigung', { concurrency: 1 }, async (t) => {
@@ -90,4 +111,21 @@ test('bei voller Schranke antwortet die Anmeldung 503 und die Passwortbestätigu
   delete sitzung.userId;
   const danach = await post('/login', { username: NAME, password: PASS });
   assert.equal(danach.status, 200, JSON.stringify(danach.body));
+
+  // Jetzt ist die Anmeldung von hier bekannt: Sie wartet vorne, eine fremde wird abgewiesen.
+  for (let i = 0; i < kerne * 9; i++) belegt.push(bcryptSchranke.mit(() => new Promise((r) => offen.push(r))));
+  try {
+    delete sitzung.userId;
+    const bekannt = post('/login', { username: NAME, password: PASS });
+    const fremd = await post('/login', { username: `${NAME}_x`, password: PASS });
+    assert.deepEqual([fremd.status, fremd.body.code], [503, 'server_ausgelastet']);
+    for (let i = 0; i < 200 && bcryptSchranke.stand().wartend <= kerne * 8; i++) await new Promise((r) => setTimeout(r, 10));
+    assert.equal(bcryptSchranke.stand().wartend, kerne * 8 + 1, 'die bekannte Anmeldung wartet nicht');
+    offen.shift()();
+    const r = await bekannt;
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+  } finally {
+    while (offen.length || bcryptSchranke.stand().laufend) { offen.splice(0).forEach((r) => r()); await new Promise((r) => setImmediate(r)); }
+    await Promise.all(belegt);
+  }
 });

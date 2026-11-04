@@ -19,10 +19,14 @@
  *      Passwort bleibt der Mailserver“, „ohne Passwort bleiben Registrierung …“
  *      (aktuelles_passwort_falsch, zählt zur Bremse)
  *
- * Ein erster API-Schlüssel (vorher leer) braucht kein Passwort: Er lenkt nichts
- * um, und der Einrichtungsassistent fragt sonst mitten im Schritt nach.
- * Gegenprobe (04.11.2026 gemessen): die Ausnahme für leere Werte entfernt → rot:
- * „ein erster API-Schlüssel braucht kein Passwort“ (400 statt 200).
+ * Ein erster API-Schlüssel (vorher leer) braucht kein Passwort, solange die
+ * Einrichtung offen ist: Der Assistent fragt sonst mitten im Schritt nach.
+ * Danach gilt auch für ihn die Passwortpflicht (Runde 12, H1).
+ * Gegenproben (04.11.2026 gemessen):
+ *   D  die Ausnahme für leere Werte entfernt → rot: „ein erster API-Schlüssel
+ *      braucht in der Einrichtung kein Passwort“ (400 statt 200)
+ *   E  die Ausnahme wieder ohne `einrichtung &&` → rot: „nach der Einrichtung
+ *      auch ein erster Schlüssel nur mit Passwort“ (200 statt 400)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -58,7 +62,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
     VALUES ($1, $3, $2, true, true, true) RETURNING id`, [NAME, bcrypt.hashSync(PASS, 4), `${NAME}@example.org`])).id;
-  const HEIKEL = ['registration_enabled', 'rebrickable_api_key'];
+  const HEIKEL = ['registration_enabled', 'rebrickable_api_key', 'brickset_api_key', 'einrichtung_erledigt'];
   const heikelVorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [HEIKEL]);
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.alt.example')
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
@@ -116,11 +120,19 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
   });
 
   const wert = async (k) => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
-  await t.test('ein erster API-Schlüssel braucht kein Passwort', async () => {
-    await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
+  await t.test('ein erster API-Schlüssel braucht in der Einrichtung kein Passwort', async () => {
+    await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'einrichtung_erledigt')");
     const r = await speichern({ rebrickable_api_key: 'erster-schluessel' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await _req('src/konto/settings.js').getGlobalSetting('rebrickable_api_key'), 'erster-schluessel');
+  });
+
+  await t.test('nach der Einrichtung auch ein erster Schlüssel nur mit Passwort', async () => {
+    await db.run("DELETE FROM global_settings WHERE key = 'brickset_api_key'");
+    await db.run("INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')");
+    const r = await speichern({ brickset_api_key: 'erster-fremder' });
+    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich']);
+    assert.equal(await wert('brickset_api_key'), undefined);
   });
 
   await t.test('ohne Passwort bleiben Registrierung und API-Schlüssel', async () => {
