@@ -153,7 +153,10 @@ class UmbruchWaechterTest {
                     befunde += "$wo nur ${l.size.width} px breit (Schrift ${em.toInt()} px)"
                 if (l.lineCount >= 3 && l.lineCount > 2 * woerter)
                     befunde += "$wo in ${l.lineCount} Zeilen bei $woerter Wörtern"
-                val gekuerzt = l.hasVisualOverflow || (0 until l.lineCount).any { l.isLineEllipsized(it) }
+                // Nicht hasVisualOverflow: Darin steckt auch die Höhe, und die ragt unter
+                // Robolectric bei fast jedem Text um Bruchteile über (Schriftmetrik).
+                val gekuerzt = l.didOverflowWidth || l.multiParagraph.didExceedMaxLines ||
+                    (0 until l.lineCount).any { l.isLineEllipsized(it) }
                 if ((knopf || kopf) && gekuerzt) befunde += "$wo gekürzt (${if (knopf) "Knopf" else "Überschrift"})"
             }
             n.children.forEach { lauf(it, knopf, kopf) }

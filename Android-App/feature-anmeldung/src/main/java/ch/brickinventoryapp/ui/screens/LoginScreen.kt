@@ -24,6 +24,7 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
@@ -107,6 +108,11 @@ fun LoginScreen(
             val serverAendern = stringResource(R.string.login_server_aendern, serverUrl)
             Surface(
                 onClick = onChangeServer,
+                // Surface(onClick) setzt keine Rolle: TalkBack hörte sonst nur die Adresse.
+                modifier = Modifier.semantics {
+                    role = Role.Button
+                    contentDescription = serverAendern
+                },
                 shape = Formen.chip,
                 color = MaterialTheme.colorScheme.surface,
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
@@ -116,7 +122,7 @@ fun LoginScreen(
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Icon(Icons.Default.Cloud, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
                         tint = MaterialTheme.colorScheme.primary)
-                    Text(serverUrl, Modifier.weight(1f, fill = false).semantics { contentDescription = serverAendern },
+                    Text(serverUrl, Modifier.weight(1f, fill = false),
                         style = MaterialTheme.typography.labelMedium)
                     Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
                         tint = MaterialTheme.colorScheme.primary)
