@@ -361,8 +361,8 @@ function catCard(s){
   // schon einmal seinem Bestand hinzugefügt) sparen den CDN-Umweg komplett.
   const src = s.image_local || s.image_url;
   const img = src
-    ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: s.name || s.set_number, fade: true, ph: 'set' })
-    : `<span class="bild-ph" role="img" aria-label="${esc(s.name || s.set_number)}">${platzhalterInhalt('set')}</span>`;
+    ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: '', fade: true, ph: 'set' })
+    : `<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   const themeShort = s.theme_name ? s.theme_name.split(' › ').pop() : '';
   // Besitz als Wort, nicht nur als Haken: Ein title erreicht am Telefon niemand.
   const ownedBadge = s.owned

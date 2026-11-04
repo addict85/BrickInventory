@@ -645,6 +645,7 @@ export function toast(msg, type='info', aktion) {
   icon.className = 'toast-ico';
   icon.innerHTML = ico({ success: 'ok', error: 'fehler' }[type] || 'info');
   const text = document.createElement('span');
+  text.className = 'toast-text';
   text.textContent = String(msg ?? '');
   const anzahl = document.createElement('span');
   anzahl.className = 'toast-anzahl'; anzahl.hidden = true;
@@ -721,6 +722,9 @@ export async function api(method, path, body) {
   }
   _letzteAntwort = new Date();
   zeigeVerbindung(true);
+  // Vor jeder frühen Rückgabe: Ein 401 aus einer Zwischenschicht (ohne JSON
+  // oder ohne success) beendet die Sitzung genauso wie einer vom Server.
+  if (res.status === 401) meldeSitzungBeendet(path);
   let daten = null;
   try {
     daten = await res.json();
@@ -1390,6 +1394,12 @@ async function waitForStartup() {
  */
 function showLogin(o = {}){
   G('lp').value = ''; G('lc').value = ''; G('lc-zeile').style.display = 'none';
+  // Ein angezeigtes Passwort bleibt nicht für die nächste Anmeldung sichtbar.
+  if (G('lp').type !== 'password') {
+    G('lp').type = 'password';
+    const k = document.querySelector('[data-click="geheimUmschalten"][data-arg="lp"]');
+    k?.setAttribute('aria-pressed', 'false'); k?.querySelector('use')?.setAttribute('href', '#i-auge');
+  }
   if (!o.abgelaufen) G('lu').value = '';
   const hinweis = G('login-hinweis');
   if (hinweis) { hinweis.hidden = !o.abgelaufen; hinweis.textContent = o.abgelaufen ? tRaw('auth.session_expired') : ''; }
@@ -1615,7 +1625,10 @@ async function bestaetigungErneut(){
 }
 
 /** Leerzustände führen zum Feld, in das der erste Eintrag gehört. */
-function feldFokussieren(id) { const f = G(id); f?.scrollIntoView({ block: 'center' }); f?.focus(); }
+function feldFokussieren(id) {
+  const f = G(id); const klappe = f?.closest('details'); if (klappe) klappe.open = true;
+  f?.scrollIntoView({ block: 'center' }); f?.focus();
+}
 
 registerActions({
   showPanel, rbHinweisOeffnen, rbHinweisWeg, bestaetigungErneut, feldFokussieren,

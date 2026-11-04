@@ -344,9 +344,6 @@ function ersatzteilPlakette(p){
   return p.is_spare ? `<span class="spare-tag">${esc(t('parts.spare_tag'))}</span>` : '';
 }
 
-/** Alternativtext eines Teilbilds: Name und Farbe, wie sie auf der Kachel stehen. */
-function teilAlt(p){ return [p.part_name || p.part_number, p.color_name ? colorName(p.color_name) : ''].filter(Boolean).join(', '); }
-
 function partsCard(p){
   // data-orig speist den Zoom (11-actions.js, openImageLightboxFromEl):
   // ÜBER den Server-Proxy in voller Auflösung (imgUrl(fullUrl(...), false)),
@@ -359,8 +356,8 @@ function partsCard(p){
   // Set nichts zu sehen — kein Bild in voller Groesse, keine Angabe, aus
   // welchem Set es stammt.
   return `<div class="part-card" data-stil="cursor:pointer" tabindex="0" role="button" data-click="openSetItemDetail" data-arg="part" data-arg2="${escJs(p.part_number)}" data-arg3="${p.color_id||0}">
-    ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc)||rawSrc, true), alt: teilAlt(p), klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' })
-             : `<span class="bild-ph part-img" role="img" aria-label="${esc(teilAlt(p))}">${platzhalterInhalt('teil')}</span>`}
+    ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc)||rawSrc, true), alt: '', klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' })
+             : `<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}
     <div class="part-num" title="${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</div>
     <div class="part-name">${esc(p.part_name)||'—'}</div>
     <div class="part-color"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${esc(colorName(p.color_name))}</div>

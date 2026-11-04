@@ -185,6 +185,13 @@ export async function ladeMerkliste() {
   const d = await api('GET', `/v1/wanted?${merklisteParams()}`);
   if (listeLadefehler(ziel, d, { erneut: 'ladeMerkliste', behalten: _merkposten.length > 0 })) return;
   _merkposten = d.merkposten || [];
+  // Einmal je Laden der Seite: Am Telefon mit Einträgen zugeklappt, damit die
+  // Liste im ersten Bild steht; danach bleibt, was der Nutzer gewählt hat.
+  const kasten = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
+  if (kasten && !kasten.dataset.entschieden) {
+    kasten.dataset.entschieden = '1';
+    kasten.open = !(_merkposten.length && window.matchMedia?.('(max-width: 640px)').matches);
+  }
   // Zwei verschiedene Leermeldungen: „Noch keine Merkposten" ist eine Aussage
   // ueber die Liste, „Nichts gefunden" eine ueber den Filter. Stuende hier
   // immer die erste, saehe eine Suche ohne Treffer wie eine geleerte Merkliste
@@ -509,10 +516,10 @@ function zeilen(w) {
 function inhaberWahl(w) {
   const konten = haushaltsKonten();
   if (konten.length < 2) return '';
-  return `<select id="mk-m-owner" class="alarm-feld"
+  return `<select id="mk-m-owner" class="alarm-feld" aria-label="${esc(tRaw('household.for_account'))}"
                   data-change="merkpostenInhaberGewaehlt" data-arg="${escJs(`${w.set_number}|${w.condition}|${w.user_id}`)}">`
     + konten.map(k => `<option value="${k.id}"${k.id === w.user_id ? ' selected' : ''}>`
-                    + `${esc(k.username)}${k.is_self ? ' (ich)' : ''}</option>`).join('')
+                    + `${esc(k.username)}${k.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`).join('')
     + '</select>';
 }
 

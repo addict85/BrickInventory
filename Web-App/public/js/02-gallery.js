@@ -767,7 +767,7 @@ export async function loadHouseholdMembers() {
   // Begruendung bei ladeLagerortVorgabe().
   ladeLagerortVorgabe().catch(() => {});
   const html = members.map(m =>
-    `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' (ich)' : ''}</option>`
+    `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`
   ).join('');
   // Alle drei Erfassen-Formulare: Set, manuelles Teil, manuelle Minifigur.
   // Dieselbe Liste, dieselbe Regel — ein Kaufpreis für ein Kind zu erfassen
@@ -1115,7 +1115,7 @@ export function pnlBadge(pct, kauf){
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
   if (item.owners.every(o => ME && o.id === ME.id)) return '';
-  return item.owners.map(o => `<span class="cond-badge besitzer-badge">${esc(o.username)}</span>`).join('');
+  return item.owners.map(o => `<span class="cond-badge besitzer-badge" title="${esc(o.username)}">${esc(o.username)}</span>`).join('');
 }
 
 export function condBadges(item) {
@@ -1134,8 +1134,8 @@ function gridCard(s){
   // Sets ohne lokale Kopie laufen über den Proxy — dort erzeugt imgUrl(…, true)
   // die verkleinerte Fassung, sonst käme die volle Auflösung für eine Kachel.
   const thumb=src?imgUrl(thumbUrl(src)||src, true):null;
-  const alt = s.name || s.set_number;
-  const img=src?bildTag({ src: thumb||src, alt, orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' }):`<span class="bild-ph" role="img" aria-label="${esc(alt)}">${platzhalterInhalt('set')}</span>`;
+  // Ohne Alternativtext: Die Kachel ist ein Knopf, ihr Text nennt das Set schon.
+  const img=src?bildTag({ src: thumb||src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
   // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis. Vorher stand
   // hier max_purchase_price — bei 2x100 und 1x160 zeigte die Kachel 160 statt
   // der tatsächlichen 120.

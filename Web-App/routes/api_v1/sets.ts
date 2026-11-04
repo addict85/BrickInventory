@@ -49,7 +49,8 @@ router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res
   // Ohne Katalogzeile zeigt die Oberfläche die Nummer als Namen.
   const row = await setInfo(n);
   if (row?.image_local && !await setBildSichtbar(req.apiUser.user_id, n)) row.image_local = null;
-  res.json(row ? { success: true, set_number: n, ...row, name: row.name || n } : { success: true, set_number: n, name: n });
+  res.json(row ? { success: true, set_number: n, ...row, name: row.name || n, im_katalog: true }
+    : { success: true, set_number: n, name: n, im_katalog: false });
 });
 
 /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt).

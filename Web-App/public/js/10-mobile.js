@@ -127,17 +127,19 @@
   }
 
   // ── 4. Kopf beim Rollen nach unten ausblenden ───────────────────────────
-  // Nur die Klasse; mobile.css blendet aus, und zwar nur bei geringer Höhe
-  // (200 % Zoom, Querformat), wo Kopf, Band und Leiste fast die Hälfte belegen.
-  // Rollen nach oben oder Fokus im Kopf holt ihn zurück.
+  // Nur die Klassen; mobile.css blendet aus, und zwar nur bei geringer Höhe
+  // (Querformat) oder grosser Schrift, wo Kopf und Leiste fast die Hälfte
+  // belegen. Rollen nach oben oder Fokus in Kopf oder Leiste holt sie zurück.
   let letzteHoehe = window.scrollY;
   window.addEventListener('scroll', () => {
     const y = window.scrollY, wurzel = document.documentElement;
+    wurzel.classList.toggle('schrift-gross', parseFloat(getComputedStyle(wurzel).fontSize) >= 24);
     if (y < 60 || y < letzteHoehe - 4) wurzel.classList.remove('kopf-weg');
     else if (y > letzteHoehe + 4) wurzel.classList.add('kopf-weg');
     if (Math.abs(y - letzteHoehe) > 4) letzteHoehe = y;
   }, { passive: true });
-  document.querySelector('header')?.addEventListener('focusin', () => document.documentElement.classList.remove('kopf-weg'));
+  for (const leiste of document.querySelectorAll('header, nav:not(.einst-nav)'))
+    leiste.addEventListener('focusin', () => document.documentElement.classList.remove('kopf-weg'));
 
   // Für Tests und für Code, der Tabellen ausserhalb des Observers erzeugt.
   window.__bimLabelTables = labelAll;

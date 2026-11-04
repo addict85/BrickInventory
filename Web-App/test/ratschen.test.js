@@ -228,8 +228,8 @@ test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   // davon 56 reines display:none. 112 am 29.10. (Merkliste-Kasten als Klasse),
   // 52 am selben Tag (Diagramm, Banner, Dialogfüsse, PDF-Ansicht als Klassen).
   // 51 am 30.10. (Kennzahlen der Minifiguren ohne eigenes Raster). 47 am 03.11.
-  // 38 am 04.11. (Bauliste und Zwischenspeicher als Klassen).
-  const SCHRANKE = 38;
+  // 38 am 04.11. (Bauliste und Zwischenspeicher als Klassen); 36 am selben Tag (Bauliste-Chips und Status).
+  const SCHRANKE = 36;
   const html = fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
   const stile = [...html.matchAll(/<[a-zA-Z][^>]*?\sdata-stil="([^"]*)"/g)].map(m => m[1].trim().replace(/;$/, ''));
   assert.ok(stile.length > 50, 'Keine Inline-Stile gefunden — greift die Suche noch?');

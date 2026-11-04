@@ -51,7 +51,9 @@ test('alt an jedem Bild und der Platzhalter-Weg an jedem Vorlagenbild', async ()
     };
     await warte(() => d.querySelector('#gallery .sc img'));
     pruefe('Galerie-Kachel', '#gallery');
-    assert.equal(d.querySelector('#gallery .sc img').getAttribute('alt'), 'Titanic', 'Die Kachel nennt das Set nicht');
+    // Die Kachel ist ein Knopf und nennt das Set im Text; ein alt nannte es doppelt.
+    assert.equal(d.querySelector('#gallery .sc img').getAttribute('alt'), '', 'Bild in der Kachel ohne doppelten Namen');
+    assert.match(d.querySelector('#gallery .sc').textContent, /Titanic/, 'Die Kachel nennt das Set nicht');
     d.getElementById('vl').click(); await takt(30);
     pruefe('Galerie-Tabelle', '#gallery');
     d.getElementById('vg').click(); await takt(30);
@@ -83,8 +85,8 @@ test('Galerie: kaputtes Bild wird zum Platzhalter', async () => {
     assert.equal(sci.querySelector('img[data-onerror]'), null, 'Das kaputte Bild steht noch da');
     const ph = sci.querySelector('.bild-ph');
     assert.ok(ph, 'Kein Platzhalter an seiner Stelle');
-    assert.equal(ph.getAttribute('role'), 'img');
-    assert.equal(ph.getAttribute('aria-label'), 'Titanic');
+    // Ohne alt (die Kachel nennt das Set im Text) ist der Platzhalter Schmuck.
+    assert.equal(ph.getAttribute('aria-hidden'), 'true');
     assert.equal(ph.querySelector('img')?.getAttribute('src'), '/assets/set-placeholder.svg',
       'Nicht derselbe Platzhalter wie für ein Set ohne Bild');
   } finally { w.close(); }

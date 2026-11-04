@@ -1,13 +1,15 @@
 import * as db from '../../../db/database';
 
+/** Eine Zeile je Set über alle Konten: Die Rechnung fasst die Käufe je
+ * Setnummer zusammen; zwei Konten mit demselben Set zählten sonst doppelt. */
 export function setsMitErfassungen(uids: number[]) {
   return db.all(`SELECT s.set_number, c.name, c.year,
             -- Menge aus den Erfassungen (Gruppierung a unten), kein zweiter JOIN.
-            COALESCE(a.total_qty, 0)::int AS quantity,
-            c.image_local, c.image_url, s.added_at,
+            COALESCE(SUM(a.total_qty), 0)::int AS quantity,
+            c.image_local, c.image_url, MIN(s.added_at) AS added_at,
             -- effectiveCondition() leitet den Zustand aus diesen Zählern ab.
-            COALESCE(a.acq_count, 0)  AS acq_count,
-            COALESCE(a.used_count, 0) AS used_count
+            COALESCE(SUM(a.acq_count), 0)::int  AS acq_count,
+            COALESCE(SUM(a.used_count), 0)::int AS used_count
      -- Name, Jahr und Bilder stehen seit Migration 0033 in set_catalog.
      FROM sets s
      LEFT JOIN set_catalog c ON c.set_number = s.set_number
@@ -18,7 +20,8 @@ export function setsMitErfassungen(uids: number[]) {
               COUNT(*) FILTER (WHERE condition = 'U')  AS used_count
        FROM set_acquisitions GROUP BY user_id, set_number
      ) a ON a.user_id = s.user_id AND a.set_number = s.set_number
-     WHERE s.user_id = ANY($1)`, [uids]);
+     WHERE s.user_id = ANY($1)
+     GROUP BY s.set_number, c.name, c.year, c.image_local, c.image_url`, [uids]);
 }
 
 export function frischeMarktpreise(setNumbers: string[], currency: string, ttl: number) {

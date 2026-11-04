@@ -43,7 +43,7 @@
 <body>
 <a class="sprunglink" href="#inhalt" data-i18n="a11y.skip_to_content">Zum Inhalt</a>
 <div id="startgeruest" aria-hidden="true">
-  <div class="sg-kopf"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/></svg>BrickInventory</div>
+  <div class="sg-kopf"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/></svg>BrickInventory</div>
   <div class="sg-leiste"><i></i><i></i><i></i><i></i><i></i></div>
   <div class="sg-inhalt"><i class="sg-titel"></i><div class="sg-karten"><i></i><i></i><i></i><i></i></div><div class="sg-kacheln"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
 </div>
@@ -135,7 +135,7 @@
 <!-- kein inline background mehr: das hat jede Theme-Regel überstimmt, siehe --screen-bg in styles.css -->
 <div id="startup-screen" class="start-flaeche">
   <div class="start-marke">
-    <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>
+    <svg width="48" height="48" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>
     <div>
       <div class="start-titel">BrickInventory</div>
       <div class="text-3-mut">Manager</div>
@@ -167,7 +167,7 @@
 
 <main id="login-screen">
   <div class="lcard max-440">
-    <div class="llogo"><svg width="44" height="44" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild">
+    <div class="llogo"><svg width="44" height="44" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild" aria-hidden="true" focusable="false">
   <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
   <polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/>
   <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
@@ -190,7 +190,7 @@
            sonst sendet er das Formular ein zweites Mal ab. -->
       <form class="sform" data-submit="btn-login">
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
-        <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><input type="password" id="lp" autocomplete="current-password" /></div>
+        <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><div class="geheim-feld"><input type="password" id="lp" autocomplete="current-password" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="lp" aria-pressed="false" aria-controls="lp" aria-label="Passwort anzeigen" data-i18n="login.passwort_zeigen" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
         <!-- Erst sichtbar, wenn der Server einen zweiten Faktor verlangt (utils/zweiterFaktor.ts). -->
         <div class="fg" id="lc-zeile" data-stil="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /><div class="text-klein abstand-o-3" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div>
           <button type="button" class="btn bs btn-sm abstand-o-075" id="lc-passkey" data-click="passkeyZweiterFaktor" data-i18n="pk.statt_code" hidden>Passkey statt Code verwenden</button></div>
@@ -275,7 +275,7 @@
       <div class="text-klein abstand-u-075" data-i18n="pflicht.hint">Dieses Konto hat noch das Startpasswort aus dem Protokoll. Bitte zuerst ein eigenes setzen.</div>
       <div class="lerr" id="pflicht-err" role="alert"></div>
       <form class="sform" data-submit="btn-pflicht">
-        <div class="fg" id="pflicht-alt-zeile"><label for="pflicht-alt" data-i18n="settings.password.current">Aktuelles Passwort</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
+        <div class="fg" id="pflicht-alt-zeile"><label for="pflicht-alt" data-i18n="pflicht.alt">Startpasswort (aus dem Serverprotokoll)</label><input type="password" id="pflicht-alt" autocomplete="current-password" /></div>
         <div class="fg"><label for="pflicht-neu" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pflicht-neu" autocomplete="new-password" aria-describedby="pflicht-regel" />
           <div class="text-klein" id="pflicht-regel" data-i18n="pflicht.regel" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
         <div class="fg"><label for="pflicht-wdh" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pflicht-wdh" autocomplete="new-password" /></div>
@@ -284,7 +284,7 @@
     </div>
     <div id="panel-zweitpflicht" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="zfpflicht.title">Zweiten Faktor einrichten</p>
-      <div class="text-klein abstand-u-075" data-i18n="zfpflicht.hint">Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.</div>
+      <div class="text-klein abstand-u-075" id="zfpflicht-hinweis" data-i18n="zfpflicht.hint">Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.</div>
       <div id="zf-pflicht-flaeche" class="abstand-u-075"></div>
       <button type="button" class="btn bs knopf-breit" data-click="pflichtAbmelden" data-i18n="zfpflicht.logout">Abmelden</button>
     </div>
@@ -315,7 +315,7 @@
 <!-- APP -->
 <div id="app">
   <header>
-    <div class="logo"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild">
+    <div class="logo"><svg width="28" height="28" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="logo-bild" aria-hidden="true" focusable="false">
   <rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/>
   <polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/>
   <polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/>
@@ -562,10 +562,11 @@
         ein Merkposten hat weder das eine noch das andere; beides wird erst bei
         der Übernahme in die Galerie gefragt.
       -->
-      <div class="merk-kasten">
-        <h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Merkposten hinzufügen</h2>
+      <!-- Aufklappbar: Am Telefon steht die Liste vorn, sobald sie Einträge hat (16-merkliste.js). -->
+      <details class="merk-kasten" id="mk-kasten" open>
+        <summary class="merk-kasten-kopf"><h2 class="stit" data-ico="plus" data-i18n="wanted.add.title">Merkposten hinzufügen</h2></summary>
         <div class="zeile luecke-8 unten umbruch merk-erfassen">
-          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z.B. 75192" data-i18n="gallery.add.number" data-i18n-attr="placeholder" /></div>
+          <div class="fg"><label for="mk-num" data-i18n="gallery.add.number">Set-Nummer</label><input inputmode="numeric" type="text" id="mk-num" placeholder="z. B. 75192" data-i18n="gallery.add.number_ph" data-i18n-attr="placeholder" /></div>
           <div class="fg max-110"><label for="mk-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
           <div class="fg max-150" id="mk-owner-box" data-stil="display:none"><label for="mk-owner" data-i18n="household.for_account">Für Konto</label><select class="auswahl-kompakt" id="mk-owner"></select></div>
           <button class="btn bp" id="mk-add" data-click="merkpostenHinzufuegen" data-i18n="wanted.add.submit" data-ico="plus">Auf die Merkliste</button>
@@ -578,7 +579,7 @@
           <label class="btn bs zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="mk-csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv,.txt" class="datei-versteckt" data-change="importMerklisteCsv" /></label>
         </div>
         <div class="abstand-o-8 schrift-2" id="mk-status" role="status"></div>
-      </div>
+      </details>
 
       <!-- Suche/Filter/Sortierung — dieselbe Zeile wie in der Galerie, an
            derselben Stelle: unter dem Erfassen-Kasten und direkt ueber der
@@ -846,30 +847,35 @@
             <button class="btn bp fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" data-i18n="pl.generate" data-ico="werkzeug">Teileliste erstellen</button>
             <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
           </div>
-          <div class="pl-export" id="pl-export" role="group" aria-labelledby="pl-export-titel" hidden>
-            <span class="pl-export-titel" id="pl-export-titel" data-i18n="pl.export">Exportieren</span>
-            <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
-            <span class="pl-zustand"><label for="pl-bl-condition" data-i18n="pl.zustand_bl">Zustand für BrickLink</label>
-              <select id="pl-bl-condition"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neuware</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select></span>
-            <button class="btn bs fest" data-click="plExportBricklink" id="btn-pl-bl"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="pl-bl-zeichen" aria-hidden="true"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>BrickLink XML</button>
-          </div>
-        </div>
-        <!-- Eigene Zeile: Der Bestand trägt Zahlen in die fertige Liste ein; er
-             gehört weder zum Zusammenstellen noch zum Exportieren. -->
-        <div id="pl-bestand-zeile" class="pl-bestand-zeile" data-stil="display:none">
-          <button class="btn bs fest" data-click="plFuelleBestand" id="btn-pl-bestand" data-i18n="pl.fill_owned" data-ico="set">Bereits vorhandene Teile eintragen</button>
-          <label id="pl-bestand-lose-box" class="pl-wahl">
-            <input class="ohne-rand" type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand"><span data-i18n="pl.only_loose">nur manuell erfasste Teile berücksichtigen</span></label>
-          <!-- Welche Art Teile zählt (oben) und wessen (hier); ohne Haken nur das
-               eigene Konto. Sichtbar nur für ein Hauptkonto mit Unterkonten. -->
-          <label id="pl-bestand-subs-box" class="pl-wahl" data-stil="display:none">
-            <input class="ohne-rand" type="checkbox" id="pl-bestand-subs" data-change="plFuelleBestand"><span data-i18n="pl.include_subs">Unterkonten mit einbeziehen</span></label>
         </div>
       </div>
       <!-- Added sets -->
-      <div id="pl-sets" data-stil="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px"></div>
+      <div id="pl-sets" class="pl-chips"></div>
       <!-- Status -->
-      <div id="pl-status" role="status" data-stil="color:var(--mut);font-size:var(--fs-3);margin-bottom:.75rem"></div>
+      <div id="pl-status" class="pl-status" role="status"></div>
+      <!-- Export und Bestand gelten der fertigen Liste: erst mit Teilen sichtbar,
+           am Telefon zugeklappt, damit das Ergebnis im ersten Bild steht. -->
+      <details class="pl-optionen" id="pl-optionen" hidden>
+        <summary class="pl-optionen-kopf" data-i18n="pl.optionen">Export &amp; Optionen</summary>
+        <div class="pl-export" id="pl-export" role="group" aria-labelledby="pl-export-titel" hidden>
+          <span class="pl-export-titel" id="pl-export-titel" data-i18n="pl.export">Exportieren</span>
+          <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
+          <span class="pl-zustand"><label for="pl-bl-condition" data-i18n="pl.zustand_bl">Zustand für BrickLink</label>
+            <select id="pl-bl-condition"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neuware</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select></span>
+          <button class="btn bs fest" data-click="plExportBricklink" id="btn-pl-bl"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="pl-bl-zeichen" aria-hidden="true"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>BrickLink XML</button>
+        </div>
+          <!-- Eigene Zeile: Der Bestand trägt Zahlen in die fertige Liste ein; er
+               gehört weder zum Zusammenstellen noch zum Exportieren. -->
+          <div id="pl-bestand-zeile" class="pl-bestand-zeile">
+            <button class="btn bs fest" data-click="plFuelleBestand" id="btn-pl-bestand" data-i18n="pl.fill_owned" data-ico="set">Bereits vorhandene Teile eintragen</button>
+            <label id="pl-bestand-lose-box" class="pl-wahl">
+              <input class="ohne-rand" type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand"><span data-i18n="pl.only_loose">nur manuell erfasste Teile berücksichtigen</span></label>
+            <!-- Welche Art Teile zählt (oben) und wessen (hier); ohne Haken nur das
+                 eigene Konto. Sichtbar nur für ein Hauptkonto mit Unterkonten. -->
+            <label id="pl-bestand-subs-box" class="pl-wahl" data-stil="display:none">
+              <input class="ohne-rand" type="checkbox" id="pl-bestand-subs" data-change="plFuelleBestand"><span data-i18n="pl.include_subs">Unterkonten mit einbeziehen</span></label>
+          </div>
+      </details>
       <!-- Parts list table -->
       <div id="pl-result"></div>
     </div>
@@ -1349,7 +1355,7 @@
           <h2 class="stit" data-i18n="alerts.new_title">Preisalarm anlegen</h2>
           <div class="profil-raster">
             <div class="fg"><label for="alarm-neu-set" data-i18n="alerts.new_set">Set-Nummer</label>
-              <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" inputmode="text" placeholder="10294-1" /></div>
+              <input type="text" id="alarm-neu-set" list="alarm-neu-sets" autocomplete="off" inputmode="text" placeholder="z. B. 10294-1" data-i18n="alerts.set_ph" data-i18n-attr="placeholder" /></div>
             <div class="fg"><label for="alarm-neu-zustand" data-i18n="common.condition">Zustand</label>
               <select id="alarm-neu-zustand"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div>
             <div class="fg"><label for="alarm-neu-richtung" data-i18n="alerts.new_dir">Melden, wenn der Preis</label>
@@ -1737,7 +1743,7 @@
     <div id="add-fig-inline">
         <div class="raster-160">
           <div class="fg"><label for="af-num-inline"><span data-i18n="figs.num_label">Figur-Nummer *</span> <span class="text-klein">(Rebrickable, z.B. fig-007357)</span></label>
-            <input type="text" id="af-num-inline" data-erstfokus placeholder="fig-007357" /></div>
+            <input type="text" id="af-num-inline" data-erstfokus placeholder="z. B. fig-007357" data-i18n="figs.num_ph" data-i18n-attr="placeholder" /></div>
           <div class="fg"><label for="af-blnum-inline"><span data-i18n="figs.blnum_label">BrickLink-Nr. (opt.)</span> <span class="text-klein" data-i18n="parts.add.bl_hint">für Marktpreis</span></label>
             <input type="text" id="af-blnum-inline" placeholder="z.B. sw0001" /></div>
           <div class="fg"><label for="af-qty-inline" data-i18n="figs.qty_label">Anzahl</label>

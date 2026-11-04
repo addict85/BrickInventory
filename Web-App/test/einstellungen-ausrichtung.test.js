@@ -106,11 +106,15 @@ test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () =>
 
   const liste = dom.window.document.querySelector('#household-state ul');
   assert.ok(liste, 'Die Liste der verknüpften Konten wurde nicht erzeugt');
-  const stil = liste.getAttribute('data-stil') || '';
+  // Das Raster steht in styles.css (.haushalt-liste); minmax(0, …) lässt die
+  // Spalten bei grosser Schrift schrumpfen, statt die Seite zu verbreitern.
+  assert.ok(liste.classList.contains('haushalt-liste'), 'Die Liste trägt die Klasse haushalt-liste nicht');
+  const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+  const stil = (css.match(/\n\.haushalt-liste\{([^}]*)\}/) || [])[1] || '';
   assert.match(stil, /display\s*:\s*grid/,
-    `Die LISTE trägt kein Raster (data-stil="${stil}") — dann richtet sich jede Zeile ` +
+    `Die LISTE trägt kein Raster („${stil}“) — dann richtet sich jede Zeile ` +
     'für sich aus, und die Knöpfe stehen versetzt.');
-  assert.match(stil, /grid-template-columns\s*:\s*max-content\s+max-content/,
+  assert.match(stil, /grid-template-columns\s*:\s*minmax\(0,\s*max-content\)\s+minmax\(0,\s*max-content\)/,
     'Die Liste hat keine zwei Inhaltsspalten — ohne sie teilen sich die Zeilen ' +
     'keine gemeinsame Breite');
 

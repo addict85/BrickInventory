@@ -108,7 +108,7 @@ function dialogOeffnen(title, msg, icon, mitPasswort, mitCode = false, mitPasske
     const btnYes = G('cd-confirm');
     const btnNo  = G('cd-cancel');
     const gefahr = (knopf?.art || 'bd') === 'bd';
-    btnYes.textContent = tRaw(knopf?.knopf || 'confirm.delete_btn');
+    btnYes.textContent = tRaw(knopf?.knopf || 'confirm.delete_btn', knopf?.werte);
     btnYes.classList.toggle('bd', gefahr); btnYes.classList.toggle('bp', !gefahr);
     G('cd-icon').classList.toggle('neutral', !gefahr);
     G('cd-msg').classList.toggle('text-gefahr', !!knopf?.fehler);
@@ -353,7 +353,7 @@ export function schriftFaktor() {
 /** Platz links für die Beträge der y-Achse: so breit wie der längste, nicht fest. */
 function achsenRand(teilung, cur, fs) {
   const schritt = teilung.werte.length > 1 ? teilung.werte[1] - teilung.werte[0] : 1;
-  const laengste = Math.max(...teilung.werte.map(v => achsenBetrag(v, schritt, cur).length));
+  const laengste = Math.max(...teilung.werte.map(v => achsenBetrag(v, schritt, cur, fs >= 18).length));
   return Math.ceil(laengste * fs * 0.62 + fs * 1.2);
 }
 
@@ -430,7 +430,13 @@ function randAnker(x, rechts, f = 1) { return x > rechts - 28 * f ? 'end' : 'mid
 // damit dieselbe Grösse in beiden gleich aussieht und gleich bedient wird.
 
 /** Betrag an der y-Achse: mit Währung, Nachkommastellen nur bei Schritten unter 1. */
-export function achsenBetrag(v, schritt, cur) {
+export function achsenBetrag(v, schritt, cur, kurz = false) {
+  // Bei grosser Schrift Tausender kurz: „2 600 €“ nahm am Telefon die halbe Breite.
+  if (kurz && schritt >= 100 && Math.abs(v) >= 1000) {
+    const zeichen = new Intl.NumberFormat(locale(), { style: 'currency', currency: cur || CURRENCY || 'EUR' })
+      .formatToParts(0).find(p => p.type === 'currency')?.value || cur;
+    return tRaw('chart.tausend', { zahl: new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(v / 1000), cur: zeichen });
+  }
   const stellen = schritt > 0 && schritt < 1 ? 2 : 0;
   return new Intl.NumberFormat(locale(), { style: 'currency', currency: cur || CURRENCY || 'EUR',
     minimumFractionDigits: stellen, maximumFractionDigits: stellen }).format(v);
@@ -445,7 +451,7 @@ function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1) {
   const striche = teilung.werte.filter(v => v >= min).map(v => {
     const y = yOf(v).toFixed(1);
     return `<line x1="${links}" y1="${y}" x2="${rechts}" y2="${y}" stroke="var(--mut)" stroke-opacity=".22" stroke-width="1"/>
-      <text x="${links - 8 * f}" y="${(yOf(v) + 4 * f).toFixed(1)}" font-size="${12 * f}" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(achsenBetrag(v, schritt, cur))}</text>`;
+      <text x="${links - 8 * f}" y="${(yOf(v) + 4 * f).toFixed(1)}" font-size="${12 * f}" fill="var(--mut)" text-anchor="end" font-family="inherit">${esc(achsenBetrag(v, schritt, cur, f >= 1.5))}</text>`;
   }).join('');
   const achse = `<line x1="${links}" y1="${oben}" x2="${links}" y2="${unten}" stroke="var(--mut)" stroke-width="1"/>`;
   const bruch = min > 0

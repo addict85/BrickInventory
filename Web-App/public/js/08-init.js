@@ -127,16 +127,15 @@ function plAddSet() {
   feldFehler('pl-setnr', '');
   nrs.forEach(nr => {
     const normalized = nr.includes('-') ? nr : nr + '-1';
-    _plSets.push({ set_number: normalized, name: normalized });
-    // Try to get set name from catalog (works for any set, not just owned ones)
+    const eintrag = { set_number: normalized, name: normalized, unbekannt: false };
+    _plSets.push(eintrag);
+    // Name aus dem Katalog; kennt er die Nummer nicht, sagt es der Chip, statt
+    // sie still als Set ohne Teile mitzuzählen.
     api('GET', `/v1/sets/info/${normalized}`).then(d => {
-      if (d.success && d.name && d.name !== normalized) {
-        for (let i = _plSets.length-1; i >= 0; i--) {
-          if (_plSets[i].set_number === normalized && _plSets[i].name === normalized) {
-            _plSets[i].name = d.name; plRenderSets(); break;
-          }
-        }
-      }
+      if (!d.success) return;
+      if (d.name && d.name !== normalized) eintrag.name = d.name;
+      eintrag.unbekannt = d.im_katalog === false;
+      plRenderSets();
     }).catch(() => {});
   });
   G('pl-setnr').value = '';
@@ -157,10 +156,10 @@ function plRenderSets() {
   }
   G('btn-pl-gen').removeAttribute('aria-disabled');
   c.innerHTML = _plSets.map((s,i) => `
-    <div data-stil="display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3)">
-      <span data-stil="font-weight:600;color:var(--b700)">${esc(s.set_number)}</span>
-      <span data-stil="color:var(--mut)">${s.name !== s.set_number ? '— '+esc(s.name) : ''}</span>
-      <button data-click="plRemoveSet" data-arg="${i}" data-stil="background:none;border:none;cursor:pointer;color:var(--mut);padding:0;font-size:var(--fs-3);line-height:1" aria-label="${esc(tRaw('common.remove'))}">${ico('schliessen')}</button>
+    <div class="pl-chip${s.unbekannt ? ' unbekannt' : ''}">
+      <span class="pl-chip-nr">${esc(s.set_number)}</span>
+      <span class="pl-chip-name">${s.unbekannt ? '— ' + esc(tRaw('pl.nicht_im_katalog')) : s.name !== s.set_number ? '— '+esc(s.name) : ''}</span>
+      <button type="button" class="pl-chip-weg" data-click="plRemoveSet" data-arg="${i}" aria-label="${esc(tRaw('pl.entfernen', { set: s.set_number }))}">${ico('schliessen')}</button>
     </div>`).join('');
 }
 // Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der
@@ -195,7 +194,8 @@ async function plGenerate() {
   } catch(_) {}
   _rbToBlColor = rbToBlColor;
 
-  for (const s of _plSets) {
+  const bekannt = _plSets.filter(s => !s.unbekannt), unbekannt = _plSets.filter(s => s.unbekannt);
+  for (const s of bekannt) {
     G('pl-status').textContent = tRaw('pl.loading_set',{set:s.set_number});
     // Use user-independent CSV endpoints (work for all users regardless of import history)
     try {
@@ -272,15 +272,12 @@ async function plGenerate() {
   }
 
   _plParts = Object.values(combined);
-  G('pl-status').textContent = `${tRaw('pl.summary_teile', { n: _plParts.length })} ${tRaw('pl.summary_sets', { n: _plSets.length })}`
-    + (errors ? ` (${t('monitor.errors_n',{n:errors})})` : '');
+  G('pl-status').textContent = `${tRaw('pl.summary_teile', { n: _plParts.length })} ${tRaw('pl.summary_sets', { n: bekannt.length })}`
+    + (errors ? ` (${t('monitor.errors_n',{n:errors})})` : '')
+    + (unbekannt.length ? ` · ${tRaw('pl.unbekannt_n', { n: unbekannt.length, nummern: unbekannt.map(s => s.set_number).join(', ') })}` : '');
   G('btn-pl-gen').disabled = false;
   plRenderTable(errors);
   plExportStand();
-  // Die ganze Zeile, nicht die zwei Knoepfe einzeln — sonst bliebe ein
-  // leerer Streifen stehen, solange keine Liste erzeugt ist (index.html
-  // erklaert es an Ort und Stelle).
-  G('pl-bestand-zeile').style.display = 'flex';
 }
 
 /**
@@ -345,13 +342,20 @@ async function plFuelleBestand() {
                           + ' ' + tRaw('pl.owned_missing', { n: fehlend, m: fehlendeArten });
 }
 
-/** Exportieren steht erst nach einem Ergebnis da und ist bei 0 Teilen gesperrt: Eine leere Datei hilft niemandem. */
+/** Export und Bestand erst, wenn die Liste Teile hat: Eine leere Datei hilft niemandem.
+ * Am Telefon beim ersten Mal zugeklappt, damit das Ergebnis vorn steht. */
 function plExportStand() {
-  const box = G('pl-export'); if (!box) return;
-  box.hidden = _plParts === null;
+  const box = G('pl-export'), optionen = /** @type {HTMLDetailsElement | null} */ (document.getElementById('pl-optionen')); if (!box) return;
   const leer = !_plParts?.length;
+  box.hidden = leer;
+  if (optionen) {
+    optionen.hidden = leer;
+    if (!leer && !optionen.dataset.entschieden) {
+      optionen.dataset.entschieden = '1';
+      optionen.open = !window.matchMedia?.('(max-width: 640px)').matches;
+    }
+  }
   for (const id of ['btn-pl-pdf', 'btn-pl-bl', 'pl-bl-condition']) G(id).disabled = leer;
-  box.title = leer ? tRaw('pl.export_leer') : '';
 }
 
 function plRenderTable(fehler = 0) {
@@ -637,7 +641,6 @@ async function plExportBricklink() {
 }
 
 function plReset() {
-  const bz = G('pl-bestand-zeile'); if (bz) bz.style.display = 'none';
   _plSets = []; _plParts = null;
   G('pl-result').innerHTML = '';
   G('pl-status').textContent = '';

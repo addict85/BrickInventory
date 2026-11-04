@@ -432,7 +432,7 @@
     [data-dunkel] .sci,[data-theme="werkbank"] .sci{background:#2b3139}
     [data-dunkel] .sci img,[data-theme="werkbank"] .sci img{filter:brightness(.75);border-radius:6px;padding:10px}
     /* Platzhalter in der Grauschrift des Designs: Das Browsergrau hielt im Dunkeln keine 4,5:1. */
-    ::placeholder{color:var(--mut);opacity:1}
+    ::placeholder{color:var(--mut);opacity:1;font-style:italic}
     [data-dunkel]{color-scheme:dark;--farbpunkt-rand:rgba(255,255,255,.55)}
     .sci .ni{font-size:var(--fs-8)}
     .scb{padding:11px}
@@ -728,12 +728,14 @@
     /* TOAST */
     #toasts{position:fixed;bottom:1.25rem;right:1.25rem;display:flex;flex-direction:column;gap:7px;z-index:9999}
     .toast{background:var(--sur);border:1px solid var(--bdr);border-radius:10px;padding:11px 15px;font-size:var(--fs-3);min-width:240px;max-width:360px;display:flex;align-items:center;gap:9px;box-shadow:var(--sh2);animation:tIn .25s ease}
-    .toast{cursor:default}
+    .toast{cursor:default;flex-wrap:wrap}
+    /* Bei grosser Schrift rückt der Knopf unter den Text, statt ihn auf eine Spalte zu drücken. */
+    .toast-text{flex:1 1 9em;min-width:0}
     .toast-anzahl{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:var(--mut)}
     .toast.success{border-left:3px solid var(--g500)}
     .toast.error{border-left:3px solid var(--r500)}
     .toast.info{border-left:3px solid var(--b500)}
-    .toast-aktion{margin-left:auto;background:none;border:1px solid var(--bdr);border-radius:6px;padding:3px 10px;font:inherit;font-weight:600;color:var(--b500);cursor:pointer;white-space:nowrap}
+    .toast-aktion{margin-left:auto;background:none;border:1px solid var(--bdr);border-radius:6px;padding:3px 10px;font:inherit;font-weight:600;color:var(--b600);cursor:pointer;white-space:nowrap}
     @media (hover:hover){.toast-aktion:hover{background:var(--b50)}}
     @keyframes tIn{from{transform:translateX(100%);opacity:0}to{transform:none;opacity:1}}
     .spin{width:28px;height:28px;border:3px solid var(--s200);border-top-color:var(--b500);border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
@@ -765,7 +767,7 @@
     .ra{background:var(--a100);color:var(--a-schrift)}.rv{background:var(--p100);color:var(--p600)}.ru{background:var(--s100);color:var(--s600)}
     .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block;white-space:nowrap}
     .cond-new{background:var(--b100);color:var(--b700)}
-    .besitzer-badge{background:var(--b100);color:var(--b700)}
+    .besitzer-badge{background:var(--b100);color:var(--b700);max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
     .admin-hinweis{font-size:var(--fs-1);color:var(--mut);font-weight:400}
     .cond-used{background:var(--a100);color:var(--a-schrift)}
     /* Ersatzteil: dieselbe Form wie die Zustands-Plakette, aber ruhiger —
@@ -1024,6 +1026,9 @@ input.suchfeld{width:220px}
 .mehr-liste{display:flex;gap:8px;flex-wrap:wrap}
 .merk-kasten{background:var(--sur);border:1px solid var(--bdr);border-radius:var(--rad);padding:1.25rem;margin-bottom:1.25rem;box-shadow:var(--sh0)}
 .merk-kasten-titel{margin:0;font-size:var(--fs-4);font-weight:700}
+.merk-kasten-kopf{list-style:none;cursor:pointer;border-radius:6px}
+.merk-kasten-kopf::-webkit-details-marker{display:none}
+.merk-kasten:not([open]) .merk-kasten-kopf .stit{margin-bottom:0;padding-bottom:0;border-bottom:0}
 /* Feld, Auswahl und Knöpfe einer Zeile gleich hoch — wie die Felder (38 px). */
 .merk-erfassen > .btn{height:max(38px,2.6em);box-sizing:border-box}
 /* Geheimnisse verdeckt, mit Knopf zum Anzeigen daneben. */
@@ -1359,7 +1364,7 @@ p.mon-leise{margin:0 0 .35rem}
 :is(#gallery,#catalog-grid) .sname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.6em}
 :is(#gallery,#catalog-grid) .smeta{flex-direction:column;align-items:flex-start;gap:4px}
 :is(#gallery,#catalog-grid) .smeta-text{display:block;width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.splaketten{display:flex;gap:4px 6px;align-items:center;flex-wrap:wrap;min-height:1.5rem}
+.splaketten{display:flex;gap:4px 6px;align-items:center;flex-wrap:wrap;min-height:1.5rem;max-width:100%;min-width:0}
 .besitz-badge{display:inline-flex;align-items:center;gap:3px}
 .besitz-badge .ico{width:12px;height:12px}
 .teile-zahl{font-size:var(--fs-1);color:var(--mut);font-variant-numeric:tabular-nums}
@@ -1399,13 +1404,26 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .pl-feld{display:flex;flex-direction:column;gap:.3rem;max-width:100%}
 .pl-feld label,.pl-zustand label{font-size:var(--fs-2);font-weight:600}
 .pl-setnr{width:14em;max-width:100%;flex:0 1 auto}
+/* Bauliste: Set-Chips (Name in Textfarbe: --mut auf --b50 kam nur auf 4,4:1) und Optionen. */
+.pl-chips{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem;min-height:32px}
+.pl-chip{display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3);max-width:100%}
+.pl-chip-nr{font-weight:600;color:var(--b700)}
+.pl-chip-name{color:var(--txt);overflow-wrap:anywhere}
+.pl-chip.unbekannt{background:var(--sur);border-style:dashed;border-color:var(--feldrand)}
+.pl-chip.unbekannt .pl-chip-nr{color:var(--txt)}
+.pl-chip-weg{background:none;border:none;cursor:pointer;color:var(--txt);padding:0;font-size:var(--fs-3);line-height:1;display:inline-flex;align-items:center;justify-content:center;min-width:24px;min-height:24px}
+.pl-status{color:var(--mut);font-size:var(--fs-3);margin-bottom:.75rem}
+.pl-optionen{margin-bottom:1rem}
+.pl-optionen[hidden]{display:none}
+.pl-optionen-kopf{cursor:pointer;font-weight:700;font-size:var(--fs-2);min-height:24px;padding:.25rem 0}
+.pl-optionen[open] > .pl-optionen-kopf{margin-bottom:.5rem}
 .pl-export{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.5rem;padding-top:.75rem;border-top:1px solid var(--bdr);width:100%}
 .pl-export[hidden]{display:none}
 .pl-export-titel{flex:1 1 100%;font-weight:700;font-size:var(--fs-2)}
 .pl-zustand{display:inline-flex;flex-direction:column;gap:.2rem}
 .pl-zustand select{width:auto}
 .pl-bl-zeichen{vertical-align:middle;margin-right:4px;flex-shrink:0}
-.pl-bestand-zeile{align-items:center;gap:.5rem;flex-wrap:wrap}
+.pl-bestand-zeile{display:flex;margin-top:.75rem;align-items:center;gap:.5rem;flex-wrap:wrap}
 .pl-wahl{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);flex-shrink:0}
 /* Leere Sammlung und leere Finanzen: keine Nullkarten, Filter und Zeiträume ohne Wirkung. */
 #tab-gallery.sammlung-leer :is(.filterleiste,.brick-stats){display:none}
@@ -1522,7 +1540,11 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 .filter-zahl[hidden]{display:none}
 #tab-gallery .filterleiste > .filter-knopf{position:relative}
 #tab-gallery .filterleiste > .filter-knopf > .filter-zahl{position:absolute;top:-6px;right:-6px}
-.haushalt-liste{row-gap:.4rem}
+/* minmax(0, …): Bei grosser Schrift schrumpfen die Spalten und der Knopf bricht
+   um, statt die Seite seitlich zu verschieben (WCAG 1.4.10). */
+.haushalt-liste{list-style:none;padding:0;margin:.4rem 0 0;display:grid;grid-template-columns:minmax(0,max-content) minmax(0,max-content);align-items:center;column-gap:.6rem;row-gap:.4rem}
+.haushalt-aktion .btn{white-space:normal;max-width:100%;text-align:left}
+@container haupt (max-width: 22em){ .haushalt-liste{grid-template-columns:minmax(0,1fr)} }
 .haushalt-name{display:inline-flex;align-items:center;gap:.4rem;font-weight:600;padding:.3rem 0;overflow-wrap:anywhere}
 .haushalt-aktion{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;padding:.3rem 0}
 .feld-titel-klein{display:block;font-size:var(--fs-1);color:var(--mut);margin-bottom:3px}

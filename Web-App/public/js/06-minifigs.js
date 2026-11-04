@@ -211,7 +211,7 @@ export function renderFigs(list, target) {
         const erfasst = dateVal ? fmtDatum(dateVal) : '—';
         // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden
         // Ansichten (Marcos Detail-Dialog fuer automatisch erfasste Figuren).
-        return `<tr data-stil="cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
+        return `<tr data-stil="cursor:pointer" tabindex="0" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
           <td>${imgSrc?bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }):`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}</td>
           <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(f.fig_number)}</span></td>
           <td data-stil="max-width:200px">${esc(f.fig_name)||'—'}</td>
@@ -271,10 +271,10 @@ export function renderFigs(list, target) {
           // Mengenaenderung. Die Kachel entscheidet nach der Quelle, damit
           // BEIDE Faelle richtig sind — auch wenn diese Liste heute nur
           // `source=set` laedt.
-          return `<div class="part-card" data-stil="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
+          return `<div class="part-card" tabindex="0" role="button" data-stil="position:relative;cursor:pointer" data-click="${f.source==='manual'?'openManDetail':'openSetItemDetail'}" data-arg="fig" data-arg2="${escJs(f.fig_number)}" data-arg3="0">
             ${delBtn}
-            ${imgSrc ? bildTag({ src: imgSrc, alt: f.fig_name || f.fig_number, klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' })
-                     : `<span class="bild-ph part-img" role="img" aria-label="${esc(f.fig_name || f.fig_number)}">${platzhalterInhalt('figur')}</span>`}
+            ${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' })
+                     : `<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}
             <div class="part-num">${esc(f.fig_number)}</div>
             <div class="part-name">${esc(f.fig_name)||'—'}</div>
             <div class="part-qty">×${f.total_quantity||f.quantity}</div>
@@ -349,8 +349,8 @@ export function renderManualFigsTable() {
     ${manualFigsCache.map(f => {
       const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
       const img = imgSrc
-        ? bildTag({ src: imgSrc, alt: f.fig_name || f.fig_number, klasse: 'man-tile-img', ph: 'figur' })
-        : `<span class="bild-ph man-tile-img" role="img" aria-label="${esc(f.fig_name || f.fig_number)}">${platzhalterInhalt('figur')}</span>`;
+        ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'figur' })
+        : `<span class="bild-ph man-tile-img" aria-hidden="true">${platzhalterInhalt('figur')}</span>`;
       // Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn).
       // unit_price ist der zuletzt geschriebene Einzelwert der Stammzeile —
       // bei zwei Erfassungen zu verschiedenen Preisen stimmte er nicht.
@@ -673,8 +673,8 @@ export function renderManualParts() {
       // Vorschau über den Server-Proxy.
       const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
       const img = imgSrc
-        ? bildTag({ src: imgSrc, alt: [p.part_name || p.part_number, p.color_name ? colorName(p.color_name) : ''].filter(Boolean).join(', '), klasse: 'man-tile-img', ph: 'teil' })
-        : `<span class="bild-ph man-tile-img" role="img" aria-label="${esc(p.part_name || p.part_number)}">${platzhalterInhalt('teil')}</span>`;
+        ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'teil' })
+        : `<span class="bild-ph man-tile-img" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
       const colorRow = p.color_name
         ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
         : '';
