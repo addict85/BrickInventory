@@ -33,8 +33,10 @@ import javax.net.ssl.X509ExtendedTrustManager
  *      fremder Host, nur System-CAs — Stand vor sec8 N2) → rot „der alte Server mit
  *      eigener CA wird mit seinem Pin erreicht“ (SPAETER statt ENTWERTET);
  *      gegenproben/entwertung-ohne-alten-pin.patch
- *   B  im Entwerter die Ursachenkette nicht durchsucht (jeder IOException SPAETER)
- *      → rot „ein anderer Schluessel unter dem Pin bekommt kein Token …“
+ *   B  im Entwerter die Ablehnung weder gemerkt (MerktAblehnung) noch in der
+ *      Ursachenkette gesucht (jeder IOException SPAETER) → rot „ein anderer
+ *      Schluessel unter dem Pin bekommt kein Token …“. In der CI (Conscrypt im
+ *      selben JVM) genügte die Suche in der Ursachenkette allein nicht.
  */
 class AlterServerPinTest {
 

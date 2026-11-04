@@ -97,13 +97,14 @@ class Entwerter(
             override fun tokenHerkunft() = NetworkPolicy.herkunft(serverUrl)
             override fun generation() = 0L
         }
+        val abgelehnt = java.util.concurrent.atomic.AtomicBoolean(false)
         val client = basis.newBuilder()
             .followRedirects(false).followSslRedirects(false)
             .addInterceptor(ServerWaechter(lage, istApiClient = false, entwicklung = entwicklung, sitzungAbgelaufen = {}))
             .apply {
                 val schluessel = pinSchluessel(serverUrl)
                 if (vertrauenFuer != null && schluessel != null) {
-                    val tm = vertrauenFuer(schluessel, pin)
+                    val tm = MerktAblehnung(vertrauenFuer(schluessel, pin), abgelehnt)
                     sslSocketFactory(SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory, tm)
                 }
             }
@@ -116,7 +117,9 @@ class Entwerter(
         } catch (e: java.io.IOException) {
             // Ein Zertifikat, das nicht zum Pin passt, wird durch Warten nicht passender;
             // nachfragen kann im Hintergrund niemand.
-            if (generateSequence<Throwable>(e) { it.cause }.take(8).any { it is ZertifikatUngeklaert }) Entwertungsergebnis.AUFGEBEN
+            // Gemerkt statt in der Ursachenkette gesucht: Conscrypt reicht die Ausnahme des
+            // Vertrauens nicht immer als Ursache weiter.
+            if (abgelehnt.get() || generateSequence<Throwable>(e) { it.cause }.take(8).any { it is ZertifikatUngeklaert }) Entwertungsergebnis.AUFGEBEN
             else Entwertungsergebnis.SPAETER
         }
     }
@@ -143,3 +146,28 @@ fun entwertungsSchritt(befund: Tresorbefund, versuch: Int, entwerte: (String) ->
                 if (versuch + 1 >= ENTWERTUNG_HOECHSTVERSUCHE) Entwertungsschritt.AUFGEGEBEN else Entwertungsschritt.NOCHMAL
         }
     }
+
+/** Reicht alles an [innen] weiter und merkt sich, ob ein Zertifikat ungeklärt abgelehnt wurde. */
+// Prüft nichts selbst: jede Entscheidung trifft [innen] (PinVertrauen).
+@Suppress("CustomX509TrustManager")
+private class MerktAblehnung(
+    private val innen: X509ExtendedTrustManager,
+    private val abgelehnt: java.util.concurrent.atomic.AtomicBoolean,
+) : X509ExtendedTrustManager() {
+    private inline fun <T> merke(block: () -> T): T =
+        try { block() } catch (e: ZertifikatUngeklaert) { abgelehnt.set(true); throw e }
+
+    override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) =
+        merke { innen.checkServerTrusted(chain, authType) }
+    override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String, socket: java.net.Socket?) =
+        merke { innen.checkServerTrusted(chain, authType, socket) }
+    override fun checkServerTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String, engine: javax.net.ssl.SSLEngine?) =
+        merke { innen.checkServerTrusted(chain, authType, engine) }
+    override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String) =
+        innen.checkClientTrusted(chain, authType)
+    override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String, socket: java.net.Socket?) =
+        innen.checkClientTrusted(chain, authType, socket)
+    override fun checkClientTrusted(chain: Array<java.security.cert.X509Certificate>, authType: String, engine: javax.net.ssl.SSLEngine?) =
+        innen.checkClientTrusted(chain, authType, engine)
+    override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = innen.acceptedIssuers
+}
