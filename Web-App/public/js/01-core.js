@@ -620,8 +620,10 @@ export function observeLazyImages(root) {
 const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
 /** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: any}>} */
 const _toastStand = new WeakMap();
-/** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
-export function toast(msg, type='info', aktion) {
+/** @param {{text: string, fn: () => any, bleibt?: boolean}} [aktion] Knopf in der Meldung, z. B. „Rückgängig";
+ *  `bleibt` hält ihn über einen Ansichtswechsel (verwirfToasts).
+ * @param {string} [details] aufklappbare Ursache unter der Meldung */
+export function toast(msg, type='info', aktion, details) {
   const c = G('toasts');
   if (type === 'error' && !ME && [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m))) return null;
   // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
@@ -650,6 +652,17 @@ export function toast(msg, type='info', aktion) {
   const anzahl = document.createElement('span');
   anzahl.className = 'toast-anzahl'; anzahl.hidden = true;
   el.append(icon, text, anzahl);
+  // Die Ursache aufklappbar: Sieben Zeilen Meldung verdeckten am Telefon die Liste.
+  if (details) {
+    const mehr = document.createElement('details');
+    mehr.className = 'toast-details';
+    const kopf = document.createElement('summary');
+    kopf.textContent = tRaw('liste.details');
+    const inhalt = document.createElement('p');
+    inhalt.textContent = details;
+    mehr.append(kopf, inhalt);
+    text.append(mehr);
+  }
   if (aktion) {
     const knopf = document.createElement('button');
     knopf.type = 'button';
@@ -657,21 +670,23 @@ export function toast(msg, type='info', aktion) {
     knopf.textContent = aktion.text;
     knopf.onclick = () => { el.remove(); aktion.fn(); };
     el.append(knopf);
+    if (aktion.bleibt) el.dataset.bleibt = '';
   }
   // Ein Fehler will gelesen werden, eine Bestätigung nur gesehen; mit Knopf
   // muss man ihn auch treffen. Ein Klick auf die Meldung räumt sie weg, damit
   // sie keine Karte verdeckt.
-  el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button')) el.remove(); });
+  el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button, details')) el.remove(); });
   c.appendChild(el);
   _toastStand.set(el, { schluessel, anzahl: 1, frist: setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500)) });
   return el;
 }
 /**
  * Beim Wechsel der Ansicht: Meldungen gehören zu der Ansicht, in der sie
- * entstanden; nur solche mit Knopf (Rückgängig, Ändern) bleiben bis zur Frist.
+ * entstanden. Nur ein Rückgängig (`bleibt`) gilt weiter, sonst läge etwa
+ * „… nicht in deiner Sammlung. Hinzufügen“ über der nächsten Ansicht.
  */
 export function verwirfToasts() {
-  for (const el of [...(G('toasts')?.children || [])]) if (!el.querySelector('.toast-aktion')) el.remove();
+  for (const el of [...(G('toasts')?.children || [])]) if (!(/** @type {HTMLElement} */ (el)).hasAttribute('data-bleibt')) el.remove();
 }
 /**
  * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.
@@ -1313,6 +1328,7 @@ export async function checkAuth(){
   // unverändert bleibt.
   // Auch angemeldet (neue Adresse im Profil) erst bestätigen, dann die Anwendung.
   _verifyAngemeldet = !!d.loggedIn;
+  if(_verifyToken) zeigeBestaetigungsziel(!!d.loggedIn);
   if(d.loggedIn && !_verifyToken){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; oeffneApp(); }
   else {
     G('login-screen').style.display='flex'; startgeruestWeg();
@@ -1323,6 +1339,20 @@ export async function checkAuth(){
     }
     checkRegistrationEnabled();
   }
+}
+/**
+ * Was der Link bestätigt: Angemeldet die ausstehende Adresse des eigenen
+ * Kontos, sonst ein Hinweis. So fällt ein fremder oder alter Link auf, bevor
+ * jemand ihn bestätigt; das Ziel des Links selbst kennt nur der Server.
+ */
+async function zeigeBestaetigungsziel(angemeldet) {
+  const el = G('verify-ziel');
+  if (!el) return;
+  const p = angemeldet ? await api('GET', '/v1/auth/profile') : null;
+  const u = p?.success ? p.user : null;
+  el.textContent = !u ? tRaw('verify.ohne_anmeldung')
+    : u.email_neu ? tRaw('verify.ausstehend', { email: u.email_neu, konto: u.username })
+    : tRaw('verify.nichts_ausstehend', { konto: u.username });
 }
 /** Das statische Startgerüst aus index.html weicht, sobald Anmeldung, App oder Startfortschritt dastehen. */
 function startgeruestWeg() { G('startgeruest')?.remove(); }

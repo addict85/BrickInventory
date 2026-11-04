@@ -85,7 +85,7 @@ export async function papierkorbLeeren() {
 export function geloeschtMitRueckgaengig(meldung, antwort) {
   const ids = antwort?.papierkorb || [];
   toast(meldung, 'success', ids.length ? {
-    text: tRaw('trash.undo'),
+    text: tRaw('trash.undo'), bleibt: true,
     fn: async () => {
       if (!await wiederherstellen(ids)) return;
       toast(tRaw('trash.restored'), 'success');

@@ -15,6 +15,11 @@ export const HouseholdInviteResponse = z.looseObject({
   error: z.string().nullable().optional(),
 });
 
+export const HouseholdInviteCheckResponse = z.looseObject({
+  success: z.boolean(),
+  inviter: KontoName,
+});
+
 export const HouseholdMember = z.looseObject({
   id: z.number().int(),
   username: z.string(),
@@ -43,6 +48,7 @@ export const routen = {
   'GET /api/v1/settings/household': { antwort: HouseholdStatusResponse },
   'GET /api/v1/sets/household-members': { antwort: HouseholdMembersResponse },
   'POST /api/v1/settings/household/invite': { antwort: HouseholdInviteResponse, geheim: true },
+  'POST /api/v1/settings/household/redeem/pruefen': { antwort: HouseholdInviteCheckResponse, eingabe: z.looseObject({ code: z.string().max(64).nullable().optional() }) },
   'POST /api/v1/settings/household/redeem': { antwort: GenericResponse, ...bestaetigt({ code: z.string().max(64).nullable().optional() }, 'password', 'faktor_code') },
   'POST /api/v1/settings/household/unlink': { antwort: GenericResponse },
   'POST /api/v1/settings/household/former/dismiss': { antwort: GenericResponse },

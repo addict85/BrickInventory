@@ -229,6 +229,7 @@ const C = {
   'GET /api/v1/settings/household': 'nur-v1',
   'POST /api/v1/settings/household/invite': 'nur-v1',
   'POST /api/v1/settings/household/redeem': 'nur-v1',
+  'POST /api/v1/settings/household/redeem/pruefen': 'nur-web',
   'POST /api/v1/settings/household/unlink': 'nur-v1',
   'POST /api/v1/settings/household/former/dismiss': 'nur-v1',
   'POST /api/v1/admin/redownload-missing-images': 'nur-v1',

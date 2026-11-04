@@ -146,6 +146,10 @@ export async function loadMonitor() {
         // Preise aktualisieren: Preisschild (Gold) mit Loch
         brickset: '<rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/>',
         priceJob: '<path d="M18,60 L58,20 L100,20 Q108,20 108,28 L108,70 Q108,78 100,78 L58,100 Z" fill="#F2CD37"/><circle cx="84" cy="42" r="9" fill="#fff"/>',
+        // Bild-Download: Bilderrahmen mit Berg und Sonne
+        imgDl: '<rect x="10" y="20" width="100" height="80" rx="8" fill="#0055BF"/><circle cx="82" cy="44" r="10" fill="#F2CD37"/><path d="M18,92 L48,52 L70,80 L82,66 L102,92 Z" fill="#fff"/>',
+        // PDF-Aufträge: Blatt mit roter Leiste
+        pdfJobs: '<path d="M26,10 L76,10 L98,32 L98,110 L26,110 Z" fill="#9BA19D"/><path d="M76,10 L76,32 L98,32 Z" fill="#fff" fill-opacity=".6"/><rect x="16" y="56" width="70" height="26" rx="4" fill="#E63329"/><rect x="38" y="90" width="44" height="5" rx="2.5" fill="#fff"/>',
       };
       return svgs[k] ? `<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${svgs[k]}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
     };

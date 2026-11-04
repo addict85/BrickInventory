@@ -52,10 +52,11 @@ const SETS = {
 test('Geschenk in Kachel, Tabelle und Detail', async () => {
   const { w, d } = await oeffneOberflaeche(SETS);
   try {
-    await warte(() => /Geschenk|%/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
+    await warte(() => /\d/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
     const kachel = text(d.querySelector('[data-price-for="10300-1"]'));
-    assert.match(kachel, /Geschenk/);
-    assert.doesNotMatch(kachel, /%/, `Kachel: ${kachel}`);
+    // Seit der UI-Prüfung 13 als Plakette beim Zustand, nicht im Preiskasten.
+    assert.match(text(d.querySelector('[data-price-for="10300-1"]').closest('.sc').querySelector('.splaketten')), /Geschenk/);
+    assert.doesNotMatch(kachel, /%|Geschenk/, `Kachel: ${kachel}`);
     assert.match(text(d.querySelector('[data-price-for="21318-1"]')), /[−-]6[.,]9/, 'das andere Set behält sein Prozent');
 
     await reiter(w, 'finance');

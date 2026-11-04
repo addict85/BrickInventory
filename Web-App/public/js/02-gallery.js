@@ -1059,11 +1059,11 @@ function preisZeile(s){
   // Der Server sagt, woher kachel_preis stammt: Ohne Marktpreis ist es der Kaufpreis.
   const markt = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
   const betrag = markt ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : (s._price ? fmtGeld(s._price, CURRENCY) : ''));
-  const pnl = pnlBadge(s._pnl_pct, kauf);
+  // Ein Geschenk steht als Plakette beim Zustand: Im Preiskasten las es sich als Eigenschaft des Marktpreises.
+  const pnl = istGeschenk(kauf) ? '' : pnlBadge(s._pnl_pct, kauf);
   if (!betrag && !pnl) return '';
   const art = betrag ? `<span class="preis-art">${t(markt ? 'gallery.card.market' : 'gallery.card.paid')}</span>` : '';
-  const pct = pnl && !istGeschenk(kauf)
-    ? `<span title="${esc(tRaw('gallery.card.pnl_hint'))}"><span class="vh">${t('gallery.card.pnl_hint')}: </span>${pnl}</span>` : pnl;
+  const pct = pnl ? `<span title="${esc(tRaw('gallery.card.pnl_hint'))}"><span class="vh">${t('gallery.card.pnl_hint')}: </span>${pnl}</span>` : '';
   return `${art}<span class="preis">${betrag}</span>${pct ? `<span class="preis-pnl">${pct}</span>` : ''}`;
 }
 
@@ -1149,7 +1149,7 @@ function gridCard(s){
   // Ohne Jahr, Thema und echten Namen kennt der Katalog die Nummer (noch) nicht.
   const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
   // Kein aria-label: Der Name kommt aus dem Inhalt, sonst fehlte dem Vorleser, was sichtbar dasteht.
-  return `<div class="sc"${faecherTon(s)} tabindex="0" role="button" data-click="openModal" data-arg="${escJs(s.set_number)}">
+  return `<div class="sc"${faecherTon(s)} tabindex="0" role="button" aria-keyshortcuts="Delete" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
@@ -1161,6 +1161,7 @@ function gridCard(s){
           ${s.instructions?.length?`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>`:''}
           ${s.quantity>1?`<span class="qbadge">×${s.quantity}</span>`:''}
           ${condBadge}
+          ${istGeschenk(s.avg_purchase_price ?? s.max_purchase_price) ? `<span class="geschenk-badge">${t('finance.gift')}</span>` : ''}
           ${unbekannt ? `<span class="unbekannt-badge" title="${esc(tRaw('gallery.card.unbekannt_hint'))}">${t('gallery.card.unbekannt')}</span>` : ''}
           ${ownerBadges(s)}
         </div>

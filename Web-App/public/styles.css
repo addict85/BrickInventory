@@ -170,8 +170,8 @@
                 background:var(--sur);color:var(--txt);border:0;
                 border-radius:8px;cursor:pointer;
                 padding:.5rem .7rem;font-size:var(--fs-3)}
-    /* Ohne Trennwörterbuch bleibt ein langes Wort ganz; es bricht dann im Wort. */
-    .umenu-item>span{min-width:0;overflow-wrap:anywhere}
+    /* Ein Wort bricht nur, wenn es allein nicht in die Zeile passt („Hintergrund|a|rbeiten“ las niemand). */
+    .umenu-item>span{min-width:0;overflow-wrap:break-word;hyphens:auto}
     @media (hover:hover){.umenu-item:hover{background:var(--b50,var(--s100))}}
     /* Der Strich trennt die sieben Sichten von der einen Handlung darunter.
        `border:0` zuerst: ein <hr> bringt von sich aus einen Rahmen mit, und
@@ -450,7 +450,7 @@
     .diagramm-leer{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;padding:1.5rem 1rem;color:var(--mut);font-size:var(--fs-2)}
     .diagramm-leer strong{color:var(--txt);font-weight:600}
     .pnl-zeitraum{margin-left:6px;font-size:var(--fs-1);color:var(--mut)}
-    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;border:1.5px solid var(--feldrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
+    .period-btn{padding:4px 14px;font-size:var(--fs-1);font-weight:600;white-space:nowrap;overflow-wrap:normal;border:1.5px solid var(--feldrand);border-radius:999px;background:var(--sur);color:var(--mut);cursor:pointer;transition:all .15s}
     @media (hover:hover){.period-btn:hover{border-color:var(--b600);color:var(--b600)}}
     .period-btn.active{background:var(--b600);color:var(--auf-primaer,#fff);border-color:var(--b600)}
     .snum{white-space:nowrap;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600);font-weight:500;margin-bottom:2px}
@@ -471,6 +471,7 @@
     /* .mk-zeile dazu (24.09.): Die Merklisten-Zeile ist keine Kachel, soll den
        Papierkorb aber genauso zeigen — „analog den Kacheln bei den Sets". */
     @media (hover:hover){.sc:hover .ca, .man-tile:hover .ca, .mk-zeile:hover .ca{opacity:1}}
+    :is(.sc, .man-tile, .mk-zeile, .part-card):focus-visible > .ca{opacity:1}
     /* Auf Geräten ohne Zeigegerät gibt es kein Überfahren — dort dauerhaft
        sichtbar, sonst wäre Löschen per Touch gar nicht erreichbar. */
     @media (hover: none){ .ca{opacity:1} }
@@ -731,6 +732,9 @@
     .toast{cursor:default;flex-wrap:wrap}
     /* Bei grosser Schrift rückt der Knopf unter den Text, statt ihn auf eine Spalte zu drücken. */
     .toast-text{flex:1 1 9em;min-width:0}
+    .toast-details{margin-top:.35rem;font-size:var(--fs-2)}
+    .toast-details>summary{cursor:pointer;color:var(--mut);min-height:24px}
+    .toast-details>p{margin:.3rem 0 0}
     .toast-anzahl{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums;color:var(--mut)}
     .toast.success{border-left:3px solid var(--g500)}
     .toast.error{border-left:3px solid var(--r500)}
@@ -749,6 +753,7 @@
        Verlust zeigt die G&V-Spalte. */
     .price-cell{font-variant-numeric:tabular-nums;color:var(--txt);font-size:var(--fs-2)}
     .fin-fehlt{color:var(--a-schrift);font-size:var(--fs-1);cursor:help;border-bottom:1px dotted currentColor}
+    .fin-fehlt.neutral{color:var(--mut)}
     .price-total{font-variant-numeric:tabular-nums;color:var(--preis,var(--b700));font-weight:600}
     .lv{display:inline-flex;align-items:center;background:var(--g100);color:var(--g700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     .lc{display:inline-flex;align-items:center;background:var(--b100);color:var(--b700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
@@ -1378,6 +1383,7 @@ p.mon-leise{margin:0 0 .35rem}
 #gallery .price-badge .preis-pnl{white-space:nowrap;text-align:right;margin-left:auto}
 #gallery .scb > .price-badge[hidden] + .kachel-datum{margin-top:auto}
 #gallery .kachel-datum{min-height:1.35em}
+.geschenk-badge{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--s100);color:var(--txt);font-size:var(--fs-0);font-weight:600}
 .unbekannt-badge{display:inline-block;padding:1px 7px;border-radius:999px;border:1px dashed var(--feldrand);color:var(--txt);font-size:var(--fs-0);font-weight:600}
 .erfassen-unbekannt{grid-column:1 / -1;margin:0}
 .erfassen-unbekannt[hidden]{display:none}
@@ -1513,7 +1519,7 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 /* Der Dialog selbst bekommt beim Öffnen den Fokus nur als Ausgangspunkt für Tab; ein Ring um die ganze Fläche lenkt ab. */
 .ovl > [tabindex="-1"]:focus-visible{outline:none}
 /* Grosse Schrift auf schmalem Schirm: Knopftexte brechen im Knopf um, statt über den Rand zu ragen. */
-.ssec .btn,.lcard .btn,.sform .btn,.ew-aktion .btn,#tab-monitor .btn{white-space:normal;overflow-wrap:anywhere;hyphens:auto;max-width:100%;text-align:center}
+.ssec .btn,.lcard .btn,.sform .btn,.ew-aktion .btn,#tab-monitor .btn{white-space:normal;overflow-wrap:break-word;hyphens:auto;max-width:100%;text-align:center}
 .btn > span{min-width:0}
 /* Das Ausgabeland gilt für alle Konten; der Kasten setzt es von den eigenen Gutscheinen ab. */
 .voucher-land{border:1px dashed var(--bdr);border-radius:var(--rad);padding:.75rem;margin-bottom:.75rem}

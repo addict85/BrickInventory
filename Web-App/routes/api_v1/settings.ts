@@ -27,7 +27,7 @@ import { zugaengeDesKontos, zugaengeLoeschen, andereSitzungenBeenden, mussPasswo
 import { escapeLike, hashToken, leereTokenCache } from '../../src/konto/auth';
 import { resolveUserId, requireLoginOrToken, nutzerId, angemeldeteNutzerId, istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { verwalterHinweisNebenher } from '../../src/konto/kontoHinweis';
-import { householdStatus, createInvite, redeemInvite, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
+import { householdStatus, createInvite, redeemInvite, pruefeEinladung, unlink, verwerfeGetrennt } from '../../src/haushalt/haushalt';
 import { sendMail, testSmtp, sendHaushaltVerknuepftMail } from '../../src/infra/mailer';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { tlsStand } from '../../src/infra/tlsWurzel';
@@ -166,6 +166,12 @@ router.get('/settings/household', requireToken, async (req: AuthedRequest, res: 
 router.post('/settings/household/invite', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/invite'>) => {
   const r = await createInvite(req.apiUser.user_id);
   if ((r as any).fehler) return sendeFehler(req, res, 409, (r as any).fehler, (r as any).vars);
+  res.json({ success: true, ...r });
+});
+
+router.post('/settings/household/redeem/pruefen', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/settings/household/redeem/pruefen'>) => {
+  const r = await pruefeEinladung(req.apiUser.user_id, String(req.body?.code || ''));
+  if ('fehler' in r) return sendeFehler(req, res, 409, r.fehler);
   res.json({ success: true, ...r });
 });
 

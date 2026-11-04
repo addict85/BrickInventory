@@ -7460,6 +7460,58 @@
         }
       }
     },
+    "/api/v1/settings/household/redeem/pruefen": {
+      "post": {
+        "tags": [
+          "haushalt"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HouseholdInviteCheckResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/settings/household/unlink": {
       "post": {
         "tags": [
@@ -12660,6 +12712,37 @@
             "maximum": 9007199254740991
           }
         },
+        "additionalProperties": {}
+      },
+      "HouseholdInviteCheckResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "inviter": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "username": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "username"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "success",
+          "inviter"
+        ],
         "additionalProperties": {}
       },
       "HouseholdInviteResponse": {
