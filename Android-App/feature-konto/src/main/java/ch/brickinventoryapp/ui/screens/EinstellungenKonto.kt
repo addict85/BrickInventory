@@ -139,7 +139,7 @@ internal fun KontoCard(
             PasswortFeld(pwNeu, { pwNeu = it }, stringResource(R.string.konto_password_new), Modifier.fillMaxWidth(),
                 art = PasswortArt.NEU,
                 hinweis = if (neuZuKurz) stringResource(R.string.register_password_short)
-                          else stringResource(R.string.passwort_mindestens, PASSWORT_MIN_ZEICHEN),
+                          else pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
                 fehlerhaft = neuZuKurz)
             OutlinedButton(
                 onClick = { onPasswort(pwAktuell, pwNeu, code) },

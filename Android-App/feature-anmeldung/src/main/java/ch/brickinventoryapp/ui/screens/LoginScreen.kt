@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
@@ -399,7 +400,7 @@ private fun RegistrierFelder(
             keyboardOptions = weiter, keyboardActions = naechstes)
         // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler nach dem Senden.
         PasswortFeld(pw1, { pw1 = it }, stringResource(R.string.login_password), Modifier.fillMaxWidth(),
-            art = PasswortArt.NEU, hinweis = stringResource(R.string.passwort_mindestens, PASSWORT_MIN_ZEICHEN),
+            art = PasswortArt.NEU, hinweis = pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
             mitSymbol = true, imeAction = ImeAction.Next, keyboardActions = naechstes)
         PasswortFeld(pw2, { pw2 = it }, stringResource(R.string.register_password_repeat), Modifier.fillMaxWidth(),
             art = PasswortArt.WIEDERHOLUNG, mitSymbol = true)

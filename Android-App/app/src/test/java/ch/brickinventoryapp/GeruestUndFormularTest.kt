@@ -244,7 +244,7 @@ class GeruestUndFormularTest {
             listOf(ContentType.Password, ContentType.NewPassword, ContentType.NewPassword), felder.map(::autofill))
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.cd_password_show)).assertCountEquals(3)
         // Die Mindestlänge steht da, bevor getippt wird.
-        compose.onNodeWithText(ctx.getString(R.string.passwort_mindestens, PASSWORT_MIN_ZEICHEN)).fetchSemanticsNode()
+        compose.onNodeWithText(ctx.resources.getQuantityString(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN)).fetchSemanticsNode()
     }
 
     @Test

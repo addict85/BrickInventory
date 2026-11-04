@@ -21,6 +21,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -79,7 +80,7 @@ fun StartpasswortMaske(
             PasswortFeld(pwNeu, { pwNeu = it }, stringResource(R.string.konto_password_new), Modifier.fillMaxWidth(),
                 art = PasswortArt.NEU,
                 hinweis = if (zuKurz) stringResource(R.string.register_password_short)
-                          else stringResource(R.string.passwort_mindestens, PASSWORT_MIN_ZEICHEN),
+                          else pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
                 fehlerhaft = zuKurz, imeAction = ImeAction.Next, keyboardActions = weiter)
             PasswortFeld(pwWiederholt, { pwWiederholt = it }, stringResource(R.string.startpasswort_wiederholen),
                 Modifier.fillMaxWidth(), art = PasswortArt.WIEDERHOLUNG,

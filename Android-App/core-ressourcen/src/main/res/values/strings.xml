@@ -1090,6 +1090,9 @@
         <item quantity="one">%1$d change is waiting and will be sent on the next connection</item>
         <item quantity="other">%1$d changes are waiting and will be sent on the next connection</item>
     </plurals>
-    <string name="passwort_mindestens">At least %1$d characters</string>
+    <plurals name="passwort_mindestens">
+        <item quantity="one">At least %1$d character</item>
+        <item quantity="other">At least %1$d characters</item>
+    </plurals>
     <string name="login_erweitert">Advanced</string>
 </resources>

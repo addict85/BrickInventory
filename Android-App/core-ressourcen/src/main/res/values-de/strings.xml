@@ -1071,6 +1071,9 @@
         <item quantity="one">%1$d Änderung wartet und wird beim nächsten Verbinden gesendet</item>
         <item quantity="other">%1$d Änderungen warten und werden beim nächsten Verbinden gesendet</item>
     </plurals>
-    <string name="passwort_mindestens">Mindestens %1$d Zeichen</string>
+    <plurals name="passwort_mindestens">
+        <item quantity="one">Mindestens %1$d Zeichen</item>
+        <item quantity="other">Mindestens %1$d Zeichen</item>
+    </plurals>
     <string name="login_erweitert">Erweitert</string>
 </resources>
