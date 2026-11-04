@@ -10,6 +10,7 @@ import { raeumeBildCacheAuf } from '../src/katalog/bilder/imgCacheServe';
 import { loescheVerfallene } from '../src/katalog/bilder/bildbedarf';
 import { fehlertext } from '../src/infra/httpError';
 import { raeumeIdempotenzAuf } from '../src/idempotenz/dienst';
+import { raeumeOffeneRegistrierungenAuf } from '../src/konto/konten';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 
@@ -39,6 +40,7 @@ function aufraeumen(): Promise<void> {
 function aufraeumenTaeglich(): Promise<void> {
   return fuehreAus([
     ['Preisverlauf', purgeAltePreise],
+    ['unbestätigte Registrierungen', raeumeOffeneRegistrierungenAuf],
     ['Bild-Cache', raeumeBildCacheAuf],
   ]);
 }

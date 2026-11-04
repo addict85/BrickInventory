@@ -10,12 +10,13 @@ import { getGlobalSetting, getSetting } from '../../src/konto/settings';
 import { landErlaubt, landFuerWaehrung } from '../../src/gutscheine/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
 import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts } from '../../src/gutscheine/gutscheinDateien';
-import { requireToken } from './middleware';
+import { requireToken, kontoSchranke } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
 import { protokolliere } from '../../src/verwaltung/dienst';
 import { stelleTicketAus, loeseTicketEin, TICKET_SEK } from '../../src/gutscheine/pdfTicket';
-import { werteAusPdf, PdfZuGross } from '../../src/gutscheine/gutscheinPdf';
-import { verbindeGutscheine, seitenweiseLesen, seitenOderKeine } from '../../src/gutscheine/gutscheinPdfSchreiben';
+import type { GutscheinWerte } from '../../src/gutscheine/gutscheinPdf';
+import { verbindeGutscheine } from '../../src/gutscheine/gutscheinPdfSchreiben';
+import { liesImHintergrund, HOECHSTENS_SEITEN } from '../../src/gutscheine/pdfLesen';
 import type { ExportGutschein } from '../../src/gutscheine/gutscheinPdfSchreiben';
 
 import { gutscheineDesKontos, gutschein, gutscheinAnlegen, gutscheinErsetzen, gutscheinAendern,
@@ -102,7 +103,7 @@ router.post('/vouchers', requireToken, async (req: AuthedRequest, res: Antwort<'
  * Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#stapelanlegen */
 async function stapelAnlegen(
   req: AuthedRequest, res: express.Response,
-  gefunden: Awaited<ReturnType<typeof seitenweiseLesen>>,
+  gefunden: GutscheinWerte[],
 ) {
   const uid = req.apiUser.user_id;
   let added = 0, updated = 0, errors = 0;
@@ -129,12 +130,15 @@ async function stapelAnlegen(
 
 // EIN Weg für beide Apps: Mitgeschickte Felder gewinnen gegen das Ausgelesene.
 // Ausführlich: docs/begruendungen/routes/api_v1/vouchers.ts.md#post-vouchers-pdf
-router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/pdf'>) => {
+router.post('/vouchers/pdf', requireToken, kontoSchranke('gutscheinPdf'), upload.single('file'), async (req: AuthedRequest, res: Antwort<'POST /api/v1/vouchers/pdf'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
 
+  const lesung = await liesImHintergrund(req.file.buffer);
+  if (lesung.art === 'zu_viele_seiten')
+    return sendeFehler(req, res, 422, 'pdf_zu_viele_seiten', { seiten: lesung.seiten, max: HOECHSTENS_SEITEN });
+  if (lesung.art === 'unlesbar') return sendeFehler(req, res, 422, 'pdf_unlesbar');
   // Erst ab ZWEI Seiten ein Stapel; bei einem bleibt der 422-Vertrag der Formulare.
-  const seiten = await seitenOderKeine(req.file.buffer);
-  if (seiten.length >= 2) return stapelAnlegen(req, res, seiten);
+  if (lesung.stapel.length >= 2) return stapelAnlegen(req, res, lesung.stapel);
 
   // Der Medientyp ist eine Behauptung des Klienten; geprüft wird die Signatur.
   const istPdf = req.file.buffer.subarray(0, 5).toString('latin1') === '%PDF-';
@@ -142,15 +146,12 @@ router.post('/vouchers/pdf', requireToken, upload.single('file'), async (req: Au
   // ausgeliefert.
   if (!istPdf) return sendeFehler(req, res, 422, 'pdf_unlesbar');
 
-  let gelesen: ReturnType<typeof werteAusPdf>;
-  let lesefehler = !istPdf;
-  try { gelesen = werteAusPdf(req.file.buffer); }
-  catch (e) {
-    // Eine Entpackbombe wird nicht abgelegt: Der Export gäbe sie an pdf-lib, das
-    // ohne Grenze entpackt.
-    if (e instanceof PdfZuGross) return sendeFehler(req, res, 422, 'pdf_unlesbar');
-    lesefehler = true; gelesen = { nummer: null, pin: null, betrag: null, waehrung: null };
-  }
+  // Eine Entpackbombe wird nicht abgelegt: Der Export gäbe sie an pdf-lib, das
+  // ohne Grenze entpackt.
+  if (lesung.einzeln === 'zu_gross') return sendeFehler(req, res, 422, 'pdf_unlesbar');
+  const lesefehler = lesung.einzeln === 'fehler';
+  const gelesen: GutscheinWerte = typeof lesung.einzeln === 'object' ? lesung.einzeln
+    : { nummer: null, pin: null, betrag: null, waehrung: null };
 
   const zusammen = {
     number:   req.body?.number   ?? gelesen.nummer,

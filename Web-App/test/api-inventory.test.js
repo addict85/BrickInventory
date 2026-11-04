@@ -398,6 +398,8 @@ const C = {
   'GET /api/v1/auth/users': 'nur-web',
   'POST /api/v1/auth/users': 'nur-web',
   'DELETE /api/v1/auth/users/:id': 'nur-web',
+  // Das eigene Konto löschen: endgültig, mit Passwort und zweitem Faktor; bewusst nur in der Webapp.
+  'DELETE /api/v1/auth/konto': 'nur-web',
   'PUT /api/v1/auth/users/:id/admin': 'nur-web',
   'PUT /api/v1/auth/users/:id/aktiv': 'nur-web',
   'GET /api/v1/admin/protokoll': 'nur-web',

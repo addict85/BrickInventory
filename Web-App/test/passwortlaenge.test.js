@@ -47,8 +47,9 @@ const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/auth.js');
 // test/baumbruecken.test.js, das diese Bruecken statisch aufloest.
 
 test('die Regel selbst haelt auch das, was kein String ist', () => {
-  assert.equal(passwortZuKurz('1234567'), true);
-  assert.equal(passwortZuKurz('12345678'), false);
+  // Seit dem 04.11.2026 zwölf statt acht.
+  assert.equal(passwortZuKurz('12345678901'), true);
+  assert.equal(passwortZuKurz('123456789012'), false);
   assert.equal(passwortZuKurz(''), true);
   assert.equal(passwortZuKurz(null), true);
   assert.equal(passwortZuKurz(undefined), true);
@@ -62,7 +63,7 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
   // kurz" beweist: Aus der Zahl wird ihre Ziffernfolge, und die ist lang
   // genug. (Hier stand zuerst `true` — ein Irrtum beim Schreiben dieses
   // Tests, nicht im Code: `String(123456789)` hat neun Zeichen.)
-  assert.equal(passwortZuKurz(123456789), false);
+  assert.equal(passwortZuKurz(123456789012), false);
 });
 
 test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {

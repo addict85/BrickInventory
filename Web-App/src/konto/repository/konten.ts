@@ -101,6 +101,18 @@ export async function loescheKonto(id: number, eigenes: number | null): Promise<
   return (await db.run('DELETE FROM users WHERE id = $1 AND id != $2', [id, eigenes])).changes > 0;
 }
 
+/** Das eigene Konto; der letzte aktive Verwalter bleibt. */
+export async function loescheEigenesKonto(id: number): Promise<boolean> {
+  return (await db.run(`DELETE FROM users WHERE id = $1 AND (NOT is_admin
+    OR EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1))`, [id])).changes > 0;
+}
+
+/** Registrierungen, deren Adresse nach `tage` Tagen nicht bestätigt ist. */
+export async function loescheOffeneRegistrierungen(tage: number): Promise<number> {
+  return (await db.run(`DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
+    AND created_at < NOW() - make_interval(days => $1::int)`, [tage])).changes ?? 0;
+}
+
 export async function raeumeQrTokensAuf(): Promise<void> {
   await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`);
 }
@@ -127,7 +139,7 @@ export function kontoMitEmail(email: string): Promise<Omit<KontoKurz, 'must_chan
 export async function registriereKonto(k: { username: string; email: string; first_name?: string | null | undefined;
   last_name?: string | null | undefined; hash: string; tokenHash: string; bis: Date }): Promise<number | null> {
   await db.run(
-    'INSERT INTO users (username, email, first_name, last_name, password_hash, is_admin, is_active, email_verified, verification_token, token_expires) VALUES ($1,$2,$3,$4,$5,false,true,false,$6,$7)',
+    'INSERT INTO users (username, email, first_name, last_name, password_hash, is_admin, is_active, email_verified, verification_token, token_expires, registrierung_offen) VALUES ($1,$2,$3,$4,$5,false,true,false,$6,$7,true)',
     [k.username, k.email, k.first_name || null, k.last_name || null, k.hash, k.tokenHash, k.bis]);
   const neu = await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [k.username]);
   return neu?.id ?? null;

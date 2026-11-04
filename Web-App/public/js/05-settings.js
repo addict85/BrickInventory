@@ -701,6 +701,16 @@ G('btn-dall').onclick=async()=>{
   loadGallery(); loadParts(); loadMinifigs(); loadStats();
 };
 
+G('btn-konto-loeschen').onclick=async()=>{
+  // Endgültig und ohne Papierkorb: Passwort und, falls eingerichtet, der zweite Faktor.
+  const password=await bestaetigeMitPasswort(tRaw('settings.delete_account.title'),tRaw('settings.delete_account.text'),'loeschen');
+  if(password===null) return;
+  const d=await mitZweitemFaktor(z => api('DELETE','/v1/auth/konto',{password, ...z}));
+  if(d===null) return;
+  if(!d?.success){ toast(d?.error||tRaw('settings.error'),'error'); return; }
+  location.href='/';
+};
+
 // ── USER MGMT ─────────────────────────────────────────
 export async function loadUsers(){
   const d=await api('GET','/v1/auth/users'); if(!d.success) return;

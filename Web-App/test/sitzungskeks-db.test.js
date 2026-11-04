@@ -39,7 +39,7 @@ async function starteServer(t, env) {
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, DATABASE_URL: URL_DB, SESSION_SECRET: 'keks-test-geheimnis-lang-genug-1234',
-           PORT: String(port), ROLLE: 'web', NODE_ENV: 'production', ...env },
+           PORT: String(port), ROLLE: 'web', NODE_ENV: 'production', DB_SUPERUSER_ERLAUBT: '1', ...env },
   });
   let log = '';
   srv.stdout.on('data', d => { log += d; });

@@ -214,7 +214,7 @@
         </div>
         <div class="fg"><label for="reg-user" data-i18n="register.username">Benutzername *</label><input type="text" id="reg-user" autocomplete="username" /></div>
         <div class="fg"><label for="reg-email" data-i18n="register.email_label">E-Mail *</label><input type="email" id="reg-email" autocomplete="email" /></div>
-        <div class="fg"><label for="reg-pass" data-i18n="register.password">Passwort * (min. 8 Zeichen, kein häufiges)</label><input type="password" id="reg-pass" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reg-pass" data-i18n="register.password">Passwort * (min. 12 Zeichen, kein häufiges)</label><input type="password" id="reg-pass" autocomplete="new-password" /></div>
         <div class="fg"><label for="reg-pass2" data-i18n="register.password_repeat">Passwort wiederholen *</label><input type="password" id="reg-pass2" autocomplete="new-password" /></div>
         <div class="fg"><label for="reg-lang" data-i18n="register.language">Sprache</label>
           <select id="reg-lang">
@@ -249,7 +249,7 @@
       <div class="lerr" id="reset-err" role="alert"></div>
       <div class="erfolg-box" id="reset-success" data-stil="display:none"></div>
       <form class="sform" id="reset-form" data-submit="btn-reset">
-        <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 8 Zeichen, kein häufiges)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
+        <div class="fg"><label for="reset-pass" data-i18n="reset.new_password_label">Neues Passwort (min. 12 Zeichen, kein häufiges)</label><input type="password" id="reset-pass" autocomplete="new-password" /></div>
         <div class="fg"><label for="reset-pass2" data-i18n="reset.repeat">Passwort wiederholen</label><input type="password" id="reset-pass2" autocomplete="new-password" /></div>
         <button type="button" class="btn bp knopf-breit" id="btn-reset" data-i18n="reset.button">Passwort ändern</button>
       </form>
@@ -266,6 +266,12 @@
         <div class="fg"><label for="pflicht-wdh" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pflicht-wdh" autocomplete="new-password" /></div>
         <button type="button" class="btn bp knopf-breit" id="btn-pflicht" data-i18n="reset.button">Passwort ändern</button>
       </form>
+    </div>
+    <div id="panel-zweitpflicht" data-stil="display:none">
+      <p class="login-unterzeile" data-i18n="zfpflicht.title">Zweiten Faktor einrichten</p>
+      <div class="text-klein abstand-u-075" data-i18n="zfpflicht.hint">Verwalterkonten brauchen einen zweiten Faktor. Bitte jetzt einen Code-Generator einrichten, danach öffnet sich die Anwendung.</div>
+      <div id="zf-pflicht-flaeche"></div>
+      <button type="button" class="btn bs knopf-breit" data-click="pflichtAbmelden" data-i18n="zfpflicht.logout">Abmelden</button>
     </div>
   </div>
 </main>
@@ -1148,6 +1154,8 @@
       <div class="ssec gefahrenzone">
         <p class="text-mittel abstand-u-075" data-i18n="settings.danger.hint">Gelöschtes liegt 30 Tage im Papierkorb (Menü → Daten und Papierkorb) und wird danach endgültig entfernt.</p>
         <button class="btn bd" id="btn-dall" data-i18n="settings.delete_all_btn" data-ico="loeschen">Alle meine Daten löschen</button>
+        <p class="text-mittel abstand-u-075" data-i18n="settings.delete_account.hint">Das Konto selbst löschen: endgültig, ohne Papierkorb, mit Passwort und zweitem Faktor.</p>
+        <button class="btn bd" id="btn-konto-loeschen" data-i18n="settings.delete_account.btn" data-ico="loeschen">Konto endgültig löschen</button>
       </div>
     </div>
 

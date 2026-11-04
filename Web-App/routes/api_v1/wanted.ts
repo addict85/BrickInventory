@@ -3,7 +3,7 @@
 import express from 'express';
 import { fehlerAntwort, oeffentlicherFehler, handleRouteError, logAndContinue, pfadParam } from '../../src/infra/httpError';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { requireToken } from './middleware';
+import { requireToken, kontoSchranke } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
 import { getSetting } from '../../src/konto/settings';
@@ -88,7 +88,7 @@ router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (re
 
 /** Das Gegenstück zu buildMerklisteCsv().
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-import-csv */
-router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
+router.post('/wanted/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
   async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
@@ -126,7 +126,7 @@ router.post('/wanted/import/csv', requireToken, csvEmpfang.single('file'),
 /** Die Vorschau ist die VORGABE: Ohne `schreiben=1` wird nichts angelegt, weil
  * die dritte Sicherheitsstufe der Abbildung nur eine Vermutung ist.
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml */
-router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
+router.post('/wanted-list/import/xml', requireToken, kontoSchranke('upload'), xmlEmpfang.single('file'),
   async (req: AuthedRequest & { file?: { buffer: Buffer; originalname?: string } }, res: Antwort<'POST /api/v1/wanted-list/import/xml'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     // Vor dem try: Der catch-Zweig muss den Auftrag schliessen können.

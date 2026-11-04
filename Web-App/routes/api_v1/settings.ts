@@ -3,7 +3,7 @@
 import multer from 'multer';
 import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { fehlerAntwort, logAndContinue } from '../../src/infra/httpError';
-import { requireApiAdmin as requireAdmin, requireToken, bearerToken } from './middleware';
+import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
 import {
   SECRET_KEYS, isMaskedValue,
   readSettings, globaleWerteOhneGeheimnisse, 
@@ -305,7 +305,7 @@ router.get('/settings/export/data', async (req: LoggedInRequest, res) => {
 });
 
 const importUpload = multer({ storage: multer.memoryStorage(), limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 } });
-router.post('/settings/import', importUpload.single('file'), async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/import'>) => {
+router.post('/settings/import', kontoSchranke('upload'), importUpload.single('file'), async (req: LoggedInRequest, res: Antwort<'POST /api/v1/settings/import'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   const gelesen = jsonOderNull(req.file.buffer.toString('utf-8'));
   if (!gelesen) return sendeFehler(req, res, 400, 'json_ungueltig');

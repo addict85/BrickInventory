@@ -2,8 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { FehlerCode } from './fehlerTexte';
 
-/** Eine Konstante für alle Wege, die ein Passwort setzen. */
-export const PASSWORT_MIN_ZEICHEN = 8;
+/** Eine Konstante für alle Wege, die ein Passwort setzen. Bestehende Passwörter
+ * gelten weiter; die Regel greift beim nächsten Setzen. */
+export const PASSWORT_MIN_ZEICHEN = 12;
 
 export function passwortZuKurz(passwort: unknown): boolean {
   return String(passwort ?? '').length < PASSWORT_MIN_ZEICHEN;

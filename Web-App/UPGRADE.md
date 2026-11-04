@@ -1311,3 +1311,68 @@ Adresse und Konto setzt weiterhin der Server.
   (`cosign verify …`, `gh attestation verify …`). In den
   GitHub-Einstellungen ist nichts zu tun: Der Workflow braucht nur
   `attestations: write`, das er selbst anfordert.
+
+## 34. Runde 10 – Mandantentrennung, Routing und Verwalter
+
+Für Betreiber in Docker ist nichts umzustellen, ausser beim zweiten Faktor
+der Verwalter (Punkt 1). Wer ausserhalb von Docker betreibt, beachtet Punkt 4.
+
+**1. Verwalter brauchen einen zweiten Faktor**
+
+Ein Konto mit Verwalterrechten ohne Code-Generator (TOTP) kommt nach der
+Anmeldung nur noch bis zu dessen Einrichtung. Ein Passkey allein genügt
+nicht: Die Anmeldung mit Passwort verlangt den zweiten Faktor nur bei
+eingerichtetem Code-Generator. Die Webapp
+zeigt dafür eine eigene Seite; alle anderen Anfragen antworten mit 403
+`zweiter_faktor_pflicht`. Empfehlung: Vor dem Update in der Webapp unter
+Einstellungen → Zweiter Faktor einrichten, solange niemand sonst das
+Passwort kennen kann. App-Zugänge mit Scope `app` tragen keine
+Verwalterrechte und sind nicht betroffen. Hat ein Verwalter Telefon und
+Codes verloren, setzt ein anderer Verwalter den Faktor zurück (wie bisher);
+danach verlangt die Anmeldung die neue Einrichtung.
+
+**2. BrickLink-Nummern je Konto**
+
+Korrekturen beim Wanted-Import und die BrickLink-Nr. einer eigenen Figur
+gelten nur noch für das eigene Konto (Tabelle `bl_zuordnung_eigen`,
+Migration 0094). Die gemeinsame Zuordnung schreiben nur noch Rebrickable und
+BrickLink, und ein dort vorhandener Wert wird nicht mehr ersetzt. Was vor
+dem Update ein Konto in die gemeinsame Zuordnung geschrieben hat, lässt sich
+von geprüften Werten nicht unterscheiden. Wer fremde Konten auf dem Server
+hat und an Figurenpreisen oder -bildern zweifelt, leert die Figurenzeilen;
+abweichende Nummern trägt danach jedes Konto selbst wieder ein:
+
+```
+docker compose exec postgres psql -U brickinventory -c "DELETE FROM bl_zuordnung WHERE art IN ('fig','set')"
+```
+
+**3. Weitere Härtungen**
+
+- Pfade unterscheiden Gross- und Kleinschreibung: `/api/v1/Sets` ist 404.
+- Ohne Anmeldung liest der Server höchstens 16 KB Rumpf (Anmelden,
+  Registrieren, Zurücksetzen); alles andere erst nach der Anmeldung.
+- Gutschein-PDFs: höchstens 200 Seiten (sonst 422 mit Hinweis), gelesen in
+  einem eigenen Thread, je Konto eines zugleich. Uploads allgemein höchstens
+  zwei, Ereignisströme sechs je Konto zugleich (sonst 429).
+- Passwörter: mindestens **12** Zeichen. Bestehende Passwörter gelten weiter;
+  die Regel greift beim nächsten Wechsel.
+- Eine Anmeldung der App mit Passwort schickt wie `token-create` eine
+  Hinweis-Mail „neuer App-Zugang“.
+- Registrierungen, deren Adresse nach 7 Tagen nicht bestätigt ist, löscht der
+  tägliche Aufräumlauf (Migration 0095). Konten, die nur eine neue Adresse
+  noch nicht bestätigt haben, bleiben.
+- Jedes Konto kann sich unter Einstellungen → Gefahrenzone selbst löschen
+  (Passwort und, falls eingerichtet, zweiter Faktor). Das letzte aktive
+  Verwalterkonto kann es nicht.
+
+**4. Betrieb ohne Docker: NODE_ENV und Superuser**
+
+- `npm start` setzt jetzt `NODE_ENV=production`. Ohne `NODE_ENV` gelten die
+  Regeln des Betriebs: Ohne eigenes `SESSION_SECRET` (mindestens 32 Zeichen)
+  startet der Server nicht. Das Entwicklungsgeheimnis gibt es nur bei
+  ausdrücklichem `NODE_ENV=development` oder `test` (`npm run dev` setzt es).
+- In Produktion verweigert der Server den Start als Datenbank-Superuser
+  (`COPY … PROGRAM` hiesse bei einer Lücke Codeausführung auf dem
+  Datenbankhost). Richtig ist eine eigene Rolle (Abschnitt 29; in Docker
+  richtet `db-rolle` sie ein). Wer bewusst als Superuser betreibt, setzt
+  `DB_SUPERUSER_ERLAUBT=1`; der Start warnt dann bei jedem Lauf.

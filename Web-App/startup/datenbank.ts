@@ -9,10 +9,16 @@ import { antwortenUmschluesseln, alteAbdrueckeLoeschen } from '../src/idempotenz
 import { datenSchluessel } from '../src/infra/geheimnis';
 import { konfig } from '../src/infra/konfig';
 
-/** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers. */
+/** Ein Superuser erreicht COPY … PROGRAM und jede Datenbank des Servers: In
+ * Produktion ein Startverbot, ausser DB_SUPERUSER_ERLAUBT=1 (UPGRADE.md). */
 export async function warneBeiSuperuser(): Promise<boolean> {
   if (!konfig().produktion || !await db.alsSuperuserVerbunden()) return false;
-  console.warn('⚠️  [datenbank] Die App verbindet sich als Superuser. Eigene Rolle: UPGRADE.md, Abschnitt 29.');
+  if (!konfig().dbSuperuserErlaubt) {
+    console.error('❌ [datenbank] Die App verbindet sich als Superuser — Start verweigert. Eigene Rolle: UPGRADE.md, '
+      + 'Abschnitt 29; wer es bewusst so betreibt, setzt DB_SUPERUSER_ERLAUBT=1 (Abschnitt 34).');
+    process.exit(1);
+  }
+  console.warn('⚠️  [datenbank] Die App verbindet sich als Superuser (DB_SUPERUSER_ERLAUBT=1). Eigene Rolle: UPGRADE.md, Abschnitt 29.');
   return true;
 }
 

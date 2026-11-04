@@ -912,6 +912,7 @@ CREATE TABLE users (
   must_change_password boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone DEFAULT now(),
   sitzungs_version integer NOT NULL DEFAULT 0,
+  registrierung_offen boolean NOT NULL DEFAULT false,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_username_key UNIQUE (username)
 );
