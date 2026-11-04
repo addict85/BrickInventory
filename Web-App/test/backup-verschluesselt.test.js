@@ -41,8 +41,8 @@ const { spawnSync, execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const hatAge = spawnSync('age', ['--version']).status === 0;
 
-function aufbau(t) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sicherung-age-'));
+function aufbau(t, basis = os.tmpdir()) {
+  const tmp = fs.mkdtempSync(path.join(basis, 'sicherung-age-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const bin = path.join(tmp, 'bin');
   fs.mkdirSync(bin);
@@ -197,7 +197,9 @@ test('ein tar-Fehler bricht ab und hinterlässt kein Archiv', (t) => {
 });
 
 test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', (t) => {
-  const a = aufbau(t);
+  // Als root läuft das Skript unten als „nobody“; dessen Weg muss durch alle Ordner
+  // führen. TMPDIR und Arbeitsbaum können privat sein (0700), /tmp ist es nie.
+  const a = aufbau(t, process.getuid() === 0 ? '/tmp' : os.tmpdir());
   const geheim = path.join(a.arbeit, 'data', 'uploads', 'fremd.pdf');
   fs.writeFileSync(geheim, 'nur für den Dienst', { mode: 0o600 });
   let r;
@@ -207,7 +209,10 @@ test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', (t) => {
     fs.chmodSync(a.tmp, 0o755);
     execFileSync('chown', ['-R', '65534:65534', a.tmp]);
     fs.chownSync(geheim, 0, 0);
-    r = spawnSync('setpriv', ['--reuid=65534', '--regid=65534', '--clear-groups', 'sh', path.join(ROOT, 'scripts', 'backup.sh'), a.ziel],
+    const skript = path.join(a.tmp, 'backup.sh');
+    fs.copyFileSync(path.join(ROOT, 'scripts', 'backup.sh'), skript);
+    fs.chmodSync(skript, 0o755);
+    r = spawnSync('setpriv', ['--reuid=65534', '--regid=65534', '--clear-groups', 'sh', skript, a.ziel],
       { cwd: a.arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${path.join(a.tmp, 'bin')}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja' } });
   } else {
     fs.chmodSync(geheim, 0o000);
