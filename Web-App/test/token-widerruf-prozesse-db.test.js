@@ -45,6 +45,14 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async (t) => {
     await db.pool.end().catch(() => {});
   });
   auth.horcheAufTokenWiderruf();
+  // Steht die Horch-Verbindung, leert sie einmal den Speicher; das darf nicht
+  // mitten in den ersten Fall fallen. Ein eigener Horcher meldet, wann es so weit ist.
+  let bereit = false;
+  const fertig = () => { bereit = true; };
+  pgNotify.listen('token_widerrufen', fertig);
+  for (let i = 0; i < 200 && !bereit; i++) await new Promise(r => setTimeout(r, 25));
+  pgNotify.unlisten('token_widerrufen', fertig);
+  assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
 
   await t.test('ein Widerruf aus einem anderen Prozess gilt sofort', async () => {
     const token = await auth.createToken(uid, 'Probe', true);

@@ -179,6 +179,8 @@ class StringResourceParityTest {
         // Begriffe, Eigennamen und Formatvorlagen, die in beiden Sprachen
         // gleich lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
         val gewolltGleich = setOf(
+            // Reines Format „Aktion: Name“ für Screenreader, ohne Wörter.
+            "aktion_fuer",
             "acq_total_quantity", "app_name", "catalog_sort_name", "chart_period_max",
             "comparison_barcode_label", "csv_ok_count",
             "detail_section_item", "finance_filter_sets",

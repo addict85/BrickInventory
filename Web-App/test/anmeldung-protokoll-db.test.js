@@ -83,7 +83,9 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async (t) => {
     assert.equal(await anmelden(`niemand_${P}`, FALSCH), 401);
     const [z] = ereignisse('anmeldung_fehlgeschlagen');
     assert.equal(z?.stufe, 'warn', 'keine Warnzeile');
-    assert.deepEqual([z.kontext.adresse, z.kontext.konto], ['127.0.0.1', 'unbekannt']);
+    // localhost ist je nach Rechner 127.0.0.1 oder ::1 (gekürzt auf das /64).
+    assert.match(z.kontext.adresse, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
+    assert.equal(z.kontext.konto, 'unbekannt');
     assert.ok(!zeilen.join('\n').includes(`niemand_${P}`) && !zeilen.join('\n').includes(FALSCH), 'Name oder Passwort im Protokoll');
   });
 
