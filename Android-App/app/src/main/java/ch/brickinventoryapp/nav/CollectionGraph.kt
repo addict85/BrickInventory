@@ -140,14 +140,12 @@ fun NavGraphBuilder.collectionGraph(
         }
         composable(
             route = Screen.SetDetail.route,
-            arguments = listOf(androidx.navigation.navArgument("setNumber") {
-                type = androidx.navigation.NavType.StringType
-            })
+            arguments = setArgumente,
         ) { backStack ->
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
-            val setNumber = backStack.arguments?.getString("setNumber") ?: ""
+            val setNumber = backStack.textArgument("setNumber")
             // Die Galerie liegt als Startziel immer darunter; ihre geladene
             // Kachel zeigt das Set sofort, bis das Detail da ist.
             val galerieEintrag = remember(backStack) {
@@ -299,17 +297,12 @@ fun NavGraphBuilder.collectionGraph(
         // Ein ganzer Screen, kein Dialog mehr — Aufbau wie beim Set-Detail.
         composable(
             route = Screen.ManualItemDetail.route,
-            arguments = listOf(
-                androidx.navigation.navArgument("type")    { type = androidx.navigation.NavType.StringType },
-                androidx.navigation.navArgument("id")      { type = androidx.navigation.NavType.StringType },
-                androidx.navigation.navArgument("colorId") { type = androidx.navigation.NavType.IntType; defaultValue = ch.brickinventoryapp.data.model.KEINE_FARBE },
-                androidx.navigation.navArgument("title")   { type = androidx.navigation.NavType.StringType }
-            )
+            arguments = einzelstueckArgumente,
         ) { backStackEntry ->
-            val itemType  = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("type") ?: "part", "UTF-8")
-            val itemId    = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("id")   ?: "",     "UTF-8")
-            val colorId   = backStackEntry.arguments?.getInt("colorId") ?: ch.brickinventoryapp.data.model.KEINE_FARBE
-            val itemTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "",    "UTF-8")
+            val itemType  = backStackEntry.textArgument("type", ersatz = "part")
+            val itemId    = backStackEntry.textArgument("id")
+            val colorId   = backStackEntry.farbArgument()
+            val itemTitle = backStackEntry.textArgument("title")
             ManualItemDetailScreen(
                 vm = hiltViewModel<KaeufeViewModel>(),
                 teile = hiltViewModel(),
@@ -336,17 +329,12 @@ fun NavGraphBuilder.collectionGraph(
 
         composable(
             route = Screen.AcquisitionManagement.route,
-            arguments = listOf(
-                androidx.navigation.navArgument("type")    { type = androidx.navigation.NavType.StringType },
-                androidx.navigation.navArgument("id")      { type = androidx.navigation.NavType.StringType },
-                androidx.navigation.navArgument("colorId") { type = androidx.navigation.NavType.IntType; defaultValue = ch.brickinventoryapp.data.model.KEINE_FARBE },
-                androidx.navigation.navArgument("title")   { type = androidx.navigation.NavType.StringType }
-            )
+            arguments = einzelstueckArgumente,
         ) { backStackEntry ->
-            val itemType  = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("type")    ?: "set", "UTF-8")
-            val itemId    = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("id")      ?: "",    "UTF-8")
-            val colorId   = backStackEntry.arguments?.getInt("colorId") ?: ch.brickinventoryapp.data.model.KEINE_FARBE
-            val itemTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title")   ?: "",    "UTF-8")
+            val itemType  = backStackEntry.textArgument("type", ersatz = "set")
+            val itemId    = backStackEntry.textArgument("id")
+            val colorId   = backStackEntry.farbArgument()
+            val itemTitle = backStackEntry.textArgument("title")
             AcquisitionManagementScreen(
                 vm      = hiltViewModel<KaeufeViewModel>(),
                 type    = itemType,

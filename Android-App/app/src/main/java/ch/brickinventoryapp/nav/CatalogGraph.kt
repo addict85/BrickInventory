@@ -95,15 +95,12 @@ fun NavGraphBuilder.catalogGraph(
         }
         composable(
             route = Screen.MerkpostenDetail.route,
-            arguments = listOf(
-                androidx.navigation.navArgument("setNumber") { type = androidx.navigation.NavType.StringType },
-                androidx.navigation.navArgument("condition") { type = androidx.navigation.NavType.StringType },
-            ),
+            arguments = merkpostenArgumente,
         ) { backStack ->
             ch.brickinventoryapp.ui.screens.MerkpostenDetailScreen(
                 vm = hiltViewModel<MerklisteViewModel>(),
-                setNumber = backStack.arguments?.getString("setNumber") ?: "",
-                condition = backStack.arguments?.getString("condition") ?: "N",
+                setNumber = backStack.textArgument("setNumber"),
+                condition = backStack.textArgument("condition", ersatz = "N"),
                 imageLoader = imageLoader,
                 onBack = { navController.popBackStack() },
             )
@@ -129,15 +126,13 @@ fun NavGraphBuilder.catalogGraph(
         }
         composable(
             route = Screen.CatalogDetail.route,
-            arguments = listOf(androidx.navigation.navArgument("setNumber") {
-                type = androidx.navigation.NavType.StringType
-            })
+            arguments = setArgumente,
         ) { backStack ->
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
             val state by vm.state.collectAsStateWithLifecycle()
             val blick by vm.blickfeld.collectAsStateWithLifecycle()
-            val catSetNumber = backStack.arguments?.getString("setNumber") ?: ""
+            val catSetNumber = backStack.textArgument("setNumber")
             val merkliste: MerklisteViewModel = hiltViewModel()
             val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
             val catalogState by katalog.state.collectAsStateWithLifecycle()

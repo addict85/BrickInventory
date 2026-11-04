@@ -283,13 +283,10 @@ fun NavGraphBuilder.toolsGraph(
         }
         composable(
             route = Screen.PdfViewer.route,
-            arguments = listOf(
-                androidx.navigation.navArgument("url")   { type = androidx.navigation.NavType.StringType },
-                androidx.navigation.navArgument("title") { type = androidx.navigation.NavType.StringType }
-            )
+            arguments = pdfArgumente,
         ) { backStackEntry ->
-            val pdfUrl   = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("url")   ?: "", "UTF-8")
-            val pdfTitle = java.net.URLDecoder.decode(backStackEntry.arguments?.getString("title") ?: "", "UTF-8")
+            val pdfUrl   = backStackEntry.textArgument("url")
+            val pdfTitle = backStackEntry.textArgument("title")
             if (ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine(pdfUrl)) ch.brickinventoryapp.ui.components.Sichtschutz()
             val state by vm.state.collectAsStateWithLifecycle()
             PdfViewerScreen(
