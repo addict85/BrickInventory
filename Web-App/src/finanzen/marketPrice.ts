@@ -156,7 +156,7 @@ export async function marktpreisMitHerkunft(partNumber: string, colorId: number,
     const currency  = await getSetting(userId, 'currency', 'EUR');
     const ttlHours  = 24;
     const effCond   = condition || await resolvePartCondition(userId, partNumber, colorId);
-    const priceData = await fetchPartPrice(partNumber, colorId, effCond, currency, ttlHours);
+    const priceData = await fetchPartPrice(partNumber, colorId, effCond, currency, ttlHours, null, userId);
     // avg_price wie bei den Sets: BrickLinks angezeigter Preis, und "0.00" ist truthy.
     const price = parseFloat(priceData?.avg_price || 0);
     if (!(price > 0)) return { preis: null, ausZustand: null };

@@ -11,7 +11,7 @@ import { csvEmpfang, xmlEmpfang } from '../../src/infra/dateiEmpfang';
 import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../src/infra/csvExport';
 import { importiereWantedListe } from '../../src/merkliste/wantedListe';
 import type { Korrektur } from '../../src/merkliste/wantedListe';
-import { merkeBlNummer } from '../../src/katalog/blZuordnung';
+import { merkeBlNummer, merkeEigeneBlNummer } from '../../src/katalog/blZuordnung';
 import { starteAuftrag, meldeAuftrag, beendeAuftrag, istAbgebrochen } from '../../src/auftraege/importAuftrag';
 import { addManualPart } from '../../src/teile/manuelleTeile';
 import { addManualFig } from '../../src/figuren/manuelleFiguren';
@@ -187,7 +187,9 @@ router.post('/wanted-list/import/xml', requireToken, xmlEmpfang.single('file'),
         vorschau: !schreiben,
         ueberRebrickable: String(req.query.rebrickable ?? '') === '1',
         ...(korrekturen ? { korrekturen } : {}),
-        merkeNummer: (art, rbId, blId) => merkeBlNummer(art, rbId, blId),
+        // Eine Korrektur des Kontos gilt nur für dieses; gemeinsam nur, was Rebrickable bestätigt hat.
+        merkeNummer: (art, rbId, blId, quelle) => quelle === 'korrigiert'
+          ? merkeEigeneBlNummer(uid, art, rbId, blId) : merkeBlNummer(art, rbId, blId),
         // Ohne Strom ist der Rückruf nicht gesetzt, der Kern spart sich die Meldungen.
         fortschritt: (stand) => {
           schreibeZeile({ fortschritt: stand });

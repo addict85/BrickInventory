@@ -186,7 +186,7 @@ CREATE FUNCTION public.merke_teilekatalog_alt() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM alt, LATERAL (VALUES (alt.rb_id), (alt.bl_id)) v(x)
      WHERE alt.art = 'part' AND x IS NOT NULL;
@@ -204,7 +204,7 @@ CREATE FUNCTION public.merke_teilekatalog_beide() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM (SELECT art, rb_id, bl_id FROM alt UNION ALL SELECT art, rb_id, bl_id FROM neu) z,
            LATERAL (VALUES (z.rb_id), (z.bl_id)) v(x)
@@ -224,7 +224,7 @@ CREATE FUNCTION public.merke_teilekatalog_neu() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM neu, LATERAL (VALUES (neu.rb_id), (neu.bl_id)) v(x)
      WHERE neu.art = 'part' AND x IS NOT NULL;
@@ -440,6 +440,19 @@ CREATE TABLE public.bl_zuordnung (
     bl_id text,
     fetched_at timestamp with time zone DEFAULT now(),
     CONSTRAINT bl_zuordnung_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text])))
+);
+
+--
+-- Name: bl_zuordnung_eigen; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.bl_zuordnung_eigen (
+    user_id integer NOT NULL,
+    art text NOT NULL,
+    rb_id text NOT NULL,
+    bl_id text NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT bl_zuordnung_eigen_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text])))
 );
 
 --
@@ -2069,6 +2082,13 @@ ALTER TABLE ONLY public.auftrag_pausen
     ADD CONSTRAINT auftrag_pausen_pkey PRIMARY KEY (art);
 
 --
+-- Name: bl_zuordnung_eigen bl_zuordnung_eigen_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bl_zuordnung_eigen
+    ADD CONSTRAINT bl_zuordnung_eigen_pkey PRIMARY KEY (user_id, art, rb_id);
+
+--
 -- Name: bl_zuordnung bl_zuordnung_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2678,6 +2698,12 @@ CREATE INDEX idx_auftraege_user ON public.auftraege USING btree (user_id) WHERE 
 CREATE INDEX idx_bl_zuordnung_bl ON public.bl_zuordnung USING btree (art, bl_id);
 
 --
+-- Name: idx_bl_zuordnung_eigen_bl; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_bl_zuordnung_eigen_bl ON public.bl_zuordnung_eigen USING btree (user_id, art, bl_id);
+
+--
 -- Name: idx_household_former_sub; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -3254,6 +3280,12 @@ CREATE TRIGGER trg_bump_parts_version_upd AFTER UPDATE ON public.storage_locatio
 CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.bl_zuordnung REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
 
 --
+-- Name: bl_zuordnung_eigen trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.bl_zuordnung_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_alt();
+
+--
 -- Name: part_catalog trg_teilekatalog_del; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3290,6 +3322,12 @@ CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON public.teil_farbe_eigen REFE
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.bl_zuordnung REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
 
 --
+-- Name: bl_zuordnung_eigen trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.bl_zuordnung_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_neu();
+
+--
 -- Name: part_catalog trg_teilekatalog_ins; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -3324,6 +3362,12 @@ CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON public.teil_farbe_eigen REFE
 --
 
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.bl_zuordnung REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
+
+--
+-- Name: bl_zuordnung_eigen trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON public.bl_zuordnung_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION public.merke_teilekatalog_beide();
 
 --
 -- Name: part_catalog trg_teilekatalog_upd; Type: TRIGGER; Schema: public; Owner: -
@@ -3415,6 +3459,13 @@ ALTER TABLE ONLY public.api_tokens_verbraucht
 
 ALTER TABLE ONLY public.auftraege
     ADD CONSTRAINT auftraege_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+--
+-- Name: bl_zuordnung_eigen bl_zuordnung_eigen_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.bl_zuordnung_eigen
+    ADD CONSTRAINT bl_zuordnung_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 --
 -- Name: import_stand csv_import_jobs_user_fk; Type: FK CONSTRAINT; Schema: public; Owner: -
@@ -3819,6 +3870,7 @@ INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('009
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0091-sitzungsversion.sql', '2026-11-03 20:20:13.933782+00', 'ca9dfc3af01f04fd13a1ee6b1a081a4cf065edb8471e04312fd00c7fb63b8840');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0092-token-verbraucht.sql', '2026-11-03 20:20:13.935606+00', 'f7910c81958ecfd35655a392a4b68adcf4e969fbfb94d05a1afb71bdaff0ac46');
 INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0093-eigene-katalogangaben.sql', '2026-11-03 20:20:13.943402+00', '6606e72e54fc2b3fe3abad35e3d2236d9bcf4d4a7bddbabc5d5b81bcf6167d46');
+INSERT INTO public.schema_migrations (name, applied_at, pruefsumme) VALUES ('0094-bl-zuordnung-eigen.sql', '2026-11-04 00:03:46.442444+00', '9bdbdba4a0b83487d236fc8e8e6e3953a075112da3ecc40b9058b2d28ff91fed');
 
 --
 -- PostgreSQL database dump complete

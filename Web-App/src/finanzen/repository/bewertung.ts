@@ -61,7 +61,7 @@ export function manuelleFigurenZurBewertung(uids: number[]) {
            ${FIGUR.name} AS fig_name, ${FIGUR.bild} AS image_url, ${FIGUR.bildDatei} AS image_local
       FROM minifigs m
       ${teilmengeJoin('m', 'fig')}
-      ${blJoin('m.fig_number', 'fig', 'blzf')}
+      ${blJoin('m.fig_number', 'fig', 'm.user_id', 'blzf')}
       ${figurSichtJoin('m.user_id', 'm.fig_number')}
      WHERE m.user_id = ANY($1) AND m.source='manual'`, [uids]);
 }
@@ -86,7 +86,7 @@ export function manuelleTeileZurBewertung(uids: number[]) {
            ${TEIL.bild} AS image_url, ${TEIL.bildDatei} AS image_local
       FROM parts p
       ${teilmengeJoin('p', 'part')}
-      ${blJoin('p.part_number', 'part')}
+      ${blJoin('p.part_number', 'part', 'p.user_id')}
       ${teilSichtJoin('p.user_id', 'p.part_number', 'p.color_id')}
      WHERE p.user_id = ANY($1) AND p.source = 'manual'`, [uids]);
 }

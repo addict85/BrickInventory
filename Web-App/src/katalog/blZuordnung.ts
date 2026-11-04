@@ -9,10 +9,18 @@ export type { BlArt };
 /** In db/, damit Repositories sie einsetzen können. */
 export { blJoin, blNummerSql } from '../../db/blZuordnungSql';
 
-/** Gleiche Nummer heisst „keine abweichende". */
+/** Nur für geprüfte Quellen (Rebrickable, BrickLink); gleiche Nummer heisst
+ * „keine abweichende". Was ein Konto einträgt, geht an merkeEigeneBlNummer. */
 export function merkeBlNummer(art: BlArt, rbId: string, blId: string): Promise<void> {
   return repo.schreibeBlNummer(art, rbId, blId);
 }
+
+/** Gilt nur für dieses Konto, in allen Lesewegen vor der gemeinsamen Zuordnung. */
+export function merkeEigeneBlNummer(uid: number, art: BlArt, rbId: string, blId: string): Promise<void> {
+  return repo.schreibeBlNummerEigen(uid, art, rbId, blId || rbId);
+}
+
+const konten = (k: number | number[] | null | undefined): number[] => k == null ? [] : Array.isArray(k) ? k : [k];
 
 /** Je Nummer die letzte Angabe. */
 export async function merkeBlNummern(art: BlArt, paare: { rbId: string; blId: string }[],
@@ -30,21 +38,21 @@ export function merkeBlNummerUnveraendert(art: BlArt, rbId: string): Promise<voi
 
 /** null für „keine abweichende bekannt" — ohne Zeile und Zeile ohne Wert
  * zusammen. Wer beides trennen muss, fragt blAbrufNummer. */
-export function blNummerVon(art: BlArt, rbId: string): Promise<string | null> {
-  return repo.abweichendeNummer(art, rbId).catch(meldeUndLiefere('bl-zuordnung:nummer lesen', null));
+export function blNummerVon(art: BlArt, rbId: string, konto?: number | number[] | null): Promise<string | null> {
+  return repo.abweichendeNummer(art, rbId, konten(konto)).catch(meldeUndLiefere('bl-zuordnung:nummer lesen', null));
 }
 
 /** null nur, wenn noch nie nachgesehen wurde: Das Vorladen der Preise merkt
  * sich keine Fehlschläge und braucht diesen Unterschied. */
-export function blAbrufNummer(art: BlArt, rbId: string): Promise<string | null> {
-  return repo.wirksameNummer(art, rbId).catch(meldeUndLiefere('bl-zuordnung:abrufnummer lesen', null));
+export function blAbrufNummer(art: BlArt, rbId: string, konto?: number | number[] | null): Promise<string | null> {
+  return repo.wirksameNummer(art, rbId, konten(konto)).catch(meldeUndLiefere('bl-zuordnung:abrufnummer lesen', null));
 }
 
 // Ausführlich: docs/begruendungen/src/katalog/blZuordnung.ts.md#blabrufnummern
-export async function blAbrufNummern(art: BlArt, rbIds: string[]): Promise<Map<string, string>> {
+export async function blAbrufNummern(art: BlArt, rbIds: string[], konto?: number | number[] | null): Promise<Map<string, string>> {
   const raus = new Map<string, string>();
   if (!rbIds.length) return raus;
-  const zeilen = await repo.wirksameNummern(art, rbIds).catch(meldeUndLiefere('bl-zuordnung:zeilen', []));
+  const zeilen = await repo.wirksameNummern(art, rbIds, konten(konto)).catch(meldeUndLiefere('bl-zuordnung:zeilen', []));
   for (const z of zeilen) raus.set(String(z.rb_id), String(z.nr));
   return raus;
 }

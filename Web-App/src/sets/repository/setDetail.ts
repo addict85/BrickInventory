@@ -31,7 +31,7 @@ export function katalogTeileDesSets(setNumber: string) {
   return db.all<KatalogTeil>(`SELECT c.part_number, c.color_id, ${blNummerSql('c.part_number')} AS bl_part_number,
             c.part_name, c.color_name, c.color_hex, c.image_url, c.image_local
        FROM set_parts_catalog c
-       ${blJoin('c.part_number', 'part')}
+       ${blJoin('c.part_number', 'part', null)}
       WHERE c.set_number = $1`, [setNumber]);
 }
 

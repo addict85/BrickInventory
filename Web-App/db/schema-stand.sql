@@ -138,6 +138,21 @@ CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_zuordnung REFERENCING OLD
 CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_zuordnung REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
 CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
 
+CREATE TABLE bl_zuordnung_eigen (
+  user_id integer NOT NULL,
+  art text NOT NULL,
+  rb_id text NOT NULL,
+  bl_id text NOT NULL,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT bl_zuordnung_eigen_art CHECK ((art = ANY (ARRAY['part'::text, 'fig'::text, 'set'::text]))),
+  CONSTRAINT bl_zuordnung_eigen_pkey PRIMARY KEY (user_id, art, rb_id),
+  CONSTRAINT bl_zuordnung_eigen_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_bl_zuordnung_eigen_bl ON bl_zuordnung_eigen USING btree (user_id, art, bl_id);
+CREATE TRIGGER trg_teilekatalog_del AFTER DELETE ON bl_zuordnung_eigen REFERENCING OLD TABLE AS alt FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_alt();
+CREATE TRIGGER trg_teilekatalog_ins AFTER INSERT ON bl_zuordnung_eigen REFERENCING NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_neu();
+CREATE TRIGGER trg_teilekatalog_upd AFTER UPDATE ON bl_zuordnung_eigen REFERENCING OLD TABLE AS alt NEW TABLE AS neu FOR EACH STATEMENT EXECUTE FUNCTION merke_teilekatalog_beide();
+
 CREATE TABLE catalog_cache (
   set_number text NOT NULL,
   name text,
@@ -1125,7 +1140,7 @@ CREATE OR REPLACE FUNCTION merke_teilekatalog_alt()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM alt, LATERAL (VALUES (alt.rb_id), (alt.bl_id)) v(x)
      WHERE alt.art = 'part' AND x IS NOT NULL;
@@ -1140,7 +1155,7 @@ CREATE OR REPLACE FUNCTION merke_teilekatalog_beide()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM (SELECT art, rb_id, bl_id FROM alt UNION ALL SELECT art, rb_id, bl_id FROM neu) z,
            LATERAL (VALUES (z.rb_id), (z.bl_id)) v(x)
@@ -1157,7 +1172,7 @@ CREATE OR REPLACE FUNCTION merke_teilekatalog_neu()
  LANGUAGE plpgsql
 AS $function$
 BEGIN
-  IF TG_TABLE_NAME = 'bl_zuordnung' THEN
+  IF TG_TABLE_NAME IN ('bl_zuordnung', 'bl_zuordnung_eigen') THEN
     INSERT INTO parts_katalog_offen (nummer)
     SELECT DISTINCT x FROM neu, LATERAL (VALUES (neu.rb_id), (neu.bl_id)) v(x)
      WHERE neu.art = 'part' AND x IS NOT NULL;

@@ -172,7 +172,7 @@ export async function getPartPriceHistory(uid: number | number[], partNumber: st
   // Preise liegen unter BrickLink-Nummer und -Farbe, Erfassungen unter denen
   // des Benutzers — die beiden Schlüsselräume dürfen nicht gemischt werden.
   // Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#getpartpricehistory-blnummer
-  const blNummer = await resolveBlPartNumber(partNumber);
+  const blNummer = await resolveBlPartNumber(partNumber, Array.isArray(uid) ? uid[0] ?? null : uid);
   const blFarbe  = await resolveBlColorId(colorId);
   const nummern  = [...new Set([blNummer, partNumber])];
   return manualPriceHistory(uid, currency,
@@ -193,8 +193,8 @@ export async function getMinifigPriceHistory(uid: number | number[], figNumber: 
 
 /** Die eigene und, falls hinterlegt, die BrickLink-Nummer; doppelte fallen weg.
  * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#preisnummernfuerfigur */
-async function preisNummernFuerFigur(_uid: number | number[], figNumber: string): Promise<string[]> {
-  const bl = await blNummerVon('fig', figNumber);
+async function preisNummernFuerFigur(uid: number | number[], figNumber: string): Promise<string[]> {
+  const bl = await blNummerVon('fig', figNumber, uid);
   return [...new Set([figNumber, ...(bl ? [bl] : [])])];
 }
 
