@@ -326,7 +326,9 @@ fun SetupScreen(
     // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
     // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        if (maxWidth > maxHeight && maxWidth >= QUER_ZWEISPALTIG) {
+        // In Row- und Column-Lambdas ist der Empfänger von BoxWithConstraints gesperrt (DslMarker).
+        val hoehe = maxHeight
+        if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
             Row(
                 Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular * 2)
                     .padding(horizontal = Abstaende.riesig),
@@ -334,7 +336,7 @@ fun SetupScreen(
             ) {
                 listOf(kopfTeil, handlungsTeil).forEach { teil ->
                     Column(
-                        Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+                        Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
                             .padding(vertical = Abstaende.riesig),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
@@ -343,7 +345,7 @@ fun SetupScreen(
                 }
             }
         } else Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
                 .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular).padding(Abstaende.riesig),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
