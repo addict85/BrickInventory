@@ -16857,6 +16857,9 @@
               "string",
               "null"
             ]
+          },
+          "im_katalog": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -17972,6 +17975,27 @@
           },
           "mixed": {
             "type": "boolean"
+          },
+          "owners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "username": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "username"
+              ],
+              "additionalProperties": {}
+            }
           },
           "error": {
             "type": [

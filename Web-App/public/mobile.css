@@ -306,6 +306,8 @@
   .dt td[data-label=""]::before,
   .dt td:not([data-label])::before { content: none; }
   .dt td[data-label=""] { justify-content: flex-end; }
+  .user-tbl td.nutzer-name { justify-content: flex-start; font-size: var(--fs-4); text-align: left; }
+  .user-tbl .nutzer-id { display: none; }
   /* Kaufpreis-Karten: Wird es eng (grosse Schrift), steht das Feld unter seiner Beschriftung. */
   .acq-tabelle td { flex-wrap: wrap; gap: .25rem 1rem; }
   .acq-tabelle td > * { margin-left: auto; }
@@ -386,8 +388,11 @@
   .prog-steps { flex-wrap: wrap; gap: .4rem; }
 
   /* ─ Toasts über die volle Breite ────────────────────────────────────── */
-  /* Oben statt über der Leiste: Unten liegen die Felder der Dialoge (Blätter). */
-  #toasts { left: .6rem; right: .6rem; top: calc(56px + env(safe-area-inset-top)); bottom: auto; }
+  /* Unten über der Leiste (und dem schwebenden Knopf), oben verdeckten sie den
+     Seitentitel; nur bei offenem Dialog oben, denn unten liegen dessen Felder. */
+  #toasts { left: .6rem; right: .6rem; top: auto; bottom: calc(4.75rem + env(safe-area-inset-bottom)); }
+  body:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) #toasts { bottom: calc(4.75rem + 60px + env(safe-area-inset-bottom)); }
+  body:has(.ovl.open, .ovl[style*="display: flex"]) #toasts { top: calc(56px + env(safe-area-inset-top)); bottom: auto; }
   .toast  { width: auto; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
 
   /* ─ Login-, Registrierungs- und Startup-Screen ──────────────────────── */
@@ -553,6 +558,16 @@
 @media (max-height: 500px) and (prefers-reduced-motion: reduce) {
   header, nav { transition: none; }
 }
+/* Grosse Schrift am Telefon: Kopf und zweireihige Leiste belegten zusammen
+   rund 40 % der Höhe; beim Rollen nach unten weichen beide. */
+@media (max-width: 640px) {
+  .schrift-gross header, .schrift-gross nav:not(.einst-nav) { transition: transform .2s ease; }
+  .schrift-gross.kopf-weg header { transform: translateY(-100%); }
+  .schrift-gross.kopf-weg nav:not(.einst-nav) { transform: translateY(100%); }
+}
+@media (max-width: 640px) and (prefers-reduced-motion: reduce) {
+  .schrift-gross header, .schrift-gross nav:not(.einst-nav) { transition: none; }
+}
 
 
 /* ── Sammlung am Telefon: die erste Karte über der Falz ──────────────────
@@ -577,6 +592,11 @@
     min-height: 52px; padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
   }
   .erfassen-leiste .btn.bp.knopf-schwebend { flex: none; }
+  /* Merkliste: Filter zu zweit je Zeile, gleich breit, statt zufällig umgebrochen. */
+  #tab-wanted .filterzeile > select { flex: 1 1 calc(50% - 4px); min-width: 0; }
+  /* Gesperrt (offline) deckend und grau: Halbtransparent lagen Knopf- und
+     Kartentext übereinander und waren beide nicht zu lesen. */
+  :root .btn.knopf-schwebend:disabled { opacity: 1; background: var(--s100); color: var(--mut); border-color: var(--bdr); }
   /* Die letzte Karte rollt unter dem schwebenden Knopf hervor. */
   main:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) { padding-bottom: 9rem; }
 
@@ -667,6 +687,21 @@
 @container haupt (min-width: 17rem) {
   .voucher-row .v-btn { width: auto; padding: 0 10px; gap: 6px; }
   .voucher-row .v-btn-text { display: inline; }
+}
+/* Eine Knopfgrösse je Karte; die Nummer kopiert ein Sinnbild direkt daneben,
+   und die Aktionen teilen sich die volle Breite. */
+@media (max-width: 640px) {
+  .voucher-row :is(.v-btn, .btn) { font-size: var(--fs-2); }
+  .voucher-row .voucher-num-row .v-btn { width: 44px; padding: 0; }
+  .voucher-row .voucher-num-row .v-btn-text { display: none; }
+  .voucher-row .voucher-actions { flex: 1 1 100%; margin-left: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .voucher-actions > .btn, .voucher-actions > .mehr-menue > summary { width: 100%; justify-content: center; }
+  /* Daumengrosse Ziele auch in Toast und Bauliste-Chip. */
+  .toast-aktion { min-height: 44px; }
+  .pl-chip-weg { flex: none; min-width: 44px; min-height: 44px; }
+}
+@container haupt (max-width: 20.5em) {
+  .voucher-row .voucher-actions { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Schmaler Inhalt (grosse Schrift): Werte unter den Namen statt daneben —

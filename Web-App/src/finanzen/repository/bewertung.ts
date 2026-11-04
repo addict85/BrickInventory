@@ -6,18 +6,18 @@ import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogS
 
 /** Eine Erfassung eines manuellen Teils oder einer Figur, Kaufpreis in der Kontowährung. */
 export interface ManuelleErfassung {
-  id: number; part_number?: string; color_id?: number | null; fig_number?: string; quantity: number;
+  id: number; user_id: number; part_number?: string; color_id?: number | null; fig_number?: string; quantity: number;
   unit_price: string | null; kaufpreis_fremd: boolean; kaufpreis_umgerechnet: boolean; currency: string;
   price_estimated: boolean; condition: string; created_at: Date;
 }
 
 export function manuelleErfassungen(art: 'part' | 'fig', uids: number[], waehrung: string) {
   return db.all<ManuelleErfassung>(art === 'part'
-    ? `SELECT id, part_number, color_id, quantity,
+    ? `SELECT id, user_id, part_number, color_id, quantity,
               ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
          FROM part_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`
-    : `SELECT id, fig_number, quantity,
+    : `SELECT id, user_id, fig_number, quantity,
               ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
               COALESCE(condition,'N') AS condition, created_at
          FROM minifig_acquisitions WHERE user_id = ANY($1) ORDER BY created_at ASC, id ASC`,
@@ -25,13 +25,13 @@ export function manuelleErfassungen(art: 'part' | 'fig', uids: number[], waehrun
 }
 
 export interface BewertetesSet {
-  set_number: string; name: string | null; year: number | null; quantity: number;
+  user_id: number; set_number: string; name: string | null; year: number | null; quantity: number;
   image_local: string | null; image_url: string | null; added_at: Date | null;
 }
 
 /** Kaufpreis und Zustand stehen in den Erfassungen. */
 export function setsZurBewertung(uids: number[]) {
-  return db.all<BewertetesSet>(`SELECT s.set_number, c.name, c.year,
+  return db.all<BewertetesSet>(`SELECT s.user_id, s.set_number, c.name, c.year,
             ${mengeAus('sm', 0)}::int AS quantity,
             c.image_local, c.image_url, s.added_at
        FROM sets s

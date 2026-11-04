@@ -5,7 +5,7 @@ import { kaufpreisSpalten } from '../../../db/geldSql';
  * Zeitstempel tragen. */
 export function ladeSetErfassungen(uids: number[], waehrung: string): Promise<any[]> {
   return db.all(
-    `SELECT id, set_number, quantity,
+    `SELECT id, user_id, set_number, quantity,
             ${kaufpreisSpalten('purchase_price', '$2')},
             currency, price_estimated,
             COALESCE(condition, 'N') AS condition, created_at

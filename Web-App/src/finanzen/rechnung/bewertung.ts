@@ -24,7 +24,7 @@ import { withOwners } from '../../bestand/gemeinsam';
 import { KEINE_FARBE } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
 
-/** @returns Map key → Erfassungszeilen; key ist `nummer|farbe` bzw. `nummer` */
+/** @returns Map key → Erfassungszeilen; key ist `konto|nummer|farbe` bzw. `konto|nummer` */
 async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
   // Ein Hauptkonto bewertet den ganzen Haushalt; die Währung ist beim
   // Verknüpfen erzwungen gleich, sonst summierte das zwei Währungen.
@@ -32,7 +32,7 @@ async function loadManualAcquisitions(uid: Blickfeld, kind: 'part' | 'fig', waeh
     .catch(meldeUndLiefere('bewertung:rows', []));
   const out = new Map<string, repo.ManuelleErfassung[]>();
   for (const r of rows) {
-    const key = kind === 'part' ? `${r.part_number}|${r.color_id ?? KEINE_FARBE}` : String(r.fig_number);
+    const key = kind === 'part' ? `${r.user_id}|${r.part_number}|${r.color_id ?? KEINE_FARBE}` : `${r.user_id}|${r.fig_number}`;
     const list = out.get(key);
     if (list) list.push(r); else out.set(key, [r]);
   }
@@ -75,18 +75,21 @@ export async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
     catalog: new Map(catRows.map(r => [r.set_number, r])),
     cache:   new Map(cacheRows.map(r => [`${r.set_number}|${r.condition}`, r])),
   };
+  // Je Konto und Set: Im Haushalt ist jede Zeile der Bestand EINES Kontos;
+  // nach Setnummer allein zählte jede Zeile die Käufe aller Konten mit.
   const acqBySet = new Map<string, any[]>();
   for (const a of acqRows) {
-    const list = acqBySet.get(a.set_number);
-    if (list) list.push(a); else acqBySet.set(a.set_number, [a]);
+    const k = `${a.user_id}|${a.set_number}`;
+    const list = acqBySet.get(k);
+    if (list) list.push(a); else acqBySet.set(k, [a]);
   }
 
   const tasks = sets.map(set => async () => {
-    const acqs = acqBySet.get(set.set_number) || [];
+    const acqs = acqBySet.get(`${set.user_id}|${set.set_number}`) || [];
     const imgLocal = resolveImageLocal(set.image_local);
     const imgUrl   = proxyImageUrl(set.image_url);
     const base = {
-      set_number: set.set_number, name: set.name, year: set.year,
+      user_id: set.user_id, set_number: set.set_number, name: set.name, year: set.year,
       image_local: imgLocal, image_url: imgUrl, added_at: set.added_at,
     };
 
@@ -166,7 +169,7 @@ export async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
     };
   });
 
-  const results = await parallelLimit(tasks, 5);
+  const results = await withOwnerNames(uids, await parallelLimit(tasks, 5));
   // Summen aus den Zeilenwerten, gerundet erst am Schluss.
   let zMin = 0, zMax = 0, zQtyAvg = 0, zAvg = 0;
   for (const r of results) {
@@ -207,7 +210,7 @@ export async function computeMinifigsValuation(viewerId: number, ids: Blickfeld)
     // Je vorkommendem Zustand: Ein neu gekauftes Exemplar bekommt den Neupreis,
     // auch wenn ein anderes gebraucht ist.
     const key  = String(fig.fig_number);
-    const acqs = acqByFig.get(key) || [];
+    const acqs = acqByFig.get(`${fig.user_id}|${key}`) || [];
     const conds  = conditionsOf(acqs);
 
     const priceMap = new Map<string, number>();
@@ -283,7 +286,7 @@ export async function computePartsValuation(viewerId: number, ids: Blickfeld) {
 
   const tasks = manualParts.map(part => async () => {
     const key    = `${part.part_number}|${part.color_id ?? KEINE_FARBE}`;
-    const acqs   = acqByPart.get(key) || [];
+    const acqs   = acqByPart.get(`${part.user_id}|${key}`) || [];
     const conds  = conditionsOf(acqs);
 
     const priceMap = new Map<string, number>();

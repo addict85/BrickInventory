@@ -105,7 +105,7 @@ async function starteApp(t, opt = {}) {
     await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
                   ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`, [k]);
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE id = $1 OR username LIKE $2`, [uid, `${NAME.replace(/_/g, '\\_')}\\_%`]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 

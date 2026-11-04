@@ -586,9 +586,9 @@ test('computePnl liest acq_count/used_count — sonst ist jedes Set neu', () => 
   assert.match(fn, /COUNT\(\*\)\s+AS acq_count,/, 'acq_count fehlt in der Unterabfrage');
   assert.match(fn, /COUNT\(\*\) FILTER \(WHERE condition = 'U'\)\s+AS used_count/,
     'used_count fehlt in der Unterabfrage');
-  assert.match(fn, /COALESCE\(a\.acq_count, 0\)\s+AS acq_count,/,
+  assert.match(fn, /COALESCE\(SUM\(a\.acq_count\), 0\)::int\s+AS acq_count,/,
     'acq_count muss auch im äusseren SELECT stehen');
-  assert.match(fn, /COALESCE\(a\.used_count, 0\)\s+AS used_count/,
+  assert.match(fn, /COALESCE\(SUM\(a\.used_count\), 0\)::int\s+AS used_count/,
     'used_count muss auch im äusseren SELECT stehen');
 });
 

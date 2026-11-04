@@ -43,11 +43,18 @@
  *      Untertitel unter „Importieren“)
  *   P  (einzeln, 320 px Seitenschrift 200 %) Finanzzeile ohne die
  *      Container-Abfrage 17rem → „Finanzen“ (schmal 0 px: .fin-name)
+ * Gegenproben (04.11.2026, Bestand mit Unterkonto, musterHaushalt):
+ *   Q  .toast-aktion wieder --b500, .pl-chip-name wieder --mut →
+ *      classic/rechner „Toast mit Aktion“ (3,67:1) und „Bauliste mit Sets“ (4,37:1)
+ *   R  .haushalt-liste wieder max-content max-content ohne Umbruch des Knopfs
+ *      → 390 px Seitenschrift 200 % „Sicht haushalt“ (Überlauf 432 px);
+ *      mit musterSammlung statt musterHaushalt blieb dieselbe Prüfung grün —
+ *      die Lücke, durch die der Befund der UI-Prüfung 12 rutschte.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { starteApp, warte } = require('./app-browser');
-const { musterSammlung } = require('./bestand');
+const { musterHaushalt } = require('./bestand');
 const { AXE_LAUF, LAYOUT, tabPruefung } = require('./layout-messung');
 
 const GERAETE = { rechner: [1280, 900, false], telefon: [390, 844, true] };
@@ -78,20 +85,25 @@ const ANSICHTEN = [
   ['Teil aus Set', [reiter('parts'), klick('.part-card[data-click="openSetItemDetail"]')]],
   ['Merkposten-Detail', [reiter('wanted'), klick('.mk-zeile[data-click="oeffneMerkpostenDetail"]')]],
   ['Löschen bestätigen', [reiter('parts'), klick('.man-tile .delbtn')]],
+  // Ein Toast mit Knopf und die Bauliste mit Chips, darunter einer, den der Katalog nicht kennt.
+  ['Toast mit Aktion', [reiter('gallery'), `location.hash = '#/sammlung/set/99999-9'; true`]],
+  ['Bauliste mit Sets', [reiter('partslist'), `(() => { document.getElementById('pl-setnr').value = '10294-1, 99999-1';
+    document.querySelector('[data-click="plAddSet"]').click(); return true; })()`, klick('#btn-pl-gen')]],
 ];
 
 const SCHLIESSEN = `(() => {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   document.querySelectorAll('.ovl.open').forEach(o => o.querySelector('[data-click^="close"], [data-click^="schliesse"], .mx')?.click());
   document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
-  document.querySelectorAll('details[open]').forEach(d => { d.open = false; });
+  document.querySelectorAll('details[open]:not(#mk-kasten):not(#pl-optionen)').forEach(d => { d.open = false; });
+  document.querySelectorAll('#toasts .toast').forEach(x => x.remove());
   const pop = document.getElementById('umenu-pop'); if (pop) pop.style.display = 'none';
   return true; })()`;
 
 /** Registriert den Test für ein Design und ein Gerät. */
 function pruefeOberflaeche(design, geraet) {
   test(`Oberfläche ${design}, ${geraet}: axe und Layout`, { concurrency: 1, timeout: 300_000 }, async (t) => {
-    const app = await starteApp(t, { name: `ofl_${design}_${geraet}_${process.pid}`, bestand: musterSammlung });
+    const app = await starteApp(t, { name: `ofl_${design}_${geraet}_${process.pid}`, bestand: musterHaushalt });
     if (app.grund) { t.skip(app.grund); return; }
     const { b } = app;
     const [w, h, mobil] = GERAETE[geraet];
@@ -141,7 +153,7 @@ const LEISTE = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkV
 function pruefeGrosseSchrift(modus, breite = 320) {
   test(`Oberfläche ${breite} px (${modus}): alle Ansichten`, { concurrency: 1, timeout: 300_000 }, async (t) => {
     // Schmal auf Englisch: Die längeren Beschriftungen sind dort der enge Fall.
-    const app = await starteApp(t, { name: `ofl_gross_${modus}_${process.pid}`, bestand: musterSammlung, sprache: modus === 'schmal' ? 'en' : 'de' });
+    const app = await starteApp(t, { name: `ofl_gross_${modus}_${process.pid}`, bestand: musterHaushalt, sprache: modus === 'schmal' ? 'en' : 'de' });
     if (app.grund) { t.skip(app.grund); return; }
     const { b } = app;
     await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: 640, deviceScaleFactor: 1, mobile: true });

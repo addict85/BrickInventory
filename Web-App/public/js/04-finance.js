@@ -214,6 +214,13 @@ export async function loadFinance(){
   // Bewertung und die Entwicklung beruhen.
   // Ohne vergleichbaren Posten keine G&V — auch nicht die vom letzten Filter.
   const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_prozent : null;
+  // Stehen Zeilen mehrerer Konten da, nennt jede ihr Konto — auch das eigene;
+  // sonst sieht dasselbe Set zweimal aus wie ein Fehler.
+  const alleZeilen = [...(d.sets || []), ...(partsVal.success ? partsVal.parts : []), ...(figsVal.success ? figsVal.figs : [])];
+  const mehrereKonten = new Set(alleZeilen.flatMap(z => (z.owners || []).map(o => o.id))).size > 1;
+  const besitzer = (it) => mehrereKonten && it.owners?.length
+    ? it.owners.map(o => `<span class="cond-badge besitzer-badge"><span class="vh">${t('finance.konto')}: </span>${esc(o.username)}</span>`).join('')
+    : ownerBadges(it);
 
   // ── Teile & Minifiguren: einzeln auflisten, analog zur Sets-Tabelle ─────────
   // (fliesst bereits in "extra"/Gesamtsumme oben ein — hier zusätzlich transparent
@@ -261,9 +268,9 @@ export async function loadFinance(){
     const img = it.image_local||it.image_url ? bildTag({ src: imgUrl(thumbUrl(it.image_local||it.image_url)||it.image_local||it.image_url, true), orig: imgUrl(it.image_url||''), alt: '', ph: art }) : `<span class="bild-ph" aria-hidden="true">${platzhalterInhalt(art)}</span>`;
     // Der frühere dritte Parameter onclickAttr wurde von keinem Aufrufer
     // gesetzt — der Zweig war tot und hätte als Inline-Handler die CSP blockiert.
-    return `<tr class="zeiger" ${manArgs(it)}>
+    return `<tr class="zeiger" tabindex="0" ${manArgs(it)}>
       <td class="fin-bild">${img}</td>
-      <td class="fin-name"><span class="fin-name-text">${label}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(it)}</span><span class="fin-unter">×${qty}</span></td>
+      <td class="fin-name"><span class="fin-name-text">${label}${acq?` ${condBadge(acq.condition)}`:''} ${besitzer(it)}</span><span class="fin-unter">×${qty}</span></td>
       <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
       <td class="fin-detail fin-datum">${acq?.created_at?fmtDatum(acq.created_at):''}</td>
       <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
@@ -355,7 +362,7 @@ export async function loadFinance(){
     return `<tr class="zeiger" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <td class="fin-bild">${s.image_local||s.image_url?bildTag({ src: imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
     <td class="fin-detail"><span class="nummer-klein">${esc(s.set_number)}</span></td>
-    <td class="fin-name">${esc(s.name)||'—'}${s.year?` <span class="fin-jahr">${s.year}</span>`:''}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td>
+    <td class="fin-name">${esc(s.name)||'—'}${s.year?` <span class="fin-jahr">${s.year}</span>`:''}${acq?` ${condBadge(acq.condition)}`:''} ${besitzer(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${dateSrc?fmtDatum(dateSrc):'—'}</td>
     <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>

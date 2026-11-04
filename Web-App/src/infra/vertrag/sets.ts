@@ -121,6 +121,7 @@ export const SetInfoResponse = z.looseObject({
   success: z.boolean(),
   set_number: z.string(),
   name: z.string().nullable().optional(),
+  im_katalog: z.boolean().optional(),
 });
 
 export const SetResponse = z.looseObject({

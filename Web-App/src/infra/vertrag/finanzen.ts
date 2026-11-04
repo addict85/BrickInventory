@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, zeit } from './grund';
+import { type Route, KontoName, zeit } from './grund';
 import { FigValuationItem, PartValuationItem, ValuationAcquisition } from './gemeinsam';
 
 export const ChartPoint = z.looseObject({
@@ -192,6 +192,8 @@ export const ValuationSet = z.looseObject({
   no_price: z.boolean(),
   acquisitions: z.array(ValuationAcquisition),
   mixed: z.boolean(),
+  /** Nur im Haushalt: Jede Zeile ist der Bestand eines Kontos. */
+  owners: z.array(KontoName).optional(),
   error: z.string().nullable().optional(),
 });
 

@@ -11,7 +11,13 @@ import { loadUsers } from './05-settings.js';
 // Im Anmeldebildschirm, solange ein Verwalter ihn einrichten muss (js/01-core.js).
 let pflicht = false;
 const flaeche = () => pflicht ? G('zf-pflicht-flaeche') : G('zf-flaeche');
-if (typeof document !== 'undefined') document.addEventListener('zweitpflicht', () => { pflicht = true; void ladeZweitenFaktor(); });
+if (typeof document !== 'undefined') document.addEventListener('zweitpflicht', () => { pflicht = true; pflichtHinweis('zfpflicht.hint'); void ladeZweitenFaktor(); });
+
+/** Die Einleitung über der Fläche: erst „bitte einrichten“, nach dem Code „fertig, Codes sichern“. */
+function pflichtHinweis(schluessel) {
+  const h = G('zfpflicht-hinweis'); if (!h) return;
+  h.dataset.i18n = schluessel; h.textContent = tRaw(schluessel);
+}
 
 function zeichne(html) { const f = flaeche(); if (f) f.innerHTML = html; }
 
@@ -77,6 +83,7 @@ export async function zfEinrichten() {
 }
 
 function zeigeCodes(codes) {
+  if (pflicht) pflichtHinweis('zfpflicht.fertig');
   zeichne(`<div class="sform" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0"><strong>${t('zf.codes_title')}</strong><br>${t('zf.codes_hint')}</p>
       <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.map(esc).join('\n')}</pre>
@@ -127,7 +134,7 @@ export async function zfCodesKopieren() {
 
 /** Verwalter: den zweiten Faktor eines Kontos entfernen (Telefon und Codes verloren). */
 export async function zfZuruecksetzen(uid, name) {
-  const admin_password = await bestaetigeMitPasswort(tRaw('zf.reset_title'), tRaw('zf.reset_text', { name }), 'schloss', { knopf: 'confirm.btn.zuruecksetzen', art: 'bp' });
+  const admin_password = await bestaetigeMitPasswort(tRaw('zf.reset_title_name', { name }), tRaw('zf.reset_text', { name }), 'schloss', { knopf: 'confirm.btn.zuruecksetzen', art: 'bp' });
   if (admin_password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/users/${uid}/zweiter-faktor`, { admin_password, ...z }));
   if (d === null) return;

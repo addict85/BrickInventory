@@ -17,6 +17,8 @@
  *      Code am Feld“
  *   F  die Einrichtung wieder in <div class="sform"> statt <form> → rot:
  *      „Enter im Codefeld bestätigt“
+ *   G  in zeigeCodes das Umschalten der Einleitung entfernt → rot: „richtiger
+ *      Code zeigt die Wiederherstellungscodes“ (Einleitung „Bitte jetzt …“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -115,5 +117,7 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
     await enter();
     await bis(`!!document.getElementById('zf-codes')`, 'Wiederherstellungscodes');
     assert.deepEqual(await b.auswerten(fehlerToasts), [], 'kein liegen gebliebener Fehler-Toast');
+    // Über den Codes steht nicht mehr die Aufforderung zum Einrichten.
+    assert.match(await b.auswerten(`document.getElementById('zfpflicht-hinweis').textContent`), /ist eingerichtet.*Wiederherstellungscodes sichern/);
   });
 });

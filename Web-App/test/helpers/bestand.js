@@ -301,5 +301,23 @@ async function musterSammlung(db, uid) {
   await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal Keller')`, [uid]);
 }
 
-module.exports = { musterSammlung, haeltSet, erfasse, mengeVon, haltZeile,
+/**
+ * musterSammlung plus ein verknüpftes Unterkonto „<Konto>_kind“, das ein Set
+ * der Sammlung zu einem anderen Preis hält: Haushaltszeilen, Besitzer und
+ * „Verknüpfung lösen“ kommen so in die gemessenen Ansichten. starteApp löscht
+ * Konten mit dem Präfix „<Konto>_“ mit.
+ */
+async function musterHaushalt(db, uid) {
+  await musterSammlung(db, uid);
+  const { username } = await db.get('SELECT username FROM users WHERE id = $1', [uid]);
+  const kind = `${username}_kind`;
+  await db.run('DELETE FROM users WHERE username = $1', [kind]);
+  const kid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified)
+    VALUES ($1, $2, 'x', true, true) RETURNING id`, [kind, `${kind}@example.org`])).id;
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, kid]);
+  await haeltSet(db, kid, '21318-1', 1, { preis: 210, am: '2026-06-02T10:00:00Z' });
+  return kid;
+}
+
+module.exports = { musterSammlung, musterHaushalt, haeltSet, erfasse, mengeVon, haltZeile,
                    haeltTeil, haeltFigur, teilmengeVon, figurmengeVon };
