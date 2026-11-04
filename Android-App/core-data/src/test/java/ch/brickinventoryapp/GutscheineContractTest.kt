@@ -68,8 +68,11 @@ class GutscheineContractTest {
         val pfade = PfadServer("/api/v1/vouchers" to """{"success":true,"vouchers":[
             {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
         val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
-        try { return block(pfade, GutscheineRepository(TestApi.fuer(pfade.server), ResponseCache { ordner }), ordner) }
-        finally { pfade.server.shutdown(); ordner.deleteRecursively() }
+        try {
+            return block(pfade, GutscheineRepository(TestApi.fuer(pfade.server), ResponseCache { ordner }), ordner)
+        } finally {
+            pfade.server.shutdown(); ordner.deleteRecursively()
+        }
     }
 
     /**

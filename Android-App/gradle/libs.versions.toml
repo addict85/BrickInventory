@@ -207,6 +207,11 @@ androidxTestJunit           = "1.3.0"
 # Startbildschirm-Widget. 1.2.0 ist laut tools/fassungen-pruefen.py (CI-Lauf
 # 41095331814) die neueste stabile.
 glance                      = "1.2.0"
+# Kotlin-Prüfung (build-logic, Detekt.kt). detekt 1.23 läuft nur mit dem Kotlin, gegen
+# das es gebaut ist (2.0.21 laut seiner POM); die Konvention hält es darauf fest.
+# 2.0 gibt es nur als alpha.
+detekt                      = "1.23.8"
+detektKotlin                = "2.0.21"
 # Testabhängigkeiten (Nachtrag 117). Bis dahin war JUnit die EINZIGE, weshalb
 # 41 von 47 Testdateien Quelltext lesen mussten statt Verhalten auszuführen.
 # coroutinesTest folgt bewusst der coroutines-Version — die beiden müssen
@@ -308,3 +313,4 @@ brickinventory-android-unittests   = { id = "brickinventory.android.unittests" }
 brickinventory-android-compose     = { id = "brickinventory.android.compose" }
 brickinventory-android-hilt        = { id = "brickinventory.android.hilt" }
 brickinventory-android-feature     = { id = "brickinventory.android.feature" }
+brickinventory-detekt              = { id = "brickinventory.detekt" }

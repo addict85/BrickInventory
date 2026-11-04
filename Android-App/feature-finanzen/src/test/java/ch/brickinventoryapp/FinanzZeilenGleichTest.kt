@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.model.BewertungsKaufAnsicht
 import ch.brickinventoryapp.ui.model.ManuelleFigurAnsicht
 import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht

@@ -5,7 +5,6 @@ import ch.brickinventoryapp.data.model.MinifigsResponse
 import ch.brickinventoryapp.data.model.PartsValuationResponse
 import ch.brickinventoryapp.data.model.SetsResponse
 import ch.brickinventoryapp.data.model.ValuationResponse
-import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull

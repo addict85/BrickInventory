@@ -35,4 +35,3 @@ fun darstellung(
  */
 fun helligkeitWaehlbar(design: String, systemfarben: Boolean = false, sdk: Int = 0): Boolean =
     (systemfarben && sdk >= SYSTEMFARBEN_AB_SDK) || hatDunkleFassung(design)
-

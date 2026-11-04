@@ -2,7 +2,6 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.ui.components.AuswahlChip
 /**
  * Die Abschnitte der Set-Detailseite. Erweiterungen auf LazyListScope und keine
  * Composables, weil sie Einträge in die LazyColumn der Seite eintragen; die
@@ -14,20 +13,15 @@ import ch.brickinventoryapp.ui.model.PreisverlaufAnsicht
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.ui.model.SetPreisAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
-import android.net.Uri
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -47,17 +41,13 @@ import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.SetDetailUiState
 import kotlinx.coroutines.CoroutineScope
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.runtime.mutableIntStateOf
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.theme.Petrol
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 
@@ -363,7 +353,6 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
             )
         }
     }
-
 }
 
 /** Wert-Kacheln über den Angaben — in jedem Design (WertKacheln, core-ui). */
@@ -397,7 +386,6 @@ fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
             chips.forEach { (label, value) -> StatChipV2(label = label, value = value) }
         }
     }
-
 }
 
 /** Das grosse Set-Bild samt Nachladeversuch und Zoom-Auslöser. */

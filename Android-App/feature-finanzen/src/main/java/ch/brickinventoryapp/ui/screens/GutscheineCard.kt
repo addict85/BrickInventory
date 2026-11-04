@@ -109,7 +109,6 @@ fun GutscheineCard(
         // zog Nummer und Menü weit auseinander.
         val breit = maxWidth >= 720.dp
         Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-
         // ── Kopf: hinzufügen, Guthaben aller Karten, alle als PDF ──
         //
         // Drei Knöpfe derselben Bauform mit Symbol; hinzufügen ist die Hauptaktion. Der

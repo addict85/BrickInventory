@@ -2,7 +2,6 @@ package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
 import androidx.core.net.toUri
 import ch.brickinventoryapp.ui.theme.Formen

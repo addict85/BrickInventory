@@ -73,4 +73,3 @@ data class SetDetailUiState(
     val acquisitionTotals: KaufSummenAnsicht = KaufSummenAnsicht(),
     val acquisitionsLoading: Boolean = false,
 )
-

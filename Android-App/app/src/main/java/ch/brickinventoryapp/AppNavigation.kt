@@ -33,7 +33,6 @@ import ch.brickinventoryapp.util.NetworkPolicy
 
 // Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
 
-
 /**
  * App-Navigation und Haupt-Gerüst: der NavHost mit allen Routen, die Dialoge, die
  * über jedem Bildschirm stehen, und das MainScaffold (TopBar/BottomBar). Im Paket
@@ -156,7 +155,6 @@ fun BrickInventoryManagerApp(
     // übersehen wird. Hier, weil die Frage der ganzen App gilt; die auslösende Prüfung
     // steht ein paar Zeilen weiter oben.
     ch.brickinventoryapp.ui.dialogs.UpdateDialog(selbstUpdate)
-
 
     // Eine angetippte Preisalarm-Meldung öffnet ihr Set — hier, weil es den
     // NavController erst in dieser Composition gibt. Nur angemeldet; sonst bleibt

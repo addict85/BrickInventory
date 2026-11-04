@@ -217,7 +217,6 @@ class PdfZoomTest {
         }
     }
 
-
     @Test
     fun `waehrend einer Zwei-Finger-Geste rollt die Liste nicht`() {
         // Die eine Schwaeche, die beim Bauen schon benannt war: Die LazyColumn

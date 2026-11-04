@@ -27,7 +27,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import android.view.ViewGroup
 import androidx.camera.core.*
 import android.view.MotionEvent
@@ -105,89 +104,17 @@ fun SetupScreen(
     }
 
     qrVorschlag?.let { vorschlag ->
-        val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
-        // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
-        val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
-        val abtippen = remember(vorschlag) { mussAbtippen(vorschlag.url, vorschlag.fingerabdruck) }
-        // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
-        var eingabe by remember(vorschlag) { mutableStateOf("") }
-        var falsch by remember(vorschlag) { mutableStateOf(false) }
-        AlertDialog(
-            onDismissRequest = { qrVorschlag = null },
-            title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
-            text = {
-                // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
-                ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
-                    // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
-                    val ansicht = remember(vorschlag) { NetworkPolicy.ansicht(vorschlag.url) }
-                    val bisherHost = remember(vorschlag, currentUrl) { qrWechseltServer(currentUrl, vorschlag.url) }
-                    Text(stringResource(R.string.setup_qr_ziel))
-                    if (ansicht != null) {
-                        Text(ansicht.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium)
-                        Text(ansicht.adresse, fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if (ansicht.international) Text(stringResource(R.string.setup_qr_international),
-                            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    }
-                    Text(stringResource(R.string.setup_qr_hinweis))
-                    if (bisherHost != null) Text(stringResource(R.string.setup_qr_anderer_server, bisherHost),
-                        color = MaterialTheme.colorScheme.error)
-                    val fp = vorschlag.fingerabdruck
-                    if (bisher != null && fp != null) {
-                        Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
-                        Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
-                        Text(fingerabdruckLesbar(bisher), fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        // Wie ZertifikatDialog: Den neuen Wert nennt der Code selbst, abgetippt
-                        // wird er aus der Webapp; hier steht nur sein Anfang.
-                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
-                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-                    } else if (fp != null) {
-                        // Erstes Einrichten: Ohne Tippen gilt nur eine System-Wurzel; einen eigenen
-                        // Schlüssel könnte der Code eines Fremden genauso nennen (sec10 N2).
-                        Text(stringResource(if (abtippen) R.string.setup_qr_pin_abtippen else R.string.setup_qr_pin),
-                            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
-                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall)
-                    }
-                    if (abtippen && fp != null) {
-                        OutlinedTextField(
-                            shape = Formen.feld,
-                            value = eingabe,
-                            onValueChange = { eingabe = it; falsch = false },
-                            label = { Text(stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
-                            isError = falsch,
-                            supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
-                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                    if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            confirmButton = {
-                TextButton(enabled = !qrGesperrt && (!abtippen || eingabe.isNotBlank()), onClick = {
-                    val fp = vorschlag.fingerabdruck
-                    if (abtippen && (fp == null || !bestaetigtFingerabdruck(eingabe, fp))) {
-                        falsch = true
-                    } else {
-                        qrVorschlag = null
-                        url = vorschlag.url
-                        onQrScanned?.invoke(vorschlag, eingabe.takeIf { abtippen })
-                    }
-                }) {
-                    Text(stringResource(if (bisher != null) R.string.setup_qr_pin_uebernehmen else R.string.setup_qr_uebernehmen),
-                        color = if (bisher != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { qrVorschlag = null }) { Text(stringResource(R.string.common_cancel)) }
+        QrVorschlagDialog(
+            vorschlag = vorschlag,
+            currentUrl = currentUrl,
+            entwicklung = entwicklung,
+            bisherigerPin = bisherigerPin,
+            mussAbtippen = mussAbtippen,
+            onAbbrechen = { qrVorschlag = null },
+            onUebernehmen = { abgetippt ->
+                qrVorschlag = null
+                url = vorschlag.url
+                onQrScanned?.invoke(vorschlag, abgetippt)
             },
         )
     }
@@ -358,6 +285,106 @@ fun SetupScreen(
             handlungsTeil()
         }
     }
+}
+
+/**
+ * Rückfrage nach einem gescannten Code: Er kann von jedem stammen, darum nennt sie das
+ * Ziel und lässt bei Bedarf den Fingerabdruck abtippen. [onUebernehmen] bekommt den
+ * abgetippten Wert oder null, wenn nichts abzutippen war.
+ */
+@Composable
+private fun QrVorschlagDialog(
+    vorschlag: QrLoginPayload,
+    currentUrl: String,
+    entwicklung: Boolean,
+    bisherigerPin: (url: String, fingerabdruck: String?) -> String?,
+    mussAbtippen: (url: String, fingerabdruck: String?) -> Boolean,
+    onAbbrechen: () -> Unit,
+    onUebernehmen: (abgetippt: String?) -> Unit,
+) {
+    val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
+    // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
+    val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
+    val abtippen = remember(vorschlag) { mussAbtippen(vorschlag.url, vorschlag.fingerabdruck) }
+    // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
+    var eingabe by remember(vorschlag) { mutableStateOf("") }
+    var falsch by remember(vorschlag) { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onAbbrechen,
+        title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
+        text = {
+            // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
+            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
+                // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
+                val ansicht = remember(vorschlag) { NetworkPolicy.ansicht(vorschlag.url) }
+                val bisherHost = remember(vorschlag, currentUrl) { qrWechseltServer(currentUrl, vorschlag.url) }
+                Text(stringResource(R.string.setup_qr_ziel))
+                if (ansicht != null) {
+                    Text(ansicht.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium)
+                    Text(ansicht.adresse, fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (ansicht.international) Text(stringResource(R.string.setup_qr_international),
+                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+                Text(stringResource(R.string.setup_qr_hinweis))
+                if (bisherHost != null) Text(stringResource(R.string.setup_qr_anderer_server, bisherHost),
+                    color = MaterialTheme.colorScheme.error)
+                val fp = vorschlag.fingerabdruck
+                if (bisher != null && fp != null) {
+                    Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
+                    Text(fingerabdruckLesbar(bisher), fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    // Wie ZertifikatDialog: Den neuen Wert nennt der Code selbst, abgetippt
+                    // wird er aus der Webapp; hier steht nur sein Anfang.
+                    Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                    Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                } else if (fp != null) {
+                    // Erstes Einrichten: Ohne Tippen gilt nur eine System-Wurzel; einen eigenen
+                    // Schlüssel könnte der Code eines Fremden genauso nennen (sec10 N2).
+                    Text(stringResource(if (abtippen) R.string.setup_qr_pin_abtippen else R.string.setup_qr_pin),
+                        color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                    Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                if (abtippen && fp != null) {
+                    OutlinedTextField(
+                        shape = Formen.feld,
+                        value = eingabe,
+                        onValueChange = { eingabe = it; falsch = false },
+                        label = { Text(stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
+                        isError = falsch,
+                        supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = !qrGesperrt && (!abtippen || eingabe.isNotBlank()), onClick = {
+                val fp = vorschlag.fingerabdruck
+                if (abtippen && (fp == null || !bestaetigtFingerabdruck(eingabe, fp))) {
+                    falsch = true
+                } else {
+                    onUebernehmen(eingabe.takeIf { abtippen })
+                }
+            }) {
+                Text(stringResource(if (bisher != null) R.string.setup_qr_pin_uebernehmen else R.string.setup_qr_uebernehmen),
+                    color = if (bisher != null) MaterialTheme.colorScheme.error else androidx.compose.ui.graphics.Color.Unspecified)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
 }
 
 /** Ab dieser Breite stehen Kopf und Handlung im Querformat nebeneinander. */

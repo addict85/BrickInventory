@@ -3,14 +3,12 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
 import ch.brickinventoryapp.ui.model.JobZustandAnsicht
 import ch.brickinventoryapp.ui.model.ZeitplanAnsicht
-import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,10 +16,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ui.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -59,7 +55,6 @@ fun MonitoringScreen(vm: AppViewModel) {
     var reimportMsg    by remember { mutableStateOf<String?>(null) }
     var snack          by remember { mutableStateOf<String?>(null) }
 
-    val monCtx = androidx.compose.ui.platform.LocalContext.current
     // Siehe AcquisitionManagementScreen: LocalResources statt Context, weil
     // Lint LocalContextGetResourceValueCall als ERROR meldet und die Zahl fuer
     // den Platzhalter erst im Rueckruf bekannt ist.
@@ -190,8 +185,6 @@ private fun JobCard(
     val startingMsg      = stringResource(R.string.monitoring_starting)
     val startedMsg       = stringResource(R.string.monitoring_started)
     val syncStartedMsg   = stringResource(R.string.monitoring_sync_started_short)
-    val cacheSavedMsg  = stringResource(R.string.monitoring_cache_saved)
-    val limitsSavedMsg = stringResource(R.string.monitoring_limits_saved)
     val queueShowFmt   = stringResource(R.string.monitoring_queue_show)
     val statusColor = when (job.status) {
         "running" -> MaterialTheme.colorScheme.primary
@@ -377,8 +370,4 @@ private fun JobCard(
     }
 }
 
-
 // ── Cache & API Limits section ────────────────────────────────────────────────
-
-
-

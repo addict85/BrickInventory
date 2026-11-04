@@ -56,12 +56,6 @@ import org.junit.Test
  */
 class ImageCacheContractTest {
 
-    private fun read(rel: String): String {
-        val f = java.io.File(rel)
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
-
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(src: String) = src.lines().joinToString("\n") { line ->
         if (line.trim().startsWith("//") || line.trim().startsWith("*")) "" else line

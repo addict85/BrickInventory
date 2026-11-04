@@ -11,7 +11,6 @@ import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -19,10 +18,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.ui.model.*
 import androidx.compose.ui.res.stringResource
@@ -311,58 +308,20 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
             // Einfachwahl: zwei Bauformen, weil es zwei Entscheidungen sind.
 
             // Cache TTL
-            Row(
-                Modifier.fillMaxWidth(),
-                Arrangement.SpaceBetween,
-                Alignment.CenterVertically
-            ) {
-                Text(stringResource(R.string.monitoring_cache_duration),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (editingTtl) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = ttlInput,
-                            onValueChange = { ttlInput = NumericInput.quantity(it) },
-                            suffix = { Text("h") },
-                            modifier = Modifier.width(90.dp),
-                            singleLine = true,
-                            shape = Formen.kachel,
-                    keyboardOptions = NumericInput.ganzzahlTastatur()
-                )
-                        FilledTonalButton(
-                            onClick = {
-                                scope.launch {
-                                    val h = ttlInput.toIntOrNull() ?: 24
-                                    if (mon.setzeCacheDauer(h)) onSnack(cacheSavedMsg)
-                                    editingTtl = false
-                                }
-                            },
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                        ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
-                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_cancel)) {
-                            IconButton(onClick = { editingTtl = false }) {
-                                Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
-                            }
-                        }
+            CacheDauerZeile(
+                dauer = cacheTtl,
+                bearbeiten = editingTtl,
+                onBearbeiten = { editingTtl = it },
+                eingabe = ttlInput,
+                onEingabe = { ttlInput = it },
+                onSpeichern = {
+                    scope.launch {
+                        val h = ttlInput.toIntOrNull() ?: 24
+                        if (mon.setzeCacheDauer(h)) onSnack(cacheSavedMsg)
+                        editingTtl = false
                     }
-                } else {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(stringResource(R.string.monitoring_cache_ttl_hours, cacheTtl), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_edit_cache_ttl)) {
-                            FilledTonalIconButton(
-                                onClick = { editingTtl = true },
-                            ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
-                        }
-                    }
-                }
-            }
+                },
+            )
 
             // ── Leeren ──
             //
@@ -389,60 +348,156 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
     }
 
     if (zeigeLeerenFrage) {
-        AlertDialog(
-            onDismissRequest = { zeigeLeerenFrage = false },
-            icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
-            title = { Text(stringResource(
-                if (leerenAlles) R.string.monitoring_cache_clear_all
-                else R.string.monitoring_cache_clear_prices)) },
-            text = { Text(stringResource(R.string.monitoring_cache_clear_hint)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    zeigeLeerenFrage = false
-                    scope.launch { if (mon.leereCache(leerenAlles)) onSnack(cacheGeleertMsg) }
-                }) {
-                    Text(stringResource(R.string.monitoring_cache_clear_confirm),
-                        color = MaterialTheme.colorScheme.error)
-                }
+        CacheLeerenFrage(
+            alles = leerenAlles,
+            onSchliessen = { zeigeLeerenFrage = false },
+            onLeeren = {
+                zeigeLeerenFrage = false
+                scope.launch { if (mon.leereCache(leerenAlles)) onSnack(cacheGeleertMsg) }
             },
-            dismissButton = {
-                TextButton(onClick = { zeigeLeerenFrage = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
         )
     }
 
     // ── API Rate Limits ───────────────────────────────────────────────────────
+    KontingentKarte(
+        kontingente = cacheStats?.rateLimits,
+        bearbeiten = editingLimits,
+        onBearbeitenUmschalten = { editingLimits = !editingLimits },
+        eingaben = Triple(bsInput, blInput, rbInput),
+        onBrickset = { bsInput = it },
+        onBricklink = { blInput = it },
+        onRebrickable = { rbInput = it },
+        onSpeichern = {
+            scope.launch {
+                val rb = rbInput.toIntOrNull() ?: 0
+                val bl = blInput.toIntOrNull() ?: 0
+                val bs = bsInput.toIntOrNull() ?: 0
+                // Das Nachladen der Grenzwerte steht im ViewModel.
+                if (mon.setzeGrenzwerte(rb, bl, bs)) onSnack(limitsSavedMsg)
+                editingLimits = false
+            }
+        },
+    )
+}
+
+/** Cache-Dauer in Stunden: angezeigt oder, nach „Bearbeiten“, als Eingabefeld. */
+@Composable
+private fun CacheDauerZeile(
+    dauer: String,
+    bearbeiten: Boolean,
+    onBearbeiten: (Boolean) -> Unit,
+    eingabe: String,
+    onEingabe: (String) -> Unit,
+    onSpeichern: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth(),
+        Arrangement.SpaceBetween,
+        Alignment.CenterVertically
+    ) {
+        Text(stringResource(R.string.monitoring_cache_duration),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (bearbeiten) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = eingabe,
+                    onValueChange = { onEingabe(NumericInput.quantity(it)) },
+                    suffix = { Text("h") },
+                    modifier = Modifier.width(90.dp),
+                    singleLine = true,
+                    shape = Formen.kachel,
+                    keyboardOptions = NumericInput.ganzzahlTastatur()
+                )
+                FilledTonalButton(
+                    onClick = onSpeichern,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                ) { Text("OK", style = MaterialTheme.typography.labelMedium) }
+                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_cancel)) {
+                    IconButton(onClick = { onBearbeiten(false) }) {
+                        Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
+                    }
+                }
+            }
+        } else {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.monitoring_cache_ttl_hours, dauer), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_edit_cache_ttl)) {
+                    FilledTonalIconButton(
+                        onClick = { onBearbeiten(true) },
+                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                }
+            }
+        }
+    }
+}
+
+/** Rückfrage vor dem Leeren: Jeder Neuaufbau kostet Anfragen aus dem gemeinsamen Tageskontingent. */
+@Composable
+private fun CacheLeerenFrage(alles: Boolean, onSchliessen: () -> Unit, onLeeren: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onSchliessen,
+        icon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
+        title = { Text(stringResource(
+            if (alles) R.string.monitoring_cache_clear_all
+            else R.string.monitoring_cache_clear_prices)) },
+        text = { Text(stringResource(R.string.monitoring_cache_clear_hint)) },
+        confirmButton = {
+            TextButton(onClick = onLeeren) {
+                Text(stringResource(R.string.monitoring_cache_clear_confirm),
+                    color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onSchliessen) {
+                Text(stringResource(R.string.common_cancel))
+            }
+        }
+    )
+}
+
+/**
+ * Die Tageskontingente der drei Dienste; im Bearbeiten-Modus mit Eingabefeldern für
+ * die Grenzen. [eingaben] in der Reihenfolge Brickset, BrickLink, Rebrickable.
+ */
+@Composable
+private fun KontingentKarte(
+    kontingente: KontingenteAnsicht?,
+    bearbeiten: Boolean,
+    onBearbeitenUmschalten: () -> Unit,
+    eingaben: Triple<String, String, String>,
+    onBrickset: (String) -> Unit,
+    onBricklink: (String) -> Unit,
+    onRebrickable: (String) -> Unit,
+    onSpeichern: () -> Unit,
+) {
+    val (bsInput, blInput, rbInput) = eingaben
     AppKarte(Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.monitoring_api_calls))
                 ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_edit_limits)) {
                     FilledTonalIconButton(
-                        onClick = { editingLimits = !editingLimits },
-                    ) { Icon(if (editingLimits) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                        onClick = onBearbeitenUmschalten,
+                    ) { Icon(if (bearbeiten) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
                 }
             }
 
-            cacheStats?.rateLimits?.let { rl ->
-                RateLimitRow("Brickset",    rl.brickset,    if (editingLimits) bsInput else null, { bsInput = it })
-                RateLimitRow("BrickLink",   rl.bricklink,   if (editingLimits) blInput else null, { blInput = it })
-                RateLimitRow("Rebrickable", rl.rebrickable, if (editingLimits) rbInput else null, { rbInput = it })
+            kontingente?.let { rl ->
+                RateLimitRow("Brickset",    rl.brickset,    if (bearbeiten) bsInput else null, onBrickset)
+                RateLimitRow("BrickLink",   rl.bricklink,   if (bearbeiten) blInput else null, onBricklink)
+                RateLimitRow("Rebrickable", rl.rebrickable, if (bearbeiten) rbInput else null, onRebrickable)
             }
 
-            if (editingLimits) {
+            if (bearbeiten) {
                 FilledTonalButton(
-                    onClick = {
-                        scope.launch {
-                            val rb = rbInput.toIntOrNull() ?: 0
-                            val bl = blInput.toIntOrNull() ?: 0
-                            val bs = bsInput.toIntOrNull() ?: 0
-                            // Das Nachladen der Grenzwerte steht im ViewModel.
-                            if (mon.setzeGrenzwerte(rb, bl, bs)) onSnack(limitsSavedMsg)
-                            editingLimits = false
-                        }
-                    },
+                    onClick = onSpeichern,
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(vertical = Abstaende.klein)
                 ) {

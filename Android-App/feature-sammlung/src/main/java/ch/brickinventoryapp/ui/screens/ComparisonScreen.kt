@@ -1,9 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
 import ch.brickinventoryapp.ui.theme.Formen
-import android.net.Uri
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
@@ -21,7 +19,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende

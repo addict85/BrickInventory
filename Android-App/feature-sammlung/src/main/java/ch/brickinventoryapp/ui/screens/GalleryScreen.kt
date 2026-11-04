@@ -17,16 +17,12 @@ import androidx.compose.material.icons.automirrored.filled.TrendingDown
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,7 +35,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,7 +66,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.debounce
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -184,7 +178,6 @@ fun GalleryScreen(
     val erfassenText = stringResource(R.string.gallery_add_set)
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-
             // Suche und ein Knopf für alles andere: Konto, Lagerort, Thema und
             // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster. Scannen
             // sitzt daneben, damit unten nur EIN Knopf schwebt. Im Fehlerzustand nicht:

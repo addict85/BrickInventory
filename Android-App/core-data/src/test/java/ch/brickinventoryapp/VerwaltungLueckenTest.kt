@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.JobsResponse

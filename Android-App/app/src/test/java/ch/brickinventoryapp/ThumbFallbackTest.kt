@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.IMG_PROXY
 import ch.brickinventoryapp.util.resolveFullUrl
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
@@ -161,7 +160,6 @@ class FullResolutionBypassesProxyTest {
         assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fx.jpg&thumb=1",
             resolveThumbUrl(SERVER, null, "https://cdn.rebrickable.com/x.jpg"))
     }
-
 }
 
 /**
@@ -305,5 +303,4 @@ class FullResolutionStripsThumbSuffixTest {
         val pfad = "/images/sets/10283-1_thumb.jpg"
         assertNotEquals(resolveThumbUrl(SERVER, pfad, null), resolveFullUrl(SERVER, pfad, null))
     }
-
 }

@@ -1,7 +1,6 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
-import java.io.File
 
 /**
  * Testdateien, die nur Quelltext lesen, werden weniger, nie mehr.

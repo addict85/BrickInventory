@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import org.junit.Test
 
 /**

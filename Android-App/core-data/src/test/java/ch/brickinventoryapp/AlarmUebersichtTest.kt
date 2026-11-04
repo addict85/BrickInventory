@@ -1,6 +1,5 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -101,11 +100,11 @@ class AlarmUebersichtTest {
         }
     }
 
-    @Test
     // Seit dem 16.10. liegt die Rubrik auf ihrer eigenen Seite
     // (EinstellungenUnterseiten.kt) — die Einstellungen fuehren mit einer
     // Zeile dorthin. Die Zusicherung ist dieselbe geblieben: Die Rubrik haengt
     // irgendwo, und sie holt ihre Daten selbst.
+    @Test
     fun `die Rubrik steht in den Einstellungen und laedt sich selbst`() {
         val s = quelle("ui/screens/EinstellungenUnterseiten.kt") + quelle("ui/screens/EinstellungenAlarme.kt")
         // Nur der Anfang des Aufrufs, nicht die ganze Zeile: Die Rubrik hat

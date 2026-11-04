@@ -17,7 +17,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -25,7 +24,6 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.util.resolveFullUrl
 import kotlinx.coroutines.launch
 

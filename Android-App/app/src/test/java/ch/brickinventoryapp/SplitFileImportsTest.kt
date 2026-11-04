@@ -137,7 +137,7 @@ class SplitFileImportsTest {
             val importe = Regex("""^import ([\w.]+)${'$'}""", RegexOption.MULTILINE)
                 .findAll(f.readText()).map { it.groupValues[1] }.toSet()
             for ((name, grund) in nichtImportierbar) {
-                if (name in importe) fehler += "${'$'}{f.name}: import ${'$'}name — ${'$'}grund"
+                if (name in importe) fehler += "${f.name}: import $name — $grund"
             }
         }
         assert(fehler.isEmpty()) {

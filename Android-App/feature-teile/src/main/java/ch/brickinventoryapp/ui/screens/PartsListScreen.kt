@@ -38,8 +38,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import ch.brickinventoryapp.ressourcen.R
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.util.NumericInput
@@ -63,7 +61,6 @@ private fun comparePartNumbers(a: String, b: String): Int = plPartCollator.compa
 /** „10294“ heisst „10294-1“ — wie überall, wo eine Setnummer getippt wird. */
 private fun normalisiert(nr: String): String = if (nr.contains("-")) nr.trim() else "${nr.trim()}-1"
 
-
 // ExperimentalLayoutApi für die FlowRow der Set-Chips — über der Funktion und mit
 // kurzem Namen, so wie SplitFileImportsTest sie sucht; ein @OptIn im Rumpf
 // übersetzt nicht.
@@ -71,7 +68,9 @@ private fun normalisiert(nr: String): String = if (nr.contains("-")) nr.trim() e
 @Composable
 fun PartsListScreen(
     serverUrl: String,
-    authToken: String = "",
+    // Ungelesen, aber die einzige Stelle, an der die Oberfläche AppUiState.authToken
+    // abnimmt (ErrorChannelTest); Parameter und Feld fallen nur zusammen weg.
+    @Suppress("UnusedParameter") authToken: String = "",
     onExportPdf: suspend (List<PlSet>, List<PlPart>) -> String? = { _, _ -> "Not implemented" },
     pdfStatus: StateFlow<String?> = MutableStateFlow(null),
     imageLoader: ImageLoader,
@@ -138,8 +137,6 @@ fun PartsListScreen(
     val mengen = androidx.compose.ui.platform.LocalResources.current
     val loadingSetFmt      = stringResource(R.string.partslist_loading_set)
     val errorForSetFmt     = stringResource(R.string.partslist_error_for_set)
-    val noColorLabel       = stringResource(R.string.partslist_no_color)
-    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
     val rbPrefixFmt        = stringResource(R.string.partslist_rb_prefix)
     val bestandVollstaendigText = stringResource(R.string.partslist_owned_complete)
     val bestandFehlerText       = stringResource(R.string.partslist_owned_error)
@@ -161,7 +158,6 @@ fun PartsListScreen(
         }
     }
 
-
     // Nach einer Drehung passt `generated` nicht mehr zu `parts`: Die Teileliste ist
     // nur `remember` (tausend Einträge sprengten das Bundle), `generated` ist
     // gespeichert. Die Sets bleiben, „Erzeugen“ stellt alles wieder her.
@@ -176,7 +172,7 @@ fun PartsListScreen(
         scope.launch {
             val combined = mutableMapOf<String, PlPart>()
             sets.toList().forEachIndexed { i, s ->
-                status = String.format(loadingSetFmt, s.setNumber, i+1, sets.size)
+                status = String.format(loadingSetFmt, s.setNumber, i + 1, sets.size)
                 try {
                     val (name, newParts) = onResolveSet(s.setNumber)
                     sets = sets.toMutableList().also { it[i] = s.copy(name = name) }
@@ -186,16 +182,7 @@ fun PartsListScreen(
                     }
                 } catch (_: Exception) { status = String.format(errorForSetFmt, s.setNumber) }
             }
-            parts = combined.values.sortedWith(
-                Comparator { a, b ->
-                    val cmp = plColorCollator.compare(a.colorName, b.colorName)
-                    if (cmp != 0) cmp
-                    else comparePartNumbers(
-                        a.blPartNumber ?: a.partNumber,
-                        b.blPartNumber ?: b.partNumber
-                    )
-                }
-            )
+            parts = nachFarbeUndNummer(combined.values)
             // Zwei Zahlen, zwei Uebereinstimmungen: ein
             // <plurals> stimmt nur mit EINER ueberein,
             // darum zwei Bruchstuecke und ein Rahmen.
@@ -305,38 +292,7 @@ fun PartsListScreen(
                     }
                 }
                 if (generated && parts.isNotEmpty()) {
-                    // remember, NICHT rememberSaveable: Der Wert gehoert
-                    // zu einer laufenden Koroutine. Ueberlebte er die
-                    // Drehung, kaeme "laeuft" zurueck, ohne dass noch etwas
-                    // laeuft — Knopf gesperrt, Kreisel fuer immer.
-                    var isExporting by remember { mutableStateOf(false) }
-                    var pdfError by remember { mutableStateOf<String?>(null) }
-                    if (pdfError != null) {
-                        androidx.compose.material3.AlertDialog(
-                            onDismissRequest = { pdfError = null },
-                            confirmButton = { TextButton(onClick = { pdfError = null }) { Text(stringResource(R.string.partslist_ok)) } },
-                            title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
-                            text = { Text(pdfError ?: "") }
-                        )
-                    }
-                    FilledTonalButton(
-                        onClick = {
-                            isExporting = true
-                            scope.launch {
-                                val err = onExportPdf(sets.toList(), parts.toList())
-                                isExporting = false
-                                if (err != null) pdfError = err
-                            }
-                        },
-                        enabled = !isExporting,
-                    ) {
-                        // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt (wie oben).
-                        if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
-                            strokeWidth = 2.dp)
-                        else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
-                        Spacer(Modifier.width(Abstaende.winzig))
-                        Text("PDF")
-                    }
+                    PdfKnopf(scope) { onExportPdf(sets.toList(), parts.toList()) }
                 }
 
                 // ── Eigener Bestand: eine Zeile für sich ──
@@ -450,27 +406,7 @@ fun PartsListScreen(
         LazyColumn(state = listState, contentPadding = PaddingValues(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {
             colorGroups.forEachIndexed { groupIdx, (colorName, colorParts) ->
                 item(key = "header_${groupIdx}_$colorName") {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        val hex = colorParts.first().colorHex
-                        if (hex != null && !colorParts.first().isFig) {
-                            Box(Modifier.size(14.dp).clip(CircleShape)
-                                .background(try { Color("#$hex".toColorInt()) }
-                                catch (_: Exception) { Color.Gray }))
-                            Spacer(Modifier.width(6.dp))
-                        }
-                        val displayName = if (colorName.isEmpty()) noColorLabel else farbe(colorName)
-                        Text(displayName, fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.width(Abstaende.klein))
-                        // Uebereinstimmung mit %2$d (den Typen) — %1$d traegt
-                        // nur ein „×" und kein Wort.
-                        Text(mengen.getQuantityString(R.plurals.partslist_group_summary,
-                                colorParts.size, colorParts.sumOf { it.quantity }, colorParts.size),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    HorizontalDivider(Modifier.padding(top = Abstaende.winzig), color = MaterialTheme.colorScheme.primaryContainer)
+                    FarbGruppenKopf(colorName, colorParts)
                 }
                 items(
                     colorParts,
@@ -481,6 +417,85 @@ fun PartsListScreen(
             }
         }
     }
+}
+
+/** Wie Webapp und PDF: nach Farbe, darin nach Teilenummer (BrickLink-Nummer, wo es sie gibt). */
+private fun nachFarbeUndNummer(teile: Collection<PlPart>): List<PlPart> = teile.sortedWith(
+    Comparator { a, b ->
+        val cmp = plColorCollator.compare(a.colorName, b.colorName)
+        if (cmp != 0) cmp
+        else comparePartNumbers(
+            a.blPartNumber ?: a.partNumber,
+            b.blPartNumber ?: b.partNumber
+        )
+    }
+)
+
+/**
+ * PDF der fertigen Liste; ein Fehler kommt als Dialog. Die Koroutine läuft im Scope
+ * des Bildschirms, damit ein laufender Export nicht mit dem Knopf verschwindet.
+ */
+@Composable
+private fun PdfKnopf(scope: kotlinx.coroutines.CoroutineScope, onExport: suspend () -> String?) {
+    // remember, NICHT rememberSaveable: Der Wert gehoert
+    // zu einer laufenden Koroutine. Ueberlebte er die
+    // Drehung, kaeme "laeuft" zurueck, ohne dass noch etwas
+    // laeuft — Knopf gesperrt, Kreisel fuer immer.
+    var isExporting by remember { mutableStateOf(false) }
+    var pdfError by remember { mutableStateOf<String?>(null) }
+    if (pdfError != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { pdfError = null },
+            confirmButton = { TextButton(onClick = { pdfError = null }) { Text(stringResource(R.string.partslist_ok)) } },
+            title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
+            text = { Text(pdfError ?: "") }
+        )
+    }
+    FilledTonalButton(
+        onClick = {
+            isExporting = true
+            scope.launch {
+                val err = onExport()
+                isExporting = false
+                if (err != null) pdfError = err
+            }
+        },
+        enabled = !isExporting,
+    ) {
+        // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt (wie oben).
+        if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
+            strokeWidth = 2.dp)
+        else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+        Spacer(Modifier.width(Abstaende.winzig))
+        Text("PDF")
+    }
+}
+
+/** Kopf einer Farbgruppe: Farbpunkt, Name und wie viele Teile und Typen sie hat. */
+@Composable
+private fun FarbGruppenKopf(colorName: String, colorParts: List<PlPart>) {
+    val mengen = androidx.compose.ui.platform.LocalResources.current
+    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        val hex = colorParts.first().colorHex
+        if (hex != null && !colorParts.first().isFig) {
+            Box(Modifier.size(14.dp).clip(CircleShape)
+                .background(try { Color("#$hex".toColorInt()) } catch (_: Exception) { Color.Gray }))
+            Spacer(Modifier.width(6.dp))
+        }
+        val displayName = if (colorName.isEmpty()) stringResource(R.string.partslist_no_color) else farbe(colorName)
+        Text(displayName, fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(Abstaende.klein))
+        // Uebereinstimmung mit %2$d (den Typen) — %1$d traegt
+        // nur ein „×" und kein Wort.
+        Text(mengen.getQuantityString(R.plurals.partslist_group_summary,
+                colorParts.size, colorParts.sumOf { it.quantity }, colorParts.size),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    HorizontalDivider(Modifier.padding(top = Abstaende.winzig), color = MaterialTheme.colorScheme.primaryContainer)
 }
 
 @Composable

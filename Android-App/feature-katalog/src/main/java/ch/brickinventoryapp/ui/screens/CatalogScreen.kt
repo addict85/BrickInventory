@@ -5,7 +5,6 @@ import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
 import ch.brickinventoryapp.ui.components.SkelettRaster
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -26,7 +25,6 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -36,7 +34,6 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collectLatest
-import ch.brickinventoryapp.ui.CatalogUiState
 import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.*
@@ -140,7 +137,6 @@ fun CatalogScreen(
     // Sichtfenster-Lader oben, und dessen Ruhe deckt beide ab. Zwei Fassungen
     // derselben Regel liefen auseinander.
 
-
     // ── Die Rollposition überlebt den Wechsel zur Detailseite ──
     //
     // Die Liste verlässt beim Wechsel die Komposition und ihre Länge trifft erst
@@ -182,7 +178,6 @@ fun CatalogScreen(
         ?.substringAfterLast(" › ")
 
     Column(Modifier.fillMaxSize()) {
-
         CatalogSearchField(state, onQueryChange, onSortChange)
         CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
         // Trefferzahl
@@ -251,8 +246,8 @@ fun CatalogScreen(
                     val sichtbareNummer by remember(gridState) {
                         derivedStateOf { gridState.firstVisibleItemIndex }
                     }
-                    if (state.sort.startsWith("year_") && state.total > 0
-                        && state.jahrVerteilung.isNotEmpty()) {
+                    if (state.sort.startsWith("year_") && state.total > 0 &&
+                        state.jahrVerteilung.isNotEmpty()) {
                         YearScrubber(
                             listenNummer = sichtbareNummer,
                             total = state.total,
@@ -410,7 +405,7 @@ private fun YearScrubber(
  * `internal`, weil der Aufrufer in einer anderen Datei steht und `private` in
  * Kotlin dateiweit gilt.
  */
-internal fun ThemeRow(label: String, id: Int?, selected: Boolean, onClick: () -> Unit) {
+internal fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = Formen.kachel,
@@ -554,7 +549,6 @@ fun CatalogSetCard(
         )
     }
 }
-
 
 /**
  * Platzhalter für einen Platz, dessen Seite noch nicht geladen ist — gleich hoch

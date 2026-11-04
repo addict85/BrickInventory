@@ -12,13 +12,13 @@ sealed class Screen(val route: String) {
      */
     object MerkpostenDetail : Screen("merkposten_detail/{setNumber}/{condition}") {
         fun createRoute(setNumber: String, condition: String) =
-            "merkposten_detail/${java.net.URLEncoder.encode(setNumber, "UTF-8")}/$condition"
+            "merkposten_detail/${routenSegment(setNumber)}/${routenSegment(condition)}"
     }
     object CatalogDetail : Screen("catalog_detail/{setNumber}") {
-        fun createRoute(setNumber: String) = "catalog_detail/$setNumber"
+        fun createRoute(setNumber: String) = "catalog_detail/${routenSegment(setNumber)}"
     }
     object SetDetail : Screen("set_detail/{setNumber}") {
-        fun createRoute(setNumber: String) = "set_detail/$setNumber"
+        fun createRoute(setNumber: String) = "set_detail/${routenSegment(setNumber)}"
     }
     object Parts    : Screen("parts")
     object Finance  : Screen("finance")
@@ -45,23 +45,29 @@ sealed class Screen(val route: String) {
     object Monitoring : Screen("monitoring")
     // type: "set" | "part" | "fig"
     object AcquisitionManagement : Screen("acq_mgmt/{type}/{id}/{colorId}/{title}") {
-        private fun encode(s: String) = java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20")
         fun createRoute(type: String, id: String, colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE, title: String) =
-            "acq_mgmt/$type/${encode(id)}/$colorId/${encode(title)}"
+            "acq_mgmt/${routenSegment(type)}/${routenSegment(id)}/$colorId/${routenSegment(title)}"
     }
     // Detailansicht eines manuell erfassten Teils / einer Minifigur — ein
     // ganzer Screen wie beim Set, nicht mehr ein Dialog. type: "part" | "fig"
     object ManualItemDetail : Screen("manual_detail/{type}/{id}/{colorId}/{title}") {
-        private fun encode(s: String) = java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20")
         fun createRoute(type: String, id: String, colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE, title: String) =
-            "manual_detail/$type/${encode(id)}/$colorId/${encode(title)}"
+            "manual_detail/${routenSegment(type)}/${routenSegment(id)}/$colorId/${routenSegment(title)}"
     }
     object PdfViewer : Screen("pdf_viewer/{url}/{title}") {
-        private fun encode(s: String) = java.net.URLEncoder.encode(s, "UTF-8").replace("+", "%20")
         fun createRoute(url: String, title: String) =
-            "pdf_viewer/${encode(url)}/${encode(title)}"
+            "pdf_viewer/${routenSegment(url)}/${routenSegment(title)}"
     }
 }
+
+/**
+ * Ein Wert als genau ein Pfadsegment. Navigation dekodiert Pfadargumente selbst mit
+ * Uri.decode, das „+“ stehen lässt; darum Leerzeichen als %20 statt „+“, und das Ziel
+ * liest das Argument unverändert. URLEncoder statt android.net.Uri, damit JVM-Tests die
+ * Routen ohne Robolectric bauen können.
+ */
+internal fun routenSegment(wert: String): String =
+    java.net.URLEncoder.encode(wert, "UTF-8").replace("+", "%20")
 
 /**
  * Welche Unterseite der Einstellungen gemeint ist.

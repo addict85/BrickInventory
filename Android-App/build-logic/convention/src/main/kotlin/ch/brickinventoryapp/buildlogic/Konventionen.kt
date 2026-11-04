@@ -10,10 +10,11 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 // (`project(":…")`) bleiben im Skript des Moduls: Dort liest sie
 // ModulgrenzenTest, und eine neue Kante steht im Diff des Moduls, nicht hier.
 
-/** com.android.library mit den SDK-Ständen und Java/Kotlin 17. */
+/** com.android.library mit den SDK-Ständen, Java/Kotlin 17 und detekt. */
 class AndroidLibraryKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginAusKatalog("android.library")
+        target.pluginManager.apply(DetektKonvention::class.java)
         val android = target.extensions.getByType(LibraryExtension::class.java)
         android.compileSdk = Sdk.compileSdk
         android.defaultConfig.minSdk = Sdk.minSdk
@@ -21,10 +22,11 @@ class AndroidLibraryKonvention : Plugin<Project> {
     }
 }
 
-/** com.android.application mit denselben Ständen und targetSdk. */
+/** com.android.application mit denselben Ständen, targetSdk und detekt. */
 class AndroidApplicationKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         target.pluginAusKatalog("android.application")
+        target.pluginManager.apply(DetektKonvention::class.java)
         val android = target.extensions.getByType(ApplicationExtension::class.java)
         android.compileSdk = Sdk.compileSdk
         android.defaultConfig.minSdk = Sdk.minSdk

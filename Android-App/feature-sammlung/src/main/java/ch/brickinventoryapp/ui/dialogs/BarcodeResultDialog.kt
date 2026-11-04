@@ -3,45 +3,27 @@ package ch.brickinventoryapp.ui.dialogs
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material3.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
 import coil3.ImageLoader
-import coil3.util.DebugLogger
 import coil3.request.crossfade
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.painterResource
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
-import javax.inject.Named
-import javax.inject.Inject
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -137,7 +119,7 @@ AlertDialog(
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                 if (barcodeState.theme != null)
                     Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
-                        Text(barcodeState.theme!!, Modifier.padding(horizontal=6.dp, vertical=2.dp),
+                        Text(barcodeState.theme!!, Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }

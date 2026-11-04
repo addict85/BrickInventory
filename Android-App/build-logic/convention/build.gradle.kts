@@ -55,5 +55,9 @@ gradlePlugin {
             id = libs.plugins.brickinventory.android.feature.get().pluginId
             implementationClass = "ch.brickinventoryapp.buildlogic.AndroidFeatureKonvention"
         }
+        register("detekt") {
+            id = libs.plugins.brickinventory.detekt.get().pluginId
+            implementationClass = "ch.brickinventoryapp.buildlogic.DetektKonvention"
+        }
     }
 }

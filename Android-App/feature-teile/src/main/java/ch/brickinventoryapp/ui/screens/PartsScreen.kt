@@ -3,7 +3,6 @@ package ch.brickinventoryapp.ui.screens
 import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
 import ch.brickinventoryapp.ui.model.TeilAnsicht
 import ch.brickinventoryapp.ui.model.TeileKennzahlenAnsicht
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
@@ -13,11 +12,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,7 +26,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,7 +33,6 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.*
 import androidx.compose.ui.res.stringResource
-import ch.brickinventoryapp.ui.model.FarbeAnsicht
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -147,8 +140,7 @@ fun PartsScreen(
                 TeileFilterEintrag(
                     wert = name, text = farbe(name), anzahl = f.uniqueParts,
                     farbe = f.colorHex?.let {
-                        try { Color("#$it".toColorInt()) }
-                        catch (_: Exception) { null }
+                        try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
                     },
                 )
             }
@@ -277,46 +269,19 @@ fun PartsScreen(
     }
 
     if (zeigeFilter) {
-        val ersatz = partsState.partsSpare
-        val farbe = partsState.partsColorFilter
-        val kategorie = partsState.partsCategoryFilter
-        // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
-        val zuruecksetzen: () -> Unit = {
-            if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL)
-            if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
-            if (ersatz.isNotBlank()) vm.setPartsSpare("")
-            if (farbe.isNotBlank()) vm.setPartsColorFilter("")
-            if (kategorie.isNotBlank()) vm.setPartsCategoryFilter("")
-        }
-        val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus, ersatz, farbe, kategorie)
-        FilterBlattRahmen(onSchliessen = { zeigeFilter = false }, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
-            KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
-            LagerortFilterAbschnitt(lagerorte, lagerModus, onLagerChange, nachTeilen = true)
-            // Ersatzteile — dieselben drei Werte wie parts-spare in der Webapp,
-            // gefiltert auf dem SERVER (partsSpare im Zustand).
-            FilterAbschnitt(stringResource(R.string.filter_section_spare)) {
-                for ((wert, text) in listOf(
-                    "" to R.string.parts_filter_all,
-                    "0" to R.string.parts_filter_no_spare,
-                    "1" to R.string.parts_filter_spare,
-                )) {
-                    FilterWahl(stringResource(text), ersatz == wert) { vm.setPartsSpare(wert) }
-                }
-            }
-            if (farbEintraege.isNotEmpty() || kategorieEintraege.isNotEmpty()) {
-                FilterAbschnitt(stringResource(R.string.filter_section_color_category)) {
-                    TeileFilterZeile(
-                        farben = farbEintraege,
-                        kategorien = kategorieEintraege,
-                        farbeGewaehlt = farbe,
-                        kategorieGewaehlt = kategorie,
-                        onFarbe = { vm.setPartsColorFilter(it) },
-                        onKategorie = { vm.setPartsCategoryFilter(it) },
-                    )
-                }
-            }
-            AnsichtAbschnitt(ansicht) { vm.setPartsView(it) }
-        }
+        TeileFilterBlatt(
+            vm = vm,
+            partsState = partsState,
+            householdMembers = householdMembers,
+            scopeMode = scopeMode,
+            onScopeChange = onScopeChange,
+            lagerorte = lagerorte,
+            lagerModus = lagerModus,
+            onLagerChange = onLagerChange,
+            farbEintraege = farbEintraege,
+            kategorieEintraege = kategorieEintraege,
+            onSchliessen = { zeigeFilter = false },
+        )
     }
 
     if (showAddDialog) {
@@ -336,6 +301,63 @@ fun PartsScreen(
 
     // Gelöscht wird im Detail (ManualItemDetailScreen, showDeleteConfirm), nicht auf
     // der Kachel.
+}
+
+/** Das Filterblatt der Teile: Konto, Lagerort, Ersatzteile, Farbe und Kategorie, Ansicht. */
+@Composable
+private fun TeileFilterBlatt(
+    vm: TeileViewModel,
+    partsState: PartsUiState,
+    householdMembers: List<ch.brickinventoryapp.ui.model.MitgliedAnsicht>,
+    scopeMode: String,
+    onScopeChange: (String) -> Unit,
+    lagerorte: List<ch.brickinventoryapp.ui.model.LagerortAnsicht>,
+    lagerModus: String,
+    onLagerChange: (String) -> Unit,
+    farbEintraege: List<TeileFilterEintrag>,
+    kategorieEintraege: List<TeileFilterEintrag>,
+    onSchliessen: () -> Unit,
+) {
+    val ersatz = partsState.partsSpare
+    val farbe = partsState.partsColorFilter
+    val kategorie = partsState.partsCategoryFilter
+    // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
+    val zuruecksetzen: () -> Unit = {
+        if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL)
+        if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
+        if (ersatz.isNotBlank()) vm.setPartsSpare("")
+        if (farbe.isNotBlank()) vm.setPartsColorFilter("")
+        if (kategorie.isNotBlank()) vm.setPartsCategoryFilter("")
+    }
+    val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus, ersatz, farbe, kategorie)
+    FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
+        KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
+        LagerortFilterAbschnitt(lagerorte, lagerModus, onLagerChange, nachTeilen = true)
+        // Ersatzteile — dieselben drei Werte wie parts-spare in der Webapp,
+        // gefiltert auf dem SERVER (partsSpare im Zustand).
+        FilterAbschnitt(stringResource(R.string.filter_section_spare)) {
+            for ((wert, text) in listOf(
+                "" to R.string.parts_filter_all,
+                "0" to R.string.parts_filter_no_spare,
+                "1" to R.string.parts_filter_spare,
+            )) {
+                FilterWahl(stringResource(text), ersatz == wert) { vm.setPartsSpare(wert) }
+            }
+        }
+        if (farbEintraege.isNotEmpty() || kategorieEintraege.isNotEmpty()) {
+            FilterAbschnitt(stringResource(R.string.filter_section_color_category)) {
+                TeileFilterZeile(
+                    farben = farbEintraege,
+                    kategorien = kategorieEintraege,
+                    farbeGewaehlt = farbe,
+                    kategorieGewaehlt = kategorie,
+                    onFarbe = { vm.setPartsColorFilter(it) },
+                    onKategorie = { vm.setPartsCategoryFilter(it) },
+                )
+            }
+        }
+        AnsichtAbschnitt(partsState.partsView) { vm.setPartsView(it) }
+    }
 }
 
 /** Die Kennzahlen der Teile — erste Zeile des Rasters, sie rollt mit. */
@@ -389,8 +411,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
     val colorObj = remember(part.colorHex) {
         part.colorHex?.let {
-            try { Color("#$it".toColorInt()) }
-            catch (_: Exception) { null }
+            try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
         }
     }
     // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
@@ -511,8 +532,7 @@ fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                  onClick: (() -> Unit)? = null) {
     val farbe = remember(part.colorHex) {
         part.colorHex?.let {
-            try { Color("#$it".toColorInt()) }
-            catch (_: Exception) { null }
+            try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
         }
     }
     val (bildUrl, onFehler) = rememberTileImageWithFallback(

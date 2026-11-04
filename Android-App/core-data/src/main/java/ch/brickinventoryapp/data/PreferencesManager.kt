@@ -515,7 +515,6 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
     }
 
-
     /**
      * Server, an denen eine nachgeholte Abmeldung endgültig scheiterte. Die Meldung
      * des Arbeiters kann abgeschaltet sein; die App sagt es darum beim nächsten Start
