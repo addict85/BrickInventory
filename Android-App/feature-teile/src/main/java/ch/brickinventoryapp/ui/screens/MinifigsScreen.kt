@@ -7,6 +7,9 @@ import ch.brickinventoryapp.ui.model.ManuelleFigurAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -73,6 +76,8 @@ fun MinifigsScreen(
         ?: ch.brickinventoryapp.data.ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    // Die Figur, deren Detail daneben offen ist (breites Fenster); ihre Kachel ist markiert.
+    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
 
     val onRefresh: () -> Unit = { vm.loadMinifigs() }
     val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MINIFIGS, it) }
@@ -185,7 +190,8 @@ fun MinifigsScreen(
                         val oeffne = { vm.oeffneSetItem("fig", fig.figNumber) }
                         Bewegt {
                             if (ansicht == "table") MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
-                            else MinifigCard(fig, serverUrl, imageLoader, oeffne)
+                            else MinifigCard(fig, serverUrl, imageLoader, oeffne,
+                                ausgewaehlt = gewaehlt == ch.brickinventoryapp.ui.components.detailSchluessel("fig", fig.figNumber))
                         }
                     }
                 }
@@ -345,12 +351,14 @@ fun AddMinifigDialog(
 
 @Composable
 fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
-                onClick: (() -> Unit)? = null) {
+                onClick: (() -> Unit)? = null, ausgewaehlt: Boolean = false) {
     val qty = fig.totalQuantity ?: fig.quantity
 
     Card(
         // Antippen oeffnet den Detail-Dialog — wie bei den Teilen daneben.
         modifier = Modifier.fillMaxWidth().heightIn(min = 196.dp)
+            .semantics { selected = ausgewaehlt }
+            .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),

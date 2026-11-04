@@ -57,13 +57,15 @@ import org.robolectric.annotation.GraphicsMode
  *   lagerort-loescht-sofort      Löschen im Menü ohne Rückfrage → rot „Lagerorte stehen als Zeilen …“
  *   haushalt-entfernt-sofort     „Entfernen“ trennt sofort → rot „Haushalt gliedert …“
  *   unterseite-doppelter-titel   CSV-Import wieder mit Kartenkopf → rot „CSV-Import zeigt …“
- *   bauliste-leer-zuruecksetzen  „Zurücksetzen“ auch ohne Inhalt aktiv → rot „leere Bauliste …“
+ *   bauliste-leer-zuruecksetzen  „Zurücksetzen“ auch ohne Sets sichtbar → rot „leere Bauliste …“
  *   lagerort-stern-als-knopf     Stern wieder IconButton ohne Ort → rot „Der Vorgabe-Stern …“
  *   haushalt-entfernen-ohne-name „Entfernen“ ohne Kontonamen → rot „Entfernen nennt …“
  *   preisalarm-nummer-zuerst     Rückfrage nennt wieder nur die Nummer → rot „Preisalarme nennen …“
  *   konto-ohne-wiederholung      Passwort ändern ohne passende Wiederholung frei → rot „Konto wechselt …“
  *   bauliste-zweistufig          Erstellen erst nach „+“ → rot „Bauliste entsteht …“
+ *   bauliste-plus-ohne-wirkung   „+“ im Feld nimmt das Set nicht auf → rot „Bauliste nimmt Sets …“
  *   konto-profil-ohne-rueckfrage Speichern ohne Passwortdialog → rot „Konto fragt beim Speichern …“
+ *   konto-email-ohne-ausstehend  die beantragte Adresse nicht unter dem Feld → rot „Konto nennt …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -201,7 +203,7 @@ class UnterseitenTest {
             ch.brickinventoryapp.ui.screens.PartsListScreen(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
                 onScanBarcode = {}, onResolveSet = { error("nichts aufzulösen") })
         }
-        compose.onNode(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).assertIsNotEnabled()
+        compose.onAllNodes(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).assertCountEquals(0)
         val dichte = ctx.resources.displayMetrics.density
         val breite = compose.onRoot().fetchSemanticsNode().boundsInRoot.width
         for (text in listOf(R.string.partslist_empty_title, R.string.partslist_empty_hint)) {
@@ -282,6 +284,25 @@ class UnterseitenTest {
         wechseln.assertIsEnabled()
     }
 
+    /** Eine neue Adresse gilt erst nach dem Link: Das Feld zeigt die geltende, darunter die beantragte. */
+    @Test
+    fun `Konto nennt die beantragte E-Mail unter dem Feld`() {
+        welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+            "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true,
+            "email_neu":"neu@example.org"}}"""
+        val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
+            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            welt.t.meldungen, welt.t.sitzung))
+        zeige {
+            ch.brickinventoryapp.ui.screens.KontoUnterseite(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+                konto = konto, onZurueck = {})
+        }
+        warte("Profil") { konto.kontoState.value.profil != null }
+        compose.onNode(hasSetTextAction() and hasText("marco@example.org")).fetchSemanticsNode("Das Feld zeigt die geltende Adresse nicht")
+        compose.onNodeWithText(ctx.getString(R.string.konto_email_ausstehend, "neu@example.org"), useUnmergedTree = true)
+            .fetchSemanticsNode("Die beantragte Adresse fehlt unter dem Feld")
+    }
+
     /** Geändert wird über die Textaktion, nicht durch Tippen: kein fokussiertes Feld. */
     @Test
     fun `Konto fragt beim Speichern des Profils nach dem Passwort`() {
@@ -314,6 +335,26 @@ class UnterseitenTest {
         assertTrue("Gespeichert ohne Passwort: ${welt.pfade.anfragen}", welt.pfade.anfragen.none { it.startsWith("PUT") })
         dialog?.dismiss()
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+    }
+
+    @Test
+    fun `Bauliste nimmt Sets ueber das Plus im Feld und setzt bei ihnen zurueck`() {
+        zeige {
+            ch.brickinventoryapp.ui.screens.PartsListScreen(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
+                onScanBarcode = {}, onResolveSet = { error("nichts aufzulösen") })
+        }
+        compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number)))
+            .performSemanticsAction(SemanticsActions.SetText) { it(AnnotatedString("21318")) }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription(ctx.getString(R.string.partslist_add_set)).performClick()
+        compose.waitForIdle()
+        val chip = hasText("21318-1") and hasClickAction()
+        compose.onNode(chip).fetchSemanticsNode("Das Set steht nicht in der Liste")
+        compose.onNode(hasText(ctx.getString(R.string.partslist_generate)) and hasClickAction()).assertIsEnabled()
+        compose.onNode(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).performClick()
+        compose.waitForIdle()
+        compose.onAllNodes(chip).assertCountEquals(0)
+        compose.onAllNodes(hasText(ctx.getString(R.string.partslist_reset)) and hasClickAction()).assertCountEquals(0)
     }
 
     @Test

@@ -26,7 +26,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.NumericInput
@@ -37,10 +36,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.layout.positionInParent
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.zweiSpaltig
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
@@ -100,21 +95,11 @@ fun CatalogDetailScreen(
     val bereich = rememberCoroutineScope()
 
     val rollen = rememberScrollState()
-    // Wo die Überschrift im gerollten Inhalt endet. Erst wenn sie unter der App-Leiste
-    // verschwunden ist, steht der Name oben — vorher stand er zweimal da.
-    var kopfUnten by remember { mutableFloatStateOf(Float.MAX_VALUE) }
-    val titelOben by remember { derivedStateOf { rollen.value > kopfUnten } }
 
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
-        topBar = {
-            TopAppBar(
-                title = {
-                    if (titelOben) Text(detail?.name ?: setNumber, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                navigationIcon = { ch.brickinventoryapp.ui.components.ZurueckKnopf(onBack) }
-            )
-        }
+        // Der Name steht in der Leiste wie im Set-Detail (DetailTopAppBar), nicht erst im Inhalt.
+        topBar = { ch.brickinventoryapp.ui.components.DetailTopAppBar(titel = detail?.name ?: setNumber, onZurueck = onBack) }
     ) { padding ->
         when {
             isLoading || detail == null -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
@@ -144,7 +129,6 @@ fun CatalogDetailScreen(
                 val angaben: @Composable ColumnScope.() -> Unit = {
                     KatalogAngaben(
                         detail = detail,
-                        onKopf = { kopfUnten = it },
                         onMerken = { showWishDialog = true },
                         onAufnehmen = { showAddDialog = true },
                         onOpenInGallery = onOpenInGallery,
@@ -162,8 +146,9 @@ fun CatalogDetailScreen(
                 if (zweiSpaltig(maxWidth.value)) {
                     Row(Modifier.fillMaxSize().padding(horizontal = Abstaende.gross),
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
-                        Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross)) {
-                            bild(Modifier.fillMaxWidth().aspectRatio(BILD_VERHAELTNIS))
+                        Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross),
+                            contentAlignment = Alignment.TopCenter) {
+                            bild(Modifier.widthIn(max = BILD_HOECHSTENS).fillMaxWidth().aspectRatio(BILD_VERHAELTNIS))
                         }
                         Column(
                             Modifier.weight(1f).fillMaxHeight().verticalScroll(rollen).padding(vertical = Abstaende.gross),
@@ -228,26 +213,24 @@ fun CatalogDetailScreen(
 /** Seitenverhältnis der Setbilder; auf dem Tablet hat das Bild so seine eigene Spalte. */
 private const val BILD_VERHAELTNIS = 4f / 3f
 
+/** Grösser als die Vorlage wird ein Setbild nur unscharf; daneben bleibt Platz für die Angaben. */
+private val BILD_HOECHSTENS = 480.dp
+
 /**
- * Name, Angaben und Handlungen. Die eigenen Handlungen zuerst (Aufnehmen, Merken), der
- * Weg nach draussen als Textknopf mit Pfeil darunter: Er stand über ihnen und sah aus
- * wie die Haupthandlung. [onKopf] meldet, wo die Überschrift endet.
+ * Nummer, Angaben und Handlungen; der Name steht in der Leiste. Die eigenen Handlungen
+ * zuerst (Aufnehmen, Merken), der Weg nach draussen als Textknopf mit Pfeil darunter:
+ * Er stand über ihnen und sah aus wie die Haupthandlung.
  */
 @Composable
 private fun ColumnScope.KatalogAngaben(
     detail: KatalogDetailAnsicht,
-    onKopf: (Float) -> Unit,
     onMerken: () -> Unit,
     onAufnehmen: () -> Unit,
     onOpenInGallery: (String) -> Unit,
     onBrickLink: (String) -> Unit,
 ) {
-    Column(Modifier.onPlaced { onKopf(it.positionInParent().y + it.size.height) }) {
-        Text(detail.name ?: "—", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.semantics { heading() })
-        Text(detail.setNumber, color = MaterialTheme.colorScheme.primary,
-            fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-    }
+    Text(detail.setNumber, color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
 
     Card(shape = Formen.karte, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
         Column(Modifier.padding(Abstaende.rand), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {

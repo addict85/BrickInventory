@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -70,7 +71,8 @@ fun SkelettRaster(
     )
     val grund = ch.brickinventoryapp.ui.theme.skelettTon(MaterialTheme.colorScheme)
     val licht = ch.brickinventoryapp.ui.theme.skelettTon(MaterialTheme.colorScheme, 0.04f)
-    val schimmer = Brush.linearGradient(listOf(grund, licht, grund),
+    // Ohne Bewegung eine ruhige Fläche statt des wandernden Lichts.
+    val schimmer = if (bewegungReduziert()) SolidColor(grund) else Brush.linearGradient(listOf(grund, licht, grund),
         start = Offset(weg, 0f), end = Offset(weg + 600f, 600f))
     LazyVerticalGrid(
         columns = spalten,
@@ -109,11 +111,11 @@ private val SKELETT_KOPF = 88.dp
  */
 @Composable
 fun LazyGridItemScope.Bewegt(inhalt: @Composable () -> Unit) {
-    Box(Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
+    Box(if (bewegungReduziert()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
 }
 
 /** Dasselbe für Einträge einer LazyColumn. */
 @Composable
 fun LazyItemScope.Bewegt(inhalt: @Composable () -> Unit) {
-    Box(Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
+    Box(if (bewegungReduziert()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
 }

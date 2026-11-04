@@ -153,7 +153,8 @@ internal fun PreisalarmeCard(
                         if (zahl != null && zahl != a.schwelle) vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung, zahl)
                     }),
                     shape = Formen.feld,
-                    modifier = Modifier.fillMaxWidth(),
+                    // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
+                    modifier = Modifier.widthIn(max = BETRAG_BREITE).fillMaxWidth(),
                 )
             }
         }
@@ -184,6 +185,9 @@ internal fun PreisalarmeCard(
     }
 }
 
+/** Breite eines Betragsfelds: Platz für Beschriftung, fünf Stellen und Währung. */
+private val BETRAG_BREITE = 320.dp
+
 /**
  * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen
  * es je einzeln. Farbe nur als Zugabe und nicht grün gegen rot — bei Rot-Grün-Schwäche
@@ -212,8 +216,9 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
             fontWeight = if (ausgeloest) FontWeight.Normal else FontWeight.SemiBold,
             color = if (ausgeloest) MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.onSecondaryContainer,
+            // Innenabstand wie ein Chip: Mit 4 dp berührte „Ausgelöst“ den Rand.
             modifier = Modifier.padding(
-                horizontal = Abstaende.winzig, vertical = Abstaende.haar),
+                horizontal = Abstaende.klein, vertical = Abstaende.haar),
         )
     }
 }

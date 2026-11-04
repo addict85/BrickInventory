@@ -142,7 +142,7 @@ internal fun HouseholdCard(
         Text(stringResource(R.string.household_invite_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Button(onClick = onCreateInvite, enabled = !state.isLoading) {
+        Button(onClick = onCreateInvite, enabled = !state.isLoading, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.household_invite_create))
         }
         state.inviteCode?.let { c ->
@@ -192,7 +192,7 @@ internal fun HouseholdCard(
         }
         Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.faktorNoetig }); passwort = ""; faktorCode = "" },
                enabled = code.isNotBlank() && passwort.isNotEmpty() && (!state.faktorNoetig || faktorCode.isNotBlank()) &&
-                   !state.isLoading) {
+                   !state.isLoading, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.household_redeem_submit))
         }
     }

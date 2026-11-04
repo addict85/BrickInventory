@@ -192,15 +192,9 @@ fun SetupScreen(
         )
     }
 
-    // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
-    // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-    Column(
-        modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
-            .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular).padding(Abstaende.riesig),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
+    // Kopf (Marke, Hinweis zum Altbestand) und Handlung (QR, Adresse, Weiter) als zwei
+    // Teile: Im Querformat stehen sie nebeneinander, sonst lag „Weiter“ unter dem Falz.
+    val kopfTeil: @Composable ColumnScope.() -> Unit = {
         ch.brickinventoryapp.ui.components.MarkenKopf(untertitel = stringResource(R.string.setup_subtitle))
 
         if (altbestand) {
@@ -234,7 +228,8 @@ fun SetupScreen(
                 }
             }
         }
-
+    }
+    val handlungsTeil: @Composable ColumnScope.() -> Unit = {
         Spacer(Modifier.height(Abstaende.riesig))
 
         // Der QR-Code ist der empfohlene Weg (Adresse und Zertifikat in einem Schritt) und
@@ -327,8 +322,40 @@ fun SetupScreen(
             )
         }
     }
+
+    // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
+    // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (maxWidth > maxHeight && maxWidth >= QUER_ZWEISPALTIG) {
+            Row(
+                Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular * 2)
+                    .padding(horizontal = Abstaende.riesig),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.riesig),
+            ) {
+                listOf(kopfTeil, handlungsTeil).forEach { teil ->
+                    Column(
+                        Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+                            .padding(vertical = Abstaende.riesig),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        content = teil,
+                    )
+                }
+            }
+        } else Column(
+            modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = maxHeight)
+                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular).padding(Abstaende.riesig),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            kopfTeil()
+            handlungsTeil()
+        }
     }
 }
+
+/** Ab dieser Breite stehen Kopf und Handlung im Querformat nebeneinander. */
+private val QUER_ZWEISPALTIG = 840.dp
 
 /** QR scanner for setup — reuses the proven CameraPreviewBarcode with QR_CODE format */
 @Composable

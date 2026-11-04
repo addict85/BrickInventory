@@ -48,6 +48,8 @@ import org.robolectric.annotation.GraphicsMode
  *   suche-neben-filtertext    Filterknopf mit Text schon ab 360 dp → rot „Such-Platzhalter …“
  *   verlauf-ab-zwei-punkten   Linie schon ab zwei Punkten → rot „Preisverlauf …“
  *   teile-detail-als-dialog   Teile-Detail auch auf dem Tablet als Dialog → rot „Tablet zeigt Teil …“
+ *   teile-detail-schliessen-rechts  Schliessen wieder rechts vom Titel → rot „Tablet zeigt Teil …“
+ *   teile-kachel-ohne-auswahl  offene Kachel nicht markiert → rot „Tablet zeigt Teil …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -251,6 +253,9 @@ class FeinschliffRegelnTest {
         org.robolectric.RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         val welt = Beispiele.Welt(KontextTexte())
         try {
+            welt.pfade.antworten["/api/v1/parts/3001/5/sets"] = """{"success":true,
+                "item":{"nummer":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","total_quantity":12},
+                "sets":[{"set_number":"75192-1","set_name":"Millennium Falcon","quantity":8,"owner_user_id":1}]}"""
             val vm = welt.teile().also { it.loadParts() }
             val bilder = coil3.ImageLoader.Builder(ctx).build()
             zeige {
@@ -262,13 +267,19 @@ class FeinschliffRegelnTest {
             val kachel = androidx.compose.ui.test.hasText("Brick 2 x 4", substring = true) and
                 androidx.compose.ui.test.hasClickAction()
             compose.onNode(kachel).performClick()
-            compose.waitForIdle()
+            warte("Teil") { !vm.setItemState.value.laedt }
             val zu = compose.onNode(androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.detail_close)))
                 .fetchSemanticsNode().boundsInRoot
             val liste = compose.onNode(kachel).fetchSemanticsNode().boundsInRoot
             assertTrue("Tablet zeigt Teil rechts der Liste ($liste / $zu)", zu.left >= liste.right)
             assertTrue("Tablet zeigt Teil ohne Dialog",
                 compose.onAllNodes(androidx.compose.ui.test.isDialog()).fetchSemanticsNodes().isEmpty())
+            // Ein Muster für alle Detailköpfe: Schliessen links vom Titel, die Kachel markiert.
+            val titel = compose.onNode(androidx.compose.ui.test.hasText("Brick 2 x 4") and
+                androidx.compose.ui.test.isHeading()).fetchSemanticsNode().boundsInRoot
+            assertTrue("Tablet zeigt Teil mit Schliessen links vom Titel ($zu / $titel)", zu.right <= titel.left)
+            compose.onNode(kachel and androidx.compose.ui.test.SemanticsMatcher.expectValue(
+                androidx.compose.ui.semantics.SemanticsProperties.Selected, true)).fetchSemanticsNode("Kachel nicht markiert")
         } finally {
             welt.close()
         }

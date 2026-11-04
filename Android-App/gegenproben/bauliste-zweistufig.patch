@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.UnterseitenTest
 Rot: Bauliste entsteht
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-index b68519c..8fcba5b 100644
+index d993591..15ad692 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-@@ -276,7 +276,7 @@ fun PartsListScreen(
-                 // gleichrangig nebeneinander.
+@@ -286,7 +286,7 @@ fun PartsListScreen(
+                 val anzahl = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalisiert(setInput) }) 1 else 0)
                  Button(
                      onClick = { erstellen() },
--                    enabled = (sets.isNotEmpty() || setInput.isNotBlank()) && !isLoading,
+-                    enabled = anzahl > 0 && !isLoading,
 +                    enabled = sets.isNotEmpty() && !isLoading,
                      modifier = Modifier.fillMaxWidth(),
                  ) {

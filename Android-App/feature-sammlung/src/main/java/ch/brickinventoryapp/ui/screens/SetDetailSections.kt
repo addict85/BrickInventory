@@ -302,6 +302,9 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
             // deckeln und meldet die wirkliche Menge zurück; ohne die Kopplung behielte der
             // Regler seine Annahme.
             var qty by remember(set.setNumber, set.quantity) { mutableIntStateOf(set.quantity) }
+            // Ein leiser Takt je Schritt: Die Zahl ändert sich, ohne dass man hinsehen muss.
+            val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
+            val takt = { haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick) }
             Row(
                 Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -317,7 +320,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                 ) {
                     FilledTonalIconButton(
-                        onClick = { if (qty > 1) { qty--; vm.aendereMengeUm(set.setNumber, -1) } },
+                        onClick = { if (qty > 1) { qty--; takt(); vm.aendereMengeUm(set.setNumber, -1) } },
                         shape = Formen.etikett
                     ) {
                         Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
@@ -331,7 +334,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                         textAlign = TextAlign.Center
                     )
                     FilledTonalIconButton(
-                        onClick = { qty++; vm.aendereMengeUm(set.setNumber, 1) },
+                        onClick = { qty++; takt(); vm.aendereMengeUm(set.setNumber, 1) },
                         shape = Formen.etikett
                     ) {
                         Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),

@@ -85,15 +85,10 @@ fun MerkpostenDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
-            TopAppBar(
-                title = { Text(merkposten?.name ?: setNumber, maxLines = 1) },
-                // Neben der Liste schliesst ein X nur das Detail (ZurueckKnopf).
-                navigationIcon = { ch.brickinventoryapp.ui.components.ZurueckKnopf(onBack) },
-                // Der Papierkorb in der Kopfleiste wie in Set- und Teile-Detail — wer von dort
-                // kommt, sucht ihn oben. Ohne Rückfrage wie in der Webapp: Ein Merkposten ist kein
-                // Besitz und schnell wieder eingetragen. Beschriftung `common_delete` wie dort,
-                // damit der Bildschirmleser alle gleich ansagt. `let`, weil der Merkposten hier
-                // oben noch nullbar ist.
+            // Derselbe Kopf wie Set-, Katalog- und Teile-Detail (DetailTopAppBar).
+            ch.brickinventoryapp.ui.components.DetailTopAppBar(titel = merkposten?.name ?: setNumber, onZurueck = onBack,
+                // Ohne Rückfrage wie in der Webapp: Ein Merkposten ist kein Besitz und schnell
+                // wieder eingetragen. `let`, weil der Merkposten hier oben noch nullbar ist.
                 actions = {
                     merkposten?.let { w ->
                         IconButton(onClick = {

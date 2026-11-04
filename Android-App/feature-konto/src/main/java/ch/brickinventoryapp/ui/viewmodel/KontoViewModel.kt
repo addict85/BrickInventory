@@ -51,13 +51,18 @@ class KontoViewModel @Inject constructor(
     fun ladeProfil() {
         viewModelScope.launch {
             _kontoState.update { it.copy(laedt = true, fehler = null) }
-            when (val r = konto.getProfil()) {
-                is Result.Success -> _kontoState.update {
-                    it.copy(laedt = false, profil = r.data.user?.alsAnsicht(),
-                            fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else null)
-                }
-                is Result.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
+            holeProfil()
+        }
+    }
+
+    /** Lässt einen Fehler stehen, den das Speichern davor gesetzt hat (Mail nicht gesendet). */
+    private suspend fun holeProfil() {
+        when (val r = konto.getProfil()) {
+            is Result.Success -> _kontoState.update {
+                it.copy(laedt = false, profil = r.data.user?.alsAnsicht(),
+                        fehler = if (r.data.user == null) r.data.error ?: texte.text(R.string.err_generic) else it.fehler)
             }
+            is Result.Error -> _kontoState.update { it.copy(laedt = false, fehler = texte.meldung(r)) }
         }
     }
 
@@ -84,9 +89,19 @@ class KontoViewModel @Inject constructor(
             when (val r = konto.updateProfil(aenderung)) {
                 is Result.Success ->
                     if (r.data.success) {
-                        _kontoState.update { it.copy(speichert = false, codeNoetig = false, meldung = texte.text(R.string.konto_saved)) }
+                        // Eine neue Adresse gilt erst nach dem Link: „gespeichert“ allein liesse
+                        // glauben, sie gelte schon, und ohne Mail wartet sie umsonst.
+                        val neueAdresse = r.data.emailChanged == true
+                        val ohneMail = neueAdresse && r.data.emailSent != true
+                        _kontoState.update { it.copy(speichert = false, codeNoetig = false,
+                            meldung = when {
+                                ohneMail -> null
+                                neueAdresse -> texte.text(R.string.konto_email_link_gesendet, aenderung.email)
+                                else -> texte.text(R.string.konto_saved)
+                            },
+                            fehler = if (ohneMail) texte.text(R.string.konto_email_nicht_gesendet) else null) }
                         // Neu holen: Der Server normalisiert, die Karte zeigt seinen Stand.
-                        ladeProfil()
+                        holeProfil()
                     } else {
                         _kontoState.update { it.copy(speichert = false,
                             fehler = r.data.error ?: texte.text(R.string.err_generic)) }

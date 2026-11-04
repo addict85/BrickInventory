@@ -47,7 +47,7 @@ interface KontoApi {
     suspend fun getProfil(): Response<ProfilResponse>
 
     @PUT("api/v1/auth/profile")
-    suspend fun updateProfil(@Body request: ProfilAenderung): Response<GenericResponse>
+    suspend fun updateProfil(@Body request: ProfilAenderung): Response<ProfilGespeichert>
 
     @POST("api/v1/auth/change-password")
     suspend fun changePassword(@Body request: PasswortAenderung): Response<GenericResponse>

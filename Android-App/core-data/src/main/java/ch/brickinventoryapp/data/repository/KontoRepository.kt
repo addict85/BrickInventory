@@ -97,7 +97,7 @@ class KontoRepository @Inject constructor(
     suspend fun zweiterFaktorNeueCodes(code: String): Result<ZweiterFaktorCodes> =
         safeCall { api.zweiterFaktorNeueCodes(ZweiterFaktorAnfrage(code = code)) }
 
-    suspend fun updateProfil(aenderung: ProfilAenderung): Result<GenericResponse> =
+    suspend fun updateProfil(aenderung: ProfilAenderung): Result<ProfilGespeichert> =
         safeCall { api.updateProfil(aenderung) }
 
     suspend fun changePassword(aktuell: String, neu: String, code: String? = null): Result<GenericResponse> =

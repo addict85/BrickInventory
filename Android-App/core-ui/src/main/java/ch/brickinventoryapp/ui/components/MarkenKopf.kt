@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -38,6 +39,22 @@ import ch.brickinventoryapp.ui.theme.Formen
  */
 @Composable
 fun MarkenKopf(modifier: Modifier = Modifier, untertitel: String? = null) {
+    // Bei grosser Schrift klein in einer Zeile: Kachel und zweizeiliger Name nahmen bei
+    // 200 % ein Viertel der Seite, und das erste Feld lag unter dem Falz.
+    if (grosseSchrift()) {
+        Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                Image(painterResource(R.drawable.ic_logo), contentDescription = null, modifier = Modifier.size(32.dp))
+                Text(stringResource(R.string.app_name), fontWeight = FontWeight.ExtraBold,
+                    style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+            }
+            if (untertitel != null) Text(untertitel, style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        }
+        return
+    }
     Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
         Surface(shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,

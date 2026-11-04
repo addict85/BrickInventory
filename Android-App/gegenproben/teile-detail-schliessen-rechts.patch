@@ -1,0 +1,19 @@
+Gegenprobe: Detailkopf mit Schliessen rechts vom Titel
+Modul: app
+Test: ch.brickinventoryapp.FeinschliffRegelnTest
+Rot: Tablet zeigt Teil und Liste nebeneinander
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
+index 2375a56..cc15144 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
+@@ -119,8 +119,7 @@ fun DetailTopAppBar(
+             }
+         },
+         expandedHeight = maxOf(TopAppBarDefaults.TopAppBarExpandedHeight, hoehe),
+-        navigationIcon = { ZurueckKnopf(onZurueck, schliessen) },
+-        actions = actions,
++        actions = { actions(); ZurueckKnopf(onZurueck, schliessen) },
+         colors = farben,
+     )
+ }

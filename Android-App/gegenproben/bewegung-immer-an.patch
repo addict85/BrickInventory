@@ -1,0 +1,17 @@
+Gegenprobe: „Animationen entfernen“ wird überhört
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: reduzierte Bewegung folgt der Animator-Dauer
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
+index c2b2eaf..ddc8097 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
+@@ -14,6 +14,6 @@ import androidx.compose.ui.platform.LocalContext
+ fun bewegungReduziert(): Boolean {
+     val kontext = LocalContext.current
+     return remember(kontext) {
+-        Settings.Global.getFloat(kontext.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
++        Settings.Global.getFloat(kontext.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) < 0f
+     }
+ }

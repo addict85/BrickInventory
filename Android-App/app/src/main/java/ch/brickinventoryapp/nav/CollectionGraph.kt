@@ -175,6 +175,7 @@ fun NavGraphBuilder.collectionGraph(
                     if (galerieUnten != null) galerieUnten.loeschenVormerken(sn, name) else detailVm.deleteSet(sn)
                     navController.popBackStack()
                 },
+                rueckgaengigMoeglich = galerieUnten != null,
                 onNavigateToAcqMgmt = { type, id, colorId, title ->
                     navController.navigate(Screen.AcquisitionManagement.createRoute(type, id, colorId, title))
                 },
@@ -385,8 +386,18 @@ internal fun TeileListeUndDetail(
         val oeffneSet: (String) -> Unit = { navController.navigate(Screen.SetDetail.createRoute(it)) }
         val offen = manuell
         if (nebeneinander && (setItem.offen || offen != null)) {
+            // Die Kachel des offenen Teils ist markiert wie in Merkliste und Galerie.
+            val offenesTeil = setItem.art?.let { art ->
+                ch.brickinventoryapp.ui.components.detailSchluessel(art, setItem.nummer,
+                    setItem.colorId.takeIf { art == "part" })
+            }
             ch.brickinventoryapp.ui.components.ListeUndDetail(
-                liste = { liste(oeffneManuell) },
+                liste = {
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        ch.brickinventoryapp.ui.components.LocalOffenesDetail provides offenesTeil) {
+                        liste(oeffneManuell)
+                    }
+                },
                 detail = {
                     if (setItem.offen) {
                         ch.brickinventoryapp.ui.dialogs.SetItemDetailBereich(teileVm, imageLoader, serverUrl, oeffneSet)

@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.StateFlow
@@ -58,6 +59,9 @@ private val plPartCollator: android.icu.text.Collator =
         .apply { numericCollation = true }
 
 private fun comparePartNumbers(a: String, b: String): Int = plPartCollator.compare(a, b)
+
+/** „10294“ heisst „10294-1“ — wie überall, wo eine Setnummer getippt wird. */
+private fun normalisiert(nr: String): String = if (nr.contains("-")) nr.trim() else "${nr.trim()}-1"
 
 
 // ExperimentalLayoutApi für die FlowRow der Set-Chips — über der Funktion und mit
@@ -142,12 +146,12 @@ fun PartsListScreen(
 
     // Handle barcode scanner result from Gallery flow
     fun addSet(nr: String) {
-        val normalized = if (nr.contains("-")) nr.trim() else "${nr.trim()}-1"
-        if (sets.any { it.setNumber == normalized }) { status = setAlreadyAddedMsg; return }
+        val normalized = normalisiert(nr)
+        if (sets.any { it.setNumber == normalized }) { status = setAlreadyAddedMsg; setInput = ""; return }
         sets = sets + PlSet(normalized, normalized)
         setInput = ""
-        status = mengen.getQuantityString(
-            R.plurals.partslist_sets_in_list, sets.size, sets.size)
+        // Die Zahl nennt die Kopfzeile über den Sets; der Status bleibt für Fehler und Ergebnis.
+        status = ""
     }
 
     LaunchedEffect(barcodeSetNumber) {
@@ -227,10 +231,11 @@ fun PartsListScreen(
                     OutlinedTextField(
                         value = setInput,
                         // Filter und Tastaturwahl wie jedes Setnummernfeld (util/NumericInput.kt).
-                        // „Fertig“ erstellt die Liste gleich mit diesem Set.
+                        // „Fertig“ und das „+“ im Feld nehmen das Set in die Liste: ein Weg hinein,
+                        // ein Knopf zum Erstellen.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
                         keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { erstellen() }),
+                        keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) addSet(setInput) }),
                         // Beschriftung statt Platzhalter: Der lange Platzhalter brach im Feld
                         // zweizeilig um und verschwand beim Tippen.
                         label = { Text(stringResource(R.string.gallery_set_number)) },
@@ -238,24 +243,29 @@ fun PartsListScreen(
                         singleLine = true,
                         shape = MaterialTheme.shapes.large,
                         trailingIcon = {
-                            if (setInput.isNotBlank()) IconButton(onClick = { setInput = "" }) {
-                                Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                            if (setInput.isNotBlank()) IconButton(onClick = { addSet(setInput) }) {
+                                Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set))
                             }
                         }
                     )
                     // Derselbe Scan-Knopf wie neben jeder Suche; ein schwebender Knopf mitten
                     // in einer Zeile sah aus wie der eine Hauptknopf des Bildschirms.
                     ch.brickinventoryapp.ui.components.ScanKnopf(onScanBarcode)
-                    // Ein Symbol in voller Grösse statt eines „+“ in Textgrösse, das gesperrt kaum
-                    // zu sehen war; tonal, weil „Bauliste erstellen“ darunter die Hauptsache ist.
-                    FilledTonalIconButton(
-                        onClick = { if (setInput.isNotBlank()) addSet(setInput) },
-                        enabled = setInput.isNotBlank(),
-                    ) { Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set)) }
                 }
 
-                // Set chips
-                if (sets.isNotEmpty()) {
+                // Die gesammelten Sets mit ihrem Zurücksetzen: Es leert diese Liste und steht
+                // deshalb bei ihr, nicht frei unter den Knöpfen. Ohne Inhalt fehlt es ganz.
+                if (sets.isNotEmpty() || generated) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(mengen.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f))
+                        TextButton(
+                            onClick = { reset() },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        ) { Text(stringResource(R.string.partslist_reset)) }
+                    }
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)
@@ -271,12 +281,12 @@ fun PartsListScreen(
                     }
                 }
 
-                // Eine Hauptsache in voller Breite: Erstellen. Darunter das Weitergeben als PDF
-                // und, leise, Zurücksetzen — vorher standen „+“, Erstellen und Zurücksetzen
-                // gleichrangig nebeneinander.
+                // Eine Hauptsache in voller Breite: Erstellen, mit der Zahl der Sets, die es
+                // nimmt — das getippte eingeschlossen.
+                val anzahl = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalisiert(setInput) }) 1 else 0)
                 Button(
                     onClick = { erstellen() },
-                    enabled = (sets.isNotEmpty() || setInput.isNotBlank()) && !isLoading,
+                    enabled = anzahl > 0 && !isLoading,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
@@ -287,52 +297,44 @@ fun PartsListScreen(
                     else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                     Spacer(Modifier.width(Abstaende.winzig))
                     Text(stringResource(R.string.partslist_generate))
-                }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    if (generated && parts.isNotEmpty()) {
-                        // remember, NICHT rememberSaveable: Der Wert gehoert
-                        // zu einer laufenden Koroutine. Ueberlebte er die
-                        // Drehung, kaeme "laeuft" zurueck, ohne dass noch etwas
-                        // laeuft — Knopf gesperrt, Kreisel fuer immer.
-                        var isExporting by remember { mutableStateOf(false) }
-                        var pdfError by remember { mutableStateOf<String?>(null) }
-                        if (pdfError != null) {
-                            androidx.compose.material3.AlertDialog(
-                                onDismissRequest = { pdfError = null },
-                                confirmButton = { TextButton(onClick = { pdfError = null }) { Text(stringResource(R.string.partslist_ok)) } },
-                                title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
-                                text = { Text(pdfError ?: "") }
-                            )
-                        }
-                        FilledTonalButton(
-                            onClick = {
-                                isExporting = true
-                                scope.launch {
-                                    val err = onExportPdf(sets.toList(), parts.toList())
-                                    isExporting = false
-                                    if (err != null) pdfError = err
-                                }
-                            },
-                            enabled = !isExporting,
-                        ) {
-                            // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
-                            // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
-                            // beide 16 dp breit.
-                            if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
-                                strokeWidth = 2.dp)
-                            else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
-                            Spacer(Modifier.width(Abstaende.winzig))
-                            Text("PDF")
-                        }
+                    if (anzahl > 0) {
+                        Spacer(Modifier.width(Abstaende.winzig))
+                        Text(pluralStringResource(R.plurals.partslist_generate_anzahl, anzahl, anzahl))
                     }
-                    Spacer(Modifier.weight(1f))
-                    // Gesperrt, solange es nichts zurückzusetzen gibt: Ein roter Knopf auf der
-                    // leeren Seite lud zum Tippen ein, ohne etwas zu tun.
-                    TextButton(
-                        onClick = { reset() },
-                        enabled = sets.isNotEmpty() || generated || status.isNotBlank(),
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                    ) { Text(stringResource(R.string.partslist_reset)) }
+                }
+                if (generated && parts.isNotEmpty()) {
+                    // remember, NICHT rememberSaveable: Der Wert gehoert
+                    // zu einer laufenden Koroutine. Ueberlebte er die
+                    // Drehung, kaeme "laeuft" zurueck, ohne dass noch etwas
+                    // laeuft — Knopf gesperrt, Kreisel fuer immer.
+                    var isExporting by remember { mutableStateOf(false) }
+                    var pdfError by remember { mutableStateOf<String?>(null) }
+                    if (pdfError != null) {
+                        androidx.compose.material3.AlertDialog(
+                            onDismissRequest = { pdfError = null },
+                            confirmButton = { TextButton(onClick = { pdfError = null }) { Text(stringResource(R.string.partslist_ok)) } },
+                            title = { Text(stringResource(R.string.partslist_pdf_error_title)) },
+                            text = { Text(pdfError ?: "") }
+                        )
+                    }
+                    FilledTonalButton(
+                        onClick = {
+                            isExporting = true
+                            scope.launch {
+                                val err = onExportPdf(sets.toList(), parts.toList())
+                                isExporting = false
+                                if (err != null) pdfError = err
+                            }
+                        },
+                        enabled = !isExporting,
+                    ) {
+                        // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt (wie oben).
+                        if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
+                            strokeWidth = 2.dp)
+                        else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                        Spacer(Modifier.width(Abstaende.winzig))
+                        Text("PDF")
+                    }
                 }
 
                 // ── Eigener Bestand: eine Zeile für sich ──

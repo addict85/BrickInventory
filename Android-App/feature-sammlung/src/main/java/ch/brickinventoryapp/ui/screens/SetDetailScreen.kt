@@ -45,6 +45,11 @@ fun SetDetailScreen(
     imageLoader: ImageLoader,
     onBack: () -> Unit,
     onDelete: (String) -> Unit,
+    /**
+     * Fängt die Liste darunter das Löschen mit „Rückgängig“ auf? Dann löscht der Papierkorb
+     * ohne Rückfrage — eine Sicherung genügt. Ohne Liste (Einstieg von aussen) fragt er.
+     */
+    rueckgaengigMoeglich: Boolean = false,
     onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
     onOpenPdf: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
@@ -85,46 +90,31 @@ fun SetDetailScreen(
     // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
     val meldungen = remember { SnackbarHostState() }
     val keineAppText = stringResource(R.string.common_no_app_to_open)
-    // Ein langer Name bricht in eine zweite Zeile, und die Leiste wächst mit: Mit einer
-    // Zeile stand bei 200 % nur „Millennium F…“ da. Gemessen am Text, damit ein kurzer
-    // Name die gewohnte Leistenhöhe behält.
-    var titelZeilen by remember { mutableIntStateOf(1) }
-    val titelHoehe = with(androidx.compose.ui.platform.LocalDensity.current) {
-        MaterialTheme.typography.titleLarge.lineHeight.toDp() * titelZeilen
-    } + Abstaende.gross * 2
+    val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        set?.name ?: setNumber,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        onTextLayout = { titelZeilen = it.lineCount },
-                        modifier = Modifier.semantics { heading() },
-                    )
-                },
-                expandedHeight = maxOf(TopAppBarDefaults.TopAppBarExpandedHeight, titelHoehe),
-                // Neben der Liste schliesst ein X nur das Detail (ZurueckKnopf).
-                navigationIcon = { ch.brickinventoryapp.ui.components.ZurueckKnopf(onBack) },
-                actions = {
-                    // Kein Verschieben-Knopf: Verschoben wird über den Kaufpreis, im
-                    // Kaufpreis-Screen, Zeile für Zeile. Ein Set mit drei Erfassungen sind drei
-                    // Käufe, die verschiedenen Kindern gehören können — „das Set verschieben“
-                    // verdeckte, was wandert. Der Server erzwingt dieselbe Regel: move ohne
-                    // acquisition_ids antwortet mit 400.
-                    IconButton(onClick = { showSetDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
+            // Derselbe Kopf wie in Katalog, Merkliste und Teilen (DetailTopAppBar).
+            ch.brickinventoryapp.ui.components.DetailTopAppBar(
+                titel = set?.name ?: setNumber,
+                onZurueck = onBack,
+                farben = TopAppBarDefaults.topAppBarColors(
                     containerColor = akzent.detailLeiste,
                     titleContentColor = akzent.aufDetailLeiste,
                     navigationIconContentColor = akzent.aufDetailLeiste,
                     actionIconContentColor = akzent.aufDetailLeiste,
-                )
+                ),
+                actions = {
+                    // Kein Verschieben-Knopf: Verschoben wird über den Kaufpreis, Zeile für Zeile —
+                    // ein Set mit drei Erfassungen sind drei Käufe, die verschiedenen Kindern gehören
+                    // können. Der Server erzwingt dasselbe (move ohne acquisition_ids: 400).
+                    IconButton(onClick = {
+                        haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
+                    }) {
+                        Icon(Icons.Default.Delete, stringResource(R.string.cd_set_delete, set?.name ?: setNumber))
+                    }
+                },
             )
         },
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)

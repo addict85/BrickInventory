@@ -192,6 +192,10 @@
         <item quantity="one">%1$d set in the list</item>
         <item quantity="other">%1$d sets in the list</item>
     </plurals>
+    <plurals name="partslist_generate_anzahl">
+        <item quantity="one">(%1$d set)</item>
+        <item quantity="other">(%1$d sets)</item>
+    </plurals>
     <string name="partslist_loading_set">Loading %1$s (%2$d/%3$d)…</string>
     <string name="partslist_error_for_set">Error for %1$s</string>
     <string name="partslist_summary">%1$s · %2$s</string>
@@ -246,6 +250,14 @@
     <string name="detail_storage_none">No storage location</string>
     <string name="filter_condition_all">All</string>
     <string name="filter_storage_all">All locations</string>
+    <plurals name="filter_lagerort_sets">
+        <item quantity="one">%1$s · %2$d set</item>
+        <item quantity="other">%1$s · %2$d sets</item>
+    </plurals>
+    <plurals name="filter_lagerort_teile">
+        <item quantity="one">%1$s · %2$d part</item>
+        <item quantity="other">%1$s · %2$d parts</item>
+    </plurals>
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Reset</string>
@@ -270,7 +282,7 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Enter a set number and tap “Create build list”; “+” adds more sets — for rebuilding or ordering what is missing.</string>
+    <string name="partslist_empty_hint">Enter a set number and tap “Create build list”; “+” in the field adds more sets — for rebuilding or ordering what is missing.</string>
     <string name="partslist_empty_title">No build list yet</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
@@ -741,6 +753,9 @@
     <string name="konto_profil_password_needed">To save, enter your current password.</string>
     <string name="konto_save">Save profile</string>
     <string name="konto_saved">Profile saved</string>
+    <string name="konto_email_ausstehend">Pending: %1$s. It takes effect once you open the link sent to it; until then the current address stays.</string>
+    <string name="konto_email_link_gesendet">Confirmation link sent to %1$s. Until you open it, your current address stays valid.</string>
+    <string name="konto_email_nicht_gesendet">Saved, but the confirmation to the new address could not be sent. Please ask the administrator.</string>
     <string name="konto_password_title">Change password</string>
     <string name="konto_password_current">Current password</string>
     <string name="konto_password_new">New password</string>
@@ -752,6 +767,12 @@
     <string name="startpasswort_wiederholen">Repeat new password</string>
     <string name="startpasswort_verschieden">The two entries differ.</string>
     <string name="konto_design_hint">Applies to this account on every device.</string>
+    <string name="design_text_classic">Light and plain, blue accents.</string>
+    <string name="design_text_brick">Strong blue, cards like bricks with a stud edge.</string>
+    <string name="design_text_werkbank">Always dark, regardless of light or dark mode. Similar to Classic in dark mode, with brass in hints and badges.</string>
+    <string name="design_text_farbfaecher">Each view in its own colour.</string>
+    <string name="design_text_noppe">Colourful and playful: studded bars, thick edges, hard shadows.</string>
+    <string name="design_text_hochglanz">Calm and sleek: smooth surfaces, soft gradients, subtle sheen.</string>
     <string name="konto_design_vorgabe">Default: %1$s</string>
 
     <!-- ══════════════ CSV upload ══════════════ -->
