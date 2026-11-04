@@ -7,7 +7,7 @@ import { installiereProtokoll, protokollInDieDatenbank, leereProtokoll, anfrageK
 installiereProtokoll();
 
 import fs from 'fs';
-import type { Server } from 'http';
+import http, { type Server } from 'http';
 import express from 'express';
 import session from 'express-session';
 import compression from 'compression';
@@ -29,9 +29,8 @@ import { bildFreigegeben } from './src/katalog/bilder/bildBlickfeld';
 import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/infra/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
-import { nurEigeneHerkunft } from './src/infra/herkunft';
+import { nurEigeneHerkunft, nurEigenerHost } from './src/infra/herkunft';
 import { API_VERSION, API_MIN_APP, appFassungPruefen } from './src/infra/apiVersion';
-import { verifiziereEmailToken } from './src/konto/auth';
 import { resolveUserId, istVerwalter } from './src/konto/http/anmeldung';
 import { PUBLIC_DIR } from './src/infra/appPaths';
 import { IMG_PROXY_PFAD } from './src/katalog/bilder/images';
@@ -175,6 +174,7 @@ app.use((req, _res, next) => {
   next();
 });
 
+app.use(nurEigenerHost);
 app.use(nurEigeneHerkunft);
 // no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
 // gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
@@ -340,26 +340,12 @@ app.use('/api/v1',          idempotenz);
 app.use('/api/v1',          apiV1Router);
 app.use('/api/v1/auth',     authRouter);
 
-// Der Link kommt aus einer E-Mail: Die Antwort ist eine Seite, kein JSON.
-app.get('/verify', async (req, res) => {
+// Links aus einer E-Mail: Erst ein Knopf auf der Seite wirkt (POST), sonst
+// bestätigte schon der Link-Scanner des Mailanbieters eine fremde Adresse.
+app.get(['/verify', '/reset-password'], async (_req, res) => {
+  // Die Adresse trägt das Token. Über den Renderer statt sendFile, sonst gingen
+  // die Assets ohne Stempel und im Standarddesign hinaus.
   res.set('Cache-Control', 'no-store');
-  try {
-    const e = await verifiziereEmailToken(req.query.token);
-    res.redirect(e.ok ? '/?verified=1' : '/?verified=invalid');
-  } catch (e) {
-    // Dem Klickenden keine Fehlerseite — er kann nichts damit anfangen. Ins
-    // Protokoll gehört der Fehler trotzdem.
-    console.error('Verify error:', fehlertext(e));
-    res.redirect('/?verified=invalid');
-  }
-});
-
-// Ausdrücklich, damit location.pathname === '/reset-password' stimmt.
-app.get('/reset-password', async (_req, res) => {
-  // Die Adresse trägt das Rücksetz-Token.
-  res.set('Cache-Control', 'no-store');
-  // Über den Renderer statt sendFile: sonst gingen die Assets ohne Stempel
-  // und im Standarddesign hinaus.
   try {
     res.type('html').send(await renderIndexHtml());
   } catch {
@@ -454,7 +440,10 @@ async function starte(): Promise<void> {
   if (web) await meldeSmtpAltlast().catch(logAndContinue('start:smtp-altlast'));
 
   // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
-  const httpServer = web ? baueApp().listen(k.port, () => {
+  // Ganze Anfrage fünf Minuten: Eine Anleitung (50 MB) soll auch langsam hochkommen.
+  // Ohne kurzes Prüfintervall griffe die Kopffrist erst nach bis zu 45 s.
+  const fristen = { headersTimeout: 15_000, requestTimeout: 300_000, connectionsCheckingInterval: 1_000 };
+  const httpServer = web ? http.createServer(fristen, baueApp()).listen(k.port, () => {
     console.log(`🧱 BrickInventory Manager — http://localhost:${k.port}`);
   }) : null;
   process.on('SIGTERM', () => { void herunterfahren('SIGTERM', httpServer, jobs); });

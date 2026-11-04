@@ -54,7 +54,7 @@ test('der Cache-Stream hängt vor dem Client-Stream', () => {
   // r.pipe(ws) stand einmal hinter einem `await mkdir`. r.pipe(res) läuft
   // synchron davor — die ersten Chunks flossen also zum Client, bevor der
   // Cache-Stream überhaupt hing.
-  const blk = CODE.slice(CODE.indexOf("const contentType = String(r.kopf['content-type']"),
+  const blk = CODE.slice(CODE.indexOf("const rohTyp = String(r.kopf['content-type']"),
                          CODE.indexOf('body.pipe(res);') + 20);
   // Seit der Entpackung heisst die Quelle `body` (bei unkomprimierten
   // Antworten identisch mit r, sonst der entpackte Strom).
@@ -205,7 +205,7 @@ test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', ()
     'Ein langes max-age ohne must-revalidate nagelt Fehler im Browser fest');
 
   // Der gestreamte Pfad kennt den Inhalt noch nicht — dort kurz halten.
-  const stream = SERVER.slice(SERVER.indexOf("const contentType = String(r.kopf['content-type']"),
+  const stream = SERVER.slice(SERVER.indexOf("const rohTyp = String(r.kopf['content-type']"),
                               SERVER.indexOf('body.pipe(res);'));
   assert.match(stream, /max-age=3600, must-revalidate/,
     'Frisch gestreamte Antworten dürfen nicht lange festgehalten werden');
@@ -282,10 +282,8 @@ test('nur Bilder verlassen den Bild-Proxy', () => {
   assert.match(SERVER, /res\.status\(415\)/,
     '415 sagt genau das: Der Inhaltstyp passt nicht zu dieser Route');
 
-  // Auch beim Ausliefern AUS dem Cache: Ein vor dieser Prüfung angelegter
-  // Eintrag könnte einen fremden Typ tragen.
-  assert.match(SERVER, /ctMime\.startsWith\('image\/'\)/,
-    'Der Cache-Pfad braucht dieselbe Prüfung — alte Einträge sind ungeprüft');
+  // Den Typ beim Ausliefern, auch aus dem Cache, prüft img-cache-serve.test.js
+  // am laufenden Code (bildTyp).
 });
 
 test('ein bekannter Bildstand wird mit 304 beantwortet', () => {

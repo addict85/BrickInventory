@@ -1058,9 +1058,10 @@ function _updateLangChips() { _updateLangSelect(); }
 
 // ── AUTH & PANELS ─────────────────────────────────────
 let _resetToken = null;
+let _verifyToken = null, _verifyAngemeldet = false;
 
 function showPanel(name){
-  ['login','register','forgot','reset','pflichtwechsel','zweitpflicht'].forEach(p => {
+  ['login','register','forgot','reset','verify','pflichtwechsel','zweitpflicht'].forEach(p => {
     const el = G('panel-'+p); if(el) el.style.display = p===name?'block':'none';
   });
 }
@@ -1131,15 +1132,16 @@ G('btn-pflicht')?.addEventListener('click', async () => {
 // Check URL params on load
 (function(){
   const params = new URLSearchParams(location.search);
-  if(params.get('verified')==='1'){
-    showPanel('login');
-    const m=G('verified-msg'); if(m) m.style.display='block';
+  // Der Link aus der Mail bestätigt nichts von selbst; erst der Knopf (POST).
+  if(params.get('token') && location.pathname === '/verify'){
+    _verifyToken = params.get('token');
+    showPanel('verify');
   } else if(params.get('token') && (location.pathname.includes('reset-password') || params.get('type') === 'reset')){
     _resetToken = params.get('token');
     showPanel('reset');
   }
   // Clean URL
-  if(params.has('verified')||params.has('token')) history.replaceState({},'',location.pathname);
+  if(params.has('token')) history.replaceState({},'',location.pathname);
 })();
 
 // Panel links
@@ -1190,6 +1192,25 @@ G('btn-forgot')?.addEventListener('click', async () => {
   G('forgot-form').style.display='none';
   G('forgot-success').style.display='block';
   G('forgot-success').textContent = d.message || 'Falls die E-Mail existiert, wurde ein Link gesendet.';
+});
+
+G('btn-verify')?.addEventListener('click', async () => {
+  const err=G('verify-err'), btn=G('btn-verify');
+  formularFehler(err, '');
+  btn.disabled=true;
+  const d=await api('POST','/v1/auth/email-bestaetigen',{token:_verifyToken});
+  btn.disabled=false;
+  if(!d.success){ formularFehler(err, d.error||tRaw('settings.error')); return; }
+  _verifyToken=null;
+  if(_verifyAngemeldet){ location.replace('/'); return; }
+  history.replaceState({},'','/');
+  showPanel('login');
+  const m=G('verified-msg'); if(m) m.style.display='block';
+});
+G('link-verify-to-login')?.addEventListener('click', e=>{
+  e.preventDefault();
+  if(_verifyAngemeldet){ location.replace('/'); return; }
+  _verifyToken=null; showPanel('login');
 });
 
 // Reset password
@@ -1276,12 +1297,14 @@ export async function checkAuth(){
   // Antwort des Logins und dieselbe, die die App liest. ME behält seine
   // gewohnten Felder (isAdmin, id, username), damit die Oberfläche
   // unverändert bleibt.
-  if(d.loggedIn){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; oeffneApp(); }
+  // Auch angemeldet (neue Adresse im Profil) erst bestätigen, dann die Anwendung.
+  _verifyAngemeldet = !!d.loggedIn;
+  if(d.loggedIn && !_verifyToken){ ME = { ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }; oeffneApp(); }
   else {
     G('login-screen').style.display='flex'; startgeruestWeg();
     G('app').style.display='none';
     // Don't override reset/verified panels that were already set from URL params
-    if(!_resetToken && !G('verified-msg')?.style.display.includes('block')){
+    if(!_resetToken && !_verifyToken && !G('verified-msg')?.style.display.includes('block')){
       showPanel('login');
     }
     checkRegistrationEnabled();

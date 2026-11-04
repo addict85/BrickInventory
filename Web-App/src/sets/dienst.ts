@@ -22,7 +22,7 @@ import { getMinifigInfo, getSetMinifigs, rebrickableJson } from '../../clients/r
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
 import type { RbSetTeil } from '../../clients/rebrickable';
 import { produktTitel } from '../../clients/upcitemdb';
-import { fehlerWerfen } from '../infra/fehlerTexte';
+import { fehlerWerfen, Meldung } from '../infra/fehlerTexte';
 import { merkeFigur, merkeSetFiguren } from '../katalog/katalogPflege';
 import { randomUUID } from 'crypto';
 import * as repo from './repository/setDetail';
@@ -290,9 +290,9 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
   try { gelesen = csvEinlesen(text); }
   catch (e) { fehlerWerfen('csv_parse_fehler', 400, { grund: fehlertext(e) }); }
   if (!gelesen.records.length) {
-    throw Object.assign(new Error(gelesen.uebersprungen.length
+    throw new Meldung(gelesen.uebersprungen.length
       ? `Keine brauchbare Zeile gefunden — ${uebersprungenHinweis(gelesen.uebersprungen)}`
-      : 'Keine Datenzeilen in der Datei'), { status: 400 });
+      : 'Keine Datenzeilen in der Datei', 400);
   }
   const rows: ImportZeile[] = [];
   for (const roh of gelesen.records) {

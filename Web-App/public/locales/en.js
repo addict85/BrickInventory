@@ -315,6 +315,8 @@ window.I18N_EN = {
   'log.entries': 'entries',
   'log.none_found': 'No entries found',
   'verify.success': 'E-mail verified successfully. You can log in now.',
+  'verify.title': 'Confirm email address',
+  'verify.button': 'Confirm address',
   'auth.back_to_login': '← Back to login',
   'parts.add.bl_hint': 'for market price',
   'figs.add.hint': 'Rebrickable and BrickLink numbers usually differ. Without a BrickLink no. the market price is estimated from the parts.',

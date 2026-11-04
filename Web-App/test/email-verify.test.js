@@ -72,26 +72,14 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async (t) => {
   });
 
   await t.test('der eine verbleibende Weg ruft die gemeinsame Funktion', () => {
-    // Hier standen ZWEI Wege: server.ts (der Link aus der Mail) und
-    // GET /api/auth/verify. Die API-Route ist entfernt — sie hatte keinen
-    // Aufrufer, und genau das stand seit Nachtrag 154 als Kommentar in ihr
-    // drin. Damit gibt es nur noch einen Weg, und er muss die gemeinsame
-    // Funktion rufen.
-    assert.match(lies('server.ts'), /verifiziereEmailToken\s*\(/,
-      'server.ts löst den Token nicht über die gemeinsame Funktion ein');
-    // Und die Regel darf nicht zurückkommen: Eine zweite Fassung in
-    // routes/auth.ts waere wieder die Doppelung aus Nachtrag 154.
-    assert.doesNotMatch(lies('routes/auth.ts'), /verifiziereEmailToken\s*\(/,
-      'routes/auth.ts loest wieder selbst Token ein — die Doppelung ist zurück');
-  });
-
-  await t.test('der Browser-Weg antwortet mit einer Weiterleitung', () => {
-    // Der Link wird aus einer E-Mail angeklickt — am Ende muss eine Seite
-    // stehen. Beide Ausgänge (?verified=1 und ?verified=invalid) werden von
-    // der Oberfläche ausgewertet; fällt einer weg, meldet die Seite nichts.
-    const s = lies('server.ts');
-    assert.match(s, /verified=1/,       'server.ts meldet den Erfolg nicht mehr');
-    assert.match(s, /verified=invalid/, 'server.ts meldet den Fehlschlag nicht mehr');
+    // Einziger Weg ist POST /api/v1/auth/email-bestaetigen (der Knopf auf der
+    // Seite hinter dem Mail-Link). GET /verify in server.ts liefert nur die
+    // Seite; löste er wieder selbst ein, bestätigte schon ein Link-Scanner.
+    // Das Verhalten prüft sicherheit-runde11-db am echten Server.
+    assert.match(lies('routes/auth.ts'), /verifiziereEmailToken\s*\(/,
+      'routes/auth.ts löst den Token nicht über die gemeinsame Funktion ein');
+    assert.doesNotMatch(lies('server.ts'), /verifiziereEmailToken\s*\(/,
+      'server.ts löst wieder selbst Token ein — der Link allein bestätigte dann');
   });
 
   // ── „der API-Weg antwortet NICHT mit einer Weiterleitung" ist entfallen ──

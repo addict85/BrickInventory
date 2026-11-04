@@ -43,3 +43,17 @@ export function nurEigeneHerkunft(req: Request, res: Response, next: NextFunctio
   // Ein Browser, der nichts meldet, ist nicht prüfbar.
   return mitSitzung ? fremd() : next();
 }
+
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
+const FREI = /^\/(ca\.crt|api\/v1\/health(\/live|\/ready)?)$/;
+
+/** Mit APP_BASE_URL nur dieser Name, gegen DNS-Rebinding. Frei: Loopback, Bearer
+ * (schickt kein Browser von selbst), Wurzelzertifikat und Gesundheit. */
+export function nurEigenerHost(req: Request, res: Response, next: NextFunction) {
+  const adresse = konfig().appBaseUrl;
+  if (!adresse || FREI.test(req.path) || String(req.headers.authorization || '').startsWith('Bearer ')) return next();
+  const name = (h: string) => h.toLowerCase().replace(/:\d+$/, '').replace(/\.$/, '');
+  const kopf = name(String(req.headers.host || ''));
+  if (LOOPBACK.has(kopf) || kopf === name(hostVon(adresse) ?? '')) return next();
+  sendeFehler(req, res, 421, 'fremder_host', { adresse });
+}

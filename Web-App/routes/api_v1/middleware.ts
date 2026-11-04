@@ -22,7 +22,7 @@ const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/auth\/(me|registration-status)$/],
   // token-rotieren prüft selbst: Ein unbegrenzter Token nach der Pflichtfrist
   // gilt nur noch dort, und das kann der Eingang nicht wissen.
-  ['POST', /^\/auth\/(login|logout|qr-login|register|forgot-password|reset-password|bestaetigung-erneut|token-rotieren)$/],
+  ['POST', /^\/auth\/(login|logout|qr-login|register|forgot-password|reset-password|bestaetigung-erneut|email-bestaetigen|token-rotieren)$/],
   ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
 ];
 
@@ -85,10 +85,26 @@ const nurWenn = (soll: (req: Request) => boolean, schritt: RequestHandler): Requ
   (req, res, next) => soll(req) ? schritt(req, res, next) : next();
 const unangemeldet = (req: Request) => nutzerId(req) === null;
 
+/** Ohne Konto sind es höchstens 16 KB: Wer dafür länger braucht, hält nur eine
+ * Verbindung fest. Angemeldet gilt die Frist des Servers (Uploads). */
+const RUMPF_FRIST_MS = 10_000;
+function rumpfFrist(req: Request, res: Response, next: NextFunction) {
+  if (req.complete) return next();
+  const uhr = setTimeout(() => {
+    if (req.complete || res.headersSent) return;
+    res.setHeader('Connection', 'close');
+    sendeFehler(req, res, 408, 'anfrage_zu_langsam');
+  }, RUMPF_FRIST_MS);
+  res.once('close', () => clearTimeout(uhr));
+  req.once('end', () => clearTimeout(uhr));
+  next();
+}
+
 /** Hinter anmeldungAmEingang: Ohne Konto (Anmelden, Registrieren, Zurücksetzen)
  * reichen 16 KB, sonst 256 KB, nur der PDF-Auftrag trägt die ganze Teileliste.
  * Pfad-IDs prüft vertragsRouter(), die in Rumpf und Abfrage der letzte Schritt. */
 export const rumpfLesen: RequestHandler[] = [
+  nurWenn(unangemeldet, rumpfFrist),
   nurWenn(unangemeldet, express.json({ limit: '16kb' })),
   nurWenn(unangemeldet, express.urlencoded({ extended: true, limit: '16kb' })),
   nurWenn(req => req.method === 'POST' && req.path === '/sets/partslist-pdf', express.json({ limit: '4mb' })),

@@ -14,6 +14,7 @@ import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeFigur, katalogFigur } from '../katalog/katalogPflege';
 import { merkeEigeneBlNummer } from '../katalog/blZuordnung';
 import * as V from '../infra/validate';
+import { Meldung } from '../infra/fehlerTexte';
 
 // Ohne BrickLink-Figurennummer wird der Marktpreis aus den Teilepreisen
 // geschätzt: Für Teile ist die Zuordnung RB→BL verlässlich, für Figuren nicht.
@@ -127,7 +128,7 @@ async function addManualFigIntern(uid: number, body: any) {
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
 export async function updateManualFig(uid: number, figNumber: string, body: any): Promise<{ quantity?: number }> {
   const existing = await repo.figurZeileMitZustand(uid, figNumber);
-  if (!existing) { const e = Object.assign(new Error('Minifigur nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
+  if (!existing) throw new Meldung('Minifigur nicht gefunden oder nicht manuell hinzugefügt', 404);
 
   const raus: { quantity?: number } = {};
   const wunsch = mengenwunsch(body);

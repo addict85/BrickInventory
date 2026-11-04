@@ -72,7 +72,9 @@ Wer ohne TLS betreiben will (etwa zum Ausprobieren auf `localhost`), nimmt in
 `compose.yaml` beim Dienst `app` die Zeilen `ports:` ein und setzt in `.env`
 `COOKIE_SECURE=0` und `APP_BASE_URL=http://…`. Passwort, Sitzung und App-Token
 gehen dann lesbar durchs Netz; „Unbegrenzt“ beim QR-Code und Passkeys gibt es
-dann nicht.
+dann nicht. Browser erreichen den Server dann nur unter dem Namen aus
+`APP_BASE_URL` (oder `localhost`); ein anderer Name oder die blosse IP-Adresse
+bekommt 421 (UPGRADE.md, Abschnitt 35).
 
 ### Pfade anpassen
 
@@ -293,7 +295,7 @@ für pgweb unlesbar, bis sie dort eingetragen ist.
 
 | Variable | Wirkung |
 |---|---|
-| `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie gehen **keine Links per Mail** hinaus (die Adresse wird nie aus dem Host-Header abgeleitet — ein gefälschter bekäme sonst den Reset-Link), Passwort-vergessen antwortet 503; der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. |
+| `APP_BASE_URL` | Die Adresse, unter der der Server von **aussen** erreichbar ist (z. B. `https://lego.example.org`). Sie steckt in den Links der E-Mails und im **QR-Code zur Verknüpfung der App**. Ohne sie gehen **keine Links per Mail** hinaus (die Adresse wird nie aus dem Host-Header abgeleitet — ein gefälschter bekäme sonst den Reset-Link), Passwort-vergessen antwortet 503; der QR-Code wird **gar nicht erst erzeugt** — er trüge sonst die Adresse aus der Browserzeile, und die App fände den Server ausserhalb des Heimnetzes nie wieder. Ist sie gesetzt, antwortet die App nur unter diesem Namen (sonst 421; frei bleiben `localhost`, App-Token, `/ca.crt` und die Gesundheitspfade). |
 | `TRUST_PROXY` | Wem der Server `X-Forwarded-For`/`-Proto` glaubt — nur **ausdrücklich genannten** Adressen. `compose.yaml` setzt die feste Adresse von Caddy (`172.28.73.10`). Ohne Angabe (ausserhalb von Compose) **nur Loopback** (`127.0.0.0/8`, `::1`). Steht ein Proxy davor, seine **feste** Adresse eintragen: im Compose-Netz `brickinventory-net` (`172.28.73.0/24`) z. B. `172.28.73.10` per `ipv4_address`, auf einem anderen Rechner z. B. `192.168.1.5`. Mehrere durch Komma; Netze nur klein (IPv4 ab `/16`, IPv6 ab `/64`). `false` schaltet es ganz ab. `docker`, `true` und Hop-Zahlen verweigern den Start: Damit könnte jeder Container oder Client im Netz seine Absenderadresse selbst angeben und die Anmeldesperre umgehen. |
 | `UPLOAD_KONTINGENT_MB` | Wie viel Platz eigene Anleitungen (PDF/JPG/PNG) je Konto belegen dürfen, in MB (Vorgabe `2048`). Der Inhalt jeder Datei wird geprüft; eine Datei, deren Inhalt nicht zum Typ passt, wird abgewiesen. |
 | `DATA_KEY` | Schlüssel (32 Byte, Base64) für die verschlüsselten Geheimnisse in der Datenbank: `openssl rand -base64 32`. Geht `DATA_KEY_FILE` vor. |

@@ -49,6 +49,13 @@ den Commits, nicht hier.
   wartet bei Caddy. Das Standard-Image von Caddy hat kein Modul für
   Anfrage-Raten; die Raten je Adresse und Konto zählt der Server —
   `caddy-anmeldebremse`.
+- Langsame Clients belegen die Bremse nicht: Caddy liest den Rumpf der
+  Anmeldewege ganz (`request_buffers 32KB`, grösser als `max_size`), bevor er
+  eine der vier Verbindungen nimmt; Köpfe müssen in 10 s da sein. Die App
+  selbst: Kopf 15 s, ganze Anfrage 5 min (Uploads), ohne Anmeldung Rumpf
+  10 s (sonst 408 `anfrage_zu_langsam`): `Caddyfile`, `server.ts`,
+  `rumpfFrist` in `routes/api_v1/middleware.ts` — `caddy-anmeldebremse`,
+  `sicherheit-runde11-db`.
 - Die Wurzel signiert die Blätter (`sign_with_root`) und steht in der
   ausgelieferten Kette; die App pinnt ihren SPKI-Fingerabdruck aus dem QR-Code
   (`fp`): `utils/tlsWurzel.ts`, `routes/auth.ts` — `tls-wurzel-db`.
@@ -148,11 +155,21 @@ den Commits, nicht hier.
 - Ändernde Anfragen: `Sec-Fetch-Site`, sonst `Origin`/`Referer` gegen Host
   und `APP_BASE_URL`; Cookie-Sitzung ohne Herkunft wird abgelehnt, Bearer
   ohne Cookie ausgenommen: `utils/herkunft.ts` — `herkunft`.
+- Mit `APP_BASE_URL` antwortet die App nur unter deren Namen (sonst 421
+  `fremder_host`), gegen DNS-Rebinding im Klartextbetrieb. Frei bleiben
+  Loopback, Bearer-Token, `/ca.crt` und die Gesundheitspfade:
+  `nurEigenerHost` in `src/infra/herkunft.ts` — `sicherheit-runde11-db`.
+- E-Mail-Bestätigung erst per Knopf: `GET /verify` zeigt die Seite,
+  `POST /auth/email-bestaetigen` bestätigt; ein Link-Scanner bestätigt nichts
+  — `sicherheit-runde11-db`.
 
 ### Zugriff auf fremde Daten (3)
 - Jede Abfrage über `scopeIds()`/`writableIds()` (Haushalt):
   `utils/household.ts` — `erfassung-fremd-loeschen-db`, `gutscheine-db`, `pdf-jobs-db`.
 - Uploads nur für Besitzer und Hauptkonto: `routes/datenDateien.ts` — `daten-dateien-db`, `media-auth`.
+- Kaufpreis umhängen: Eine fremde Erfassungs-ID antwortet wie eine fehlende
+  (404 `kaufpreis_nicht_gefunden`), kein Orakel für vergebene IDs:
+  `acquisitionMoveSource` in `src/haushalt/haushalt.ts` — `sicherheit-runde11-db`.
 - Set-Bilder (`/images/sets/…`) nur im Blickfeld (Bestand, Merkliste,
   Preisalarme des Haushalts), Anleitungen (`/data/instructions/…`) nur zu Sets
   im Bestand; fremd und fehlend antworten gleich (404). Teile- und
@@ -204,6 +221,9 @@ den Commits, nicht hier.
   Konto gedrosselt (`BILD_ABRUFE_JE_MINUTE`), Cache gedeckelt
   (`BILD_CACHE_MAX_MB`), Antworten `Cache-Control: private`:
   `routes/imgProxy.ts`, `src/katalog/bilder/imgCacheServe.ts` — `bild-proxy-deckel`.
+  Hinaus geht nur ein Bildtyp aus einer Liste (JPEG, PNG, GIF, WebP, AVIF),
+  nie der rohe Kopf des CDN; sonst JPEG (`bildTyp`) — `img-cache-serve`,
+  `bild-proxy-deckel`.
 - Nummern als kodiertes Pfadsegment (`pfadSegment`) — `fremde-pfade-db`.
 
 ### Eingaben (2, 3)
@@ -227,6 +247,10 @@ den Commits, nicht hier.
 - Ströme und Sammelberichte (Erfassungsstrom, CSV-/XML-Importe) melden
   Fachfehler mit Code, alles andere als `interner_fehler`; der Text steht nur
   im Protokoll: `oeffentlicherFehler` in `src/infra/httpError.ts` — `fehlertext-intern-db`.
+- 4xx ohne Code nennen nie den Text einer Bibliothek (Parser, Dateipfad,
+  zlib), sondern `anfrage_ungueltig`, `nicht_gefunden` oder
+  `anfrage_zu_gross`; eigene Sätze tragen die Klasse `Meldung`:
+  `handleRouteError` — `sicherheit-runde11-db`.
 - Aktions-Dispatcher kein Skript-Gadget: kein `mouseenter`, je Ereignis nur
   die genutzten Handler, kein Rückfall auf `window`; Löschen, Konto, Tokens
   und Verwaltung nur von Elementen aus dem Markup beim Laden oder aus

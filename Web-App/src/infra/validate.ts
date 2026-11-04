@@ -4,7 +4,7 @@
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
-import { fehlerWerfen } from './fehlerTexte';
+import { fehlerWerfen, Meldung } from './fehlerTexte';
 
 /** Die Spalten sind integer (int4): Ein grösserer Wert endete als 500 in PostgreSQL. */
 export const GROESSTE_ID = 2 ** 31 - 1;
@@ -47,9 +47,7 @@ export function einmalDekodiert(text: string): string {
 }
 
 function fail(msg: string): never {
-  const e: any = new Error(msg);
-  e.status = 400;
-  throw e;
+  throw new Meldung(msg, 400);
 }
 
 export function requireItemNumber(value: any, field = 'part_number'): string {

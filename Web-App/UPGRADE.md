@@ -1376,3 +1376,63 @@ docker compose exec postgres psql -U brickinventory -c "DELETE FROM bl_zuordnung
   Datenbankhost). Richtig ist eine eigene Rolle (Abschnitt 29; in Docker
   richtet `db-rolle` sie ein). Wer bewusst als Superuser betreibt, setzt
   `DB_SUPERUSER_ERLAUBT=1`; der Start warnt dann bei jedem Lauf.
+
+## 35. Runde 11 – Langsame Anfragen, Host-Kopf und E-Mail-Bestätigung
+
+Für Betreiber in Docker hinter Caddy ist nichts umzustellen; das neue
+`Caddyfile` kommt mit dem Update. Wer ohne Caddy (Klartext, Port 3000) oder
+mit eigenem Reverse-Proxy betreibt, beachtet Punkt 2.
+
+**1. Langsame Clients blockieren die Anmeldung nicht mehr**
+
+- Caddy liest den Rumpf der Anmeldewege ganz, bevor er eine der vier
+  Verbindungen zur App belegt (`request_buffers 32KB`); vorher konnten vier
+  absichtlich langsame Rümpfe die Anmeldung für alle anhalten. Köpfe müssen
+  in 10 s ankommen (`timeouts { read_header 10s }`, Vorgabe von Caddy: eine
+  Minute). Eine harte Frist für Rümpfe setzt das Caddyfile bewusst nicht: Sie
+  bräche lange Uploads (Anleitungen bis 50 MB) ab.
+- Die App selbst: Kopf 15 s, ganze Anfrage fünf Minuten (wie bisher die
+  Vorgabe von Node, jetzt ausdrücklich). Ohne Anmeldung muss der Rumpf
+  (höchstens 16 KB) in 10 s da sein, sonst `408 anfrage_zu_langsam`. Wer
+  einen eigenen Reverse-Proxy vor die App stellt, sollte dort die
+  Anmeldewege ebenso puffern.
+
+**2. Mit `APP_BASE_URL` nur noch unter diesem Namen**
+
+Ist `APP_BASE_URL` gesetzt, antwortet die App auf einen anderen `Host`-Kopf
+mit `421 fremder_host` („Dieser Server antwortet nur unter …"). Das schützt
+im Klartextbetrieb gegen DNS-Rebinding. Frei bleiben `localhost`/`127.0.0.1`,
+Anfragen mit App-Token (`Authorization: Bearer`), `/ca.crt` und
+`/api/v1/health…`. Hinter Caddy ändert sich nichts, weil Caddy ohnehin nur
+`BRICK_HOST` bedient. Wer im Klartextbetrieb den Server im Browser unter
+einer IP-Adresse aufruft, `APP_BASE_URL` aber auf einen Namen gesetzt hat,
+nimmt künftig diesen Namen (oder setzt `APP_BASE_URL` auf die Adresse, die
+alle Geräte benutzen). Die Android-App mit eingerichtetem Zugang ist nicht
+betroffen; eine neue Anmeldung der App braucht dieselbe Adresse wie
+`APP_BASE_URL` (der QR-Code trägt sie ohnehin).
+
+**3. E-Mail-Bestätigung per Knopf**
+
+Der Link in der Bestätigungsmail (`/verify?token=…`) bestätigt nicht mehr
+beim Öffnen. Er öffnet eine Seite mit dem Knopf „Adresse bestätigen"; erst
+der Knopf bestätigt (`POST /api/v1/auth/email-bestaetigen` `{ token }`,
+ohne Anmeldung, 400 `bestaetigungslink_ungueltig` bei falschem oder
+abgelaufenem Link). So bestätigt kein Link-Scanner eines Mailanbieters eine
+fremde Adresse. Links aus älteren Mails gelten weiter, brauchen aber den
+Klick. Die Android-App ruft `/verify` nicht auf; der Link öffnet auch auf dem
+Telefon die Webseite.
+
+**4. Weitere Härtungen**
+
+- Fehler mit Status 4xx ohne eigenen Code nennen nicht mehr den Text einer
+  Bibliothek (z. B. „Failed to decode param", „incorrect header check",
+  Dateipfade), sondern `anfrage_ungueltig`, `nicht_gefunden` oder
+  `anfrage_zu_gross` mit Satz in der Sprache des Anfragenden. Der Rohtext
+  steht im Protokoll.
+- Kaufpreis umhängen (`PUT …/acquisitions/:id` mit `owner_user_id`): Eine
+  Erfassung eines fremden Kontos antwortet wie eine fehlende mit 404
+  `kaufpreis_nicht_gefunden` statt 403 `kein_schreibrecht`.
+- Bild-Proxy: Der `Content-Type` geht nur noch aus einer festen Liste hinaus
+  (JPEG, PNG, GIF, WebP, AVIF), sonst `image/jpeg`; der rohe Wert des CDN
+  nie mehr. Vorhandene Cache-Einträge werden beim Ausliefern ebenso normiert.
+

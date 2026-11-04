@@ -64,6 +64,10 @@ export const FEHLER = {
                                  en: 'Change the password via "Change password".' },
   fremde_herkunft:             { de: 'Diese Anfrage kam nicht von dieser Seite.',
                                  en: 'This request did not come from this site.' },
+  fremder_host:                { de: 'Dieser Server antwortet nur unter {adresse}.',
+                                 en: 'This server only answers at {adresse}.' },
+  bestaetigungslink_ungueltig: { de: 'Der Bestätigungslink ist ungültig oder abgelaufen.',
+                                 en: 'The confirmation link is invalid or has expired.' },
   app_zu_alt:                  { de: 'Diese App ist zu alt für den Server (nötig: Schnittstelle {min}) — bitte die App aktualisieren.',
                                  en: 'This app is too old for the server (needs interface {min}) — please update the app.' },
   nur_mit_sitzung:             { de: 'Das geht nur aus einer angemeldeten Browser-Sitzung.',
@@ -190,6 +194,8 @@ export const FEHLER = {
   anfrage_json_ungueltig:      { de: 'Die Anfrage ist kein gültiges JSON', en: 'The request body is not valid JSON' },
   anfrage_zu_gross:            { de: 'Die Anfrage ist zu gross', en: 'The request is too large' },
   anfrage_unlesbar:            { de: 'Die Anfrage ist nicht lesbar', en: 'The request cannot be read' },
+  anfrage_ungueltig:           { de: 'Die Anfrage ist ungültig', en: 'The request is invalid' },
+  anfrage_zu_langsam:          { de: 'Die Anfrage kam zu langsam an', en: 'The request arrived too slowly' },
   interner_fehler:             { de: 'Interner Fehler — Einzelheiten stehen im Protokoll.', en: 'Internal error — see the server log for details.' },
   csv_parse_fehler:            { de: 'CSV Parse Fehler: {grund}', en: 'CSV parse error: {grund}' },
   kein_import_laeuft:          { de: 'Kein Import läuft', en: 'No import is running' },
@@ -354,6 +360,15 @@ export class Fachfehler extends Error {
   constructor(readonly code: FehlerCode, readonly status: number, readonly vars?: Record<string, string | number>) {
     super(fehlerText(code, 'de', vars));
     this.name = 'Fachfehler';
+  }
+}
+
+/** Ein eigener Satz ohne Code: handleRouteError zeigt ihn, den Text einer
+ * Bibliothek dagegen nicht. */
+export class Meldung extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'Meldung';
   }
 }
 
