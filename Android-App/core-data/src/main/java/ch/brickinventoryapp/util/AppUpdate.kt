@@ -2,12 +2,15 @@ package ch.brickinventoryapp.util
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.net.toUri
+import ch.brickinventoryapp.ressourcen.R
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -224,16 +227,44 @@ object Installationsmeldung {
     val fehler = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 }
 
+/** Die Aktion des Bestätigungsdialogs einer Installer-Sitzung (im SDK nur als SystemApi benannt). */
+const val INSTALLATION_BESTAETIGEN = "android.content.pm.action.CONFIRM_INSTALL"
+
+/**
+ * Wohin die Bestätigung führt, wenn das ein System-Installer ist, sonst `null`.
+ * Die Absicht kommt zwar nur über unsere PendingIntent; ungeprüft weitergereicht
+ * würde der Empfänger aber zum Sprungbrett zu einer beliebigen Activity samt
+ * Uri-Rechten. Gestartet wird danach genau die geprüfte Komponente.
+ */
+@Suppress("DEPRECATION") // die Fassungen mit ResolveInfoFlags gibt es erst ab API 33
+fun installerZiel(pm: PackageManager, bestaetigung: Intent): ComponentName? {
+    val rechte = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+    if (bestaetigung.flags and rechte != 0 || bestaetigung.selector != null) return null
+    val ziel = pm.resolveActivity(bestaetigung, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo ?: return null
+    val installer = pm.queryIntentActivities(Intent(INSTALLATION_BESTAETIGEN), PackageManager.MATCH_DEFAULT_ONLY)
+        .mapNotNull { it.activityInfo }
+        .filter { (it.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM != 0 }
+        .map { it.packageName }
+    return ComponentName(ziel.packageName, ziel.name).takeIf { ziel.packageName in installer }
+}
+
 /**
  * Die Antwort der Installer-Sitzung. Verlangt das System eine Bestätigung, zeigt
- * es dafür seinen eigenen Dialog (EXTRA_INTENT); dieser Empfänger ist nicht
- * exportiert, die Absicht kommt also nur vom System über unsere PendingIntent.
+ * es dafür seinen eigenen Dialog (EXTRA_INTENT), aber nur, wenn er zum
+ * System-Installer führt ([installerZiel]).
  */
 class InstallationsEmpfaenger : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                bestaetigung(intent)?.let { ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                val dialog = bestaetigung(intent)
+                val ziel = dialog?.let { installerZiel(ctx.packageManager, it) }
+                if (dialog != null && ziel != null) {
+                    ctx.startActivity(Intent(dialog).setComponent(ziel).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } else {
+                    Installationsmeldung.fehler.value = ctx.getString(R.string.update_installer_fremd)
+                }
             }
             PackageInstaller.STATUS_SUCCESS -> Unit
             else -> Installationsmeldung.fehler.value =

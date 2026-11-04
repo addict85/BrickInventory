@@ -267,23 +267,29 @@ class UpdateViewModel @Inject constructor(
      * Systemeinstellungen auf der Platte liegt.
      */
     fun starteInstallation() {
-        val datei = updateDatei(ctx)
         val gemeldet = _state.value.neuereFassung?.versionCode ?: 0
         val pruefsumme = _state.value.neuereFassung?.apkSha256.orEmpty()
-        if (!datei.isFile || !pruefsummePasst(datei, pruefsumme) || !signaturPasst(ctx, datei) ||
-            !fassungPasst(apkFassung(ctx, datei), gemeldet, fassung.code)) {
-            datei.delete()
-            _state.update {
-                it.copy(bereitZurInstallation = false, fehler = texte.text(R.string.update_signatur_falsch))
-            }
-            return
-        }
-        if (!darfInstallieren(ctx)) {
-            _state.update { it.copy(erlaubnisFehlt = true) }
-            return
-        }
         viewModelScope.launch {
-            withContext(Dispatchers.IO) { runCatching { installiere(ctx, datei) } }
+            // Rund 46 MB hashen und zwei APK-Analysen: auf dem Hauptfaden droht ein ANR.
+            // Die Reihenfolge bleibt; `&&` bricht beim ersten Fehlschlag ab.
+            val geprueft = withContext(Dispatchers.IO) {
+                val datei = updateDatei(ctx)
+                val echt = datei.isFile && pruefsummePasst(datei, pruefsumme) && signaturPasst(ctx, datei) &&
+                    fassungPasst(apkFassung(ctx, datei), gemeldet, fassung.code)
+                if (!echt) datei.delete()
+                datei.takeIf { echt }
+            }
+            if (geprueft == null) {
+                _state.update {
+                    it.copy(bereitZurInstallation = false, fehler = texte.text(R.string.update_signatur_falsch))
+                }
+                return@launch
+            }
+            if (!darfInstallieren(ctx)) {
+                _state.update { it.copy(erlaubnisFehlt = true) }
+                return@launch
+            }
+            withContext(Dispatchers.IO) { runCatching { installiere(ctx, geprueft) } }
                 .onFailure {
                     _state.update { s -> s.copy(fehler = texte.text(R.string.update_installer_fehlt)) }
                 }
