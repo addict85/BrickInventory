@@ -191,6 +191,8 @@ function zeigeAnsicht(ansicht, unter) {
 
 /** Die Adresse zeigte etwas anderes als die Ansicht: sagen, warum. */
 function sageUmleitung(grund) {
+  // Eine Umleitung ersetzt die vorige: Mehrere falsche Adressen hintereinander stapelten sonst Hinweise.
+  verwirfToasts();
   toast(tRaw(grund === 'verwalter' ? 'router.nur_verwalter' : 'router.unbekannt'), 'info');
 }
 /** `#/…` ist ein Pfad der App; `#inhalt` oder `#` (Sprungverweis) nicht. */

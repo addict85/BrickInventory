@@ -171,6 +171,19 @@ import { merkpostenLoeschen } from './16-merkliste.js';
     const knopf = document.getElementById(id);
     if (knopf && !knopf.disabled) knopf.click();
   });
+  // Mit mehr als einem Textfeld und ohne Absendeknopf sendet der Browser bei
+  // Enter nicht ab (auch verborgene Felder zählen). Dann löst Enter hier den
+  // Knopf aus, den `data-submit` nennt.
+  document.addEventListener('keydown', ev => {
+    if (ev.key !== 'Enter' || ev.isComposing || ev.defaultPrevented) return;
+    const feld = ev.target;
+    if (!(feld instanceof HTMLInputElement) || /^(button|submit|reset|checkbox|radio|file|image)$/.test(feld.type)) return;
+    const id = feld.form?.getAttribute('data-submit');
+    if (!id || feld.form.querySelector('[type="submit"]')) return;
+    ev.preventDefault();
+    const knopf = /** @type {HTMLButtonElement|null} */ (document.getElementById(id));
+    if (knopf && !knopf.disabled) knopf.click();
+  });
 
   // ── Bilder: Fehler- und Ladezustand ───────────────────────────────────────
   // error und load steigen nicht auf, lassen sich aber in der Capture-Phase am

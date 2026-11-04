@@ -1436,3 +1436,15 @@ Telefon die Webseite.
   (JPEG, PNG, GIF, WebP, AVIF), sonst `image/jpeg`; der rohe Wert des CDN
   nie mehr. Vorhandene Cache-Einträge werden beim Ausliefern ebenso normiert.
 
+## 36. Runde 11 – Erststart des Verwalters ohne dritte Passwortabfrage
+
+- `POST /api/v1/auth/zweiter-faktor/einrichten` geht bis fünf Minuten nach
+  einer Anmeldung mit Passwort (oder einem Passwortwechsel) in **derselben
+  Sitzung** einmal ohne `password`. Mit App-Token gibt es diese Frist nie; die
+  Android-App schickt das Passwort wie bisher mit.
+- Ohne Passwort und ohne Frist antwortet die Route jetzt mit 400
+  `aktuelles_passwort_erforderlich` (vorher `aktuelles_passwort_falsch`); die
+  Bremse für Fehlversuche zählt das nicht mehr mit.
+- Eingerichtet ist der zweite Faktor weiterhin erst mit dem Code aus der App.
+  Sitzungen von vor dem Update haben keine Frist; nach dem Update genügt eine
+  neue Anmeldung.

@@ -24,9 +24,17 @@ export async function loadParts(){
   await loadPartsData();
 }
 
+/** Platzhalter einer Kennzahl, solange sie lädt — „—“ hiesse „kein Wert“. */
+const WERT_SKELETT = '<span class="skelett-zeile skelett-wert" aria-hidden="true"></span>';
+
 async function loadPartsStats(){
+  const felder = ['ps-total', 'ps-unique', 'ps-colors'];
+  const box = G('parts-stats-bar');
+  if (!G('ps-total').dataset.geladen) { for (const id of felder) G(id).innerHTML = WERT_SKELETT; box?.setAttribute('aria-busy', 'true'); }
   const d=await api('GET','/v1/parts/stats'+scopeQuery('parts'));
-  if(!d.success) return;
+  box?.removeAttribute('aria-busy');
+  if(!d.success){ if (!G('ps-total').dataset.geladen) for (const id of felder) G(id).textContent = '—'; return; }
+  G('ps-total').dataset.geladen = '1';
   const s=d.stats;
   // Wie die Kachel der Sammlung: Teile aus Sets und einzeln erfasste zusammen.
   const einzeln=s.manual_parts||0;
@@ -383,7 +391,7 @@ function updatePartsSentinel(){
   if (!s) return;
   if (_partsDone){
     s.innerHTML = _partsTotal
-      ? `<div data-stil="text-align:center;color:var(--mut);font-size:var(--fs-2);padding:1rem">${_partsTotal.toLocaleString(locale())} ${t('parts.stat.types')}</div>`
+      ? `<div data-stil="text-align:center;color:var(--mut);font-size:var(--fs-2);padding:1rem">${esc(tRaw('parts.eintraege', { n: _partsTotal }))}</div>`
       : '';
   } else {
     s.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });

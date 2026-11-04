@@ -36,14 +36,14 @@ function setChartPeriod(period){
 let _letzteKurve = null;
 let _kurveBreite = 0;
 /** Einstand und Währung der Kennzahlen — die Bezugslinie im Wertdiagramm. */
-let _einstand = 0, _waehrung = '';
+let _einstand = 0, _waehrung = '', _einstandText = '';
 window.addEventListener('resize', () => {
   const el = G('portfolio-chart');
   if (!_letzteKurve || !el?.querySelector('svg')) return;
   const b = diagrammBreite(el);
   if (Math.abs(b - _kurveBreite) < 24) return;
   _kurveBreite = b;
-  el.innerHTML = portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || CURRENCY);
+  el.innerHTML = portfolioChartSVG(_letzteKurve, _chartPeriod, b, _einstand, _waehrung || CURRENCY, _einstandText || undefined);
 });
 
 /** Hinweis statt Kurve, wenn der Verlauf nicht zu holen war — im selben
@@ -98,7 +98,7 @@ async function loadPortfolioChart(){
   }));
   _letzteKurve = finalChartData;
   _kurveBreite = diagrammBreite(el);
-  el.innerHTML = portfolioChartSVG(finalChartData, _chartPeriod, _kurveBreite, _einstand, cur);
+  el.innerHTML = portfolioChartSVG(finalChartData, _chartPeriod, _kurveBreite, _einstand, cur, _einstandText || undefined);
 
   // P&L: use server-computed period_change_pct (compares period start vs current)
   const pnlEl = G('portfolio-pnl');
@@ -166,14 +166,19 @@ function priceStatusBadge(s){
 
 /** Platzhalter einer Kennzahl, solange sie lädt — „—“ hiesse „kein Wert“. */
 const WERT_SKELETT = '<span class="skelett-zeile skelett-wert" aria-hidden="true"></span>';
+/** Alle Kennzahlen laden gleich: Gerüst statt „—“, auch Gewinn/Verlust. */
+const KENNZAHLEN = ['fin-einstand', 'fin-wert', 'fin-total-pnl', 'portfolio-current'];
 
 export async function loadFinance(){
   const hatteTabelle = !!G('fin-tbl').querySelector('table');
   if (!hatteTabelle) G('fin-tbl').innerHTML = ladeAnzeige(t('finance.fetch_prices'));
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').setAttribute('aria-busy', 'true');
-    for (const id of ['fin-einstand', 'fin-wert', 'portfolio-current']) G(id).innerHTML = WERT_SKELETT;
+    for (const id of KENNZAHLEN) G(id).innerHTML = WERT_SKELETT;
   }
+  // Ein Fehler vom letzten Mal bleibt nicht stehen, während neu geladen wird.
+  const kurve = G('portfolio-chart');
+  if (kurve?.querySelector('.fehler-zustand')) kurve.innerHTML = ladeAnzeige(t('common.loading'), { klein: true });
   // Fetch all finance data in parallel
   const [d, partsVal, figsVal, pnlData] = await Promise.all([
     // Alle vier mit demselben Kontofilter — sonst stünde eine Summe aus
@@ -189,7 +194,7 @@ export async function loadFinance(){
     if (!_letzteKurve) G('portfolio-chart').innerHTML = diagrammNichtDa(!!d.networkError, d);
     if (!G('fin-sum').dataset.geladen) {
       G('fin-sum').removeAttribute('aria-busy');
-      for (const id of ['fin-einstand', 'fin-wert', 'portfolio-current']) G(id).textContent = '—';
+      for (const id of KENNZAHLEN) G(id).textContent = '—';
     }
     return;
   }
@@ -383,6 +388,8 @@ export async function loadFinance(){
   window._finGrandTotal  = kopfWert;
   if(G('portfolio-current')) G('portfolio-current').textContent = kopfWert > 0 ? fmtN(kopfWert, cur) : '—';
   _einstand = basis.bewertet > 0 ? basis.einstand : einstand.alle; _waehrung = cur;
+  // Die Linie vergleicht mit der Wertkurve; fehlt Positionen der Marktpreis, nennt sie ihren Bezug.
+  _einstandText = basis.bewertet > 0 && Math.abs(basis.einstand - einstand.alle) >= 0.005 ? tRaw('finance.chart.einstand_basis') : '';
   const leer = !d.sets.length && !partsItems.length && !figsItems.length;
   G('tab-finance')?.classList.toggle('finanzen-leer', leer);
   loadPortfolioChart();
@@ -489,8 +496,8 @@ function basisAus(pt, ohnePreis) {
 /**
  * Die Karten über der Tabelle. Einstand, Marktwert und G/V rechnen über
  * dieselben Positionen (mit Kauf- und Marktpreis), damit Einstand + G/V =
- * Marktwert gilt; die Zeile darunter nennt, was nicht gerechnet ist.
- * Ohne eine solche Position stehen die Summen aller Positionen da, ohne G/V.
+ * Marktwert gilt. Fehlen Positionen, heisst die erste Karte nicht „gesamt“
+ * und nennt die Summe aller Kaufpreise (wie die Gesamtzeile) darunter.
  */
 function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehrung = 0 }) {
   G('fin-sum').dataset.geladen = '1';
@@ -498,10 +505,13 @@ function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehru
   const mitBasis = basis.bewertet > 0;
   const einstand = mitBasis ? basis.einstand : einstandAlle;
   const wert = mitBasis ? basis.wert : wertAlle;
+  const teilweise = mitBasis && Math.abs(einstandAlle - basis.einstand) >= 0.005;
+  G('fin-einstand-titel').textContent = tRaw(teilweise ? 'finance.stat.purchase_basis' : 'finance.stat.purchase');
   G('fin-einstand').textContent = einstand > 0 || mitBasis ? fmtN(einstand, cur) : '—';
   // Kaufpreise in anderer Währung zählt der Server nicht mit (keine Kurse).
   G('fin-einstand-sub').textContent = fremdeWaehrung > 0
-    ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung }) : tRaw('finance.stat.purchase_hint');
+    ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung })
+    : teilweise ? tRaw('finance.stat.purchase_von', { betrag: fmtN(einstandAlle, cur) }) : tRaw('finance.stat.purchase_hint');
   const fehlt = basis.ohneMarkt > 0 ? tRaw('finance.price_missing_n', { n: basis.ohneMarkt }) : '';
   if (wert > 0) {
     G('fin-wert').textContent = fmtN(wert, cur);

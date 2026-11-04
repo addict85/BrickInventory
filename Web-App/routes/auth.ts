@@ -7,7 +7,7 @@ import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
 import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, verifiziereEmailToken } from '../src/konto/auth';
 import { zielGedrosselt, kontoGedrosselt } from '../src/konto/zielDrossel';
-import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
+import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName, zweiterFaktorPflicht, gnadenfristVerbrauchen } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
 import { bestaetigeEinrichtungGebremst } from '../src/konto/passwortBestaetigung';
@@ -57,7 +57,7 @@ async function tokenAngaben(klartext: string) {
 type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
 
 /** Sitzung, Token und Antwort — derselbe Weg nach Passwort und Passkey. */
-async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet, mitToken: boolean) {
+async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet, mitToken: boolean, mitPasswort = false) {
   const { label, never_expires, scope } = req.body ?? {};
   const uid = Number(user.id);
   // Token ODER Sitzung: Die Sitzung trüge die vollen Rechte am Scope des Tokens vorbei.
@@ -66,6 +66,8 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
     username: user.username,
     isAdmin:  user.is_admin,
     mussPasswortAendern: user.must_change_password === true,
+    // Nur nach einem Passwort, nicht nach einem Passkey allein: Grundlage der Gnadenfrist.
+    ...(mitPasswort ? { passwortBestaetigtAm: Date.now() } : {}),
   });
   // Ein Token, den die Datenbank nie sah, liefe im SSE-Kanal in ein 401.
   const dauerhaft = never_expires === true;
@@ -114,7 +116,7 @@ router.post('/login', async (req, res: Antwort<'POST /api/v1/auth/login'>) => {
     }
     return sendeFehler(req, res, status, code, vars);
   }
-  await angemeldetAntworten(req, res, pruefung.user as Angemeldet, ohne_token !== true);
+  await angemeldetAntworten(req, res, pruefung.user as Angemeldet, ohne_token !== true, true);
 });
 
 /** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt.
@@ -399,7 +401,8 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   await K.aendereEigenesPasswort(uid, newPassword, { passkeysWiderrufen: req.body?.passkeys_widerrufen === true });
   hinweisNebenher(uid, 'passwort_geaendert');
   if (req.session?.userId) {
-    const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin, mussPasswortAendern: false };
+    const _self = { userId: uid, username: req.session.username, isAdmin: req.session.isAdmin, mussPasswortAendern: false,
+                    passwortBestaetigtAm: Date.now() };
     await establishSession(req, _self);
   }
   res.json({ success: true });
@@ -429,7 +432,12 @@ router.get('/zweiter-faktor', requireLogin, async (req, res: Antwort<'GET /api/v
 
 router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/einrichten'>) => {
   const uid = angemeldeteNutzerId(req);
-  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
+  // Gleich nach der Anmeldung (Erststart des Verwalters) kein drittes Passwort.
+  // Ohne Frist und ohne Passwort die Absage vor der Prüfung: Sie zählt nicht zur Bremse.
+  const ohnePasswort = req.body?.password === undefined || req.body?.password === '';
+  if (ohnePasswort && !await zf.istAktiv(uid)) {
+    if (!gnadenfristVerbrauchen(req)) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
+  } else if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
   const geheimnis = await zf.beginneEinrichtung(uid);
   if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
   const u = await K.kontoKurz(uid);

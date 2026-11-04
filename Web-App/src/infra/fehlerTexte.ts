@@ -236,6 +236,12 @@ export const FEHLER = {
   // ── Einrichtung ──────────────────────────────────────────────────────────
   quelle_unbekannt:            { de: 'Unbekannte Quelle', en: 'Unknown source' },
   quelle_test_fehlgeschlagen:  { de: 'Verbindung fehlgeschlagen: {grund}', en: 'Connection failed: {grund}' },
+  quelle_ohne_schluessel:      { de: 'Für {quelle} ist noch kein Zugang gespeichert. Bitte eintragen und erneut prüfen.',
+                                 en: 'No access for {quelle} is saved yet. Please enter it and check again.' },
+  quelle_nicht_erreichbar:     { de: '{quelle} ist nicht erreichbar. Bitte die Internetverbindung des Servers prüfen.',
+                                 en: '{quelle} cannot be reached. Please check the server’s internet connection.' },
+  quelle_abgelehnt:            { de: '{quelle} hat den Zugang abgelehnt. Bitte die eingetragenen Werte prüfen.',
+                                 en: '{quelle} rejected the access. Please check the values you entered.' },
 
   // ── Zweiter Faktor ───────────────────────────────────────────────────────
   zweiter_faktor_noetig:       { de: 'Bitte den Code aus der Authenticator-App eingeben.',

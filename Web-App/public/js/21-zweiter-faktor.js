@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, esc, toast } from './01-core.js';
+import { ico, G, api, esc, toast, formularFehler } from './01-core.js';
 import { confirmDelete, bestaetigeMitPasswort, mitPasswortBestaetigen, mitZweitemFaktor } from './07-admin.js';
 import { loadUsers } from './05-settings.js';
 
@@ -15,8 +15,11 @@ if (typeof document !== 'undefined') document.addEventListener('zweitpflicht', (
 
 function zeichne(html) { const f = flaeche(); if (f) f.innerHTML = html; }
 
+// Im Anmeldebildschirm stehen die Knöpfe breit untereinander wie „Abmelden“ darunter.
+const knopfArt = () => pflicht ? 'knopf-breit' : 'btn-sm';
 const knopf = (aktion, text, art = 'bs') =>
-  `<button type="button" class="btn ${art} btn-sm" data-click="${aktion}"${echt()}>${text}</button>`;
+  `<button type="button" class="btn ${art} ${knopfArt()}" data-click="${aktion}"${echt()}>${text}</button>`;
+const reihe = (inhalt) => `<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${inhalt}</div>`;
 // Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js
 // findet nur wörtliche id-Angaben. Das Passwort fragt der Dialog beim Auslösen.
 const CODEFELD = (label, laenge = 24) =>
@@ -28,8 +31,10 @@ export async function ladeZweitenFaktor() {
   if (!d?.success) { zeichne(`<div class="voucher-leer">${t('settings.error')}</div>`); return; }
   if (!d.aktiv) {
     zeichne(`<form class="sform" data-submit="zf-start" data-stil="max-width:420px">
-      <div><button type="button" class="btn bp btn-sm" id="zf-start" data-click="zfEinrichten"${echt()}>${t('zf.setup')}</button></div>
+      <div><button type="button" class="btn bp ${knopfArt()}" id="zf-start" data-click="zfEinrichten"${echt()}>${t('zf.setup')}</button></div>
     </form>`);
+    // Im Anmeldebildschirm ist „Einrichten“ der einzige nächste Schritt.
+    if (pflicht) G('zf-start')?.focus();
     return;
   }
   zeichne(`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${esc(tRaw('zf.active', { n: d.codes_uebrig }))}</p>
@@ -43,24 +48,30 @@ export async function ladeZweitenFaktor() {
 }
 
 export async function zfEinrichten() {
-  const d = await mitPasswortBestaetigen(tRaw('zf.title'), (password, z) => api('POST', '/v1/auth/zweiter-faktor/einrichten', { password, ...z }));
+  // Kurz nach der Anmeldung lässt der Server das Passwort weg (Gnadenfrist);
+  // sonst antwortet er ohne Zählen mit aktuelles_passwort_erforderlich.
+  let d = await api('POST', '/v1/auth/zweiter-faktor/einrichten', {});
+  if (d?.code === 'aktuelles_passwort_erforderlich')
+    d = await mitPasswortBestaetigen(tRaw('zf.title'), (password, z) => api('POST', '/v1/auth/zweiter-faktor/einrichten', { password, ...z }));
   if (!d) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Gruppiert lesbar, falls jemand den Schlüssel von Hand eintippt.
   const lesbar = d.geheimnis.replace(/(.{4})/g, '$1 ').trim();
-  zeichne(`<div class="sform" data-stil="max-width:420px">
+  zeichne(`<form class="sform" data-submit="zf-bestaetigen" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0">${t('zf.scan')}</p>
       <div id="zf-qr" data-stil="background:#fff;padding:8px;align-self:flex-start;border-radius:8px"></div>
       <div data-stil="font-size:var(--fs-1);color:var(--mut)">${t('zf.manual')}<br><code data-stil="user-select:all;font-size:var(--fs-3)">${esc(lesbar)}</code></div>
+      <div class="lerr" id="zf-fehler" role="alert"></div>
       ${CODEFELD(t('zf.confirm_code'), 6)}
-      <div data-stil="display:flex;gap:.5rem">
-        <button type="button" class="btn bp btn-sm" data-click="zfBestaetigen">${t('zf.confirm')}</button>
-        ${knopf('ladeZweitenFaktor', t('common.cancel'))}
-      </div>
-    </div>`);
+      ${reihe(`<button type="button" class="btn bp ${knopfArt()}" id="zf-bestaetigen" data-click="zfBestaetigen">${t('zf.confirm')}</button>
+        ${pflicht ? '' : knopf('ladeZweitenFaktor', t('common.cancel'))}`)}
+    </form>`);
   const qr = G('zf-qr');
   if (qr && typeof QRCode !== 'undefined') {
     new QRCode(qr, { text: d.otpauth, width: 200, height: 200, colorDark: '#1e293b', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    // Die Bibliothek legt Leinwand und Bild ohne Namen an; vorgelesen wird der Zweck.
+    qr.querySelector('img')?.setAttribute('alt', tRaw('zf.qr_alt'));
+    qr.querySelector('canvas')?.setAttribute('aria-hidden', 'true');
   } else if (qr) qr.textContent = d.otpauth;
   G('zf-code')?.focus();
 }
@@ -69,16 +80,24 @@ function zeigeCodes(codes) {
   zeichne(`<div class="sform" data-stil="max-width:420px">
       <p data-stil="font-size:var(--fs-2);margin:0"><strong>${t('zf.codes_title')}</strong><br>${t('zf.codes_hint')}</p>
       <pre id="zf-codes" data-stil="font-size:var(--fs-3);line-height:1.6;background:var(--s50,#f8fafc);border:1px solid var(--bdr);border-radius:8px;padding:.6rem .9rem;margin:0;user-select:all">${codes.map(esc).join('\n')}</pre>
-      <div data-stil="display:flex;gap:.5rem;flex-wrap:wrap">
-        ${knopf('zfCodesKopieren', t('zf.copy'))}
-        <button type="button" class="btn bp btn-sm" data-click="${pflicht ? 'zfPflichtFertig' : 'ladeZweitenFaktor'}">${t('zf.codes_done')}</button>
-      </div>
+      ${reihe(`${knopf('zfCodesKopieren', t('zf.copy'))}
+        <button type="button" class="btn bp ${knopfArt()}" id="zf-gespeichert" data-click="${pflicht ? 'zfPflichtFertig' : 'ladeZweitenFaktor'}">${t('zf.codes_done')}</button>`)}
     </div>`);
+  G('zf-gespeichert')?.focus();
 }
 
 export async function zfBestaetigen() {
-  const d = await api('POST', '/v1/auth/zweiter-faktor/bestaetigen', { code: G('zf-code')?.value || '' });
-  if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
+  const feld = G('zf-code'), fehler = G('zf-fehler');
+  const code = (feld?.value || '').trim();
+  if (!code) { if (fehler) formularFehler(fehler, tRaw('zf.code_leer'), ['zf-code']); return; }
+  const d = await api('POST', '/v1/auth/zweiter-faktor/bestaetigen', { code });
+  if (!d?.success) {
+    // Am Feld statt als Toast: Der Fehler gehört zum Code, und ein Toast stünde
+    // nach dem richtigen Code noch neben „eingerichtet“.
+    if (fehler) { formularFehler(fehler, d?.error || tRaw('settings.error'), ['zf-code']); feld?.select?.(); }
+    else toast(d?.error || tRaw('settings.error'), 'error');
+    return;
+  }
   toast(tRaw('zf.enabled'), 'success');
   zeigeCodes(d.codes);
 }

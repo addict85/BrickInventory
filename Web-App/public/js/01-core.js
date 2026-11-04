@@ -1103,6 +1103,12 @@ if (typeof document !== 'undefined') document.addEventListener('input', (ev) => 
 function zeigePflichtwechsel(){
   G('login-screen').style.display='flex'; startgeruestWeg(); G('app').style.display='none';
   showPanel('pflichtwechsel');
+  // Das Startpasswort wurde eben getippt und reist aus dem Anmeldefeld mit,
+  // statt ein zweites Mal gefragt zu werden. Nach einem Neuladen fehlt es; dann steht das Feld da.
+  const eben = G('lp').value;
+  G('pflicht-alt').value = eben; G('lp').value = '';
+  G('pflicht-alt-zeile').hidden = !!eben;
+  G(eben ? 'pflicht-neu' : 'pflicht-alt').focus();
 }
 // Verwalter ohne zweiten Faktor: Der Server lässt nur dessen Einrichtung zu (403
 // zweiter_faktor_pflicht); js/21-zweiter-faktor.js zeichnet sie in das Feld.
@@ -1125,7 +1131,11 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   if(neu!==G('pflicht-wdh').value){ formularFehler(err, tRaw('settings.password.mismatch'), ['pflicht-wdh']); return; }
   const d=await mitZweitemFaktor(z => api('POST','/v1/auth/change-password',{ current: alt, newPassword: neu, ...z }));
   if(!d) return;
-  if(!d.success){ formularFehler(err, d.error||tRaw('settings.error'), ['pflicht-alt']); return; }
+  if(!d.success){
+    // Stimmt das mitgenommene Passwort nicht, muss das Feld wieder her.
+    const altFalsch = d.code==='aktuelles_passwort_falsch';
+    if(altFalsch) G('pflicht-alt-zeile').hidden=false;
+    formularFehler(err, d.error||tRaw('settings.error'), [altFalsch?'pflicht-alt':'pflicht-neu']); return; }
   location.reload();
 });
 
@@ -1538,7 +1548,7 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   routeBeimStart();
 }
 G('btn-login').onclick=doLogin;
-['lu','lp','lc'].forEach(id=>G(id).addEventListener('keydown',e=>e.key==='Enter'&&doLogin()));
+['lu','lp','lc'].forEach(id=>G(id).addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); doLogin(); } }));
 async function doLogin(){
   const b=G('btn-login'); const frei=knopfBesetzt(b);
   const code=G('lc').value.trim();
@@ -1558,7 +1568,10 @@ async function doLogin(){
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
     formularFehler(G('lerr'), ''); G('login-hinweis').hidden = true;
-    oeffneApp(); } else { const err=d.error||tRaw('settings.error'); formularFehler(G('lerr'), err, ['lp','lu']); if(d.unverified||d.code==='email_nicht_bestaetigt'){ G('lerr').innerHTML=esc(err)+' <a href="#" data-click="bestaetigungErneut" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
+    oeffneApp(); } else { const err=d.error||tRaw('settings.error');
+    // Fokus ins erste leere Feld; sind beide gefüllt, stimmt meist das Passwort nicht.
+    const leer=['lu','lp'].filter(id=>!G(id).value);
+    formularFehler(G('lerr'), err, leer.length ? leer : ['lp','lu']); if(d.unverified||d.code==='email_nicht_bestaetigt'){ G('lerr').innerHTML=esc(err)+' <a href="#" data-click="bestaetigungErneut" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
