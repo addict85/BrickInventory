@@ -82,11 +82,11 @@ fun LagerortFeld(
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen)
             },
-            // Mit Beschriftung so breit wie die Felder darüber; ohne Breite blieb das
-            // Feld bei Materials 280 dp stehen und war im Dialog schmaler als die anderen.
+            // So breit, wie der Aufrufer es vorgibt: Ohne Breite blieb das Feld bei Materials
+            // 280 dp stehen — im Dialog schmaler als die anderen, im Detail halb so breit.
             modifier = Modifier.menuAnchor(
                 ExposedDropdownMenuAnchorType.PrimaryEditable, true)
-                .then(if (beschriftung != null) Modifier.fillMaxWidth() else Modifier),
+                .fillMaxWidth(),
         )
         ExposedDropdownMenu(
             expanded = offen && passend.isNotEmpty(),

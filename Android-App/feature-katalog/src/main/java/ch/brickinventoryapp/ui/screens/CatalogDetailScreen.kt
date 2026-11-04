@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.KatalogDetailAnsicht
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
@@ -42,6 +45,7 @@ import ch.brickinventoryapp.ui.zweiSpaltig
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
+import kotlinx.coroutines.launch
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
@@ -91,6 +95,9 @@ fun CatalogDetailScreen(
     // Drehung) veraltete Werte liefern (Lint: LocalContextGetResourceValueCall). In
     // der Komposition wertet Compose bei einer Änderung neu aus.
     val keineAppText = stringResource(R.string.common_no_app_to_open)
+    // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
+    val meldungen = remember { SnackbarHostState() }
+    val bereich = rememberCoroutineScope()
 
     val rollen = rememberScrollState()
     // Wo die Überschrift im gerollten Inhalt endet. Erst wenn sie unter der App-Leiste
@@ -99,6 +106,7 @@ fun CatalogDetailScreen(
     val titelOben by remember { derivedStateOf { rollen.value > kopfUnten } }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
             TopAppBar(
                 title = {
@@ -143,8 +151,7 @@ fun CatalogDetailScreen(
                         onBrickLink = { url ->
                             // Nicht still schlucken: Ist kein Browser da, passierte sonst nichts.
                             if (!ch.brickinventoryapp.util.oeffneExtern(ctx, url)) {
-                                android.widget.Toast.makeText(ctx, keineAppText,
-                                    android.widget.Toast.LENGTH_SHORT).show()
+                                bereich.launch { meldungen.showSnackbar(keineAppText) }
                             }
                         },
                     )
@@ -254,33 +261,22 @@ private fun ColumnScope.KatalogAngaben(
         }
     }
 
-    // Aufnehmen ist die häufigere Handlung und steht deshalb vorn und gefüllt; Merken
-    // daneben umrandet. labelMedium und eine Zeile, weil sich zwei Knöpfe die Breite
-    // teilen — „In Galerie aufnehmen“ stünde bei labelLarge auf 360 dp über dem Rand.
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        Button(
-            onClick = onAufnehmen,
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
-        ) {
-            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-            Spacer(Modifier.width(Abstaende.winzig))
-            Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
-                maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium)
-        }
-        OutlinedButton(
-            onClick = onMerken,
-            modifier = Modifier.weight(1f),
-            contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
-        ) {
-            Icon(Icons.Default.BookmarkAdd, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-            Spacer(Modifier.width(Abstaende.winzig))
-            Text(stringResource(R.string.wanted_add_submit),
-                maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium)
-        }
+    // Untereinander in voller Breite wie im Merkposten-Detail: Nebeneinander war
+    // „Zur Sammlung hinzufügen“ schon bei normaler Schrift gekürzt. Aufnehmen ist die
+    // häufigere Handlung und steht oben und gefüllt, Merken darunter umrandet.
+    Button(onClick = onAufnehmen, modifier = Modifier.fillMaxWidth()) {
+        Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+        Spacer(Modifier.width(Abstaende.klein))
+        Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
+            textAlign = TextAlign.Center)
+    }
+    OutlinedButton(onClick = onMerken, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+        Icon(Icons.Default.BookmarkAdd, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+        Spacer(Modifier.width(Abstaende.klein))
+        Text(stringResource(R.string.wanted_add_submit), textAlign = TextAlign.Center)
     }
     if (detail.owned) {
-        OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
             Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.catalog_open_in_gallery))

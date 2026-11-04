@@ -5,9 +5,14 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Formen
 
 /**
  * Der Kopf von Einrichten und Anmelden: Logo in gerahmter Kachel, Name, darunter
@@ -48,4 +54,29 @@ fun MarkenKopf(modifier: Modifier = Modifier, untertitel: String? = null) {
         if (untertitel != null) Text(untertitel, style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
+}
+
+/**
+ * Die Karte unter dem Markenkopf: Anmelden, Registrieren, Startpasswort und zweiter
+ * Faktor stehen gleich gerahmt da. Vorher lagen die beiden Pflichtmasken frei auf dem
+ * Grund, mit anderer Überschrift — es sah nach zwei Apps aus.
+ */
+@Composable
+fun AnmeldeKarte(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = Formen.chip,
+        elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+    ) {
+        Column(Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel), content = inhalt)
+    }
+}
+
+/** Die Überschrift in einer [AnmeldeKarte] — dieselbe für jede der vier Masken. */
+@Composable
+fun AnmeldeTitel(text: String) {
+    Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium,
+        modifier = Modifier.semantics { heading() })
 }

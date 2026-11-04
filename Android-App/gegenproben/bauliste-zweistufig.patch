@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.UnterseitenTest
 Rot: Bauliste entsteht
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-index 840d03f..8aea90c 100644
+index b68519c..8fcba5b 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-@@ -275,7 +275,7 @@ fun PartsListScreen(
-                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                     Button(
-                         onClick = { erstellen() },
--                        enabled = (sets.isNotEmpty() || setInput.isNotBlank()) && !isLoading,
-+                        enabled = sets.isNotEmpty() && !isLoading,
-                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                     ) {
-                         // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
+@@ -276,7 +276,7 @@ fun PartsListScreen(
+                 // gleichrangig nebeneinander.
+                 Button(
+                     onClick = { erstellen() },
+-                    enabled = (sets.isNotEmpty() || setInput.isNotBlank()) && !isLoading,
++                    enabled = sets.isNotEmpty() && !isLoading,
+                     modifier = Modifier.fillMaxWidth(),
+                 ) {
+                     // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst

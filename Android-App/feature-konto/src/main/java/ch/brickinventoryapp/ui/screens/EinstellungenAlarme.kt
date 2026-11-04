@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
  * steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen ist; die Zeile
  * öffnet das Set nur, wenn es in der Sammlung liegt.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PreisalarmeCard(
     vm: EinstellungenViewModel,
@@ -106,8 +107,10 @@ internal fun PreisalarmeCard(
                         Text(if (a.name != null) "${a.setNumber} · $zustand" else zustand,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                        // FlowRow: In einer Row nahm die Plakette die ganze Breite, und „zuletzt …“
+                        // brach Zeichen für Zeichen um. So rückt der Preis darunter, wenn es eng wird.
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+                            verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                             AlarmZustandPlakette(a.ausgeloest)
                             a.zuletztPreis?.let {
                                 Text(stringResource(R.string.alerts_last,
@@ -199,8 +202,10 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
         border = if (ausgeloest)
             BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
     ) {
+        // Ein Wort, eine Zeile: Was der ausgelöste Alarm abwartet, sagt die Zeile unter dem Feld.
         Text(
             text,
+            maxLines = 1,
             style = MaterialTheme.typography.labelSmall,
             // Auch das Gewicht traegt mit: Ein aktiver Alarm ist der Zustand,
             // auf den es ankommt.

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -114,16 +116,22 @@ fun GutscheineCard(
         // Fortschritt der Guthaben-Abfrage steht darunter im Text: Bei einer Abfrage je
         // 30 Sekunden dauern vier Karten gut anderthalb Minuten.
         val lauf = zustand.guthabenLauf
+        // Auf dem Telefon stehen die drei untereinander und gleich breit: Mit ihrer eigenen
+        // Breite ergaben sie eine Treppe aus drei Längen.
+        val knopfBreite = if (breit) Modifier else Modifier.fillMaxWidth()
         FlowRow(verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            Button(onClick = { neu = true }) {
+            Button(onClick = { neu = true }, modifier = knopfBreite) {
                 Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_add))
             }
             OutlinedButton(
                 onClick = onGuthabenAlle,
+                modifier = knopfBreite,
                 enabled = lauf == null && zustand.gutscheine.any { !it.pin.isNullOrBlank() },
+                colors = nebenKnopfFarben(),
+                border = nebenKnopfRand(lauf == null && zustand.gutscheine.any { !it.pin.isNullOrBlank() }),
             ) {
                 // Kreisel an der Stelle des Symbols, nicht der Beschriftung (KnopfBreiteTest).
                 if (lauf != null) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -138,7 +146,7 @@ fun GutscheineCard(
             }
             // Ohne Gutscheine aus: Der Server antwortete mit 404, ein Betrachter mit
             // Fehlermeldung wäre der umständlichste Weg zu „du hast noch keine“.
-            OutlinedButton(onClick = { geschuetzt(onExportieren) }, enabled = zustand.gutscheine.isNotEmpty()) {
+            OutlinedButton(onClick = { geschuetzt(onExportieren) }, modifier = knopfBreite, enabled = zustand.gutscheine.isNotEmpty(), colors = nebenKnopfFarben(), border = nebenKnopfRand(zustand.gutscheine.isNotEmpty())) {
                 Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_export))
@@ -329,7 +337,7 @@ private fun GutscheinFormularBlatt(
         if (zustand.bearbeitet == null) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                OutlinedButton(onClick = onPdfWaehlen) {
+                OutlinedButton(onClick = onPdfWaehlen, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                     Icon(Icons.Default.UploadFile, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                     Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.vouchers_pick_pdf))

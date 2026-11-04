@@ -646,18 +646,20 @@ class BildschirmFotoVariantenTest {
         bricklink = ch.brickinventoryapp.ui.model.BrickLinkAnsicht(number = "10305-1",
             url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
 
-    private fun katalogDetailFoto(dunkel: Boolean, geraet: String) {
-        zeige("katalog-detail", dunkel = dunkel, geraet = geraet) {
+    private fun katalogDetailFoto(dunkel: Boolean, geraet: String, schrift: Float = 1f, name: String = "katalog-detail") {
+        zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
             ch.brickinventoryapp.ui.screens.CatalogDetailScreen(setNumber = "10305-1", detail = katalogDetail,
                 isLoading = false, imageLoader = bilder, serverUrl = "", onLoad = {},
                 onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
         }
         anhalten()
-        foto("katalog-detail", dunkel = dunkel, geraet = geraet)
+        foto(name, dunkel = dunkel, geraet = geraet)
     }
 
     @Test fun katalogDetailTelefon() = katalogDetailFoto(false, "telefon")
+    /** Beide Handlungen untereinander und ganz lesbar, auch bei 200 %. */
+    @Test fun katalogDetailSchrift200() = katalogDetailFoto(false, "telefon", 2f, "katalog-detail-schrift200")
     @Test fun katalogDetailTabletDunkel() = katalogDetailFoto(true, "tablet")
 
     @Test
@@ -691,21 +693,23 @@ class BildschirmFotoVariantenTest {
     @Test fun kontoTabletDunkel() = kontoFoto(true, "tablet")
 
     /** Preisalarme: einer scharf, einer schon ausgelöst. */
-    private fun preisalarmeFoto(dunkel: Boolean, geraet: String) {
+    private fun preisalarmeFoto(dunkel: Boolean, geraet: String, schrift: Float = 1f, name: String = "preisalarme") {
         welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"},
             {"set_number":"10294-1","condition":"N","richtung":"ueber","schwelle":440.0,"currency_code":"CHF",
              "ausgeloest":true,"zuletzt_am":"2026-10-30T09:00:00Z","zuletzt_preis":449.95}]}"""
         val vm = einstellungen()
-        zeige("preisalarme", dunkel = dunkel, geraet = geraet) {
+        zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
             ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite(vm = vm, imageLoader = bilder, serverUrl = "",
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
         }
         anhalten()
-        foto("preisalarme", dunkel = dunkel, geraet = geraet)
+        foto(name, dunkel = dunkel, geraet = geraet)
     }
 
     @Test fun preisalarmeTelefon() = preisalarmeFoto(false, "telefon")
+    /** Der ausgelöste Alarm bei 200 %: Plakette und letzter Preis brechen um, kein Zeichen einzeln. */
+    @Test fun preisalarmeSchrift200() = preisalarmeFoto(false, "telefon", 2f, "preisalarme-schrift200")
     @Test fun preisalarmeTabletDunkel() = preisalarmeFoto(true, "tablet")
 
     /** Teil aus Sets: auf dem Tablet rechts neben der Liste, auf dem Telefon als Dialog. */
@@ -741,16 +745,36 @@ class BildschirmFotoVariantenTest {
             .captureRoboImage(pfad(name, design, dunkel, geraet))
     }
 
-    /** Das Filterblatt der Sammlung: Konto, Lagerort und Thema mit Zurücksetzen. */
+    /**
+     * Das Filterblatt der Sammlung mit Lagerort und Thema. Die Beispieldaten hatten
+     * weder Themenliste noch Lagerorte, das Blatt zeigte nur Griff und Titel.
+     */
     @Test
     fun filterblattGalerie() {
-        val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
-        zeige("filter-galerie", bereit = galerieFertig(vm), zustand = { vm.galleryState.value }) { Galerie(vm) }
+        welt.pfade.antworten["/api/v1/sets"] = Beispiele.ANTWORTEN.first { it.first == "/api/v1/sets" }.second
+            .replaceFirst("\"total\":3,", "\"total\":3,\"themes\":[\"Icons\",\"Ideas\",\"Star Wars\"],")
+        welt.pfade.antworten["/api/v1/storage"] = """{"success":true,"orte":[
+            {"ort":"Keller","sets":2,"teile":40},{"ort":"Regal Wohnzimmer","sets":1,"teile":0}]}"""
+        val vm = welt.galerie().also { it.aktualisieren() }
+        zeige("filter-galerie", bereit = { galerieFertig(vm)() && vm.lagerState.value.orte.isNotEmpty() &&
+            vm.galleryState.value.galleryThemes.isNotEmpty() }, zustand = { vm.galleryState.value }) { Galerie(vm) }
         compose.onNodeWithContentDescription(ApplicationProvider.getApplicationContext<android.content.Context>()
             .getString(R.string.filter_button)).performClick()
         compose.waitForIdle()
-        anhalten()
+        blattAufziehen()
         blattFoto(R.string.filter_title, "filter-galerie", "classic", false, "telefon")
+    }
+
+    /**
+     * Das Blatt fährt in seinem eigenen Fenster hoch, und dessen Bildaufbau hängt an der
+     * Systemuhr des Loopers: Die Compose-Uhr allein liess es auf halbem Weg stehen.
+     */
+    private fun blattAufziehen() {
+        compose.mainClock.autoAdvance = false
+        repeat(30) {
+            compose.mainClock.advanceTimeBy(50)
+            shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(50))
+        }
     }
 
     // ── Pflichtmasken bei 200 % und der letzte Schritt des zweiten Faktors ──

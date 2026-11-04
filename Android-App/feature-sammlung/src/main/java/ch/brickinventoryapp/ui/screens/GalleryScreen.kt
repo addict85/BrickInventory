@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.model.KennzahlenAnsicht
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
@@ -10,6 +12,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -222,15 +227,17 @@ fun GalleryScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center)
                         // Derselbe Dialog wie der Plus-Knopf — kein zweiter Erfassungsweg.
-                        Button(onClick = { showAddDialog = true }) {
-                            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                            Spacer(Modifier.width(Abstaende.klein))
-                            Text(stringResource(R.string.gallery_add_first))
-                        }
-                        OutlinedButton(onClick = onScanBarcode) {
-                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                            Spacer(Modifier.width(Abstaende.klein))
-                            Text(stringResource(R.string.gallery_scan_barcode))
+                        ch.brickinventoryapp.ui.components.KnopfStapel {
+                            Button(onClick = { showAddDialog = true }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                                Spacer(Modifier.width(Abstaende.klein))
+                                Text(stringResource(R.string.gallery_add_first))
+                            }
+                            OutlinedButton(onClick = onScanBarcode, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                                Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                                Spacer(Modifier.width(Abstaende.klein))
+                                Text(stringResource(R.string.gallery_scan_barcode))
+                            }
                         }
                     }
                     GalerieAnzeige.KEINE_TREFFER -> GalerieHinweis {
@@ -447,7 +454,9 @@ fun SetCard(
                                 .memoryCacheKeyExtra("retry", retryNonce.toString())
                                 .crossfade(true).build() },
                             imageLoader = imageLoader,
-                            contentDescription = set.name,
+                            // Ohne Beschreibung: Die Kachel fasst ihren Inhalt zusammen, und der
+                            // Name stand darunter schon als Text — TalkBack las ihn zweimal.
+                            contentDescription = null,
                             onState = { st ->
                                 if (st is coil3.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
                                     // Verzögert, nicht im selben Moment: Direkt nach
@@ -484,16 +493,28 @@ fun SetCard(
                     // G&V als Marke auf dem Bild: In der Preiszeile brach sie neben „je Stück“
                     // um, und die Kachel wurde höher als ihre Nachbarin. Plaketten mit Abstand
                     // innerhalb des Bilds (PLAKETTE_RAND): Auf dessen Rand sassen sie über der Ecke.
+                    // Pfeil und Ansage „Gewinn …“: Eine nackte Zahl sagte nur, wer die Finanzen kennt.
                     val pct = preis?.pnlPct
-                    if (pct != null && kachelBetrag(set, preis) != null) Surface(
-                        color = MaterialTheme.colorScheme.surface,
-                        shape = Formen.etikett,
-                        modifier = Modifier.align(Alignment.TopStart).padding(PLAKETTE_RAND),
-                    ) {
-                        Text(fmtProzent(pct), Modifier.padding(horizontal = Abstaende.winzig + Abstaende.haar, vertical = Abstaende.haar),
-                            style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                            color = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error,
-                            maxLines = 1, softWrap = false)
+                    if (pct != null && kachelBetrag(set, preis) != null) {
+                        val farbe = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error
+                        val ansage = stringResource(if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust,
+                            fmtProzent(pct))
+                        Surface(
+                            color = MaterialTheme.colorScheme.surface,
+                            shape = Formen.etikett,
+                            modifier = Modifier.align(Alignment.TopStart).padding(PLAKETTE_RAND),
+                        ) {
+                            Row(Modifier.padding(horizontal = Abstaende.winzig + Abstaende.haar, vertical = Abstaende.haar),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                                Icon(if (pct >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
+                                    null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(12.dp)), tint = farbe)
+                                // Vorgelesen „Gewinn +16.1%“ statt der nackten Zahl.
+                                Text(fmtProzent(pct), Modifier.semantics { contentDescription = ansage },
+                                    style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
+                                    color = farbe, maxLines = 1, softWrap = false)
+                            }
+                        }
                     }
                     if (set.quantity > 1) {
                         Surface(
@@ -647,8 +668,9 @@ fun AddSetDialog(
         bestaetigen = stringResource(R.string.gallery_add),
         onBestaetigen = { submit() },
         onAbbrechen = onDismiss,
+        // Ohne Zeile „Bitte Set-Nummer eingeben“: Beschriftung und Beispiel am Feld sagen es
+        // schon, und dreimal derselbe Hinweis schob bei 200 % die Knöpfe aus dem Bild.
         bestaetigenAn = setNumber.isNotBlank(),
-        fehlt = stringResource(R.string.wanted_need_number),
     ) {
         OwnerPicker(householdMembers, owner, { owner = it })
         // Das Beispiel als Hilfetext wie im Merkposten-Dialog: Ein Platzhalter verschwand

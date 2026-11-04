@@ -140,6 +140,8 @@
     <string name="gallery_no_results">No results for “%1$s”</string>
     <string name="gallery_quantity_badge">×%1$d</string>
     <string name="gallery_price_each">each</string>
+    <string name="gallery_pnl_gewinn">Gain %1$s</string>
+    <string name="gallery_pnl_verlust">Loss %1$s</string>
     <string name="gallery_card_market">Market price</string>
     <string name="gallery_card_paid">Purchase price</string>
     <string name="gallery_delete_title">Delete set?</string>
@@ -202,7 +204,7 @@
         <item quantity="other">%1$d parts</item>
     </plurals>
     <string name="partslist_add_set">Add set to the build list</string>
-    <string name="partslist_generate">Generate</string>
+    <string name="partslist_generate">Create build list</string>
     <string name="partslist_pdf_error_title">PDF error</string>
     <string name="partslist_ok">OK</string>
     <string name="partslist_reset">Reset</string>
@@ -268,7 +270,7 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Enter a set number and tap “Generate”; “+” adds more sets — for rebuilding or ordering what is missing.</string>
+    <string name="partslist_empty_hint">Enter a set number and tap “Create build list”; “+” adds more sets — for rebuilding or ordering what is missing.</string>
     <string name="partslist_empty_title">No build list yet</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
@@ -873,7 +875,7 @@
     <string name="alerts_intro">Every threshold you have set. You can change the value here or remove the alert. You are notified once per crossing — the same alert can only fire again after the price has moved back to the other side.</string>
     <string name="alerts_empty">No price alert set yet. You set one in the detail view of a set.</string>
     <string name="alerts_armed">Active</string>
-    <string name="alerts_fired">Triggered – waiting for the price to return</string>
+    <string name="alerts_fired">Triggered</string>
     <string name="alerts_last">last %1$s</string>
     <string name="alerts_bad_value">The threshold must be greater than 0.</string>
     <string name="alerts_delete">Remove price alert</string>

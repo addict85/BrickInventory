@@ -96,8 +96,11 @@ fun ProduktBild(
 /** Der Grund der Setbilder: Weiss wie ihr eigener Hintergrund. */
 private val BILDGRUND = Color.White
 
-/** Deckkraft des Schleiers im Dunkeln: hell genug zum Erkennen, ohne zu blenden. */
-private const val SCHLEIER_DUNKEL = 0.32f
+/**
+ * Deckkraft des Schleiers im Dunkeln: Ein Fünftel nimmt Weiss das Blenden. Mit einem
+ * Drittel wirkten die Produktbilder grau und matt.
+ */
+private const val SCHLEIER_DUNKEL = 0.2f
 
 /** Derselbe Schleier als Filter auf den Bildpunkten, für Bilder ohne eigenen Grund. */
 private val DAEMPFUNG_DUNKEL = ColorFilter.tint(Color.Black.copy(alpha = SCHLEIER_DUNKEL), BlendMode.SrcAtop)

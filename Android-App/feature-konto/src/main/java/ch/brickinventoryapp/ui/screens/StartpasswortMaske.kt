@@ -23,11 +23,11 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.KontoUiState
+import ch.brickinventoryapp.ui.components.AnmeldeKarte
+import ch.brickinventoryapp.ui.components.AnmeldeTitel
 import ch.brickinventoryapp.ui.components.FehlerZeile
 import ch.brickinventoryapp.ui.components.MarkenKopf
 import ch.brickinventoryapp.ui.components.PasswortArt
@@ -71,29 +71,32 @@ fun StartpasswortMaske(
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
             MarkenKopf(Modifier.fillMaxWidth())
-            Text(stringResource(R.string.startpasswort_titel), style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.semantics { heading() })
-            Text(stringResource(R.string.startpasswort_text), style = MaterialTheme.typography.bodyMedium)
-            PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
-                Modifier.fillMaxWidth(), imeAction = ImeAction.Next, keyboardActions = weiter)
-            // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler.
-            PasswortFeld(pwNeu, { pwNeu = it }, stringResource(R.string.konto_password_new), Modifier.fillMaxWidth(),
-                art = PasswortArt.NEU,
-                hinweis = if (zuKurz) stringResource(R.string.register_password_short)
-                          else pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
-                fehlerhaft = zuKurz, imeAction = ImeAction.Next, keyboardActions = weiter)
-            PasswortFeld(pwWiederholt, { pwWiederholt = it }, stringResource(R.string.startpasswort_wiederholen),
-                Modifier.fillMaxWidth(), art = PasswortArt.WIEDERHOLUNG,
-                hinweis = if (verschieden) stringResource(R.string.startpasswort_verschieden) else null,
-                fehlerhaft = verschieden)
-            kontoZustand.fehler?.let { FehlerZeile(it) }
-            if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
-            Button(
-                onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
-                enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text(stringResource(R.string.konto_password_button)) }
-            TextButton(onClick = onAbmelden) { Text(stringResource(R.string.settings_logout)) }
+            // Dieselbe Karte wie Anmelden und Registrieren, das Abmelden darunter wie dort „Zurück“.
+            AnmeldeKarte {
+                AnmeldeTitel(stringResource(R.string.startpasswort_titel))
+                Text(stringResource(R.string.startpasswort_text), style = MaterialTheme.typography.bodyMedium)
+                PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
+                    Modifier.fillMaxWidth(), imeAction = ImeAction.Next, keyboardActions = weiter)
+                // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler.
+                PasswortFeld(pwNeu, { pwNeu = it }, stringResource(R.string.konto_password_new), Modifier.fillMaxWidth(),
+                    art = PasswortArt.NEU,
+                    hinweis = if (zuKurz) stringResource(R.string.register_password_short)
+                              else pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
+                    fehlerhaft = zuKurz, imeAction = ImeAction.Next, keyboardActions = weiter)
+                PasswortFeld(pwWiederholt, { pwWiederholt = it }, stringResource(R.string.startpasswort_wiederholen),
+                    Modifier.fillMaxWidth(), art = PasswortArt.WIEDERHOLUNG,
+                    hinweis = if (verschieden) stringResource(R.string.startpasswort_verschieden) else null,
+                    fehlerhaft = verschieden)
+                kontoZustand.fehler?.let { FehlerZeile(it) }
+                if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
+                Button(
+                    onClick = { onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }) },
+                    enabled = !kontoZustand.speichert && pwAktuell.isNotEmpty() && pwNeu.isNotEmpty() && !zuKurz && pwWiederholt == pwNeu,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(stringResource(R.string.konto_password_button)) }
+            }
+            // Mittig in voller Breite wie „Zurück zur Anmeldung“: Eingerückt stand es neben nichts.
+            TextButton(onClick = onAbmelden, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_logout)) }
         }
     }
 }

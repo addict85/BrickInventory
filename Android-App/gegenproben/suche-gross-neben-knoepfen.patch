@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.FeinschliffRegelnTest
 Rot: Such-Platzhalter der Galerie steht auch bei 200 Prozent
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
-index f5ea255..f35c7e7 100644
+index 0333c83..0ef8bf3 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
-@@ -81,7 +81,7 @@ fun SucheMitFilter(
-         }
-         // Bei grosser Schrift die Knöpfe unter das Feld: Daneben blieb vom Platzhalter
-         // nur „Suche…“.
--        if (gross) Column {
+@@ -85,7 +85,7 @@ fun SucheMitFilter(
+         // nur „Suche…“. Ein Filterknopf allein bleibt daneben; auf eigener Zeile stand
+         // er verloren über dem Raster (Teile, Figuren).
+         val untereinander = gross && (onScannen != null || sortierung != null)
+-        if (untereinander) Column {
 +        if (false) Column {
              Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
              Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,

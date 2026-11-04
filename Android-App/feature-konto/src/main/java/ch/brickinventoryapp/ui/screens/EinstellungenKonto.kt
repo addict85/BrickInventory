@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
 import androidx.core.net.toUri
@@ -124,12 +126,13 @@ internal fun KontoCard(
                 enabled = geaendert && !kontoZustand.speichert,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
+        }
+    }
 
-            HorizontalDivider(Modifier.padding(vertical = Abstaende.mittel),
-                color = MaterialTheme.colorScheme.outlineVariant)
-
-            Text(stringResource(R.string.konto_password_title),
-                style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+    // Eine eigene Karte unter eigener Überschrift: Unter „Profil“ las sich das Passwort
+    // als Teil der Angaben, die „Profil speichern“ sichert.
+    if (profil != null) {
+        SettingsCard(title = stringResource(R.string.konto_password_title), icon = Icons.Default.Lock) {
             // Steht VOR den Feldern, nicht darunter: Wer erst nach dem Tippen
             // erfaehrt, dass er sich damit abmeldet, hat schon getippt.
             Text(stringResource(R.string.konto_password_hint),
@@ -243,7 +246,7 @@ internal fun ZweiterFaktorCard(
                 Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
                 Text(zfZustand.codes.joinToString("\n"),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
-                OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) }) { Text(stringResource(R.string.zf_copy)) }
+                OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_copy)) }
                 CodesGesichert(gesichert) { gesichert = it }
                 Button(onClick = onZurueck, enabled = gesichert) { Text(stringResource(R.string.zf_codes_done)) }
             }
@@ -264,13 +267,13 @@ internal fun ZweiterFaktorCard(
                 }
                 Text(zfZustand.geheimnis.chunked(4).joinToString(" "),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
-                OutlinedButton(onClick = { kopieren(zfZustand.geheimnis) }) {
+                OutlinedButton(onClick = { kopieren(zfZustand.geheimnis) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                     Text(stringResource(R.string.zf_copy_key))
                 }
                 codeFeld(stringResource(R.string.zf_confirm_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Button(onClick = { onBestaetigen(zfCode) }, enabled = zfCode.isNotBlank() && !zfZustand.laedt) { Text(stringResource(R.string.zf_confirm)) }
-                    OutlinedButton(onClick = onZurueck) { Text(stringResource(R.string.common_cancel)) }
+                    OutlinedButton(onClick = onZurueck, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.common_cancel)) }
                 }
             }
             // 3. Aktiv: neue Codes oder abschalten.
@@ -280,9 +283,11 @@ internal fun ZweiterFaktorCard(
                 passwortFeld()
                 codeFeld(stringResource(R.string.login_code))
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.laedt) { Text(stringResource(R.string.zf_new_codes)) }
+                    OutlinedButton(onClick = { schutz.bestaetige(codesGrund) { onNeueCodes(zfCode) } }, enabled = zfCode.isNotBlank() && !zfZustand.laedt, colors = nebenKnopfFarben(), border = nebenKnopfRand(zfCode.isNotBlank() && !zfZustand.laedt)) { Text(stringResource(R.string.zf_new_codes)) }
                     OutlinedButton(onClick = { onAbschalten(zfPasswort, zfCode) },
-                        enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt) { Text(stringResource(R.string.zf_disable)) }
+                        enabled = zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt,
+                        colors = nebenKnopfFarben(),
+                        border = nebenKnopfRand(zfPasswort.isNotBlank() && zfCode.isNotBlank() && !zfZustand.laedt)) { Text(stringResource(R.string.zf_disable)) }
                 }
             }
             // 4. Nicht eingerichtet.
@@ -380,7 +385,7 @@ internal fun GeraeteCard(
         }
 
         Row(Modifier.padding(top = Abstaende.mittel), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            OutlinedButton(onClick = onReload) {
+            OutlinedButton(onClick = onReload, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                 Text(stringResource(R.string.tokens_reload))
             }
             // Nur anbieten, wenn es wirklich andere gibt — ein Knopf, der
@@ -389,6 +394,7 @@ internal fun GeraeteCard(
                 OutlinedButton(
                     onClick = { fragtAlle = true },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    border = nebenKnopfRand(),
                 ) { Text(stringResource(R.string.tokens_revoke_others)) }
             }
         }
