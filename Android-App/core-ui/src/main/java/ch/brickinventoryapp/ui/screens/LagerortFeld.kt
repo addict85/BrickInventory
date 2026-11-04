@@ -76,7 +76,9 @@ fun LagerortFeld(
             singleLine = true,
             label = beschriftung?.let { { Text(it) } },
             placeholder = if (beschriftung == null) {
-                { Text(platzhalter, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                // Feldschrift wie jedes Eingabefeld: Kleiner als die Beschriftung daneben sah
+                // „Kein Lagerort“ wie eine Fussnote aus.
+                { Text(platzhalter, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             } else null,
             supportingText = beschriftung?.let { { Text(platzhalter) } },
             trailingIcon = {

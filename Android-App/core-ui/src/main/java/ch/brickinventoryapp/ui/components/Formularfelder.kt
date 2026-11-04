@@ -68,7 +68,6 @@ fun PasswortFeld(
     /** Hilfe- oder Fehlertext unter dem Feld; mit [fehlerhaft] in Fehlerfarbe. */
     hinweis: String? = null,
     fehlerhaft: Boolean = false,
-    mitSymbol: Boolean = false,
     imeAction: ImeAction = ImeAction.Done,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
@@ -79,7 +78,9 @@ fun PasswortFeld(
         value = wert,
         onValueChange = onWert,
         label = { Text(beschriftung) },
-        leadingIcon = if (mitSymbol) ({ Icon(Icons.Default.Lock, null) }) else null,
+        // Das Schloss überall, nicht nur in der Anmeldung: So erkennt man ein Passwortfeld
+        // auf jeder Seite gleich.
+        leadingIcon = { Icon(Icons.Default.Lock, null) },
         trailingIcon = {
             IconButton(onClick = { sichtbar = !sichtbar }) {
                 Icon(

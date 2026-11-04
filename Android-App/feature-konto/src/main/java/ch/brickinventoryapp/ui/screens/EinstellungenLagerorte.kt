@@ -62,7 +62,9 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
         }
     }
 
-    Button(onClick = { neu = true }) {
+    // Hinzufügen in einer Unterseite: Knopf in voller Breite wie in Konto und Haushalt.
+    // Der schwebende Knopf gehört dem Hauptobjekt eines Reiters (Sets, Merkposten).
+    Button(onClick = { neu = true }, modifier = Modifier.fillMaxWidth()) {
         Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.storage_add_button))

@@ -37,6 +37,7 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
@@ -90,6 +91,11 @@ import org.robolectric.annotation.GraphicsMode
  *   server-chip-ohne-aufgabe    Chip ohne Beschreibung → rot „Server-Chip nennt …“
  *   katalog-einspaltig          Katalog-Detail auch auf dem Tablet einspaltig → rot „Katalog-Detail steht …“
  *   finanzen-verlauf-zuerst     Verlauf wieder vor der Kopfkachel → rot „Finanzen nennen den Marktwert …“
+ *   katalog-bild-ohne-grenze    Katalogbild wieder ohne Höchstbreite → rot „Katalog-Detail steht …“
+ *   alarme-volle-breite         Preisalarme wieder in Listenbreite → rot „Konto und Preisalarme …“
+ *   markenkopf-immer-gross      Markenkopf auch bei 200 % gross → rot „Markenkopf bei 200 Prozent …“
+ *   bewegung-immer-an           bewegungReduziert() liefert immer false → rot „reduzierte Bewegung …“
+ *   einrichtung-einspaltig      Einrichtung auch quer einspaltig → rot „Einrichtung im Querformat …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -266,6 +272,70 @@ class GeruestUndFormularTest {
         assertTrue("Feld ${feld.width / dichte} dp breit", feld.width / dichte <= 561f)
     }
 
+    /** Konto und Preisalarme sind Formulare: Lesebreite, und das Betragsfeld bleibt schmal. */
+    @Test
+    fun `Konto und Preisalarme stehen auf dem Tablet in Formularbreite`() {
+        RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
+        val welt = Beispiele.Welt(KontextTexte())
+        try {
+            welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
+                {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
+            val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
+                ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache),
+                ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
+                ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
+                ch.brickinventoryapp.data.repository.TeileRepository(welt.t.api, welt.t.cache),
+                object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
+                    override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
+                }))
+            zeige {
+                ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite(vm = vm,
+                    imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
+                    snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
+            }
+            warte("Alarme") { vm.alarmUebersicht.value.geladen }
+            val dichte = ctx.resources.displayMetrics.density
+            val feld = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
+            // Mittig auf 560 dp beginnt die Karte bei 360 dp; in Listenbreite (840 dp) schon bei 220.
+            assertTrue("Die Karte steht in Formularbreite (Feld ab ${feld.left / dichte} dp)", feld.left / dichte >= 340f)
+            assertTrue("Das Betragsfeld ist ${feld.width / dichte} dp breit", feld.width / dichte <= 321f)
+        } finally {
+            welt.close()
+        }
+    }
+
+    /** Im Querformat stehen Hinweis und Handlung nebeneinander: „Weiter“ ohne Rollen sichtbar. */
+    @Test
+    fun `Einrichtung im Querformat zeigt Weiter ohne Rollen`() {
+        RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
+        zeige { ch.brickinventoryapp.ui.screens.SetupScreen(currentUrl = "http://nas:3000", onSave = {}, entwicklung = false) }
+        val hoehe = compose.onRoot().fetchSemanticsNode().boundsInRoot.height
+        // Ungekürzt gemessen: boundsInRoot schnitte einen Knopf unter dem Falz am Rand ab.
+        val weiter = compose.onNode(hasText(ctx.getString(R.string.setup_continue)) and hasClickAction()).fetchSemanticsNode()
+        val unten = weiter.positionInRoot.y + weiter.size.height
+        assertTrue("Weiter endet bei $unten von $hoehe", unten <= hoehe)
+    }
+
+    /** Bei 200 % steht der Markenkopf klein in einer Zeile; das erste Feld bleibt oben. */
+    @Test
+    fun `Markenkopf bei 200 Prozent nimmt hoechstens ein Achtel der Hoehe`() {
+        zeige(schrift = 2f) { ch.brickinventoryapp.ui.components.MarkenKopf() }
+        val dichte = ctx.resources.displayMetrics.density
+        val kopf = compose.onNodeWithText(ctx.getString(R.string.app_name)).fetchSemanticsNode().boundsInRoot
+        assertTrue("Markenkopf endet erst bei ${kopf.bottom / dichte} dp", kopf.bottom / dichte <= 891f / 8)
+    }
+
+    /** „Animationen entfernen“ (Animator-Dauer 0) wird gelesen; sonst gilt Bewegung. */
+    @Test
+    fun `reduzierte Bewegung folgt der Animator-Dauer des Systems`() {
+        val aufloesung = ctx.contentResolver
+        android.provider.Settings.Global.putFloat(aufloesung, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
+        var ruhig: Boolean? = null
+        zeige { ruhig = ch.brickinventoryapp.ui.components.bewegungReduziert() }
+        assertEquals("Mit Animator-Dauer 0 ruht alles", true, ruhig)
+        android.provider.Settings.Global.putFloat(aufloesung, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
+    }
+
     @Test
     fun `Verwalterrechte stehen eingeklappt unter Erweitert`() {
         zeige {
@@ -385,12 +455,14 @@ class GeruestUndFormularTest {
                 onAddToGallery = { _, _, _, _, _, _ -> }, onWish = { _, _, _, _, _ -> },
                 onOpenInGallery = {}, onBack = {})
         }
-        // Der Name steht einmal da: in der Überschrift, nicht zugleich in der App-Leiste.
+        // Der Name steht einmal da, in der Leiste wie im Set-Detail; die Angaben rechts vom Bild.
         compose.onAllNodesWithText("Lion Knights' Castle").assertCountEquals(1)
-        val name = compose.onNodeWithText("Lion Knights' Castle").fetchSemanticsNode().boundsInRoot
+        val nummer = compose.onNodeWithText("10305-1").fetchSemanticsNode().boundsInRoot
         val bild = compose.onNode(hasTestTag(ch.brickinventoryapp.ui.components.BILD_ERSATZ), useUnmergedTree = true)
             .fetchSemanticsNode().boundsInRoot
-        assertTrue("Die Angaben stehen rechts vom Bild ($bild / $name)", name.left >= bild.right)
+        assertTrue("Die Angaben stehen rechts vom Bild ($bild / $nummer)", nummer.left >= bild.right)
+        val dichte = ctx.resources.displayMetrics.density
+        assertTrue("Das Bild bleibt bei höchstens 480 dp (${bild.width / dichte})", bild.width <= 481 * dichte)
         val aufnehmen = compose.onNode(hasText(ctx.getString(R.string.catalog_add_to_gallery)) and hasClickAction())
             .fetchSemanticsNode().boundsInRoot
         val bricklink = compose.onNode(hasText(ctx.getString(R.string.catalog_buy_bricklink)) and hasClickAction())

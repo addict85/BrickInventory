@@ -7,8 +7,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -241,29 +239,37 @@ private fun SetItemDetail(
             }
     }
 
-    // Kopf mit Schliessen und Inhalt, im Blatt wie im Bereich neben der Liste gleich.
-    val koerper: @Composable (Modifier) -> Unit = { aussen ->
-        Column(
-            aussen.verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-        ) {
-            Row(verticalAlignment = Alignment.Top) {
-                Box(Modifier.weight(1f)) {
-                    ProvideTextStyle(MaterialTheme.typography.titleLarge) { titel() }
-                }
-                IconButton(onClick = { vm.schliesseSetItem() }) {
-                    Icon(Icons.Default.Close, stringResource(R.string.detail_close))
-                }
-            }
-            inhalt()
-        }
-    }
+    // Schliessen links wie in jedem Detailkopf (DetailTopAppBar), im Blatt wie neben der Liste.
+    val schliessen = { vm.schliesseSetItem() }
     if (alsDialog) {
-        ModalBottomSheet(onDismissRequest = { vm.schliesseSetItem() }) {
-            koerper(Modifier.padding(start = Abstaende.sehrGross, end = Abstaende.sehrGross, bottom = Abstaende.sehrGross))
+        ModalBottomSheet(onDismissRequest = schliessen) {
+            Column(
+                Modifier.padding(start = Abstaende.gross, end = Abstaende.sehrGross, bottom = Abstaende.sehrGross)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ch.brickinventoryapp.ui.components.ZurueckKnopf(schliessen, schliessen = true)
+                    Box(Modifier.weight(1f)) {
+                        ProvideTextStyle(MaterialTheme.typography.titleLarge) { titel() }
+                    }
+                }
+                inhalt()
+            }
         }
     } else {
-        koerper(Modifier.fillMaxSize().padding(Abstaende.gross))
+        Column(Modifier.fillMaxSize()) {
+            ch.brickinventoryapp.ui.components.DetailTopAppBar(
+                titel = kopf?.name ?: zustand.nummer,
+                untertitel = zustand.nummer + (kopf?.colorName?.let { " · " + farbe(it) } ?: ""),
+                onZurueck = schliessen,
+                schliessen = true,
+            )
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.gross),
+                verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+            ) { inhalt() }
+        }
     }
 
     if (zeigeZoom && bild != null) {

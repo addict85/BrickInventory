@@ -44,6 +44,10 @@ import java.io.File
  *  - (03.11.2026) Patch gegenproben/profil-ohne-passwort.patch (die Prüfung
  *    `passwort.isNullOrBlank()` in speichereProfil() entfernt): „ohne Passwort
  *    fragt das Profil den Server nicht“ rot.
+ *  - Patch gegenproben/profil-mail-nicht-gesendet-still.patch (`emailSent` nicht
+ *    ausgewertet): „eine neue E-Mail ohne gesendete Mail …“ rot. Patch
+ *    gegenproben/profil-neu-laden-loescht-fehler.patch (holeProfil() setzt den
+ *    Fehler wieder auf null): dieselbe Prüfung rot an „übersteht das Neuladen“.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class KontoViewModelTest {
@@ -248,5 +252,29 @@ class KontoViewModelTest {
         warteBis("gespeichert") { vm.kontoState.value.meldung != null }
         assertTrue(server.takeRequest().body.readUtf8().contains("\"code\":\"654321\""))
         assertFalse("Nach Erfolg kein Codefeld mehr", vm.kontoState.value.codeNoetig)
+    }
+
+    @Test
+    fun `eine neue E-Mail meldet den Link und zeigt sie als ausstehend`() {
+        server.enqueue(antwort("""{"success":true,"emailChanged":true,"emailSent":true}"""))
+        server.enqueue(antwort("""{"success":true,"user":{"id":1,"username":"marco","email":"alt@example.org",
+            "email_verified":true,"email_neu":"neu@example.org"}}"""))
+        vm.speichereProfil("marco", " neu@example.org ", "", "", "pw")
+        warteBis("neu geladen") { vm.kontoState.value.profil != null }
+        assertEquals("t${R.string.konto_email_link_gesendet}", vm.kontoState.value.meldung)
+        assertNull(vm.kontoState.value.fehler)
+        assertEquals("Es gilt die alte Adresse", "alt@example.org", vm.kontoState.value.profil?.email)
+        assertEquals("neu@example.org", vm.kontoState.value.profil?.emailNeu)
+    }
+
+    @Test
+    fun `eine neue E-Mail ohne gesendete Mail meldet einen Fehler statt gespeichert`() {
+        server.enqueue(antwort("""{"success":true,"emailChanged":true,"emailSent":false}"""))
+        server.enqueue(antwort("""{"success":true,"user":{"id":1,"username":"marco","email":"alt@example.org",
+            "email_verified":true,"email_neu":"neu@example.org"}}"""))
+        vm.speichereProfil("marco", "neu@example.org", "", "", "pw")
+        warteBis("neu geladen") { vm.kontoState.value.profil != null }
+        assertEquals("Der Fehler übersteht das Neuladen", "t${R.string.konto_email_nicht_gesendet}", vm.kontoState.value.fehler)
+        assertNull("Kein „gespeichert“", vm.kontoState.value.meldung)
     }
 }

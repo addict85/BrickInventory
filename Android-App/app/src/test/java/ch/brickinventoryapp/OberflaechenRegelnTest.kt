@@ -82,7 +82,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   detail-ohne-wertkacheln         Set-Detail ohne Wert-Kacheln → rot „Set-Detail zeigt Marktwert …“
  *   galerie-zwei-knoepfe            Scannen wieder als zweiter schwebender Knopf → rot „Galerie hat einen …“
  *   telefon-kontomenue              Kontosymbol wieder in der App-Leiste → rot „Telefon navigiert ohne …“
- *   teile-raster-fest               Teileraster wieder fest 110 dp → rot „Teile bei 200 Prozent …“
+ *   teile-raster-fest               Teileraster wieder fest 120 dp → rot „Teile bei 200 Prozent …“
  *   finanzen-einspaltig             Finanzen auch auf dem Tablet einspaltig → rot „Finanzen stehen auf dem Tablet …“
  *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
  *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
@@ -434,7 +434,7 @@ class OberflaechenRegelnTest {
             assertTrue(namen.size >= 3)
             val dichte = ctx.resources.displayMetrics.density
             for (name in namen) {
-                // Die Kachel ist mit der Schrift gewachsen (110 dp × 2) …
+                // Die Kachel ist mit der Schrift gewachsen (120 dp × 2) …
                 val kachel = compose.onNode(hasText(name) and hasClickAction()).fetchSemanticsNode().boundsInRoot
                 assertTrue("Kachel von $name nur ${kachel.width / dichte} dp breit", kachel.width / dichte >= 200f)
                 // … und der Name steht ganz da: Die letzte sichtbare Zeile endet mit dem

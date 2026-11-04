@@ -81,7 +81,7 @@ internal fun KontoCard(
 
         if (kontoZustand.meldung != null) {
             Text(kontoZustand.meldung, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary)
+                color = MaterialTheme.colorScheme.primary, modifier = Modifier.ansagen())
         }
         if (kontoZustand.fehler != null) FehlerZeile(kontoZustand.fehler)
         // Erst nachdem der Server ihn verlangt hat; gilt für E-Mail und Passwort.
@@ -89,6 +89,7 @@ internal fun KontoCard(
 
         if (profil != null) {
             val tippen: (String) -> Unit = { onMeldungWeg() }
+            val ausstehend = profil.emailNeu
             OutlinedTextField(
                 value = benutzername,
                 onValueChange = { benutzername = it; tippen(it) },
@@ -98,12 +99,13 @@ internal fun KontoCard(
                 value = email,
                 onValueChange = { email = it; tippen(it) },
                 label = { Text(stringResource(R.string.register_email)) },
-                // Der Server setzt die Bestaetigung zurueck, wenn die Adresse
-                // wechselt. Der Hinweis sagt, WARUM hier plotzlich „nicht
-                // bestaetigt" steht, statt es unkommentiert anzuzeigen.
-                supportingText = if (!profil.emailBestaetigt) {
-                    { Text(stringResource(R.string.konto_email_unverified)) }
-                } else null,
+                // Eine neue Adresse wartet auf ihren Link, das Feld zeigt bis dahin die
+                // geltende. Ohne den Hinweis sähe die Änderung nach dem Speichern verloren aus.
+                supportingText = when {
+                    ausstehend != null -> { { Text(stringResource(R.string.konto_email_ausstehend, ausstehend)) } }
+                    !profil.emailBestaetigt -> { { Text(stringResource(R.string.konto_email_unverified)) } }
+                    else -> null
+                },
                 isError = !profil.emailBestaetigt,
                 modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
@@ -465,5 +467,11 @@ internal fun DesignCard(design: ch.brickinventoryapp.ui.DesignWahl?, onWahl: (St
             gewaehlt = design.eigenes ?: "",
             onWahl = { wert -> if (wert != (design.eigenes ?: "")) onWahl(wert) },
         )
+        // Was das gewählte Design ausmacht — Werkbank allein am Bild vom dunklen Classic zu
+        // unterscheiden, gelang kaum.
+        ch.brickinventoryapp.ui.DESIGN_TEXTE[design.eigenes ?: design.vorgabe]?.let {
+            Text(stringResource(it), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
     }
 }

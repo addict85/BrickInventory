@@ -7,6 +7,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -82,6 +84,8 @@ fun PartsScreen(
     // Eigener Fluss: Der Lagerortfilter gehoert nicht in AppUiState, das
     // sechzehn Dateien sammeln (siehe LagerUiState).
     val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    // Das Teil, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
+    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
 
     val parts = partsState.parts
     val stats = partsState.partsStats
@@ -177,7 +181,7 @@ fun PartsScreen(
 
         ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.teileOfflineStand)
         if (anzeige == Ladeanzeige.LAEDT) {
-            SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(110.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
+            SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(120.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
             ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh, partsState.partsFehlerKlasse) }
         } else if (anzeige != Ladeanzeige.LISTE) {
@@ -196,7 +200,7 @@ fun PartsScreen(
             PullToRefreshBox(isRefreshing = isLoading && parts.isNotEmpty(), onRefresh = onRefresh) {
                 LazyVerticalGrid(
                     state = gridState,
-                    columns = ch.brickinventoryapp.ui.components.LesbareSpalten(110.dp),
+                    columns = ch.brickinventoryapp.ui.components.LesbareSpalten(120.dp),
                     // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
                     contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
                         end = Abstaende.mittel, bottom = ch.brickinventoryapp.ui.components.FabPlatz),
@@ -244,7 +248,8 @@ fun PartsScreen(
                         val oeffne = { vm.oeffneSetItem("part", part.partNumber, part.colorId) }
                         Bewegt {
                             if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader, oeffne)
-                            else PartCard(part, serverUrl, imageLoader, oeffne)
+                            else PartCard(part, serverUrl, imageLoader, oeffne,
+                                ausgewaehlt = gewaehlt == ch.brickinventoryapp.ui.components.detailSchluessel("part", part.partNumber, part.colorId))
                         }
                     }
                     if (isLoading) {
@@ -282,7 +287,7 @@ fun PartsScreen(
         val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus, ersatz, farbe, kategorie)
         FilterBlattRahmen(onSchliessen = { zeigeFilter = false }, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
             KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
-            LagerortFilterAbschnitt(lagerorte, lagerModus, onLagerChange)
+            LagerortFilterAbschnitt(lagerorte, lagerModus, onLagerChange, nachTeilen = true)
             // Ersatzteile — dieselben drei Werte wie parts-spare in der Webapp,
             // gefiltert auf dem SERVER (partsSpare im Zustand).
             FilterAbschnitt(stringResource(R.string.filter_section_spare)) {
@@ -370,9 +375,12 @@ fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: I
     )
 }
 
+/** Bildfläche der Teilekachel: wächst mit der Kachel, auf dem Telefon wie bisher rund 90 dp hoch. */
+private const val TEIL_BILD_VERHAELTNIS = 4f / 3f
+
 @Composable
 fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
-             onClick: (() -> Unit)? = null) {
+             onClick: (() -> Unit)? = null, ausgewaehlt: Boolean = false) {
     val ctx = LocalContext.current
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
     val colorObj = remember(part.colorHex) {
@@ -388,13 +396,17 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     Card(
         // Antippen öffnet den Detail-Dialog, wie bei manuell erfassten Teilen.
         modifier = Modifier.fillMaxWidth().heightIn(min = 164.dp)
+            .semantics { selected = ausgewaehlt }
+            .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
             .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column {
-            Box(Modifier.fillMaxWidth().height(90.dp)) {
+            // Mit der Kachel wachsend statt fest 90 dp: Auf dem Tablet stand sonst ein kleines
+            // Bild über einer breiten Kachel.
+            Box(Modifier.fillMaxWidth().aspectRatio(TEIL_BILD_VERHAELTNIS)) {
                 ch.brickinventoryapp.ui.components.ProduktBild(
                     model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
                     imageLoader = imageLoader,

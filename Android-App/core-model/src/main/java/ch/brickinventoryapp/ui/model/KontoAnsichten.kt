@@ -17,9 +17,12 @@ data class ProfilAnsicht(
     val firstName: String?,
     val lastName: String?,
     val emailBestaetigt: Boolean,
+    /** Die beantragte neue Adresse, solange ihr Link nicht geöffnet ist. */
+    val emailNeu: String? = null,
 )
 
-fun Profil.alsAnsicht() = ProfilAnsicht(id, username, email, firstName, lastName, emailBestaetigt = emailVerified)
+fun Profil.alsAnsicht() =
+    ProfilAnsicht(id, username, email, firstName, lastName, emailBestaetigt = emailVerified, emailNeu = emailNeu?.ifBlank { null })
 
 /** Ein früher verknüpftes Konto, dessen Trennung noch bestätigt werden kann. */
 data class GetrenntesKontoAnsicht(val id: Int, val username: String, val via: String?)

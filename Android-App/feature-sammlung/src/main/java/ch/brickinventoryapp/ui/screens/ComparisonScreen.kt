@@ -46,11 +46,11 @@ fun ComparisonScreen() {
 
     // Die Eingabe als Abfragewert kodiert: Ein `#` oder `&` darin veränderte sonst die Adresse.
     val keineAppText = stringResource(R.string.common_no_app_to_open)
-    fun openInBrowser(query: String) {
+    // Snackbar statt Toast wie in den Detailseiten: bleibt lesbar, bis TalkBack fertig ist.
+    val meldungen = remember { SnackbarHostState() }
+    suspend fun openInBrowser(query: String) {
         val url = "https://www.toppreise.ch/produktsuche".toHttpUrl().newBuilder().addQueryParameter("q", query).build()
-        if (!ch.brickinventoryapp.util.oeffneExtern(context, url.toString())) {
-            android.widget.Toast.makeText(context, keineAppText, android.widget.Toast.LENGTH_SHORT).show()
-        }
+        if (!ch.brickinventoryapp.util.oeffneExtern(context, url.toString())) meldungen.showSnackbar(keineAppText)
     }
 
     LaunchedEffect(activeQuery) {
@@ -70,6 +70,7 @@ fun ComparisonScreen() {
         return
     }
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Toolbar card
         Surface(
@@ -148,5 +149,7 @@ fun ComparisonScreen() {
             ch.brickinventoryapp.ui.components.HinweisText(Icons.Default.Search,
                 stringResource(R.string.comparison_title), stringResource(R.string.comparison_hint))
         }
+    }
+    SnackbarHost(meldungen, Modifier.align(Alignment.BottomCenter))
     }
 }

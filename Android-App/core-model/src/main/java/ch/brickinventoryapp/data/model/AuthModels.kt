@@ -250,6 +250,20 @@ data class Profil(
     @SerialName("last_name") val lastName: String? = null,
     /** Ist die E-Mail-Adresse bestätigt? Seit API-Fassung 2 ein Wahrheitswert. */
     @SerialName("email_verified") val emailVerified: Boolean = false,
+    /** Beantragt, aber noch nicht über den Link bestätigt; bis dahin gilt [email]. */
+    @SerialName("email_neu") val emailNeu: String? = null,
+)
+
+/**
+ * Antwort auf PUT /api/v1/auth/profile. Eine neue Adresse gilt erst nach dem Link;
+ * [emailSent] sagt, ob die Mail dafür hinausging — ohne sie wartet die Änderung umsonst.
+ */
+@Serializable
+data class ProfilGespeichert(
+    val success: Boolean,
+    val error: String? = null,
+    val emailChanged: Boolean? = null,
+    val emailSent: Boolean? = null,
 )
 
 @Serializable

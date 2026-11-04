@@ -79,6 +79,10 @@ fun BarcodeScannerScreen(
     // (autofokusDauerhaft() in KameraAufbau.kt); ein Takt liesse die Kamera dauernd
     // nachpumpen. Manuell fokussiert wird nur beim Antippen.
 
+    // Der Treffer ist auch zu spüren: Wer auf die Schachtel zielt, sieht nicht aufs Telefon.
+    val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val treffer = { haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm) }
+
     val borderColor by animateColorAsState(
         if (frozen) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.primary,
         label = "border"
@@ -93,6 +97,7 @@ fun BarcodeScannerScreen(
                     onBarcodeFound = { value ->
                         if (!frozen) {
                             frozen = true
+                            treffer()
                             statusText = detectedHintFmt.replace("%1\$s", value)
                             onResult(value)
                         }
@@ -103,6 +108,7 @@ fun BarcodeScannerScreen(
                     onSetNumberFound = { value ->
                         if (!frozen) {
                             frozen = true
+                            treffer()
                             statusText = detectedHintFmt.replace("%1\$s", value)
                             onSetNumberResult(value)
                         }

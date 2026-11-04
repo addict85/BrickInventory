@@ -1,17 +1,18 @@
-Gegenprobe: Zurücksetzen auch auf der leeren Bauliste aktiv
+Gegenprobe: Zurücksetzen auch auf der leeren Bauliste
 Modul: app
 Test: ch.brickinventoryapp.UnterseitenTest
 Rot: leere Bauliste
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-index b68519c..bcf0e0d 100644
+index d993591..eeb9f46 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsListScreen.kt
-@@ -330,7 +330,6 @@ fun PartsListScreen(
-                     // leeren Seite lud zum Tippen ein, ohne etwas zu tun.
-                     TextButton(
-                         onClick = { reset() },
--                        enabled = sets.isNotEmpty() || generated || status.isNotBlank(),
-                         colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                     ) { Text(stringResource(R.string.partslist_reset)) }
-                 }
+@@ -255,7 +255,7 @@ fun PartsListScreen(
+ 
+                 // Die gesammelten Sets mit ihrem Zurücksetzen: Es leert diese Liste und steht
+                 // deshalb bei ihr, nicht frei unter den Knöpfen. Ohne Inhalt fehlt es ganz.
+-                if (sets.isNotEmpty() || generated) {
++                if (true) {
+                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                         Text(mengen.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
+                             style = MaterialTheme.typography.labelLarge,

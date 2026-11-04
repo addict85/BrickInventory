@@ -504,7 +504,10 @@ class BildschirmFotoVariantenTest {
         }
         compose.onNode(androidx.compose.ui.test.hasText("Titanic", substring = true) and
             androidx.compose.ui.test.hasClickAction()).performClick()
-        bereitstellen("merkliste-detail (offen)", { true }, { vm.merklisteState.value })
+        // Erst fotografieren, wenn Preis und Verlauf da sind — sonst stand „Preis wird geladen“
+        // neben dem Preis in der Liste.
+        bereitstellen("merkliste-detail (offen)", { vm.merkpostenDetailState.value.let { !it.laedt && it.preise != null } },
+            { vm.merkpostenDetailState.value })
         compose.waitForIdle()
         anhalten()
         foto("merkliste-detail", geraet = "tablet")
@@ -669,10 +672,11 @@ class BildschirmFotoVariantenTest {
         foto("vergleich")
     }
 
-    /** Konto: Profil, Design, zweiter Faktor und zwei angemeldete Geräte. */
-    private fun kontoFoto(dunkel: Boolean, geraet: String) {
+    /** Konto: Profil, Design, zweiter Faktor und zwei angemeldete Geräte; auf Wunsch mit beantragter Adresse. */
+    private fun kontoFoto(dunkel: Boolean, geraet: String, name: String = "konto", emailNeu: String? = null) {
+        val neu = emailNeu?.let { ""","email_neu":"$it"""" } ?: ""
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
-            "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
+            "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true$neu}}"""
         welt.pfade.antworten["/api/v1/auth/zweiter-faktor"] = """{"success":true,"aktiv":true,"codes_uebrig":8}"""
         welt.pfade.antworten["/api/v1/settings/theme"] = """{"success":true,"theme":"classic","vorgabe":"classic"}"""
         welt.pfade.antworten["/api/v1/settings/tokens"] = """{"success":true,"tokens":[
@@ -681,23 +685,27 @@ class BildschirmFotoVariantenTest {
         val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
             ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
-        zeige("konto", dunkel = dunkel, geraet = geraet) {
+        zeige(name, dunkel = dunkel, geraet = geraet) {
             ch.brickinventoryapp.ui.screens.KontoUnterseite(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         anhalten()
-        foto("konto", dunkel = dunkel, geraet = geraet)
+        foto(name, dunkel = dunkel, geraet = geraet)
     }
 
     @Test fun kontoTelefon() = kontoFoto(false, "telefon")
     @Test fun kontoTabletDunkel() = kontoFoto(true, "tablet")
+    /** Die neue Adresse wartet auf ihren Link: Das Feld zeigt die geltende, darunter die beantragte. */
+    @Test fun kontoEmailAusstehend() = kontoFoto(false, "telefon", "konto-email-ausstehend", "marco.neu@example.org")
 
-    /** Preisalarme: einer scharf, einer schon ausgelöst. */
+    /** Preisalarme: einer scharf, einer schon ausgelöst — im Normalfall mit Name und Bild. */
     private fun preisalarmeFoto(dunkel: Boolean, geraet: String, schrift: Float = 1f, name: String = "preisalarme") {
         welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"},
+            {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF",
+             "name":"Millennium Falcon","image_local":"/beispiel/set1.png"},
             {"set_number":"10294-1","condition":"N","richtung":"ueber","schwelle":440.0,"currency_code":"CHF",
-             "ausgeloest":true,"zuletzt_am":"2026-10-30T09:00:00Z","zuletzt_preis":449.95}]}"""
+             "ausgeloest":true,"zuletzt_am":"2026-10-30T09:00:00Z","zuletzt_preis":449.95,
+             "name":"Titanic","image_local":"/beispiel/set2.png","besitzt":false}]}"""
         val vm = einstellungen()
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
             ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite(vm = vm, imageLoader = bilder, serverUrl = "",
@@ -810,9 +818,14 @@ class BildschirmFotoVariantenTest {
     @Test fun teilDetailTelefon() = teilDetailFoto("telefon", false)
     @Test fun teilDetailTablet() = teilDetailFoto("tablet", false)
 
-    /** Die Meldung nach dem Löschen mit „Rückgängig“ — über der unteren Leiste. */
+    /**
+     * Die Meldung nach dem Löschen mit „Rückgängig“ — über der unteren Leiste. Das Set ist
+     * vorgemerkt und damit schon aus dem Raster, wie in der App.
+     */
     private fun snackbarFoto(geraet: String, dunkel: Boolean) {
         val galerie = welt.galerie().also { it.loadSets(); it.loadStats() }
+        bereitstellen("snackbar (geladen)", galerieFertig(galerie)) { galerie.galleryState.value }
+        galerie.loeschenVormerken(Beispiele.SET, "Millennium Falcon")
         val meldung = SnackbarHostState()
         zeige("snackbar", dunkel = dunkel, geraet = geraet, bereit = galerieFertig(galerie),
             zustand = { galerie.galleryState.value }) {

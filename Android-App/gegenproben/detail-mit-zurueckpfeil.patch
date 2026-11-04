@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Tablet zeigt Merkliste und Detail nebeneinander
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
-index 907e1d7..b283a6f 100644
+index 2375a56..52570b3 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
-@@ -55,7 +55,7 @@ val LocalImDetailBereich = staticCompositionLocalOf { false }
+@@ -83,7 +83,7 @@ fun detailSchluessel(art: String, nummer: String, farbe: Int? = null) = "$art|$n
  @Composable
- fun ZurueckKnopf(onClick: () -> Unit) {
+ fun ZurueckKnopf(onClick: () -> Unit, schliessen: Boolean = LocalImDetailBereich.current) {
      IconButton(onClick = onClick) {
--        if (LocalImDetailBereich.current) Icon(Icons.Default.Close, stringResource(R.string.detail_close))
+-        if (schliessen) Icon(Icons.Default.Close, stringResource(R.string.detail_close))
 +        if (false) Icon(Icons.Default.Close, stringResource(R.string.detail_close))
          else Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
      }

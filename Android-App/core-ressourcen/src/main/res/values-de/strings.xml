@@ -176,6 +176,10 @@
         <item quantity="one">%1$d Set in der Liste</item>
         <item quantity="other">%1$d Sets in der Liste</item>
     </plurals>
+    <plurals name="partslist_generate_anzahl">
+        <item quantity="one">(%1$d Set)</item>
+        <item quantity="other">(%1$d Sets)</item>
+    </plurals>
     <string name="partslist_loading_set">Lade %1$s (%2$d/%3$d)…</string>
     <string name="partslist_error_for_set">Fehler bei %1$s</string>
     <string name="partslist_summary">%1$s · %2$s</string>
@@ -230,6 +234,14 @@
     <string name="detail_storage_choose">Aus der Liste wählen oder neu eintippen</string>
     <string name="filter_condition_all">Alle</string>
     <string name="filter_storage_all">Alle Lagerorte</string>
+    <plurals name="filter_lagerort_sets">
+        <item quantity="one">%1$s · %2$d Set</item>
+        <item quantity="other">%1$s · %2$d Sets</item>
+    </plurals>
+    <plurals name="filter_lagerort_teile">
+        <item quantity="one">%1$s · %2$d Teil</item>
+        <item quantity="other">%1$s · %2$d Teile</item>
+    </plurals>
     <string name="filter_button">Filter</string>
     <string name="filter_title">Filter</string>
     <string name="filter_reset">Zurücksetzen</string>
@@ -254,7 +266,7 @@
         <item quantity="other">%1$d verschiedene</item>
     </plurals>
     <string name="partslist_owned_error">Der eigene Bestand liess sich nicht laden.</string>
-    <string name="partslist_empty_hint">Setnummer eingeben und „Bauliste erstellen“ tippen, mit „+“ kommen weitere Sets dazu — für den Nachbau oder um Fehlendes zu bestellen.</string>
+    <string name="partslist_empty_hint">Setnummer eingeben und „Bauliste erstellen“ tippen; weitere Sets kommen mit „+“ im Feld dazu — für den Nachbau oder um Fehlendes zu bestellen.</string>
     <string name="partslist_empty_title">Noch keine Bauliste</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
     <plurals name="partslist_group_summary">
@@ -727,6 +739,9 @@
     <string name="konto_profil_password_needed">Zum Speichern bitte das aktuelle Passwort eingeben.</string>
     <string name="konto_save">Profil speichern</string>
     <string name="konto_saved">Profil gespeichert</string>
+    <string name="konto_email_ausstehend">Ausstehend: %1$s. Gilt nach Bestätigung über den Link in der Mail an diese Adresse; bis dahin bleibt die bisherige.</string>
+    <string name="konto_email_link_gesendet">Bestätigungslink an %1$s gesendet. Bis du ihn öffnest, gilt die bisherige Adresse.</string>
+    <string name="konto_email_nicht_gesendet">Gespeichert, aber die Bestätigung an die neue Adresse ging nicht hinaus. Bitte den Verwalter fragen.</string>
     <string name="konto_password_title">Passwort ändern</string>
     <string name="konto_password_current">Aktuelles Passwort</string>
     <string name="konto_password_new">Neues Passwort</string>
@@ -738,6 +753,12 @@
     <string name="startpasswort_wiederholen">Neues Passwort wiederholen</string>
     <string name="startpasswort_verschieden">Die beiden Eingaben unterscheiden sich.</string>
     <string name="konto_design_hint">Gilt für dieses Konto auf allen Geräten.</string>
+    <string name="design_text_classic">Hell und sachlich, blaue Akzente.</string>
+    <string name="design_text_brick">Kräftiges Blau, Karten wie Steine mit Noppenrand.</string>
+    <string name="design_text_werkbank">Immer dunkel, unabhängig von hell oder dunkel. Dem dunklen Classic ähnlich, mit Messing in Hinweisen und Plaketten.</string>
+    <string name="design_text_farbfaecher">Jede Ansicht in ihrer eigenen Farbe.</string>
+    <string name="design_text_noppe">Bunt und verspielt: Leisten mit Noppen, dicke Kanten, harte Schatten.</string>
+    <string name="design_text_hochglanz">Ruhig und edel: glatte Flächen, weiche Verläufe, dezenter Glanz.</string>
     <string name="konto_design_vorgabe">Vorgabe: %1$s</string>
 
     <!-- ══════════════ CSV hochladen ══════════════ -->

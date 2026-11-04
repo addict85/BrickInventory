@@ -248,7 +248,6 @@ private fun AnmeldeFelder(
         wert = password, onWert = onPassword,
         beschriftung = stringResource(R.string.login_password),
         modifier = Modifier.fillMaxWidth(),
-        mitSymbol = true,
         imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
         keyboardActions = KeyboardActions(
             onNext = { focusMgr.moveFocus(FocusDirection.Down) },
@@ -412,9 +411,9 @@ private fun RegistrierFelder(
         // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler nach dem Senden.
         PasswortFeld(pw1, { pw1 = it }, stringResource(R.string.login_password), Modifier.fillMaxWidth(),
             art = PasswortArt.NEU, hinweis = pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
-            mitSymbol = true, imeAction = ImeAction.Next, keyboardActions = naechstes)
+            imeAction = ImeAction.Next, keyboardActions = naechstes)
         PasswortFeld(pw2, { pw2 = it }, stringResource(R.string.register_password_repeat), Modifier.fillMaxWidth(),
-            art = PasswortArt.WIEDERHOLUNG, mitSymbol = true)
+            art = PasswortArt.WIEDERHOLUNG)
 
         val zuZeigen = eigenerFehler ?: fehler
         if (zuZeigen != null) FormularMeldung(zuZeigen, fehler = true)

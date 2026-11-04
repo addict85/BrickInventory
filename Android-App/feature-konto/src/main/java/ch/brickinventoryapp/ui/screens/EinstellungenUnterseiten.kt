@@ -46,7 +46,8 @@ fun PreisalarmeUnterseite(
     /** Der Melde-Schalter; als Platz, weil er die Geräte-Einstellungen der Aktivität liest. */
     meldeSchalter: @Composable () -> Unit = { PreisalarmCard(aktivitaetsViewModel()) },
 ) {
-    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck) {
+    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck,
+        breite = ch.brickinventoryapp.ui.theme.Lesebreite.formular) {
         meldeSchalter()
         PreisalarmeCard(vm, imageLoader, serverUrl, onSetClick)
     }
@@ -107,7 +108,8 @@ fun KontoUnterseite(
     LaunchedEffect(Unit) { konto.ladeDesign() }
     // Passwort, zweiter Faktor, Geräte: Ein untergeschobener Tipp schaltete hier Schutz ab.
     ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-    Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck) {
+    Unterseite(stringResource(R.string.konto_title), snackbarHostState, onZurueck,
+        breite = ch.brickinventoryapp.ui.theme.Lesebreite.formular) {
         KontoCard(
             kontoZustand = kontoZustand,
             onSpeichern = { b, e, v, n, p, c -> konto.speichereProfil(b, e, v, n, p, c) },

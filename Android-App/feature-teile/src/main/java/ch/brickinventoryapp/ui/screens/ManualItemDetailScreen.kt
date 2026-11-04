@@ -117,25 +117,21 @@ fun ManualItemDetailScreen(
     val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(title, fontWeight = FontWeight.SemiBold,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis)
-                },
-                // Neben der Liste schliesst ein X nur das Detail (ZurueckKnopf).
-                navigationIcon = { ch.brickinventoryapp.ui.components.ZurueckKnopf(onBack) },
-                actions = {
-                    IconButton(onClick = { showDeleteConfirm = true }) {
-                        Icon(Icons.Default.Delete, stringResource(
-                            if (isFig) R.string.common_delete else R.string.common_delete))
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
+            // Derselbe Kopf wie jedes Detail (DetailTopAppBar).
+            ch.brickinventoryapp.ui.components.DetailTopAppBar(
+                titel = title,
+                onZurueck = onBack,
+                farben = TopAppBarDefaults.topAppBarColors(
                     containerColor = akzent.detailLeiste,
                     titleContentColor = akzent.aufDetailLeiste,
                     navigationIconContentColor = akzent.aufDetailLeiste,
                     actionIconContentColor = akzent.aufDetailLeiste,
-                )
+                ),
+                actions = {
+                    IconButton(onClick = { showDeleteConfirm = true }) {
+                        Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
+                    }
+                },
             )
         },
         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)

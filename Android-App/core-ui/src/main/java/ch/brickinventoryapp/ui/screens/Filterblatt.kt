@@ -207,15 +207,23 @@ fun KontoFilterAbschnitt(members: List<MitgliedAnsicht>, current: String, onSele
     }
 }
 
-/** Lagerortfilter als Abschnitt — nur, wenn irgendwo ein Ort erfasst ist. */
+/**
+ * Lagerortfilter als Abschnitt — nur, wenn irgendwo ein Ort erfasst ist. Die Zahl zählt,
+ * was der Filter filtert ([nachTeilen]), mit Einheit: „Keller (42)“ bei drei Sets las
+ * sich wie ein Fehler.
+ */
 @Composable
-fun LagerortFilterAbschnitt(orte: List<LagerortAnsicht>, current: String, onSelect: (String) -> Unit) {
+fun LagerortFilterAbschnitt(orte: List<LagerortAnsicht>, current: String, onSelect: (String) -> Unit,
+                            nachTeilen: Boolean = false) {
     if (orte.isEmpty()) return
     val wert = if (orte.any { it.ort == current }) current else ""
     FilterAbschnitt(stringResource(R.string.detail_storage)) {
         FilterWahl(stringResource(R.string.filter_storage_all), wert.isBlank()) { if (wert.isNotBlank()) onSelect("") }
         orte.forEach { o ->
-            FilterWahl("${o.ort}  (${o.sets + o.teile})", o.ort == wert) { if (o.ort != wert) onSelect(o.ort) }
+            val zahl = if (nachTeilen) o.teile else o.sets
+            val text = pluralStringResource(if (nachTeilen) R.plurals.filter_lagerort_teile else R.plurals.filter_lagerort_sets,
+                zahl, o.ort, zahl)
+            FilterWahl(text, o.ort == wert) { if (o.ort != wert) onSelect(o.ort) }
         }
     }
 }

@@ -65,12 +65,11 @@ fun ProduktBild(
     val ziel = (model as? ImageRequest)?.data ?: model
     var geladen by remember(ziel) { mutableStateOf(false) }
     val dunkel = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    // Im Dunkeln ist der Rand um das Bild dunkel und das Bild selbst gedämpft: Weisse
-    // Flächen blendeten neben den dunklen Karten (Prüfung 8, N3).
-    val grund = if (bildgrund && geladen) Modifier.background(
-        if (dunkel) MaterialTheme.colorScheme.surfaceContainerHighest else BILDGRUND) else Modifier
+    // Auch im Dunkeln ein Grund in der Farbe des Bilds, über die ganze Fläche gedämpft:
+    // Ein dunkler Rand um das weisse Bild stand als heller Kasten in der Karte.
+    val grund = if (bildgrund && geladen) Modifier.background(BILDGRUND) else Modifier
     val schleier = if (bildgrund && geladen && dunkel) Modifier.drawWithContent {
-        drawContent(); drawRect(Color.Black, alpha = SCHLEIER_DUNKEL)
+        drawContent(); drawRect(Color.Black, alpha = SCHLEIER_FLAECHE)
     } else Modifier
     Box(modifier.then(grund).then(schleier), contentAlignment = Alignment.Center) {
         if (!geladen) BildErsatz(Modifier.matchParentSize(), ersatzGroesse)
@@ -101,6 +100,9 @@ private val BILDGRUND = Color.White
  * Drittel wirkten die Produktbilder grau und matt.
  */
 private const val SCHLEIER_DUNKEL = 0.2f
+
+/** Der Schleier über einer ganzen Bildfläche: Sie ist grösser als das Bild, darum etwas dichter. */
+private const val SCHLEIER_FLAECHE = 0.3f
 
 /** Derselbe Schleier als Filter auf den Bildpunkten, für Bilder ohne eigenen Grund. */
 private val DAEMPFUNG_DUNKEL = ColorFilter.tint(Color.Black.copy(alpha = SCHLEIER_DUNKEL), BlendMode.SrcAtop)
