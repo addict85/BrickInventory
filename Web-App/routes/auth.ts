@@ -5,7 +5,7 @@ const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, verifiziereEmailToken } from '../src/konto/auth';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, verifiziereEmailToken } from '../src/konto/auth';
 import { zielGedrosselt, kontoGedrosselt } from '../src/konto/zielDrossel';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName, zweiterFaktorPflicht, gnadenfristVerbrauchen } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
@@ -222,7 +222,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
 
   const nameNeu = username && username.toLowerCase() !== String(user.username || '').toLowerCase();
   const emailChanged = email && email.toLowerCase() !== String(user.email || '').toLowerCase();
-  if (emailChanged && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+  if (emailChanged && !emailGueltig(email))
     return sendeFehler(req, res, 400, 'email_ungueltig');
   // Jede Änderung mit Passwort (und zweitem Faktor): Über eine neue Adresse liesse
   // sich das Passwort zurücksetzen, und erst danach verrät die Vergabeprüfung, ob
@@ -432,11 +432,11 @@ router.get('/zweiter-faktor', requireLogin, async (req, res: Antwort<'GET /api/v
 
 router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/einrichten'>) => {
   const uid = angemeldeteNutzerId(req);
-  // Gleich nach der Anmeldung (Erststart des Verwalters) kein drittes Passwort.
-  // Ohne Frist und ohne Passwort die Absage vor der Prüfung: Sie zählt nicht zur Bremse.
+  // Ohne Passwort nur, wo der Server den Faktor erzwingt (Verwalter direkt nach der
+  // Anmeldung); sonst sperrte eine erbeutete Sitzung den Inhaber aus. Die Absage zählt nicht zur Bremse.
   const ohnePasswort = req.body?.password === undefined || req.body?.password === '';
-  if (ohnePasswort && !await zf.istAktiv(uid)) {
-    if (!gnadenfristVerbrauchen(req)) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
+  if (ohnePasswort) {
+    if (!(await zweiterFaktorPflicht(req) && gnadenfristVerbrauchen(req))) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
   } else if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
   const geheimnis = await zf.beginneEinrichtung(uid);
   if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
@@ -454,6 +454,7 @@ router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res: Antwor
   const version = await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
     req.session?.userId ? req.sessionID : null);
   if (req.session?.userId) req.session.sitzungsVersion = version;
+  hinweisNebenher(uid, 'zweiter_faktor_eingerichtet');
   res.json({ success: true, codes });
 });
 
@@ -462,6 +463,7 @@ router.post('/zweiter-faktor/abschalten', requireLogin, async (req, res: Antwort
   if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
   if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
   await zf.schalteAb(uid);
+  hinweisNebenher(uid, 'zweiter_faktor_abgeschaltet');
   res.json({ success: true });
 });
 
@@ -562,7 +564,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     return sendeFehler(req, res, 400, 'registrierung_felder');
   const mangel = passwortMangel(password, username);
   if (mangel) return sendeFehler(req, res, 400, mangel);
-  if (!EMAIL_RE.test(email))
+  if (!emailGueltig(email))
     return sendeFehler(req, res, 400, 'email_ungueltig');
   if (!USERNAME_RE.test(username))
     return sendeFehler(req, res, 400, 'benutzername_ungueltig');
@@ -616,7 +618,7 @@ const RUECKSETZ_GUELTIG_MIN = 60, RUECKSETZ_PAUSE_MIN = 15, RUECKSETZ_MINDESTDAU
 // Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
 router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/bestaetigung-erneut'>) => {
   const { email } = req.body ?? {};
-  if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
+  if (!emailGueltig(email)) return sendeFehler(req, res, 400, email ? 'email_ungueltig' : 'email_erforderlich');
   if (!basisUrl()) {
     hinweisOhneBasisUrl('bestaetigung-erneut', 'Bestätigungs-Mails werden nicht versendet.');
     return sendeFehler(req, res, 503, 'bestaetigung_nicht_eingerichtet');
@@ -643,7 +645,7 @@ router.post('/email-bestaetigen', ipThrottle('email-bestaetigen', 30, 60 * 60 * 
 
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {
   const { email } = req.body;
-  if (!email) return sendeFehler(req, res, 400, 'email_erforderlich');
+  if (!emailGueltig(email)) return sendeFehler(req, res, 400, email ? 'email_ungueltig' : 'email_erforderlich');
   // Vor der Nutzersuche, damit die Absage nichts über die Adresse verrät.
   if (!basisUrl()) {
     hinweisOhneBasisUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');

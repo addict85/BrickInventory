@@ -18,6 +18,8 @@
  *   E  der frühe Aufruf von sitzungsGeheimnis() in starte() gestrichen → rot:
  *      dieselbe Prüfung (der Start scheitert erst an der Datenbank, ohne Grund)
  *   F  `start` in package.json ohne NODE_ENV=production → rot: „npm start …“
+ *   G  die Meldung zu APP_BASE_URL in server.ts gestrichen → rot: „ohne
+ *      APP_BASE_URL im Betrieb eine laute Meldung“
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -72,6 +74,16 @@ test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, 
   const { log } = await starte({ ...ohne, NODE_ENV: 'development', SESSION_SECRET: undefined });
   assert.doesNotMatch(log, /SESSION_SECRET/);
   assert.match(log, /Database initialisation failed/);
+});
+
+test('ohne APP_BASE_URL im Betrieb eine laute Meldung', { timeout: 30_000 }, async () => {
+  const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x' };
+  const ohne = await starte(db);
+  assert.match(ohne.log, /❌ \[start\] APP_BASE_URL fehlt im Betrieb: Der Host-Filter gegen DNS-Rebinding ist aus/);
+  const mit = await starte({ ...db, APP_BASE_URL: 'https://lego.example.org' });
+  assert.doesNotMatch(mit.log, /APP_BASE_URL fehlt/);
+  const entwicklung = await starte({ ...db, NODE_ENV: 'development' });
+  assert.doesNotMatch(entwicklung.log, /APP_BASE_URL fehlt im Betrieb/);
 });
 
 test('npm start setzt NODE_ENV=production', () => {

@@ -5,7 +5,7 @@ import { LAND_ZUR_WAEHRUNG } from './17-gutscheine.js';
 import { allSets, loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
-import { confirmDelete, bestaetigeMitPasswort, mitPasswortBestaetigen, mitZweitemFaktor } from './07-admin.js';
+import { confirmDelete, bestaetigeMitPasswort, mitPasswortBestaetigen, mitZweitemFaktor, speichereEinstellungen } from './07-admin.js';
 import { meldeAbschnitt } from './24-router.js';
 
 // ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
@@ -94,7 +94,8 @@ G('btn-sav-smtp')?.addEventListener('click', async()=>{
 });
 
 async function saveRegEnabled(){
-  const d=await api('POST','/v1/settings',{ registration_enabled: G('reg-enabled').checked?'1':'0' });
+  const d=await speichereEinstellungen(tRaw('settings.reg_title'), { registration_enabled: G('reg-enabled').checked?'1':'0' });
+  if(!d){ G('reg-enabled').checked=!G('reg-enabled').checked; return; }
   toast(d.success?t('settings.reg_saved'):t('settings.error'),d.success?'success':'error');
 }
 
@@ -673,9 +674,9 @@ export async function unlinkHousehold(subUserId){
   toast(tRaw('household.unlink_ok'),'success');
   loadHousehold();
 }
-G('btn-sav-bl').onclick=async()=>{ const d=await api('POST','/v1/settings',{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-rb').onclick=async()=>{ const d=await api('POST','/v1/settings',{rebrickable_api_key:G('rb-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
-G('btn-sav-bs').onclick=async()=>{ const d=await api('POST','/v1/settings',{brickset_api_key:G('bs-key').value}); if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-sav-bl').onclick=async()=>{ const d=await speichereEinstellungen(tRaw('settings.api_key_title'),{bricklink_consumer_key:G('bl-ck').value,bricklink_consumer_secret:G('bl-cs').value,bricklink_token:G('bl-tok').value,bricklink_token_secret:G('bl-ts').value}); if(!d) return; if(d.success) await api('PUT','/v1/admin/api-limits',{bricklink:parseInt(G('lim-bl').value)}); toast(d.success?t('settings.bl_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-sav-rb').onclick=async()=>{ const d=await speichereEinstellungen(tRaw('settings.api_key_title'),{rebrickable_api_key:G('rb-key').value}); if(!d) return; if(d.success) await api('PUT','/v1/admin/api-limits',{rebrickable:parseInt(G('lim-rb').value)}); toast(d.success?t('settings.rb_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
+G('btn-sav-bs').onclick=async()=>{ const d=await speichereEinstellungen(tRaw('settings.api_key_title'),{brickset_api_key:G('bs-key').value}); if(!d) return; if(d.success) await api('PUT','/v1/admin/api-limits',{brickset:parseInt(G('lim-bs').value)}); toast(d.success?t('settings.bs_saved'):t('settings.error'),d.success?'success':'error'); if(d.success){loadRateLimitStats();} };
 G('btn-save-theme').onclick=async()=>{
   const theme=G('mon-app-theme')?.value||'classic';
   const d=await api('POST','/v1/settings/admin/theme',{theme});

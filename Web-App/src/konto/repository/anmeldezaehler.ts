@@ -14,8 +14,8 @@ export function lies(key: string, fensterMin: number) {
       WHERE key = $1 AND first_at > NOW() - make_interval(mins => $2)`, [key, fensterMin]);
 }
 
-export async function erhoehe(key: string, fensterMin: number): Promise<void> {
-  await db.run(
+export async function erhoehe(key: string, fensterMin: number): Promise<number> {
+  return Number((await db.get<{ count: string }>(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET
        last_at  = NOW(),
@@ -23,7 +23,8 @@ export async function erhoehe(key: string, fensterMin: number): Promise<void> {
                        THEN 1 ELSE rate_limit_attempts.count + 1 END,
        first_at = CASE WHEN rate_limit_attempts.first_at < NOW() - make_interval(mins => $2)
                        THEN NOW() ELSE rate_limit_attempts.first_at END,
-       laufend  = GREATEST(rate_limit_attempts.laufend - 1, 0)`, [key, fensterMin]);
+       laufend  = GREATEST(rate_limit_attempts.laufend - 1, 0)
+     RETURNING count`, [key, fensterMin]))?.count ?? 0);
 }
 
 export type Sperrstand = {

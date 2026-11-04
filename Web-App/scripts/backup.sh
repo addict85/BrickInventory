@@ -56,17 +56,25 @@ else
   echo "[backup]   Unverschlüsselt nur ausdrücklich: BACKUP_KLARTEXT=ja" >&2
   exit 1
 fi
-# Verschlüsselt eine fertige Datei nach <datei>.age und entfernt den Klartext.
-verschluessele() {
-  [ -n "$VERSCHLUESSELN" ] || return 0
-  if [ -n "${BACKUP_AGE_EMPFAENGER_DATEI:-}" ]; then
-    "$AGE" -R "$BACKUP_AGE_EMPFAENGER_DATEI" -o "$1.age" "$1"
-  else
-    "$AGE" -r "$BACKUP_AGE_EMPFAENGER" -o "$1.age" "$1"
+# Klartext entsteht nie am Ziel: Die Daten laufen direkt in age, dort liegt bis
+# zum Umbenennen nur <datei>.teil. Im privaten Arbeitsordner (mktemp -d, 0700)
+# steht nur das Ende des Dumps für die Prüfung der Endmarke.
+ENDUNG=""; [ -z "$VERSCHLUESSELN" ] || ENDUNG=".age"
+KLAR=$(mktemp -d)
+TEIL=""
+trap 'rm -rf "$KLAR"; [ -z "$TEIL" ] || rm -f "$TEIL"' EXIT
+trap 'exit 1' HUP INT TERM
+schreibe() {
+  if [ -z "$VERSCHLUESSELN" ]; then cat > "$1"
+  elif [ -n "${BACKUP_AGE_EMPFAENGER_DATEI:-}" ]; then "$AGE" -R "$BACKUP_AGE_EMPFAENGER_DATEI" -o "$1"
+  else "$AGE" -r "$BACKUP_AGE_EMPFAENGER" -o "$1"
   fi
-  [ -s "$1.age" ] || { echo "[backup] FEHLER: $1.age ist leer." >&2; rm -f "$1.age"; exit 1; }
-  rm -f "$1"
-  echo "[backup] verschlüsselt → $1.age"
+}
+fertig() {
+  [ -s "$TEIL" ] || { echo "[backup] FEHLER: $1 ist leer." >&2; exit 1; }
+  mv "$TEIL" "$1"
+  TEIL=""
+  echo "[backup] gesichert → $1"
 }
 
 TARGET="${1:-./backups}"
@@ -88,46 +96,35 @@ case "$(ls -ld "$TARGET")" in
   *) echo "[backup] Warnung: $TARGET ist für andere Benutzer zugänglich — die Sicherung enthält Klartext-Schlüssel (chmod 700 \"$TARGET\")" >&2 ;;
 esac
 
-echo "[backup] Datenbank → $TARGET/db_$STAMP.sql.gz"
+DB_DATEI="$TARGET/db_$STAMP.sql.gz$ENDUNG"
+echo "[backup] Datenbank → $DB_DATEI"
 # --clean --if-exists: Der Dump lässt sich in eine bestehende Datenbank
 # einspielen, ohne sie vorher von Hand leeren zu müssen.
+mkfifo "$KLAR/strom"
+tail -c 1024 < "$KLAR/strom" > "$KLAR/ende" &
+TEIL="$DB_DATEI.teil"
 docker compose exec -T "$DB_SERVICE" \
   pg_dump --clean --if-exists -U "$DB_USER" "$DB_NAME" \
-  | gzip > "$TARGET/db_$STAMP.sql.gz"
+  | tee "$KLAR/strom" | gzip | schreibe "$TEIL"
+wait
 
-# ── Vollständigkeit prüfen — die wichtigste Zeile dieses Skripts ─────────────
-#
-# `set -eu` fängt in POSIX-sh KEINEN Fehler am ANFANG einer Pipe (kein
-# pipefail): Scheitert pg_dump (Datenbank down, Platte voll, Dienstname
-# falsch), läuft gzip trotzdem durch, hinterlässt eine kleine, formal GÜLTIGE
-# .gz-Datei, und das Skript meldet Erfolg — per Cron wochenlang wertlose
-# Sicherungen, ohne dass es jemand merkt. (Empirisch nachgestellt: Pipe-Kopf
-# mit exit 1 → Skript läuft weiter, gunzip -t ist zufrieden.)
-#
-# Ein vollständiger pg_dump im Plain-Format endet IMMER mit der Zeile
-# "-- PostgreSQL database dump complete". Fehlt sie, ist die Datei Schrott:
-# löschen und laut scheitern, damit Cron-Mail/Log es zeigen.
-if ! gunzip -c "$TARGET/db_$STAMP.sql.gz" | tail -n 5 | grep -q 'PostgreSQL database dump complete'; then
-  echo "[backup] FEHLER: Dump ist unvollständig (Endmarke fehlt) — Datei wird gelöscht." >&2
-  rm -f "$TARGET/db_$STAMP.sql.gz"
+# POSIX-sh hat kein pipefail: Scheitert pg_dump, laufen gzip und age trotzdem
+# durch. Ein vollständiger Dump endet immer mit dieser Marke; fehlt sie, räumt
+# der trap die halbe Datei weg.
+if ! tail -n 5 "$KLAR/ende" | grep -q 'PostgreSQL database dump complete'; then
+  echo "[backup] FEHLER: Dump ist unvollständig (Endmarke fehlt) — nichts gesichert." >&2
   exit 1
 fi
-verschluessele "$TARGET/db_$STAMP.sql.gz"
+fertig "$DB_DATEI"
 
-echo "[backup] Laufzeitdaten → $TARGET/data_$STAMP.tar.gz"
-# data/ enthält Uploads, Anleitungen und heruntergeladene Bilder.
-# img_proxy_cache wird ausgelassen: reiner Cache, baut sich selbst wieder auf,
-# und ist oft der grösste Posten.
-# data/ enthält seit der Umstellung AUCH die Set-, Teile- und
-# Minifiguren-Bilder (data/images/) — vorher lagen die in public/ und fehlten
-# in jeder Sicherung. Das Archiv wird dadurch deutlich grösser; wer die Bilder
-# nicht mitsichern will (sie lassen sich vom CDN neu holen), nimmt
-# data/images ebenfalls in die Ausschlussliste auf.
-tar czf "$TARGET/data_$STAMP.tar.gz" \
-  --exclude='data/img_proxy_cache' \
-  --exclude='data/.datenschluessel' \
-  data 2>/dev/null || echo "[backup] Warnung: data/ nicht vollständig gesichert"
-verschluessele "$TARGET/data_$STAMP.tar.gz"
+DATA_DATEI="$TARGET/data_$STAMP.tar.gz$ENDUNG"
+echo "[backup] Laufzeitdaten → $DATA_DATEI"
+# img_proxy_cache ist ein reiner Cache; wer die Bilder (data/images) nicht
+# mitsichern will, nimmt sie ebenfalls in die Ausschlussliste auf.
+TEIL="$DATA_DATEI.teil"
+{ tar czf - --exclude='data/img_proxy_cache' --exclude='data/.datenschluessel' data 2>/dev/null \
+    || echo "[backup] Warnung: data/ nicht vollständig gesichert" >&2; } | schreibe "$TEIL"
+fertig "$DATA_DATEI"
 
 SCHLUESSEL=schluessel/datenschluessel
 if [ ! -f "$SCHLUESSEL" ] && [ -f data/.datenschluessel ]; then

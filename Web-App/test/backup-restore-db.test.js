@@ -250,8 +250,6 @@ test('Sicherung und Wiederherstellung', async (t) => {
 
     assert.match(bCode, /grep -q 'PostgreSQL database dump complete'/,
       'backup.sh prüft die Endmarke nicht mehr — ein Torso ginge als Sicherung durch');
-    assert.match(bCode, /rm -f .*\$TARGET/,
-      'Ein unvollständiger Dump muss gelöscht werden, nicht bloss gemeldet');
     assert.match(rCode, /grep -q 'PostgreSQL database dump complete'/,
       'restore.sh prüft die Endmarke nicht, BEVOR es etwas überschreibt');
     assert.match(rCode, /ON_ERROR_STOP=1/,
@@ -349,6 +347,8 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', (t)
  *      `-U tester` ersetzt) → rot: „Code der App-Rolle lief als Superuser“
  *   B  die Zeile mit `OWNER TO` im awk-Filter entfernt → rot: „ein Dump von
  *      vor der App-Rolle“ (must be able to SET ROLE)
+ *   C  (04.11.) das vorangestellte \restrict entfernt → rot: „ein Backslash-Befehl
+ *      mitten in einer Zeile läuft nicht“ (die Datei entstand)
  */
 test('restore.sh spielt als App-Rolle ein', { timeout: 240_000 }, async (t) => {
   const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
@@ -450,5 +450,19 @@ esac
         WHERE relnamespace = 'public'::regnamespace AND relkind IN ('r', 'S', 'v')
           AND NOT EXISTS (SELECT FROM pg_depend d WHERE d.objid = pg_class.oid AND d.deptype = 'e')`)).rows, [{ e: APP }]);
     } finally { await c.end(); }
+  });
+
+  await t.test('ein Backslash-Befehl mitten in einer Zeile läuft nicht', async () => {
+    const geknackt = path.join(tmp, 'geknackt');
+    const sql = path.join(tmp, 'fremd.sql');
+    execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', sql, dbUrl(ziel)], { stdio: 'pipe' });
+    const inhalt = fs.readFileSync(sql, 'utf8');
+    const ende = inhalt.lastIndexOf('--\n-- PostgreSQL database dump complete');
+    fs.writeFileSync(sql, `${inhalt.slice(0, ende)}SELECT 1; \\! touch '${geknackt}'\n${inhalt.slice(ende)}`);
+    execFileSync('gzip', ['-f', sql]);
+    const r = zurueck(`${sql}.gz`);
+    assert.ok(!fs.existsSync(geknackt), 'ein Backslash-Befehl mitten in einer Zeile lief');
+    assert.notEqual(r.status, 0, 'der fremde Dump galt als eingespielt');
+    assert.match(r.stderr, /restricted/);
   });
 });

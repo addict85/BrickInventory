@@ -6,6 +6,7 @@ import * as repo from './repository/konten';
 import * as passkeyRepo from './repository/passkeys';
 import { BCRYPT_ROUNDS, leereTokenCache, revokeAllSessions, revokeAllTokens } from './auth';
 import { erhoeheSitzungsVersion } from './sitzungsVersion';
+import { emailGueltig } from '../infra/validate';
 
 export { aendereProfil, aktivesKontoNachEmail, erneuereEmailTokenWennFrei, emailVergeben, kontoExistiert, kontoKurz, kontoMitEmail, kontoNachRuecksetzToken, kontoVoll, legeQrTokenAn, loescheKonto, loeseQrTokenEin, mussPasswortAendern, nameVergeben, loescheEigenesKonto, raeumeQrTokensAuf, setzeRuecksetzTokenWennFrei, tokenStand, zugaengeDesKontos, zugaengeLoeschen } from './repository/konten';
 
@@ -13,6 +14,14 @@ export { aendereProfil, aktivesKontoNachEmail, erneuereEmailTokenWennFrei, email
 export async function andereSitzungenBeenden(uid: number, eigeneSid: string): Promise<{ beendet: number; version: number }> {
   const version = await erhoeheSitzungsVersion(uid);
   return { beendet: await repo.loescheAndereSitzungen(uid, eigeneSid), version };
+}
+
+/** Nur melden, nichts ändern: Welche Adresse gemeint war, weiss nur der Inhaber. */
+export async function meldeUngueltigeAdressen(): Promise<number[]> {
+  const ids = (await repo.alleAdressen()).filter(z => !emailGueltig(z.email)).map(z => z.id);
+  if (ids.length) console.warn(`⚠️  [konto] ${ids.length} Konto/Konten mit einer E-Mail-Adresse, die keine einzelne reine Adresse ist `
+    + `(IDs ${ids.join(', ')}). An sie geht keine Mail; Adresse im Konto neu eintragen oder das Konto löschen (UPGRADE.md).`);
+  return ids;
 }
 
 export async function kontenListe() {

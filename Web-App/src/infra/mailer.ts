@@ -5,7 +5,8 @@ import tls from 'node:tls';
 import type { PeerCertificate } from 'node:tls';
 import { konfig } from './konfig';
 import { getGlobalSetting } from '../konto/settings';
-import { ausTabelle } from './validate';
+import addressparser from 'nodemailer/lib/addressparser';
+import { ausTabelle, emailGueltig } from './validate';
 import { fehlertext } from './httpError';
 import { basisUrl, hinweisOhneBasisUrl } from './basisUrl';
 const getSetting = (key: string) => getGlobalSetting(key, '');
@@ -84,11 +85,22 @@ export function maskiereAdresse(adresse: string, voll = konfig().mailKonsoleMitT
   return at < 1 ? '…' : `${adresse[0]}…${adresse.slice(at)}`;
 }
 
+/** Die Zeichenkette muss für nodemailer genau diese eine Adresse sein, sonst
+ * ginge die Mail an eine andere als die geprüfte (Anzeigename, Liste). */
+export function einzigerEmpfaenger(to: string): boolean {
+  const liste = emailGueltig(to) ? addressparser(to, { flatten: true }) : [];
+  return liste.length === 1 && liste[0]!.address === to && !liste[0]!.name;
+}
+
 /** Ohne SMTP auf der Konsole; `html` und `text` optional, weil die Konsole
  * nur `text` liest. */
 export async function sendMail({ to, subject, html, text, link: echterLink }: {
   to: string; subject: string; html?: string; text?: string; link?: string;
 }) {
+  if (!einzigerEmpfaenger(to)) {
+    console.warn(`📧 Empfänger abgelehnt (${maskiereAdresse(to)}): keine einzelne reine Adresse`);
+    return { success: false, error: 'empfaenger_ungueltig', mode: 'smtp' };
+  }
   const transporter = await getTransporter();
   const from = await getFrom();
   if (!transporter) {
@@ -102,7 +114,9 @@ export async function sendMail({ to, subject, html, text, link: echterLink }: {
     return { success: true, mode: 'console' };
   }
   try {
-    const info = await transporter.sendMail({ from, to, subject, text, html });
+    const absender = addressparser(from, { flatten: true })[0]?.address;
+    const info = await transporter.sendMail({ from, to, subject, text, html,
+      ...(absender ? { envelope: { from: absender, to: [to] } } : {}) });
     console.log(`📧 E-Mail gesendet an ${maskiereAdresse(to)}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
@@ -473,7 +487,8 @@ export async function mailEingerichtet(): Promise<boolean> {
 
 export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt' | 'token_neu' | 'qr_zugang_neu'
   | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet'
-  | 'passwort_durch_verwalter' | 'verwaltung_passwort_gesetzt';
+  | 'passwort_durch_verwalter' | 'verwaltung_passwort_gesetzt' | 'zweiter_faktor_eingerichtet' | 'zweiter_faktor_abgeschaltet'
+  | 'anmeldung_gebremst' | 'einstellungen_geaendert';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
@@ -501,6 +516,13 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
                                  : `der Verwalter „${o.durch ?? ''}“ hat ein neues Passwort für dein Konto gesetzt. Alle Anmeldungen und App-Zugänge wurden beendet.`,
     verwaltung_passwort_gesetzt: en ? `“${o.durch ?? ''}” set a new password for the account “${o.konto ?? ''}”.`
                                     : `„${o.durch ?? ''}“ hat ein neues Passwort für das Konto „${o.konto ?? ''}“ gesetzt.`,
+    zweiter_faktor_eingerichtet: en ? 'a second factor (authenticator app) was set up for your account. All other sign-ins and app tokens were ended.'
+                                    : 'für dein Konto wurde ein zweiter Faktor (Authenticator-App) eingerichtet. Alle anderen Anmeldungen und App-Zugänge wurden beendet.',
+    zweiter_faktor_abgeschaltet: en ? 'the second factor of your account was turned off.' : 'der zweite Faktor deines Kontos wurde abgeschaltet.',
+    anmeldung_gebremst: en ? 'there were several failed sign-in attempts for your account; further attempts are slowed down for now.'
+                           : 'für dein Konto gab es mehrere fehlgeschlagene Anmeldeversuche; weitere Versuche werden vorerst gebremst.',
+    einstellungen_geaendert: en ? `“${o.durch ?? ''}” changed security-relevant settings: ${o.konto ?? ''}.`
+                                : `„${o.durch ?? ''}“ hat sicherheitsrelevante Einstellungen geändert: ${o.konto ?? ''}.`,
     token_wiederverwendet: en ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`
                               : `ein schon ersetzter App-Zugang („${o.passkey ?? ''}“) wurde erneut benutzt, jemand hat also eine Kopie. Alle Zugänge dieses Geräts sind beendet; melde die App neu an.`,
   }[art];

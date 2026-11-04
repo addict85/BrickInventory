@@ -54,6 +54,10 @@ export function alleKonten(): Promise<KontoInListe[]> {
        FROM users u ORDER BY u.id`);
 }
 
+export function alleAdressen(): Promise<{ id: number; email: string }[]> {
+  return db.all<{ id: number; email: string }>(`SELECT id, email FROM users WHERE COALESCE(email, '') <> '' ORDER BY id`);
+}
+
 export async function aktiveVerwalter(): Promise<number[]> {
   return (await db.all<{ id: number }>('SELECT id FROM users WHERE is_admin AND is_active AND email IS NOT NULL ORDER BY id'))
     .map(z => z.id);

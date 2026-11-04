@@ -72,6 +72,14 @@ export async function mitPasswortBestaetigen(titel, ruf) {
   return null;
 }
 
+/** Erst ohne Passwort; nur wenn der Server es für diese Änderung verlangt, wird nachgefragt.
+ * @returns die Antwort, oder null bei Abbruch */
+export async function speichereEinstellungen(titel, werte) {
+  const d = await api('POST', '/v1/settings', werte);
+  if (d?.code !== 'aktuelles_passwort_erforderlich') return d;
+  return mitPasswortBestaetigen(titel, (admin_password, z) => api('POST', '/v1/settings', { ...werte, admin_password, ...z }));
+}
+
 /** 23-passkeys.js meldet sich hier an, wenn der Browser Passkeys kann: Ein
  * Import in die Gegenrichtung schlösse einen Kreis über 01-core.js. */
 let passkeyHolen = null;

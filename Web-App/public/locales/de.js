@@ -604,7 +604,9 @@ window.I18N_DE = {
   'pdf.almost_done': 'gleich fertig…',
   'pdf.server_error': 'PDF-Fehler auf dem Server',
   'settings.imported_note': '{n} Einstellungen importiert. {note}',
-  'settings.smtp_skipped': 'Nicht übernommen: {keys}. SMTP bitte im Formular setzen.',
+  'settings.smtp_skipped': 'Nicht übernommen: {keys}. Diese Werte bitte im Formular setzen (mit Passwort).',
+  'settings.reg_title': 'Registrierung ändern',
+  'settings.api_key_title': 'API-Schlüssel ändern',
 
 
     'instr.section_title': 'Anleitungen',
