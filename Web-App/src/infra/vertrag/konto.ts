@@ -203,6 +203,8 @@ export const routen = {
   'POST /api/v1/auth/forgot-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
   'POST /api/v1/auth/bestaetigung-erneut': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
   'POST /api/v1/auth/email-bestaetigen': { antwort: Erfolg, eingabe: z.looseObject({ token: txt(200) }) },
+  'POST /api/v1/auth/email-bestaetigen/vorschau': { antwort: z.looseObject({ success: z.literal(true), username: z.string() }),
+    eingabe: z.looseObject({ token: txt(200) }) },
   'PUT /api/v1/auth/profile': { antwort: ProfilGespeichert, ...bestaetigt(ProfilAenderung.shape, 'password_current') },
   'POST /api/v1/auth/change-password': { antwort: GenericResponse, ...bestaetigt({ newPassword: z.string().max(PASSWORT).optional() }, 'current') },
   'POST /api/v1/auth/zweiter-faktor/einrichten': { antwort: ZweiterFaktorEinrichtung, ...bestaetigt(), geheim: true },

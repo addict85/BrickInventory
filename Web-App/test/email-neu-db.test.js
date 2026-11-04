@@ -24,6 +24,11 @@
  *   G  meldeAusstehendeAdressen() ohne Abfrage (leere Liste) → rot: dieselbe Prüfung
  *   H  erneuereEmailTokenWennFrei() ohne `HAVING COUNT(*) = 1` → rot: „ein neuer
  *      Link nur für die einzige offene Registrierung“
+ *   I  die Vorschau nennt auch email_neu (Name und Adresse) → rot: „die
+ *      Vorschau nennt nur den Benutzernamen“
+ *   K  die Vorschau ruft verifiziereEmailToken() → rot: „… löst nicht ein“
+ *   L  POST /register übergibt `mehrere` nicht → rot: „bei mehreren offenen
+ *      Registrierungen trägt die Mail den Hinweis“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -44,7 +49,7 @@ const { testServer } = require('./helpers/server');
 const post = [];
 const echt = _req('src/infra/mailer.js');
 require.cache[require.resolve(path.join(S.DIST, 'src/infra/mailer.js'))].exports = Object.assign({}, echt, {
-  sendVerificationMail: async (an, token, _b, _l, art) => { post.push({ an, art: art ?? 'registrierung', token }); return { success: true, mode: 'smtp' }; },
+  sendVerificationMail: async (an, token, _b, _l, art, mehrere) => { post.push({ an, art: art ?? 'registrierung', token, mehrere: !!mehrere }); return { success: true, mode: 'smtp' }; },
   sendEmailGeaendertMail: async (an, _n, neu) => { post.push({ an, art: 'hinweis', neu }); return { success: true }; },
   sendRegistrierungsVersuchMail: async (an) => { post.push({ an, art: 'versuch' }); return { success: true, mode: 'smtp' }; },
   sendPasswordResetMail: async (an) => { post.push({ an, art: 'reset' }); return { success: true }; },
@@ -54,7 +59,7 @@ const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const P = `en${process.pid}`, PASS = 'Passwort-Carol-2026';
 const adr = (n) => `${n}_${P}@example.org`;
-const ZAEHLER = ['register|%', 'register-ziel|%', 'forgot%', 'profil-vergabe%', 'email-bestaetigen|%', '%-bestaetigen|%', 'login%', 'bestaetigung%'];
+const ZAEHLER = ['register|%', 'register-ziel|%', 'forgot%', 'profil-vergabe%', 'email-bestaetigen|%', '%-bestaetigen|%', 'login%', 'bestaetigung%', 'email-vorschau|%'];
 
 test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -168,6 +173,30 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t)
     assert.equal((await registriere('doppel', adr('allein'))).status, 200);
     await db.run("UPDATE users SET email_neu_bis = NOW() + INTERVAL '1 hour' WHERE username LIKE $1", [`%_${P}`]);
     assert.deepEqual(await erneut(adr('allein')), [], 'bei zwei offenen Registrierungen ginge ein fremder Link mit');
+  });
+
+  await t.test('vor dem Einlösen nennt der Link nur sein Konto', async () => {
+    await bremsenLoesen();
+    assert.equal((await registriere('mallory4', adr('zwei'))).status, 200);
+    assert.equal((await registriere('zwei', adr('zwei'))).status, 200);
+    const [fremd, eigen] = post.filter(m => m.an === adr('zwei'));
+    assert.deepEqual([fremd.mehrere, eigen.mehrere], [false, true],
+      'bei mehreren offenen Registrierungen trägt die Mail den Hinweis');
+    const vorschau = (token) => ruf('POST', '/email-bestaetigen/vorschau', { token });
+    const v = await vorschau(fremd.token);
+    assert.deepEqual([v.status, v.body], [200, { success: true, username: `mallory4_${P}` }],
+      'die Vorschau nennt nur den Benutzernamen');
+    assert.deepEqual(await konto('mallory4'), { id: (await konto('mallory4')).id, email: null, email_neu: adr('zwei') },
+      'die Vorschau löst nicht ein');
+    for (const falsch of ['falsch', '', undefined]) {
+      const r = await vorschau(falsch);
+      assert.deepEqual([r.status, r.body.code, r.body.username], [400, 'bestaetigungslink_ungueltig', undefined]);
+    }
+    const login = await ruf('POST', '/login', { username: `mallory4_${P}`, password: 'Opfer-Passwort-2026!' });
+    assert.deepEqual([login.status, login.body.token], [401, undefined],
+      'vor der Bestätigung keine Anmeldung, also auch kein zweiter Faktor');
+    assert.equal((await ruf('POST', '/email-bestaetigen', { token: eigen.token })).status, 200);
+    assert.equal((await vorschau(eigen.token)).status, 400, 'ein eingelöster Link nennt nichts mehr');
   });
 
   await t.test('Migrationen 0096 und 0097 machen den Altbestand ausstehend, der Start meldet ihn', async () => {

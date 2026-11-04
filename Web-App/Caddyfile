@@ -29,10 +29,10 @@
 }
 
 # Anmeldewege, die ohne Sitzung ein Passwort (bcrypt) oder eine Signatur
-# prüfen. Das Standard-Image hat kein Modul für Anfrage-Raten; die Bremse
-# begrenzt deshalb die gleichzeitigen Anfragen an die App: Eine Flut aus vielen
-# Adressen wartet bei Caddy, statt alle Kerne mit bcrypt zu belegen. Die
-# Grenzen je Adresse und Konto setzt der Server.
+# prüfen. Die Zahl gleichzeitiger Prüfungen begrenzt der Server selbst (Schranke
+# mit Vorrang bekannter Anmeldungen, 503 bei Überlast); eine Verbindungsgrenze
+# hier stellte die Flut davor in eine Schlange ohne Ende, Frist und Vorrang.
+# Caddy hält nur überlange und langsame Rümpfe fern.
 (anmeldung) {
 	@anmeldung {
 		method POST
@@ -44,14 +44,11 @@
 		}
 		reverse_proxy app:3000 {
 			header_up X-Request-Id {http.request.uuid}
-			# Erst den ganzen Rumpf lesen, dann eine der vier Verbindungen
-			# belegen: Sonst halten vier langsame Rümpfe die Anmeldung für alle
-			# an. Grösser als max_size, damit ein überlanger Rumpf hier mit 413
-			# endet, statt ab der Puffergrenze doch zur App zu strömen.
+			# Erst den ganzen Rumpf lesen, dann zur App: Ein langsamer Rumpf
+			# belegt dort keine Verbindung. Grösser als max_size, damit ein
+			# überlanger Rumpf hier mit 413 endet, statt ab der Puffergrenze
+			# doch zur App zu strömen.
 			request_buffers 32KB
-			transport http {
-				max_conns_per_host 4
-			}
 		}
 	}
 }

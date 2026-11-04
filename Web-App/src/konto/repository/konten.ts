@@ -71,6 +71,18 @@ export async function uebernimmEmailNeu(hash: string): Promise<{ id: number; ok:
   return { id: k.id, ok };
 }
 
+/** Nur der Name: Wer den Link hat, sieht vor dem Einlösen, zu welchem Konto er gehört. */
+export async function nameZuEmailToken(hash: string): Promise<string | null> {
+  return (await db.get<{ username: string }>(
+    'SELECT username FROM users WHERE email_neu_token = $1 AND email_neu_bis > NOW()', [hash]))?.username ?? null;
+}
+
+export async function offeneRegistrierungen(email: string): Promise<number> {
+  return Number((await db.get<{ n: string }>(
+    'SELECT COUNT(*) AS n FROM users WHERE registrierung_offen AND LOWER(email_neu) = LOWER($1) AND email_neu_bis > NOW()',
+    [email]))?.n ?? 0);
+}
+
 /** Altbestand aus Migration 0096: ausstehend ohne gültigen Link. */
 export async function ausstehendOhneLink(): Promise<number[]> {
   return (await db.all<{ id: number }>(

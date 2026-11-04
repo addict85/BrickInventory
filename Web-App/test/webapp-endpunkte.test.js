@@ -181,6 +181,8 @@ const NUR_WEB = new Map([
   ['/api/v1/auth/email-bestaetigen',
    'Der Knopf auf der Seite hinter dem Link aus der Mail (/verify). Der Link ' +
    'öffnet die Webseite, auch auf dem Telefon; die App hat dafür keinen Bildschirm.'],
+  ['/api/v1/auth/email-bestaetigen/vorschau',
+   'Nennt auf derselben Seite (/verify) vor dem Knopf das Konto des Links.'],
   ['/api/v1/auth/bestaetigung-erneut',
    'Neuer Bestätigungslink; er zeigt auf die Webseite (/verify), dort wird bestätigt. ' +
    'Neu seit Runde 6 – die App kann den Knopf nachziehen, bis dahin hilft die Webseite.'],

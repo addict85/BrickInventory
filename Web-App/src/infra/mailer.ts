@@ -333,9 +333,10 @@ const DIVIDER = `<table role="presentation" cellspacing="0" cellpadding="0" bord
 </table>`;
 
 /** Ohne Namen: Die Adresse ist unbestätigt, und Name wie Benutzername wählt,
- * wer registriert — eine Anrede daraus trüge fremden Text in eine Mail des Servers. */
+ * wer registriert — eine Anrede daraus trüge fremden Text in eine Mail des Servers.
+ * Nennen mehrere Registrierungen die Adresse, verweist `mehrere` auf die Bestätigungsseite. */
 export async function sendVerificationMail(to: string, token: string, baseUrl: string, lang = 'de',
-                                           art: 'registrierung' | 'adresse' = 'registrierung') {
+                                           art: 'registrierung' | 'adresse' = 'registrierung', mehrere = false) {
   // Beim Versand laden: Das Design kann sich zwischen zwei Mails geändert haben.
   const theme = await getMailTheme();
   const url = `${baseUrl}/verify?token=${token}`;
@@ -350,6 +351,7 @@ export async function sendVerificationMail(to: string, token: string, baseUrl: s
          ? 'this address is to become the new email address of a BrickInventory Manager account. It only takes effect once you confirm it.'
          : 'welcome to BrickInventory Manager! Please confirm your email address to activate your account.'}</p>`,
     btn: '✓  Confirm email',
+    mehrere: 'Several sign-ups name this address. Before confirming, the page shows the username this link belongs to: confirm only if it is yours.',
     note: `<p style="margin:0;font-size:13px;color:#6b7280">
          The link is valid for <strong>24 hours</strong>.<br>
          ${adresse ? 'If you did not request this, ignore this email; nothing changes.' : 'If you did not sign up, you can safely ignore this email.'}
@@ -364,20 +366,23 @@ export async function sendVerificationMail(to: string, token: string, baseUrl: s
          ? 'diese Adresse soll die neue E-Mail-Adresse eines Kontos bei BrickInventory Manager werden. Sie gilt erst, wenn du sie bestätigst.'
          : 'willkommen bei BrickInventory Manager! Bitte bestätige deine E-Mail-Adresse um dein Konto zu aktivieren.'}</p>`,
     btn: '✓  E-Mail bestätigen',
+    mehrere: 'Mehrere Registrierungen nennen diese Adresse. Vor dem Bestätigen zeigt die Seite den Benutzernamen, zu dem dieser Link gehört: Bestätige nur, wenn es deiner ist.',
     note: `<p style="margin:0;font-size:13px;color:#6b7280">
          Der Link ist <strong>24 Stunden</strong> gültig.<br>
          ${adresse ? 'Hast du das nicht veranlasst, ignoriere diese E-Mail; es ändert sich nichts.' : 'Falls du dich nicht registriert hast, kannst du diese E-Mail ignorieren.'}
        </p>`,
   };
+  const hinweis = mehrere && !adresse;
   return sendMail({
     to,
     subject: L.subject,
-    text: L.text,
+    text: hinweis ? L.text.replace('\n\n', `\n\n${L.mehrere}\n\n`) : L.text,
     link: url,
     html: emailTemplate(
       L.title,
       L.preheader,
       `${L.greetHtml}
+       ${hinweis ? `<p style="margin:0 0 20px"><strong>${L.mehrere}</strong></p>` : ''}
        ${emailBtn(url, L.btn, theme)}
        ${DIVIDER}
        ${L.note}`,

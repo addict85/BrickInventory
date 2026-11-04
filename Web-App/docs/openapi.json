@@ -1204,6 +1204,51 @@
         }
       }
     },
+    "/api/v1/auth/email-bestaetigen/vorschau": {
+      "post": {
+        "tags": [
+          "konto"
+        ],
+        "responses": {
+          "200": {
+            "description": "Erfolg",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/POST_api_v1_auth_email_bestaetigen_vorschau"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Fehler",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Fehler"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "additionalProperties": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/auth/forgot-password": {
       "post": {
         "tags": [
@@ -15783,6 +15828,23 @@
           "period",
           "points",
           "y_axis"
+        ],
+        "additionalProperties": {}
+      },
+      "POST_api_v1_auth_email_bestaetigen_vorschau": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "username"
         ],
         "additionalProperties": {}
       },

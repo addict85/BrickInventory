@@ -594,7 +594,8 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
     // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
     // Sprache startet.
     if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
-    result = basis ? await sendVerificationMail(email, token, basis, lang)
+    const mehrere = (await K.offeneRegistrierungen(email)) > 1;
+    result = basis ? await sendVerificationMail(email, token, basis, lang, 'registrierung', mehrere)
       : { success: false, mode: 'ohne_basis' };
   }
 
@@ -632,6 +633,13 @@ router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60
   }
   await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));
   res.json({ success: true, message: fehlerText('bestaetigung_gesendet', antwortSprache(req)) });
+});
+
+router.post('/email-bestaetigen/vorschau', ipThrottle('email-vorschau', 30, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/email-bestaetigen/vorschau'>) => {
+  const token = req.body?.token;
+  const username = token ? await K.nameZuEmailToken(hashToken(String(token))) : null;
+  if (!username) return sendeFehler(req, res, 400, 'bestaetigungslink_ungueltig');
+  res.json({ success: true, username });
 });
 
 router.post('/email-bestaetigen', ipThrottle('email-bestaetigen', 30, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/email-bestaetigen'>) => {
