@@ -110,7 +110,7 @@ export async function zfNeueCodes() {
 
 export async function zfAbschalten() {
   const code = G('zf-code')?.value || '';
-  if (!await confirmDelete(tRaw('zf.disable'), t('zf.disable_confirm'), 'schloss')) return;
+  if (!await confirmDelete(tRaw('zf.disable'), t('zf.disable_confirm'), 'schloss', { knopf: 'confirm.btn.abschalten', art: 'bd' })) return;
   const d = await mitPasswortBestaetigen(tRaw('zf.disable'), (password, z) =>
     api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...(code ? { code } : {}), ...z }));
   if (!d) return;
@@ -127,7 +127,7 @@ export async function zfCodesKopieren() {
 
 /** Verwalter: den zweiten Faktor eines Kontos entfernen (Telefon und Codes verloren). */
 export async function zfZuruecksetzen(uid, name) {
-  const admin_password = await bestaetigeMitPasswort(tRaw('zf.reset_title'), tRaw('zf.reset_text', { name }), 'schloss');
+  const admin_password = await bestaetigeMitPasswort(tRaw('zf.reset_title'), tRaw('zf.reset_text', { name }), 'schloss', { knopf: 'confirm.btn.zuruecksetzen', art: 'bp' });
   if (admin_password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/users/${uid}/zweiter-faktor`, { admin_password, ...z }));
   if (d === null) return;

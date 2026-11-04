@@ -27,7 +27,8 @@ const AXE_LAUF = `(async () => {
 
 /**
  * Layout: waagrechter Überlauf, Tippziele (Telefon ≥ 44 px, Rechner ≥ 24 px),
- * überlappende Bedienelemente, abgeschnittener Text ohne „…“, Kontrast von
+ * überlappende Bedienelemente, zu schmale oder verdeckte Textblöcke,
+ * abgeschnittener Text ohne „…“, Kontrast von
  * Text und Platzhaltern (4,5:1, gross 3:1) und von Feldgrenzen und
  * Sinnbild-Knöpfen (3:1). Gemessen wird im offenen Dialog, sonst auf der Seite.
  */
@@ -173,6 +174,56 @@ const LAYOUT = (telefon) => `(() => {
       const r = rgba(s['border' + seite + 'Color']); if (r && r.a > 0) best = Math.max(best, kontrast(ueber(r, u), i));
     }
     if (best < 2.995) funde.push('aktiver Zustand ' + best.toFixed(2) + ':1: ' + name(e));
+  }
+  // 8. Schmaler Text: Ein Textblock, den Nachbarn auf unter 40 px drücken,
+  //    steht Buchstabe für Buchstabe untereinander. Er ragt nirgends hinaus,
+  //    deshalb sieht ihn die Überlaufprüfung nicht. Auch 0 px breit zählt.
+  const texte = document.createTreeWalker(wurzel, NodeFilter.SHOW_TEXT), zeilenText = [];
+  for (let n = texte.nextNode(); n; n = texte.nextNode()) {
+    const e = n.parentElement, zeichen = n.textContent.replace(/\s+/g, '').length;
+    if (zeichen < 4 || !e || e.closest('svg, script, style, .vh, [hidden], [aria-hidden="true"], .ovl:not(.open), details:not([open]) > :not(summary)')) continue;
+    const s = getComputedStyle(e);
+    if (s.display === 'none' || s.visibility === 'hidden' || deckkraft(e) <= 0.1 || !e.getClientRects().length) continue;
+    const box = e.getBoundingClientRect();
+    if (box.width <= 1 && /hidden|clip/.test(s.overflow)) continue;   // absichtlich versteckt (Vorleser)
+    zeilenText.push({ n, e });
+    const b = document.createRange(); b.selectNodeContents(n);
+    const r = b.getBoundingClientRect(), zeilen = new Set([...b.getClientRects()].map(x => Math.round(x.top))).size;
+    const lh = parseFloat(s.lineHeight) || parseFloat(s.fontSize) * 1.2;
+    if ((r.width < 40 && r.height > 2.5 * lh) || (zeilen > 2 && zeichen / zeilen < 3))
+      funde.push('schmal ' + Math.round(box.width) + ' px, ' + zeilen + ' Zeilen: ' + name(e));
+  }
+  // 10. Vom Vorfahren abgeschnitten: Eine Textzeile ragt über einen Kasten mit
+  //     overflow hidden/clip hinaus, oder seitlich aus einem Dialog (der rollt nur
+  //     senkrecht) — dort fehlt ein Stück („Marktp…“ ohne „…“).
+  const kappt = (e) => { for (let x = e.parentElement; x && x !== document.body; x = x.parentElement) {
+    const o = getComputedStyle(x).overflowX; if (o === 'hidden' || o === 'clip') return x; if (o !== 'visible') return x.matches('.modal') ? x : null; } return null; };
+  for (const { n, e } of zeilenText) {
+    if (!sichtbar(e) || getComputedStyle(e).textOverflow === 'ellipsis') continue;
+    const k = kappt(e); if (!k) continue;
+    const kr = k.getBoundingClientRect(), b = document.createRange(); b.selectNodeContents(n);
+    const r = b.getBoundingClientRect();
+    if (r.width > 1 && (r.right > kr.right + 2 || r.left < kr.left - 2)) funde.push('abgeschnitten (Rahmen): ' + name(e));
+  }
+  //     Ebenso eine Beschriftung im Diagramm, die über die Zeichenfläche hinausläuft.
+  for (const e of wurzel.querySelectorAll('svg text')) {
+    const r = e.getBoundingClientRect(), f = e.ownerSVGElement?.getBoundingClientRect();
+    if (!f || r.width < 1 || getComputedStyle(e).visibility === 'hidden' || deckkraft(e) <= 0.1) continue;
+    if (r.left < f.left - 2 || r.right > f.right + 2) funde.push('abgeschnitten (Diagramm): ' + name(e));
+  }
+  // 9. Verdeckt: Ein darübergelegter Knopf (position: absolute) liegt auf
+  //    einer Textzeile im Fluss der Seite — dort ist der Text nicht lesbar.
+  //    Aufgeklappte Menüs liegen mit Absicht über der Seite.
+  const absolut = (e) => { for (let x = e; x; x = x.parentElement) { const p = getComputedStyle(x).position; if (p === 'absolute') return true; if (p === 'fixed' || p === 'sticky') return false; } return false; };
+  const darueber = eindeutig.filter(z => absolut(z.flaeche) && !z.flaeche.closest('.import-klappe, #umenu-pop, [role=menu], [role=listbox]'));
+  for (const { n, e } of zeilenText) {
+    if (absolut(e) || fest(e) || !sichtbar(e)) continue;
+    const b = document.createRange(); b.selectNodeContents(n);
+    for (const z of darueber) for (const r of b.getClientRects()) {
+      if (z.flaeche.contains(e)) continue;
+      const x = Math.min(r.right, z.r.right) - Math.max(r.left, z.r.left), y = Math.min(r.bottom, z.r.bottom) - Math.max(r.top, z.r.top);
+      if (x > 2 && y > 2) funde.push('verdeckt ' + Math.round(x) + '×' + Math.round(y) + ': ' + name(e) + ' unter ' + name(z.flaeche));
+    }
   }
   return [...new Set(funde)];
 })()`;

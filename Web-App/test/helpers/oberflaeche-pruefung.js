@@ -36,6 +36,13 @@
  *      „Minifiguren“, „Benutzermenü“, „Import-Menü“ (aktiver Zustand „Karten“)
  *   M  noppe dunkel .ntab.active ohne hellen Rand → noppe/rechner „Sammlung“,
  *      „Teileliste“, „Finanzen“ u. a. (aktiver Zustand 1,13:1)
+ * Gegenproben (04.11.2026, zusammen angewendet, classic/telefon und schmal):
+ *   N  Merklisten-Zeile ohne eigene Zeile für Etikett und Preis → „Merkliste“
+ *      (schmal 0 px, 7 Zeilen: .mk-titel)
+ *   O  Seitentitel der Sammlung ohne min-height 44px → „Teile“ (verdeckt:
+ *      Untertitel unter „Importieren“)
+ *   P  (einzeln, 320 px Seitenschrift 200 %) Finanzzeile ohne die
+ *      Container-Abfrage 17rem → „Finanzen“ (schmal 0 px: .fin-name)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -120,24 +127,24 @@ function pruefeOberflaeche(design, geraet) {
   });
 }
 
-/** Funde, die grosse Schrift betreffen: Überlauf, Abschneiden, Überlappung, Tippziel, Leiste. */
-const GROSS = /^(Überlauf|abgeschnitten|Überlappung|Tippziel|Leiste)/;
+/** Funde, die grosse Schrift betreffen: Überlauf, Abschneiden, Überlappung, Tippziel, Leiste, schmaler oder verdeckter Text. */
+const GROSS = /^(Überlauf|abgeschnitten|Überlappung|Tippziel|Leiste|schmal|verdeckt)/;
 const LEISTE = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisibility()).map(t => t.querySelector('.tab-label'))
   .filter(l => l.getBoundingClientRect().width <= 1 || l.scrollWidth > l.clientWidth + 1).map(l => 'Leiste: „' + l.textContent.trim() + '“ abgeschnitten')`;
 
 /**
- * Alle Ansichten bei 320 px und 200 % Schrift, in allen sechs Designs hell
+ * Alle Ansichten bei 320 px (oder `breite`) und 200 % Schrift, in allen sechs Designs hell
  * und dunkel. `modus` 'browser' vergrössert wie die Browsereinstellung
  * (Page.setFontSizes), 'seite' setzt die Grundschrift der Seite auf 200 %,
  * 'schmal' misst 320 px bei normaler Schrift auf Englisch.
  */
-function pruefeGrosseSchrift(modus) {
-  test(`Oberfläche 320 px (${modus}): alle Ansichten`, { concurrency: 1, timeout: 300_000 }, async (t) => {
+function pruefeGrosseSchrift(modus, breite = 320) {
+  test(`Oberfläche ${breite} px (${modus}): alle Ansichten`, { concurrency: 1, timeout: 300_000 }, async (t) => {
     // Schmal auf Englisch: Die längeren Beschriftungen sind dort der enge Fall.
     const app = await starteApp(t, { name: `ofl_gross_${modus}_${process.pid}`, bestand: musterSammlung, sprache: modus === 'schmal' ? 'en' : 'de' });
     if (app.grund) { t.skip(app.grund); return; }
     const { b } = app;
-    await b.tab('Emulation.setDeviceMetricsOverride', { width: 320, height: 640, deviceScaleFactor: 1, mobile: true });
+    await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: 640, deviceScaleFactor: 1, mobile: true });
     await warte(1000);
     await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
     if (modus === 'browser') await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
@@ -149,6 +156,8 @@ function pruefeGrosseSchrift(modus) {
       await b.auswerten(SCHLIESSEN);
       for (const s of schritte) { await b.auswerten(s); await warte(250); }
       await warte(400);
+      // Gemessen wird der geladene Inhalt, nicht das Gerüst davor (Marktpreis im Set-Dialog).
+      await app.bis(`!document.querySelector('.ovl.open .skelett-zeile, .tab.active .skelett-zeile')`, 'Inhalt geladen', 40).catch(() => {});
       for (const design of designs) for (const dunkel of [false, true]) {
         await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.toggleAttribute('data-dunkel', ${dunkel}); true`);
         await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);

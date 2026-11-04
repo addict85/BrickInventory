@@ -75,6 +75,7 @@
   <symbol id="i-set" viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></symbol>
   <symbol id="i-teil" viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="9" rx="1.5"/><path d="M6.5 10V7.5h4V10M13.5 10V7.5h4V10"/></symbol>
   <symbol id="i-figur" viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.5"/><path d="M6 21v-3a6 6 0 0 1 12 0v3"/></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8.5V19l-4 2v-7.5z"/></symbol>
   <symbol id="i-liste" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></symbol>
   <symbol id="i-finanzen" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></symbol>
   <symbol id="i-merkliste" viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
@@ -471,7 +472,7 @@
            direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div class="filterleiste filterzeile">
-          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-liste"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span></button>
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false"><svg class="ico" aria-hidden="true"><use href="#i-filter"/></svg><span class="filter-text" data-i18n="common.filter">Filter</span><span class="vh nur-telefon" data-i18n="common.filter">Filter</span><span class="filter-zahl" id="gallery-filter-zahl" hidden></span></button>
           <input type="text" class="si suchfeld" id="gs" placeholder="Sets suchen…" data-i18n="gallery.search" data-i18n-attr="placeholder" / aria-label="Sets suchen">
           <select class="w-auto" id="gtheme" aria-label="Thema filtern" data-i18n="gallery.theme_label" data-i18n-attr="aria-label" data-change="renderGallery">
             <option value="" data-i18n="gallery.filter.all">Alle Themen</option>
@@ -652,7 +653,7 @@
            direkt über der Liste, auf die sie wirken. Beim Verschieben nur den
            Container anfassen — die IDs darin sind der Vertrag mit dem JS. -->
       <div class="filterleiste filterzeile">
-          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="liste">Filter</button>
+          <button type="button" class="btn bs filter-knopf" data-click="filterUmschalten" aria-expanded="false" data-i18n="common.filter" data-ico="filter">Filter</button>
           <input class="suchfeld" type="text" id="parts-search" placeholder="Teilenummer / Name…" data-i18n="parts.search" data-i18n-attr="placeholder" / aria-label="Teilenummer / Name">
           <select class="w-auto" id="parts-spare" aria-label="Ersatzteile" data-i18n="parts.spare_label" data-i18n-attr="aria-label">
             <option value="" data-i18n="parts.filter.all">Alle Teile</option>
@@ -833,58 +834,35 @@
       <div class="ph spalte-05">
         <h1 class="ptitle" data-tab-title="partslist"><span class="ptitle-icon"></span><span data-i18n="nav.partslist">Bauliste</span></h1>
         <p class="ptitle-unter" data-i18n="pl.subtitle">Stellt die Teile eines oder mehrerer Sets zusammen — zum Nachbauen oder um Fehlendes zu bestellen.</p>
-        <div class="zeile mittig luecke-05 umbruch">
-        <input type="text" id="pl-setnr" placeholder="Set-Nr." data-i18n="pl.set_nr" data-i18n-attr="placeholder" data-stil="width:9em;max-width:100%;flex-shrink:0" aria-label="Set-Nr." />
-        <button class="btn bp fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
-        <button class="btn bs fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" data-i18n="pl.generate" data-ico="werkzeug">Erstellen</button>
-        <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf" data-stil="display:none"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
-        <select id="pl-bl-condition" aria-label="Zustand" data-i18n="detail.condition" data-i18n-attr="aria-label" data-stil="display:none;width:auto;flex-shrink:0"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neuware</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select>
-        <button class="btn bs fest" data-click="plExportBricklink" id="btn-pl-bl" data-stil="display:none"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="vertical-align:middle;margin-right:4px;flex-shrink:0"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>BrickLink XML</button>
-        <button class="btn bd" data-click="plReset" id="btn-pl-reset" disabled data-stil="white-space:nowrap;flex-shrink:0;margin-left:auto" data-i18n="partslist.reset" data-ico="loeschen">Zurücksetzen</button>
+        <div class="pl-leiste">
+          <div class="pl-feld">
+            <label for="pl-setnr" data-i18n="pl.feld_setnr">Set-Nummern (mehrere mit Komma trennen)</label>
+            <div class="zeile mittig luecke-05">
+              <input type="text" id="pl-setnr" class="pl-setnr" autocomplete="off" />
+              <button class="btn bs fest" data-click="plAddSet" data-i18n="adding.button" data-ico="plus">Hinzufügen</button>
+            </div>
+          </div>
+          <div class="zeile mittig luecke-05 umbruch">
+            <button class="btn bp fest" data-click="plGenerate" id="btn-pl-gen" aria-disabled="true" data-i18n="pl.generate" data-ico="werkzeug">Teileliste erstellen</button>
+            <button class="btn bs fest" data-click="plReset" id="btn-pl-reset" disabled data-i18n="partslist.reset" data-ico="aktualisieren">Zurücksetzen</button>
+          </div>
+          <div class="pl-export" id="pl-export" role="group" aria-labelledby="pl-export-titel" hidden>
+            <span class="pl-export-titel" id="pl-export-titel" data-i18n="pl.export">Exportieren</span>
+            <button class="btn bs fest" data-click="plExportPdf" id="btn-pl-pdf"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg> PDF</button>
+            <span class="pl-zustand"><label for="pl-bl-condition" data-i18n="pl.zustand_bl">Zustand für BrickLink</label>
+              <select id="pl-bl-condition"><option value="X" data-i18n="pl.condition.any">Beliebig</option><option value="N" data-i18n="pl.condition.new">Neuware</option><option value="U" data-i18n="pl.condition.used">Gebraucht</option></select></span>
+            <button class="btn bs fest" data-click="plExportBricklink" id="btn-pl-bl"><svg width="14" height="14" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" class="pl-bl-zeichen" aria-hidden="true"><rect x="18" y="38" width="84" height="68" rx="3" fill="#e63329"/><polygon points="18,38 30,20 102,20 102,38" fill="#cc2a21"/><polygon points="102,20 118,30 118,86 102,106" fill="#b5231c"/><ellipse cx="43" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="37" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="43" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="58" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="52" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="58" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="73" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="67" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="73" cy="17" rx="6" ry="3" fill="#b5231c"/><ellipse cx="88" cy="20" rx="6" ry="3" fill="#cc2a21"/><rect x="82" y="17" width="12" height="3" fill="#cc2a21"/><ellipse cx="88" cy="17" rx="6" ry="3" fill="#b5231c"/><rect x="24" y="54" width="72" height="40" rx="2" fill="#fff"/><rect x="29" y="58" width="46" height="15" rx="2" fill="#f5a800"/><text x="52" y="69" text-anchor="middle" font-family="Arial,sans-serif" font-weight="800" font-size="11" fill="#3b2600">BIM</text></svg>BrickLink XML</button>
+          </div>
         </div>
-        <!--
-          Eigene ZEILE (Marcos Vorgabe): „Diese gehören thematisch nicht zum
-          Rest."
-
-          Er hat recht, und die Zeile darüber sagt jetzt auch, warum: Dort
-          stehen die Teileliste ZUSAMMENSTELLEN (Set-Nr., Hinzufügen,
-          Erstellen) und sie WEITERGEBEN (PDF, BrickLink, Reset). Der eigene
-          Bestand ist keines von beidem — er trägt Zahlen IN die fertige
-          Liste ein und ändert damit, was dasteht.
-
-          Die Sichtbarkeit hängt jetzt an DIESER Zeile statt an ihren beiden
-          Kindern: Sonst bliebe hier ein 8px-Streifen aus dem gap des
-          Elternteils stehen, solange noch keine Liste erzeugt ist — ein
-          leerer Absatz mitten in der Kopfzeile.
-
-          Zum Namen: Schlüssel und IDs sagen „lose", die Beschriftung sagt
-          „manuell erfasst". Das ist dieselbe Sache — der Server zählt unter
-          `lose` genau die Zeilen mit source='manual' (utils/handlers/parts.ts,
-          getOwnedQuantities). Marcos Beschriftung benennt die Bedingung,
-          die alten Namen benennen die Wirkung.
-        -->
-        <div id="pl-bestand-zeile" data-stil="display:none;align-items:center;gap:.5rem;flex-wrap:wrap">
+        <!-- Eigene Zeile: Der Bestand trägt Zahlen in die fertige Liste ein; er
+             gehört weder zum Zusammenstellen noch zum Exportieren. -->
+        <div id="pl-bestand-zeile" class="pl-bestand-zeile" data-stil="display:none">
           <button class="btn bs fest" data-click="plFuelleBestand" id="btn-pl-bestand" data-i18n="pl.fill_owned" data-ico="set">Bereits vorhandene Teile eintragen</button>
-          <label id="pl-bestand-lose-box" data-stil="display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);white-space:nowrap;flex-shrink:0">
+          <label id="pl-bestand-lose-box" class="pl-wahl">
             <input class="ohne-rand" type="checkbox" id="pl-bestand-lose" data-change="plFuelleBestand"><span data-i18n="pl.only_loose">nur manuell erfasste Teile berücksichtigen</span></label>
-          <!--
-            Zweite Wahl, andere Frage (Marcos Vorgabe): Die erste sagt, WELCHE
-            ART Teile zählt (manuell erfasst oder auch die aus Sets), diese
-            sagt, WESSEN. Beide wirken zusammen — „nur manuell erfasste" plus
-            „mit Unterkonten" zählt die manuell erfassten Teile des ganzen
-            Haushalts.
-
-            Ohne Haken gilt `accounts=own`, also nur das eigene Konto — Marcos
-            „aber nur die eigenen Sets". Das ist bewusst die Vorgabe und eine
-            Änderung: Bisher übernahm der Abgleich stillschweigend den
-            Kontofilter des TEILE-Reiters, und der steht nach jeder Anmeldung
-            auf „Alle Konten". Eine Einstellung, die woanders sitzt und hier
-            wirkt, ist keine Antwort auf „wessen Teile zähle ich".
-
-            Sichtbar nur für ein Hauptkonto mit Unterkonten — dieselbe Regel
-            wie bei den Kontofiltern der anderen Reiter (02-gallery.js).
-          -->
-          <label id="pl-bestand-subs-box" data-stil="display:none;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);white-space:nowrap;flex-shrink:0">
+          <!-- Welche Art Teile zählt (oben) und wessen (hier); ohne Haken nur das
+               eigene Konto. Sichtbar nur für ein Hauptkonto mit Unterkonten. -->
+          <label id="pl-bestand-subs-box" class="pl-wahl" data-stil="display:none">
             <input class="ohne-rand" type="checkbox" id="pl-bestand-subs" data-change="plFuelleBestand"><span data-i18n="pl.include_subs">Unterkonten mit einbeziehen</span></label>
         </div>
       </div>
@@ -959,7 +937,11 @@
             <div class="fg"><label for="bl-tok">Token Value</label><input type="text" id="bl-tok" autocomplete="off" /></div>
             <div class="fg"><label for="bl-ts">Token Secret</label><div class="geheim-feld"><input type="password" id="bl-ts" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-ts" aria-pressed="false" aria-controls="bl-ts" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bl"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"4000"}'>(Standard: 4000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bl" min="1" max="100000" value="4000" /></div>
-            <button class="btn bp btn-speichern" id="btn-sav-bl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+            <div class="zeile mittig luecke-8 umbruch">
+              <button class="btn bp btn-speichern" id="btn-sav-bl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+              <button class="btn bs" type="button" data-click="einstellungenQuellePruefen" data-arg="bricklink" data-i18n="settings.zugang_pruefen" data-ico="ok">Gespeicherten Zugang prüfen</button>
+            </div>
+            <div class="quelle-stand" id="pruef-bricklink" role="status"></div>
           </div>
         </div>
         <div class="ssec" id="einst-rb">
@@ -968,7 +950,11 @@
             <div class="ibox abstand-u-4"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span class="schrift-1" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><div class="geheim-feld"><input type="password" id="rb-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="rb-key" aria-pressed="false" aria-controls="rb-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-rb"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"25000"}'>(Standard: 25000)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-rb" min="1" max="100000" value="25000" /></div>
-            <button class="btn bp btn-speichern" id="btn-sav-rb" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+            <div class="zeile mittig luecke-8 umbruch">
+              <button class="btn bp btn-speichern" id="btn-sav-rb" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+              <button class="btn bs" type="button" data-click="einstellungenQuellePruefen" data-arg="rebrickable" data-i18n="settings.zugang_pruefen" data-ico="ok">Gespeicherten Zugang prüfen</button>
+            </div>
+            <div class="quelle-stand" id="pruef-rebrickable" role="status"></div>
           </div>
         </div>
         <div class="ssec" id="einst-bs">
@@ -977,7 +963,11 @@
             <div class="ibox abstand-u-4"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span class="schrift-1" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
             <div class="fg"><label for="bs-key">Brickset API Key</label><div class="geheim-feld"><input type="password" id="bs-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bs-key" aria-pressed="false" aria-controls="bs-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
             <div class="fg"><label for="lim-bs"><span data-i18n="settings.max_calls">Max. Aufrufe pro Tag</span> <span class="text-klein" data-i18n="settings.default_n" data-i18n-vars='{"n":"100"}'>(Standard: 100)</span></label><input class="max-160" inputmode="numeric" type="number" id="lim-bs" min="1" max="100000" value="100" /></div>
-            <button class="btn bp btn-speichern" id="btn-sav-bs" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+            <div class="zeile mittig luecke-8 umbruch">
+              <button class="btn bp btn-speichern" id="btn-sav-bs" data-i18n="settings.save" data-ico="speichern">Speichern</button>
+              <button class="btn bs" type="button" data-click="einstellungenQuellePruefen" data-arg="brickset" data-i18n="settings.zugang_pruefen" data-ico="ok">Gespeicherten Zugang prüfen</button>
+            </div>
+            <div class="quelle-stand" id="pruef-brickset" role="status"></div>
           </div>
         </div>
         <div class="ssec full" id="usermgmt" data-stil="display:none">
@@ -1342,16 +1332,10 @@
     <div class="tab" id="tab-alarme">
       <div class="ph"><h1 class="ptitle"><span class="ptitle-icon"><svg class="ico" aria-hidden="true"><use href="#i-alarm"/></svg></span><span data-i18n="alerts.group">Preisalarme</span></h1></div>
 
-      <!-- ── PREISALARME: ALLE AUF EINEN BLICK ───────────────────────────── -->
-      <!--
-        Marcos Frage vom 25.09.: „Wie finde ich alle Preisalarme?" — bis hierher
-        gar nicht. Ein Alarm war nur im Detaildialog des Sets zu sehen, das man
-        schon gefunden hatte. Diese Rubrik ist der Ort, an dem sie zusammen
-        stehen, sich ändern und abstellen lassen.
-      -->
-
+      <!-- Alle Preisalarme an einem Ort; im Set-Detail sieht man nur den eines Sets. -->
       <div class="ssec abstand-u-125" id="alerts-card">
         <div class="sform">
+          <h2 class="stit" data-i18n="alerts.list_title">Deine Preisalarme</h2>
           <div class="text-mittel" data-i18n="alerts.intro">
             Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.
           </div>
@@ -1679,9 +1663,10 @@
             </select></div>
           <button class="btn bp btn-speichern" type="button" id="btn-save-cache-ttl" data-i18n="settings.save" data-ico="speichern">Speichern</button>
         </div>
-        <div class="mon-aktionen">
-          <button class="btn bs" type="button" id="btn-clr-prices" data-i18n="settings.clear_price_cache">Gespeicherte Preise löschen</button>
-          <button class="btn bs" type="button" id="btn-clr-all-cache" data-i18n="monitor.clear_all">Zwischenspeicher ganz leeren (Preise, Teile, Katalog)</button>
+        <div class="mon-aktionen gefahrenzone" role="group" aria-labelledby="mon-gefahr-titel">
+          <h3 class="mon-gefahr-titel" id="mon-gefahr-titel" data-i18n="monitor.gefahrenzone">Zwischenspeicher leeren</h3>
+          <button class="btn bd" type="button" id="btn-clr-prices" data-i18n="settings.clear_price_cache" data-ico="loeschen">Gespeicherte Preise löschen</button>
+          <button class="btn bd" type="button" id="btn-clr-all-cache" data-i18n="monitor.clear_all" data-ico="loeschen">Zwischenspeicher ganz leeren (Preise, Teile, Katalog)</button>
         </div>
       </section>
 
@@ -1884,7 +1869,7 @@
           <a class="btn bs knopf-fuellend" id="mk-m-bricklink" href="#" target="_blank" rel="noopener" data-stil="display:none" data-i18n="catalog.buy_bricklink" data-ico="korb">Auf BrickLink kaufen</a>
           <a class="btn bs knopf-fuellend" id="mk-m-vergleich" href="#" target="_blank" rel="noopener" data-stil="display:none" data-i18n="detail.compare" data-ico="monitoring">Preisvergleich</a>
         </div>
-        <button class="btn bp zentriert" id="mk-m-take" data-click="merkpostenDetailUebernehmen" data-i18n="wanted.take" data-ico="plus">In Galerie aufnehmen</button>
+        <button class="btn bp zentriert" id="mk-m-take" data-click="merkpostenDetailUebernehmen" data-i18n="wanted.take" data-ico="plus">In die Sammlung aufnehmen</button>
       </div>
     </div>
   </div>
@@ -1914,7 +1899,7 @@
       <div class="fg max-110"><label for="mk-take-cond" data-i18n="common.condition">Zustand</label><select class="auswahl-kompakt" id="mk-take-cond"><option value="N" data-i18n="common.condition_new">Neuware</option><option value="U" data-i18n="common.condition_used">Gebraucht</option></select></div><div class="fg max-220" id="mk-take-storage-box"><span class="feld-titel" id="mk-take-storage-label" data-i18n="detail.storage">Lagerort</span><span class="zeile luecke-6 mittig" id="mk-take-storage-slot"></span></div>
     </div>
     <div class="mfooter">
-      <button class="btn bp" id="mk-take-ok" data-click="bestaetigeUebernahme" data-i18n="wanted.take" data-ico="plus">In Galerie aufnehmen</button>
+      <button class="btn bp" id="mk-take-ok" data-click="bestaetigeUebernahme" data-i18n="wanted.take" data-ico="plus">In die Sammlung aufnehmen</button>
     </div>
   </div>
 </div>
@@ -1970,7 +1955,7 @@
       </div>
       <div data-stil="display:flex;gap:8px;align-items:stretch;width:100%">
         <button class="btn bs knopf-fuellend" id="cat-m-wish" data-click="katalogAufMerkliste" data-i18n="wanted.add.submit" data-ico="plus">Auf die Merkliste</button>
-        <button class="btn bp knopf-fuellend" id="cat-m-add" data-i18n="catalog.add_to_gallery" data-ico="plus">In Galerie aufnehmen</button>
+        <button class="btn bp knopf-fuellend" id="cat-m-add" data-i18n="catalog.add_to_gallery" data-ico="plus">In die Sammlung aufnehmen</button>
       </div>
     </div>
   </div>

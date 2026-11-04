@@ -42,7 +42,7 @@ test('UI-Prüfung 10: Zahlen, Diagramme, Meldungen', { timeout: 280_000 }, async
       gesamt: document.querySelector('#fin-tbl .dt-summe tfoot td.fin-fuss-wert').textContent.trim(),
       basis: document.getElementById('fin-basis').hidden })`);
     assert.equal(z.basis, false, 'Testdaten: Positionen ohne Marktpreis');
-    assert.equal(z.titel, 'Kaufpreis mit Marktpreis', 'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“');
+    assert.equal(z.titel, 'Kaufpreis (nur bewertete Posten)', 'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“');
     assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
   });
 

@@ -763,7 +763,7 @@
     .user-tbl td,.user-tbl th{vertical-align:middle}
     .rb{display:inline-flex;padding:2px 8px;border-radius:999px;font-size:var(--fs-0);font-weight:600}
     .ra{background:var(--a100);color:var(--a-schrift)}.rv{background:var(--p100);color:var(--p600)}.ru{background:var(--s100);color:var(--s600)}
-    .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block}
+    .cond-badge{font-size:var(--fs-0);padding:1px 5px;border-radius:10px;font-weight:600;display:inline-block;white-space:nowrap}
     .cond-new{background:var(--b100);color:var(--b700)}
     .besitzer-badge{background:var(--b100);color:var(--b700)}
     .admin-hinweis{font-size:var(--fs-1);color:var(--mut);font-weight:400}
@@ -1161,7 +1161,7 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 /* ── Merkliste: die Zeile ──────────────────────────────────────────────── */
 .mk-zeile{position:relative;display:flex;gap:12px;align-items:center;padding:10px 44px 10px 10px;border:1px solid var(--bdr);
   border-radius:var(--rad);background:var(--sur);margin-bottom:8px;cursor:pointer}
-.mk-text{flex:1;min-width:0}
+.mk-text{flex:1 1 10rem;min-width:0}
 .mk-titel{font-weight:600}
 .mk-unter{font-size:var(--fs-1);color:var(--mut)}
 .mk-rechts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -1376,6 +1376,7 @@ p.mon-leise{margin:0 0 .35rem}
 .unbekannt-badge{display:inline-block;padding:1px 7px;border-radius:999px;border:1px dashed var(--feldrand);color:var(--txt);font-size:var(--fs-0);font-weight:600}
 .erfassen-unbekannt{grid-column:1 / -1;margin:0}
 .erfassen-unbekannt[hidden]{display:none}
+.erfassen-unbekannt .btn{margin-top:.5rem}
 
 /* Set-Detail: Felder und Knöpfe in einer Höhe wie in den übrigen Formularen (N6). */
 @media (min-width:641px){
@@ -1393,6 +1394,19 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
    mit Inhalt — ein gesperrter roter Knopf las sich wie ein aktiver (N4). */
 #pl-sets > .empty{flex:1 1 100%}
 #btn-pl-reset:disabled{display:none}
+/* Bauliste in drei Schritten: Sets wählen, erstellen, exportieren. */
+.pl-leiste{display:flex;flex-direction:column;gap:.75rem;align-items:flex-start}
+.pl-feld{display:flex;flex-direction:column;gap:.3rem;max-width:100%}
+.pl-feld label,.pl-zustand label{font-size:var(--fs-2);font-weight:600}
+.pl-setnr{width:14em;max-width:100%;flex:0 1 auto}
+.pl-export{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.5rem;padding-top:.75rem;border-top:1px solid var(--bdr);width:100%}
+.pl-export[hidden]{display:none}
+.pl-export-titel{flex:1 1 100%;font-weight:700;font-size:var(--fs-2)}
+.pl-zustand{display:inline-flex;flex-direction:column;gap:.2rem}
+.pl-zustand select{width:auto}
+.pl-bl-zeichen{vertical-align:middle;margin-right:4px;flex-shrink:0}
+.pl-bestand-zeile{align-items:center;gap:.5rem;flex-wrap:wrap}
+.pl-wahl{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-2);color:var(--mut);flex-shrink:0}
 /* Leere Sammlung und leere Finanzen: keine Nullkarten, Filter und Zeiträume ohne Wirkung. */
 #tab-gallery.sammlung-leer :is(.filterleiste,.brick-stats){display:none}
 /* Leer: Der Hauptknopf steht im Leerzustand; oben bliebe er doppelt. */
@@ -1474,10 +1488,10 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
    Bewegung schaltet die Regel oben jede Animation ab. */
 @keyframes aufklappen{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .umenu-pop:not([hidden]),details[open] > :is(.import-klappe,.mehr-liste){animation:aufklappen .14s ease-out}
-/* Die Wertlinie in Finanzen nimmt die Akzentfarbe des Designs; Neu/Gebraucht bleiben die gemeinsamen Diagrammfarben. */
+/* Die Wertlinie in Finanzen bleibt blau, auch wo die Marke rot ist (Noppe,
+   Hochglanz): Rot liest sich bei Beträgen als Verlust. Werkbank hat kein Rot. */
 :root{--chart-wert:var(--chart-new)}
 [data-theme="werkbank"]{--chart-wert:var(--messing)}
-[data-theme="noppe"],[data-theme="hochglanz"]{--chart-wert:var(--b600)}
 /* Der Dialog selbst bekommt beim Öffnen den Fokus nur als Ausgangspunkt für Tab; ein Ring um die ganze Fläche lenkt ab. */
 .ovl > [tabindex="-1"]:focus-visible{outline:none}
 /* Grosse Schrift auf schmalem Schirm: Knopftexte brechen im Knopf um, statt über den Rand zu ragen. */
@@ -1486,3 +1500,33 @@ input.alarm-feld[inputmode=decimal]{width:7.5em}
 /* Das Ausgabeland gilt für alle Konten; der Kasten setzt es von den eigenen Gutscheinen ab. */
 .voucher-land{border:1px dashed var(--bdr);border-radius:var(--rad);padding:.75rem;margin-bottom:.75rem}
 .qr-form{max-width:420px;width:100%}
+
+/* Hintergrundarbeiten: Leeren steht abgesetzt, nicht neben „Speichern“. */
+.mon-aktionen.gefahrenzone{margin-top:var(--sp-4);align-items:center}
+.mon-gefahr-titel{flex:1 1 100%;font-size:var(--fs-2);font-weight:700;margin:0}
+.alarm-preis{display:inline-flex;align-items:center;gap:6px}
+.alarm-preis-titel{font-size:var(--fs-1);color:var(--mut)}
+/* Preisalarme: Name, Stand und Löschen oben, die Schwelle darunter — so rutscht
+   der Löschknopf in der halben Spalte nicht allein in eine eigene Zeile. */
+.alarm-ue{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"bild text stand" "bild schwelle loeschen";
+  gap:6px 10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)}
+.alarm-ue > :first-child{grid-area:bild;align-self:start}
+.alarm-ue-text{grid-area:text;min-width:0}
+.alarm-ue-unter,.alarm-ue-richtung,.alarm-ue-waehrung{font-size:var(--fs-1);color:var(--mut)}
+.alarm-ue-stand{grid-area:stand;display:flex;flex-direction:column;align-items:flex-end}
+.alarm-ue-zuletzt{font-size:var(--fs-0);color:var(--mut);white-space:nowrap}
+.alarm-ue-schwelle{grid-area:schwelle;display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
+.alarm-ue-feld{width:7em;border:1px solid var(--feldrand);border-radius:6px;padding:3px 7px;font-size:var(--fs-3);background:var(--sur);color:var(--txt)}
+.alarm-ue-loeschen{grid-area:loeschen;justify-self:end}
+.filter-zahl{display:inline-grid;place-items:center;min-width:1.25rem;height:1.25rem;padding:0 4px;border-radius:999px;background:var(--b600);color:var(--auf-primaer,#fff);font-size:var(--fs-0);font-weight:700}
+.filter-zahl[hidden]{display:none}
+#tab-gallery .filterleiste > .filter-knopf{position:relative}
+#tab-gallery .filterleiste > .filter-knopf > .filter-zahl{position:absolute;top:-6px;right:-6px}
+.haushalt-liste{row-gap:.4rem}
+.haushalt-name{display:inline-flex;align-items:center;gap:.4rem;font-weight:600;padding:.3rem 0;overflow-wrap:anywhere}
+.haushalt-aktion{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;padding:.3rem 0}
+.feld-titel-klein{display:block;font-size:var(--fs-1);color:var(--mut);margin-bottom:3px}
+.quelle-stand{display:flex;align-items:center;gap:6px;font-size:var(--fs-2);min-height:1.2em}
+.quelle-stand.quelle-ok{color:var(--gewinn,var(--g700))}
+.quelle-stand.quelle-fehler{color:var(--r700)}
+.v-btn-text{display:none}

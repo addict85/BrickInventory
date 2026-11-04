@@ -346,8 +346,8 @@ export function renderAcquisitionSummary(acqs, sn) {
       : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
     const price = erfassungsPreis(a, a.purchase_price);
     const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-    return `<div data-stil="display:flex;align-items:center;gap:6px;padding:2px 0">
-      <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
+    return `<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+      <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
       ${dateFmt ? `<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
@@ -367,8 +367,8 @@ function renderManAcqSummary(acqs, type, id, colorId) {
       : `<span class="cond-badge cond-new">${t('common.condition_new')}</span>`;
     const price = erfassungsPreis(a, a.unit_price);
     const dateFmt = a.created_at ? fmtDatum(a.created_at) : '';
-    return `<div data-stil="display:flex;align-items:center;gap:6px;padding:2px 0">
-      <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px">×${a.quantity}</span>
+    return `<div data-stil="display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+      <span data-stil="color:var(--mut);font-size:var(--fs-1);min-width:24px;white-space:nowrap">×${a.quantity}</span>
       ${cond}
       ${price}
       ${dateFmt ? `<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}

@@ -116,6 +116,8 @@ export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: un
       theme_name: tree.pathName.get(s.theme_id) || null }))) };
 }
 
+export const katalogGeladen = async () => !(await repo.katalogLeer());
+
 export async function katalogSet(userId: number, roh: string) {
   const n = mitVersion(roh.trim());
   const set = await repo.katalogZeile(userId, n);

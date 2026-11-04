@@ -56,8 +56,10 @@
   header .logo span,
   .brand-sub          { display: none; }      /* Wortmarke kürzen */
   header .logo .kopf-sicht:not([hidden]) { display: block; }
-  /* Mit Seitenname nur Logo und Name: Beide Wörter zusammen wären abgeschnitten. */
-  header .logo:has(.kopf-sicht:not([hidden])) .marke { display: none; }
+  /* Mit Seitenname nur Logo und Name: Beide Wörter zusammen wären abgeschnitten.
+     Solange die Überschrift selbst zu sehen ist, steht dort die Marke. */
+  header .logo .kopf-sicht.titel-sichtbar { display: none; }
+  header .logo:has(.kopf-sicht:not([hidden]):not(.titel-sichtbar)) .marke { display: none; }
   header .logo .kopf-sicht::before { content: none; }
   /* Gekürzt wird der NAME, nicht der Knopf: Seit der Namenszug der
      Menüknopf ist (17.10.), hängen die drei Striche im selben Element.
@@ -181,6 +183,11 @@
   .dr.alarm-zeile { flex-direction: column; align-items: stretch !important; }
   .dr.alarm-zeile > .dv { width: 100%; }
   .alarm-zeile .alarm-feld { flex: 1 1 0; min-width: 0; width: auto; }
+  /* Zustand, Richtung und Preis passen am kleinen Telefon nicht in eine Zeile:
+     Die Auswahl teilt sich die erste, der Preis mit Beschriftung die zweite. */
+  .alarm-zeile .dv > select.alarm-feld { flex: 1 1 8rem; }
+  .alarm-zeile .alarm-preis { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; }
+  .alarm-zeile .alarm-preis > input { flex: 1 1 auto; }
 
   /* Kennzahl-Kacheln: Zahl in einer Zeile */
   .pstat .v           { font-size: var(--fs-4); overflow-wrap: anywhere; }
@@ -225,6 +232,10 @@
   /* Platz für den 44-px-Knopf, damit er weder Bild noch Preis verdeckt. */
   .man-tile:has(> .ca) { padding-top: 52px; }
   .mk-zeile { padding-right: 56px; }
+  /* Etikett und Preis bekommen eine eigene Zeile unter dem Text: Neben dem
+     Bild ist für drei Spalten kein Platz, und der Titel wird sonst 0 px breit. */
+  .mk-zeile { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 12px; row-gap: 6px; }
+  .mk-zeile > .mk-rechts { grid-column: 2; }
   .ibox a[href], a.schrift-1[href] { display: inline-flex; align-items: center; min-height: 44px; }
   /* Lange Beschriftungen brechen um, statt über den Rand zu ragen. */
   .ssec .btn { white-space: normal; }
@@ -456,6 +467,9 @@
   .ntab       { padding-left: 0; padding-right: 0; letter-spacing: -.02em; word-spacing: 0; }
   [data-theme="brick"] nav { padding-left: 2px; padding-right: 2px; column-gap: 0; }
   [data-theme="brick"] .ntab { padding-left: 0; padding-right: 0; }
+  /* „Minifiguren“ berührt den Rand der Sammlungswahl nicht. */
+  .sammlung-wahl button { gap: 4px; padding-left: 2px; padding-right: 2px; }
+  .sammlung-wahl button .ico { width: 1rem; height: 1rem; }
 }
 
 
@@ -548,7 +562,8 @@
    Kennzahlen und Filter je eine Zeile, das Kartenbild flacher. */
 @media (max-width: 640px) {
   :is(#tab-gallery, #tab-parts, #tab-minifigs) { position: relative; }
-  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { padding-right: 52px; }
+  /* Der Titel ist so hoch wie der Knopf daneben: Der Untertitel beginnt erst darunter. */
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { padding-right: 52px; min-height: 44px; }
   .erfassen-leiste { margin: 0; position: static; }
   .erfassen-leiste .import-menue { position: absolute; top: 0; right: 0; flex: none; }
   .erfassen-leiste .import-menue > summary { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
@@ -599,8 +614,11 @@
   #set-modal .m-kopfteil > #m-det > .m-wertkopf { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
   #set-modal .wk-wert { font-size: var(--fs-4); }
 }
-/* Grosse Schrift: neben dem Bild bliebe kein Platz für den Betrag. */
-@media (max-width: 18em) {
+/* Grosse Schrift: neben dem Bild bliebe kein Platz für den Betrag. Gemessen
+   am Dialog in rem, weil eine Medienabfrage in em die Schriftgrösse der Seite
+   (html 200 %) nicht sieht, nur die des Browsers. */
+@media (max-width: 640px) { #set-modal > .modal { container: setdialog / inline-size; } }
+@container setdialog (max-width: 19rem) {
   #set-modal .m-kopfteil { grid-template-columns: minmax(0, 1fr); }
   #set-modal .m-kopfteil > #m-det > .m-wertkopf { grid-column: 1; grid-row: auto; }
   #set-modal .m-kopfteil > .mimg { width: 7.5rem; }
@@ -641,4 +659,28 @@
   :is(.mon-arten, .mon-dienste) td:last-child::before { content: none; }
   :is(.mon-arten, .mon-dienste) .mon-knoepfe { display: flex; flex-wrap: wrap; gap: .4rem; }
   .mon-dienste td:has(> .mon-knoepfe > .mon-leise:only-child) { display: none; }
+}
+
+/* Gutscheine am Telefon: Ohne Mauszeiger gibt es keinen Tooltip, also steht
+   das Verb neben dem Sinnbild — nur wo Platz ist; bei grosser Schrift bliebe
+   für die Nummer sonst eine Spalte von drei Zeichen. */
+@container haupt (min-width: 17rem) {
+  .voucher-row .v-btn { width: auto; padding: 0 10px; gap: 6px; }
+  .voucher-row .v-btn-text { display: inline; }
+}
+
+/* Schmaler Inhalt (grosse Schrift): Werte unter den Namen statt daneben —
+   sonst nimmt der Betrag die ganze Breite und der Name steht 0 px breit. */
+@container haupt (max-width: 17rem) {
+  .dt-fin tbody tr { grid-template-columns: 44px minmax(0, 1fr); grid-template-areas: "bild name" "bild wert" "bild guv"; }
+  .dt-fin td.fin-wert, .dt-fin td.fin-guv { text-align: left; }
+  .mon-aktionen.gefahrenzone { padding: .5rem; }
+  .mon-aktionen.gefahrenzone .btn { flex: 1 1 100%; hyphens: auto; padding-left: .5rem; padding-right: .5rem; }
+  .mon-aktionen.gefahrenzone .btn .ico { display: none; }
+}
+/* Preisalarme am Telefon: Stand, Schwelle und Löschen unter dem Namen. */
+@container haupt (max-width: 26rem) {
+  .alarm-ue { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "bild text" ". stand" ". schwelle" ". loeschen"; }
+  .alarm-ue-stand { align-items: flex-start; }
+  .alarm-ue-loeschen { justify-self: start; }
 }

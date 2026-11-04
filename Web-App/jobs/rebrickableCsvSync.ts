@@ -173,6 +173,7 @@ async function run() {
       log(`CSV sync complete for ${today}`);
     } catch(e) {
       log(`CSV sync failed: ${fehlertext(e)}`);
+      monitor.update('csvImport', { status: 'error', progress: 0, total: TOTAL_STEPS, sub: fehlertext(e) });
       // Ohne Katalog ist die App benutzbar; ohne diese Meldung bliebe der
       // Startbildschirm stehen. Den nächsten Versuch plant der Auftrag mit Backoff.
       const s0 = { ready: true, step: 'Katalog nicht geladen', progress: TOTAL_STEPS, total: TOTAL_STEPS };

@@ -91,7 +91,7 @@ function translateJobSub(sub) {
   if (m) return t('monitor.sub.all_mapped', {n: m[1]});
   if (sub === 'Alle erledigt') return t('monitor.sub.all_done');
   m = sub.match(/^Alle (\d+) Bilder gecacht$/);
-  if (m) return t('monitor.sub.imgs_cached', {n: m[1]});
+  if (m) return t(m[1] === '0' ? 'monitor.sub.imgs_none' : 'monitor.sub.imgs_cached', {n: m[1]});
   if (sub === 'Alle Bilder gecacht') return t('monitor.sub.imgs_cached', {n: ''}).trim();
   if (/^Keine aktiven/.test(sub)) return t('monitor.sub.no_active');
   m = sub.match(/^(\d+) Sets bereit zum Retry, (\d+) warten$/);
@@ -99,7 +99,7 @@ function translateJobSub(sub) {
   m = sub.match(/^(\d+) aktualisiert, (\d+) Fehler — ([\d.]+)s$/);
   if (m) return t('monitor.sub.updated_errors', {upd: m[1], err: m[2], sec: m[3]});
   if (sub === 'Starte\u2026' || sub === 'Starte...') return t('monitor.starting');
-  return sub; // unrecognised: pass through as-is
+  return esc(sub); // unbekannt: unverändert, aber als Text
 }
 
 // Speichert den Zeitplan eines Jobs (Monitoring). payload = {time:"HH:MM"} oder {minutes:n}.
@@ -279,8 +279,9 @@ async function zeigeAuftraege() {
   const naechster = {};
   for (const a of d.auftraege)
     if (a.status === 'offen' && a.faellig_ab && (!naechster[a.art] || a.faellig_ab < naechster[a.art])) naechster[a.art] = a.faellig_ab;
-  const knopf = (aktion, arg, text) =>
-    `<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${esc(arg)}">${text}</button>`;
+  // Sieben gleiche „Jetzt starten“ sind für Vorleser ununterscheidbar: Der Name nennt die Art mit.
+  const knopf = (aktion, arg, text, wofuer = '') =>
+    `<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${esc(arg)}"${wofuer ? ` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
   const arten = Object.keys(zahl).sort((a, b) => artName(a).localeCompare(artName(b), locale()));
   const status = (s) => Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : esc(s);
   const ziffer = (n, klasse = '') => `<span class="mon-ziffer${n ? ' ' + klasse : ' null'}">${n || 0}</span>`;
@@ -317,7 +318,7 @@ async function zeigeAuftraege() {
         <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
         <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
         <td>${naechster[art] ? fmtDatum(naechster[art], 'zeit') : ''}</td>
-        <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren')) : ''}</div></td>
+        <td><div class="mon-knoepfe">${knopf('auftragsArtJetzt', art, t('monitor.auftraege.jetzt'), artName(art))}${zahl[art].offen ? knopf('auftragsArtLeeren', art, t('monitor.auftraege.leeren'), artName(art)) : ''}</div></td>
       </tr>`).join('')}</tbody></table></div>` : ''}
     ${d.auftraege.length ? `<details class="mon-einzeln"${einzelnOffen() ? ' open' : ''}>
       <summary class="mon-untertitel">${t('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>

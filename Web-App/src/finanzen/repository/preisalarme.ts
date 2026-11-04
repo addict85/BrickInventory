@@ -22,7 +22,7 @@ export function alarmeImBlickfeld(userId: number, blickfeld: number[]) {
   return db.all(`SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.richtung, a.schwelle, a.currency_code,
             a.ausgeloest, a.zuletzt_am, a.zuletzt_preis,
-            rb.name, rb.set_img_url, c.image_local, c.image_url,
+            COALESCE(rb.name, c.name) AS name, rb.set_img_url, c.image_local, c.image_url,
             (s.id IS NOT NULL) AS besitzt
        FROM price_alerts a
        LEFT JOIN rb_sets rb ON rb.set_num = a.set_number

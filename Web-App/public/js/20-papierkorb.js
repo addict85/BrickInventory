@@ -60,7 +60,7 @@ export async function papierkorbWiederherstellen(id) {
 
 // Endgültig heisst unumkehrbar: Der Server verlangt dafür das Passwort (und den zweiten Faktor).
 export async function papierkorbEndgueltig(id) {
-  const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), t('common.delete_text'), 'loeschen');
+  const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), t('common.delete_text'), 'loeschen', { knopf: 'confirm.btn.endgueltig_loeschen', art: 'bd' });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/papierkorb/${id}`, { password, ...z }));
   if (d === null) return;
@@ -69,7 +69,7 @@ export async function papierkorbEndgueltig(id) {
 }
 
 export async function papierkorbLeeren() {
-  const password = await bestaetigeMitPasswort(tRaw('trash.clear'), t('trash.clear_confirm'), 'loeschen');
+  const password = await bestaetigeMitPasswort(tRaw('trash.clear'), t('trash.clear_confirm'), 'loeschen', { knopf: 'confirm.btn.papierkorb_leeren', art: 'bd' });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', '/v1/papierkorb', { password, ...z }));
   if (d === null) return;

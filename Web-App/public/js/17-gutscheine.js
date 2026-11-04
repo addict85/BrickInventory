@@ -47,7 +47,7 @@ const _klartext = new Map();
 
 async function holeKlartext(id) {
   if (_klartext.has(id)) return _klartext.get(id);
-  const password = await bestaetigeMitPasswort(tRaw('vouchers.klartext_title'), tRaw('vouchers.klartext_text'), 'schloss');
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.klartext_title'), tRaw('vouchers.klartext_text'), 'schloss', { knopf: 'confirm.btn.anzeigen', art: 'bp' });
   if (password === null) return null;
   const d = await mitZweitemFaktor(z => api('POST', `/v1/vouchers/${id}/klartext`, { password, ...z }));
   if (!d?.success) { if (d) toast(d.error || tRaw('vouchers.load_error'), 'error'); return null; }
@@ -106,7 +106,7 @@ function zeile(g) {
           <span class="voucher-num">${esc(nummer)}</span>
           <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="nummer"
                   title="${tRaw('vouchers.copy_number')}"
-                  aria-label="${tRaw('vouchers.copy_number')}">${KOPIE_ICON_SVG}</button>
+                  aria-label="${tRaw('vouchers.copy_number')}">${KOPIE_ICON_SVG}<span class="v-btn-text">${t('vouchers.kurz_kopieren')}</span></button>
         </div>
         <div class="voucher-meta">
           <span class="voucher-amount">${fmtN(g.amount, g.currency)}</span>
@@ -127,10 +127,10 @@ function zeile(g) {
         ${g.pin ? `<button class="v-btn" data-click="gutscheinPinUmschalten" data-arg="${g.id}"
                      title="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}"
                      aria-label="${tRaw(pinOffen ? 'vouchers.pin_hide' : 'vouchers.pin_show')}">
-                     ${ico(pinOffen ? 'auge-zu' : 'auge')}</button>
+                     ${ico(pinOffen ? 'auge-zu' : 'auge')}<span class="v-btn-text">${t(pinOffen ? 'vouchers.kurz_verbergen' : 'vouchers.kurz_anzeigen')}</span></button>
                    <button class="v-btn" data-click="gutscheinKopieren" data-arg="${g.id}" data-arg2="pin"
                      title="${tRaw('vouchers.copy_pin')}"
-                     aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}</button>` : ''}
+                     aria-label="${tRaw('vouchers.copy_pin')}">${KOPIE_ICON_SVG}<span class="v-btn-text">${t('vouchers.kurz_kopieren')}</span></button>` : ''}
       </div>
       <div class="voucher-actions">
         <button class="btn bs btn-sm v-text" type="button" data-click="gutscheinBearbeiten" data-arg="${g.id}"
@@ -312,7 +312,7 @@ export async function gutscheinSpeichern() {
 export async function gutscheinLoeschen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   if (!g) return;
-  const password = await bestaetigeMitPasswort(tRaw('vouchers.delete_title'), tRaw('vouchers.delete_confirm', { nummer: gruppiereNummer(g.number) }), 'loeschen');
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.delete_title'), tRaw('vouchers.delete_confirm', { nummer: gruppiereNummer(g.number) }), 'loeschen', { knopf: 'confirm.btn.endgueltig_loeschen', art: 'bd' });
   if (password === null) return;
   const d = await mitZweitemFaktor(z => api('DELETE', `/v1/vouchers/${id}`, { password, ...z }));
   if (d === null) return;
@@ -370,7 +370,7 @@ export async function gutscheinPdfOeffnen(id) {
 
 /** Bestätigung, dann ein Ticket für genau einen Abruf des PDFs (60 s). */
 async function pdfFreigabe(pfad) {
-  const password = await bestaetigeMitPasswort(tRaw('vouchers.pdf_freigabe_title'), tRaw('vouchers.pdf_freigabe_text'), 'schloss');
+  const password = await bestaetigeMitPasswort(tRaw('vouchers.pdf_freigabe_title'), tRaw('vouchers.pdf_freigabe_text'), 'schloss', { knopf: 'confirm.btn.pdf_oeffnen', art: 'bp' });
   if (password === null) return null;
   const d = await mitZweitemFaktor(z => api('POST', pfad, { password, ...z }));
   if (!d?.success) { if (d) toast(d.error || tRaw('settings.error'), 'error'); return null; }

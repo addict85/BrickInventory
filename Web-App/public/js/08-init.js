@@ -173,9 +173,7 @@ function plRemoveSet(i) {
   _plSets.splice(i, 1);
   _plParts = null;
   G('pl-result').innerHTML = '';
-  G('btn-pl-pdf').style.display = 'none';
-  G('btn-pl-bl').style.display = 'none';
-  G('pl-bl-condition').style.display = 'none';
+  plExportStand();
   plRenderSets();
 }
 
@@ -184,9 +182,7 @@ async function plGenerate() {
   G('pl-status').textContent = tRaw('pl.loading_lists');
   G('btn-pl-gen').disabled = true;
   G('pl-result').innerHTML = '';
-  G('btn-pl-pdf').style.display = 'none';
-  G('btn-pl-bl').style.display = 'none';
-  G('pl-bl-condition').style.display = 'none';
+  _plParts = null; plExportStand();
 
   const combined = {}; // key: „partNum|colorId" → { part_number, part_name, color_name, color_hex, quantity }
   let errors = 0;
@@ -276,12 +272,11 @@ async function plGenerate() {
   }
 
   _plParts = Object.values(combined);
-  G('pl-status').textContent = tRaw('pl.summary',{parts:_plParts.length,sets:_plSets.length}) + (errors ? ` (${t('monitor.errors_n',{n:errors})})` : '');
+  G('pl-status').textContent = `${tRaw('pl.summary_teile', { n: _plParts.length })} ${tRaw('pl.summary_sets', { n: _plSets.length })}`
+    + (errors ? ` (${t('monitor.errors_n',{n:errors})})` : '');
   G('btn-pl-gen').disabled = false;
-  plRenderTable();
-  G('btn-pl-pdf').style.display = '';
-  G('btn-pl-bl').style.display = '';
-  G('pl-bl-condition').style.display = '';
+  plRenderTable(errors);
+  plExportStand();
   // Die ganze Zeile, nicht die zwei Knoepfe einzeln — sonst bliebe ein
   // leerer Streifen stehen, solange keine Liste erzeugt ist (index.html
   // erklaert es an Ort und Stelle).
@@ -350,9 +345,24 @@ async function plFuelleBestand() {
                           + ' ' + tRaw('pl.owned_missing', { n: fehlend, m: fehlendeArten });
 }
 
-function plRenderTable() {
+/** Exportieren steht erst nach einem Ergebnis da und ist bei 0 Teilen gesperrt: Eine leere Datei hilft niemandem. */
+function plExportStand() {
+  const box = G('pl-export'); if (!box) return;
+  box.hidden = _plParts === null;
+  const leer = !_plParts?.length;
+  for (const id of ['btn-pl-pdf', 'btn-pl-bl', 'pl-bl-condition']) G(id).disabled = leer;
+  box.title = leer ? tRaw('pl.export_leer') : '';
+}
+
+function plRenderTable(fehler = 0) {
   let _imgLogged = false;
-  if (!_plParts?.length) { G('pl-result').innerHTML = `<div class="empty"><p>${t('parts.none_found')}</p></div>`; return; }
+  if (!_plParts?.length) {
+    // Die Ursache nennen: Fehlende Teilelisten kommen aus dem Rebrickable-Katalog, nicht aus der Eingabe.
+    G('pl-result').innerHTML = leerZustand({ ico: 'warnung', titelKey: fehler ? 'pl.leer_fehler_titel' : 'pl.leer_titel',
+      textKey: fehler ? 'pl.leer_fehler_text' : 'pl.leer_text',
+      knopf: { textKey: 'liste.erneut', click: 'plGenerate', ico: 'aktualisieren', art: 'bs' } });
+    return;
+  }
 
   // Group by color
   const byColor = {};
@@ -388,7 +398,7 @@ function plRenderTable() {
       // Leer heisst jetzt „unbekannt". plExportBricklink lässt solche Posten
       // weg und NENNT sie, statt zu raten.
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
-      html += `<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span data-stil="flex:1;font-size:var(--fs-3)">${esc(p.part_name)}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
+      html += `<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span data-stil="flex:1;font-size:var(--fs-3)">${esc(p.part_name)}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" aria-label="${esc(tRaw('pl.col_have'))}: ${esc(p.bl_part_number||p.part_number)} ${esc(p.color_name||'')}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
     }
     html += '</div></div>';
   }
@@ -631,9 +641,7 @@ function plReset() {
   _plSets = []; _plParts = null;
   G('pl-result').innerHTML = '';
   G('pl-status').textContent = '';
-  G('btn-pl-pdf').style.display = 'none';
-  G('btn-pl-bl').style.display = 'none';
-  G('pl-bl-condition').style.display = 'none';
+  plExportStand();
   plRenderSets();
 }
 
