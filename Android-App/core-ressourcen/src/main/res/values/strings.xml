@@ -212,8 +212,6 @@
     <string name="storage_new">New storage location</string>
     <string name="storage_add">Add</string>
     <string name="storage_empty">No storage locations yet.</string>
-    <string name="storage_default_set">Set as default when adding</string>
-    <string name="storage_default_is">Default when adding — tap to switch off</string>
     <string name="storage_default_label">Preselected when adding</string>
     <string name="storage_add_button">Add storage location</string>
     <string name="storage_name">Location name</string>
@@ -270,7 +268,7 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Add one or more sets above and tap “Generate” — for rebuilding or ordering what is missing.</string>
+    <string name="partslist_empty_hint">Enter a set number and tap “Generate”; “+” adds more sets — for rebuilding or ordering what is missing.</string>
     <string name="partslist_empty_title">No build list yet</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
@@ -403,7 +401,6 @@
     <string name="settings_hell_hell">Light</string>
     <string name="settings_hell_dunkel">Dark</string>
     <string name="nav_collection">Collection</string>
-    <string name="nav_gallery">Gallery</string>
     <string name="nav_parts">Parts</string>
     <string name="nav_minifigs">Minifigures</string>
     <string name="name_unknown">Name unknown</string>
@@ -557,10 +554,10 @@
     </plurals>
     <string name="catalog_no_results">No sets found</string>
     <string name="catalog_owned">Owned</string>
-    <string name="catalog_add_to_gallery">Add to gallery</string>
+    <string name="catalog_add_to_gallery">Add to collection</string>
     <string name="catalog_add_again">Add again</string>
     <string name="catalog_add_confirm">Add</string>
-    <string name="catalog_open_in_gallery">Open in gallery</string>
+    <string name="catalog_open_in_gallery">Open in collection</string>
     <string name="catalog_detail_year">Year</string>
     <string name="catalog_detail_theme">Theme</string>
     <string name="catalog_detail_parts">Parts</string>
@@ -739,7 +736,6 @@
     <!-- ══════════════ Account card (profile / password) ══════════════ -->
     <string name="konto_title">Account</string>
     <string name="konto_email_unverified">Email address not confirmed</string>
-    <string name="konto_profil_password">Current password (to save)</string>
     <string name="konto_profil_password_needed">To save, enter your current password.</string>
     <string name="konto_save">Save profile</string>
     <string name="konto_saved">Profile saved</string>
@@ -866,9 +862,9 @@
     <string name="wanted_added">Added to the wanted list</string>
     <string name="wanted_already">Already on the wanted list</string>
     <string name="wanted_deleted">Removed from the wanted list</string>
-    <string name="wanted_take">Add to gallery</string>
-    <string name="wanted_taken">Moved into the gallery</string>
-    <string name="wanted_taken_existing">Was already in the gallery — taken off the wanted list</string>
+    <string name="wanted_take">Add to collection</string>
+    <string name="wanted_taken">Moved into the collection</string>
+    <string name="wanted_taken_existing">Was already in the collection — taken off the wanted list</string>
     <string name="wanted_need_number">Please enter a set number</string>
     <string name="wanted_threshold">Threshold (optional)</string>
     <string name="detail_compare">Compare prices</string>
@@ -970,7 +966,10 @@
     </plurals>
     <string name="acq_preis_geschaetzt">Estimated: market price, not the amount paid</string>
     <string name="setup_qr_pin">The code also names the server\'s certificate. The app remembers it for this address and from then on accepts only this one. Only continue if you have just created the code yourself in your web app; under Settings → Server certificate it shows the same beginning.</string>
-    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.\n\nHow to continue:\n1. In the web app, create the QR code for the Android app under Settings and scan it with the button below.\n2. Or enter your server\'s https address below, e.g. https://brick.fritz.box.\n\nThen sign in once more.</string>
+    <string name="setup_altbestand_text">The saved address is %1$s – an unencrypted one. This version only connects via https, so nobody on the Wi-Fi can read your access.</string>
+    <string name="setup_altbestand_schritt_qr">In the web app, create the QR code for the Android app under Settings and scan it with the button below.</string>
+    <string name="setup_altbestand_schritt_adresse">Or enter your server\'s https address below, e.g. https://brick.fritz.box.</string>
+    <string name="setup_altbestand_danach">Then sign in once more.</string>
     <string name="setup_altbestand_titel">Encrypted connections only</string>
     <string name="setup_qr_klartext_abgelehnt">This QR code names an unencrypted address (http). The app only connects via https: switch the server to https (README, “HTTPS with your own CA”) and create the code again.</string>
     <string name="setup_url_unlesbar">This address cannot be read. Example: https://brick.fritz.box</string>
@@ -1095,4 +1094,20 @@
         <item quantity="other">At least %1$d characters</item>
     </plurals>
     <string name="login_erweitert">Advanced</string>
+    <!-- UI-Prüfung 11 (Android) -->
+    <string name="login_server_aendern">Change server: %1$s</string>
+    <string name="zf_codes_gesichert">I have stored the codes safely</string>
+    <string name="zf_schritt_passwort">Password</string>
+    <string name="zf_schritt_app">Authenticator app</string>
+    <string name="zf_schritt_codes">Recovery codes</string>
+    <string name="konto_profil_titel">Profile</string>
+    <string name="alerts_liste_titel">Your alerts</string>
+    <string name="alerts_delete_fuer">Remove price alert for %1$s</string>
+    <string name="storage_vorgabe_cd">Default when adding: %1$s</string>
+    <string name="aktion_fuer">%1$s: %2$s</string>
+    <string name="finance_positionen">Items</string>
+    <plurals name="zf_schritt">
+        <item quantity="one">Step %1$d of %2$d: %3$s</item>
+        <item quantity="other">Step %1$d of %2$d: %3$s</item>
+    </plurals>
 </resources>

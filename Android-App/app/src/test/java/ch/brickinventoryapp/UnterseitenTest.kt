@@ -19,7 +19,14 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.onRoot
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
@@ -48,6 +55,11 @@ import org.robolectric.annotation.GraphicsMode
  *   haushalt-entfernt-sofort     „Entfernen“ trennt sofort → rot „Haushalt gliedert …“
  *   unterseite-doppelter-titel   CSV-Import wieder mit Kartenkopf → rot „CSV-Import zeigt …“
  *   bauliste-leer-zuruecksetzen  „Zurücksetzen“ auch ohne Inhalt aktiv → rot „leere Bauliste …“
+ *   lagerort-stern-als-knopf     Stern wieder IconButton ohne Ort → rot „Der Vorgabe-Stern …“
+ *   haushalt-entfernen-ohne-name „Entfernen“ ohne Kontonamen → rot „Entfernen nennt …“
+ *   preisalarm-nummer-zuerst     Rückfrage nennt wieder nur die Nummer → rot „Preisalarme nennen …“
+ *   konto-ohne-wiederholung      Passwort ändern ohne passende Wiederholung frei → rot „Konto wechselt …“
+ *   bauliste-zweistufig          Erstellen erst nach „+“ → rot „Bauliste entsteht …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -194,5 +206,96 @@ class UnterseitenTest {
             assertTrue("${ctx.getString(text)} steht nicht mittig ($b in $breite)",
                 kotlin.math.abs((b.left + b.right) / 2 - breite / 2) < 2 * dichte)
         }
+    }
+
+    @Test
+    fun `Der Vorgabe-Stern ist ein Schalter mit dem Namen des Orts`() {
+        welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Keller"}]}"""
+        val vm = einstellungen().also { it.ladeEigeneLagerorte() }
+        zeige { ch.brickinventoryapp.ui.screens.LagerorteUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        warte("Lagerorte") { vm.lagerState.value.eigene.size == 1 }
+        val stern = compose.onNodeWithContentDescription(ctx.getString(R.string.storage_vorgabe_cd, "Keller")).fetchSemanticsNode()
+        assertEquals("TalkBack hört an/aus", ToggleableState.Off, stern.config.getOrNull(SemanticsProperties.ToggleableState))
+    }
+
+    @Test
+    fun `Entfernen nennt das Konto im Haushalt`() {
+        welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
+            "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
+        val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
+            ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
+            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+        zeige { ch.brickinventoryapp.ui.screens.HaushaltUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        warte("Haushalt") { vm.householdState.value.status != null }
+        val entfernen = ctx.getString(R.string.household_remove)
+        for (name in listOf("lena", "tim")) {
+            compose.onNode(hasContentDescription(ctx.getString(R.string.aktion_fuer, entfernen, name)) and hasClickAction())
+                .fetchSemanticsNode("„$entfernen“ nennt $name nicht")
+        }
+    }
+
+    @Test
+    fun `Preisalarme nennen den Namen zuerst und in der Rueckfrage`() {
+        welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
+            {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
+        val vm = einstellungen()
+        zeige {
+            ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite(vm = vm,
+                imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
+                snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
+        }
+        warte("Alarme") { vm.alarmUebersicht.value.geladen }
+        val name = compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val nummer = compose.onNodeWithText("75192-1", substring = true, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue("Name ($name) über der Nummer ($nummer)", name.bottom <= nummer.top)
+        compose.onNodeWithContentDescription(ctx.getString(R.string.alerts_delete_fuer, "Millennium Falcon")).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText(ctx.getString(R.string.alerts_confirm_delete, "Millennium Falcon")).fetchSemanticsNode()
+    }
+
+    @Test
+    fun `Konto wechselt das Passwort erst mit passender Wiederholung und fragt beim Profil nach dem Passwort`() {
+        welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
+            "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
+        val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
+            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            welt.t.meldungen, welt.t.sitzung))
+        zeige {
+            ch.brickinventoryapp.ui.screens.KontoUnterseite(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+                konto = konto, onZurueck = {})
+        }
+        warte("Profil") { konto.kontoState.value.profil != null }
+        fun feld(label: Int) = compose.onAllNodes(hasSetTextAction() and hasText(ctx.getString(label)))[0]
+        val wechseln = compose.onNode(hasText(ctx.getString(R.string.konto_password_button)) and hasClickAction())
+        feld(R.string.konto_password_current).performTextInput("altes-passwort-1")
+        feld(R.string.konto_password_new).performTextInput("neues-passwort-12")
+        feld(R.string.startpasswort_wiederholen).performTextInput("anderes-passwort-1")
+        compose.waitForIdle()
+        wechseln.assertIsNotEnabled()
+        feld(R.string.startpasswort_wiederholen).performTextClearance()
+        feld(R.string.startpasswort_wiederholen).performTextInput("neues-passwort-12")
+        compose.waitForIdle()
+        wechseln.assertIsEnabled()
+
+        // Profil: kein Passwortfeld auf der Seite, gefragt wird beim Speichern.
+        feld(R.string.register_first_name).performTextClearance()
+        feld(R.string.register_first_name).performTextInput("Marc")
+        compose.onNode(hasText(ctx.getString(R.string.konto_save)) and hasClickAction()).performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).fetchSemanticsNode("Kein Passwortfeld im Dialog")
+        assertTrue("Gespeichert ohne Passwort: ${welt.pfade.anfragen}", welt.pfade.anfragen.none { it.startsWith("PUT") })
+    }
+
+    @Test
+    fun `Bauliste entsteht in einem Schritt aus der getippten Nummer`() {
+        val aufgeloest = mutableListOf<String>()
+        zeige {
+            ch.brickinventoryapp.ui.screens.PartsListScreen(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
+                onScanBarcode = {}, onResolveSet = { nr -> aufgeloest += nr; "Baumhaus" to emptyList() })
+        }
+        compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.gallery_set_number))).performTextInput("21318")
+        compose.onNode(hasText(ctx.getString(R.string.partslist_generate)) and hasClickAction()).assertIsEnabled().performClick()
+        warte("Bauliste") { aufgeloest.isNotEmpty() }
+        assertEquals(listOf("21318-1"), aufgeloest)
     }
 }

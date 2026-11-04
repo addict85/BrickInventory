@@ -391,6 +391,10 @@ private fun MerkpostenZeile(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = ch.brickinventoryapp.ui.theme.Formen.karteErhebung),
     ) {
+        // Ohne Preis im Cache war der Preisjob seit dem Eintragen noch nicht da. „Preis
+        // folgt“ steht dann in der Zeile mit Nummer und Jahr: Allein rechts unten liess es
+        // eine leere Zeile in der Karte.
+        val preis = w.marktpreis
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -413,6 +417,7 @@ private fun MerkpostenZeile(
                             w.year?.toString(),
                             stringResource(if (w.condition == "U") R.string.condition_used
                                            else R.string.condition_new),
+                            if (preis == null) stringResource(R.string.wanted_price_pending) else null,
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -421,7 +426,7 @@ private fun MerkpostenZeile(
             }
             // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
             // Mindesthöhe einer Plakette: Karten mit und ohne Plakette sind dann gleich hoch.
-            FlowRow(Modifier.heightIn(min = 32.dp),
+            if (preis != null || w.alarm != null || w.owned) FlowRow(Modifier.heightIn(min = 32.dp),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                 w.alarm?.let { a ->
@@ -435,17 +440,10 @@ private fun MerkpostenZeile(
                 // Grossvater heisst „ich habe es" auch „der Enkel hat es".
                 if (w.owned) InfoPlakette(stringResource(R.string.wanted_owned), icon = Icons.Default.Check)
                 Spacer(Modifier.weight(1f))
-                // ── Marktpreis statt Knopf ──
-                //
-                // In die Galerie übernommen wird im Merkposten-Detail. Ohne Preis im Cache war der
-                // Preisjob seit dem Eintragen noch nicht da — das sagt der Text, ein Strich sagte nichts.
-                val preis = w.marktpreis
+                // Marktpreis statt Knopf: In die Sammlung übernommen wird im Merkposten-Detail.
                 if (preis != null) {
                     Text(ch.brickinventoryapp.util.fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold,
                          maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
-                } else {
-                    Text(stringResource(R.string.wanted_price_pending), style = MaterialTheme.typography.bodySmall,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

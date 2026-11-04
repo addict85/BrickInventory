@@ -4,10 +4,10 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Kacheln einer Reihe
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index 93a17994..0f92a01 100644
+index 170378f..6917f6b 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -520,7 +520,7 @@ fun SetCard(
+@@ -521,7 +521,7 @@ fun SetCard(
                      // Zwei Zeilen, Thema und Preis immer: Kacheln einer Reihe sind dann
                      // gleich hoch, auch wenn ein Name kurz ist oder eine Angabe fehlt.
                      Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
@@ -15,4 +15,4 @@ index 93a17994..0f92a01 100644
 +                        maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
                          lineHeight = 16.sp)
                      // Thema und Teilezahl in einer Zeile: Getrennt stand meist eine davon leer.
-                     Text(themaUndTeile(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
+                     // Im Farbfächer ein Punkt im Ton der Kartenleiste davor: So liest sich die

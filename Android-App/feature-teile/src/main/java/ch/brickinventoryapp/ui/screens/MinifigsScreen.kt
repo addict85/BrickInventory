@@ -371,6 +371,10 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     modifier = Modifier.fillMaxSize()
                         .clip(Formen.kachelBildEcken),
                     contentScale = ContentScale.Fit,
+                    // Bildgrund über die ganze Kachelbreite wie bei Sets und Teilen: Das hohe
+                    // Figurenbild stand sonst schmal in der Mitte mit weissen Rändern.
+                    bildgrund = true,
+                    innenAbstand = Abstaende.winzig,
                 )
                 if (qty > 1) {
                     Surface(

@@ -44,6 +44,7 @@ import org.robolectric.annotation.GraphicsMode
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   reiter-bricht-um          Beschriftung wieder als Text ohne Zeilengrenze → rot „Reiterleiste …“
+ *   reiter-schrumpft-bis-7sp  Untergrenze wieder fest 7 sp → rot „Reiterleiste schrumpft nie …“
  *   suche-neben-filtertext    Filterknopf mit Text schon ab 360 dp → rot „Such-Platzhalter …“
  *   verlauf-ab-zwei-punkten   Linie schon ab zwei Punkten → rot „Preisverlauf …“
  *   teile-detail-als-dialog   Teile-Detail auch auf dem Tablet als Dialog → rot „Tablet zeigt Teil …“
@@ -119,6 +120,46 @@ class FeinschliffRegelnTest {
         // „Reiterleiste in verschiedenen Grössen“.
         val groessen = ziele.map { (_, text) -> layout(textKnoten(text)).layoutInput.style.fontSize }.toSet()
         assertTrue("Reiterleiste in verschiedenen Grössen: $groessen", groessen.size == 1)
+    }
+
+    /**
+     * Eine Beschriftung, die auch in Normalgrösse nicht passt („Hintergrundarbeiten“ in
+     * einem Fünftel der Breite bei 130 %), wird nicht kleiner als ohne Vergrösserung:
+     * Dann stehen nur Symbole da, jedes mit seinem Namen für TalkBack.
+     */
+    @Test
+    fun `Reiterleiste schrumpft nie unter die normale Schriftgroesse`() {
+        val ziele = listOf(Screen.Gallery to R.string.nav_collection, Screen.Finance to R.string.nav_monitoring,
+            Screen.Wanted to R.string.nav_wanted, Screen.Catalog to R.string.nav_catalog, Screen.Mehr to R.string.nav_more)
+            .map { (ziel, text) -> ziel to ctx.getString(text) }
+        val schrift = 1.3f
+        var normal = 0f
+        zeige(schrift = schrift) {
+            normal = MaterialTheme.typography.labelSmall.fontSize.value
+            val nav = rememberNavController()
+            val reiter = remember {
+                ziele.map { (ziel, text) -> Triple<Screen, @Composable () -> Unit, String>(ziel, { Icon(Icons.Default.ViewInAr, null) }, text) }
+            }
+            MainScaffold(
+                title = "Titel", navController = nav, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+            ) {
+                NavHost(nav, startDestination = Screen.Gallery.route) { composable(Screen.Gallery.route) { } }
+            }
+        }
+        ziele.forEach { (_, text) ->
+            val sichtbar = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
+                .filter { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
+            if (sichtbar.isEmpty()) {
+                compose.onNode(androidx.compose.ui.test.hasContentDescription(text) and androidx.compose.ui.test.hasClickAction())
+                    .fetchSemanticsNode("„$text“ hat weder Beschriftung noch Namen")
+            } else sichtbar.forEach { knoten ->
+                val stil = layout(knoten).layoutInput.style.fontSize.value
+                assertTrue("„$text“ in ${stil * schrift} statt mindestens $normal Punkt", stil * schrift >= normal - 0.01f)
+            }
+        }
     }
 
     // Gegenprobe zustand-feste-spalte: Beschriftung bei jeder Schrift in der festen

@@ -100,7 +100,8 @@ fun GutscheineCard(
             if (zustand.nummer.isEmpty() && zustand.bearbeitet == null) neu = false
         }
     }
-    SettingsCard(title = stringResource(R.string.vouchers_title), icon = Icons.Default.Redeem) {
+    // Ohne Kopf: Die Karte ist allein auf ihrer Seite, deren Leiste „Gutscheine“ schon nennt.
+    SettingsCard(title = null, icon = Icons.Default.Redeem) {
       BoxWithConstraints {
         // Ab Tabletbreite zwei Karten nebeneinander: Eine Gutscheinkarte über 1000 dp
         // zog Nummer und Menü weit auseinander.

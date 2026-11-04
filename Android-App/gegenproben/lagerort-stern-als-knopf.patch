@@ -1,0 +1,18 @@
+Gegenprobe: Vorgabe-Stern wieder als IconButton (kein Schalter)
+Modul: app
+Test: ch.brickinventoryapp.UnterseitenTest
+Rot: Der Vorgabe-Stern
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenLagerorte.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenLagerorte.kt
+index 0d71ba4..479530f 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenLagerorte.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenLagerorte.kt
+@@ -118,7 +118,7 @@ private fun LagerortZeile(
+         leadingContent = { Icon(Icons.Default.Inventory2, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+         trailingContent = {
+             Row {
+-                IconToggleButton(checked = istVorgabe, onCheckedChange = { onVorgabe(istVorgabe) }) {
++                IconButton(onClick = { onVorgabe(istVorgabe) }) {
+                     Icon(if (istVorgabe) Icons.Default.Star else Icons.Default.StarBorder,
+                         stringResource(R.string.storage_vorgabe_cd, ort.name),
+                         tint = if (istVorgabe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)

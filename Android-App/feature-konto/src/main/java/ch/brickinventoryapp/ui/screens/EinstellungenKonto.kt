@@ -23,6 +23,7 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.components.FehlerZeile
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.PasswortArt
 import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.util.PASSWORT_MIN_ZEICHEN
@@ -60,6 +61,9 @@ internal fun KontoCard(
     var pwAktuell    by remember { mutableStateOf("") }
     var pwProfil     by remember(profil) { mutableStateOf("") }
     var pwNeu        by remember { mutableStateOf("") }
+    var pwWiederholt by remember { mutableStateOf("") }
+    // Das Passwort für eine Profiländerung fragt erst der Dialog beim Speichern ab.
+    var fragtPasswort by remember(profil) { mutableStateOf(false) }
     var faktorCode   by remember { mutableStateOf("") }
     val code = faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }
 
@@ -67,7 +71,8 @@ internal fun KontoCard(
         benutzername != profil.username.orEmpty() || email != profil.email.orEmpty() ||
         vorname != profil.firstName.orEmpty() || nachname != profil.lastName.orEmpty())
 
-    SettingsCard(title = stringResource(R.string.konto_title), icon = Icons.Default.AccountCircle) {
+    // „Profil“, nicht „Konto“: Die Leiste der Seite heisst schon so.
+    SettingsCard(title = stringResource(R.string.konto_profil_titel), icon = Icons.Default.AccountCircle) {
         if (kontoZustand.laedt && profil == null) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
@@ -110,15 +115,10 @@ internal fun KontoCard(
                     label = { Text(stringResource(R.string.register_last_name)) },
                     modifier = Modifier.weight(1f), singleLine = true, shape = Formen.feld)
             }
-            // Der Server bestätigt jede Profiländerung mit dem Passwort: Sonst liesse
-            // sich über eine neue Adresse das Passwort zurücksetzen oder durchprobieren,
-            // welche Namen vergeben sind.
-            PasswortFeld(pwProfil, { pwProfil = it; tippen(it) }, stringResource(R.string.konto_profil_password),
-                Modifier.fillMaxWidth())
             Button(
-                onClick = { onSpeichern(benutzername, email, vorname, nachname, pwProfil, code) },
-                enabled = geaendert && !kontoZustand.speichert && pwProfil.isNotEmpty(),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
+                onClick = { fragtPasswort = true },
+                enabled = geaendert && !kontoZustand.speichert,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
 
             HorizontalDivider(Modifier.padding(vertical = Abstaende.mittel),
@@ -135,19 +135,51 @@ internal fun KontoCard(
                 Modifier.fillMaxWidth(), imeAction = ImeAction.Next)
             // Dieselbe Mindestlänge wie im Server (PASSWORT_MIN_ZEICHEN in utils/auth.ts) und
             // in der Webapp, aus util/Passwort.kt — von Anfang an genannt, nicht erst als Fehler.
+            // Derselbe Aufbau wie die Startpasswort-Maske: neu und wiederholt.
             val neuZuKurz = pwNeu.isNotEmpty() && passwortZuKurz(pwNeu)
+            val verschieden = pwWiederholt.isNotEmpty() && pwWiederholt != pwNeu
             PasswortFeld(pwNeu, { pwNeu = it }, stringResource(R.string.konto_password_new), Modifier.fillMaxWidth(),
                 art = PasswortArt.NEU,
                 hinweis = if (neuZuKurz) stringResource(R.string.register_password_short)
                           else pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
-                fehlerhaft = neuZuKurz)
-            OutlinedButton(
+                fehlerhaft = neuZuKurz, imeAction = ImeAction.Next)
+            PasswortFeld(pwWiederholt, { pwWiederholt = it }, stringResource(R.string.startpasswort_wiederholen),
+                Modifier.fillMaxWidth(), art = PasswortArt.WIEDERHOLUNG,
+                hinweis = if (verschieden) stringResource(R.string.startpasswort_verschieden) else null,
+                fehlerhaft = verschieden)
+            // Tonal statt umrandet: Ein deaktivierter umrandeter Knopf war kaum zu sehen.
+            FilledTonalButton(
                 onClick = { onPasswort(pwAktuell, pwNeu, code) },
-                enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp)
+                enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && pwNeu.isNotEmpty() &&
+                    !passwortZuKurz(pwNeu) && pwWiederholt == pwNeu,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
         }
     }
+
+    // Der Server bestätigt jede Profiländerung mit dem Passwort: Sonst liesse sich über
+    // eine neue Adresse das Passwort zurücksetzen. Gefragt wird erst beim Speichern.
+    if (fragtPasswort) AlertDialog(
+        onDismissRequest = { fragtPasswort = false; pwProfil = "" },
+        title = { Text(stringResource(R.string.konto_save)) },
+        text = {
+            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                Text(stringResource(R.string.konto_profil_password_needed), style = MaterialTheme.typography.bodyMedium)
+                PasswortFeld(pwProfil, { pwProfil = it }, stringResource(R.string.konto_password_current),
+                    Modifier.fillMaxWidth())
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { fragtPasswort = false; onSpeichern(benutzername, email, vorname, nachname, pwProfil, code) },
+                enabled = pwProfil.isNotEmpty(),
+            ) { Text(stringResource(R.string.konto_save)) }
+        },
+        dismissButton = {
+            TextButton(onClick = { fragtPasswort = false; pwProfil = "" }) { Text(stringResource(R.string.common_cancel)) }
+        },
+    )
 }
 
 /**
@@ -178,6 +210,7 @@ internal fun ZweiterFaktorCard(
     var zfPasswort by remember { mutableStateOf("") }
     var zfCode     by remember { mutableStateOf("") }
     var ohneApp    by rememberSaveable { mutableStateOf(false) }
+    var gesichert  by rememberSaveable(zfZustand.codes) { mutableStateOf(false) }
     val auswahlTitel = stringResource(R.string.zf_open_app)
     val kontext = androidx.compose.ui.platform.LocalContext.current
     val schluesselEtikett = stringResource(R.string.app_name)
@@ -219,10 +252,9 @@ internal fun ZweiterFaktorCard(
                 Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
                 Text(zfZustand.codes.joinToString("\n"),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
-                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) }) { Text(stringResource(R.string.zf_copy)) }
-                    Button(onClick = onZurueck) { Text(stringResource(R.string.zf_codes_done)) }
-                }
+                OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) }) { Text(stringResource(R.string.zf_copy)) }
+                CodesGesichert(gesichert) { gesichert = it }
+                Button(onClick = onZurueck, enabled = gesichert) { Text(stringResource(R.string.zf_codes_done)) }
             }
             // 2. Einrichtung laeuft: Schluessel in die App, Code bestaetigen.
             zfZustand.geheimnis != null -> {
@@ -237,7 +269,7 @@ internal fun ZweiterFaktorCard(
                 ) { Text(stringResource(R.string.zf_open_app)) }
                 if (ohneApp) {
                     Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error)
+                        color = MaterialTheme.colorScheme.error, modifier = Modifier.ansagen())
                 }
                 Text(zfZustand.geheimnis.chunked(4).joinToString(" "),
                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)

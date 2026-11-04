@@ -37,8 +37,10 @@ import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Detail-Dialog für ein Teil / eine Figur aus einem Set: Bild mit Zoom und die
- * Sets, die es verwenden, mit Link zum Set-Detail.
+ * Detail für ein Teil / eine Figur aus einem Set, auf dem Telefon als Blatt von unten:
+ * Bild mit Zoom und die Sets, die es verwenden, mit Link zum Set-Detail. Ein Blatt
+ * statt eines Dialogs, weil Lagerort und Liste Platz brauchen und das Wischen nach
+ * unten schliesst wie überall.
  *
  * Was er bewusst nicht hat: • Keinen Marktpreis — gewünscht ohne. • Keine
  * Mengenwahl. Die Zahl entsteht aus den Inventaren der Sets; eine Änderung
@@ -76,6 +78,7 @@ fun SetItemDetailBereich(
     SetItemDetail(vm, imageLoader, serverUrl, onOpenSet, alsDialog = false)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SetItemDetail(
     vm: TeileViewModel,
@@ -180,7 +183,7 @@ private fun SetItemDetail(
                                     vorrat = lagerZustand.vorrat.map { it.name },
                                     onWert = { vm.setzeTeilLagerort(kopf.nummer, kopfFarbe, it) },
                                     modifier = Modifier.padding(start = Abstaende.gross)
-                                        .widthIn(max = 180.dp),
+                                        .weight(1f).widthIn(max = 320.dp),
                                 )
                             }
                         }
@@ -238,20 +241,10 @@ private fun SetItemDetail(
             }
     }
 
-    if (alsDialog) {
-        AlertDialog(
-            onDismissRequest = { vm.schliesseSetItem() },
-            confirmButton = {
-                TextButton(onClick = { vm.schliesseSetItem() }) {
-                    Text(stringResource(R.string.detail_close))
-                }
-            },
-            title = titel,
-            text = inhalt,
-        )
-    } else {
+    // Kopf mit Schliessen und Inhalt, im Blatt wie im Bereich neben der Liste gleich.
+    val koerper: @Composable (Modifier) -> Unit = { aussen ->
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.gross),
+            aussen.verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
             Row(verticalAlignment = Alignment.Top) {
@@ -264,6 +257,13 @@ private fun SetItemDetail(
             }
             inhalt()
         }
+    }
+    if (alsDialog) {
+        ModalBottomSheet(onDismissRequest = { vm.schliesseSetItem() }) {
+            koerper(Modifier.padding(start = Abstaende.sehrGross, end = Abstaende.sehrGross, bottom = Abstaende.sehrGross))
+        }
+    } else {
+        koerper(Modifier.fillMaxSize().padding(Abstaende.gross))
     }
 
     if (zeigeZoom && bild != null) {

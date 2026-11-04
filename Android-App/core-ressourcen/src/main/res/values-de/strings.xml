@@ -196,8 +196,6 @@
     <string name="storage_new">Neuer Lagerort</string>
     <string name="storage_add">Hinzufügen</string>
     <string name="storage_empty">Noch keine Lagerorte angelegt.</string>
-    <string name="storage_default_set">Als Vorgabe beim Erfassen setzen</string>
-    <string name="storage_default_is">Vorgabe beim Erfassen — tippen schaltet sie ab</string>
     <string name="storage_default_label">Vorgabe beim Erfassen</string>
     <string name="storage_add_button">Lagerort hinzufügen</string>
     <string name="storage_name">Name des Lagerorts</string>
@@ -254,7 +252,7 @@
         <item quantity="other">%1$d verschiedene</item>
     </plurals>
     <string name="partslist_owned_error">Der eigene Bestand liess sich nicht laden.</string>
-    <string name="partslist_empty_hint">Füge oben ein oder mehrere Sets hinzu und tippe auf „Erstellen“ — für den Nachbau oder um Fehlendes zu bestellen.</string>
+    <string name="partslist_empty_hint">Setnummer eingeben und „Erstellen“ tippen, mit „+“ kommen weitere Sets dazu — für den Nachbau oder um Fehlendes zu bestellen.</string>
     <string name="partslist_empty_title">Noch keine Bauliste</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
     <plurals name="partslist_group_summary">
@@ -390,7 +388,6 @@
     <string name="settings_hell_hell">Hell</string>
     <string name="settings_hell_dunkel">Dunkel</string>
     <string name="nav_collection">Sammlung</string>
-    <string name="nav_gallery">Galerie</string>
     <string name="nav_parts">Teile</string>
     <string name="nav_minifigs">Minifiguren</string>
     <string name="name_unknown">Name unbekannt</string>
@@ -548,10 +545,10 @@
     </plurals>
     <string name="catalog_no_results">Keine Sets gefunden</string>
     <string name="catalog_owned">Im Besitz</string>
-    <string name="catalog_add_to_gallery">In Galerie aufnehmen</string>
+    <string name="catalog_add_to_gallery">Zur Sammlung hinzufügen</string>
     <string name="catalog_add_again">Erneut aufnehmen</string>
     <string name="catalog_add_confirm">Hinzufügen</string>
-    <string name="catalog_open_in_gallery">In Galerie öffnen</string>
+    <string name="catalog_open_in_gallery">In der Sammlung öffnen</string>
     <string name="catalog_detail_year">Jahr</string>
     <string name="catalog_detail_theme">Thema</string>
     <string name="catalog_detail_parts">Teile</string>
@@ -725,7 +722,6 @@
     <!-- ══════════════ Kontokarte (Profil / Passwort) ══════════════ -->
     <string name="konto_title">Konto</string>
     <string name="konto_email_unverified">E-Mail-Adresse nicht bestätigt</string>
-    <string name="konto_profil_password">Aktuelles Passwort (zum Speichern)</string>
     <string name="konto_profil_password_needed">Zum Speichern bitte das aktuelle Passwort eingeben.</string>
     <string name="konto_save">Profil speichern</string>
     <string name="konto_saved">Profil gespeichert</string>
@@ -852,9 +848,9 @@
     <string name="wanted_added">Auf die Merkliste gesetzt</string>
     <string name="wanted_already">Stand schon auf der Merkliste</string>
     <string name="wanted_deleted">Von der Merkliste genommen</string>
-    <string name="wanted_take">In Galerie aufnehmen</string>
-    <string name="wanted_taken">In die Galerie übernommen</string>
-    <string name="wanted_taken_existing">War schon in der Galerie — von der Merkliste genommen</string>
+    <string name="wanted_take">Zur Sammlung hinzufügen</string>
+    <string name="wanted_taken">In die Sammlung übernommen</string>
+    <string name="wanted_taken_existing">War schon in der Sammlung — von der Merkliste genommen</string>
     <string name="wanted_need_number">Bitte Set-Nummer eingeben</string>
     <string name="wanted_threshold">Schwelle (optional)</string>
     <string name="detail_compare">Preisvergleich</string>
@@ -951,7 +947,10 @@
     </plurals>
     <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
     <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App merkt es sich für diese Adresse und nimmt danach nur noch dieses an. Nur fortfahren, wenn du den Code eben selbst in deiner Webapp erzeugt hast; dort steht unter Einstellungen → Server-Zertifikat derselbe Anfang.</string>
-    <string name="setup_altbestand_text">Gespeichert ist %1$s – eine unverschlüsselte Adresse. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.\n\nSo geht es weiter:\n1. In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und mit dem Knopf darunter scannen.\n2. Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.\n\nDanach meldest du dich einmal neu an.</string>
+    <string name="setup_altbestand_text">Gespeichert ist %1$s – eine Adresse ohne Verschlüsselung. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.</string>
+    <string name="setup_altbestand_schritt_qr">In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und mit dem Knopf darunter scannen.</string>
+    <string name="setup_altbestand_schritt_adresse">Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.</string>
+    <string name="setup_altbestand_danach">Danach meldest du dich einmal neu an.</string>
     <string name="setup_altbestand_titel">Nur noch verschlüsselte Verbindungen</string>
     <string name="setup_qr_klartext_abgelehnt">Dieser QR-Code nennt eine unverschlüsselte Adresse (http). Die App verbindet sich nur über https: Den Server auf https umstellen (README, „HTTPS mit eigener CA“) und den Code danach neu erzeugen.</string>
     <string name="setup_url_unlesbar">Diese Adresse lässt sich nicht lesen. Beispiel: https://brick.fritz.box</string>
@@ -1076,4 +1075,20 @@
         <item quantity="other">Mindestens %1$d Zeichen</item>
     </plurals>
     <string name="login_erweitert">Erweitert</string>
+    <!-- UI-Prüfung 11 (Android) -->
+    <string name="login_server_aendern">Server ändern: %1$s</string>
+    <string name="zf_codes_gesichert">Ich habe die Codes sicher abgelegt</string>
+    <string name="zf_schritt_passwort">Passwort</string>
+    <string name="zf_schritt_app">Authenticator-App</string>
+    <string name="zf_schritt_codes">Notfallcodes</string>
+    <string name="konto_profil_titel">Profil</string>
+    <string name="alerts_liste_titel">Deine Alarme</string>
+    <string name="alerts_delete_fuer">Preisalarm für %1$s entfernen</string>
+    <string name="storage_vorgabe_cd">Vorgabe beim Erfassen: %1$s</string>
+    <string name="aktion_fuer">%1$s: %2$s</string>
+    <string name="finance_positionen">Positionen</string>
+    <plurals name="zf_schritt">
+        <item quantity="one">Schritt %1$d von %2$d: %3$s</item>
+        <item quantity="other">Schritt %1$d von %2$d: %3$s</item>
+    </plurals>
 </resources>

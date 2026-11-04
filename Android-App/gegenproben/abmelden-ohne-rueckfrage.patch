@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.UnterseitenTest
 Rot: Abmelden fragt
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-index b5c54e4..a73c263 100644
+index 4a48a90..7135212 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-@@ -92,7 +92,7 @@ fun MehrBildschirm(
-         MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) {
-             navController.navigate(Screen.Settings.route) { launchSingleTop = true }
-         }
--        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { fragtAbmelden = true }
-+        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { onAbmelden() }
-         if (isAdmin) {
-             MehrGruppe(R.string.nav_group_server)
-             MehrEintrag(R.string.main_menu_monitoring, Icons.Outlined.Assessment) {
+@@ -105,7 +105,7 @@ fun MehrBildschirm(
+                 MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) {
+                     navController.navigate(Screen.Settings.route) { launchSingleTop = true }
+                 }
+-                MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { fragtAbmelden = true }
++                MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { onAbmelden() }
+             }
+             else -> {
+                 MehrGruppe(R.string.nav_group_server, trenner)

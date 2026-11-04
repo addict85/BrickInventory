@@ -30,6 +30,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.compose.runtime.getValue
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.SetAnlegenSchritt
+import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.SetAnleger
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
@@ -234,11 +235,21 @@ class BildschirmFotoVariantenTest {
     // Ein Kaufpreis über CHF 1’000 in den Wert-Kacheln: Dort brach „CHF 700.0 / 0“
     // um, und mit vier Stellen wurde es nur enger.
 
+    // Alle Zahlen eines Sets passen zusammen: Marktpreis 1’249.90, Kaufpreis 1’049.00,
+    // also +19.2 %. Vorher stand neben dem teuren Marktpreis noch Kaufpreis 700 und +16.1 %.
     private fun detailTeuerFoto(name: String, schrift: Float) {
         welt.pfade.antworten["/api/v1/sets/75192-1/price"] =
             """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":1249.9,"min_price":1180.0,"max_price":1320.0,"qty_avg_price":1249.9}"""
         welt.pfade.antworten["/api/v1/sets/75192-1/acquisitions"] = """{"success":true,"acquisitions":[
             {"id":1,"quantity":1,"purchase_price":1049.0,"condition":"N","currency":"CHF","created_at":"2026-03-14T10:00:00Z"}]}"""
+        welt.pfade.antworten["/api/v1/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
+            "image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,
+            "num_parts":7541,"minifigs":7,"added_at":"2026-03-14T10:00:00Z","avg_purchase_price":1049.0}}"""
+        welt.pfade.antworten["/api/v1/sets/75192-1/price-history"] = """{"success":true,"set_number":"75192-1","currency":"CHF",
+            "by_condition":{"N":{"market_price":1249.9,"purchase_price":1049.0,"pnl_pct":19.2}},
+            "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":1210.0},{"x":"2026-09-01","y":1231.0},{"x":"2026-10-01","y":1249.9}],"firstRealIndex":0}],
+                     "x":["2026-08-01","2026-09-01","2026-10-01"]},
+            "pnl_prozent":19.2,"purchase_price":1049.0}"""
         val vm = welt.setDetail().also { it.ladeAlles() }
         zeige(name, geraet = "schmal", schrift = schrift, bereit = detailFertig(vm), zustand = { vm.setDetailState.value }) { Detail(vm) }
         anhalten()
@@ -476,6 +487,15 @@ class BildschirmFotoVariantenTest {
 
     @Test
     fun merklisteMitDetailTablet() {
+        // Das Detail zeigt denselben Preis wie die Zeile daneben (449.95), statt „wird geladen“.
+        welt.pfade.antworten["/api/v1/wanted/10294-1/preise"] = """{"success":true,"currency":"CHF",
+            "current":{"N":{"condition":"N","avg_price":449.95,"min_price":420.0,"max_price":480.0}}}"""
+        welt.pfade.antworten["/api/v1/catalog/sets/10294-1"] = """{"success":true,"set":{"set_number":"10294-1",
+            "name":"Titanic","year":2021,"theme_name":"Icons","num_parts":9090,"image_local":"/beispiel/set2.png","minifigs":0}}"""
+        welt.pfade.antworten["/api/v1/sets/10294-1/price-history"] = """{"success":true,"set_number":"10294-1","currency":"CHF",
+            "by_condition":{"N":{"market_price":449.95}},
+            "chart":{"values":[{"name":"N","values":[{"x":"2026-08-01","y":431.0},{"x":"2026-09-01","y":440.0},{"x":"2026-10-01","y":449.95}],"firstRealIndex":0}],
+                     "x":["2026-08-01","2026-09-01","2026-10-01"]}}"""
         val vm = welt.merkliste().also { it.ladeMerkliste() }
         zeige("merkliste-detail", geraet = "tablet", bereit = { vm.merklisteState.value.merkposten.isNotEmpty() },
             zustand = { vm.merklisteState.value }) {
@@ -706,8 +726,61 @@ class BildschirmFotoVariantenTest {
             androidx.compose.ui.test.hasClickAction()).performClick()
         bereitstellen("teil-detail (offen)", { !vm.setItemState.value.laedt }, { vm.setItemState.value })
         anhalten()
-        if (geraet == "telefon") compose.onNode(isDialog()).captureRoboImage(pfad("teil-detail", "classic", dunkel, geraet))
+        if (geraet == "telefon") blattFoto(R.string.setitem_used_in, "teil-detail", "classic", dunkel, geraet)
         else foto("teil-detail", dunkel = dunkel, geraet = geraet)
+    }
+
+    /**
+     * Ein Blatt von unten (ModalBottomSheet) hat ein eigenes Fenster ohne Dialog-Semantik:
+     * fotografiert wird die Wurzel, die [kennung] trägt.
+     */
+    private fun blattFoto(kennung: Int, name: String, design: String, dunkel: Boolean, geraet: String) {
+        val text = ApplicationProvider.getApplicationContext<android.content.Context>().getString(kennung)
+        compose.onNode(androidx.compose.ui.test.isRoot() and
+            androidx.compose.ui.test.hasAnyDescendant(androidx.compose.ui.test.hasText(text)))
+            .captureRoboImage(pfad(name, design, dunkel, geraet))
+    }
+
+    /** Das Filterblatt der Sammlung: Konto, Lagerort und Thema mit Zurücksetzen. */
+    @Test
+    fun filterblattGalerie() {
+        val vm = welt.galerie().also { it.loadSets(); it.loadStats() }
+        zeige("filter-galerie", bereit = galerieFertig(vm), zustand = { vm.galleryState.value }) { Galerie(vm) }
+        compose.onNodeWithContentDescription(ApplicationProvider.getApplicationContext<android.content.Context>()
+            .getString(R.string.filter_button)).performClick()
+        compose.waitForIdle()
+        anhalten()
+        blattFoto(R.string.filter_title, "filter-galerie", "classic", false, "telefon")
+    }
+
+    // ── Pflichtmasken bei 200 % und der letzte Schritt des zweiten Faktors ──
+
+    @Test
+    fun startpasswortSchrift200() {
+        zeige("startpasswort-schrift200", schrift = 2.0f) {
+            ch.brickinventoryapp.ui.screens.StartpasswortMaske(ch.brickinventoryapp.ui.KontoUiState(), { _, _, _ -> }, {})
+        }
+        foto("startpasswort-schrift200")
+    }
+
+    @Test
+    fun zweiterFaktorSchrift200() {
+        zeige("zweiter-faktor-schrift200", schrift = 2.0f) {
+            ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske(
+                ch.brickinventoryapp.ui.ZweiterFaktorUiState(aktiv = false), {}, {}, {}, {})
+        }
+        foto("zweiter-faktor-schrift200")
+    }
+
+    /** Schritt 3: die Notfallcodes, „Weiter“ erst nach dem Haken. */
+    @Test
+    fun zweiterFaktorCodes() {
+        zeige("zweiter-faktor-codes", dunkel = true) {
+            ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske(
+                ch.brickinventoryapp.ui.ZweiterFaktorUiState(aktiv = true,
+                    codes = listOf("a1b2-c3d4", "e5f6-g7h8", "i9j0-k1l2", "m3n4-o5p6")), {}, {}, {}, {})
+        }
+        foto("zweiter-faktor-codes", dunkel = true)
     }
 
     @Test fun teilDetailTelefon() = teilDetailFoto("telefon", false)

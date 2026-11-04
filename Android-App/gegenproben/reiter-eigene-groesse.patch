@@ -4,24 +4,24 @@ Test: ch.brickinventoryapp.FeinschliffRegelnTest
 Rot: Reiterleiste bricht bei 200 Prozent
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index 9bc9efb..c38c969 100644
+index 8a3960b..b3dede2 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -112,7 +112,7 @@ fun MainScaffold(
+@@ -123,7 +123,7 @@ fun MainScaffold(
                          selected = istGewaehlt(screen),
                          onClick = { reiterWaehlen(screen) },
-                         icon = { Symbol(screen, icon) },
--                        label = { ReiterBeschriftung(label, reiterSchrift) }
-+                        label = { ReiterBeschriftung(label, remember { mutableStateOf(REITER_SCHRIFT_START) }) }
+                         icon = { ReiterSymbol(label, beschriftet.value) { Symbol(screen, icon) } },
+-                        label = if (beschriftet.value) ({ ReiterBeschriftung(label, reiterSchrift, beschriftet) }) else null,
++                        label = if (beschriftet.value) ({ ReiterBeschriftung(label, remember { mutableStateOf(REITER_SCHRIFT_START) }, beschriftet) }) else null,
                      )
                  }
              }
-@@ -165,7 +165,7 @@ fun MainScaffold(
+@@ -176,7 +176,7 @@ fun MainScaffold(
                          bottomNavItems.forEach { (screen, icon, label) ->
                              NavigationBarItem(
-                                 icon = { Symbol(screen, icon) },
--                                label = { ReiterBeschriftung(label, reiterSchrift) },
-+                                label = { ReiterBeschriftung(label, remember { mutableStateOf(REITER_SCHRIFT_START) }) },
+                                 icon = { ReiterSymbol(label, beschriftet.value) { Symbol(screen, icon) } },
+-                                label = if (beschriftet.value) ({ ReiterBeschriftung(label, reiterSchrift, beschriftet) }) else null,
++                                label = if (beschriftet.value) ({ ReiterBeschriftung(label, remember { mutableStateOf(REITER_SCHRIFT_START) }, beschriftet) }) else null,
                                  selected = istGewaehlt(screen),
                                  onClick = { reiterWaehlen(screen) }
                              )

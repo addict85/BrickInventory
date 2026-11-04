@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
@@ -103,6 +104,9 @@ fun MainScaffold(
     // Eine Grösse für alle Beschriftungen: Schrumpft jede für sich, steht „Sammlung“
     // klein neben grossem „Mehr“.
     val reiterSchrift = remember(LocalDensity.current.fontScale) { mutableStateOf(REITER_SCHRIFT_START) }
+    // Passt eine Beschriftung auch in Normalgrösse nicht, stehen nur Symbole da (Name für
+    // TalkBack); das gewählte Ziel nennt der Titel oben mit demselben Symbol.
+    val beschriftet = remember(LocalDensity.current.fontScale) { mutableStateOf(true) }
     // Die Snackbar liegt über dem Inhalt; ihre Höhe hebt den Erfassen-Knopf darüber.
     var snackbarHoehe by remember { mutableIntStateOf(0) }
     val offlineHinweise = remember { mutableIntStateOf(0) }
@@ -118,8 +122,8 @@ fun MainScaffold(
                     NavigationRailItem(
                         selected = istGewaehlt(screen),
                         onClick = { reiterWaehlen(screen) },
-                        icon = { Symbol(screen, icon) },
-                        label = { ReiterBeschriftung(label, reiterSchrift) }
+                        icon = { ReiterSymbol(label, beschriftet.value) { Symbol(screen, icon) } },
+                        label = if (beschriftet.value) ({ ReiterBeschriftung(label, reiterSchrift, beschriftet) }) else null,
                     )
                 }
             }
@@ -171,8 +175,8 @@ fun MainScaffold(
                     ) {
                         bottomNavItems.forEach { (screen, icon, label) ->
                             NavigationBarItem(
-                                icon = { Symbol(screen, icon) },
-                                label = { ReiterBeschriftung(label, reiterSchrift) },
+                                icon = { ReiterSymbol(label, beschriftet.value) { Symbol(screen, icon) } },
+                                label = if (beschriftet.value) ({ ReiterBeschriftung(label, reiterSchrift, beschriftet) }) else null,
                                 selected = istGewaehlt(screen),
                                 onClick = { reiterWaehlen(screen) }
                             )
@@ -258,30 +262,39 @@ fun ReiterGeruest(
 }
 
 /**
- * Beschriftung eines Ziels in Leiste und Seitenleiste: immer eine Zeile. Bei 200 %
- * brach „Samm|lung“ mitten im Wort; reicht die Breite nicht, wird die Schrift
- * schrittweise kleiner, wie Android es in der eigenen Systemleiste hält.
+ * Beschriftung eines Ziels in Leiste und Seitenleiste: immer eine Zeile, alle in einer
+ * Grösse. Reicht die Breite nicht, wird die Schrift kleiner, aber nie kleiner als ohne
+ * Vergrösserung — sonst hebt die Leiste die Systemeinstellung auf. Passt sie dann noch
+ * nicht, fällt die Beschriftung weg ([beschriftet]).
  */
 @Composable
-private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>) {
+private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, beschriftet: MutableState<Boolean>) {
     val stil = MaterialTheme.typography.labelSmall
-    // Jede Messung mit Überstand verkleinert die gemeinsame Grösse um einen halben
-    // Punkt, bis jedes Wort ganz in eine Zeile passt.
+    val boden = stil.fontSize / LocalDensity.current.fontScale.coerceAtLeast(1f)
     val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
     Text(
         text, style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
         overflow = TextOverflow.Clip,
         onTextLayout = { l ->
-            if (l.hasVisualOverflow && aktuell > REITER_SCHRIFT_MIN) groesse.value = (aktuell.value - 0.5f).sp
+            if (l.hasVisualOverflow) {
+                if (aktuell.value - REITER_SCHRIFT_SCHRITT >= boden.value) groesse.value = (aktuell.value - REITER_SCHRIFT_SCHRITT).sp
+                else beschriftet.value = false
+            }
         },
     )
+}
+
+/** Ohne Beschriftung trägt das Symbol den Namen des Ziels. */
+@Composable
+private fun ReiterSymbol(name: String, beschriftet: Boolean, symbol: @Composable () -> Unit) {
+    if (beschriftet) symbol() else Box(Modifier.semantics { contentDescription = name }) { symbol() }
 }
 
 /** Unbestimmt: Die Beschriftung beginnt bei der Grösse des Themas. */
 private val REITER_SCHRIFT_START = TextUnit.Unspecified
 
-/** Kleiner wird keine Beschriftung; bei 200 % sind das noch 14 dp, gut lesbar. */
-private val REITER_SCHRIFT_MIN = 7.sp
+/** Um so viel Punkt schrumpft die gemeinsame Grösse je Messung mit Überstand. */
+private const val REITER_SCHRIFT_SCHRITT = 0.5f
 
 /** Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel. */
 private val SAMMLUNG = setOf(Screen.Gallery.route, Screen.Parts.route, Screen.Minifigs.route)
