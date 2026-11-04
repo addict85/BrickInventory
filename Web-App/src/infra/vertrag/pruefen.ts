@@ -63,7 +63,8 @@ export function vertragPruefen(req: Request, res: Response, next: NextFunction):
 /** Ein Router, der Eingaben im Betrieb und seine Antworten in Tests gegen den
  * Vertrag prüft — auch dort, wo ein Test ihn ohne routes/api_v1/index.ts einhängt. */
 export function vertragsRouter(o: { grosseIds?: boolean } = {}): express.Router {
-  const router = express.Router();
+  // Wie der Vertrag: Eine andere Schreibung ist eine andere Route (404), nicht dieselbe ohne Eintrag.
+  const router = express.Router({ caseSensitive: true });
   router.use(vertragPruefen);
   // Als letzter Schritt vor der Route, nach Anmeldung und Drossel: Deren
   // Antworten (401, 429) bleiben, wie sie sind.

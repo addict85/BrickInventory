@@ -91,6 +91,8 @@ function baueApp(): express.Express {
 const app  = express();
 // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
 app.disable('x-powered-by');
+// Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
+app.set('case sensitive routing', true);
 
 // Gzip/Brotli für alles ab 1 KB; index.html schrumpft um rund 80 %.
 app.use(compression({
@@ -379,8 +381,9 @@ app.get('/reset-password', async (_req, res) => {
 });
 
 // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
-// index.html mit 200, und die App meldete einen Serialisierungsfehler.
-app.use('/api', (_req, res) => res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }));
+// index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
+app.use((req, res, next) => /^\/api(\/|$)/i.test(req.path)
+  ? res.status(404).json({ success: false, error: 'Endpoint nicht gefunden' }) : next());
 
 // '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
 // naheliegende Form träfe die Startseite `/` nicht.
