@@ -16,6 +16,8 @@
  * Gegenprobe (04.11.2026 gemessen):
  *   F  hinweisNebenher() in angemeldetAntworten() (routes/auth.ts) entfernt →
  *      rot: „Token aus der Anmeldung (neues Gerät)“
+ *   G  hinweisNebenher() in /zweiter-faktor/bestaetigen bzw. /abschalten
+ *      entfernt → rot: „eigener zweiter Faktor eingerichtet und abgeschaltet“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -65,7 +67,9 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async (t) => {
   const ruf = async (methode, weg, body) => {
     const r = await fetch(`${base}/api/v1/auth${weg}`, { method: methode, headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body) });
-    assert.equal(r.status, 200, `${weg}: ${await r.text()}`);
+    const text = await r.text();
+    assert.equal(r.status, 200, `${weg}: ${text}`);
+    return JSON.parse(text);
   };
   /** Die Mails gehen nebenher; bis sie da sind, kurz warten. */
   const mails = async (art, anzahl) => {
@@ -117,5 +121,15 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async (t) => {
     gesendet.length = 0;
     await ruf('POST', '/login', { username: NAMEN[2], password: PASS, label: 'Handy' });
     assert.deepEqual(await mails('token_neu', 1), [{ an: NAMEN[2], konto: undefined, durch: undefined, name: 'Handy' }]);
+  });
+
+  await t.test('eigener zweiter Faktor eingerichtet und abgeschaltet', async () => {
+    const zf = _req('src/konto/zweiterFaktor.js');
+    const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
+    const code = (versatz) => zf.hotp(zf.ausBase32(geheimnis), zf.zeitschritt() + versatz);
+    await ruf('POST', '/zweiter-faktor/bestaetigen', { code: code(0) });
+    assert.deepEqual((await mails('zweiter_faktor_eingerichtet', 1)).map(m => m.an), [NAMEN[0]]);
+    await ruf('POST', '/zweiter-faktor/abschalten', { password: PASS, code: code(1) });
+    assert.deepEqual((await mails('zweiter_faktor_abgeschaltet', 1)).map(m => m.an), [NAMEN[0]]);
   });
 });

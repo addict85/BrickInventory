@@ -1,7 +1,8 @@
 /**
- * Gnadenfrist beim Einrichten des zweiten Faktors: Wer sich eben mit dem
- * Passwort angemeldet (oder es gewechselt) hat, richtet ohne erneute Eingabe
- * ein — einmal, höchstens fünf Minuten lang, nur mit Sitzung. Ohne Frist und
+ * Gnadenfrist beim Einrichten des zweiten Faktors: Ein Verwalter ohne Faktor
+ * (dort erzwingt ihn der Server), der sich eben mit dem Passwort angemeldet
+ * (oder es gewechselt) hat, richtet ohne erneute Eingabe ein — einmal,
+ * höchstens fünf Minuten lang, nur mit Sitzung. Jedes andere Konto nennt das Passwort. Ohne Frist und
  * ohne Passwort kommt `aktuelles_passwort_erforderlich`, ohne dass die Bremse
  * zählt; mit Passwort bleibt alles wie bisher.
  *
@@ -15,6 +16,8 @@
  *      die Prüfung) → rot: „nur einmal“, „nach Ablauf der Frist“, „ohne Frist
  *      zählt nicht in der Bremse“, „mit Token nie“ (aktuelles_passwort_falsch)
  *   E  gnadenfristVerbrauchen gibt Token-Zugriffen die Frist → rot: „mit Token nie“
+ *   F  (04.11.) in der Route wieder `!zf.istAktiv(uid)` statt zweiterFaktorPflicht(req)
+ *      → rot: „ein gewöhnliches Konto nennt immer das Passwort“ (200 statt 400)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -40,13 +43,14 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
   }
   const c = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
-  const NAME = `gnade_${process.pid}`;
-  await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
-    VALUES ($1, $2, $3, false, true, true) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
+  const NAME = `gnade_${process.pid}`, NUTZER = `gnade_n_${process.pid}`;
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NUTZER]]);
+  const konto = async (n, verwalter) => (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
+    VALUES ($1, $2, $3, $4, true, true) RETURNING id`, [n, `${n}@example.org`, await bcrypt.hash(PASS, 4), verwalter])).id;
+  const uid = await konto(NAME, true), nutzer = await konto(NUTZER, false);
   t.after(async () => {
-    await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
-    await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%|${uid}|%`]).catch(() => {});
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, nutzer]]).catch(() => {});
+    for (const id of [uid, nutzer]) await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%|${id}|%`]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -58,9 +62,9 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
       headers: { 'content-type': 'application/json', ...kopf }, body: JSON.stringify(body) });
     return { status: r.status, body: await r.json() };
   };
-  const anmelden = async () => {
+  const anmelden = async (name = NAME) => {
     for (const k of Object.keys(sitzung)) delete sitzung[k];
-    const r = await ruf('/login', { username: NAME, password: PASS, ohne_token: true });
+    const r = await ruf('/login', { username: name, password: PASS, ohne_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
   };
   const einrichten = (body = {}) => ruf('/zweiter-faktor/einrichten', body);
@@ -109,5 +113,12 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
     assert.equal(sitzung.userId, undefined, 'Vorbedingung: keine Sitzung');
     const r = await ruf('/zweiter-faktor/einrichten', {}, { authorization: `Bearer ${login.body.token}` });
     assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'mit Token nie');
+  });
+
+  await t.test('ein gewöhnliches Konto nennt immer das Passwort', async () => {
+    await anmelden(NUTZER);
+    const r = await einrichten();
+    assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'ein gewöhnliches Konto ohne Passwort');
+    assert.equal((await einrichten({ password: PASS })).status, 200, 'mit Passwort');
   });
 });

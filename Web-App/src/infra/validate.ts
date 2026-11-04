@@ -42,6 +42,13 @@ export function urlOderNull(text: string): URL | null {
   try { return new URL(text); } catch { return null; }
 }
 
+/** Nur eine reine Adresse: nodemailer liest `x<a@b.de>` oder `a@b.de,c` als Liste mit
+ * Anzeigenamen, Vergabeprüfung und Zieldrossel zählten dann eine andere Zeichenkette. */
+export const EMAIL_RE = /^[^\s@<>",;:()[\]\\]+@[^\s@<>",;:()[\]\\]+\.[^\s@<>",;:()[\]\\]+$/;
+export function emailGueltig(v: unknown): v is string {
+  return typeof v === 'string' && v.length <= 254 && EMAIL_RE.test(v) && !/\p{Cc}/u.test(v);
+}
+
 export function einmalDekodiert(text: string): string {
   try { return decodeURIComponent(text); } catch { return text; }
 }

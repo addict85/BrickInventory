@@ -9,7 +9,9 @@
  *   B  registrierungOffen() mit `!== '0'` → rot: „ohne Zeile …" und „"false"
  *      ist zu" (die Anzeige meldet enabled: true)
  *   C  globalerWertGueltig() liefert immer true → rot: „das Formular nimmt nur
- *      0 oder 1" (200, "false" gespeichert) und „der Import ebenso"
+ *      0 oder 1" (200, "false" gespeichert)
+ *   E  (04.11.) registration_enabled wieder ohne Bestätigung im Import → rot:
+ *      „der Import übergeht die Registrierung"
  *   D  (02.11.) passkey/passwort_vergessen fest true → rot: „Anmeldewege
  *      nur, wenn der Server sie kann" (ohne APP_BASE_URL true); nur
  *      basisUrl() ohne mailEingerichtet() → rot (ohne SMTP true)
@@ -107,20 +109,16 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async (t) =>
     assert.equal((await rufe('POST', '/settings', { smtp_secure: 'yes', admin_password: PASS })).status, 400);
     assert.equal(await gespeichert('registration_enabled'), '1');
     assert.equal(await gespeichert('smtp_secure'), smtpVorher);
-    assert.equal((await rufe('POST', '/settings', { registration_enabled: '0' })).status, 200);
+    assert.equal((await rufe('POST', '/settings', { registration_enabled: '0', admin_password: PASS })).status, 200);
     assert.equal(await gespeichert('registration_enabled'), '0');
   });
 
-  await t.test('der Import ebenso', async () => {
-    const importiere = async (global) => {
-      const fd = new FormData();
-      fd.append('file', new Blob([JSON.stringify({ global })], { type: 'application/json' }), 'config.json');
-      const r = await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: fd });
-      return { status: r.status, body: await r.json() };
-    };
-    assert.equal((await importiere({ registration_enabled: 'false' })).status, 400);
-    assert.equal(await gespeichert('registration_enabled'), '0');
-    assert.equal((await importiere({ registration_enabled: '1' })).status, 200);
-    assert.equal(await gespeichert('registration_enabled'), '1');
+  await t.test('der Import übergeht die Registrierung', async () => {
+    const fd = new FormData();
+    fd.append('file', new Blob([JSON.stringify({ global: { registration_enabled: '1' } })], { type: 'application/json' }), 'config.json');
+    const r = await fetch(`${base}/api/v1/settings/import`, { method: 'POST', body: fd }).then(async x => ({ status: x.status, body: await x.json() }));
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(await gespeichert('registration_enabled'), '0', 'der Import öffnete die Registrierung');
+    assert.deepEqual(r.body.smtp_uebergangen, ['registration_enabled']);
   });
 });

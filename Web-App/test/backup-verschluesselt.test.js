@@ -18,6 +18,13 @@
  *      aus backup-empfaenger.txt gelten ohne weitere Angabe" (Abbruch statt .age)
  *   F  BACKUP_KLARTEXT nicht mehr beachtet (Zweig gestrichen) → rot:
  *      „unverschlüsselt nur mit BACKUP_KLARTEXT=ja"
+ * Gegenproben (04.11.2026 gemessen, je einzeln):
+ *   G  scripts/backup.sh auf Stand 5c2e641 (gzip/tar schreiben ans Ziel, age
+ *      danach) → rot: „am Ziel liegt nie Klartext …“ (db_….sql.gz gesehen)
+ *   H  in backup.sh das Entfernen von $TEIL im trap gestrichen → rot: „ein Dump
+ *      ohne Endmarke hinterlässt nichts am Ziel“
+ *   I  in restore.sh den Vorlauf gegen Backslash-Zeilen gestrichen → rot:
+ *      „restore.sh weist psql-Befehle im Dump ab“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -129,4 +136,48 @@ test('unverschlüsselt nur mit BACKUP_KLARTEXT=ja', (t) => {
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stderr, /WARNUNG: unverschlüsselt/);
   assert.deepEqual(fs.readdirSync(a.ziel).map(n => n.replace(/_\d{4}-\d\d-\d\d_\d{4}/, '')).sort(), ['data.tar.gz', 'db.sql.gz']);
+});
+
+test('am Ziel liegt nie Klartext, auch nicht während der Sicherung', (t) => {
+  if (!hatAge) { if (process.env.CI) assert.fail('age fehlt im CI-Lauf'); t.skip('age nicht installiert'); return; }
+  const a = aufbau(t);
+  const bin = path.join(a.tmp, 'bin'), probe = path.join(a.tmp, 'probe');
+  // Mitten im Dump und nach tar sehen, was am Ziel liegt.
+  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh
+printf -- '-- Dump\\nCREATE TABLE probe();\\n'
+sleep 1; ls '${a.ziel}' >> '${probe}'
+printf -- '-- PostgreSQL database dump complete\\n'
+`, { mode: 0o755 });
+  const echtesTar = spawnSync('sh', ['-c', 'command -v tar'], { encoding: 'utf8' }).stdout.trim();
+  fs.writeFileSync(path.join(bin, 'tar'), `#!/bin/sh\n'${echtesTar}' "$@"; s=$?; ls '${a.ziel}' >> '${probe}'; exit $s\n`, { mode: 0o755 });
+  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.empfaenger });
+  assert.equal(r.status, 0, r.stderr);
+  const gesehen = fs.readFileSync(probe, 'utf8').split('\n').filter(Boolean);
+  assert.ok(gesehen.some(n => /^db_.*\.sql\.gz\.age$/.test(n)), `Vorbedingung: nach tar angesehen: ${gesehen}`);
+  assert.deepEqual(gesehen.filter(n => !/\.age(\.teil)?$/.test(n)), [], 'Klartext am Ziel');
+});
+
+test('ein Dump ohne Endmarke hinterlässt nichts am Ziel', (t) => {
+  if (!hatAge) { if (process.env.CI) assert.fail('age fehlt im CI-Lauf'); t.skip('age nicht installiert'); return; }
+  const a = aufbau(t);
+  fs.writeFileSync(path.join(a.tmp, 'bin', 'docker'), "#!/bin/sh\nprintf -- '-- Dump, abgebrochen\\n'\nexit 1\n", { mode: 0o755 });
+  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.empfaenger });
+  assert.notEqual(r.status, 0, 'ein Torso gilt als Sicherung');
+  assert.match(r.stderr, /Endmarke fehlt/);
+  assert.deepEqual(fs.readdirSync(a.ziel), [], 'eine halbe Datei bleibt am Ziel');
+});
+
+test('restore.sh weist psql-Befehle im Dump ab', (t) => {
+  const a = aufbau(t);
+  const geknackt = path.join(a.tmp, 'geknackt');
+  for (const zeile of [`\\! touch '${geknackt}'`, `  \\copy x to program 'touch ${geknackt}'`]) {
+    const dump = path.join(a.tmp, 'fremd.sql');
+    fs.writeFileSync(dump, `-- Dump\nCOPY t (x) FROM stdin;\n\\\\in den Daten erlaubt\n\\.\n${zeile}\n-- PostgreSQL database dump complete\n`);
+    execFileSync('gzip', ['-f', dump]);
+    const r = a.lauf('restore.sh', [`${dump}.gz`], {}, 'ja\n');
+    assert.notEqual(r.status, 0, `eingespielt: ${zeile}`);
+    assert.match(r.stderr, /psql-Befehle/);
+    assert.ok(!fs.existsSync(path.join(a.tmp, 'eingespielt.sql')), 'psql bekam den Dump');
+  }
+  assert.ok(!fs.existsSync(geknackt));
 });

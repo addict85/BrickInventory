@@ -1448,3 +1448,99 @@ Telefon die Webseite.
 - Eingerichtet ist der zweite Faktor weiterhin erst mit dem Code aus der App.
   Sitzungen von vor dem Update haben keine Frist; nach dem Update genügt eine
   neue Anmeldung.
+
+## 37. Runde 12 – Mailadressen, zweiter Faktor, Protokoll und Sicherung
+
+**1. Nur noch reine E-Mail-Adressen**
+
+- Registrierung, Profil, „Passwort vergessen“, „Bestätigung erneut senden“
+  und der SMTP-Test nehmen nur noch eine einzelne Adresse an: kein
+  Anzeigename (`Name <a@b.de>`), keine Liste (`a@b.de,c@d.de`), keine der
+  Zeichen `< > " , ; : ( ) [ ] \`, keine Leer- oder Steuerzeichen. Sonst 400
+  `email_ungueltig`.
+- Der Versand prüft jede Adresse ein zweites Mal und gibt sie nodemailer als
+  Umschlag (`envelope`) vor; an eine unreine gespeicherte Adresse geht keine
+  Mail mehr.
+- **Bestand:** Beim Start meldet der Server Konten, deren gespeicherte Adresse
+  die Regel verletzt (`[konto] … Konto/Konten mit einer E-Mail-Adresse, die
+  keine einzelne reine Adresse ist (IDs …)`). Geändert wird nichts. Diese
+  Konten melden sich weiter mit dem Benutzernamen an, bekommen aber keine
+  Mails; im Konto eine gültige Adresse eintragen oder, wenn es ein
+  Spam-Konto ist, unter Verwaltung löschen. Prüfen von Hand:
+  `SELECT id, username FROM users WHERE email ~ '[<>",;:() ]';`
+
+**2. Zweiter Faktor: Passwort nur beim Pflicht-Erststart entbehrlich**
+
+- `POST /api/v1/auth/zweiter-faktor/einrichten` ohne `password` geht nur noch
+  für einen **Verwalter ohne Faktor** in den fünf Minuten nach seiner
+  Anmeldung (Abschnitt 36). Jedes andere Konto bekommt 400
+  `aktuelles_passwort_erforderlich`; Webapp und Android-App fragen dann nach
+  dem Passwort (die App schickt es ohnehin immer mit).
+- Neue Mails an den Inhaber, wenn SMTP eingerichtet ist: „zweiter Faktor
+  eingerichtet“ und „zweiter Faktor abgeschaltet“. Scheitert der Versand,
+  bleibt die Änderung bestehen; der Fehler steht im Protokoll.
+
+**3. Anmeldeereignisse im Protokoll**
+
+- Je fehlgeschlagener Anmeldung, Sperre, falschem Code und falscher
+  Bestätigung eine Warnzeile `[anmeldung] <ereignis>` mit JSON-Kontext
+  `{"ereignis", "adresse", "konto"}` (bei Bestätigungen `art`, `zugang`),
+  auf stderr (Docker-Log) und in `app_logs` (Verwaltung → Protokoll).
+  Ereignisse: `anmeldung_fehlgeschlagen`, `anmeldung_gesperrt`,
+  `zweiter_faktor_falsch`, `bestaetigung_fehlgeschlagen`,
+  `bestaetigung_gesperrt`. Nie Passwort oder Code; ein unbekannter Name
+  erscheint nur als `"konto":"unbekannt"`. `adresse` ist die IPv4-Adresse
+  bzw. das IPv6-/64.
+- fail2ban-Beispiel (Docker-Log als Quelle):
+  `failregex = "nachricht":"\[anmeldung\] anmeldung_fehlgeschlagen".*"adresse":"<HOST>"`
+  Hinter Caddy steht dort die echte Adresse nur mit `TRUST_PROXY`.
+- Erreicht ein Konto die Kontosperre (fünf Fehlversuche in 15 Minuten),
+  bekommt der Inhaber eine Mail „mehrere fehlgeschlagene Anmeldeversuche“,
+  höchstens einmal am Tag.
+
+**4. Einstellungen: Registrierung und API-Schlüssel nur mit Passwort**
+
+- `POST /api/v1/settings` verlangt für `registration_enabled`,
+  `rebrickable_api_key`, `brickset_api_key` und die vier BrickLink-Schlüssel
+  (wie bisher für `smtp_*`) `admin_password` und bei aktivem Faktor den Code —
+  nur wenn sich der Wert wirklich ändert. Ohne Passwort 400
+  `aktuelles_passwort_erforderlich`. Alle Verwalter bekommen eine Mail.
+- Der Konfigurations-Import übernimmt diese Schlüssel nicht mehr; sie stehen
+  in `smtp_uebergangen` (Name aus Kompatibilität) und in der Meldung.
+- Skripte, die diese Werte per API setzen, müssen `admin_password`
+  mitschicken. Die Android-App ändert sie nicht.
+
+**5. Sicherung ohne Klartext am Ziel**
+
+- `scripts/backup.sh` leitet `pg_dump | gzip` und `tar` direkt in `age`; am
+  Ziel liegt bis zum Umbenennen nur `….age.teil`, nie Klartext. Für die
+  Endmarke bleibt das letzte Kilobyte des Dumps in einem privaten
+  Arbeitsordner (`mktemp -d`, 0700, unter `$TMPDIR`), der am Ende
+  verschwindet. Dateinamen bleiben gleich; `restore.sh` liest alte und neue
+  Sicherungen.
+- Bricht die Sicherung ab, bleibt am Ziel nichts liegen (vorher: eine halbe
+  `.gz`-Datei, die das Skript erst danach löschte).
+- Älteres Klartext-Material aus früheren Abbrüchen am Ziel bitte von Hand
+  prüfen: `ls "$ZIEL" | grep -v '\.age$'`.
+
+**6. Wiederherstellen weist psql-Befehle ab**
+
+- `scripts/restore.sh` lehnt einen Dump ab, der ausserhalb der COPY-Daten eine
+  Zeile mit `\` trägt (ausser `\restrict`/`\unrestrict` von pg_dump), und
+  stellt dem Dump ein eigenes `\restrict <zufall>` voran: psql führt dann gar
+  keinen Backslash-Befehl aus. `psql -X` liest keine `.psqlrc`. Nötig ist ein
+  psql ab 16.10/17.6/18.0 — das Image aus `compose.yaml` hat ihn.
+
+**7. Mehrere Web-Prozesse: Token-Widerruf sofort**
+
+- Ein Widerruf (Abmelden, Löschen, Passwortwechsel, Faktor) meldet sich über
+  `NOTIFY token_widerrufen`; jeder Web-Prozess leert seinen Token-Speicher.
+  Mit einem Web-Prozess ändert sich nichts.
+
+**8. Ohne APP_BASE_URL im Betrieb**
+
+- Mit `NODE_ENV=production` und ohne `APP_BASE_URL` schreibt der Web-Prozess
+  beim Start eine Fehlerzeile (`❌ [start] APP_BASE_URL fehlt im Betrieb …`):
+  Der Host-Filter gegen DNS-Rebinding ist dann aus. Er startet trotzdem —
+  `compose.yaml` setzt die Variable immer; wer ohne Compose startet, sollte
+  sie setzen.

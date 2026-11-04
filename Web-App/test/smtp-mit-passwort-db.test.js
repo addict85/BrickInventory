@@ -9,6 +9,16 @@
  * von POST /import → rot: „der Import stellt den Mailserver nicht um“
  * (smtp_host war danach mail.angreifer.example).
  *
+ * Registrierung und API-Schlüssel ebenso (seit 04.11.2026), die Verwalter
+ * erfahren es per Mail. Gegenproben (04.11.2026 gemessen, je einzeln):
+ *   A  istHeikel() wieder nur smtp_* → rot: „ohne Passwort bleiben Registrierung
+ *      und API-Schlüssel“ (200 statt 400)
+ *   B  verwalterHinweisNebenher() in POST /settings entfernt → rot: „mit
+ *      Passwort geändert, die Verwalter erfahren es“
+ *   C  die Absage ohne admin_password vor der Prüfung entfernt → rot: „ohne
+ *      Passwort bleibt der Mailserver“, „ohne Passwort bleiben Registrierung …“
+ *      (aktuelles_passwort_falsch, zählt zur Bremse)
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -17,7 +27,14 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const _req = require('./helpers/sources').buildAndRequire();
+const S = require('./helpers/sources');
+const _req = S.buildAndRequire();
+const mails = [];
+const echterMailer = _req('src/infra/mailer.js');
+require.cache[require.resolve(path.join(S.DIST, 'src/infra/mailer.js'))].exports = Object.assign({}, echterMailer, {
+  mailEingerichtet: async () => true,
+  sendKontoHinweisMail: async (an, _n, art, o) => { mails.push({ an, art, konto: o.konto }); return { success: true }; },
+});
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -34,13 +51,17 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
   const c = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(c); } finally { c.release(); }
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  const uid = (await db.get(`INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
-    VALUES ($1, $2, true, true, true) RETURNING id`, [NAME, bcrypt.hashSync(PASS, 4)])).id;
+  const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
+    VALUES ($1, $3, $2, true, true, true) RETURNING id`, [NAME, bcrypt.hashSync(PASS, 4), `${NAME}@example.org`])).id;
+  const HEIKEL = ['registration_enabled', 'rebrickable_api_key'];
+  const heikelVorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [HEIKEL]);
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.alt.example')
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
   const landVorher = (await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value;
   t.after(async () => {
     await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_insecure_tls', 'gutschein_land')");
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [HEIKEL]);
+    for (const z of heikelVorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     if (landVorher !== undefined)
       await db.run("INSERT INTO global_settings (key, value) VALUES ('gutschein_land', $1)", [landVorher]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${uid}|%`]);
@@ -57,7 +78,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
   await t.test('ohne Passwort bleibt der Mailserver', async () => {
     const r = await speichern({ smtp_host: 'mail.angreifer.example' });
     assert.equal(r.status, 400);
-    assert.equal(r.body.code, 'aktuelles_passwort_falsch');
+    assert.equal(r.body.code, 'aktuelles_passwort_erforderlich');
     assert.equal(await host(), 'mail.alt.example');
   });
 
@@ -87,5 +108,26 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
     // Der Rest der Datei kommt an — sonst prüfte der Fall einen Import, der gar nichts tut.
     assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value, 'AT');
     assert.deepEqual(r.body.smtp_uebergangen, ['smtp_host', 'smtp_insecure_tls']);
+  });
+
+  const wert = async (k) => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
+  await t.test('ohne Passwort bleiben Registrierung und API-Schlüssel', async () => {
+    await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '0') ON CONFLICT (key) DO UPDATE SET value = '0'");
+    for (const body of [{ registration_enabled: '1' }, { rebrickable_api_key: 'fremder-schluessel' }]) {
+      const r = await speichern(body);
+      assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], JSON.stringify(body));
+    }
+    assert.equal(await wert('registration_enabled'), '0');
+    assert.notEqual(await wert('rebrickable_api_key'), 'fremder-schluessel');
+  });
+
+  await t.test('mit Passwort geändert, die Verwalter erfahren es', async () => {
+    mails.length = 0;
+    const r = await speichern({ registration_enabled: '1', admin_password: PASS });
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    assert.equal(await wert('registration_enabled'), '1');
+    for (let i = 0; i < 60 && !mails.some(m => m.an === `${NAME}@example.org`); i++) await new Promise(x => setTimeout(x, 25));
+    assert.deepEqual(mails.filter(m => m.an === `${NAME}@example.org`),
+      [{ an: `${NAME}@example.org`, art: 'einstellungen_geaendert', konto: 'registration_enabled' }]);
   });
 });

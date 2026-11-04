@@ -4,13 +4,17 @@
 import * as passwortRegel from '../infra/passwortRegel';
 import { konfig } from '../infra/konfig';
 import * as db from '../../db/database';
+import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { bcryptSchranke, BcryptUeberlast } from './bcryptSchranke';
-import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess } from './loginLimiter';
+import { checkLoginAllowed, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, MAX_ATTEMPTS } from './loginLimiter';
+import type { Anmeldeereignis } from './loginLimiter';
+import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
 import { ausTabelle } from '../infra/validate';
+import * as V from '../infra/validate';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
 import type { TokenScope } from './repository/zugaenge';
@@ -207,12 +211,25 @@ function _touchLastUsed(entry: CacheEintrag, ip?: string | null): void {
 export function invalidateToken(token: string | null | undefined): void {
   if (!token) return;
   _tokenCache.delete(token);
+  meldeWiderruf();
+}
+
+/** Jeder Web-Prozess hält seinen eigenen Cache; ein Widerruf leert ihn in allen. */
+const WIDERRUF_KANAL = 'token_widerrufen';
+let _verteilt = false;
+export function horcheAufTokenWiderruf(): void {
+  _verteilt = true;
+  pgNotify.listen(WIDERRUF_KANAL, () => { _tokenCache.clear(); });
+}
+function meldeWiderruf(): void {
+  if (_verteilt) void pgNotify.notify(WIDERRUF_KANAL);
 }
 
 /** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den
  * Hash-Anfang). Den Cache hält nur der Web-Prozess. */
 export function leereTokenCache(): void {
   _tokenCache.clear();
+  meldeWiderruf();
 }
 
 export const BCRYPT_ROUNDS = 12;
@@ -232,15 +249,13 @@ export function nameGueltig(v: unknown): boolean {
   return s.length <= 100 && !/[\p{Cc}\u2028\u2029]/u.test(s) && !/:\/\/|www\.|https?:/i.test(s);
 }
 
-/** Bewusst grob: Die Adresse wird ohnehin gegen die Datenbank geprüft, und
- * strengere Muster lehnen regelmässig gültige Adressen ab. */
-export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const EMAIL_RE = V.EMAIL_RE, emailGueltig: typeof V.emailGueltig = V.emailGueltig;
 
 /** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht.
  * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#isvalidloginidentifier */
 export function isValidLoginIdentifier(value: unknown): boolean {
   const v = String(value || '');
-  return USERNAME_RE.test(v) || (v.length <= 254 && EMAIL_RE.test(v));
+  return USERNAME_RE.test(v) || emailGueltig(v);
 }
 
 /** Nach erfolgreicher Passwortprüfung. Die Absage kommt als CODE, weil die
@@ -298,7 +313,10 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   const ip = herkunft.ip || '?';
   const name = String(username);
   const gesperrt = await checkLoginAllowed(ip, name);
-  if (gesperrt) return absage(429, gesperrt.code, gesperrt.vars);
+  if (gesperrt) {
+    meldeAnmeldeereignis('anmeldung_gesperrt', { ip, konto: (await repo.kontoZurAnmeldung(name))?.id });
+    return absage(429, gesperrt.code, gesperrt.vars);
+  }
 
   const user = await repo.kontoZurAnmeldung(name);
   // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen.
@@ -311,7 +329,7 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   }
   // Gesperrt oder unbestätigt wie falsches Passwort: Eine eigene Absage verriete, dass es stimmte.
   if (!user || !passtDasPasswort || assertLoginAllowed(user)) {
-    await recordLoginFailure(ip, name);
+    await fehlversuch('anmeldung_fehlgeschlagen', ip, name, user?.id);
     return absage(401, 'anmeldedaten_ungueltig');
   }
 
@@ -329,12 +347,20 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
       ? await passkeys.anmeldungPruefen(passkeyAntwort, 'zweiter_faktor', user.id) === user.id
       : await zf.pruefeCode(user.id, code);
     if (!gilt) {
-      await recordLoginFailure(ip, name);
+      await fehlversuch('zweiter_faktor_falsch', ip, name, user.id);
       return ergaenzt(absage(401, 'zweiter_faktor_falsch', undefined, false, true));
     }
   }
   await recordLoginSuccess(ip, name);
   return { ok: true, user };
+}
+
+/** Beim Erreichen der Kontosperre erfährt es der Inhaber, höchstens einmal am Tag:
+ * Nur er weiss, ob er sich vertippt hat. */
+async function fehlversuch(ereignis: Anmeldeereignis, ip: string, name: string, konto?: number): Promise<void> {
+  meldeAnmeldeereignis(ereignis, { ip, konto: konto ?? null });
+  if (await recordLoginFailure(ip, name) !== MAX_ATTEMPTS || konto === undefined) return;
+  if (!await kontoGedrosselt('sperr-hinweis', konto, 1, TAG_MS)) hinweisNebenher(konto, 'anmeldung_gebremst');
 }
 
 /** Ohne das löscht ein "%" als tokenId alle Tokens des Nutzers auf einmal. */

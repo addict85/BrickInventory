@@ -2,7 +2,7 @@ import { registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { ico, G, api, esc, toast, passwortRegelText, rbHinweisVerbergen, rbHinweisZeigen, formularFehler, verwirfToasts } from './01-core.js';
 import { oeffneErfassen } from './02-gallery.js';
-import { mitZweitemFaktor } from './07-admin.js';
+import { mitZweitemFaktor, speichereEinstellungen } from './07-admin.js';
 import { verstaendlicherGrund } from './01-bausteine.js';
 
 // ═══ Einrichtung beim ersten Start (Server: routes/settings.ts /einrichtung) ═
@@ -130,7 +130,8 @@ export async function einrichtungQuelle(quelle) {
     return;
   }
   if (Object.keys(werte).length) {
-    const s = await api('POST', '/v1/settings', werte);
+    const s = await speichereEinstellungen(tRaw('settings.api_key_title'), werte);
+    if (!s) return;
     if (!s?.success) { quellenFehler(quelle, s?.error || tRaw('settings.error'), '', Object.values(felder)); return; }
     if (!leer.length) _gespeichert[quelle] = true;
   }
