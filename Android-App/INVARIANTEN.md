@@ -812,13 +812,23 @@ scheitern, bis es hier eingeordnet ist.
 - **H9 — Widget mit Sammlungswert:** Der Nutzer legt es selbst auf den
   Startbildschirm; es zeigt eine Summe, keine Einzelheiten, und wird beim
   Abmelden geleert. Wer den Wert nicht zeigen will, legt es nicht an.
-- **QR-Code beim ersten Einrichten (H6):** Ein Code mit `fp` bestimmt den
-  Schlüssel ohne Abtippen; der Dialog warnt und zeigt den Anfang zum Vergleich
-  mit der Webapp. Abtippen bleibt dem Wechsel eines gemerkten Schlüssels
-  vorbehalten (Begründung im Commit).
-- **Schritt-Schutz (N2):** Ein Gerät ohne Displaysperre lässt die Rückfrage
-  durch; dort gibt es nichts zu fragen. Eine Bestätigung gilt 60 s und
-  verfällt, sobald die App in den Hintergrund geht.
+- **QR-Code beim ersten Einrichten (seit sec10 N2 geschlossen):** Ein `fp`
+  gilt ohne Abtippen nur als System-Wurzel oder als schon bestätigter Pin;
+  sonst die letzten 24 Zeichen aus der Webapp (`AnmeldungViewModel.mussAbtippen`).
+- **Schritt-Schutz ohne Displaysperre (sec10 H3):** Es gibt nichts zu prüfen;
+  die App warnt darum (`OhneSperreWarnung`), und erst ein „Ungeschützt
+  fortfahren“ öffnet den Schritt. Eine Bestätigung gilt 60 s und verfällt,
+  sobald die App in den Hintergrund geht.
+- **Token-Schlüssel ohne Nutzerauthentisierung (sec10 H1):** Preisalarm,
+  Widget, Ausgang und nachgeholte Entwertung lesen das Token im Hintergrund,
+  ohne dass jemand entsperren könnte. Wer Code mit der UID der App ausführt,
+  kommt an das Token wie die App; dagegen stehen 180 Tage Höchstdauer,
+  Rotation und Entwertung beim Abmelden.
+- **Ein Schlüssel für APK und Update-Beschreibung (sec10 H4):** Ein eigener
+  Update-Schlüssel nähme dem APK-Schlüssel nichts: Wer diesen hat, signiert
+  ohnehin installierbare Updates. Ein zweiter Schlüssel brauchte einen zweiten
+  Anker in jeder installierten Fassung. Auf dem Runner liegt er nur
+  verschlüsselt (PKCS12, PEM mit Passwort) und wird nach dem Schritt gelöscht.
 
 ## Token nur an die eigene Herkunft
 

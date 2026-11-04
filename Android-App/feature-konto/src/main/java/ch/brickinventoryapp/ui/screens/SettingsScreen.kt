@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.util.quelleVeraltet
 
 /**
  * Die Einstellungen — wenige Karten statt eines Stapels: Anzeige & Preise (jede
@@ -340,11 +341,21 @@ private fun UpdateCard(
                 color = MaterialTheme.colorScheme.primary,
             )
             // Nur nach einer Pruefung: Vorher waere „aktuell" eine Aussage
-            // ueber etwas, das niemand nachgesehen hat.
-            updateZustand.geprueft -> Text(
+            // ueber etwas, das niemand nachgesehen hat. Eine veraltete Quelle
+            // ist nie „aktuell“ (Hinweis darunter).
+            updateZustand.geprueft && !quelleVeraltet(updateZustand.frische) -> Text(
                 stringResource(R.string.update_current, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (quelleVeraltet(updateZustand.frische)) {
+            Spacer(Modifier.height(Abstaende.klein))
+            Text(
+                stringResource(if (updateZustand.frische == ch.brickinventoryapp.util.UpdateFrische.ABGELAUFEN)
+                    R.string.update_quelle_abgelaufen else R.string.update_quelle_zurueckgesetzt),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
             )
         }
 

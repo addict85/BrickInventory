@@ -679,20 +679,27 @@ jobs:
           # am Repository allein reicht so nicht, um ein Update zu unterdrücken,
           # auf ein anderes APK zu zeigen oder eine ältere Fassung anzubieten. Die
           # Adresse zeigt auf den unveränderlichen Anhang dieser Fassung.
+          # `ausgestellt`/`gueltigBis` (sec10 N1): Ohne Frist liesse sich eine ältere,
+          # echt signierte Beschreibung still wieder hochladen. Auffrischen heisst:
+          # ein neues Etikett, auch auf denselben Commit (README, „Frist“).
           META="$EIN/apk/release/output-metadata.json"
           APK_AUS="$AUS/apk/release/BrickInventory.apk"
           V_CODE=$(jq -r '.elements[0].versionCode' "$META")
+          AUSGESTELLT=$(date -u +%s)
           jq -n --argjson code "$V_CODE" --arg name "$(jq -r '.elements[0].versionName' "$META")" \
                 --arg commit "$GITHUB_SHA" \
                 --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/BrickInventory-${V_CODE}.apk" \
                 --argjson size "$(stat -c%s "$APK_AUS")" --arg pruefsumme "$(sha256sum "$APK_AUS" | cut -d' ' -f1)" \
-                '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size, apkSha256:$pruefsumme}' \
+                --argjson ausgestellt "$AUSGESTELLT" --argjson gueltig "$((AUSGESTELLT + 30 * 86400))" \
+                '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size, apkSha256:$pruefsumme,
+                  ausgestellt:$ausgestellt, gueltigBis:$gueltig}' \
                 > "$AUS/version-daten.json"
           keytool -importkeystore -noprompt -srckeystore "$KS" -srcstorepass:env KS_PASS -srcalias "$KEY_ALIAS" \
             -srckeypass:env KEY_PASS -destkeystore "$S/schluessel.p12" -deststoretype PKCS12 \
             -deststorepass:env KS_PASS -destkeypass:env KS_PASS >/dev/null
-          openssl pkcs12 -in "$S/schluessel.p12" -nocerts -nodes -passin env:KS_PASS -out "$S/schluessel.pem"
-          openssl dgst -sha256 -sign "$S/schluessel.pem" -out "$S/version.sig" "$AUS/version-daten.json"
+          # Der Schlüssel bleibt auch als PEM verschlüsselt (sec10 H4): kein Klartext auf der Platte.
+          openssl pkcs12 -in "$S/schluessel.p12" -nocerts -passin env:KS_PASS -passout env:KS_PASS -out "$S/schluessel.pem"
+          openssl dgst -sha256 -sign "$S/schluessel.pem" -passin env:KS_PASS -out "$S/version.sig" "$AUS/version-daten.json"
           keytool -exportcert -rfc -keystore "$KS" -storepass:env KS_PASS -alias "$KEY_ALIAS" > "$AUS/signierzertifikat.pem"
           jq -n --arg daten "$(base64 -w0 "$AUS/version-daten.json")" --arg signatur "$(base64 -w0 "$S/version.sig")" \
                 '{daten:$daten, signatur:$signatur}' > "$AUS/version-signiert.json"
@@ -817,9 +824,15 @@ jobs:
           set -euo pipefail
           V_CODE=$(jq -r '.elements[0].versionCode' app/build/outputs/apk/release/output-metadata.json)
           ALT=-
+          # Verglichen wird mit der signierten Beschreibung; version.json nur, solange
+          # apk-neuste noch keine trägt (sie fällt nach dem Stichtag weg, Job `release`).
           if gh release view apk-neuste --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version.json -O "$RUNNER_TEMP/version-alt.json"
             ALT="$RUNNER_TEMP/version-alt.json"
+            if gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version-signiert.json -O "$RUNNER_TEMP/alt-signiert.json"; then
+              jq -r .daten "$RUNNER_TEMP/alt-signiert.json" | base64 -d > "$ALT"
+            else
+              gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version.json -O "$ALT"
+            fi
           fi
           if ! python3 tools/release-pruefen.py fassung "$ALT" "$V_CODE" "$GITHUB_SHA"; then
             echo "::error::versionCode $V_CODE liegt nicht über dem veröffentlichten APK. Nichts wird veröffentlicht."
@@ -969,7 +982,11 @@ jobs:
           # hier unter der concurrency-Gruppe unmittelbar vor dem Hochladen. Ohne
           # Werkzeug aus dem Repository: Dieser Job hat Schreibrecht.
           if gh release view "$ETIKETT" >/dev/null 2>&1; then
-            gh release download "$ETIKETT" -p version.json -O "$RUNNER_TEMP/version-alt.json"
+            if gh release download "$ETIKETT" -p version-signiert.json -O "$RUNNER_TEMP/alt-signiert.json"; then
+              jq -r .daten "$RUNNER_TEMP/alt-signiert.json" | base64 -d > "$RUNNER_TEMP/version-alt.json"
+            else
+              gh release download "$ETIKETT" -p version.json -O "$RUNNER_TEMP/version-alt.json"
+            fi
             ALT_CODE=$(jq -r '.versionCode' "$RUNNER_TEMP/version-alt.json")
             ALT_COMMIT=$(jq -r '.commit' "$RUNNER_TEMP/version-alt.json")
             if ! printf '%s' "$ALT_CODE" | grep -Eq '^[0-9]+$' || [ "$V_CODE" -lt "$ALT_CODE" ] ||
@@ -1009,51 +1026,29 @@ jobs:
           # Signiert im Job signieren; ersetzt wird nur der Zeiger auf die neuste.
           gh release upload "$ETIKETT" app/build/outputs/version-signiert.json --clobber
 
-          # ── version.json: für Fassungen vor sec8 N4 ────────────────────────
+          # ── version.json: nur noch bis zum Stichtag (sec10 N1) ───────────────
           #
-          # Neue Fassungen lesen nur version-signiert.json (oben). Diese Datei
-          # bleibt, damit schon installierte ältere Fassungen das Update noch
-          # finden; ihr APK prüfen sie weiterhin gegen die eigene Signatur.
-          #
-          # Der Release-Text oben nennt Zweig und Commit, aber als Fliesstext.
-          # Eine App, die wissen will „gibt es etwas Neueres als mich?", braucht
-          # eine Zahl zum Vergleichen — den versionCode.
-          #
-          # Die Werte werden aus AGPs eigener output-metadata.json GELESEN, nicht
-          # hier nochmal aus dem Datum erzeugt. Eine zweite Rechnung waere eine
-          # zweite Wahrheit: Sie liefe Minuten spaeter als die im Build und
-          # koennte einen Wert melden, den kein APK traegt — die App boete dann
-          # ein Update an, das nach der Installation immer noch „veraltet" ist.
-          #
-          # Das Feld heisst `commit` und nicht mehr `sha`.
-          #
-          # Drin stand immer schon $GITHUB_SHA — der Git-Commit, aus dem gebaut
-          # wurde. Neben `apkUrl` und `apkSize` liest sich `sha` aber
-          # unweigerlich als PRUEFSUMME DES APK, und die App prueft nichts
-          # dergleichen. Ein Name, der eine Sicherung verspricht, die es nicht
-          # gibt, ist in diesem Baum ein eigener Defekt.
-          #
-          # Und eine echte Pruefsumme kaeme hier auch nicht in Frage: Sie
-          # stuende in derselben Datei wie die Adresse. Wer version.json
-          # faelschen kann, faelscht die Pruefsumme mit. Die Integritaet traegt
-          # die Signaturpruefung gegen die INSTALLIERTE App (util/AppUpdate.kt)
-          # zusammen mit HTTPS — nicht eine Zahl aus der Datei selbst.
-          jq -n --argjson code "$V_CODE" --arg name "$V_NAME" \
-                --arg commit "$GITHUB_SHA" --arg url "$LINK" \
-                --argjson size "$(stat -c%s "$APK")" \
-                '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size}' \
-                > version.json
-          gh release upload "$ETIKETT" version.json --clobber
-
-          # Dieselbe Gegenprobe wie beim APK darunter: zurueckfragen statt der
-          # Ausgabe von `gh` glauben. Eine halbe version.json waere schlimmer als
-          # gar keine — die App bekaeme kaputtes JSON und meldete einen Fehler,
-          # wo nur der Upload abgebrochen ist.
-          ZURUECK=$(gh release view "$ETIKETT" --json assets \
-            --jq '.assets[] | select(.name=="version.json") | .size')
-          if [ "$ZURUECK" != "$(stat -c%s version.json)" ]; then
-            echo "::error::version.json unvollstaendig hochgeladen ($ZURUECK Bytes draussen)."
-            exit 1
+          # Unsigniert und ohne Frist: Wer Schreibrecht hat, hält damit alte
+          # Fassungen still fest. Sie bleibt nur, damit Geräte mit einer Fassung vor
+          # sec8 N4 das nächste Update noch finden (danach lesen sie die signierte);
+          # ohne sie blieben diese ohne jede Meldung stehen. Werte aus AGPs
+          # output-metadata.json, das Feld `commit` ist eine Herkunft, keine Prüfsumme.
+          if [ "$(date -u +%Y%m%d)" -lt 20270201 ]; then
+            jq -n --argjson code "$V_CODE" --arg name "$V_NAME" \
+                  --arg commit "$GITHUB_SHA" --arg url "$LINK" \
+                  --argjson size "$(stat -c%s "$APK")" \
+                  '{versionCode:$code, versionName:$name, commit:$commit, apkUrl:$url, apkSize:$size}' \
+                  > version.json
+            gh release upload "$ETIKETT" version.json --clobber
+            # Zurückfragen statt `gh` zu glauben: Halbes JSON meldete auf alten Geräten einen Fehler.
+            ZURUECK=$(gh release view "$ETIKETT" --json assets \
+              --jq '.assets[] | select(.name=="version.json") | .size')
+            if [ "$ZURUECK" != "$(stat -c%s version.json)" ]; then
+              echo "::error::version.json unvollstaendig hochgeladen ($ZURUECK Bytes draussen)."
+              exit 1
+            fi
+          elif gh release view "$ETIKETT" --json assets --jq '.assets[].name' | grep -xF version.json >/dev/null; then
+            gh release delete-asset "$ETIKETT" version.json --yes
           fi
 
           # Gegenprobe: nicht der Ausgabe von `gh` glauben, sondern den Anhang
@@ -1148,6 +1143,10 @@ jobs:
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
           test -s gradle/verification-keyring.keys
+      # Gradle fasst Gruppen eines Schlüssels zu einer Regex zusammen, die auch jedes
+      # künftige Paket deckt (sec10 H5). Übrig bleiben die Gruppen, die heute gebaut werden.
+      - name: Vertrauen auf die gebauten Gruppen begrenzen
+        run: python3 tools/vertrauen-eng.py gradle/verification-metadata.xml
       # Hier, ohne Schreibrecht: Das Werkzeug kommt aus dem Repository. Neu
       # vertraute Schlüssel mit Gruppen-Regex stehen hervorgehoben vorn.
       - name: Änderungen zusammenfassen

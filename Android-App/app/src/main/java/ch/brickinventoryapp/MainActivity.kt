@@ -165,6 +165,8 @@ class MainActivity : NurLauncherStart() {
                     // App-weit (sec8 H4): Gutschein-Nummer und PIN, Passwörter, Codes und
                     // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
                     BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
+                    // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen (sec10 H3).
+                    ch.brickinventoryapp.ui.components.OhneSperreWarnung(schrittschutz.ohneSperre)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
                     val startpasswort by vm.passwortPflicht.noetig.collectAsStateWithLifecycle()
                     // Startwert false: Die Maske erscheint erst mit beiden Zuständen,

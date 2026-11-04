@@ -6,16 +6,30 @@
       <keyring-format>armored</keyring-format>
       <trusted-keys>
          <trusted-key id="04543577D6A9CC626239C50C7ECBD740FF06AEB5">
+            <trusting group="com.sun.activation"/>
+            <trusting group="com.sun.istack"/>
+            <trusting group="com.sun.xml.bind"/>
+            <trusting group="com.sun.xml.bind.mvn"/>
+            <trusting group="com.sun.xml.fastinfoset"/>
             <trusting group="org.glassfish.jaxb"/>
             <trusting group="org.jvnet.staxex"/>
-            <trusting group="^com[.]sun($|([.].*))" regex="true"/>
          </trusted-key>
          <trusted-key id="0785B3EFF60B1B1BEA94E0BB7C25280EAE63EBE5" group="org.apache.httpcomponents"/>
          <trusted-key id="0CC641C3A62453AB390066C4A41F13C999945293" group="commons-logging" name="commons-logging" version="1.2"/>
          <trusted-key id="0E225917414670F4442C250DFD533C07C264648F">
             <trusting group="androidx.activity"/>
             <trusting group="androidx.appcompat"/>
+            <trusting group="androidx.camera"/>
+            <trusting group="androidx.camera.featurecombinationquery"/>
+            <trusting group="androidx.camera.viewfinder"/>
             <trusting group="androidx.collection"/>
+            <trusting group="androidx.compose"/>
+            <trusting group="androidx.compose.animation"/>
+            <trusting group="androidx.compose.foundation"/>
+            <trusting group="androidx.compose.material"/>
+            <trusting group="androidx.compose.material3"/>
+            <trusting group="androidx.compose.runtime"/>
+            <trusting group="androidx.compose.ui"/>
             <trusting group="androidx.core"/>
             <trusting group="androidx.databinding"/>
             <trusting group="androidx.datastore"/>
@@ -28,14 +42,32 @@
             <trusting group="androidx.sqlite"/>
             <trusting group="androidx.tracing"/>
             <trusting group="androidx.work"/>
-            <trusting group="^androidx[.]camera($|([.].*))" regex="true"/>
-            <trusting group="^androidx[.]compose($|([.].*))" regex="true"/>
-            <trusting group="^com[.]android($|([.].*))" regex="true"/>
+            <trusting group="com.android"/>
+            <trusting group="com.android.application"/>
+            <trusting group="com.android.databinding"/>
+            <trusting group="com.android.tools"/>
+            <trusting group="com.android.tools.analytics-library"/>
+            <trusting group="com.android.tools.androidtest"/>
+            <trusting group="com.android.tools.build"/>
+            <trusting group="com.android.tools.build.jetifier"/>
+            <trusting group="com.android.tools.ddms"/>
+            <trusting group="com.android.tools.external.com-intellij"/>
+            <trusting group="com.android.tools.external.org-jetbrains"/>
+            <trusting group="com.android.tools.layoutlib"/>
+            <trusting group="com.android.tools.lint"/>
+            <trusting group="com.android.tools.utp"/>
          </trusted-key>
          <trusted-key id="0F06FF86BEEAF4E71866EE5232EE5355A6BC6E42">
             <trusting group="androidx.annotation"/>
             <trusting group="androidx.camera.viewfinder"/>
             <trusting group="androidx.collection"/>
+            <trusting group="androidx.compose"/>
+            <trusting group="androidx.compose.animation"/>
+            <trusting group="androidx.compose.foundation"/>
+            <trusting group="androidx.compose.material"/>
+            <trusting group="androidx.compose.material3"/>
+            <trusting group="androidx.compose.runtime"/>
+            <trusting group="androidx.compose.ui"/>
             <trusting group="androidx.core"/>
             <trusting group="androidx.credentials"/>
             <trusting group="androidx.exifinterface"/>
@@ -46,11 +78,11 @@
             <trusting group="androidx.room"/>
             <trusting group="androidx.savedstate"/>
             <trusting group="androidx.sqlite"/>
+            <trusting group="androidx.test"/>
+            <trusting group="androidx.test.espresso"/>
             <trusting group="androidx.tracing"/>
             <trusting group="androidx.window"/>
             <trusting group="com.google.android.gms" name="play-services-identity-credentials" version="16.0.0-alpha08"/>
-            <trusting group="^androidx[.]compose($|([.].*))" regex="true"/>
-            <trusting group="^androidx[.]test($|([.].*))" regex="true"/>
          </trusted-key>
          <trusted-key id="10F3C7A02ECA55E502BADCF3991EFB94DB91127D" group="org.ow2" name="ow2" version="1.5.1"/>
          <trusted-key id="190D5A957FF22273E601F7A7C92C5FEC70161C62" group="org.apache" name="apache" version="18"/>
@@ -61,7 +93,10 @@
          <trusted-key id="20723A6399BC060154283B37CFAE163B64AC9189">
             <trusting group="org.jetbrains.androidx.lifecycle"/>
             <trusting group="org.jetbrains.androidx.savedstate"/>
-            <trusting group="^org[.]jetbrains[.]compose($|([.].*))" regex="true"/>
+            <trusting group="org.jetbrains.compose.animation"/>
+            <trusting group="org.jetbrains.compose.foundation"/>
+            <trusting group="org.jetbrains.compose.runtime"/>
+            <trusting group="org.jetbrains.compose.ui"/>
          </trusted-key>
          <trusted-key id="24D04176586361FDA94EE0315F7786DF73E61F56" group="com.google.devtools.ksp"/>
          <trusted-key id="2BAB4466B44F54F8F99BBBDD5ED22F661BBF0ACC" group="com.almworks.sqlite4java" name="sqlite4java" version="1.0.392"/>
@@ -92,13 +127,47 @@
          <trusted-key id="517B94F8D0A46317A28D8AB30DA8A5EC02D11EAD" group="net.sf.jopt-simple" name="jopt-simple" version="4.9"/>
          <trusted-key id="5767F9CDE920750621875079A40E24B5B408DBD5" group="org.robolectric"/>
          <trusted-key id="5897253BEA3046AEEA95A067E93671C7272B7B3F" group="org.jdom" name="jdom2" version="2.0.6"/>
-         <trusted-key id="5DD80B0DDCCBE005F0A47FD66751E1A6E2001B8D" group="^com[.]squareup($|([.].*))" regex="true"/>
+         <trusted-key id="5DD80B0DDCCBE005F0A47FD66751E1A6E2001B8D">
+            <trusting group="com.squareup"/>
+            <trusting group="com.squareup.okhttp3"/>
+            <trusting group="com.squareup.okio"/>
+            <trusting group="com.squareup.retrofit2"/>
+         </trusted-key>
          <trusted-key id="61DEBD732F3F07771269972E2F87304808D40CEC" group="net.zetetic" name="sqlcipher-android"/>
          <trusted-key id="638DBA7FF338F537EACB7AC0AE1B9D6007DDFA7C" group="com.google.testparameterinjector"/>
          <trusted-key id="64B9B09F164AA0BF88742EB61188B69F6D6259CA" group="com.google.accompanist"/>
-         <trusted-key id="694621A7227D8D5289699830ABE9F3126BB741C1" group="^com[.]google($|([.].*))" regex="true"/>
+         <trusted-key id="694621A7227D8D5289699830ABE9F3126BB741C1">
+            <trusting group="com.google.accompanist"/>
+            <trusting group="com.google.android.apps.common.testing.accessibility.framework"/>
+            <trusting group="com.google.android.datatransport"/>
+            <trusting group="com.google.android.gms"/>
+            <trusting group="com.google.android.libraries.identity.googleid"/>
+            <trusting group="com.google.android.material"/>
+            <trusting group="com.google.android.odml"/>
+            <trusting group="com.google.auto"/>
+            <trusting group="com.google.auto.value"/>
+            <trusting group="com.google.code.findbugs"/>
+            <trusting group="com.google.code.gson"/>
+            <trusting group="com.google.crypto.tink"/>
+            <trusting group="com.google.dagger"/>
+            <trusting group="com.google.dagger.hilt.android"/>
+            <trusting group="com.google.devtools.ksp"/>
+            <trusting group="com.google.errorprone"/>
+            <trusting group="com.google.firebase"/>
+            <trusting group="com.google.flatbuffers"/>
+            <trusting group="com.google.googlejavaformat"/>
+            <trusting group="com.google.guava"/>
+            <trusting group="com.google.j2objc"/>
+            <trusting group="com.google.jimfs"/>
+            <trusting group="com.google.mlkit"/>
+            <trusting group="com.google.protobuf"/>
+         </trusted-key>
          <trusted-key id="6DD3B8C64EF75253BEB2C53AD908A43FB7EC07AC" group="jakarta.activation"/>
-         <trusted-key id="6F538074CCEBF35F28AF9B066A0975F8B1127B83" group="^org[.]jetbrains[.]kotlin($|([.].*))" regex="true"/>
+         <trusted-key id="6F538074CCEBF35F28AF9B066A0975F8B1127B83">
+            <trusting group="org.jetbrains.kotlin"/>
+            <trusting group="org.jetbrains.kotlin.plugin.compose"/>
+            <trusting group="org.jetbrains.kotlin.plugin.serialization"/>
+         </trusted-key>
          <trusted-key id="7440F1F7D27BAC115F953D55EB095DA7D2F6AC0E" group="org.tensorflow" name="tensorflow-lite-metadata" version="0.2.0"/>
          <trusted-key id="7616EB882DAF57A11477AAF559A252FB1199D873" group="com.google.code.findbugs" name="jsr305" version="3.0.2"/>
          <trusted-key id="7B121B76A7ED6CE6E60AD51784E913A8E3A748C0" group="org.bouncycastle"/>
@@ -113,7 +182,10 @@
          </trusted-key>
          <trusted-key id="84789D24DF77A32433CE1F079EB80E92EB2135B1" group="org.apache" name="apache"/>
          <trusted-key id="90EE19787A7BCF6FD37A1E9180C08B1C29100955" group="com.squareup" name="javawriter"/>
-         <trusted-key id="95115197C5227C0887299D000F9FE62F88E938D8" group="^com[.]google[.]dagger($|([.].*))" regex="true"/>
+         <trusted-key id="95115197C5227C0887299D000F9FE62F88E938D8">
+            <trusting group="com.google.dagger"/>
+            <trusting group="com.google.dagger.hilt.android"/>
+         </trusted-key>
          <trusted-key id="9A34CAE3273983DDCFBB54AE74C748A90802F104" group="io.github.takahirom.roborazzi"/>
          <trusted-key id="A5BD02B93E7A40482EB1D66A5F69AD087600B22C" group="org.ow2.asm"/>
          <trusted-key id="A5F483CD733A4EBAEA378B2AE88979FB9B30ACF2">
@@ -131,17 +203,97 @@
          <trusted-key id="AA70C7C433D501636392EC02153E7A3C2B4E5118" group="org.eclipse.ee4j" name="project"/>
          <trusted-key id="BC87A3FD0A54480F0BADBEBD21939FF0CA2A6567" group="commons-codec" name="commons-codec" version="1.15"/>
          <trusted-key id="BCC135FC7ED8214F823D73E97FE9900F412D622E" group="com.google.flatbuffers" name="flatbuffers-java" version="1.12.0"/>
-         <trusted-key id="BDB5FA4FE719D787FB3D3197F6D4A1D411E9D1AE" group="^com[.]google($|([.].*))" regex="true"/>
+         <trusted-key id="BDB5FA4FE719D787FB3D3197F6D4A1D411E9D1AE">
+            <trusting group="com.google.accompanist"/>
+            <trusting group="com.google.android.apps.common.testing.accessibility.framework"/>
+            <trusting group="com.google.android.datatransport"/>
+            <trusting group="com.google.android.gms"/>
+            <trusting group="com.google.android.libraries.identity.googleid"/>
+            <trusting group="com.google.android.material"/>
+            <trusting group="com.google.android.odml"/>
+            <trusting group="com.google.auto"/>
+            <trusting group="com.google.auto.value"/>
+            <trusting group="com.google.code.findbugs"/>
+            <trusting group="com.google.code.gson"/>
+            <trusting group="com.google.crypto.tink"/>
+            <trusting group="com.google.dagger"/>
+            <trusting group="com.google.dagger.hilt.android"/>
+            <trusting group="com.google.devtools.ksp"/>
+            <trusting group="com.google.errorprone"/>
+            <trusting group="com.google.firebase"/>
+            <trusting group="com.google.flatbuffers"/>
+            <trusting group="com.google.googlejavaformat"/>
+            <trusting group="com.google.guava"/>
+            <trusting group="com.google.j2objc"/>
+            <trusting group="com.google.jimfs"/>
+            <trusting group="com.google.mlkit"/>
+            <trusting group="com.google.protobuf"/>
+         </trusted-key>
          <trusted-key id="C1CBA75EC9BD0BAF8061935459E05CE618187ED4" group="org.xerial" name="sqlite-jdbc" version="3.41.2.2"/>
          <trusted-key id="C3259D20DAEC4ACE6D57CC83340B090F727518D8" group="com.google.j2objc" name="j2objc-annotations" version="3.1"/>
          <trusted-key id="C5AA57F4A38EBA7B7F9156DDAB2DA4527F6FFC0B" group="com.squareup" name="kotlinpoet" version="1.11.0"/>
-         <trusted-key id="C7BE5BCC9FEC15518CFDA882B0F3710FA64900E7" group="^com[.]google($|([.].*))" regex="true"/>
-         <trusted-key id="DBD744ACE7ADE6AA50DD591F66B50994442D2D40" group="^com[.]squareup($|([.].*))" regex="true"/>
+         <trusted-key id="C7BE5BCC9FEC15518CFDA882B0F3710FA64900E7">
+            <trusting group="com.google.accompanist"/>
+            <trusting group="com.google.android.apps.common.testing.accessibility.framework"/>
+            <trusting group="com.google.android.datatransport"/>
+            <trusting group="com.google.android.gms"/>
+            <trusting group="com.google.android.libraries.identity.googleid"/>
+            <trusting group="com.google.android.material"/>
+            <trusting group="com.google.android.odml"/>
+            <trusting group="com.google.auto"/>
+            <trusting group="com.google.auto.value"/>
+            <trusting group="com.google.code.findbugs"/>
+            <trusting group="com.google.code.gson"/>
+            <trusting group="com.google.crypto.tink"/>
+            <trusting group="com.google.dagger"/>
+            <trusting group="com.google.dagger.hilt.android"/>
+            <trusting group="com.google.devtools.ksp"/>
+            <trusting group="com.google.errorprone"/>
+            <trusting group="com.google.firebase"/>
+            <trusting group="com.google.flatbuffers"/>
+            <trusting group="com.google.googlejavaformat"/>
+            <trusting group="com.google.guava"/>
+            <trusting group="com.google.j2objc"/>
+            <trusting group="com.google.jimfs"/>
+            <trusting group="com.google.mlkit"/>
+            <trusting group="com.google.protobuf"/>
+         </trusted-key>
+         <trusted-key id="DBD744ACE7ADE6AA50DD591F66B50994442D2D40">
+            <trusting group="com.squareup"/>
+            <trusting group="com.squareup.okhttp3"/>
+            <trusting group="com.squareup.okio"/>
+            <trusting group="com.squareup.retrofit2"/>
+         </trusted-key>
          <trusted-key id="DF25D3C4868FEC177182FAD64D176DC503FB4267" group="io.coil-kt.coil3"/>
          <trusted-key id="E52F07877A5805F9AF4AB0ACD46C5610D06E7001" group="com.ibm.icu" name="icu4j" version="78.3"/>
          <trusted-key id="E7DC75FC24FB3C8DFE8086AD3D5839A2262CBBFB" group="org.jetbrains.kotlinx"/>
          <trusted-key id="EB1B3DE71713C9EC2E87CC26EE92349AD86DE446" group="com.google.j2objc" name="j2objc-annotations" version="2.8"/>
-         <trusted-key id="EE0CA873074092F806F59B65D364ABAA39A47320" group="^com[.]google($|([.].*))" regex="true"/>
+         <trusted-key id="EE0CA873074092F806F59B65D364ABAA39A47320">
+            <trusting group="com.google.accompanist"/>
+            <trusting group="com.google.android.apps.common.testing.accessibility.framework"/>
+            <trusting group="com.google.android.datatransport"/>
+            <trusting group="com.google.android.gms"/>
+            <trusting group="com.google.android.libraries.identity.googleid"/>
+            <trusting group="com.google.android.material"/>
+            <trusting group="com.google.android.odml"/>
+            <trusting group="com.google.auto"/>
+            <trusting group="com.google.auto.value"/>
+            <trusting group="com.google.code.findbugs"/>
+            <trusting group="com.google.code.gson"/>
+            <trusting group="com.google.crypto.tink"/>
+            <trusting group="com.google.dagger"/>
+            <trusting group="com.google.dagger.hilt.android"/>
+            <trusting group="com.google.devtools.ksp"/>
+            <trusting group="com.google.errorprone"/>
+            <trusting group="com.google.firebase"/>
+            <trusting group="com.google.flatbuffers"/>
+            <trusting group="com.google.googlejavaformat"/>
+            <trusting group="com.google.guava"/>
+            <trusting group="com.google.j2objc"/>
+            <trusting group="com.google.jimfs"/>
+            <trusting group="com.google.mlkit"/>
+            <trusting group="com.google.protobuf"/>
+         </trusted-key>
          <trusted-key id="F1A51E051F527E0C8E24D54D4B1E11D5A4B91E89" group="com.google.protobuf"/>
          <trusted-key id="F3184BCD55F4D016E30D4C9BF42E87F9665015C9" group="org.jsoup" name="jsoup" version="1.15.1"/>
          <trusted-key id="FA1703B1D287CAEA3A60F931E0130A3ED5A2079E" group="org.webjars"/>

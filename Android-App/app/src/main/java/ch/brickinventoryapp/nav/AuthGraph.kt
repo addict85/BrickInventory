@@ -90,6 +90,7 @@ fun NavGraphBuilder.authGraph(
                     }
                 },
                 bisherigerPin = anmeldungVm::bisherigerPin,
+                mussAbtippen = anmeldungVm::mussAbtippen,
             )
         }
         composable(Screen.Login.route) {

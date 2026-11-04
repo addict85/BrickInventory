@@ -73,6 +73,10 @@ import org.junit.Test
  *      Adresse waehrend des Passkey-Dialogs …“
  *   W  FINGERABDRUCK_ABTIPPEN = 16 → rot „ein QR-Code mit anderem Schluessel
  *      ersetzt den Pin nie still“ (16 Zeichen angenommen)
+ *   X  (sec10 N2) mussAbtippen() ohne Pin wieder `false` (Stand davor: ein Tipp
+ *      genügte beim ersten Einrichten) → rot „ein eigener Schluessel aus dem
+ *      QR-Code gilt beim ersten Einrichten nur abgetippt“;
+ *      gegenproben/qr-pin-ohne-abtippen.patch
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AnmeldungViewModelTest {
@@ -97,8 +101,8 @@ class AnmeldungViewModelTest {
     private lateinit var t: TestDienste
     private lateinit var ablage: Ablage
 
-    /** Die Filterablage meldet ihr Leeren in dasselbe Protokoll. */
-    private fun vm(): AnmeldungViewModel {
+    /** Die Filterablage meldet ihr Leeren in dasselbe Protokoll; [wurzeln] spielt die System-Wurzeln. */
+    private fun vm(wurzeln: Set<String> = emptySet()): AnmeldungViewModel {
         val blickAblage = object : ch.brickinventoryapp.ui.FilterAblage by SpeicherAblage() {
             override suspend fun allesVergessen() { ablage.protokoll += "filter-leer" }
         }
@@ -107,7 +111,7 @@ class AnmeldungViewModelTest {
             ch.brickinventoryapp.data.repository.TeileRepository(t.api, t.cache))
         val dienste = ch.brickinventoryapp.ui.viewmodel.AppDienste(t.sitzung, blickfeld, t.meldungen,
             NummernTexte, t.bestand, t.scrollMemory)
-        return t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage))
+        return t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage) { it in wurzeln })
     }
 
     @Before
@@ -189,7 +193,7 @@ class AnmeldungViewModelTest {
     @Test
     fun `ein QR-Code mit Fingerabdruck haelt den Pin fuer die erste Anfrage vor und merkt ihn erst danach`() {
         pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
-        val vm = vm()
+        val vm = vm(wurzeln = setOf(fp))
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
         TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn && ablage.protokoll.any { it.startsWith("vergiss:") } }
         val p = ablage.protokoll.toList()
@@ -203,7 +207,7 @@ class AnmeldungViewModelTest {
     @Test
     fun `ein gescheiterter QR-Code hinterlaesst keinen Pin`() {
         pfade.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
-        val vm = vm()
+        val vm = vm(wurzeln = setOf(fp))
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
         TestApi.warteBis("Antwort") { ablage.protokoll.any { it.startsWith("vergiss:") } }
         assertTrue(pfade.anfragenAn("qr-login").isNotEmpty())
@@ -244,6 +248,32 @@ class AnmeldungViewModelTest {
             pinWechselEingabe = "07:07:07:07:07:07:07:07:07:07:07:07")
         TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
         assertEquals("Nach Bestätigung und Anmeldung gilt der neue", fp, ablage.pins["brick.example.org:443"])
+    }
+
+    @Test
+    fun `ein eigener Schluessel aus dem QR-Code gilt beim ersten Einrichten nur abgetippt`() {
+        pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"abc","user":{"id":1,"username":"marco"}}"""
+        val vm = vm(wurzeln = setOf(fpAlt))
+        assertTrue("Eigene Wurzel: abtippen", vm.mussAbtippen("https://brick.example.org/", fp))
+        assertFalse("System-Wurzel: ihre Kette muss ohnehin öffentlich gelten", vm.mussAbtippen("https://brick.example.org/", fpAlt))
+        assertFalse("Ohne Fingerabdruck nichts abzutippen", vm.mussAbtippen("https://brick.example.org/", null))
+
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp)
+        assertEquals("t${R.string.setup_qr_pin_abtippen_abgelehnt}", vm.anmeldeState.value.loginError)
+        Thread.sleep(100)
+        assertTrue("Ein Tipp genügt nicht: ${ablage.protokoll}", ablage.protokoll.isEmpty())
+        assertTrue(pfade.anfragenAn("qr-login").isEmpty())
+
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
+            pinWechselEingabe = "09:09:09:09:09:09:09:09:09:09:09:09")
+        Thread.sleep(100)
+        assertTrue("Falsch abgeschrieben: nichts", pfade.anfragenAn("qr-login").isEmpty())
+
+        vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
+            pinWechselEingabe = "07:07:07:07:07:07:07:07:07:07:07:07")
+        TestApi.warteBis("angemeldet") { t.sitzung.state.value.isLoggedIn }
+        assertEquals(fp, ablage.pins["brick.example.org:443"])
+        assertFalse("Der bestätigte Pin gilt beim nächsten Code ohne Abtippen", vm.mussAbtippen("https://brick.example.org/", fp))
     }
 
     @Test

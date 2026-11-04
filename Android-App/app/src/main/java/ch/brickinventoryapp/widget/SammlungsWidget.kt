@@ -59,11 +59,18 @@ internal object WidgetAblage {
         EntryPointAccessors.fromApplication(ctx, WidgetArbeiter.Zugang::class.java).ablage().fuer("widget")
     }
 
+    /** Zweck und Schlüssel als AAD (sec10 H7), wie im Antwort-Cache. */
+    private const val BINDUNG = "$DATEI/$SCHLUESSEL"
+
     fun lies(ctx: Context): WidgetZahlen? {
         val roh = ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).getString(SCHLUESSEL, null) ?: return null
         return runCatching {
-            chiffre(ctx).entschluessle(Base64.decode(roh, Base64.NO_WRAP))
-                ?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it.toString(Charsets.UTF_8)) }
+            val daten = Base64.decode(roh, Base64.NO_WRAP)
+            val verfahren = chiffre(ctx)
+            // Ein Stand ohne Bindung (vor sec10 H7) wird einmal übernommen und gebunden neu abgelegt.
+            val text = verfahren.entschluessle(daten, BINDUNG)
+                ?: verfahren.entschluessleUngebunden(daten)?.also { ablegen(ctx, verfahren, it) }
+            text?.let { ApiJson.decodeFromString(WidgetZahlen.serializer(), it.toString(Charsets.UTF_8)) }
         }.getOrNull()
     }
 
@@ -71,10 +78,12 @@ internal object WidgetAblage {
         ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit { remove(SCHLUESSEL) }
     }
 
-    fun schreibe(ctx: Context, z: WidgetZahlen) {
+    fun schreibe(ctx: Context, z: WidgetZahlen) =
+        ablegen(ctx, chiffre(ctx), ApiJson.encodeToString(WidgetZahlen.serializer(), z).toByteArray(Charsets.UTF_8))
+
+    private fun ablegen(ctx: Context, verfahren: AblageChiffre, text: ByteArray) {
         ctx.getSharedPreferences(DATEI, Context.MODE_PRIVATE).edit {
-            val text = ApiJson.encodeToString(WidgetZahlen.serializer(), z).toByteArray(Charsets.UTF_8)
-            putString(SCHLUESSEL, Base64.encodeToString(chiffre(ctx).verschluessle(text), Base64.NO_WRAP))
+            putString(SCHLUESSEL, Base64.encodeToString(verfahren.verschluessle(text, BINDUNG), Base64.NO_WRAP))
         }
     }
 }

@@ -264,6 +264,11 @@ object NetzModule {
         ch.brickinventoryapp.data.Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
             vertrauenFuer = auftragsVertrauenFabrik(prefs))
 
+    /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen (sec10 N2). */
+    @Provides
+    @Singleton
+    fun provideSystemWurzeln(): ch.brickinventoryapp.util.SystemWurzeln = systemWurzeln()
+
     // Kein unqualifiziertes OkHttpClient-Binding: Es lieferte still den api-Client
     // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @Named("api"),
     // @Named("image") oder @Named("sse").

@@ -21,16 +21,9 @@
       SHA-256 der Datei, der Commit, und die Adresse
       ABLAGE/BrickInventory-<versionCode>.apk — der unveränderliche Anhang
       dieser Fassung. Sonst signierte der Workflow eine Beschreibung, die die
-      App beim Laden ablehnt.
-
-  release-pruefen.py beschreibung DATEN_JSON APK OUTPUT_METADATA COMMIT ABLAGE
-      DATEN_JSON ist der signierte Inhalt von version-signiert.json (die
-      Signatur prüft openssl im Workflow). Er muss genau dieses APK beschreiben:
-      versionCode und versionName wie in AGPs output-metadata.json, Grösse und
-      SHA-256 der Datei, der Commit, und die Adresse
-      ABLAGE/BrickInventory-<versionCode>.apk — der unveränderliche Anhang
-      dieser Fassung. Sonst signierte der Workflow eine Beschreibung, die die
-      App beim Laden ablehnt.
+      App beim Laden ablehnt. Dazu eine Frist (sec10 N1): `ausgestellt` jetzt
+      (höchstens einen Tag alt) und `gueltigBis` danach, höchstens 90 Tage —
+      ohne sie liesse sich eine ältere Beschreibung still wieder hochladen.
 
 Rückgabe 0 = in Ordnung, 1 = abgelehnt, 2 = Eingabe unbrauchbar. Die Meldung
 geht auf stdout; das ::error:: setzt der Workflow, denn ein erwartetes Nein
@@ -41,6 +34,7 @@ import json
 import os
 import re
 import sys
+import time
 
 
 def sollwerte(pfad):
@@ -100,6 +94,20 @@ def fassung(alt_pfad, neu_code, commit):
     return 1
 
 
+TAG = 86400
+
+
+def frist(ausgestellt, gueltig, jetzt):
+    """Was an `ausgestellt`/`gueltigBis` nicht stimmt; leer, wenn beides passt."""
+    if not all(isinstance(w, int) and not isinstance(w, bool) for w in (ausgestellt, gueltig)):
+        return [f'ausgestellt/gueltigBis fehlen oder sind keine Zahlen ({ausgestellt!r}, {gueltig!r})']
+    if not jetzt - TAG <= ausgestellt <= jetzt + 300:
+        return [f'ausgestellt {ausgestellt} liegt nicht bei jetzt ({jetzt})']
+    if not 0 < gueltig - ausgestellt <= 90 * TAG:
+        return [f'gueltigBis {gueltig} liegt nicht 1 Sekunde bis 90 Tage nach ausgestellt']
+    return []
+
+
 def beschreibung(daten_pfad, apk_pfad, meta_pfad, commit, ablage):
     try:
         with open(daten_pfad, encoding='utf-8') as f:
@@ -121,6 +129,7 @@ def beschreibung(daten_pfad, apk_pfad, meta_pfad, commit, ablage):
         'apkUrl': f"{ablage.rstrip('/')}/BrickInventory-{element.get('versionCode')}.apk",
     }
     falsch = [f'{k}: {daten.get(k)!r} statt {v!r}' for k, v in soll.items() if daten.get(k) != v]
+    falsch += frist(daten.get('ausgestellt'), daten.get('gueltigBis'), int(time.time()))
     if falsch:
         print('Die Beschreibung passt nicht zum APK: ' + '; '.join(falsch))
         return 1

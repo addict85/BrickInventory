@@ -6,6 +6,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -33,7 +34,8 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "ap
 class PreferencesManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val tresor: TokenVerschluesselung,
-) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle {
+) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle,
+    ch.brickinventoryapp.util.UpdateStandAblage {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -113,6 +115,14 @@ class PreferencesManager @Inject constructor(
          * Umrechnung die Zeitzone verlöre.
          */
         val ALARM_MARKE = stringPreferencesKey("alarm_marke")
+
+        /**
+         * Der höchste gesehene versionCode und der späteste Ausstellungszeitpunkt einer
+         * aktuellen Update-Beschreibung (util/UpdateFrische.kt). Je Gerät; das Abmelden
+         * lässt sie stehen, sonst setzte es die Messlatte für ein Zurückhalten zurück.
+         */
+        val UPDATE_HOECHSTER_CODE = intPreferencesKey("update_hoechster_code")
+        val UPDATE_AUSGESTELLT = longPreferencesKey("update_ausgestellt")
     }
 
     val serverUrl: Flow<String> = context.dataStore.data.map { prefs ->
@@ -517,6 +527,19 @@ class PreferencesManager @Inject constructor(
     fun gescheiterteEntwertungen(): Set<String> = designSpiegel.getStringSet(ENTWERTUNG_GESCHEITERT, null).orEmpty().toSet()
     fun quittiereGescheiterteEntwertungen() {
         designSpiegel.edit { remove(ENTWERTUNG_GESCHEITERT) }
+    }
+
+    override suspend fun updateStand(): ch.brickinventoryapp.util.UpdateStand? {
+        val p = context.dataStore.data.first()
+        val code = p[UPDATE_HOECHSTER_CODE] ?: return null
+        return ch.brickinventoryapp.util.UpdateStand(code, p[UPDATE_AUSGESTELLT] ?: 0L)
+    }
+
+    override suspend fun merkeUpdateStand(stand: ch.brickinventoryapp.util.UpdateStand) {
+        context.dataStore.edit {
+            it[UPDATE_HOECHSTER_CODE] = stand.hoechsterCode
+            it[UPDATE_AUSGESTELLT] = stand.ausgestellt
+        }
     }
 
     /** Der Geheimtext wie abgelegt: Der Auftrag braucht das Token nie im Klartext. */

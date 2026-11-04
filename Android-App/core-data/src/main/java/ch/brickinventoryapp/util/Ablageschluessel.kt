@@ -57,26 +57,38 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
 }
 
 /**
- * AES-256-GCM für Dateien der App. Format: Kennung ‖ IV ‖ Geheimtext samt Tag. Ohne
+ * AES-256-GCM für Dateien der App. Format: Kennung ‖ IV ‖ Geheimtext samt Tag. Die
+ * Bindung (Zweck und Dateiname) geht als AAD ein: Eine Datei unter fremdem Namen
+ * scheitert an der Prüfung, statt als die andere gelesen zu werden (sec10 H7). Ohne
  * Kennung gilt eine Datei als Altbestand im Klartext; der Aufrufer verwirft sie.
  */
 class AblageChiffre(private val schluessel: () -> ByteArray) {
 
-    fun verschluessle(klartext: ByteArray): ByteArray {
+    fun verschluessle(klartext: ByteArray, bindung: String): ByteArray {
         val iv = ByteArray(IV_LAENGE).also(SecureRandom()::nextBytes)
         val c = Cipher.getInstance(VERFAHREN)
         c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(schluessel(), "AES"), GCMParameterSpec(TAG_BITS, iv))
+        c.updateAAD(bindung.toByteArray(Charsets.UTF_8))
         return KENNUNG + iv + c.doFinal(klartext)
     }
 
-    /** null, wenn die Daten nicht von hier stammen, verändert oder mit einem anderen Schlüssel sind. */
-    fun entschluessle(daten: ByteArray): ByteArray? {
-        if (daten.size <= KENNUNG.size + IV_LAENGE || !daten.copyOfRange(0, KENNUNG.size).contentEquals(KENNUNG)) return null
+    /** null, wenn die Daten nicht von hier stammen, verändert, anders gebunden oder mit einem anderen Schlüssel sind. */
+    fun entschluessle(daten: ByteArray, bindung: String): ByteArray? = oeffne(daten, KENNUNG, bindung)
+
+    /**
+     * Nur zur einmaligen Übernahme: die Fassung ohne Bindung (Kennung 1). Wer so
+     * liest, legt die Daten sofort gebunden neu ab, damit kein Altbestand bleibt.
+     */
+    fun entschluessleUngebunden(daten: ByteArray): ByteArray? = oeffne(daten, KENNUNG_UNGEBUNDEN, null)
+
+    private fun oeffne(daten: ByteArray, kennung: ByteArray, bindung: String?): ByteArray? {
+        if (daten.size <= kennung.size + IV_LAENGE || !daten.copyOfRange(0, kennung.size).contentEquals(kennung)) return null
         return runCatching {
             val c = Cipher.getInstance(VERFAHREN)
             c.init(Cipher.DECRYPT_MODE, SecretKeySpec(schluessel(), "AES"),
-                GCMParameterSpec(TAG_BITS, daten, KENNUNG.size, IV_LAENGE))
-            c.doFinal(daten, KENNUNG.size + IV_LAENGE, daten.size - KENNUNG.size - IV_LAENGE)
+                GCMParameterSpec(TAG_BITS, daten, kennung.size, IV_LAENGE))
+            if (bindung != null) c.updateAAD(bindung.toByteArray(Charsets.UTF_8))
+            c.doFinal(daten, kennung.size + IV_LAENGE, daten.size - kennung.size - IV_LAENGE)
         }.getOrNull()
     }
 
@@ -84,6 +96,7 @@ class AblageChiffre(private val schluessel: () -> ByteArray) {
         const val VERFAHREN = "AES/GCM/NoPadding"
         const val IV_LAENGE = 12
         const val TAG_BITS = 128
-        val KENNUNG = byteArrayOf('B'.code.toByte(), 'I'.code.toByte(), 'A'.code.toByte(), 1)
+        val KENNUNG = byteArrayOf('B'.code.toByte(), 'I'.code.toByte(), 'A'.code.toByte(), 2)
+        val KENNUNG_UNGEBUNDEN = byteArrayOf('B'.code.toByte(), 'I'.code.toByte(), 'A'.code.toByte(), 1)
     }
 }

@@ -69,12 +69,33 @@ class ResponseCache(
 
     private val basis: File by lazy {
         runCatching { altlast()?.deleteRecursively() }
+        val neu = File(ordnerQuelle(), "api-$VERSION").apply { mkdirs() }
+        // Die Vorfassung (verschlüsselt, ohne Bindung) wird übernommen, nicht verworfen:
+        // Offline wäre die App sonst nach dem Update leer.
+        runCatching { uebernimm(File(ordnerQuelle(), "api-${VERSION - 1}"), neu) }
         // Frühere Fassungen der Ablage (bis 2 im Klartext) gleich mit räumen, nicht nur übergehen.
         runCatching {
             ordnerQuelle().listFiles()?.filter { it.isDirectory && it.name.startsWith("api-") && it.name != "api-$VERSION" }
                 ?.forEach { it.deleteRecursively() }
         }
-        File(ordnerQuelle(), "api-$VERSION").apply { mkdirs() }
+        neu
+    }
+
+    /** Zweck, Fach und Dateiname als AAD: Eine umbenannte oder verschobene Datei gilt nicht. */
+    private fun bindung(datei: File) = "antworten/${datei.parentFile?.name}/${datei.name}"
+
+    /** Liest jede Datei der Vorfassung ohne Bindung und legt sie gebunden unter [neu] ab, mit ihrem Stand. */
+    private fun uebernimm(alt: File, neu: File) {
+        for (fach in alt.listFiles()?.filter { it.isDirectory }.orEmpty()) {
+            for (datei in fach.listFiles()?.filter { it.isFile && it.name.endsWith(".json") }.orEmpty()) {
+                val roh = datei.readBytes()
+                val klar = if (chiffre == null) roh else chiffre.entschluessleUngebunden(roh) ?: continue
+                val ziel = File(File(neu, fach.name).apply { mkdirs() }, datei.name)
+                if (ziel.exists()) continue
+                ziel.writeBytes(chiffre?.verschluessle(klar, bindung(ziel)) ?: klar)
+                ziel.setLastModified(datei.lastModified())
+            }
+        }
     }
 
     /** Der Bereich, der gerade gilt; null, wenn nichts abgelegt werden darf. */
@@ -100,7 +121,7 @@ class ResponseCache(
                 val ziel = fileFor(bereich, key)
                 val tmp = File(fach, ziel.name + ".tmp")
                 val text = json.encodeToString(serializer, value).toByteArray(Charsets.UTF_8)
-                tmp.writeBytes(chiffre?.verschluessle(text) ?: text)
+                tmp.writeBytes(chiffre?.verschluessle(text, bindung(ziel)) ?: text)
                 tmp.renameTo(ziel)      // atomar, nie halbe Dateien lesen
             }
         } catch (_: Throwable) { /* Best effort */ }
@@ -120,7 +141,7 @@ class ResponseCache(
                 val stand = f.lastModified()
                 if (System.currentTimeMillis() - stand > maxAgeMs) return@withContext null
                 val roh = f.readBytes()
-                val text = if (chiffre == null) roh else chiffre.entschluessle(roh) ?: return@withContext null
+                val text = if (chiffre == null) roh else chiffre.entschluessle(roh, bindung(f)) ?: return@withContext null
                 json.decodeFromString(serializer, text.toString(Charsets.UTF_8)) to stand
             } catch (_: Throwable) {
                 null
@@ -136,8 +157,9 @@ class ResponseCache(
         /**
          * Bei jeder Änderung an den gecachten Modellen oder am Aufbau der
          * Ablage erhöhen; alte Stände werden dadurch schlicht nicht gefunden.
+         * Einzige Ausnahme ist 3 → 4 ([uebernimm]): Nur die Bindung kam dazu.
          */
-        private const val VERSION = 3
+        private const val VERSION = 4
 
         /** Sieben Tage. Der Cache ist Rückfallebene, kein Ersatz für den Abruf. */
         private const val MAX_AGE_MS = 7L * 24 * 60 * 60 * 1000

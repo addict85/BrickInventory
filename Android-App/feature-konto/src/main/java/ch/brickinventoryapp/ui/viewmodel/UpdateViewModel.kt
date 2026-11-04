@@ -19,6 +19,7 @@ import ch.brickinventoryapp.util.Installationsmeldung
 import ch.brickinventoryapp.util.installiere
 import ch.brickinventoryapp.util.istErlaubteApkAdresse
 import ch.brickinventoryapp.util.istNeuer
+import ch.brickinventoryapp.util.pruefeFrische
 import ch.brickinventoryapp.util.signaturPasst
 import ch.brickinventoryapp.util.updateDatei
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,7 +54,7 @@ class UpdateViewModel @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
     @param:Named("update") private val updateHttpClient: OkHttpClient,
     private val texte: Texte,
-    prefs: PreferencesManager,
+    private val prefs: PreferencesManager,
     private val fassung: ch.brickinventoryapp.util.AppFassung,
 ) : ViewModel() {
 
@@ -110,10 +111,13 @@ class UpdateViewModel @Inject constructor(
                     }
                     return@launch
                 }
+                // Eine neuere Fassung bleibt angeboten, auch aus einer abgelaufenen
+                // Beschreibung: Sie ist echt signiert und führt nur vorwärts.
+                val frische = pruefeFrische(prefs, beschreibung, fassung.code, System.currentTimeMillis() / 1000)
                 val neuer = istNeuer(fassung.code, beschreibung.versionCode)
                 _state.update {
                     it.copy(laedtPruefung = false, geprueft = true,
-                        neuereFassung = if (neuer) beschreibung else null, fehler = null)
+                        neuereFassung = if (neuer) beschreibung else null, fehler = null, frische = frische)
                 }
             } catch (e: Exception) {
                 _state.update {

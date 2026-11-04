@@ -1,0 +1,18 @@
+Gegenprobe: vertrauen-eng.py ersetzt eine Regex durch alle Gruppen der Datei statt durch ihre Treffer
+Modul: app
+Test: ch.brickinventoryapp.VertrauenEngTest
+Rot: eine Gruppen-Regex wird auf die gebauten Gruppen begrenzt
+
+diff --git a/Android-App/tools/vertrauen-eng.py b/Android-App/tools/vertrauen-eng.py
+index c8a9db8..2a74da7 100644
+--- a/Android-App/tools/vertrauen-eng.py
++++ b/Android-App/tools/vertrauen-eng.py
+@@ -26,7 +26,7 @@ def eng(text):
+ 
+     def treffer(rx):
+         r = re.compile(rx)
+-        gefunden = [g for g in alle if r.match(g)]
++        gefunden = list(alle)
+         if not gefunden:
+             leer.append(rx)
+         return gefunden

@@ -63,11 +63,13 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String) -> Unit,
-    /** Zweiter Wert: bei abweichendem Pin der abgeschriebene neue Fingerabdruck, sonst null. */
+    /** Zweiter Wert: der abgeschriebene Fingerabdruck, wenn [mussAbtippen] ihn verlangt, sonst null. */
     onQrScanned: ((QrLoginPayload, String?) -> Unit)? = null,
     entwicklung: Boolean = NetworkPolicy.entwicklung,
     /** Der gemerkte Pin für Adresse und Fingerabdruck des Codes, wenn er abweicht. */
     bisherigerPin: (url: String, fingerabdruck: String?) -> String? = { _, _ -> null },
+    /** Ob der Fingerabdruck des Codes abzutippen ist (AnmeldungViewModel.mussAbtippen); im Zweifel ja. */
+    mussAbtippen: (url: String, fingerabdruck: String?) -> Boolean = { _, fp -> fp != null },
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
@@ -105,6 +107,7 @@ fun SetupScreen(
         val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
         // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
         val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
+        val abtippen = remember(vorschlag) { mussAbtippen(vorschlag.url, vorschlag.fingerabdruck) }
         // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
         var eingabe by remember(vorschlag) { mutableStateOf("") }
         var falsch by remember(vorschlag) { mutableStateOf(false) }
@@ -142,38 +145,39 @@ fun SetupScreen(
                         Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
                         Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                    } else if (fp != null) {
+                        // Erstes Einrichten: Ohne Tippen gilt nur eine System-Wurzel; einen eigenen
+                        // Schlüssel könnte der Code eines Fremden genauso nennen (sec10 N2).
+                        Text(stringResource(if (abtippen) R.string.setup_qr_pin_abtippen else R.string.setup_qr_pin),
+                            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
+                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (abtippen && fp != null) {
                         OutlinedTextField(
                             value = eingabe,
                             onValueChange = { eingabe = it; falsch = false },
-                            label = { Text(stringResource(R.string.zert_geaendert_eingabe)) },
+                            label = { Text(stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
                             isError = falsch,
                             supportingText = if (falsch) { { Text(stringResource(R.string.zert_eingabe_falsch)) } } else null,
                             textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, autoCorrectEnabled = false),
                             modifier = Modifier.fillMaxWidth(),
                         )
-                    } else if (fp != null) {
-                        // Erstes Einrichten: Der Code bestimmt allein, welchem Schlüssel die App
-                        // künftig für diese Adresse traut. Abtippen hiesse, den QR-Code zu
-                        // entwerten; darum die Warnung und der Anfang zum Vergleich mit der Webapp.
-                        Text(stringResource(R.string.setup_qr_pin), color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall)
-                        Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
-                        Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall)
                     }
                     if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
                 }
             },
             confirmButton = {
-                TextButton(enabled = !qrGesperrt && (bisher == null || eingabe.isNotBlank()), onClick = {
+                TextButton(enabled = !qrGesperrt && (!abtippen || eingabe.isNotBlank()), onClick = {
                     val fp = vorschlag.fingerabdruck
-                    if (bisher != null && (fp == null || !bestaetigtFingerabdruck(eingabe, fp))) {
+                    if (abtippen && (fp == null || !bestaetigtFingerabdruck(eingabe, fp))) {
                         falsch = true
                     } else {
                         qrVorschlag = null
                         url = vorschlag.url
-                        onQrScanned?.invoke(vorschlag, eingabe.takeIf { bisher != null })
+                        onQrScanned?.invoke(vorschlag, eingabe.takeIf { abtippen })
                     }
                 }) {
                     Text(stringResource(if (bisher != null) R.string.setup_qr_pin_uebernehmen else R.string.setup_qr_uebernehmen),

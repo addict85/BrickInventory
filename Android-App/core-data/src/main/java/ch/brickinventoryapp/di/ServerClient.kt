@@ -28,6 +28,12 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
     return tmf.trustManagers.filterIsInstance<javax.net.ssl.X509ExtendedTrustManager>().first()
 }
 
+/** Dieselben System-Wurzeln wie im Pinning (ohne Nutzer-CAs), erst beim ersten Bedarf gelesen. */
+internal fun systemWurzeln(): ch.brickinventoryapp.util.SystemWurzeln {
+    val fingerabdruecke by lazy { vertrauen(null).acceptedIssuers.map { ch.brickinventoryapp.util.spkiFingerabdruck(it) }.toSet() }
+    return ch.brickinventoryapp.util.SystemWurzeln { it in fingerabdruecke }
+}
+
 /**
  * System-CAs nach network_security_config (ohne Nutzer-CAs), dazu der
  * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung — nur für den

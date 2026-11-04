@@ -92,6 +92,15 @@ fun pinSchluessel(serverUrl: String): String? {
     return if (url.isHttps) "${url.host.lowercase()}:${url.port}" else null
 }
 
+/**
+ * Zeigt ein Fingerabdruck auf eine System-Wurzel (ohne Nutzer-CAs)? Ein solcher Pin
+ * verlangt ohnehin eine öffentlich gültige, CT-geprüfte Kette; jeder andere aus einer
+ * fremden Quelle (QR-Code) gilt erst abgetippt.
+ */
+fun interface SystemWurzeln {
+    fun enthaelt(fingerabdruck: String): Boolean
+}
+
 /** Die gemerkten Pins: im Gerät SharedPreferences (PreferencesManager), im Test eine Map. */
 interface PinAblage {
     fun pin(schluessel: String): String?
@@ -290,7 +299,7 @@ fun auftragsVertrauen(
  */
 fun passtZumPin(chain: Array<X509Certificate>, pin: String): Boolean {
     val i = chain.indexOfFirst { spkiFingerabdruck(it) == pin }
-    if (i < 0) return false
+    if (i < 0 || !fuerServer(chain[0])) return false
     if (i == 0) return runCatching { chain[0].checkValidity() }.isSuccess
     return runCatching {
         val pfad = CertificateFactory.getInstance("X.509").generateCertPath(chain.take(i))
@@ -298,6 +307,20 @@ fun passtZumPin(chain: Array<X509Certificate>, pin: String): Boolean {
         CertPathValidator.getInstance("PKIX").validate(pfad, parameter)
     }.isSuccess
 }
+
+/**
+ * Darf das Blatt einen Server ausweisen? Die PKIX-Prüfung bis zum Pin fragt den
+ * Zweck nicht; ohne diese Prüfung ginge unter einer gepinnten eigenen CA auch ein
+ * Zertifikat für Code-Signatur oder E-Mail durch. Ohne EKU-Erweiterung ist jeder
+ * Zweck erlaubt (RFC 5280).
+ */
+internal fun fuerServer(blatt: X509Certificate): Boolean {
+    val zwecke = runCatching { blatt.extendedKeyUsage }.getOrElse { return false } ?: return true
+    return EKU_SERVER in zwecke || EKU_JEDER in zwecke
+}
+
+private const val EKU_SERVER = "1.3.6.1.5.5.7.3.1"
+private const val EKU_JEDER = "2.5.29.37.0"
 
 /**
  * Die Stelle aus dem Vertrauensspeicher, die das oberste gesendete Zertifikat

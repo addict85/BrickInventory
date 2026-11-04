@@ -19,6 +19,9 @@ import java.util.concurrent.TimeUnit
  *   D  tools/release-zertifikat.sha256 ohne Wert → rot „die hinterlegte Datei nennt …“
  *   E  (sec8 N4) in beschreibung() `apkSha256` aus `soll` gestrichen → rot „die
  *      signierte Beschreibung muss genau dieses APK nennen“ (ein anderes APK ging durch)
+ *   F  (sec10 N1) in beschreibung() die Zeile `falsch += frist(…)` gestrichen → rot
+ *      „eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht“;
+ *      gegenproben/beschreibung-ohne-frist.patch
  */
 class ReleasePruefenTest {
 
@@ -88,7 +91,8 @@ class ReleasePruefenTest {
         val sha = java.security.MessageDigest.getInstance("SHA-256").digest("apk-inhalt".toByteArray())
             .joinToString("") { "%02x".format(it) }
         fun daten(code: Long = 200001445, url: String = "$ablage/BrickInventory-200001445.apk", pruefsumme: String = sha) = datei(
-            """{"versionCode":$code,"versionName":"1.2.3","commit":"bbb","apkUrl":"$url","apkSize":10,"apkSha256":"$pruefsumme"}"""
+            """{"versionCode":$code,"versionName":"1.2.3","commit":"bbb","apkUrl":"$url","apkSize":10,"apkSha256":"$pruefsumme",""" +
+                """"ausgestellt":$jetzt,"gueltigBis":${jetzt + 30 * TAG}}"""
         ).path
         assertEquals(0, pruefe("beschreibung", daten(), apk.path, meta, "bbb", ablage))
         assertEquals("Ein anderes APK", 1, pruefe("beschreibung", daten(), anderes.path, meta, "bbb", ablage))
@@ -99,5 +103,29 @@ class ReleasePruefenTest {
         assertEquals("Eine andere Fassung", 1, pruefe("beschreibung", daten(code = 200001444), apk.path, meta, "bbb", ablage))
         assertEquals("Ein anderer Commit", 1, pruefe("beschreibung", daten(), apk.path, meta, "ccc", ablage))
         assertEquals(2, pruefe("beschreibung", datei("kaputt").path, apk.path, meta, "bbb", ablage))
+    }
+
+    private val jetzt = System.currentTimeMillis() / 1000
+
+    @Test
+    fun `eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht`() {
+        val apk = datei("apk-inhalt")
+        val meta = datei("""{"elements":[{"versionCode":200001445,"versionName":"1.2.3"}]}""").path
+        val ablage = "https://github.com/addict85/BrickInventory/releases/download/android-v1.2.3"
+        val sha = java.security.MessageDigest.getInstance("SHA-256").digest("apk-inhalt".toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        fun mit(frist: String) = pruefe("beschreibung", datei(
+            """{"versionCode":200001445,"versionName":"1.2.3","commit":"bbb","apkUrl":"$ablage/BrickInventory-200001445.apk",""" +
+                """"apkSize":10,"apkSha256":"$sha"$frist}""").path, apk.path, meta, "bbb", ablage)
+        assertEquals(0, mit(""","ausgestellt":$jetzt,"gueltigBis":${jetzt + 30 * TAG}"""))
+        assertEquals("Ohne Frist", 1, mit(""))
+        assertEquals("Vor zwei Tagen ausgestellt", 1, mit(""","ausgestellt":${jetzt - 2 * TAG},"gueltigBis":${jetzt + 28 * TAG}"""))
+        assertEquals("100 Tage gültig", 1, mit(""","ausgestellt":$jetzt,"gueltigBis":${jetzt + 100 * TAG}"""))
+        assertEquals("Gültig bis vor der Ausstellung", 1, mit(""","ausgestellt":$jetzt,"gueltigBis":${jetzt - 1}"""))
+        assertEquals("Als Text statt Zahl", 1, mit(""","ausgestellt":"$jetzt","gueltigBis":${jetzt + TAG}"""))
+    }
+
+    private companion object {
+        const val TAG = 86_400L
     }
 }

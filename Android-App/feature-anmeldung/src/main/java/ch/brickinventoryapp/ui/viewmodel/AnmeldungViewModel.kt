@@ -14,6 +14,7 @@ import ch.brickinventoryapp.ui.qrFehler
 import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.util.bestaetigtFingerabdruck
 import ch.brickinventoryapp.util.pinSchluessel
+import ch.brickinventoryapp.util.SystemWurzeln
 import ch.brickinventoryapp.util.RpIdBefund
 import ch.brickinventoryapp.util.hostVon
 import ch.brickinventoryapp.util.pruefeRpId
@@ -43,6 +44,7 @@ class AnmeldungViewModel @Inject constructor(
     dienste: AppDienste,
     private val konto: KontoRepository,
     private val ablage: Anmeldeablage,
+    private val systemWurzeln: SystemWurzeln,
 ) : BereichsViewModel(dienste) {
 
     private val _anmeldeState = MutableStateFlow(AnmeldeUiState())
@@ -168,7 +170,7 @@ class AnmeldungViewModel @Inject constructor(
     /**
      * Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem
      * Code. Sein Fingerabdruck gilt schon für die erste Anfrage, gemerkt wird er aber
-     * erst nach gelungener Anmeldung. Ein anderer als der gemerkte nur, wenn
+     * erst nach gelungener Anmeldung. Verlangt [mussAbtippen] es, nur wenn
      * [pinWechselEingabe] ihn aus einer zweiten Quelle bestätigt: Ein Code kann von
      * jedem stammen, ein Tipp genügte sonst für einen fremden Schlüssel. Ein Code
      * mit http-Adresse wird nicht übernommen, auch wenn die Oberfläche ihn durchliesse.
@@ -186,9 +188,11 @@ class AnmeldungViewModel @Inject constructor(
             return
         }
         val schluessel = if (fingerabdruck != null) pinSchluessel(neu) else null
-        if (schluessel != null && fingerabdruck != null && bisherigerPin(neu, fingerabdruck) != null &&
+        if (schluessel != null && fingerabdruck != null && mussAbtippen(neu, fingerabdruck) &&
             !bestaetigtFingerabdruck(pinWechselEingabe, fingerabdruck)) {
-            _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(R.string.setup_qr_pin_wechsel_abgelehnt)) }
+            val satz = if (bisherigerPin(neu, fingerabdruck) != null) R.string.setup_qr_pin_wechsel_abgelehnt
+                else R.string.setup_qr_pin_abtippen_abgelehnt
+            _anmeldeState.update { it.copy(loginLaeuft = false, loginError = text(satz)) }
             return
         }
         viewModelScope.launch {
@@ -222,6 +226,18 @@ class AnmeldungViewModel @Inject constructor(
         if (fingerabdruck == null) return null
         val schluessel = pinSchluessel(NetworkPolicy.normalisiere(serverUrl)) ?: return null
         return ablage.gemerkterPin(schluessel)?.takeIf { it != fingerabdruck }
+    }
+
+    /**
+     * Muss der Fingerabdruck des Codes aus der Webapp abgetippt werden? Ohne Abtippen
+     * gilt nur der schon bestätigte Pin oder eine System-Wurzel: Deren Kette muss
+     * ohnehin öffentlich gültig sein, ein fremder Schlüssel aus dem Code nicht (sec10 N2).
+     */
+    fun mussAbtippen(serverUrl: String, fingerabdruck: String?): Boolean {
+        if (fingerabdruck == null) return false
+        val schluessel = pinSchluessel(NetworkPolicy.normalisiere(serverUrl)) ?: return false
+        val gemerkt = ablage.gemerkterPin(schluessel)
+        return if (gemerkt != null) gemerkt != fingerabdruck else !systemWurzeln.enthaelt(fingerabdruck)
     }
 
     /** Ein zweiter QR-Anlauf nach einer gelungenen Anmeldung ist kein Fehler (siehe qrFehler). */

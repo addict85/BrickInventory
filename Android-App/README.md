@@ -163,9 +163,12 @@ https-Adresse eintragen).
 
 | Weg | Was passiert |
 | --- | --- |
-| QR-Code mit `fp` | Der Fingerabdruck (SHA-256 des öffentlichen Schlüssels der Caddy-Wurzel) gilt schon für die erste Anfrage, gespeichert wird er erst nach gelungener Anmeldung. Weicht er von einem gespeicherten ab, zeigt der Dialog bisher/neu und verlangt ein ausdrückliches Ja. |
+| QR-Code mit `fp` | Der Fingerabdruck (SHA-256 des öffentlichen Schlüssels der Caddy-Wurzel) gilt schon für die erste Anfrage, gespeichert wird er erst nach gelungener Anmeldung. Ein Code kann von jedem stammen: Ohne Abtippen gilt er nur, wenn er auf eine System-Wurzel zeigt (deren Kette ohnehin öffentlich gültig sein muss) oder dem schon bestätigten Pin entspricht. Sonst verlangt der Dialog die letzten 24 Zeichen aus der Webapp (Einstellungen → Server-Zertifikat), beim ersten Einrichten wie bei einem abweichenden Pin. |
 | Adresse von Hand | Beim ersten Kontakt bricht der Handshake ab, bevor etwas gesendet wird. Ein Dialog zeigt den Fingerabdruck in derselben Schreibweise wie die Webapp unter Einstellungen → Server-Zertifikat (`AB:CD:…`): bei einer Kette, die das System kennt (öffentliche CA), den der Wurzel aus dem System-Speicher, sonst den des obersten Zertifikats der Kette. Gespeichert wird er erst nach ausdrücklicher Bestätigung (Trust on first use, abgesichert durch den Vergleich). |
-| Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur, wenn man mindestens die letzten 16 Zeichen des neuen aus einer zweiten Quelle abschreibt (Webapp oder Zertifikatdetails des Browsers) — oder per neuem QR-Code. |
+| Zertifikat später anders | Passt keine Kette mehr zum gespeicherten Fingerabdruck, geht nichts hinaus. Der Dialog zeigt den bisherigen und den neuen Fingerabdruck; übernommen wird nur, wenn man mindestens die letzten 24 Zeichen des neuen aus einer zweiten Quelle abschreibt (Webapp oder Zertifikatdetails des Browsers) — oder per neuem QR-Code. |
+
+Unter einer gepinnten eigenen CA gilt nur ein Blatt, das einen Server
+ausweisen darf (EKU `serverAuth` oder gar keine EKU-Angabe).
 
 Weil die Wurzel gepinnt wird und nicht das Blatt, übersteht der Pin die
 regelmässige Erneuerung des Serverzertifikats durch Caddy. Andere Hosts
@@ -301,6 +304,9 @@ workflow* den Zweig wählen und `pruefsummen` ankreuzen. Der Lauf legt einen
 Zweig `pruefsummen/<Lauf>` und einen Pull-Request an; dessen Text listet neue
 Komponenten, geänderte Prüfsummen und neu vertraute Schlüssel — solche mit
 Gruppen-Regex zuerst, denn sie gelten für jedes künftige Paket der Gruppe.
+Solche Regex fasst Gradle selbst zusammen; `tools/vertrauen-eng.py` ersetzt sie
+im Lauf durch die Gruppen, die heute gebaut werden. Ein neues Paket aus einer
+neuen Gruppe braucht so einen neuen, im Pull-Request sichtbaren Eintrag.
 Dafür einmalig *Settings → Actions → General → Allow GitHub Actions to create
 and approve pull requests* einschalten; sonst bleibt nur der Zweig, und der
 Pull-Request wird von Hand gestellt. Die CI des Zweigs startet nicht von selbst
@@ -440,7 +446,18 @@ Dazu ein **Tag-Ruleset** (Settings → Rules → Rulesets → New tag ruleset) f
 `refs/tags/android-v*`: Anlegen, Ändern und Löschen nur für Administratoren
 (Bypass-Liste), *Restrict updates* und *Restrict deletions* an. Ein Etikett
 lässt sich sonst von jedem mit Schreibrecht setzen oder umhängen; der Workflow
-signiert ohnehin nur Commits, die auf `main` liegen.
+signiert ohnehin nur Commits, die auf `main` liegen. Dasselbe Ruleset auch für
+`refs/tags/apk-neuste` (*Restrict deletions*, *Restrict updates*).
+
+Das Release `apk-neuste` muss veränderlich bleiben (der Workflow ersetzt dort
+APK und Beschreibung); *Immutable releases* gilt nur für Releases, die nach dem
+Einschalten veröffentlicht werden, und schützt es darum nicht. Umgekehrt darf
+es bei eingeschalteter Einstellung nie gelöscht werden: Neu angelegt wäre es
+unveränderlich, und jedes weitere Hochladen scheiterte. Gegen ein
+Zurückhalten dort wirkt die Frist der Beschreibung (unten). Wer `contents:
+write` hat, kann Anhänge ersetzen: Schreibrecht nur an wenige Personen,
+Zwei-Faktor-Pflicht für die Organisation und fein granulierte Token mit
+Ablaufdatum statt klassischer PATs mit `repo`-Scope.
 
 **Übergang:** Gleichnamige Repository-Secrets danach löschen. Der Workflow
 braucht sie nicht mehr; solange sie bestehen, könnte jeder Job auf `main` sie
@@ -458,8 +475,9 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
   (Rotation), kommt der neue Wert als zweite Zeile dazu. Ein Lauf ohne Etikett
   signiert mit einem Wegwerfschlüssel und muss genau an dieser Prüfung
   scheitern; so läuft sie bei jedem Bau.
-- **Fassung:** Der versionCode muss über dem des veröffentlichten
-  `version.json` liegen (gleich nur für denselben Commit). Ein Etikett auf einem
+- **Fassung:** Der versionCode muss über dem der veröffentlichten
+  Beschreibung liegen (gleich nur für denselben Commit); gelesen wird die
+  signierte, `version.json` nur, solange `apk-neuste` noch keine trägt. Ein Etikett auf einem
   älteren Commit von `main` wird so nicht zum „neusten APK“. Der Job `release`
   prüft dasselbe unmittelbar vor dem Hochladen noch einmal; zwei Etiketten
   laufen dort nacheinander (`concurrency: apk-neuste`).
@@ -472,11 +490,22 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
   Schlüssel wie das APK** (`openssl dgst -sha256`). Die App liest nur diese
   Datei und prüft sie gegen die Signierer der installierten Fassung, das
   geladene APK danach gegen die Prüfsumme. Wer nur Schreibrecht am Repository
-  hat, kann so kein Update umleiten oder eine ältere Fassung anbieten. Ein
-  Zurückhalten (Datei löschen oder die vorige wieder hochladen) bleibt möglich,
-  aber keine ältere Fassung wird installiert. `apk-pruefen` prüft Signatur und
-  Inhalt vor dem Veröffentlichen. Die unsignierte `version.json` bleibt für
-  Fassungen, die vor dieser Änderung installiert wurden.
+  hat, kann so kein Update umleiten oder eine ältere Fassung anbieten. `apk-pruefen`
+  prüft Signatur und Inhalt vor dem Veröffentlichen.
+- **Frist (sec10 N1):** Die Beschreibung trägt `ausgestellt` und `gueltigBis`
+  (30 Tage, Sekunden seit 1970, UTC). Die App merkt sich den höchsten gesehenen
+  versionCode und den spätesten Ausstellungszeitpunkt. Eine ältere oder
+  abgelaufene Beschreibung meldet sie in den Einstellungen („veraltet oder
+  manipuliert“) statt „aktuell“; ein Zurückhalten durch erneutes Hochladen einer
+  alten Datei bleibt so nicht mehr still. **Auffrischen:** Spätestens alle 30
+  Tage ein neues Etikett `android-v…` setzen, notfalls auf denselben Commit von
+  `main`. Gleicher versionCode und Commit gelten dabei als Wiederholung, die App
+  bietet nichts an und sieht nur die neue Frist.
+- **`version.json` (unsigniert):** Nur noch bis zum Stichtag 01.02.2027 für
+  Fassungen vor sec8 N4, die die signierte Beschreibung nicht kennen; danach
+  löscht der Job `release` den Anhang. Ohne sie blieben diese Geräte ohne
+  Meldung auf ihrer Fassung; mit ihr holen sie sich einmal die neue und lesen
+  ab dann die signierte.
 - **Prüfsumme des Baus:** Der Baujob misst das unsignierte APK und Bundle gleich
   nach `assembleRelease`, bevor Lint und weitere Gradle-Läufe Projektcode
   ausführen; `signieren` signiert nur genau diese Bytes.

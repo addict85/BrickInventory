@@ -21,7 +21,8 @@ import java.security.MessageDigest
  *
  * 1. version-signiert.json aus dem Release lesen und ihre Signatur gegen die
  *    Signierer der installierten App prüfen ([gepruefteBeschreibung])
- * 2. versionCode vergleichen — echt grösser, nie „ungleich“
+ * 2. Frist und Stand prüfen ([bewerteFrische]), dann versionCode vergleichen —
+ *    echt grösser, nie „ungleich“
  * 3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage und die
  *    signierte Prüfsumme prüfen ([pruefsummePasst])
  * 4. Signatur mit der installierten App vergleichen und den versionCode IM APK
@@ -39,7 +40,8 @@ const val UPDATE_RELEASE_BASIS = "$UPDATE_RELEASE_WURZEL/apk-neuste"
 
 /**
  * Die signierte Beschreibung der neusten Fassung; geschrieben vom Signierjob. Die
- * unsignierte version.json daneben bleibt nur für ältere installierte Fassungen.
+ * unsignierte version.json daneben liest diese App nie; sie bleibt bis zu einem
+ * Stichtag nur für ältere installierte Fassungen (android.yml, Job `release`).
  */
 const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version-signiert.json"
 
@@ -86,6 +88,13 @@ data class UpdateBeschreibung(
      * ([gepruefteBeschreibung]); in einer unsignierten Datei fälschte man sie mit.
      */
     @SerialName("apkSha256") val apkSha256: String = "",
+    /**
+     * Wann signiert wurde und bis wann das gilt (Sekunden seit 1970, UTC). Ohne sie
+     * liesse sich eine ältere, echt signierte Beschreibung unbemerkt wieder
+     * hochladen ([bewerteFrische]); fehlen sie, gilt die Beschreibung als abgelaufen.
+     */
+    @SerialName("ausgestellt") val ausgestellt: Long = 0,
+    @SerialName("gueltigBis") val gueltigBis: Long = 0,
 )
 
 /**
