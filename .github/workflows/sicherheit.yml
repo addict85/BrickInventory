@@ -240,6 +240,8 @@ jobs:
           DATABASE_URL: postgres://zap:zap-nur-im-lauf@localhost:5432/zap
           SESSION_SECRET: zap-lauf-geheimnis-lang-genug-fuer-den-start
           ADMIN_PASSWORD: zap-lauf-verwalter-passwort
+          # Ohne Adresse verweigert der Betrieb den Start; so prüft ZAP auch den Host-Filter mit.
+          APP_BASE_URL: http://localhost:3000
         run: |
           nohup node dist/server.js > "$RUNNER_TEMP/server.log" 2>&1 &
           for i in $(seq 1 90); do
