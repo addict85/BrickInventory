@@ -579,7 +579,7 @@ router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, 
   if (inhaber) {
     await K.rechneWieRegistrierung(password);
     const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(() => 'de'));
-    result = basis ? await sendRegistrierungsVersuchMail(inhaber.email, inhaber.username, sprache)
+    result = basis ? await sendRegistrierungsVersuchMail(inhaber.email, sprache)
       : { success: false, mode: 'ohne_basis' };
   } else if (nameVergeben) {
     await K.rechneWieRegistrierung(password);

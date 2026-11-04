@@ -2,25 +2,28 @@
  * Eine neue E-Mail-Adresse gilt erst nach dem Link an sie (Sicherheitsprüfung
  * Runde 12, N1). Bis dahin bleibt die alte, und die neue belegt nichts: Ihr
  * Inhaber kann sich mit ihr registrieren, und Passwort-vergessen findet über
- * eine unbestätigte Adresse kein Konto. Eine offene Registrierung hält ihre
- * Adresse nur einen Tag. Migration 0096 macht aus dem Altbestand ausstehende
- * Adressen (H5), und der Start meldet die ohne gültigen Link.
+ * eine unbestätigte Adresse kein Konto. Seit Runde 13 (N1) legt auch eine
+ * Registrierung ihre Adresse nur als ausstehend ab; die erste Bestätigung
+ * gewinnt. Migration 0096 macht aus dem Altbestand ausstehende Adressen (H5),
+ * 0097 ebenso aus offenen Registrierungen, und der Start meldet die ohne Link.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  PUT /profile schreibt die Adresse wieder sofort nach users.email → rot:
  *      „eine neue Adresse gilt erst nach dem Link“
- *   B  belegt() immer wahr (jede Registrierung hält ihre Adresse für immer) →
- *      rot: „eine offene Registrierung hält ihre Adresse nur einen Tag“
+ *   B  registriereKonto() schreibt die Adresse wieder nach users.email → rot:
+ *      „die ausstehende Adresse belegt nichts“ und „beim Einlösen …“
  *   C  aktivesKontoNachEmail() ohne `AND email_verified` → rot: „Passwort
  *      vergessen nur für bestätigte Adressen“
- *   D  uebernimmEmailNeu() ohne erneute Vergabeprüfung und ohne Fang von
- *      23505 → rot: „beim Einlösen wird erneut geprüft“ (500 statt 400)
+ *   D  assertLoginAllowed() ohne die Bedingung `registrierung_offen` → rot: „eine
+ *      fremde Registrierung sperrt die Adresse nicht“ (mallory meldet sich an)
  *   E  uebernimmEmailNeu() ohne OHNE_RUECKSETZLINK → rot: „eingelöst gilt die
  *      neue Adresse“ (der Rücksetzlink an die alte Adresse gilt weiter)
  *   F  in 0096 die Bedingung `NOT registrierung_offen` gestrichen → rot:
- *      „Migration 0096 …“ (die offene Registrierung verlor ihre Adresse;
- *      auf frischer DB gemessen, sonst greift zuerst die Prüfsumme)
+ *      „Migration 0096 …“; in 0097 `email = NULL` gestrichen → rot: „Migrationen
+ *      0096 und 0097 …“ (auf frischer DB gemessen, sonst greift die Prüfsumme)
  *   G  meldeAusstehendeAdressen() ohne Abfrage (leere Liste) → rot: dieselbe Prüfung
+ *   H  erneuereEmailTokenWennFrei() ohne `HAVING COUNT(*) = 1` → rot: „ein neuer
+ *      Link nur für die einzige offene Registrierung“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -51,7 +54,7 @@ const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const P = `en${process.pid}`, PASS = 'Passwort-Carol-2026';
 const adr = (n) => `${n}_${P}@example.org`;
-const ZAEHLER = ['register|%', 'register-ziel|%', 'forgot%', 'profil-vergabe%', 'email-bestaetigen|%', '%-bestaetigen|%'];
+const ZAEHLER = ['register|%', 'register-ziel|%', 'forgot%', 'profil-vergabe%', 'email-bestaetigen|%', '%-bestaetigen|%', 'login%', 'bestaetigung%'];
 
 test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }
@@ -85,9 +88,10 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t)
     return { status: r.status, body: await r.json() };
   };
   const carol = () => db.get('SELECT email, email_verified, email_neu, reset_token FROM users WHERE id = $1', [uid]);
-  const konto = (name) => db.get('SELECT id, email FROM users WHERE username = $1', [`${name}_${P}`]);
+  const konto = (name) => db.get('SELECT id, email, email_neu FROM users WHERE username = $1', [`${name}_${P}`]);
   const registriere = (name, email) => ruf('POST', '/register', { username: `${name}_${P}`, email, password: 'Opfer-Passwort-2026!' });
-  const linkAn = (an) => post.filter(m => m.an === an && m.art === 'adresse').at(-1)?.token;
+  const linkAn = (an, art = 'adresse') => post.filter(m => m.an === an && m.art === art).at(-1)?.token;
+  const anmelden = (name) => ruf('POST', '/login', { username: `${name}_${P}`, password: 'Opfer-Passwort-2026!', ohne_token: true });
 
   await t.test('eine neue Adresse gilt erst nach dem Link', async () => {
     const r = await ruf('PUT', '/profile', { username: `carol_${P}`, email: adr('opfer'), password_current: PASS });
@@ -102,7 +106,8 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t)
   await t.test('die ausstehende Adresse belegt nichts', async () => {
     const r = await registriere('opfer', adr('opfer'));
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal((await konto('opfer'))?.email, adr('opfer'), 'der Inhaber bekommt kein Konto');
+    assert.deepEqual(await konto('opfer'), { id: (await konto('opfer')).id, email: null, email_neu: adr('opfer') },
+      'der Inhaber bekommt ein Konto, die Adresse bis zum Link nur ausstehend');
     assert.equal((await carol()).email, adr('alt'));
   });
 
@@ -115,6 +120,9 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t)
   });
 
   await t.test('beim Einlösen wird erneut geprüft', async () => {
+    const opfer = await ruf('POST', '/email-bestaetigen', { token: linkAn(adr('opfer'), 'registrierung') });
+    assert.equal(opfer.status, 200, 'die erste Bestätigung gewinnt');
+    assert.equal((await konto('opfer')).email, adr('opfer'));
     const r = await ruf('POST', '/email-bestaetigen', { token: linkAn(adr('opfer')) });
     assert.deepEqual([r.status, r.body.code], [400, 'email_vergeben'], JSON.stringify(r.body));
     const c = await carol();
@@ -130,18 +138,39 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t)
     assert.deepEqual([nochmal.status, nochmal.body.code], [400, 'bestaetigungslink_ungueltig']);
   });
 
-  await t.test('eine offene Registrierung hält ihre Adresse nur einen Tag', async () => {
-    assert.equal((await registriere('eve', adr('frist'))).status, 200);
-    assert.equal((await registriere('zweit', adr('frist'))).status, 200);
-    assert.equal(await konto('zweit'), undefined, 'eine frische offene Registrierung hält ihre Adresse');
-    assert.ok(post.some(m => m.an === adr('frist') && m.art === 'versuch'));
-    await db.run("UPDATE users SET created_at = NOW() - INTERVAL '25 hours' WHERE username = $1", [`eve_${P}`]);
-    assert.equal((await registriere('zweit', adr('frist'))).status, 200);
-    assert.equal((await konto('zweit'))?.email, adr('frist'));
-    assert.equal(await konto('eve'), undefined, 'die verfallene Registrierung bleibt stehen');
+  const bremsenLoesen = () => db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register%' OR key LIKE 'login%'");
+  await t.test('eine fremde Registrierung sperrt die Adresse nicht', async () => {
+    await bremsenLoesen();
+    assert.equal((await registriere('mallory1', adr('ziel'))).status, 200);
+    await db.run("UPDATE users SET created_at = NOW() - INTERVAL '25 hours' WHERE username = $1", [`mallory1_${P}`]);
+    assert.equal((await registriere('mallory2', adr('ziel'))).status, 200);
+    assert.equal((await registriere('ziel', adr('ziel'))).status, 200);
+    assert.deepEqual(await konto('ziel'), { id: (await konto('ziel')).id, email: null, email_neu: adr('ziel') });
+    assert.ok(!post.some(m => m.an === adr('ziel') && m.art === 'versuch'), 'eine unbestätigte Registrierung gilt als Inhaber');
+    const login = await anmelden('mallory2');
+    assert.deepEqual([login.status, login.body.code], [401, 'anmeldedaten_ungueltig'], 'eine offene Registrierung meldet sich an');
+    assert.equal((await ruf('POST', '/email-bestaetigen', { token: linkAn(adr('ziel'), 'registrierung') })).status, 200);
+    assert.equal((await konto('ziel')).email, adr('ziel'));
+    assert.equal((await anmelden('ziel')).status, 200);
+    await bremsenLoesen();
+    const spaeter = await registriere('mallory3', adr('ziel'));
+    assert.equal(spaeter.status, 200);
+    assert.equal(await konto('mallory3'), undefined, 'nach der Bestätigung ist die Adresse vergeben');
+    assert.equal(post.filter(m => m.an === adr('ziel') && m.art === 'versuch').length, 1);
   });
 
-  await t.test('Migration 0096 macht den Altbestand ausstehend, der Start meldet ihn', async () => {
+  await t.test('ein neuer Link nur für die einzige offene Registrierung', async () => {
+    await bremsenLoesen();
+    const erneut = async (email) => { const vorher = post.length; await ruf('POST', '/bestaetigung-erneut', { email }); return post.slice(vorher); };
+    assert.equal((await registriere('allein', adr('allein'))).status, 200);
+    await db.run("UPDATE users SET email_neu_bis = NOW() + INTERVAL '1 hour' WHERE username = $1", [`allein_${P}`]);
+    assert.deepEqual((await erneut(adr('allein'))).map(m => [m.an, m.art]), [[adr('allein'), 'registrierung']]);
+    assert.equal((await registriere('doppel', adr('allein'))).status, 200);
+    await db.run("UPDATE users SET email_neu_bis = NOW() + INTERVAL '1 hour' WHERE username LIKE $1", [`%_${P}`]);
+    assert.deepEqual(await erneut(adr('allein')), [], 'bei zwei offenen Registrierungen ginge ein fremder Link mit');
+  });
+
+  await t.test('Migrationen 0096 und 0097 machen den Altbestand ausstehend, der Start meldet ihn', async () => {
     const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0096-email-neu.sql'), 'utf8');
     const c = await db.pool.connect();
     try {
@@ -159,6 +188,19 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async (t)
       assert.equal(z[ids.offen].email, adr('offen'), 'eine offene Registrierung behält ihre Adresse');
       assert.equal(z[ids.fest].email, adr('fest'));
     } finally { await c.query('ROLLBACK'); c.release(); }
+    const c2 = await db.pool.connect();
+    try {
+      await c2.query('BEGIN');
+      const m97 = fs.readFileSync(path.join(ROOT, 'db/migrations/0097-registrierung-ausstehend.sql'), 'utf8');
+      const ids = (await c2.query(`INSERT INTO users (username, password_hash, email, email_verified, registrierung_offen,
+        verification_token, token_expires) VALUES ($1, 'x', $2, false, true, 'h4', NOW() + INTERVAL '2 hours'),
+        ($3, 'x', $4, true, false, NULL, NULL) RETURNING id`, [`reg_${P}`, adr('reg'), `best_${P}`, adr('best')])).rows.map(r => r.id);
+      await c2.query(m97);
+      const z = (await c2.query(`SELECT email, email_neu, email_neu_token, email_neu_bis IS NOT NULL AS bis, verification_token
+        FROM users WHERE id = ANY($1) ORDER BY id`, [ids])).rows;
+      assert.deepEqual(z, [{ email: null, email_neu: adr('reg'), email_neu_token: 'h4', bis: true, verification_token: null },
+        { email: adr('best'), email_neu: null, email_neu_token: null, bis: false, verification_token: null }], 'Migration 0097 …');
+    } finally { await c2.query('ROLLBACK'); c2.release(); }
     const h5 = (await db.get(`INSERT INTO users (username, password_hash, email_neu) VALUES ($1, 'x', $2) RETURNING id`,
       [`h5_${P}`, adr('h5')])).id;
     const { meldeAusstehendeAdressen } = _req('src/konto/konten.js');

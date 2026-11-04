@@ -14,7 +14,8 @@
 #   ./scripts/backup.sh                  → nach ./backups/
 #   ./scripts/backup.sh /pfad/zum/ziel   → dorthin
 #
-# Cron-Beispiel (täglich um 3 Uhr):
+# Cron-Beispiel (täglich um 3 Uhr, in der crontab von root – der Dienst schreibt
+# nur für sich lesbar, siehe UPGRADE.md Abschnitt 39):
 #   0 3 * * * cd /opt/brickinventory && ./scripts/backup.sh >> backup.log 2>&1
 #
 # Eine Sicherung ist ein GEHEIMNIS: Der Dump enthält alle Passwort-Hashes und,
@@ -77,6 +78,18 @@ fertig() {
   echo "[backup] gesichert → $1"
 }
 
+# Der Dienst legt seine Dateien nur für sich lesbar an (umask 077). Unter einem
+# anderen Benutzer fehlten sie im Archiv; das fällt erst beim Wiederherstellen auf.
+if [ -d data ]; then
+  UNLESBAR=$( { find data \( -path data/img_proxy_cache -o -path data/.datenschluessel \) -prune -o -type f -print 2>"$KLAR/find" \
+                | while IFS= read -r f; do [ -r "$f" ] || { echo "$f"; break; }; done; sed -n 1p "$KLAR/find"; } | sed -n 1p)
+  if [ -n "$UNLESBAR" ]; then
+    echo "[backup] FEHLER: data/ ist nicht vollständig lesbar ($UNLESBAR) — nichts gesichert." >&2
+    echo "[backup]   Als root oder mit der UID des Dienstes ausführen (UPGRADE.md, Abschnitt 39)." >&2
+    exit 1
+  fi
+fi
+
 TARGET="${1:-./backups}"
 STAMP="$(date +%Y-%m-%d_%H%M)"
 KEEP_DAYS="${BACKUP_KEEP_DAYS:-30}"
@@ -122,8 +135,13 @@ echo "[backup] Laufzeitdaten → $DATA_DATEI"
 # img_proxy_cache ist ein reiner Cache; wer die Bilder (data/images) nicht
 # mitsichern will, nimmt sie ebenfalls in die Ausschlussliste auf.
 TEIL="$DATA_DATEI.teil"
-{ tar czf - --exclude='data/img_proxy_cache' --exclude='data/.datenschluessel' data 2>/dev/null \
-    || echo "[backup] Warnung: data/ nicht vollständig gesichert" >&2; } | schreibe "$TEIL"
+# Ohne pipefail trägt eine Datei den Status von tar aus der Pipe heraus.
+{ tar czf - --exclude='data/img_proxy_cache' --exclude='data/.datenschluessel' data || echo $? > "$KLAR/tar"; } \
+  | schreibe "$TEIL"
+if [ -s "$KLAR/tar" ]; then
+  echo "[backup] FEHLER: tar endete mit Status $(cat "$KLAR/tar") — data/ nicht gesichert." >&2
+  exit 1
+fi
 fertig "$DATA_DATEI"
 
 SCHLUESSEL=schluessel/datenschluessel

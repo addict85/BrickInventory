@@ -25,6 +25,11 @@
  *      ohne Endmarke hinterlässt nichts am Ziel“
  *   I  in restore.sh den Vorlauf gegen Backslash-Zeilen gestrichen → rot:
  *      „restore.sh weist psql-Befehle im Dump ab“
+ * Gegenproben (Runde 13, H4; 04.11.2026 gemessen, je einzeln):
+ *   J  in backup.sh `|| echo $? > "$KLAR/tar"` gestrichen → rot: „ein tar-Fehler
+ *      bricht ab …“ (Exit 0, Archiv am Ziel)
+ *   K  in backup.sh die Prüfung UNLESBAR gestrichen → rot: „eine unlesbare Datei
+ *      unter data/ …“ (tar meldete den Fehler erst nach dem Dump)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -180,4 +185,37 @@ test('restore.sh weist psql-Befehle im Dump ab', (t) => {
     assert.ok(!fs.existsSync(path.join(a.tmp, 'eingespielt.sql')), 'psql bekam den Dump');
   }
   assert.ok(!fs.existsSync(geknackt));
+});
+
+test('ein tar-Fehler bricht ab und hinterlässt kein Archiv', (t) => {
+  const a = aufbau(t);
+  fs.writeFileSync(path.join(a.tmp, 'bin', 'tar'), "#!/bin/sh\nprintf 'halb'\necho 'tar: data/x: Cannot open' >&2\nexit 2\n", { mode: 0o755 });
+  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: 'ja' });
+  assert.notEqual(r.status, 0, 'ein tar-Fehler bricht ab …');
+  assert.match(r.stderr, /tar endete mit Status 2/);
+  assert.deepEqual(fs.readdirSync(a.ziel).filter(n => n.startsWith('data_')), [], 'ein halbes Archiv liegt am Ziel');
+});
+
+test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', (t) => {
+  const a = aufbau(t);
+  const geheim = path.join(a.arbeit, 'data', 'uploads', 'fremd.pdf');
+  fs.writeFileSync(geheim, 'nur für den Dienst', { mode: 0o600 });
+  let r;
+  if (process.getuid() === 0) {
+    // root liest alles: als „nobody“ ausführen, die Datei bleibt bei root.
+    if (spawnSync('setpriv', ['--version']).status !== 0) { t.skip('setpriv fehlt'); return; }
+    fs.chmodSync(a.tmp, 0o755);
+    execFileSync('chown', ['-R', '65534:65534', a.tmp]);
+    fs.chownSync(geheim, 0, 0);
+    r = spawnSync('setpriv', ['--reuid=65534', '--regid=65534', '--clear-groups', 'sh', path.join(ROOT, 'scripts', 'backup.sh'), a.ziel],
+      { cwd: a.arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${path.join(a.tmp, 'bin')}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja' } });
+  } else {
+    fs.chmodSync(geheim, 0o000);
+    t.after(() => fs.chmodSync(geheim, 0o600));
+    r = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: 'ja' });
+  }
+  assert.notEqual(r.status, 0, 'eine unlesbare Datei unter data/ …');
+  assert.match(r.stderr, /nicht vollständig lesbar \(data\/uploads\/fremd\.pdf\)/, r.stderr);
+  assert.match(r.stderr, /root oder mit der UID des Dienstes/);
+  assert.deepEqual(fs.existsSync(a.ziel) ? fs.readdirSync(a.ziel) : [], [], 'vor dem Dump abbrechen');
 });

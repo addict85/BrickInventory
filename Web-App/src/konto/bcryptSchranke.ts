@@ -1,4 +1,5 @@
 import os from 'node:os';
+import { neuerPool } from './bcryptPool';
 
 /** bcrypt mit 12 Runden kostet je Lauf rund 270 ms Rechenzeit. Die Bremsen je
  * Adresse und Konto helfen nicht gegen viele Adressen; diese Schranke hält die
@@ -43,3 +44,11 @@ export function neueSchranke(gleichzeitig: number, wartendHoechstens: number, wa
 
 const KERNE = Math.max(2, os.availableParallelism());
 export const bcryptSchranke = neueSchranke(KERNE, KERNE * 8, 5000);
+export const bcryptPool = neuerPool(KERNE);
+
+export function passwortPasst(passwort: unknown, hash: string, vorrang = false): Promise<boolean> {
+  return bcryptSchranke.mit(() => bcryptPool.vergleiche(String(passwort), hash), vorrang);
+}
+export function hashePasswort(passwort: unknown, runden: number): Promise<string> {
+  return bcryptSchranke.mit(() => bcryptPool.hash(String(passwort), runden));
+}

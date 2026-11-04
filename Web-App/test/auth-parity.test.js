@@ -42,11 +42,13 @@ test('deaktiviertes Konto wird abgelehnt — egal ob 0 oder false', () => {
   }
 });
 
-test('unbestätigte E-Mail wird abgelehnt, Admins ausgenommen', () => {
-  const r = assertLoginAllowed({ is_active: 1, email_verified: 0, email: 'a@b.c', is_admin: 0 });
+test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
+  const r = assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: true });
   assert.equal(r?.status, 403);
   assert.equal(r?.unverified, true);
-  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: 'a@b.c', is_admin: 1 }), null);
+  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }), null);
+  assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }), null,
+    'ein vom Verwalter angelegtes Konto ohne Adresse');
 });
 
 /**
@@ -161,7 +163,7 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
 test('bcrypt-Kostenfaktor ist überall derselbe', () => {
   assert.ok(BCRYPT_ROUNDS >= 12);
   const auth = ['routes/auth.ts', 'src/konto/konten.ts'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
-  const literals = [...auth.matchAll(/bcrypt\.hash\([^,]+,\s*([^)]+)\)/g)].map(m => m[1].trim());
+  const literals = [...auth.matchAll(/(?:bcrypt\.hash|hashePasswort)\([^,]+,\s*([^)]+)\)/g)].map(m => m[1].trim());
   assert.deepEqual([...new Set(literals)], ['BCRYPT_ROUNDS'],
     `bcrypt.hash wird mit unterschiedlichen Kosten aufgerufen: ${literals.join(', ')}`);
 });

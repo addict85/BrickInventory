@@ -10,6 +10,16 @@
  * routes/api_v1/sets.ts zurück an ihren alten Platz in routes/sets.ts → rot:
  * „ein Pfadwort als Setnummer“ (die Antwort kam vom Preisverlauf).
  *
+ * Ein Platzhalter („Set <Nummer>“ ohne Jahr, Thema, Teile), den addSet ohne
+ * Katalogtreffer anlegt, verrät nur, dass irgendein Konto die Nummer hat
+ * (Sicherheitsprüfung Runde 13, H3). Gegenproben (04.11.2026 gemessen):
+ *   A  in GET /sets/info die Absage für `platzhalter` gestrichen → rot: „ein
+ *      fremder Platzhalter …“
+ *   B  setStamm() liefert `platzhalter` immer wahr → rot: „eine gewöhnliche
+ *      Nummer“, „ein Pfadwort …“ (der Katalogeintrag gilt nicht mehr)
+ *   C  die Absage ohne Blickfeld (jeder Platzhalter gilt als fremd) → rot: „ein
+ *      eigener Platzhalter …“
+ *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
@@ -31,11 +41,14 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
   const mc = await db.pool.connect();
   try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
   const NAME = `setinfo-${process.pid}`;
-  await db.run('DELETE FROM users WHERE username=$1', [NAME]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}-f`]]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  const nummern = ['price-history-1', `${process.pid}-1`];
-  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1, 'Pfadwort'), ($2, 'Gewöhnlich')
+  const fremdId = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`${NAME}-f`])).id;
+  const [fremd, eigen, nie] = [`${process.pid}7-1`, `${process.pid}8-1`, `${process.pid}9-1`];
+  const nummern = ['price-history-1', `${process.pid}-1`, fremd, eigen];
+  await db.run(`INSERT INTO set_catalog (set_number, name) VALUES ($1, 'Pfadwort'), ($2, 'Gewöhnlich'), ($3, 'Set ' || $3), ($4, 'Set ' || $4)
                 ON CONFLICT (set_number) DO UPDATE SET name = EXCLUDED.name`, nummern);
+  await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [fremdId, fremd, uid, eigen]);
   // Dieselbe Reihenfolge wie server.ts: zuerst der v1-Router, dann routes/sets.ts.
   const { base } = testServer(_req, {
     sitzung: { userId: uid, username: NAME, isAdmin: false },
@@ -52,9 +65,21 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
       assert.equal(r.set_number, 'price-history-1', JSON.stringify(r));
       assert.equal(r.name, 'Pfadwort');
     });
+    const info = async (sn) => (await fetch(`${base}/api/v1/sets/info/${sn}`)).json();
+    await t.test('ein fremder Platzhalter antwortet wie eine nie erfasste Nummer', async () => {
+      assert.deepEqual(await info(nie), { success: true, set_number: nie, name: nie, im_katalog: false });
+      assert.deepEqual(await info(fremd), { success: true, set_number: fremd, name: fremd, im_katalog: false });
+    });
+    await t.test('ein eigener Platzhalter und ein Katalogeintrag gelten', async () => {
+      const e = await info(eigen);
+      assert.deepEqual([e.name, e.im_katalog], [`Set ${eigen}`, true], 'ein eigener Platzhalter …');
+      const k = await info(`${process.pid}-1`);
+      assert.deepEqual([k.name, k.im_katalog, 'platzhalter' in k], ['Gewöhnlich', true, false], 'ein Katalogeintrag …');
+    });
   } finally {
+    await db.run('DELETE FROM sets WHERE set_number = ANY($1)', [nummern]);
     await db.run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [nummern]);
-    await db.run('DELETE FROM users WHERE id=$1', [uid]);
+    await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, fremdId]]);
     await db.pool.end().catch(() => {});
   }
 });

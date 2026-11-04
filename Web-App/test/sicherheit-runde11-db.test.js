@@ -79,6 +79,9 @@ test('zehnte Sicherheitsprüfung am echten Server', { concurrency: 1, timeout: 2
   const alice = await lege(namen[0], true), bob = await lege(namen[1], true);
   const MAILTOKEN = crypto.randomBytes(32).toString('hex');
   const unbestaetigt = await lege(namen[2], false, crypto.createHash('sha256').update(MAILTOKEN).digest('hex'));
+  // Wie POST /register seit Runde 13: Adresse und Link nur ausstehend.
+  await db.run(`UPDATE users SET email_neu = email, email_neu_token = verification_token, email_neu_bis = token_expires,
+    email = NULL, verification_token = NULL, token_expires = NULL, registrierung_offen = true WHERE id = $1`, [unbestaetigt]);
   t.after(async () => {
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1', [alice]);
     await db.run('DELETE FROM sets WHERE user_id = $1', [alice]);

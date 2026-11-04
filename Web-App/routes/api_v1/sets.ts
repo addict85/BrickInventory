@@ -46,11 +46,14 @@ const router = vertragsRouter();
 
 router.get('/sets/info/:setNumber', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/info/:setNumber'>) => {
   const n = mitVersion(pfadParam(req, 'setNumber'));
-  // Ohne Katalogzeile zeigt die Oberfläche die Nummer als Namen.
-  const row = await setInfo(n);
-  if (row?.image_local && !await setBildSichtbar(req.apiUser.user_id, n)) row.image_local = null;
-  res.json(row ? { success: true, set_number: n, ...row, name: row.name || n, im_katalog: true }
-    : { success: true, set_number: n, name: n, im_katalog: false });
+  const stamm = await setInfo(n);
+  const imBlickfeld = !!(stamm?.image_local || stamm?.platzhalter) && await setBildSichtbar(req.apiUser.user_id, n);
+  // Ein fremder Platzhalter antwortet wie eine nie erfasste Nummer; die Oberfläche zeigt dann die Nummer als Namen.
+  if (!stamm || (stamm.platzhalter && !imBlickfeld)) return res.json({ success: true, set_number: n, name: n, im_katalog: false });
+  const row = { ...stamm };
+  delete row.platzhalter;
+  if (!imBlickfeld) row.image_local = null;
+  res.json({ success: true, set_number: n, ...row, name: row.name || n, im_katalog: true });
 });
 
 /** Nur das Blickfeld des fragenden Kontos (eigenes Konto oder Haushalt).

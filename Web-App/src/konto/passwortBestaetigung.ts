@@ -1,5 +1,4 @@
-import bcrypt from 'bcryptjs';
-import { bcryptSchranke, BcryptUeberlast } from './bcryptSchranke';
+import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
 import { bestaetigungGesperrt, bestaetigungFehlgeschlagen, bestaetigungGelungen, meldeAnmeldeereignis } from './loginLimiter';
 import type { Bremse } from './loginLimiter';
 import type { FehlerCode } from '../infra/fehlerTexte';
@@ -40,7 +39,7 @@ export async function pruefeBestaetigung(uid: number, zugang: string, passwort: 
   const pw = await gebremst('passwort', uid, zugang, async () => {
     const u = await zugaenge.passwortHash(uid);
     return !!u && typeof passwort === 'string' && passwort !== ''
-      && bcryptSchranke.mit(() => bcrypt.compare(passwort, u.password_hash));
+      && passwortPasst(passwort, u.password_hash);
   }, 'aktuelles_passwort_falsch').catch((e: unknown) => {
     if (e instanceof BcryptUeberlast) return { status: 503, code: 'server_ausgelastet' } as BestaetigungsAbsage;
     throw e;

@@ -7,7 +7,7 @@ import * as db from '../../db/database';
 import * as pgNotify from '../../db/pgNotify';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import { bcryptSchranke, BcryptUeberlast } from './bcryptSchranke';
+import { passwortPasst, BcryptUeberlast } from './bcryptSchranke';
 import { checkLoginAllowed, bekannteAnmeldung, gibAnmeldeplatzFrei, recordLoginFailure, recordLoginSuccess, meldeAnmeldeereignis, MAX_ATTEMPTS } from './loginLimiter';
 import type { Anmeldeereignis } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
@@ -56,6 +56,7 @@ export interface KontoZustand {
   email_verified: boolean;
   email?: string | null;
   is_admin: boolean;
+  registrierung_offen?: boolean;
   [k: string]: unknown;
 }
 
@@ -69,10 +70,7 @@ export async function verifiziereEmailToken(token: unknown): Promise<{ ok: boole
   if (token === undefined || token === null || String(token).trim() === '') {
     return { ok: false, grund: 'fehlt' };
   }
-  const hash = hashToken(String(token));
-  const user = await repo.kontoZuEmailToken(hash);
-  if (user) { await repo.bestaetigeEmail(user.id); return { ok: true, userId: user.id }; }
-  const neu = await kontenRepo.uebernimmEmailNeu(hash);
+  const neu = await kontenRepo.uebernimmEmailNeu(hashToken(String(token)));
   if (!neu) return { ok: false, grund: 'ungueltig' };
   return neu.ok ? { ok: true, userId: neu.id } : { ok: false, grund: 'vergeben', userId: neu.id };
 }
@@ -268,7 +266,7 @@ export function assertLoginAllowed(user: KontoZustand):
     { status: number; code: FehlerCode; unverified?: boolean } | null {
   if (!user.is_active)
     return { status: 403, code: 'konto_deaktiviert' };
-  if (!user.email_verified && user.email && !user.is_admin)
+  if (user.registrierung_offen === true && !user.is_admin)
     return { status: 403, code: 'email_nicht_bestaetigt', unverified: true };
   return null;
 }
@@ -326,7 +324,7 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   // hier zuletzt angemeldet hat, wartet unter Last vorne: Eine Flut fremder Adressen sperrt ihn nicht aus.
   const vorrang = await bekannteAnmeldung(ip, name);
   let passtDasPasswort: boolean;
-  try { passtDasPasswort = await bcryptSchranke.mit(() => bcrypt.compare(String(password), user?.password_hash || DUMMY_HASH), vorrang); }
+  try { passtDasPasswort = await passwortPasst(password, user?.password_hash || DUMMY_HASH, vorrang); }
   catch (e) {
     if (!(e instanceof BcryptUeberlast)) throw e;
     await gibAnmeldeplatzFrei(ip, name);
@@ -406,12 +404,21 @@ export interface TokenOptionen {
 export async function createToken(userId: number, label = 'Android App', dauerhaft = false,
                            festeTage: number | null = null, o: TokenOptionen = {}): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
+  const hash = hashToken(token);
   await repo.legeTokenAn({
-    hash: hashToken(token), userId, label, scope: o.scope === 'voll' ? 'voll' : 'app', bereich: ipBereich(o.ip),
+    hash, userId, label, scope: o.scope === 'voll' ? 'voll' : 'app', bereich: ipBereich(o.ip),
     art: !dauerhaft ? 'kurz' : festeTage === UNBEGRENZT ? 'unbegrenzt' : 'gleitend',
     leerlaufTage: TOKEN_IDLE_DAYS, festeTage: festeTage && festeTage > 0 ? festeTage : null,
   });
+  if (await repo.kappeTokens(userId, hash, ZUGAENGE_HOECHSTENS - 1)) leereTokenCache();
   return token;
+}
+
+/** Je Konto und Art (Sitzung, Token): Anmelden darf die Tabellen nicht beliebig füllen.
+ * Es fällt der am längsten unbenutzte Zugang. */
+export const ZUGAENGE_HOECHSTENS = 50;
+export function begrenzeSitzungen(userId: number, eigene: string): Promise<number> {
+  return repo.kappeSitzungen(userId, eigene, ZUGAENGE_HOECHSTENS - 1);
 }
 
 export interface Tausch {
