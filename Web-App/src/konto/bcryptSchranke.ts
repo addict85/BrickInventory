@@ -49,6 +49,6 @@ export const bcryptPool = neuerPool(KERNE);
 export function passwortPasst(passwort: unknown, hash: string, vorrang = false): Promise<boolean> {
   return bcryptSchranke.mit(() => bcryptPool.vergleiche(String(passwort), hash), vorrang);
 }
-export function passwortHash(passwort: unknown, runden: number): Promise<string> {
+export function hashePasswort(passwort: unknown, runden: number): Promise<string> {
   return bcryptSchranke.mit(() => bcryptPool.hash(String(passwort), runden));
 }

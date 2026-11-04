@@ -1,7 +1,7 @@
 /** Hier wird nur aus dem Request gelesen und in die Antwort geschrieben; die
  * Regeln stehen in src/konto/auth.ts und loginLimiter.ts. */
 import type { Request, Response, NextFunction } from 'express';
-import { pruefeToken, rotationFaellig, pruefeAnmeldedaten, kappeSitzungen } from '../auth';
+import { pruefeToken, rotationFaellig, pruefeAnmeldedaten, begrenzeSitzungen } from '../auth';
 import type { TokenPruefung, AnmeldeErgebnis } from '../auth';
 import { zaehleAnfrage } from '../loginLimiter';
 import { pruefeBestaetigung, pruefeCodeBestaetigung } from '../passwortBestaetigung';
@@ -53,7 +53,8 @@ export async function establishSession(req: Request, data: { userId: number; use
       if (err) return reject(err);
       Object.assign(req.session, data, { angemeldetAm: Date.now(), sitzungsVersion });
       req.session.save((e2?: Error) => (e2 ? reject(e2)
-        : kappeSitzungen(data.userId, req.sessionID).then(() => resolve(undefined), reject)));
+        : begrenzeSitzungen(data.userId, req.sessionID).catch(meldeUndLiefere('anmeldung:sitzungen-begrenzen', 0))
+          .then(() => resolve(undefined))));
     });
   });
 }

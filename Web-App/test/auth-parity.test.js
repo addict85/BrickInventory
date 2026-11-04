@@ -163,7 +163,7 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
 test('bcrypt-Kostenfaktor ist überall derselbe', () => {
   assert.ok(BCRYPT_ROUNDS >= 12);
   const auth = ['routes/auth.ts', 'src/konto/konten.ts'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
-  const literals = [...auth.matchAll(/(?:bcrypt\.hash|passwortHash)\([^,]+,\s*([^)]+)\)/g)].map(m => m[1].trim());
+  const literals = [...auth.matchAll(/(?:bcrypt\.hash|hashePasswort)\([^,]+,\s*([^)]+)\)/g)].map(m => m[1].trim());
   assert.deepEqual([...new Set(literals)], ['BCRYPT_ROUNDS'],
     `bcrypt.hash wird mit unterschiedlichen Kosten aufgerufen: ${literals.join(', ')}`);
 });

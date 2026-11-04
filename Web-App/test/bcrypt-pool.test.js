@@ -17,6 +17,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { monitorEventLoopDelay } = require('node:perf_hooks');
+const os = require('node:os');
 
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
@@ -58,7 +59,7 @@ test('der Hauptthread bleibt ansprechbar', async (t) => {
 });
 
 test('ohne Arbeiterdatei rechnet der Hauptthread', async () => {
-  const pool = neuerPool(2, path.join(ROOT, 'gibt-es-nicht.js'));
+  const pool = neuerPool(2, path.join(os.tmpdir(), `bcrypt-arbeiter-${process.pid}-fehlt.js`));
   assert.equal(await pool.vergleiche('a', bcrypt.hashSync('a', 4)), true);
   assert.equal(pool.stand().hauptthread, true);
 });

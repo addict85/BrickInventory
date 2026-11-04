@@ -417,7 +417,7 @@ export async function createToken(userId: number, label = 'Android App', dauerha
 /** Je Konto und Art (Sitzung, Token): Anmelden darf die Tabellen nicht beliebig füllen.
  * Es fällt der am längsten unbenutzte Zugang. */
 export const ZUGAENGE_HOECHSTENS = 50;
-export function kappeSitzungen(userId: number, eigene: string): Promise<number> {
+export function begrenzeSitzungen(userId: number, eigene: string): Promise<number> {
   return repo.kappeSitzungen(userId, eigene, ZUGAENGE_HOECHSTENS - 1);
 }
 

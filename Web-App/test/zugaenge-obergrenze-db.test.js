@@ -5,7 +5,7 @@
  * Vorrang in der bcrypt-Schranke (weiche Grenze), gesperrt wird er nicht.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  establishSession() ohne kappeSitzungen() → rot: „höchstens 50 Sitzungen …“
+ *   A  establishSession() ohne begrenzeSitzungen() → rot: „höchstens 50 Sitzungen …“
  *   B  in kappeSitzungen() `ORDER BY expire ASC` → rot: dieselbe Prüfung (die
  *      zuletzt benutzten fielen)
  *   C  createToken() ohne kappeTokens() → rot: „höchstens 50 Tokens …“
