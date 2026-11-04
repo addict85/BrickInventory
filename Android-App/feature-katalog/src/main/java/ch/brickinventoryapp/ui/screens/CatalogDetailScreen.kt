@@ -11,7 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Check
@@ -34,6 +34,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import ch.brickinventoryapp.ui.zweiSpaltig
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
@@ -87,13 +92,19 @@ fun CatalogDetailScreen(
     // der Komposition wertet Compose bei einer Änderung neu aus.
     val keineAppText = stringResource(R.string.common_no_app_to_open)
 
+    val rollen = rememberScrollState()
+    // Wo die Überschrift im gerollten Inhalt endet. Erst wenn sie unter der App-Leiste
+    // verschwunden ist, steht der Name oben — vorher stand er zweimal da.
+    var kopfUnten by remember { mutableFloatStateOf(Float.MAX_VALUE) }
+    val titelOben by remember { derivedStateOf { rollen.value > kopfUnten } }
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(detail?.name ?: setNumber, maxLines = 1) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back)) }
-                }
+                title = {
+                    if (titelOben) Text(detail?.name ?: setNumber, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                },
+                navigationIcon = { ch.brickinventoryapp.ui.components.ZurueckKnopf(onBack) }
             )
         }
     ) { padding ->
@@ -101,127 +112,63 @@ fun CatalogDetailScreen(
             isLoading || detail == null -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
                 CircularProgressIndicator()
             }
-            else -> Column(
-                Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(Abstaende.gross),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                // Bild
-                Card(shape = Formen.karte, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                    Box(Modifier.fillMaxWidth().height(220.dp), Alignment.Center) {
-                        // Über den Server-Proxy — volle Auflösung, da es hier
-                        // keinen separaten Zoom gibt (anders als beim
-                        // Set-Detail-Dialog des eigenen Bestands).
-                        val fullUrl = remember(detail.setNumber, serverUrl) {
-                            // Nutzerunabhängige, bereits heruntergeladene
-                            // Datei bevorzugen — derselbe Server-Check wie
-                            // in der Katalog-Liste.
-                            resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)
+            else -> BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
+                // Über den Server-Proxy — volle Auflösung; die heruntergeladene Datei geht
+                // vor, derselbe Server-Check wie in der Katalog-Liste.
+                val fullUrl = remember(detail.setNumber, serverUrl) {
+                    resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)
+                }
+                // Antippen öffnet den Zoom wie im Set-Detail. Weisser Bildgrund, im Dunkeln
+                // gedämpft — wie das Set-Detail, statt einer grellen Fläche.
+                val bild: @Composable (Modifier) -> Unit = { m ->
+                    ch.brickinventoryapp.ui.components.ProduktBild(
+                        model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
+                        imageLoader = imageLoader,
+                        contentDescription = detail.name,
+                        modifier = m.clip(Formen.karte)
+                            .clickable(enabled = fullUrl != null, role = Role.Button) { showImageZoom = true },
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+                        ersatzGroesse = 64.dp,
+                        bildgrund = true,
+                        innenAbstand = Abstaende.mittel,
+                    )
+                }
+                val angaben: @Composable ColumnScope.() -> Unit = {
+                    KatalogAngaben(
+                        detail = detail,
+                        onKopf = { kopfUnten = it },
+                        onMerken = { showWishDialog = true },
+                        onAufnehmen = { showAddDialog = true },
+                        onOpenInGallery = onOpenInGallery,
+                        onBrickLink = { url ->
+                            // Nicht still schlucken: Ist kein Browser da, passierte sonst nichts.
+                            if (!ch.brickinventoryapp.util.oeffneExtern(ctx, url)) {
+                                android.widget.Toast.makeText(ctx, keineAppText,
+                                    android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                    )
+                }
+                // Ab „expanded“ zwei Spalten wie das Set-Detail: Bild links, Angaben und
+                // Handlungen rechts. Einspaltig liefen Tabelle und Knöpfe über die ganze
+                // Tablet-Breite, „Jahr“ stand eine Armlänge von „2022“.
+                if (zweiSpaltig(maxWidth.value)) {
+                    Row(Modifier.fillMaxSize().padding(horizontal = Abstaende.gross),
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
+                        Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross)) {
+                            bild(Modifier.fillMaxWidth().aspectRatio(BILD_VERHAELTNIS))
                         }
-                        // Antippen öffnet den Zoom — gleiches Verhalten wie im
-                        // Set-Detail des eigenen Bestands.
-                        ch.brickinventoryapp.ui.components.ProduktBild(
-                            model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(true).build() },
-                            imageLoader = imageLoader,
-                            contentDescription = detail.name,
-                            modifier = Modifier.fillMaxSize().padding(10.dp).clip(MaterialTheme.shapes.medium)
-                                .clickable(enabled = fullUrl != null, role = Role.Button) { showImageZoom = true },
-                            contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                            ersatzGroesse = 64.dp,
-                        )
+                        Column(
+                            Modifier.weight(1f).fillMaxHeight().verticalScroll(rollen).padding(vertical = Abstaende.gross),
+                            verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
+                        ) { angaben() }
                     }
-                }
-
-                // Titel + Nummer
-                Column {
-                    Text(detail.name ?: "—", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                    Text(detail.setNumber, color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                }
-
-                // Metadaten
-                Card(shape = Formen.karte, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                        CatalogDetailRow(stringResource(R.string.catalog_detail_year),   detail.year?.toString() ?: "—")
-                        CatalogDetailRow(stringResource(R.string.catalog_detail_theme),  detail.themeName ?: "—")
-                        CatalogDetailRow(stringResource(R.string.catalog_detail_parts),  detail.numParts?.takeIf { it > 0 }?.toString() ?: "—")
-                        CatalogDetailRow(stringResource(R.string.catalog_detail_minifigs), if (detail.minifigs > 0) detail.minifigs.toString() else "—")
-                        if (detail.owned) {
-                            CatalogDetailRow(stringResource(R.string.catalog_owned), "✓ ×${detail.ownedQuantity}")
-                        }
-                    }
-                }
-
-                // ── Aktionen ──
-                //
-                // BrickLink zuerst, darunter die beiden Erfassungsknöpfe nebeneinander, beide mit
-                // Plus: oben der Weg nach draussen, unten die zwei Griffe, die hier etwas anlegen.
-                //
-                // Die Kauf-URL kommt fertig vom Server — für Gear und Bücher wären Parameter und
-                // Nummer anders als bei Sets. Der Rückfall auf die eigene Bauweise bleibt für
-                // ältere Server. Der Knopf wird nie ausgeblendet: Bei Sammelminifiguren führt
-                // BrickLink eine Nummer, die sich nicht herleiten lässt (71021-1 → col325); dann
-                // liefert der Server eine Such-URL und exact = false.
-                val bl = detail.bricklink
-                val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
-                val blLabel = if (bl != null && !bl.exact) R.string.catalog_search_bricklink
-                              else R.string.catalog_buy_bricklink
-                OutlinedButton(
-                    onClick = {
-                        // Nicht still schlucken: Ist kein Browser da oder scheitert der Aufruf,
-                        // passierte sonst beim Tippen nichts.
-                        if (!ch.brickinventoryapp.util.oeffneExtern(ctx, blUrl)) {
-                            android.widget.Toast.makeText(ctx, keineAppText,
-                                android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                } else Column(
+                    Modifier.fillMaxSize().verticalScroll(rollen).padding(Abstaende.gross),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
                 ) {
-                    Icon(Icons.Default.ShoppingCart, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(blLabel))
-                }
-                // Die beiden Erfassungsknöpfe nebeneinander; `weight(1f)` teilt die Breite gleich
-                // auf. Die Merkliste bleibt zweitrangig (OutlinedButton), denn häufiger wird
-                // aufgenommen. labelMedium und maxLines = 1, weil sich zwei Knöpfe die Breite
-                // teilen — „In Galerie aufnehmen“ stünde bei labelLarge auf einem 360dp-Telefon
-                // über dem Rand. Die Ellipse ist der Fallschirm für weitere Sprachen.
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                ) {
-                    OutlinedButton(
-                        onClick = { showWishDialog = true },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
-                    ) {
-                        Icon(Icons.Default.BookmarkAdd, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                        Spacer(Modifier.width(Abstaende.winzig))
-                        Text(stringResource(R.string.wanted_add_submit),
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelMedium)
-                    }
-                    Button(
-                        onClick = { showAddDialog = true },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
-                    ) {
-                        Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                        Spacer(Modifier.width(Abstaende.winzig))
-                        Text(stringResource(if (detail.owned) R.string.catalog_add_again
-                                            else R.string.catalog_add_to_gallery),
-                            maxLines = 1, overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.labelMedium)
-                    }
-                }
-                if (detail.owned) {
-                    OutlinedButton(
-                        onClick = { onOpenInGallery(detail.setNumber) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.catalog_open_in_gallery))
-                    }
+                    bild(Modifier.fillMaxWidth().height(220.dp))
+                    angaben()
                 }
             }
         }
@@ -271,6 +218,90 @@ fun CatalogDetailScreen(
     }
 }
 
+/** Seitenverhältnis der Setbilder; auf dem Tablet hat das Bild so seine eigene Spalte. */
+private const val BILD_VERHAELTNIS = 4f / 3f
+
+/**
+ * Name, Angaben und Handlungen. Die eigenen Handlungen zuerst (Aufnehmen, Merken), der
+ * Weg nach draussen als Textknopf mit Pfeil darunter: Er stand über ihnen und sah aus
+ * wie die Haupthandlung. [onKopf] meldet, wo die Überschrift endet.
+ */
+@Composable
+private fun ColumnScope.KatalogAngaben(
+    detail: KatalogDetailAnsicht,
+    onKopf: (Float) -> Unit,
+    onMerken: () -> Unit,
+    onAufnehmen: () -> Unit,
+    onOpenInGallery: (String) -> Unit,
+    onBrickLink: (String) -> Unit,
+) {
+    Column(Modifier.onPlaced { onKopf(it.positionInParent().y + it.size.height) }) {
+        Text(detail.name ?: "—", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.semantics { heading() })
+        Text(detail.setNumber, color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+    }
+
+    Card(shape = Formen.karte, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
+        Column(Modifier.padding(Abstaende.rand), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+            CatalogDetailRow(stringResource(R.string.catalog_detail_year),   detail.year?.toString() ?: "—")
+            CatalogDetailRow(stringResource(R.string.catalog_detail_theme),  detail.themeName ?: "—")
+            CatalogDetailRow(stringResource(R.string.catalog_detail_parts),  detail.numParts?.takeIf { it > 0 }?.toString() ?: "—")
+            CatalogDetailRow(stringResource(R.string.catalog_detail_minifigs), if (detail.minifigs > 0) detail.minifigs.toString() else "—")
+            if (detail.owned) {
+                CatalogDetailRow(stringResource(R.string.catalog_owned), "✓ ×${detail.ownedQuantity}")
+            }
+        }
+    }
+
+    // Aufnehmen ist die häufigere Handlung und steht deshalb vorn und gefüllt; Merken
+    // daneben umrandet. labelMedium und eine Zeile, weil sich zwei Knöpfe die Breite
+    // teilen — „In Galerie aufnehmen“ stünde bei labelLarge auf 360 dp über dem Rand.
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+        Button(
+            onClick = onAufnehmen,
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
+        ) {
+            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+            Spacer(Modifier.width(Abstaende.winzig))
+            Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
+                maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium)
+        }
+        OutlinedButton(
+            onClick = onMerken,
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(horizontal = Abstaende.klein, vertical = Abstaende.klein),
+        ) {
+            Icon(Icons.Default.BookmarkAdd, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+            Spacer(Modifier.width(Abstaende.winzig))
+            Text(stringResource(R.string.wanted_add_submit),
+                maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+    if (detail.owned) {
+        OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Check, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+            Spacer(Modifier.width(Abstaende.klein))
+            Text(stringResource(R.string.catalog_open_in_gallery))
+        }
+    }
+
+    // Die Kauf-URL kommt fertig vom Server — für Gear und Bücher wären Parameter und
+    // Nummer anders als bei Sets; der Rückfall bleibt für ältere Server. Bei
+    // Sammelminifiguren liefert der Server eine Such-URL und exact = false.
+    val bl = detail.bricklink
+    val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
+    val blLabel = if (bl != null && !bl.exact) R.string.catalog_search_bricklink else R.string.catalog_buy_bricklink
+    TextButton(onClick = { onBrickLink(blUrl) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+        Icon(Icons.Default.ShoppingCart, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+        Spacer(Modifier.width(Abstaende.klein))
+        Text(stringResource(blLabel))
+        Spacer(Modifier.width(Abstaende.winzig))
+        Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+    }
+}
+
 /** Anzahl/Preis/Zustand abfragen — wie AddSetDialog, aber ohne Setnummern-Feld. */
 @Composable
 private fun CatalogAddDialog(
@@ -308,6 +339,7 @@ private fun CatalogAddDialog(
                 // UND mit der passenden Tastatur. Hier fehlte beides — derselbe
                 // Dialog, zwei Bildschirme weiter, hatte es laengst.
                 OutlinedTextField(
+                    shape = Formen.feld,
                     value = quantity,
                     onValueChange = { quantity = NumericInput.quantity(it) },
                     label = { Text(stringResource(R.string.common_quantity)) },
@@ -315,6 +347,7 @@ private fun CatalogAddDialog(
                     keyboardOptions = NumericInput.ganzzahlTastatur()
                 )
                 OutlinedTextField(
+                    shape = Formen.feld,
                     value = purchasePrice,
                     onValueChange = { purchasePrice = NumericInput.price(it) },
                     label = { Text(stringResource(R.string.gallery_purchase_price)) },
@@ -388,6 +421,7 @@ private fun MerkpostenDialog(
                 // Eine Schwelle ist ein Preis — dieselbe Eingaberegel und
                 // dieselbe Tastatur wie ueberall (util/NumericInput.kt).
                 OutlinedTextField(
+                    shape = Formen.feld,
                     value = schwelle,
                     onValueChange = { schwelle = ch.brickinventoryapp.util.NumericInput.price(it) },
                     label = { Text(stringResource(R.string.wanted_threshold)) },

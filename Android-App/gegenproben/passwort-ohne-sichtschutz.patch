@@ -3,15 +3,15 @@ Modul: app
 Test: ch.brickinventoryapp.AnmeldeSchutzTest
 Rot: ein sichtbares Passwort
 
-diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt
-index ea4073c..47ae63a 100644
---- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt
-+++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt
-@@ -74,7 +74,6 @@ fun LoginScreen(
-     // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey; ein
-     // sichtbares Passwort gehört in kein Bildschirmfoto und keine Aufnahme.
-     ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
--    if (showPw && formular == AnmeldeFormular.ANMELDEN) ch.brickinventoryapp.ui.components.Sichtschutz()
- 
-     // Passwort, Code und Adresse lernt die Tastatur nicht mit (sec8 H4).
-     ch.brickinventoryapp.ui.components.TastaturOhneLernen {
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
+index 4c040d2..1496ece 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
+@@ -73,7 +73,6 @@ fun PasswortFeld(
+     keyboardActions: KeyboardActions = KeyboardActions.Default,
+ ) {
+     var sichtbar by rememberSaveable { mutableStateOf(false) }
+-    if (sichtbar) Sichtschutz()
+     val autofill = if (art == PasswortArt.AKTUELL) ContentType.Password else ContentType.NewPassword
+     OutlinedTextField(
+         value = wert,

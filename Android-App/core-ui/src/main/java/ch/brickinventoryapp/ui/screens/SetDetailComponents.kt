@@ -144,9 +144,30 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
-    Text(tiefHoch, style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(bottom = Abstaende.klein))
+    // Legende oben neben Tief und Hoch: Zwischen Fläche und Zeitachse las sie sich wie
+    // eine Beschriftung der Achse. Nur Zustände mit Linie — ein Eintrag ohne Linie
+    // sähe nach fehlenden Daten aus.
+    FlowRow(
+        Modifier.fillMaxWidth().padding(bottom = Abstaende.klein),
+        horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+    ) {
+        Text(tiefHoch, style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        lines.forEach { line ->
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                Canvas(Modifier.size(width = 16.dp, height = 3.dp)) {
+                    drawLine(colorFor(line.condition),
+                        Offset(0f, size.height / 2), Offset(size.width, size.height / 2),
+                        strokeWidth = size.height)
+                }
+                Text(labelFor(line.condition),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+    }
 
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val surfaceCol = MaterialTheme.colorScheme.surface
@@ -217,28 +238,6 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
             drawCircle(color, radius = 3.5f, center = pts.last())
         }
     }
-    }
-
-    // ── Legende ───────────────────────────────────────────────────────────────
-    // Nur die Zustände, die tatsächlich eine Linie haben: Ein Eintrag ohne
-    // Linie im Diagramm liest sich wie fehlende Daten.
-    Row(
-        Modifier.fillMaxWidth().padding(top = Abstaende.klein),
-        horizontalArrangement = Arrangement.spacedBy(Abstaende.gross)
-    ) {
-        lines.forEach { line ->
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Canvas(Modifier.size(width = 16.dp, height = 3.dp)) {
-                    drawLine(colorFor(line.condition),
-                        Offset(0f, size.height / 2), Offset(size.width, size.height / 2),
-                        strokeWidth = size.height)
-                }
-                Text(labelFor(line.condition),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface)
-            }
-        }
     }
 
     // Randbeschriftung der Zeitachse — die gemeinsame Achse des Servers.

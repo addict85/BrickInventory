@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -41,15 +43,21 @@ fun GalleryStatChip(value: String, label: String, detail: String? = null) {
 
 /**
  * Die Kennzahlen über Sets, Teilen, Figuren und im Detail — eine ruhige Fläche
- * (surfaceContainerLow, ohne Rand und Schatten) mit umbrechendem Text. Eine Fassung,
- * damit alle gleich umbrechen und keine nach Bedienelement aussieht.
+ * (surfaceContainerLow, ohne Rand und Schatten). Eine Fassung, damit alle gleich
+ * umbrechen und keine nach Bedienelement aussieht. Bei grosser Schrift eine Zeile
+ * zum Wischen: Umgebrochen nahmen sie vier Zeilen und schoben das erste Set unter
+ * die Bildschirmhälfte.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun KennzahlenReihe(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit) {
     Surface(modifier.fillMaxWidth(), shape = Formen.leiste, color = MaterialTheme.colorScheme.surfaceContainerLow) {
-        FlowRow(
-            Modifier.padding(horizontal = Abstaende.rand, vertical = Abstaende.klein),
+        val innen = Modifier.padding(horizontal = Abstaende.rand, vertical = Abstaende.klein)
+        if (ch.brickinventoryapp.ui.components.grosseSchrift()) Row(
+            innen.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
+        ) { inhalt() } else FlowRow(
+            innen,
             horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
         ) { inhalt() }

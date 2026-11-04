@@ -164,6 +164,7 @@ private fun LagerortNameDialog(
         bestaetigenAn = name.isNotBlank(),
     ) {
         OutlinedTextField(
+            shape = Formen.feld,
             value = name,
             onValueChange = { if (it.length <= 60) name = it },
             label = { Text(stringResource(R.string.storage_name)) },

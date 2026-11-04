@@ -6,7 +6,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
@@ -81,11 +80,8 @@ fun MerkpostenDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text(merkposten?.name ?: setNumber, maxLines = 1) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
+                // Neben der Liste schliesst ein X nur das Detail (ZurueckKnopf).
+                navigationIcon = { ch.brickinventoryapp.ui.components.ZurueckKnopf(onBack) },
                 // Der Papierkorb in der Kopfleiste wie in Set- und Teile-Detail — wer von dort
                 // kommt, sucht ihn oben. Ohne Rückfrage wie in der Webapp: Ein Merkposten ist kein
                 // Besitz und schnell wieder eingetragen. Beschriftung `common_delete` wie dort,

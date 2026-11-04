@@ -207,7 +207,7 @@ fun GalleryScreen(
                              modifier = Modifier.fillMaxSize()) {
                 when (anzeige) {
                     GalerieAnzeige.LAEDT -> SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 252.dp,
-                        kopfzeile = true)
+                        kopfzeile = true, bildVerhaeltnis = BILD_SEITENVERHAELTNIS)
                     // Fehler und leere Sammlung sehen verschieden aus und bieten
                     // Verschiedenes an: hier den Grund und einen neuen Versuch.
                     GalerieAnzeige.FEHLER -> GalerieHinweis {

@@ -9,7 +9,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import kotlin.math.roundToInt
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -99,6 +103,9 @@ fun MainScaffold(
     // Eine Grösse für alle Beschriftungen: Schrumpft jede für sich, steht „Sammlung“
     // klein neben grossem „Mehr“.
     val reiterSchrift = remember(LocalDensity.current.fontScale) { mutableStateOf(REITER_SCHRIFT_START) }
+    // Die Snackbar liegt über dem Inhalt; ihre Höhe hebt den Erfassen-Knopf darüber.
+    var snackbarHoehe by remember { mutableIntStateOf(0) }
+    val offlineHinweise = remember { mutableIntStateOf(0) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val art = navigationsart(maxWidth.value)
         // Auf breiten Fenstern steht die Seitenleiste über die volle Höhe links, App-Leiste
@@ -152,7 +159,7 @@ fun MainScaffold(
                     SammlungUmschalter(currentDest.route, onWahl = { ziel ->
                         onTabAngetippt(ziel)
                         navController.zuReiter(ziel.route)
-                    })
+                    }, modifier = Modifier.mitLeisteEinklappen { einklappen.state.collapsedFraction })
                 }
               }
             },
@@ -173,7 +180,7 @@ fun MainScaffold(
                     }
                 }
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
+            snackbarHost = { SnackbarHost(snackbarHostState, Modifier.onSizeChanged { snackbarHoehe = it.height }) },
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ) { padding ->
             // Globaler CSV-Import-Balken: erscheint auf allen Tabs (wie in der
@@ -190,7 +197,8 @@ fun MainScaffold(
                                 navController.zuReiter(ziel.route)
                             })
                     }
-                    ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
+                    // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
+                    if (offlineHinweise.intValue == 0) ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
                     if (csvImport.running) {
                         CsvImportBanner(
                             done = csvImport.done, total = csvImport.total, current = csvImport.current,
@@ -198,7 +206,14 @@ fun MainScaffold(
                             onAbbrechen = onCsvAbbrechen,
                         )
                     }
-                    Box(Modifier.fillMaxSize()) { content() }
+                    Box(Modifier.fillMaxSize()) {
+                        CompositionLocalProvider(
+                            ch.brickinventoryapp.ui.components.LocalSnackbarPlatz provides
+                                with(LocalDensity.current) { snackbarHoehe.toDp() },
+                            ch.brickinventoryapp.ui.components.LocalOffeneAenderungen provides offeneAenderungen,
+                            ch.brickinventoryapp.ui.components.LocalOfflineHinweise provides offlineHinweise,
+                        ) { content() }
+                    }
                 }
             }
         }
@@ -307,4 +322,14 @@ private fun SammlungUmschalter(aktuell: String?, onWahl: (Screen) -> Unit, modif
         modifier = modifier.padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.mittel,
             vertical = ch.brickinventoryapp.ui.theme.Abstaende.winzig),
     )
+}
+
+/**
+ * Der Umschalter unter der App-Leiste weicht mit ihr: Bei 200 % Schrift blieben
+ * sonst Umschalter und Suche stehen, und vom ersten Set war kaum etwas zu sehen.
+ */
+private fun Modifier.mitLeisteEinklappen(anteil: () -> Float): Modifier = clipToBounds().layout { messbar, grenzen ->
+    val platz = messbar.measure(grenzen)
+    val hoehe = (platz.height * (1f - anteil())).roundToInt()
+    layout(platz.width, hoehe) { platz.place(0, hoehe - platz.height) }
 }

@@ -175,6 +175,7 @@ AlertDialog(
                     blick.householdMembers, barcodeOwner, { barcodeOwner = it }
                 )
                 OutlinedTextField(
+                    shape = ch.brickinventoryapp.ui.theme.Formen.feld,
                     value = barcodePriceText,
                     onValueChange = { nv -> barcodePriceText = NumericInput.price(nv) },
                     label = { Text(stringResource(R.string.barcode_purchase_price)) },

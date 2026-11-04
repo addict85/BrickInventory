@@ -7,17 +7,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.CompareArrows
-import androidx.compose.material.icons.automirrored.filled.ListAlt
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Redeem
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.automirrored.outlined.CompareArrows
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Redeem
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.Badge
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -49,7 +49,8 @@ import ch.brickinventoryapp.ui.theme.mittigBis
 
 /**
  * Das Ziel „Mehr“ der unteren Leiste: alle Seiten, die kein Bestandsreiter sind, in
- * Gruppen auf EINER Seite. Vorher verteilten sie sich auf Schublade und Kontomenü —
+ * Gruppen auf EINER Seite. Alle Symbole umrandet, wie Material es für Listen vorsieht:
+ * Gefüllte neben umrandeten lasen sich wie ein Unterschied, den es nicht gibt. Vorher verteilten sie sich auf Schublade und Kontomenü —
  * mit Leiste und Umschalter vier Navigationsebenen. Jede Route steht ausgeschrieben
  * da, weil ErreichbareRoutenTest nach `navigate(Screen.X.route)` sucht.
  */
@@ -70,31 +71,31 @@ fun MehrBildschirm(
         bestaetigen = stringResource(R.string.main_menu_logout),
         onBestaetigen = { fragtAbmelden = false; onAbmelden() },
         onAbbrechen = { fragtAbmelden = false },
-        symbol = Icons.AutoMirrored.Filled.Logout,
+        symbol = Icons.AutoMirrored.Outlined.Logout,
     )
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).mittigBis(Lesebreite.formular)
         .padding(vertical = Abstaende.klein)) {
         MehrGruppe(R.string.nav_group_prices, trenner = false)
         // Gutscheine zuerst: Die braucht man im Laden.
-        MehrEintrag(R.string.vouchers_title, Icons.Default.Redeem) { navController.navigate(Screen.Gutscheine.route) }
-        MehrEintrag(R.string.alerts_group, Icons.Default.NotificationsActive) { navController.navigate(Screen.Preisalarme.route) }
-        MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Filled.CompareArrows) { navController.navigate(Screen.Comparison.route) }
+        MehrEintrag(R.string.vouchers_title, Icons.Outlined.Redeem) { navController.navigate(Screen.Gutscheine.route) }
+        MehrEintrag(R.string.alerts_group, Icons.Outlined.NotificationsActive) { navController.navigate(Screen.Preisalarme.route) }
+        MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { navController.navigate(Screen.Comparison.route) }
         MehrGruppe(R.string.nav_group_tools)
-        MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Filled.ListAlt) { navController.navigate(Screen.PartsList.route) }
-        MehrEintrag(R.string.csv_upload_title, Icons.Default.UploadFile) { navController.navigate(Screen.CsvImport.route) }
+        MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { navController.navigate(Screen.PartsList.route) }
+        MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { navController.navigate(Screen.CsvImport.route) }
         MehrGruppe(R.string.nav_group_manage)
-        MehrEintrag(R.string.storage_manage, Icons.Default.Inventory2) { navController.navigate(Screen.Lagerorte.route) }
-        MehrEintrag(R.string.household_title, Icons.Default.Group) { navController.navigate(Screen.Haushalt.route) }
+        MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { navController.navigate(Screen.Lagerorte.route) }
+        MehrEintrag(R.string.household_title, Icons.Outlined.Group) { navController.navigate(Screen.Haushalt.route) }
         MehrGruppe(R.string.nav_group_account)
-        MehrEintrag(R.string.konto_title, Icons.Default.AccountCircle) { navController.navigate(Screen.Konto.route) }
+        MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { navController.navigate(Screen.Konto.route) }
         // Der Punkt allein sagte nicht, wofür er steht: Darunter steht es in Worten.
-        MehrEintrag(R.string.nav_settings, Icons.Default.Settings, punkt = updateVerfuegbar) {
+        MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) {
             navController.navigate(Screen.Settings.route) { launchSingleTop = true }
         }
-        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Filled.Logout) { fragtAbmelden = true }
+        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { fragtAbmelden = true }
         if (isAdmin) {
             MehrGruppe(R.string.nav_group_server)
-            MehrEintrag(R.string.main_menu_monitoring, Icons.Default.Assessment) {
+            MehrEintrag(R.string.main_menu_monitoring, Icons.Outlined.Assessment) {
                 navController.navigate(Screen.Monitoring.route) {
                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                     launchSingleTop = true

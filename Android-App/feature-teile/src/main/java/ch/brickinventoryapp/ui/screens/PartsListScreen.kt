@@ -202,8 +202,7 @@ fun PartsListScreen(
                     )
                     // Derselbe Scan-Knopf wie neben jeder Suche; ein schwebender Knopf mitten
                     // in einer Zeile sah aus wie der eine Hauptknopf des Bildschirms.
-                    ch.brickinventoryapp.ui.components.ScanKnopf(onScanBarcode,
-                        beschreibung = stringResource(R.string.partslist_scan))
+                    ch.brickinventoryapp.ui.components.ScanKnopf(onScanBarcode)
                     // Ein Symbol in voller Grösse statt eines „+“ in Textgrösse, das gesperrt kaum
                     // zu sehen war.
                     FilledIconButton(

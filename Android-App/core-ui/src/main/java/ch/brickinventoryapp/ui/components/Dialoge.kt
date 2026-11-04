@@ -25,8 +25,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
@@ -152,16 +153,10 @@ fun PasswortRueckfrage(
         // Ein Dialog hat sein eigenes Fenster; der Schutz der Seite reicht nicht hinein.
         Ueberdeckungsschutz()
         Text(text, style = MaterialTheme.typography.bodyMedium)
-        OutlinedTextField(
-            value = passwort, onValueChange = { passwort = it },
-            label = { Text(stringResource(R.string.konto_password_current)) },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+        PasswortFeld(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
+            Modifier.fillMaxWidth())
         if (codeNoetig) ZweiterFaktorCodeFeld(code) { code = it }
-        if (fehler != null) {
-            Text(fehler, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-        }
+        if (fehler != null) FehlerZeile(fehler)
     }
 }
 
@@ -172,6 +167,8 @@ fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
         value = code, onValueChange = { onCode(it.take(24)) },
         label = { Text(stringResource(R.string.login_code)) },
         supportingText = { Text(stringResource(R.string.login_code_hint)) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
+        // Das System bietet einen eben empfangenen Code zum Einsetzen an.
+        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode },
+        singleLine = true, shape = Formen.feld,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
 }

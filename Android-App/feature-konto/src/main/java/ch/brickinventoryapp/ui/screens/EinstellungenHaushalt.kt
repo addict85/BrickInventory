@@ -13,11 +13,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.components.Abschnitt
+import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
@@ -144,7 +148,7 @@ internal fun HouseholdCard(
             OutlinedTextField(
                 value = c, onValueChange = {}, readOnly = true, singleLine = true,
                 label = { Text(stringResource(R.string.household_invite_label)) },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(), shape = Formen.feld,
                 trailingIcon = {
                     IconButton(onClick = {
                         ch.brickinventoryapp.util.GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c)
@@ -162,21 +166,14 @@ internal fun HouseholdCard(
         OutlinedTextField(
             value = code, onValueChange = { code = it }, singleLine = true,
             label = { Text(stringResource(R.string.household_invite_label)) },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(), shape = Formen.feld,
         )
         // Nach einem Fehlversuch ist das Feld leer und rot, bis wieder getippt wird.
         val passwortFalsch = state.passwortFalsch && passwort.isEmpty()
-        OutlinedTextField(
-            value = passwort, onValueChange = { passwort = it }, singleLine = true,
-            label = { Text(stringResource(R.string.household_redeem_password)) },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = passwortFalsch,
-            supportingText = if (passwortFalsch) {
-                { Text(stringResource(R.string.household_redeem_password_wrong)) }
-            } else null,
-            modifier = Modifier.fillMaxWidth()
-        )
+        PasswortFeld(passwort, { passwort = it }, stringResource(R.string.household_redeem_password),
+            Modifier.fillMaxWidth(),
+            hinweis = if (passwortFalsch) stringResource(R.string.household_redeem_password_wrong) else null,
+            fehlerhaft = passwortFalsch)
         // Bei aktivem zweitem Faktor verlangt der Server dessen Code (oder einen Wiederherstellungscode).
         if (state.faktorNoetig) {
             val faktorFalsch = state.faktorFalsch && faktorCode.isEmpty()
@@ -188,7 +185,8 @@ internal fun HouseholdCard(
                 supportingText = if (faktorFalsch) {
                     { Text(stringResource(R.string.household_redeem_code_wrong)) }
                 } else null,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode },
+                shape = Formen.feld,
             )
         }
         Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.faktorNoetig }); passwort = ""; faktorCode = "" },
@@ -201,7 +199,7 @@ internal fun HouseholdCard(
     // Meldung des Servers — Währung weicht ab, Konten schon oder
     // umgekehrt verknüpft. Wortlaut unverändert übernommen.
     state.message?.takeUnless { state.passwortFalsch || state.faktorFalsch }?.let {
-        Text(it, style = MaterialTheme.typography.bodySmall,
+        Text(it, Modifier.ansagen(), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error)
     }
 

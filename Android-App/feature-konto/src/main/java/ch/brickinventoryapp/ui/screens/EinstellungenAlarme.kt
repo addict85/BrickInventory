@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.model.PreisalarmAnsicht
+import androidx.compose.foundation.text.KeyboardActions
+import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.ImageLoader
@@ -68,8 +70,9 @@ internal fun PreisalarmeCard(
         for (a in uebersicht.alarme) {
             // Schluessel ist (Set, Zustand) — beides, sonst traegt das Feld des
             // einen Alarms den Wert des anderen, wenn ein Set beide hat.
+            // Als Betrag wie überall („750.00“), nicht als Rohzahl „750.0“.
             var wert by rememberSaveable(a.setNumber + a.condition) {
-                mutableStateOf(a.schwelle.toString())
+                mutableStateOf(ch.brickinventoryapp.util.fmtEingabe(a.schwelle))
             }
             // Reihenfolge wie in den Finanzen und in der Webapp: heruntergeladene
             // Kopie, eigene Adresse, Katalog. Fuer ein Set, das man nicht besitzt,
@@ -121,38 +124,36 @@ internal fun PreisalarmeCard(
                             tint = MaterialTheme.colorScheme.error)
                     }
                 }
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Text(if (a.richtung == "unter") stringResource(R.string.alerts_below)
-                         else stringResource(R.string.alerts_above),
-                        style = MaterialTheme.typography.bodySmall)
-                    OutlinedTextField(
-                        value = wert,
-                        // Der Filter fehlte hier, die Zahlentastatur stand schon
-                        // da. Das ist die gefaehrlichere Haelfte: Die
-                        // Tastaturwahl ist eine Bitte, keine Zusicherung —
-                        // angestoepselte Tastatur und Zwischenablage liefern
-                        // trotzdem Buchstaben, und unten wurde daraus eine 0.
-                        onValueChange = { wert = NumericInput.price(it) },
-                        singleLine = true,
-                        suffix = { Text(a.currencyCode) },
-                        keyboardOptions = NumericInput.preisTastatur(),
-                        modifier = Modifier.weight(1f),
-                    )
-                    // Der Knopf erscheint nur, wenn eine andere Zahl im Feld steht — ein dauerhaft
-                    // sichtbarer Haken las sich wie „scharf“. Verglichen wird die Zahl, nicht der
-                    // Text. Ohne lesbare Zahl gibt es keinen Knopf: Eine Schwelle von 0 meldet nie
-                    // oder immer.
-                    val zahl = wert.replace(',', '.').toDoubleOrNull()
-                    if (zahl != null && zahl != a.schwelle) {
-                        IconButton(onClick = {
-                            vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung, zahl)
-                        }) {
-                            Icon(Icons.Default.Save, stringResource(R.string.settings_save),
-                                tint = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
+                // Ein Speichermodell wie im Set- und Merkposten-Detail: Getipptes speichert nach
+                // der Ruhezeit von selbst (im ViewModel, damit es das Verlassen übersteht), die
+                // Zeile darunter bestätigt. Die Richtung steht als Beschriftung im Feld, so
+                // beginnen alle Felder an derselben Stelle.
+                val zahl = Alarmeingabe.zahl(wert)
+                OutlinedTextField(
+                    value = wert,
+                    onValueChange = { roh ->
+                        wert = NumericInput.price(roh)
+                        vm.setzeAlarmSchwelle(a.setNumber, a.condition, a.richtung, wert)
+                    },
+                    singleLine = true,
+                    label = { Text(stringResource(if (a.richtung == "unter") R.string.detail_alert_chip_below
+                                                  else R.string.detail_alert_chip_above)) },
+                    suffix = { Text(a.currencyCode) },
+                    supportingText = {
+                        Text(if (zahl == a.schwelle) stringResource(R.string.detail_alert_saved,
+                                stringResource(if (a.richtung == "ueber") R.string.detail_alert_above else R.string.detail_alert_below),
+                                ch.brickinventoryapp.util.fmtMoney(a.schwelle, a.currencyCode),
+                                stringResource(if (a.ausgeloest) R.string.detail_alert_fired else R.string.detail_alert_armed))
+                             else stringResource(R.string.detail_alert_hint))
+                    },
+                    keyboardOptions = NumericInput.preisTastatur(),
+                    // „Fertig“ speichert sofort, ohne die Ruhezeit abzuwarten.
+                    keyboardActions = KeyboardActions(onDone = {
+                        if (zahl != null && zahl != a.schwelle) vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung, zahl)
+                    }),
+                    shape = Formen.feld,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
@@ -183,15 +184,15 @@ internal fun PreisalarmeCard(
 }
 
 /**
- * „scharf“ oder „unscharf“ ohne Farbe lesbar: Wort, Form (gefüllt/umrandet) und
- * Zeichen (● / ○) tragen es je einzeln. Farbe nur als Zugabe und nicht grün gegen
- * rot — bei Rot-Grün-Schwäche wäre das zweimal dasselbe. `secondaryContainer`
- * bringt jedes Design als „hervorgehoben, nicht dringend“ mit.
+ * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen
+ * es je einzeln. Farbe nur als Zugabe und nicht grün gegen rot — bei Rot-Grün-Schwäche
+ * wäre das zweimal dasselbe. `secondaryContainer` bringt jedes Design als
+ * „hervorgehoben, nicht dringend“ mit.
  */
 @Composable
 private fun AlarmZustandPlakette(ausgeloest: Boolean) {
     val text = stringResource(if (ausgeloest) R.string.alerts_fired else R.string.alerts_armed)
-    // Gefuellt = scharf, umrandet = unscharf. Die Flaeche ist der Unterschied,
+    // Gefuellt = aktiv, umrandet = ausgeloest. Die Flaeche ist der Unterschied,
     // den man auch dann sieht, wenn die beiden Farben gleich aussehen.
     Surface(
         shape = Formen.chip,
@@ -203,7 +204,7 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
         Text(
             text,
             style = MaterialTheme.typography.labelSmall,
-            // Auch das Gewicht traegt mit: Ein scharfer Alarm ist der Zustand,
+            // Auch das Gewicht traegt mit: Ein aktiver Alarm ist der Zustand,
             // auf den es ankommt.
             fontWeight = if (ausgeloest) FontWeight.Normal else FontWeight.SemiBold,
             color = if (ausgeloest) MaterialTheme.colorScheme.onSurfaceVariant

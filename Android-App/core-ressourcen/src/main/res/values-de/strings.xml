@@ -74,8 +74,6 @@
     <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
     <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">z. B. 75192-1 oder Barcode</string>
     <string name="comparison_search">Suchen</string>
-    <string name="comparison_scan_new">Neu</string>
-    <string name="comparison_scan">Scan</string>
     <string name="comparison_barcode_label">Barcode: %1$s</string>
     <string name="comparison_title">Preisvergleich</string>
     <string name="comparison_hint">Setnummer oder Barcode eingeben, oder Barcode scannen.\nDie Suche öffnet toppreise.ch im Browser.</string>
@@ -138,8 +136,8 @@
     <string name="offline_verworfen">Nicht übernommen: %1$s – %2$s</string>
     <string name="offline_verworfen_ohne_grund">der Server hat die Änderung nicht angenommen</string>
     <plurals name="offline_ausgang">
-        <item quantity="one">Offline gespeichert – %1$d Änderung wird gesendet</item>
-        <item quantity="other">Offline gespeichert – %1$d Änderungen werden gesendet</item>
+        <item quantity="one">Offline gespeichert – %1$d Änderung wird beim nächsten Verbinden gesendet</item>
+        <item quantity="other">Offline gespeichert – %1$d Änderungen werden beim nächsten Verbinden gesendet</item>
     </plurals>
     <string name="gallery_add_set">Set hinzufügen</string>
     <string name="gallery_add_set_title">Set hinzufügen</string>
@@ -187,7 +185,6 @@
         <item quantity="one">%1$d Teil</item>
         <item quantity="other">%1$d Teile</item>
     </plurals>
-    <string name="partslist_scan">Scan</string>
     <string name="partslist_add_set">Set zur Bauliste hinzufügen</string>
     <string name="partslist_generate">Erstellen</string>
     <string name="partslist_pdf_error_title">PDF Fehler</string>
@@ -221,8 +218,8 @@
     <string name="detail_alert_above">steigt über</string>
     <string name="detail_alert_chip_below">Fällt unter</string>
     <string name="detail_alert_chip_above">Steigt über</string>
-    <string name="detail_alert_armed">scharf</string>
-    <string name="detail_alert_fired">gemeldet — wieder scharf, sobald der Preis zurückkehrt</string>
+    <string name="detail_alert_armed">aktiv</string>
+    <string name="detail_alert_fired">ausgelöst — wieder aktiv, sobald der Preis zurückkehrt</string>
     <string name="detail_alert_threshold">Schwelle (%1$s)</string>
     <string name="detail_alert_hint">Wird nach dem Tippen gespeichert</string>
     <string name="detail_alert_saved">Gespeichert: Preis %1$s %2$s · %3$s</string>
@@ -273,7 +270,7 @@
     <string name="finance_price_error">Preisfehler</string>
     <string name="finance_no_sets">Keine Sets</string>
     <string name="finance_load_prompt">→ Preise laden</string>
-    <string name="finance_total_pnl">%1$s gegenüber dem Einstand</string>
+    <string name="finance_total_pnl">%1$s gegenüber der Kaufsumme</string>
     <string name="finance_parts_extra">davon Teile &amp; Minifiguren: %1$s</string>
     <plurals name="finance_fremde_waehrung">
         <item quantity="one">%1$d Kaufpreis in anderer Währung nicht eingerechnet</item>
@@ -296,7 +293,7 @@
     <string name="finance_total_manual_minifigs">Manuell erfasste Minifiguren</string>
     <string name="finance_grand_total">Total</string>
     <string name="finance_market_avg">Marktwert der Sammlung</string>
-    <string name="finance_einstand_zeile">Einstand: %1$s</string>
+    <string name="finance_einstand_zeile">Kaufsumme: %1$s</string>
     <string name="finance_guv_zeile">Gewinn/Verlust: %1$s</string>
     <string name="finance_pnl_needs_prices">braucht Kauf- und Marktpreise</string>
     <plurals name="finance_basis_gerechnet">
@@ -304,8 +301,8 @@
         <item quantity="other">Gerechnet über %1$d von %2$d Positionen mit Kauf- und Marktpreis.</item>
     </plurals>
     <plurals name="finance_basis_ohne_markt">
-        <item quantity="one">%1$d Position ohne Marktpreis nicht gerechnet (Einstand %2$s)</item>
-        <item quantity="other">%1$d Positionen ohne Marktpreis nicht gerechnet (Einstand %2$s)</item>
+        <item quantity="one">%1$d Position ohne Marktpreis nicht gerechnet (Kaufsumme %2$s)</item>
+        <item quantity="other">%1$d Positionen ohne Marktpreis nicht gerechnet (Kaufsumme %2$s)</item>
     </plurals>
     <plurals name="finance_basis_ohne_kauf">
         <item quantity="one">%1$d Position ohne Kaufpreis nicht gerechnet (Marktwert %2$s)</item>
@@ -863,10 +860,8 @@
     <string name="alerts_group">Preisalarme</string>
     <string name="alerts_intro">Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
     <string name="alerts_empty">Noch kein Preisalarm gesetzt. Du setzt einen in der Detailansicht eines Sets.</string>
-    <string name="alerts_below">fällt unter</string>
-    <string name="alerts_above">steigt über</string>
-    <string name="alerts_armed">● scharf</string>
-    <string name="alerts_fired">○ unscharf</string>
+    <string name="alerts_armed">Aktiv</string>
+    <string name="alerts_fired">Ausgelöst – wartet, bis der Preis zurückkehrt</string>
     <string name="alerts_last">zuletzt %1$s</string>
     <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
     <string name="alerts_delete">Preisalarm entfernen</string>
@@ -1065,4 +1060,10 @@
         <item quantity="one">%1$d Exemplar von %2$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</item>
         <item quantity="other">Alle %1$d Exemplare von %2$s und ihre Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</item>
     </plurals>
+    <plurals name="offline_warten">
+        <item quantity="one">%1$d Änderung wartet und wird beim nächsten Verbinden gesendet</item>
+        <item quantity="other">%1$d Änderungen warten und werden beim nächsten Verbinden gesendet</item>
+    </plurals>
+    <string name="passwort_mindestens">Mindestens %1$d Zeichen</string>
+    <string name="login_erweitert">Erweitert</string>
 </resources>

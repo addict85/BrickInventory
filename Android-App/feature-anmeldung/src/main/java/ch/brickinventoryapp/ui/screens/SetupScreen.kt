@@ -143,6 +143,7 @@ fun SetupScreen(
                         Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                         OutlinedTextField(
+                            shape = Formen.feld,
                             value = eingabe,
                             onValueChange = { eingabe = it; falsch = false },
                             label = { Text(stringResource(R.string.zert_geaendert_eingabe)) },
@@ -264,6 +265,7 @@ fun SetupScreen(
                 }
                 Spacer(Modifier.height(Abstaende.mittel))
                 OutlinedTextField(
+                    shape = Formen.feld,
                     value = url,
                     onValueChange = { url = it },
                     label = { Text(stringResource(R.string.setup_url_label)) },

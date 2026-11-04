@@ -1,0 +1,18 @@
+Gegenprobe: Katalog-Detail auch auf dem Tablet einspaltig
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: Katalog-Detail steht auf dem Tablet in zwei Spalten
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
+index b741abc..fe9e5f9 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
+@@ -152,7 +152,7 @@ fun CatalogDetailScreen(
+                 // Ab „expanded“ zwei Spalten wie das Set-Detail: Bild links, Angaben und
+                 // Handlungen rechts. Einspaltig liefen Tabelle und Knöpfe über die ganze
+                 // Tablet-Breite, „Jahr“ stand eine Armlänge von „2022“.
+-                if (zweiSpaltig(maxWidth.value)) {
++                if (false && zweiSpaltig(maxWidth.value)) {
+                     Row(Modifier.fillMaxSize().padding(horizontal = Abstaende.gross),
+                         horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
+                         Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross)) {

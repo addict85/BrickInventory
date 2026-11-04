@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
@@ -29,11 +28,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.ZweiterFaktorUiState
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.contentType
+import ch.brickinventoryapp.ui.components.FehlerZeile
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.PasswortFeld
 import ch.brickinventoryapp.ui.components.MarkenKopf
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
@@ -123,7 +124,7 @@ fun ZweiterFaktorPflichtMaske(
                         label = { Text(stringResource(R.string.zf_confirm_code)) },
                         singleLine = true, shape = Formen.feld,
                         keyboardOptions = NumericInput.ganzzahlTastatur(),
-                        modifier = Modifier.fillMaxWidth())
+                        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode })
                     Button(
                         onClick = { onBestaetigen(faktorCode) },
                         enabled = faktorCode.isNotEmpty() && !zustand.laedt,
@@ -141,12 +142,8 @@ fun ZweiterFaktorPflichtMaske(
                     Ueberschrift(stringResource(R.string.zf_pflicht_titel))
                     Text(stringResource(R.string.zf_pflicht_text), style = MaterialTheme.typography.bodyMedium)
                     Text(stringResource(R.string.zf_pflicht_passwort), style = MaterialTheme.typography.bodyMedium)
-                    OutlinedTextField(
-                        value = pwAktuell, onValueChange = { pwAktuell = it }, singleLine = true,
-                        label = { Text(stringResource(R.string.konto_password_current)) },
-                        visualTransformation = PasswordVisualTransformation(), shape = Formen.feld,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        modifier = Modifier.fillMaxWidth())
+                    PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
+                        Modifier.fillMaxWidth())
                     // Gleich danach steht der Schlüssel im Klartext da: erst die Gerätesperre.
                     Button(
                         onClick = { schutz.bestaetige(codesGrund) { onEinrichten(pwAktuell) } },
@@ -156,7 +153,7 @@ fun ZweiterFaktorPflichtMaske(
                 }
             }
             if (zustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
-            zustand.fehler?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            zustand.fehler?.let { FehlerZeile(it) }
             TextButton(onClick = onAbmelden) { Text(stringResource(R.string.settings_logout)) }
         }
     }

@@ -66,9 +66,11 @@ fun FinanceScreen(
     val historyPoints = remember(financeState.historyPoints, financeState.historyTage, zahlen) {
         lokaleAchse(financeState.historyPoints, financeState.historyTage, zahlen)
     }
-    val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen) {
+    // Bei grosser Schrift kurz („1,7k“): Ausgeschrieben nahm die Achse ein Drittel der Breite.
+    val kompakt = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen, kompakt) {
         val w = financeState.historyWaehrung ?: valuation?.currency
-        if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen)
+        if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen, kompakt)
     }
     val partsValuation = financeState.partsValuation
     val figsValuation = financeState.figsValuation
@@ -129,7 +131,8 @@ fun FinanceScreen(
       BoxWithConstraints(Modifier.fillMaxSize()) {
         val rand = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel)
         val abstand = Arrangement.spacedBy(10.dp)
-        // Überblick: Kontofilter, Verlauf und Kopfkachel; die Summe steht nach den Zeilen.
+        // Überblick: Kontofilter, Kopfkachel, dann der Verlauf — der Marktwert ist die erste
+        // Frage, die Kurve erklärt ihn. Die Summe steht nach den Zeilen.
         val ueberblick: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten. Er gilt für
             // ALLE Zahlen dieses Reiters: Kurve, Kacheln, Sets, Teile und Minifiguren.
@@ -142,6 +145,7 @@ fun FinanceScreen(
                     }
                 }
             }
+            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
             item {
                 // Ohne Marktwert keine Entwicklung, wie im Web: Der Verlauf trüge dann nur
                 // Kaufpreise, und „+0.0 %“ neben „—“ behauptete Stillstand.
@@ -153,7 +157,6 @@ fun FinanceScreen(
                     onPeriodChange = onPeriodChange
                 )
             }
-            financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
         }
         // Die Zeilen: Filter, Sets, Teile, Minifiguren.
         val zeilen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {

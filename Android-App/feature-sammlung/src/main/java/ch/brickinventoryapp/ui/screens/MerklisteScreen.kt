@@ -282,6 +282,7 @@ internal fun UebernahmeDialog(
             // NumericInput statt eigener Filterung: Die Regel, was eine Zahl ist (genau ein
             // Trennzeichen), steht einmal in util/NumericInput.kt.
             OutlinedTextField(
+                shape = Formen.feld,
                 value = anzahl,
                 onValueChange = { anzahl = NumericInput.quantity(it) },
                 label = { Text(stringResource(R.string.common_quantity)) },
@@ -290,6 +291,7 @@ internal fun UebernahmeDialog(
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
+                shape = Formen.feld,
                 value = preis,
                 onValueChange = { preis = NumericInput.price(it) },
                 label = { Text(stringResource(R.string.gallery_purchase_price)) },

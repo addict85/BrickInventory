@@ -1,0 +1,18 @@
+Gegenprobe: Formularfehler ohne Live-Region
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: Fehler der Anmeldung und der Pflicht-Masken werden angesagt
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
+index 4c040d2..337363c 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Formularfelder.kt
+@@ -34,7 +34,7 @@ import ch.brickinventoryapp.ui.theme.Formen
+  * Ein Text, der nach einer Handlung erscheint, wird angesagt: Ohne Live-Region hört
+  * eine blinde Person nach „Anmelden“ nichts und weiss nicht, dass es scheiterte.
+  */
+-fun Modifier.ansagen(): Modifier = semantics { liveRegion = LiveRegionMode.Polite }
++fun Modifier.ansagen(): Modifier = this
+ 
+ /** Eine Fehlerzeile unter einem Formular, in Fehlerfarbe und angesagt. */
+ @Composable

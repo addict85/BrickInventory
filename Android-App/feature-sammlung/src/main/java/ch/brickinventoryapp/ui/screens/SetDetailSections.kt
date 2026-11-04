@@ -491,7 +491,7 @@ fun LazyListScope.setDetailAlarmSection(
                 mutableStateOf(alarm?.richtung ?: "unter")
             }
             var schwelle by rememberSaveable(alarm?.schwelle) {
-                mutableStateOf(alarm?.let { if (it.schwelle > 0) it.schwelle.toString() else "" } ?: "")
+                mutableStateOf(alarm?.let { if (it.schwelle > 0) ch.brickinventoryapp.util.fmtEingabe(it.schwelle) else "" } ?: "")
             }
 
             // Segmente statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
@@ -528,6 +528,7 @@ fun LazyListScope.setDetailAlarmSection(
                     )
                 },
                 keyboardOptions = NumericInput.preisTastatur(),
+                shape = Formen.feld,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

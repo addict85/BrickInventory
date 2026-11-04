@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -52,6 +53,11 @@ fun SkelettRaster(
     abstand: Dp = 10.dp,
     /** Eine Zeile über die ganze Breite vorweg, wo die Liste Kennzahlen zeigt (Galerie). */
     kopfzeile: Boolean = false,
+    /**
+     * Seitenverhältnis der Bildfläche, wo die echte Kachel eines hat (Galerie 4:3).
+     * Ohne nimmt das Bild den Rest der Höhe; mit springt beim Eintreffen nichts.
+     */
+    bildVerhaeltnis: Float? = null,
 ) {
     val laedt = stringResource(R.string.common_loading)
     // Ein Schimmer für alle Kacheln: Läuft er über alle gleich, liest es sich als eine
@@ -84,7 +90,8 @@ fun SkelettRaster(
                     .background(MaterialTheme.colorScheme.surface).padding(Abstaende.klein),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
-                Box(Modifier.fillMaxWidth().weight(1f).clip(Formen.kachel).background(schimmer))
+                val bild = if (bildVerhaeltnis != null) Modifier.aspectRatio(bildVerhaeltnis) else Modifier.weight(1f)
+                Box(Modifier.fillMaxWidth().then(bild).clip(Formen.kachel).background(schimmer))
                 Box(Modifier.fillMaxWidth(0.8f).height(Abstaende.mittel).clip(Formen.strich).background(schimmer))
                 Box(Modifier.fillMaxWidth(0.5f).height(Abstaende.mittel).clip(Formen.strich).background(schimmer))
             }
