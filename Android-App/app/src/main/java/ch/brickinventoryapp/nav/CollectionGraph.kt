@@ -1,56 +1,20 @@
 package ch.brickinventoryapp.nav
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material3.*
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.window.Dialog
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.ui.dialogs.SetItemDetailDialog
 import ch.brickinventoryapp.ui.*
-import ch.brickinventoryapp.ui.AppUiState
 import ch.brickinventoryapp.ui.screens.*
-import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
-import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.Petrol
 import coil3.ImageLoader
-import coil3.util.DebugLogger
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.res.painterResource
 import ch.brickinventoryapp.ressourcen.R
-import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Color
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.stringResource
-import javax.inject.Named
-import javax.inject.Inject
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
-import androidx.navigation.navArgument
 import ch.brickinventoryapp.*
 import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.GalerieViewModel
@@ -58,7 +22,6 @@ import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.viewmodel.SetDetailViewModel
 import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import ch.brickinventoryapp.ui.ManualItemDetailUiState
 
 /**
  * Navigationsziele des Bestands: Galerie, Teile, Minifiguren und ihre Details. Die
@@ -81,6 +44,20 @@ fun NavGraphBuilder.collectionGraph(
     galleryGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     partsGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
     minifigsGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+) {
+    galerieZiele(vm, navController, imageLoader, bottomNavItems, snackbarHostState, galleryGridState)
+    teileZiele(vm, navController, imageLoader, bottomNavItems, snackbarHostState, partsGridState, minifigsGridState)
+    einzelstueckZiele(navController, imageLoader)
+}
+
+/** Galerie und Set-Detail: Auf breiten Fenstern stehen sie nebeneinander. */
+private fun NavGraphBuilder.galerieZiele(
+    vm: AppViewModel,
+    navController: NavHostController,
+    imageLoader: coil3.ImageLoader,
+    bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
+    snackbarHostState: SnackbarHostState,
+    galleryGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
 ) {
         composable(Screen.Gallery.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
@@ -213,6 +190,18 @@ fun NavGraphBuilder.collectionGraph(
                 } else ch.brickinventoryapp.ui.components.MitZiel(this@composable) { detail() }
             }
         }
+}
+
+/** Teile, Minifiguren und der Vergleich: Reiter mit Liste und Detail daneben. */
+private fun NavGraphBuilder.teileZiele(
+    vm: AppViewModel,
+    navController: NavHostController,
+    imageLoader: coil3.ImageLoader,
+    bottomNavItems: List<Triple<Screen, @Composable () -> Unit, String>>,
+    snackbarHostState: SnackbarHostState,
+    partsGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+    minifigsGridState: androidx.compose.foundation.lazy.grid.LazyGridState,
+) {
         composable(Screen.Parts.route) {
             // Zustand INNERHALB des Ziels lesen — als Parameter wäre es eine
             // Momentaufnahme vom Aufbau des Graphen (der NavHost-Builder läuft nur einmal).
@@ -293,6 +282,13 @@ fun NavGraphBuilder.collectionGraph(
                 ComparisonScreen()
             }
         }
+}
+
+/** Seiten eines einzelnen Teils, einer Figur oder ihrer Käufe, ohne untere Leiste. */
+private fun NavGraphBuilder.einzelstueckZiele(
+    navController: NavHostController,
+    imageLoader: coil3.ImageLoader,
+) {
         // ── Detailansicht manueller Teile und Minifiguren ────────────────────
         // Ein ganzer Screen, kein Dialog mehr — Aufbau wie beim Set-Detail.
         composable(
