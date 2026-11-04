@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Zwei Prüfungen vor dem Veröffentlichen eines APK (Job `apk-pruefen`).
+"""Prüfungen vor dem Veröffentlichen eines APK (Job `apk-pruefen`).
 
   release-pruefen.py zertifikat ZERTIFIKAT_TXT SOLL_DATEI
       ZERTIFIKAT_TXT ist die Ausgabe von `apksigner verify --print-certs`. Jedes
@@ -25,10 +25,18 @@
       (höchstens einen Tag alt) und `gueltigBis` danach, höchstens 90 Tage —
       ohne sie liesse sich eine ältere Beschreibung still wieder hochladen.
 
+  release-pruefen.py schluessel GELIEFERT_PEM APP_PEM
+      GELIEFERT_PEM ist der öffentliche Beschreibungsschlüssel, mit dem der
+      Signierjob signiert hat (fehlt die Datei: keiner). APP_PEM ist
+      res/raw/beschreibungs_schluessel.pem der App. Nennt die App Schlüssel, muss
+      der gelieferte darunter sein; sonst lehnten die Geräte die Beschreibung ab
+      (sec11 H1). Nennt sie keinen, gilt der Übergangsweg über den APK-Schlüssel.
+
 Rückgabe 0 = in Ordnung, 1 = abgelehnt, 2 = Eingabe unbrauchbar. Die Meldung
 geht auf stdout; das ::error:: setzt der Workflow, denn ein erwartetes Nein
 (Probe-Schlüssel) ist dort kein Fehler.
 """
+import base64
 import hashlib
 import json
 import os
@@ -137,6 +145,36 @@ def beschreibung(daten_pfad, apk_pfad, meta_pfad, commit, ablage):
     return 0
 
 
+def pem_schluessel(pfad):
+    """Die öffentlichen Schlüssel (DER) einer PEM-Datei; Text ausserhalb der Blöcke zählt nicht."""
+    with open(pfad, encoding='utf-8') as f:
+        text = f.read()
+    bloecke = re.findall(r'-----BEGIN PUBLIC KEY-----([A-Za-z0-9+/=\s]+)-----END PUBLIC KEY-----', text)
+    if text.count('-----BEGIN') != len(bloecke):
+        raise ValueError(f'{pfad}: ein Block ist kein öffentlicher Schlüssel')
+    return [base64.b64decode(''.join(b.split()), validate=True) for b in bloecke]
+
+
+def schluessel(geliefert_pfad, app_pfad):
+    try:
+        app = pem_schluessel(app_pfad)
+        geliefert = pem_schluessel(geliefert_pfad) if os.path.exists(geliefert_pfad) else []
+    except (OSError, ValueError) as e:
+        print(f'Schlüssel unlesbar: {e}')
+        return 2
+    if not app:
+        print('Die App nennt keinen Beschreibungsschlüssel; es gilt der Übergangsweg über den APK-Schlüssel.')
+        return 0
+    if len(geliefert) != 1:
+        print('Die App verlangt einen Beschreibungsschlüssel, die Beschreibung trägt keinen.')
+        return 1
+    if geliefert[0] not in app:
+        print('Der Beschreibungsschlüssel des Signierjobs steht nicht in der App.')
+        return 1
+    print('Beschreibungsschlüssel steht in der App.')
+    return 0
+
+
 def main(argv):
     if len(argv) == 4 and argv[1] == 'zertifikat':
         return zertifikat(argv[2], argv[3])
@@ -144,6 +182,8 @@ def main(argv):
         return fassung(argv[2], argv[3], argv[4])
     if len(argv) == 7 and argv[1] == 'beschreibung':
         return beschreibung(*argv[2:7])
+    if len(argv) == 4 and argv[1] == 'schluessel':
+        return schluessel(argv[2], argv[3])
     print(__doc__)
     return 2
 

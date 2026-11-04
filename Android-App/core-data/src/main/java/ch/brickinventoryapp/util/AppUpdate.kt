@@ -19,8 +19,9 @@ import java.security.MessageDigest
  * prüfen, nie von allein laden. Es geht, weil der versionCode monoton steigt
  * (VERSION_CODE_BASE + Anzahl Commits, app/build.gradle.kts).
  *
- * 1. version-signiert.json aus dem Release lesen und ihre Signatur gegen die
- *    Signierer der installierten App prüfen ([gepruefteBeschreibung])
+ * 1. version-signiert.json aus dem Release lesen und ihre Signatur prüfen: gegen
+ *    die Beschreibungsschlüssel der App, solange es keine gibt gegen die Signierer
+ *    der installierten App ([gepruefteBeschreibung])
  * 2. Frist und Stand prüfen ([bewerteFrische]), dann versionCode vergleichen —
  *    echt grösser, nie „ungleich“
  * 3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage und die

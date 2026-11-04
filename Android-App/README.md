@@ -182,8 +182,61 @@ und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
 zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
 `ProtokollTest` verbietet rohe Log-Aufrufe ausserhalb der Hülle.
 
+## Daten auf dem Gerät
+
+Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
+(`util/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
+Zweck gebunden):
+
+| Ablage | Wie |
+| --- | --- |
+| Bestand (Room) | SQLCipher |
+| API-Antworten, Widget-Zahlen | `AblageChiffre` |
+| Vorschau-Ablage `files/vorschau/` | `AblageChiffre`; Klartext älterer Fassungen wird verworfen |
+| Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `VerschluesseltesDateisystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
+| Gutschein-PDF (Nummer, PIN) | nie auf der Platte: in den Speicher geladen, gerendert aus einem memfd, der mit dem Betrachter oder dem Prozess vergeht |
+| Teileliste-PDF `files/pdf/teileliste.pdf` | Klartext, weil die Ziel-App sie über den FileProvider liest; nach 30 Minuten gelöscht (WorkManager, dazu beim Start und beim Abmelden) |
+
+**Bewusst offen:** Angesehene Bauanleitungen liegen im Zwischenspeicher
+(`cache/pdfview_*.pdf`, höchstens 500 MB), damit sie offline öffnen und ein
+abgebrochener Download weiterläuft. Es sind öffentliche Dokumente von bis zu
+300 MB; `PdfRenderer` braucht eine Datei, die er wahlfrei liest, eine
+verschlüsselte Ablage müsste dafür doch wieder entschlüsselt daneben liegen.
+
+**Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
+Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
+`util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
+erkennung am Server und die harte Höchstdauer von 180 Tagen.
+
+## Manipulationsschutz (MASVS-RESILIENCE)
+
+Bewusst keine Root-, Debugger-, Hook- oder Play-Integrity-Prüfung. Die App ist
+quelloffen und selbst gehostet; wer sie auf seinem Gerät untersucht, ist in der
+Regel ihr Besitzer. Solche Prüfungen lassen sich mit Frida oder Magisk umgehen
+und sperren Nutzer eigener ROMs aus, ohne die Daten zu schützen. Was sie
+schützen soll, liegt an anderer Stelle: Der Server prüft jeden Zugriff,
+lokale Ablagen sind verschlüsselt, Updates sind signiert und werden vor der
+Installation geprüft.
+
+R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
+halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
+Konstruktor und `doWork()`, Rooms Datenbank-Konstruktoren und die Modelle unter
+`data.model`. Die Modelle bleiben ganz, weil Retrofit ihre Serializer zur
+Laufzeit über den Typ sucht; das prüft keine Probe am fertigen APK, und die Namen
+stehen ohnehin im Vertrag mit dem Server.
+
+**PDFs im App-Prozess:** `PdfRenderer` (pdfium) öffnet nur PDFs des eigenen
+Servers (`pdfImBetrachter`). Ein kompromittierter eigener Server liegt
+ausserhalb des Bedrohungsmodells; pdfium gehört zum System und wird mit dessen
+Updates gepflegt, nicht mit der App.
+
+**TOTP-Geheimnis an die Authenticator-App:** immer über die Systemauswahl
+(`oeffneMitAuswahl`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
+Geheimnis nur, wenn man sie dort auswählt.
+
 ## Hinweise
-- Bildcaching erfolgt via Coil (automatisch)
+- Bilder lädt Coil über den Bild-Client; auf der Platte liegen nur dessen
+  verschlüsselter HTTP-Zwischenspeicher und die Vorschau-Ablage.
 
 
 ## Module
@@ -433,8 +486,8 @@ Unter **Settings → Environments → New environment** die Environment `release
 anlegen: *Deployment branches and tags* auf *Selected branches and tags* mit
 der **Etikett-Regel** `android-v*` (keine Zweig-Regel, auch nicht `main`) und
 *Required reviewers* setzen, *Prevent self-review* an. Die Jobs `signieren` und
-`release` warten dann je auf ein Ja. Dort unter *Environment secrets* vier
-Secrets anlegen. Der Job `signieren` liest diese Regeln über die API und
+`release` warten dann je auf ein Ja. Dort unter *Environment secrets* die
+Secrets der Tabelle unten anlegen. Der Job `signieren` liest diese Regeln über die API und
 signiert nicht, wenn kein Pflichtprüfer eingetragen ist oder die Environment
 mehr als das Etikett `android-v*` zulässt.
 
@@ -487,12 +540,13 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 
 - **`version-signiert.json`** (im Release `apk-neuste`): Der Job `signieren`
   schreibt versionCode, versionName, Commit, die Adresse des
-  Fassungsanhangs, Grösse und SHA-256 des APK und signiert das mit **demselben
-  Schlüssel wie das APK** (`openssl dgst -sha256`). Die App liest nur diese
-  Datei und prüft sie gegen die Signierer der installierten Fassung, das
-  geladene APK danach gegen die Prüfsumme. Wer nur Schreibrecht am Repository
-  hat, kann so kein Update umleiten oder eine ältere Fassung anbieten. `apk-pruefen`
-  prüft Signatur und Inhalt vor dem Veröffentlichen.
+  Fassungsanhangs, Grösse und SHA-256 des APK und signiert das zweimal
+  (`openssl dgst -sha256`): mit dem eigenen **Beschreibungsschlüssel**
+  (`beschreibungssignatur`, unten) und mit dem APK-Schlüssel (`signatur`, nur
+  noch für Fassungen ohne Beschreibungsschlüssel). Die App liest nur diese Datei
+  und prüft das geladene APK danach gegen die Prüfsumme. Wer nur Schreibrecht am
+  Repository hat, kann so kein Update umleiten oder eine ältere Fassung
+  anbieten. `apk-pruefen` prüft Signaturen und Inhalt vor dem Veröffentlichen.
 - **Frist (sec10 N1):** Die Beschreibung trägt `ausgestellt` und `gueltigBis`
   (30 Tage, Sekunden seit 1970, UTC). Die App merkt sich den höchsten gesehenen
   versionCode und den spätesten Ausstellungszeitpunkt. Eine ältere oder
@@ -510,9 +564,39 @@ Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 - **Prüfsumme des Baus:** Der Baujob misst das unsignierte APK und Bundle gleich
   nach `assembleRelease`, bevor Lint und weitere Gradle-Läufe Projektcode
   ausführen; `signieren` signiert nur genau diese Bytes.
-- **Schlüsselrotation:** Nach einer v3-Rotation muss eine Fassung lang auch die
-  Beschreibung mit dem alten Schlüssel signiert sein, sonst finden installierte
-  Geräte das Update nicht (sie kennen nur ihren Signierer).
+- **Schlüsselrotation:** Mit Beschreibungsschlüssel hängt das Finden von Updates
+  nicht mehr am APK-Schlüssel; eine v3-Rotation betrifft nur noch Fassungen ohne
+  ihn. Für die muss eine Fassung lang auch die Beschreibung mit dem alten
+  APK-Schlüssel signiert sein (sie kennen nur ihren Signierer).
+
+### Beschreibungsschlüssel (sec11 H1)
+
+Ein Schlüssel signiert Daten nur für einen Zweck: Der APK-Schlüssel signiert
+APKs, die Beschreibung bekommt einen eigenen ECDSA-Schlüssel (P-256). Kennt die
+App einen solchen Schlüssel (`core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem`),
+nimmt sie nur noch dessen Signatur an; solange die Datei leer ist, gilt der
+Übergangsweg über die Signierer der App.
+
+Einrichten (einmalig, in dieser Reihenfolge):
+
+1. Schlüssel erzeugen, ausserhalb des Repositorys:
+   `openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out beschreibung.pem`
+2. Den Inhalt von `beschreibung.pem` als Secret `BESCHREIBUNG_SCHLUESSEL` in die
+   Environment `release` legen. Ab dem nächsten Etikett trägt die Beschreibung
+   beide Signaturen.
+3. Den öffentlichen Teil (`openssl pkey -in beschreibung.pem -pubout`) an
+   `beschreibungs_schluessel.pem` anhängen und veröffentlichen. Ab dieser
+   Fassung gilt für die App nur noch die Beschreibungssignatur. Fehlt das Secret
+   bei einem Etikett, obwohl die App einen Schlüssel nennt, bricht `apk-pruefen`
+   ab, statt eine Beschreibung zu veröffentlichen, die die Geräte ablehnen.
+
+Wechseln: den neuen öffentlichen Schlüssel dazuschreiben und veröffentlichen,
+erst danach das Secret tauschen, den alten Eintrag später entfernen. Die App
+nimmt jeden Schlüssel der Datei an.
+
+Die Signatur mit dem APK-Schlüssel (`signatur`) bleibt, bis keine Fassung ohne
+Beschreibungsschlüssel mehr verbreitet ist; danach im Job `signieren` diese
+Signatur und in `apk-pruefen` ihre Prüfung entfernen.
 
 Dazu gehört eine Branch-Protection (oder ein Ruleset) auf `main`: Merge nur
 über Pull-Request mit grüner CI, kein Force-Push. Sonst genügt ein direkter
@@ -524,6 +608,7 @@ Push, um Code bis vor die Freigabe zu bringen.
 | `KEYSTORE_PASSWORT` | Passwort des Schlüsselspeichers |
 | `KEY_ALIAS`         | `brickinventory`              |
 | `KEY_PASSWORT`      | Passwort des Schlüssels       |
+| `BESCHREIBUNG_SCHLUESSEL` | privater Beschreibungsschlüssel (PEM, oben); bis zur Einrichtung leer |
 
 Der Job `signieren` schreibt den Schlüsselspeicher nach `$RUNNER_TEMP`, signiert
 das unsignierte APK aus dem Bau-Job mit `apksigner` aus dem SDK des Runners und

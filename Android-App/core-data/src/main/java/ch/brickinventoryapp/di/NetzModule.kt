@@ -97,14 +97,15 @@ object NetzModule {
         sessionExpired: ch.brickinventoryapp.data.SessionExpiredSignal,
         vorschau: ch.brickinventoryapp.data.cache.VorschauSpeicher,
         frage: ch.brickinventoryapp.util.ZertifikatsFrage,
+        ablage: ch.brickinventoryapp.util.Ablageschluessel,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, frage = frage)
             .newBuilder()
             // ── Dauerhafte Ablage der Vorschaubilder ──
             //
             // Zuerst in der Kette, damit der Abgriff das Endergebnis sieht — der
-            // Offline-Rückfall unten ist der innere. Er ergänzt die beiden
-            // LRU-Zwischenspeicher unter `cacheDir`, die Android jederzeit leeren darf; diese
+            // Offline-Rückfall unten ist der innere. Er ergänzt den
+            // LRU-Zwischenspeicher unter `cacheDir`, den Android jederzeit leeren darf; diese
             // Ablage liegt unter `filesDir` und räumt nur selbst (VorschauSpeicher).
             .addInterceptor { chain ->
                 val anfrage = chain.request()
@@ -167,9 +168,15 @@ object NetzModule {
                 maxRequests = 12
                 maxRequestsPerHost = 6
             })
-            // HTTP-Zwischenspeicher für Bilder: Coils Plattencache hält nur fertige Bytes; für
-            // bedingte Anfragen und den Offline-Rückfall braucht es ETag und Ablaufdatum.
-            .cache(okhttp3.Cache(context.cacheDir.resolve("image_http_cache"), 50L * 1024 * 1024))
+            // HTTP-Zwischenspeicher für Bilder: Für bedingte Anfragen und den Offline-Rückfall
+            // braucht es ETag und Ablaufdatum. Verschlüsselt wie Bestand und Antworten, denn die
+            // Bilder zeigen, welche Sets jemand besitzt.
+            .cache(okhttp3.Cache(
+                ch.brickinventoryapp.util.VerschluesseltesDateisystem(
+                    okio.FileSystem.SYSTEM, ch.brickinventoryapp.util.AblageChiffre { ablage.fuer("bilder") }, "bilder"),
+                context.cacheDir.resolve("image_http_cache").toOkioPath(),
+                50L * 1024 * 1024,
+            ))
             // Offline-Rückfall: Ist der Server nicht erreichbar, kommen die Bilder aus dem
             // Cache. Am Fehler festgemacht, nicht am Verbindungsstatus — im WLAN kann der
             // Heimserver trotzdem schweigen. FORCE_CACHE liefert die Kopie ohne Rücksicht auf
@@ -217,15 +224,9 @@ object NetzModule {
                     .maxSizePercent(context, 0.15) // 15 % des App-Speichers
                     .build()
             }
-            .diskCache {
-                coil3.disk.DiskCache.Builder()
-                    // directory() nimmt in Coil 3 einen okio.Path statt einer
-                    // java.io.File. Derselbe Ordner wie bisher, damit ein
-                    // bestehender Zwischenspeicher nicht verwaist.
-                    .directory(context.cacheDir.resolve("image_cache").toOkioPath())
-                    .maxSizeBytes(50L * 1024 * 1024) // 50 MB auf der Platte
-                    .build()
-            }
+            // Kein eigener Plattencache: Er hielte dieselben Bytes wie der HTTP-Zwischenspeicher
+            // des Clients, aber im Klartext. Ohne diese Zeile legte Coil 3 seinen eigenen an.
+            .diskCache { null }
             // Cache-Köpfe beachten (ein falsches Bild soll sich vom Server erneuern lassen)
             // ist in Coil 3 keine Einstellung mehr: Die einzige CacheStrategy, DEFAULT, ist
             // die Vorgabe der Fabrik oben. Ob sie sich im Einzelnen wie

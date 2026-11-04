@@ -52,9 +52,10 @@ class TokenSchranke {
 }
 
 /**
- * Höchstdauer einer Anmeldung: Der Server kennt für App-Token nur die Gleitfrist
- * (TOKEN_IDLE_DAYS), und Tausch und Nutzung verlängern sie ohne Ende. Danach meldet
- * die App ab und entwertet den Token am Server; die Kette eines kopierten Tokens endet mit.
+ * Höchstdauer einer Anmeldung, dieselbe wie die harte Frist des Servers
+ * (APP_HOECHSTDAUER_TAGE in Web-App/routes/auth.ts; der Tausch erbt sie). Die
+ * Prüfung hier ist die zweite Linie: Die App meldet sich selbst ab und entwertet den
+ * Token, statt erst am 401 zu merken, dass die Kette zu Ende ist.
  */
 const val TOKEN_HOECHSTDAUER_TAGE = 180L
 

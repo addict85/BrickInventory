@@ -88,7 +88,7 @@ class UpdateFrischeTest {
     fun `Frist und Ausstellung kommen aus der signierten Beschreibung`() {
         // Signiert wie im Job `signieren` (openssl dgst -sha256 -sign), ECDSA-Testschlüssel.
         val zert = Base64.getDecoder().decode(ZERT)
-        val b = gepruefteBeschreibung("""{"daten":"$DATEN","signatur":"$SIG"}""", listOf(zert))
+        val b = gepruefteBeschreibung("""{"daten":"$DATEN","signatur":"$SIG"}""", listOf(zert), emptyList())
         assertNotNull(b)
         assertEquals(1_793_750_400L, b!!.ausgestellt)
         assertEquals(1_793_750_400L + 30 * tag, b.gueltigBis)

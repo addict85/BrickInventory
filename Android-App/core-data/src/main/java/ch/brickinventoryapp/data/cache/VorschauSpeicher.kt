@@ -1,6 +1,8 @@
 package ch.brickinventoryapp.data.cache
 
 import android.content.Context
+import ch.brickinventoryapp.util.AblageChiffre
+import ch.brickinventoryapp.util.Ablageschluessel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.security.MessageDigest
@@ -14,12 +16,18 @@ import javax.inject.Singleton
  * verdrängt die eigene Sammlung. Diese Ablage liegt unter `filesDir` und räumt nur
  * selbst. Keine Datenbank: Der Schlüssel ist die Adresse, gefragt wird nur „habe
  * ich die?“. Zusammenzuführen gibt es nichts — die App liest Bilder nur, und ob
- * die Kopie stimmt, klärt der ETag im HTTP-Cache.
+ * die Kopie stimmt, klärt der ETag im HTTP-Cache. Verschlüsselt wie der Bestand
+ * (sec11 N1): Die Bilder zeigen, welche Sets jemand besitzt.
  */
 @Singleton
-class VorschauSpeicher @Inject constructor(
-    @ApplicationContext private val context: Context,
+class VorschauSpeicher(
+    /** Der Ablageordner; eine Funktion, damit `context` erst beim ersten Zugriff gefragt wird. */
+    private val wurzel: () -> File,
+    private val chiffre: AblageChiffre,
 ) {
+    @Inject constructor(@ApplicationContext context: Context, ablage: Ablageschluessel) :
+        this({ File(context.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") })
+
     companion object {
         /**
          * Obergrenze der Ablage: `filesDir` räumt niemand ausser uns. 150 MB fassen bei
@@ -52,11 +60,20 @@ class VorschauSpeicher @Inject constructor(
 
         /** Nur Vorschaubilder. Die volle Aufloesung gehoert nicht hierher — siehe [istVorschau]. */
         private const val VORSCHAU_MERKMAL = "thumb"
+
+        /** Unterordner der verschlüsselten Ablage; was direkt daneben liegt, ist Klartext älterer Fassungen. */
+        private const val VERSCHLUESSELT = "v2"
     }
 
     private val ordner: File by lazy {
-        File(context.filesDir, "vorschau").also { it.mkdirs() }
+        val basis = wurzel()
+        // Ein Zwischenspeicher: Die Klartext-Bilder werden verworfen, nicht übernommen.
+        runCatching { basis.listFiles()?.filter { it.isFile }?.forEach { it.delete() } }
+        File(basis, VERSCHLUESSELT).also { it.mkdirs() }
     }
+
+    /** Zweck und Dateiname als AAD: Eine Datei unter fremdem Namen gilt nicht als dieses Bild. */
+    private fun bindung(datei: File) = "vorschau/${datei.name}"
 
     /**
      * Gehört diese Adresse zu einem Vorschaubild? Zwei Formen aus util/ImageUrls.kt:
@@ -86,10 +103,15 @@ class VorschauSpeicher @Inject constructor(
      */
     fun hat(adresse: String): Boolean = datei(adresse).let { it.isFile && it.length() > 0 }
 
-    /** Die abgelegten Bytes — oder null, wenn es sie nicht gibt. */
+    /**
+     * Die abgelegten Bytes — oder null, wenn es sie nicht gibt. Eine unlesbare Datei
+     * (anderer Schlüssel, verändert) wird gelöscht, sonst gälte sie beim Vorwärmen als da.
+     */
     fun lies(adresse: String): ByteArray? {
         val f = datei(adresse)
-        return if (f.isFile && f.length() > 0) runCatching { f.readBytes() }.getOrNull() else null
+        if (!f.isFile || f.length() == 0L) return null
+        val roh = runCatching { f.readBytes() }.getOrNull() ?: return null
+        return chiffre.entschluessle(roh, bindung(f)) ?: run { f.delete(); null }
     }
 
     /**
@@ -101,7 +123,7 @@ class VorschauSpeicher @Inject constructor(
         runCatching {
             val ziel = datei(adresse)
             val temp = File(ordner, "${ziel.name}.tmp")
-            temp.writeBytes(bytes)
+            temp.writeBytes(chiffre.verschluessle(bytes, bindung(ziel)))
             if (!temp.renameTo(ziel)) temp.delete()
             // Vorgewaermtes altert sofort — Begruendung an SPEKULATIV_ZEIT.
             else if (spekulativ) ziel.setLastModified(SPEKULATIV_ZEIT)

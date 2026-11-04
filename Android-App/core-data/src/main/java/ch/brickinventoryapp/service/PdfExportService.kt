@@ -42,6 +42,8 @@ class PdfExportService : Service() {
     companion object {
         const val CHANNEL_ID      = "pdf_export_channel"
         const val NOTIFICATION_ID = 43
+        /** Die Abschlussmeldung; [TeilelistenAufraeumer] nimmt sie mit der Datei weg. */
+        const val FERTIG_ID = NOTIFICATION_ID + 1
 
         fun start(context: Context) {
             // Siehe CsvImportService: startForegroundService kann an der
@@ -140,7 +142,7 @@ class PdfExportService : Service() {
             .build()
         // Andere ID, damit die Abschluss-Notification das Foreground-Ende überlebt
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(NOTIFICATION_ID + 1, n)
+            .notify(FERTIG_ID, n)
     }
 
     private fun createNotificationChannel() {

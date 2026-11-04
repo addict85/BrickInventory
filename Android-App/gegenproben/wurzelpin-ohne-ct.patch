@@ -1,0 +1,18 @@
+Gegenprobe: ein Pin auf eine System-Wurzel gilt wieder über den Abgleich mit der mitgeschickten Wurzel, an der CT-Prüfung vorbei (Stand vor sec11 H6)
+Modul: feature-anmeldung
+Test: ch.brickinventoryapp.ZertifikatPinTest
+Rot: ein Pin auf eine System-Wurzel gilt nur mit der System-Pruefung
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
+index f685cf1..b1e6f04 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/ServerVertrauen.kt
+@@ -209,7 +209,7 @@ class PinVertrauen(
+         // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate
+         // Transparency: Schickt der Server die Wurzel mit, umginge der Abgleich die CT-Prüfung.
+         val oeffentlicherPin = pin != null && pin in systemWurzeln
+-        if (pin != null && !oeffentlicherPin && passtZumPin(chain, pin)) return
++        if (pin != null && passtZumPin(chain, pin)) return
+         // Öffentlich heisst: allein mit den System-CAs, nie über eine Nutzer-CA.
+         val oeffentlich = runCatching { mit(fremdeHosts) }.isSuccess
+         // Ein öffentlicher Pin bindet Host und System-Gültigkeit, nicht eine Wurzel:
