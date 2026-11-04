@@ -19,11 +19,7 @@ const { execFileSync } = require('node:child_process');
 const PUBLIC = path.join(__dirname, '..', 'public');
 const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css', 'mobile.css'];
 
-function chrome() {
-  const kandidaten = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium', '/usr/bin/chromium-browser', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'];
-  return kandidaten.find(k => k && fs.existsSync(k)) ?? null;
-}
+const { chrome } = require('./helpers/app-browser');
 
 function testseite() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');

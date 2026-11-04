@@ -74,40 +74,37 @@ abgeleitet.</td>
 
 ## Schnellstart
 
-Der einfachste Weg ist Docker. Postgres kommt mit.
+Der einfachste Weg ist Docker mit Compose. PostgreSQL und Caddy (HTTPS) kommen
+mit; die App selbst veröffentlicht keinen Port. Alles im Ordner `Web-App/`:
 
 ```bash
 git clone https://github.com/addict85/BrickInventory.git
 cd BrickInventory/Web-App
-# SESSION_SECRET in compose.yaml auf einen eigenen Zufallswert setzen:
-#   openssl rand -base64 48
+cp .env.example .env
+echo BRICK_HOST=nas.example.lan >> .env   # Name oder IP-Adresse des Servers
+sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
+sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt
+docker compose pull                       # das signierte Image von Docker Hub
 docker compose up -d
+docker compose logs app jobs | grep -A2 Standard-Admin   # Erstpasswort von admin
 ```
 
-→ <http://localhost:3000>
+→ `https://<BRICK_HOST>` (Port 80 leitet um). Das Wurzelzertifikat der eigenen
+CA liegt unter `http://<BRICK_HOST>/ca.crt`; vor dem Installieren auf einem
+Gerät den Fingerabdruck vergleichen, den `scripts/ca-einrichten.sh` ausgibt.
 
-Das Passwort des Kontos `admin` wird beim allerersten Start **einmalig ins
-Log** geschrieben (`docker compose logs app`) — oder vorab über
-`ADMIN_PASSWORD` gesetzt.
+- **Öffentlicher Name statt eigener CA:** `BRICK_TLS=acme` (und optional
+  `ACME_EMAIL`) in `.env`; `scripts/ca-einrichten.sh` entfällt, das Zertifikat
+  kommt von Let's Encrypt.
+- **Geheimnisse** stehen nicht in `.env`, sondern als Dateien in
+  `./geheimnisse/` und gehen als Docker-Secrets in die Container.
+- **Selbst bauen** statt ziehen: `docker compose up -d --build`.
+- **Update:** `docker compose pull && docker compose up -d`; vorher
+  `Web-App/UPGRADE.md` lesen.
 
-Vor dem ersten Start lohnen zwei weitere Werte in einer `.env` neben
-`compose.yaml`:
-
-- `DB_PASSWORD` — Pflicht. Ohne startet `docker compose` nicht, und mit dem
-  alten Beispielpasswort `brickinventory_secret` verweigert der Server den
-  Start. Eine bestehende Datenbank behält ihr Passwort; dann den bisherigen
-  Wert eintragen (oder ändern, siehe `Web-App/UPGRADE.md`).
-- `DB_APP_PASSWORD` — Pflicht, ein anderer Wert als `DB_PASSWORD`: Die App
-  verbindet sich mit einer eigenen Rolle ohne Superuser-Rechte
-  (`Web-App/UPGRADE.md`, Abschnitt 29).
-- `APP_BIND=127.0.0.1` — wenn ein Reverse-Proxy (Caddy, nginx, Traefik) davor
-  steht. Port 3000 ist dann nur noch auf dem Rechner selbst erreichbar und
-  nicht am Proxy vorbei im ganzen Netz.
-- `TRUST_PROXY=<Adresse>` — die feste Adresse dieses Proxys, sonst gelten alle
-  Clients als dieselbe Adresse (Anmeldesperre, Drosseln). Im Compose-Netz
-  bekommt der Proxy eine feste Adresse aus `172.28.73.0/24`, etwa
-  `172.28.73.10`. Ohne Angabe glaubt der Server nur Loopback; einem ganzen
-  Netz (früher `docker`) glaubt er nicht mehr.
+Das Passwort des Kontos `admin` steht nur beim allerersten Start im Protokoll
+und muss bei der ersten Anmeldung geändert werden. Einzelheiten, Sicherung und
+alle Variablen: [`Web-App/README.md`](Web-App/README.md).
 
 ### Auf dem Raspberry Pi
 
@@ -119,12 +116,9 @@ passende Architektur selbst:
 | `linux/amd64` | PC, Server, NAS, jede x86-Cloud |
 | `linux/arm64` | Raspberry Pi 3/4/5 und Zero 2 W (**64-Bit-System**), Apple Silicon, ARM-Server |
 
-```bash
-docker compose pull && docker compose up -d
-```
-
-32-Bit (`armv7`) wird nicht unterstützt — Details und Begründung in
-[`Web-App/README.md`](Web-App/README.md).
+`docker compose pull` holt die passende Fassung. 32-Bit (`armv7`) wird nicht
+unterstützt: Für Alpine (musl) auf armv7 gibt es kein `sharp`, die
+Bildverarbeitung fiele still auf den langsamen Rückfall zurück.
 
 Jedes veröffentlichte Image ist mit [cosign](https://docs.sigstore.dev/)
 signiert (keyless, aus dem Workflow `docker-publish.yml` auf `main`). Prüfen:
@@ -203,9 +197,9 @@ Android-App/   Kotlin + Jetpack Compose, Hilt, Retrofit, CameraX + ML Kit
 
 | | Web-App | Android-App |
 | --- | --- | --- |
-| Sprache | TypeScript (~31 700 Zeilen) | Kotlin (138 Dateien) |
-| Tests | 332 Testdateien | 120 Testdateien, 575 Prüfungen |
-| Laufzeit | Node 26, PostgreSQL 18 | Android 8.0+ (API 26) |
+| Sprache | TypeScript (~33 300 Zeilen im Server) | Kotlin (138 Dateien) |
+| Tests | 578 Testdateien | 120 Testdateien, 575 Prüfungen |
+| Laufzeit | Node 26, PostgreSQL 18 | Android 11+ (API 30) |
 
 Beide Bäume tragen eine ausführliche Änderungshistorie mit Begründungen:
 [`Web-App/CHANGELOG-fixes.md`](Web-App/CHANGELOG-fixes.md) und

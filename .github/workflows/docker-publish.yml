@@ -1,26 +1,14 @@
 name: Web-App
 
-# Baut das Image aus Web-App/ und veroeffentlicht es auf Docker Hub als
-# docker.io/addict85/brickinventory.
+# Baut das Image aus Web-App/ und veröffentlicht es als docker.io/addict85/brickinventory
+# (compose.yaml zieht es für app, jobs und schluessel).
 #
-# ── Warum zwei Jobs statt einem ──────────────────────────────────────────────
-# Ein einzelner Job mit "platforms: linux/amd64,linux/arm64" muesste arm64 unter
-# QEMU emulieren — fuer `npm ci` samt sharp und esbuild bedeutet das ein
-# Vielfaches der Bauzeit und gelegentliche Abstuerze im Emulator.
-#
-# Dieses Repository ist oeffentlich, damit stehen GitHubs arm64-Runner
-# (ubuntu-24.04-arm) kostenlos bereit. Jede Architektur baut deshalb NATIV auf
-# ihrem eigenen Runner und schiebt das Ergebnis ohne Tag als reinen Digest
-# hoch; der merge-Job fasst die Digests danach zu EINEM Multi-Arch-Manifest
-# zusammen. Ein `docker pull addict85/brickinventory` holt anschliessend auf dem
-# Pi automatisch arm64 und auf einem PC amd64.
-#
-# Gebaut wird erst, wenn die CI auf demselben Commit grün ist (workflow_run):
-# Ein Image aus einem Stand mit roten Tests landete sonst als `latest` auf
-# jedem Pi, der neu zieht. Der Handstart ebenso: nur auf main und nur mit
-# einem grünen CI-Lauf auf genau diesem Commit (Prüfschritt `p`).
-# Hochladen und Signieren laufen in der Umgebung `docker-hub`; dort gehören
-# die Docker-Hub-Secrets und eine Freigabe hin (docs/SICHERHEIT.md).
+# Je Architektur ein Job auf einem nativen Runner (arm64 unter QEMU dauerte ein
+# Vielfaches und stürzte ab); der merge-Job fasst die Digests zu einem
+# Multi-Arch-Manifest zusammen, signiert es und hängt Herkunft und Stückliste an.
+# Gebaut wird nur nach grüner CI auf genau diesem Commit auf main, auch beim
+# Handstart. Hochladen und Signieren laufen in der Umgebung `docker-hub`
+# (docs/SICHERHEIT.md).
 on:
   workflow_run:
     workflows: ["CI"]
@@ -36,25 +24,10 @@ on:
 env:
   IMAGE: addict85/brickinventory
   CONTEXT: Web-App
-  # Die Plattformen, die am Ende IM MANIFEST stehen muessen. Der letzte Schritt
-  # prueft das und laesst den Lauf scheitern, wenn eine fehlt.
-  #
-  # Diese Liste und die build-Matrix unten muessen zusammenpassen — sie stehen
-  # getrennt, weil die Matrix zusaetzlich den passenden Runner braucht.
-  #
-  # Warum genau diese zwei:
-  #   linux/amd64  — PC, Server, NAS, jede x86-Cloud
-  #   linux/arm64  — Raspberry Pi 3/4/5 und Zero 2 W mit 64-Bit-System,
-  #                  Apple Silicon, ARM-Server (Graviton, Ampere)
-  #
-  # NICHT dabei ist linux/arm/v7 (32-Bit-Pi-OS), und das ist kein Versehen:
-  # Dieses Image steht auf Alpine (musl), und fuer musl+armv7 gibt es kein
-  # sharp-Paket — @img/sharp-linuxmusl-arm existiert auf npm nicht, nur die
-  # glibc-Fassung. Ein armv7-Image liesse sich zwar bauen, die Bildverarbeitung
-  # fiele darin aber still auf den deutlich langsameren Jimp-Rueckfall zurueck.
-  # Ein Image zu veroeffentlichen, das nur so aussieht wie die anderen, ist
-  # schlechter als keines. Wer armv7 wirklich braucht, muss zuerst das
-  # Basis-Image auf Debian slim (glibc) umstellen.
+  # Muss im Manifest stehen; der letzte Schritt prüft das. Passt zur Matrix
+  # unten. Kein linux/arm/v7: Für Alpine (musl) auf armv7 gibt es kein sharp,
+  # die Bildverarbeitung fiele still auf Jimp zurück. Ein Image, das nur so
+  # aussieht wie die anderen, ist schlechter als keines.
   ERWARTETE_PLATTFORMEN: "linux/amd64 linux/arm64"
 
 
@@ -147,9 +120,7 @@ jobs:
           - plattform: linux/amd64
             runner: ubuntu-latest
           - plattform: linux/arm64
-            # Nativer ARM-Runner. Faellt GitHub die Bezeichnung weg, ist der
-            # Rueckfall: runner ubuntu-latest + QEMU (Schritt unten einkommentieren)
-            # — dann dauert dieser Job statt ~5 eher ~40 Minuten.
+            # Rückfall ohne ARM-Runner: ubuntu-latest mit QEMU (rund 40 statt 5 Minuten).
             runner: ubuntu-24.04-arm
 
     steps:
@@ -221,50 +192,9 @@ jobs:
           mkdir -p /tmp/digests
           touch "/tmp/digests/${DIGEST#sha256:}"
 
-      # ── Fassungen: nachgesehen, nicht geraten ─────────────────────────────
-      #
-      # Hier standen checkout@v4, upload-artifact@v4 und download-artifact@v4.
-      # In android.yml steht seit laengerem ein Absatz dazu, dass v4 und v5 auf
-      # Node 20 laufen und bei jedem Lauf warnen — die Recherche wurde einmal
-      # gemacht, dort aufgeschrieben, und diese Datei blieb stehen. Dieselbe
-      # Regel an zwei Stellen, eine davon gepflegt.
-      #
-      # Am Tag der Aenderung abgerufen (runs.using aus der action.yml):
-      #
-      #   checkout            v4 node20   v5 node24   v6 node24
-      #   upload-artifact     v4 node20   v5 node20   v6 node24
-      #   download-artifact   v4 node20   v5 node20   v6 node20   v7 node24
-      #
-      # Beachten: Bei download-artifact haette der naheliegende Sprung auf v6 —
-      # gleiche Zahl wie bei den anderen — die Warnung NICHT beseitigt. Erst v7
-      # wechselt die Laufzeit. Wer hier wieder anfasst: nachsehen, nicht die
-      # Nummer der Nachbarzeile abschreiben.
-      #
-      # Geprueft wurde ausserdem, dass die benutzten Eingaben es noch gibt:
-      # `pattern` und `merge-multiple` stehen auch in v7; die Aenderung in v5
-      # betrifft die Ablage EINZELNER Artefakte ohne merge-multiple.
-      #
-      # ── Nachtrag: eine Hauptversion weiter, aus anderem Grund ─────────────
-      #
-      # Die Tabelle darueber bleibt richtig. Gehoben wurde jetzt NICHT wegen
-      # einer Warnung, sondern weil die Frage „sind alle verwendeten Fassungen
-      # die neuesten" auch fuer die Actions gilt — und die standen in keinem
-      # Katalog und in keiner package.json, also hat sie niemand gemessen.
-      #
-      # Gemessen wurde mit demselben Handgriff wie oben, nur umgedreht: ob ein
-      # hoeherer Haupt-Tag UEBERHAUPT existiert. api.github.com ist aus dieser
-      # Umgebung gesperrt (403), raw.githubusercontent.com nicht:
-      #
-      #     raw.githubusercontent.com/<action>/v7/action.yml  -> 200 = gibt es
-      #                                      .../v9, v42, v99 -> 404 = gibt es nicht
-      #
-      # Die Gegenprobe mit v9, v42, v99 und vXYZ war noetig: Ohne sie waere
-      # „200 bei jedem geprueften Tag" nicht von „der Abruf antwortet immer
-      # 200" zu unterscheiden gewesen.
-      #
-      # Jede neue Hauptversion laeuft auf node24 — die Laufzeit aendert sich
-      # also nicht, es gibt hier keine Warnung zu beseitigen und auch keine
-      # einzufangen.
+      # Die Hauptversionen der Actions sind an der Laufzeit (runs.using in
+      # action.yml) nachgesehen, nicht von der Nachbarzeile abgeschrieben:
+      # download-artifact wechselt erst mit v7 auf node24.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: digest-${{ env.PAAR }}
@@ -321,15 +251,9 @@ jobs:
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf "${{ env.IMAGE }}@sha256:%s " *)
 
-      # PRUEFEN, nicht nur anzeigen.
-      #
-      # Ohne diese Zusicherung koennte ein Manifest mit nur einer Architektur
-      # veroeffentlicht werden — auf dem Entwicklungsrechner faellt das nie auf,
-      # der Pi bekaeme aber beim Ziehen "no matching manifest for
-      # linux/arm64/v8". Genau die Art Fehler, die erst beim Nutzer auftritt.
-      #
-      # Die "unknown"-Eintraege stammen von den Attestierungen, die buildx
-      # mitschiebt; sie sind keine Architekturen und werden ausgefiltert.
+      # Prüfen, nicht nur anzeigen: Ein Manifest ohne arm64 fiele erst auf dem
+      # Pi auf („no matching manifest“). Die „unknown“-Einträge sind
+      # Attestierungen, keine Architekturen.
       - name: Manifest pruefen — sind alle Plattformen drin?
         run: |
           set -eu

@@ -341,3 +341,30 @@ test('jedes Dokument unter docs/begruendungen wird vom Code erreicht', () => {
   assert.ok(dokumente.length > 50, `nur ${dokumente.length} Dokumente gefunden — greift die Suche noch?`);
   assert.deepEqual(dokumente.filter(d => !verwiesen.has(d)), []);
 });
+
+test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
+  // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
+  // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Gemessen
+  // am 04.11.2026: 24,5 % (vorher 44,0 %). Das Caddyfile zählt nicht mit:
+  // Kein Block darin ist länger als fünf Zeilen.
+  // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
+  const SCHRANKE = 24.5;
+  const wf = path.join(WEB, '..', '.github', 'workflows');
+  const dateien = [
+    ...fs.readdirSync(wf).filter(f => /\.ya?ml$/.test(f)).map(f => path.join(wf, f)),
+    ...['Dockerfile', 'compose.yaml', 'tsconfig.json'].map(f => path.join(WEB, f)),
+  ];
+  let zeilen = 0, kommentar = 0;
+  for (const f of dateien) {
+    for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
+      const t = z.trim();
+      if (!t) continue;
+      zeilen++;
+      if (t.startsWith('#') || t.startsWith('//')) kommentar++;
+    }
+  }
+  assert.ok(dateien.length >= 6 && zeilen > 1000, `nur ${dateien.length} Dateien, ${zeilen} Zeilen — greift die Suche noch?`);
+  const anteil = Math.round(1000 * kommentar / zeilen) / 10;
+  assert.ok(anteil <= SCHRANKE, `${anteil} % Kommentarzeilen in den Betriebsdateien, erlaubt sind ${SCHRANKE} %`);
+  if (anteil < SCHRANKE - 0.5) console.log(`  ℹ Kommentaranteil Betrieb: ${anteil} % (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});

@@ -1,7 +1,13 @@
 # Upgrade-Hinweise
 
-Diese Fassung ändert an drei Stellen etwas, das beim Deployment auffällt.
-Alles andere ist abwärtskompatibel.
+Die Abschnitte stehen in der Reihenfolge, in der die Änderungen kamen; ein
+Update über mehrere Fassungen geht sie der Reihe nach durch. Wie eine
+Installation heute aussieht, steht in `README.md` („Docker“). Wo ein älterer
+Abschnitt dem heutigen Verhalten widerspricht, steht dort
+**„Überholt durch Abschnitt N“**; der alte Text bleibt als Beleg stehen.
+
+Die ersten Abschnitte (1–7) gehören zu einer Fassung, die an drei Stellen
+etwas änderte, das beim Deployment auffiel.
 
 ## 1. Der Startbefehl hat sich geändert
 
@@ -25,7 +31,7 @@ Bedienung.
 
 | Variable | Wirkung |
 |---|---|
-| `APP_BASE_URL` | Basis-URL für Links in Mails. **Sollte gesetzt werden** — ohne sie stammt der Host aus dem Request-Header. |
+| `APP_BASE_URL` | Basis-URL für Links in Mails. **Sollte gesetzt werden** — ohne sie stammt der Host aus dem Request-Header. **Überholt durch Abschnitt 25 und 38:** Der Host kommt nie aus dem Request; ohne `APP_BASE_URL` startet der Web-Prozess im Betrieb nicht. |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins. Ohne die Variable wird ein Zufallspasswort erzeugt und einmalig ins Log geschrieben. |
 | `REQUIRE_DB=1` | Nur für CI: Tests dürfen sich nicht mehr überspringen, wenn keine Datenbank erreichbar ist. |
 
@@ -77,6 +83,9 @@ eine Sicherung von `data/` erfasste sie nie.
 `image_local`-Werte mit diesem Präfix, und die Android-App baut ihre Bild-URLs
 daraus — beides bleibt unverändert. Es ändert sich nur, welches Verzeichnis
 dahinter liegt.
+
+> **Überholt durch Abschnitt 11:** Der Umzug ist erledigt, der Code dafür
+> (`utils/migrateImages.ts`) entfernt.
 
 Beim ersten Start nach dem Update verschiebt `utils/migrateImages.ts` die
 vorhandenen Dateien einmalig von `public/images/` nach `data/images/`
@@ -358,6 +367,9 @@ Bereits geschützt und unverändert: PDF-Export
 
 ## 13. Datenbankpasswort, TRUST_PROXY und verschlüsselte Gutscheine
 
+> **Überholt durch Abschnitt 33:** Das Datenbankpasswort steht nicht mehr in
+> `.env`, sondern in `./geheimnisse/db_password`.
+
 - **`DB_PASSWORD` ist Pflicht.** `compose.yaml` hat keinen Ersatzwert mehr, und
   mit dem alten Beispielpasswort `brickinventory_secret` verweigert der Server
   in Produktion den Start. Bestehende Datenbank umstellen:
@@ -397,6 +409,9 @@ wird nicht mehr veröffentlicht.
    `TRUST_PROXY` auf dessen Adresse und den Dienst `caddy` weglassen.
 3. `docker compose up -d --build`. Caddy legt beim ersten Start seine CA unter
    `./caddy/data/` an (Wurzel 10 Jahre gültig). Port 443 und 80 müssen frei sein.
+   **Überholt durch Abschnitt 32 und 33:** Caddy startet nur noch mit der
+   eigenen, auf `BRICK_HOST` beschränkten CA (`scripts/ca-einrichten.sh`),
+   mit `BRICK_TLS=acme` oder ausdrücklich `CA_OHNE_NAMENSBESCHRAENKUNG=ja`.
 4. Das Wurzelzertifikat auf die Geräte bringen (unten).
 5. Die Android-App einmal neu verknüpfen (QR-Code): Erst dann kennt sie den
    Fingerabdruck und die https-Adresse. Bis dahin meldet sie sich mit dem
@@ -838,6 +853,8 @@ Was sich für Nutzer und Clients ändert:
   Sichten und Funktionen, die Migrationen laufen also weiter. Umstellung:
   1. In `.env` ein zweites, anderes Passwort eintragen:
      `echo "DB_APP_PASSWORD=$(openssl rand -hex 24)" >> .env`
+     **Überholt durch Abschnitt 33:** heute `./geheimnisse/db_app_password`
+     (`sh scripts/geheimnisse-einrichten.sh`).
      (ohne den Wert bricht `docker compose up` mit einer Meldung ab).
   2. Wie gewohnt aktualisieren: `docker compose up -d --build`. Der neue,
      einmalige Dienst `db-rolle` startet nach der Datenbank, legt die Rolle an
@@ -909,7 +926,8 @@ Was sich für Nutzer und Clients ändert:
   `docker compose exec -e PGOPTIONS='-c search_path=pg_catalog,pg_temp' postgres psql -U brickinventory`.
 - **pgweb mit eigener Leserolle**: Neu in `.env`:
   `PGWEB_DB_PASSWORD=$(openssl rand -hex 24)` (anders als `DB_PASSWORD` und
-  `DB_APP_PASSWORD`). `db-rolle` legt `brickinventory_lesen` an: nur `SELECT`,
+  `DB_APP_PASSWORD`). **Überholt durch Abschnitt 33:** heute
+  `./geheimnisse/pgweb_db_password` (`PGWEB=ja sh scripts/geheimnisse-einrichten.sh`). `db-rolle` legt `brickinventory_lesen` an: nur `SELECT`,
   ohne die Tabellen `api_tokens`, `qr_login_tokens`, `user_sessions`,
   `webauthn_challenges`, `zweiter_faktor_codes`, `account_link_invites` und
   ohne die Spalten `users.password_hash/verification_token/reset_token`,
@@ -980,7 +998,9 @@ Was der Betrieb tun muss, steht zuerst; danach, was sich für Clients ändert.
 
 - **Geheimnisse als Dateien** (Docker-Secrets): `SESSION_SECRET_FILE`,
   `PGPASSWORD_FILE`, `DATABASE_URL_FILE`, `ADMIN_PASSWORD_FILE` statt der
-  Variablen (nie beide). Beispiel als `compose.override.yaml` neben
+  Variablen (nie beide). **Überholt durch Abschnitt 33:** `compose.yaml` hängt
+  die Secrets selbst ein; ein Override wie unten ist nicht mehr nötig und
+  gehört entfernt. Beispiel als `compose.override.yaml` neben
   `compose.yaml`:
 
   ```yaml
@@ -1737,3 +1757,26 @@ Telefon die Webseite.
 
 - `POST /api/v1/settings/household/redeem/pruefen` antwortet nach 30
   Prüfungen je Stunde und Konto mit 429 `zu_viele_anfragen`. Nichts zu tun.
+
+## 41. Ein Image für app, jobs und schluessel, gezogen statt gebaut
+
+`compose.yaml` nennt für `app`, `jobs` und `schluessel` jetzt dasselbe Image
+`addict85/brickinventory:${BRICK_TAG:-latest}` (`pull_policy: missing`); nur
+`app` hat noch `build:`.
+
+- **Ohne weiteres Zutun** holt `docker compose up -d` beim ersten Mal das
+  signierte Image von Docker Hub, statt lokal zu bauen. Danach bleibt es, bis
+  `docker compose pull` eine neuere Fassung holt. Update also:
+  `docker compose pull && docker compose up -d`.
+- **Wer selbst baut** (eigene Änderungen am Quelltext), nimmt wie bisher
+  `docker compose up -d --build`. Das Dockerfile wird dabei einmal gebaut,
+  nicht dreimal; das Ergebnis trägt den Namen des veröffentlichten Images und
+  gilt für alle drei Dienste, bis ein `pull` es ersetzt.
+- **Fester Stand:** `BRICK_TAG=sha-1a2b3c4` (oder ein Datums-Tag) in `.env`.
+- Die alten lokalen Images (`<ordner>-app`, `<ordner>-jobs`,
+  `<ordner>-schluessel`) werden nicht mehr benutzt und können mit
+  `docker image rm` weg.
+- Das Passwort des ersten Verwalters steht beim allerersten Start im
+  Protokoll von `app` oder `jobs` (wer zuerst migriert):
+  `docker compose logs app jobs | grep -A2 Standard-Admin`. `ADMIN_PASSWORD`
+  reicht `compose.yaml` nicht durch.

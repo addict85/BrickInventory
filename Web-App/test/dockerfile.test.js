@@ -82,7 +82,7 @@ test('das Laufzeit-Image trägt kein npm, corepack oder yarn', () => {
     assert.ok(laufzeit.includes(pfad), `${pfad} bleibt im Laufzeit-Image`);
 });
 
-test('Geheimnisse und Sicherungen bleiben aus Image und Repository', () => {
+test('Geheimnisse und Sicherungen bleiben aus Image und Repository', (t) => {
   // Der Build-Kontext ist Web-App/: Ohne Eintrag landeten .env (Passwörter),
   // die Sicherungen von scripts/backup.sh und der Datenschlüssel im Image.
   // Gegenprobe (01.11.2026): `backups` aus .dockerignore gestrichen → rot.
@@ -90,9 +90,18 @@ test('Geheimnisse und Sicherungen bleiben aus Image und Repository', () => {
   // (03.11.2026) `geheimnisse` aus .gitignore gestrichen → rot.
   for (const m of ['.env', '.env.*', 'backups', 'schluessel', 'data', 'geheimnisse'])
     assert.ok(muster.includes(m), `.dockerignore schliesst ${m} nicht aus`);
+  // Der zweite Teil fragt git; ohne Arbeitsbaum (Kopie ohne .git, Image) nur
+  // mit Meldung übersprungen, in der CI (REQUIRE_DB=1) ein Fehler.
+  // Gegenprobe (04.11.2026): Kopie des Baums ohne .git → übersprungen mit
+  // „kein Git-Arbeitsbaum“, mit REQUIRE_DB=1 rot.
+  const baum = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, encoding: 'utf8' });
+  if (baum.error || baum.status !== 0) {
+    const grund = `kein Git-Arbeitsbaum unter ${ROOT} (${baum.error?.message || baum.stderr.trim()})`;
+    if (process.env.REQUIRE_DB === '1') assert.fail(`REQUIRE_DB=1: .gitignore lässt sich nicht prüfen, ${grund}`);
+    t.skip(grund); return;
+  }
   const git = spawnSync('git', ['check-ignore', '--no-index', 'backups/x.sql.gz', 'schluessel/datenschluessel', '.env',
     'geheimnisse/db_password'], { cwd: ROOT, encoding: 'utf8' });
-  if (git.error) return;   // ohne git (z. B. im Image) nur der erste Teil
   assert.deepEqual(git.stdout.trim().split('\n').sort(), ['.env', 'backups/x.sql.gz', 'geheimnisse/db_password', 'schluessel/datenschluessel']);
 });
 

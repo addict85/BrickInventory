@@ -1,77 +1,15 @@
 {
-  // ── TypeScript-Migration ──────────────────────────────────────────────────
-  // tsc läuft als reiner Checker (noEmit); die Transpilation .ts → .js
-  // übernimmt esbuild im Docker-Build, dev-Start via tsx (npm run dev).
-  //
-  // ── strictNullChecks: seit Nachtrag 148 AN ────────────────────────────────
-  // Der Schalter stand jahrelang aus, weil er 299 und zuletzt noch 93 Fehler
-  // meldete. Die Begründung dafür war richtig: Ein Schalter mit dauerhaft
-  // roten Meldungen macht die Prüfung wertlos, man gewöhnt sich an rot und
-  // übersieht die 94.
-  //
-  // Abgeräumt wurden sie in Gruppen, ohne eine einzige Verhaltensentscheidung:
-  //   • `res.statusCode` ist number|undefined — die sechs HTTP-Klienten
-  //     normalisieren jetzt auf `?? 0`, wie src/katalog/partsImport.ts es im
-  //     Fehlerfall ohnehin schon tat.
-  //   • Zehn Funktionsköpfe mit `condition = null` bekamen den Typ, den ihre
-  //     Aufrufer längst übergaben (string | null).
-  //   • `new Map(rows.map(r => [a, b]))` ergibt any[][], keine Tupel — acht
-  //     Stellen tragen jetzt den Elementtyp.
-  //   • `let x = null` ergibt den Typ `null`, `const x = []` ergibt `never[]`.
-  //     Betroffen waren der Zustand des Preis-Jobs, die Farbsortierung im PDF
-  //     und die Kopfdaten in addSet().
-  //   • `req.session.userId` ist zu Recht optional — hinter requireLogin ist es
-  //     gesetzt. Das benennt jetzt LoggedInRequest in types/augmentations.d.ts,
-  //     nach demselben Muster wie AuthedRequest, statt `!` an jeder Stelle.
-  //
-  // Zwei echte Kleinigkeiten fielen dabei mit ab: In routes/api_v1/parts.ts
-  // stand `page_size: result.page_size` VOR `...result` und war damit
-  // wirkungslos, und der Fortschrittszähler des Preis-Jobs hing an einem Feld,
-  // das der finally-Block nebenläufig auf null setzt.
-  //
-  // ── noImplicitAny: jetzt ebenfalls AN ─────────────────────────────────────
-  // Er stand aus dem gleichen Grund aus wie strictNullChecks davor: 631
-  // Meldungen, davon 632 derselbe Fall (ein Parameter ohne Typ). Abgebaut
-  // wurde er gestaffelt ueber scripts/check-noimplicitany.js — eine
-  // AUSNAHMELISTE, die nur kuerzer werden durfte, in der Reihenfolge des
-  // Risikos: erst die Anfragestrecke (dort kommen Benutzereingaben an), dann
-  // die Geldrechnung, die Set-Kernlogik, die PDF-Ausgabe, die drei
-  // Fremd-Klienten, die Hilfsmodule, die Hintergrundjobs, zuletzt das
-  // Werkzeug.
-  //
-  // Was dabei gefunden wurde — nicht gesucht, gefunden:
-  //   • Eine Umleitung, deren Location-Kopfzeile ungeprueft weiterlief. An
-  //     ZWEI Stellen; bei Brickset haette sie den Worker beendet.
-  //   • MAIL_THEMES[wert aus der Datenbank] — dieselbe Prototypen-Falle wie in
-  //     der Katalogsortierung, zweiter Fundort.
-  //   • Drei Zahlen, die als Zeichenkette ankommen: COUNT(*) und numeric
-  //     (bigint/numeric ueber den pg-Treiber) sowie die Cache-Dauer aus den
-  //     Einstellungen. Regeln, die nur ueber die JS-Umwandlung funktionierten.
-  //   • Toter Code in addSet(): eine Verteidigung gegen eine Form, die keiner
-  //     der drei Aufrufer erzeugt.
-  //   • req.query.period kann ein Array sein.
-  //   • TASKS[task] im CSV-Worker: der Wert kommt per IPC, und dort traegt
-  //     kein Typ — die einzige Stelle dieser Bauart, die eine
-  //     LAUFZEIT-Pruefung braucht.
-  //
-  // Was `strict` daraus noch nicht macht: strictFunctionTypes (102),
-  // useUnknownInCatchVariables (108) und, ausserhalb von strict,
-  // noUncheckedIndexedAccess (86), noUnusedLocals (139), noUnusedParameters
-  // (33). Alle gemessen, alle offen — sie brauchen dieselbe gestaffelte
-  // Behandlung wie noImplicitAny und bleiben bis dahin aus.
-  //
-  // Stand messen:  npx tsc --noEmit
+  // tsc prüft nur (noEmit); übersetzt wird mit esbuild (Docker-Bau, npm run
+  // build) bzw. tsx (npm run dev). Jeder Schalter unten wurde erst
+  // eingeschaltet, als er 0 Meldungen ergab; ein dauerhaft roter Schalter
+  // wird übersehen. Stand messen: npx tsc --noEmit [--<schalter>]
   "compilerOptions": {
     "target": "es2022",
     "module": "node16",
     "moduleResolution": "node16",
     "allowImportingTsExtensions": false,
-    // allowJs/checkJs bleiben AN — scripts/ und test/ sind weiterhin JavaScript
-    // und profitieren von der Prüfung. Was wegfällt, ist der erzeugte Code:
-    // Vorher lagen die transpilierten .js neben den .ts und wurden von include
-    // miterfasst, tsc prüfte also jede Datei doppelt (einmal als Quelle, einmal
-    // als Erzeugnis) und meldete Dinge über Code, den niemand liest. Seit der
-    // Build nach dist/ schreibt, reicht ein exclude-Eintrag.
+    // scripts/ und test/ sind JavaScript und werden mitgeprüft; dist/ ist
+    // Erzeugnis und liegt in exclude.
     "allowJs": true,
     "checkJs": true,
     "noEmit": true,
@@ -81,101 +19,23 @@
     "types": ["node"],
     "strict": false,
     "strictNullChecks": true,
-    // Diese beiden meldeten 0 und kosten nichts — eingeschaltet, solange
-    // sie 0 sind (Nachtrag 150). Ein durchgefallener switch-Zweig und eine
-    // vergessene override-Kennzeichnung sind Fehler, die man beim Lesen
-    // übersieht und die der Übersetzer geschenkt findet.
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
-    // ── Nach derselben Regel: gemessen, dann eingeschaltet ────────────────────
-    // Die drei ersten meldeten 0, die zwei letzten 3 bzw. 2 Stellen. Gemessen
-    // wurde einzeln (npx tsc --noEmit --<schalter>), nicht geschätzt.
-    //
-    //   strictBindCallApply          0   .call/.apply/.bind mit falschen Argumenten
-    //   alwaysStrict                 0   'use strict' in jeder erzeugten Datei
-    //   strictPropertyInitialization 0   Klassenfelder ohne Zuweisung
-    //   noImplicitThis               3   zwei setTimeout-Rückrufe (dort ist `this`
-    //                                    die ClientRequest) und der Middleware-
-    //                                    Wrapper in server.ts
-    //   exactOptionalPropertyTypes   2   trennt „Feld fehlt" von „Feld ist
-    //                                    undefined". Genau diese Unterscheidung
-    //                                    trifft jobs/imageQueue.ts bereits von
-    //                                    Hand: „HTTP 404" gegen „kein Statuscode
-    //                                    — vorübergehend?"
     "strictBindCallApply": true,
     "alwaysStrict": true,
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitAny": true,
-    // ── useUnknownInCatchVariables: gemessen 107, jetzt 0 ────────────────────
-    // `catch (e)` gab bisher `any`. Das ist nicht nur eine Typluecke: An 91
-    // Stellen wurde `e.message` gelesen, und in JavaScript darf ALLES geworfen
-    // werden — eine Zeichenkette, ein Objekt ohne `message`, bei einem
-    // abgelehnten Versprechen auch `undefined`. In genau diesen Faellen stand
-    // beim Nutzer „Fehler: undefined".
-    //
-    // Abgeraeumt mit zwei Helfern in src/infra/httpError.ts — fehlertext() und
-    // fehlerCode() — plus clients/abrufFehler.ts fuer die angereicherten Fehler
-    // der Abruf-Klienten (isQuota, isTransient, isCloudflare, detail). Deren
-    // Verstaendigung war nirgends aufgeschrieben und funktionierte nur, weil
-    // der gefangene Wert `any` war; ein Tippfehler im Feldnamen haette den
-    // Zweig lautlos uebersprungen.
+    // In JavaScript darf alles geworfen werden; gelesen wird über
+    // fehlertext()/fehlerCode() (src/infra/httpError.ts), nicht über e.message.
     "useUnknownInCatchVariables": true,
-    // ── noUncheckedIndexedAccess: gemessen 86, jetzt 0 ──────────────────────
-    // Jeder Zugriff ueber eine Index-Signatur liefert jetzt `| undefined`.
-    // Abgeraeumt wurde ueberwiegend an der URSACHE, nicht am Symptom:
-    //
-    //   • PFADE (loadtest) und HEADER_SETS (imgProxy) waren `X[][]` statt
-    //     Tupel — je EINE Typangabe loeste 15 bzw. 2 Meldungen auf.
-    //   • Die CSV-Spalten in csvImportWorker heissen jetzt `sp(c, i)`: Eine
-    //     fehlende Spalte ist dort Absicht (kuerzere Zeilen sind in den
-    //     Rebrickable-Dateien normal), das stand aber nirgends.
-    //   • Routen-Parameter gehen ueber `pfadParam(req, name)`. Eine
-    //     Augmentierung half nicht: Auch `Record<string, string>` traegt eine
-    //     Index-Signatur, der Schalter greift genauso.
-    //   • `vorDem(s, trenner)` fuer die sechs `split(x)[0]`.
-    //
-    // Ein Fund dabei: In jobs/instructionQueue.ts waere `?? 0` die
-    // gefaehrlichste Antwort gewesen — eine Cloudflare-Pause von 0 ms statt
-    // fuenf Minuten. Der Rueckfall ist jetzt die letzte Stufe der Leiter.
     "noUncheckedIndexedAccess": true,
-    // ── noUnusedLocals / noUnusedParameters: 141 und 33, jetzt 0 ────────────
-    // Ueberwiegend Aufraeumarbeit — 107 ungenutzte Importe, meist Reste
-    // frueherer Umbauten. DREI echte Funde waren dabei, und alle drei sind
-    // vom selben Typ: etwas wurde geholt oder berechnet und dann weggeworfen.
-    //
-    //   • server.ts: `_primaryLockClient` wurde gesetzt und nie wieder
-    //     gelesen — also auch beim Beenden nie zurueckgegeben. Die Verbindung
-    //     kommt aus pool.connect(), und pool.end() wartet auf JEDEN
-    //     ausgeliehenen Client.
-    //   • jobs/priceJob.ts: Die Logzeile des Tagesschnappschusses stand ohne
-    //     Zahl da, obwohl das Ergebnis danebenlag. „inserted price history
-    //     entries" sagte nicht, ob es 0 oder 5000 waren.
-    //   • routes/finance.ts: Ein Sammel-require holte zehn Namen fuer einen
-    //     Re-Export, den es seit Nachtrag 126 nicht mehr gibt.
-    //
-    // Ungenutzte PARAMETER tragen einen Unterstrich — die uebliche
-    // Kennzeichnung fuer „gehoert zur Signatur, wird hier nicht gebraucht".
     "noUnusedLocals": true,
     "noUnusedParameters": true
-    // ── strictFunctionTypes: bewusst AUS, nachgemessen ──────────────────────
-    // 102 Meldungen, und alle 102 sind DERSELBE strukturelle Fall — keine
-    // davon deutet auf einen Fehler. Nachgezaehlt: 89x `req: AuthedRequest`,
-    // 13x `req: LoggedInRequest`.
-    //
-    // Der Grund ist eine Eigenschaft des Typsystems, nicht des Codes: Unter
-    // dem Schalter werden Funktionsparameter KONTRAVARIANT geprueft. Ein
-    // Handler, der `AuthedRequest` VERLANGT, ist damit nicht zuweisbar an
-    // Express' Signatur, die nur `Request` LIEFERT — obwohl die Middleware
-    // davor das Feld garantiert setzt.
-    //
-    // Ihn anzuschalten hiesse, genau diese Zusicherung aufzugeben: `req` waere
-    // ueberall der nackte Express-Typ, und `req.apiUser` muesste an 102 Stellen
-    // einzeln geprueft werden. Das ist teurer als der Schalter wert ist, und
-    // es nimmt eine Aussage weg, die heute etwas leistet.
-    //
-    // Stand messen:  npx tsc --noEmit --strictFunctionTypes
+    // strictFunctionTypes bleibt aus: Handler, die AuthedRequest verlangen,
+    // wären kontravariant nicht mehr an Express' Request zuweisbar, obwohl die
+    // Middleware davor das Feld setzt. Alle Meldungen sind dieser eine Fall.
   },
   "include": [
     "server.ts",

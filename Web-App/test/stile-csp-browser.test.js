@@ -37,11 +37,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `stile_${process.pid}`, PASS = 'stile-Passwort-1';
 const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
-function chrome() {
-  const kandidaten = [process.env.CHROME_BIN, '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium', '/usr/bin/chromium-browser', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'];
-  return kandidaten.find(k => k && fs.existsSync(k)) ?? null;
-}
+const { chrome } = require('./helpers/app-browser');
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
