@@ -59,7 +59,7 @@ test('Sammlung: scheitert das Neuladen, bleibt die alte Liste stehen', async () 
     await reiter(w, 'gallery');
     await warte(() => d.querySelector('#toasts .toast.error'));
     assert.equal(d.querySelectorAll('#gallery .sc').length, 2, 'die alte Liste ist weg');
-    assert.match(d.querySelector('#toasts .toast.error').textContent, /Interner Fehler.*letzte Stand/);
+    assert.match(d.querySelector('#toasts .toast.error').textContent, /Server konnte die Daten gerade nicht liefern.*letzte Stand/);
   } finally { w.close(); }
 });
 

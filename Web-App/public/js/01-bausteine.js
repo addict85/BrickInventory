@@ -58,18 +58,19 @@ export function detailZeile(label, wert, o = {}) {
 }
 
 /**
- * Die Ladeanzeige — Kringel und Text, wie sie fünf Stellen bauten.
+ * Die Ladeanzeige: Gerüstzeilen wie bei Karten und Listen. Ein Muster für die
+ * ganze App — Kreisel hier und Schimmer dort sahen nach zwei Programmen aus.
+ * Der Text ist für Vorleseprogramme.
  *
  * @param {string} text bereits übersetzter Text
- * @param {{ stil?: string, klein?: boolean }} [o]  klein: für eine Fläche wie das Diagramm
+ * @param {{ stil?: string, klein?: boolean }} [o]  klein: eine Fläche, etwa für das Diagramm
  */
 export function ladeAnzeige(text, o = {}) {
   const stil = o.stil ? ` data-stil="${o.stil}"` : '';
-  // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo
-  // daneben schon steht, worauf gewartet wird.
-  const beschriftung = text ? `<span>${text}</span>` : '';
-  return o.klein ? `<div class="loading klein"${stil}><div class="spin"></div>${beschriftung}</div>`
-                 : `<div class="loading"${stil}><div class="spin"></div>${beschriftung}</div>`;
+  const inhalt = o.klein ? '<div class="skelett-flaeche"></div>'
+    : '<div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div>';
+  return `<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${stil}>` +
+    `<span class="vh">${text || esc(tRaw('common.loading'))}</span>${inhalt}</div>`;
 }
 
 /**
@@ -116,12 +117,13 @@ export function textOderStrich(wert) {
  * Fehlerzustand einer Liste: Grund und „Erneut versuchen“. Eine leere Liste
  * an dieser Stelle läse sich als „nichts erfasst“, obwohl nur der Server
  * nicht geantwortet hat.
- * @param {{ grund?: string, erneut: string, arg?: string }} o  erneut: Name der Ladefunktion (data-click)
+ * @param {{ grund?: string, erneut: string, arg?: string, titel?: string, details?: string }} o  erneut: Name der Ladefunktion (data-click)
  */
 export function fehlerZustand(o) {
   const arg = o.arg ? ` data-arg="${esc(o.arg)}"` : '';
+  const details = o.details ? `<details class="fehler-details"><summary>${esc(tRaw('liste.details'))}</summary><code>${esc(o.details)}</code></details>` : '';
   return `<div class="empty leer fehler-zustand" role="alert"><div class="leer-ico">${ico('warnung')}</div>` +
-    `<h2>${esc(tRaw('liste.fehler_titel'))}</h2><p>${esc(o.grund || tRaw('common.unknown_error'))}</p>` +
+    `<h2>${esc(o.titel || tRaw('liste.fehler_titel'))}</h2><p>${esc(o.grund || tRaw('common.unknown_error'))}</p>${details}` +
     `<button type="button" class="btn bp" data-lesend data-click="${esc(o.erneut)}"${arg}>${ico('aktualisieren')}<span>${esc(tRaw('liste.erneut'))}</span></button></div>`;
 }
 
@@ -135,9 +137,24 @@ export function fehlerZustand(o) {
  */
 export function listeLadefehler(ziel, d, o) {
   if (d && d.success !== false) return false;
-  const grund = d?.networkError ? tRaw('net.liste_offline') : d?.error || tRaw('api.unreachable');
+  // Die abgelaufene Sitzung meldet die Anmeldekarte; „Erneut versuchen“ hülfe dort nicht.
+  if (d?.status === 401) return true;
+  const { grund, details } = verstaendlicherGrund(d);
   const nochmal = () => { const f = resolveAction(o.erneut); if (f) o.arg !== undefined ? f(o.arg) : f(); };
   if (o.behalten) toast(`${grund} ${tRaw('liste.alter_stand')}`, 'error', { text: tRaw('liste.erneut'), fn: nochmal });
-  else if (ziel) ziel.innerHTML = fehlerZustand({ grund, erneut: o.erneut, arg: o.arg });
+  else if (ziel) ziel.innerHTML = fehlerZustand({ grund, details, erneut: o.erneut, arg: o.arg });
   return true;
+}
+
+/**
+ * Ein Serverfehler (5xx) sagt dem Laien nichts („interner Fehler“). Gezeigt
+ * wird, was er tun kann; der Rohtext steht unter „Details“ für die Meldung an
+ * den Verwalter. 4xx-Texte schreibt der Server selbst verständlich.
+ * @param {any} d Antwort von api()
+ * @returns {{ grund: string, details?: string }}
+ */
+export function verstaendlicherGrund(d) {
+  if (d?.networkError) return { grund: tRaw('net.liste_offline') };
+  if (!d || d.status >= 500 || !d.error) return { grund: tRaw('liste.server_fehler'), details: d?.error || undefined };
+  return { grund: d.error };
 }

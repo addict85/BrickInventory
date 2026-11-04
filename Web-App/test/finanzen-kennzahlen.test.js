@@ -86,7 +86,7 @@ test('mit Marktpreisen: Gesamtwert und G&V', async () => {
     // Dahinter steht, wogegen gerechnet ist; das Prozent im Diagramm rechnet gegen den Zeitraum.
     assert.match(zahl(text(d.getElementById('fin-pnl-sub'))), /^\+[^0-9]*71\.00[^0-9]*$/,
       `Betrag passt nicht zur Prozentzahl: ${text(d.getElementById('fin-pnl-sub'))}`);
-    assert.match(text(d.getElementById('fin-pnl-sub')), /gegenüber dem Einstand/);
+    assert.match(text(d.getElementById('fin-pnl-sub')), /zum Kaufpreis/);
   } finally { w.close(); }
 });
 

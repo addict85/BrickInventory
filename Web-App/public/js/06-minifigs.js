@@ -312,6 +312,7 @@ let _manuelleFigurenLeer = null;
  */
 function figurenLeerAbgleichen() {
   const box = G('manual-figs-box');
+  G('tab-minifigs')?.classList.remove('sammlung-leer');
   if (box) box.style.display = _manuelleFigurenLeer === false ? '' : 'none';
   const n = manualFigsCache.length;
   if (G('manual-figs-n')) G('manual-figs-n').textContent = n ? tRaw('parts.group_types', { n }) : '';
@@ -319,9 +320,11 @@ function figurenLeerAbgleichen() {
   const el = G('figs-list');
   if (_manuelleFigurenLeer === false) { el.innerHTML = ''; return; }
   const q = G('fig-search')?.value.trim() || '';
+  G('tab-minifigs')?.classList.toggle('sammlung-leer', !q);
   el.innerHTML = q
     ? leerZustand({ ico: 'suche', titel: tRaw('common.no_hits', { query: q }), knopf: zuruecksetzenKnopf('minifigs') })
-    : leerZustand({ ico: 'figur', titel: tRaw('figs.empty'), text: tRaw('figs.auto_hint') });
+    : leerZustand({ ico: 'figur', titel: tRaw('figs.empty'), text: tRaw('figs.auto_hint'),
+                    knopf: { text: tRaw('figs.add_title'), click: 'oeffneErfassen', arg: 'fig' } });
 }
 
 /** Die Suche leeren (Knopf im Leerzustand). */

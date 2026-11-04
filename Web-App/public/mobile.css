@@ -539,3 +539,106 @@
 @media (max-height: 500px) and (prefers-reduced-motion: reduce) {
   header, nav { transition: none; }
 }
+
+
+/* ── Sammlung am Telefon: die erste Karte über der Falz ──────────────────
+   Hinweis, Umschalter, vier Kennzahlen, zwei breite Knöpfe und zwei
+   Filterzeilen füllten bei 320 × 640 den ganzen ersten Bildschirm. Erfassen
+   wird ein schwebender Knopf, Importieren ein Überlaufmenü neben dem Titel,
+   Kennzahlen und Filter je eine Zeile, das Kartenbild flacher. */
+@media (max-width: 640px) {
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) { position: relative; }
+  :is(#tab-gallery, #tab-parts, #tab-minifigs) > .ph h1 { padding-right: 52px; }
+  .erfassen-leiste { margin: 0; position: static; }
+  .erfassen-leiste .import-menue { position: absolute; top: 0; right: 0; flex: none; }
+  .erfassen-leiste .import-menue > summary { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
+  .erfassen-leiste .import-menue :is(.import-datei, .import-pfeil) { display: none; }
+  .erfassen-leiste .import-menue .import-mehr { display: inline-block; width: 22px; height: 22px; }
+  .erfassen-leiste .import-text, #tab-gallery .filter-text { display: none; }
+  :is(.erfassen-leiste, #tab-gallery) .nur-telefon { display: inline; }
+  .erfassen-leiste .import-klappe { left: auto; right: 0; width: min(18rem, calc(100vw - 32px)); }
+  .knopf-schwebend {
+    position: fixed; z-index: 90; right: 16px; bottom: calc(4.75rem + env(safe-area-inset-bottom));
+    min-height: 52px; padding: 0 20px 0 16px; border-radius: 999px; box-shadow: var(--sh2), 0 6px 16px rgba(15, 23, 42, .18);
+  }
+  .erfassen-leiste .btn.bp.knopf-schwebend { flex: none; }
+  /* Die letzte Karte rollt unter dem schwebenden Knopf hervor. */
+  main:has(:is(#tab-gallery, #tab-parts, #tab-minifigs).active) { padding-bottom: 9rem; }
+
+  /* Kennzahlen als eine Zeile; die vierte (Anleitungen) steht im Set selbst. */
+  .brick-stats { flex-wrap: nowrap; gap: .35rem; margin-bottom: var(--sp-3); }
+  .brick-stats .bstat { padding: 3px 10px; }
+  .brick-stats .bstat:nth-child(4) { display: none; }
+  .bstat .bstat-v, [data-theme="brick"] .bstat .bstat-v { font-size: var(--fs-3); }
+  .bstat .bstat-l, [data-theme="brick"] .bstat .bstat-l { font-size: var(--fs-1); }
+
+  /* Filter als Symbol, daneben Suche und Ansicht in einer Zeile. */
+  #tab-gallery .filterleiste > .filter-knopf { width: 44px; min-width: 44px; padding: 0; justify-content: center; }
+  #tab-gallery .filterleiste > input.suchfeld { order: -1; flex: 1 1 8rem; }
+
+  /* Das Kartenbild 4:3 statt quadratisch: eine Karte ist so ein Viertel kürzer. */
+  #gallery .sc > .sci { aspect-ratio: 4 / 3; }
+}
+/* Grosse Schrift: Suche und Kennzahlen umbrechen; der schwebende Knopf zeigt nur das Symbol. */
+@container haupt (max-width: 20.5em) {
+  #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 100%; }
+  .brick-stats { flex-wrap: wrap; }
+  .knopf-schwebend { max-width: calc(100% - 32px); white-space: normal; text-align: left; }
+}
+@container haupt (min-width: 15em) and (max-width: 22em) {
+  #tab-gallery .filterleiste > input.suchfeld { flex: 1 1 8rem; width: auto !important; }
+}
+
+/* Set-Dialog am Telefon: kleines Bild links, Wert und Gewinn daneben; die
+   übrigen Angaben darunter. Das Bild nahm vorher 270 px vor allem Wichtigen. */
+@media (max-width: 640px) {
+  #set-modal .m-kopfteil { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: .5rem .75rem; align-items: start; }
+  #set-modal .m-kopfteil > #m-det { display: contents; }
+  #set-modal .m-kopfteil > #m-det > * { grid-column: 1 / -1; }
+  #set-modal .m-kopfteil > .mimg { grid-column: 1; grid-row: 1; max-height: none; margin: 0; }
+  #set-modal .m-kopfteil > #m-det > .m-wertkopf { grid-column: 2; grid-row: 1; margin: 0; padding: .5rem .65rem; align-self: stretch; align-content: center; }
+  #set-modal .wk-wert { font-size: var(--fs-4); }
+}
+/* Grosse Schrift: neben dem Bild bliebe kein Platz für den Betrag. */
+@media (max-width: 18em) {
+  #set-modal .m-kopfteil { grid-template-columns: minmax(0, 1fr); }
+  #set-modal .m-kopfteil > #m-det > .m-wertkopf { grid-column: 1; grid-row: auto; }
+  #set-modal .m-kopfteil > .mimg { width: 7.5rem; }
+}
+
+/* Die Erklärung zu „0 Teile“ bleibt auch am Telefon stehen. */
+@media (max-width: 640px) {
+  .brick-stats:has(.bstat-erklaert) { flex-wrap: wrap; }
+  .bstat.bstat-erklaert { flex-wrap: wrap; flex-direction: row; border-radius: 12px; }
+  .bstat.bstat-erklaert .bstat-v { order: -1; }
+  .bstat.bstat-erklaert .bstat-s { display: block; flex: 1 1 100%; order: 1; font-size: var(--fs-0); color: var(--mut); }
+}
+
+/* Hintergrundarbeiten am Telefon: Beschriftung und Wert in einer Zeile, leere
+   Felder weg. Jede Zelle stand vorher zweizeilig; die Seite war 7300 px lang. */
+@media (max-width: 640px) {
+  .mon-einzeln > summary { min-height: 44px; }
+  .mon-tabelle td::before { flex: 0 0 6.5rem; }
+  .mon-tabelle td { flex-wrap: nowrap; align-items: baseline; }
+  .mon-tabelle td > * { min-width: 0; }
+  .mon-tabelle td:empty, .mon-tabelle td:has(> .mon-knoepfe:empty) { display: none; }
+}
+@container haupt (max-width: 20.5em) {
+  .mon-tabelle td { flex-wrap: wrap; }
+  .mon-tabelle td::before { flex-basis: 100%; }
+}
+
+/* Auftragsarten am Telefon als kompakte Zeile: Name, nur Zahlen ungleich null,
+   nächster Lauf und Knöpfe fliessen nebeneinander. */
+@media (max-width: 640px) {
+  :is(.mon-arten, .mon-dienste) tbody tr { display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .9rem; }
+  :is(.mon-arten, .mon-dienste) td { max-width: 100%; flex-wrap: wrap; display: inline-flex; border: 0; padding: .1rem 0; gap: .35rem; }
+  :is(.mon-arten, .mon-dienste) td::before { flex: none; }
+  :is(.mon-arten, .mon-dienste) td:first-child { flex: 1 1 100%; font-weight: 700; }
+  :is(.mon-arten, .mon-dienste) td:first-child::before, .mon-dienste td:nth-child(2)::before { content: none; }
+  .mon-arten td:has(> .mon-ziffer.null) { display: none; }
+  :is(.mon-arten, .mon-dienste) td:last-child { flex: 1 1 100%; }
+  :is(.mon-arten, .mon-dienste) td:last-child::before { content: none; }
+  :is(.mon-arten, .mon-dienste) .mon-knoepfe { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .mon-dienste td:has(> .mon-knoepfe > .mon-leise:only-child) { display: none; }
+}

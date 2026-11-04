@@ -90,7 +90,7 @@ test('Menüseite: kein Reiter markiert, Name im Kopf', async () => {
     await reiter(w, 'finance');
     assert.equal(d.getElementById('kopf-sicht').hidden, true, 'Name bleibt nach dem Reiterwechsel stehen');
     assert.equal(d.querySelector('.ntab[aria-current="page"]')?.dataset.tab, 'finance');
-    assert.match(d.title, /^Portfolio-Wert – /);
+    assert.match(d.title, /^Finanzen – /);
   } finally { w.close(); }
 });
 
@@ -99,7 +99,7 @@ test('Import als ein Menü', async () => {
   try {
     for (const tab of ['gallery', 'parts', 'minifigs']) {
       const leiste = d.querySelector(`#tab-${tab} .erfassen-leiste`);
-      assert.deepEqual([...leiste.children].map(e => e.tagName + '.' + e.className), ['BUTTON.btn bp', 'DETAILS.import-menue'], tab);
+      assert.deepEqual([...leiste.children].map(e => e.tagName + '.' + e.className.replace(' knopf-schwebend', '')), ['BUTTON.btn bp', 'DETAILS.import-menue'], tab);
       const menue = leiste.querySelector('details');
       assert.equal(menue.querySelectorAll('.import-klappe > *').length, 3, `${tab}: drei Importwege`);
       menue.open = true;
@@ -133,7 +133,7 @@ test('Wertdiagramm: Währung, Einstand, Achsenbruch, Fadenkreuz per Tastatur', a
     const svg = d.querySelector('#portfolio-chart svg');
     const achse = [...svg.querySelectorAll('text[text-anchor="end"]')].filter(t => +t.getAttribute('x') < 90).map(text);
     assert.ok(achse.length >= 3 && achse.every(t => /€|EUR/.test(t)), `Achse: ${achse.join(' | ')}`);
-    assert.match(zahl(text(svg.querySelector('.einstand-linie'))), /^Einstand(EUR)?1568\.98(€)?$/);
+    assert.match(zahl(text(svg.querySelector('.einstand-linie'))), /^Kaufpreisgesamt(EUR)?1568\.98(€)?$/);
     assert.equal(svg.querySelector('.einstand-linie line').getAttribute('stroke-dasharray'), '6 4');
     assert.ok(svg.querySelector('.achsenbruch'), 'die Achse beginnt nicht bei 0 und zeigt das nicht');
     assert.match(svg.getAttribute('aria-label'), /beginnt bei \D*1\D?500[.,]00/);

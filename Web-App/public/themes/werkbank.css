@@ -36,7 +36,7 @@
   --holz:#7a4f2a;
   /* Text auf --b600: Weiss auf #4d9fff kam auf 2,7:1; dunkel wie in der App
      (onPrimary) auf 6,3:1. */
-  --auf-primaer:#0b1a2e;
+  --auf-primaer:#1e1608;
   --rad:12px;
 
   /* Zustands- und Meldefarben: auf dunklem Grund gedaempft, sonst leuchten
@@ -118,3 +118,12 @@
    zusammengehoeren — dieselbe Ueberlegung wie in themes/brick.css. */
 [data-theme="werkbank"] .cond-new{background:#16243a;color:#8cc2ff}
 [data-theme="werkbank"] .cond-used{background:#2a2418;color:#d9a84e}
+
+/* Akzent Messing statt Blau: Das Blau der gemeinsamen Palette gehörte zu
+   keinem Werkstoff des Designs. Nur im Web; die App führt ihre Werte selbst.
+   Die Zustandsfarben bleiben: Neu blau, Gebraucht bernstein, wie überall. */
+[data-theme="werkbank"]{
+  --b50:#2a2114;--b100:#3a2d17;--b200:#4f3c1c;--b300:#6b5124;
+  --b400:#9c7533;--b500:#c08f3e;--b600:#d9a84e;--b700:#e8c27a;
+}
+[data-theme="werkbank"] .cond-new{background:#1b2f4d;color:#8cc2ff}

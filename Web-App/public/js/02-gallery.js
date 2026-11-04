@@ -312,6 +312,20 @@ document.addEventListener('change', (ev) => {
   if (d) d.open = false;
 });
 
+/**
+ * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung, nicht nur
+ * im Katalog: Ohne ihn war das Design dort grau in grau. Ohne Thema-Nummer
+ * entscheidet der Themenname, damit ein Thema immer denselben Ton trägt.
+ */
+function faecherTon(s) {
+  if (Number.isInteger(s.theme_id)) return ` data-faecher="${((s.theme_id % 12) + 12) % 12}"`;
+  const name = String(s.theme || '').split(' / ')[0];
+  if (!name) return '';
+  let h = 0;
+  for (const z of name) h = (h * 31 + z.codePointAt(0)) >>> 0;
+  return ` data-faecher="${h % 12}"`;
+}
+
 // ── STATS ─────────────────────────────────────────────
 export async function loadStats(){
   // Mit Kontofilter. Hier stand `api('GET', '/v1/stats')` ohne ihn — und das
@@ -329,7 +343,11 @@ export async function loadStats(){
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung.
     G('bstat-sets').textContent     = d.stats.total_sets;
     G('bstat-parts').textContent    = fmtBig(d.stats.total_parts    || 0);
-    G('bstat-parts-sub').textContent = teileAufschluesselung(d.stats.set_parts, d.stats.manual_parts);
+    // 0 Teile trotz Sets heisst: Die Teilelisten fehlen noch. Ohne den Satz sähe es nach einem Fehler aus.
+    const ohneListen = !d.stats.total_parts && d.stats.total_sets > 0;
+    G('bstat-parts-sub').textContent = ohneListen ? tRaw('parts.stat.ohne_listen', { n: d.stats.total_sets })
+      : teileAufschluesselung(d.stats.set_parts, d.stats.manual_parts);
+    G('bstat-parts').closest('.bstat')?.classList.toggle('bstat-erklaert', ohneListen);
     G('bstat-minifigs').textContent = fmtBig(d.stats.total_minifigs || 0);
     G('bstat-instr').textContent    = d.stats.total_instructions;
   }
@@ -966,8 +984,8 @@ export function renderGallery(){
     c.innerHTML = gefiltert
       ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
                       knopf: zuruecksetzenKnopf('gallery') })
-      // Ohne eigenen Knopf: „Set hinzufügen“ steht oben in der Erfassen-Leiste, auch bei wenig Höhe sichtbar.
-      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint') });
+      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint'),
+                      knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
   }
   if(curView==='grid'){
@@ -1101,7 +1119,7 @@ function gridCard(s){
   // Ohne Jahr, Thema und echten Namen kennt der Katalog die Nummer (noch) nicht.
   const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
   // Kein aria-label: Der Name kommt aus dem Inhalt, sonst fehlte dem Vorleser, was sichtbar dasteht.
-  return `<div class="sc" tabindex="0" role="button" data-click="openModal" data-arg="${escJs(s.set_number)}">
+  return `<div class="sc"${faecherTon(s)} tabindex="0" role="button" data-click="openModal" data-arg="${escJs(s.set_number)}">
     <div class="ca"><span class="delbtn" data-click="delSetStop"${echt()} aria-hidden="true" data-arg="${esc(s.set_number)}" title="${esc(t('detail.delete'))}">${TRASH_ICON_SVG}</span></div>
     <div class="sci">${img}</div>
     <div class="scb">
@@ -1477,7 +1495,7 @@ export async function delSet(sn){
   if(!await confirmDelete(tRaw('gallery.delete.title'), t('gallery.delete.name_parts',{name}))) return false;
   const d=await api('DELETE',`/v1/sets/${sn}`);
   if(!d.success){ toast(d.error,'error'); return false; }
-  geloeschtMitRueckgaengig(tRaw('users.deleted',{name:sn}), d);
+  geloeschtMitRueckgaengig(tRaw('users.deleted',{name}), d);
   // Alles nachladen, was mitgelöscht wurde. loadStats() fehlte: Die Kennzahlen
   // im Kopf (Sets, Einheiten, Teile, Minifiguren) blieben nach dem Löschen auf
   // dem alten Stand, obwohl die Teile und Minifiguren des Sets mit weg sind.

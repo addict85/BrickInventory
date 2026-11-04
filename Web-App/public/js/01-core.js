@@ -274,10 +274,11 @@ export function setnummerFeldGueltig(id, wert) {
 /**
  * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
  * Schritt als Knopf. Texte kommen fertig übersetzt oder als Schlüssel; maskiert wird hier.
- * @param {{ ico: string, titel?: string, text?: string, titelKey?: string, textKey?: string, knopf?: { text: string, click: string, arg?: string, ico?: string, art?: string } }} o
+ * @param {{ ico: string, titel?: string, text?: string, titelKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
  */
 export function leerZustand(o) {
-  const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}<span>${esc(o.knopf.text)}</span></button>` : '';
+  const knopfText = o.knopf?.textKey ? `<span data-i18n="${esc(o.knopf.textKey)}">${esc(tRaw(o.knopf.textKey))}</span>` : `<span>${esc(o.knopf?.text)}</span>`;
+  const knopf = o.knopf ? `<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${esc(o.knopf.click)}"${o.knopf.arg ? ` data-arg="${esc(o.knopf.arg)}"` : ''}>${ico(o.knopf.ico || 'plus')}${knopfText}</button>` : '';
   // Mit Schlüssel übersetzt applyLang den Text nach, wenn die Kontosprache erst später feststeht.
   const k = (key) => key ? ` data-i18n="${esc(key)}"` : '';
   return `<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${k(o.titelKey)}>${esc(o.titelKey ? tRaw(o.titelKey) : o.titel)}</h2>${o.text || o.textKey ? `<p${k(o.textKey)}>${esc(o.textKey ? tRaw(o.textKey) : o.text)}</p>` : ''}${knopf}</div>`;
@@ -622,6 +623,7 @@ const _toastStand = new WeakMap();
 /** @param {{text: string, fn: () => any}} [aktion] Knopf in der Meldung, z. B. „Rückgängig" */
 export function toast(msg, type='info', aktion) {
   const c = G('toasts');
+  if (type === 'error' && !ME && [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m))) return null;
   // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
   const schluessel = `${type}|${String(msg ?? '')}`;
   const gleich = aktion ? null : [...c.children].find(x => _toastStand.get(x)?.schluessel === schluessel);
@@ -737,7 +739,7 @@ export async function api(method, path, body) {
   }
   if (daten && typeof daten === 'object') daten.status = res.status;
   if (method === 'GET' && res.ok && daten?.success !== false) inZwischenspeicher(path, daten);
-  if (res.status === 401) meldeSitzungBeendet(path);
+  if (res.status === 401) meldeSitzungBeendet(path, daten?.error);
   if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') zeigePflichtwechsel();
   return daten;
 }
@@ -905,13 +907,17 @@ if (typeof window !== 'undefined') {
  *   • /v1/auth/login meldet mit 401 ein falsches Passwort; die Anmeldemaske steht
  *     dann ohnehin schon auf dem Schirm.
  */
-function meldeSitzungBeendet(path) {
+function meldeSitzungBeendet(path, fehler) {
   if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
+  if (fehler) _meldungenDerAbgelaufenenSitzung.add(String(fehler));
   if (!ME) return;                       // war nie angemeldet — nichts zu beenden
   ME = null;
-  toast(tRaw('auth.session_expired'), 'error');
-  showLogin();
+  showLogin({ abgelaufen: true });
 }
+/** Fehlertexte der 401-Antworten: Noch laufende Anfragen scheitern nach dem
+ * Ende der Sitzung mit genau diesem Text. Als Toast widerspräche er dem einen
+ * Hinweis in der Anmeldekarte; toast() lässt ihn deshalb weg. */
+const _meldungenDerAbgelaufenenSitzung = new Set();
 /**
  * Ein GELDBETRAG in der Waehrung des Nutzers.
  *
@@ -1331,7 +1337,17 @@ async function waitForStartup() {
   }
   if (ss) ss.style.display = 'none';
 }
-function showLogin(){
+/**
+ * @param {{ abgelaufen?: boolean }} [o] abgelaufen: Der Name bleibt stehen, damit
+ *   man sich gleich wieder anmelden kann; Passwort und Code nie — sonst genügt
+ *   dem Nächsten am Gerät ein Druck auf „Anmelden“.
+ */
+function showLogin(o = {}){
+  G('lp').value = ''; G('lc').value = ''; G('lc-zeile').style.display = 'none';
+  if (!o.abgelaufen) G('lu').value = '';
+  const hinweis = G('login-hinweis');
+  if (hinweis) { hinweis.hidden = !o.abgelaufen; hinweis.textContent = o.abgelaufen ? tRaw('auth.session_expired') : ''; }
+  formularFehler(G('lerr'), '');
   // Der Fortschrittsbalken gehört js/01-fortschritt.js — dort steht auch, was
   // „zurücksetzen“ für ihn bedeutet (Anzeige aus, beide Abfragen gestoppt,
   // Protokoll geleert). Hier stand früher sein Innenleben ausgeschrieben.
@@ -1339,7 +1355,9 @@ function showLogin(){
   sessionStorage.removeItem('webToken');
   leereZwischenspeicher();
   // Clear sensitive data from all tabs before hiding
-  ['fin-tbl','portfolio-chart-section','gallery-grid','parts-main','monitor-content'].forEach(id=>{
+  // Das Diagramm nur leeren, nicht seinen Abschnitt: Der trägt Kopf und Zeitraumwahl,
+  // die nach der nächsten Anmeldung sonst fehlten.
+  ['fin-tbl','portfolio-chart','portfolio-pnl','gallery-grid','parts-main','monitor-content'].forEach(id=>{
     const el=G(id); if(el) el.innerHTML='';
   });
   setAllSets([]);
@@ -1361,7 +1379,9 @@ async function checkRegistrationEnabled(){
     if(wrap) wrap.style.display = d.enabled ? '' : 'none';
     // Nur Wege anbieten, die der Server kann; fehlt die Angabe (älterer Server), bleibt alles wie es war.
     if (d.passkey === false && G('btn-passkey')) G('btn-passkey').hidden = true;
+    // Ohne Mailversand bleibt der Weg über den Verwalter; ihn zu nennen erspart die Suche.
     if (G('link-forgot')) G('link-forgot').hidden = d.passwort_vergessen === false;
+    if (G('forgot-verwalter')) G('forgot-verwalter').hidden = d.passwort_vergessen !== false;
   } catch(_){}
 }
 
@@ -1501,7 +1521,7 @@ async function doLogin(){
     // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(),
     // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
     resetScopeModes();
-    formularFehler(G('lerr'), '');
+    formularFehler(G('lerr'), ''); G('login-hinweis').hidden = true;
     oeffneApp(); } else { const err=d.error||tRaw('settings.error'); formularFehler(G('lerr'), err, ['lp','lu']); if(d.unverified||d.code==='email_nicht_bestaetigt'){ G('lerr').innerHTML=esc(err)+' <a href="#" data-click="bestaetigungErneut" data-stil="color:var(--b600)">'+t('auth.resend_mail')+'</a>'; } }
 }
 G('btn-logout').onclick=async()=>{
@@ -1544,8 +1564,11 @@ async function bestaetigungErneut(){
   toast(d.message||d.error||tRaw('settings.error'), d.success?'success':'error');
 }
 
+/** Leerzustände führen zum Feld, in das der erste Eintrag gehört. */
+function feldFokussieren(id) { const f = G(id); f?.scrollIntoView({ block: 'center' }); f?.focus(); }
+
 registerActions({
-  showPanel, rbHinweisOeffnen, rbHinweisWeg, bestaetigungErneut,
+  showPanel, rbHinweisOeffnen, rbHinweisWeg, bestaetigungErneut, feldFokussieren,
 });
 
 /**

@@ -82,7 +82,7 @@ test('Oberfläche: Einstand + G/V = Marktwert, Prozent passt, Basis genannt', as
     const basis = text(d.getElementById('fin-basis'));
     assert.ok(!d.getElementById('fin-basis').hidden, 'Basiszeile fehlt');
     assert.match(basis, /4 von 11 Positionen/);
-    assert.match(basis, /6 Positionen ohne Marktpreis nicht gerechnet \(Einstand [^)]*438[.,]96/);
+    assert.match(basis, /6 Positionen ohne Marktpreis nicht gerechnet \(Kaufpreis [^)]*438[.,]96/);
     assert.match(basis, /1 Position ohne Kaufpreis nicht gerechnet/, 'Zeile nennt die Position ohne Kaufpreis');
     await warte(() => text(d.getElementById('portfolio-current')) !== '—');
     assert.equal(betrag(text(d.getElementById('portfolio-current'))), wert, 'Diagrammkopf = Marktwert-Karte');

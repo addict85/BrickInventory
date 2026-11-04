@@ -1,7 +1,7 @@
 import { detailZeile, ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
+import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, ME, _settingsCache, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
@@ -177,9 +177,15 @@ async function loadCatalogSets(){
   if (!_catItems.length) {
     // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
     const gefiltert = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
-    grid.innerHTML = leerZustand({ ico: gefiltert ? 'suche' : 'katalog', titel: tRaw('catalog.no_results'),
-      text: tRaw(gefiltert ? 'catalog.no_results_hint' : 'catalog.empty_hint'),
-      knopf: gefiltert ? zuruecksetzenKnopf('catalog') : undefined });
+    const ohneSchluessel = !gefiltert && !String(_settingsCache?.rebrickable_api_key || '').trim();
+    const leerText = gefiltert ? 'catalog.no_results_hint' : !ME?.isAdmin ? 'catalog.empty_hint_konto'
+      : ohneSchluessel ? 'catalog.empty_ohne_schluessel' : 'catalog.empty_hint';
+    const leerKnopf = gefiltert ? zuruecksetzenKnopf('catalog')
+      : !ME?.isAdmin ? undefined
+      : ohneSchluessel ? { text: tRaw('rb_key.banner_link'), click: 'rbHinweisOeffnen', ico: 'schluessel' }
+      : { text: tRaw('catalog.zum_abgleich'), click: 'oeffneReiter', arg: 'monitor', ico: 'aktualisieren' };
+    grid.innerHTML = leerZustand({ ico: gefiltert ? 'suche' : 'katalog', titel: tRaw(gefiltert ? 'catalog.no_results' : 'catalog.leer_titel'),
+      text: tRaw(leerText), knopf: leerKnopf });
     setScrollLabel(null);
     return;
   }

@@ -151,10 +151,11 @@ function plRenderSets() {
   // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;
   if (!_plSets.length) {
-    c.innerHTML = leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.no_sets_hint' });
-    G('btn-pl-gen').disabled = true; return;
+    c.innerHTML = leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.no_sets_hint',
+                                knopf: { textKey: 'pl.erstes_set', click: 'feldFokussieren', arg: 'pl-setnr', art: 'bs' } });
+    G('btn-pl-gen').setAttribute('aria-disabled', 'true'); return;
   }
-  G('btn-pl-gen').disabled = false;
+  G('btn-pl-gen').removeAttribute('aria-disabled');
   c.innerHTML = _plSets.map((s,i) => `
     <div data-stil="display:inline-flex;align-items:center;gap:6px;background:var(--b50);border:1px solid var(--b200);border-radius:20px;padding:3px 10px 3px 8px;font-size:var(--fs-3)">
       <span data-stil="font-weight:600;color:var(--b700)">${esc(s.set_number)}</span>
@@ -179,7 +180,7 @@ function plRemoveSet(i) {
 }
 
 async function plGenerate() {
-  if (!_plSets.length) return;
+  if (!_plSets.length) { feldFehler('pl-setnr', tRaw('pl.erst_set')); return; }
   G('pl-status').textContent = tRaw('pl.loading_lists');
   G('btn-pl-gen').disabled = true;
   G('pl-result').innerHTML = '';

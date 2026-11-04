@@ -1,7 +1,7 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
 import { ico, G, api, esc, toast } from './01-core.js';
-import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
+import { confirmDelete, bestaetigeMitPasswort, mitPasswortBestaetigen, mitZweitemFaktor } from './07-admin.js';
 import { loadUsers } from './05-settings.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
@@ -15,9 +15,7 @@ function zeichne(html) { const f = flaeche(); if (f) f.innerHTML = html; }
 const knopf = (aktion, text, art = 'bs') =>
   `<button type="button" class="btn ${art} btn-sm" data-click="${aktion}"${echt()}>${text}</button>`;
 // Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js
-// findet nur wörtliche id-Angaben.
-const PASSWORTFELD = () =>
-  `<div class="fg"><label for="zf-pw">${t('settings.password.current')}</label><input type="password" id="zf-pw" autocomplete="current-password" /></div>`;
+// findet nur wörtliche id-Angaben. Das Passwort fragt der Dialog beim Auslösen.
 const CODEFELD = (label, laenge = 24) =>
   `<div class="fg"><label for="zf-code">${label}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;
 
@@ -27,14 +25,12 @@ export async function ladeZweitenFaktor() {
   if (!d?.success) { zeichne(`<div class="voucher-leer">${t('settings.error')}</div>`); return; }
   if (!d.aktiv) {
     zeichne(`<form class="sform" data-submit="zf-start" data-stil="max-width:420px">
-      ${PASSWORTFELD()}
       <div><button type="button" class="btn bp btn-sm" id="zf-start" data-click="zfEinrichten"${echt()}>${t('zf.setup')}</button></div>
     </form>`);
     return;
   }
   zeichne(`<p data-stil="font-size:var(--fs-3);margin:0 0 .75rem 0">${ico('ok')} ${esc(tRaw('zf.active', { n: d.codes_uebrig }))}</p>
     <form class="sform" data-stil="max-width:420px">
-      ${PASSWORTFELD()}
       ${CODEFELD(t('login.code'))}
       <div data-stil="display:flex;gap:.5rem;flex-wrap:wrap">
         ${knopf('zfNeueCodes', t('zf.new_codes'))}
@@ -44,7 +40,8 @@ export async function ladeZweitenFaktor() {
 }
 
 export async function zfEinrichten() {
-  const d = await api('POST', '/v1/auth/zweiter-faktor/einrichten', { password: G('zf-pw')?.value || '' });
+  const d = await mitPasswortBestaetigen(tRaw('zf.title'), (password, z) => api('POST', '/v1/auth/zweiter-faktor/einrichten', { password, ...z }));
+  if (!d) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // Gruppiert lesbar, falls jemand den Schlüssel von Hand eintippt.
   const lesbar = d.geheimnis.replace(/(.{4})/g, '$1 ').trim();
@@ -90,9 +87,11 @@ export async function zfNeueCodes() {
 }
 
 export async function zfAbschalten() {
-  const password = G('zf-pw')?.value || '', code = G('zf-code')?.value || '';
+  const code = G('zf-code')?.value || '';
   if (!await confirmDelete(tRaw('zf.disable'), t('zf.disable_confirm'), 'schloss')) return;
-  const d = await api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, code });
+  const d = await mitPasswortBestaetigen(tRaw('zf.disable'), (password, z) =>
+    api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...(code ? { code } : {}), ...z }));
+  if (!d) return;
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   toast(tRaw('zf.disabled'), 'success');
   await ladeZweitenFaktor();
