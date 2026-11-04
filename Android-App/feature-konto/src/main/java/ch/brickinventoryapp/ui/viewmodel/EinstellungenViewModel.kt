@@ -16,6 +16,9 @@ import ch.brickinventoryapp.ui.AlarmUebersichtUiState
 import ch.brickinventoryapp.ui.CsvHochladenUiState
 import ch.brickinventoryapp.ui.ladeEinstellungen
 import dagger.hilt.android.lifecycle.HiltViewModel
+import ch.brickinventoryapp.alarm.Alarmeingabe
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -133,8 +136,29 @@ class EinstellungenViewModel @Inject constructor(
     }
 
     fun aendereAlarmSchwelle(setNumber: String, condition: String, richtung: String, schwelle: Double) {
+        wartendeSchwellen.remove(setNumber to condition)?.cancel()
         if (schwelle <= 0.0) { _snackbar.value = text(R.string.alerts_bad_value); return }
         alarmSchleuse { sets.setPreisalarm(setNumber, richtung, schwelle, condition) }
+    }
+
+    /** Getippte Schwellen, die auf ihre Ruhezeit warten — je (Set, Zustand) eine. */
+    private val wartendeSchwellen = mutableMapOf<Pair<String, String>, Job>()
+
+    /**
+     * Speichert beim Tippen, entprellt wie im Set-Detail (Alarmeingabe.RUHE_MS): Die
+     * Übersicht hatte als einzige Stelle einen Speichern-Knopf, der nur bei Änderung
+     * erschien. Im ViewModel, damit die Eingabe das Verlassen der Seite übersteht.
+     * Ein leeres Feld löscht hier nicht — dafür steht der Papierkorb daneben.
+     */
+    fun setzeAlarmSchwelle(setNumber: String, condition: String, richtung: String, roh: String) {
+        val schluessel = setNumber to condition
+        wartendeSchwellen.remove(schluessel)?.cancel()
+        val schwelle = Alarmeingabe.zahl(roh) ?: return
+        wartendeSchwellen[schluessel] = viewModelScope.launch {
+            delay(Alarmeingabe.RUHE_MS)
+            wartendeSchwellen.remove(schluessel)
+            aendereAlarmSchwelle(setNumber, condition, richtung, schwelle)
+        }
     }
 
     fun loescheAlarm(setNumber: String, condition: String) =

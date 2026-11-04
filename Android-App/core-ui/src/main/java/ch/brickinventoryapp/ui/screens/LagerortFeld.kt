@@ -68,6 +68,7 @@ fun LagerortFeld(
         modifier = modifier,
     ) {
         OutlinedTextField(
+            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
             value = text,
             onValueChange = {
                 if (it.length <= 60) { text = it; offen = true; onWert(it) }

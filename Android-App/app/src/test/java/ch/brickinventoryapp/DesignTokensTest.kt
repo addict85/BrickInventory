@@ -104,6 +104,42 @@ class DesignTokensTest {
     }
 
     /**
+     * Kein Eingabefeld steht in der eckigen Material-Vorgabe: Lagerort- und Auswahlfelder
+     * standen eckig neben runden Textfeldern. Jedes nennt seine Form aus dem Design
+     * (Formen.feld; Suchleisten und Tabellenfelder bewusst eine eigene).
+     * Gegenprobe (gegenproben/lagerort-feld-eckig.patch): `shape = Formen.feld` am
+     * Lagerortfeld entfernt → rot mit „LagerortFeld.kt“.
+     */
+    @Test
+    fun `kein Eingabefeld steht in der eckigen Vorgabe`() {
+        val aufruf = Regex("""\b(OutlinedTextField|TextField)\(""")
+        val fehler = mutableListOf<String>()
+        var gesehen = 0
+        for (datei in Quellen.alle()) {
+            val s = Quellen.ohneKommentare(datei.readText())
+                .replace(Regex(""""(?:\\.|[^"\\\n])*""""), "\"\"")
+            for (m in aufruf.findAll(s)) {
+                var tiefe = 0
+                var ende = m.range.last
+                while (ende < s.length) {
+                    if (s[ende] == '(') tiefe++ else if (s[ende] == ')' && --tiefe == 0) break
+                    ende++
+                }
+                gesehen++
+                val argumente = s.substring(m.range.last, minOf(ende + 1, s.length))
+                if (!Regex("""\bshape\s*=\s*(ch\.brickinventoryapp\.ui\.theme\.)?(Formen|MaterialTheme\.shapes)\.""").containsMatchIn(argumente)) {
+                    fehler += "${datei.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
+                }
+            }
+        }
+        assert(gesehen >= 30) { "Nur $gesehen Eingabefelder gefunden — greift die Suche noch?" }
+        assert(fehler.isEmpty()) {
+            "Eingabefelder in der eckigen Vorgabe (${fehler.size}):\n  " + fehler.joinToString("\n  ") +
+                "\nshape = Formen.feld setzen — wie jedes andere Feld."
+        }
+    }
+
+    /**
      * Eine Knopfform für die ganze App: die Pille der Material-Vorgabe. Im Ablauf
      * Einrichten → Anmelden wechselte sie sonst von Bildschirm zu Bildschirm (12 dp,
      * 14 dp, Pille). Gegenprobe: `shape = Formen.feld` am Knopf in LoginScreen.LadeKnopf

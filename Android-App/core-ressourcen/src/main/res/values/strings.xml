@@ -90,8 +90,6 @@
     <!-- „75192-1“ ist eine Setnummer, kein Bereich: kein Gedankenstrich. -->
     <string name="comparison_search_placeholder" tools:ignore="TypographyDashes">e.g. 75192-1 or barcode</string>
     <string name="comparison_search">Search</string>
-    <string name="comparison_scan_new">New</string>
-    <string name="comparison_scan">Scan</string>
     <string name="comparison_barcode_label">Barcode: %1$s</string>
     <string name="comparison_title">Price comparison</string>
     <string name="comparison_hint">Enter a set number or barcode, or scan one.\nThe search opens toppreise.ch in the browser.</string>
@@ -154,8 +152,8 @@
     <string name="offline_verworfen">Not applied: %1$s – %2$s</string>
     <string name="offline_verworfen_ohne_grund">the server did not accept the change</string>
     <plurals name="offline_ausgang">
-        <item quantity="one">Saved offline – %1$d change will be sent</item>
-        <item quantity="other">Saved offline – %1$d changes will be sent</item>
+        <item quantity="one">Saved offline – %1$d change will be sent on the next connection</item>
+        <item quantity="other">Saved offline – %1$d changes will be sent on the next connection</item>
     </plurals>
     <string name="gallery_add_set">Add set</string>
     <string name="gallery_add_set_title">Add set</string>
@@ -203,7 +201,6 @@
         <item quantity="one">%1$d part</item>
         <item quantity="other">%1$d parts</item>
     </plurals>
-    <string name="partslist_scan">Scan</string>
     <string name="partslist_add_set">Add set to the build list</string>
     <string name="partslist_generate">Generate</string>
     <string name="partslist_pdf_error_title">PDF error</string>
@@ -237,8 +234,8 @@
     <string name="detail_alert_above">rises above</string>
     <string name="detail_alert_chip_below">Falls below</string>
     <string name="detail_alert_chip_above">Rises above</string>
-    <string name="detail_alert_armed">armed</string>
-    <string name="detail_alert_fired">sent — armed again once the price moves back</string>
+    <string name="detail_alert_armed">active</string>
+    <string name="detail_alert_fired">triggered — active again once the price moves back</string>
     <string name="detail_alert_threshold">Threshold (%1$s)</string>
     <string name="detail_alert_hint">Saved automatically after typing</string>
     <string name="detail_alert_saved">Saved: price %1$s %2$s · %3$s</string>
@@ -288,7 +285,7 @@
     <string name="finance_price_error">Price error</string>
     <string name="finance_no_sets">No sets</string>
     <string name="finance_load_prompt">→ Load prices</string>
-    <string name="finance_total_pnl">%1$s vs. cost basis</string>
+    <string name="finance_total_pnl">%1$s vs. total paid</string>
     <string name="finance_parts_extra">incl. parts &amp; minifigures: %1$s</string>
     <plurals name="finance_fremde_waehrung">
         <item quantity="one">%1$d purchase price in another currency not included</item>
@@ -311,7 +308,7 @@
     <string name="finance_total_manual_minifigs">Manually added minifigures</string>
     <string name="finance_grand_total">Total</string>
     <string name="finance_market_avg">Collection market value</string>
-    <string name="finance_einstand_zeile">Cost basis: %1$s</string>
+    <string name="finance_einstand_zeile">Total paid: %1$s</string>
     <string name="finance_guv_zeile">Profit/loss: %1$s</string>
     <string name="finance_pnl_needs_prices">needs purchase and market prices</string>
     <plurals name="finance_basis_gerechnet">
@@ -319,8 +316,8 @@
         <item quantity="other">Based on %1$d of %2$d items with purchase and market price.</item>
     </plurals>
     <plurals name="finance_basis_ohne_markt">
-        <item quantity="one">%1$d item without market price not included (cost basis %2$s)</item>
-        <item quantity="other">%1$d items without market price not included (cost basis %2$s)</item>
+        <item quantity="one">%1$d item without market price not included (total paid %2$s)</item>
+        <item quantity="other">%1$d items without market price not included (total paid %2$s)</item>
     </plurals>
     <plurals name="finance_basis_ohne_kauf">
         <item quantity="one">%1$d item without purchase price not included (market value %2$s)</item>
@@ -879,10 +876,8 @@
     <string name="alerts_group">Price alerts</string>
     <string name="alerts_intro">Every threshold you have set. You can change the value here or remove the alert. You are notified once per crossing — the same alert can only fire again after the price has moved back to the other side.</string>
     <string name="alerts_empty">No price alert set yet. You set one in the detail view of a set.</string>
-    <string name="alerts_below">falls below</string>
-    <string name="alerts_above">rises above</string>
-    <string name="alerts_armed">● armed</string>
-    <string name="alerts_fired">○ not armed</string>
+    <string name="alerts_armed">Active</string>
+    <string name="alerts_fired">Triggered – waiting for the price to return</string>
     <string name="alerts_last">last %1$s</string>
     <string name="alerts_bad_value">The threshold must be greater than 0.</string>
     <string name="alerts_delete">Remove price alert</string>
@@ -1091,4 +1086,10 @@
         <item quantity="one">%1$d copy of %2$s and its parts will be removed. You can still undo it for a moment afterwards.</item>
         <item quantity="other">All %1$d copies of %2$s and their parts will be removed. You can still undo it for a moment afterwards.</item>
     </plurals>
+    <plurals name="offline_warten">
+        <item quantity="one">%1$d change is waiting and will be sent on the next connection</item>
+        <item quantity="other">%1$d changes are waiting and will be sent on the next connection</item>
+    </plurals>
+    <string name="passwort_mindestens">At least %1$d characters</string>
+    <string name="login_erweitert">Advanced</string>
 </resources>

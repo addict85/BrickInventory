@@ -80,6 +80,7 @@ fun ZertifikatDialog(
                     color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                 if (abschreiben) {
                     OutlinedTextField(
+                        shape = ch.brickinventoryapp.ui.theme.Formen.feld,
                         value = eingabe,
                         onValueChange = { eingabe = it; falsch = false },
                         label = { Text(stringResource(if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },

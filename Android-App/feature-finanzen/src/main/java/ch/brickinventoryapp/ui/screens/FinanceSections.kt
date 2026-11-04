@@ -38,6 +38,8 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.util.resolveThumbUrl
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 
@@ -367,43 +369,23 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
+                // Kaufsumme und G/V in einer Zeile, die bei Bedarf umbricht: Untereinander waren
+                // es mit Betrag, Bezeichnung und Rechenhinweis vier Textebenen in einer Kachel.
                 if (kopf.basisBekannt) {
                     Spacer(Modifier.height(Abstaende.winzig))
-                    kopf.einstand?.let {
-                        Text(stringResource(R.string.finance_einstand_zeile, fmtPrice(it.toPlainString())),
-                            color = auf, style = MaterialTheme.typography.bodySmall)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+                        kopf.einstand?.let {
+                            Text(stringResource(R.string.finance_einstand_zeile, fmtPrice(it.toPlainString())),
+                                color = auf, style = MaterialTheme.typography.bodySmall)
+                        }
+                        val guv = kopf.guvBetrag
+                        Text(
+                            stringResource(R.string.finance_guv_zeile,
+                                if (guv == null) stringResource(R.string.finance_pnl_needs_prices)
+                                else (if (guv.signum() > 0) "+" else "") + fmtPrice(guv.toPlainString())),
+                            color = auf, style = MaterialTheme.typography.bodySmall,
+                        )
                     }
-                    val guv = kopf.guvBetrag
-                    Text(
-                        stringResource(R.string.finance_guv_zeile,
-                            if (guv == null) stringResource(R.string.finance_pnl_needs_prices)
-                            else (if (guv.signum() > 0) "+" else "") + fmtPrice(guv.toPlainString())),
-                        color = auf, style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-                // Was nicht gerechnet ist, steht unter den Zahlen — wie die Zeile im Web (fin-basis).
-                if (kopf.basisZeileSichtbar) {
-                    Spacer(Modifier.height(Abstaende.winzig))
-                    val ohneMarkt = if (kopf.ohneMarkt > 0) pluralStringResource(R.plurals.finance_basis_ohne_markt,
-                        kopf.ohneMarkt, kopf.ohneMarkt, fmtPrice(kopf.ohneMarktEinstand.toPlainString())) else null
-                    val ohneKauf = if (kopf.ohneKauf > 0) pluralStringResource(R.plurals.finance_basis_ohne_kauf,
-                        kopf.ohneKauf, kopf.ohneKauf, fmtPrice(kopf.ohneKaufWert.toPlainString())) else null
-                    val teile = listOfNotNull(ohneMarkt, ohneKauf)
-                    Text(
-                        pluralStringResource(R.plurals.finance_basis_gerechnet, kopf.gesamt, kopf.bewertet, kopf.gesamt) +
-                            " " + teile.joinToString(" · "),
-                        color = auf, style = MaterialTheme.typography.labelSmall,
-                    )
-                }
-                // Wie das Web (finance.fremde_waehrung_n): fehlende Kaufpreise nennen statt still weglassen.
-                val fremde = fremdeKaufpreise(valuation, partsValuation, figsValuation, pnl)
-                if (fremde > 0) {
-                    Spacer(Modifier.height(Abstaende.winzig))
-                    Text(
-                        pluralStringResource(R.plurals.finance_fremde_waehrung, fremde, fremde),
-                        color = auf,
-                        style = MaterialTheme.typography.labelSmall
-                    )
                 }
                 Spacer(Modifier.height(Abstaende.gross))
                 HorizontalDivider(color = auf.copy(alpha = 0.2f))
@@ -420,6 +402,34 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                     if (summen.teileUndFiguren.signum() > 0)
                         PriceColumn(stringResource(R.string.finance_avg_label), fmtPrice(valuation.totals.avg), auf)
                     PriceColumn(stringResource(R.string.finance_max_label), fmtPrice(valuation.totals.max), auf)
+                }
+            }
+        }
+    }
+    item {
+        // Wie gerechnet wurde, unter der Kachel statt in ihr: Sie trägt die Zahlen, der
+        // Hinweis die Herkunft — wie die Zeile im Web (fin-basis), nur leiser.
+        val kopf = finanzKopf(valuation, partsValuation, figsValuation, pnl)
+        val ohneMarkt = if (kopf.ohneMarkt > 0) pluralStringResource(R.plurals.finance_basis_ohne_markt,
+            kopf.ohneMarkt, kopf.ohneMarkt, fmtPrice(kopf.ohneMarktEinstand.toPlainString())) else null
+        val ohneKauf = if (kopf.ohneKauf > 0) pluralStringResource(R.plurals.finance_basis_ohne_kauf,
+            kopf.ohneKauf, kopf.ohneKauf, fmtPrice(kopf.ohneKaufWert.toPlainString())) else null
+        // Wie das Web (finance.fremde_waehrung_n): fehlende Kaufpreise nennen statt still weglassen.
+        val fremde = fremdeKaufpreise(valuation, partsValuation, figsValuation, pnl)
+        val zeilen = listOfNotNull(
+            if (kopf.basisZeileSichtbar) pluralStringResource(R.plurals.finance_basis_gerechnet, kopf.gesamt,
+                kopf.bewertet, kopf.gesamt) + " " + listOfNotNull(ohneMarkt, ohneKauf).joinToString(" · ") else null,
+            if (fremde > 0) pluralStringResource(R.plurals.finance_fremde_waehrung, fremde, fremde) else null,
+        )
+        if (zeilen.isNotEmpty()) Row(
+            Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig),
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+        ) {
+            Icon(Icons.Outlined.Info, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                zeilen.forEach {
+                    Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }

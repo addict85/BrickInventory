@@ -33,6 +33,10 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.util.passwortZuKurz
+import ch.brickinventoryapp.util.PASSWORT_MIN_ZEICHEN
+import ch.brickinventoryapp.ui.components.PasswortArt
+import ch.brickinventoryapp.ui.components.PasswortFeld
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -68,13 +72,11 @@ fun LoginScreen(
     // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
     // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
     var password by remember { mutableStateOf("") }
-    var showPw   by rememberSaveable { mutableStateOf(false) }
     var code     by remember { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
-    // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey; ein
-    // sichtbares Passwort gehört in kein Bildschirmfoto und keine Aufnahme.
+    // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey. Den
+    // Sichtschutz für ein aufgedecktes Passwort bringt das PasswortFeld selbst mit.
     ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
-    if (showPw && formular == AnmeldeFormular.ANMELDEN) ch.brickinventoryapp.ui.components.Sichtschutz()
 
     // Passwort, Code und Adresse lernt die Tastatur nicht mit (sec8 H4).
     ch.brickinventoryapp.ui.components.TastaturOhneLernen {
@@ -122,7 +124,6 @@ fun LoginScreen(
                         AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
                             username = username, onUsername = { username = it },
                             password = password, onPassword = { password = it },
-                            showPw = showPw, onShowPw = { showPw = it },
                             codeNoetig = codeNoetig, code = code, onCode = { code = it },
                             isLoading = isLoading, error = error,
                             registrierungOffen = registrierungOffen,
@@ -173,6 +174,8 @@ private fun FormularMeldung(text: String, fehler: Boolean) {
             )
             Text(
                 text,
+                // Angesagt: Nach „Anmelden“ hörte eine blinde Person sonst nichts.
+                modifier = Modifier.ansagen(),
                 color = if (fehler) MaterialTheme.colorScheme.onErrorContainer
                         else MaterialTheme.colorScheme.onSecondaryContainer,
                 style = MaterialTheme.typography.bodySmall
@@ -206,7 +209,6 @@ private fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, fehlt: Stri
 private fun AnmeldeFelder(
     username: String, onUsername: (String) -> Unit,
     password: String, onPassword: (String) -> Unit,
-    showPw: Boolean, onShowPw: (Boolean) -> Unit,
     codeNoetig: Boolean, code: String, onCode: (String) -> Unit,
     isLoading: Boolean, error: String?,
     registrierungOffen: Boolean?,
@@ -235,32 +237,18 @@ private fun AnmeldeFelder(
         keyboardActions = KeyboardActions(onNext = { focusMgr.moveFocus(FocusDirection.Down) })
     )
 
-    OutlinedTextField(
-        value = password, onValueChange = onPassword,
-        label = { Text(stringResource(R.string.login_password)) },
-        leadingIcon = { Icon(Icons.Default.Lock, null) },
-        trailingIcon = {
-            IconButton(onClick = { onShowPw(!showPw) }) {
-                Icon(
-                    if (showPw) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                    // Beschreibt die WIRKUNG des Tippens, nicht das
-                    // gezeigte Symbol — genau das braucht TalkBack.
-                    stringResource(if (showPw) R.string.cd_password_hide else R.string.cd_password_show)
-                )
-            }
-        },
-        visualTransformation = if (showPw) VisualTransformation.None else PasswordVisualTransformation(),
-        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Password }, singleLine = true,
-        shape = Formen.feld,
-        keyboardOptions = KeyboardOptions(
-            imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
-            keyboardType = KeyboardType.Password),
+    PasswortFeld(
+        wert = password, onWert = onPassword,
+        beschriftung = stringResource(R.string.login_password),
+        modifier = Modifier.fillMaxWidth(),
+        mitSymbol = true,
+        imeAction = if (codeNoetig) ImeAction.Next else ImeAction.Done,
         keyboardActions = KeyboardActions(
             onNext = { focusMgr.moveFocus(FocusDirection.Down) },
             onDone = {
                 focusMgr.clearFocus()
                 if (username.isNotBlank() && password.isNotBlank()) onLogin(username, password, null)
-            })
+            }),
     )
 
     // Erst sichtbar, wenn der Server den zweiten Faktor verlangt.
@@ -272,7 +260,8 @@ private fun AnmeldeFelder(
             label = { Text(stringResource(R.string.login_code)) },
             supportingText = { Text(stringResource(R.string.login_code_hint)) },
             leadingIcon = { Icon(Icons.Default.Key, null) },
-            modifier = Modifier.fillMaxWidth(), singleLine = true,
+            // Das System bietet einen eben empfangenen Code zum Einsetzen an.
+            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode }, singleLine = true,
             shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Ascii),
             keyboardActions = KeyboardActions(onDone = { focusMgr.clearFocus(); absenden() })
@@ -283,11 +272,18 @@ private fun AnmeldeFelder(
 
     // Ohne Häkchen ein Token ohne Verwalterrechte, auch für ein Verwalterkonto. Das
     // Häkchen setzen fragt die Gerätesperre: Ein Token mit Scope voll darf alles.
+    // Eingeklappt unter „Erweitert“: Zum Sammeln braucht es niemand, und offen schob
+    // es bei 200 % den Anmeldeknopf aus dem ersten Bild.
     val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
     val vollGrund = stringResource(R.string.schritt_voller_zugriff)
+    var erweitert by rememberSaveable { mutableStateOf(vollerZugriff) }
+    TextButton(onClick = { erweitert = !erweitert }) {
+        Text(stringResource(R.string.login_erweitert))
+        Icon(if (erweitert) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
+    }
     // Oben bündig: Das Häkchen gehört zur ersten Zeile, nicht zur Mitte des Blocks
     // (bei grosser Schrift drei Zeilen).
-    Row(verticalAlignment = Alignment.Top,
+    if (erweitert) Row(verticalAlignment = Alignment.Top,
         modifier = Modifier.fillMaxWidth().toggleable(value = vollerZugriff, role = Role.Checkbox,
             onValueChange = { an -> if (an) schutz.bestaetige(vollGrund) { onVollerZugriff(true) } else onVollerZugriff(false) })) {
         Checkbox(checked = vollerZugriff, onCheckedChange = null)
@@ -401,23 +397,12 @@ private fun RegistrierFelder(
             label = { Text(stringResource(R.string.register_last_name)) },
             modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = weiter, keyboardActions = naechstes)
-        OutlinedTextField(
-            value = pw1, onValueChange = { pw1 = it },
-            label = { Text(stringResource(R.string.login_password)) },
-            leadingIcon = { Icon(Icons.Default.Lock, null) },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.NewPassword }, singleLine = true, shape = Formen.feld,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next,
-                keyboardType = KeyboardType.Password),
-            keyboardActions = naechstes)
-        OutlinedTextField(
-            value = pw2, onValueChange = { pw2 = it },
-            label = { Text(stringResource(R.string.register_password_repeat)) },
-            leadingIcon = { Icon(Icons.Default.Lock, null) },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.NewPassword }, singleLine = true, shape = Formen.feld,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done,
-                keyboardType = KeyboardType.Password))
+        // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler nach dem Senden.
+        PasswortFeld(pw1, { pw1 = it }, stringResource(R.string.login_password), Modifier.fillMaxWidth(),
+            art = PasswortArt.NEU, hinweis = stringResource(R.string.passwort_mindestens, PASSWORT_MIN_ZEICHEN),
+            mitSymbol = true, imeAction = ImeAction.Next, keyboardActions = naechstes)
+        PasswortFeld(pw2, { pw2 = it }, stringResource(R.string.register_password_repeat), Modifier.fillMaxWidth(),
+            art = PasswortArt.WIEDERHOLUNG, mitSymbol = true)
 
         val zuZeigen = eigenerFehler ?: fehler
         if (zuZeigen != null) FormularMeldung(zuZeigen, fehler = true)

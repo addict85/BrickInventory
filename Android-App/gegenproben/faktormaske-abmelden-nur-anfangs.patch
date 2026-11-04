@@ -4,13 +4,13 @@ Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
 Rot: Abmelden bleibt
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-index 5b00b3f..fdcf7c3 100644
+index 8636be8..052833b 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -156,7 +156,7 @@ fun ZweiterFaktorPflichtMaske(
+@@ -154,7 +154,7 @@ fun ZweiterFaktorPflichtMaske(
              }
              if (zustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
-             zustand.fehler?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+             zustand.fehler?.let { FehlerZeile(it) }
 -            TextButton(onClick = onAbmelden) { Text(stringResource(R.string.settings_logout)) }
 +            if (geheimnis == null && zustand.codes.isEmpty()) TextButton(onClick = onAbmelden) { Text(stringResource(R.string.settings_logout)) }
          }

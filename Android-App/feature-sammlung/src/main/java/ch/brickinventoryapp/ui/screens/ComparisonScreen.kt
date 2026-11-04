@@ -20,7 +20,6 @@ import ch.brickinventoryapp.util.NumericInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -81,7 +80,10 @@ fun ComparisonScreen() {
                 Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
             ) {
-                // Search field
+                // Suchfeld mit Scannen daneben, wie in Galerie und Merkliste: ein Muster für
+                // Scan-Knöpfe statt eines eigenen Tonal-Knopfs mit englischem „Scan“.
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedTextField(
                     value = searchText,
                     // ── Zahlentastatur statt Freitext ──
@@ -105,36 +107,23 @@ fun ComparisonScreen() {
                         if (searchText.isNotEmpty())
                             IconButton(onClick = { searchText = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear)) }
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.weight(1f),
                     singleLine = true,
                     shape = Formen.karte,
                     keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { triggerSearch() })
                 )
+                ch.brickinventoryapp.ui.components.ScanKnopf({ showScanner = true })
+                }
 
-                // Action row
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalAlignment = Alignment.CenterVertically
+                Button(
+                    onClick = { triggerSearch() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = searchText.isNotBlank() || scannedBarcode != null
                 ) {
-                    Button(
-                        onClick = { triggerSearch() },
-                        modifier = Modifier.weight(1f),
-                        enabled = searchText.isNotBlank() || scannedBarcode != null
-                    ) {
-                        Icon(Icons.Default.OpenInBrowser, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
-                        Spacer(Modifier.width(6.dp))
-                        Text(stringResource(R.string.comparison_search), fontWeight = FontWeight.SemiBold)
-                    }
-                    FilledTonalButton(
-                        onClick = { showScanner = true },
-                        contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.klein)
-                    ) {
-                        Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
-                        Spacer(Modifier.width(6.dp))
-                        Text(if (scannedBarcode != null) stringResource(R.string.comparison_scan_new) else stringResource(R.string.comparison_scan))
-                    }
+                    Icon(Icons.Default.OpenInBrowser, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.comparison_search), fontWeight = FontWeight.SemiBold)
                 }
 
                 // Scanned barcode hint
@@ -154,32 +143,10 @@ fun ComparisonScreen() {
             }
         }
 
-        // Placeholder
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.padding(Abstaende.riesig)
-            ) {
-                Surface(
-                    shape = Formen.chip,
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f),
-                    modifier = Modifier.size(80.dp)
-                ) {
-                    Box(Modifier.fillMaxSize(), Alignment.Center) {
-                        Icon(Icons.Default.Search, null, Modifier.size(36.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
-                    }
-                }
-                Text(stringResource(R.string.comparison_title),
-                    fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    stringResource(R.string.comparison_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
+        // Derselbe Hinweis wie jeder Leerzustand der App (Symbol auf runder Fläche).
+        ch.brickinventoryapp.ui.components.ZustandsHinweis {
+            ch.brickinventoryapp.ui.components.HinweisText(Icons.Default.Search,
+                stringResource(R.string.comparison_title), stringResource(R.string.comparison_hint))
         }
     }
 }

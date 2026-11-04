@@ -1,0 +1,18 @@
+Gegenprobe: Verwalterrechte im Login von Anfang an offen
+Modul: app
+Test: ch.brickinventoryapp.GeruestUndFormularTest
+Rot: Verwalterrechte stehen eingeklappt unter Erweitert
+
+diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt
+index 4d02df1..df539ad 100644
+--- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt
++++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/ui/screens/LoginScreen.kt
+@@ -276,7 +276,7 @@ private fun AnmeldeFelder(
+     // es bei 200 % den Anmeldeknopf aus dem ersten Bild.
+     val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+     val vollGrund = stringResource(R.string.schritt_voller_zugriff)
+-    var erweitert by rememberSaveable { mutableStateOf(vollerZugriff) }
++    var erweitert by rememberSaveable { mutableStateOf(true) }
+     TextButton(onClick = { erweitert = !erweitert }) {
+         Text(stringResource(R.string.login_erweitert))
+         Icon(if (erweitert) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)

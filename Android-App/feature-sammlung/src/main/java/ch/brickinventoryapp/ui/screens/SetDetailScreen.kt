@@ -9,7 +9,6 @@ import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -94,11 +93,8 @@ fun SetDetailScreen(
                         modifier = Modifier.semantics { heading() },
                     )
                 },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                    }
-                },
+                // Neben der Liste schliesst ein X nur das Detail (ZurueckKnopf).
+                navigationIcon = { ch.brickinventoryapp.ui.components.ZurueckKnopf(onBack) },
                 actions = {
                     // Kein Verschieben-Knopf: Verschoben wird über den Kaufpreis, im
                     // Kaufpreis-Screen, Zeile für Zeile. Ein Set mit drei Erfassungen sind drei

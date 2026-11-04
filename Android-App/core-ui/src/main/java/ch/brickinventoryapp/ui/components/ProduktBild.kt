@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -79,6 +81,9 @@ fun ProduktBild(
                 contentDescription = contentDescription,
                 modifier = Modifier.matchParentSize().padding(innenAbstand),
                 contentScale = contentScale,
+                // Ohne Bildgrund (Teile, Figuren, Katalog) dämpft der Schleier nur die Bildpunkte
+                // selbst; ein Rechteck darüber dunkelte auch die Karte um ein freigestelltes Bild.
+                colorFilter = if (dunkel && !bildgrund) DAEMPFUNG_DUNKEL else null,
                 onState = { st ->
                     geladen = st is AsyncImagePainter.State.Success
                     onState?.invoke(st)
@@ -93,6 +98,9 @@ private val BILDGRUND = Color.White
 
 /** Deckkraft des Schleiers im Dunkeln: hell genug zum Erkennen, ohne zu blenden. */
 private const val SCHLEIER_DUNKEL = 0.32f
+
+/** Derselbe Schleier als Filter auf den Bildpunkten, für Bilder ohne eigenen Grund. */
+private val DAEMPFUNG_DUNKEL = ColorFilter.tint(Color.Black.copy(alpha = SCHLEIER_DUNKEL), BlendMode.SrcAtop)
 
 /** Das Ersatzbild allein — auch für Flächen, die gar keine Adresse haben. */
 @Composable

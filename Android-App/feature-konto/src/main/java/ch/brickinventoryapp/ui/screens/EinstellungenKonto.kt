@@ -18,7 +18,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.autofill.ContentType
+import androidx.compose.ui.semantics.contentType
+import androidx.compose.ui.semantics.semantics
+import ch.brickinventoryapp.ui.components.FehlerZeile
+import ch.brickinventoryapp.ui.components.PasswortArt
+import ch.brickinventoryapp.ui.components.PasswortFeld
+import ch.brickinventoryapp.util.PASSWORT_MIN_ZEICHEN
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.util.passwortZuKurz
@@ -69,10 +76,7 @@ internal fun KontoCard(
             Text(kontoZustand.meldung, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary)
         }
-        if (kontoZustand.fehler != null) {
-            Text(kontoZustand.fehler, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error)
-        }
+        if (kontoZustand.fehler != null) FehlerZeile(kontoZustand.fehler)
         // Erst nachdem der Server ihn verlangt hat; gilt für E-Mail und Passwort.
         if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
 
@@ -109,12 +113,8 @@ internal fun KontoCard(
             // Der Server bestätigt jede Profiländerung mit dem Passwort: Sonst liesse
             // sich über eine neue Adresse das Passwort zurücksetzen oder durchprobieren,
             // welche Namen vergeben sind.
-            OutlinedTextField(
-                value = pwProfil, onValueChange = { pwProfil = it; tippen(it) },
-                label = { Text(stringResource(R.string.konto_profil_password)) },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld)
+            PasswortFeld(pwProfil, { pwProfil = it; tippen(it) }, stringResource(R.string.konto_profil_password),
+                Modifier.fillMaxWidth())
             Button(
                 onClick = { onSpeichern(benutzername, email, vorname, nachname, pwProfil, code) },
                 enabled = geaendert && !kontoZustand.speichert && pwProfil.isNotEmpty(),
@@ -131,25 +131,16 @@ internal fun KontoCard(
             Text(stringResource(R.string.konto_password_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            OutlinedTextField(
-                value = pwAktuell, onValueChange = { pwAktuell = it },
-                label = { Text(stringResource(R.string.konto_password_current)) },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
-            OutlinedTextField(
-                value = pwNeu, onValueChange = { pwNeu = it },
-                label = { Text(stringResource(R.string.konto_password_new)) },
-                visualTransformation = PasswordVisualTransformation(),
-                // Dieselbe Mindestlänge wie im Server (PASSWORT_MIN_ZEICHEN in utils/auth.ts) und
-                // in der Webapp, aus util/Passwort.kt. Hier vorweggenommen, damit man dafür keine
-                // Runde über das Netz braucht.
-                supportingText = if (pwNeu.isNotEmpty() && passwortZuKurz(pwNeu)) {
-                    { Text(stringResource(R.string.register_password_short)) }
-                } else null,
-                isError = pwNeu.isNotEmpty() && passwortZuKurz(pwNeu),
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+            PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
+                Modifier.fillMaxWidth(), imeAction = ImeAction.Next)
+            // Dieselbe Mindestlänge wie im Server (PASSWORT_MIN_ZEICHEN in utils/auth.ts) und
+            // in der Webapp, aus util/Passwort.kt — von Anfang an genannt, nicht erst als Fehler.
+            val neuZuKurz = pwNeu.isNotEmpty() && passwortZuKurz(pwNeu)
+            PasswortFeld(pwNeu, { pwNeu = it }, stringResource(R.string.konto_password_new), Modifier.fillMaxWidth(),
+                art = PasswortArt.NEU,
+                hinweis = if (neuZuKurz) stringResource(R.string.register_password_short)
+                          else stringResource(R.string.passwort_mindestens, PASSWORT_MIN_ZEICHEN),
+                fehlerhaft = neuZuKurz)
             OutlinedButton(
                 onClick = { onPasswort(pwAktuell, pwNeu, code) },
                 enabled = !kontoZustand.speichert && pwAktuell.isNotBlank() && !passwortZuKurz(pwNeu),
@@ -205,24 +196,18 @@ internal fun ZweiterFaktorCard(
         Text(stringResource(R.string.zf_hint), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (zfZustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
-        if (zfZustand.fehler != null) {
-            Text(zfZustand.fehler, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error)
-        }
+        if (zfZustand.fehler != null) FehlerZeile(zfZustand.fehler)
 
         val passwortFeld: @Composable () -> Unit = {
-            OutlinedTextField(
-                value = zfPasswort, onValueChange = { zfPasswort = it },
-                label = { Text(stringResource(R.string.konto_password_current)) },
-                visualTransformation = PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+            PasswortFeld(zfPasswort, { zfPasswort = it }, stringResource(R.string.konto_password_current),
+                Modifier.fillMaxWidth())
         }
         val codeFeld: @Composable (String) -> Unit = { beschriftung ->
             OutlinedTextField(
                 value = zfCode, onValueChange = { zfCode = it.take(24) },
                 label = { Text(beschriftung) },
-                modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
+                modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode },
+                singleLine = true, shape = Formen.feld,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
         }
 

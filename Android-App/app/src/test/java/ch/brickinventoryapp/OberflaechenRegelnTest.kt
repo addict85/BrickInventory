@@ -90,6 +90,7 @@ import ch.brickinventoryapp.ressourcen.R
  *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
  *   merkliste-zustand-als-chips     Zustandsfilter der Merkliste als Radio-Chips → rot „Merkliste waehlt …“
  *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
+ *   detail-mit-zurueckpfeil         Detail neben der Liste mit Zurück-Pfeil statt X → rot „Tablet zeigt Merkliste und Detail …“
  *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
  *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
  *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
@@ -560,7 +561,8 @@ class OberflaechenRegelnTest {
 
     /**
      * List-Detail auf dem Tablet: Der geöffnete Merkposten steht rechts neben der
-     * Liste, die Liste bleibt sichtbar, und seine Karte ist als gewählt markiert.
+     * Liste, die Liste bleibt sichtbar, und seine Karte ist als gewählt markiert. Oben
+     * im Detail steht Schliessen statt eines Zurück-Pfeils, der eine Seite versprach.
      */
     @Test
     fun `Tablet zeigt Merkliste und Detail nebeneinander`() {
@@ -577,7 +579,8 @@ class OberflaechenRegelnTest {
             val karte = compose.onNode(hasText("Titanic", substring = true) and hasClickAction())
             karte.performClick()
             compose.waitForIdle()
-            val zurueck = compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).fetchSemanticsNode().boundsInRoot
+            compose.onAllNodesWithContentDescription(ctx.getString(R.string.common_back)).assertCountEquals(0)
+            val zurueck = compose.onNodeWithContentDescription(ctx.getString(R.string.detail_close)).fetchSemanticsNode().boundsInRoot
             val liste = compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).fetchSemanticsNode().boundsInRoot
             assertTrue("Das Detail steht rechts der Liste ($liste / $zurueck)", zurueck.left >= liste.right)
             compose.onNode(hasText("Titanic", substring = true) and hasClickAction() and

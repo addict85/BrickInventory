@@ -156,6 +156,7 @@ fun SetupScreen(
                     }
                     if (abtippen && fp != null) {
                         OutlinedTextField(
+                            shape = Formen.feld,
                             value = eingabe,
                             onValueChange = { eingabe = it; falsch = false },
                             label = { Text(stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },
@@ -268,6 +269,7 @@ fun SetupScreen(
                 }
                 Spacer(Modifier.height(Abstaende.mittel))
                 OutlinedTextField(
+                    shape = Formen.feld,
                     value = url,
                     onValueChange = { url = it },
                     label = { Text(stringResource(R.string.setup_url_label)) },

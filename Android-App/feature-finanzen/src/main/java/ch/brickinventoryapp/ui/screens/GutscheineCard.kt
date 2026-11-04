@@ -282,6 +282,7 @@ private fun GutscheinFormularBlatt(
         // behandelt sie als Ganzes, gespeichert heisst sie „unverändert“.
         val nummerMaske = ch.brickinventoryapp.ui.model.istMaskierteNummer(zustand.nummer)
         OutlinedTextField(
+            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
             value = zustand.nummer,
             onValueChange = {
                 onFeld(NumericInput.quantity(eingabeUeberMaske(zustand.nummer, it, nummerMaske)), null, null, null)
@@ -296,6 +297,7 @@ private fun GutscheinFormularBlatt(
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             val pinMaske = zustand.pin == ch.brickinventoryapp.ui.model.PIN_MASKE_ANZEIGE
             OutlinedTextField(
+                shape = ch.brickinventoryapp.ui.theme.Formen.feld,
                 value = zustand.pin,
                 onValueChange = { onFeld(null, NumericInput.quantity(eingabeUeberMaske(zustand.pin, it, pinMaske)), null, null) },
                 label = { Text(stringResource(R.string.vouchers_pin)) },
@@ -304,6 +306,7 @@ private fun GutscheinFormularBlatt(
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
+                shape = ch.brickinventoryapp.ui.theme.Formen.feld,
                 value = zustand.betrag,
                 onValueChange = { onFeld(null, null, NumericInput.price(it), null) },
                 label = { Text(stringResource(R.string.vouchers_amount)) },
@@ -437,9 +440,11 @@ private fun GutscheinKarte(
                 Text(pinText, style = MaterialTheme.typography.bodyMedium)
             }
             IconButton(onClick = onPinSchalten) {
+                // In primary wie das Kopiersymbol daneben: gleichrangige Handlungen, eine Farbe.
                 Icon(
                     if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                     stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
         }
@@ -499,6 +504,7 @@ private fun WaehrungsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
     var offen by rememberSaveable { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = offen, onExpandedChange = { offen = it }) {
         OutlinedTextField(
+            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
             value = gewaehlt,
             onValueChange = {},
             readOnly = true,
