@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.UmbruchWaechterTest
 Rot: Preisalarme bei 100 Prozent
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-index e7f84e6..1396b52 100644
+index 09201ae..a265526 100644
 --- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
 +++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-@@ -861,7 +861,7 @@
-     <string name="alerts_intro">Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
+@@ -882,7 +882,7 @@
+     <string name="alerts_intro">Hier änderst du die Schwelle eines Alarms oder entfernst ihn.</string>
      <string name="alerts_empty">Noch kein Preisalarm gesetzt. Du setzt einen in der Detailansicht eines Sets.</string>
      <string name="alerts_armed">Aktiv</string>
 -    <string name="alerts_fired">Ausgelöst</string>
@@ -17,10 +17,10 @@ index e7f84e6..1396b52 100644
      <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
      <string name="alerts_delete">Preisalarm entfernen</string>
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-index 48426ee..57ce788 100644
+index 0db87fb..5fcef14 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
-@@ -109,8 +109,8 @@ internal fun PreisalarmeCard(
+@@ -107,8 +107,8 @@ internal fun PreisalarmeCard(
                              color = MaterialTheme.colorScheme.onSurfaceVariant)
                          // FlowRow: In einer Row nahm die Plakette die ganze Breite, und „zuletzt …“
                          // brach Zeichen für Zeichen um. So rückt der Preis darunter, wenn es eng wird.

@@ -1,0 +1,17 @@
+Gegenprobe: Hinzufügen ohne Nummer tut still nichts, das Feld wird nicht markiert
+Modul: app
+Test: ch.brickinventoryapp.AblaufTest
+Rot: ein Set ohne Nummer sagt beim Tippen
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+index 1d44fe6..38342e6 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+@@ -697,7 +697,6 @@ fun AddSetDialog(
+ 
+     fun submit() {
+         if (setNumber.isBlank()) {
+-            nummerFehlt = true
+             if (sofortFokus) try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+         } else {
+             onAdd(setNumber, quantity.toIntOrNull() ?: 1,

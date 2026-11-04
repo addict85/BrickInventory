@@ -4,13 +4,13 @@ Test: ch.brickinventoryapp.AblaufTest
 Rot: ein Set erfassen nimmt Nummer und Anzahl
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index 8d9e441..c8d8f0c 100644
+index 1d44fe6..719f078 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -615,7 +615,7 @@ fun AddSetDialog(
- 
-     fun submit() {
-         if (setNumber.isNotBlank()) {
+@@ -700,7 +700,7 @@ fun AddSetDialog(
+             nummerFehlt = true
+             if (sofortFokus) try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+         } else {
 -            onAdd(setNumber, quantity.toIntOrNull() ?: 1,
 +            onAdd(setNumber, 1,
                    purchasePrice.replace(',', '.').toDoubleOrNull(), condition,

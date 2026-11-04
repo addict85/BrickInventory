@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.UnterseitenTest
 Rot: Abmelden fragt
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-index 4a48a90..7135212 100644
+index 3e1e614..632af7f 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MehrBildschirm.kt
-@@ -105,7 +105,7 @@ fun MehrBildschirm(
-                 MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) {
-                     navController.navigate(Screen.Settings.route) { launchSingleTop = true }
-                 }
--                MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { fragtAbmelden = true }
-+                MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { onAbmelden() }
-             }
-             else -> {
-                 MehrGruppe(R.string.nav_group_server, trenner)
+@@ -123,7 +123,7 @@ fun MehrBildschirm(
+     @Composable
+     fun Abmelden() {
+         HorizontalDivider(Modifier.padding(top = Abstaende.klein, bottom = Abstaende.klein))
+-        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { fragtAbmelden = true }
++        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { onAbmelden() }
+     }
+     // Die Servergruppe nur für Verwalter.
+     val gruppen = if (isAdmin) 5 else 4

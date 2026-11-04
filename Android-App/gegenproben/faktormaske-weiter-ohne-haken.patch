@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
 Rot: nach der Bestaetigung
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-index b1facc4..f8ab72a 100644
+index 05f60fe..240ccab 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -121,7 +121,7 @@ fun ZweiterFaktorPflichtMaske(
+@@ -128,7 +128,7 @@ fun ZweiterFaktorPflichtMaske(
                              border = nebenKnopfRand(),
-                         ) { Text(stringResource(R.string.zf_copy)) }
+                         ) { Text(stringResource(R.string.zf_share)) }
                          CodesGesichert(gesichert) { gesichert = it }
 -                        Button(onClick = onWeiter, enabled = gesichert, modifier = Modifier.fillMaxWidth()) {
 +                        Button(onClick = onWeiter, enabled = gesichert || true, modifier = Modifier.fillMaxWidth()) {

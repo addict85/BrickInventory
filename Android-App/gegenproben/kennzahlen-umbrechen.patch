@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.GeruestUndFormularTest
 Rot: Kennzahlen der Sammlung
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
-index 32ab610..81ce043 100644
+index e5d0529..97c73ed 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/GalleryStatChip.kt
 @@ -64,7 +64,7 @@ fun KennzahlenReihe(modifier: Modifier = Modifier, umbrechen: Boolean = false, i
@@ -14,5 +14,5 @@ index 32ab610..81ce043 100644
 -        if (ch.brickinventoryapp.ui.components.grosseSchrift() && !umbrechen) {
 +        if (false && !umbrechen) {
              val rolle = rememberScrollState()
-             Box(Modifier.fillMaxWidth()) {
-                 Row(
+             // Der Pfeil in eigener Spalte neben der Zeile, nicht darüber: Über dem
+             // Verlauf stand er auf halben Buchstaben („82 Tei›“). Die Spalte bleibt,

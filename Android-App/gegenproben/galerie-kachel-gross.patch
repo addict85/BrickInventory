@@ -1,0 +1,18 @@
+Gegenprobe: Setkachel auch bei 200 % mit dem Bild über die ganze Breite
+Modul: app
+Test: ch.brickinventoryapp.OberflaechenRegelnTest
+Rot: Galerie bei 200 Prozent zeigt mehrere Sets ganz
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+index 1d44fe6..bafddf0 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
+@@ -426,7 +426,7 @@ fun SetCard(
+     // Ab grosser Schrift eine Listenzeile, Bild links und Text rechts, wie die Merkliste:
+     // Über die volle Breite nahm das Bild zwei Drittel der Höhe, und es stand ein Set je
+     // Bildschirm. Die Plaketten rücken dann vom Bild in den Text, das Bild ist zu klein.
+-    val zeile = ch.brickinventoryapp.ui.components.grosseSchrift()
++    val zeile = false
+     val pct = preis?.pnlPct
+     val betrag = kachelBetrag(set, preis)
+     val guv: (@Composable () -> Unit)? = if (pct != null && betrag != null) ({
