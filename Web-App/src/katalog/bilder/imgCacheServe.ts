@@ -5,6 +5,15 @@ import { konfig } from '../../infra/konfig';
 import path from 'path';
 import { APP_ROOT } from '../../infra/appPaths';
 
+const BILDTYPEN = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']);
+
+/** Nur ein Typ aus der Liste, nie der rohe Kopf des CDN: „image/png, text/html“
+ * läse ein Browser als HTML. Alles andere wird JPEG, mit nosniff harmlos. */
+export function bildTyp(roh: string): string {
+  const typ = vorDem(roh, ';').trim().toLowerCase();
+  return BILDTYPEN.has(typ) ? typ : 'image/jpeg';
+}
+
 // Ausführlich: docs/begruendungen/src/katalog/bilder/imgCacheServe.ts.md#liefereauscache
 export async function liefereAusCache(opts: {
   res: any;
@@ -57,9 +66,7 @@ export async function liefereAusCache(opts: {
     // Auch aus dem Cache nur Bilder; im Zweifel JPEG — mit nosniff die harmlose
     // Auslegung.
     const ctRaw = await fs.promises.readFile(cacheFile + '.ct', 'utf8').catch(() => 'image/jpeg');
-    const ctMime = vorDem(ctRaw, ';').trim().toLowerCase();
-    const ct = (ctMime.startsWith('image/') && ctMime !== 'image/svg+xml') ? ctRaw : 'image/jpeg';
-    res.setHeader('Content-Type', ct);
+    res.setHeader('Content-Type', bildTyp(ctRaw));
     // Länge mitgeben: Eine chunked-Antwort kann ein Reverse-Proxy puffern.
     const cst = await fs.promises.stat(cacheFile).catch(ohneFehlendeDatei('bild-cache:stat', null));
     if (cst) {

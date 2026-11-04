@@ -258,6 +258,16 @@
       </form>
     </div>
 
+    <!-- ── E-MAIL BESTÄTIGEN (Link aus der Mail, Bestätigung erst per Knopf) ─ -->
+    <div id="panel-verify" data-stil="display:none">
+      <p class="login-unterzeile" data-i18n="verify.title">E-Mail-Adresse bestätigen</p>
+      <div class="lerr" id="verify-err" role="alert"></div>
+      <button type="button" class="btn bp knopf-breit" id="btn-verify" data-i18n="verify.button">Adresse bestätigen</button>
+      <div class="login-fuss">
+        <a class="farbe-primaer" href="#" id="link-verify-to-login" data-i18n="auth.back_to_login">← Zurück zur Anmeldung</a>
+      </div>
+    </div>
+
     <!-- ── STARTPASSWORT ERSETZEN (Server: 403 passwort_wechsel_noetig) ─ -->
     <div id="panel-pflichtwechsel" data-stil="display:none">
       <p class="login-unterzeile" data-i18n="pflicht.title">Startpasswort ersetzen</p>

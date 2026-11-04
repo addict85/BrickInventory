@@ -14,6 +14,7 @@ import { farbliste, KEINE_FARBE } from '../katalog/farben';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { merkeTeil, merkeTeilFarbe, katalogTeil } from '../katalog/katalogPflege';
 import * as V0 from '../infra/validate';
+import { Meldung } from '../infra/fehlerTexte';
 
 export const getPartColorList = farbliste;
 
@@ -151,7 +152,7 @@ async function addManualPartIntern(uid: number, rawBody: any) {
  * @returns die Menge danach, wenn sie Teil der Anfrage war */
 export async function updateManualPart(uid: number, partNumber: string, colorId: number, body: any): Promise<{ quantity?: number }> {
   const existing = await repo.teilZeileMitZustand(uid, partNumber, colorId);
-  if (!existing) { const e = Object.assign(new Error('Teil nicht gefunden oder nicht manuell hinzugefügt'), { status: 404 }); throw e; }
+  if (!existing) throw new Meldung('Teil nicht gefunden oder nicht manuell hinzugefügt', 404);
 
   const raus: { quantity?: number } = {};
   const wunsch = mengenwunsch(body);

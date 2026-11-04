@@ -5,7 +5,7 @@ const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { fehlerAntwort, logAndContinue, meldeUndWeiter, fehlertext, pfadParam, meldeUndLiefere } from '../src/infra/httpError';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, EMAIL_RE, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, verifiziereEmailToken } from '../src/konto/auth';
 import { zielGedrosselt, kontoGedrosselt } from '../src/konto/zielDrossel';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
@@ -625,6 +625,12 @@ router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60
   }
   await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));
   res.json({ success: true, message: fehlerText('bestaetigung_gesendet', antwortSprache(req)) });
+});
+
+router.post('/email-bestaetigen', ipThrottle('email-bestaetigen', 30, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/email-bestaetigen'>) => {
+  const e = await verifiziereEmailToken(req.body?.token);
+  if (!e.ok) return sendeFehler(req, res, 400, 'bestaetigungslink_ungueltig');
+  res.json({ success: true });
 });
 
 router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {

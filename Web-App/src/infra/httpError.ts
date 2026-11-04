@@ -2,7 +2,7 @@ import fs from 'fs';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from './konfig';
 import { sendeFehler } from './fehlerTexte';
-import { FEHLER, fehlerText, antwortSprache, dateiFehler } from './fehlerTexte';
+import { FEHLER, fehlerText, antwortSprache, dateiFehler, Meldung } from './fehlerTexte';
 import type { FehlerCode } from './fehlerTexte';
 // Ausführlich: docs/begruendungen/src/infra/httpError.ts.md#handlerouteerror
 export function handleRouteError(res: any, e: any, status?: number, req?: any) {
@@ -24,6 +24,11 @@ export function handleRouteError(res: any, e: any, status?: number, req?: any) {
       success: false, code: e.code,
       error: fehlerText(e.code as FehlerCode, antwortSprache(req), e.vars),
     });
+  }
+  // Der Text einer Bibliothek nennt Parser, Pfade oder Bytes; er bleibt im Protokoll.
+  if (!isServerError && !(e instanceof Meldung)) {
+    const ersatz: FehlerCode = code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
+    return res.status(code).json({ success: false, code: ersatz, error: fehlerText(ersatz, antwortSprache(req)) });
   }
   const message = (isServerError && konfig().produktion)
     ? 'Interner Serverfehler'

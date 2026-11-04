@@ -8,6 +8,14 @@
 	auto_https disable_redirects
 	# Caddy soll die CA nicht in den Container-Truststore eintragen.
 	skip_install_trust
+	# Ein Kopf, der nach 10 s nicht da ist, kommt nicht mehr (Vorgabe: eine
+	# Minute). Für den Rumpf keine harte Frist: Sie bräche lange Uploads ab;
+	# die Anmeldewege puffern ihn stattdessen (unten).
+	servers {
+		timeouts {
+			read_header 10s
+		}
+	}
 	# Ein Gerät, das per IP-Adresse kommt, schickt keinen Namen (SNI).
 	default_sni {$BRICK_HOST}
 	# Mit eigener CA (./caddy/ca, scripts/ca-einrichten.sh) setzt das Startskript
@@ -36,6 +44,11 @@
 		}
 		reverse_proxy app:3000 {
 			header_up X-Request-Id {http.request.uuid}
+			# Erst den ganzen Rumpf lesen, dann eine der vier Verbindungen
+			# belegen: Sonst halten vier langsame Rümpfe die Anmeldung für alle
+			# an. Grösser als max_size, damit ein überlanger Rumpf hier mit 413
+			# endet, statt ab der Puffergrenze doch zur App zu strömen.
+			request_buffers 32KB
 			transport http {
 				max_conns_per_host 4
 			}

@@ -11,6 +11,13 @@
  *      zugleich bei der App“ (12 gleichzeitig)
  *   B  `import anmeldung` gestrichen → rot: dieselbe Prüfung
  *   C  `request_body { max_size 16KB }` gestrichen → rot: „ein Rumpf über 16 KB …“
+ *   D  `request_buffers 32KB` gestrichen → rot: „acht langsame Rümpfe halten die
+ *      Anmeldung nicht an“ (Zeitüberschreitung nach 3 s); gemessen 04.11.2026
+ *      mit Caddy 2.11.7 aus `go install`
+ *   E  `request_buffers 16KB` (= max_size) → rot: dieselbe Prüfung; die vier
+ *      Rümpfe mit 16 000 Byte strömen ab der Puffergrenze doch zur App
+ *   F  `read_header 10s` gestrichen → rot: „Caddy schliesst eine Verbindung,
+ *      deren Kopf stockt …“ (Vorgabe von Caddy ist eine Minute)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,6 +26,7 @@ const os = require('node:os');
 const path = require('node:path');
 const http = require('node:http');
 const https = require('node:https');
+const tls = require('node:tls');
 const { spawn, spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
@@ -26,15 +34,16 @@ const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status =
 
 test('die Anmeldewege sind an Caddy gebremst', { skip: !CADDY && 'kein Caddy (CADDY_BIN)', timeout: 60_000 }, async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-bremse-'));
-  let jetzt = 0, hoechst = 0;
+  let jetzt = 0, hoechst = 0, angekommen = 0;
   const app = http.createServer((req, res) => {
-    jetzt++; hoechst = Math.max(hoechst, jetzt);
+    jetzt++; hoechst = Math.max(hoechst, jetzt); angekommen++;
     req.resume();
     req.on('end', () => setTimeout(() => { jetzt--; res.end('ok'); }, 300));
   });
   await new Promise(r => app.listen(0, '127.0.0.1', r));
   let caddy = null;
-  t.after(() => { caddy?.kill('SIGKILL'); app.close(); fs.rmSync(tmp, { recursive: true, force: true }); });
+  const offen = [];
+  t.after(() => { offen.forEach(s => s.destroy()); caddy?.kill('SIGKILL'); app.close(); fs.rmSync(tmp, { recursive: true, force: true }); });
   const port = 30000 + (process.pid % 15000);
   const datei = fs.readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
     .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`).replace('http:// {', `http://:${port + 1} {`)
@@ -75,4 +84,35 @@ test('die Anmeldewege sind an Caddy gebremst', { skip: !CADDY && 'kein Caddy (CA
 
   assert.equal(await anfrage('POST', '/api/v1/auth/login', JSON.stringify({ username: 'x'.repeat(20_000) })), 413,
     'ein Rumpf über 16 KB erreicht die Anmeldung');
+
+  // Kopf sofort, vom Rumpf nur ein Teil, dann Stille: vier knapp angefangene
+  // und vier, die genau bis zur Grenze von max_size gehen.
+  const langsam = (laenge, vorab) => new Promise((bereit) => {
+    const s = tls.connect({ host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false }, () => {
+      s.write(`POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\nContent-Type: application/json\r\n`
+        + `Content-Length: ${laenge}\r\n\r\n${'x'.repeat(vorab)}`, bereit);
+    });
+    s.on('error', () => {});
+    offen.push(s);
+  });
+  await Promise.all([...Array(4)].map(() => langsam(200, 1)).concat([...Array(4)].map(() => langsam(17_000, 16_000))));
+  await new Promise(r => setTimeout(r, 500));
+  angekommen = 0;
+  const beginn = Date.now();
+  const frist = new Promise(r => setTimeout(() => r('Zeitüberschreitung'), 3000));
+  assert.equal(await Promise.race([anfrage('POST', '/api/v1/auth/login'), frist]), 200,
+    'acht langsame Rümpfe halten die Anmeldung nicht an');
+  assert.ok(Date.now() - beginn < 1500, `die Anmeldung antwortet zügig (${Date.now() - beginn} ms)`);
+  assert.equal(angekommen, 1, 'kein angefangener Rumpf erreicht die App');
+
+  const kopfBeginn = Date.now();
+  const kopfZu = await new Promise((fertig) => {
+    const s = tls.connect({ host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false },
+      () => s.write('POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\n'));
+    s.on('error', () => {});
+    s.once('close', () => fertig(Date.now() - kopfBeginn));
+    offen.push(s);
+    setTimeout(() => fertig(null), 15_000);
+  });
+  assert.ok(kopfZu !== null && kopfZu < 13_000, `Caddy schliesst eine Verbindung, deren Kopf stockt (nach ${kopfZu} ms)`);
 });

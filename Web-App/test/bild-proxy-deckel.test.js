@@ -14,6 +14,8 @@
  *      „der Deckel löscht das am längsten unbenutzte Bild"
  *   D  Cache-Control des gestreamten Wegs wieder `public` → rot: „ein
  *      Zeitstempel …“ (private fehlt)
+ *   E  in bildDurchreichen wieder den rohen Content-Type des CDN gesetzt →
+ *      rot: „eine Komma-Liste im Content-Type …“ (04.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,13 +36,14 @@ const { raeumeBildCacheAuf } = _req('src/katalog/bilder/imgCacheServe.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 
 const geholt = [];
+let cdnTyp = 'image/png';
 const echt = https.get;
 https.get = (url, _o, cb) => {
   geholt.push(String(url));
   const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
   const bild = Buffer.alloc(300, 7);
   setImmediate(() => cb(Object.assign(Readable.from([bild]),
-    { statusCode: 200, headers: { 'content-type': 'image/png', 'content-length': String(bild.length) } })));
+    { statusCode: 200, headers: { 'content-type': cdnTyp, 'content-length': String(bild.length) } })));
   return req;
 };
 
@@ -94,6 +97,22 @@ test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', 
   const bilder = () => fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length;
   for (const ende = Date.now() + 5000; bilder() < 6 && Date.now() < ende;) await warte();
   assert.equal(bilder(), 6);
+});
+
+test('eine Komma-Liste im Content-Type des CDN geht nicht hinaus', async () => {
+  konto = 500000 + (process.pid % 100000);
+  const typ = async (cdn, adresse) => {
+    cdnTyp = cdn;
+    const r = await fetch(basis + encodeURIComponent(adresse));
+    await r.arrayBuffer();
+    return [r.status, r.headers.get('content-type')];
+  };
+  try {
+    assert.deepEqual(await typ('image/png, text/html', 'https://cdn.rebrickable.com/media/parts/k1.png'), [200, 'image/jpeg']);
+    assert.deepEqual(await typ('image/webp; q=1', 'https://cdn.rebrickable.com/media/parts/k2.webp'), [200, 'image/webp']);
+  } finally { cdnTyp = 'image/png'; }
+  // Der Cache schreibt nach der Antwort weiter; der Deckel unten zählt sonst mit.
+  for (const ende = Date.now() + 5000; fs.readdirSync(cacheDir).filter(f => f.endsWith('.ct')).length < 8 && Date.now() < ende;) await warte();
 });
 
 test('der Deckel löscht das am längsten unbenutzte Bild', async () => {

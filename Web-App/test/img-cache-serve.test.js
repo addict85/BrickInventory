@@ -18,6 +18,10 @@
  * Hier läuft die echte Funktion gegen echte Dateien in einem Temp-Verzeichnis.
  * Die Antwort ist ein Attrappen-`res`, das mitschreibt, was gesetzt und
  * gesendet wurde; alles andere ist der Produktivcode.
+ *
+ * Gegenprobe (04.11.2026 gemessen): bildTyp() gibt wie vorher den rohen Wert
+ * zurück, sobald er mit `image/` beginnt und kein SVG ist → rot: „Abgelegt als
+ * image/png, text/html …“.
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -160,6 +164,9 @@ test('Auslieferungsreihenfolge des Bild-Caches', async (t) => {
       ['image/svg+xml',  'image/jpeg'],
       ['text/html',      'image/jpeg'],
       ['application/pdf','image/jpeg'],
+      ['image/png, text/html', 'image/jpeg'],
+      ['image/webp; charset=binary', 'image/webp'],
+      ['image/x-icon',   'image/jpeg'],
     ]) {
       aufraeumen();
       datei(orig, 5000);

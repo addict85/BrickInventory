@@ -251,16 +251,13 @@ export async function resolveWriteTarget(
 }
 
 /** Aus der Erfassungszeile, nicht aus der Anfrage: Die Datenbank weiss besser
- * als jeder Dialog, wem die Zeile gehört.
- * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#acquisitionmovesource
- * @throws mit e.status 404 (Zeile existiert nicht) oder 403 (keine Richtung) */
+ * als jeder Dialog, wem die Zeile gehört. Eine fremde Zeile antwortet wie eine
+ * fehlende, sonst verriete 403 neben 404, welche IDs vergeben sind.
+ * @throws 404 kaufpreis_nicht_gefunden, wenn die Zeile fehlt oder nicht beschreibbar ist */
 export async function acquisitionMoveSource(
   actorId: number, kind: ErfassungsArt, acqId: number
 ): Promise<number> {
   const owner = await repo.besitzerDerErfassung(kind, acqId);
-  if (owner === null) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
-  if (!(await canWriteFor(actorId, owner))) {
-    fehlerWerfen('kein_schreibrecht', 403);
-  }
+  if (owner === null || !(await canWriteFor(actorId, owner))) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
   return owner;
 }

@@ -316,6 +316,8 @@ window.I18N_DE = {
   'log.entries': 'Einträge',
   'log.none_found': 'Keine Einträge gefunden',
   'verify.success': 'E-Mail erfolgreich bestätigt. Du kannst dich jetzt anmelden.',
+  'verify.title': 'E-Mail-Adresse bestätigen',
+  'verify.button': 'Adresse bestätigen',
   'auth.back_to_login': '← Zurück zur Anmeldung',
   'parts.add.bl_hint': 'für Marktpreis',
   'figs.add.hint': 'Rebrickable- und BrickLink-Nummern unterscheiden sich meist. Ohne BrickLink-Nr. wird der Marktpreis aus den Teilen geschätzt.',
