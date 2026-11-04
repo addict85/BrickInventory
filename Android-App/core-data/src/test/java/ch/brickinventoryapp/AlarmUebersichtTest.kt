@@ -326,9 +326,11 @@ class AlarmUebersichtTest {
     }
 
     /**
-     * Ohne Farbe muss der Text allein sagen, was gilt: „Aktiv“ gegen „Ausgelöst –
-     * wartet, bis der Preis zurückkehrt“. Kreiszeichen las TalkBack als „schwarzer
-     * Kreis“ vor (UI-Prüfung 10, N4). Geprüft in BEIDEN Sprachdateien.
+     * Ohne Farbe muss der Text allein sagen, was gilt: „Aktiv“ gegen „Ausgelöst“, und
+     * die Zeile unter dem Feld, worauf ein ausgelöster Alarm wartet. Kreiszeichen las
+     * TalkBack als „schwarzer Kreis“ vor (UI-Prüfung 10, N4). Die Erklärung steht nicht
+     * mehr in der Plakette: Dort brach sie auf dem Telefon die Zeile (UI-Prüfung 12, H1).
+     * Geprüft in BEIDEN Sprachdateien.
      */
     @Test
     fun `die beiden Alarmzustaende sagen ohne Farbe und Zeichen, was gilt`() {
@@ -347,8 +349,9 @@ class AlarmUebersichtTest {
                 assert(t.count { it.isLetter() } >= 4) { "„$t“ in $datei ist kein Wort." }
             }
             // Der ausgeloeste Zustand sagt, worauf er wartet — sonst bliebe offen,
-            // ob der Alarm noch etwas tut.
-            assert(ausgeloest.trim().contains(' ')) { "„$ausgeloest“ in $datei erklaert nicht, was als Naechstes geschieht." }
+            // ob der Alarm noch etwas tut. Das steht unter jedem ausgelösten Feld.
+            val erklaerung = text("detail_alert_fired")
+            assert(erklaerung.trim().contains(' ')) { "„$erklaerung“ in $datei erklaert nicht, was als Naechstes geschieht." }
         }
     }
 

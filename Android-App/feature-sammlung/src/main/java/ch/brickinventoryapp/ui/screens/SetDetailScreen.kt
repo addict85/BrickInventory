@@ -27,6 +27,7 @@ import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
+import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,18 +82,31 @@ fun SetDetailScreen(
     fun fmtDate(iso: String?) = ch.brickinventoryapp.util.fmtTag(iso) ?: iso ?: "—"
 
     val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
+    // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
+    val meldungen = remember { SnackbarHostState() }
+    val keineAppText = stringResource(R.string.common_no_app_to_open)
+    // Ein langer Name bricht in eine zweite Zeile, und die Leiste wächst mit: Mit einer
+    // Zeile stand bei 200 % nur „Millennium F…“ da. Gemessen am Text, damit ein kurzer
+    // Name die gewohnte Leistenhöhe behält.
+    var titelZeilen by remember { mutableIntStateOf(1) }
+    val titelHoehe = with(androidx.compose.ui.platform.LocalDensity.current) {
+        MaterialTheme.typography.titleLarge.lineHeight.toDp() * titelZeilen
+    } + Abstaende.gross * 2
     Scaffold(
+        snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         set?.name ?: setNumber,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        onTextLayout = { titelZeilen = it.lineCount },
                         modifier = Modifier.semantics { heading() },
                     )
                 },
+                expandedHeight = maxOf(TopAppBarDefaults.TopAppBarExpandedHeight, titelHoehe),
                 // Neben der Liste schliesst ein X nur das Detail (ZurueckKnopf).
                 navigationIcon = { ch.brickinventoryapp.ui.components.ZurueckKnopf(onBack) },
                 actions = {
@@ -170,6 +184,7 @@ fun SetDetailScreen(
                 set, detailState, serverUrl, onOpenPdf,
                 onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.viewmodel.ANLEITUNG_TYPEN) },
                 onAnleitungLoeschen = { vm.loescheAnleitung(setNumber, it) },
+                onKeineApp = { coroutineScope.launch { meldungen.showSnackbar(keineAppText) } },
             )
         }
         // Ab „expanded“ zwei Spalten — Bild und Preise links, Angaben, Alarm und

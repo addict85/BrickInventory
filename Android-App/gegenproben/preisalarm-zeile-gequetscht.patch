@@ -1,0 +1,33 @@
+Gegenprobe: Plakette und „zuletzt …“ wieder in einer Row, die Plakette mit dem langen Text
+Modul: app
+Test: ch.brickinventoryapp.UmbruchWaechterTest
+Rot: Preisalarme bei 100 Prozent
+
+diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+index e7f84e6..1396b52 100644
+--- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
++++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+@@ -861,7 +861,7 @@
+     <string name="alerts_intro">Alle Schwellen, die du gesetzt hast. Der Wert lässt sich hier ändern, der Alarm entfernen. Gemeldet wird einmal je Übergang — erst wenn der Preis wieder auf die andere Seite wechselt, kann derselbe Alarm erneut auslösen.</string>
+     <string name="alerts_empty">Noch kein Preisalarm gesetzt. Du setzt einen in der Detailansicht eines Sets.</string>
+     <string name="alerts_armed">Aktiv</string>
+-    <string name="alerts_fired">Ausgelöst</string>
++    <string name="alerts_fired">Ausgelöst – wartet, bis der Preis zurückkehrt</string>
+     <string name="alerts_last">zuletzt %1$s</string>
+     <string name="alerts_bad_value">Die Schwelle muss grösser als 0 sein.</string>
+     <string name="alerts_delete">Preisalarm entfernen</string>
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
+index 48426ee..57ce788 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenAlarme.kt
+@@ -109,8 +109,8 @@ internal fun PreisalarmeCard(
+                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                         // FlowRow: In einer Row nahm die Plakette die ganze Breite, und „zuletzt …“
+                         // brach Zeichen für Zeichen um. So rückt der Preis darunter, wenn es eng wird.
+-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
+-                            verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
++                        Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
++                            verticalAlignment = Alignment.CenterVertically) {
+                             AlarmZustandPlakette(a.ausgeloest)
+                             a.zuletztPreis?.let {
+                                 Text(stringResource(R.string.alerts_last,

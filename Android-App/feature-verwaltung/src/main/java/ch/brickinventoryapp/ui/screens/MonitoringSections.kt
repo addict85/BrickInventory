@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
 import ch.brickinventoryapp.ui.model.KontingentAnsicht
@@ -365,10 +367,14 @@ fun CacheAndLimitsSection(vm: AppViewModel, onSnack: (String) -> Unit = {}) {
                 OutlinedButton(
                     onClick = { leerenAlles = false; zeigeLeerenFrage = true },
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
+                    colors = nebenKnopfFarben(),
+                    border = nebenKnopfRand(),
                 ) { Text(stringResource(R.string.monitoring_cache_clear_prices), style = MaterialTheme.typography.labelMedium) }
                 OutlinedButton(
                     onClick = { leerenAlles = true; zeigeLeerenFrage = true },
                     contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
+                    colors = nebenKnopfFarben(),
+                    border = nebenKnopfRand(),
                 ) { Text(stringResource(R.string.monitoring_cache_clear_all), style = MaterialTheme.typography.labelMedium) }
             }
         }

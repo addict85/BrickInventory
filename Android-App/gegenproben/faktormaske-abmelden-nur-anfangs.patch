@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
 Rot: Abmelden bleibt
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-index 8636be8..052833b 100644
+index b1facc4..bdb0780 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -154,7 +154,7 @@ fun ZweiterFaktorPflichtMaske(
-             }
+@@ -187,7 +187,7 @@ fun ZweiterFaktorPflichtMaske(
              if (zustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
              zustand.fehler?.let { FehlerZeile(it) }
--            TextButton(onClick = onAbmelden) { Text(stringResource(R.string.settings_logout)) }
-+            if (geheimnis == null && zustand.codes.isEmpty()) TextButton(onClick = onAbmelden) { Text(stringResource(R.string.settings_logout)) }
+             // Mittig in voller Breite wie „Zurück zur Anmeldung“: Eingerückt stand es neben nichts.
+-            TextButton(onClick = onAbmelden, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_logout)) }
++            if (geheimnis == null && zustand.codes.isEmpty()) TextButton(onClick = onAbmelden, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_logout)) }
          }
      }
  }

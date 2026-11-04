@@ -3,13 +3,14 @@ Modul: app
 Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
 Rot: bei 200 Prozent
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -164,5 +164,5 @@ fun ZweiterFaktorPflichtMaske(
- 
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
+index baf87d8..c7cb926 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
+@@ -78,5 +78,5 @@ fun AnmeldeKarte(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.
  @Composable
- private fun Ueberschrift(text: String) {
--    Text(text, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
-+    Text(text, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() }.padding(end = Abstaende.riesig * 8))
+ fun AnmeldeTitel(text: String) {
+     Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium,
+-        modifier = Modifier.semantics { heading() })
++        modifier = Modifier.semantics { heading() }.padding(end = Abstaende.riesig * 8))
  }

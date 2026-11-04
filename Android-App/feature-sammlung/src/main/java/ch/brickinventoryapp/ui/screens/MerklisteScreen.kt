@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
@@ -158,15 +160,17 @@ fun MerklisteScreen(
                     leer = {
                         HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
                             stringResource(R.string.wanted_empty_hint))
-                        Button(onClick = { maskeOffen = true }) {
-                            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                            Spacer(Modifier.width(Abstaende.klein))
-                            Text(stringResource(R.string.wanted_add_first))
-                        }
-                        OutlinedButton(onClick = { onScan() }) {
-                            Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                            Spacer(Modifier.width(Abstaende.klein))
-                            Text(stringResource(R.string.gallery_scan_barcode))
+                        ch.brickinventoryapp.ui.components.KnopfStapel {
+                            Button(onClick = { maskeOffen = true }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                                Spacer(Modifier.width(Abstaende.klein))
+                                Text(stringResource(R.string.wanted_add_first))
+                            }
+                            OutlinedButton(onClick = { onScan() }, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                                Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                                Spacer(Modifier.width(Abstaende.klein))
+                                Text(stringResource(R.string.gallery_scan_barcode))
+                            }
                         }
                     },
                     keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
@@ -342,7 +346,6 @@ private fun MerkpostenErfassenDialog(
         onBestaetigen = { onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null) },
         onAbbrechen = onDismiss,
         bestaetigenAn = nummer.isNotBlank(),
-        fehlt = stringResource(R.string.wanted_need_number),
     ) {
         OutlinedTextField(
             value = nummer,

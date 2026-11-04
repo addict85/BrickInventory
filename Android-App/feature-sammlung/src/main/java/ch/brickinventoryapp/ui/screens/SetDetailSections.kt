@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.components.AuswahlChip
 /**
  * Die Abschnitte der Set-Detailseite. Erweiterungen auf LazyListScope und keine
@@ -13,7 +15,6 @@ import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.ui.model.SetPreisAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import android.net.Uri
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -69,6 +70,8 @@ fun LazyListScope.setDetailInstructionsSection(
     onOpenPdf: (url: String, title: String) -> Unit,
     onAnleitungWaehlen: () -> Unit,
     onAnleitungLoeschen: (Int) -> Unit,
+    /** Kein Programm öffnet die Adresse — der Bildschirm meldet es in seinem Gerüst. */
+    onKeineApp: () -> Unit,
 ) {
         // ── Instructions section ───────────────────────────────────────────
         val instructions = set.instructions
@@ -90,11 +93,6 @@ fun LazyListScope.setDetailInstructionsSection(
                         }
                     } else {
                         val ctx = LocalContext.current
-                        // Siehe CatalogDetailScreen: Lint meldet
-                        // LocalContextGetResourceValueCall als ERROR, weil ein
-                        // gegriffener Context nach einem Wechsel der
-                        // Konfiguration veraltete Werte liefern kann.
-                        val keineAppText = stringResource(R.string.common_no_app_to_open)
                         instructions.forEachIndexed { idx, instr ->
                             // Kein `?token=` an der Adresse: Der Sitzungstoken läge sonst im
                             // Backstack, als Text unter der Anleitung und im Zugriffsprotokoll. Der
@@ -116,9 +114,7 @@ fun LazyListScope.setDetailInstructionsSection(
                                     onOpenPdf(eigene, instr.description ?: "")
                                 } else if (!ch.brickinventoryapp.util.oeffneExtern(ctx, instr.url)) {
                                     // Rückmeldung statt Stille, siehe CatalogDetailScreen.
-                                    android.widget.Toast.makeText(ctx,
-                                        keineAppText,
-                                        android.widget.Toast.LENGTH_SHORT).show()
+                                    onKeineApp()
                                 }
                             }
                             Row(
@@ -201,7 +197,9 @@ fun LazyListScope.setDetailInstructionsSection(
                         // Ansehen häufiger ist; volle Breite wie die übrigen Aktionen der Karte.
                         OutlinedButton(
                             onClick = onAnleitungWaehlen,
-                            modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein)
+                            modifier = Modifier.fillMaxWidth().padding(top = Abstaende.klein),
+                            colors = nebenKnopfFarben(),
+                            border = nebenKnopfRand(),
                         ) {
                             Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                             Spacer(Modifier.width(Abstaende.klein))
@@ -291,8 +289,9 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, vm
                     wert = set.storage ?: "",
                     vorrat = lagerZustand.vorrat.map { it.name },
                     onWert = { vm.setzeSetLagerort(setNumber, it) },
-                    // Der Rest der Zeile statt fester 180 dp: „No storage location“ war abgeschnitten.
-                    modifier = Modifier.padding(start = Abstaende.gross).weight(1f).widthIn(max = 320.dp),
+                    // Der ganze Rest der Zeile: Mit fester Breite war „No storage location“
+                    // abgeschnitten, und auf dem Tablet stand das Feld halb so breit wie die Karte.
+                    modifier = Modifier.padding(start = Abstaende.gross).weight(1f),
                 )
             }
             HorizontalDivider(

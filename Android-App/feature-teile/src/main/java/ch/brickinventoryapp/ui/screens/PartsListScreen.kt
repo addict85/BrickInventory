@@ -247,8 +247,8 @@ fun PartsListScreen(
                     // in einer Zeile sah aus wie der eine Hauptknopf des Bildschirms.
                     ch.brickinventoryapp.ui.components.ScanKnopf(onScanBarcode)
                     // Ein Symbol in voller Grösse statt eines „+“ in Textgrösse, das gesperrt kaum
-                    // zu sehen war.
-                    FilledIconButton(
+                    // zu sehen war; tonal, weil „Bauliste erstellen“ darunter die Hauptsache ist.
+                    FilledTonalIconButton(
                         onClick = { if (setInput.isNotBlank()) addSet(setInput) },
                         enabled = setInput.isNotBlank(),
                     ) { Icon(Icons.Default.Add, stringResource(R.string.partslist_add_set)) }
@@ -271,23 +271,24 @@ fun PartsListScreen(
                     }
                 }
 
-                // Action buttons
-                Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Button(
-                        onClick = { erstellen() },
-                        enabled = (sets.isNotEmpty() || setInput.isNotBlank()) && !isLoading,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
-                        // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
-                        // beide 16 dp breit.
-                        if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
-                            color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                        else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
-                        Spacer(Modifier.width(Abstaende.winzig))
-                        Text(stringResource(R.string.partslist_generate))
-                    }
-                    val ctx = LocalContext.current
+                // Eine Hauptsache in voller Breite: Erstellen. Darunter das Weitergeben als PDF
+                // und, leise, Zurücksetzen — vorher standen „+“, Erstellen und Zurücksetzen
+                // gleichrangig nebeneinander.
+                Button(
+                    onClick = { erstellen() },
+                    enabled = (sets.isNotEmpty() || setInput.isNotBlank()) && !isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
+                    // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
+                    // beide 16 dp breit.
+                    if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
+                        color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                    else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                    Spacer(Modifier.width(Abstaende.winzig))
+                    Text(stringResource(R.string.partslist_generate))
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     if (generated && parts.isNotEmpty()) {
                         // remember, NICHT rememberSaveable: Der Wert gehoert
                         // zu einer laufenden Koroutine. Ueberlebte er die
@@ -303,7 +304,7 @@ fun PartsListScreen(
                                 text = { Text(pdfError ?: "") }
                             )
                         }
-                        Button(
+                        FilledTonalButton(
                             onClick = {
                                 isExporting = true
                                 scope.launch {
@@ -313,25 +314,24 @@ fun PartsListScreen(
                                 }
                             },
                             enabled = !isExporting,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.tertiary)
                         ) {
                             // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
                             // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
                             // beide 16 dp breit.
                             if (isExporting) CircularProgressIndicator(Modifier.size(16.dp),
-                                color = MaterialTheme.colorScheme.onTertiary, strokeWidth = 2.dp)
+                                strokeWidth = 2.dp)
                             else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
                             Spacer(Modifier.width(Abstaende.winzig))
                             Text("PDF")
                         }
                     }
-                    // Nur mit Inhalt: Ein roter Knopf auf der leeren Seite lud zum Tippen ein,
-                    // ohne etwas zu tun.
-                    OutlinedButton(
+                    Spacer(Modifier.weight(1f))
+                    // Gesperrt, solange es nichts zurückzusetzen gibt: Ein roter Knopf auf der
+                    // leeren Seite lud zum Tippen ein, ohne etwas zu tun.
+                    TextButton(
                         onClick = { reset() },
                         enabled = sets.isNotEmpty() || generated || status.isNotBlank(),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     ) { Text(stringResource(R.string.partslist_reset)) }
                 }
 

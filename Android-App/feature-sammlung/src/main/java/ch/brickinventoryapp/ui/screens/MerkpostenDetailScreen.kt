@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
@@ -25,6 +27,7 @@ import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.util.resolveFullUrl
+import kotlinx.coroutines.launch
 
 /**
  * Das Detail eines Merkpostens — dieselben Zeilen in derselben Reihenfolge wie das
@@ -54,6 +57,9 @@ fun MerkpostenDetailScreen(
     // Context liefert nach einem Konfigurationswechsel veraltete Werte (Lint
     // LocalContextGetResourceValueCall).
     val keineAppText = stringResource(R.string.common_no_app_to_open)
+    // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
+    val meldungen = remember { SnackbarHostState() }
+    val bereich = rememberCoroutineScope()
     // Derselbe Dialog wie in der Liste, nicht ein zweiter: Anzahl, Kaufpreis
     // und Zustand muessen hier dieselbe Maske sein.
     var uebernahmeOffen by rememberSaveable { mutableStateOf(false) }
@@ -77,6 +83,7 @@ fun MerkpostenDetailScreen(
         else ch.brickinventoryapp.util.fmtMoney(v, appState.currency)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
             TopAppBar(
                 title = { Text(merkposten?.name ?: setNumber, maxLines = 1) },
@@ -223,14 +230,14 @@ fun MerkpostenDetailScreen(
                                 OutlinedButton(
                                     onClick = {
                                         if (!ch.brickinventoryapp.util.oeffneExtern(ctx, url)) {
-                                            android.widget.Toast.makeText(
-                                                ctx, keineAppText,
-                                                android.widget.Toast.LENGTH_SHORT).show()
+                                            bereich.launch { meldungen.showSnackbar(keineAppText) }
                                         }
                                     },
                                     modifier = Modifier.weight(1f),
                                     contentPadding = PaddingValues(
                                         horizontal = Abstaende.klein, vertical = Abstaende.klein),
+                                    colors = nebenKnopfFarben(),
+                                    border = nebenKnopfRand(),
                                 ) {
                                     // Eine Stufe kleiner, aus demselben Grund wie im
                                     // Katalog-Detail: Zwei Knoepfe teilen sich die

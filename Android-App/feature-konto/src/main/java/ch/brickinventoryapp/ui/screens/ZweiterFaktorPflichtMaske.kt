@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,7 +37,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +45,8 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.ZweiterFaktorUiState
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.semantics.contentType
+import ch.brickinventoryapp.ui.components.AnmeldeKarte
+import ch.brickinventoryapp.ui.components.AnmeldeTitel
 import ch.brickinventoryapp.ui.components.FehlerZeile
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.PasswortFeld
@@ -102,81 +105,89 @@ fun ZweiterFaktorPflichtMaske(
                 else -> 1
             }
             if (schritt != null) Schrittanzeige(schritt)
-            when {
-                // Die Codes stehen einmal im Klartext da: kein Bildschirmfoto davon.
-                zustand.codes.isNotEmpty() -> {
-                    Sichtschutz()
-                    Ueberschrift(stringResource(R.string.zf_pflicht_codes_titel))
-                    Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodyMedium)
-                    Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace)
-                    OutlinedButton(
-                        onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, zustand.codes.joinToString("\n")) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.zf_copy)) }
-                    CodesGesichert(gesichert) { gesichert = it }
-                    Button(onClick = onWeiter, enabled = gesichert, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.zf_pflicht_weiter))
+            // In derselben Karte wie Anmelden und Startpasswort; Schritte und Abmelden aussen.
+            AnmeldeKarte {
+                when {
+                    // Die Codes stehen einmal im Klartext da: kein Bildschirmfoto davon.
+                    zustand.codes.isNotEmpty() -> {
+                        Sichtschutz()
+                        AnmeldeTitel(stringResource(R.string.zf_pflicht_codes_titel))
+                        Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodyMedium)
+                        Text(zustand.codes.joinToString("\n"), fontFamily = FontFamily.Monospace)
+                        OutlinedButton(
+                            onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, zustand.codes.joinToString("\n")) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = nebenKnopfFarben(),
+                            border = nebenKnopfRand(),
+                        ) { Text(stringResource(R.string.zf_copy)) }
+                        CodesGesichert(gesichert) { gesichert = it }
+                        Button(onClick = onWeiter, enabled = gesichert, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.zf_pflicht_weiter))
+                        }
                     }
-                }
-                // Auf dem Telefon öffnet der otpauth-Link die Authenticator-App; der
-                // Schlüssel bleibt zum Abtippen, falls keine den Link nimmt.
-                geheimnis != null -> {
-                    Sichtschutz()
-                    Ueberschrift(stringResource(R.string.zf_pflicht_titel))
-                    Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodyMedium)
-                    Button(
-                        onClick = {
-                            val uri = otpauthAdresse(zustand.otpauth)
-                            ohneApp = uri == null || !oeffneMitAuswahl(kontext, uri, auswahlTitel)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.zf_open_app)) }
-                    if (ohneApp) {
-                        Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error, modifier = Modifier.ansagen())
+                    // Auf dem Telefon öffnet der otpauth-Link die Authenticator-App; der
+                    // Schlüssel bleibt zum Abtippen, falls keine den Link nimmt.
+                    geheimnis != null -> {
+                        Sichtschutz()
+                        AnmeldeTitel(stringResource(R.string.zf_pflicht_titel))
+                        Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodyMedium)
+                        Button(
+                            onClick = {
+                                val uri = otpauthAdresse(zustand.otpauth)
+                                ohneApp = uri == null || !oeffneMitAuswahl(kontext, uri, auswahlTitel)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(stringResource(R.string.zf_open_app)) }
+                        if (ohneApp) {
+                            Text(stringResource(R.string.zf_no_app), style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error, modifier = Modifier.ansagen())
+                        }
+                        Text(geheimnis.chunked(4).joinToString(" "), fontFamily = FontFamily.Monospace,
+                            style = MaterialTheme.typography.bodyLarge)
+                        OutlinedButton(
+                            onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, geheimnis) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = nebenKnopfFarben(),
+                            border = nebenKnopfRand(),
+                        ) { Text(stringResource(R.string.zf_copy_key)) }
+                        OutlinedTextField(
+                            value = faktorCode, onValueChange = { faktorCode = NumericInput.quantity(it).take(8) },
+                            label = { Text(stringResource(R.string.zf_confirm_code)) },
+                            singleLine = true, shape = Formen.feld,
+                            keyboardOptions = NumericInput.ganzzahlTastatur(),
+                            modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode })
+                        Button(
+                            onClick = { onBestaetigen(faktorCode) },
+                            enabled = faktorCode.isNotEmpty() && !zustand.laedt,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(stringResource(R.string.zf_confirm)) }
                     }
-                    Text(geheimnis.chunked(4).joinToString(" "), fontFamily = FontFamily.Monospace,
-                        style = MaterialTheme.typography.bodyLarge)
-                    OutlinedButton(
-                        onClick = { GeheimeZwischenablage.kopiere(kontext, etikett, geheimnis) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.zf_copy_key)) }
-                    OutlinedTextField(
-                        value = faktorCode, onValueChange = { faktorCode = NumericInput.quantity(it).take(8) },
-                        label = { Text(stringResource(R.string.zf_confirm_code)) },
-                        singleLine = true, shape = Formen.feld,
-                        keyboardOptions = NumericInput.ganzzahlTastatur(),
-                        modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.SmsOtpCode })
-                    Button(
-                        onClick = { onBestaetigen(faktorCode) },
-                        enabled = faktorCode.isNotEmpty() && !zustand.laedt,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.zf_confirm)) }
-                }
-                // Schon eingerichtet, etwa nach einem Abruf, der kurz vor der Bestätigung hinausging.
-                zustand.aktiv == true -> {
-                    Ueberschrift(stringResource(R.string.zf_enabled))
-                    Button(onClick = onWeiter, modifier = Modifier.fillMaxWidth()) {
-                        Text(stringResource(R.string.zf_pflicht_weiter))
+                    // Schon eingerichtet, etwa nach einem Abruf, der kurz vor der Bestätigung hinausging.
+                    zustand.aktiv == true -> {
+                        AnmeldeTitel(stringResource(R.string.zf_enabled))
+                        Button(onClick = onWeiter, modifier = Modifier.fillMaxWidth()) {
+                            Text(stringResource(R.string.zf_pflicht_weiter))
+                        }
                     }
-                }
-                else -> {
-                    Ueberschrift(stringResource(R.string.zf_pflicht_titel))
-                    Text(stringResource(R.string.zf_pflicht_text), style = MaterialTheme.typography.bodyMedium)
-                    Text(stringResource(R.string.zf_pflicht_passwort), style = MaterialTheme.typography.bodyMedium)
-                    PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
-                        Modifier.fillMaxWidth())
-                    // Gleich danach steht der Schlüssel im Klartext da: erst die Gerätesperre.
-                    Button(
-                        onClick = { schutz.bestaetige(codesGrund) { onEinrichten(pwAktuell) } },
-                        enabled = pwAktuell.isNotEmpty() && !zustand.laedt,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.zf_setup)) }
+                    else -> {
+                        AnmeldeTitel(stringResource(R.string.zf_pflicht_titel))
+                        Text(stringResource(R.string.zf_pflicht_text), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.zf_pflicht_passwort), style = MaterialTheme.typography.bodyMedium)
+                        PasswortFeld(pwAktuell, { pwAktuell = it }, stringResource(R.string.konto_password_current),
+                            Modifier.fillMaxWidth())
+                        // Gleich danach steht der Schlüssel im Klartext da: erst die Gerätesperre.
+                        Button(
+                            onClick = { schutz.bestaetige(codesGrund) { onEinrichten(pwAktuell) } },
+                            enabled = pwAktuell.isNotEmpty() && !zustand.laedt,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(stringResource(R.string.zf_setup)) }
+                    }
                 }
             }
             if (zustand.laedt) LinearProgressIndicator(Modifier.fillMaxWidth())
             zustand.fehler?.let { FehlerZeile(it) }
-            TextButton(onClick = onAbmelden) { Text(stringResource(R.string.settings_logout)) }
+            // Mittig in voller Breite wie „Zurück zur Anmeldung“: Eingerückt stand es neben nichts.
+            TextButton(onClick = onAbmelden, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_logout)) }
         }
     }
 }
@@ -216,9 +227,4 @@ private fun Schrittanzeige(aktuell: Int) {
             style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary)
     }
-}
-
-@Composable
-private fun Ueberschrift(text: String) {
-    Text(text, style = MaterialTheme.typography.headlineSmall, modifier = Modifier.semantics { heading() })
 }

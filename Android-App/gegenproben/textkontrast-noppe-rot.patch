@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.TextKontrastTest
 Rot: Fehlerfarbe weicht deutlich
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-index 6584291..c71adc4 100644
+index 82a1a1c..5220d30 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-@@ -194,7 +194,7 @@ private val FarbfaecherColors = lightColorScheme(
- private val NoppeBlau = Color(0xFF1A5FB8)
+@@ -199,7 +199,7 @@ private val NoppeGelbHell = Color(0xFFFFF3C4)
+ private val NoppeOcker = Color(0xFF7A5200)
  
  private val NoppeColors = lightColorScheme(
 -    primary              = NoppeBlau,
 +    primary              = NoppeRot,
      onPrimary            = Color.White,
-     primaryContainer     = NoppeRotHell,
+     primaryContainer     = NoppeBlauHell,
      onPrimaryContainer   = NoppeTinte,

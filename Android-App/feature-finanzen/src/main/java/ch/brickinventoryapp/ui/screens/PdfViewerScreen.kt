@@ -22,7 +22,6 @@ import android.print.PrintDocumentAdapter.WriteResultCallback
 import android.print.PrintDocumentInfo
 import android.print.PrintManager
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -61,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.createBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -230,6 +230,11 @@ fun PdfViewerScreen(
     val unbekannterFehlerText = stringResource(R.string.pdfview_unknown_error)
     val fremderHostText = stringResource(R.string.pdfview_fremder_host)
     var state by remember(pdfUrl) { mutableStateOf<PdfLoadState>(PdfLoadState.Downloading(0, 0, 0)) }
+    // Rückmeldungen von Drucken und Herunterladen als Snackbar im eigenen Gerüst: Ein
+    // Toast verschwand, bevor TalkBack ihn fertig gelesen hatte, und trug kein Design.
+    val meldungen = remember { SnackbarHostState() }
+    val bereich = rememberCoroutineScope()
+    val melde: (String?) -> Unit = { text -> if (text != null) bereich.launch { meldungen.showSnackbar(text) } }
     // Der Zoom gehoert hierher und nicht in PdfPages: Die Knoepfe sitzen in der
     // Kopfzeile, die Geste in der Liste, und der Faktor wird unten angezeigt —
     // drei Stellen, eine Wahrheit. Zurueck auf 1x bei einem anderen PDF.
@@ -295,6 +300,7 @@ fun PdfViewerScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
             TopAppBar(
                 title = { Text(title.ifBlank { "PDF" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -309,11 +315,11 @@ fun PdfViewerScreen(
                     // Herunterladen nur, wo es erlaubt ist (pdfDarfGespeichertWerden).
                     val s = state
                     if (s is PdfLoadState.Ready) {
-                        IconButton(onClick = { printPdf(ctx, s.quelle, title) }) {
+                        IconButton(onClick = { melde(printPdf(ctx, s.quelle, title)) }) {
                             Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
                         }
                         if (speicherbar) {
-                            IconButton(onClick = { savePdfToDownloads(ctx, s.quelle, title) }) {
+                            IconButton(onClick = { melde(savePdfToDownloads(ctx, s.quelle, title)) }) {
                                 Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
                             }
                         }
@@ -863,9 +869,10 @@ private suspend fun downloadPdfWithResume(
     throw lastError ?: IOException(fehlerText)
 }
 
-// Druckt die bereits geladene PDF-Datei über das System-Druckframework.
-private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String) {
-    try {
+// Druckt die bereits geladene PDF-Datei über das System-Druckframework. Gibt bei einem
+// Fehler die Meldung zurück; das Gelingen zeigt der Druckdialog selbst.
+private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String): String? {
+    return try {
         val printManager = ctx.getSystemService(Context.PRINT_SERVICE) as PrintManager
         val jobName = title.ifBlank { ctx.getString(R.string.pdfview_default_name) }
         val adapter = object : PrintDocumentAdapter() {
@@ -909,8 +916,9 @@ private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String) {
             }
         }
         printManager.print(jobName, adapter, PrintAttributes.Builder().build())
+        null
     } catch (e: Exception) {
-        Toast.makeText(ctx, ctx.getString(R.string.pdfview_print_failed, e.message ?: ""), Toast.LENGTH_LONG).show()
+        ctx.getString(R.string.pdfview_print_failed, e.message ?: "")
     }
 }
 
@@ -918,10 +926,10 @@ private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String) {
  * Die geladene PDF-Datei in den Download-Ordner kopieren — ohne zweiten Download:
  * Der DownloadManager kennt unseren Bearer-Token nicht und legte die 401-Antwort
  * als „anleitung.pdf“ ab. Kopieren geht auch offline. Über den MediaStore, der
- * keine Berechtigung braucht.
+ * keine Berechtigung braucht. Gibt die Meldung für die Snackbar zurück.
  */
-private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String) {
-    try {
+private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String): String {
+    return try {
         val safe = (title.ifBlank { "anleitung" }).replace(Regex("[^A-Za-z0-9._-]"), "_")
         val name = if (safe.endsWith(".pdf", true)) safe else "$safe.pdf"
 
@@ -941,9 +949,9 @@ private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String) {
         values.clear()
         values.put(MediaStore.Downloads.IS_PENDING, 0)
         resolver.update(uri, values, null, null)
-        Toast.makeText(ctx, ctx.getString(R.string.pdfview_saved, name), Toast.LENGTH_SHORT).show()
+        ctx.getString(R.string.pdfview_saved, name)
     } catch (e: Exception) {
-        Toast.makeText(ctx, ctx.getString(R.string.pdfview_save_failed, e.message ?: ""), Toast.LENGTH_LONG).show()
+        ctx.getString(R.string.pdfview_save_failed, e.message ?: "")
     }
 }
 

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.KontoAnsicht
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
@@ -231,7 +233,7 @@ fun OwnerPicker(
     val current = members.firstOrNull { it.id == selected } ?: members.first()
 
     Box(modifier) {
-        OutlinedButton(onClick = { open = true }) {
+        OutlinedButton(onClick = { open = true }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
             Text(stringResource(R.string.household_for_account) + ": " + current.username,
                 style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))

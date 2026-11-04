@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.ZweiterFaktorMaskeTest
 Rot: ohne Passwort richtet
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-index 5b00b3f..d0fd230 100644
+index b1facc4..147d19e 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/ZweiterFaktorPflichtMaske.kt
-@@ -149,7 +149,7 @@ fun ZweiterFaktorPflichtMaske(
-                     // Gleich danach steht der Schlüssel im Klartext da: erst die Gerätesperre.
-                     Button(
-                         onClick = { schutz.bestaetige(codesGrund) { onEinrichten(pwAktuell) } },
--                        enabled = pwAktuell.isNotEmpty() && !zustand.laedt,
-+                        enabled = !zustand.laedt,
-                         modifier = Modifier.fillMaxWidth(),
-                     ) { Text(stringResource(R.string.zf_setup)) }
-                 }
+@@ -178,7 +178,7 @@ fun ZweiterFaktorPflichtMaske(
+                         // Gleich danach steht der Schlüssel im Klartext da: erst die Gerätesperre.
+                         Button(
+                             onClick = { schutz.bestaetige(codesGrund) { onEinrichten(pwAktuell) } },
+-                            enabled = pwAktuell.isNotEmpty() && !zustand.laedt,
++                            enabled = !zustand.laedt,
+                             modifier = Modifier.fillMaxWidth(),
+                         ) { Text(stringResource(R.string.zf_setup)) }
+                     }

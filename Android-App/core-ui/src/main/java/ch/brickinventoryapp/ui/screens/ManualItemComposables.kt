@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.model.KaufAnsicht
 import ch.brickinventoryapp.ui.model.KontoAnsicht
 import ch.brickinventoryapp.ui.model.MitgliedAnsicht
@@ -69,7 +71,9 @@ fun AcquisitionSummarySection(
             Spacer(Modifier.height(Abstaende.winzig))
             OutlinedButton(onClick = onEditPrices,
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar),
-                modifier = Modifier.heightIn(min = 28.dp)) {
+                modifier = Modifier.heightIn(min = 28.dp),
+                colors = nebenKnopfFarben(),
+                border = nebenKnopfRand()) {
                 Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
                 Spacer(Modifier.width(Abstaende.winzig))
                 Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)

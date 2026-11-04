@@ -4,24 +4,24 @@ Test: ch.brickinventoryapp.MediaAuthTest
 Rot: der Herunterladen-Knopf erscheint erst
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-index 8f9af0a..e7d273e 100644
+index 5a91f3f..2ffc133 100644
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
-@@ -308,15 +308,15 @@ fun PdfViewerScreen(
+@@ -314,15 +314,15 @@ fun PdfViewerScreen(
                      // Datei, ein eigener Download kennte den Bearer-Token nicht.
                      // Herunterladen nur, wo es erlaubt ist (pdfDarfGespeichertWerden).
                      val s = state
 +                    if (speicherbar) {
-+                        IconButton(onClick = { (s as? PdfLoadState.Ready)?.let { savePdfToDownloads(ctx, it.quelle, title) } }) {
++                        IconButton(onClick = { (s as? PdfLoadState.Ready)?.let { melde(savePdfToDownloads(ctx, it.quelle, title)) } }) {
 +                            Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
 +                        }
 +                    }
                      if (s is PdfLoadState.Ready) {
-                         IconButton(onClick = { printPdf(ctx, s.quelle, title) }) {
+                         IconButton(onClick = { melde(printPdf(ctx, s.quelle, title)) }) {
                              Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
                          }
 -                        if (speicherbar) {
--                            IconButton(onClick = { savePdfToDownloads(ctx, s.quelle, title) }) {
+-                            IconButton(onClick = { melde(savePdfToDownloads(ctx, s.quelle, title)) }) {
 -                                Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
 -                            }
 -                        }

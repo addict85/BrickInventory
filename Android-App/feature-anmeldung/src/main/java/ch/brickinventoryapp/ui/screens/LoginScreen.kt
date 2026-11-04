@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
+import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.foundation.verticalScroll
 import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.foundation.rememberScrollState
@@ -99,56 +101,52 @@ fun LoginScreen(
             ch.brickinventoryapp.ui.components.MarkenKopf()
             Spacer(Modifier.height(Abstaende.mittel))
 
-            // Der Chip wechselt den Server: TalkBack nennt das samt Adresse (der Chip fasst
-            // die Beschreibung mit seiner Rolle „Schaltfläche“ zusammen), sonst hörte man nur
-            // die Adresse. Beide Symbole wachsen mit der Schrift; die 48-dp-Zielfläche bringt
-            // der Chip selbst mit (minimumInteractiveComponentSize).
+            // Der Chip wechselt den Server: TalkBack nennt das samt Adresse (die Fläche fasst
+            // die Beschreibung mit ihrer Rolle „Schaltfläche“ zusammen). Die Adresse bricht
+            // um statt gekürzt zu werden: Genau sie prüft man vor dem Anmelden.
             val serverAendern = stringResource(R.string.login_server_aendern, serverUrl)
-            AssistChip(
+            Surface(
                 onClick = onChangeServer,
-                // Eine Zeile mit Auslassung: Bei 200 % Schrift lief die Adresse sonst aus dem Chip.
-                label = { Text(serverUrl, Modifier.semantics { contentDescription = serverAendern },
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.labelMedium) },
-                leadingIcon = { Icon(Icons.Default.Cloud, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp))) },
-                trailingIcon = { Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp))) },
-                shape = Formen.chip
-            )
+                shape = Formen.chip,
+                color = MaterialTheme.colorScheme.surface,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+            ) {
+                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+                    Icon(Icons.Default.Cloud, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
+                        tint = MaterialTheme.colorScheme.primary)
+                    Text(serverUrl, Modifier.weight(1f, fill = false).semantics { contentDescription = serverAendern },
+                        style = MaterialTheme.typography.labelMedium)
+                    Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
+                        tint = MaterialTheme.colorScheme.primary)
+                }
+            }
 
             Spacer(Modifier.height(28.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = Formen.chip,
-                elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-            ) {
-                Column(
-                    Modifier.padding(horizontal = 20.dp, vertical = 22.dp),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
-                ) {
-                    when (formular) {
-                        AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
-                            username = username, onUsername = { username = it },
-                            password = password, onPassword = { password = it },
-                            codeNoetig = codeNoetig, code = code, onCode = { code = it },
-                            isLoading = isLoading, error = error,
-                            registrierungOffen = registrierungOffen,
-                            focusMgr = focusMgr,
-                            onLogin = onLogin, onFormular = onFormular,
-                            vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff,
-                            onPasskey = onPasskey,
-                            onPasskeyStattCode = onPasskeyStattCode.takeIf { passkeyStattCode && onPasskey != null })
+            ch.brickinventoryapp.ui.components.AnmeldeKarte {
+                when (formular) {
+                    AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
+                        username = username, onUsername = { username = it },
+                        password = password, onPassword = { password = it },
+                        codeNoetig = codeNoetig, code = code, onCode = { code = it },
+                        isLoading = isLoading, error = error,
+                        registrierungOffen = registrierungOffen,
+                        focusMgr = focusMgr,
+                        onLogin = onLogin, onFormular = onFormular,
+                        vollerZugriff = vollerZugriff, onVollerZugriff = onVollerZugriff,
+                        onPasskey = onPasskey,
+                        onPasskeyStattCode = onPasskeyStattCode.takeIf { passkeyStattCode && onPasskey != null })
 
-                        AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
-                            laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                            focusMgr = focusMgr,
-                            onRegistrieren = onRegistrieren, onFormular = onFormular)
+                    AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
+                        laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
+                        focusMgr = focusMgr,
+                        onRegistrieren = onRegistrieren, onFormular = onFormular)
 
-                        AnmeldeFormular.PASSWORT_VERGESSEN -> VergessenFelder(
-                            laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                            onSenden = onPasswortVergessen, onFormular = onFormular)
-                    }
+                    AnmeldeFormular.PASSWORT_VERGESSEN -> VergessenFelder(
+                        laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
+                        onSenden = onPasswortVergessen, onFormular = onFormular)
                 }
             }
         }
@@ -227,11 +225,7 @@ private fun AnmeldeFelder(
     onPasskey: (() -> Unit)?,
     onPasskeyStattCode: ((String, String) -> Unit)?,
 ) {
-    Text(
-        stringResource(R.string.login_title),
-        fontWeight = FontWeight.Bold,
-        style = MaterialTheme.typography.titleMedium
-    )
+    ch.brickinventoryapp.ui.components.AnmeldeTitel(stringResource(R.string.login_title))
 
     OutlinedTextField(
         value = username, onValueChange = onUsername,
@@ -315,14 +309,18 @@ private fun AnmeldeFelder(
     if (codeNoetig && onPasskeyStattCode != null) {
         OutlinedButton(onClick = { onPasskeyStattCode(username, password) },
             enabled = !isLoading && username.isNotBlank() && password.isNotBlank(),
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            colors = nebenKnopfFarben(),
+            border = nebenKnopfRand(!isLoading && username.isNotBlank() && password.isNotBlank())) {
             Icon(Icons.Default.Fingerprint, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.login_passkey_statt_code))
         }
     } else if (!codeNoetig && onPasskey != null) {
         OutlinedButton(onClick = onPasskey, enabled = !isLoading,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            colors = nebenKnopfFarben(),
+            border = nebenKnopfRand(!isLoading)) {
             Icon(Icons.Default.Fingerprint, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.login_passkey))
@@ -368,8 +366,7 @@ private fun RegistrierFelder(
     val zuKurz     = stringResource(R.string.register_password_short)
     val ungleich   = stringResource(R.string.register_password_mismatch)
 
-    Text(stringResource(R.string.register_title),
-        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+    ch.brickinventoryapp.ui.components.AnmeldeTitel(stringResource(R.string.register_title))
 
     // Nach einer erfolgreichen Registrierung stehen nur noch die Meldung und
     // der Weg zurueck — die Felder waeren jetzt nur eine Einladung, dasselbe
@@ -397,11 +394,13 @@ private fun RegistrierFelder(
         OutlinedTextField(
             value = vorname, onValueChange = { vorname = it },
             label = { Text(stringResource(R.string.register_first_name)) },
+            leadingIcon = { Icon(Icons.Default.Badge, null) },
             modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = weiter, keyboardActions = naechstes)
         OutlinedTextField(
             value = nachname, onValueChange = { nachname = it },
             label = { Text(stringResource(R.string.register_last_name)) },
+            leadingIcon = { Icon(Icons.Default.Badge, null) },
             modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld,
             keyboardOptions = weiter, keyboardActions = naechstes)
         // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler nach dem Senden.
@@ -414,12 +413,13 @@ private fun RegistrierFelder(
         val zuZeigen = eigenerFehler ?: fehler
         if (zuZeigen != null) FormularMeldung(zuZeigen, fehler = true)
 
-        LadeKnopf(stringResource(R.string.register_button), laeuft = laeuft, aktiv = true) {
-            // Dieselben drei Prüfungen wie im Web-Formular, in derselben Reihenfolge; die
+        // Dieselbe Regel wie beim Anmelden: leer gesperrt, darüber steht, was fehlt.
+        val vollstaendig = nutzer.isNotBlank() && email.isNotBlank() && pw1.isNotBlank()
+        LadeKnopf(stringResource(R.string.register_button), laeuft = laeuft, aktiv = vollstaendig, fehlt = reqFields) {
+            // Dieselben Prüfungen wie im Web-Formular, in derselben Reihenfolge; die
             // Längengrenze (PASSWORT_MIN_ZEICHEN) ist die des Servers (routes/auth.ts). Hier
             // vorweggenommen, damit man dafür keine Runde über das Netz braucht.
             eigenerFehler = when {
-                nutzer.isBlank() || email.isBlank() || pw1.isBlank() -> reqFields
                 passwortZuKurz(pw1) -> zuKurz
                 pw1 != pw2     -> ungleich
                 else           -> null
@@ -444,8 +444,7 @@ private fun VergessenFelder(
     var eigenerFehler by rememberSaveable { mutableStateOf<String?>(null) }
     val brauchtEmail = stringResource(R.string.forgot_email_required)
 
-    Text(stringResource(R.string.forgot_title),
-        fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+    ch.brickinventoryapp.ui.components.AnmeldeTitel(stringResource(R.string.forgot_title))
 
     if (meldung != null) {
         FormularMeldung(meldung, fehler = false)

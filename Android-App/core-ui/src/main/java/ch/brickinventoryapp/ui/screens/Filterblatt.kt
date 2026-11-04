@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.AuswahlChip
 import ch.brickinventoryapp.ui.model.kontoOptionen
 import ch.brickinventoryapp.ui.model.LagerortAnsicht
@@ -28,6 +29,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
@@ -80,8 +82,10 @@ fun SucheMitFilter(
             if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen, Modifier.padding(end = 14.dp))
         }
         // Bei grosser Schrift die Knöpfe unter das Feld: Daneben blieb vom Platzhalter
-        // nur „Suche…“.
-        if (gross) Column {
+        // nur „Suche…“. Ein Filterknopf allein bleibt daneben; auf eigener Zeile stand
+        // er verloren über dem Raster (Teile, Figuren).
+        val untereinander = gross && (onScannen != null || sortierung != null)
+        if (untereinander) Column {
             Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically) { knoepfe() }
@@ -122,6 +126,7 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, nurSymbol: Boolean, mod
             onClick = onClick,
             modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
             border = rand,
+            colors = nebenKnopfFarben(),
         ) {
             Icon(Icons.Default.FilterList, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.winzig))
@@ -141,7 +146,10 @@ fun FilterBlattRahmen(
     onZuruecksetzen: (() -> Unit)?,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onSchliessen) {
+    // Gleich ganz offen: Halb offen stand bei grosser Schrift nur Titel und erster Abschnitt
+    // da, und wer „Zurücksetzen“ suchte, musste erst ziehen.
+    ModalBottomSheet(onDismissRequest = onSchliessen,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
                 .padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross),
