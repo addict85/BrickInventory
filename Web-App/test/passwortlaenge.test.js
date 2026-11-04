@@ -170,7 +170,9 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   for (const [voll, anzahl, name] of [
     // Seit dem 16.10. steht die Kontokarte auf ihrer eigenen Seite: Der
     // Einstellungsbildschirm traegt nur noch die Liste dorthin.
-    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenKonto.kt'), 3, 'Passwort aendern'],
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenKonto.kt'), 2, 'Passwort aendern'],
+    // Hinweis und Fehlermarkierung teilen sich seit dem PasswortFeld einen Wert.
+    [path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'StartpasswortMaske.kt'), 1, 'Startpasswort'],
     [path.join(__dirname, '..', '..', 'Android-App', 'feature-anmeldung', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'LoginScreen.kt'),    1, 'Registrieren'],
   ]) {
     const kurz = path.basename(voll);
