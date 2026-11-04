@@ -47,8 +47,7 @@ jobs:
     # Ein Lauf nur für die Prüfsummen oder die Referenzbilder (Jobs unten) baut nicht mit.
     if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
     runs-on: ubuntu-latest
-    # Grüne Läufe brauchten 15–23 Minuten. Ein hängender Gradle-Daemon soll den
-    # Runner nicht sechs Stunden halten; 60 lässt Raum für einen kalten Cache.
+    # Grün 15–23 min; mehr als 60 heisst: Gradle hängt.
     timeout-minutes: 60
     defaults:
       run:
@@ -868,9 +867,7 @@ jobs:
   gegenproben:
     if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
     runs-on: ubuntu-latest
-    # Jede Gegenprobe ist ein eigener Gradle-Lauf (~0,7 min); grüne Läufe brauchten
-    # 66–118 Minuten. 180 hält die 6-Stunden-Grenze von GitHub fern und lässt Raum
-    # für rund 80 weitere Patches; reicht das nicht, gehört der Job aufgeteilt.
+    # ~0,7 min je Patch, grün 66–118 min; reicht 180 nicht mehr, Job aufteilen.
     timeout-minutes: 180
     permissions:
       contents: read
@@ -902,8 +899,7 @@ jobs:
   pruefsummen:
     if: github.event_name == 'workflow_dispatch' && inputs.pruefsummen
     runs-on: ubuntu-latest
-    # Löst alles ohne Cache neu auf und holt jede Signatur; gemessen 31 Minuten.
-    # Was mehr als doppelt so lange läuft, hängt.
+    # Gemessen 31 min ohne Cache; doppelt so lange heisst: hängt.
     timeout-minutes: 75
     permissions:
       contents: read
@@ -1005,8 +1001,7 @@ jobs:
   bildschirmfotos:
     if: github.event_name == 'workflow_dispatch' && inputs.bildschirmfotos
     runs-on: ubuntu-latest
-    # Gemessen 8–17 Minuten; was mehr als doppelt so lange läuft, hängt und
-    # soll den Runner nicht bis zur 6-Stunden-Grenze halten.
+    # Gemessen 8–17 min; doppelt so lange heisst: hängt.
     timeout-minutes: 40
     permissions:
       contents: read
