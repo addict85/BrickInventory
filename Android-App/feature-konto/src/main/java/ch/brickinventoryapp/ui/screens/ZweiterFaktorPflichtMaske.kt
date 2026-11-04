@@ -42,6 +42,7 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.util.GeheimeZwischenablage
+import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.otpauthAdresse
 
 /**
@@ -118,10 +119,10 @@ fun ZweiterFaktorPflichtMaske(
                         modifier = Modifier.fillMaxWidth(),
                     ) { Text(stringResource(R.string.zf_copy_key)) }
                     OutlinedTextField(
-                        value = faktorCode, onValueChange = { faktorCode = it.filter(Char::isDigit).take(8) },
+                        value = faktorCode, onValueChange = { faktorCode = NumericInput.quantity(it).take(8) },
                         label = { Text(stringResource(R.string.zf_confirm_code)) },
                         singleLine = true, shape = Formen.feld,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = NumericInput.ganzzahlTastatur(),
                         modifier = Modifier.fillMaxWidth())
                     Button(
                         onClick = { onBestaetigen(faktorCode) },

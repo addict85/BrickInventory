@@ -48,7 +48,7 @@ import org.robolectric.annotation.GraphicsMode
  *   faktormaske-schluessel-am-stueck  Schlüssel ohne Gruppen → rot „waehrend der Einrichtung …“
  *   faktormaske-ohne-codes         die Codes nie gezeigt → rot „nach der Bestaetigung …“
  *   faktormaske-abmelden-nur-anfangs  Abmelden nur im ersten Schritt → rot „Abmelden bleibt …“
- *   faktormaske-riesentitel        Überschrift in displayLarge → rot „bei 200 Prozent …“
+ *   faktormaske-riesentitel        Überschrift in schmaler Spalte → rot „bei 200 Prozent …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
