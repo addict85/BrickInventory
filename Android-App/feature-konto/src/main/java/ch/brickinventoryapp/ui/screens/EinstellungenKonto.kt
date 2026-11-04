@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -115,8 +116,12 @@ internal fun KontoCard(
                     label = { Text(stringResource(R.string.register_last_name)) },
                     modifier = Modifier.weight(1f), singleLine = true, shape = Formen.feld)
             }
+            // Erst den Fokus abgeben: Sonst bleibt das zuletzt getippte Feld hinter dem
+            // Dialog fokussiert und hält Tastatur und Cursor, obwohl nur der Dialog
+            // Eingaben annimmt.
+            val fokus = LocalFocusManager.current
             Button(
-                onClick = { fragtPasswort = true },
+                onClick = { fokus.clearFocus(); fragtPasswort = true },
                 enabled = geaendert && !kontoZustand.speichert,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }

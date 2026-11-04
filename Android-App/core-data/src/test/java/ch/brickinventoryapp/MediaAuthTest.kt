@@ -99,10 +99,14 @@ class MediaAuthTest {
     fun `der Herunterladen-Knopf erscheint erst, wenn die Datei geladen ist`() {
         val viewer = code(read("ui/screens/PdfViewerScreen.kt"))
         val actions = viewer.substringAfter("actions = {").substringBefore("            )")
-        // Beide Knöpfe arbeiten auf s.file und dürfen nur im Zustand Ready sichtbar sein.
+        // Beide Knöpfe arbeiten auf der geladenen Quelle des Ready-Zustands und dürfen
+        // nur dort sichtbar sein. Das Feld wird aus Ready gelesen, nicht fest benannt.
+        // Gegenprobe: gegenproben/pdf-download-ausserhalb-ready.patch → rot hier.
+        val feld = Regex("""class Ready\(val (\w+): \w+,""").find(viewer)?.groupValues?.get(1)
+        assert(feld != null) { "PdfLoadState.Ready trägt keine geladene Quelle mehr" }
         assert(actions.contains("if (s is PdfLoadState.Ready)")) { "Ready-Prüfung fehlt" }
         val ready = actions.substringAfter("if (s is PdfLoadState.Ready)")
-        assert(ready.contains("savePdfToDownloads(ctx, s.file, title)")) {
+        assert(ready.contains("savePdfToDownloads(ctx, s.$feld, title)")) {
             "Der Herunterladen-Knopf muss innerhalb des Ready-Zweigs stehen — " +
             "vorher stand er ausserhalb und lud eigenständig neu"
         }

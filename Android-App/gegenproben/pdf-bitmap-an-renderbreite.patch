@@ -1,0 +1,18 @@
+Gegenprobe: Bitmap-Zustand einer PDF-Seite hängt auch an der Renderbreite
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.PdfZoomTest
+Rot: beim Stufenwechsel bleibt die alte Seite stehen
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
+index 8f9af0a..6fa3ceb 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
+@@ -583,7 +583,7 @@ private fun PdfPages(
+ 
+ @Composable
+ private fun PdfPage(quelle: PdfQuelle, index: Int, renderBreitePx: Int) {
+-    var bitmap by remember(quelle, index) { mutableStateOf<Bitmap?>(null) }
++    var bitmap by remember(quelle, index, renderBreitePx) { mutableStateOf<Bitmap?>(null) }
+ 
+     // remember ohne, LaunchedEffect mit renderBreitePx: Beim Stufenwechsel bleibt die
+     // alte Bitmap stehen, bis die neue da ist. Ein Ladekreis hätte eine andere Höhe

@@ -21,6 +21,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
@@ -60,6 +61,8 @@ import org.robolectric.annotation.GraphicsMode
  *   preisalarm-nummer-zuerst     Rückfrage nennt wieder nur die Nummer → rot „Preisalarme nennen …“
  *   konto-ohne-wiederholung      Passwort ändern ohne passende Wiederholung frei → rot „Konto wechselt …“
  *   bauliste-zweistufig          Erstellen erst nach „+“ → rot „Bauliste entsteht …“
+ *   konto-dialog-behaelt-fokus   Speichern ohne clearFocus → rot „Konto wechselt …“ (AppNotIdle:
+ *                                das getippte Feld bleibt hinter dem Dialog fokussiert)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -283,6 +286,7 @@ class UnterseitenTest {
         compose.onNode(hasText(ctx.getString(R.string.konto_save)) and hasClickAction()).performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNode(hasSetTextAction() and hasAnyAncestor(isDialog())).fetchSemanticsNode("Kein Passwortfeld im Dialog")
+        feld(R.string.register_first_name).assertIsNotFocused()
         assertTrue("Gespeichert ohne Passwort: ${welt.pfade.anfragen}", welt.pfade.anfragen.none { it.startsWith("PUT") })
     }
 
