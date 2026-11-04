@@ -100,7 +100,7 @@ async function starteApp(t, opt = {}) {
   // Verwalter ohne Code-Generator kämen nur bis zu dessen Einrichtung; angemeldet
   // wird mit einem Wiederherstellungscode im Codefeld.
   const verwalter = (await db.get('SELECT is_admin FROM users WHERE id = $1', [uid])).is_admin;
-  const [wiederherstellung = ''] = verwalter ? await require('./verwalter').verwalterMitFaktor(_req, uid) : [];
+  const [wiederherstellung = '', ...weitereCodes] = verwalter ? await require('./verwalter').verwalterMitFaktor(_req, uid) : [];
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
                   ON CONFLICT (schluessel) DO UPDATE SET wert = EXCLUDED.wert`, [k]);
@@ -189,7 +189,7 @@ async function starteApp(t, opt = {}) {
     if (document.querySelector('.ntab[data-tab="settings"]')?.classList.contains('active')) return true;
     const g = document.getElementById('gallery');
     return !!g && g.children.length > 0 && !g.querySelector('.skelett-raster'); })()`, 'Start abgeschlossen');
-  return { b, bis, warte, port, uid, db, abgewiesen };
+  return { b, bis, warte, port, uid, db, abgewiesen, weitereCodes };
 }
 
 module.exports = { starteApp, warte };

@@ -41,7 +41,10 @@ test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }
   });
 
   await t.test('Abmelden leert Name, Passwort und Code', async () => {
-    await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('btn-login').click(); true`);
+    // Verwalter brauchen den zweiten Faktor; der erste Code ging an die erste Anmeldung.
+    await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1';
+      document.getElementById('lc').value = ${JSON.stringify(app.weitereCodes[0])};
+      document.getElementById('btn-login').click(); true`);
     await app.bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'wieder angemeldet', 300);
     assert.equal(await app.b.auswerten(`document.getElementById('login-hinweis').hidden`), true, 'Hinweis verschwindet mit der Anmeldung');
     await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('lc').value = '123456';
