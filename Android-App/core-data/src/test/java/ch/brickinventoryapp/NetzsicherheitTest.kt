@@ -31,6 +31,8 @@ import javax.xml.parsers.DocumentBuilderFactory
  *   H  (03.11.2026, sec8 H3, kotlinc lokal) in src/main die Zeile
  *      <certificateTransparency> der base-config entfernt → rot „der Release-Build
  *      verlangt Certificate Transparency“
+ *   I  (04.11.2026, sec12 H8) in data_extraction_rules.xml unter device-transfer die
+ *      Zeile androidx.work.workdb entfernt → rot „Kontodaten verlassen das Geraet nicht“
  */
 class NetzsicherheitTest {
 
@@ -102,7 +104,7 @@ class NetzsicherheitTest {
     /** Die dritte Linie: Was zum Konto gehört, wandert weder per Transfer noch per Sicherung mit. */
     @Test
     fun `Kontodaten verlassen das Geraet nicht`() {
-        val noetig = setOf("file:datastore", "database:bestand.db", "sharedpref:widget.xml",
+        val noetig = setOf("file:datastore", "database:bestand.db", "database:androidx.work.workdb", "sharedpref:widget.xml",
             "sharedpref:design_spiegel.xml", "file:vorschau", "file:pdf", "file:update", "external:pdf")
         val r = regeln("data_extraction_rules.xml")
         val listen = mapOf(

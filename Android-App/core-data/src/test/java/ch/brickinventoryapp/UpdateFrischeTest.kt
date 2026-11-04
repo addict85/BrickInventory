@@ -4,6 +4,7 @@ import ch.brickinventoryapp.util.UpdateBeschreibung
 import ch.brickinventoryapp.util.UpdateFrische
 import ch.brickinventoryapp.util.UpdateStand
 import ch.brickinventoryapp.util.UpdateStandAblage
+import ch.brickinventoryapp.util.anzubietendeFassung
 import ch.brickinventoryapp.util.gepruefteBeschreibung
 import ch.brickinventoryapp.util.pruefeFrische
 import ch.brickinventoryapp.util.quelleVeraltet
@@ -31,6 +32,10 @@ import java.util.Base64
  *      gegenproben/update-ohne-frist.patch
  *   C  in pruefeFrische() den Stand auch ohne AKTUELL fortgeschrieben → rot
  *      „eine abgelaufene oder fristlose …“ (eine abgelaufene setzte die Messlatte)
+ *   D  (04.11.2026, sec12 H2, kotlinc lokal) in anzubietendeFassung() die Bedingung
+ *      `frische == UpdateFrische.AKTUELL &&` gestrichen → rot „aus einer
+ *      zurueckgesetzten oder abgelaufenen Beschreibung wird nichts angeboten“;
+ *      gegenproben/update-angebot-trotz-zuruecksetzen.patch
  */
 class UpdateFrischeTest {
 
@@ -82,6 +87,22 @@ class UpdateFrischeTest {
             pruefe(ablage, beschreibung(120, ausgestellt = 0)))
         assertNull("Eine abgelaufene setzt keine Messlatte", ablage.stand)
         assertTrue(quelleVeraltet(UpdateFrische.ABGELAUFEN))
+    }
+
+    /** Sonst hielte eine ältere, echt signierte Beschreibung auf einer verwundbaren Zwischenfassung fest. */
+    @Test
+    fun `aus einer zurueckgesetzten oder abgelaufenen Beschreibung wird nichts angeboten`() {
+        val neu = beschreibung(120)
+        assertEquals(neu, anzubietendeFassung(neu, pruefe(Ablage(), neu), laufend = 100))
+        assertNull("Nicht neuer als die laufende", anzubietendeFassung(beschreibung(100), UpdateFrische.AKTUELL, 100))
+
+        // Gesehen wurde schon 130; jemand spielt die echt signierte 120 wieder ein.
+        val zurueck = Ablage(UpdateStand(130, jetzt - tag))
+        val alt = beschreibung(120, ausgestellt = jetzt - 5 * tag)
+        assertNull("Zurückgesetzt", anzubietendeFassung(alt, pruefe(zurueck, alt), laufend = 100))
+
+        val abgelaufen = beschreibung(120, ausgestellt = jetzt - 31 * tag)
+        assertNull("Abgelaufen", anzubietendeFassung(abgelaufen, pruefe(Ablage(), abgelaufen), laufend = 100))
     }
 
     @Test

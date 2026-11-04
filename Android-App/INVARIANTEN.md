@@ -158,7 +158,8 @@ des Screens und darf den Autofokus nie berühren.
 **Test:** `ResourceAndCacheTest`
 
 Angesehene Anleitungen bleiben absichtlich liegen (Resume, erneutes Öffnen
-ohne Neudownload). Bei Dateien bis 300 MB braucht das eine Obergrenze:
+ohne Neudownload), verschlüsselt über `AnleitungsAblage` (`AnleitungsAblageTest`)
+und beim Abmelden gelöscht. Bei Dateien bis 300 MB braucht das eine Obergrenze:
 `prunePdfCache()` hält den Cache unter `PDF_CACHE_BUDGET_BYTES`, älteste
 zuerst. Die gerade angeforderte Datei ist ausgenommen — sonst löscht das
 Aufräumen den Teil-Download, auf dem der Resume-Mechanismus aufsetzen will.
@@ -775,7 +776,7 @@ Handlungsmacht.
 | geheim | Token | nur AES-GCM mit Keystore-Schlüssel (`TokenTresor`) |
 | geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), ein Gutschein-PDF liegt nur im Speicher (memfd, `PdfViewerScreen`) |
 | vertraulich | Sets, Teile, Figuren, Merkliste, Bewertungen, Gutschein-Nummer und -Betrag (Room `bestand.db`), Ausgang | SQLCipher |
-| vertraulich | API-Antworten, Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
+| vertraulich | API-Antworten, Widget-Zahlen, Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt); Anleitungen angezeigt aus memfd oder namenloser Datei |
 | vertraulich | Teileliste-PDF | Klartext für die Ziel-App, nach 30 Minuten gelöscht |
 
 Für alle gilt: `allowBackup="false"`, Cloud-Sicherung und Geräteumzug
@@ -819,7 +820,27 @@ lässt `CacheBereichTest` scheitern, bis es hier eingeordnet ist.
   Beschreibung annimmt. Bis der Betreiber ihn einrichtet (README,
   „Beschreibungsschlüssel“), gilt der Übergangsweg über die Signierer der App.
   Auf dem Runner liegen beide nur verschlüsselt und werden nach dem Schritt
-  gelöscht.
+  gelöscht. Solange das Secret `BESCHREIBUNG_SCHLUESSEL` fehlt, warnt der
+  Release-Lauf (sec12 H1); einrichten muss es der Betreiber.
+- **Unsignierte `version.json` bis 01.02.2027 (sec12 H3):** nur für Fassungen vor
+  sec8 N4, die die signierte Beschreibung nicht kennen. Die Frist wird nicht
+  verlängert; danach löscht der Release-Lauf den Anhang selbst.
+- **Teileliste 30 Minuten im Klartext (sec12 H4):** Die Ziel-App liest sie über
+  den FileProvider und kann keinen Geheimtext lesen; gelöscht nach der Frist,
+  beim Start und beim Abmelden.
+- **Pins ohne HMAC (sec12 H6), Token-Schlüssel bei gesperrtem Gerät (sec12 H7),
+  keine RESILIENCE-Prüfungen (sec12 H10):** Begründung in README, „Daten auf dem
+  Gerät“ und „Manipulationsschutz“. Wer in `shared_prefs` schreiben kann, kann
+  auch den Keystore der App benutzen; ein HMAC hielte ihn nicht auf.
+- **Anleitung in einer namenlosen Datei (sec12 N1):** Über 64 MB wird zur Anzeige
+  in eine Datei entschlüsselt, deren Name vor dem ersten Byte gelöscht ist. Der
+  Klartext liegt dann in freien Blöcken des (dateibasiert verschlüsselten)
+  Speichers, erreichbar nur über den offenen Deskriptor. Ein memfd dieser Grösse
+  kostete Arbeitsspeicher, den das System der App mit einem Kill zurückholte.
+- **Endmarker im verschlüsselten Dateisystem (sec12 H9):** Jeder flush schliesst
+  mit einem Marker ab, weil OkHttp sein Journal nach jeder Zeile flusht und nie
+  schliesst. Eine Kürzung genau auf einen früheren flush bleibt darum unentdeckt;
+  sie setzt nur das Journal auf einen älteren Stand zurück.
 
 ## Token nur an die eigene Herkunft
 

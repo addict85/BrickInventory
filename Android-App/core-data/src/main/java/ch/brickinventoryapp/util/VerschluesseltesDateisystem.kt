@@ -15,9 +15,10 @@ import java.io.IOException
 
 /**
  * Ein Dateisystem, das jede Datei mit [AblageChiffre] verschlüsselt: für den
- * HTTP-Zwischenspeicher der Bilder, dessen Inhalt sonst die Sammlung im Klartext neben
- * der verschlüsselten Datenbank zeigte. In Abschnitten, weil OkHttp sein Journal
- * fortschreibt; jeder Abschnitt ist an Zweck, Dateiname und Lage in der Datei gebunden.
+ * HTTP-Zwischenspeicher der Bilder und die Bauanleitungen, die sonst die Sammlung im
+ * Klartext zeigten. In Abschnitten, weil OkHttp sein Journal fortschreibt; jeder ist an
+ * Zweck, Dateiname und Lage gebunden. Ein Endmarker nach jedem flush und close macht eine
+ * hinten gekürzte Datei unlesbar, statt sie als kürzere gelten zu lassen.
  */
 class VerschluesseltesDateisystem(
     delegate: FileSystem,
@@ -40,30 +41,45 @@ class VerschluesseltesDateisystem(
     override fun openReadWrite(file: Path, mustCreate: Boolean, mustExist: Boolean): FileHandle =
         throw IOException("kein wahlfreier Zugriff: $file")
 
-    /** `.tmp` und `.bkp` sind Zwischenstände derselben Datei: OkHttp benennt sie nur um. */
+    /** `.tmp`, `.bkp` (OkHttp) und `.part` (laufender Download) sind dieselbe Datei, nur noch nicht umbenannt. */
     private fun bindung(file: Path): String {
         var name = file.name
-        while (name.endsWith(".tmp") || name.endsWith(".bkp")) name = name.dropLast(4)
+        while (true) {
+            val endung = ZWISCHENSTAENDE.firstOrNull { name.endsWith(it) } ?: break
+            name = name.dropLast(endung.length)
+        }
         return "$zweck/$name"
     }
 
     private inner class Ausgang(private val ziel: Sink, private val bindung: String, private var lage: Long) : Sink {
         private val puffer = Buffer()
 
+        // Fortgeschrieben endet die Datei schon mit einem Marker; eine neue braucht einen, auch leer.
+        private var offen = lage == 0L
+
         override fun write(source: Buffer, byteCount: Long) {
             puffer.write(source, byteCount)
-            while (puffer.size >= ABSCHNITT) schreibe(ABSCHNITT)
+            while (puffer.size >= ABSCHNITT) schreibe(puffer.readByteArray(ABSCHNITT), "$bindung@$lage")
         }
 
-        private fun schreibe(laenge: Long) {
-            val geheim = verschluessle(puffer.readByteArray(laenge), "$bindung@$lage")
+        private fun schreibe(klar: ByteArray, aad: String) {
+            val geheim = verschluessle(klar, aad)
             val satz = Buffer().writeInt(geheim.size).write(geheim)
             lage += satz.size
             ziel.write(satz, satz.size)
+            offen = true
+        }
+
+        private fun schliesseAb() {
+            if (puffer.size > 0) schreibe(puffer.readByteArray(), "$bindung@$lage")
+            if (offen) {
+                schreibe(ByteArray(0), "$bindung@$lage$ENDE")
+                offen = false
+            }
         }
 
         override fun flush() {
-            if (puffer.size > 0) schreibe(puffer.size)
+            schliesseAb()
             ziel.flush()
         }
 
@@ -71,7 +87,7 @@ class VerschluesseltesDateisystem(
 
         override fun close() {
             try {
-                if (puffer.size > 0) schreibe(puffer.size)
+                schliesseAb()
             } finally {
                 ziel.close()
             }
@@ -81,6 +97,7 @@ class VerschluesseltesDateisystem(
     private inner class Eingang(private val quelle: BufferedSource, private val bindung: String) : Source {
         private val klar = Buffer()
         private var lage = 0L
+        private var abgeschlossen = false
 
         override fun read(sink: Buffer, byteCount: Long): Long {
             while (klar.size == 0L) if (!naechster()) return -1L
@@ -88,13 +105,23 @@ class VerschluesseltesDateisystem(
         }
 
         private fun naechster(): Boolean {
-            if (quelle.exhausted()) return false
+            if (quelle.exhausted()) {
+                if (!abgeschlossen) throw IOException("abgeschnitten: $bindung")
+                return false
+            }
             val laenge = quelle.readInt()
             if (laenge <= 0 || laenge > ABSCHNITT + 64) throw IOException("unlesbarer Abschnitt in $bindung")
-            val inhalt = chiffre.entschluessle(quelle.readByteArray(laenge.toLong()), "$bindung@$lage")
-                ?: throw IOException("Abschnitt gehört nicht zu $bindung")
+            val satz = quelle.readByteArray(laenge.toLong())
+            val inhalt = chiffre.entschluessle(satz, "$bindung@$lage")
+            if (inhalt != null) {
+                klar.write(inhalt)
+                abgeschlossen = false
+            } else if (chiffre.entschluessle(satz, "$bindung@$lage$ENDE")?.isEmpty() == true) {
+                abgeschlossen = true
+            } else {
+                throw IOException("Abschnitt gehört nicht zu $bindung")
+            }
             lage += 4L + laenge
-            klar.write(inhalt)
             return true
         }
 
@@ -115,6 +142,8 @@ class VerschluesseltesDateisystem(
 
     private companion object {
         const val ABSCHNITT = 64L * 1024
+        const val ENDE = "#ende"
+        val ZWISCHENSTAENDE = listOf(".tmp", ".bkp", ".part")
     }
 }
 

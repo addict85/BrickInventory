@@ -90,12 +90,17 @@ class PdfCacheTest {
         assert(src.contains("""val teil = File(dest.path + ".part")""")) {
             "Die Teildatei wird nicht mehr angelegt — schreibt der Download wieder direkt ins Ziel?"
         }
-        assert(src.contains("RandomAccessFile(teil,")) {
+        // Verschlüsselt über die AnleitungsAblage (sec12 N1); dass sie fortsetzen kann,
+        // prüft AnleitungsAblageTest ausgeführt.
+        assert(src.contains("anleitungen.schreibe(teil,")) {
             "Der Download schreibt nicht in die Teildatei. Dann ist ein Abbruch " +
                 "wieder nicht von einem fertigen Download zu unterscheiden."
         }
-        assert(!src.contains("RandomAccessFile(dest,")) {
-            "Es wird (auch) direkt in die fertige Datei geschrieben."
+        assert(!src.contains("anleitungen.schreibe(dest,") && !src.contains("RandomAccessFile(")) {
+            "Es wird (auch) direkt oder im Klartext in die Ablage geschrieben."
+        }
+        assert(src.contains("teilGroesse    = anleitungen.klartextLaenge(teil)")) {
+            "Der Fortsetzpunkt ist nicht die Zahl der Klartextbytes — der Server bekäme einen falschen Range."
         }
         assert(src.contains("teil.renameTo(dest)")) {
             "Das Umbenennen am Ende fehlt — dann entsteht die fertige Datei nie."

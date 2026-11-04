@@ -50,7 +50,7 @@
 
     <!--
       Die App aktualisiert sich selbst aus dem GitHub-Release (util/AppUpdate.kt).
-      Ab Android 8 — und minSdk ist 26, also auf JEDEM Geraet — genuegt diese
+      Ab Android 8 — und minSdk ist 30, also auf JEDEM Geraet — genuegt diese
       Berechtigung allein nicht: Der Nutzer muss der App zusaetzlich einmal
       erlauben, Apps aus unbekannten Quellen zu installieren. Genau dorthin
       fuehrt der Knopf in den Einstellungen, wenn die Erlaubnis fehlt.
@@ -69,7 +69,7 @@
     <!--
       tools:targetApi="33" fuer localeConfig und enableOnBackInvokedCallback:
       Lint meldet beide als UnusedAttribute, weil sie erst ab API 33 wirken und
-      minSdk 26 ist. Das ist KEIN Fehler, sondern die Absicht — auf aelteren
+      minSdk 30 ist. Das ist KEIN Fehler, sondern die Absicht — auf aelteren
       Geraeten werden sie ignoriert, und die App funktioniert dort ohne sie.
       `tools:targetApi` ist die vorgesehene Form, das zu sagen; es legt keine
       Warnung still, sondern beantwortet sie.

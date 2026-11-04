@@ -827,8 +827,8 @@
     <string name="update_pruefsumme_falsch">Die geladene App ist nicht die in der signierten Beschreibung angekündigte und wurde gelöscht. Installiert wurde nichts.</string>
     <string name="update_installer_fehlt">Die Installation liess sich nicht starten.</string>
     <string name="update_installation_fehlgeschlagen">Die Installation ist gescheitert: %1$s</string>
-    <string name="update_quelle_abgelaufen">Die Update-Beschreibung ist abgelaufen: Sie wurde nicht rechtzeitig neu signiert. Entweder gab es lange keine Veröffentlichung, oder jemand hält Updates zurück. Prüfe die Release-Seite des Projekts sowie Datum und Uhrzeit des Geräts.</string>
-    <string name="update_quelle_zurueckgesetzt">Die Update-Beschreibung ist älter als eine, die diese App schon gesehen hat. Die Update-Quelle ist veraltet oder manipuliert, und neuere Fassungen werden dir womöglich vorenthalten. Prüfe die Release-Seite des Projekts.</string>
+    <string name="update_quelle_abgelaufen">Die Update-Beschreibung ist abgelaufen: Sie wurde nicht rechtzeitig neu signiert. Entweder gab es lange keine Veröffentlichung, oder jemand hält Updates zurück. Deshalb bietet die App gerade kein Update an. Prüfe die Release-Seite des Projekts sowie Datum und Uhrzeit des Geräts.</string>
+    <string name="update_quelle_zurueckgesetzt">Die Update-Beschreibung ist älter als eine, die diese App schon gesehen hat. Die Update-Quelle ist veraltet oder manipuliert, und neuere Fassungen werden dir womöglich vorenthalten. Deshalb bietet die App gerade kein Update an. Prüfe die Release-Seite des Projekts.</string>
 
     <string name="price_from_other_condition_new">Kaufpreis aus dem Marktpreis „Neu\" übernommen — für „Gebraucht\" führt BrickLink keinen Preis.</string>
     <string name="price_from_other_condition_used">Kaufpreis aus dem Marktpreis „Gebraucht\" übernommen — für „Neu\" führt BrickLink keinen Preis.</string>

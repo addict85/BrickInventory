@@ -637,6 +637,8 @@ jobs:
           # schon einen verlangt, prüft der Job apk-pruefen.
           if [ -n "$BESCHREIBUNG_SCHLUESSEL" ]; then
             printf '%s\n' "$BESCHREIBUNG_SCHLUESSEL" | openssl pkey -aes256 -passout env:KS_PASS -out "$S/beschreibung.pem"
+          else
+            echo "::warning title=Beschreibungsschlüssel fehlt::Die Fassungsbeschreibung wird nur mit dem APK-Schlüssel signiert (sec12 H1). Secret BESCHREIBUNG_SCHLUESSEL anlegen und den öffentlichen Schlüssel in beschreibungs_schluessel.pem eintragen (README, „Beschreibungsschlüssel“)."
           fi
 
       - name: Probe-Schlüssel erzeugen

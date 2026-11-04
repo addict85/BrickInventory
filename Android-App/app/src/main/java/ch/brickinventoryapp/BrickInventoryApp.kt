@@ -27,6 +27,8 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             // Gutschein-PDFs eines abgebrochenen Laufs: Das Verlassen des Betrachters kam nie.
             runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(cacheDir) }
+            // Anleitungen älterer Fassungen lagen im Klartext; neu liegen sie verschlüsselt.
+            runCatching { ch.brickinventoryapp.util.raeumeKlartextAnleitungenAuf(cacheDir) }
             // Bild-Zwischenspeicher älterer Fassungen (Klartext) und eine abgelaufene Teileliste.
             runCatching { ch.brickinventoryapp.util.raeumeKlartextBildcachesAuf(cacheDir) }
             runCatching { ch.brickinventoryapp.util.raeumeAlteTeilelisteAuf(filesDir, System.currentTimeMillis()) }

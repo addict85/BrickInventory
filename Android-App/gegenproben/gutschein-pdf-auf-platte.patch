@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.GutscheinPdfAblageTest
 Rot: ein Gutschein-PDF bekommt keine Datei
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfCache.kt
-index 9145c6a..a755a9b 100644
+index fdeb55f..3b00235 100644
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfCache.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/PdfCache.kt
-@@ -53,7 +53,7 @@ const val PDF_VERTRAULICH_ORDNER = "pdf_vertraulich"
-  * leicht eine Datei, und der Betrachter zeigte das PDF der anderen.
+@@ -52,7 +52,7 @@ const val PDF_VERTRAULICH_ORDNER = "pdf_vertraulich"
+  * (hashCode) teilten sich zwei Adressen leicht eine Datei.
   */
  fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File? {
 -    if (vertraulich) return null
 +    if (vertraulich) return File(cacheDir, "pdfview_vertraulich.pdf")
      val hash = java.security.MessageDigest.getInstance("SHA-256").digest(pdfUrl.toByteArray())
-     return File(cacheDir, "pdfview_${hash.joinToString("") { "%02x".format(it) }}.pdf")
+     return File(cacheDir, ANLEITUNG_PRAEFIX + hash.joinToString("") { "%02x".format(it) } + ANLEITUNG_ENDUNG)
  }

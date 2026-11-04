@@ -26,6 +26,14 @@ enum class UpdateFrische {
 fun quelleVeraltet(frische: UpdateFrische?): Boolean = frische != null && frische != UpdateFrische.AKTUELL
 
 /**
+ * Angeboten wird nur eine neuere Fassung aus einer aktuellen Beschreibung. Eine ältere,
+ * echt signierte hielte den Nutzer sonst auf einer bekannt verwundbaren Zwischenfassung
+ * fest; statt des Angebots steht dann der Hinweis aus [quelleVeraltet] da.
+ */
+fun anzubietendeFassung(b: UpdateBeschreibung, frische: UpdateFrische, laufend: Int): UpdateBeschreibung? =
+    b.takeIf { frische == UpdateFrische.AKTUELL && istNeuer(laufend, it.versionCode) }
+
+/**
  * Eine echt signierte, aber alte Beschreibung hält Updates still zurück: Ihre
  * Signatur gilt, sie meldet nur nichts Neues. Darum zählt neben der Signatur die
  * Frist, und keine Beschreibung darf hinter das zurückfallen, was die App schon kennt.

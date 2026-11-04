@@ -1,0 +1,26 @@
+Gegenprobe: Drucken steht wieder auch für Gutschein-PDFs da (Stand vor sec12 H5)
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.GutscheinPdfAblageTest
+Rot: Betrachter, Abmelden und Start raeumen auf
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
+index 2403e79..b16c28b 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/screens/PdfViewerScreen.kt
+@@ -368,13 +368,13 @@ fun PdfViewerScreen(
+                     // wo Speichern erlaubt ist: Der Druckdialog bietet „Als PDF speichern“.
+                     val s = state
+                     if (s is PdfLoadState.Ready) {
++                        IconButton(onClick = { printPdf(ctx, s.quelle, title) }) {
++                            Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
++                        }
+                         if (speicherbar) {
+                             IconButton(onClick = { savePdfToDownloads(ctx, s.quelle, title) }) {
+                                 Icon(Icons.Default.Download, contentDescription = stringResource(R.string.pdfview_download))
+                             }
+-                            IconButton(onClick = { printPdf(ctx, s.quelle, title) }) {
+-                                Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
+-                            }
+                         }
+                     }
+                 }

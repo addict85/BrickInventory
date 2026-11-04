@@ -1,0 +1,27 @@
+Gegenprobe: das UpdateViewModel bietet wieder jede neuere Fassung an, auch aus einer zurückgesetzten Beschreibung (Stand vor sec12 H2)
+Modul: core-data
+Test: ch.brickinventoryapp.SelbstUpdateTest
+Rot: angeboten wird nur ueber anzubietendeFassung
+
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
+index 4a15282..867c457 100644
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/UpdateViewModel.kt
+@@ -19,7 +19,7 @@ import ch.brickinventoryapp.util.fassungPasst
+ import ch.brickinventoryapp.util.Installationsmeldung
+ import ch.brickinventoryapp.util.installiere
+ import ch.brickinventoryapp.util.istErlaubteApkAdresse
+-import ch.brickinventoryapp.util.anzubietendeFassung
++import ch.brickinventoryapp.util.istNeuer
+ import ch.brickinventoryapp.util.pruefeFrische
+ import ch.brickinventoryapp.util.signaturPasst
+ import ch.brickinventoryapp.util.updateDatei
+@@ -120,7 +120,7 @@ class UpdateViewModel @Inject constructor(
+                 val frische = pruefeFrische(prefs, beschreibung, fassung.code, System.currentTimeMillis() / 1000)
+                 _state.update {
+                     it.copy(laedtPruefung = false, geprueft = true,
+-                        neuereFassung = anzubietendeFassung(beschreibung, frische, fassung.code), fehler = null, frische = frische)
++                        neuereFassung = if (istNeuer(fassung.code, beschreibung.versionCode)) beschreibung else null, fehler = null, frische = frische)
+                 }
+             } catch (e: Exception) {
+                 _state.update {

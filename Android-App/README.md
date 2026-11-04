@@ -195,18 +195,37 @@ Zweck gebunden):
 | Vorschau-Ablage `files/vorschau/` | `AblageChiffre`; Klartext älterer Fassungen wird verworfen |
 | Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `VerschluesseltesDateisystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
 | Gutschein-PDF (Nummer, PIN) | nie auf der Platte: in den Speicher geladen, gerendert aus einem memfd, der mit dem Betrachter oder dem Prozess vergeht |
+| Bauanleitungen `cache/anleitung_*.bin` (höchstens 500 MB) | `VerschluesseltesDateisystem` (Zweck `anleitungen`, an den Dateinamen gebunden, Endmarker); angezeigt aus einem Bereich ohne Namen (siehe unten); beim Abmelden gelöscht, Klartext älterer Fassungen (`pdfview_*`) beim Start |
 | Teileliste-PDF `files/pdf/teileliste.pdf` | Klartext, weil die Ziel-App sie über den FileProvider liest; nach 30 Minuten gelöscht (WorkManager, dazu beim Start und beim Abmelden) |
 
-**Bewusst offen:** Angesehene Bauanleitungen liegen im Zwischenspeicher
-(`cache/pdfview_*.pdf`, höchstens 500 MB), damit sie offline öffnen und ein
-abgebrochener Download weiterläuft. Es sind öffentliche Dokumente von bis zu
-300 MB; `PdfRenderer` braucht eine Datei, die er wahlfrei liest, eine
-verschlüsselte Ablage müsste dafür doch wieder entschlüsselt daneben liegen.
+**Anleitungen anzeigen:** `PdfRenderer` braucht einen Deskriptor, in dem er
+springt. Bis 64 MB entschlüsselt der Betrachter in einen memfd; darüber
+(Anleitungen haben bis 300 MB) in eine Datei unter `cache/anleitung_anzeige/`,
+deren Name gelöscht wird, bevor das erste Byte Klartext hineinkommt. Ein
+memfd dieser Grösse belegte den Arbeitsspeicher der App und machte sie zum
+ersten Opfer des Low-Memory-Killers. Der Klartext ist dann nur über den
+offenen Deskriptor erreichbar, also für den, der ohnehin im Prozess der App
+steckt; er vergeht mit dem Betrachter oder dem Prozess. Drucken und
+Herunterladen gibt es nur für Anleitungen, nicht für Gutscheine (der
+Druckdialog kann „Als PDF speichern“).
 
 **Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
 Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
 `util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
 erkennung am Server und die harte Höchstdauer von 180 Tagen.
+
+**Pins ohne eigenen Integritätsschutz (sec12 H6):** Pins und der Schalter für
+Nutzer-CAs liegen in `design_spiegel.xml` ohne HMAC. Schreiben kann dort nur,
+wer Root hat oder Code mit der UID der App ausführt; beide können den Keystore
+der App ebenso benutzen wie die App und damit auch einen HMAC fälschen. Gegen
+das Einspielen von aussen hilft schon, dass die Datei weder gesichert noch
+übertragen wird.
+
+**Update-Angebot nur aus frischer Beschreibung (sec12 H2):** Ist die signierte
+Beschreibung abgelaufen oder älter als eine schon gesehene, bietet die App kein
+Update an; die Einstellungen sagen, warum. Sonst hielte eine wieder
+eingespielte, echt signierte Beschreibung auf einer bekannt verwundbaren
+Zwischenfassung fest.
 
 ## Manipulationsschutz (MASVS-RESILIENCE)
 
