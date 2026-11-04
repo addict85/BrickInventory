@@ -216,7 +216,8 @@ test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', (t) => {
       { cwd: a.arbeit, encoding: 'utf8', env: { ...process.env, PATH: `${path.join(a.tmp, 'bin')}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja' } });
   } else {
     fs.chmodSync(geheim, 0o000);
-    t.after(() => fs.chmodSync(geheim, 0o600));
+    // Der Aufbau räumt seinen Ordner zuerst weg; dann gibt es nichts mehr zurückzustellen.
+    t.after(() => { if (fs.existsSync(geheim)) fs.chmodSync(geheim, 0o600); });
     r = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: 'ja' });
   }
   assert.notEqual(r.status, 0, 'eine unlesbare Datei unter data/ …');
