@@ -6,13 +6,13 @@
       <keyring-format>armored</keyring-format>
       <trusted-keys>
          <trusted-key id="04543577D6A9CC626239C50C7ECBD740FF06AEB5">
-            <trusting group="org.glassfish.jaxb"/>
-            <trusting group="org.jvnet.staxex"/>
             <trusting group="com.sun.activation"/>
             <trusting group="com.sun.istack"/>
             <trusting group="com.sun.xml.bind"/>
             <trusting group="com.sun.xml.bind.mvn"/>
             <trusting group="com.sun.xml.fastinfoset"/>
+            <trusting group="org.glassfish.jaxb"/>
+            <trusting group="org.jvnet.staxex"/>
          </trusted-key>
          <trusted-key id="0785B3EFF60B1B1BEA94E0BB7C25280EAE63EBE5" group="org.apache.httpcomponents"/>
          <trusted-key id="09939C73246B4BA7444CAA453D002DBC5EA9615F" group="dev.drewhamilton.poko"/>
@@ -20,7 +20,17 @@
          <trusted-key id="0E225917414670F4442C250DFD533C07C264648F">
             <trusting group="androidx.activity"/>
             <trusting group="androidx.appcompat"/>
+            <trusting group="androidx.camera"/>
+            <trusting group="androidx.camera.featurecombinationquery"/>
+            <trusting group="androidx.camera.viewfinder"/>
             <trusting group="androidx.collection"/>
+            <trusting group="androidx.compose"/>
+            <trusting group="androidx.compose.animation"/>
+            <trusting group="androidx.compose.foundation"/>
+            <trusting group="androidx.compose.material"/>
+            <trusting group="androidx.compose.material3"/>
+            <trusting group="androidx.compose.runtime"/>
+            <trusting group="androidx.compose.ui"/>
             <trusting group="androidx.core"/>
             <trusting group="androidx.databinding"/>
             <trusting group="androidx.datastore"/>
@@ -33,16 +43,6 @@
             <trusting group="androidx.sqlite"/>
             <trusting group="androidx.tracing"/>
             <trusting group="androidx.work"/>
-            <trusting group="androidx.camera"/>
-            <trusting group="androidx.camera.featurecombinationquery"/>
-            <trusting group="androidx.camera.viewfinder"/>
-            <trusting group="androidx.compose"/>
-            <trusting group="androidx.compose.animation"/>
-            <trusting group="androidx.compose.foundation"/>
-            <trusting group="androidx.compose.material"/>
-            <trusting group="androidx.compose.material3"/>
-            <trusting group="androidx.compose.runtime"/>
-            <trusting group="androidx.compose.ui"/>
             <trusting group="com.android"/>
             <trusting group="com.android.application"/>
             <trusting group="com.android.databinding"/>
@@ -57,11 +57,19 @@
             <trusting group="com.android.tools.layoutlib"/>
             <trusting group="com.android.tools.lint"/>
             <trusting group="com.android.tools.utp"/>
+            <trusting group="^com[.]android($|([.].*))" regex="true"/>
          </trusted-key>
          <trusted-key id="0F06FF86BEEAF4E71866EE5232EE5355A6BC6E42">
             <trusting group="androidx.annotation"/>
             <trusting group="androidx.camera.viewfinder"/>
             <trusting group="androidx.collection"/>
+            <trusting group="androidx.compose"/>
+            <trusting group="androidx.compose.animation"/>
+            <trusting group="androidx.compose.foundation"/>
+            <trusting group="androidx.compose.material"/>
+            <trusting group="androidx.compose.material3"/>
+            <trusting group="androidx.compose.runtime"/>
+            <trusting group="androidx.compose.ui"/>
             <trusting group="androidx.core"/>
             <trusting group="androidx.credentials"/>
             <trusting group="androidx.exifinterface"/>
@@ -72,18 +80,12 @@
             <trusting group="androidx.room"/>
             <trusting group="androidx.savedstate"/>
             <trusting group="androidx.sqlite"/>
+            <trusting group="androidx.test"/>
+            <trusting group="androidx.test.espresso"/>
             <trusting group="androidx.tracing"/>
             <trusting group="androidx.window"/>
             <trusting group="com.google.android.gms" name="play-services-identity-credentials" version="16.0.0-alpha08"/>
-            <trusting group="androidx.compose"/>
-            <trusting group="androidx.compose.animation"/>
-            <trusting group="androidx.compose.foundation"/>
-            <trusting group="androidx.compose.material"/>
-            <trusting group="androidx.compose.material3"/>
-            <trusting group="androidx.compose.runtime"/>
-            <trusting group="androidx.compose.ui"/>
-            <trusting group="androidx.test"/>
-            <trusting group="androidx.test.espresso"/>
+            <trusting group="^androidx[.]test($|([.].*))" regex="true"/>
          </trusted-key>
          <trusted-key id="10F3C7A02ECA55E502BADCF3991EFB94DB91127D" group="org.ow2" name="ow2" version="1.5.1"/>
          <trusted-key id="120D6F34E627ED3A772EBBFE55C7E5E701832382" group="org.snakeyaml" name="snakeyaml-engine" version="2.7"/>
@@ -4715,6 +4717,11 @@
             <sha256 value="a0f7f315c9f60b53458cc1e034a7c55e17619ce7db51db43efb7d3cdacbb5c6c" origin="Generated by Gradle"/>
          </artifact>
       </component>
+      <component group="org.jetbrains.kotlin.jvm" name="org.jetbrains.kotlin.jvm.gradle.plugin" version="2.4.21">
+         <artifact name="org.jetbrains.kotlin.jvm.gradle.plugin-2.4.21.pom">
+            <pgp value="6F538074CCEBF35F28AF9B066A0975F8B1127B83"/>
+         </artifact>
+      </component>
       <component group="org.jetbrains.kotlin.plugin.compose" name="org.jetbrains.kotlin.plugin.compose.gradle.plugin" version="2.4.21">
          <artifact name="org.jetbrains.kotlin.plugin.compose.gradle.plugin-2.4.21.pom">
             <sha256 value="ee66712b1006e971636f11554af63c56835caf315382ce23e54f59f5b8b9d4f9" origin="Generated by Gradle"/>
@@ -5101,7 +5108,7 @@
       </component>
       <component group="org.sonatype.oss" name="oss-parent" version="7">
          <artifact name="oss-parent-7.pom">
-            <sha256 value="b51f8867c92b6a722499557fc3a1fdea77bdf9ef574722fe90ce436a29559454" origin="Generated by Gradle"/>
+            <sha256 value="b51f8867c92b6a722499557fc3a1fdea77bdf9ef574722fe90ce436a29559454" origin="Generated by Gradle" reason="Artifact is not signed"/>
          </artifact>
       </component>
       <component group="org.sonatype.oss" name="oss-parent" version="9">
