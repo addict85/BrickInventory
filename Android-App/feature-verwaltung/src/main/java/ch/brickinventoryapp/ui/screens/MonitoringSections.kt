@@ -568,7 +568,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else if (offen) {
                         ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.admin_log_reload)) {
-                            IconButton(onClick = { protokollScope.launch { aktionen.ladeProtokoll() } }) {
+                            IconButton(onClick = { protokollScope.launch { aktionen.ladeProtokoll(verwaltung.protokollMinuten) } }) {
                                 Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
                                     Modifier.size(18.dp))
                             }
@@ -577,7 +577,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                     ch.brickinventoryapp.ui.components.MitTooltip(stringResource(if (offen) R.string.common_collapse else R.string.common_expand)) {
                     IconButton(onClick = {
                         offen = !offen
-                        if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { aktionen.ladeProtokoll() }
+                        if (offen && verwaltung.protokoll.isEmpty()) protokollScope.launch { aktionen.ladeProtokoll(verwaltung.protokollMinuten) }
                     }) {
                         // Beschreibt die WIRKUNG des Tippens, nicht das
                         // gezeigte Zeichen — genau das braucht TalkBack.
