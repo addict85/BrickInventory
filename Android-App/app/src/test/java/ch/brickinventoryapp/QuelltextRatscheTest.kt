@@ -60,8 +60,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
-        val FUNKTIONEN = 331
-        val NUR_QUELLTEXT = 53
+        val FUNKTIONEN = 325
+        val NUR_QUELLTEXT = 52
         val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
             .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
         val zaehlung = alle.associate { it.name to quelltextFunktionen(it.readText()) }
@@ -191,8 +191,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `lange Kommentare im Workflow und in Tests werden weniger`() {
-        val WORKFLOW = 4
-        val TESTS = 93
+        val WORKFLOW = 3
+        val TESTS = 92
         val DATUM_UND_KENNUNG = 0
         val wf = File(Quellen.projekt, "../.github/workflows/android.yml").readLines()
         val wfLang = rautenBloecke(wf).filter { it.second > 5 }
@@ -394,7 +394,7 @@ class QuelltextRatscheTest {
     @Test
     fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
         // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
-        val HAUPT = 270
+        val HAUPT = 268
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
         fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->

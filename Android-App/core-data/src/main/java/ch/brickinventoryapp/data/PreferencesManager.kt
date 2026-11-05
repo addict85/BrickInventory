@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.data
 
+import java.util.concurrent.CopyOnWriteArrayList
+import javax.inject.Provider
 import android.content.Context
 import androidx.core.content.edit
 import androidx.datastore.core.DataStore
@@ -43,7 +45,7 @@ class PreferencesManager @Inject constructor(
     /** Die Spiegel laufen, solange die App lebt; kein eigener Bereich ohne Besitzer. */
     @param:ApplicationScope private val prefsScope: CoroutineScope,
     /** Für ein Token, das ein Serverwechsel verwirft, ohne dass es lesbar war (saveServerUrl). */
-    private val entwertung: javax.inject.Provider<EntwertungsPlaner> = javax.inject.Provider { EntwertungsPlaner {} },
+    private val entwertung: Provider<EntwertungsPlaner> = Provider { EntwertungsPlaner {} },
 ) : Anmeldeablage, CacheBesitzer, Entwertungsquelle,
     UpdateStandAblage, GeraeteEinstellungen, Sitzungsablage,
     Darstellungsablage, Vertrauensablage, Zugangsdaten, Anmeldestand, Sitzungsende {
@@ -371,8 +373,8 @@ class PreferencesManager @Inject constructor(
     /** Für den Wächter (di/ServerWaechter): die Generation, vor dem Token gelesen. */
     fun tokenGeneration(): Long = tokenSchranke.generation
 
-    private val serverwechselHoerer = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
-    private val nutzerCaHoerer = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val serverwechselHoerer = CopyOnWriteArrayList<() -> Unit>()
+    private val nutzerCaHoerer = CopyOnWriteArrayList<() -> Unit>()
 
     /** Die Server-Clients brechen beim Wechsel auf eine andere Herkunft ihre Aufrufe ab (di/ServerClient). */
     fun beimServerwechsel(hoerer: () -> Unit) { serverwechselHoerer += hoerer }

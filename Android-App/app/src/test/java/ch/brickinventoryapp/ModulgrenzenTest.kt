@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import java.time.LocalDate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -195,7 +196,7 @@ class ModulgrenzenTest {
             val bis = m.groupValues[5]
             n++
             assertTrue("Ohne Grund darüber: $z", i > 0 && zeilen[i - 1].startsWith("# ") && zeilen[i - 1].length > 20)
-            assertTrue("Abgelaufen: $z", java.time.LocalDate.parse(bis) >= java.time.LocalDate.now())
+            assertTrue("Abgelaufen: $z", LocalDate.parse(bis) >= LocalDate.now())
             assertTrue("$gruppe:$name:$fassung steht nicht mehr in verification-metadata.xml — Zeile streichen",
                 meta.contains("<component group=\"$gruppe\" name=\"$name\" version=\"$fassung\">"))
         }

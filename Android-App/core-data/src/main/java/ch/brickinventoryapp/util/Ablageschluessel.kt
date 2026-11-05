@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.util
 
+import java.util.concurrent.CopyOnWriteArrayList
 import java.io.File
 import java.io.IOException
 import java.security.SecureRandom
@@ -46,7 +47,7 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
     @Volatile var stand: Long = 0
         private set
 
-    private val vorErneuerung = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+    private val vorErneuerung = CopyOnWriteArrayList<() -> Unit>()
 
     /** Für Ablagen, die den Schlüssel länger halten als einen Zugriff (die Datenbank): zu und weg damit. */
     fun vorErneuerung(hoerer: () -> Unit) { vorErneuerung += hoerer }
