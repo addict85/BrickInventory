@@ -893,8 +893,12 @@ jobs:
   gegenproben:
     if: ${{ !inputs.pruefsummen && !inputs.bildschirmfotos }}
     runs-on: ubuntu-latest
-    # ~0,7 min je Patch, grün 66–118 min; reicht 180 nicht mehr, Job aufteilen.
-    timeout-minutes: 180
+    # Seriell lief die Liste über 180 min; vier Teile mit je jedem vierten Patch.
+    strategy:
+      fail-fast: false
+      matrix:
+        teil: [1, 2, 3, 4]
+    timeout-minutes: 120
     permissions:
       contents: read
     defaults:
@@ -913,7 +917,7 @@ jobs:
       - name: Gegenproben messen
         run: |
           chmod +x gradlew
-          python3 tools/gegenproben.py gegenproben
+          GEGENPROBE_TEIL="${{ matrix.teil }}/4" python3 tools/gegenproben.py gegenproben
 
   # ── Prüfsummen der Abhängigkeiten ──────────────────────────────────────────
   #

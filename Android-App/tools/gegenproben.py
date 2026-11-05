@@ -108,6 +108,12 @@ def main():
     wurzel = git(projekt, 'rev-parse', '--show-toplevel').stdout.strip()
     gradle = shlex.split(os.environ.get('GEGENPROBE_GRADLE', './gradlew --no-daemon --no-build-cache -Pksp.incremental=false'))
     patches = sorted(glob.glob(os.path.join(ordner, '*.patch')))
+    # Die CI teilt die Patches auf parallele Jobs (GEGENPROBE_TEIL=„2/4“); jeder
+    # nimmt jeden n-ten, so bleibt jeder Teil unter seiner Zeitgrenze.
+    teil = os.environ.get('GEGENPROBE_TEIL')
+    if teil:
+        nr, anzahl = (int(x) for x in teil.split('/'))
+        patches = patches[nr - 1::anzahl]
     if not patches:
         print(f'Keine Gegenproben unter {ordner}/ — ohne sie prüft dieser Schritt nichts.')
         return 1
