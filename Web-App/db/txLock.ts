@@ -6,20 +6,12 @@ import * as db from './database';
 import type { DbSchnittstelle } from './database';
 import { LOCKS } from '../src/infra/lockNamespaces';
 
-/**
- * Führt fn in einer Transaktion aus, die exklusiven Zugriff auf den
+/** Führt fn in einer Transaktion aus, die exklusiven Zugriff auf den
  * angegebenen Bestandsschlüssel hat.
  * Ausführlich: docs/begruendungen/db/txLock.ts.md#withinventorylock
- * @template T
- * @param {number} userId
- * @param {string} scopeKey Bestandsschlüssel, z. B. die Set- oder Teilenummer
- * @param {(tx: any) => Promise<T>} fn
- * @returns {Promise<T>}
- */
-async function withInventoryLock(userId: number, scopeKey: string | number, fn: (tx: any) => any) {
-  // tx: DbSchnittstelle statt any — der Typ steht in
-  // db/database. Mit `any` war jeder Aufruf hier drin ungeprueft.
-  return db.transaction(async (tx: DbSchnittstelle) => {
+ * @param scopeKey Bestandsschlüssel, z. B. die Set- oder Teilenummer */
+async function withInventoryLock<T>(userId: number, scopeKey: string | number, fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
+  return db.transaction(async (tx) => {
     // Eine eigene Klasse statt der user_id als erstem Wert: Sonst sperrte
     // Konto 42 beim Verschieben eines Sets den Bild-Download desselben Sets
     // (LOCKS.BILD_DOWNLOAD = 42, hashtext(Setnummer)). Gleiche Streuwerte

@@ -139,9 +139,8 @@ test('Sperr-Namensräume gegen echte Datenbank', async (t) => {
     const frei = {};
     await withInventoryLock(LOCKS.BILD_DOWNLOAD, SET, async () => {
       frei.bild = await nochFrei(LOCKS.BILD_DOWNLOAD, zweiter);
-      frei.selbst = (await db.get(`SELECT pg_try_advisory_lock($1, hashtext($2)) AS ok`,
-        [LOCKS.INVENTAR, `${LOCKS.BILD_DOWNLOAD}|${SET}`])).ok;
-      if (frei.selbst) await db.get(`SELECT pg_advisory_unlock($1, hashtext($2))`, [LOCKS.INVENTAR, `${LOCKS.BILD_DOWNLOAD}|${SET}`]);
+      // Auf eigener Verbindung: db.get liefe hier über die Transaktion, die die Sperre schon hält.
+      frei.selbst = await nochFrei(LOCKS.INVENTAR, (await db.pool.query('SELECT hashtext($1) AS h', [`${LOCKS.BILD_DOWNLOAD}|${SET}`])).rows[0].h);
     });
     assert.equal(frei.bild, true, 'Die Bestandssperre von Konto 42 hält den Bild-Download des Sets auf');
     assert.equal(frei.selbst, false, 'Die Bestandssperre liegt nicht unter LOCKS.INVENTAR — dann prüft der Fall oben nichts');
