@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import androidx.navigation.NavDestination.Companion.hasRoute
 import android.os.Looper
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -340,7 +341,7 @@ class BildschirmFotoVariantenTest {
         // Der Titel folgt dem Ziel wie in der App (ToolsGraph setzt nav_more): Fest
         // „Sammlung“ zeigte das Foto von „Mehr“ mit dem falschen Titel.
         val ziel by nav.currentBackStackEntryAsState()
-        val titel = if (ziel?.destination?.route == Screen.Mehr.route) "Mehr" else "Sammlung"
+        val titel = if (ziel?.destination?.hasRoute<Screen.Mehr>() == true) "Mehr" else "Sammlung"
         MainScaffold(
             title = titel, navController = nav, bottomNavItems = reiter,
             snackbarHostState = snackbar,
@@ -348,15 +349,15 @@ class BildschirmFotoVariantenTest {
             onCsvAbbrechen = {}, serverUrl = "", updateVerfuegbar = true, onTabAngetippt = {},
             offeneAenderungen = offeneAenderungen,
         ) {
-            NavHost(nav, startDestination = Screen.Gallery.route) {
-                composable(Screen.Gallery.route) {
+            NavHost(nav, startDestination = Screen.Gallery) {
+                composable<Screen.Gallery> {
                     androidx.compose.foundation.layout.Column {
                         ch.brickinventoryapp.ui.components.OfflineHinweis(offlineStand)
                         Galerie(galerie)
                     }
                 }
-                composable(Screen.Mehr.route) {
-                    MehrBildschirm(navController = nav, isAdmin = true, updateVerfuegbar = true, onAbmelden = {})
+                composable<Screen.Mehr> {
+                    MehrBildschirm(onZiel = nav::oeffneVonMehr, isAdmin = true, updateVerfuegbar = true, onAbmelden = {})
                 }
             }
         }
@@ -450,7 +451,7 @@ class BildschirmFotoVariantenTest {
     /** Die Rückfrage vor dem Abmelden — dieselbe Bauform wie beim Löschen eines Sets. */
     private fun dialogAbmeldenFoto(name: String, dunkel: Boolean, geraet: String, schrift: Float) {
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
-            MehrBildschirm(rememberNavController(), isAdmin = false, updateVerfuegbar = true, onAbmelden = {})
+            MehrBildschirm({}, isAdmin = false, updateVerfuegbar = true, onAbmelden = {})
         }
         compose.onNodeWithText("Abmelden").performClick()
         compose.waitForIdle()

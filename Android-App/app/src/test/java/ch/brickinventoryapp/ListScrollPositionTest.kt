@@ -146,8 +146,8 @@ class ListScrollPositionTest {
     @Test
     fun `die Zustaende liegen oberhalb des NavHost und werden durchgereicht`() {
         val nav = code(read("AppNavigation.kt"))
-        for (name in listOf("galleryGridState", "partsGridState", "minifigsGridState")) {
-            assert(nav.contains("val $name")) {
+        for (name in listOf("galerie", "teile", "minifiguren")) {
+            assert(nav.contains("$name = androidx.compose.foundation.lazy.grid.rememberLazyGridState()")) {
                 "$name wird nicht oberhalb des NavHost angelegt — dort ist die einzige " +
                     "Ebene, die beim Navigieren nicht verlassen wird"
             }
@@ -161,8 +161,8 @@ class ListScrollPositionTest {
             assert(graph.contains(paar)) { "CollectionGraph übergibt `$paar` nicht" }
         }
 
-        for (name in listOf("financeListState", "partsListState")) {
-            assert(nav.contains("val $name")) { "$name wird nicht oberhalb des NavHost angelegt" }
+        for (name in listOf("finanzen", "teileliste")) {
+            assert(nav.contains("$name = androidx.compose.foundation.lazy.rememberLazyListState()")) { "$name wird nicht oberhalb des NavHost angelegt" }
         }
         val tools = code(read("nav/ToolsGraph.kt"))
         for (paar in listOf("listState = financeListState", "listState = partsListState")) {

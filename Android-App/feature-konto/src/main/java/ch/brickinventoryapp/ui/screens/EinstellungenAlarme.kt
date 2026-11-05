@@ -24,11 +24,9 @@ import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.ImageLoader
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
-import kotlinx.coroutines.launch
 
 /**
  * Alle Preisalarme an einem Ort — ändern und löschen wie im Web. Der letzte Preis
@@ -234,19 +232,7 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
  * es zu“ — wer sie später erteilt, bekommt die Meldungen ohne weiteres Zutun.
  */
 @Composable
-internal fun PreisalarmCard(vm: AppViewModel) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    // Siehe AcquisitionManagementScreen: LocalResources statt Context, weil
-    // Lint LocalContextGetResourceValueCall als ERROR meldet und der
-    // Platzhalter erst aus der Ausnahme entsteht.
-    val resn = androidx.compose.ui.platform.LocalResources.current
-    val bereich = rememberCoroutineScope()
-    // Direkt aus den Einstellungen, nicht ueber AppUiState: eine
-    // Geraete-Einstellung, genau wie die drei Netzerlaubnisse in
-    // MonitoringSections. Ein weiteres Feld im gemeinsamen Zustand waere nur
-    // eine zweite Fassung derselben Wahrheit.
-    val an by vm.prefs.alarmMeldungenAn.collectAsStateWithLifecycle(initialValue = false)
-
+internal fun PreisalarmCard(an: Boolean, onUmschalten: (Boolean) -> Unit) {
     val frage = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
     ) { /* Antwort egal — Begruendung im Kommentar ueber dieser Funktion. */ }
@@ -275,22 +261,7 @@ internal fun PreisalarmCard(vm: AppViewModel) {
                     if (neu && android.os.Build.VERSION.SDK_INT >= 33) {
                         frage.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                     }
-                    bereich.launch {
-                        vm.prefs.setzeAlarmMeldungen(neu)
-                        // Nicht auf dem Hauptthread: WorkManager liest beim ersten
-                        // Zugriff von der Platte, und das brachte die App zum Absturz.
-                        // Ein Fehler kommt zurück, damit „an“ ohne Wirkung auffällt.
-                        val fehler = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            ch.brickinventoryapp.alarm.PreisalarmWorker.einplanen(context, neu)
-                        }
-                        if (fehler != null) {
-                            // Klasse und Meldung: Erst der Klassenname sagt, ob etwas fehlt oder
-                            // etwas schiefging.
-                            vm.showSnackbar(resn.getString(
-                                R.string.alert_schedule_failed,
-                                "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
-                        }
-                    }
+                    onUmschalten(neu)
                 },
             )
         }

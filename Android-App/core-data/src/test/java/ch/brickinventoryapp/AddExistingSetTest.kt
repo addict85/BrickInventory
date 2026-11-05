@@ -80,7 +80,7 @@ class AddExistingSetTest {
         assert(nav.contains("gallerySearchFoundConsumed()")) {
             "der Auslöser wird nicht zurückgesetzt"
         }
-        assert(nav.contains("Screen.SetDetail.createRoute")) {
+        assert(nav.contains("Screen.SetDetail(")) {
             "es wird nicht zur Detailansicht navigiert"
         }
     }

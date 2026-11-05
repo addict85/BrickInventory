@@ -220,7 +220,7 @@ class OberflaechenRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Gallery.route) { composable(Screen.Gallery.route) { } }
+                NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { } }
             }
         }
         val teile = ctx.getString(R.string.nav_parts)
@@ -246,8 +246,8 @@ class OberflaechenRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Finance.route) {
-                    composable(Screen.Finance.route) {
+                NavHost(nav, startDestination = Screen.Finance) {
+                    composable<Screen.Finance> {
                         androidx.compose.foundation.lazy.LazyColumn(Modifier.testTag("liste")) {
                             items(80) { i -> Text("Zeile $i", Modifier.padding(16.dp)) }
                         }
@@ -282,9 +282,9 @@ class OberflaechenRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Gallery.route) {
-                    composable(Screen.Gallery.route) { }
-                    composable(Screen.Mehr.route) { MehrBildschirm(nav, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
+                NavHost(nav, startDestination = Screen.Gallery) {
+                    composable<Screen.Gallery> { }
+                    composable<Screen.Mehr> { MehrBildschirm(nav::oeffneVonMehr, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
                 }
             }
         }
@@ -445,11 +445,11 @@ class OberflaechenRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Gallery.route) {
-                    composable(Screen.Gallery.route) { }
-                    composable(Screen.Mehr.route) { MehrBildschirm(nav, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
-                    composable(Screen.Comparison.route) { Text("Vergleichsseite") }
-                    composable(Screen.PartsList.route) { Text("Baulistenseite") }
+                NavHost(nav, startDestination = Screen.Gallery) {
+                    composable<Screen.Gallery> { }
+                    composable<Screen.Mehr> { MehrBildschirm(nav::oeffneVonMehr, isAdmin = false, updateVerfuegbar = false, onAbmelden = {}) }
+                    composable<Screen.Comparison> { Text("Vergleichsseite") }
+                    composable<Screen.PartsList> { Text("Baulistenseite") }
                 }
             }
         }

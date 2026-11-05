@@ -51,13 +51,13 @@ import ch.brickinventoryapp.ui.theme.mittigBis
 /**
  * Das Ziel „Mehr“ der unteren Leiste: alle Seiten, die kein Bestandsreiter sind, in
  * Gruppen auf EINER Seite. Alle Symbole umrandet, wie Material es für Listen vorsieht:
- * Gefüllte neben umrandeten lasen sich wie ein Unterschied, den es nicht gibt. Vorher verteilten sie sich auf Schublade und Kontomenü —
- * mit Leiste und Umschalter vier Navigationsebenen. Jede Route steht ausgeschrieben
- * da, weil ErreichbareRoutenTest nach `navigate(Screen.X.route)` sucht.
+ * Gefüllte neben umrandeten lasen sich wie ein Unterschied, den es nicht gibt. Der
+ * Bildschirm nennt nur das Ziel; wie dorthin navigiert wird, entscheidet der Graph
+ * ([oeffneVonMehr]).
  */
 @Composable
 fun MehrBildschirm(
-    navController: NavController,
+    onZiel: (Screen) -> Unit,
     isAdmin: Boolean,
     updateVerfuegbar: Boolean,
     onAbmelden: () -> Unit,
@@ -81,37 +81,29 @@ fun MehrBildschirm(
             0 -> {
                 MehrGruppe(R.string.nav_group_prices, trenner)
                 // Gutscheine zuerst: Die braucht man im Laden.
-                MehrEintrag(R.string.vouchers_title, Icons.Outlined.Redeem) { navController.navigate(Screen.Gutscheine.route) }
-                MehrEintrag(R.string.alerts_group, Icons.Outlined.NotificationsActive) { navController.navigate(Screen.Preisalarme.route) }
-                MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { navController.navigate(Screen.Comparison.route) }
+                MehrEintrag(R.string.vouchers_title, Icons.Outlined.Redeem) { onZiel(Screen.Gutscheine) }
+                MehrEintrag(R.string.alerts_group, Icons.Outlined.NotificationsActive) { onZiel(Screen.Preisalarme) }
+                MehrEintrag(R.string.nav_comparison, Icons.AutoMirrored.Outlined.CompareArrows) { onZiel(Screen.Comparison) }
             }
             1 -> {
                 MehrGruppe(R.string.nav_group_tools, trenner)
-                MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { navController.navigate(Screen.PartsList.route) }
-                MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { navController.navigate(Screen.CsvImport.route) }
+                MehrEintrag(R.string.nav_partslist, Icons.AutoMirrored.Outlined.ListAlt) { onZiel(Screen.PartsList) }
+                MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(Screen.CsvImport) }
             }
             2 -> {
                 MehrGruppe(R.string.nav_group_manage, trenner)
-                MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { navController.navigate(Screen.Lagerorte.route) }
-                MehrEintrag(R.string.household_title, Icons.Outlined.Group) { navController.navigate(Screen.Haushalt.route) }
+                MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(Screen.Lagerorte) }
+                MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(Screen.Haushalt) }
             }
             3 -> {
                 MehrGruppe(R.string.nav_group_account, trenner)
-                MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { navController.navigate(Screen.Konto.route) }
+                MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { onZiel(Screen.Konto) }
                 // Der Punkt allein sagte nicht, wofür er steht: Darunter steht es in Worten.
-                MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) {
-                    navController.navigate(Screen.Settings.route) { launchSingleTop = true }
-                }
+                MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) { onZiel(Screen.Settings) }
             }
             else -> {
                 MehrGruppe(R.string.nav_group_server, trenner)
-                MehrEintrag(R.string.main_menu_monitoring, Icons.Outlined.Assessment) {
-                    navController.navigate(Screen.Monitoring.route) {
-                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = false
-                    }
-                }
+                MehrEintrag(R.string.main_menu_monitoring, Icons.Outlined.Assessment) { onZiel(Screen.Monitoring) }
             }
         }
     }
@@ -135,6 +127,21 @@ fun MehrBildschirm(
             Column(Modifier.weight(1f)) { for (i in 2 until gruppen) Gruppe(i, trenner = i > 2); Abmelden() }
         } else Column(rahmen) { for (i in 0 until gruppen) Gruppe(i, trenner = i > 0); Abmelden() }
     }
+}
+
+/**
+ * Öffnet ein Ziel der Seite „Mehr“. Die Einstellungen stapeln sich nicht doppelt; das
+ * Monitoring steht wie ein Reiter direkt über dem Start, damit „Zurück“ nicht durch
+ * die Verwalterseiten führt.
+ */
+internal fun NavController.oeffneVonMehr(ziel: Screen) = when (ziel) {
+    Screen.Settings -> navigate(ziel) { launchSingleTop = true }
+    Screen.Monitoring -> navigate(ziel) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = false
+    }
+    else -> navigate(ziel)
 }
 
 /** Ab dieser Fensterbreite stehen die Gruppen in zwei Spalten. */

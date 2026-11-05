@@ -455,18 +455,9 @@ class VorschauAblageTest {
     }
 
     @Test
-    fun `die drei Netze lassen sich einstellen`() {
-        // Der Abschnitt nimmt Zustand und Ereignisse, verdrahtet wird in MonitoringScreen.
+    fun `der Hinweis zum gemessenen WLAN steht bei den Netzen`() {
+        // Lesen und Schreiben der Netze prüft GeraeteEinstellungenViewModelTest.
         val ui = quelle("ui/screens/MonitoringSections.kt") + quelle("ui/screens/MonitoringScreen.kt")
-        for (fluss in listOf("vorwaermenWlan", "vorwaermenMobil", "vorwaermenRoaming")) {
-            assert(ui.contains("vm.prefs.$fluss")) {
-                "Die Einstellung $fluss wird nicht mehr angezeigt"
-            }
-        }
-        assert(ui.contains("vm.prefs.saveVorwaermenNetz(")) {
-            "Die Einstellung laesst sich nicht mehr aendern — dann ist sie eine " +
-                "Anzeige und keine Option"
-        }
         // Der Hinweis zum gemessenen WLAN steht dabei. Ohne ihn sieht die Lage
         // „ich bin doch im WLAN, es waermt aber nicht vor" wie ein Fehler aus.
         assert(ui.contains("R.string.monitoring_vorwaermen_hinweis")) {

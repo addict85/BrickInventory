@@ -1,17 +1,12 @@
 package ch.brickinventoryapp
 
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import ch.brickinventoryapp.nav.einzelstueckArgumente
-import ch.brickinventoryapp.nav.farbArgument
-import ch.brickinventoryapp.nav.merkpostenArgumente
-import ch.brickinventoryapp.nav.pdfArgumente
-import ch.brickinventoryapp.nav.setArgumente
-import ch.brickinventoryapp.nav.textArgument
+import androidx.navigation.toRoute
+import ch.brickinventoryapp.data.model.KEINE_FARBE
 import ch.brickinventoryapp.ui.Screen
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -21,15 +16,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Hin- und Rückweg jeder Route mit Werten im Pfad durch einen echten NavHost: Was
- * createRoute einpackt, kommt im Ziel genau so an. Die Ziele benutzen dieselben
- * Argumentlisten und Leser wie die Graphen (nav/RoutenArgumente.kt).
+ * Hin- und Rückweg jeder Route mit Werten durch einen echten NavHost: Was ein Ziel
+ * mitbringt, liest `toRoute()` im Ziel genau so zurück — auch Sonderzeichen,
+ * Prozentzeichen in PDF-Adressen und die Vorgabe „keine Farbe“.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   route-doppelt-dekodiert   textArgument dekodiert wieder mit URLDecoder
- *                             → rot „Titel mit Sonderzeichen kommen unverändert an“
- *   route-leerzeichen-plus    routenSegment lässt Leerzeichen als „+“ stehen
- *                             → rot „Titel mit Sonderzeichen kommen unverändert an“
+ * Gegenprobe (gegenproben/route-feld-transient.patch, nur in der CI messbar):
+ *   ManualItemDetail.title als @Transient → rot „Titel mit Sonderzeichen kommen unverändert an“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -39,49 +31,33 @@ class RoutenRundwegTest {
     val compose = createComposeRule()
 
     /** Was das Ziel beim Aufbau gelesen hat, je Eintrag im Rückstapel. */
-    private val gelesen = mutableMapOf<String, List<Any>>()
+    private val gelesen = mutableMapOf<String, Screen>()
 
     private lateinit var nav: NavHostController
-
-    private fun ziel(entry: NavBackStackEntry, werte: List<Any>) {
-        gelesen[entry.id] = werte
-    }
 
     private fun aufbauen() {
         compose.setContent {
             nav = rememberNavController()
-            NavHost(nav, startDestination = "start") {
-                composable("start") {}
-                composable(Screen.SetDetail.route, setArgumente) {
-                    ziel(it, listOf(it.textArgument("setNumber")))
-                }
-                composable(Screen.CatalogDetail.route, setArgumente) {
-                    ziel(it, listOf(it.textArgument("setNumber")))
-                }
-                composable(Screen.MerkpostenDetail.route, merkpostenArgumente) {
-                    ziel(it, listOf(it.textArgument("setNumber"), it.textArgument("condition")))
-                }
-                composable(Screen.ManualItemDetail.route, einzelstueckArgumente) {
-                    ziel(it, listOf(it.textArgument("type"), it.textArgument("id"), it.farbArgument(), it.textArgument("title")))
-                }
-                composable(Screen.AcquisitionManagement.route, einzelstueckArgumente) {
-                    ziel(it, listOf(it.textArgument("type"), it.textArgument("id"), it.farbArgument(), it.textArgument("title")))
-                }
-                composable(Screen.PdfViewer.route, pdfArgumente) {
-                    ziel(it, listOf(it.textArgument("url"), it.textArgument("title")))
-                }
+            NavHost(nav, startDestination = Screen.Setup) {
+                composable<Screen.Setup> {}
+                composable<Screen.SetDetail> { gelesen[it.id] = it.toRoute<Screen.SetDetail>() }
+                composable<Screen.CatalogDetail> { gelesen[it.id] = it.toRoute<Screen.CatalogDetail>() }
+                composable<Screen.MerkpostenDetail> { gelesen[it.id] = it.toRoute<Screen.MerkpostenDetail>() }
+                composable<Screen.ManualItemDetail> { gelesen[it.id] = it.toRoute<Screen.ManualItemDetail>() }
+                composable<Screen.AcquisitionManagement> { gelesen[it.id] = it.toRoute<Screen.AcquisitionManagement>() }
+                composable<Screen.PdfViewer> { gelesen[it.id] = it.toRoute<Screen.PdfViewer>() }
             }
         }
         compose.waitForIdle()
     }
 
-    /** Navigiert zur Route und gibt zurück, was das Ziel gelesen hat. */
-    private fun hin(route: String): List<Any> {
-        compose.runOnIdle { nav.navigate(route) }
+    /** Navigiert zum Ziel und gibt zurück, was das Ziel gelesen hat. */
+    private fun hin(ziel: Screen): Screen {
+        compose.runOnIdle { nav.navigate(ziel) }
         compose.waitForIdle()
         return compose.runOnIdle {
             val oben = nav.currentBackStackEntry!!
-            checkNotNull(gelesen[oben.id]) { "Ziel für $route nicht aufgebaut (${oben.destination.route})" }
+            checkNotNull(gelesen[oben.id]) { "Ziel für $ziel nicht aufgebaut (${oben.destination.route})" }
         }
     }
 
@@ -99,13 +75,19 @@ class RoutenRundwegTest {
     fun `Titel mit Sonderzeichen kommen unverändert an`() {
         aufbauen()
         for (t in titel) {
-            assertEquals("Teil „$t“", listOf("part", "3001 b", 4, t),
-                hin(Screen.ManualItemDetail.createRoute("part", "3001 b", 4, t)))
-            assertEquals("Kauf „$t“", listOf("fig", "sw0001+", 0, t),
-                hin(Screen.AcquisitionManagement.createRoute("fig", "sw0001+", 0, t)))
-            assertEquals("PDF „$t“", listOf("https://srv/a.pdf", t),
-                hin(Screen.PdfViewer.createRoute("https://srv/a.pdf", t)))
+            val teil = Screen.ManualItemDetail("part", "3001 b", 4, t)
+            assertEquals("Teil „$t“", teil, hin(teil))
+            val kauf = Screen.AcquisitionManagement("fig", "sw0001+", 0, t)
+            assertEquals("Kauf „$t“", kauf, hin(kauf))
+            val pdf = Screen.PdfViewer("https://srv/a.pdf", t)
+            assertEquals("PDF „$t“", pdf, hin(pdf))
         }
+    }
+
+    @Test
+    fun `ohne Farbe kommt keine Farbe an, nicht Schwarz`() {
+        aufbauen()
+        assertEquals(KEINE_FARBE, (hin(Screen.ManualItemDetail("fig", "sw0001", title = "Luke")) as Screen.ManualItemDetail).colorId)
     }
 
     @Test
@@ -116,7 +98,7 @@ class RoutenRundwegTest {
             "https://cdn.example/6/1/123456.pdf?ticket=a%2Fb+c&x=%25",
             "https://srv/Bauanleitung Teil 2.pdf",
         )) {
-            assertEquals(url, hin(Screen.PdfViewer.createRoute(url, "Anleitung"))[0])
+            assertEquals(url, (hin(Screen.PdfViewer(url, "Anleitung")) as Screen.PdfViewer).url)
         }
     }
 
@@ -124,9 +106,9 @@ class RoutenRundwegTest {
     fun `Setnummern und Merkposten kommen unverändert an`() {
         aufbauen()
         for (sn in listOf("75192-1", "col23-1", "a b/c%", "10 % +1")) {
-            assertEquals(listOf(sn), hin(Screen.SetDetail.createRoute(sn)))
-            assertEquals(listOf(sn), hin(Screen.CatalogDetail.createRoute(sn)))
-            assertEquals(listOf(sn, "U"), hin(Screen.MerkpostenDetail.createRoute(sn, "U")))
+            assertEquals(Screen.SetDetail(sn), hin(Screen.SetDetail(sn)))
+            assertEquals(Screen.CatalogDetail(sn), hin(Screen.CatalogDetail(sn)))
+            assertEquals(Screen.MerkpostenDetail(sn, "U"), hin(Screen.MerkpostenDetail(sn, "U")))
         }
     }
 }

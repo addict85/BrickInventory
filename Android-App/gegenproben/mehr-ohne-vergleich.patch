@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Vergleich und Bauliste markieren Mehr
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index e1f0ac6..4f41312 100644
+index 0d58160..fc87903 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -300,7 +300,7 @@ private const val REITER_SCHRIFT_SCHRITT = 0.5f
- private val SAMMLUNG = setOf(Screen.Gallery.route, Screen.Parts.route, Screen.Minifigs.route)
+@@ -305,7 +305,7 @@ private val SAMMLUNG: Set<KClass<out Screen>> = SAMMLUNGS_ZIELE.map { it::class
  
  /** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
--private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Comparison.route, Screen.Settings.route,
-+private val MEHR = setOf(Screen.Mehr.route, Screen.PartsList.route, Screen.Settings.route,
-     Screen.Monitoring.route)
+ private val MEHR: Set<KClass<out Screen>> = setOf(Screen.Mehr::class, Screen.PartsList::class,
+-    Screen.Comparison::class, Screen.Settings::class, Screen.Monitoring::class)
++    Screen.Settings::class, Screen.Monitoring::class)
  
- /** Die Routen, bei denen ein Ziel der Leiste als gewaehlt gilt. */
+ /** Die Ziele, bei denen ein Ziel der Leiste als gewählt gilt. */
+ private fun zieleVon(screen: Screen): Set<KClass<out Screen>> = when (screen) {

@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: App-Leiste weicht beim Rollen
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index c72d9aa..ddb8c6f 100644
+index 0d58160..bf50858 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -140,7 +140,6 @@ fun MainScaffold(
+@@ -160,7 +160,6 @@ fun MainScaffold(
                          actionIconContentColor = akzent.aufLeiste,
                          scrolledContainerColor = akzent.leiste,
                      ),
 -                    scrollBehavior = einklappen,
                  )
-                 if (art == Navigationsart.LEISTE_UNTEN && currentDest?.route?.let { it in SAMMLUNG } == true) {
-                     SammlungUmschalter(currentDest.route, onWahl = { ziel ->
+                 if (art == Navigationsart.LEISTE_UNTEN && currentDest?.istEinesVon(SAMMLUNG) == true) {
+                     SammlungUmschalter(sammlungsZiel(currentDest), onWahl = { ziel ->

@@ -1,79 +1,75 @@
 package ch.brickinventoryapp.ui
 
-sealed class Screen(val route: String) {
-    object Setup    : Screen("setup")
-    object Login    : Screen("login")
-    object Gallery  : Screen("gallery")
-    object Catalog  : Screen("catalog")
-    object Wanted : Screen("wanted")
-    /**
-     * Zustand IM PFAD: Dasselbe Set kann zweimal auf der Liste stehen (neu und
-     * gebraucht), und „zeig mir den Merkposten auf 75192" waere mehrdeutig.
-     */
-    object MerkpostenDetail : Screen("merkposten_detail/{setNumber}/{condition}") {
-        fun createRoute(setNumber: String, condition: String) =
-            "merkposten_detail/${routenSegment(setNumber)}/${routenSegment(condition)}"
-    }
-    object CatalogDetail : Screen("catalog_detail/{setNumber}") {
-        fun createRoute(setNumber: String) = "catalog_detail/${routenSegment(setNumber)}"
-    }
-    object SetDetail : Screen("set_detail/{setNumber}") {
-        fun createRoute(setNumber: String) = "set_detail/${routenSegment(setNumber)}"
-    }
-    object Parts    : Screen("parts")
-    object Finance  : Screen("finance")
-    object Minifigs : Screen("minifigs")
-    object PartsList : Screen("partslist")
-    object Settings : Screen("settings")
-    /** Alles, was kein Bestandsreiter ist — das fünfte Ziel der unteren Leiste. */
-    object Mehr : Screen("mehr")
+import ch.brickinventoryapp.data.model.KEINE_FARBE
+import kotlinx.serialization.Serializable
 
-    // ── Die Unterseiten der Einstellungen ──
-    //
-    // Jede Rubrik hat eine eigene Route, keine Route mit Parameter
-    // („einstellungen/{bereich}“): ErreichbareRoutenTest sucht nach einem
-    // ausgeschriebenen `navigate(Screen.X.route)`, und ein Bildschirm, zu dem nur ein
-    // zusammengesetzter String führt, wäre für die Prüfung unerreichbar.
-    object Gutscheine : Screen("einstellungen_gutscheine")
-    object Preisalarme : Screen("einstellungen_preisalarme")
-    object Lagerorte : Screen("einstellungen_lagerorte")
-    object Haushalt : Screen("einstellungen_haushalt")
-    object CsvImport : Screen("einstellungen_csv")
-    object Konto : Screen("einstellungen_konto")
-    object BarcodeScanner : Screen("barcode_scanner")
-    object Comparison : Screen("comparison")
-    object Monitoring : Screen("monitoring")
-    // type: "set" | "part" | "fig"
-    object AcquisitionManagement : Screen("acq_mgmt/{type}/{id}/{colorId}/{title}") {
-        fun createRoute(type: String, id: String, colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE, title: String) =
-            "acq_mgmt/${routenSegment(type)}/${routenSegment(id)}/$colorId/${routenSegment(title)}"
-    }
-    // Detailansicht eines manuell erfassten Teils / einer Minifigur — ein
-    // ganzer Screen wie beim Set, nicht mehr ein Dialog. type: "part" | "fig"
-    object ManualItemDetail : Screen("manual_detail/{type}/{id}/{colorId}/{title}") {
-        fun createRoute(type: String, id: String, colorId: Int = ch.brickinventoryapp.data.model.KEINE_FARBE, title: String) =
-            "manual_detail/${routenSegment(type)}/${routenSegment(id)}/$colorId/${routenSegment(title)}"
-    }
-    object PdfViewer : Screen("pdf_viewer/{url}/{title}") {
-        fun createRoute(url: String, title: String) =
-            "pdf_viewer/${routenSegment(url)}/${routenSegment(title)}"
-    }
+/**
+ * Die Ziele der App als typsichere Routen: Navigation kodiert die Werte selbst und
+ * liest sie mit `toRoute()` zurück, darum gibt es weder Routentexte noch eine
+ * eigene Kodierung. Werte, die ein Ziel braucht, stehen als Feld an seiner Klasse.
+ */
+@Serializable
+sealed interface Screen {
+    @Serializable data object Setup : Screen
+    @Serializable data object Login : Screen
+    @Serializable data object Gallery : Screen
+    @Serializable data object Catalog : Screen
+    @Serializable data object Wanted : Screen
+
+    /** Dasselbe Set kann neu und gebraucht auf der Merkliste stehen; erst der Zustand macht es eindeutig. */
+    @Serializable data class MerkpostenDetail(val setNumber: String, val condition: String) : Screen
+    @Serializable data class CatalogDetail(val setNumber: String) : Screen
+    @Serializable data class SetDetail(val setNumber: String) : Screen
+    @Serializable data object Parts : Screen
+    @Serializable data object Finance : Screen
+    @Serializable data object Minifigs : Screen
+    @Serializable data object PartsList : Screen
+    @Serializable data object Settings : Screen
+
+    /** Alles, was kein Bestandsreiter ist — das fünfte Ziel der unteren Leiste. */
+    @Serializable data object Mehr : Screen
+
+    // Die Unterseiten der Einstellungen
+    @Serializable data object Gutscheine : Screen
+    @Serializable data object Preisalarme : Screen
+    @Serializable data object Lagerorte : Screen
+    @Serializable data object Haushalt : Screen
+    @Serializable data object CsvImport : Screen
+    @Serializable data object Konto : Screen
+    @Serializable data object BarcodeScanner : Screen
+    @Serializable data object Comparison : Screen
+    @Serializable data object Monitoring : Screen
+
+    /** Käufe eines Sets, Teils oder einer Figur; [type] ist "set", "part" oder "fig". */
+    @Serializable data class AcquisitionManagement(
+        val type: String,
+        val id: String,
+        val colorId: Int = KEINE_FARBE,
+        val title: String,
+    ) : Screen
+
+    /** Detail eines manuell erfassten Teils oder einer Figur; [type] ist "part" oder "fig". */
+    @Serializable data class ManualItemDetail(
+        val type: String,
+        val id: String,
+        val colorId: Int = KEINE_FARBE,
+        val title: String,
+    ) : Screen
+
+    @Serializable data class PdfViewer(val url: String, val title: String) : Screen
 }
 
 /**
- * Ein Wert als genau ein Pfadsegment. Navigation dekodiert Pfadargumente selbst mit
- * Uri.decode, das „+“ stehen lässt; darum Leerzeichen als %20 statt „+“, und das Ziel
- * liest das Argument unverändert. URLEncoder statt android.net.Uri, damit JVM-Tests die
- * Routen ohne Robolectric bauen können.
+ * Schlüssel der gemerkten Rollposition eines Reiters. Die Reiter-Ziele und ihre
+ * Listen benutzen denselben Text, damit „Reiter angetippt, oben anfangen“ genau
+ * die Position verwirft, die das Ziel gemerkt hat.
  */
-internal fun routenSegment(wert: String): String =
-    java.net.URLEncoder.encode(wert, "UTF-8").replace("+", "%20")
-
-/**
- * Welche Unterseite der Einstellungen gemeint ist.
- *
- * Der Bildschirm nennt den BEREICH, der Graph kennt die Route — er ist der
- * einzige mit einem NavController. Ein einzelner Rueckruf mit diesem Wert
- * statt sechs einzelner Rueckrufe haelt die Signatur von SettingsScreen
- * schmal (hoechstens sechs Parameter, ScreenViewModelWiringTest).
- */
+val Screen.rollSchluessel: String
+    get() = when (this) {
+        Screen.Gallery -> "gallery"
+        Screen.Parts -> "parts"
+        Screen.Minifigs -> "minifigs"
+        Screen.Finance -> "finance"
+        Screen.Settings -> "settings"
+        else -> toString()
+    }

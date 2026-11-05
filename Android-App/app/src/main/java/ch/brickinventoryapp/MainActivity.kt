@@ -22,7 +22,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.LocalAppFassung
 import ch.brickinventoryapp.util.AppFassung
-import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import android.content.Intent
 import androidx.lifecycle.lifecycleScope
@@ -34,15 +33,6 @@ import javax.inject.Inject
 class MainActivity : NurLauncherStart() {
     private val vm: AppViewModel by viewModels()
 
-    // Hier gehalten und nicht ueber hiltViewModel() geholt: Katalogliste und
-    // Katalogdetail sind zwei NavHost-Ziele, und an den Backstack-Eintrag
-    // gebunden waeren es zwei Instanzen — das Detail setzt „besitze ich“,
-    // und die Liste bekaeme es nie zu sehen.
-    private val katalogVm: CatalogViewModel by viewModels()
-
-    // Ebenso: Eine Guthabenabfrage über alle Karten soll weiterlaufen, wenn
-    // man die Gutschein-Seite verlässt.
-    private val gutscheinVm: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel by viewModels()
     // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.
     private val startKontoVm: ch.brickinventoryapp.ui.viewmodel.KontoViewModel by viewModels()
 
@@ -135,7 +125,7 @@ class MainActivity : NurLauncherStart() {
                 ) { ch.brickinventoryapp.ui.components.TastaturOhneLernen {
                     // App-weit (sec8 H4): Gutschein-Nummer und PIN, Passwörter, Codes und
                     // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
-                    BrickInventoryManagerApp(vm, katalogVm, gutscheinVm, imageLoader)
+                    BrickInventoryManagerApp(vm, imageLoader)
                     // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen (sec10 H3).
                     ch.brickinventoryapp.ui.components.OhneSperreWarnung(schrittschutz.ohneSperre)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.

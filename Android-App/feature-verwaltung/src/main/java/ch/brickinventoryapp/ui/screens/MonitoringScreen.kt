@@ -83,18 +83,18 @@ fun MonitoringScreen(vm: AppViewModel) {
     val hintergrund by mon.hintergrund.collectAsStateWithLifecycle()
 
     // Der Cache-Abschnitt bekommt Zustand und Ereignisse; verdrahtet wird hier.
-    // Die Netzerlaubnisse sind Geräte-Einstellungen und kommen direkt aus ihnen.
-    val netzWlan    by vm.prefs.vorwaermenWlan.collectAsStateWithLifecycle(initialValue = true)
-    val netzMobil   by vm.prefs.vorwaermenMobil.collectAsStateWithLifecycle(initialValue = false)
-    val netzRoaming by vm.prefs.vorwaermenRoaming.collectAsStateWithLifecycle(initialValue = false)
+    // Die Netzerlaubnisse sind Geräte-Einstellungen mit eigenem ViewModel.
+    val geraet: ch.brickinventoryapp.ui.viewmodel.GeraeteEinstellungenViewModel =
+        androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
+    val netze by geraet.vorwaermen.collectAsStateWithLifecycle()
     val appState by vm.state.collectAsStateWithLifecycle()
     // remember, nicht rememberSaveable: eine Messung der Platte (BildschirmZustandTest, „gemessen“).
     var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
-    val cacheEreignisse = remember(vm, mon) {
+    val cacheEreignisse = remember(vm, mon, geraet) {
         CacheEreignisse(
             vorgabeZustand = mon::vorgabeZustandWaehlen,
             ablageLeeren = { vm.vorschauAblageLeeren(); ablageBytes = vm.vorschauAblageBytes(); mon.ablageGeleert() },
-            netz = { schluessel, an -> scope.launch { vm.prefs.saveVorwaermenNetz(schluessel, an) } },
+            netz = geraet::vorwaermen,
             design = mon::designWaehlen,
             cacheDauer = mon::cacheDauerSpeichern,
             cacheLeeren = mon::cacheLeeren,
@@ -133,7 +133,7 @@ fun MonitoringScreen(vm: AppViewModel) {
 
             // Cache stats + API limits
             item {
-                CacheAndLimitsSection(monState, netzWlan, netzMobil, netzRoaming, appState.appTheme,
+                CacheAndLimitsSection(monState, netze, appState.appTheme,
                     ablageBytes, cacheEreignisse)
             }
 

@@ -115,7 +115,7 @@ class TeilFarbeAendernTest {
         assertTrue(
             "onFarbeGeaendert navigiert nicht auf ManualItemDetail mit der neuen Farbe.",
             Regex(
-                """onFarbeGeaendert\s*=\s*\{[^}]*ManualItemDetail\.createRoute""",
+                """onFarbeGeaendert\s*=\s*\{[^}]*navigate\(ziel\.copy\(colorId\s*=\s*neueFarbe\)\)""",
                 RegexOption.DOT_MATCHES_ALL
             ).containsMatchIn(graph)
         )

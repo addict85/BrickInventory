@@ -16,7 +16,6 @@ import androidx.navigation.compose.*
 import ch.brickinventoryapp.nav.authGraph
 import ch.brickinventoryapp.nav.collectionGraph
 import ch.brickinventoryapp.nav.catalogGraph
-import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.nav.toolsGraph
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
@@ -42,10 +41,6 @@ import ch.brickinventoryapp.util.NetworkPolicy
 @Composable
 fun BrickInventoryManagerApp(
     vm: AppViewModel,
-    // Der Katalog haelt seinen Zustand selbst; die Activity haelt beide, damit
-    // Liste und Detail dieselbe Instanz sehen (siehe CatalogViewModel).
-    katalog: CatalogViewModel,
-    gutscheine: ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel,
     imageLoader: coil3.ImageLoader,
 ) {
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
@@ -56,19 +51,17 @@ fun BrickInventoryManagerApp(
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    // Scroll-Zustände oberhalb des NavHost: Das Ziel unter einer Detailansicht wird
-    // verworfen, ein Zustand darin wäre bei der Rückkehr zurückgesetzt. Der Katalog
-    // merkt sich seine Position im ViewModel (CatalogScreen.kt), weil seine Plätze
-    // beim Zurückkommen noch nicht geladen sind.
-    val financeListState   = androidx.compose.foundation.lazy.rememberLazyListState()
-    val galleryGridState   = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-    val partsGridState     = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-    val minifigsGridState  = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
-    val partsListState     = androidx.compose.foundation.lazy.rememberLazyListState()
-    // Die Einstellungen sind eine gewoehnliche scrollende Spalte, keine Liste —
-    // seit die Preisalarm-Rubrik in die Set-Detailansicht fuehrt, braucht auch
-    // sie ihren Zustand hier oben.
-    val settingsScrollState = androidx.compose.foundation.rememberScrollState()
+    // Rollzustände oberhalb des NavHost (siehe Rollzustaende). Der Katalog merkt sich
+    // seine Position im ViewModel, weil seine Plätze beim Zurückkommen noch nicht
+    // geladen sind.
+    val rollen = ch.brickinventoryapp.nav.Rollzustaende(
+        galerie = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
+        teile = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
+        minifiguren = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
+        finanzen = androidx.compose.foundation.lazy.rememberLazyListState(),
+        teileliste = androidx.compose.foundation.lazy.rememberLazyListState(),
+        einstellungen = androidx.compose.foundation.rememberScrollState(),
+    )
 
     // Snackbar aus eigenem Flow — Meldungen rekomponieren so nicht mehr den
     // gesamten Tree über AppUiState.
@@ -111,33 +104,8 @@ fun BrickInventoryManagerApp(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val startDest = when (startZiel(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung)) {
-        StartZiel.EINRICHTUNG -> Screen.Setup.route
-        StartZiel.ANMELDUNG   -> Screen.Login.route
-        StartZiel.SAMMLUNG    -> Screen.Gallery.route
-    }
-
-    // Nav-Labels hier auflösen (direkt im @Composable-Scope, nicht im remember-Lambda)
-    val labelCollection = stringResource(R.string.nav_collection)
-    val labelCatalog    = stringResource(R.string.nav_catalog)
-    val labelFinance    = stringResource(R.string.nav_finance)
-    val labelWanted     = stringResource(R.string.nav_wanted)
-    val labelMore       = stringResource(R.string.nav_more)
-
-    // Vier Bestandsziele und „Mehr“ — Material sieht höchstens fünf vor. Teileliste,
-    // Vergleich, Gutscheine, Verwaltung und Konto stehen gruppiert auf „Mehr“
-    // (MehrBildschirm), Teile und Minifiguren im Umschalter der Sammlung. Symbole ohne
-    // Beschreibung: Die Beschriftung steht daneben, sonst liest TalkBack doppelt.
-    val bottomNavItems = remember(labelCollection, labelCatalog, labelFinance, labelWanted, labelMore) {
-        buildList<Triple<Screen, @Composable () -> Unit, String>> {
-            add(Triple(Screen.Gallery,   { Icon(Icons.Default.ViewInAr, null) },               labelCollection))
-            add(Triple(Screen.Finance,   { Icon(Icons.AutoMirrored.Filled.ShowChart, null) },     labelFinance))
-            // Merkliste vor dem Katalog, wie in der Webapp.
-            add(Triple(Screen.Wanted,    { Icon(Icons.Default.BookmarkBorder, null) },             labelWanted))
-            add(Triple(Screen.Catalog,   { Icon(Icons.AutoMirrored.Filled.MenuBook, null) },      labelCatalog))
-            add(Triple(Screen.Mehr,      { Icon(Icons.Default.MoreHoriz, null) },                 labelMore))
-        }
-    }
+    val startDest = startRoute(startZiel(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung))
+    val bottomNavItems = reiterDerLeiste()
 
     // ── Barcode-Bestätigung — über jedem Bildschirm ──
     // Der Dialog steht in ui/dialogs/BarcodeResultDialog.kt; hier nur, wann er erscheint.
@@ -162,8 +130,8 @@ fun BrickInventoryManagerApp(
     val meldungsZiel by vm.meldungsZiel.collectAsStateWithLifecycle()
     LaunchedEffect(meldungsZiel.setNummer, startDest) {
         val sn = meldungsZiel.setNummer
-        if (sn != null && startDest == Screen.Gallery.route) {
-            navController.navigate(Screen.SetDetail.createRoute(sn))
+        if (sn != null && startDest == Screen.Gallery) {
+            navController.navigate(Screen.SetDetail(sn))
             // Sofort quittieren, sonst springt die App bei der naechsten
             // Rekomposition erneut — dieselbe Regel wie bei der manuellen
             // Erfassung nach einem erfolglosen Scan.
@@ -182,17 +150,49 @@ fun BrickInventoryManagerApp(
         popEnterTransition = { fadeIn(tween(UEBERGANG_MS)) },
         popExitTransition = { fadeOut(tween(UEBERGANG_MS / 2)) + slideOutHorizontally(tween(UEBERGANG_MS)) { it / 16 } },
     ) {
-        // Die Ziele liegen in nav/*.kt. state/manDetailState werden nicht übergeben: Der
-        // NavHost-Builder läuft nur einmal, ein durchgereichter Wert bliebe die
-        // Momentaufnahme des ersten Frames. Die Ziele lesen den Zustand selbst per
-        // collectAsStateWithLifecycle().
-        authGraph(vm, navController)
-        collectionGraph(vm, navController, imageLoader, bottomNavItems, snackbarHostState,
-            galleryGridState, partsGridState, minifigsGridState)
-        catalogGraph(vm, katalog, navController, imageLoader, bottomNavItems, snackbarHostState)
-        toolsGraph(vm, gutscheine, navController, imageLoader, bottomNavItems, snackbarHostState,
-            financeListState, partsListState, settingsScrollState)
+        // Kein Zustand hinein: Der NavHost-Builder läuft nur einmal, ein durchgereichter
+        // Wert bliebe die Momentaufnahme des ersten Frames. Die Ziele lesen selbst.
+        alleZiele(ch.brickinventoryapp.nav.ZielUmgebung(navController, imageLoader, bottomNavItems,
+            snackbarHostState, rollen))
     }
+    }
+}
+
+/** Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen. */
+internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ch.brickinventoryapp.nav.ZielUmgebung) {
+    authGraph(u.navController)
+    collectionGraph(u)
+    catalogGraph(u)
+    toolsGraph(u)
+}
+
+/** Wo die App beginnt, je nachdem, ob Server und Anmeldung schon da sind. */
+internal fun startRoute(ziel: StartZiel): Screen = when (ziel) {
+    StartZiel.EINRICHTUNG -> Screen.Setup
+    StartZiel.ANMELDUNG   -> Screen.Login
+    StartZiel.SAMMLUNG    -> Screen.Gallery
+}
+
+/**
+ * Vier Bestandsziele und „Mehr“ — Material sieht höchstens fünf vor; der Rest steht
+ * gruppiert auf „Mehr“. Symbole ohne Beschreibung: Die Beschriftung steht daneben,
+ * sonst liest TalkBack doppelt. Merkliste vor dem Katalog, wie in der Webapp.
+ */
+@Composable
+internal fun reiterDerLeiste(): List<ch.brickinventoryapp.nav.Reiter> {
+    val sammlung = stringResource(R.string.nav_collection)
+    val finanzen = stringResource(R.string.nav_finance)
+    val merkliste = stringResource(R.string.nav_wanted)
+    val katalog = stringResource(R.string.nav_catalog)
+    val mehr = stringResource(R.string.nav_more)
+    return remember(sammlung, finanzen, merkliste, katalog, mehr) {
+        listOf(
+            Triple(Screen.Gallery, { Icon(Icons.Default.ViewInAr, null) }, sammlung),
+            Triple(Screen.Finance, { Icon(Icons.AutoMirrored.Filled.ShowChart, null) }, finanzen),
+            Triple(Screen.Wanted, { Icon(Icons.Default.BookmarkBorder, null) }, merkliste),
+            Triple(Screen.Catalog, { Icon(Icons.AutoMirrored.Filled.MenuBook, null) }, katalog),
+            Triple(Screen.Mehr, { Icon(Icons.Default.MoreHoriz, null) }, mehr),
+        )
     }
 }
 

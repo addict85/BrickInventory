@@ -37,6 +37,8 @@ const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenLagerorte.kt'));
+const KT_GERAET = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-zustand', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'GeraeteEinstellungenViewModel.kt'));
+const KT_PLANER = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'alarm', 'WorkManagerAlarmPlaner.kt'));
 const XML_EN    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values', 'strings.xml'));
 const XML_DE    = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ressourcen', 'src', 'main', 'res', 'values-de', 'strings.xml'));
 
@@ -324,8 +326,13 @@ test('der Abruf der App steht auf einer Stunde und ist abschaltbar', () => {
     'Ein häufig geöffneter App verschiebt den Abruf endlos');
   // Der Schalter muss den Auftrag SOFORT einplanen und abbestellen — sonst
   // wäre „eingeschaltet" eine Stunde lang eine Behauptung ohne Wirkung.
-  assert.match(KT_EINST, /PreisalarmWorker\.einplanen\(context, neu\)/,
+  // Der Weg: Schalter → GeraeteEinstellungenViewModel → AlarmPlaner → Worker.
+  assert.match(KT_EINST, /PreisalarmCard\(an, geraet::alarmMeldungen\)/,
+    'Der Schalter meldet den Wunsch nicht an das ViewModel');
+  assert.match(KT_GERAET, /fun alarmMeldungen\(an: Boolean\)[\s\S]{0,200}?planer\.einplanen\(an\)/,
     'Der Schalter plant den Auftrag nicht ein');
+  assert.match(KT_PLANER, /PreisalarmWorker\.einplanen\(context, an\)/,
+    'Der AlarmPlaner plant den Auftrag nicht ein');
   // `return@runCatching` und nicht mehr `return`: einplanen() faengt seit dem
   // 25.09. selbst, weil derselbe Aufruf am Schalter ungesichert stand und die
   // App schloss (test/alarm-einplanen-faellt-nicht.test.js). Der Rumpf liegt

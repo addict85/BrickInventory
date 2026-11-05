@@ -114,7 +114,7 @@ class FeinschliffRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Finance.route) { composable(Screen.Finance.route) { } }
+                NavHost(nav, startDestination = Screen.Finance) { composable<Screen.Finance> { } }
             }
         }
         ziele.forEach { (_, text) -> ganzEineZeile(text, "Reiterleiste") }
@@ -148,7 +148,7 @@ class FeinschliffRegelnTest {
                 csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                 onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
             ) {
-                NavHost(nav, startDestination = Screen.Gallery.route) { composable(Screen.Gallery.route) { } }
+                NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { } }
             }
         }
         ziele.forEach { (_, text) ->
