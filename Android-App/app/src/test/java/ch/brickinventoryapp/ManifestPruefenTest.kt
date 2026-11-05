@@ -14,6 +14,8 @@ import java.util.concurrent.TimeUnit
  *   manifest-export-ungeprueft  der Vergleich mit der Positivliste gestrichen → rot
  *                               „eine fremde exportierte Komponente …“
  *   manifest-debuggable-egal    die Prüfung auf debuggable gestrichen → rot „ein debuggable …“
+ *   (05.11.2026, python3 lokal) ProfileInstallReceiver wieder in manifest-exportiert.txt →
+ *                               rot „herausgenommene Bibliothekskomponenten …“
  */
 class ManifestPruefenTest {
 
@@ -63,6 +65,19 @@ class ManifestPruefenTest {
             komponente("receiver", "ch.brickinventoryapp.widget.SammlungsWidgetEmpfaenger", true)))
         assertEquals(1, code2)
         assertTrue(text2, "BIND_APPWIDGET" in text2)
+    }
+
+    /** CI-Lauf 42086613735: Beide kamen aus Bibliotheken; das Manifest nimmt sie heraus. */
+    @Test
+    fun `herausgenommene Bibliothekskomponenten stehen nicht in der Positivliste`() {
+        for ((art, name, recht) in listOf(
+            Triple("receiver", "androidx.profileinstaller.ProfileInstallReceiver", "android.permission.DUMP"),
+            Triple("service", "com.google.android.gms.auth.api.signin.RevocationBoundService",
+                "com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION"),
+        )) {
+            val (code, text) = pruefe(manifest(*gut, komponente(art, name, true, recht)))
+            assertEquals(text, 1, code)
+        }
     }
 
     @Test

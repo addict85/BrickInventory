@@ -9,7 +9,7 @@ ch.brickinventoryapp.widget.SammlungsWidgetEmpfaenger android.permission.BIND_AP
 # WorkManager: Der JobScheduler des Systems startet den Dienst, adb liest die Diagnose.
 androidx.work.impl.background.systemjob.SystemJobService android.permission.BIND_JOB_SERVICE
 androidx.work.impl.diagnostics.DiagnosticsReceiver android.permission.DUMP
-# Profileinstaller: nur adb (DUMP) loest ihn aus.
-androidx.profileinstaller.ProfileInstallerReceiver android.permission.DUMP
+# Profileinstaller (ProfileInstallReceiver) und RevocationBoundService von Google-Sign-in
+# nimmt das Manifest heraus (tools:node="remove"); sie stehen bewusst nicht hier.
 # Glance: Der Launcher holt die Listen des Widgets.
 androidx.glance.appwidget.GlanceRemoteViewsService android.permission.BIND_REMOTEVIEWS

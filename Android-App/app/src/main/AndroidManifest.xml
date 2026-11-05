@@ -192,7 +192,25 @@
                 android:name="androidx.work.WorkManagerInitializer"
                 android:value="androidx.startup"
                 tools:node="remove" />
+            <!-- Kein Baseline-Profil (app/build.gradle.kts): Der Profileinstaller hätte nichts zu tun. -->
+            <meta-data
+                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
         </provider>
+
+        <!--
+          Exportierte Komponenten aus Bibliotheken, die die App nicht braucht: Der
+          Profileinstaller (kommt über Compose, ohne Baseline-Profil nutzlos) und der
+          Widerrufsdienst von Google-Sign-in (die App meldet nur mit Passkeys an).
+          Jede exportierte Komponente ist Angriffsfläche (tools/manifest-pruefen.py).
+        -->
+        <receiver
+            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+            tools:node="remove" />
+        <service
+            android:name="com.google.android.gms.auth.api.signin.RevocationBoundService"
+            tools:node="remove" />
 
         <!--
           taskAffinity="": Ohne Affinität kann keine fremde Activity, die sich die
