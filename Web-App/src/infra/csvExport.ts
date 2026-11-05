@@ -127,7 +127,6 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
 }
 
 /** Höchstens zehn Zeilennummern, sonst wird die Meldung länger als hilfreich. */
-/** Höchstens zehn Nummern, danach „…“: Eine lange Liste sprengte die Meldung. */
 export function zeilenListe(zeilen: number[]): string {
   return zeilen.slice(0, 10).join(', ') + (zeilen.length > 10 ? ', …' : '');
 }

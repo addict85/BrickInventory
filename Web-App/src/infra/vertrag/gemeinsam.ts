@@ -48,7 +48,6 @@ export const ValuationAcquisition = z.looseObject({
   pnl_prozent: z.number().nullable().optional(),
   created_at: zeit.nullable().optional(),
   owner_user_id: z.number().int().nullable().optional(),
-  /** Kaufpreis in fremder Währung ohne Kurs; purchase_price ist dann null. */
   kaufpreis_original: z.number().optional(),
   kaufpreis_waehrung: z.string().optional(),
 });

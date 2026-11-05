@@ -56,8 +56,7 @@ export interface KatalogSet {
 }
 const SET_SPALTEN = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb.num_parts, rb.set_img_url AS image_url,
             (b.set_number IS NOT NULL) AS owned, COALESCE(b.menge, 0)::int AS owned_quantity`;
-/** Besitz über das Blickfeld ($1, Konto-IDs) wie Merkliste und Sammlung: Das Set des Kindes steht
- * dort als vorhanden, also auch hier. Eine Zeile je Set, die Mengen summiert. */
+/** Besitz über das Blickfeld ($1) wie in Merkliste und Sammlung; eine Zeile je Set, Mengen summiert. */
 const BESITZ_JOIN = `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::int AS menge
                     FROM sets s ${mengeJoin('s', 'sm', '= ANY($1)')}
                    WHERE s.user_id = ANY($1)

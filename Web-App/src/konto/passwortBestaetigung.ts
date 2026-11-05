@@ -22,8 +22,7 @@ async function gebremst(art: Bremse, uid: number, zugang: string, pruefung: () =
   }
   if (!await pruefung()) {
     meldeAnmeldeereignis('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
-    // Wie beim Login erfährt der Inhaber vom Erreichen der Bremse, höchstens einmal am Tag:
-    // Wer in einer laufenden Sitzung rät, hat schon einen Zugang erbeutet.
+    // Wer in einer laufenden Sitzung rät, hat einen Zugang erbeutet: Der Inhaber erfährt es (1×/Tag).
     if (await bestaetigungFehlgeschlagen(art, uid, zugang)) {
       meldeAnmeldeereignis('bestaetigung_gebremst', { konto: uid, art, zugang });
       if (!await kontoGedrosselt('bestaetigung-hinweis', uid, 1, 86_400_000)) hinweisNebenher(uid, 'bestaetigung_gebremst');

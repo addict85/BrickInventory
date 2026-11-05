@@ -304,8 +304,9 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
       cleanup();
     }
   };
-  // EventSource setzt keine eigenen Kopfzeilen; die Sprache der Oberfläche kommt als ?sprache=.
-  const sprache = req.query.sprache === 'en' || req.query.sprache === 'de' ? req.query.sprache : antwortSprache(req);
+  // EventSource setzt keine Kopfzeilen, die Sprache kommt deshalb als ?sprache=.
+  const gewaehlt = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
+  const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : antwortSprache(req);
   const stand = async () => buildJobStatus(await jobGet(uid).catch(meldeUndLiefere('sets:jobGet', null)), req, sprache);
   // Erst anmelden, dann den ersten Stand schicken: Sonst geht ein Ereignis
   // zwischen Lesen und Anmelden verloren.

@@ -39,7 +39,6 @@ async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgeb
       }
       const isWarning = isTimeout || isRateLimit;
       console[isWarning ? 'warn' : 'error'](`CSV: ${z.sn} ${isWarning ? 'WARNING' : 'FAILED'}: ${msg}`);
-      // Der Code reist mit; buildJobStatus() schreibt den Satz in der Sprache des Lesers.
       const code: FehlerCode | undefined = e instanceof Fachfehler ? e.code
         : isTimeout ? 'import_zeitueberschreitung' : isRateLimit ? 'import_kontingent' : undefined;
       return { set_number: z.sn, success: false, error: msg, isWarning,

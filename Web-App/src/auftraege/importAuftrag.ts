@@ -30,7 +30,6 @@ export function buildJobStatus(job: ImportAuftrag, req?: any, sprache: Sprache =
     return { success: false, code: 'kein_import_laeuft',
              error: fehlerText('kein_import_laeuft', sprache) };
   }
-  // Zeilen mit Code bekommen ihren Satz erst hier, in der Sprache des Lesers.
   const results = (Array.isArray(job.results) ? job.results : []).map((r: ImportErgebnis) =>
     r.code ? { ...r, error: fehlerText(r.code as FehlerCode, sprache, r.vars) } : r);
   const ok   = results.filter((r: ImportErgebnis)=>r.success).length;

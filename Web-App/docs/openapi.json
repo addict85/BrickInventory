@@ -9792,6 +9792,17 @@
         "tags": [
           "sets"
         ],
+        "parameters": [
+          {
+            "name": "sprache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 2
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Erfolg",

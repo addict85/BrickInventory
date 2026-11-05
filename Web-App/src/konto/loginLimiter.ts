@@ -255,9 +255,8 @@ const _bestaetigungKey = (art: Bremse, uid: number, zugang: string) =>
   `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen|${uid}|${zugang}`;
 const fenster = (art: Bremse) => (art === 'faktor' ? FAKTOR_FENSTER_MIN : WINDOW_MIN);
 
-/** Über alle Zugänge eines Kontos: Wer mehrere Zugänge erbeutet hat, rät damit
- * nicht mehrfach. Sie gilt nur für Zugänge, die selbst schon falsch geraten
- * haben; der Inhaber bestätigt in seinem sauberen Zugang weiter. */
+/** Über alle Zugänge eines Kontos, damit mehrere erbeutete Zugänge nicht mehrfach raten;
+ * gesperrt werden nur Zugänge, die selbst falsch geraten haben. */
 export const MAX_BESTAETIGUNG_JE_KONTO = 20;
 const KONTO_FENSTER_MIN = 24 * 60;
 const _kontoBestaetigungKey = (art: Bremse, uid: number) => `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen-konto|${uid}`;
