@@ -1,4 +1,5 @@
 import * as db from '../../../db/database';
+import { entferneKontoAusSicherungen } from '../../../db/migrate';
 
 export type KontoKurz = { id: number; username: string; is_admin: boolean; must_change_password: boolean };
 
@@ -164,21 +165,39 @@ export async function kontoExistiert(id: number): Promise<boolean> {
   return !!await db.get('SELECT 1 FROM users WHERE id = $1', [id]);
 }
 
+/** Gelöscht heisst auch in den Kopien vor Migrationen gelöscht. Den Namen im
+ * Verwaltungsprotokoll nimmt erst der Aufräumlauf (raeumeProtokollAuf). */
+async function spurenLoeschen(tx: db.DbSchnittstelle, id: number): Promise<void> {
+  await entferneKontoAusSicherungen(tx, id);
+}
+
 /** Nie das eigene Konto. */
 export async function loescheKonto(id: number, eigenes: number | null): Promise<boolean> {
-  return (await db.run('DELETE FROM users WHERE id = $1 AND id != $2', [id, eigenes])).changes > 0;
+  return db.transaction(async (tx) => {
+    if (!(await tx.run('DELETE FROM users WHERE id = $1 AND id != $2', [id, eigenes])).changes) return false;
+    await spurenLoeschen(tx, id);
+    return true;
+  });
 }
 
 /** Das eigene Konto; der letzte aktive Verwalter bleibt. */
 export async function loescheEigenesKonto(id: number): Promise<boolean> {
-  return (await db.run(`DELETE FROM users WHERE id = $1 AND (NOT is_admin
-    OR EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1))`, [id])).changes > 0;
+  return db.transaction(async (tx) => {
+    if (!(await tx.run(`DELETE FROM users WHERE id = $1 AND (NOT is_admin
+      OR EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1))`, [id])).changes) return false;
+    await spurenLoeschen(tx, id);
+    return true;
+  });
 }
 
 /** Registrierungen, deren Adresse nach `tage` Tagen nicht bestätigt ist. */
 export async function loescheOffeneRegistrierungen(tage: number): Promise<number> {
-  return (await db.run(`DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
-    AND created_at < NOW() - make_interval(days => $1::int)`, [tage])).changes ?? 0;
+  return db.transaction(async (tx) => {
+    const weg = await tx.all<{ id: number }>(`DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
+      AND created_at < NOW() - make_interval(days => $1::int) RETURNING id`, [tage]);
+    for (const { id } of weg) await spurenLoeschen(tx, id);
+    return weg.length;
+  });
 }
 
 export async function raeumeQrTokensAuf(): Promise<void> {
