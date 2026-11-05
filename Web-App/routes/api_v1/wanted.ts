@@ -7,7 +7,7 @@ import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { requireToken, kontoSchranke } from './middleware';
 import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
-import { getSetting } from '../../src/konto/settings';
+import { getSetting } from '../../src/einstellungen/settings';
 import { csvEmpfang, xmlEmpfang } from '../../src/infra/dateiEmpfang';
 import { csvZeilenAusAnfrage, csvImportAntwort, parseCsvDate } from '../../src/infra/csvExport';
 import { importiereWantedListe } from '../../src/merkliste/wantedListe';

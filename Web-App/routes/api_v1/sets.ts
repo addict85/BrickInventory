@@ -8,7 +8,7 @@ import crypto from 'crypto';
 import { fehlertext, meldeUndLiefere, logAndContinue, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { requireToken, kontoSchranke } from './middleware';
-import { getSetting } from '../../src/konto/settings';
+import { getSetting } from '../../src/einstellungen/settings';
 import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
 import { scopeIds, parseScopeMode, writableIds, householdMembers, resolveWriteTarget } from '../../src/haushalt/haushalt';
 import { moveSetBetweenAccounts } from '../../src/sets/setMove';
@@ -23,7 +23,7 @@ import { addSet, updateSet } from '../../src/sets/setService';
 import { deleteSet, getSet, getSets } from '../../src/sets/abfragen';
 import { getSetPriceHistory } from '../../src/finanzen/priceHistory';
 import * as V from '../../src/infra/validate';
-import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/sets/setNummer';
+import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/infra/setNummer';
 import { sendeFehler, dateiFehler } from '../../src/infra/fehlerTexte';
 import { setTeileAnreichern } from '../../src/auftraege/nacharbeit';
 import { setInfo, setZumBarcode, teilelisteDesSets, figurenlisteDesSets, setPreis, rebrickableListe,

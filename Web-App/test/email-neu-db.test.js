@@ -48,8 +48,8 @@ const { testServer } = require('./helpers/server');
 const { mailserverEintragen } = require('./helpers/mail-attrappe');
 
 const post = [];
-const echt = _req('src/infra/mailer.js');
-require.cache[require.resolve(path.join(S.DIST, 'src/infra/mailer.js'))].exports = Object.assign({}, echt, {
+const echt = _req('src/mail/mailer.js');
+require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports = Object.assign({}, echt, {
   sendVerificationMail: async (an, token, _b, _l, art, mehrere) => { post.push({ an, art: art ?? 'registrierung', token, mehrere: !!mehrere }); return { success: true, mode: 'smtp' }; },
   sendEmailGeaendertMail: async (an, _n, neu) => { post.push({ an, art: 'hinweis', neu }); return { success: true }; },
   sendRegistrierungsVersuchMail: async (an) => { post.push({ an, art: 'versuch' }); return { success: true, mode: 'smtp' }; },

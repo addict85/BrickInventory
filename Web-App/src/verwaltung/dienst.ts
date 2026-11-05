@@ -11,12 +11,12 @@ import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
 import { fetchPrice } from '../finanzen/financeCalc';
 import { getRateLimitStatus, setzeKontingentZurueck } from '../katalog/apiKontingent';
-import { ohneBricklinkPreis } from '../sets/setNummer';
+import { ohneBricklinkPreis } from '../infra/setNummer';
 import { katalogEintrag, clearCatalogCache, clearSubsetsCache, getPriceGuide, getCacheStats } from '../katalog/bricklinkPreise';
 import { loescheAnleitungen } from '../katalog/instructions';
 import { imgProxyFailures } from '../katalog/bilder/imgProxyStats';
 import { vergissFehlend } from '../katalog/bilder/imageMisses';
-import { setGlobalSetting, getGlobalSetting, getSetting } from '../konto/settings';
+import { setGlobalSetting, getGlobalSetting, getSetting } from '../einstellungen/settings';
 import { liesZustand } from '../auftraege/laufzustand';
 import * as monitor from '../auftraege/jobMonitor';
 import { zaehleArt, stelleAuftragEin } from '../auftraege/dienst';
@@ -24,10 +24,7 @@ import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { bricksetJetzt, bricksetZahlen } from '../auftraege/bricksetAuftrag';
 import { anfragenJeMinute, bildbedarfAnstossen } from '../katalog/bilder/bildbedarf';
 import { fehlerWerfen, type FehlerCode } from '../infra/fehlerTexte';
-import { alsAbrufFehler } from '../../clients/abrufFehler';
-import { pruefeBricklinkZugang } from '../../clients/bricklink';
-import { ausRetryWarteschlange, pruefeBricksetZugang } from '../../clients/brickset';
-import { pruefeRebrickableZugang } from '../../clients/rebrickable';
+import { alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang } from '../katalog/quellen';
 
 // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#job-frisch-ms
 const JOB_FRISCH_MS = 3 * 60_000;

@@ -49,7 +49,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async (t) => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const settings = _req('src/konto/settings.js');
+  const settings = _req('src/einstellungen/settings.js');
 
   await t.test('globale Schlüssel', async () => {
     await settings.setGlobalSetting('brickset_api_key', 'klar-brickset-4242');

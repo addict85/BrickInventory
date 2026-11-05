@@ -7,7 +7,7 @@ import fs from 'fs';
 import { createHash } from 'crypto';
 import {  PUBLIC_DIR } from '../infra/appPaths';
 import path from 'path';
-import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from './settings';
+import { DESIGNS, designFuer, nutzerEinstellungen, getGlobalSetting } from '../einstellungen/settings';
 import { stempleAssetsGecacht } from '../infra/assetStempel';
 
 const INDEX_PATH = path.join(PUBLIC_DIR, 'index.html');

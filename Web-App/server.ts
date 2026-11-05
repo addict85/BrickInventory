@@ -15,6 +15,7 @@ import connectPgSimple from 'connect-pg-simple';
 import * as db from './db/database';
 import { fehlertext, logAndContinue, meldeUndWeiter, meldeUndLiefere } from './src/infra/fehler';
 import { fehlerAntwort, unbekannterApiPfad } from './src/infra/httpAntwort';
+import { fehlerText, antwortSprache } from './src/infra/fehlerTexte';
 import { startVerbote } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
@@ -27,7 +28,7 @@ import { sitzungsVersionPruefen } from './src/konto/http/sitzungsPruefung';
 import { antwortAufDateiFehler, liefereDatei, sendeDatei } from './src/infra/dateiAusliefern';
 import { cdnFuerFehlendesBild } from './src/katalog/bilder/bildNachschlagen';
 import { bildFreigegeben } from './src/katalog/bilder/bildBlickfeld';
-import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/infra/startZustand';
+import { aktuellerStartZustand, oeffentlicherStartZustand } from './src/auftraege/startZustand';
 import { merkeAnfrage } from './src/infra/anfrageKonto';
 import { proxyVertrauen, proxyHinweis } from './src/infra/proxyVertrauen';
 import { nurEigeneHerkunft, nurEigenerHost } from './src/infra/herkunft';
@@ -39,7 +40,7 @@ import { safeDataPath } from './src/infra/datenPfad';
 import { generateThumb } from './src/katalog/bilder/thumbs';
 import { closeAllSse } from './src/infra/sseRegistry';
 import { renderIndexHtml, startStilHash } from './src/konto/indexHtml';
-import { meldeSmtpAltlast } from './src/infra/mailer';
+import { meldeSmtpAltlast } from './src/mail/mailer';
 import { meldeUngueltigeAdressen, meldeAusstehendeAdressen } from './src/konto/konten';
 import { horcheAufTokenWiderruf } from './src/konto/auth';
 import * as pgNotify from './db/pgNotify';
@@ -318,9 +319,10 @@ app.get('/api/v1/startup-status', async (req, res) => {
 
 // Ohne Anmeldung (compose.yaml): anonym nur der Status; live = Prozess, ready = Datenbank.
 app.get('/api/v1/health/live', (_req, res) => { res.json({ status: 'ok' }); });
-app.get('/api/v1/health/ready', async (_req, res) => {
-  const bereit = await db.datenbankAntwortet();
-  res.status(bereit ? 200 : 503).json({ status: bereit ? 'ok' : 'unavailable' });
+app.get('/api/v1/health/ready', async (req, res) => {
+  if (await db.datenbankAntwortet()) return void res.json({ status: 'ok' });
+  res.status(503).json({ success: false, code: 'datenbank_nicht_erreichbar', status: 'unavailable',
+    error: fehlerText('datenbank_nicht_erreichbar', antwortSprache(req)) });
 });
 app.get('/api/v1/health', async (req, res) => {
   // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.

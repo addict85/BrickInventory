@@ -10,13 +10,13 @@ import { proxyCachePathFor } from '../../src/katalog/bilder/images';
 import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../src/infra/fremdeAdressen';
 import { vergissFehlend } from '../../src/katalog/bilder/imageMisses';
 import { SET_IMAGES_DIR } from '../../src/infra/appPaths';
-import { setGlobalSetting, getGlobalSetting } from '../../src/konto/settings';
+import { setGlobalSetting, getGlobalSetting } from '../../src/einstellungen/settings';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { cacheStatistik, cachesLeeren, bricksetLimitGesetzt, anleitungenNeuEinreihen, preisJobStand, preisJobJetzt,
          fehlendeBilderNachladen, bricksetWiederholen, bricksetEntfernen, jobZeitplanSetzen, jobUebersicht,
          bildProbe, preisProbe, katalogBilderEinreihen, katalogAbgleichJetzt, bricksetListe,
          letzteEintraege, KontoBildzeile, bildZeilenDerKonten, fehlanzeigeDerVorschau, fehlanzeigeDesSets, katalogBild, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from '../../src/verwaltung/dienst';
-import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/auftraege/hintergrund';
+import { auftragsUebersicht, auftragAbbrechen, auftragWiederholen, auftragsArtJetzt, auftragsArtLeeren } from '../../src/verwaltung/hintergrund';
 import { urlOderNull } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';

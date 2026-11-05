@@ -100,6 +100,7 @@ const DYNAMISCH = {
   'src/gutscheine/repository/gutscheine.ts':   'vouchers (user_id)',
   'src/katalog/repository/csvTausch.ts':       'rb_* aus den Rebrickable-CSV-Dateien',
   'src/katalog/repository/teileAnreicherung.ts': 'part_catalog/part_color_catalog aus Rebrickable',
+  'src/sammlung/repository/erfassungen.ts':    'set_/part_/minifig_acquisitions (user_id)',
   'src/sets/repository/verschieben.ts':        'Bestand und Erfassungen (user_id)',
 };
 

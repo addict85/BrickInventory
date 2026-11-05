@@ -2,7 +2,7 @@
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import { getSetting } from '../konto/settings';
+import { getSetting } from '../einstellungen/settings';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fehlerWerfen } from '../infra/fehlerTexte';
@@ -286,4 +286,20 @@ export async function acquisitionMoveSource(
   const owner = await repo.besitzerDerErfassung(kind, acqId);
   if (owner === null || !(await canWriteFor(actorId, owner))) fehlerWerfen('kaufpreis_nicht_gefunden', 404);
   return owner;
+}
+
+/** Beide Formen hier, damit die Namensauflösung nur einmal existiert.
+ * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#withowners */
+export async function withOwners(uids: number[], rows: any[]) {
+  if (uids.length < 2 || !rows?.length) return rows;
+  const owners = await repo.benutzerNamen(uids);
+  const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
+  const platte = (id: number) => ({ id, username: nameById.get(id) || String(id) });
+  return rows.map(r => {
+    // array_agg liefert NULL, wenn der FILTER alles ausschliesst — dann eine
+    // LEERE Plakettenliste, nicht keine.
+    if ('owner_ids' in r) return { ...r, owners: (r.owner_ids || []).map((n: any) => platte(parseInt(n))) };
+    if (r.user_id != null) return { ...r, owners: [platte(parseInt(r.user_id))] };
+    return r;
+  });
 }

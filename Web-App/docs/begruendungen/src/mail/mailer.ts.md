@@ -1,6 +1,6 @@
-# Begründungen zu `src/infra/mailer.ts`
+# Begründungen zu `src/mail/mailer.ts`
 
-Die ausführlichen Kommentare aus `src/infra/mailer.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/mail/mailer.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

@@ -140,18 +140,18 @@ test('der Anlege-Pfad erzeugt keinen Zustand, den der Bearbeiten-Pfad ablehnt', 
   // findSameDayAcquisition('set', … mehr. Geprüft wird die Regel, nicht die
   // Schreibweise: Der gemeinsame Helfer wird gerufen, und jede Elementart ist
   // in der Konfiguration hinterlegt.
-  const fab = read('src/bestand/erfassungen.ts');
+  const fab = read('src/sammlung/erfassungen.ts');
   // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
   // Weg wirklich lebt, laeuft in test/verdrahtung-laeuft-db.test.js —
   // beides zusammen, nicht eines statt des anderen.
   assert.match(fab, /findSameDayAcquisition\(\s*art\s*,/,
-    'src/bestand/erfassungen.ts: die Kollisionsprüfung muss über den gemeinsamen Helfer laufen');
+    'src/sammlung/erfassungen.ts: die Kollisionsprüfung muss über den gemeinsamen Helfer laufen');
   for (const kind of ['set', 'part', 'fig']) {
     assert.match(fab, new RegExp(`\\b${kind}: \\{`),
       `Elementart '${kind}' fehlt in der Konfiguration — dann liefe ihre Tagesprüfung ins Leere`);
   }
   for (const f of ['routes/api_v1/sets.ts', 'src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts',
-                   'routes/api_v1/acquisitions.ts', 'src/bestand/erfassungen.ts']) {
+                   'routes/api_v1/acquisitions.ts', 'src/sammlung/erfassungen.ts']) {
     assert.doesNotMatch(strip(read(f)), /SELECT id FROM \w+_acquisitions WHERE[\s\S]{0,160}created_at[^\n]*::date/,
       `${f}: keine eigene Kopie der Tagesprüfung`);
   }
@@ -199,7 +199,7 @@ test('die Regel gilt für alle drei Elementarten gleich', () => {
   // „Pro Tag, Element und Benutzer genau EIN Kaufpreis." Ein Element ist ein
   // Set, ein manuell erfasstes Teil oder eine manuell erfasste Minifigur —
   // dieselbe Regel, nur ein anderer Schlüssel.
-  const acq = read('src/bestand/acquisitions.ts');
+  const acq = read('db/bestandsmenge.ts').split('ERFASSUNGS_TABELLEN = {')[1] ?? '';
 
   // Die Schlüssel je Art stehen an EINER Stelle — sonst hiesse „Element" je
   // nach Aufrufer etwas anderes.
@@ -282,9 +282,9 @@ test('das Löschen eines manuellen Eintrags räumt die Kaufpreise mit ab', () =>
   // dauerhaft weitergezählt, und zwar unsichtbar: Keine Ansicht zeigt
   // verwaiste Erfassungen, es fällt nur als „die Summe stimmt nicht" auf.
   const stellen = [
-    // Die beiden v1-Routen und „alles löschen" gehen über src/bestand/loeschen.ts.
-    ['src/bestand/loeschen.ts',         'DELETE FROM part_acquisitions'],
-    ['src/bestand/loeschen.ts',         'DELETE FROM minifig_acquisitions'],
+    // Die beiden v1-Routen und „alles löschen" gehen über src/sammlung/loeschen.ts.
+    ['src/sammlung/loeschen.ts',         'DELETE FROM part_acquisitions'],
+    ['src/sammlung/loeschen.ts',         'DELETE FROM minifig_acquisitions'],
   ];
   for (const [datei, stmt] of stellen) {
     const src = strip(read(datei));
@@ -313,7 +313,7 @@ test('kein stiller Fehler mehr auf Bestandstabellen', () => {
   const TABELLEN = ['sets', 'parts', 'minifigs', 'set_acquisitions',
                     'part_acquisitions', 'minifig_acquisitions', 'instructions'];
   const schreibt = new RegExp(`\\b(UPDATE|INSERT INTO|DELETE FROM)\\s+(${TABELLEN.join('|')})\\b`);
-  const dateien = ['routes/api_v1/sets.ts', 'src/sets/dienst.ts', 'src/bestand/erfassungen.ts',
+  const dateien = ['routes/api_v1/sets.ts', 'src/sets/dienst.ts', 'src/sammlung/erfassungen.ts',
                    'src/teile/manuelleTeile.ts', 'src/figuren/manuelleFiguren.ts',
                    'routes/api_v1/sets.ts', 'routes/api_v1/parts.ts',
                    'routes/api_v1/minifigs.ts', 'routes/api_v1/acquisitions.ts',

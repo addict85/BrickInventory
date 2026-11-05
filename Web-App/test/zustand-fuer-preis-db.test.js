@@ -39,7 +39,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { zustandFuerPreis, setGlobalSetting, setUserSetting } = _req('src/konto/settings.js');
+const { zustandFuerPreis, setGlobalSetting } = _req('src/einstellungen/settings.js');
+const { setUserSetting } = _req('src/konto/nutzerEinstellung.js');
 
 test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }

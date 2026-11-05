@@ -8,7 +8,8 @@ import type { LagerTabelle } from './repository/lagerort';
 import { asIds } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-import { setUserSetting, deleteUserSetting } from '../konto/settings';
+import { deleteUserSetting } from '../einstellungen/settings';
+import { setUserSetting } from '../konto/nutzerEinstellung';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
  * Kachel passen, und eine Absage ist besser als ein abgeschnittener Name. */

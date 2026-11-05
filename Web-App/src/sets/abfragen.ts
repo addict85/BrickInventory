@@ -1,12 +1,12 @@
 import { resolveOne } from '../katalog/bricklinkLink';
 import { meldeUndWeiter, meldeUndLiefere } from '../infra/fehler';
-import { fuerSet } from '../finanzen/preisvergleich';
+import { fuerSet } from '../katalog/preisvergleich';
 import * as db from '../../db/database';
 import * as repo from './repository/sets';
 import type { DbSchnittstelle } from '../../db/database';
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds } from '../haushalt/haushalt';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions, withOwners } from '../bestand/gemeinsam';
+import { asIds, withOwners } from '../haushalt/haushalt';
+import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
 import { anleitungenZuSet, anleitungenZusammenlegen } from '../katalog/instructions';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 

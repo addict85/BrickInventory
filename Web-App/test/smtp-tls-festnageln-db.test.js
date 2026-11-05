@@ -30,7 +30,7 @@ process.env.DATA_KEY = Buffer.alloc(32, 9).toString('base64');
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const mailer = _req('src/infra/mailer.js');
+const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 /** Selbst signiert, mit dem angegebenen subjectAltName. */
@@ -104,7 +104,7 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     const alle = { smtp_host: '127.0.0.1', smtp_user: 'u', smtp_pass: 'p', smtp_secure: '1', smtp_from: 'test@example.org', ...werte };
     for (const [k, v] of Object.entries(alle)) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
-    await _req('src/konto/settings.js').verschluesseleGlobaleAltwerte();
+    await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
   };
   let nr = 0;
   const sende = async (server) => {

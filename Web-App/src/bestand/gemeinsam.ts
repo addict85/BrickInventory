@@ -81,22 +81,6 @@ export async function applyManualCondition(userId: unknown, rows: any[], kind: '
   });
 }
 
-/** Beide Formen hier, damit die Namensauflösung nur einmal existiert.
- * Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#withowners */
-export async function withOwners(uids: number[], rows: any[]) {
-  if (uids.length < 2 || !rows?.length) return rows;
-  const owners = await repo.benutzerNamen(uids);
-  const nameById = new Map<number, any>(owners.map((u: any) => [parseInt(u.id), u.username] as [number, any]));
-  const platte = (id: number) => ({ id, username: nameById.get(id) || String(id) });
-  return rows.map(r => {
-    // array_agg liefert NULL, wenn der FILTER alles ausschliesst — dann eine
-    // LEERE Plakettenliste, nicht keine.
-    if ('owner_ids' in r) return { ...r, owners: (r.owner_ids || []).map((n: any) => platte(parseInt(n))) };
-    if (r.user_id != null) return { ...r, owners: [platte(parseInt(r.user_id))] };
-    return r;
-  });
-}
-
 // Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#verwendendesset
 export interface VerwendendesSet {
   set_number: string;

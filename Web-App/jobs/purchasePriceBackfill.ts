@@ -3,7 +3,7 @@ import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePre
 import { teilfarbenbilderNachtragen } from '../src/katalog/katalogAbgleich';
 import { blAbrufNummer } from '../src/katalog/blZuordnung';
 import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/fehler';
-import { sleep } from '../clients/rebrickable';
+import { sleep } from '../src/katalog/quellen';
 'use strict';
 
 // Idempotent: Erfassungen ohne Kaufpreis bekommen den Marktpreis, wie beim

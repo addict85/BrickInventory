@@ -93,7 +93,7 @@ test('jedes Job-Modul lässt sich laden', () => {
 test('priceJob hat keine eigene Fassung der Einstellungs-Helfer', () => {
   // Ursprung: getGlobalSetting stand ZWEIMAL in dieser Datei, die zweite
   // Definition überschrieb die erste stillschweigend. Inzwischen steht gar
-  // keine mehr dort — beide Helfer kommen aus src/konto/settings.ts.
+  // keine mehr dort — beide Helfer kommen aus src/einstellungen/settings.ts.
   //
   // Die Prüfung bleibt, weil der Rückfall derselbe wäre: Wer sich hier wieder
   // eine eigene Fassung schreibt, hat eine zweite Wahrheit über dieselbe
@@ -103,7 +103,7 @@ test('priceJob hat keine eigene Fassung der Einstellungs-Helfer', () => {
   for (const name of ['getSetting', 'getGlobalSetting']) {
     const defs = (src.match(new RegExp(`(async )?function ${name}\\(`, 'g')) || []).length;
     assert.equal(defs, 0,
-      `${name} ist in priceJob.ts ${defs}× definiert — es gehört nach src/konto/settings.ts`);
+      `${name} ist in priceJob.ts ${defs}× definiert — es gehört nach src/einstellungen/settings.ts`);
   }
   assert.match(src, /import \{[^}]*getGlobalSetting[^}]*\} from '[^']*\/settings'/,
     'priceJob muss die zentrale Fassung holen');

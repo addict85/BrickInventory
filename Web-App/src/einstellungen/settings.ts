@@ -1,12 +1,8 @@
 
-import { nacharbeit } from '../auftraege/nacharbeit';
-import * as db from '../../db/database';
-import * as repo from './repository/einstellungen';
-import { sperreHaushaltswaehrung } from '../../db/txLock';
+import * as repo from './repository';
 import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { meldeUndLiefere } from '../infra/fehler';
-import { zaehleAnfrage } from './loginLimiter';
 import crypto from 'node:crypto';
 
 export async function getSetting(userId: number, key: string, fallback?: any) {
@@ -41,47 +37,22 @@ const NUTZER_REGELN: Record<string, (v: string) => boolean> = {
   app_theme: v => DESIGNS.includes(v),
 };
 
-/** Die eine Schreibstelle: Ein Währungswechsel muss den Preis-Job anstossen,
- * weil der Preis-Cache je Währung verschlüsselt ist.
- * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setusersetting */
-export async function setUserSetting(userId: number, key: string, value: any) {
+/** Prüfen und schreiben; die Währung gilt je Haushalt und geht deshalb nur
+ * über setUserSetting (src/konto/nutzerEinstellung.ts). */
+export async function schreibeNutzerEinstellung(userId: number, key: string, value: unknown): Promise<void> {
   const v = String(value).trim();
+  if (key === 'currency') throw new Error('Währung nur über setUserSetting');
   const regel = NUTZER_REGELN[key];
   if (regel && !regel(v)) fehlerWerfen('wert_ungueltig', 400);
-  if (key === 'currency') return setzeHaushaltswaehrung(userId, v);
   await repo.schreibeNutzerWert(userId, key, v);
 }
 
-/** Für den ganzen Haushalt: Zwei Währungen ergäben eine Summe, der man den
- * Fehler nicht ansieht. redeemInvite() prüft unter derselben Sperre. */
-async function setzeHaushaltswaehrung(userId: number, waehrung: string) {
-  const vorher = await db.transaction(async (tx) => {
-    await sperreHaushaltswaehrung(tx);
-    const alt = await repo.nutzerWert(userId, 'currency', tx);
-    const unterkonto = await repo.hatHauptkonto(tx, userId);
-    if (alt !== waehrung) {
-      if (unterkonto) fehlerWerfen('waehrung_nur_hauptkonto', 403);
-      // Jeder Wechsel stösst einen vollen Preislauf an.
-      const takt = await zaehleAnfrage('waehrung', `konto:${userId}`, 60 * 60 * 1000);
-      if (takt.count > 5) fehlerWerfen('zu_viele_anfragen', 429, { minuten: takt.waitMin });
-    }
-    if (unterkonto) return alt;
-    const haushalt = await repo.eigenerHaushalt(tx, userId);
-    if ((await repo.fremdGeteilt(tx, haushalt, waehrung)).length) {
-      if (alt !== waehrung) fehlerWerfen('waehrung_geteiltes_unterkonto', 409);
-      return alt;
-    }
-    await repo.setzeWaehrungFuer(tx, haushalt, waehrung);
-    return alt;
-  });
-  if (vorher !== waehrung) {
-    console.log(`[settings] Währung für Benutzer ${userId} und seinen Haushalt geändert (${vorher ?? '—'} → ${waehrung}) — Preis-Job wird angestossen`);
-    setImmediate(() => nacharbeit().preisJobAnstossen());
-  }
+export function nutzerWertGueltig(key: string, value: string): boolean {
+  return NUTZER_REGELN[key]?.(value) ?? true;
 }
 
 /** Eigener Wert → globaler Standard → 'N'; eine Stelle statt drei Fassungen.
- * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#nutzerstandardzustand */
+ * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#nutzerstandardzustand */
 export async function nutzerStandardZustand(userId: number): Promise<'N' | 'U'> {
   const eigen = await repo.nutzerWert(userId, 'user_default_condition').catch(meldeUndLiefere('einstellungen:zustand', null));
   if (eigen === 'N' || eigen === 'U') return eigen;
@@ -124,7 +95,7 @@ export function globalerWertGueltig(key: string, value: unknown): boolean {
 
 /** Die EINE Schreibstelle: global_settings wurde vorher an vielen Stellen
  * verschieden angefasst.
- * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#setglobalsetting */
+ * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#setglobalsetting */
 export async function setGlobalSetting(key: string, value: unknown) {
   if (!globalerWertGueltig(key, value)) fehlerWerfen('wert_ungueltig', 400);
   await repo.schreibeGlobalenWert(key, SECRET_KEYS.has(key) ? verschluessele(String(value), globalerKontext(key)) : String(value));
@@ -161,7 +132,7 @@ export async function deleteUserSetting(userId: number, key: string) {
 // gleich funktionieren.
 
 /** Werden nie im Klartext ausgeliefert.
- * Ausführlich: docs/begruendungen/src/konto/settings.ts.md#secret-keys */
+ * Ausführlich: docs/begruendungen/src/einstellungen/settings.ts.md#secret-keys */
 export const SECRET_KEYS = new Set([
   'bricklink_consumer_key', 'bricklink_consumer_secret',
   'bricklink_token', 'bricklink_token_secret',
@@ -228,10 +199,3 @@ export async function designFuer(userId?: number | null): Promise<{ theme: strin
   const eigenes = u && DESIGNS.includes(u) ? u : null;
   return { theme: eigenes ?? vorgabe, vorgabe, eigenes };
 }
-
-export async function setzeEigenesDesign(userId: number, theme: unknown): Promise<void> {
-  const v = String(theme ?? '').trim();
-  if (!v) { await repo.loescheNutzerWert(userId, 'app_theme'); return; }
-  await setUserSetting(userId, 'app_theme', v);
-}
-

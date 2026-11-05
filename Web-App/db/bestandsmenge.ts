@@ -208,3 +208,14 @@ export function kontowaehrungJoin(tabelle: string, alias = 'kw'): string {
   return `LEFT JOIN user_settings ${alias}
             ON ${alias}.user_id = ${tabelle}.user_id AND ${alias}.key = 'currency'`;
 }
+
+/** Die drei Erfassungstabellen; der eindeutige Index (Migration 0070) läuft
+ * über Konto, Element, Tag, Zustand, Preis, Schätzung und Währung. */
+export type ErfassungsArt = 'set' | 'part' | 'fig';
+export const ERFASSUNGS_TABELLEN = {
+  set:  { table: 'set_acquisitions',     price: 'purchase_price', keys: ['set_number'] },
+  part: { table: 'part_acquisitions',    price: 'unit_price',     keys: ['part_number', 'color_id'] },
+  fig:  { table: 'minifig_acquisitions', price: 'unit_price',     keys: ['fig_number'] },
+} as const;
+export const preisSpalte = (art: ErfassungsArt): string => ERFASSUNGS_TABELLEN[art].price;
+export const schluesselSpalten = (art: ErfassungsArt): readonly string[] => ERFASSUNGS_TABELLEN[art].keys;

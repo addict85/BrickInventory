@@ -16,9 +16,10 @@ import { hinweisNebenher, verwalterHinweisNebenher } from '../src/konto/kontoHin
 import crypto from 'crypto';
 import { strictBool } from '../src/infra/validate';
 import { passwortMangel } from '../src/infra/passwortRegel';
-import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail, mailBereit } from '../src/infra/mailer';
+import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail, mailBereit } from '../src/mail/mailer';
 import type { Request, Response } from 'express';
-import { setUserSetting, registrierungOffen, getSetting } from '../src/konto/settings';
+import { registrierungOffen, getSetting } from '../src/einstellungen/settings';
+import { setUserSetting } from '../src/konto/nutzerEinstellung';
 import { requireApiAdmin } from './api_v1/middleware';
 import { sendeFehler, fehlerText, antwortSprache, alsDoppelt } from '../src/infra/fehlerTexte';
 import { basisUrl, hinweisOhneBasisUrl } from '../src/infra/basisUrl';

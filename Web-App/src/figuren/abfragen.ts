@@ -1,7 +1,7 @@
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds } from '../haushalt/haushalt';
-import { clampPageSize, applyManualCondition, withOwners, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
-import { mitVersion } from '../sets/setNummer';
+import { asIds, withOwners } from '../haushalt/haushalt';
+import { clampPageSize, applyManualCondition, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand/gemeinsam';
+import { mitVersion } from '../infra/setNummer';
 import { marktpreiseAusCacheFuerFiguren } from '../finanzen/marketPrice';
 import * as repo from './repository/figurenListe';
 

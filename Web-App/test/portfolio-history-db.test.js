@@ -274,7 +274,7 @@ test('der Mailer schaltet die Zertifikatsprüfung nirgends ab', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/mailer.ts'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8'));
   assert.doesNotMatch(src, /rejectUnauthorized:\s*(false|!)/,
     'Zertifikatsprüfung abschaltbar — SMTP-Zugangsdaten und Rücksetz-Links gingen über eine ungeprüfte Verbindung');
 });

@@ -2,14 +2,14 @@ import fsp from 'fs/promises';
 import path from 'path';
 import { bilderAusKatalog as katalogbilder } from '../src/katalog/bildlage';
 import { MINIFIG_IMAGES_DIR } from '../src/infra/appPaths';
-import { getMinifigInfo } from '../clients/rebrickable';
+import { getMinifigInfo } from '../src/katalog/quellen';
 import { logAndContinue, meldeUndWeiter } from '../src/infra/fehler';
 import { pdfDateiPfad } from '../src/auftraege/pdfAuftraege';
 import { downloadImage, downloadSetImages } from '../src/katalog/teileAnreicherung';
 import { zeichnePdfImFaden, type PdfSet, type PdfTeil } from './pdfZeichnen';
 import { KEINE_FARBE } from '../src/infra/validate';
 import { merkeFigurBildAdresse, setzeFigurBildLokal, setzeTeilBildLokal } from '../src/katalog/katalogPflege';
-import { normalisiereSetNummer, moeglicheSetNummer } from '../src/sets/setNummer';
+import { normalisiereSetNummer, moeglicheSetNummer } from '../src/infra/setNummer';
 
 /** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
 export interface PdfNutzlast { job_id: string; user_id: number; sets: PdfSet[]; parts: PdfTeil[] }

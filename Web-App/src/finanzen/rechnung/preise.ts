@@ -4,13 +4,12 @@
 
 import type { DbSchnittstelle } from '../../../db/database';
 import * as repo from '../repository/preisCache';
-import { hatPreis } from '../preisRegel';
 import { asIds } from '../../haushalt/haushalt';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
-import { bricklinkRequest } from '../../../clients/bricklink';
+import { bricklinkRequest } from '../../katalog/quellen';
 import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/fehler';
-import { mitVersion, ohneBricklinkPreis } from '../../sets/setNummer';
-import { katalogEintrag, getPriceGuide } from '../../katalog/bricklinkPreise';
+import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
+import { katalogEintrag, getPriceGuide, hatPreis } from '../../katalog/bricklinkPreise';
 import { effectiveCondition } from './zustand';
 import { blAbrufNummer, blAbrufNummern } from '../../katalog/blZuordnung';
 import { KEINE_FARBE } from '../../infra/validate';

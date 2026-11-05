@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import * as repo from './repository/bildlage';
-import { getSetInfo } from '../../clients/brickset';
+import { getSetInfo } from './quellen';
 import { downloadSetImage } from './bilder/setImages';
 import { generateThumb } from './bilder/thumbs';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';

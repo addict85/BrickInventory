@@ -5,8 +5,8 @@ import { kontingentFrei, speicherePreis, cacheUsable, preisAusCache, parallelLim
 import { meldeUndWeiter, fehlertext, meldeUndLiefere, logAndContinue } from '../src/infra/fehler';
 import { liesZustand, setzeZustand } from '../src/auftraege/laufzustand';
 import { AuftragVerschieben, type AuftragsKontext } from './auftragsWorker';
-import { getGlobalSetting, getSetting } from '../src/konto/settings';
-import { ohneBricklinkPreis } from '../src/sets/setNummer';
+import { getGlobalSetting, getSetting } from '../src/einstellungen/settings';
+import { ohneBricklinkPreis } from '../src/infra/setNummer';
 import { katalogEintrag, getPriceGuide } from '../src/katalog/bricklinkPreise';
 import { belegeSitzungsSperre } from '../db/txLock';
 import * as monitor from '../src/auftraege/jobMonitor';

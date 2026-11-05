@@ -41,8 +41,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const mails = [];
-const echterMailer = _req('src/infra/mailer.js');
-require.cache[require.resolve(path.join(S.DIST, 'src/infra/mailer.js'))].exports = Object.assign({}, echterMailer, {
+const echterMailer = _req('src/mail/mailer.js');
+require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports = Object.assign({}, echterMailer, {
   mailEingerichtet: async () => true,
   sendKontoHinweisMail: async (an, _n, art, o) => { mails.push({ an, art, konto: o.konto }); return { success: true }; },
 });
@@ -126,7 +126,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async (t) => {
     await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'einrichtung_erledigt')");
     const r = await speichern({ rebrickable_api_key: 'erster-schluessel' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    assert.equal(await _req('src/konto/settings.js').getGlobalSetting('rebrickable_api_key'), 'erster-schluessel');
+    assert.equal(await _req('src/einstellungen/settings.js').getGlobalSetting('rebrickable_api_key'), 'erster-schluessel');
   });
 
   await t.test('nach der Einrichtung auch ein erster Schlüssel nur mit Passwort', async () => {

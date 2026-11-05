@@ -57,7 +57,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
   for (const k of zugang)
     await db.run(`INSERT INTO global_settings (key, value) VALUES ($1, 'test')
                   ON CONFLICT (key) DO UPDATE SET value = 'test'`, [k]);
-  await _req('src/konto/settings.js').verschluesseleGlobaleAltwerte();
+  await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
   const aufraeumen = async () => {
     await db.run('DELETE FROM part_price_history WHERE part_number = $1', [TEIL]);
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number = ANY($1)', [[FIGUR, RBFIGUR]]);

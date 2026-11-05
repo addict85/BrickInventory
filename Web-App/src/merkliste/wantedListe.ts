@@ -1,10 +1,10 @@
 /** BrickLink-Wanted-Listen lesen und auf Rebrickable-Nummern abbilden: Die Datei
  * trägt BL-Nummern, der Bestand führt RB-Nummern.
  * Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#abschnitt */
-import { blTeilZuRb, blFilterWirkungslos } from '../../clients/rebrickable';
+import { blTeilZuRb, blFilterWirkungslos } from '../katalog/quellen';
 import * as repo from './repository/wantedListe';
 import { meldeUndLiefere } from '../infra/fehler';
-import { nutzerStandardZustand } from '../konto/settings';
+import { nutzerStandardZustand } from '../einstellungen/settings';
 
 export type WantedArt = 'part' | 'fig' | 'set';
 

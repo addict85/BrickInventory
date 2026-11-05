@@ -43,7 +43,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const db = _req('db/database.js');
-const { hatPreis } = _req('src/finanzen/preisRegel.js');
+const { hatPreis } = _req('src/katalog/bricklinkPreise.js');
 
 test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async (t) => {
   try { await db.initSchema(); }

@@ -49,7 +49,7 @@ test('Design je Konto', { concurrency: 1 }, async (t) => {
   const ids = [];
   for (const n of namen) ids.push((await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1, 'x', true) RETURNING id`, [n])).id);
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
-  const { setGlobalSetting } = _req('src/konto/settings.js');
+  const { setGlobalSetting } = _req('src/einstellungen/settings.js');
   await setGlobalSetting('app_theme', 'noppe');
   _req('src/konto/indexHtml.js').invalidateTheme();
   t.after(async () => {

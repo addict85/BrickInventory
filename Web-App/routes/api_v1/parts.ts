@@ -5,14 +5,14 @@ import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsCo
 import { csvEmpfang } from '../../src/infra/dateiEmpfang';
 import { csvImportAntwort } from '../../src/infra/csvExport';
 import { addManualPart, getPartColorList, updateManualPart, importiereTeileCsv } from '../../src/teile/manuelleTeile';
-import { getSetting } from '../../src/konto/settings';
+import { getSetting } from '../../src/einstellungen/settings';
 import { getPartPriceHistory } from '../../src/finanzen/priceHistory';
 import * as V from '../../src/infra/validate';
 import { aendereTeilFarbe } from '../../src/teile/teilFarbeAendern';
 import { verwendendeSets } from '../../src/bestand/gemeinsam';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
 import { normalisiereLagerort, setzeLagerort } from '../../src/bestand/lagerort';
-import { loescheTeil } from '../../src/bestand/loeschen';
+import { loescheTeil } from '../../src/sammlung/loeschen';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();

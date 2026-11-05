@@ -5,7 +5,7 @@
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in server.ts `const jobs = k.rolle !== 'web'` durch `true` ersetzt →
  *      rot: „der Web-Prozess arbeitet keine Aufträge ab“
- *   B  in aktuellerStartZustand (src/infra/startZustand.ts) das Nachlesen aus
+ *   B  in aktuellerStartZustand (src/auftraege/startZustand.ts) das Nachlesen aus
  *      laufzustand entfernt → rot: „der Web-Prozess sieht den Startzustand des
  *      Job-Prozesses“
  *   C  in server.ts app.use(nurEigeneHerkunft) entfernt → rot: „weist

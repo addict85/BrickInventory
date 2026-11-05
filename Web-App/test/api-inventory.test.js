@@ -104,7 +104,7 @@ const C = {
 
   // Nur /api/v1 — von beiden Clients (oder nur Android) genutzt
   // Etappe 6: zusammengelegt — nur noch die v1-Adresse, beide Clients rufen
-  // sie auf. Die Zustands-Auflösung selbst steht in src/konto/settings.ts.
+  // sie auf. Die Zustands-Auflösung selbst steht in src/einstellungen/settings.ts.
   'GET /api/v1/stats': 'nur-v1',
   'GET /api/v1/settings/default-condition': 'nur-v1',
   'GET /api/v1/settings/user/default-condition': 'nur-v1',

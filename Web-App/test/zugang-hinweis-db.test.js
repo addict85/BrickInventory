@@ -35,8 +35,8 @@ const _req = S.buildAndRequire();
 const { testServer } = require('./helpers/server');
 
 const gesendet = [];
-const echterMailer = _req('src/infra/mailer.js');
-require.cache[require.resolve(path.join(S.DIST, 'src/infra/mailer.js'))].exports = Object.assign({}, echterMailer, {
+const echterMailer = _req('src/mail/mailer.js');
+require.cache[require.resolve(path.join(S.DIST, 'src/mail/mailer.js'))].exports = Object.assign({}, echterMailer, {
   mailEingerichtet: async () => true,
   sendKontoHinweisMail: async (an, _name, art, o) => { gesendet.push({ an, art, ...o }); return { success: true }; },
 });

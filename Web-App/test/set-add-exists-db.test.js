@@ -204,7 +204,7 @@ test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
   //
   // Beide sind ausdruecklich EXPORTIERT. Sie werden jetzt einfach beide
   // geholt und verglichen — und weil beide an
-  // src/sets/setNummer.ts -> normalisiereSetNummer() durchreichen, koennen sie
+  // src/infra/setNummer.ts -> normalisiereSetNummer() durchreichen, koennen sie
   // gar nicht mehr auseinanderlaufen. Die Aussage bleibt dieselbe: Weichen
   // sie ab, prueft die Regel eine ANDERE Nummer als die, die danach
   // geschrieben wird — und das Set landet trotz Pruefung doppelt.
@@ -217,7 +217,7 @@ test('normalizeSetNumber stimmt mit sanitizeSetNumber überein', () => {
       `Abweichung bei "${eingabe}"`);
   }
   // Und beide sagen dasselbe wie die Stelle, an der die Regel steht.
-  const { normalisiereSetNummer } = _req('src/sets/setNummer.js');
+  const { normalisiereSetNummer } = _req('src/infra/setNummer.js');
   for (const eingabe of ['75192', '75192-1', ' 75192 ', '75192; irgendwas', 'ab-12', '4002!!']) {
     assert.equal(normalizeSetNumber(eingabe), normalisiereSetNummer(eingabe),
       `Abweichung zur zentralen Fassung bei "${eingabe}"`);

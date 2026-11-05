@@ -1,8 +1,8 @@
 /** Eine Stelle für Teil, Figur und „alles löschen", damit alle Wege dieselben
  * Zeilen in den Papierkorb nehmen. */
 import * as db from '../../db/database';
-import { legeInPapierkorb } from './papierkorb';
-import { loescheManuellesTeil, loescheManuelleFigur } from './gemeinsam';
+import { legeInPapierkorb } from '../bestand/papierkorb';
+import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand/gemeinsam';
 import { deleteSet } from '../sets/abfragen';
 import * as repo from './repository/loeschen';
 

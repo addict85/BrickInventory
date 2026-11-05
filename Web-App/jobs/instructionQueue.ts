@@ -5,7 +5,7 @@
 import { mitSitzungsSperre } from '../db/txLock';
 import { downloadSetInstructions, letzterAbrufWarExtern, anzahlAnleitungen, scrapeInstructionsFromFallback } from '../src/katalog/instructions';
 import { fehlertext } from '../src/infra/fehler';
-import { alsAbrufFehler } from '../clients/abrufFehler';
+import { alsAbrufFehler } from '../src/katalog/quellen';
 import { zaehleArt, beendePause, pausiereArt, liesPause } from '../src/auftraege/dienst';
 import * as monitor from '../src/auftraege/jobMonitor';
 import { LOCKS } from '../src/infra/lockNamespaces';

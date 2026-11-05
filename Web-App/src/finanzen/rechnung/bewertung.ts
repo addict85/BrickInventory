@@ -4,11 +4,11 @@
 import { meldeUndLiefere, fehlertext } from '../../infra/fehler';
 import * as repo from '../repository/bewertung';
 import { setPreiseFrisch } from '../repository/preisCache';
-import { asIds } from '../../haushalt/haushalt';
-import { getGlobalSetting, getSetting } from '../../konto/settings';
+import { asIds, withOwners } from '../../haushalt/haushalt';
+import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
 import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
-import { mitVersion } from '../../sets/setNummer';
+import { mitVersion } from '../../infra/setNummer';
 import { effectiveCondition } from './zustand';
 import {
   DEFAULT_PRICE_CONDITION, parallelLimit,
@@ -19,7 +19,6 @@ import {
 import { zaehle } from './abfragen';
 import { ladeSetErfassungen } from '../repository/erfassungen';
 import { schaetzeFigurenpreis } from '../marketPrice';
-import { withOwners } from '../../bestand/gemeinsam';
 import { KEINE_FARBE } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
 

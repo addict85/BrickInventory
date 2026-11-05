@@ -142,7 +142,7 @@ test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 
                   ON CONFLICT (key) DO UPDATE SET value=$2`, [k, v]);
   }
   // Wie der Start: Klartext in der Tabelle wird vor der ersten Anfrage verschlüsselt.
-  await _req('src/konto/settings.js').verschluesseleGlobaleAltwerte();
+  await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
 
   const appFuer = (isAdmin) => {
     const app = express();

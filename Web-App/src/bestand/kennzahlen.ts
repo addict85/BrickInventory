@@ -1,6 +1,6 @@
 import { meldeUndLiefere } from '../infra/fehler';
 import { asIds } from '../haushalt/haushalt';
-import { getGlobalSetting } from '../konto/settings';
+import { getGlobalSetting } from '../einstellungen/settings';
 import * as repo from './repository/kennzahlen';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */

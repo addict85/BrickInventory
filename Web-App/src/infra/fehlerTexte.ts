@@ -324,6 +324,7 @@ export const FEHLER = {
   datum_belegt:                { de: 'An diesem Datum gibt es schon einen Eintrag mit demselben Zustand und Preis.',
                                  en: 'An entry with the same condition and price already exists for that date.' },
   server_ausgelastet:          { de: 'Server ausgelastet', en: 'The server is busy' },
+  datenbank_nicht_erreichbar:  { de: 'Datenbank nicht erreichbar', en: 'Database unreachable' },
   idempotenz_schluessel_ungueltig: { de: 'Idempotency-Key: 1 bis 100 Zeichen aus A–Z, a–z, 0–9, . _ : -',
                                  en: 'Idempotency-Key: 1 to 100 characters from A–Z, a–z, 0–9, . _ : -' },
   idempotenz_schluessel_anders: { de: 'Dieser Idempotency-Key gehört zu einer anderen Anfrage.',

@@ -1,6 +1,6 @@
 // Ausführlich: docs/begruendungen/src/katalog/rbInventar.ts.md#abschnitt
 import { inventarNachKandidaten } from './repository/katalogStamm';
-import { mitVersion } from '../sets/setNummer';
+import { mitVersion } from '../infra/setNummer';
 
 /** Fehler werden NICHT geschluckt: Die Aufrufer gehen verschieden damit um,
  * hier stünde sonst die Entscheidung für alle. */

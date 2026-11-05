@@ -1,4 +1,4 @@
-/** Kaufpreis-Erfassungen; die Regeln stehen in src/bestand/erfassungen.ts. */
+/** Kaufpreis-Erfassungen; die Regeln stehen in src/sammlung/erfassungen.ts. */
 import express from 'express';
 import { acquisitionTotals } from '../../src/bestand/acquisitions';
 import { meldeUndLiefere } from '../../src/infra/fehler';
@@ -7,8 +7,8 @@ import { requireToken } from './middleware';
 import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
 import { getPartAcquisitions } from '../../src/teile/manuelleTeile';
 import { getFigAcquisitions } from '../../src/figuren/manuelleFiguren';
-import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../src/bestand/erfassungen';
-import type { ErfassungsArt } from '../../src/bestand/erfassungen';
+import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../src/sammlung/erfassungen';
+import type { ErfassungsArt } from '../../src/sammlung/erfassungen';
 import * as V from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';

@@ -37,7 +37,7 @@ const g = _req('src/infra/geheimnis.js');
 const gr = _req('src/gutscheine/repository/gutscheine.js');
 const dateien = _req('src/gutscheine/gutscheinDateien.js');
 const zf = _req('src/konto/zweiterFaktor.js');
-const settings = _req('src/konto/settings.js');
+const settings = _req('src/einstellungen/settings.js');
 const idem = _req('src/idempotenz/dienst.js');
 
 /** Das Format vor dem Kontext: AES-GCM mit dem Rohschlüssel, ohne AAD. */

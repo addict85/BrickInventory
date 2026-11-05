@@ -238,14 +238,14 @@ test("ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen", () => {
   // avg_price = 0 — 'sold' allein hiesse dort dauerhaft kein Marktpreis.
   const bl = fs.readFileSync(path.join(ROOT, 'src/katalog/bricklinkPreise.ts'), 'utf8');
   // Frueher stand hier `/function hasUsablePrice/` — ein Name. Die Pruefung
-  // heisst inzwischen hatPreis() und liegt in src/finanzen/preisRegel.ts, weil sie
+  // heisst inzwischen hatPreis() und liegt in src/katalog/bricklinkPreise.ts, weil sie
   // DIESELBE sein muss wie beim Lesen: Solange der Torwaechter hier weiter war
   // als der Leser dort, unterblieb der Rueckfall auf 'stock' fuer genau die
   // Artikel, fuer die er gebaut wurde (siehe test/preisregel-db.test.js).
   // Geprueft wird deshalb die Herkunft der Regel, nicht ihr Name.
   assert.match(bl, /hatPreis/, 'Prüfung auf brauchbaren Preis fehlt');
-  assert.match(bl, /from '[^']*\/preisRegel'/,
-    'Der Rückfall muss an derselben Regel hängen, die auch beim Lesen gilt');
+  assert.match(bl, /export function hatPreis\(/,
+    'Der Rückfall muss an derselben Regel hängen, die auch beim Lesen gilt (preise.ts liest sie von hier)');
   assert.match(bl, /getPriceGuideRaw\(setNumber, condition, 'stock', currencyCode\)/,
     "Rückfall auf 'stock' fehlt");
   assert.match(bl, /guide_used/, 'Es muss nachvollziehbar bleiben, woher der Wert kommt');

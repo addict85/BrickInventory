@@ -7,7 +7,7 @@ import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { ohneFehlendeDatei } from '../../src/infra/fehler';
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { sendeFehler, fehlerText, antwortSprache, dateiFehler, type FehlerCode, alsDoppelt } from '../../src/infra/fehlerTexte';
-import { getGlobalSetting, getSetting } from '../../src/konto/settings';
+import { getGlobalSetting, getSetting } from '../../src/einstellungen/settings';
 import { landErlaubt, landFuerWaehrung } from '../../src/gutscheine/gutscheinGuthaben';
 import { frageGuthabenAb, ABSTAND_SEK } from '../../src/gutscheine/gutscheinGuthabenSchranke';
 import { VOUCHER_DIR, gutscheinDatei, schreibeGutscheinPdf, liesGutscheinPdf, liesGutscheinPdfOderNichts } from '../../src/gutscheine/gutscheinDateien';

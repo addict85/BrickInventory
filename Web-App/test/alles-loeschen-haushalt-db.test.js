@@ -156,7 +156,7 @@ test('der Knopf überlässt die Auswahl dem Server', () => {
   const block = src.slice(i, src.indexOf('\n};', i));
   assert.match(block, /api\('DELETE','\/v1\/bestand',\s*\{\s*password\b/, 'Der Knopf ruft DELETE /v1/bestand mit Passwort');
   assert.doesNotMatch(block, /\/v1\/sets/, 'Der Knopf listet und löscht wieder selbst');
-  const loeschen = fs.readFileSync(path.join(ROOT, 'src/bestand/loeschen.ts'), 'utf8');
+  const loeschen = fs.readFileSync(path.join(ROOT, 'src/sammlung/loeschen.ts'), 'utf8');
   assert.match(loeschen, /deleteSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');
 });
 

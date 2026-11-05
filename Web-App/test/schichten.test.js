@@ -4,9 +4,9 @@
  *     server.ts, startup/    hängt alles ein
  *     routes/                HTTP: Eingabe prüfen, Dienst rufen, antworten
  *     jobs/                  Hintergrundarbeit, ruft Dienste
- *     src/<bereich>/         Dienste (Fachlogik) und repository (SQL)
- *     src/infra/             fachfreie Helfer
- *     clients/, db/          Aussenwelt (nur HTTP) und Datenbank
+ *     src/<bereich>/         Dienste (Fachlogik) und repository (SQL), in STUFEN geordnet
+ *     clients/, db/          Aussenwelt (nur HTTP) und Datenbank, kennen nur src/infra/
+ *     src/infra/             fachfreie Helfer, kennen nichts darüber
  *
  * Ausnahmen stehen namentlich in den Listen und dürfen nur kürzer werden.
  */
@@ -148,7 +148,7 @@ test('keine Route importiert eine andere Routendatei', () => {
 });
 
 test('kein Zustand auf global', () => {
-  // Was Prozesse teilen, steht in einem Modul (src/infra/startZustand.ts) und
+  // Was Prozesse teilen, steht in einem Modul (src/auftraege/startZustand.ts) und
   // ist über den Import zu finden. Gegenprobe (29.10.2026): eine Zeile
   // `global.startupStatus = …` in server.ts → rot.
   const treffer = [];
@@ -366,12 +366,15 @@ function tsUnter(...ordner) {
 /** SQL im Code: eine Anweisung als Zeichenkette oder ein Aufruf auf einer Verbindung. */
 const SQL_TEXT = /[`'"]\s*(?:SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+(?:\w+\s+)?SET|DELETE\s+FROM|WITH\s+(?:RECURSIVE\s+)?\w+|CREATE\s+(?:TABLE|INDEX|UNIQUE)|ALTER\s+TABLE|DROP\s|TRUNCATE|LISTEN|NOTIFY|UNLISTEN|SET\s+LOCAL|LOCK\s+TABLE|ANALYZE|VACUUM)\b/;
 const SQL_AUFRUF = /\b(?:db|tx|client|pool)\.(?:run|get|all|query|exec)\s*(?:<[^>]*>)?\(/;
-const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s); };
+/** Auch ein Fragment mitten in einer Zeichenkette, etwa `EXISTS (SELECT 1 FROM …)`. */
+const SQL_FRAGMENT = /\bSELECT\b[^;`'"]*\bFROM\b/;
+const hatSql = (rel) => { const s = quelltext(rel); return SQL_TEXT.test(s) || SQL_AUFRUF.test(s) || SQL_FRAGMENT.test(s); };
 
 test('SQL steht nur in Repositories und in db/', () => {
   // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
   // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
-  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in jobs/aufraeumen.ts → rot.
+  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in jobs/aufraeumen.ts → rot;
+  // (05.11.2026) das EXISTS-Fragment zurück nach src/finanzen/preisalarm.ts → rot.
   const dateien = tsUnter('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
   assert.deepEqual(dateien.filter(d => !istRepository(d) && hatSql(d)), [],
@@ -403,7 +406,7 @@ test('ein Fachbereich greift auf einen anderen nur über dessen Dienste zu', () 
 
 test('ein Repository kennt keine Dienste', () => {
   // Gegenprobe (31.10.2026): `import { getSetting } from '../settings'` in
-  // src/konto/repository/einstellungen.ts → rot.
+  // src/einstellungen/repository.ts → rot.
   const treffer = [];
   for (const d of tsUnter('src').filter(istRepository))
     for (const z of aufgeloesteImporte(d))
@@ -453,4 +456,73 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTEN));
   for (const d of tsUnter('routes').filter(d => /router\.(get|post|put|delete|patch)\(/.test(quelltext(d))))
     assert.match(quelltext(d), /router\.use\(fehlerAntwort\)/, `${d} endet nicht mit dem Fehlerweg`);
+});
+
+// ── Rangfolge der Bereiche ──────────────────────────────────────────────────
+
+/** Von unten nach oben. Ein Bereich importiert nur Bereiche tieferer Stufen;
+ * Bereiche derselben Stufe kennen einander nicht. Ein neuer Ordner braucht
+ * eine Stufe, sonst ist der Test rot. */
+const STUFEN = [
+  ['src/infra'],
+  ['db', 'clients'],
+  ['src/einstellungen'],
+  ['src/mail'],
+  ['src/auftraege'],
+  ['src/haushalt'],
+  ['src/konto'],
+  ['src/idempotenz', 'src/katalog'],
+  ['src/finanzen'],
+  ['src/bestand'],
+  ['src/sets'],
+  ['src/teile', 'src/figuren', 'src/merkliste', 'src/gutscheine'],
+  ['src/sammlung', 'src/verwaltung'],
+  ['jobs', 'routes'],
+  ['startup'],
+  ['server.ts'],
+];
+const stufeVon = new Map(STUFEN.flatMap((s, i) => s.map(b => [b, i])));
+const bereichsName = (rel) => rel.startsWith('src/') ? rel.split('/').slice(0, 2).join('/') : rel.split('/')[0];
+
+/** Laufzeit-Kanten zwischen Bereichen: `import type` zählt nicht, import() und `export … from` schon. */
+function bereichsKanten() {
+  const kanten = [];
+  const alle = tsUnter('src', 'db', 'clients', 'jobs', 'routes', 'startup').concat('server.ts');
+  const bekannt = new Set(alle);
+  for (const d of alle) {
+    const von = bereichsName(d);
+    for (const z of aufgeloesteImporte(d)) {
+      const ziel = [z + '.ts', z + '/index.ts', z].find(k => bekannt.has(k));
+      if (!ziel) continue;
+      const nach = bereichsName(ziel);
+      if (nach !== von) kanten.push({ d, ziel, von, nach });
+    }
+  }
+  return kanten;
+}
+
+test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
+  // Gegenproben (05.11.2026): `import { getSetting } from '../src/einstellungen/settings'`
+  // in clients/brickset.ts → rot (clients → src/einstellungen); dasselbe mit
+  // `import { mitVersion } from '../sets/setNummer'` in src/katalog/dienst.ts,
+  // nachdem setNummer wieder unter src/sets lag → rot (katalog → sets).
+  const kanten = bereichsKanten();
+  assert.ok(kanten.length > 500, `nur ${kanten.length} Kanten gefunden — greift die Suche noch?`);
+  const ohneStufe = [...new Set(kanten.flatMap(k => [k.von, k.nach]))].filter(b => !stufeVon.has(b));
+  assert.deepEqual(ohneStufe, [], 'Bereich ohne Stufe: in STUFEN eintragen');
+  const falsch = kanten.filter(k => stufeVon.get(k.nach) >= stufeVon.get(k.von))
+    .map(k => `${k.d} -> ${k.ziel} (${k.von} → ${k.nach})`);
+  assert.deepEqual(falsch, []);
+});
+
+test('Klienten erreicht man nur über src/katalog/quellen.ts', () => {
+  // Dort bekommen sie Schlüssel, Kontingent und Drossel; ein Weg daran vorbei
+  // fände keinen Schlüssel. `import type` ist erlaubt.
+  // Gegenprobe (05.11.2026): `import { lookupPart } from '../../clients/rebrickable'`
+  // in src/teile/manuelleTeile.ts → rot.
+  const kanten = bereichsKanten();
+  const treffer = kanten.filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/katalog/quellen.ts')
+    .map(k => `${k.d} -> ${k.ziel}`);
+  assert.deepEqual(treffer, []);
+  assert.ok(kanten.some(k => k.d === 'src/katalog/quellen.ts' && k.nach === 'clients'), 'quellen.ts holt keinen Klienten mehr?');
 });

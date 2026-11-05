@@ -107,3 +107,7 @@ export async function besitzerDerErfassung(art: ErfassungsArt, id: number): Prom
   const r = await db.get<{ user_id: number | string }>(`SELECT user_id FROM ${ERFASSUNGEN[art]} WHERE id = $1`, [id]);
   return r ? zahl(r.user_id) : null;
 }
+
+export function benutzerNamen(uids: number[]) {
+  return db.all<{ id: number | string; username: string }>('SELECT id, username FROM users WHERE id = ANY($1)', [uids]);
+}

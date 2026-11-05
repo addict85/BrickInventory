@@ -152,7 +152,7 @@ test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
   assert.doesNotMatch(dienst, /https\.get\(/, 'eigener Abrufweg am Tageskontingent vorbei');
   const client = quelle('clients/rebrickable.ts');
   const rbJson = client.slice(client.indexOf('async function rebrickableJson'), client.indexOf('function httpsGetRobust'));
-  assert.match(rbJson, /consumeRebrickableDaily/, 'rebrickableJson zählt nicht mit');
+  assert.match(rbJson, /tagesKontingentFrei/, 'rebrickableJson zählt nicht mit');
   assert.match(rbJson, /waitForSlot/,            'rebrickableJson umgeht die Drossel');
 });
 

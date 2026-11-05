@@ -27,7 +27,7 @@ process.env.DATA_KEY = Buffer.alloc(32, 11).toString('base64');
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const mailer = _req('src/infra/mailer.js');
+const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 /** Klartext-SMTP; mit `tlsOpt` bietet er STARTTLS an. Jede Zeile landet mit ihrer Schicht im Mitschnitt. */
@@ -106,7 +106,7 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     const alle = { smtp_host: '127.0.0.1', smtp_user: 'postfach', smtp_pass: 'Geheim-Smtp-9', smtp_secure: '0', smtp_from: 'test@example.org', ...werte };
     for (const [k, v] of Object.entries(alle)) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [k, String(v)]);
-    await _req('src/konto/settings.js').verschluesseleGlobaleAltwerte();
+    await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
   };
   const LINK = 'https://brick.example/reset?token=abcdef0123';
 

@@ -2,9 +2,9 @@
 /** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
  * API-Abruf und das Tageskontingent.
  * Ausführlich: docs/begruendungen/jobs/rebrickableCsvSync.ts.md#abschnitt */
-import { meldeStartZustand } from '../src/infra/startZustand';
+import { meldeStartZustand } from '../src/auftraege/startZustand';
 import { fetchMissingBlIds } from '../src/katalog/partsImport';
-import { getRbKey, httpsGetRobust } from '../clients/rebrickable';
+import { getRbKey, httpsGetRobust } from '../src/katalog/quellen';
 import { fehlertext, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../src/infra/fehler';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../src/katalog/blZuordnung';
 import { liesZustand, setzeZustand, loescheZustand } from '../src/auftraege/laufzustand';

@@ -1,7 +1,7 @@
 import * as repo from './repository/marktpreise';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { getSetValue } from './setValue';
-import { nutzerStandardZustand as userDefaultCondition, getGlobalSetting, getSetting } from '../konto/settings';
+import { nutzerStandardZustand as userDefaultCondition, getGlobalSetting, getSetting } from '../einstellungen/settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
          resolveBlPartNumber, resolveBlColorId } from './rechnung/preise';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';

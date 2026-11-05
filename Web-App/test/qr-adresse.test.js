@@ -170,7 +170,7 @@ test('3. eine Quelle fuer QR-Code, Mail-Knopf und Reset-Links', () => {
   assert.match(lies('src/infra/konfig.ts'), /APP_BASE_URL\?\.trim\(\)\.replace\(\/\\\/\+\$\/, ''\)/,
     'Ein abschliessender Schraegstrich wird nicht entfernt.');
 
-  for (const datei of ['routes/auth.ts', 'src/infra/mailer.ts']) {
+  for (const datei of ['routes/auth.ts', 'src/mail/mailer.ts']) {
     const quelle = lies(datei);
     assert.ok(!/process\.env\.APP_BASE_URL/.test(quelle),
       `${datei} liest APP_BASE_URL selbst — das ist die Kopie, die auseinanderlaeuft.`);

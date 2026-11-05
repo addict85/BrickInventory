@@ -4,7 +4,7 @@
  * und Registrierung wie „Passwort vergessen" sind je Zieladresse gedrosselt.
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  routes/auth.ts und src/infra/mailer.ts auf Stand 2b73e33 → alle sechs
+ *   A  routes/auth.ts und src/mail/mailer.ts auf Stand 2b73e33 → alle sechs
  *      Teile rot, darunter „die Bestätigungsmail nennt …“ („Hallo Anna,“)
  *   B  nameGueltig() in POST /register entfernt → rot: „Namen mit Adresse oder
  *      Steuerzeichen werden abgewiesen“ (200 statt 400)
@@ -34,7 +34,7 @@ nodemailer.createTransport = () => ({ sendMail: async (m) => { gesendet.push(m);
 const _req = require('./helpers/sources').buildAndRequire();
 const { testServer } = require('./helpers/server');
 const db = _req('db/database.js');
-const mailer = _req('src/infra/mailer.js');
+const mailer = _req('src/mail/mailer.js');
 
 const P = process.pid;
 const BOESE = 'Gewinn-abholen.example';

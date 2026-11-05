@@ -1,13 +1,13 @@
 /** Die eine Stelle für die Schreibweise: Zwei Schreibweisen trafen
  * verschiedene Zeilen in Katalog und Cache. */
 
-// Ausführlich: docs/begruendungen/src/sets/setNummer.ts.md#mitversion
+// Ausführlich: docs/begruendungen/src/infra/setNummer.ts.md#mitversion
 export function mitVersion(setNumber: string | number): string {
   const s = String(setNumber);
   return /-\d+$/.test(s) ? s : `${s}-1`;
 }
 
-// Ausführlich: docs/begruendungen/src/sets/setNummer.ts.md#normalisieresetnummer
+// Ausführlich: docs/begruendungen/src/infra/setNummer.ts.md#normalisieresetnummer
 export function normalisiereSetNummer(input: unknown): string {
   let s = ((String(input).trim().split(';')[0] ?? '').trim().split(' ')[0] ?? '')
     .trim().replace(/[^a-zA-Z0-9-]/g, '');

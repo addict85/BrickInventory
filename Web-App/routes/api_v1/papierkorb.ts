@@ -6,7 +6,7 @@ import { writableIds } from '../../src/haushalt/haushalt';
 import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../src/bestand/papierkorb';
 import { requireToken } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
-import { loescheAllesEigene } from '../../src/bestand/loeschen';
+import { loescheAllesEigene } from '../../src/sammlung/loeschen';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
 

@@ -60,7 +60,7 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async (t) => {
 
     await t.test('eingerichtet: Schlüssel da, Passwort gesetzt → nicht mehr offen', async () => {
       await setze('rebrickable_api_key', 'abc');
-      await _req('src/konto/settings.js').verschluesseleGlobaleAltwerte();
+      await _req('src/einstellungen/settings.js').verschluesseleGlobaleAltwerte();
       await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
       const r = await ruf(V, '/einrichtung');
       assert.equal(r.body.offen, false);

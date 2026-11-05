@@ -1,6 +1,6 @@
-# Begründungen zu `src/sets/setNummer.ts`
+# Begründungen zu `src/infra/setNummer.ts`
 
-Die ausführlichen Kommentare aus `src/sets/setNummer.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/infra/setNummer.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

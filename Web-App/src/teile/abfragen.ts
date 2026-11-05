@@ -1,19 +1,19 @@
 import * as repo from './repository/teileListe';
 import { resolveImageLocal } from '../katalog/bilder/images';
-import { asIds } from '../haushalt/haushalt';
+import { asIds, withOwners } from '../haushalt/haushalt';
 import type { BlickfeldEingabe, BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
 import { fetchMissingBlIds } from '../katalog/partsImport';
 import type { RbSetTeil } from '../../clients/rebrickable';
-import { getRbKey, httpsGetRobust } from '../../clients/rebrickable';
+import { getRbKey, httpsGetRobust } from '../katalog/quellen';
 import { getAllSetParts } from '../katalog/rebrickableKatalog';
-import { clampPageSize, applyManualCondition, withOwners, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
+import { clampPageSize, applyManualCondition, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand/gemeinsam';
 import { meldeUndWeiter, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { farbkarte as blFarbkarte } from '../finanzen/financeCalc';
-import { getGlobalSetting } from '../konto/settings';
+import { getGlobalSetting } from '../einstellungen/settings';
 import { neuestesInventar } from '../katalog/rbInventar';
-import { mitVersion, ohneVersion } from '../sets/setNummer';
+import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
 
 /** Mit Ausweichebenen (CSV-Zwischenspeicher, Rebrickable), damit ein Set auch

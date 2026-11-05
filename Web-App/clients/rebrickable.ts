@@ -1,14 +1,13 @@
 // Ein API-Client, kein Router: Deshalb liegt er nicht unter routes/.
-import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait, rebrickableBackgroundLimiter } from '../src/katalog/rateLimiter';
 import { KEINE_FARBE } from '../src/infra/validate';
 
 import { pipeline } from 'stream/promises';
 import { holeHttps, oeffneHttps, AbrufFehler } from '../src/infra/abruf';
 import path from 'path';
 import fs from 'fs';
-import { fehlertext, meldeUndLiefere } from '../src/infra/fehler';
-import { mitVersion } from '../src/sets/setNummer';
-import { getGlobalSetting } from '../src/konto/settings';
+import { fehlertext, meldeUndLiefere, meldeUndWeiter } from '../src/infra/fehler';
+import { mitVersion } from '../src/infra/setNummer';
+import { zugang } from './zugang';
 import { ERLAUBTE_DOWNLOAD_HOSTS, ERLAUBTE_API_HOSTS, pfadSegment } from '../src/infra/fremdeAdressen';
 
 const BASE = 'https://rebrickable.com/api/v3';
@@ -36,7 +35,28 @@ export type RbSetTeil = {
  * Ausführlich: docs/begruendungen/clients/rebrickable.ts.md#getrbkey
  */
 async function getRbKey(): Promise<string | null> {
-  return await getGlobalSetting('rebrickable_api_key') || null;
+  return await zugang().schluessel('rebrickable_api_key') || null;
+}
+
+/** Im Zweifel durchlassen: Ein überschrittenes Tageskontingent kostet bloss
+ * Aufrufe — umgekehrt als beim Login-Zähler, wo der Rückfall sperrt. */
+async function tagesKontingentFrei(): Promise<boolean> {
+  return zugang().zaehle('rebrickable').then(r => r.allowed, meldeUndLiefere('takt:checkAndIncrementRateLimit', true));
+}
+
+const rebrickableDailyStatus = () => zugang().kontingentStand('rebrickable');
+const rebrickableLimiter = { waitForSlot: () => zugang().drossel.vordergrund.waitForSlot(),
+  throttle: (ms: number) => zugang().drossel.vordergrund.throttle(ms) };
+const rebrickableBackgroundLimiter = { waitForSlot: () => zugang().drossel.hintergrund.waitForSlot() };
+
+/** Antwort: {"detail": "… Expected available in 2 seconds."} */
+export function parseThrottleWait(body: string) {
+  try {
+    const data = typeof body === 'string' ? JSON.parse(body) : body;
+    const match = data?.detail?.match(/(\d+)\s*second/);
+    if (match) return parseInt(match[1]) * 1000 + 500;
+  } catch (e) { meldeUndWeiter('kontingent:retry-after-lesen', e); }
+  return 5000;
 }
 
 /**
@@ -47,7 +67,7 @@ async function getRbKey(): Promise<string | null> {
 async function rebrickableJson(pfad: string): Promise<any> {
   const key = await getRbKey();
   if (!key) return null;
-  if (!await consumeRebrickableDaily()) {
+  if (!await tagesKontingentFrei()) {
     console.log(`[rebrickable] Tageslimit erreicht — ${pfad} übersprungen`);
     return null;
   }
@@ -90,7 +110,7 @@ async function rbGet(apiPath: string, params: Record<string, string | number> = 
   if (!key) throw new Error('Rebrickable API Key nicht konfiguriert.');
   await rebrickableLimiter.waitForSlot();
   // Daily cap: 100/day
-  if (!await consumeRebrickableDaily()) {
+  if (!await tagesKontingentFrei()) {
     // Zahl aus dem gemeinsamen Zähler statt hartkodiert — der Text sagte
     // "100/Tag", während das tatsächliche Limit längst bei 4000 lag.
     const { limit } = await rebrickableDailyStatus();
@@ -127,7 +147,7 @@ async function holeSetTeile(n: string): Promise<{ teile: any[]; verweigert: bool
   let url: string | null = `${BASE}/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   let pages = 0;
   while (url && pages++ < 40) {
-    if (!await consumeRebrickableDaily()) {
+    if (!await tagesKontingentFrei()) {
       console.error(`[rebrickable] Tageslimit (${(await rebrickableDailyStatus()).limit}/Tag) erreicht — ${n} übersprungen`);
       break;
     }
@@ -278,7 +298,7 @@ async function getBrickColors() {
 async function holeFigurTeile(figNumber: string): Promise<any[] | null> {
   const key = await getRbKey();
   if (!key) return null;
-  if (!await consumeRebrickableDaily()) {
+  if (!await tagesKontingentFrei()) {
     console.error(`[rebrickable] Tageslimit (${(await rebrickableDailyStatus()).limit}/Tag) erreicht — Minifig-Teile für ${figNumber} übersprungen`);
     return null;
   }

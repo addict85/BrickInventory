@@ -4,9 +4,9 @@
 import { meldeUndLiefere, meldeUndWeiter, fehlertext } from '../infra/fehler';
 import { scopeIds } from '../haushalt/haushalt';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-import * as mailer from '../infra/mailer';
+import * as mailer from '../mail/mailer';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
-import { normalizeSetNumber } from '../sets/setAdd';
+import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/preisalarme';
 
 /** Ausgeschrieben statt `any`: Betrag, Richtung und Mailadresse stehen
@@ -73,11 +73,9 @@ export async function loescheAlarm(userId: number, setNumber: string, condition:
   return r.changes ?? 0;
 }
 
-/** Die App macht daran die Zeile anklickbar. */
-const BESITZT_SQL = `EXISTS (SELECT 1 FROM sets s WHERE s.user_id = ANY($3) AND s.set_number = a.set_number) AS besitzt`;
 
 export async function alarmeFuer(userId: number, setNumber: string): Promise<Preisalarm[]> {
-  const rows = await repo.alarmeDesSets(userId, setNumber, await scopeIds(userId), BESITZT_SQL)
+  const rows = await repo.alarmeDesSets(userId, setNumber, await scopeIds(userId))
     .catch(e => { meldeUndWeiter('preisalarm:lesen', e); return []; });
   type Zeile = Omit<Preisalarm, 'schwelle' | 'zuletzt_preis'> &
                { schwelle: string | number; zuletzt_preis: string | number | null };
@@ -135,7 +133,7 @@ export async function ausgeloesteSeit(userId: number, seit: unknown) {
   // Unlesbar wie fehlend, NICHT „seit Anbeginn": Ein Tippfehler darf keine Flut auslösen.
   if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
 
-  const rows = await repo.alarmeDesKontos(userId, marke, await scopeIds(userId), BESITZT_SQL)
+  const rows = await repo.alarmeDesKontos(userId, marke, await scopeIds(userId))
     .catch(e => { meldeUndWeiter('preisalarm:abholen', e); return []; });
 
   type Zeile = { set_number: string; condition: string; richtung: Richtung;
@@ -250,7 +248,7 @@ export async function alarmeAusCsv(uid: number, waehrung: string, text: string) 
   for (const row of bereinigt) {
     const roh = String(row.set_number || row['Setnummer'] || row['set_num'] || Object.values(row)[0] || '').trim();
     if (!roh) continue;
-    const sn = normalizeSetNumber(roh);
+    const sn = normalisiereSetNummer(roh);
     // Vor dem Schreiben fragen: setzeAlarm() legt an oder ändert, ohne es zu sagen.
     const schon = await alarmeFuer(uid, sn);
     const dateiWaehrung = String(row.currency_code || row['waehrung'] || '').trim().toUpperCase();

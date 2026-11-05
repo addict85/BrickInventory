@@ -108,18 +108,15 @@ test('Preis-Vorhandensein hängt an avg_price', () => {
   // Teile und Minifiguren, je Haupt- und Rückfall-Zustand. Die gibt es nicht
   // mehr: Dieselbe Frage stand in dieser Datei an 22 Stellen, in drei
   // Fassungen, und widersprach dabei der Fassung in clients/bricklink.ts.
-  // Sie liegt jetzt einmal in src/finanzen/preisRegel.ts (siehe
+  // Sie liegt jetzt einmal in src/katalog/bricklinkPreise.ts (siehe
   // test/preisregel-db.test.js). Gezählt werden deshalb die Stellen, die sie
   // BENUTZEN — die Zahl bleibt die Zusicherung, dass keine davon verschwindet.
   assert.doesNotMatch(fc, /avg_price > 0 \|\| \w+\.qty_avg_price > 0/,
     'Ein Datensatz mit avg_price = 0 ginge sonst als "hat einen Preis" durch und ergäbe überall 0');
   assert.ok((fc.match(/\bhatPreis\(/g) || []).length >= 5,
     'Alle Preis-Vorhandensein-Prüfungen müssen über dieselbe Regel laufen');
-  // `\.\.?/` statt `\./`: Seit die Finanzschicht unter utils/finance/ liegt,
-  // heisst derselbe Import '../preisRegel'. Die Regel meint die HERKUNFT, nicht
-  // die Verzeichnistiefe — auf die Tiefe zu prüfen hiesse, beim naechsten
-  // Verschieben eine richtige Sache als falsch zu melden.
-  assert.match(fc, /from '\.\.?\/preisRegel'/,
+  // Die Regel meint die HERKUNFT, nicht die Verzeichnistiefe.
+  assert.match(fc, /hatPreis \} from '(?:\.\.\/)+katalog\/bricklinkPreise'/,
     'und zwar über die eine, die auch clients/bricklink.ts anwendet');
 });
 
@@ -150,7 +147,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
 
   // ── Und die Aufrufer ──────────────────────────────────────────────────────
   //
-  // Nicht nach der blossen Zeichenkette `?token=` gesucht: src/infra/mailer.ts
+  // Nicht nach der blossen Zeichenkette `?token=` gesucht: src/mail/mailer.ts
   // baut damit die Links `/verify?token=` und `/reset-password?token=` fuer
   // die E-Mail. Das sind EIGENE, kurzlebige Token mit eigenen Handlern in
   // server.ts — kein Sitzungsausweis. Gesucht wird deshalb das Anhaengen

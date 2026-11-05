@@ -1,7 +1,7 @@
 import * as db from '../../db/database';
 import type { DbSchnittstelle } from '../../db/database';
 import { aktuellesKonto } from '../infra/anfrageKonto';
-import { getGlobalSetting } from '../konto/settings';
+import { getGlobalSetting } from '../einstellungen/settings';
 import * as repo from './repository/apiKontingent';
 
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';

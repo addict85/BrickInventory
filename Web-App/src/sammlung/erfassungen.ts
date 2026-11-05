@@ -1,21 +1,22 @@
 /** Eine Regel für drei Arten, damit Webapp und App nicht auseinanderlaufen. */
-import * as repo from './repository/kaufErfassungen';
+import * as repo from './repository/erfassungen';
 import type { DbSchnittstelle } from '../../db/database';
 import { writableIds, acquisitionMoveSource, resolveWriteTarget } from '../haushalt/haushalt';
-import { findSameDayAcquisition } from './acquisitions';
+import { findSameDayAcquisition } from '../bestand/acquisitions';
 import { meldeUndLiefere } from '../infra/fehler';
 import { withInventoryLock, bestandsSchluessel } from '../../db/txLock';
 import { moveSetBetweenAccounts, moveManualAcquisition } from '../sets/setMove';
 import { getCurrentMarketPrice, getCurrentPartMarketPrice, getCurrentFigMarketPrice } from '../finanzen/marketPrice';
 import { deleteSetRows, withSetAggregate } from '../sets/abfragen';
-import { loescheManuellesTeil, loescheManuelleFigur } from './gemeinsam';
+import { loescheManuellesTeil, loescheManuelleFigur } from '../bestand/gemeinsam';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import { blAbrufNummer } from '../katalog/blZuordnung';
-import { mengeDesSets, mengeDerPosition } from '../../db/bestandsmenge';
+import { mengeDesSets, mengeDerPosition, preisSpalte } from '../../db/bestandsmenge';
 import { bestandsMenge } from '../infra/validate';
 
-export type ErfassungsArt = 'set' | 'part' | 'fig';
+export type { ErfassungsArt } from '../../db/bestandsmenge';
+import type { ErfassungsArt } from '../../db/bestandsmenge';
 type Schluessel = Array<string | number>;
 
 interface Art {
@@ -78,7 +79,7 @@ export interface Aenderung { quantity?: unknown; condition?: unknown; date?: unk
 export async function erfassungAendern(art: ErfassungsArt, uid: number, id: number, keys: Schluessel, body: Aenderung) {
   const a = ARTEN[art];
   const { quantity, condition, date } = body;
-  const rawPrice = body[repo.preisSpalte(art)];
+  const rawPrice = body[preisSpalte(art)];
 
   const ownerReq = body.owner_user_id;
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {

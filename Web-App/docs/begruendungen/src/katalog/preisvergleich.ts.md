@@ -1,6 +1,6 @@
-# Begründungen zu `src/finanzen/preisvergleich.ts`
+# Begründungen zu `src/katalog/preisvergleich.ts`
 
-Die ausführlichen Kommentare aus `src/finanzen/preisvergleich.ts`, wörtlich. Im Code steht je
+Die ausführlichen Kommentare aus `src/katalog/preisvergleich.ts`, wörtlich. Im Code steht je
 Stelle der erste Absatz und ein Verweis hierher. Neue Geschichte gehört in die
 Commit-Nachricht (siehe CLAUDE.md).
 

@@ -1,8 +1,8 @@
 // Ausführlich: docs/begruendungen/src/katalog/bricklinkLink.ts.md#abschnitt
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
-import { bricklinkRequest } from '../../clients/bricklink';
-import { getGlobalSetting } from '../konto/settings';
-import { mitVersion, ohneVersion } from '../sets/setNummer';
+import { bricklinkRequest } from './quellen';
+import { getGlobalSetting } from '../einstellungen/settings';
+import { mitVersion, ohneVersion } from '../infra/setNummer';
 import * as cache from './repository/katalogCache';
 
 export type BlType = 'SET' | 'GEAR' | 'BOOK' | 'MINIFIG' | 'NONE';

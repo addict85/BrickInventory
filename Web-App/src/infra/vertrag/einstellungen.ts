@@ -63,7 +63,7 @@ export const Gesundheit = z.looseObject({
   status: z.enum(['ok', 'starting']), startup: StartupStatus.optional(),
   db_pool: z.record(z.string(), z.unknown()).optional(), uptime_seconds: ganz.optional(),
 });
-/** `ready` antwortet 503 mit status "unavailable", wenn die Datenbank nicht antwortet. */
+/** `ready` antwortet 503 in der Form jeder Fehlerantwort, dazu status "unavailable". */
 export const Lebenszeichen = z.strictObject({ status: z.literal('ok') });
 
 /** Ergebnis des Versands; bei Erfolg ohne Fehlertext. */

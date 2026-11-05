@@ -7,7 +7,7 @@
  *
  *     src/finanzen/financeCalc.ts   Welchen Zustand hat dieses SET?
  *                            (die Erfassungen schlagen den gespeicherten Wert)
- *     src/konto/settings.ts      Welchen Standardzustand hat dieser NUTZER?
+ *     src/einstellungen/settings.ts      Welchen Standardzustand hat dieser NUTZER?
  *                            (die Nutzereinstellung schlaegt den globalen)
  *
  * Genau diese Verwechslung — der Zustand eines Stuecks gegen die Vorgabe fuer

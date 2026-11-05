@@ -1,7 +1,7 @@
 import * as db from '../../db/database';
-import { getSetMinifigs } from '../../clients/rebrickable';
+import { getSetMinifigs } from './quellen';
 import { logAndContinue } from '../infra/fehler';
-import { mitVersion } from '../sets/setNummer';
+import { mitVersion } from '../infra/setNummer';
 import { merkeFiguren, merkeSetFiguren } from './katalogPflege';
 import * as inhalt from './repository/setInhalt';
 

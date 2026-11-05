@@ -161,14 +161,4 @@ export class ConcurrentRateLimiter {
 
 export const cdnImageLimiter = new ConcurrentRateLimiter(2, 1000);
 
-/** Antwort: {"detail": "… Expected available in 2 seconds."} */
-export function parseThrottleWait(body: string) {
-  try {
-    const data = typeof body === 'string' ? JSON.parse(body) : body;
-    const match = data?.detail?.match(/(\d+)\s*second/);
-    if (match) return parseInt(match[1]) * 1000 + 500; // add 500ms buffer
-  } catch (e) { meldeUndWeiter('kontingent:retry-after-lesen', e); }
-  return 5000; // default 5s
-}
-
 export { REBRICKABLE_DEFAULT_DAILY };

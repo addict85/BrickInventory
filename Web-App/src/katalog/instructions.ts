@@ -2,10 +2,9 @@ import path from 'path';
 import fs from 'fs';
 import PDFDocument from 'pdfkit';
 import { INSTRUCTIONS_DIR } from '../infra/appPaths';
-import { downloadFile, scrapeInstructions, sleep, httpsGetRobust } from '../../clients/rebrickable';
-import * as brickset from '../../clients/brickset';
+import { downloadFile, scrapeInstructions, sleep, httpsGetRobust, brickset } from './quellen';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
-import { mitVersion, ohneVersion } from '../sets/setNummer';
+import { mitVersion, ohneVersion } from '../infra/setNummer';
 import { pfadSegment } from '../infra/fremdeAdressen';
 import * as repo from './repository/anleitungen';
 

@@ -4,7 +4,7 @@ import fsp from 'fs/promises';
 import { PDF_JOB_DIR } from '../infra/appPaths';
 import { meldeUndLiefere, meldeUndWeiter, ohneFehlendeDatei } from '../infra/fehler';
 import { stelleAuftragEin } from './dienst';
-import { mitVersion } from '../sets/setNummer';
+import { mitVersion } from '../infra/setNummer';
 import * as repo from './repository/pdfAuftraege';
 
 /** Jeder Statuswechsel weckt die Statusströme über AUFTRAG_STAND_KANAL. */
