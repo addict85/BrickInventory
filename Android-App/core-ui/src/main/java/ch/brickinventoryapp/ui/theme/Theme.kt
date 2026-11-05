@@ -58,7 +58,7 @@ private val LightColors = lightColorScheme(
     onSecondary         = Color.White,
     secondaryContainer  = BrandBlueLight,
     onSecondaryContainer = BrandBlueDark,
-    // BrandRed selbst trägt weisse Schrift nur mit 4,3:1 (TextKontrastTest).
+    // BrandRed selbst trägt weisse Schrift nur mit 4,3:1.
     tertiary            = BrandRedDark,
     onTertiary          = Color.White,
     tertiaryContainer   = Color(0xFFFFDAD6),
@@ -70,10 +70,10 @@ private val LightColors = lightColorScheme(
     surface             = Color.White,
     surfaceVariant      = Color(0xFFF8FAFC),
     onSurface           = Color(0xFF1E293B),
-    // --s600 statt --s500: Sekundärtext liegt auch auf den Containerstufen (TextKontrastTest).
+    // --s600 statt --s500: Sekundärtext liegt auch auf den Containerstufen.
     onSurfaceVariant    = Color(0xFF475569),
     // outline umrandet Bedienelemente (Textfelder) und braucht 3:1 gegen jede
-    // Fläche; der helle Ton taugt nur für Trennlinien (FarbrollenTest).
+    // Fläche; der helle Ton taugt nur für Trennlinien.
     outline             = Color(0xFF748399),
     outlineVariant      = Color(0xFFE2E8F0),
     error               = Color(0xFFB91C1C),
@@ -390,7 +390,7 @@ val LocalAkzentflaechen = staticCompositionLocalOf { akzentflaechen("classic", f
 
 /**
  * Statusfarben je Design. `erfolg` färbt auch Gewinnzahlen und braucht als
- * Text 4,5:1 auf der Fläche (FarbrollenTest).
+ * Text 4,5:1 auf der Fläche.
  * Im Stein-Design gedeckter, damit es neben Salbeigrün und Sand nicht heraussticht.
  */
 internal fun statusFarbenFuer(theme: String, dunkel: Boolean = false): StatusFarben = if (dunkel && hatDunkleFassung(theme)) {

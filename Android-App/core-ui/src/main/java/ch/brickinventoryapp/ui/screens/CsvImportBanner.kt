@@ -71,9 +71,7 @@ fun CsvImportBanner(
                     // abbrechen will, soll nicht erst herausfinden muessen,
                     // dass der Balken sich aufklappen laesst. In der Webapp
                     // steht der Knopf ebenfalls dauerhaft da.
-                    //
-                    // Kein Bestaetigungsdialog: Abbrechen nimmt nichts zurueck,
-                    // es hoert nur auf. Schon angelegte Sets bleiben.
+                    // Ausführlich: docs/begruendungen/core-ui/ui/screens/CsvImportBanner.kt.md#if
                     if (running) {
                         // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
                         // trifft man das Abbrechen auch unterwegs.

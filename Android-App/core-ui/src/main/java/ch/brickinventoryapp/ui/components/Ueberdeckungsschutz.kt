@@ -15,8 +15,7 @@ import ch.brickinventoryapp.ressourcen.R
  * ab Android 12 blockiert das System selbst, betroffen ist Android 11). In einem
  * Dialog gilt es für dessen Fenster, sonst für die Activity, solange der
  * Bildschirm steht — nur dort, wo ein untergeschobener Tipp schadet (Konto,
- * Haushalt, Bestätigungen). App-weit verlören Nutzer von Bildschirmfiltern auf
- * Android 11 jede Bedienung. Gezählt wie beim Sichtschutz.
+ * Ausführlich: docs/begruendungen/core-ui/ui/components/Ueberdeckungsschutz.kt.md#ueberdeckungsschutz
  */
 @Composable
 fun Ueberdeckungsschutz() {

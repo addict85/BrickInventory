@@ -321,14 +321,7 @@ internal fun ZweiterFaktorCard(
 
 /**
  * Angemeldete Geräte: die ausgestellten Zugänge sehen und aussperren.
- *
- * Der eigene Zugang hat keinen Knopf: Der Server markiert die Zeile, mit der
- * gerade gefragt wird, und wer sie entwertet, meldet sich selbst ab. Dafür gibt es
- * den Abmelden-Knopf am Ende der Seite, der benennt, was er tut.
- *
- * Datumsangaben über fmtDatum(), weil api_tokens Zeitstempel ohne Millisekunden
- * liefert und die gemeinsame Fassung damit umgeht (DatumFormatTest). „Nie benutzt“
- * bekommt einen eigenen Text — ein leeres Feld sähe aus wie ein Fehler.
+ * Ausführlich: docs/begruendungen/feature-konto/ui/screens/EinstellungenKonto.kt.md#geraetecard
  */
 @Composable
 internal fun GeraeteCard(

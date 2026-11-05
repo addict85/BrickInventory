@@ -27,9 +27,7 @@ import javax.inject.Inject
  * Kaufpreise, Mengen, Daten, Besitzer, dazu Preisverlauf und Lagerort der
  * manuellen Einträge. Dient der Detailansicht manueller Einträge und der
  * Verwaltung der Käufe.
- *
- * Ein Zustand für alle drei Arten ([ManualItemDetailUiState]): Die Verwaltung
- * zeigte vorher je nach Art einen von zwei Zuständen zweier Bildschirme.
+ * Ausführlich: docs/begruendungen/core-zustand/ui/viewmodel/KaeufeViewModel.kt.md#constructor
  */
 @HiltViewModel
 class KaeufeViewModel @Inject constructor(

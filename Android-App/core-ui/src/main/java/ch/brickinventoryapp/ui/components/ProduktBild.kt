@@ -38,9 +38,7 @@ const val BILD_ERSATZ = "bild-ersatz"
  * oder nicht kommt, steht darunter dasselbe Ersatzbild (Stein-Silhouette auf
  * surfaceContainer): Eine leere weisse Fläche sah in Galerie und Detail aus wie ein
  * Fehler der App, und jede Stelle hatte ihren eigenen Platzhalter.
- *
- * [modifier] gibt die Grösse vor; das Bild füllt sie. [onState] reicht Coils Zustand
- * weiter (Wiederholversuch, Rückfall auf die volle Auflösung).
+ * Ausführlich: docs/begruendungen/core-ui/ui/components/ProduktBild.kt.md#produktbild
  */
 @Composable
 fun ProduktBild(

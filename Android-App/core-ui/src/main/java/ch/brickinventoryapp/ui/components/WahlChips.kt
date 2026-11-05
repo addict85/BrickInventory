@@ -53,10 +53,7 @@ import ch.brickinventoryapp.ui.theme.Formen
  * Genau eine von zwei bis vier gleichrangigen Möglichkeiten (Neu | Gebraucht,
  * Fällt unter | Steigt über): Material sieht dafür die Segmentschaltfläche vor —
  * zwei Chips nebeneinander lasen sich wie zwei Filter, die man beide setzen kann.
- *
- * Ab grosser Schrift ([GROSSE_SCHRIFT_AB]) dieselbe Wahl als [WahlChips]: Segmente
- * teilen die Breite zu gleichen Teilen, und ein langes Wort brach darin Zeichen für
- * Zeichen um. Chips brechen zwischen den Möglichkeiten um, nie im Wort.
+ * Ausführlich: docs/begruendungen/core-ui/ui/components/WahlChips.kt.md#segmentwahl
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

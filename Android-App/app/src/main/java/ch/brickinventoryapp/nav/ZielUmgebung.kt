@@ -14,8 +14,7 @@ typealias Reiter = Triple<Screen, @Composable () -> Unit, String>
 
 /**
  * Was alle Ziele teilen und oberhalb des NavHost lebt. Die Graphen holen ihre
- * ViewModels selbst; so lässt sich der ganze Graph ohne Hilt aufbauen und prüfen
- * (ErreichbareRoutenTest).
+ * ViewModels selbst; so lässt sich der ganze Graph ohne Hilt aufbauen und prüfen.
  */
 class ZielUmgebung(
     val navController: NavHostController,

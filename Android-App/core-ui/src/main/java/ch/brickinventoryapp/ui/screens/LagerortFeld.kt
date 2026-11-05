@@ -23,12 +23,7 @@ import ch.brickinventoryapp.ressourcen.R
  * Das Lagerort-Feld: auswählen oder neu eintippen, in einem Bedienelement — ein
  * ExposedDropdownMenuBox klappt auf wie ein Auswahlfeld und nimmt trotzdem
  * Getipptes an, das Gegenstück zur `datalist` der Webapp.
- *
- * Getipptes speichert entprellt, nicht beim Fokusverlust: Am Telefon tippt man,
- * schliesst die Tastatur und geht zurück — dieser Fokuswechsel kommt nie. Die
- * Ruhezeit liegt im ViewModel und überlebt den Bildschirm (siehe
- * setzeSetLagerort). Eine Wahl aus der Liste speichert sofort: Sie ist fertig,
- * wenn sie getroffen wird.
+ * Ausführlich: docs/begruendungen/core-ui/ui/screens/LagerortFeld.kt.md#lagerortfeld
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +45,7 @@ fun LagerortFeld(
     // der normalisierte Wert nach dem Speichern), soll das Feld ihn zeigen
     // statt den alten Text zu behalten.
     var text by rememberSaveable(wert) { mutableStateOf(wert) }
-    // rememberSaveable, nicht remember (BildschirmZustandTest): Wer beim Wählen eines
+    // rememberSaveable, nicht remember: Wer beim Wählen eines
     // Orts das Telefon dreht, soll die Liste weiter offen sehen. Dass sie nur
     // erscheint, wenn es passende Orte gibt, macht es unschädlich.
     var offen by rememberSaveable { mutableStateOf(false) }

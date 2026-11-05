@@ -172,8 +172,7 @@ class AnmeldungViewModel @Inject constructor(
      * Code. Sein Fingerabdruck gilt schon für die erste Anfrage, gemerkt wird er aber
      * erst nach gelungener Anmeldung. Verlangt [mussAbtippen] es, nur wenn
      * [pinWechselEingabe] ihn aus einer zweiten Quelle bestätigt: Ein Code kann von
-     * jedem stammen, ein Tipp genügte sonst für einen fremden Schlüssel. Ein Code
-     * mit http-Adresse wird nicht übernommen, auch wenn die Oberfläche ihn durchliesse.
+     * Ausführlich: docs/begruendungen/feature-anmeldung/ui/viewmodel/AnmeldungViewModel.kt.md#loginwithqrtoken
      */
     fun loginWithQrToken(
         serverUrl: String, token: String,

@@ -40,9 +40,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Screen wie bei den Sets, weil der Inhalt (Bild, Mengenwahl, Kaufpreise und
  * Marktpreise je Zustand, Preisverlauf, Löschen) für einen AlertDialog zu lang
  * ist. Derselbe Aufbau wie SetDetailScreen, damit man beim Wechsel vom Set zum
- * Teil dieselben Dinge an denselben Stellen findet.
- *
- * Erfassungen und Preisverlauf lädt `loadManualAcquisitions()`.
+ * Ausführlich: docs/begruendungen/feature-teile/ui/screens/ManualItemDetailScreen.kt.md#manualitemdetailroute
  */
 @Composable
 fun ManualItemDetailRoute(

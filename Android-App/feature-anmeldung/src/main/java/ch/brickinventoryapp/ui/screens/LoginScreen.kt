@@ -331,9 +331,7 @@ private fun AnmeldeFelder(
     // Der Registrier-Link erscheint NUR bei einem ausdruecklichen `true`.
     // `null` heisst „noch nicht gefragt" oder „der Server hat nicht
     // geantwortet" — in beiden Faellen fuehrte der Knopf ins Leere.
-    // Beide Verweise in einer umbrechenden Reihe: untereinander lag zwischen ihnen der
-    // doppelte Abstand des Formulars. Mittig gesetzt, auch wenn einer bei grosser Schrift
-    // zweizeilig wird: Sonst stand er linksbündig über dem mittigen anderen.
+    // Ausführlich: docs/begruendungen/feature-anmeldung/ui/screens/LoginScreen.kt.md#flowrow
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         if (registrierungOffen == true) {
             TextButton(onClick = { onFormular(AnmeldeFormular.REGISTRIEREN) }) {

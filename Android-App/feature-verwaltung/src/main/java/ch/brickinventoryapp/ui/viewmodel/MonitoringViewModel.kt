@@ -52,14 +52,7 @@ private fun entzogen(r: Result<*>) = r is Result.Error && r.code == ch.brickinve
  * Composables, damit die Ladelogik ohne Compose-Laufzeit prüfbar ist. Ein eigenes
  * ViewModel am NavHost-Ziel (hiltViewModel()), weil der selten geöffnete
  * Bildschirm mit seiner Abfrageschleife nicht die Lebensdauer der Activity
- * braucht.
- *
- *   hierher      was vom Server kommt — wird ohnehin neu geladen
- *   Bildschirm   was der Mensch angefasst hat (rememberSaveable)
- *   Bildschirm   Knopftexte eines laufenden Vorgangs — dürfen eine Drehung nicht überleben
- *
- * Keine Texte hier: Die Funktionen sagen, was passiert ist; den Satz wählt die
- * Anzeige, wie in FehlerTexte.kt.
+ * Ausführlich: docs/begruendungen/feature-verwaltung/ui/viewmodel/MonitoringViewModel.kt.md#hintergrundarbeiten
  */
 /** Die Hintergrundarbeiten (Auftragstabelle); [fehler] ist der Satz des Servers, etwa bei 403 oder 409. */
 data class HintergrundUiState(

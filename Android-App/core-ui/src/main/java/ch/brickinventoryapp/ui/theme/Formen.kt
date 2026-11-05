@@ -61,18 +61,7 @@ object Formen {
     /**
      * Höhe der Bestandskachel, nachgerechnet für den schlimmsten Fall bei labelSmall
      * (16 dp Zeilenhöhe):
-     *
-     *     Name             2 Zeilen   32
-     *     Farbe (Teile)    1 Zeile    16
-     *     Preis            1 Zeile    16
-     *     Notiz            1 Zeile    16
-     *     Zustand          3 + 18     21
-     *     Besitzer         2 + 16     18
-     *     Innenabstand     4 + 4       8
-     *                                ---
-     *                                127  + 76 Bild = 203
-     *
-     * 208 lässt fünf Punkte Luft; höher passten weniger Reihen auf den Bildschirm.
+     * Ausführlich: docs/begruendungen/core-ui/ui/theme/Formen.kt.md#kachelhoehe
      */
     val kachelHoehe  = 208.dp
 

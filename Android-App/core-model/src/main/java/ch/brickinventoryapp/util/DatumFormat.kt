@@ -33,13 +33,7 @@ enum class DatumJahr { VOLL, KURZ, OHNE }
  * ISO-Zeitstempel aus einer Serverantwort als Uhrzeit — HH:MM:SS, für das
  * Protokoll der Verwaltung wie in der Webapp (public/js/logviewer.js): Ohne Zeit
  * ist „von eben oder von gestern?“ nicht zu beantworten.
- *
- * Hier wird umgerechnet, in [fmtDatum] nicht: Ein Erfassungsdatum ist ein
- * gewählter Kalendertag, ein Protokolleintrag ein Zeitpunkt, der auf die Uhr
- * dessen gehört, der ihn liest. Ohne Zeitzonen-Angabe im Text gilt UTC: Der Server
- * speichert `timestamptz` und schreibt das „Z“ mit.
- *
- * @return "14:03:07", oder null wenn nichts Brauchbares dasteht
+ * Ausführlich: docs/begruendungen/core-model/util/DatumFormat.kt.md#fmtuhrzeit
  */
 fun fmtUhrzeit(iso: String?): String? {
     if (iso.isNullOrBlank()) return null

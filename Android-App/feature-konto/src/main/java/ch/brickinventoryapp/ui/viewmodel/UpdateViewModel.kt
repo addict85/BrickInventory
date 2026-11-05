@@ -48,10 +48,7 @@ import ch.brickinventoryapp.di.Dispatcher
  * prüfen, nie von allein laden, dazu ein Knopf in den Einstellungen. Die stille
  * Prüfung meldet keinen Fehler: Wer ohne Netz startet, hat nichts gefragt; wer den
  * Knopf drückt, schon.
- *
- * An die Activity gebunden (aktivitaetsViewModel), damit Startprüfung, Dialog,
- * Punkt am Kontosymbol und Einstellungen dieselbe Instanz sehen. Der eigene
- * HTTP-Client kennt weder Server noch Token — nichts davon geht GitHub etwas an.
+ * Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#constructor
  */
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
@@ -149,9 +146,7 @@ class UpdateViewModel @Inject constructor(
      * installiert wird: 1. Die Adresse zeigt in unsere Release-Ablage (schon in der
      * Prüfung, hier nochmal — zwischen Prüfung und Klick kann ein neuer Zustand
      * stehen). 2. Die Signatur stimmt mit der installierten App überein. 3. Der Nutzer
-     * hat die Systemerlaubnis erteilt.
-     *
-     * Erst danach öffnet sich der System-Installer, und auch der fragt nochmal.
+     * Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#ladeupdate
      */
     override fun ladeUpdate() {
         val fassung = _state.value.neuereFassung ?: return
@@ -178,13 +173,11 @@ class UpdateViewModel @Inject constructor(
                             // wachsenden Zähler.
                             val gesamt = if (fassung.apkSize > 0) fassung.apkSize
                             else koerper.contentLength()
-                            // ── Wieviel darf höchstens kommen? ──
-                            //
                             // Die angekündigte Grösse (plus ein Megabyte Luft) oder die feste
                             // Obergrenze — was kleiner ist. Die Ankündigung stammt aus
                             // version.json, der hier nicht blind vertraut wird; die feste Grenze
                             // allein liesse eine Antwort durch, die 46 MB verspricht und 300
-                            // liefert.
+                            // Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#obergrenze
                             val obergrenze =
                                 if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)
                                 else UPDATE_MAX_BYTES

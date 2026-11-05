@@ -106,13 +106,11 @@ fun CatalogScreen(
 
     val gridState = rememberLazyGridState()
 
-    // ── Laden, was gerade sichtbar wird ──
-    //
     // Die Liste führt alle `total` Plätze; geladen wird die Seite eines sichtbar
     // gewordenen Platzes, mit einer Seite Vorlauf — so kann die Leiste rechts
     // überallhin springen. Erst wenn die Liste ruht: Die Leiste rollt beim Ziehen
     // durch jede Zwischenposition, und ohne Ruhe stünde die Zielseite hinter Hunderten
-    // angeforderter Seiten in der Schlange. Die Ruhe hält der Sichtfensterlader im ViewModel.
+    // Ausführlich: docs/begruendungen/feature-katalog/ui/screens/CatalogScreen.kt.md#launchedeffect
     LaunchedEffect(gridState, state.total, state.loadedPages.size) {
         snapshotFlow {
             val sichtbar = gridState.layoutInfo.visibleItemsInfo
@@ -126,14 +124,11 @@ fun CatalogScreen(
     // Sichtfenster-Lader oben, und dessen Ruhe deckt beide ab. Zwei Fassungen
     // derselben Regel liefen auseinander.
 
-    // ── Die Rollposition überlebt den Wechsel zur Detailseite ──
-    //
     // Die Liste verlässt beim Wechsel die Komposition und ihre Länge trifft erst
     // später ein, deshalb hilft Compose' Wiederherstellung nicht. Die Stelle steht im
     // Zustand (ViewModel); beim Betreten wird einmal zurückgesprungen, sobald die
     // Länge da ist, und erst danach gemeldet — sonst überschriebe die frische Null die
-    // gemerkte Stelle. `remember`, nicht `rememberSaveable`: Der Merker gilt je
-    // Komposition; überlebte er den Ausflug, spränge die Rückkehr nie mehr zurück.
+    // Ausführlich: docs/begruendungen/feature-katalog/ui/screens/CatalogScreen.kt.md#wiederhergestellt-by-remember
     var wiederhergestellt by remember { mutableStateOf(false) }
     LaunchedEffect(state.total) {
         if (wiederhergestellt || state.total == 0) return@LaunchedEffect

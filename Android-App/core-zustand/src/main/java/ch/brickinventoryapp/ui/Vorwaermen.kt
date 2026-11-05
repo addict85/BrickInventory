@@ -18,13 +18,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Die Adressen aller Kacheln der eigenen Sammlung, zum Vorwärmen.
- *
- * Gesammelt wird hier und nicht in VorschauVorwaermer, weil nur hier der
- * Kontofilter bekannt ist: Vorgewärmt werden soll die Sammlung, die man zu
- * sehen bekommt. Der Katalog bleibt draussen — rund 25'000 Sets sprengten die
- * Ablage und verdrängten ausgerechnet die eigene Sammlung.
- *
- * Nicht `load…` benannt: Die Funktion füllt keinen Zustand, sie sammelt nur.
+ * Ausführlich: docs/begruendungen/core-zustand/ui/Vorwaermen.kt.md#bildadressendersammlung
  */
 internal suspend fun bildAdressenDerSammlung(repo: BrickRepository, blickfeld: Blickfeld, basis: String): List<String> {
     val roh = mutableListOf<String?>()

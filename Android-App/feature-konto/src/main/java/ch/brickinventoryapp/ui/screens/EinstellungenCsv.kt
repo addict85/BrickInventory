@@ -24,9 +24,7 @@ import kotlinx.coroutines.launch
  * über dieselben Adressen wie die Webapp. Der Fortschritt danach kommt über den
  * bestehenden Kanal: Der Import läuft auf dem Server weiter, auch wenn die App
  * zugeklappt wird.
- *
- * Je Art eine Zeile mit Symbol und den erwarteten Spalten: Als fünf Chips sahen
- * die Knöpfe wie Filter aus, und welche Datei gemeint ist, stand nirgends.
+ * Ausführlich: docs/begruendungen/feature-konto/ui/screens/EinstellungenCsv.kt.md#csvimportcard
  */
 @Composable
 internal fun CsvImportCard(
@@ -37,8 +35,7 @@ internal fun CsvImportCard(
     // Welche Art beim Antippen gemeint war — der Dateiauswahl-Vertrag liefert nur den
     // Uri, nicht den Knopf. rememberSaveable, nicht remember: Die Dateiauswahl ist
     // eine fremde Anwendung, währenddessen darf das System diesen Vorgang beenden;
-    // fiele der Wert auf SETS zurück, landete eine Teile-Datei in der falschen Tabelle
-    // (BildschirmZustandTest).
+    // fiele der Wert auf SETS zurück, landete eine Teile-Datei in der falschen Tabelle.
     var gewaehlteArt by rememberSaveable { mutableStateOf(ch.brickinventoryapp.ui.model.CsvImportArt.SETS) }
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()

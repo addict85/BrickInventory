@@ -535,14 +535,7 @@ fun SectionHeader(text: String) {
 
 /**
  * Ein Teil als Tabellenzeile.
- *
- * Zeigt, was die Tabelle der Webapp zeigt (partsTableRow in 03-parts.js):
- * Bild, Nummer, Name, Farbe, Kategorie, Menge, In Sets. Die beiden breiten
- * Spalten — Kategorie und Sets — stehen als zweite Zeile darunter statt
- * daneben; sieben Spalten nebeneinander passen auf kein Telefon.
- *
- * „In Sets" ist nur gefuellt, wenn der Lader `with_sets=1` mitgegeben hat, und
- * das tut er nur in dieser Ansicht (TeileQuelle in ui/Teile.kt).
+ * Ausführlich: docs/begruendungen/feature-teile/ui/screens/PartsScreen.kt.md#parttablerow
  */
 @Composable
 fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,

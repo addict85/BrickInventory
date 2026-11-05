@@ -156,14 +156,7 @@ data class UpdateAcquisitionRequest(
     /**
      * Der Kaufpreis einer Erfassungszeile — bei Sets. Der Server liest das Preisfeld
      * unter dem Namen der Spalte (`req.body[cfg.priceCol]`):
-     *
-     *     Sets                    → purchase_price
-     *     Teile und Minifiguren   → unit_price
-     *
-     * Bei einem Set ist es der Preis des Sets, bei Teilen und Figuren der Preis je
-     * Stück. Unter dem falschen Namen lässt der Server den Preis still unverändert.
-     * Beide Felder sind nullbar; `fuerSet()` und `fuerStueck()` unten setzen immer
-     * genau eines, das andere geht als null mit (ApiJson schreibt Vorgabewerte).
+     * Ausführlich: docs/begruendungen/core-model/data/model/HaushaltModels.kt.md#z156
      */
     @SerialName("purchase_price") val purchasePrice: Double? = null,
     /** Der Kaufpreis je Stück — bei TEILEN und MINIFIGUREN. Siehe oben. */
@@ -176,11 +169,7 @@ data class UpdateAcquisitionRequest(
      * behandelt das Feld vor allen anderen und beendet damit die Anfrage: Preis oder
      * Datum im selben Aufruf hiesse, die Zeile zweimal zu suchen, beim Empfänger
      * womöglich schon verschmolzen.
-     *
-     * Der Absender wird nicht mitgeschickt: Die Erfassungs-ID ist eindeutig, und wem
-     * die Zeile gehört, ermittelt der Server (acquisitionMoveSource) — ein Client kann
-     * das nicht falsch beantworten. MoveSetRequest behält from_user_id, weil dort
-     * mehrere Zeilen gemeint sind und der Absender Teil der Auswahl ist.
+     * Ausführlich: docs/begruendungen/core-model/data/model/HaushaltModels.kt.md#z174
      */
     @SerialName("owner_user_id") val ownerUserId: Int? = null
 ) {

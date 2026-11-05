@@ -35,8 +35,7 @@ import ch.brickinventoryapp.util.fingerabdruckLesbar
  * Fingerabdruck steht in derselben Schreibweise da wie in der Webapp, damit man
  * ihn vergleichen kann. Ohne öffentliche CA oder bei geändertem Schlüssel gilt er erst,
  * wenn man ihn aus einer zweiten Quelle abschreibt, und steht hier nur angefangen da —
- * dort prüft sonst niemand die Kette, und ein Tipp wird zur Gewohnheit eines Angreifers.
- * [onVertrauen] bekommt die Eingabe und sagt, ob sie passte.
+ * Ausführlich: docs/begruendungen/app/ui/components/ZertifikatDialog.kt.md#zertifikatdialog
  */
 @Composable
 fun ZertifikatDialog(

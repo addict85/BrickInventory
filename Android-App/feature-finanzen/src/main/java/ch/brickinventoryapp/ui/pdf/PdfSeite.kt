@@ -26,8 +26,7 @@ internal const val PDF_BITMAP_MAX_PX = 8_000_000
  * @return (Breite, Höhe) in Pixeln, beide mindestens 1
  *
  * Gekappt wird mit der Wurzel, damit beide Seiten gleich schrumpfen und das
- * Verhältnis bleibt. Eigene Funktion, damit die Rechnung ohne Gerät prüfbar ist
- * (PdfZoomTest).
+ * Verhältnis bleibt. Eigene Funktion, damit die Rechnung ohne Gerät prüfbar ist.
  */
 internal fun bitmapMasse(breitePx: Int, ratio: Float): Pair<Int, Int> {
     var w = breitePx.coerceAtLeast(1)

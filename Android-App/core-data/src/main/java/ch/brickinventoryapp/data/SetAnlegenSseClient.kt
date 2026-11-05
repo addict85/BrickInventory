@@ -23,15 +23,7 @@ import javax.inject.Singleton
  * Ein Set anlegen — mit Fortschritt, wie die Webapp über /api/v1/sets/add-stream
  * (Stammdaten holen, Bild laden, fertig), damit man bei einem grossen Set sieht,
  * was passiert.
- *
- * Nicht über okhttp-sse, weil die Adresse in zwei Formen antwortet
- * (routes/sets.ts):
- *   * Steht das Set schon im Blickfeld, kommt gewöhnliches JSON — ein Strom mit einem Ereignis wäre nur ein Umweg.
- *   * Sonst kommt ein `text/event-stream` mit den Schritten.
- *
- * `EventSources` meldete die erste Form als Fehler, weil der Inhaltstyp nicht
- * passt — „hab ich schon“ sähe aus wie ein Verbindungsabbruch. Deshalb wird die
- * Antwort selbst gelesen, und der Inhaltstyp entscheidet, wie sie gemeint ist.
+ * Ausführlich: docs/begruendungen/core-data/data/SetAnlegenSseClient.kt.md#constructor
  */
 @Singleton
 class SetAnlegenSseClient @Inject constructor(

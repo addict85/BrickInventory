@@ -14,17 +14,7 @@ import javax.crypto.spec.GCMParameterSpec
  * und läuft erst nach TOKEN_IDLE_DAYS Untätigkeit ab. `allowBackup="false"`
  * verschliesst `adb backup`; bei einem gerooteten Gerät oder einem ausgelesenen
  * Datenverzeichnis wäre Klartext sofort verwendbar, Geheimtext nicht — der
- * Schlüssel verlässt den Android-Keystore nie.
- *
- * Eine eigene Hülle statt androidx.security: AES/GCM und der Keystore sind seit
- * API 23 Teil der Plattform (minSdk 30) — siebzig lesbare Zeilen statt einer
- * Abhängigkeit, deren Pflegezustand offen ist.
- *
- * Ist der Schlüssel weg (Wiederherstellung auf ein anderes Gerät, zurückgesetzte
- * App-Daten), schlägt das Entschlüsseln fehl, und das heisst „kein gültiges Token
- * da“: null und die Anmeldemaske. Still auf Klartext zurückzufallen höbe den Sinn
- * auf. Antwortet der Keystore nur gerade nicht, heisst das nicht „weg“ (oeffne,
- * util/Tresorbefund.kt).
+ * Ausführlich: docs/begruendungen/core-data/util/TokenTresor.kt.md#z12
  */
 
 /**

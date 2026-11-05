@@ -36,18 +36,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Bild mit Zoom und die Sets, die es verwenden, mit Link zum Set-Detail. Ein Blatt
  * statt eines Dialogs, weil Lagerort und Liste Platz brauchen und das Wischen nach
  * unten schliesst wie überall.
- *
- * Was er bewusst nicht hat: • Keinen Marktpreis — gewünscht ohne. • Keine
- * Mengenwahl. Die Zahl entsteht aus den Inventaren der Sets; eine Änderung
- * verschwände beim nächsten Abgleich. • Keinen Löschknopf. Ein Teil aus einem Set
- * verschwindet mit dem Set, nicht einzeln.
- *
- * Gegenstück in der Webapp: public/js/13-acquisition-modals.js,
- * openSetItemDetail() — dieselbe Reihenfolge, dieselbe Adresse
- * (/v1/parts/:nr/:farbe/sets bzw. /v1/minifigs/:nr/sets).
- *
- * @param onOpenSet Öffnet das Set-Detail. Parameter, weil nur der Navigationsgraph
- *         den NavController kennt — wie `onOpenDetail` in PartsScreen.
+ * Ausführlich: docs/begruendungen/feature-teile/ui/dialogs/SetItemDetailDialog.kt.md#setitemdetaildialog
  */
 @Composable
 fun SetItemDetailDialog(
@@ -99,8 +88,7 @@ private fun SetItemDetail(
     if (!zustand.offen) return
 
     // rememberSaveable, nicht remember: Der geöffnete Zoom ist eine Entscheidung des
-    // Nutzers und muss eine Drehung überstehen — wie an den übrigen Zoom-Stellen
-    // (BildschirmZustandTest).
+    // Nutzers und muss eine Drehung überstehen — wie an den übrigen Zoom-Stellen.
     var zeigeZoom by rememberSaveable { mutableStateOf(false) }
     // stringResource() geht nur ausserhalb des LazyColumn-Rumpfs — dort ist
     // kein Composable-Kontext fuer jedes Element noetig, und einmal lesen
@@ -160,13 +148,11 @@ private fun SetItemDetail(
                         if (kopf?.isSpare == true) {
                             SetItemZeile(stringResource(R.string.parts_spare_tag), "✓")
                         }
-                        // ── Lagerort ──
-                        //
                         // Nur für Teile (kopf.colorId ist bei Figuren null): Eine Minifigur steckt
                         // in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter Ort könnte
                         // auseinanderlaufen. Bearbeitbar wie in der Webapp; das Feld schreibt auf
                         // alle Zeilen dieses Teil-Farb-Paares. Die Auswahlliste gehört dem Besitzer
-                        // wie beim Set: Der Kopf führt seine Konten mit (owner_ids).
+                        // Ausführlich: docs/begruendungen/feature-teile/ui/dialogs/SetItemDetailDialog.kt.md#kopffarbe
                         val kopfFarbe = kopf?.colorId
                         if (kopf != null && kopfFarbe != null) {
                             Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),

@@ -35,9 +35,7 @@ class KontoRepository @Inject constructor(
      * `zweiter_faktor: true`. Das wird hier zu einer gewöhnlichen Antwort mit
      * success=false umgebogen (wie GutscheineRepository.guthaben), sonst gingen
      * Kennzeichen und Satz in safeCall verloren. [passkey] ersetzt den Code.
-     *
-     * Einen Token ohne Ablauf nur über https: Im Klartext kann ihn jeder im WLAN
-     * mitlesen, und dann soll er wenigstens verfallen.
+     * Ausführlich: docs/begruendungen/core-data/data/repository/KontoRepository.kt.md#login
      */
     suspend fun login(serverUrl: String, username: String, password: String, code: String? = null,
                       scope: String = TOKEN_SCOPE_APP, passkey: JsonObject? = null): Result<Anmeldeantwort> {

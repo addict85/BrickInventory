@@ -22,13 +22,7 @@ import ch.brickinventoryapp.ui.viewmodel.EinstellungenAktionen
 
 /**
  * Die eigenen Lagerorte verwalten, je Benutzer.
- *
- * Nur die eigenen: Ein Lagerort ist ein Regal in der eigenen Wohnung. Beim Set des
- * Enkels wählt der Grossvater aus dessen Liste, aber fremde Regale umzubenennen
- * wäre ein Versehen — lesen weit, schreiben eng.
- *
- * Löschen nur bei einem leeren Ort und nach Rückfrage: Der Server sagt Nein, solange
- * etwas darin liegt (lagerort_in_benutzung).
+ * Ausführlich: docs/begruendungen/feature-konto/ui/screens/EinstellungenLagerorte.kt.md#lagerortecard
  */
 @Composable
 internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen) {

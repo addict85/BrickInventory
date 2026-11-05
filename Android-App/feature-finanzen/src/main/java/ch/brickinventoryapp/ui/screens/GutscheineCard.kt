@@ -132,7 +132,7 @@ fun GutscheineCard(
                 colors = nebenKnopfFarben(),
                 border = nebenKnopfRand(lauf == null && zustand.gutscheine.any { !it.pin.isNullOrBlank() }),
             ) {
-                // Kreisel an der Stelle des Symbols, nicht der Beschriftung (KnopfBreiteTest).
+                // Kreisel an der Stelle des Symbols, nicht der Beschriftung.
                 if (lauf != null) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Icon(Icons.Default.Sync, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
@@ -286,8 +286,7 @@ private fun GutscheinFormularBlatt(
         // Bitte an die Tastatur-App, keine Zusicherung: Eine angestoepselte
         // Tastatur und die Zwischenablage liefern trotzdem Buchstaben. Die
         // Regel steht in ZahlentastaturTest, der Filter in NumericInput.kt.
-        // Beim Bearbeiten steht die Maske des Servers im Feld; eingabeUeberMaske()
-        // behandelt sie als Ganzes, gespeichert heisst sie „unverändert“.
+        // Ausführlich: docs/begruendungen/feature-finanzen/ui/screens/GutscheineCard.kt.md#nummermaske
         val nummerMaske = ch.brickinventoryapp.ui.model.istMaskierteNummer(zustand.nummer)
         OutlinedTextField(
             shape = ch.brickinventoryapp.ui.theme.Formen.feld,
@@ -430,7 +429,7 @@ private fun GutscheinKarte(
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             modifier = Modifier.padding(end = Abstaende.mittel)) {
             Text(fmtMoney(g.amount, g.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            // Der Stand der Abfrage als Etikett und im Wort, nicht nur als Farbe (FarbeAlleinTest).
+            // Der Stand der Abfrage als Etikett und im Wort, nicht nur als Farbe.
             val stand = fmtTag(g.guthabenGeprueftAm)
             Surface(shape = ch.brickinventoryapp.ui.theme.Formen.etikett, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                 Text(

@@ -23,11 +23,7 @@ data class PlPart(
     /**
      * Wie viele davon im eigenen Bestand liegen — `null`, solange nicht
      * gefragt wurde.
-     *
-     * `null` und `0` sind ausdruecklich verschieden: `null` heisst „nicht
-     * gefragt" (die Zeile zeigt gar nichts), `0` heisst „gefragt, nichts
-     * vorhanden" (die Zeile zeigt eine rote Null). Ein Int mit Vorgabe 0
-     * haette beides zu „habe ich nicht" verschmolzen.
+     * Ausführlich: docs/begruendungen/feature-teile/ui/screens/TeilelisteZeilen.kt.md#vorhanden
      */
     val vorhanden: Int? = null,
 )

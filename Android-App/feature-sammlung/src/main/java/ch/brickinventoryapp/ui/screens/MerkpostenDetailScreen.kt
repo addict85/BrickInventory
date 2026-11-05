@@ -31,8 +31,7 @@ import kotlinx.coroutines.launch
  * Set-Detail, ohne was ein Merkposten nicht hat (Kaufpreis, Anzahl, Lagerort,
  * Anleitungen; „hinzugefügt“ heisst hier „auf der Liste seit“). Marktpreis und
  * Verlauf zeichnet dieselbe PriceChart(). Der Merkposten wird aus dem geladenen
- * Zustand gesucht statt kopiert, damit der Bildschirm merkt, wenn er gelöscht oder
- * übernommen wurde.
+ * Ausführlich: docs/begruendungen/feature-sammlung/ui/screens/MerkpostenDetailScreen.kt.md#merkpostendetailscreen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

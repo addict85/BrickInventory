@@ -320,11 +320,7 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
 
 /**
  * Die Seiten, zoombar. Gezoomt wird über die Breite statt mit einem graphicsLayer:
- * So rendert PdfPage in der Grösse, in der die Seite steht (scharf statt
- * gestreckt), das Rollen bleibt im richtigen Mass, und ein echtes horizontalScroll
- * verschiebt mit Anschlag. transformable(canPan = { false }) beansprucht keinen
- * Einfinger-Zug, deshalb rollt die Liste weiter; wo die Geste doch verliert,
- * bleiben Doppeltipp und Knöpfe.
+ * Ausführlich: docs/begruendungen/feature-finanzen/ui/screens/PdfViewerScreen.kt.md#z321
  */
 /**
  * Was ein Zoomschritt von der Geste bis zur naechsten Messung braucht. Kein
