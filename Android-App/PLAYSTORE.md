@@ -124,7 +124,17 @@ automatisieren:
   Kamera-Zugriff — ohne Erklärung geht gar nichts.
 - **Datensicherheits-Formular**. Relevant für diese App: Kamera (Barcode- und
   Texterkennung), Konto-/Anmeldedaten gegenüber deinem eigenen Server.
-  Die App spricht ausschliesslich mit der von dir betriebenen Web-App.
+  Gegenstellen der App (dieselbe Liste steht in der App unter Einstellungen →
+  Datenschutz):
+  - die von dir betriebene Web-App — alle Daten des Kontos;
+  - **GitHub** (`github.com`, `*.githubusercontent.com`) für die Update-Prüfung:
+    beim Start, solange „Beim Start nach Updates suchen“ an ist, sonst nur auf
+    Knopfdruck. GitHub sieht IP-Adresse und Zeitpunkt;
+  - **Google Play-Dienste** für den Barcode-Scan (ML Kit, nachgeladen) und Passkeys
+    (Credential Manager); die eingebaute Texterkennung (ML Kit) kann
+    Nutzungsstatistiken an Google senden;
+  - fremde Websites (BrickLink, Hersteller-Anleitungen) nur auf Tipp, im Browser.
+  Bilder laden nie direkt von einem CDN, sondern über den Proxy deines Servers.
 - **Inhaltsbewertung** (Fragebogen).
 - **Zielgruppe**.
 - **Store-Eintrag**: Kurz- und Vollbeschreibung, App-Symbol (512×512),

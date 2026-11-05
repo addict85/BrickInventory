@@ -74,6 +74,7 @@ class PreferencesManager @Inject constructor(
         const val VORSCHAU_VERBERGEN = "vorschau_verbergen"
         const val ENTWERTUNG_GESCHEITERT = "entwertung_gescheitert"
         const val WIDGET_WERTE = "widget_werte"
+        const val UPDATE_BEIM_START = "update_beim_start"
 
         /**
          * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
@@ -586,6 +587,11 @@ class PreferencesManager @Inject constructor(
     override fun gescheiterteEntwertungen(): Set<String> = designSpiegel.getStringSet(ENTWERTUNG_GESCHEITERT, null).orEmpty().toSet()
     override fun quittiereGescheiterteEntwertungen() {
         designSpiegel.edit { remove(ENTWERTUNG_GESCHEITERT) }
+    }
+
+    override fun startpruefungAn(): Boolean = designSpiegel.getBoolean(UPDATE_BEIM_START, true)
+    override fun setzeStartpruefung(an: Boolean) {
+        designSpiegel.edit { putBoolean(UPDATE_BEIM_START, an) }
     }
 
     override suspend fun updateStand(): UpdateStand? {

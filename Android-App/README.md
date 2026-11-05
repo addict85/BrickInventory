@@ -150,6 +150,20 @@ nach der Freigabe eines Prüfers. Siehe *Release signieren*.
 Die App kommuniziert ausschliesslich über `/api/v1/` mit Bearer-Token-Authentifizierung.
 Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile API.
 
+## Datenschutz: mit wem die App spricht
+
+- **Dein Server** — alles, was zum Konto gehört. Auch Bilder kommen nur über seinen
+  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`util/BildHosts.kt`).
+- **GitHub** — nur die Update-Prüfung (`util/AppUpdate.kt`): beim Start, solange
+  der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
+  Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
+- **Google Play-Dienste** — Barcode-Scan (ML Kit, nachgeladen) und Passkeys
+  (Credential Manager). Die eingebaute Texterkennung kann Nutzungsstatistiken an
+  Google senden.
+- **Browser-Ziele** (BrickLink, Hersteller-Anleitungen) — nur auf Tipp.
+
+Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.
+
 ## Sicherheit im Netz
 
 **Nur https.** Die Release-App sendet nichts unverschlüsselt. Zwei Linien:
