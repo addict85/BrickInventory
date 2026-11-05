@@ -84,7 +84,7 @@ cp .env.example .env
 echo BRICK_HOST=nas.example.lan >> .env   # Name oder IP-Adresse des Servers
 sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
 sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt
-docker compose pull                       # das signierte Image von Docker Hub
+sh scripts/image-pruefen.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
 docker compose up -d
 docker compose logs app jobs | grep -A2 Standard-Admin   # Erstpasswort von admin
 ```
@@ -98,8 +98,12 @@ Gerät den Fingerabdruck vergleichen, den `scripts/ca-einrichten.sh` ausgibt.
   kommt von Let's Encrypt.
 - **Geheimnisse** stehen nicht in `.env`, sondern als Dateien in
   `./geheimnisse/` und gehen als Docker-Secrets in die Container.
-- **Selbst bauen** statt ziehen: `docker compose up -d --build`.
-- **Update:** `docker compose pull && docker compose up -d`; vorher
+- **Das Image** zieht compose nur als Digest aus `BRICK_IMAGE`; das trägt
+  `scripts/image-pruefen.sh` nach bestandener Signaturprüfung ein (cosign
+  muss installiert sein).
+- **Selbst bauen** statt ziehen: `BRICK_IMAGE=brickinventory:lokal` in `.env`,
+  dann `docker compose up -d --build`.
+- **Update:** `sh scripts/image-pruefen.sh && docker compose up -d`; vorher
   `Web-App/UPGRADE.md` lesen.
 
 Das Passwort des Kontos `admin` steht nur beim allerersten Start im Protokoll
@@ -116,12 +120,13 @@ passende Architektur selbst:
 | `linux/amd64` | PC, Server, NAS, jede x86-Cloud |
 | `linux/arm64` | Raspberry Pi 3/4/5 und Zero 2 W (**64-Bit-System**), Apple Silicon, ARM-Server |
 
-`docker compose pull` holt die passende Fassung. 32-Bit (`armv7`) wird nicht
+`docker` holt die passende Fassung. 32-Bit (`armv7`) wird nicht
 unterstützt: Für Alpine (musl) auf armv7 gibt es kein `sharp`, die
 Bildverarbeitung fiele still auf den langsamen Rückfall zurück.
 
 Jedes veröffentlichte Image ist mit [cosign](https://docs.sigstore.dev/)
-signiert (keyless, aus dem Workflow `docker-publish.yml` auf `main`). Prüfen:
+signiert (keyless, aus dem Workflow `docker-publish.yml` auf `main`).
+`scripts/image-pruefen.sh` prüft das vor jeder Übernahme; von Hand:
 
 ```bash
 cosign verify addict85/brickinventory:latest \

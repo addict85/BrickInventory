@@ -244,12 +244,20 @@ jobs:
             type=raw,value=sha-${{ needs.pruefen.outputs.kurz }}
             type=raw,value=${{ needs.pruefen.outputs.tag }},enable=${{ needs.pruefen.outputs.tag != '' }}
 
+      # Der Digest kommt aus der Ausgabe des Pushs, nicht aus einer späteren
+      # Auflösung des Tags: Hinge jemand den Tag dazwischen um, signierte die
+      # Pipeline sonst ein fremdes Manifest.
       - name: Multi-Arch-Manifest erzeugen und pushen
+        id: manifest
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create \
+          set -eu
+          docker buildx imagetools create --metadata-file "$RUNNER_TEMP/manifest-meta.json" \
             $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf "${{ env.IMAGE }}@sha256:%s " *)
+          DIGEST="$(jq -r '.["containerimage.descriptor"].digest // .["containerimage.digest"] // empty' "$RUNNER_TEMP/manifest-meta.json")"
+          case "$DIGEST" in (sha256:*) ;; (*) echo "::error::Kein Digest in der Ausgabe des Pushs"; cat "$RUNNER_TEMP/manifest-meta.json"; exit 1 ;; esac
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
       # Prüfen, nicht nur anzeigen: Ein Manifest ohne arm64 fiele erst auf dem
       # Pi auf („no matching manifest“). Die „unknown“-Einträge sind
@@ -257,7 +265,7 @@ jobs:
       - name: Manifest pruefen — sind alle Plattformen drin?
         run: |
           set -eu
-          TAG="$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
+          TAG="${{ env.IMAGE }}@${{ steps.manifest.outputs.digest }}"
           echo "Geprueft wird: $TAG"
           docker buildx imagetools inspect "$TAG" --raw > manifest.json
           GEFUNDEN="$(jq -r '
@@ -287,9 +295,8 @@ jobs:
         id: signatur
         run: |
           set -eu
-          TAG="$(jq -cr '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
-          DIGEST="$(docker buildx imagetools inspect "$TAG" --format '{{json .Manifest}}' | jq -r .digest)"
-          case "$DIGEST" in (sha256:*) ;; (*) echo "::error::Kein Digest für $TAG ($DIGEST)"; exit 1 ;; esac
+          DIGEST="${{ steps.manifest.outputs.digest }}"
+          case "$DIGEST" in (sha256:*) ;; (*) echo "::error::Kein Digest aus dem Push ($DIGEST)"; exit 1 ;; esac
           cosign sign --yes --recursive "${{ env.IMAGE }}@$DIGEST"
           echo "Signiert: ${{ env.IMAGE }}@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"

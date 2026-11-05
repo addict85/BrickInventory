@@ -19,6 +19,9 @@
  *   E  compose.yaml: bei jobs `image:` gestrichen → rot: „jobs zieht das
  *      veröffentlichte Image“
  *   F  README.md: `docker compose logs app worker` → rot: „unbekannter Dienst worker“
+ * Gegenprobe L1 (05.11.2026 gemessen): in beiden READMEs wieder `docker
+ *   compose pull` statt `sh scripts/image-pruefen.sh` → rot: „docker compose
+ *   config“ (BRICK_IMAGE fehlt).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,6 +35,7 @@ const DOKUS = [
   { datei: path.join(ROOT, '..', 'README.md'), abschnitt: '## Schnellstart' },
   { datei: path.join(ROOT, 'README.md'), abschnitt: '## Docker (empfohlen)' },
 ];
+const DIGEST = 'sha256:' + '5'.repeat(64);
 const VEROEFFENTLICHT = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'docker-publish.yml'), 'utf8')
   .match(/^\s*IMAGE:\s*(\S+)/m)?.[1];
 
@@ -52,6 +56,11 @@ function sandkasten(t) {
   fs.copyFileSync(path.join(ROOT, '.env.example'), path.join(ort, '.env.example'));
   fs.copyFileSync(path.join(ROOT, 'Caddyfile'), path.join(ort, 'Caddyfile'));
   fs.cpSync(path.join(ROOT, 'scripts'), path.join(ort, 'scripts'), { recursive: true });
+  // cosign und docker als Ersatz: Die Signaturprüfung meldet DIGEST, docker schreibt nur mit.
+  const bin = path.join(ort, 'ersatz-bin');
+  fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'cosign'), `#!/bin/sh\necho '[{"critical":{"image":{"docker-manifest-digest":"${DIGEST}"}}}]'\n`, { mode: 0o755 });
+  fs.writeFileSync(path.join(bin, 'docker'), `#!/bin/sh\necho "docker $*" >> "${ort}/docker.log"\n`, { mode: 0o755 });
   return ort;
 }
 
@@ -78,10 +87,12 @@ for (const { datei, abschnitt } of DOKUS) {
       // sudo nur für die Dateirechte; CA_ORDNER nennt denselben Ordner wie die
       // Vorgabe und erlaubt den Lauf ohne root (CI).
       const r = spawnSync('sh', ['-c', zeile.replace(/^sudo\s+/, '')], { cwd: ort, encoding: 'utf8',
-        env: { PATH: process.env.PATH, HOME: ort, CA_ORDNER: './caddy/ca' } });
+        env: { PATH: `${path.join(ort, 'ersatz-bin')}:${process.env.PATH}`, HOME: ort, CA_ORDNER: './caddy/ca' } });
       assert.equal(r.status, 0, `Schritt scheitert: ${zeile}\n${r.stdout}${r.stderr}`);
     }
-    assert.ok(dockerZeilen.some(z => /^docker compose pull\b/.test(z)), 'der Schnellstart zieht das Image (docker compose pull)');
+    const gezogen = fs.existsSync(path.join(ort, 'docker.log')) ? fs.readFileSync(path.join(ort, 'docker.log'), 'utf8') : '';
+    assert.ok(dockerZeilen.some(z => /^docker compose pull\b/.test(z)) || /^docker compose pull\b/m.test(gezogen),
+      'der Schnellstart zieht das Image (docker compose pull)');
     assert.ok(dockerZeilen.some(z => /^docker compose up -d\b/.test(z)), 'der Schnellstart startet (docker compose up -d)');
 
     const k = compose(ort, 'config', '--format', 'json');
@@ -118,7 +129,7 @@ for (const { datei, abschnitt } of DOKUS) {
     assert.deepEqual(j.services.app.ports ?? [], [], 'app veröffentlicht keinen Port');
     assert.ok(j.services.caddy.ports.some(p => p.target === 443), 'Caddy veröffentlicht 443');
     for (const d of ['app', 'jobs', 'schluessel'])
-      assert.equal(j.services[d].image?.replace(/:[^:/]+$/, ''), VEROEFFENTLICHT, `${d} zieht das veröffentlichte Image`);
+      assert.equal(j.services[d].image, `${VEROEFFENTLICHT}@${DIGEST}`, `${d} zieht das veröffentlichte Image als geprüften Digest`);
     assert.equal(new Set(['app', 'jobs', 'schluessel'].map(d => j.services[d].image)).size, 1, 'ein Image für alle drei');
     const gebaut = dienste.filter(d => j.services[d].build);
     assert.deepEqual(gebaut, ['app'], 'genau ein Dienst baut das Dockerfile');

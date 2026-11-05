@@ -26,6 +26,11 @@
  *   I  APP_BASE_URL_FEHLT_OK nicht ausgewertet → rot: dieselbe Prüfung (mit
  *      der Ausnahme verweigert)
  *   J  die Ausnahme für ROLLE=jobs entfernt → rot: dieselbe Prüfung ({"ROLLE":"jobs"})
+ * Gegenproben L5 (05.11.2026 gemessen, je einzeln):
+ *   K  in startVerbote() den Zweig zu MAIL_KONSOLE_MIT_TOKEN entfernt → rot:
+ *      „MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb …“ (Code statt 1: Datenbankfehler)
+ *   L  in server.ts die Schleife über startWarnungen() entfernt → rot:
+ *      „COOKIE_SECURE=0 im Betrieb …“ (keine Warnzeile)
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -97,6 +102,26 @@ test('ohne APP_BASE_URL im Betrieb: Start verweigert, nur ausdrücklich erlaubt'
     assert.doesNotMatch(r.log, /APP_BASE_URL fehlt/, JSON.stringify(env));
     assert.match(r.log, /Database initialisation failed/, JSON.stringify(env));
   }
+});
+
+test('MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb: Start verweigert', { timeout: 30_000 }, async () => {
+  const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
+  const r = await starte({ ...db, MAIL_KONSOLE_MIT_TOKEN: '1' });
+  assert.equal(r.code, 1, r.log.slice(-400));
+  assert.match(r.log, /❌ \[mail\] MAIL_KONSOLE_MIT_TOKEN=1 .*Start verweigert/);
+  assert.doesNotMatch(r.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
+  const entw = await starte({ ...db, MAIL_KONSOLE_MIT_TOKEN: '1', NODE_ENV: 'development' });
+  assert.doesNotMatch(entw.log, /MAIL_KONSOLE_MIT_TOKEN/);
+  assert.match(entw.log, /Database initialisation failed/);
+});
+
+test('COOKIE_SECURE=0 im Betrieb: Warnzeile beim Start', { timeout: 30_000 }, async () => {
+  const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'http://lego.lan' };
+  const mit = await starte({ ...db, COOKIE_SECURE: '0' });
+  assert.match(mit.log, /⚠️ \[start\] COOKIE_SECURE=0: Das Sitzungs-Cookie geht auch über http/);
+  assert.match(mit.log, /Database initialisation failed/, 'nur eine Warnung, kein Verbot');
+  const ohne = await starte({ ...db, COOKIE_SECURE: '1' });
+  assert.doesNotMatch(ohne.log, /COOKIE_SECURE/);
 });
 
 test('npm start setzt NODE_ENV=production', () => {
