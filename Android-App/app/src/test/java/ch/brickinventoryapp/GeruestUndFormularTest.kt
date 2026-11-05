@@ -213,7 +213,7 @@ class GeruestUndFormularTest {
                     override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
                 }))
             zeige {
-                ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite(vm = vm,
+                ch.brickinventoryapp.ui.screens.PreisalarmeRoute(vm = vm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                     snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
             }
@@ -294,7 +294,7 @@ class GeruestUndFormularTest {
                     override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
                 }))
             zeige {
-                ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite(vm = vm,
+                ch.brickinventoryapp.ui.screens.PreisalarmeRoute(vm = vm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                     snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
             }
@@ -545,7 +545,7 @@ class GeruestUndFormularTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-            zeige { ch.brickinventoryapp.ui.screens.FinanceScreen(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            zeige { ch.brickinventoryapp.ui.screens.FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
             warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoading && !it.historyLoading } }
             val kopf = compose.onNodeWithText(ctx.getString(R.string.finance_market_avg), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot

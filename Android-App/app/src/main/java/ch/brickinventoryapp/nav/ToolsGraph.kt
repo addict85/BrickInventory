@@ -46,7 +46,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     Screen.Finance.rollSchluessel, financeListState,
                     financeState.valuation != null, vm.scrollMemory)
-                FinanceScreen(
+                FinanceRoute(
                     vm = finanzen,
                     imageLoader = imageLoader,
                     // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in der Galerie. Der
@@ -154,7 +154,7 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
             ReiterGeruest(stringResource(R.string.nav_settings), u) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
                     Screen.Settings.rollSchluessel, settingsScrollState, vm.scrollMemory)
-                SettingsScreen(
+                SettingsRoute(
                     vm = hiltViewModel<EinstellungenViewModel>(),
                     onLogout = { vm.logout(); navController.navigate(Screen.Login) { popUpTo(0) { inclusive = true } } },
                     onServerWechseln = { navController.navigate(Screen.Setup) },
@@ -174,7 +174,7 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
                 // Verwalteraktionen nur nach der Gerätesperre; kein Tipp durch eine Überlagerung.
                 ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
                 ch.brickinventoryapp.ui.components.Schrittsperre(stringResource(R.string.schritt_verwaltung)) {
-                    MonitoringScreen(vm)
+                    MonitoringRoute(appTheme = stand.appTheme, onEinstellungenNeu = { vm.loadSettings() })
                 }
             }
         }
@@ -207,13 +207,13 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
                     ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse(state.serverUrl, ziel), titel))
                 gutscheinVm.gutscheinPdfQuittieren()
             }
-            GutscheineUnterseite(gutscheinVm, snackbarHostState) { navController.popBackStack() }
+            GutscheineRoute(gutscheinVm, snackbarHostState) { navController.popBackStack() }
         }
 
         composable<Screen.Preisalarme> {
             val vm: AppViewModel = aktivitaetsViewModel()
             val state by vm.state.collectAsStateWithLifecycle()
-            PreisalarmeUnterseite(
+            PreisalarmeRoute(
                 vm = hiltViewModel<EinstellungenViewModel>(),
                 imageLoader = u.imageLoader,
                 serverUrl = state.serverUrl,
@@ -227,19 +227,19 @@ private fun NavGraphBuilder.einstellungsZiele(u: ZielUmgebung) {
         }
 
         composable<Screen.Lagerorte> {
-            LagerorteUnterseite(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
+            LagerorteRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
         }
 
         composable<Screen.Haushalt> {
-            HaushaltUnterseite(hiltViewModel<HaushaltViewModel>(), snackbarHostState) { navController.popBackStack() }
+            HaushaltRoute(hiltViewModel<HaushaltViewModel>(), snackbarHostState) { navController.popBackStack() }
         }
 
         composable<Screen.CsvImport> {
-            CsvImportUnterseite(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
+            CsvImportRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
         }
 
         composable<Screen.Konto> {
             val vm: AppViewModel = aktivitaetsViewModel()
-            KontoUnterseite({ vm.logout() }, snackbarHostState) { navController.popBackStack() }
+            KontoRoute({ vm.logout() }, snackbarHostState) { navController.popBackStack() }
         }
 }

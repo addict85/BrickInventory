@@ -155,7 +155,7 @@ class ResultAndStateSplitTest {
     @Test
     fun `MainActivity sammelt nur das Design, nicht den ganzen Zustand`() {
         val src = code(read("MainActivity.kt"))
-        assert(src.contains("vm.appTheme")) {
+        assert(src.contains("darstellung.appTheme")) {
             "MainActivity sammelt wieder den kompletten AppUiState für ein einziges " +
                 "Feld — damit invalidiert jede Zustandsänderung die Wurzel der " +
                 "Composition und darüber die ganze App."
@@ -163,8 +163,8 @@ class ResultAndStateSplitTest {
         assert(!src.contains("vm.state.collectAsStateWithLifecycle()")) {
             "MainActivity sammelt weiterhin den ganzen Zustand"
         }
-        assert(code(read("ui/AppViewModel.kt")).contains("distinctUntilChanged()")) {
-            "vm.appTheme filtert unveränderte Werte nicht heraus"
+        assert(code(read("ui/viewmodel/DarstellungViewModel.kt")).contains("distinctUntilChanged()")) {
+            "appTheme filtert unveränderte Werte nicht heraus"
         }
     }
 
@@ -175,9 +175,13 @@ class ResultAndStateSplitTest {
         // ViewModel-Tests („nach dem Abmelden …“); hier steht die Regel für
         // jedes künftige: Wer Zustand hält, überschreibt zuruecksetzen().
         // Gegenprobe (28.10.2026): HaushaltViewModel ohne override → rot.
-        val app = code(read("ui/AppViewModel.kt"))
-        for (reset in listOf("sitzung.abgemeldet()", "blickfeldDienst.zuruecksetzen()", "CsvImportUiState()")) {
-            assert(app.contains(reset)) { "logout() ruft $reset nicht mehr" }
+        val abmelden = code(read("ui/Abmelden.kt"))
+        for (reset in listOf("sitzung.abgemeldet()", "blickfeld.zuruecksetzen()")) {
+            assert(abmelden.contains(reset)) { "Abmelden ruft $reset nicht mehr" }
+        }
+        val csv = code(read("ui/viewmodel/CsvImportViewModel.kt"))
+        assert(Regex("""abmeldungen\.collect \{[^}]*CsvImportUiState\(\)""").containsMatchIn(csv)) {
+            "Der CSV-Balken bleibt nach dem Abmelden stehen"
         }
         val bereiche = Quellen.unter("ui/viewmodel").filter {
             code(it.readText()).contains(": BereichsViewModel(dienste)")

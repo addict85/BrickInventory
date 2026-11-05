@@ -19,9 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.viewmodel.MerklisteViewModel
+import ch.brickinventoryapp.ui.viewmodel.MerklisteAktionen
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.resolveFullUrl
@@ -32,24 +31,24 @@ import kotlinx.coroutines.launch
  * Set-Detail, ohne was ein Merkposten nicht hat (Kaufpreis, Anzahl, Lagerort,
  * Anleitungen; „hinzugefügt“ heisst hier „auf der Liste seit“). Marktpreis und
  * Verlauf zeichnet dieselbe PriceChart(). Der Merkposten wird aus dem geladenen
- * Zustand gesucht statt kopiert, damit der Bildschirm merkt, wenn er gelöscht oder
- * übernommen wurde.
+ * Ausführlich: docs/begruendungen/feature-sammlung/ui/screens/MerkpostenDetailScreen.kt.md#merkpostendetailscreen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MerkpostenDetailScreen(
-    vm: MerklisteViewModel,
+    ansicht: MerklisteZustand,
+    aktionen: MerklisteAktionen,
     setNumber: String,
     condition: String,
     imageLoader: coil3.ImageLoader,
     onBack: () -> Unit,
 ) {
-    val appState by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val appState = ansicht.appState
+    val blick = ansicht.blick
     // Der VORRAT an Lagerorten fuer den Uebernahme-Dialog.
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
-    val liste    by vm.merklisteState.collectAsStateWithLifecycle()
-    val detail   by vm.merkpostenDetailState.collectAsStateWithLifecycle()
+    val lagerZustand = ansicht.lagerZustand
+    val liste    = ansicht.liste
+    val detail   = ansicht.detail
     val ctx = LocalContext.current
     // stringResource statt ctx.getString im Rückruf: Ein aus LocalContext gegriffener
     // Context liefert nach einem Konfigurationswechsel veraltete Werte (Lint
@@ -69,7 +68,7 @@ fun MerkpostenDetailScreen(
         it.setNumber == setNumber && it.condition == condition
     }
 
-    LaunchedEffect(setNumber) { vm.ladeMerkpostenDetail(setNumber) }
+    LaunchedEffect(setNumber) { aktionen.ladeMerkpostenDetail(setNumber) }
 
     // Der Merkposten ist weg (geloescht oder uebernommen) — dann gehoert dieser
     // Bildschirm ebenfalls weg, statt eine Leiche zu zeigen.
@@ -91,7 +90,7 @@ fun MerkpostenDetailScreen(
                     merkposten?.let { w ->
                         ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_delete)) {
                             IconButton(onClick = {
-                                vm.loescheMerkposten(w.setNumber, w.condition, w.userId)
+                                aktionen.loescheMerkposten(w.setNumber, w.condition, w.userId)
                             }) {
                                 Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
                             }
@@ -163,7 +162,7 @@ fun MerkpostenDetailScreen(
                             OwnerPicker(
                                 members = blick.householdMembers,
                                 selected = merkposten.userId,
-                                onSelect = { vm.verschiebeMerkposten(
+                                onSelect = { aktionen.verschiebeMerkposten(
                                     merkposten.setNumber, merkposten.condition, merkposten.userId, it) },
                             )
                         }
@@ -175,7 +174,7 @@ fun MerkpostenDetailScreen(
             //
             // Derselbe Abschnitt wie im Set-Detail: derselbe Eintrag in price_alerts am selben
             // Schlüssel, und /sets/:sn/alert verlangt keinen Besitz.
-            setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, vm::setzePreisalarm,
+            setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, aktionen::setzePreisalarm,
                 aussenAbstand = false)
 
             item {
@@ -290,7 +289,7 @@ fun MerkpostenDetailScreen(
             lagerortVorgabe = lagerZustand.vorgabe?.name ?: "",
             onDismiss = { uebernahmeOffen = false },
             onUebernehmen = { anzahl, preisRoh, zustandWahl, ort ->
-                vm.uebernimmMerkposten(w.setNumber, w.condition, w.userId,
+                aktionen.uebernimmMerkposten(w.setNumber, w.condition, w.userId,
                                    anzahl, preisRoh, zustandWahl, ort)
                 uebernahmeOffen = false
             },

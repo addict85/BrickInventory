@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.LagerUiState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -11,35 +12,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ui.components.ErfassenDialog
 import ch.brickinventoryapp.ui.components.Rueckfrage
 import ch.brickinventoryapp.ui.model.LagerortEintragAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenAktionen
 
 /**
  * Die eigenen Lagerorte verwalten, je Benutzer.
- *
- * Nur die eigenen: Ein Lagerort ist ein Regal in der eigenen Wohnung. Beim Set des
- * Enkels wählt der Grossvater aus dessen Liste, aber fremde Regale umzubenennen
- * wäre ein Versehen — lesen weit, schreiben eng.
- *
- * Löschen nur bei einem leeren Ort und nach Rückfrage: Der Server sagt Nein, solange
- * etwas darin liegt (lagerort_in_benutzung).
+ * Ausführlich: docs/begruendungen/feature-konto/ui/screens/EinstellungenLagerorte.kt.md#lagerortecard
  */
 @Composable
-internal fun LagerorteCard(vm: EinstellungenViewModel) {
-    val lager by vm.lagerState.collectAsStateWithLifecycle()
+internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen) {
     // Welcher Dialog offen ist, überlebt eine Drehung: Wer gerade umbenennt, soll
     // danach nicht vor der Liste stehen.
     var neu by rememberSaveable { mutableStateOf(false) }
     var umbenennen by rememberSaveable { mutableStateOf<Int?>(null) }
     var loeschen by rememberSaveable { mutableStateOf<Int?>(null) }
-
-    LaunchedEffect(Unit) { vm.ladeEigeneLagerorte() }
 
     Text(stringResource(R.string.storage_manage_hint),
         style = MaterialTheme.typography.bodyMedium,
@@ -55,7 +46,7 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
             LagerortZeile(
                 ort = ort,
                 istVorgabe = lager.vorgabe?.id == ort.id,
-                onVorgabe = { vm.schalteLagerortVorgabe(ort.id, it) },
+                onVorgabe = { aktionen.schalteLagerortVorgabe(ort.id, it) },
                 onUmbenennen = { umbenennen = ort.id },
                 onLoeschen = { loeschen = ort.id },
             )
@@ -74,7 +65,7 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
         titel = stringResource(R.string.storage_new),
         start = "",
         bestaetigen = stringResource(R.string.storage_add),
-        onFertig = { name -> neu = false; vm.legeLagerortAn(name) },
+        onFertig = { name -> neu = false; aktionen.legeLagerortAn(name) },
         onAbbrechen = { neu = false },
     )
     lager.eigene.firstOrNull { it.id == umbenennen }?.let { ort ->
@@ -84,7 +75,7 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
             titel = stringResource(R.string.storage_rename_title),
             start = ort.name,
             bestaetigen = stringResource(R.string.settings_save),
-            onFertig = { name -> umbenennen = null; if (name != ort.name) vm.benenneLagerortUm(ort.id, name) },
+            onFertig = { name -> umbenennen = null; if (name != ort.name) aktionen.benenneLagerortUm(ort.id, name) },
             onAbbrechen = { umbenennen = null },
         )
     }
@@ -93,7 +84,7 @@ internal fun LagerorteCard(vm: EinstellungenViewModel) {
             titel = stringResource(R.string.storage_delete_title),
             text = stringResource(R.string.storage_delete_text, ort.name),
             bestaetigen = stringResource(R.string.common_delete),
-            onBestaetigen = { loeschen = null; vm.loescheLagerort(ort.id) },
+            onBestaetigen = { loeschen = null; aktionen.loescheLagerort(ort.id) },
             onAbbrechen = { loeschen = null },
             symbol = Icons.Default.Delete,
         )

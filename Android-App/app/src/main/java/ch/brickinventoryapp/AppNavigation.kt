@@ -39,7 +39,7 @@ import ch.brickinventoryapp.util.NetworkPolicy
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BrickInventoryManagerApp(
+fun BrickInventoryRoute(
     vm: AppViewModel,
     imageLoader: coil3.ImageLoader,
 ) {
@@ -49,6 +49,7 @@ fun BrickInventoryManagerApp(
     val erfassung: ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel = aktivitaetsViewModel()
     val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
+    val csvImport: ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel = aktivitaetsViewModel()
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     // Rollzustände oberhalb des NavHost (siehe Rollzustaende). Der Katalog merkt sich
@@ -79,7 +80,7 @@ fun BrickInventoryManagerApp(
     // die Verbindung im Hintergrund weiterläuft (kein Polling, minimaler Overhead).
     LaunchedEffect(state.isLoggedIn) {
         if (state.isLoggedIn) {
-            vm.startCsvImportWatcher()
+            csvImport.startCsvImportWatcher()
             // Beim Start still nach einem Update sehen: kein Ladebalken, keine Meldung
             // ohne Netz. Hier, weil die Frage der ganzen App gilt.
             selbstUpdate.pruefeAufUpdate(still = true)
@@ -110,19 +111,19 @@ fun BrickInventoryManagerApp(
     // ── Barcode-Bestätigung — über jedem Bildschirm ──
     // Der Dialog steht in ui/dialogs/BarcodeResultDialog.kt; hier nur, wann er erscheint.
     if (barcodeState.result != null) {
-        ch.brickinventoryapp.ui.dialogs.BarcodeResultDialog(erfassung, imageLoader)
+        ch.brickinventoryapp.ui.dialogs.BarcodeResultRoute(erfassung, imageLoader)
     }
 
     // ── „Wird geprüft“ — über allem, auch über dem Scanner-Weg ──
     // Hier, weil die Prüfung zu keinem einzelnen Bildschirm gehört: Sie beginnt im Scanner, der sich sofort schliesst, und läuft über Galerie, Teileliste oder Katalog weiter.
-    ch.brickinventoryapp.ui.dialogs.SetPruefungDialog(erfassung)
+    ch.brickinventoryapp.ui.dialogs.SetPruefungRoute(erfassung)
 
     // ── „Es gibt eine neue Fassung“ — ebenfalls über allem ──
     //
     // Ein Hinweis beim Start mit Ja/Nein, weil ein Punkt in den Einstellungen leicht
     // übersehen wird. Hier, weil die Frage der ganzen App gilt; die auslösende Prüfung
     // steht ein paar Zeilen weiter oben.
-    ch.brickinventoryapp.ui.dialogs.UpdateDialog(selbstUpdate)
+    ch.brickinventoryapp.ui.dialogs.UpdateRoute(selbstUpdate)
 
     // Eine angetippte Preisalarm-Meldung öffnet ihr Set — hier, weil es den
     // NavController erst in dieser Composition gibt. Nur angemeldet; sonst bleibt

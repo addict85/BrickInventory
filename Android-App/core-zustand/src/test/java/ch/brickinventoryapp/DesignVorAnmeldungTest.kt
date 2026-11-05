@@ -88,13 +88,13 @@ class DesignVorAnmeldungTest {
 
     @Test
     fun `Stufe null - der Zustand wird MIT dem Design geboren`() {
-        val vm = code(read("ui/AppViewModel.kt"))
+        val vm = code(read("ui/viewmodel/DarstellungViewModel.kt"))
         // Der Startwert, nicht eine Korrektur danach: `appTheme` leitet sich
         // ueber `stateIn(..., sitzung.state.value.appTheme)` ab. Der gemerkte
         // Wert muss in der Sitzung stehen, BEVOR diese Eigenschaft entsteht —
         // sonst haette MainActivity schon im Vorgabe-Design komponiert.
         val gesetzt = vm.indexOf("sitzung.aendere { it.copy(appTheme = prefs.gemerktesDesign()) }")
-        val abgeleitet = vm.indexOf("val appTheme = ")
+        val abgeleitet = vm.indexOf("val appTheme: StateFlow<String> = ")
         assert(gesetzt in 0 until abgeleitet) {
             "Der Zustand startet wieder im Vorgabe-Design. Ein Wert, der erst im " +
                 "init-Block gesetzt wird, kommt nach der ersten Komposition — " +

@@ -27,9 +27,7 @@ import javax.inject.Inject
  * Kaufpreise, Mengen, Daten, Besitzer, dazu Preisverlauf und Lagerort der
  * manuellen Einträge. Dient der Detailansicht manueller Einträge und der
  * Verwaltung der Käufe.
- *
- * Ein Zustand für alle drei Arten ([ManualItemDetailUiState]): Die Verwaltung
- * zeigte vorher je nach Art einen von zwei Zuständen zweier Bildschirme.
+ * Ausführlich: docs/begruendungen/core-zustand/ui/viewmodel/KaeufeViewModel.kt.md#constructor
  */
 @HiltViewModel
 class KaeufeViewModel @Inject constructor(
@@ -38,7 +36,7 @@ class KaeufeViewModel @Inject constructor(
     private val finanzen: FinanzenRepository,
     private val teile: TeileRepository,
     private val figuren: FigurenRepository,
-) : BereichsViewModel(dienste) {
+) : BereichsViewModel(dienste), KaeufeAktionen {
 
     private val _manDetailState = MutableStateFlow(ManualItemDetailUiState())
     val manDetailState: StateFlow<ManualItemDetailUiState> = _manDetailState.asStateFlow()
@@ -47,10 +45,10 @@ class KaeufeViewModel @Inject constructor(
 
     // ── Laden ────────────────────────────────────────────────────────────────
 
-    fun loadAcquisitions(setNumber: String) = lade("set", setNumber, KEINE_FARBE)
+    override fun loadAcquisitions(setNumber: String) = lade("set", setNumber, KEINE_FARBE)
 
     /** Käufe und Preisverlauf eines manuellen Teils ("part") oder einer Figur ("fig"). */
-    fun loadManualAcquisitions(type: String, id: String, colorId: Int = KEINE_FARBE) {
+    override fun loadManualAcquisitions(type: String, id: String, colorId: Int) {
         lade(type, id, colorId)
         loadManualPriceHistory(type, id, colorId)
     }
@@ -96,8 +94,8 @@ class KaeufeViewModel @Inject constructor(
 
     // ── Ändern ───────────────────────────────────────────────────────────────
 
-    fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double? = null, condition: String? = null,
-                          quantity: Int? = null, date: String? = null) {
+    override fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double?, condition: String?,
+                          quantity: Int?, date: String?) {
         viewModelScope.launch {
             when (val r = haushalt.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
                 is Result.Success -> if (r.data.success) setGeaendert(r.data.set)
@@ -110,7 +108,7 @@ class KaeufeViewModel @Inject constructor(
         }
     }
 
-    fun deleteAcquisition(setNumber: String, acqId: Int) {
+    override fun deleteAcquisition(setNumber: String, acqId: Int) {
         viewModelScope.launch {
             when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
                 is Result.Success -> if (r.data.success) setGeaendert(r.data.set)
@@ -133,9 +131,9 @@ class KaeufeViewModel @Inject constructor(
         }
     }
 
-    fun updateManualAcquisition(
+    override fun updateManualAcquisition(
         type: String, id: String, colorId: Int, acqId: Int,
-        unitPrice: Double? = null, condition: String? = null, quantity: Int? = null, date: String? = null,
+        unitPrice: Double?, condition: String?, quantity: Int?, date: String?,
     ) {
         viewModelScope.launch {
             val req = UpdateAcquisitionRequest.fuerStueck(preis = unitPrice, condition = condition,
@@ -151,7 +149,7 @@ class KaeufeViewModel @Inject constructor(
         }
     }
 
-    fun deleteManualAcquisition(type: String, id: String, colorId: Int, acqId: Int) {
+    override fun deleteManualAcquisition(type: String, id: String, colorId: Int, acqId: Int) {
         viewModelScope.launch {
             val r = if (type == "fig") haushalt.deleteFigAcquisition(id, acqId)
                     else haushalt.deletePartAcquisition(id, colorId, acqId)
@@ -167,9 +165,9 @@ class KaeufeViewModel @Inject constructor(
      * zwischen Konten zu verschieben. [onDone] bekommt Fehler oder null und
      * die vom Server gemeldeten mitgewanderten Teile und Figuren.
      */
-    fun changeAcquisitionOwner(
+    override fun changeAcquisitionOwner(
         type: String, id: String, colorId: Int, acqId: Int,
-        toUserId: Int, onDone: (String?, Int, Int) -> Unit = { _, _, _ -> },
+        toUserId: Int, onDone: (String?, Int, Int) -> Unit,
     ) {
         viewModelScope.launch {
             val req = UpdateAcquisitionRequest.fuerStueck(ownerUserId = toUserId)
@@ -190,7 +188,7 @@ class KaeufeViewModel @Inject constructor(
     }
 
     /** Lagerort eines manuellen Eintrags, entprellt wie beim Set. */
-    fun setzeManuellenLagerort(type: String, id: String, farbe: Int, ort: String) {
+    override fun setzeManuellenLagerort(type: String, id: String, farbe: Int, ort: String) {
         lagerJob?.cancel()
         lagerJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)

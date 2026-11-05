@@ -124,7 +124,7 @@ class GutscheinPdfAblageTest {
         // Der Druckdialog bietet „Als PDF speichern“: Drucken nur, wo auch Speichern erlaubt ist.
         val geschuetzt = betrachter.substringAfter("if (speicherbar) {").substringBefore("\n                    }\n")
         assertTrue("Drucken steht ohne Prüfung da", betrachter.split("printPdf(ctx,").size == 2 && "printPdf(ctx," in geschuetzt)
-        val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/AppViewModel.kt")), "fun logout(")
+        val abmelden = Quellen.funktion(Quellen.ohneKommentare(Quellen.lies("ui/Abmelden.kt")), "suspend fun ausfuehren(")
         assertTrue("Abmelden lässt Gutschein-PDFs liegen", abmelden.contains("raeumeVertraulichePdfsAuf("))
         assertTrue("Abmelden lässt Anleitungen liegen", abmelden.contains("raeumeAnleitungenAuf(ctx.cacheDir)"))
         assertTrue("Abmelden lässt Teileliste und Update in filesDir liegen",

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.model.*
@@ -34,9 +35,7 @@ class KontoRepository @Inject constructor(
      * `zweiter_faktor: true`. Das wird hier zu einer gewöhnlichen Antwort mit
      * success=false umgebogen (wie GutscheineRepository.guthaben), sonst gingen
      * Kennzeichen und Satz in safeCall verloren. [passkey] ersetzt den Code.
-     *
-     * Einen Token ohne Ablauf nur über https: Im Klartext kann ihn jeder im WLAN
-     * mitlesen, und dann soll er wenigstens verfallen.
+     * Ausführlich: docs/begruendungen/core-data/data/repository/KontoRepository.kt.md#login
      */
     suspend fun login(serverUrl: String, username: String, password: String, code: String? = null,
                       scope: String = TOKEN_SCOPE_APP, passkey: JsonObject? = null): Result<Anmeldeantwort> {
@@ -138,14 +137,12 @@ class KontoRepository @Inject constructor(
         entwertenAmServer(grenzeMs) == ch.brickinventoryapp.data.Entwertungsergebnis.ENTWERTET
 
     /** Wie [abmeldenAmServer], aber mit dem Grund: Nur SPAETER lohnt eine Wiederholung. */
-    suspend fun entwertenAmServer(grenzeMs: Long = 3_000): ch.brickinventoryapp.data.Entwertungsergebnis = try {
+    suspend fun entwertenAmServer(grenzeMs: Long = 3_000): ch.brickinventoryapp.data.Entwertungsergebnis = fangeAusserAbbruch {
         kotlinx.coroutines.withTimeoutOrNull(grenzeMs) { ch.brickinventoryapp.data.einordnenEntwertung(api.logout().code()) }
             ?: ch.brickinventoryapp.data.Entwertungsergebnis.SPAETER.also {
                 ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Server antwortete nicht in $grenzeMs ms")
             }
-    } catch (e: kotlinx.coroutines.CancellationException) {
-        throw e
-    } catch (e: Exception) {
+    }.getOrElse { e ->
         ch.brickinventoryapp.util.Protokoll.warnung("Abmelden", "Token am Server nicht entwertet", e)
         ch.brickinventoryapp.data.Entwertungsergebnis.SPAETER
     }

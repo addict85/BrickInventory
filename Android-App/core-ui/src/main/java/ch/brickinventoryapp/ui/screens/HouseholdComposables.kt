@@ -35,10 +35,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * üblichen Abstand, nur wenn es etwas zu wählen gibt. Eine Zeile für Teile,
  * Minifiguren und Galerie, damit ein abweichender Abstand nicht erst beim
  * Reiterwechsel auffällt.
- *
- * Der Finanz-Reiter gehört nicht hierher: Dort steht der Filter rechtsbündig und
- * als Eintrag einer LazyColumn, deren `item{}` die Bedingung umschliessen muss —
- * eine bewusste Ausnahme, dort begründet.
+ * Ausführlich: docs/begruendungen/core-ui/ui/screens/HouseholdComposables.kt.md#scopefilterzeile
  */
 @Composable
 fun ScopeFilterZeile(

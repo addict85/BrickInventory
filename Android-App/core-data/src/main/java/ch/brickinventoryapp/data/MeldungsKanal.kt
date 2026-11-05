@@ -11,15 +11,7 @@ import javax.inject.Singleton
  * Bildschirm, also gibt es genau einen Kanal dorthin. Mit einem Kanal je ViewModel
  * bräuchte jede Stelle, die ein ViewModel benutzt, einen Weiterleitungsblock;
  * fehlt er, verschwinden die Meldungen lautlos.
- *
- * Er lebt als @Singleton neben den ViewModels (wie [SessionExpiredSignal]): Wer
- * melden will, lässt ihn sich einspritzen; angezeigt wird an einer Stelle
- * (AppNavigation.kt). Ein neues ViewModel braucht nur den Konstruktorparameter.
- *
- * `fluss` ist absichtlich der MutableStateFlow selbst und nicht hinter
- * zeige()/quittiere() versteckt: Die ViewModels halten ihn unter dem Namen
- * `_snackbar`, damit die vielen Schreibstellen in den Feature-Dateien gleich
- * bleiben.
+ * Ausführlich: docs/begruendungen/core-data/data/MeldungsKanal.kt.md#constructor
  */
 @Singleton
 class MeldungsKanal @Inject constructor() {

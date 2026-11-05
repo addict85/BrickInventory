@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.data.VorwaermNetz
+import ch.brickinventoryapp.ui.viewmodel.HintergrundUiState
+import ch.brickinventoryapp.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.ui.viewmodel.GeraeteEinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.MonitoringAktionen
 import ch.brickinventoryapp.ui.model.BricksetEintragAnsicht
 import ch.brickinventoryapp.ui.model.JobZustandAnsicht
 import ch.brickinventoryapp.ui.model.ZeitplanAnsicht
@@ -21,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -32,16 +36,70 @@ import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MonitoringScreen(vm: AppViewModel) {
+/** Was die Verwaltungsseite zeigt; die Route sammelt es aus den Flüssen. */
+data class MonitoringZustand(
+    val monState: MonitoringUiState,
+    val hintergrund: HintergrundUiState,
+    val verwaltung: VerwaltungUiState,
+    val netze: Map<VorwaermNetz, Boolean>,
+    val appTheme: String,
+    val ablageBytes: Long,
+)
+
+/**
+ * Die Verwaltungsseite am Navigationsziel. Hier laufen die Abfrage alle fünf
+ * Sekunden (nur sichtbar, repeatOnLifecycle) und das Nachladen der Einstellungen.
+ */
+@Composable
+fun MonitoringRoute(
+    appTheme: String,
+    /** Design oder Vorgabe-Zustand geändert: Die App lädt ihre Einstellungen nach. */
+    onEinstellungenNeu: () -> Unit,
+    mon: MonitoringViewModel = hiltViewModel(),
+    geraet: GeraeteEinstellungenViewModel = hiltViewModel(),
+) {
+    val monState by mon.state.collectAsStateWithLifecycle()
+    val hintergrund by mon.hintergrund.collectAsStateWithLifecycle()
+    val verwaltung by mon.verwaltungState.collectAsStateWithLifecycle()
+    val netze by geraet.vorwaermen.collectAsStateWithLifecycle()
+    val ablageBytes by geraet.ablageBytes.collectAsStateWithLifecycle()
+    val einstellungenNeu by mon.einstellungenNeu.collectAsStateWithLifecycle()
+    val lebenszyklus = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    LaunchedEffect(Unit) {
+        lebenszyklus.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+            while (!mon.state.value.zugriffEntzogen) { mon.ladeJobs(); mon.ladeHintergrund(); delay(5000) }
+        }
+    }
+    LaunchedEffect(Unit) { mon.ladeCacheAbschnitt() }
+    LaunchedEffect(einstellungenNeu) {
+        if (einstellungenNeu) { onEinstellungenNeu(); mon.einstellungenGeladen() }
+    }
+    val cacheEreignisse = remember(mon, geraet) {
+        CacheEreignisse(
+            vorgabeZustand = mon::vorgabeZustandWaehlen,
+            ablageLeeren = geraet::ablageLeeren,
+            netz = geraet::vorwaermen,
+            design = mon::designWaehlen,
+            cacheDauer = mon::cacheDauerSpeichern,
+            cacheLeeren = mon::cacheLeeren,
+            grenzwerte = mon::grenzwerteSpeichern,
+        )
+    }
+    MonitoringScreen(
+        MonitoringZustand(monState, hintergrund, verwaltung, netze, appTheme, ablageBytes),
+        mon, cacheEreignisse,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MonitoringScreen(zustand: MonitoringZustand, aktionen: MonitoringAktionen, cacheEreignisse: CacheEreignisse) {
     val scope  = rememberCoroutineScope()
     val retryErrorMsg  = stringResource(R.string.monitoring_retry_error)
     val deleteErrorMsg = stringResource(R.string.monitoring_delete_error)
     val retryQueuedFmt = stringResource(R.string.monitoring_retry_queued)
     val entryRemovedFmt = stringResource(R.string.monitoring_entry_removed)
-    // Serverdaten liegen im ViewModel (siehe MonitoringViewModel: die Grenze
-    // laeuft zwischen "kommt vom Server" und "hat der Mensch angefasst").
-    val mon: MonitoringViewModel = hiltViewModel()
-    val monState by mon.state.collectAsStateWithLifecycle()
+    val monState = zustand.monState
     val jobs = monState.jobs
     val queue = monState.queue
     val queueLoading = monState.queueLoading
@@ -55,57 +113,20 @@ fun MonitoringScreen(vm: AppViewModel) {
     var reimportMsg    by remember { mutableStateOf<String?>(null) }
     var snack          by remember { mutableStateOf<String?>(null) }
 
-    // Siehe AcquisitionManagementScreen: LocalResources statt Context, weil
-    // Lint LocalContextGetResourceValueCall als ERROR meldet und die Zahl fuer
-    // den Platzhalter erst im Rueckruf bekannt ist.
+    // LocalResources statt Context: Die Zahl fuer den Platzhalter ist erst im
+    // Rueckruf bekannt, und ein gegriffener Context veraltet bei Konfigurationswechsel.
     val monRes = androidx.compose.ui.platform.LocalResources.current
     val reimportLoadingMsg = stringResource(R.string.monitoring_loading)
     val reimportErrorMsg   = stringResource(R.string.monitoring_reimport_error)
 
-    // Auto-refresh jobs every 5s — nur solange der Screen sichtbar ist.
-    // repeatOnLifecycle(STARTED) pausiert die Schleife, wenn die App in den
-    // Hintergrund geht (statt weiterzupollen, bis der Screen verlassen wird),
-    // und startet sie beim Zurückkehren neu.
-    val monitoringLifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    LaunchedEffect(Unit) {
-        monitoringLifecycleOwner.lifecycle.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-            while (!mon.state.value.zugriffEntzogen) { mon.ladeJobs(); mon.ladeHintergrund(); delay(5000) }
-        }
-    }
-
     LaunchedEffect(queueToggleKey) {
-        if (queueOpen) mon.ladeWarteschlange()
+        if (queueOpen) aktionen.ladeWarteschlange()
     }
 
     LaunchedEffect(snack) {
-        snack?.let { vm.showSnackbar(it); snack = null }
+        snack?.let { aktionen.melde(it); snack = null }
     }
-    val hintergrund by mon.hintergrund.collectAsStateWithLifecycle()
-
-    // Der Cache-Abschnitt bekommt Zustand und Ereignisse; verdrahtet wird hier.
-    // Die Netzerlaubnisse sind Geräte-Einstellungen mit eigenem ViewModel.
-    val geraet: ch.brickinventoryapp.ui.viewmodel.GeraeteEinstellungenViewModel =
-        androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel()
-    val netze by geraet.vorwaermen.collectAsStateWithLifecycle()
-    val appState by vm.state.collectAsStateWithLifecycle()
-    // remember, nicht rememberSaveable: eine Messung der Platte (BildschirmZustandTest, „gemessen“).
-    var ablageBytes by remember { mutableStateOf(vm.vorschauAblageBytes()) }
-    val cacheEreignisse = remember(vm, mon, geraet) {
-        CacheEreignisse(
-            vorgabeZustand = mon::vorgabeZustandWaehlen,
-            ablageLeeren = { vm.vorschauAblageLeeren(); ablageBytes = vm.vorschauAblageBytes(); mon.ablageGeleert() },
-            netz = geraet::vorwaermen,
-            design = mon::designWaehlen,
-            cacheDauer = mon::cacheDauerSpeichern,
-            cacheLeeren = mon::cacheLeeren,
-            grenzwerte = mon::grenzwerteSpeichern,
-        )
-    }
-    LaunchedEffect(Unit) { mon.ladeCacheAbschnitt() }
-    val einstellungenNeu by mon.einstellungenNeu.collectAsStateWithLifecycle()
-    LaunchedEffect(einstellungenNeu) {
-        if (einstellungenNeu) { vm.loadSettings(); mon.einstellungenGeladen() }
-    }
+    val hintergrund = zustand.hintergrund
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -118,7 +139,7 @@ fun MonitoringScreen(vm: AppViewModel) {
                     Text(stringResource(R.string.monitoring_title), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
                     if (isRefreshing) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                     else ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.monitoring_refresh)) {
-                        IconButton(onClick = { scope.launch { mon.ladeJobs() } }) {
+                        IconButton(onClick = { scope.launch { aktionen.ladeJobs() } }) {
                             Icon(Icons.Default.Refresh, stringResource(R.string.monitoring_refresh))
                         }
                     }
@@ -127,14 +148,14 @@ fun MonitoringScreen(vm: AppViewModel) {
 
             // Die Auftragstabelle: was im Hintergrund wartet, läuft oder scheiterte.
             item {
-                HintergrundSection(hintergrund, mon::auftragsArtStarten, mon::auftragsArtLeeren,
-                    mon::auftragAbbrechen, mon::auftragWiederholen)
+                HintergrundSection(hintergrund, aktionen::auftragsArtStarten, aktionen::auftragsArtLeeren,
+                    aktionen::auftragAbbrechen, aktionen::auftragWiederholen)
             }
 
             // Cache stats + API limits
             item {
-                CacheAndLimitsSection(monState, netze, appState.appTheme,
-                    ablageBytes, cacheEreignisse)
+                CacheAndLimitsSection(monState, zustand.netze, zustand.appTheme,
+                    zustand.ablageBytes, cacheEreignisse)
             }
 
             // Das Server-Protokoll — dieselbe Ansicht wie in der Webapp. Keine eigene
@@ -142,7 +163,7 @@ fun MonitoringScreen(vm: AppViewModel) {
             // der nur bei `isAdmin` steht, und massgeblich ist der Server (requireApiAdmin,
             // sonst 403). Eine dritte Stelle, die „ist das ein Verwalter“ entscheidet, wäre
             // eine zweite Wahrheit.
-            item { ProtokollSection(mon) }
+            item { ProtokollSection(zustand.verwaltung, aktionen) }
 
             // Job cards
             items(jobs.entries.toList(), key = { it.key }) { (key, job) ->
@@ -154,7 +175,7 @@ fun MonitoringScreen(vm: AppViewModel) {
                     queueLoading = queueLoading,
                     queue    = queue,
                     reimportMsg = reimportMsg,
-                    mon      = mon,
+                    aktionen = aktionen,
                     onSnack  = { snack = it },
                     onToggleQueue = {
                         queueOpen = !queueOpen
@@ -162,7 +183,7 @@ fun MonitoringScreen(vm: AppViewModel) {
                     },
                     onRetry = { sn ->
                         scope.launch {
-                            snack = if (mon.wiederholeEintrag(sn)) String.format(retryQueuedFmt, sn)
+                            snack = if (aktionen.wiederholeEintrag(sn)) String.format(retryQueuedFmt, sn)
                                     else retryErrorMsg
                         }
                     },
@@ -170,14 +191,14 @@ fun MonitoringScreen(vm: AppViewModel) {
                         scope.launch {
                             // Das Vorwegnehmen und das Wiederherstellen bei Fehlschlag
                             // stehen jetzt im ViewModel — hier bleibt die Meldung.
-                            snack = if (mon.entferneEintrag(sn)) String.format(entryRemovedFmt, sn)
+                            snack = if (aktionen.entferneEintrag(sn)) String.format(entryRemovedFmt, sn)
                                     else deleteErrorMsg
                         }
                     },
                     onReimport = {
                         scope.launch {
                             reimportMsg = reimportLoadingMsg
-                            val eingereiht = mon.leseAnleitungenNeuEin()
+                            val eingereiht = aktionen.leseAnleitungenNeuEin()
                             if (eingereiht != null) {
                                 reimportMsg = monRes.getQuantityString(
                                     R.plurals.monitoring_reimport_enqueued,
@@ -203,7 +224,7 @@ private fun JobCard(
     queueLoading: Boolean,
     queue: List<BricksetEintragAnsicht>,
     reimportMsg: String?,
-    mon: MonitoringViewModel,
+    aktionen: MonitoringAktionen,
     onSnack: (String) -> Unit,
     onToggleQueue: () -> Unit,
     onRetry: (String) -> Unit,
@@ -266,7 +287,7 @@ private fun JobCard(
             //
             // Kommt mit `/admin/jobs` und zeigt, wann ein Job das nächste Mal läuft — nicht
             // nur, dass er läuft.
-            schedule?.let { ZeitplanZeile(jobKey, it, mon, onSnack) }
+            schedule?.let { ZeitplanZeile(jobKey, it, aktionen, onSnack) }
 
             // Action buttons
             if (jobKey == "csvImport") {
@@ -275,7 +296,7 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             csvMsg = startingMsg
-                            if (mon.starteCsvAbgleich()) {
+                            if (aktionen.starteCsvAbgleich()) {
                                 csvMsg = syncStartedMsg
                                 kotlinx.coroutines.delay(4000)
                                 csvMsg = null
@@ -297,7 +318,7 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             priceMsg = startingMsg
-                            if (mon.startePreislauf()) {
+                            if (aktionen.startePreislauf()) {
                                 priceMsg = startedMsg
                                 kotlinx.coroutines.delay(4000)
                                 priceMsg = null
@@ -319,7 +340,7 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             redlMsg = startingMsg
-                            if (mon.ladeFehlendeBilderNach()) {
+                            if (aktionen.ladeFehlendeBilderNach()) {
                                 redlMsg = startedMsg
                                 kotlinx.coroutines.delay(4000)
                                 redlMsg = null
@@ -341,7 +362,7 @@ private fun JobCard(
                     onClick = {
                         scope.launch {
                             katMsg = startingMsg
-                            if (mon.reiheKatalogbilderEin()) {
+                            if (aktionen.reiheKatalogbilderEin()) {
                                 katMsg = startedMsg
                                 kotlinx.coroutines.delay(4000)
                                 katMsg = null

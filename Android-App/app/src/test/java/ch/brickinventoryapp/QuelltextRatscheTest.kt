@@ -33,6 +33,10 @@ import org.junit.Test
  * strenger, KatalogSprungEntprelltTest zählt weiter als ausführend (er rechnet).
  * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal): ein Import gilt wieder als
  * Ausführen (gegenproben/ratsche-import-zaehlt.patch) → rot „ein Import allein …“.
+ *
+ * Kommentare (05.11.2026, gemessen mit kotlinc lokal):
+ *   kommentar-zu-lang    sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
+ *   verweis-ins-leere    ein Anker in Vorwaermen.kt verschrieben → rot „jeder Verweis …“
  */
 class QuelltextRatscheTest {
 
@@ -75,6 +79,95 @@ class QuelltextRatscheTest {
                 "ob eine Zeile dasteht.\n  " + nur.joinToString("\n  ") { it.name }
         }
         if (nur.size < SCHRANKE) println("  reine Quelltext-Tests: ${nur.size} (Schranke $SCHRANKE) — Schranke nachziehen")
+    }
+
+    /** Die Kotlin-Dateien unter src/main aller Module, ohne die aus den Design-Tokens erzeugten. */
+    private fun produktivDateien(): List<java.io.File> = Quellen.module.flatMap { m ->
+        java.io.File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+    }.filterNot { "ERZEUGT aus shared/design-tokens.json" in it.readText() }
+
+    private fun istKommentar(t: String) = t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
+
+    /** Prosazeilen je Kommentarblock (//-Folge gleicher Einrückung oder /* … */), ohne KDoc-Tags. */
+    private fun bloecke(zeilen: List<String>): List<Pair<Int, Int>> {
+        val ergebnis = mutableListOf<Pair<Int, Int>>()
+        var i = 0
+        while (i < zeilen.size) {
+            val t = zeilen[i].trim()
+            val einzug = zeilen[i].length - zeilen[i].trimStart().length
+            var j = i
+            val text = mutableListOf<String>()
+            when {
+                t.startsWith("//") -> {
+                    while (j + 1 < zeilen.size && zeilen[j + 1].trim().startsWith("//") &&
+                        zeilen[j + 1].length - zeilen[j + 1].trimStart().length == einzug) j++
+                    (i..j).mapTo(text) { zeilen[it].trim().removePrefix("//").trim() }
+                }
+                t.startsWith("/*") && !t.contains("*/") -> {
+                    while (j + 1 < zeilen.size && !zeilen[j].contains("*/")) j++
+                    (i..j).mapTo(text) { zeilen[it].trim().removePrefix("/**").removePrefix("/*").removeSuffix("*/").removePrefix("*").trim() }
+                }
+                else -> { i++; continue }
+            }
+            var imTag = false
+            val prosa = text.count { z ->
+                if (z.startsWith("@")) imTag = true else if (z.isEmpty()) imTag = false
+                z.isNotEmpty() && !imTag
+            }
+            ergebnis += (i + 1) to prosa
+            i = j + 1
+        }
+        return ergebnis
+    }
+
+    @Test
+    fun `der Kommentaranteil sinkt, nie steigt`() {
+        // CLAUDE.md: zwei bis fünf Zeilen Warum, die Geschichte in den Commit.
+        // Gemessen am 05.11.2026: 24,1 %; nach dem Auslagern der langen Kommentare
+        // nach docs/begruendungen/ 22,7 % (ohne die erzeugten Token-Dateien).
+        val SCHRANKE = 22.7
+        var zeilen = 0
+        var kommentar = 0
+        for (f in produktivDateien()) for (z in f.readLines()) {
+            val t = z.trim()
+            if (t.isEmpty()) continue
+            zeilen++
+            if (istKommentar(t)) kommentar++
+        }
+        assert(zeilen > 30_000) { "Nur $zeilen Zeilen gefunden — greift die Suche noch?" }
+        val anteil = Math.round(1000.0 * kommentar / zeilen) / 10.0
+        assert(anteil <= SCHRANKE) { "Kommentaranteil $anteil %, erlaubt $SCHRANKE %" }
+    }
+
+    @Test
+    fun `kein Kommentar hat mehr als fuenf Zeilen Prosa`() {
+        // Gemessen am 05.11.2026: 111 Blöcke, ausgelagert nach docs/begruendungen/; seitdem 0.
+        var gezaehlt = 0
+        val lang = produktivDateien().flatMap { f ->
+            bloecke(f.readLines()).also { gezaehlt += it.size }
+                .filter { it.second > 5 }.map { "${f.name}:${it.first} (${it.second} Zeilen)" }
+        }
+        assert(gezaehlt > 1000) { "Nur $gezaehlt Kommentarblöcke gefunden — greift die Suche noch?" }
+        assert(lang.isEmpty()) { "Kommentare über fünf Zeilen; das Warum kürzen, die Geschichte in den Commit:\n  " + lang.joinToString("\n  ") }
+    }
+
+    @Test
+    fun `jeder Verweis auf docs-begruendungen trifft Datei und Anker`() {
+        val verweis = Regex("""docs/begruendungen/(\S+?\.md)#([\w-]+)""")
+        var n = 0
+        val kaputt = produktivDateien().flatMap { f ->
+            verweis.findAll(f.readText()).mapNotNull { m ->
+                n++
+                val doc = java.io.File(Quellen.projekt, "docs/begruendungen/" + m.groupValues[1])
+                when {
+                    !doc.isFile -> "${f.name}: ${m.groupValues[1]} fehlt"
+                    "<a id=\"${m.groupValues[2]}\"></a>" !in doc.readText() -> "${f.name}: ${m.value}"
+                    else -> null
+                }
+            }.toList()
+        }
+        assert(n >= 100) { "Nur $n Verweise gefunden — greift die Suche noch?" }
+        assert(kaputt.isEmpty()) { "Verweise ins Leere:\n  " + kaputt.joinToString("\n  ") }
     }
 
     @Test

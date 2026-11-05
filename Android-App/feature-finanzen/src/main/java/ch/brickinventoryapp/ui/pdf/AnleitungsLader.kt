@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.pdf
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import android.graphics.pdf.PdfRenderer
 import android.net.wifi.WifiManager
@@ -113,15 +114,13 @@ class AnleitungsLader @Inject constructor(
                 }
             }
             onZustand(PdfLoadState.Rendering)
-            try {
+            fangeAusserAbbruch {
                 return withContext(io) {
                     val quelle = PdfBereich.anleitung(anleitungen, cacheFile, anzeige)
                     if (!offen.halte(quelle)) throw CancellationException("Betrachter verlassen")
                     quelle to seitenzahl(quelle)
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 if (versuch >= 2 || pdfMitEinmalTicket(url)) throw e
                 withContext(io) {
                     cacheFile.delete()
@@ -170,7 +169,7 @@ class AnleitungsLader @Inject constructor(
 
         // Ein Ticket gilt für genau einen Abruf: kein zweiter Versuch, kein Range-Fortsetzen.
         val maxAttempts = if (pdfMitEinmalTicket(url)) 1 else 8
-        var lastError: Exception? = null
+        var lastError: Throwable? = null
         for (attempt in 1..maxAttempts) {
             when (val schritt = pdfSchritt(
                 fertigeGroesse = if (dest.exists()) dest.length() else 0L,
@@ -185,7 +184,7 @@ class AnleitungsLader @Inject constructor(
                     return
                 }
                 is PdfSchritt.Holen -> {
-                    try {
+                    fangeAusserAbbruch {
                         holeAb(client, url, schritt.ab, teil, onProgress)
                         // Erst JETZT heisst die Datei wie die fertige. Schlägt das Umbenennen
                         // fehl, wird kopiert — sonst lädt der nächste Aufruf alles noch einmal.
@@ -194,9 +193,7 @@ class AnleitungsLader @Inject constructor(
                             teil.delete()
                         }
                         return
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
+                    }.onFailure { e ->
                         lastError = e
                         if (attempt < maxAttempts) delay((1000L * attempt).coerceAtMost(4000L))
                     }

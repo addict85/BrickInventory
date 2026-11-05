@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
 import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
 import ch.brickinventoryapp.ui.model.TeilAnsicht
 import ch.brickinventoryapp.ui.model.TeileKennzahlenAnsicht
@@ -47,10 +48,34 @@ import ch.brickinventoryapp.ui.components.FehlerHinweis
 import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
 
+/** Was der Teile- und der Figurenreiter zeigen; die Routen sammeln es aus den Flüssen. */
+data class TeileZustand(
+    val state: AppUiState,
+    val blick: BlickfeldUiState,
+    val partsState: PartsUiState,
+    val lagerState: LagerUiState,
+)
+
+/** Der Teile-Reiter am Navigationsziel: reicht Zustand und Aktionen an [PartsScreen]. */
+@Composable
+fun PartsRoute(
+    vm: TeileViewModel,
+    imageLoader: ImageLoader,
+    onOpenDetail: (partNumber: String, colorId: Int) -> Unit = { _, _ -> },
+    gridState: LazyGridState = rememberLazyGridState(),
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val partsState by vm.partsState.collectAsStateWithLifecycle()
+    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    PartsScreen(TeileZustand(state, blick, partsState, lagerState), vm, imageLoader, onOpenDetail, gridState)
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PartsScreen(
-    vm: TeileViewModel,
+    zustand: TeileZustand,
+    aktionen: TeileAktionen,
     imageLoader: ImageLoader,
     /**
      * Öffnet die Detailansicht eines manuell erfassten Teils. Bleibt Parameter,
@@ -65,18 +90,10 @@ fun PartsScreen(
      */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    // ── Zustand und Aktionen: vom ViewModel statt über zwanzig Parameter ──
-    //
-    // Mit zwanzig Parametern fasste jede Erweiterung drei Dateien an (Screen, Graph,
-    // ViewModel). Dieselbe Bauart wie ManualItemDetailScreen und
-    // AcquisitionManagementScreen, die `vm` nehmen und selbst lesen. Die Werte
-    // behalten ihre alten Namen, damit der Rumpf darunter unverändert bleibt.
-    val state by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val partsState by vm.partsState.collectAsStateWithLifecycle()
-    // Eigener Fluss: Der Lagerortfilter gehoert nicht in AppUiState, das
-    // sechzehn Dateien sammeln (siehe LagerUiState).
-    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
+    val state = zustand.state
+    val blick = zustand.blick
+    val partsState = zustand.partsState
+    val lagerState = zustand.lagerState
     // Das Teil, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
     val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
 
@@ -97,17 +114,17 @@ fun PartsScreen(
     // Aktualisieren behält den Suchtext — sonst spränge die Liste auf den ganzen
     // Bestand, während das Feld den Text weiter zeigt. Wie in der Galerie (onRefresh =
     // loadSets()).
-    val onRefresh: () -> Unit = { vm.loadParts() }
-    val onSearch: (String) -> Unit = vm::setPartsQuery
-    val onLoadMore: (Int) -> Unit = { vm.loadParts(page = it) }
-    val onScopeChange: (String) -> Unit = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
+    val onRefresh: () -> Unit = { aktionen.loadParts() }
+    val onSearch: (String) -> Unit = aktionen::setPartsQuery
+    val onLoadMore: (Int) -> Unit = { aktionen.loadParts(page = it) }
+    val onScopeChange: (String) -> Unit = { aktionen.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
     val lagerorte = lagerState.orte
     val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key] ?: ""
-    val onLagerChange: (String) -> Unit = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
+    val onLagerChange: (String) -> Unit = { aktionen.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
     val ansicht = partsState.partsView
     val onAddPart: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit =
         { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort ->
-            vm.addPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort)
+            aktionen.addPart(num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort)
         }
     // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
     // auch ein leeres Regal zur Wahl stehen.
@@ -241,7 +258,7 @@ fun PartsScreen(
                     ) { part ->
                         // BEIDE Ansichten oeffnen denselben Dialog — eine
                         // Ansicht darf nicht koennen, was die andere nicht kann.
-                        val oeffne = { vm.oeffneSetItem("part", part.partNumber, part.colorId) }
+                        val oeffne = { aktionen.oeffneSetItem("part", part.partNumber, part.colorId) }
                         Bewegt {
                             if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader, oeffne)
                             else PartCard(part, serverUrl, imageLoader, oeffne,
@@ -270,7 +287,7 @@ fun PartsScreen(
 
     if (zeigeFilter) {
         TeileFilterBlatt(
-            vm = vm,
+            aktionen = aktionen,
             partsState = partsState,
             householdMembers = householdMembers,
             scopeMode = scopeMode,
@@ -306,7 +323,7 @@ fun PartsScreen(
 /** Das Filterblatt der Teile: Konto, Lagerort, Ersatzteile, Farbe und Kategorie, Ansicht. */
 @Composable
 private fun TeileFilterBlatt(
-    vm: TeileViewModel,
+    aktionen: TeileAktionen,
     partsState: PartsUiState,
     householdMembers: List<ch.brickinventoryapp.ui.model.MitgliedAnsicht>,
     scopeMode: String,
@@ -325,9 +342,9 @@ private fun TeileFilterBlatt(
     val zuruecksetzen: () -> Unit = {
         if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL)
         if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
-        if (ersatz.isNotBlank()) vm.setPartsSpare("")
-        if (farbe.isNotBlank()) vm.setPartsColorFilter("")
-        if (kategorie.isNotBlank()) vm.setPartsCategoryFilter("")
+        if (ersatz.isNotBlank()) aktionen.setPartsSpare("")
+        if (farbe.isNotBlank()) aktionen.setPartsColorFilter("")
+        if (kategorie.isNotBlank()) aktionen.setPartsCategoryFilter("")
     }
     val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus, ersatz, farbe, kategorie)
     FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
@@ -341,7 +358,7 @@ private fun TeileFilterBlatt(
                 "0" to R.string.parts_filter_no_spare,
                 "1" to R.string.parts_filter_spare,
             )) {
-                FilterWahl(stringResource(text), ersatz == wert) { vm.setPartsSpare(wert) }
+                FilterWahl(stringResource(text), ersatz == wert) { aktionen.setPartsSpare(wert) }
             }
         }
         if (farbEintraege.isNotEmpty() || kategorieEintraege.isNotEmpty()) {
@@ -351,12 +368,12 @@ private fun TeileFilterBlatt(
                     kategorien = kategorieEintraege,
                     farbeGewaehlt = farbe,
                     kategorieGewaehlt = kategorie,
-                    onFarbe = { vm.setPartsColorFilter(it) },
-                    onKategorie = { vm.setPartsCategoryFilter(it) },
+                    onFarbe = { aktionen.setPartsColorFilter(it) },
+                    onKategorie = { aktionen.setPartsCategoryFilter(it) },
                 )
             }
         }
-        AnsichtAbschnitt(partsState.partsView) { vm.setPartsView(it) }
+        AnsichtAbschnitt(partsState.partsView) { aktionen.setPartsView(it) }
     }
 }
 
@@ -518,14 +535,7 @@ fun SectionHeader(text: String) {
 
 /**
  * Ein Teil als Tabellenzeile.
- *
- * Zeigt, was die Tabelle der Webapp zeigt (partsTableRow in 03-parts.js):
- * Bild, Nummer, Name, Farbe, Kategorie, Menge, In Sets. Die beiden breiten
- * Spalten — Kategorie und Sets — stehen als zweite Zeile darunter statt
- * daneben; sieben Spalten nebeneinander passen auf kein Telefon.
- *
- * „In Sets" ist nur gefuellt, wenn der Lader `with_sets=1` mitgegeben hat, und
- * das tut er nur in dieser Ansicht (TeileQuelle in ui/Teile.kt).
+ * Ausführlich: docs/begruendungen/feature-teile/ui/screens/PartsScreen.kt.md#parttablerow
  */
 @Composable
 fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.service
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -74,13 +75,13 @@ class PdfExportService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        try {
+        fangeAusserAbbruch {
             ServiceCompat.startForeground(
                 this, NOTIFICATION_ID,
                 buildNotification(loc.getString(R.string.notif_pdf_running)),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
-        } catch (e: Exception) {
+        }.onFailure { _ ->
             stopSelf()
         }
     }

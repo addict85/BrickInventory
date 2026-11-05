@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.viewmodel.KatalogAktionen
 import ch.brickinventoryapp.ui.model.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
 import ch.brickinventoryapp.ui.components.SkelettRaster
@@ -33,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ressourcen.R
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ch.brickinventoryapp.ui.AppViewModel
 import ch.brickinventoryapp.ui.viewmodel.CatalogViewModel
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.CatalogYearMath
@@ -64,22 +64,27 @@ import ch.brickinventoryapp.ui.components.LeerSymbol
  * Aufbau analog GalleryScreen (Suche oben, Filter-Chips, Grid) — Filter
  * laufen aber serverseitig, das Grid lädt beim Scrollen seitenweise nach.
  */
+@Composable
+fun CatalogRoute(
+    katalog: CatalogViewModel,
+    serverUrl: String,
+    imageLoader: ImageLoader,
+    onSetClick: (String) -> Unit,
+) {
+    val state by katalog.state.collectAsStateWithLifecycle()
+    CatalogScreen(state, serverUrl, katalog, imageLoader, onSetClick)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogScreen(
-    vm: AppViewModel,
-    katalog: CatalogViewModel,
+    state: CatalogUiState,
+    serverUrl: String,
+    katalog: KatalogAktionen,
     imageLoader: ImageLoader,
     /** Klick auf ein Set — nur der Graph kennt den NavController. */
     onSetClick: (String) -> Unit,
 ) {
-    // Zustand und Aktionen vom ViewModel statt über Parameter — dasselbe Muster wie
-    // Galerie, Finanzen, Teile und Minifiguren.
-    val state by katalog.state.collectAsStateWithLifecycle()
-    val appState by vm.state.collectAsStateWithLifecycle()
-
-    val serverUrl = appState.serverUrl
-
     val onQueryChange: (String) -> Unit = { q -> katalog.setCatalogQuery(q) }
     val onThemeChange: (Int?) -> Unit = { t -> katalog.setCatalogTheme(t) }
     val onYearChange: (Int?) -> Unit = { y -> katalog.setCatalogYear(y) }
@@ -101,13 +106,11 @@ fun CatalogScreen(
 
     val gridState = rememberLazyGridState()
 
-    // ── Laden, was gerade sichtbar wird ──
-    //
     // Die Liste führt alle `total` Plätze; geladen wird die Seite eines sichtbar
     // gewordenen Platzes, mit einer Seite Vorlauf — so kann die Leiste rechts
     // überallhin springen. Erst wenn die Liste ruht: Die Leiste rollt beim Ziehen
     // durch jede Zwischenposition, und ohne Ruhe stünde die Zielseite hinter Hunderten
-    // angeforderter Seiten in der Schlange. Die Ruhe hält der Sichtfensterlader im ViewModel.
+    // Ausführlich: docs/begruendungen/feature-katalog/ui/screens/CatalogScreen.kt.md#launchedeffect
     LaunchedEffect(gridState, state.total, state.loadedPages.size) {
         snapshotFlow {
             val sichtbar = gridState.layoutInfo.visibleItemsInfo
@@ -121,14 +124,11 @@ fun CatalogScreen(
     // Sichtfenster-Lader oben, und dessen Ruhe deckt beide ab. Zwei Fassungen
     // derselben Regel liefen auseinander.
 
-    // ── Die Rollposition überlebt den Wechsel zur Detailseite ──
-    //
     // Die Liste verlässt beim Wechsel die Komposition und ihre Länge trifft erst
     // später ein, deshalb hilft Compose' Wiederherstellung nicht. Die Stelle steht im
     // Zustand (ViewModel); beim Betreten wird einmal zurückgesprungen, sobald die
     // Länge da ist, und erst danach gemeldet — sonst überschriebe die frische Null die
-    // gemerkte Stelle. `remember`, nicht `rememberSaveable`: Der Merker gilt je
-    // Komposition; überlebte er den Ausflug, spränge die Rückkehr nie mehr zurück.
+    // Ausführlich: docs/begruendungen/feature-katalog/ui/screens/CatalogScreen.kt.md#wiederhergestellt-by-remember
     var wiederhergestellt by remember { mutableStateOf(false) }
     LaunchedEffect(state.total) {
         if (wiederhergestellt || state.total == 0) return@LaunchedEffect

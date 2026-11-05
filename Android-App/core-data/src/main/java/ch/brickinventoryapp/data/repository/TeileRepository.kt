@@ -40,9 +40,8 @@ class TeileRepository @Inject constructor(
         // Seite: Sie wird nach einem Neustart gebraucht, ein Suchergebnis im Cache belegte
         // nur Platz. `storage` gehört in die Bedingung, sonst landete eine nach Lagerort
         // gefilterte Antwort unter dem Schlüssel der vollen Liste.
-        if (search.isNullOrBlank() && color == null && category == null && page == 1 &&
-            accounts == null && spare.isNullOrBlank() && withSets.isNullOrBlank() &&
-            storage.isNullOrBlank())
+        if (page == 1 && listOf(color, category, accounts).all { it == null } &&
+            listOf(search, spare, withSets, storage).all { it.isNullOrBlank() })
             abgeglichen(Faecher.TEILE, { it.parts }, { PartsResponse(success = true, total = it.size, parts = it) }) {
                 safeCall { api.getParts(null, null, null, 1, pageSize = 500, excludeManual = "1") }
             }

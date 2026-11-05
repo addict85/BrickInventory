@@ -29,7 +29,7 @@ import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.screens.AddSetDialog
 import ch.brickinventoryapp.ui.screens.GutscheineCard
 import ch.brickinventoryapp.ui.screens.LoginScreen
-import ch.brickinventoryapp.ui.screens.SetDetailScreen
+import ch.brickinventoryapp.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.Schrittschutz
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -140,7 +140,7 @@ class AblaufTest {
         w.pfade.antworten["/api/v1/sets/75192-1"] =
             """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Millennium Falcon","quantity":2}}"""
         zeige {
-            SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
+            SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
         }
         compose.waitUntil(10_000) { vm.setDetailState.value.setDetail != null }
@@ -163,7 +163,7 @@ class AblaufTest {
         var rueckgaengig by mutableStateOf(true)
         val geloescht = mutableListOf<String>()
         zeige {
-            SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
+            SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = { geloescht += it },
                 rueckgaengigMoeglich = rueckgaengig)
         }

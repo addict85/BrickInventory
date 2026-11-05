@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.service
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.repository.BrickRepository
@@ -85,7 +86,7 @@ class PdfExportManager @Inject constructor(
         pendingBody = null
         _state.value = PdfExportState.Running(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_starting))
 
-        try {
+        fangeAusserAbbruch {
             // Step 1: Job starten
             val jobId = when (val r = repo.sets.startPdfJob(body)) {
                 is Result.Success -> r.data
@@ -146,20 +147,11 @@ class PdfExportManager @Inject constructor(
                 // Wiederholschleife oben es überschreiben kann. Dass die Schleife
                 // IMMER mindestens einmal zuweist (repeat(5) läuft, und beim
                 // ersten Durchlauf ist der Wert null, also nicht Success), kann
-                // der Compiler nicht sehen — Zuweisungen in einer Lambda zählen
-                // für ihn nicht als sichere Initialisierung.
-                //
-                // Bewusst ein null-Zweig und KEIN else: BrickRepository.kt sagt
-                // ausdrücklich, dass jedes when über Result erschöpfend bleiben
-                // soll, damit ein künftiger dritter Zustand überall auffällt.
-                // Ein else würde genau das verdecken.
-                //
-                // Ohne diesen Zweig bliebe die Oberfläche im Zustand "Running"
-                // hängen, falls der Fall doch je einträte.
+                // Ausführlich: docs/begruendungen/core-data/service/PdfExportManager.kt.md#z146
                 null -> _state.value =
                     PdfExportState.Error(s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_unknown_error))
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
             _state.value = PdfExportState.Error(e.message ?: s(ch.brickinventoryapp.ressourcen.R.string.pdfexp_unknown_error))
         }
     }

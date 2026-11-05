@@ -71,6 +71,7 @@ private fun serverVertrauen(prefs: PreferencesManager, frage: ch.brickinventorya
 }
 
 /** API-, Bild- und SSE-Client: derselbe Wächter (ServerWaechter.kt), eigene Zeitgrenzen. */
+@Suppress("LongParameterList") // Ein Baustein für drei Clients; die Teile unterscheiden sich je Client.
 internal fun buildInterceptorClient(
     prefs: PreferencesManager,
     isApiClient: Boolean,

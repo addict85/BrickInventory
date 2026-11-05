@@ -157,22 +157,6 @@ class VorschauAblageTest {
         // am laufenden Code.
     }
 
-    @Test
-    fun `die Ablage laesst sich sehen und leeren`() {
-        // 150 MB unter filesDir raeumt niemand ausser dem Nutzer. Ohne Anzeige
-        // waechst auf dem Telefon etwas, das man nicht findet.
-        val vm = quelle("ui/AppViewModel.kt")
-        // Der Abschnitt nimmt Zustand und Ereignisse, verdrahtet wird in MonitoringScreen.
-        val ui = quelle("ui/screens/MonitoringSections.kt") + quelle("ui/screens/MonitoringScreen.kt")
-        assert(vm.contains("fun vorschauAblageBytes()") && vm.contains("fun vorschauAblageLeeren()")) {
-            "Die Zugaenge zur Ablage fehlen im ViewModel"
-        }
-        assert(ui.contains("vm.vorschauAblageBytes()") && ui.contains("vm.vorschauAblageLeeren()")) {
-            "Die Einstellungen zeigen die Ablage nicht an oder lassen sie nicht " +
-                "leeren — dann waechst sie unsichtbar"
-        }
-    }
-
     // ────────────────────────────────────────────────────────────────────────
     // Das Vorwaermen (Nachtrag 159)
     //

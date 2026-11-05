@@ -70,7 +70,7 @@ class ResourceAndCacheTest {
 
     @Test
     fun `beim Abmelden werden API- UND Bild-Cache geleert`() {
-        val src = code(read("ui/AppViewModel.kt"))
+        val src = code(read("ui/Abmelden.kt"))
         assert(src.contains("repo.clearCache()")) { "API-Cache wird nicht geleert" }
         assert(src.contains("imageLoader.diskCache?.clear()")) {
             "Der Coil-Disk-Cache bleibt beim Abmelden liegen — inkonsistent zur " +

@@ -17,14 +17,14 @@ import ch.brickinventoryapp.ui.AnmeldeFormular
 import ch.brickinventoryapp.ui.GutscheinUiState
 import ch.brickinventoryapp.ui.KontoUiState
 import ch.brickinventoryapp.ui.ZweiterFaktorUiState
-import ch.brickinventoryapp.ui.screens.FinanceScreen
+import ch.brickinventoryapp.ui.screens.FinanceRoute
 import ch.brickinventoryapp.ui.screens.GalleryRoute
 import ch.brickinventoryapp.ui.screens.GutscheineCard
 import ch.brickinventoryapp.ui.screens.LoginScreen
-import ch.brickinventoryapp.ui.screens.MerklisteScreen
-import ch.brickinventoryapp.ui.screens.MinifigsScreen
-import ch.brickinventoryapp.ui.screens.PartsScreen
-import ch.brickinventoryapp.ui.screens.SetDetailScreen
+import ch.brickinventoryapp.ui.screens.MerklisteRoute
+import ch.brickinventoryapp.ui.screens.MinifigsRoute
+import ch.brickinventoryapp.ui.screens.PartsRoute
+import ch.brickinventoryapp.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.screens.SetupScreen
 import ch.brickinventoryapp.ui.screens.StartpasswortMaske
 import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
@@ -153,7 +153,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
                 !s.setDetailLoading && !s.setPriceLoading && !s.priceHistoryLoading && !s.acquisitionsLoading } }
         foto("set-detail", fertig, { vm.setDetailState.value }) {
-            SetDetailScreen(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder,
+            SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "", imageLoader = bilder,
                 onBack = {}, onDelete = {})
         }
     }
@@ -162,7 +162,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     fun teile() {
         val vm = welt.teile().also { it.loadParts() }
         foto("teile", { vm.partsState.value.parts.isNotEmpty() }, { vm.partsState.value }) {
-            PartsScreen(vm = vm, imageLoader = bilder)
+            PartsRoute(vm = vm, imageLoader = bilder)
         }
     }
 
@@ -170,7 +170,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     fun figuren() {
         val vm = welt.teile().also { it.loadMinifigs() }
         foto("figuren", { vm.partsState.value.minifigs.isNotEmpty() }, { vm.partsState.value }) {
-            MinifigsScreen(vm = vm, imageLoader = bilder)
+            MinifigsRoute(vm = vm, imageLoader = bilder)
         }
     }
 
@@ -181,7 +181,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
         foto("finanzen", { vm.financeState.value.let { it.valuation != null && it.partsValuation != null &&
             it.figsValuation != null && it.pnl != null && it.historyPoints.isNotEmpty() &&
             !it.valuationLoading && !it.historyLoading } }, { vm.financeState.value }) {
-            FinanceScreen(vm = vm, imageLoader = bilder)
+            FinanceRoute(vm = vm, imageLoader = bilder)
         }
     }
 
@@ -189,7 +189,7 @@ class BildschirmFotoTest(private val design: String, private val dunkel: Boolean
     fun merkliste() {
         val vm = welt.merkliste().also { it.ladeMerkliste() }
         foto("merkliste", { vm.merklisteState.value.merkposten.isNotEmpty() }, { vm.merklisteState.value }) {
-            MerklisteScreen(vm = vm, imageLoader = bilder, onScan = {}, onOeffnen = { _, _ -> })
+            MerklisteRoute(vm = vm, imageLoader = bilder, onScan = {}, onOeffnenEinzeln = { _, _ -> })
         }
     }
 

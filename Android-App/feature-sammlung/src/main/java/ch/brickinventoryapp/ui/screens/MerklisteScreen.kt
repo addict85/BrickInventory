@@ -1,5 +1,11 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.LagerUiState
+import ch.brickinventoryapp.ui.MerkpostenDetailUiState
+import ch.brickinventoryapp.ui.MerklisteUiState
+import ch.brickinventoryapp.ui.BlickfeldUiState
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.viewmodel.MerklisteAktionen
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
@@ -56,26 +62,72 @@ import androidx.compose.material.icons.filled.Alarm
  */
 private fun merkpostenSchluessel(w: MerkpostenAnsicht) = "${w.setNumber}|${w.condition}|${w.userId}"
 
+/** Was Merkliste und Merkposten-Detail zeigen; die Route sammelt es aus den Flüssen. */
+data class MerklisteZustand(
+    val appState: AppUiState,
+    val blick: BlickfeldUiState,
+    val liste: MerklisteUiState,
+    val detail: MerkpostenDetailUiState,
+    val lagerZustand: LagerUiState,
+)
+
+/** Merkliste und Detail am Navigationsziel: ein ViewModel für beide Hälften. */
+@Composable
+fun MerklisteRoute(
+    vm: MerklisteViewModel,
+    imageLoader: coil3.ImageLoader,
+    onScan: () -> Unit,
+    onOeffnenEinzeln: (String, String) -> Unit,
+    nebeneinander: Boolean = false,
+) {
+    val appState by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val liste by vm.merklisteState.collectAsStateWithLifecycle()
+    val detail by vm.merkpostenDetailState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
+    MerklisteUndDetail(ansicht, vm, imageLoader, nebeneinander, onScan, onOeffnenEinzeln)
+}
+
+/** Das Merkposten-Detail als eigene Seite (Telefon). */
+@Composable
+fun MerkpostenDetailRoute(
+    vm: MerklisteViewModel,
+    setNumber: String,
+    condition: String,
+    imageLoader: coil3.ImageLoader,
+    onBack: () -> Unit,
+) {
+    val appState by vm.state.collectAsStateWithLifecycle()
+    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val liste by vm.merklisteState.collectAsStateWithLifecycle()
+    val detail by vm.merkpostenDetailState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
+    MerkpostenDetailScreen(ansicht, vm, setNumber, condition, imageLoader, onBack)
+}
+
 @Composable
 fun MerklisteScreen(
-    vm: MerklisteViewModel,
+    ansicht: MerklisteZustand,
+    aktionen: MerklisteAktionen,
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
     onOeffnen: (String, String) -> Unit,
     /** Setnummer und Zustand des Merkpostens, dessen Detail daneben offen ist. */
     gewaehlt: Pair<String, String>? = null,
 ) {
-    val zustand by vm.merklisteState.collectAsStateWithLifecycle()
+    val zustand = ansicht.liste
     // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
     // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
-    val appState by vm.state.collectAsStateWithLifecycle()
-    val blick by vm.blickfeld.collectAsStateWithLifecycle()
+    val appState = ansicht.appState
+    val blick = ansicht.blick
 
     // Übernommen wird über das Detail (MerkpostenDetailScreen), wo Anzahl, Kaufpreis
     // und Zustand zur Wahl stehen; die Zeile zeigt dafür den Marktpreis.
     var maskeOffen by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) { vm.ladeMerkliste() }
+    LaunchedEffect(Unit) { aktionen.ladeMerkliste() }
 
     // ── Der Filter ──
     //
@@ -102,7 +154,7 @@ fun MerklisteScreen(
             ScopeFilterZeile(
                 members  = blick.householdMembers,
                 current  = scopeModus,
-                onSelect = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE, it) },
+                onSelect = { aktionen.setScope(ch.brickinventoryapp.data.ScopeFilter.View.MERKLISTE, it) },
             )
 
             // Scannen neben der Suche wie in der Galerie: unten schwebt nur EIN Knopf. Im
@@ -116,7 +168,7 @@ fun MerklisteScreen(
             ) {
                 Suchfeld(
                     wert = sucheInput,
-                    onWert = { sucheInput = it; vm.setzeMerklisteSuche(it) },
+                    onWert = { sucheInput = it; aktionen.setzeMerklisteSuche(it) },
                     platzhalter = stringResource(R.string.wanted_search),
                     modifier = Modifier.weight(1f),
                 )
@@ -126,7 +178,7 @@ fun MerklisteScreen(
                     optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
                                       "year_desc", "price_desc", "price_asc").map { it to gallerySortLabel(it) },
                     gewaehlt = zustand.sortierung,
-                    onWahl = { vm.setzeMerklisteSortierung(it) },
+                    onWahl = { aktionen.setzeMerklisteSortierung(it) },
                     modifier = Modifier.padding(end = Abstaende.winzig),
                     vorgabe = MERKLISTE_DEFAULT_SORT,
                 )
@@ -140,7 +192,7 @@ fun MerklisteScreen(
                                   "N" to stringResource(R.string.condition_new),
                                   "U" to stringResource(R.string.condition_used)),
                 gewaehlt = zustand.zustandFilter,
-                onWahl = { vm.setzeMerklisteZustand(it) },
+                onWahl = { aktionen.setzeMerklisteZustand(it) },
                 modifier = Modifier.padding(horizontal = Abstaende.rand).padding(bottom = Abstaende.klein),
             )
 
@@ -148,7 +200,7 @@ fun MerklisteScreen(
                 Ladezustand(
                     anzeige = anzeige,
                     fehler = zustand.fehler,
-                    onErneut = { vm.ladeMerkliste() },
+                    onErneut = { aktionen.ladeMerkliste() },
                     // Wie die leere Galerie: sagen, wozu die Liste da ist, und beide Wege
                     // zum ersten Eintrag anbieten — dieselben wie die Knöpfe unten rechts.
                     leer = {
@@ -204,7 +256,7 @@ fun MerklisteScreen(
             defaultCondition = appState.userDefaultCondition ?: "N",
             onDismiss = { maskeOffen = false },
             onAnlegen = { nummer, zustandWahl, besitzer ->
-                vm.legeMerkpostenAn(nummer, zustandWahl, besitzer)
+                aktionen.legeMerkpostenAn(nummer, zustandWahl, besitzer)
                 maskeOffen = false
             },
         )
@@ -218,7 +270,8 @@ fun MerklisteScreen(
  */
 @Composable
 fun MerklisteUndDetail(
-    vm: MerklisteViewModel,
+    ansicht: MerklisteZustand,
+    aktionen: MerklisteAktionen,
     imageLoader: coil3.ImageLoader,
     nebeneinander: Boolean,
     onScan: () -> Unit,
@@ -227,7 +280,7 @@ fun MerklisteUndDetail(
     var offen by rememberSaveable { mutableStateOf<List<String>?>(null) }
     val auswahl = offen?.let { it[0] to it[1] }
     val liste: @Composable () -> Unit = {
-        MerklisteScreen(vm = vm, imageLoader = imageLoader, onScan = onScan,
+        MerklisteScreen(ansicht = ansicht, aktionen = aktionen, imageLoader = imageLoader, onScan = onScan,
             onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z) else onOeffnenEinzeln(sn, z) },
             gewaehlt = auswahl.takeIf { nebeneinander })
     }
@@ -237,7 +290,7 @@ fun MerklisteUndDetail(
             detail = {
                 // key: Ein anderer Merkposten ist ein anderes Detail (Dialoge, Zoom zu).
                 androidx.compose.runtime.key(auswahl) {
-                    MerkpostenDetailScreen(vm = vm, setNumber = auswahl.first, condition = auswahl.second,
+                    MerkpostenDetailScreen(ansicht = ansicht, aktionen = aktionen, setNumber = auswahl.first, condition = auswahl.second,
                         imageLoader = imageLoader, onBack = { offen = null })
                 }
             },

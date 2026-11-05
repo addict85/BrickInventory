@@ -4,16 +4,16 @@ Test: ch.brickinventoryapp.GeruestUndFormularTest
 Rot: Konto und Preisalarme stehen auf dem Tablet in Formularbreite
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt
-index 6e4144e..cd15717 100644
+index 0e66f28..625fdff 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/screens/EinstellungenUnterseiten.kt
-@@ -43,8 +43,7 @@ fun PreisalarmeUnterseite(
-     /** Der Melde-Schalter; als Platz, weil er sein eigenes ViewModel holt. */
-     meldeSchalter: @Composable () -> Unit = { PreisalarmSchalter() },
+@@ -60,8 +60,7 @@ fun PreisalarmeUnterseite(
+     onZurueck: () -> Unit,
+     meldeSchalter: @Composable () -> Unit,
  ) {
 -    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck,
 -        breite = ch.brickinventoryapp.ui.theme.Lesebreite.formular) {
 +    Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck) {
          meldeSchalter()
-         PreisalarmeCard(vm, imageLoader, serverUrl, onSetClick)
+         PreisalarmeCard(uebersicht, aktionen, imageLoader, serverUrl, onSetClick)
      }

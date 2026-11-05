@@ -252,7 +252,7 @@ test('beim Set gilt die Liste des BESITZERS, nicht die des Betrachters', () => {
 
   assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /ladeOrtAuswahl\(curSet\.owners\)/,
     'Die Webapp fragt nicht nach der Liste des Besitzers');
-  assert.match(KT_SETDET, /vm\.loadLagerortVorrat\(set\.owners\.map \{ it\.id \}\)/,
+  assert.match(KT_SETDET, /aktionen\.loadLagerortVorrat\(set\.owners\.map \{ it\.id \}\)/,
     'Die App fragt nicht nach der Liste des Besitzers');
 });
 
@@ -276,7 +276,7 @@ test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
   assert.match(web('public/js/13-acquisition-modals.js'), /ladeOrtAuswahl\(item\?\.owner_ids\)/,
     'Die Webapp fragt beim Teil nicht nach der Liste des Besitzers');
   assert.match(lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'dialogs', 'SetItemDetailDialog.kt')),
-    /vm\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
+    /aktionen\.loadLagerortVorrat\(zustand\.kopf\?\.ownerIds \?: emptyList\(\)\)/,
     'Die App fragt beim Teil nicht nach der Liste des Besitzers');
 });
 
@@ -310,7 +310,7 @@ test('beide verwalten die Orte in den Einstellungen', () => {
   assert.match(web('public/js/05-settings.js'), /function loescheLagerort/,
     'Der Webapp fehlt das Löschen');
 
-  assert.match(KT_EINST, /LagerorteCard\(vm\)/, 'Der App fehlt die Karte');
+  assert.match(KT_EINST, /LagerorteCard\(lager, vm\)/, 'Der App fehlt die Karte');
   for (const fn of ['legeLagerortAn', 'benenneLagerortUm', 'loescheLagerort']) {
     assert.match(KT_HAUS, new RegExp(`fun ${fn}\\(`),
       `Der App fehlt ${fn}`);

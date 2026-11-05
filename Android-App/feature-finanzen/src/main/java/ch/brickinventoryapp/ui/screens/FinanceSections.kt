@@ -170,14 +170,11 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
             Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
     }
 
-    // ── Eine vollständige Karte je Kaufpreis ──
-    //
     // Ein Set mit einem Kaufpreis für „Neu“ und einem für „Gebraucht“ erscheint
     // zweimal, jede Karte mit dem Marktpreis ihres Zustands — sonst würde das neu
     // gekaufte Exemplar mit dem Gebrauchtpreis bewertet. Gleichrangige Karten statt
     // Unterzeilen, weil jede für einen eigenen Kauf steht; Unterzeilen läsen sich wie
-    // die Aufschlüsselung einer Summe. Zusammengehalten durch Bild und Setnummer,
-    // unterschieden durch die Zustands-Plakette.
+    // Ausführlich: docs/begruendungen/feature-finanzen/ui/screens/FinanceSections.kt.md#items
     items(setZeilen(valuation.sets), key = { it.second.schluessel }) { (set, zeile) ->
         val priceStr    = fmtWert(zeile.wert)
         val rowQty      = zeile.menge
@@ -342,7 +339,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
                     val pnlPct = kopf.guvProzent
                     if (pnlPct != null) {
                         // Gewinn grün, Verlust rot wie überall sonst; auf weissem Grund, weil die
-                        // Statusfarben nur auf surface 4,5:1 zusagen (TextKontrastTest), nicht auf primary.
+                        // Statusfarben nur auf surface 4,5:1 zusagen, nicht auf primary.
                         val status = LocalStatusFarben.current
                         Surface(
                             shape = Formen.chip,

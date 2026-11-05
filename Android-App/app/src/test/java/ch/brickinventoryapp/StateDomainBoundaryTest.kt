@@ -27,6 +27,8 @@ class StateDomainBoundaryTest {
         "Sitzung.kt" to setOf("currency", "priceCondition", "defaultPriceCondition",
                               "userDefaultCondition", "appTheme", "isAdmin"),
         "AnmeldungViewModel.kt" to setOf("isLoggedIn", "isAdmin"),
+        // Der Zustand wird mit dem gemerkten Design geboren.
+        "DarstellungViewModel.kt" to setOf("appTheme"),
         "EinstellungenViewModel.kt" to setOf("currency", "priceCondition"),
         // Die Bewertung nennt die Währung des Servers.
         "FinanzViewModel.kt" to setOf("currency"),

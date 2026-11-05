@@ -4,12 +4,12 @@ Test: ch.brickinventoryapp.AlarmSchwelleEntprelltTest
 Rot: getippte Schwelle speichert nach der Ruhezeit einmal
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/EinstellungenViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/EinstellungenViewModel.kt
-index 02d1863..3792793 100644
+index cb89a52..7dade02 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/EinstellungenViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/ui/viewmodel/EinstellungenViewModel.kt
 @@ -152,7 +152,6 @@ class EinstellungenViewModel @Inject constructor(
       */
-     fun setzeAlarmSchwelle(setNumber: String, condition: String, richtung: String, roh: String) {
+     override fun setzeAlarmSchwelle(setNumber: String, condition: String, richtung: String, roh: String) {
          val schluessel = setNumber to condition
 -        wartendeSchwellen.remove(schluessel)?.cancel()
          val schwelle = Alarmeingabe.zahl(roh) ?: return

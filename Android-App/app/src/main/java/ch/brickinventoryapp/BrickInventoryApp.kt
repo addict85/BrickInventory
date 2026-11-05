@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.app.Application
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
@@ -55,7 +56,7 @@ class BrickInventoryApp : Application(), Configuration.Provider {
                 ch.brickinventoryapp.util.LanguageManager.applyLanguage(gemerkt)
             } else {
                 bereiche.anwendung.launch(bereiche.haupt) {
-                    val lang = runCatching { preferencesManager.spracheNachziehen() }.getOrNull() ?: return@launch
+                    val lang = fangeAusserAbbruch { preferencesManager.spracheNachziehen() }.getOrNull() ?: return@launch
                     ch.brickinventoryapp.util.LanguageManager.applyLanguage(lang)
                 }
             }

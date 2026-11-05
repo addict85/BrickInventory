@@ -118,7 +118,7 @@ interface AusgangDao {
 /**
  * Wer das Schema ändert, erhöht die Fassung, schreibt eine Migration und checkt
  * das Schema aus app/schemas ein: Der Ausgang trägt Änderungen, die es nur hier
- * gibt — ein destruktiver Neuanfang verlöre sie (BestandMigrationTest).
+ * gibt — ein destruktiver Neuanfang verlöre sie.
  */
 @Database(entities = [BestandZeile::class, BestandStand::class, AusgangZeile::class], version = 2, exportSchema = true)
 abstract class BestandDatenbank : RoomDatabase() {

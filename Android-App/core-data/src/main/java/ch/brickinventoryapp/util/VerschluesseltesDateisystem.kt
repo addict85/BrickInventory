@@ -132,13 +132,8 @@ class VerschluesseltesDateisystem(
 
     /** OkHttp fängt nur IOException; ein gesperrter Keystore soll den Abruf nicht abbrechen. */
     private fun verschluessle(klar: ByteArray, bindung: String): ByteArray =
-        try {
-            chiffre.verschluessle(klar, bindung)
-        } catch (e: IOException) {
-            throw e
-        } catch (e: Exception) {
-            throw IOException("nicht verschlüsselt: $bindung", e)
-        }
+        fangeAusserAbbruch { chiffre.verschluessle(klar, bindung) }
+            .getOrElse { throw it as? IOException ?: IOException("nicht verschlüsselt: $bindung", it) }
 
     private companion object {
         const val ABSCHNITT = 64L * 1024

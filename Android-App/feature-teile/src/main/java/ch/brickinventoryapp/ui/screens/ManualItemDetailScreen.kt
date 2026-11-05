@@ -1,5 +1,11 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.LagerUiState
+import ch.brickinventoryapp.ui.ManualItemDetailUiState
+import ch.brickinventoryapp.ui.PartsUiState
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
+import ch.brickinventoryapp.ui.viewmodel.KaeufeAktionen
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
@@ -34,19 +40,48 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Screen wie bei den Sets, weil der Inhalt (Bild, Mengenwahl, Kaufpreise und
  * Marktpreise je Zustand, Preisverlauf, Löschen) für einen AlertDialog zu lang
  * ist. Derselbe Aufbau wie SetDetailScreen, damit man beim Wechsel vom Set zum
- * Teil dieselben Dinge an denselben Stellen findet.
- *
- * Erfassungen und Preisverlauf lädt `loadManualAcquisitions()`. Der Screen liest
- * seine Zustände direkt vom ViewModel wie AcquisitionManagementScreen — bei sechs
- * Zuständen und ebenso vielen Rückrufen wäre die Parameterliste länger als der
- * Screen.
+ * Ausführlich: docs/begruendungen/feature-teile/ui/screens/ManualItemDetailScreen.kt.md#manualitemdetailroute
  */
+@Composable
+fun ManualItemDetailRoute(
+    vm: KaeufeViewModel,
+    teile: TeileViewModel,
+    type: String,
+    id: String,
+    colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
+    fallbackTitle: String,
+    imageLoader: ImageLoader,
+    onBack: () -> Unit,
+    onNavigateToAcqMgmt: (type: String, id: String, colorId: Int, title: String) -> Unit,
+    onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val partsState by teile.partsState.collectAsStateWithLifecycle()
+    val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    ManualItemDetailScreen(
+        zustand = EinzelstueckZustand(state, partsState, manDetailState, lagerZustand),
+        kaeufe = vm, teile = teile, type = type, id = id, colorId = colorId,
+        fallbackTitle = fallbackTitle, imageLoader = imageLoader, onBack = onBack,
+        onNavigateToAcqMgmt = onNavigateToAcqMgmt, onFarbeGeaendert = onFarbeGeaendert,
+    )
+}
+
+/** Was die Detailansicht eines manuellen Eintrags zeigt. */
+data class EinzelstueckZustand(
+    val state: AppUiState,
+    val partsState: PartsUiState,
+    val manDetailState: ManualItemDetailUiState,
+    val lagerZustand: LagerUiState,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualItemDetailScreen(
-    vm: KaeufeViewModel,
+    zustand: EinzelstueckZustand,
+    kaeufe: KaeufeAktionen,
     /** Die Zeile des Eintrags und das Ändern, Löschen, Umfärben. */
-    teile: TeileViewModel,
+    teile: TeileAktionen,
     type: String,          // "part" | "fig"
     id: String,            // partNumber / figNumber
     colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
@@ -64,17 +99,16 @@ fun ManualItemDetailScreen(
      */
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
-    val state by vm.state.collectAsStateWithLifecycle()
-    val partsState by teile.partsState.collectAsStateWithLifecycle()
-    val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
-    // Der Vorrat an Lagerorten fuer das Feld weiter unten.
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val state = zustand.state
+    val partsState = zustand.partsState
+    val manDetailState = zustand.manDetailState
+    val lagerZustand = zustand.lagerZustand
 
     val isFig = type == "fig"
     val currency = state.currency
 
     LaunchedEffect(type, id, colorId) {
-        vm.loadManualAcquisitions(type, id, colorId)
+        kaeufe.loadManualAcquisitions(type, id, colorId)
         // Die Liste kann fehlen, wenn der Screen aus einem Tiefenlink oder nach einem
         // Prozessneustart kommt — ohne sie gäbe es weder Name noch Bild. Aus derselben
         // Quelle wie die Liste (/parts/manual bzw. /minifigs/manual), damit es für
@@ -242,7 +276,7 @@ fun ManualItemDetailScreen(
                             // Der VORRAT, nicht die belegten Orte: Auch ein
                             // leeres Regal soll zur Wahl stehen.
                             vorrat = lagerZustand.eigene.map { it.name },
-                            onWert = { vm.setzeManuellenLagerort(type, id, colorId, it) },
+                            onWert = { kaeufe.setzeManuellenLagerort(type, id, colorId, it) },
                             modifier = Modifier.padding(start = Abstaende.gross)
                                 .weight(1f).widthIn(max = 320.dp),
                         )

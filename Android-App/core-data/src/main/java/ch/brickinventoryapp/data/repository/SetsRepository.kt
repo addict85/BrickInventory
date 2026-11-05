@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.data.api.SetsApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.lokal.Bearbeitung
@@ -209,7 +210,7 @@ class SetsRepository @Inject constructor(
 
     /** Download finished PDF — returns bytes */
     suspend fun downloadPdf(jobId: String): Result<ByteArray> {
-        return try {
+        return fangeAusserAbbruch {
             val response = api.downloadPdf(jobId)
             if (response.isSuccessful) {
                 val bytes = response.body()?.bytes() ?: ByteArray(0)
@@ -220,14 +221,14 @@ class SetsRepository @Inject constructor(
             } else {
                 Result.Error("", art = Fehlerart.SERVER, httpCode = response.code())
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Result.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
         }
     }
 
     /** Start async PDF job — returns jobId or error */
     suspend fun startPdfJob(bodyJson: String): Result<String> {
-        return try {
+        return fangeAusserAbbruch {
             val requestBody = bodyJson.toRequestBody("application/json; charset=utf-8".toMediaType())
             val response = api.startPdfJob(requestBody)
             if (response.isSuccessful) {
@@ -238,14 +239,14 @@ class SetsRepository @Inject constructor(
             } else {
                 Result.Error("", art = Fehlerart.SERVER, httpCode = response.code())
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Result.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
         }
     }
 
     /** Poll PDF job status — returns "running", "done", or "error" */
     suspend fun getPdfJobStatus(jobId: String): Result<PdfJobStatus> {
-        return try {
+        return fangeAusserAbbruch {
             val response = api.getPdfJobStatus(jobId)
             if (response.isSuccessful) {
                 val body = response.body()?.string() ?: ""
@@ -256,7 +257,7 @@ class SetsRepository @Inject constructor(
             } else {
                 Result.Error("", art = Fehlerart.SERVER, httpCode = response.code())
             }
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             Result.Error("", art = Fehlerart.UNBEKANNT, technisch = e.message)
         }
     }

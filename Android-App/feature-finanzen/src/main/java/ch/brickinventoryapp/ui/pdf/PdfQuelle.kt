@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.pdf
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.os.ParcelFileDescriptor
 import android.system.Os
 import android.system.OsConstants
@@ -80,9 +81,9 @@ internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val
         /** Ein Gutschein-PDF (Nummer und PIN): nur im memfd. */
         fun speicher(inhalt: ByteArray): PdfBereich {
             val bereich = memfd()
-            try {
+            fangeAusserAbbruch {
                 schreibeAlles(bereich.fileDescriptor, inhalt, inhalt.size)
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 bereich.close()
                 throw e
             }
@@ -92,7 +93,7 @@ internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val
         /** Eine Anleitung aus der verschlüsselten Ablage; grosse nicht in den Arbeitsspeicher ([ANLEITUNG_IM_SPEICHER_BIS]). */
         fun anleitung(ablage: AnleitungsAblage, datei: File, anzeige: File): PdfBereich {
             val bereich = if (datei.length() <= ANLEITUNG_IM_SPEICHER_BIS) memfd() else namenlos(anzeige)
-            try {
+            fangeAusserAbbruch {
                 ablage.lies(datei).use { ein ->
                     val puffer = ByteArray(64 * 1024)
                     while (true) {
@@ -101,7 +102,7 @@ internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val
                         schreibeAlles(bereich.fileDescriptor, puffer, n)
                     }
                 }
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 bereich.close()
                 throw e
             }

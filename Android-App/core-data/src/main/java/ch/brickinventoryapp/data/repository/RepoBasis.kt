@@ -108,6 +108,7 @@ abstract class RepoBasis<A : Any>(
  * Transportfehler sind als vorübergehend markiert. Top-Level, weil auch der
  * Ausgang (data/lokal) damit sendet, ohne ein Repository zu sein.
  */
+@Suppress("TooGenericExceptionCaught") // Die Grenze: jeder Fehler wird hier zu Result.
 suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Result<T> {
     return try {
         val response = call()
@@ -138,15 +139,15 @@ suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Result<T> {
         // Abgebrochene Coroutines (z.B. Suche-Debounce ersetzt Request) dürfen
         // nicht als "Netzwerkfehler" im State landen — Cancellation weiterreichen.
         throw e
-    } catch (e: java.net.UnknownHostException) {
+    } catch (_: java.net.UnknownHostException) {
         // Vorübergehende Netzwerkfehler explizit als transient markieren, statt
         // sie später an der Fehlermeldung zu erraten (retryOnNetwork nutzt das Flag).
         Result.Error("", transient = true, art = Fehlerart.NETZ)
-    } catch (e: java.net.ConnectException) {
+    } catch (_: java.net.ConnectException) {
         Result.Error("", transient = true, art = Fehlerart.NETZ)
-    } catch (e: java.net.SocketTimeoutException) {
+    } catch (_: java.net.SocketTimeoutException) {
         Result.Error("", transient = true, art = Fehlerart.ZEIT)
-    } catch (e: ch.brickinventoryapp.util.KlartextAbgelehnt) {
+    } catch (_: ch.brickinventoryapp.util.KlartextAbgelehnt) {
         // Nicht vorübergehend: Ein zweiter Versuch ginge genauso an http.
         Result.Error("", art = Fehlerart.KLARTEXT)
     } catch (e: java.io.IOException) {

@@ -45,7 +45,7 @@ fun NavGraphBuilder.catalogGraph(u: ZielUmgebung) {
                 val nebeneinander = ch.brickinventoryapp.ui.listeUndDetail(maxWidth.value)
                 ReiterGeruest(stringResource(R.string.nav_wanted), u) {
                     val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
-                    ch.brickinventoryapp.ui.screens.MerklisteUndDetail(
+                    ch.brickinventoryapp.ui.screens.MerklisteRoute(
                         vm = hiltViewModel<MerklisteViewModel>(),
                         imageLoader = imageLoader,
                         nebeneinander = nebeneinander,
@@ -59,7 +59,7 @@ fun NavGraphBuilder.catalogGraph(u: ZielUmgebung) {
         }
         composable<Screen.MerkpostenDetail> { backStack ->
             val ziel = backStack.toRoute<Screen.MerkpostenDetail>()
-            ch.brickinventoryapp.ui.screens.MerkpostenDetailScreen(
+            ch.brickinventoryapp.ui.screens.MerkpostenDetailRoute(
                 vm = hiltViewModel<MerklisteViewModel>(),
                 setNumber = ziel.setNumber,
                 condition = ziel.condition,
@@ -79,9 +79,9 @@ fun NavGraphBuilder.catalogGraph(u: ZielUmgebung) {
                 }
             }
             ReiterGeruest(stringResource(R.string.nav_catalog), u) {
-                CatalogScreen(
-                    vm = vm,
+                CatalogRoute(
                     katalog = katalog,
+                    serverUrl = state.serverUrl,
                     imageLoader = imageLoader,
                     onSetClick = { navController.navigate(Screen.CatalogDetail(it)) },
                 )

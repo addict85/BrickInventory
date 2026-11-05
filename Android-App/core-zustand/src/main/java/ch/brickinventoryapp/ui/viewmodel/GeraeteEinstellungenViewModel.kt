@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.AlarmPlaner
@@ -26,6 +29,7 @@ class GeraeteEinstellungenViewModel @Inject constructor(
     private val planer: AlarmPlaner,
     private val texte: Texte,
     meldungen: MeldungsKanal,
+    private val vorschau: VorschauSpeicher,
 ) : ViewModel() {
 
     private val _snackbar = meldungen.fluss
@@ -54,6 +58,18 @@ class GeraeteEinstellungenViewModel @Inject constructor(
 
     fun vorwaermen(netz: VorwaermNetz, erlaubt: Boolean) {
         viewModelScope.launch { einstellungen.setzeVorwaermen(netz, erlaubt) }
+    }
+
+    private val _ablageBytes = MutableStateFlow(vorschau.belegt())
+
+    /** Belegter Platz der Vorschau-Ablage; sie räumt niemand ausser dem Nutzer. */
+    val ablageBytes: StateFlow<Long> = _ablageBytes.asStateFlow()
+
+    /** Füllt sich beim Blättern wieder; offline ist danach nichts mehr da. */
+    fun ablageLeeren() {
+        vorschau.leeren()
+        _ablageBytes.value = vorschau.belegt()
+        _snackbar.value = texte.text(R.string.monitoring_cache_saved)
     }
 
     companion object {

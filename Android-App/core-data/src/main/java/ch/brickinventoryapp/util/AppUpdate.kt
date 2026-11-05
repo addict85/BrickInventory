@@ -21,19 +21,7 @@ import java.security.MessageDigest
  * Die App aktualisiert sich selbst aus dem GitHub-Release: beim Start still
  * prüfen, nie von allein laden. Es geht, weil der versionCode monoton steigt
  * (VERSION_CODE_BASE + Anzahl Commits, app/build.gradle.kts).
- *
- * 1. version-signiert.json aus dem Release lesen und ihre Signatur prüfen: gegen
- *    die Beschreibungsschlüssel der App, solange es keine gibt gegen die Signierer
- *    der installierten App ([gepruefteBeschreibung])
- * 2. Frist und Stand prüfen ([bewerteFrische]), dann versionCode vergleichen —
- *    echt grösser, nie „ungleich“
- * 3. APK nach <files>/update/ laden, Adresse gegen die Release-Ablage und die
- *    signierte Prüfsumme prüfen ([pruefsummePasst])
- * 4. Signatur mit der installierten App vergleichen und den versionCode IM APK
- *    gegen die Beschreibung ([fassungPasst]), erst dann anbieten
- *
- * Schritt 4 ersetzt Androids Prüfung nicht, er kommt früher: Ein fremdes APK wird
- * gar nicht erst angeboten.
+ * Ausführlich: docs/begruendungen/core-data/util/AppUpdate.kt.md#z20
  */
 
 /** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */
@@ -201,6 +189,7 @@ fun installiere(ctx: Context, apk: File) {
     val parameter = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         .apply { setAppPackageName(ctx.packageName) }
     val id = installer.createSession(parameter)
+    var uebergeben = false
     try {
         installer.openSession(id).use { sitzung ->
             apk.inputStream().use { ein ->
@@ -216,9 +205,9 @@ fun installiere(ctx: Context, apk: File) {
                     (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0))
             sitzung.commit(antwort.intentSender)
         }
-    } catch (e: Exception) {
-        runCatching { installer.abandonSession(id) }
-        throw e
+        uebergeben = true
+    } finally {
+        if (!uebergeben) fangeAusserAbbruch { installer.abandonSession(id) }
     }
 }
 

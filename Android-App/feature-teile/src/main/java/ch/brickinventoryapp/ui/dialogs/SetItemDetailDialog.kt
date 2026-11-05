@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.ui.dialogs
 
-// Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
-// SetPruefungDialog.kt): `Modifier.size` steckt in foundation.layout, und das
-// `by` vor collectAsStateWithLifecycle braucht runtime.getValue.
+import ch.brickinventoryapp.ui.LagerUiState
+import ch.brickinventoryapp.ui.SetItemUiState
+import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -23,10 +23,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.ImageLoader
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.viewmodel.TeileViewModel
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.screens.TabellenZeile
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
@@ -38,27 +36,18 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Bild mit Zoom und die Sets, die es verwenden, mit Link zum Set-Detail. Ein Blatt
  * statt eines Dialogs, weil Lagerort und Liste Platz brauchen und das Wischen nach
  * unten schliesst wie überall.
- *
- * Was er bewusst nicht hat: • Keinen Marktpreis — gewünscht ohne. • Keine
- * Mengenwahl. Die Zahl entsteht aus den Inventaren der Sets; eine Änderung
- * verschwände beim nächsten Abgleich. • Keinen Löschknopf. Ein Teil aus einem Set
- * verschwindet mit dem Set, nicht einzeln.
- *
- * Gegenstück in der Webapp: public/js/13-acquisition-modals.js,
- * openSetItemDetail() — dieselbe Reihenfolge, dieselbe Adresse
- * (/v1/parts/:nr/:farbe/sets bzw. /v1/minifigs/:nr/sets).
- *
- * @param onOpenSet Öffnet das Set-Detail. Parameter, weil nur der Navigationsgraph
- *         den NavController kennt — wie `onOpenDetail` in PartsScreen.
+ * Ausführlich: docs/begruendungen/feature-teile/ui/dialogs/SetItemDetailDialog.kt.md#setitemdetaildialog
  */
 @Composable
 fun SetItemDetailDialog(
-    vm: TeileViewModel,
+    zustand: SetItemUiState,
+    lagerZustand: LagerUiState,
+    aktionen: TeileAktionen,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
 ) {
-    SetItemDetail(vm, imageLoader, serverUrl, onOpenSet, alsDialog = true)
+    SetItemDetail(zustand, lagerZustand, aktionen, imageLoader, serverUrl, onOpenSet, alsDialog = true)
 }
 
 /**
@@ -67,40 +56,39 @@ fun SetItemDetailDialog(
  */
 @Composable
 fun SetItemDetailBereich(
-    vm: TeileViewModel,
+    zustand: SetItemUiState,
+    lagerZustand: LagerUiState,
+    aktionen: TeileAktionen,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
 ) {
-    SetItemDetail(vm, imageLoader, serverUrl, onOpenSet, alsDialog = false)
+    SetItemDetail(zustand, lagerZustand, aktionen, imageLoader, serverUrl, onOpenSet, alsDialog = false)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SetItemDetail(
-    vm: TeileViewModel,
+    zustand: SetItemUiState,
+    lagerZustand: LagerUiState,
+    aktionen: TeileAktionen,
     imageLoader: ImageLoader,
     serverUrl: String,
     onOpenSet: (String) -> Unit,
     alsDialog: Boolean,
 ) {
-    val zustand by vm.setItemState.collectAsStateWithLifecycle()
     val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
-    // `lagerZustand`, nicht `lager`: UiStateFieldsTest bestimmt den Typ je NAME
-    // und Datei — dieselbe Namensfalle wie bei `state` in SettingsScreen.kt.
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
     // Die Auswahlliste gehoert dem BESITZER des Teils, nicht dem Betrachter —
     // dieselbe Regel wie beim Set. Ohne `kopf` (Dialog gerade erst geoeffnet)
     // bleibt die Liste leer, und der Server antwortet mit der eigenen; der
     // naechste Durchlauf holt die richtige nach.
     LaunchedEffect(zustand.offen, zustand.kopf?.ownerIds) {
-        if (zustand.offen) vm.loadLagerortVorrat(zustand.kopf?.ownerIds ?: emptyList())
+        if (zustand.offen) aktionen.loadLagerortVorrat(zustand.kopf?.ownerIds ?: emptyList())
     }
     if (!zustand.offen) return
 
     // rememberSaveable, nicht remember: Der geöffnete Zoom ist eine Entscheidung des
-    // Nutzers und muss eine Drehung überstehen — wie an den übrigen Zoom-Stellen
-    // (BildschirmZustandTest).
+    // Nutzers und muss eine Drehung überstehen — wie an den übrigen Zoom-Stellen.
     var zeigeZoom by rememberSaveable { mutableStateOf(false) }
     // stringResource() geht nur ausserhalb des LazyColumn-Rumpfs — dort ist
     // kein Composable-Kontext fuer jedes Element noetig, und einmal lesen
@@ -160,13 +148,11 @@ private fun SetItemDetail(
                         if (kopf?.isSpare == true) {
                             SetItemZeile(stringResource(R.string.parts_spare_tag), "✓")
                         }
-                        // ── Lagerort ──
-                        //
                         // Nur für Teile (kopf.colorId ist bei Figuren null): Eine Minifigur steckt
                         // in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter Ort könnte
                         // auseinanderlaufen. Bearbeitbar wie in der Webapp; das Feld schreibt auf
                         // alle Zeilen dieses Teil-Farb-Paares. Die Auswahlliste gehört dem Besitzer
-                        // wie beim Set: Der Kopf führt seine Konten mit (owner_ids).
+                        // Ausführlich: docs/begruendungen/feature-teile/ui/dialogs/SetItemDetailDialog.kt.md#kopffarbe
                         val kopfFarbe = kopf?.colorId
                         if (kopf != null && kopfFarbe != null) {
                             Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
@@ -178,7 +164,7 @@ private fun SetItemDetail(
                                 ch.brickinventoryapp.ui.screens.LagerortFeld(
                                     wert = kopf.storage ?: "",
                                     vorrat = lagerZustand.vorrat.map { it.name },
-                                    onWert = { vm.setzeTeilLagerort(kopf.nummer, kopfFarbe, it) },
+                                    onWert = { aktionen.setzeTeilLagerort(kopf.nummer, kopfFarbe, it) },
                                     modifier = Modifier.padding(start = Abstaende.gross)
                                         .weight(1f).widthIn(max = 320.dp),
                                 )
@@ -226,7 +212,7 @@ private fun SetItemDetail(
                                             // Erst schliessen, dann oeffnen:
                                             // Sonst laege der Dialog ueber dem
                                             // Set-Detail.
-                                            vm.schliesseSetItem()
+                                            aktionen.schliesseSetItem()
                                             onOpenSet(s.setNumber)
                                         },
                                     )
@@ -239,7 +225,7 @@ private fun SetItemDetail(
     }
 
     // Schliessen links wie in jedem Detailkopf (DetailTopAppBar), im Blatt wie neben der Liste.
-    val schliessen = { vm.schliesseSetItem() }
+    val schliessen = { aktionen.schliesseSetItem() }
     if (alsDialog) {
         ModalBottomSheet(onDismissRequest = schliessen) {
             Column(

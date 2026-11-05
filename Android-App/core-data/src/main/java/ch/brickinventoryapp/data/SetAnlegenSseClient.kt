@@ -23,15 +23,7 @@ import javax.inject.Singleton
  * Ein Set anlegen — mit Fortschritt, wie die Webapp über /api/v1/sets/add-stream
  * (Stammdaten holen, Bild laden, fertig), damit man bei einem grossen Set sieht,
  * was passiert.
- *
- * Nicht über okhttp-sse, weil die Adresse in zwei Formen antwortet
- * (routes/sets.ts):
- *   * Steht das Set schon im Blickfeld, kommt gewöhnliches JSON — ein Strom mit einem Ereignis wäre nur ein Umweg.
- *   * Sonst kommt ein `text/event-stream` mit den Schritten.
- *
- * `EventSources` meldete die erste Form als Fehler, weil der Inhaltstyp nicht
- * passt — „hab ich schon“ sähe aus wie ein Verbindungsabbruch. Deshalb wird die
- * Antwort selbst gelesen, und der Inhaltstyp entscheidet, wie sie gemeint ist.
+ * Ausführlich: docs/begruendungen/core-data/data/SetAnlegenSseClient.kt.md#constructor
  */
 @Singleton
 class SetAnlegenSseClient @Inject constructor(
@@ -87,6 +79,10 @@ class SetAnlegenSseClient @Inject constructor(
             .build()
 
         val aufruf = client.newCall(anfrage)
+        fun scheitert(e: Exception) {
+            trySend(SetAnlegenSchritt.Fehler(e.message ?: ""))
+            close()
+        }
         try {
             aufruf.execute().use { antwort ->
                 // `antwort.body` ist seit OkHttp 5 nicht nullbar.
@@ -114,15 +110,21 @@ class SetAnlegenSseClient @Inject constructor(
                 }
                 close()
             }
-        } catch (e: java.net.UnknownHostException) {
+        } catch (_: java.net.UnknownHostException) {
             trySend(SetAnlegenSchritt.KeineVerbindung); close()
-        } catch (e: java.net.ConnectException) {
+        } catch (_: java.net.ConnectException) {
             // Nur diese beiden: Die Anfrage kam nie an, ein zweiter Versuch über den
             // Ausgang kann nichts doppelt anlegen. Ein Abbruch mitten im Strom schon.
             trySend(SetAnlegenSchritt.KeineVerbindung); close()
-        } catch (e: Exception) {
-            trySend(SetAnlegenSchritt.Fehler(e.message ?: ""))
-            close()
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: java.io.IOException) {
+            scheitert(e)
+        } catch (e: IllegalArgumentException) {
+            // Auch eine unlesbare Antwort (SerializationException).
+            scheitert(e)
+        } catch (e: IllegalStateException) {
+            scheitert(e)
         }
         awaitClose { aufruf.cancel() }
     }.flowOn(io)

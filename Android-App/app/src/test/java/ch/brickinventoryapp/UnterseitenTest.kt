@@ -31,7 +31,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.onRoot
-import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
@@ -152,7 +151,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
         val vm = einstellungen().also { it.ladeEigeneLagerorte() }
-        zeige { ch.brickinventoryapp.ui.screens.LagerorteUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { ch.brickinventoryapp.ui.screens.LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Lagerorte") { vm.lagerState.value.eigene.size == 3 }
         // Kein Ort als Dauer-Textfeld, der Titel nur in der App-Leiste.
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
@@ -176,7 +175,7 @@ class UnterseitenTest {
         val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
             ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
             ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
-        zeige { ch.brickinventoryapp.ui.screens.HaushaltUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { ch.brickinventoryapp.ui.screens.HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
 
         val ueberschrift = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
@@ -198,7 +197,7 @@ class UnterseitenTest {
     @Test
     fun `CSV-Import zeigt je Art eine Aktion mit ihren Spalten und den Titel einmal`() {
         val vm = einstellungen()
-        zeige { ch.brickinventoryapp.ui.screens.CsvImportUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { ch.brickinventoryapp.ui.screens.CsvImportRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         compose.onAllNodesWithText(ctx.getString(R.string.csv_upload_title), ignoreCase = true).assertCountEquals(1)
         compose.onNode(hasText(ctx.getString(R.string.csv_upload_sets)) and hasClickAction() and
             SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).fetchSemanticsNode()
@@ -226,7 +225,7 @@ class UnterseitenTest {
     fun `Der Vorgabe-Stern ist ein Schalter mit dem Namen des Orts`() {
         welt.pfade.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[{"id":3,"name":"Keller"}]}"""
         val vm = einstellungen().also { it.ladeEigeneLagerorte() }
-        zeige { ch.brickinventoryapp.ui.screens.LagerorteUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { ch.brickinventoryapp.ui.screens.LagerorteRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Lagerorte") { vm.lagerState.value.eigene.size == 1 }
         val stern = compose.onNodeWithContentDescription(ctx.getString(R.string.storage_vorgabe_cd, "Keller")).fetchSemanticsNode()
         assertEquals("TalkBack hört an/aus", ToggleableState.Off, stern.config.getOrNull(SemanticsProperties.ToggleableState))
@@ -239,7 +238,7 @@ class UnterseitenTest {
         val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
             ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
             ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
-        zeige { ch.brickinventoryapp.ui.screens.HaushaltUnterseite(vm, remember { SnackbarHostState() }, onZurueck = {}) }
+        zeige { ch.brickinventoryapp.ui.screens.HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
         val entfernen = ctx.getString(R.string.household_remove)
         for (name in listOf("lena", "tim")) {
@@ -254,7 +253,7 @@ class UnterseitenTest {
             {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
         val vm = einstellungen()
         zeige {
-            ch.brickinventoryapp.ui.screens.PreisalarmeUnterseite(vm = vm,
+            ch.brickinventoryapp.ui.screens.PreisalarmeRoute(vm = vm,
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), serverUrl = "",
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, meldeSchalter = {})
         }
@@ -275,7 +274,7 @@ class UnterseitenTest {
             ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige {
-            ch.brickinventoryapp.ui.screens.KontoUnterseite(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         warte("Profil") { konto.kontoState.value.profil != null }
@@ -302,7 +301,7 @@ class UnterseitenTest {
             ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige {
-            ch.brickinventoryapp.ui.screens.KontoUnterseite(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         warte("Profil") { konto.kontoState.value.profil != null }
@@ -320,7 +319,7 @@ class UnterseitenTest {
             ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige {
-            ch.brickinventoryapp.ui.screens.KontoUnterseite(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
+            ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
                 konto = konto, onZurueck = {})
         }
         warte("Profil") { konto.kontoState.value.profil != null }

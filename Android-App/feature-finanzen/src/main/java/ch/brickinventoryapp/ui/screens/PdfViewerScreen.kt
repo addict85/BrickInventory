@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Context
@@ -319,11 +320,7 @@ private fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifi
 
 /**
  * Die Seiten, zoombar. Gezoomt wird über die Breite statt mit einem graphicsLayer:
- * So rendert PdfPage in der Grösse, in der die Seite steht (scharf statt
- * gestreckt), das Rollen bleibt im richtigen Mass, und ein echtes horizontalScroll
- * verschiebt mit Anschlag. transformable(canPan = { false }) beansprucht keinen
- * Einfinger-Zug, deshalb rollt die Liste weiter; wo die Geste doch verliert,
- * bleiben Doppeltipp und Knöpfe.
+ * Ausführlich: docs/begruendungen/feature-finanzen/ui/screens/PdfViewerScreen.kt.md#z321
  */
 /**
  * Was ein Zoomschritt von der Geste bis zur naechsten Messung braucht. Kein
@@ -497,7 +494,7 @@ private fun fehlerText(grund: PdfFehler): String = when (grund) {
 // Druckt die bereits geladene PDF-Datei über das System-Druckframework. Gibt bei einem
 // Fehler die Meldung zurück; das Gelingen zeigt der Druckdialog selbst.
 private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String): String? {
-    return try {
+    return fangeAusserAbbruch {
         val printManager = ctx.getSystemService(Context.PRINT_SERVICE) as PrintManager
         val jobName = title.ifBlank { ctx.getString(R.string.pdfview_default_name) }
         val adapter = object : PrintDocumentAdapter() {
@@ -524,7 +521,7 @@ private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String): String? {
                 cancellationSignal: CancellationSignal?,
                 callback: WriteResultCallback?
             ) {
-                try {
+                fangeAusserAbbruch {
                     quelle.eingang().use { input ->
                         FileOutputStream(destination.fileDescriptor).use { output ->
                             input.copyTo(output)
@@ -535,14 +532,14 @@ private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String): String? {
                     } else {
                         callback?.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
                     }
-                } catch (e: Exception) {
+                }.onFailure { e ->
                     callback?.onWriteFailed(e.message)
                 }
             }
         }
         printManager.print(jobName, adapter, PrintAttributes.Builder().build())
         null
-    } catch (e: Exception) {
+    }.getOrElse { e ->
         ctx.getString(R.string.pdfview_print_failed, e.message ?: "")
     }
 }
@@ -554,7 +551,7 @@ private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String): String? {
  * keine Berechtigung braucht. Gibt die Meldung für die Snackbar zurück.
  */
 private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String): String {
-    return try {
+    return fangeAusserAbbruch {
         val safe = (title.ifBlank { "anleitung" }).replace(Regex("[^A-Za-z0-9._-]"), "_")
         val name = if (safe.endsWith(".pdf", true)) safe else "$safe.pdf"
 
@@ -575,7 +572,7 @@ private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String): 
         values.put(MediaStore.Downloads.IS_PENDING, 0)
         resolver.update(uri, values, null, null)
         ctx.getString(R.string.pdfview_saved, name)
-    } catch (e: Exception) {
+    }.getOrElse { e ->
         ctx.getString(R.string.pdfview_save_failed, e.message ?: "")
     }
 }

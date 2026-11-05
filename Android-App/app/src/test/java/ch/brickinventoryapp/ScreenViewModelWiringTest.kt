@@ -3,179 +3,82 @@ package ch.brickinventoryapp
 import org.junit.Test
 
 /**
- * Die Reiter-Bildschirme lesen ihren Zustand selbst.
+ * Bildschirme sind zustandslos: Nur eine Route (Name endet auf `Route`) nimmt ein
+ * ViewModel, sammelt seine Flüsse und reicht Zustand und Aktionen weiter. Was
+ * darunter liegt, lässt sich so mit festem Zustand zeigen und prüfen, ohne Hilt.
  *
- * ── Marcos Auftrag (Nachtrag 96) ────────────────────────────────────────────
- * „Gibt es noch Dinge, die man softwaretechnisch verbessern könnte? Klassen
- * abstrahieren, Funktionen auslagern?" Gemessen ergab sich unter anderem:
- * GalleryScreen 26 Parameter, FinanceScreen 21, PartsScreen 20, MinifigsScreen
- * 15 — während ManualItemDetailScreen und AcquisitionManagementScreen mit sechs
- * bis acht auskamen, weil sie `vm` nehmen und selbst lesen.
- *
- * Die breiten Signaturen waren der Grund, warum jede Erweiterung DREI Dateien
- * anfasste: Screen, Graph, ViewModel. Beim Kontofilter und beim Scroll-Zustand
- * war das jedes Mal spürbar.
- *
- * ── Wie der Umbau abgesichert wurde ─────────────────────────────────────────
- * Kotlin lässt sich in meiner Umgebung nicht kompilieren. Deshalb wurde
- * ausschliesslich der KOPF getauscht: Die Werte behalten ihre alten Namen, der
- * Rumpf darunter blieb Zeile für Zeile unverändert. Ein Tippfehler kann sich so
- * nicht durch fünfhundert Zeilen ziehen, und die Prüfung unten kann jeden
- * Zustandszugriff gegen die Datenklassen in ui/Zustand*.kt halten.
+ * Gegenproben:
+ *   screen-nimmt-viewmodel   PartsScreen nimmt wieder `vm: TeileViewModel`
+ *                            → rot „kein Composable ausser einer Route nimmt ein ViewModel“
+ *   karte-holt-viewmodel     PreisalarmeCard holt sich `hiltViewModel()` selbst
+ *                            → rot „kein Bildschirm holt sich ein ViewModel selbst“
  */
 class ScreenViewModelWiringTest {
 
-    private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
-        assert(f.exists()) { "Datei nicht gefunden: $rel" }
-        return f.readText()
-    }
+    /** Ein @Composable mit Namen, Parameterliste und Rumpf, aus dem Quelltext geschnitten. */
+    private data class Composable(val modul: String, val datei: String, val name: String, val parameter: String, val rumpf: String)
 
-    private fun code(src: String) = src.lines()
-        .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
+    /** Das app-Modul ist die Wurzel der Oberfläche (Gerüst, Graphen); dort dürfen ViewModels geholt werden. */
+    private val module = Quellen.module.filter { it.name == "app" || it.name.startsWith("core-") || it.name.startsWith("feature-") }
 
-    /** Die umgestellten Bildschirme und ihre Composable-Namen. */
-    private val umgestellt = listOf(
-        // Die Galerie ist zweigeteilt (arch14 M2): Die Route nimmt das ViewModel,
-        // GalleryScreen nur Zustand und Ereignisse (siehe Test unten).
-        "GalleryRoute" to "ui/screens/GalleryScreen.kt",
-        "PartsScreen" to "ui/screens/PartsScreen.kt",
-        "MinifigsScreen" to "ui/screens/MinifigsScreen.kt",
-        "FinanceScreen" to "ui/screens/FinanceScreen.kt",
-        // Nachtrag 115: Katalog (13 Parameter) und Einstellungen (12) waren die
-        // letzten beiden nach dem alten Muster. Solange zwei Muster
-        // nebeneinander bestanden, musste man vor jeder Änderung erst
-        // herausfinden, welches gilt.
-        "CatalogScreen" to "ui/screens/CatalogScreen.kt",
-        "SettingsScreen" to "ui/screens/SettingsScreen.kt",
-    )
-
-    /** Kopfzeilen einer Composable-Signatur (die Parameterliste). */
-    private fun signatur(src: String, fn: String): List<String> {
-        val i = src.indexOf("fun $fn(")
-        assert(i >= 0) { "$fn nicht gefunden" }
-        val ende = src.indexOf("\n) {", i)
-        assert(ende > i) { "$fn: Signaturende nicht gefunden" }
-        return src.substring(i, ende).lines()
-            .filter { it.matches(Regex("^ {4}\\w+:.*")) }
-    }
-
-    @Test
-    fun `die Reiter-Bildschirme nehmen das ViewModel statt zwanzig Parameter`() {
-        for ((fn, datei) in umgestellt) {
-            val src = code(read(datei))
-            val params = signatur(src, fn)
-            assert(params.size <= 6) {
-                "$fn hat ${params.size} Parameter. Breite Signaturen sind der Grund, " +
-                    "warum jede Erweiterung Screen, Graph UND ViewModel anfasst — der " +
-                    "Zustand gehört vom ViewModel gelesen."
-            }
-            assert(params.any { Regex("""^vm: \w*ViewModel\b""").containsMatchIn(it.trim()) }) {
-                "$fn nimmt kein ViewModel entgegen"
-            }
-            assert(src.contains("vm.state.collectAsStateWithLifecycle()")) {
-                "$fn liest den Zustand nicht selbst"
-            }
-        }
-    }
-
-    @Test
-    fun `Navigations-Rueckrufe bleiben Parameter`() {
-        // Bewusste Ausnahme, kein Versehen: Nur der Navigationsgraph kennt den
-        // NavController. Ein Screen, der selbst navigiert, wäre an seinen Platz
-        // im Graphen gebunden und liesse sich nicht mehr woanders einsetzen.
-        //
-        // Welcher Rückruf das ist, unterscheidet sich je Bildschirm — deshalb
-        // hier namentlich und nicht als ein Muster für alle.
-        val rueckrufe = mapOf(
-            "GalleryRoute" to listOf("onSetClick", "onScanBarcode"),
-            "PartsScreen" to listOf("onOpenDetail"),
-            "MinifigsScreen" to listOf("onOpenDetail"),
-            "FinanceScreen" to listOf("onSetClick", "onManualClick"),
-            "CatalogScreen" to listOf("onSetClick"),
-            // Bei den Einstellungen ist es das Abmelden: Danach wird auf den
-            // Anmeldebildschirm navigiert, und das kann nur der Graph.
-            "SettingsScreen" to listOf("onLogout"),
-        )
-        for ((fn, datei) in umgestellt) {
-            val src = code(read(datei))
-            val sig = signatur(src, fn)
-            for (r in rueckrufe.getValue(fn)) {
-                assert(sig.any { it.contains(r) }) { "$fn: Rückruf $r fehlt" }
-            }
-            assert(!src.contains("navController")) {
-                "$fn greift selbst auf den NavController zu"
-            }
-        }
-    }
-
-    @Test
-    fun `jeder Zustandszugriff trifft ein Feld, das es gibt`() {
-        // ── Der Ersatz für den fehlenden Compiler ────────────────────────────
-        //
-        // `state.gibtEsNicht` wäre ein Übersetzungsfehler, den ich hier nicht
-        // sehe. Diese Prüfung hält jeden Zugriff gegen die Datenklassen in
-        // ui/Zustand*.kt — genau die Fehlerart, die der Umbau hätte einschleppen
-        // können.
-        // Die Erfassung stand hier ausformuliert und las NUR den Konstruktor.
-        // Eine abgeleitete Eigenschaft oder eine Methode der Zustandsklasse —
-        // beides gewoehnliches Kotlin — meldete sie als „gibt es nicht".
-        // UiStateFieldsTest hatte dieselbe Frage schon einmal beantwortet, und
-        // zwar anders. Jetzt beide aus Quellen.mitgliederJeUiState().
-        val mitglieder = Quellen.mitgliederJeUiState()
-
-        fun felder(klasse: String): Set<String> =
-            mitglieder[klasse] ?: error("$klasse nicht in ui/Zustand*.kt")
-
-        // Die Zuordnung Name -> Zustandstyp wird JE DATEI abgeleitet, nicht
-        // hier aufgezählt: In CatalogScreen heisst der Katalogzustand schlicht
-        // `state`. Eine feste Liste hielte ihn für den App-Zustand und meldete
-        // dort fünfundzwanzig Fehlalarme (Nachtrag 115). Siehe Quellen.kt.
-        val fehler = mutableListOf<String>()
-        for ((_, datei) in umgestellt) {
-            val src = code(read(datei))
-            val zuordnung = Quellen.zustandsNamen(src)
-            for ((variable, klasse) in zuordnung) {
-                if (!src.contains("val $variable by vm.")) continue
-                val gueltig = felder(klasse)
-                for (m in Regex("(?<!vm\\.)\\b$variable\\.(\\w+)").findAll(src)) {
-                    val feld = m.groupValues[1]
-                    if (feld == "collectAsStateWithLifecycle") continue
-                    if (feld !in gueltig) fehler += "$datei: $variable.$feld gibt es in $klasse nicht"
+    private fun composables(): List<Composable> {
+        val kopf = Regex("""@Composable\s*(?:\n\s*@[\w.]+(?:\([^)]*\))?\s*)*\n\s*(?:(?:internal|private|public)\s+)?fun\s+(?:<[^>]*>\s*)?(\w+)\s*\(""")
+        val liste = mutableListOf<Composable>()
+        for (modul in module) {
+            val wurzel = java.io.File(modul, "src/main")
+            wurzel.walkTopDown().filter { it.extension == "kt" }.forEach { datei ->
+                val s = Quellen.ohneKommentare(datei.readText())
+                for (m in kopf.findAll(s)) {
+                    val parameterEnde = schliessend(s, m.range.last, '(', ')')
+                    val rumpfAnfang = s.indexOf('{', parameterEnde)
+                    val rumpfEnde = if (rumpfAnfang < 0) parameterEnde else schliessend(s, rumpfAnfang, '{', '}')
+                    liste += Composable(modul.name, datei.name, m.groupValues[1],
+                        s.substring(m.range.last + 1, parameterEnde), s.substring(maxOf(rumpfAnfang, parameterEnde), rumpfEnde))
                 }
             }
         }
+        return liste
+    }
+
+    /** Index der passenden schliessenden Klammer zur öffnenden bei [ab]. */
+    private fun schliessend(s: String, ab: Int, auf: Char, zu: Char): Int {
+        var tiefe = 0
+        for (i in ab until s.length) {
+            if (s[i] == auf) tiefe++
+            else if (s[i] == zu && --tiefe == 0) return i
+        }
+        return s.length
+    }
+
+    @Test
+    fun `die Pruefung findet die Bildschirme`() {
+        val namen = composables().map { it.name }.toSet()
+        // Leere Listen prüfen nichts: Ohne diese Namen wäre der Schnitt oben kaputt.
+        for (n in listOf("PartsScreen", "PartsRoute", "GalleryScreen", "SettingsScreen", "MonitoringScreen", "MerklisteScreen")) {
+            assert(n in namen) { "$n nicht gefunden — Muster veraltet?" }
+        }
+    }
+
+    @Test
+    fun `kein Composable ausser einer Route nimmt ein ViewModel`() {
+        val fehler = composables()
+            .filter { !it.name.endsWith("Route") }
+            .filter { Regex(""":\s*[\w.]*ViewModel\b""").containsMatchIn(it.parameter) }
+            .map { "${it.datei}: ${it.name}" }
         assert(fehler.isEmpty()) {
-            "Zustandszugriff ins Leere:\n  " + fehler.joinToString("\n  ")
-        }
-    }
-
-    // Aus BarcodeDoubleAddGuardTest: Die Sperre selbst prüft ErfassungViewModelTest
-    // („ein zweiter Klick auf Bestaetigen …“); hier die sichtbare Rückmeldung.
-    @Test
-    fun `der Knopf im Dialog ist waehrend des Hinzufuegens gesperrt`() {
-        // Der Barcode-Dialog steht seit seiner Auslagerung in
-        // ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch
-        // auf. Gelesen werden BEIDE Dateien, damit die Regel dort gefunden
-        // wird, wo sie heute steht.
-        val src = Quellen.ohneKommentare(Quellen.lies("AppNavigation.kt") + "\n" + Quellen.lies("ui/dialogs/BarcodeResultDialog.kt"))
-        assert(src.contains("enabled = !barcodeState.adding")) {
-            "Der Bestätigen-Knopf des Barcode-Dialogs wird nicht gesperrt — " +
-                "der Nutzer bekommt kein Feedback und tippt weiter"
-        }
-        assert(Regex("""onDismissRequest\s*=\s*\{\s*if\s*\(!barcodeState\.adding\)""").containsMatchIn(src)) {
-            "Der Barcode-Dialog lässt sich während des laufenden Hinzufügens " +
-                "durch Tippen daneben schliessen"
+            "Diese Composables nehmen ein ViewModel; sie sollen Zustand und Aktionen bekommen:\n  " +
+                fehler.joinToString("\n  ")
         }
     }
 
     @Test
-    fun `der Galerie-Bildschirm nimmt Zustand statt ViewModel`() {
-        val src = code(read("ui/screens/GalleryScreen.kt"))
-        val sig = signatur(src, "GalleryScreen")
-        assert(sig.none { Regex("""ViewModel\b""").containsMatchIn(it) }) {
-            "GalleryScreen nimmt wieder ein ViewModel: ${sig.joinToString()}"
+    fun `kein Bildschirm holt sich ein ViewModel selbst`() {
+        val fehler = composables()
+            .filter { it.modul != "app" && !it.name.endsWith("Route") }
+            .filter { Regex("""\b(hiltViewModel|aktivitaetsViewModel)\s*[<(]""").containsMatchIn(it.rumpf) }
+            .map { "${it.datei}: ${it.name}" }
+        assert(fehler.isEmpty()) {
+            "Diese Composables holen sich ein ViewModel; das gehört in die Route:\n  " + fehler.joinToString("\n  ")
         }
-        assert(sig.any { it.trim().startsWith("zustand: GalerieZustand") }) { "GalleryScreen nimmt keinen Zustand" }
     }
 }

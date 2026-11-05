@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.service
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
@@ -75,15 +76,14 @@ class CsvImportService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        try {
+        fangeAusserAbbruch {
             ServiceCompat.startForeground(
                 this, NOTIFICATION_ID,
                 buildNotification(loc.getString(R.string.notif_csv_running), 0, 0),
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
-        } catch (e: Exception) {
-            // If foreground service cannot be started (e.g. background restriction),
-            // stop self gracefully instead of crashing
+        }.onFailure {
+            // Ohne Vordergrund (etwa wegen einer Hintergrundsperre) still beenden statt abstürzen.
             stopSelf()
         }
     }
@@ -95,14 +95,7 @@ class CsvImportService : Service() {
 
     /**
      * Status-Beobachtung: SSE zuerst, Polling nur als Rückfallebene.
-     *
-     * Vorher pollte dieser Service unabhängig vom ViewModel alle 1,5s
-     * denselben Endpoint — zwei getrennte Implementierungen desselben
-     * Sachverhalts, die beide gepflegt werden mussten. Jetzt teilt er sich
-     * den [CsvImportSseClient] mit dem ViewModel (@Singleton, aber cold Flow:
-     * jeder Collector bekommt seine eigene Verbindung). Der Fortschritt kommt
-     * damit ohne Verzögerung statt im 1,5-Sekunden-Raster, und die
-     * Statuslogik steht nur noch an einer Stelle: [applyStatus].
+     * Ausführlich: docs/begruendungen/core-data/service/CsvImportService.kt.md#startwatching
      */
     private fun startWatching() {
         pollJob = serviceScope.launch {
@@ -189,8 +182,7 @@ class CsvImportService : Service() {
             // tatsächlich angelegt ist. Der Service wird aber im selben Moment
             // gestartet wie der Upload — ohne dieses Fenster würde die erste
             // idle-Antwort den Service sofort wieder beenden, und der Nutzer
-            // sähe nie einen Fortschritt. Erst nach GRACE_MS (oder sobald
-            // einmal ein laufender Import gesehen wurde) gilt idle als "fertig".
+            // Ausführlich: docs/begruendungen/core-data/service/CsvImportService.kt.md#if
             if (!sawRunning && System.currentTimeMillis() - startedAtMs < GRACE_MS) return true
             return false
         }

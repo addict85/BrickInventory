@@ -84,13 +84,10 @@ fun ComparisonScreen() {
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedTextField(
                     value = searchText,
-                    // ── Zahlentastatur statt Freitext ──
-                    //
                     // Hier tippt man Setnummern und Barcodes, keine Namen — deshalb die
                     // Zahlentastatur. Der Filter gehört dazu: Eine angeschlossene Tastatur, die
                     // Zwischenablage und manche Bildschirmtastaturen liefern trotzdem Buchstaben.
-                    // setNumber() lässt Ziffern und den Varianten-Bindestrich durch — genau das,
-                    // was „75192-1“ braucht.
+                    // Ausführlich: docs/begruendungen/feature-sammlung/ui/screens/ComparisonScreen.kt.md#z87
                     onValueChange = {
                         searchText = NumericInput.setNumber(it)
                         if (searchText.isNotBlank()) scannedBarcode = null

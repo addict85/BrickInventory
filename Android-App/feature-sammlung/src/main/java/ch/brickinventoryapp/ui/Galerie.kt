@@ -19,12 +19,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Der Zustand der Galerie und wie er sich ändert — an EINER Stelle.
- *
- * Vorher war `_galleryState` ein internes Feld des MainViewModel, in das jede
- * Datei des Moduls schreiben konnte (Barcode, Sitzung, Set-Detail …). Jetzt ist
- * der Fluss privat, und wer etwas ändern will, ruft eine benannte Methode.
- * Abrufe kommen als Funktionen herein: So lässt sich das Verhalten ohne
- * ViewModel und Netz prüfen (GalerieTest).
+ * Ausführlich: docs/begruendungen/feature-sammlung/ui/Galerie.kt.md#galerie
  */
 internal class Galerie(
     private val scope: CoroutineScope,

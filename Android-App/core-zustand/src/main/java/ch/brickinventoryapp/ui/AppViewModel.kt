@@ -1,28 +1,24 @@
 package ch.brickinventoryapp.ui
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.model.alsAnsicht
-import ch.brickinventoryapp.data.CsvImportSseClient
+import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.PasswortPflicht
 import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.RechteSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
-import ch.brickinventoryapp.data.cache.VorschauSpeicher
-import ch.brickinventoryapp.data.cache.VorschauVorwaermer
-import ch.brickinventoryapp.ui.model.CsvImportStandAnsicht
+import ch.brickinventoryapp.data.ZweiterFaktorPflicht
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.service.CsvImportService
+import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.ui.viewmodel.Texte
+import ch.brickinventoryapp.util.NetworkPolicy
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
@@ -30,62 +26,34 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import javax.inject.Named
-import ch.brickinventoryapp.di.BrickDispatchers
-import ch.brickinventoryapp.di.Dispatcher
 
 /**
- * Was der ganzen App gehört: Sitzung beginnen und beenden, Design und Sprache,
- * Snackbar, CSV-Import-Balken, Vorwärmen und das Ziel einer angetippten Meldung.
- * Die Bereiche teilen über Sitzung, Blickfeld, Bestandssignal und Meldungskanal.
+ * Die Sitzung der App: anmelden, abmelden, Einstellungen und Design des Kontos
+ * nachziehen, Snackbar und das Ziel einer angetippten Meldung. Darstellung,
+ * Vertrauen und CSV-Import haben eigene ViewModels; die Bereiche teilen über
+ * Sitzung, Blickfeld, Bestandssignal und Meldungskanal.
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(
-    @param:ApplicationContext private val ctx: Context,
     private val repo: BrickRepository,
-    /** Geräte-Einstellungen (Netzerlaubnisse, Alarmmeldungen) lesen die Bildschirme direkt. */
-    val prefs: PreferencesManager,
-    private val vorschau: VorschauSpeicher,
-    private val vorwaermer: VorschauVorwaermer,
-    private val sseClient: CsvImportSseClient,
+    private val prefs: PreferencesManager,
     private val sessionExpired: SessionExpiredSignal,
-    private val rechte: ch.brickinventoryapp.data.RechteSignal,
+    private val rechte: RechteSignal,
     meldungen: MeldungsKanal,
     private val texte: Texte,
-    // Nur für seinen Verbindungspool: Ein neu vertrautes Zertifikat verwirft offene Verbindungen.
-    @param:Named("api") private val apiHttpClient: okhttp3.OkHttpClient,
-    // Nur für seinen Zwischenspeicher: Beim Abmelden geleert wie Coils eigene Caches.
-    @param:Named("image") private val bildHttpClient: okhttp3.OkHttpClient,
-    // Beim Abmelden mit geleert: Die Vorschaubilder gehören zum Konto.
-    private val imageLoader: coil3.ImageLoader,
     private val sitzung: Sitzung,
     private val blickfeldDienst: Blickfeld,
     private val bestand: Bestandssignal,
     val scrollMemory: ScrollMemory,
-    /** Ein unbekanntes Zertifikat wartet auf Ja oder Nein (ZertifikatDialog). */
-    val zertifikatsFrage: ch.brickinventoryapp.util.ZertifikatsFrage,
     ausgangsmelder: Ausgangsmelder,
-    private val abmeldehaken: Abmeldehaken,
-    /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
-    val passwortPflicht: ch.brickinventoryapp.data.PasswortPflicht,
-    /** Verwalterrechte ohne zweiten Faktor: MainActivity zeigt statt der App dessen Einrichtung. */
-    val zweiterFaktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht,
-    private val abmeldung: ch.brickinventoryapp.data.Abmeldung,
-    /** Zeichnet das Startbildschirm-Widget neu (AppModule); core-zustand kennt es nicht. */
-    private val widget: Widgetanstoss,
-    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
+    private val passwortPflicht: PasswortPflicht,
+    private val zweiterFaktorPflicht: ZweiterFaktorPflicht,
+    private val abmelden: Abmelden,
+    private val vorwaermen: SammlungVorwaermen,
 ) : ViewModel() {
 
-    // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
-    // seinen Startwert beim Anlegen, ein späterer Wert käme nach der ersten
-    // Komposition und das falsche Design blitzte auf.
-    init {
-        sitzung.aendere { it.copy(appTheme = prefs.gemerktesDesign()) }
-    }
     val state: StateFlow<AppUiState> = sitzung.state
 
     private val _snackbar = meldungen.fluss
@@ -94,14 +62,19 @@ class AppViewModel @Inject constructor(
     /** Offline gespeicherte Änderungen, die noch zum Server müssen — für die Leiste im Gerüst. */
     val offeneAenderungen: StateFlow<Int> = ausgangsmelder.starte(viewModelScope)
     fun clearSnackbar() { _snackbar.value = null }
-    fun showSnackbar(msg: String) { _snackbar.value = msg }
+
+    /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
+    val startpasswortNoetig: StateFlow<Boolean> = passwortPflicht.noetig
+
+    /** Verwalterrechte ohne zweiten Faktor: MainActivity zeigt dessen Einrichtung. */
+    val zweiterFaktorNoetig: StateFlow<Boolean> = zweiterFaktorPflicht.noetig
 
     // Eine nachgeholte Abmeldung, die endgültig scheiterte (EntwertungsWorker): Die
     // Benachrichtigung kann fehlen, also hier noch einmal, einmalig.
     init {
         prefs.gescheiterteEntwertungen().firstOrNull()?.let { server ->
             _snackbar.value = texte.text(R.string.abmeldung_gescheitert_text,
-                ch.brickinventoryapp.util.NetworkPolicy.ansicht(server)?.adresse ?: server)
+                NetworkPolicy.ansicht(server)?.adresse ?: server)
             prefs.quittiereGescheiterteEntwertungen()
         }
     }
@@ -109,69 +82,8 @@ class AppViewModel @Inject constructor(
     val blickfeld = blickfeldDienst.konten
     val lagerState = blickfeldDienst.lager
 
-    /** Nur das Design, damit MainActivity nicht bei jeder Zustandsänderung neu komponiert. */
-    val appTheme = sitzung.state
-        .map { it.appTheme }
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, sitzung.state.value.appTheme)
-
-    /** Je Gerät: System, Hell oder Dunkel (ui/theme/Darstellung.kt). */
-    private val _helligkeit = MutableStateFlow(prefs.helligkeit())
-    val helligkeit: StateFlow<String> = _helligkeit.asStateFlow()
-    fun setHelligkeit(wahl: String) {
-        prefs.setzeHelligkeit(wahl)
-        _helligkeit.value = wahl
-    }
-
-    /** Je Gerät: auch nutzerinstallierte CAs für den eigenen Server; an nur nach Bestätigung. */
-    val nutzerCa = NutzerCaSchalter(
-        lies = prefs::nutzerCaErlaubt,
-        schreibe = prefs::setzeNutzerCa,
-        nachAenderung = { apiHttpClient.connectionPool.evictAll() },
-    )
-
-    /** Je Gerät: Material You statt der Farben des Designs (ui/theme/Darstellung.kt). */
-    private val _systemfarben = MutableStateFlow(prefs.systemfarben())
-    val systemfarben: StateFlow<Boolean> = _systemfarben.asStateFlow()
-    fun setSystemfarben(an: Boolean) {
-        prefs.setzeSystemfarben(an)
-        _systemfarben.value = an
-    }
-
-    /** Je Gerät: FLAG_SECURE für die ganze App (MainActivity), über den Zähler von Sichtschutz. */
-    private val _vorschauVerbergen = MutableStateFlow(prefs.vorschauVerbergen())
-    val vorschauVerbergen: StateFlow<Boolean> = _vorschauVerbergen.asStateFlow()
-    fun setVorschauVerbergen(an: Boolean) {
-        prefs.setzeVorschauVerbergen(an)
-        _vorschauVerbergen.value = an
-    }
-
-    /** Je Gerät: Geldwerte im Startbildschirm-Widget, Vorgabe aus (sec8 H5). */
-    private val _widgetWerte = MutableStateFlow(prefs.widgetWerteZeigen())
-    val widgetWerte: StateFlow<Boolean> = _widgetWerte.asStateFlow()
-    fun setWidgetWerte(an: Boolean) {
-        prefs.setzeWidgetWerteZeigen(an)
-        _widgetWerte.value = an
-        viewModelScope.launch { runCatching { widget.aktualisiere() } }
-    }
-
-    /** Ja zum gezeigten Zertifikat: gepinnt, offene Verbindungen verworfen. Ohne bekannte CA oder geändert nur mit [eingabe]. */
-    fun zertifikatVertrauen(eingabe: String? = null): Boolean {
-        if (!zertifikatsFrage.bestaetige(prefs, eingabe)) return false
-        apiHttpClient.connectionPool.evictAll()
-        return true
-    }
-
-    private val _csvImportState = MutableStateFlow(CsvImportUiState())
-    val csvImportState: StateFlow<CsvImportUiState> = _csvImportState.asStateFlow()
-    private var csvWatchJob: Job? = null
-
     private val _meldungsZiel = MutableStateFlow(MeldungsZielUiState())
     val meldungsZiel: StateFlow<MeldungsZielUiState> = _meldungsZiel.asStateFlow()
-
-    // Mehrfaches Anstossen (Serverwechsel, neues Token) soll keine zweite
-    // Runde durch dieselben Bilder starten.
-    private var vorwaermenLaeuft = false
 
     init {
         viewModelScope.launch {
@@ -182,39 +94,16 @@ class AppViewModel @Inject constructor(
             loadAppTheme()
             verfolgeServerstart()
         }
-        // Nur eine echte Änderung von Adresse oder Token lädt neu.
-        viewModelScope.launch {
-            combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
-                .distinctUntilChanged()
-                .collect { (url, token) ->
-                    sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank()) }
-                    if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
-                        _snackbar.value = texte.text(R.string.vm_anmeldung_zu_alt)
-                        logout()
-                        return@collect
-                    }
-                    // Eine alte http-Adresse führt in die Einrichtung (startZiel); Abrufe
-                    // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
-                    if (token.isNotBlank() && url.isNotBlank() &&
-                        !ch.brickinventoryapp.util.NetworkPolicy.klartextAltbestand(url, ch.brickinventoryapp.util.NetworkPolicy.entwicklung)) {
-                        launch { sitzung.kontoUebernehmen(repo.konto, zweiterFaktorPflicht) }
-                        nachAnmeldung()
-                        loadSettings()
-                        vorwaermenAnstossen()
-                    }
-                }
-        }
+        viewModelScope.launch { folgeAnmeldung() }
         viewModelScope.launch {
             prefs.currency.collect { cur -> sitzung.aendere { it.copy(currency = cur) } }
         }
-        // Jede Änderung des Designs landet im Spiegel des Geräts — ob sie aus
-        // /settings/theme oder der Wahl im Konto kommt. Beim Kontowechsel ist es damit
-        // das Design des neuen Kontos, nach dem Abmelden die Vorgabe.
+        // Jede Änderung des Designs landet im Spiegel des Geräts, ob vom Server oder
+        // aus der Wahl im Konto; nach dem Abmelden ist es die Vorgabe.
         viewModelScope.launch {
             sitzung.state.map { it.appTheme }.distinctUntilChanged().collect { prefs.saveAppTheme(it) }
         }
-        // Eine Währung, die der Server nennt, gilt beim nächsten Start schon vor
-        // der ersten Antwort; drop(1) lässt den gemerkten Startwert aus.
+        // drop(1) lässt den gemerkten Startwert aus: Nur eine Währung des Servers wird gemerkt.
         viewModelScope.launch {
             sitzung.state.map { it.currency }.distinctUntilChanged().drop(1)
                 .collect { prefs.saveCurrency(it) }
@@ -222,8 +111,8 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             prefs.language.collect { lang -> sitzung.aendere { it.copy(language = lang) } }
         }
-        // Ein 401 auf einen Token, der an einen ausgewiesenen Server ging
-        // (ServerWaechter); ein Fehlversuch beim Anmelden meldet nicht ab.
+        // Ein 401 auf einen Token, der an einen ausgewiesenen Server ging; ein
+        // Fehlversuch beim Anmelden meldet nicht ab.
         viewModelScope.launch {
             sessionExpired.events.collect {
                 if (sitzung.state.value.isLoggedIn) {
@@ -232,13 +121,7 @@ class AppViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    // ── Sitzung ──────────────────────────────────────────────────────────────
-
-    // Ein 403 `nur_admins` (ServerWaechter): Recht nachziehen, Verwaltung
-    // ausblenden; die Meldung nur beim Übergang, nicht je abgewiesener Anfrage.
-    init {
+        // Ein 403 `nur_admins`: Recht nachziehen; die Meldung nur beim Übergang.
         viewModelScope.launch {
             rechte.entzogen.collect {
                 if (sitzung.rechteNachziehen(repo.konto)) _snackbar.value = texte.text(R.string.vm_rechte_entzogen)
@@ -246,10 +129,32 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Der zweite Faktor ist bestätigt: Was bis dahin mit 403 abgewiesen wurde,
-     * jetzt laden. Die Codes hat die Maske vorher gezeigt; der Token bleibt gültig.
-     */
+    /** Nur eine echte Änderung von Adresse oder Token lädt neu. */
+    private suspend fun folgeAnmeldung() {
+        combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
+            .distinctUntilChanged()
+            .collect { (url, token) ->
+                sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank()) }
+                if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
+                    _snackbar.value = texte.text(R.string.vm_anmeldung_zu_alt)
+                    logout()
+                    return@collect
+                }
+                // Eine alte http-Adresse führt in die Einrichtung (startZiel); Abrufe
+                // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
+                if (token.isNotBlank() && url.isNotBlank() &&
+                    !NetworkPolicy.klartextAltbestand(url, NetworkPolicy.entwicklung)) {
+                    viewModelScope.launch { sitzung.kontoUebernehmen(repo.konto, zweiterFaktorPflicht) }
+                    nachAnmeldung()
+                    loadSettings()
+                    vorwaermen.anstossen()
+                }
+            }
+    }
+
+    // ── Sitzung ──────────────────────────────────────────────────────────────
+
+    /** Der zweite Faktor ist bestätigt: Was bis dahin mit 403 abgewiesen wurde, jetzt laden. */
     fun zweiterFaktorEingerichtet() {
         zweiterFaktorPflicht.erledigt()
         nachAnmeldung()
@@ -258,7 +163,6 @@ class AppViewModel @Inject constructor(
 
     /** Nach dem Anmelden: Filter, Konten und Orte; die Bereiche laden ihre Listen selbst. */
     private fun nachAnmeldung() {
-        _csvImportState.value = CsvImportUiState()
         viewModelScope.launch { blickfeldDienst.ladeFilter() }
         loadHouseholdMembers()
         loadLagerorte()
@@ -267,48 +171,15 @@ class AppViewModel @Inject constructor(
     }
 
     /**
-     * Abmelden räumt alles weg, was zum Konto gehört — auch API- und
-     * Bild-Cache, sonst sähe der nächste Nutzer auf dem Gerät fremde Daten.
-     * Die Bereichs-ViewModels leeren sich auf [Sitzung.abgemeldet]. Der Job lässt
-     * einen Serverwechsel warten, bis alles weg ist. Zuerst entwertet der Server
-     * den Token (kurz begrenzt, sonst später aus der Warteschlange) — beim Wechsel
-     * ist das noch der alte Server.
+     * Abmelden ([Abmelden]); die Bereichs-ViewModels leeren sich auf
+     * [Sitzung.abgemeldet]. Der Job lässt einen Serverwechsel warten, bis alles weg ist.
      */
-    @OptIn(coil3.annotation.ExperimentalCoilApi::class)
-    fun logout(): Job {
-        csvWatchJob?.cancel(); csvWatchJob = null
-        return viewModelScope.launch {
-            if (sitzung.state.value.isLoggedIn &&
-                abmeldung.amServer() == ch.brickinventoryapp.data.Abmeldeweg.NACHGEHOLT) {
-                _snackbar.value = texte.text(R.string.vm_abmelden_nachgeholt)
-            }
-            prefs.clearSession()
-            passwortPflicht.erledigt()
-            zweiterFaktorPflicht.erledigt()
-            repo.clearCache()
-            kotlinx.coroutines.withContext(io) {
-                runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }
-                runCatching { ch.brickinventoryapp.util.raeumeAnleitungenAuf(ctx.cacheDir) }
-                runCatching { ch.brickinventoryapp.util.raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null)) }
-                // Bilder des Kontos liegen auch hier: HTTP-Zwischenspeicher und Vorschau-Ablage.
-                runCatching { bildHttpClient.cache?.evictAll() }
-                runCatching { vorschau.leeren() }
-            }
-            // Speicher zuerst, sonst schreibt Coil beim nächsten Treffer wieder auf die Platte.
-            try {
-                imageLoader.memoryCache?.clear()
-                imageLoader.diskCache?.clear()
-            } catch (_: Exception) { /* darf das Abmelden nie verhindern */ }
-            // Das Widget zeigt sonst die Zahlen des abgemeldeten Kontos weiter.
-            runCatching {
-                abmeldehaken.abgemeldet()
-            }
-            sitzung.abgemeldet()
-            blickfeldDienst.zuruecksetzen()
-            _csvImportState.value = CsvImportUiState()
-            // Das Design des Kontos gilt nicht mehr; ohne Token liefert der Server die Vorgabe.
-            loadAppTheme()
+    fun logout(): Job = viewModelScope.launch {
+        if (abmelden.ausfuehren() == Abmeldeweg.NACHGEHOLT) {
+            _snackbar.value = texte.text(R.string.vm_abmelden_nachgeholt)
         }
+        // Das Design des Kontos gilt nicht mehr; ohne Token liefert der Server die Vorgabe.
+        loadAppTheme()
     }
 
     /** Die Haushaltskonten entscheiden, ob und mit welchen Einträgen der Kontofilter erscheint. */
@@ -321,7 +192,7 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch { blickfeldDienst.ladeLagerorte() }
     }
 
-    // ── Design, Sprache, Einstellungen ───────────────────────────────────────
+    // ── Design und Einstellungen des Kontos ──────────────────────────────────
 
     /** Einstellungen und Design des Kontos; das Design kommt von /settings/theme. */
     fun loadSettings() {
@@ -329,10 +200,7 @@ class AppViewModel @Inject constructor(
         loadAppTheme()
     }
 
-    /**
-     * Das Design über /settings/theme: angemeldet das des Kontos, sonst die
-     * Vorgabe. Ohne Meldung im Fehlerfall: Dann bleibt das gemerkte.
-     */
+    /** Angemeldet das Design des Kontos, sonst die Vorgabe; im Fehlerfall bleibt das gemerkte. */
     private fun loadAppTheme() {
         viewModelScope.launch {
             if (prefs.serverUrlJetzt().isBlank()) return@launch
@@ -341,11 +209,7 @@ class AppViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Den Start des Servers verfolgen, bis er bereit ist. Ohne Zeitlimit, weil
-     * der erste Start viele Minuten dauern kann; antwortet er gar nicht, bleibt
-     * es bei der gewöhnlichen Netzmeldung.
-     */
+    /** Ohne Zeitlimit: Der erste Start des Servers kann viele Minuten dauern. */
     private fun verfolgeServerstart() {
         viewModelScope.launch {
             if (prefs.serverUrlJetzt().isBlank()) return@launch
@@ -356,15 +220,8 @@ class AppViewModel @Inject constructor(
                     return@launch
                 }
                 sitzung.aendere { it.copy(startupStatus = r.data.alsAnsicht()) }
-                delay(2000)
+                delay(SERVERSTART_TAKT_MS)
             }
-        }
-    }
-
-    fun setLanguage(languageCode: String) {
-        viewModelScope.launch {
-            prefs.saveLanguage(languageCode)
-            ch.brickinventoryapp.util.LanguageManager.applyLanguage(languageCode)
         }
     }
 
@@ -382,126 +239,7 @@ class AppViewModel @Inject constructor(
         _meldungsZiel.value = MeldungsZielUiState(null)
     }
 
-    // ── Vorschaubilder ───────────────────────────────────────────────────────
-
-    fun vorschauAblageBytes(): Long = vorschau.belegt()
-
-    /** Füllt sich beim Blättern wieder; offline ist danach nichts mehr da. */
-    fun vorschauAblageLeeren() = vorschau.leeren()
-
-    /** Einmal je App-Start, auf IO: Der Bildabruf blockiert. */
-    private fun vorwaermenAnstossen() {
-        if (vorwaermenLaeuft) return
-        vorwaermenLaeuft = true
-        viewModelScope.launch(io) {
-            delay(VorschauVorwaermer.ANLAUF_MS)
-            // Erst Netzlage und Platz prüfen, sonst kostet jeder Start vier Listenabrufe umsonst.
-            if (!vorwaermer.darfStarten()) return@launch
-            val basis = runCatching { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
-            if (basis.isBlank()) return@launch
-            vorwaermer.vorwaermen(bildAdressenDerSammlung(repo, blickfeldDienst, basis))
-        }
-    }
-
-    // ── CSV-Import ───────────────────────────────────────────────────────────
-
-    /**
-     * Eine dauerhafte SSE-Verbindung meldet jeden Import, auch einen aus der
-     * Webapp. Bei Fehlern einmal per Abfrage nachsehen (damit der Balken nicht
-     * hängt) und mit wachsendem Abstand neu verbinden. Mehrfach gerufen: ohne Wirkung.
-     */
-    fun startCsvImportWatcher() {
-        if (csvWatchJob?.isActive == true) return
-        csvWatchJob = viewModelScope.launch {
-            var backoffMs = 5_000L
-            while (isActive) {
-                var sseFailed = false
-                try {
-                    sseClient.stream().collect { event ->
-                        when (event) {
-                            is CsvImportSseClient.Event.Status -> {
-                                backoffMs = 5_000L
-                                handleCsvStatus(event.status.alsAnsicht())
-                            }
-                            is CsvImportSseClient.Event.Failed -> { sseFailed = true }
-                        }
-                    }
-                } catch (_: Exception) {
-                    sseFailed = true
-                }
-                if (!isActive) break
-                if (sseFailed) {
-                    abfrageStattStrom()
-                    delay(backoffMs)
-                    backoffMs = minOf(backoffMs * 2, 60_000L)
-                }
-                // Sauber geschlossen (Neustart des Servers): sofort neu verbinden.
-            }
-        }
-    }
-
-    /**
-     * Abbrechen heisst „ab hier nicht weiter", nicht „rückgängig": Angelegte
-     * Sets bleiben. Der Balken verschwindet erst mit dem nächsten Status vom
-     * Server, nicht schon hier.
-     */
-    fun cancelCsvImport() {
-        viewModelScope.launch {
-            when (val r = repo.sets.cancelCsvImport()) {
-                is Result.Success -> _snackbar.value = texte.text(R.string.csv_cancel_requested)
-                is Result.Error -> _snackbar.value = texte.meldungFuerSnackbar(r)
-            }
-        }
-    }
-
-    private suspend fun handleCsvStatus(s: CsvImportStandAnsicht) {
-        // Vor dem Überschreiben entscheiden — danach wäre „vorher" schon der
-        // neue Zustand. Die Regel steht prüfbar in CsvUebergang.kt.
-        val folge = csvFolge(warVorherAktiv = _csvImportState.value.running, status = s.status)
-        if (folge == CsvFolge.DIENST_STARTEN) CsvImportService.start(ctx)
-        _csvImportState.value = CsvImportUiState(
-            running = importLaeuft(s.status),
-            done    = s.done,
-            total   = s.total,
-            current = s.current,
-            ok      = s.ok,
-            warn    = s.warn,
-            err     = s.err
-        )
-        when (folge) {
-            CsvFolge.NACHLADEN -> finishCsvImport()
-            CsvFolge.FEHLER_AUFRAEUMEN -> {
-                delay(5000)
-                _csvImportState.value = CsvImportUiState()
-                CsvImportService.stop(ctx)
-            }
-            CsvFolge.DIENST_STARTEN, CsvFolge.NICHTS -> {}
-        }
-    }
-
-    @Volatile private var csvFinishing = false
-
-    /** Fertig: die Galerie lädt nach, der Balken bleibt kurz stehen. */
-    private suspend fun finishCsvImport() {
-        if (csvFinishing) return
-        csvFinishing = true
-        try {
-            bestand.melde(Aenderung.Sets)
-            delay(5000)
-            _csvImportState.value = CsvImportUiState()
-            CsvImportService.stop(ctx)
-        } finally {
-            csvFinishing = false
-        }
-    }
-
-    private suspend fun abfrageStattStrom() {
-        try {
-            val url = prefs.serverUrlJetzt()
-            val token = prefs.tokenJetzt()
-            if (token.isBlank() || url.isBlank()) return
-            val resp = repo.sets.getCsvImportStatus(url, token)
-            if (resp is Result.Success) handleCsvStatus(resp.data.alsAnsicht())
-        } catch (_: Exception) {}
+    private companion object {
+        const val SERVERSTART_TAKT_MS = 2000L
     }
 }

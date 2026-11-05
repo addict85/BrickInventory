@@ -52,14 +52,7 @@ private fun entzogen(r: Result<*>) = r is Result.Error && r.code == ch.brickinve
  * Composables, damit die Ladelogik ohne Compose-Laufzeit prüfbar ist. Ein eigenes
  * ViewModel am NavHost-Ziel (hiltViewModel()), weil der selten geöffnete
  * Bildschirm mit seiner Abfrageschleife nicht die Lebensdauer der Activity
- * braucht.
- *
- *   hierher      was vom Server kommt — wird ohnehin neu geladen
- *   Bildschirm   was der Mensch angefasst hat (rememberSaveable)
- *   Bildschirm   Knopftexte eines laufenden Vorgangs — dürfen eine Drehung nicht überleben
- *
- * Keine Texte hier: Die Funktionen sagen, was passiert ist; den Satz wählt die
- * Anzeige, wie in FehlerTexte.kt.
+ * Ausführlich: docs/begruendungen/feature-verwaltung/ui/viewmodel/MonitoringViewModel.kt.md#hintergrundarbeiten
  */
 /** Die Hintergrundarbeiten (Auftragstabelle); [fehler] ist der Satz des Servers, etwa bei 403 oder 409. */
 data class HintergrundUiState(
@@ -73,7 +66,7 @@ class MonitoringViewModel @Inject constructor(
     private val repo: BrickRepository,
     private val texte: Texte,
     meldungen: MeldungsKanal,
-) : ViewModel() {
+) : ViewModel(), MonitoringAktionen {
 
     private val _state = MutableStateFlow(MonitoringUiState())
     val state = _state.asStateFlow()
@@ -82,7 +75,10 @@ class MonitoringViewModel @Inject constructor(
     private val _verwaltungState = MutableStateFlow(VerwaltungUiState())
     val verwaltungState = _verwaltungState.asStateFlow()
 
-    suspend fun ladeProtokoll(minuten: Int = _verwaltungState.value.protokollMinuten) {
+    /** Das Protokoll für den gewählten Zeitraum neu holen. */
+    suspend fun ladeProtokoll() = ladeProtokoll(_verwaltungState.value.protokollMinuten)
+
+    override suspend fun ladeProtokoll(minuten: Int) {
         _verwaltungState.update { it.copy(protokollLaden = true, protokollMinuten = minuten, fehler = null) }
         when (val r = repo.verwaltung.getProtokoll(minuten)) {
             is Result.Success -> _verwaltungState.update {
@@ -131,19 +127,18 @@ class MonitoringViewModel @Inject constructor(
 
     // Im viewModelScope, nicht im Scope des Bildschirms: Wer die Seite verlässt,
     // bricht die Aktion nicht ab, und der Satz geht nicht am Zustand vorbei.
-    fun auftragAbbrechen(id: String) = melde { brichAuftragAb(id) }
-    fun auftragWiederholen(id: String) = melde { wiederholeAuftrag(id) }
-    fun auftragsArtStarten(art: String, name: String) = melde { starteAuftragsArt(art, name) }
-    fun auftragsArtLeeren(art: String) = melde { leereAuftragsArt(art) }
+    override fun auftragAbbrechen(id: String) = melde { brichAuftragAb(id) }
+    override fun auftragWiederholen(id: String) = melde { wiederholeAuftrag(id) }
+    override fun auftragsArtStarten(art: String, name: String) = melde { starteAuftragsArt(art, name) }
+    override fun auftragsArtLeeren(art: String) = melde { leereAuftragsArt(art) }
 
     private val _einstellungenNeu = MutableStateFlow(false)
 
     /** Design oder Vorgabe-Zustand geändert: Die App lädt ihre Einstellungen nach und quittiert. */
     val einstellungenNeu = _einstellungenNeu.asStateFlow()
 
-    /** Die Vorschau-Ablage liegt beim AppViewModel; gemeldet wird hier wie jedes Speichern. */
-    fun ablageGeleert() {
-        _snackbar.value = texte.text(R.string.monitoring_cache_saved)
+    override fun melde(satz: String) {
+        _snackbar.value = satz
     }
 
     fun einstellungenGeladen() {
@@ -184,7 +179,7 @@ class MonitoringViewModel @Inject constructor(
         return satz
     }
 
-    suspend fun ladeJobs() {
+    override suspend fun ladeJobs() {
         _state.update { it.copy(aktualisiert = true) }
         val r = repo.verwaltung.getJobs()
         _state.update {
@@ -195,7 +190,7 @@ class MonitoringViewModel @Inject constructor(
         }
     }
 
-    suspend fun ladeWarteschlange() {
+    override suspend fun ladeWarteschlange() {
         _state.update { it.copy(queueLoading = true) }
         val r = repo.verwaltung.getBricksetQueue()
         _state.update {
@@ -205,7 +200,7 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /** Wiederholt einen hängengebliebenen Eintrag; lädt die Liste danach neu. */
-    suspend fun wiederholeEintrag(setNummer: String): Boolean {
+    override suspend fun wiederholeEintrag(setNummer: String): Boolean {
         val ok = repo.verwaltung.retryBricksetEntry(setNummer) is Result.Success
         if (ok) ladeWarteschlange()
         return ok
@@ -216,7 +211,7 @@ class MonitoringViewModel @Inject constructor(
      * wird neu geladen statt die alte Kopie zurückgeschrieben — dazwischen kann sich
      * am Server anderes geändert haben.
      */
-    suspend fun entferneEintrag(setNummer: String): Boolean {
+    override suspend fun entferneEintrag(setNummer: String): Boolean {
         _state.update { it.copy(queue = it.queue.filter { e -> e.setNumber != setNummer }) }
         val ok = repo.verwaltung.deleteBricksetEntry(setNummer) is Result.Success
         if (!ok) ladeWarteschlange()
@@ -224,14 +219,14 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /** Anleitungen neu einlesen; zurück kommt die Zahl der eingereihten Sets, sonst null. */
-    suspend fun leseAnleitungenNeuEin(): Int? =
+    override suspend fun leseAnleitungenNeuEin(): Int? =
         (repo.verwaltung.reimportInstructions() as? Result.Success)?.data?.enqueued
 
-    suspend fun starteCsvAbgleich(): Boolean = repo.verwaltung.triggerCsvSync() is Result.Success
+    override suspend fun starteCsvAbgleich(): Boolean = repo.verwaltung.triggerCsvSync() is Result.Success
 
-    suspend fun startePreislauf(): Boolean = repo.verwaltung.triggerPriceJob() is Result.Success
+    override suspend fun startePreislauf(): Boolean = repo.verwaltung.triggerPriceJob() is Result.Success
 
-    suspend fun ladeFehlendeBilderNach(): Boolean =
+    override suspend fun ladeFehlendeBilderNach(): Boolean =
         repo.verwaltung.redownloadMissingImages() is Result.Success
 
     /**
@@ -274,14 +269,14 @@ class MonitoringViewModel @Inject constructor(
      * Zeitplan eines Jobs setzen und neu holen, weil der Server normalisiert („7:5“ →
      * „07:05“, mindestens fünf Minuten): Es soll dastehen, was gilt.
      */
-    suspend fun setzeJobZeitplan(name: String, zeit: String? = null, minuten: Int? = null): Boolean {
+    override suspend fun setzeJobZeitplan(name: String, zeit: String?, minuten: Int?): Boolean {
         val ok = repo.verwaltung.setJobSchedule(name, zeit, minuten) is Result.Success
         if (ok) ladeJobs()
         return ok
     }
 
     /** Fehlende KATALOGbilder einreihen — nicht die des Bestands daneben. */
-    suspend fun reiheKatalogbilderEin(): Boolean =
+    override suspend fun reiheKatalogbilderEin(): Boolean =
         repo.verwaltung.queueCatalogImages() is Result.Success
 
     /**

@@ -112,7 +112,7 @@ class AlarmUebersichtTest {
         // Regel, die an der Anzahl haengt, prueft nicht mehr das, was sie
         // sagt — sie geht beim naechsten Parameter kaputt, ohne dass etwas
         // kaputt waere. Genau das ist hier passiert (Lauf 286).
-        assert(s.contains("PreisalarmeCard(vm,") || s.contains("PreisalarmeCard(vm)")) {
+        assert(s.contains("PreisalarmeCard(uebersicht, aktionen,")) {
             "Die Rubrik ist nicht in den Einstellungen eingehaengt — sie existiert, " +
                 "aber niemand sieht sie."
         }
@@ -120,8 +120,8 @@ class AlarmUebersichtTest {
             "Die Rubrik holt ihre Daten nicht — sie bliebe leer."
         }
         // Loeschen und Aendern, beides: Genau das hat Marco verlangt.
-        assert(s.contains("vm.loescheAlarm(")) { "Der Alarm laesst sich nicht loeschen." }
-        assert(s.contains("vm.aendereAlarmSchwelle(")) { "Der Wert laesst sich nicht anpassen." }
+        assert(s.contains("aktionen.loescheAlarm(")) { "Der Alarm laesst sich nicht loeschen." }
+        assert(s.contains("aktionen.aendereAlarmSchwelle(")) { "Der Wert laesst sich nicht anpassen." }
     }
 
     @Test

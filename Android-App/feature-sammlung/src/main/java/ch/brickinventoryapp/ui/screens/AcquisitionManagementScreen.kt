@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.ManualItemDetailUiState
+import ch.brickinventoryapp.ui.BlickfeldUiState
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.viewmodel.KaeufeAktionen
 import ch.brickinventoryapp.ui.model.KaufAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
@@ -39,22 +43,43 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * editierbaren Zeilen stehen in dieser Datei (AcquisitionManagementRow weiter
  * unten).
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AcquisitionManagementScreen(
+fun AcquisitionManagementRoute(
     vm: KaeufeViewModel,
-    type: String,           // "set" | "part" | "fig"
-    id: String,             // setNumber / partNumber / figNumber
+    type: String,
+    id: String,
     colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
     title: String,
     onBack: () -> Unit
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val currency = state.currency
-
-    // Ein Zustand für Sets, Teile und Figuren (KaeufeViewModel).
     val manDetailState by vm.manDetailState.collectAsStateWithLifecycle()
+    AcquisitionManagementScreen(KaeufeZustand(state, blick, manDetailState), vm, type, id, colorId, title, onBack)
+}
+
+/** Was die Kaufverwaltung zeigt: ein Zustand für Sets, Teile und Figuren. */
+data class KaeufeZustand(
+    val state: AppUiState,
+    val blick: BlickfeldUiState,
+    val manDetailState: ManualItemDetailUiState,
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AcquisitionManagementScreen(
+    zustand: KaeufeZustand,
+    aktionen: KaeufeAktionen,
+    type: String,           // "set" | "part" | "fig"
+    id: String,             // setNumber / partNumber / figNumber
+    colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
+    title: String,
+    onBack: () -> Unit
+) {
+    val state = zustand.state
+    val blick = zustand.blick
+    val currency = state.currency
+    val manDetailState = zustand.manDetailState
 
     val acquisitions = manDetailState.acquisitions
     // Summe vom Server — die Rechnung stand vorher hier und noch dreimal
@@ -73,8 +98,8 @@ fun AcquisitionManagementScreen(
 
     LaunchedEffect(type, id, colorId) {
         when (type) {
-            "set"  -> vm.loadAcquisitions(id)
-            else   -> vm.loadManualAcquisitions(type, id, colorId)
+            "set"  -> aktionen.loadAcquisitions(id)
+            else   -> aktionen.loadManualAcquisitions(type, id, colorId)
         }
     }
 
@@ -154,20 +179,20 @@ fun AcquisitionManagementScreen(
                     currency = currency,
                     onSave = { price, cond, qty, date ->
                         when (type) {
-                            "set"  -> vm.updateAcquisition(id, acq.id, price, cond, qty, date)
-                            else   -> vm.updateManualAcquisition(type, id, colorId, acq.id, price, cond, qty, date)
+                            "set"  -> aktionen.updateAcquisition(id, acq.id, price, cond, qty, date)
+                            else   -> aktionen.updateManualAcquisition(type, id, colorId, acq.id, price, cond, qty, date)
                         }
                         // Reload after save to reflect server-side changes (e.g. market price fill);
                         // Datumsänderungen lädt das ViewModel bereits selbst neu.
                         if (price == null && date == null) {
-                            if (type == "set") vm.loadAcquisitions(id)
-                            else vm.loadManualAcquisitions(type, id, colorId)
+                            if (type == "set") aktionen.loadAcquisitions(id)
+                            else aktionen.loadManualAcquisitions(type, id, colorId)
                         }
                     },
                     onDelete = {
                         when (type) {
-                            "set"  -> vm.deleteAcquisition(id, acq.id)
-                            else   -> vm.deleteManualAcquisition(type, id, colorId, acq.id)
+                            "set"  -> aktionen.deleteAcquisition(id, acq.id)
+                            else   -> aktionen.deleteManualAcquisition(type, id, colorId, acq.id)
                         }
                     }
                 )
@@ -183,13 +208,13 @@ fun AcquisitionManagementScreen(
                         onSelect = { target ->
                             // acq.ownerUserId nur für den Vergleich — der
                             // Server ermittelt den Absender aus der Zeile.
-                            if (target != acq.ownerUserId) vm.changeAcquisitionOwner(
+                            if (target != acq.ownerUserId) aktionen.changeAcquisitionOwner(
                                 type, id, colorId, acq.id, target
                             ) { err, teile, figuren ->
                                 // Nach dem Wechsel stimmt die Liste nicht mehr:
                                 // Die Zeile liegt jetzt beim anderen Konto.
-                                if (type == "set") vm.loadAcquisitions(id)
-                                else vm.loadManualAcquisitions(type, id, colorId)
+                                if (type == "set") aktionen.loadAcquisitions(id)
+                                else aktionen.loadManualAcquisitions(type, id, colorId)
                                 // Die Zahlen kommen aus der Antwort, sonst sagte die Meldung „0
                                 // Teile“, auch wenn hunderte wandern. Zwei Zahlen, zwei
                                 // Übereinstimmungen: Ein <plurals> stimmt nur mit einer überein,

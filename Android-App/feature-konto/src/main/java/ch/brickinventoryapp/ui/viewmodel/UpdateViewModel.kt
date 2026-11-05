@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -47,10 +48,7 @@ import ch.brickinventoryapp.di.Dispatcher
  * prüfen, nie von allein laden, dazu ein Knopf in den Einstellungen. Die stille
  * Prüfung meldet keinen Fehler: Wer ohne Netz startet, hat nichts gefragt; wer den
  * Knopf drückt, schon.
- *
- * An die Activity gebunden (aktivitaetsViewModel), damit Startprüfung, Dialog,
- * Punkt am Kontosymbol und Einstellungen dieselbe Instanz sehen. Der eigene
- * HTTP-Client kennt weder Server noch Token — nichts davon geht GitHub etwas an.
+ * Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#constructor
  */
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
@@ -60,7 +58,7 @@ class UpdateViewModel @Inject constructor(
     private val prefs: PreferencesManager,
     private val fassung: ch.brickinventoryapp.util.AppFassung,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
-) : ViewModel() {
+) : ViewModel(), UpdateAktionen {
 
     private val _state = MutableStateFlow(UpdateUiState())
     val updateState = _state.asStateFlow()
@@ -88,10 +86,10 @@ class UpdateViewModel @Inject constructor(
      * @param still Beim Start `true`: kein Ladebalken, keine Fehlermeldung. Auf
      *        Knopfdruck `false` — dann sieht der Nutzer beides.
      */
-    fun pruefeAufUpdate(still: Boolean = false) {
+    override fun pruefeAufUpdate(still: Boolean) {
         viewModelScope.launch {
             _state.update { it.copy(laedtPruefung = !still, fehler = null) }
-            try {
+            fangeAusserAbbruch {
                 val roh = withContext(io) {
                     updateHttpClient.newCall(Request.Builder().url(UPDATE_VERSION_URL).build())
                         .execute().use { antwort ->
@@ -125,7 +123,7 @@ class UpdateViewModel @Inject constructor(
                     it.copy(laedtPruefung = false, geprueft = true,
                         neuereFassung = anzubietendeFassung(beschreibung, frische, fassung.code), fehler = null, frische = frische)
                 }
-            } catch (e: Exception) {
+            }.onFailure { _ ->
                 _state.update {
                     it.copy(laedtPruefung = false, geprueft = true,
                         fehler = if (still) null else texte.text(R.string.update_pruefung_fehlgeschlagen))
@@ -139,7 +137,7 @@ class UpdateViewModel @Inject constructor(
      * bleibt — es gibt weiterhin eine neuere Fassung, und der Punkt am Konto-Symbol
      * sagt das weiter. Weggeklickt ist nur die Frage, nicht der Befund.
      */
-    fun updateHinweisSchliessen() {
+    override fun updateHinweisSchliessen() {
         _state.update { it.copy(dialogAbgelehnt = true) }
     }
 
@@ -148,11 +146,9 @@ class UpdateViewModel @Inject constructor(
      * installiert wird: 1. Die Adresse zeigt in unsere Release-Ablage (schon in der
      * Prüfung, hier nochmal — zwischen Prüfung und Klick kann ein neuer Zustand
      * stehen). 2. Die Signatur stimmt mit der installierten App überein. 3. Der Nutzer
-     * hat die Systemerlaubnis erteilt.
-     *
-     * Erst danach öffnet sich der System-Installer, und auch der fragt nochmal.
+     * Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#ladeupdate
      */
-    fun ladeUpdate() {
+    override fun ladeUpdate() {
         val fassung = _state.value.neuereFassung ?: return
         viewModelScope.launch {
             if (!istErlaubteApkAdresse(fassung.apkUrl)) {
@@ -161,7 +157,7 @@ class UpdateViewModel @Inject constructor(
             }
             _state.update { it.copy(fortschritt = 0, fehler = null, bereitZurInstallation = false) }
             val ziel = updateDatei(ctx)
-            try {
+            fangeAusserAbbruch {
                 withContext(io) {
                     updateHttpClient.newCall(Request.Builder().url(fassung.apkUrl).build())
                         .execute().use { antwort ->
@@ -177,13 +173,11 @@ class UpdateViewModel @Inject constructor(
                             // wachsenden Zähler.
                             val gesamt = if (fassung.apkSize > 0) fassung.apkSize
                             else koerper.contentLength()
-                            // ── Wieviel darf höchstens kommen? ──
-                            //
                             // Die angekündigte Grösse (plus ein Megabyte Luft) oder die feste
                             // Obergrenze — was kleiner ist. Die Ankündigung stammt aus
                             // version.json, der hier nicht blind vertraut wird; die feste Grenze
                             // allein liesse eine Antwort durch, die 46 MB verspricht und 300
-                            // liefert.
+                            // Ausführlich: docs/begruendungen/feature-konto/ui/viewmodel/UpdateViewModel.kt.md#obergrenze
                             val obergrenze =
                                 if (gesamt in 1..UPDATE_MAX_BYTES) minOf(gesamt + 1024 * 1024, UPDATE_MAX_BYTES)
                                 else UPDATE_MAX_BYTES
@@ -254,7 +248,7 @@ class UpdateViewModel @Inject constructor(
                     it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = false)
                 }
                 starteInstallation()
-            } catch (e: Exception) {
+            }.onFailure { _ ->
                 ziel.delete()
                 _state.update {
                     it.copy(fortschritt = null, fehler = texte.text(R.string.update_laden_fehlgeschlagen))
@@ -269,7 +263,7 @@ class UpdateViewModel @Inject constructor(
      * Die Signatur wird erneut geprüft, weil die Datei während des Ausflugs in die
      * Systemeinstellungen auf der Platte liegt.
      */
-    fun starteInstallation() {
+    override fun starteInstallation() {
         val gemeldet = _state.value.neuereFassung?.versionCode ?: 0
         val pruefsumme = _state.value.neuereFassung?.apkSha256.orEmpty()
         viewModelScope.launch {

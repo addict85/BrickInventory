@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -22,7 +23,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
 /** Der Melde-Schalter mit den Geräte-Einstellungen verdrahtet. */
 @Composable
-private fun PreisalarmSchalter(geraet: GeraeteEinstellungenViewModel = hiltViewModel()) {
+fun PreisalarmSchalterRoute(geraet: GeraeteEinstellungenViewModel = hiltViewModel()) {
     val an by geraet.alarmMeldungenAn.collectAsStateWithLifecycle()
     PreisalarmCard(an, geraet::alarmMeldungen)
 }
@@ -33,7 +34,7 @@ private fun PreisalarmSchalter(geraet: GeraeteEinstellungenViewModel = hiltViewM
  * man ihn sucht.
  */
 @Composable
-fun PreisalarmeUnterseite(
+fun PreisalarmeRoute(
     vm: EinstellungenViewModel,
     imageLoader: ImageLoader,
     serverUrl: String,
@@ -41,30 +42,48 @@ fun PreisalarmeUnterseite(
     onSetClick: (String) -> Unit,
     onZurueck: () -> Unit,
     /** Der Melde-Schalter; als Platz, weil er sein eigenes ViewModel holt. */
-    meldeSchalter: @Composable () -> Unit = { PreisalarmSchalter() },
+    meldeSchalter: @Composable () -> Unit = { PreisalarmSchalterRoute() },
+) {
+    val uebersicht by vm.alarmUebersicht.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
+    PreisalarmeUnterseite(uebersicht, vm, imageLoader, serverUrl, snackbarHostState, onSetClick, onZurueck, meldeSchalter)
+}
+
+@Composable
+fun PreisalarmeUnterseite(
+    uebersicht: AlarmUebersichtUiState,
+    aktionen: EinstellungenAktionen,
+    imageLoader: ImageLoader,
+    serverUrl: String,
+    snackbarHostState: SnackbarHostState,
+    onSetClick: (String) -> Unit,
+    onZurueck: () -> Unit,
+    meldeSchalter: @Composable () -> Unit,
 ) {
     Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck,
         breite = ch.brickinventoryapp.ui.theme.Lesebreite.formular) {
         meldeSchalter()
-        PreisalarmeCard(vm, imageLoader, serverUrl, onSetClick)
+        PreisalarmeCard(uebersicht, aktionen, imageLoader, serverUrl, onSetClick)
     }
 }
 
 /** Lagerorte. */
 @Composable
-fun LagerorteUnterseite(
+fun LagerorteRoute(
     vm: EinstellungenViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
+    val lager by vm.lagerState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) { vm.ladeEigeneLagerorte() }
     Unterseite(stringResource(R.string.storage_manage), snackbarHostState, onZurueck) {
-        LagerorteCard(vm)
+        LagerorteCard(lager, vm)
     }
 }
 
 /** Haushalt — Konten verknuepfen. */
 @Composable
-fun HaushaltUnterseite(
+fun HaushaltRoute(
     vm: HaushaltViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
@@ -87,7 +106,7 @@ fun HaushaltUnterseite(
 
 /** Konto und angemeldete Geraete — beides betrifft den Zugang. */
 @Composable
-fun KontoUnterseite(
+fun KontoRoute(
     /** Nach einem geänderten Passwort abmelden — der Rest der Sitzung gilt dann nicht mehr. */
     onAbmelden: () -> Unit,
     snackbarHostState: SnackbarHostState,
@@ -133,7 +152,7 @@ fun KontoUnterseite(
 
 /** CSV importieren. */
 @Composable
-fun CsvImportUnterseite(
+fun CsvImportRoute(
     vm: EinstellungenViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,

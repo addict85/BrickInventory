@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.model.PreisalarmAnsicht
 import androidx.compose.foundation.text.KeyboardActions
@@ -24,7 +23,7 @@ import ch.brickinventoryapp.alarm.Alarmeingabe
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.util.resolveThumbUrl
 import coil3.ImageLoader
-import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
+import ch.brickinventoryapp.ui.viewmodel.EinstellungenAktionen
 import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 
@@ -36,18 +35,16 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun PreisalarmeCard(
-    vm: EinstellungenViewModel,
+    uebersicht: AlarmUebersichtUiState,
+    aktionen: EinstellungenAktionen,
     imageLoader: ImageLoader,
     serverUrl: String,
     onSetClick: (String) -> Unit,
 ) {
-    val uebersicht by vm.alarmUebersicht.collectAsStateWithLifecycle()
     // Die Rueckfrage haelt die ZEILE fest, nicht nur ein Ja/Nein: Der Text
     // nennt das Set, und beim Bestaetigen braucht es beide Teile des
     // Schluessels (Set und Zustand).
     var fragtLoeschen by remember { mutableStateOf<PreisalarmAnsicht?>(null) }
-
-    LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() }
 
     SettingsCard(
         title = stringResource(R.string.alerts_liste_titel),
@@ -133,7 +130,7 @@ internal fun PreisalarmeCard(
                     value = wert,
                     onValueChange = { roh ->
                         wert = NumericInput.price(roh)
-                        vm.setzeAlarmSchwelle(a.setNumber, a.condition, a.richtung, wert)
+                        aktionen.setzeAlarmSchwelle(a.setNumber, a.condition, a.richtung, wert)
                     },
                     singleLine = true,
                     label = { Text(stringResource(if (a.richtung == "unter") R.string.detail_alert_chip_below
@@ -151,7 +148,7 @@ internal fun PreisalarmeCard(
                     keyboardOptions = NumericInput.preisTastatur(),
                     // „Fertig“ speichert sofort, ohne die Ruhezeit abzuwarten.
                     keyboardActions = KeyboardActions(onDone = {
-                        if (zahl != null && zahl != a.schwelle) vm.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung, zahl)
+                        if (zahl != null && zahl != a.schwelle) aktionen.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung, zahl)
                     }),
                     shape = Formen.feld,
                     // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
@@ -171,7 +168,7 @@ internal fun PreisalarmeCard(
             confirmButton = {
                 TextButton(onClick = {
                     fragtLoeschen = null
-                    vm.loescheAlarm(a.setNumber, a.condition)
+                    aktionen.loescheAlarm(a.setNumber, a.condition)
                 }) {
                     Text(stringResource(R.string.common_delete),
                          color = MaterialTheme.colorScheme.error)
