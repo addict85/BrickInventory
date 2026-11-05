@@ -185,6 +185,7 @@ router.post('/token-rotieren', ipThrottle('token-rotieren', 120, 60 * 60 * 1000)
   if (!alt || !(await pruefeToken(alt, { ip: req.ip, zweck: 'rotation' })).nutzer)
     return sendeFehler(req, res, 401, 'token_ungueltig');
   const t = await rotiereToken(alt, req.ip);
+  if (t === 'laeuft') return sendeFehler(req, res, 409, 'tausch_laeuft');
   if (!t) return sendeFehler(req, res, 401, 'token_ungueltig');
   res.json({ success: true, token: t.token,
     token_info: { scope: t.scope, expires_at: t.expires_at, hard_expires_at: t.hard_expires_at,

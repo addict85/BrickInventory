@@ -10,6 +10,8 @@ export const FEHLER = {
   nicht_angemeldet:            { de: 'Nicht angemeldet', en: 'Not signed in' },
   auth_fehler:                 { de: 'Auth-Fehler', en: 'Authentication error' },
   nur_admins:                  { de: 'Nur für Admins', en: 'Administrators only' },
+  tausch_laeuft:               { de: 'Dieser Token wird gerade getauscht. Bitte in einer halben Minute erneut versuchen.',
+                                 en: 'This token is being exchanged right now. Please try again in half a minute.' },
   token_ungueltig:             { de: 'Ungültiger oder abgelaufener Token',
                                  en: 'Invalid or expired token' },
   token_id_fehlt:              { de: 'Token-ID fehlt', en: 'Token ID missing' },

@@ -443,17 +443,31 @@ export interface Tausch {
   alt_gueltig_bis: Date;
 }
 
+/** So lange nach einem Tausch gilt ein zweiter mit demselben alten Token als
+ * gleichzeitig (409): Sonst verdrängte eine Kopie den Nachfolger des echten Geräts. */
+export const TAUSCH_SPERRE_S = 30;
+
 /** Der alte gilt danach höchstens UEBERLAPPUNG_MS, bis zur ersten Nutzung des
- * neuen; ein zweiter Tausch mit dem alten (Antwort verloren) ersetzt den
- * unbenutzten Nachfolger.
- * @returns null, wenn der alte Token nicht (mehr) gilt. */
-export async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | null> {
+ * neuen. Ein zweiter Tausch (Antwort verloren) ersetzt den unbenutzten
+ * Nachfolger erst nach TAUSCH_SPERRE_S und nur aus demselben Netz; aus einem
+ * anderen ist es eine Kopie, und die Familie endet.
+ * @returns null, wenn der alte Token nicht (mehr) gilt; 'laeuft' im Sperrfenster. */
+export async function rotiereToken(alt: string, ip?: string | null): Promise<Tausch | null | 'laeuft'> {
   const altHash = hashToken(alt);
   const neu = crypto.randomBytes(32).toString('hex');
   const neuHash = hashToken(neu);
+  let kopie: { user_id: number; label: string | null } | null = null;
   const ergebnis = await db.transaction(async (tx) => {
     const z = await repo.tauschQuelleSperren(tx, altHash);
     if (!z) return null;
+    const offen = z.ersetzt_durch ? await repo.unbenutzterNachfolger(tx, z.ersetzt_durch, altHash) : undefined;
+    const bereich = ipBereich(ip);
+    if (offen && offen.ip_bereich && bereich && offen.ip_bereich !== bereich) {
+      await repo.loescheFamilie(tx, z.user_id, z.created_at);
+      kopie = { user_id: z.user_id, label: z.label };
+      return null;
+    }
+    if (offen && offen.alter_s < TAUSCH_SPERRE_S) return 'laeuft' as const;
     if (z.ersetzt_durch) await repo.loescheUnbenutztenNachfolger(tx, z.ersetzt_durch, altHash);
     const zeile = await repo.legeNachfolgerAn(tx, neuHash, altHash, z, TOKEN_IDLE_DAYS, ipBereich(ip));
     const vorher = await repo.befristeVorgaenger(tx, altHash, neuHash, UEBERLAPPUNG_MS / 1000);
@@ -461,7 +475,12 @@ export async function rotiereToken(alt: string, ip?: string | null): Promise<Tau
              never_expires: z.never_expires, rotiert_am: zeile!.rotiert_am,
              alt_gueltig_bis: vorher!.expires_at };
   });
-  if (ergebnis) leereTokenCache();
+  if (ergebnis || kopie) leereTokenCache();
+  if (kopie) {
+    const k: { user_id: number; label: string | null } = kopie;
+    console.warn(`[tokens] zweiter Tausch aus einem anderen Netz — Familie von Konto ${k.user_id} gesperrt`);
+    hinweisNebenher(k.user_id, 'token_wiederverwendet', k.label ?? undefined);
+  }
   return ergebnis;
 }
 

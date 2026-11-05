@@ -179,8 +179,10 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async (t) => {
     assert.ok(rest > 250 && rest <= 300, `alter Token gilt noch ${rest} s`);
     assert.equal((await zeile(b)).label, 'Telefon');
 
-    // Antwort verloren: Der alte tauscht noch einmal, der unbenutzte B fällt weg.
+    // Antwort verloren: Der alte tauscht noch einmal, der unbenutzte B fällt weg —
+    // nach dem Sperrfenster gegen gleichzeitige Tausche (token-tausch-parallel-db).
     assert.equal((await ruf('/auth/me', { token: a })).status, 200, 'Der alte gilt in der Überlappung');
+    await db.run(`UPDATE api_tokens SET rotiert_am = NOW() - INTERVAL '1 minute' WHERE token = $1`, [auth.hashToken(b)]);
     const r2 = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
     assert.equal(r2.status, 200);
     const c = r2.body.token;
