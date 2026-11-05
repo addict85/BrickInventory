@@ -65,11 +65,14 @@ def miss(projekt, wurzel, patch, gradle):
     if pruef.returncode != 0:
         return False, f'{name}: Patch passt nicht mehr auf den Stand — {pruef.stderr.strip()}'
     klasse = k['Test']
-    bericht = os.path.join(projekt, k['Modul'], 'build', 'test-results', 'testDebugUnitTest', f'TEST-{klasse}.xml')
+    # Reine JVM-Module (core-model) haben `test` statt `testDebugUnitTest`.
+    with open(os.path.join(projekt, k['Modul'], 'build.gradle.kts'), encoding='utf-8') as f:
+        aufgabe = 'test' if 'kotlin.jvm' in f.read() else 'testDebugUnitTest'
+    bericht = os.path.join(projekt, k['Modul'], 'build', 'test-results', aufgabe, f'TEST-{klasse}.xml')
     if os.path.exists(bericht):
         os.remove(bericht)
     git(wurzel, 'apply', os.path.abspath(patch))
-    befehl = gradle + [f':{k["Modul"]}:testDebugUnitTest', '--rerun', '--tests', klasse]
+    befehl = gradle + [f':{k["Modul"]}:{aufgabe}', '--rerun', '--tests', klasse]
     try:
         lauf = subprocess.run(befehl, cwd=projekt, capture_output=True, text=True)
         # KSP verliert nach einem Patch in einem Vormodul sporadisch dessen Klassen

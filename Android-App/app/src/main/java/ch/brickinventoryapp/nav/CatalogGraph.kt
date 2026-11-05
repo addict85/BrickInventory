@@ -34,39 +34,39 @@ internal data object KatalogBereich
 fun NavGraphBuilder.catalogGraph(u: ZielUmgebung) {
     val navController = u.navController
     val imageLoader = u.imageLoader
-        // ── Merkliste ──
-        //
-        // Hier und nicht im CollectionGraph: Eine Merkliste ist kein Bestand. Sie steht
-        // dem Katalog näher — von dort kommt der häufigste Weg hinein, und wie er zeigt
-        // sie Sets, die einem nicht gehören.
-        composable<Screen.Wanted> {
-            // Auf breiten Fenstern Liste und Detail nebeneinander (Lesebreite.kt).
-            androidx.compose.foundation.layout.BoxWithConstraints {
-                val nebeneinander = ch.brickinventoryapp.ui.listeUndDetail(maxWidth.value)
-                ReiterGeruest(stringResource(R.string.nav_wanted), u) {
-                    val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
-                    ch.brickinventoryapp.ui.screens.MerklisteRoute(
-                        vm = hiltViewModel<MerklisteViewModel>(),
-                        imageLoader = imageLoader,
-                        nebeneinander = nebeneinander,
-                        onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner) },
-                        onOeffnenEinzeln = { sn, zustand ->
-                            navController.navigate(Screen.MerkpostenDetail(sn, zustand))
-                        },
-                    )
-                }
+    // ── Merkliste ──
+    //
+    // Hier und nicht im CollectionGraph: Eine Merkliste ist kein Bestand. Sie steht
+    // dem Katalog näher — von dort kommt der häufigste Weg hinein, und wie er zeigt
+    // sie Sets, die einem nicht gehören.
+    composable<Screen.Wanted> {
+        // Auf breiten Fenstern Liste und Detail nebeneinander (Lesebreite.kt).
+        androidx.compose.foundation.layout.BoxWithConstraints {
+            val nebeneinander = ch.brickinventoryapp.ui.listeUndDetail(maxWidth.value)
+            ReiterGeruest(stringResource(R.string.nav_wanted), u) {
+                val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+                ch.brickinventoryapp.ui.screens.MerklisteRoute(
+                    vm = hiltViewModel<MerklisteViewModel>(),
+                    imageLoader = imageLoader,
+                    nebeneinander = nebeneinander,
+                    onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner) },
+                    onOeffnenEinzeln = { sn, zustand ->
+                        navController.navigate(Screen.MerkpostenDetail(sn, zustand))
+                    },
+                )
             }
         }
-        composable<Screen.MerkpostenDetail> { backStack ->
-            val ziel = backStack.toRoute<Screen.MerkpostenDetail>()
-            ch.brickinventoryapp.ui.screens.MerkpostenDetailRoute(
-                vm = hiltViewModel<MerklisteViewModel>(),
-                setNumber = ziel.setNumber,
-                condition = ziel.condition,
-                imageLoader = imageLoader,
-                onBack = { navController.popBackStack() },
-            )
-        }
+    }
+    composable<Screen.MerkpostenDetail> { backStack ->
+        val ziel = backStack.toRoute<Screen.MerkpostenDetail>()
+        ch.brickinventoryapp.ui.screens.MerkpostenDetailRoute(
+            vm = hiltViewModel<MerklisteViewModel>(),
+            setNumber = ziel.setNumber,
+            condition = ziel.condition,
+            imageLoader = imageLoader,
+            onBack = { navController.popBackStack() },
+        )
+    }
     navigation<KatalogBereich>(startDestination = Screen.Catalog) {
         composable<Screen.Catalog> { eintrag ->
             val vm: AppViewModel = aktivitaetsViewModel()

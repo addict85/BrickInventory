@@ -77,8 +77,10 @@ class KachelVorlesenTest {
 
     @Test
     fun `Teilekachel liest Name einmal und Menge mit Einheit`() {
-        val teil = TeilAnsicht(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", totalQuantity = 12)
-        val gelesen = vorgelesen { PartCard(teil, serverUrl = "", imageLoader = bilder, onClick = {}) }
+        // Mit Bild: Nur dann trägt die Kachel eine Bildbeschreibung, die den Namen doppeln könnte.
+        val teil = TeilAnsicht(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", totalQuantity = 12,
+            imageUrl = "https://cdn.rebrickable.com/media/parts/3001.png")
+        val gelesen = vorgelesen { PartCard(teil, serverUrl = "https://brick.example", imageLoader = bilder, onClick = {}) }
         pruefe("Teilekachel", gelesen, "Brick 2 x 4", listOf("12 Stück", "Teil 3001"))
     }
 
