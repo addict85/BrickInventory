@@ -14,7 +14,9 @@ import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-o
 import { confirmDelete } from './01-rueckfrage.js';
 
 // ── MINIFIGUREN ──────────────────────────────────────────────────────────────
-export let allFigsCache = [];
+let allFigsCache = [];
+/** Die zuletzt geladenen Figuren aus Sets (nur lesen). */
+export function alleFiguren() { return allFigsCache; }
 
 // ── Endlos-Scroll der Minifiguren ──────────────────────────────────────────
 // Wie in Galerie, Katalog und Teileansicht. Suche und Quellenfilter gehen an
@@ -291,7 +293,9 @@ export async function deleteManualFig(figNumber, owner) {
   else { toast(d.error || t('settings.error'), 'error'); return false; }
 }
 
-export let manualFigsCache = [];
+let manualFigsCache = [];
+/** Die zuletzt geladenen manuell erfassten Figuren (nur lesen). */
+export function manuelleFiguren() { return manualFigsCache; }
 export async function loadManualFigsTable() {
   const d = await api('GET', '/v1/minifigs/manual'+manuellQuery('minifigs', 'fig-search'));
   if (!d.success) return;

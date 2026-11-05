@@ -87,9 +87,9 @@ export function bindGlobalErrorHandlers() {
 }
 
 // ── TEILELISTE (temporary parts list, resets on page leave) ──────────────────
-export let _plSets = []; // { set_number, name }
+let _plSets = []; // { set_number, name }
 /** @type {any[] | null} */
-export let _plParts = null; // generated parts list
+let _plParts = null; // generated parts list
 let _rbToBlColor = {}; // Rebrickable → BrickLink color ID mapping
 
 function plAddSet() {

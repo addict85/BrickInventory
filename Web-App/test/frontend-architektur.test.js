@@ -16,6 +16,10 @@
  *   C  in 05-settings.js den Alarm-Import wieder per
  *      `fetch('/api/v1/alerts/import/csv', …)` → rot: „kein fetch an der
  *      Hülle vorbei“ mit Datei und Zeile
+ *   D  in 01-monitor.js wieder `export let _monitorTimer` → rot: „geteilter
+ *      Zustand nur in 00-zustand.js“
+ *   E  in 01-bausteine.js `import { loadGallery } from './02-gallery.js'` → rot:
+ *      „Kern importiert keine Ansicht“ (und der Kreis-Test)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -78,6 +82,29 @@ test('das Frontend-Bündel hat keinen Importkreis', () => {
   assert.deepEqual(kreise(g), [],
     'Importkreis im Frontend. Rückwege nach oben über 00-ereignisse.js (melde/abonniere) ' +
     'oder 00-ziele.js (springe), geteilter Zustand in 00-zustand.js.');
+});
+
+test('Kern und Bausteine (00-*, 01-*, i18n.js) importieren keine Ansicht', () => {
+  const g = graph();
+  const unten = (/** @type {string} */ k) => k === 'i18n.js' || /^js\/0[01]-/.test(k);
+  const kern = [...g.keys()].filter(unten);
+  assert.ok(kern.length >= 12, `nur ${kern.length} Kernmodule gefunden`);
+  const aufwaerts = kern.flatMap(k => (g.get(k) ?? []).filter(z => !unten(z)).map(z => `${k} → ${z}`));
+  assert.deepEqual(aufwaerts, [], 'Der Kern ruft Ansichten über Ereignisse oder Sprungziele, nicht per Import');
+});
+
+test('geteilter veränderlicher Zustand nur in 00-zustand.js', () => {
+  // Ein `export let` ist eine Variable, die jedes Modul lesen kann, deren
+  // Besitzer aber nicht feststeht. Ausserhalb des Zustandsmoduls gibt es
+  // stattdessen Lese- oder Stoppfunktionen (manuelleTeile(), stoppeMonitor()).
+  const treffer = [];
+  for (const f of fs.readdirSync(JS).filter(x => /^\d\d-.*\.js$/.test(x) && x !== '00-zustand.js')) {
+    fs.readFileSync(path.join(JS, f), 'utf8').split('\n').forEach((z, i) => {
+      if (/^export\s+let\b/.test(z)) treffer.push(`${f}:${i + 1}: ${z.trim()}`);
+    });
+  }
+  assert.ok(/^export let /m.test(fs.readFileSync(path.join(JS, '00-zustand.js'), 'utf8')), 'Zustandsmodul ohne Zustand?');
+  assert.deepEqual(treffer, []);
 });
 
 test('kein fetch an der API-Hülle vorbei', () => {

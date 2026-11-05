@@ -22,7 +22,7 @@ import { G } from './01-core.js';
 // Eintrag bleibt es leer, und der Balken ist ein gewöhnlicher Scrollbalken.
 
 /** Wer beim Ziehen ein Etikett zeigen will, setzt hier eine Funktion. */
-export let scrollLabelFn = null;
+let scrollLabelFn = null;
 export function setScrollLabel(fn) { scrollLabelFn = fn; }
 
 function _rollbarerBereich() {

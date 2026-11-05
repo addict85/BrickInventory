@@ -8,7 +8,7 @@ import { esc } from './00-escapen.js';
 
 // ── JOB STATUS ───────────────────────────────────────────
 /** @type {ReturnType<typeof setInterval> | null} */
-export let jobPollTimer = null;
+let jobPollTimer = null;
 
 function formatDur(ms) {
   if (!ms) return '';
@@ -269,12 +269,10 @@ registerActions({
   triggerCsvSync,
 });
 
-/**
- * Setter für jobPollTimer — importierte Bindungen sind in ES-Modulen schreibgeschützt.
- * Ersetzt die frühere direkte Zuweisung aus einer anderen Datei, die mit
- * globalen Variablen noch möglich war.
- * @param {any} v
- */
-export function set_jobPollTimer(v) { jobPollTimer = v; }
+/** Die laufende Abfrage des Auftrags-Status anhalten (Reiterwechsel). */
+export function stoppeJobAbfrage() {
+  if (jobPollTimer) clearTimeout(jobPollTimer);
+  jobPollTimer = null;
+}
 
 

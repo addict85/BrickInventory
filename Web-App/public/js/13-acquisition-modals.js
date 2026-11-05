@@ -19,7 +19,7 @@ import { colorName, locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, G, api, escJs, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast, betragAusFeld, betragFuerFeld, aktiverReiter } from './01-core.js';
 import { applySetAggregate, loadGallery } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
-import { deleteManualFig, loadManualFigsTable, manualFigsCache, updateManualFig } from './06-minifigs.js';
+import { deleteManualFig, loadManualFigsTable, manuelleFiguren, updateManualFig } from './06-minifigs.js';
 import { scopeQuery } from './14-scope.js';
 import { CURRENCY, ME, curSet } from './00-zustand.js';
 import { esc } from './00-escapen.js';
@@ -27,7 +27,7 @@ import { closeModal, ladeLagerorte, lagerortBlock, ladeOrtAuswahl } from './02-d
 import { confirmDelete } from './01-rueckfrage.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
 import { springe } from './00-ziele.js';
-import { deleteManualPart, loadBrickColors, loadManualParts, manualPartsCache, updateManualPart } from './03-parts.js';
+import { deleteManualPart, loadBrickColors, loadManualParts, manuelleTeile, updateManualPart } from './03-parts.js';
 
 // ── KAUFPREIS-MODAL ─────────────────────────────────────────────────────────
 let _acqModalSn = null;
@@ -390,8 +390,8 @@ export async function openManDetail(type, id, colorId) {
 
   // Load item from cache
   const fromCache = () => type === 'fig'
-    ? (manualFigsCache || []).find(f => f.fig_number === id)
-    : (manualPartsCache || []).find(p => p.part_number === id && (p.color_id||0) === _manItem.colorId);
+    ? manuelleFiguren().find(f => f.fig_number === id)
+    : manuelleTeile().find(p => p.part_number === id && (p.color_id||0) === _manItem.colorId);
 
   let item = fromCache();
   // Die Caches füllen die Reiter Teile und Minifiguren. Aus der Finanztabelle
@@ -927,8 +927,8 @@ function openManAcqModal() {
   if (!_manItem) return;
   const { type, id, colorId } = _manItem;
   const title = type === 'fig'
-    ? ((manualFigsCache||[]).find(f=>f.fig_number===id)?.fig_name || id)
-    : ((manualPartsCache||[]).find(p=>p.part_number===id)?.part_name || id);
+    ? (manuelleFiguren().find(f=>f.fig_number===id)?.fig_name || id)
+    : (manuelleTeile().find(p=>p.part_number===id)?.part_name || id);
   G('acq-modal-tit').textContent = tRaw('detail.edit_prices');
   G('acq-modal-sub').textContent = title;
   G('acq-modal-body').innerHTML = `<div data-stil="color:var(--mut);font-size:var(--fs-2)">${t('common.loading')}</div>`;

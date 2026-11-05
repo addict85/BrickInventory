@@ -25,7 +25,7 @@ import { esc } from './00-escapen.js';
  * unten.
  */
 /** @type {ReturnType<typeof setInterval> | null} */
-export let _monitorTimer = null;
+let _monitorTimer = null;
 
 function openLogViewer() {
   const win = window.open('', '_blank', 'width=1200,height=750,resizable=yes,scrollbars=yes');
@@ -356,13 +356,12 @@ async function auftragsArtLeeren(art) {
   await zeigeAuftraege();
 }
 
-/**
- * Setter für _monitorTimer — importierte Bindungen sind in ES-Modulen schreibgeschützt.
- * Ersetzt die frühere direkte Zuweisung aus einer anderen Datei, die mit
- * globalen Variablen noch möglich war.
- * @param {any} v
- */
-export function set_monitorTimer(v) { _monitorTimer = v; }
+/** Beim Verlassen des Reiters: die Abfrage anhalten. @returns {boolean} ob sie lief */
+export function stoppeMonitor() {
+  if (!_monitorTimer) return false;
+  clearInterval(_monitorTimer); _monitorTimer = null;
+  return true;
+}
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 // Der Handler gehört zu dem Modul, das ihn umsetzt.

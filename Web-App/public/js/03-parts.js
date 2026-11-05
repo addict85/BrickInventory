@@ -474,7 +474,9 @@ G('parts-view').addEventListener('change', teileAnsichtGeaendert);
 
 
 // ── MANUAL PARTS ─────────────────────────────────────────────────────────────
-export let manualPartsCache = [];
+let manualPartsCache = [];
+/** Die zuletzt geladenen manuell erfassten Teile (nur lesen). */
+export function manuelleTeile() { return manualPartsCache; }
 
 export async function loadManualParts() {
   const [d, v] = await Promise.all([

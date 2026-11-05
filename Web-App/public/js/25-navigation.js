@@ -5,10 +5,10 @@ import { stelleZielBereit } from './00-ziele.js';
 import { registerActions } from './00-registry.js';
 import { G, leerZustand, alle, eins } from './01-core.js';
 import { ME, _lastImportAt } from './00-zustand.js';
-import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
+import { loadMonitor, stoppeMonitor } from './01-monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './06-minifigs.js';
 import { initCatalog, katalogZuruecksetzen } from './09-catalog.js';
-import { jobPollTimer, pollJobStatus, set_jobPollTimer } from './07-admin.js';
+import { pollJobStatus, stoppeJobAbfrage } from './07-admin.js';
 import { ladeAlarmUebersicht, ladeLagerortVerwaltung, ladeTls, loadApiLimits, loadCacheStats, loadCacheTtl, loadHousehold, loadProfile, loadRateLimitStats, loadSettings, loadTokens } from './05-settings.js';
 import { ladeGutscheine } from './17-gutscheine.js';
 import { ladeMerkliste, merklisteZuruecksetzen } from './16-merkliste.js';
@@ -147,8 +147,8 @@ export function bindTabs(){
       // beim Oeffnen (siehe oeffneSicht unten). Wer die API-Schluessel
       // nachsieht, braucht keine Gutscheinliste.
       if(tab==='settings')     { zeigeEinstellungsZugriff(); loadSettings(); if(ME?.isAdmin) loadApiLimits(); }
-      if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); if(jobPollTimer) clearTimeout(jobPollTimer); pollJobStatus(); }
-      if(tab!=='monitor' && _monitorTimer) { clearInterval(_monitorTimer); set_monitorTimer(null); if(jobPollTimer){clearTimeout(jobPollTimer);set_jobPollTimer(null);} }
+      if(tab==='monitor')      { loadMonitor(); loadCacheStats(); loadRateLimitStats(); loadCacheTtl(); stoppeJobAbfrage(); pollJobStatus(); }
+      if(tab!=='monitor' && stoppeMonitor()) stoppeJobAbfrage();
     });
   });
   // Alle Seitentitel-Icons füllen — läuft bei jedem bindTabs()-Aufruf, also

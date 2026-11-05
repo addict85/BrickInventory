@@ -28,9 +28,9 @@ import { ME } from './00-zustand.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
 /** @type {ReturnType<typeof setInterval> | null} */
-export let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
+let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
 /** @type {EventSource | null} */
-export let _gibSse         = null;   // aktive EventSource (SSE), falls verfügbar
+let _gibSse         = null;   // aktive EventSource (SSE), falls verfügbar
 let _gibLastCount   = 0;
 
 // Rendert einen Import-Status ins UI. Quelle (SSE oder Polling) ist egal.
@@ -389,7 +389,9 @@ export function handleSseEvent(ev, singleSetName){
 }
 
 // ── CSV import polling state ─────────────────────────────────────────────────
-export let _csvPollActive = false;
+let _csvPollActive = false;
+/** Läuft der CSV-Import aus diesem Fenster (dann zeigt dessen Schleife das Protokoll)? */
+export function csvPollAktiv() { return _csvPollActive; }
 /** @param {boolean} v */
 export function setzeCsvPollAktiv(v) { _csvPollActive = v; }
 

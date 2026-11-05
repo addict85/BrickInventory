@@ -4,7 +4,7 @@ import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 import { delSet } from './02-gallery.js';
-import { allFigsCache, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './06-minifigs.js';
+import { alleFiguren, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './06-minifigs.js';
 import { merkpostenLoeschen } from './16-merkliste.js';
 import { autosaveSet, closeImageLightbox, openImageLightbox } from './07-set-detail.js';
 import { hideProgress } from './01-fortschritt.js';
@@ -291,7 +291,7 @@ function setLangFromEl() { setLang(this.value); }
 /** @this {HTMLSelectElement} */
 function setzeDunkel() { window.__bimDunkel?.(this.value); }
 
-/** War: onchange="renderFigs(allFigsCache)" */
+/** Neu zeichnen mit der zuletzt geladenen Liste. */
 /**
  * Der Ansichtsumschalter des Figuren-Reiters — fuer BEIDE Listen.
  *
@@ -301,7 +301,7 @@ function setzeDunkel() { window.__bimDunkel?.(this.value); }
  * ueber beiden steht. Marco hat es an den Teilen gesehen; die Figuren trugen
  * es unbemerkt mit.
  */
-function renderFigsAll() { renderFigs(allFigsCache); renderManualFigsTable(); }
+function renderFigsAll() { renderFigs(alleFiguren()); renderManualFigsTable(); }
 
 // ── Wrapper für Handler, die vorher als Ausdruck im Attribut standen ────────
 // Alle bekommen `this` = auslösendes Element und das Ereignis als letztes

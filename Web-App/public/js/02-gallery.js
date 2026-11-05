@@ -6,8 +6,7 @@ import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, sch
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, G, TRASH_ICON_SVG, api, escJs, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, alle } from './01-core.js';
-import { _gibSse, _gibTimer, gibStart, protokollZeile, _csvPollActive, addCsvLog, handleSseEvent, hideProgress, setProgBar, showProgress, streamFertig, streamRequest, setzeCsvPollAktiv } from './01-fortschritt.js';
-import { _monitorTimer } from './01-monitor.js';
+import { gibStart, protokollZeile, csvPollAktiv, addCsvLog, handleSseEvent, hideProgress, setProgBar, showProgress, streamFertig, streamRequest, setzeCsvPollAktiv } from './01-fortschritt.js';
 import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './14-scope.js';
 import { loadParts, loadManualParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -553,9 +552,9 @@ function csvApplyOverlayStatus(s, ctx, fi){
 
 // Polling-Fallback für das startende Fenster (nur wenn SSE nicht verfügbar).
 async function csvPollLoop(ctx, fi){
-  while(_csvPollActive){
+  while(csvPollAktiv()){
     await new Promise(r=>setTimeout(r,1500));
-    if(!_csvPollActive) break;
+    if(!csvPollAktiv()) break;
     try{
       const s = await api('GET','/v1/sets/import/csv/status');
       if(csvApplyOverlayStatus(s, ctx, fi)) break;
