@@ -92,7 +92,8 @@ export function parseCsvDate(raw: unknown) {
  * Ausführlich: docs/begruendungen/src/infra/csvExport.ts.md#gefaehrliche-spalten */
 const GEFAEHRLICHE_SPALTEN = new Set(['__proto__', 'constructor', 'prototype']);
 
-export function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[] } {
+/** `zeilen[i]` ist die Zeile der Datei, in der `records[i]` steht: Leerzeilen verschieben sonst die Zählung. */
+export function csvEinlesen(csvText: string): { records: any[]; delimiter: string; uebersprungen: number[]; zeilen: number[] } {
   const text = String(csvText || '').replace(/^\uFEFF/, '');
   const firstLine = text.split('\n')[0] || '';
   const delimiter = firstLine.split(';').length > firstLine.split(',').length ? ';' : ',';
@@ -112,18 +113,20 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
     // Krumme Zeilen und verirrte Anführungszeichen überspringen statt alles abzubrechen.
     relax_column_count: true,
     relax_quotes: true,
-  });
+    info: true,
+  }) as { record: any; info: { lines: number } }[];
 
   // Zeilen ohne Inhalt gelten als übersprungen — das macht `relax_column_count`
   // aus einer krummen Zeile.
   const brauchbar: any[] = [];
-  records.forEach((r: any, i: number) => {
+  const zeilen: number[] = [];
+  records.forEach(({ record: r, info }) => {
     const werte = Object.values(r).map(v => String(v ?? '').trim());
-    if (werte.some(v => v !== '')) brauchbar.push(r);
-    else uebersprungen.push(i + 2);   // +2: Kopfzeile plus 1-basiert
+    if (werte.some(v => v !== '')) { brauchbar.push(r); zeilen.push(info.lines); }
+    else uebersprungen.push(info.lines);
   });
 
-  return { records: brauchbar, delimiter, uebersprungen };
+  return { records: brauchbar, delimiter, uebersprungen, zeilen };
 }
 
 /** Höchstens zehn Zeilennummern, sonst wird die Meldung länger als hilfreich. */

@@ -294,9 +294,9 @@
 </main>
 
 <!-- PROGRESS OVERLAY -->
-<div id="progress-overlay">
+<div id="progress-overlay" class="ovl" role="dialog" aria-modal="true" aria-labelledby="prog-title-txt">
   <div class="prog-box relativ">
-    <button data-click="hideProgress" title="Minimieren" data-stil="position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid var(--bdr);cursor:pointer;color:var(--mut);padding:1px 9px 4px;border-radius:4px;line-height:1;font-size:var(--fs-4);font-weight:400" class="hover-row" >&#8722;</button>
+    <button type="button" data-click="hideProgress" data-dialog-zu aria-label="Minimieren" title="Minimieren" data-i18n="prog.minimieren" data-i18n-attr="title" data-i18n-aria="prog.minimieren" data-stil="position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid var(--bdr);cursor:pointer;color:var(--mut);padding:1px 9px 4px;border-radius:4px;line-height:1;font-size:var(--fs-4);font-weight:400" class="hover-row" >&#8722;</button>
     <div class="prog-title"><svg class="ico" aria-hidden="true"><use href="#i-aktualisieren"/></svg> <span id="prog-title-txt" data-i18n="prog.processing">Wird verarbeitet…</span></div>
     <div class="prog-set-name" id="prog-set-name"></div>
     <div class="prog-steps" id="prog-steps">
@@ -304,8 +304,8 @@
       <div class="prog-step" id="ps-image"><span class="step-icon"><svg class="ico" aria-hidden="true"><use href="#i-bild"/></svg></span><span class="step-txt" data-i18n="prog.step_image">Bild herunterladen</span></div>
     </div>
     <div class="prog-hint" id="prog-hint" data-i18n="prog.hint_background">Teile, Anleitungen, Teilbilder und Preise werden danach im Hintergrund geladen.</div>
-    <div class="prog-bar-wrap"><div class="prog-bar" id="prog-bar" data-stil="width:0%"></div></div>
-    <div class="prog-footer" id="prog-footer" data-i18n="common.please_wait">Bitte warten…</div>
+    <div class="prog-bar-wrap" id="prog-bar-wrap" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-labelledby="prog-title-txt"><div class="prog-bar" id="prog-bar" data-stil="width:0%"></div></div>
+    <div class="prog-footer" id="prog-footer" role="status" data-i18n="common.please_wait">Bitte warten…</div>
     <div id="csv-log" class="csv-log" data-stil="display:none"></div>
     <div class="knopf-reihe-mitte">
       <button class="btn bd btn-sm" id="btn-cancel-import" data-stil="display:none" data-i18n="csv.cancel" data-ico="schliessen">Abbrechen</button>
@@ -465,6 +465,7 @@
           <div class="import-klappe">
             <label for="csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" class="datei-versteckt" data-change="startSetCsvImport" /></label>
             <a class="import-eintrag" id="btn-set-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
+            <button type="button" class="import-eintrag" id="letzter-import" data-click="zeigeLetztenImport" hidden><svg class="ico" aria-hidden="true"><use href="#i-liste"/></svg><span id="letzter-import-text"></span></button>
             <label class="import-eintrag zeiger"><span data-wanted-icon="1"></span><span data-i18n="import.bricklink_xml">BrickLink-Wanted-Liste (XML) einlesen</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="set" /></label>
           </div>
         </details>

@@ -209,6 +209,8 @@ export const FEHLER = {
                                  en: 'No usable row found — skipped: row {zeilen}' },
   csv_uebersprungen:           { de: '{anzahl} Zeile(n) übersprungen (Zeile {zeilen})',
                                  en: '{anzahl} row(s) skipped (row {zeilen})' },
+  csv_menge_ungueltig:         { de: 'Menge „{wert}“ ungültig', en: 'Quantity "{wert}" is invalid' },
+  csv_keine_setnummer:         { de: 'keine Set-Nummer', en: 'no set number' },
   import_zeitueberschreitung:  { de: 'Zeitüberschreitung', en: 'Timed out' },
   import_kontingent:           { de: 'Abruflimit erreicht', en: 'Rate limit reached' },
   feld_erforderlich:           { de: '{feld} erforderlich', en: '{feld} is required' },

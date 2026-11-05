@@ -15538,6 +15538,9 @@
               "string",
               "null"
             ]
+          },
+          "beendet_am": {
+            "type": "string"
           }
         },
         "required": [
@@ -20314,6 +20317,20 @@
               "string",
               "null"
             ]
+          },
+          "gestartet": {
+            "type": "boolean"
+          },
+          "vorhanden": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "vorhanden_nummern": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

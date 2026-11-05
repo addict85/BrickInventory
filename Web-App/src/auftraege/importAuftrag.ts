@@ -23,6 +23,7 @@ type ImportAuftrag = {
   current?: string | null;
   error?: string | null;
   results?: ImportErgebnis[] | null;
+  updated_at?: Date | string | null;
 } | null | undefined;
 
 export function buildJobStatus(job: ImportAuftrag, req?: any, sprache: Sprache = antwortSprache(req)) {
@@ -32,9 +33,10 @@ export function buildJobStatus(job: ImportAuftrag, req?: any, sprache: Sprache =
   }
   const results = (Array.isArray(job.results) ? job.results : []).map((r: ImportErgebnis) =>
     r.code ? { ...r, error: fehlerText(r.code as FehlerCode, sprache, r.vars) } : r);
-  const ok   = results.filter((r: ImportErgebnis)=>r.success).length;
+  // Ein Set, das der Katalog nicht kennt, ist gebucht, aber eine Warnung wert: Grün hiesse „alles bekannt“.
+  const ok   = results.filter((r: ImportErgebnis)=>r.success && !r.katalog_offen).length;
   const err  = results.filter((r: ImportErgebnis)=>!r.success && !r.isWarning).length;
-  const warn = results.filter((r: ImportErgebnis)=>!r.success &&  r.isWarning).length;
+  const warn = results.filter((r: ImportErgebnis)=>(!r.success && r.isWarning) || (r.success && r.katalog_offen)).length;
   return {
     success: true,
     status:  job.status,
@@ -44,6 +46,8 @@ export function buildJobStatus(job: ImportAuftrag, req?: any, sprache: Sprache =
     ok, err, warn,
     results,
     error:   job.error  || null,
+    // Woran die Oberfläche nach dem Neuladen erkennt, ob das Ergebnis noch frisch genug ist.
+    ...(job.updated_at ? { beendet_am: new Date(job.updated_at).toISOString() } : {}),
   };
 }
 

@@ -334,9 +334,10 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
 
 router.post('/sets/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: OffeneAnfrage<'POST /api/v1/sets/import/csv'>, res: Antwort<'POST /api/v1/sets/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-  const { total, uebersprungen } = await setCsvImportStarten(angemeldeteNutzerId(req), req.file.buffer.toString('utf-8'));
+  const pruefen = String((req.body as Record<string, unknown> | undefined)?.pruefen ?? '') === '1';
+  const { total, uebersprungen, vorhanden, gestartet } = await setCsvImportStarten(angemeldeteNutzerId(req), req.file.buffer.toString('utf-8'), pruefen);
   // Übersprungene Zeilen gehören in die sofortige Antwort; der Import läuft weiter.
-  res.json({ success: true, total,
+  res.json({ success: true, total, gestartet, vorhanden: vorhanden.length, vorhanden_nummern: vorhanden.slice(0, 20),
     skipped: uebersprungen.length || undefined,
     skipped_hint: uebersprungenHinweis(uebersprungen, antwortSprache(req)) || undefined });
 });

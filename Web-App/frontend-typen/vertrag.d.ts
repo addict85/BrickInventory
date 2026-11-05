@@ -420,6 +420,7 @@ export type CsvImportStatus = {
   warn?: number | null;
   err?: number | null;
   error?: string | null;
+  beendet_am?: string;
   [feld: string]: unknown;
 };
 export type CurrentByCondition = {
@@ -1401,6 +1402,9 @@ export type POST_api_v1_minifigs_import_csv = {
   updated?: number;
   errors?: number;
   error?: string | null;
+  gestartet?: boolean;
+  vorhanden?: number;
+  vorhanden_nummern?: string[];
   [feld: string]: unknown;
 };
 export type POST_api_v1_sets_import_csv_cancel = {

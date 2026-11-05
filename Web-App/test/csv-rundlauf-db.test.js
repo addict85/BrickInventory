@@ -76,6 +76,6 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
 
   await t.test('Sets: der Zeilenleser des Imports liest jede Spalte des Exports', async () => {
     const { rows } = setCsvZeilen(await buildSetsCsv(A));
-    assert.deepEqual(rows, [{ sn: 'RL10001-1', qty: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' }]);
+    assert.deepEqual(rows, [{ sn: 'RL10001-1', qty: 2, zeile: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' }]);
   });
 });

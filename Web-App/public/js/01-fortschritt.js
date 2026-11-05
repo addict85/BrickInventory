@@ -8,7 +8,7 @@ import { ico, G, setzeHtml } from './01-dom.js';
 import { fmtPct } from './01-format.js';
 import { toast } from './01-meldungen.js';
 import { melde } from './00-ereignisse.js';
-import { LANG, t, tRaw } from '../i18n.js';
+import { LANG, tRaw } from '../i18n.js';
 import { ME } from './00-zustand.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
@@ -17,7 +17,7 @@ let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
 /**
  * Ein Eintrag im Ergebnis eines Imports. `results` nennt der Vertrag nicht (CsvImportStatus ist offen); so
  * schreibt ihn src/import/csvImport.ts.
- * @typedef {{ set_number?: string, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportErgebnis
+ * @typedef {{ set_number?: string, zeile?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportErgebnis
  * @typedef {import('../../frontend-typen/vertrag').CsvImportStatus & { results?: ImportErgebnis[] }} ImportStand
  */
 /** @type {EventSource | null} */
@@ -58,12 +58,13 @@ function gibApplyStatus(s) {
   const overlayOpen = G('progress-overlay')?.classList.contains('open');
   if (overlayOpen) {
     G('prog-title-txt').textContent = tRaw('csv.import_title');
-    G('prog-bar').style.width = pct + '%';
+    setProgBar(pct);
     if (running) {
       G('prog-footer').textContent = `${tRaw('csv.items_progress',{done,total})} (${importZaehler(s)})`;
-      if (s.current) G('prog-set-name').textContent = tRaw('csv.verarbeite', { set: s.current, done, total });
+      G('prog-set-name').textContent = s.current ? tRaw('csv.verarbeite', { set: s.current, done, total })
+        : done === 0 ? tRaw('csv.wartet') : '';
     } else {
-      G('prog-footer').textContent = `${t('csv.finished')} ${importZaehler(s)}`;
+      G('prog-footer').textContent = `${tRaw('csv.finished')} ${importZaehler(s)}`;
       G('prog-set-name').textContent = '';
     }
   }
@@ -84,12 +85,13 @@ function gibApplyStatus(s) {
   if (!_csvPollActive && s.results && s.results.length > _gibLastCount) {
     s.results.slice(_gibLastCount).forEach(r => {
       const z = protokollZeile(r);
-      if (z) gibAddLog(z.text, z.ok);
+      if (z) gibAddLog(z.text, z.art);
     });
   }
   if (s.results) _gibLastCount = s.results.length;
 
   if (!running) {
+    merkeLetztenImport(s);
     // Import done — only hide the header bar, never auto-close the overlay dialog
     setTimeout(() => {
       G('global-import-bar').style.display='none';
@@ -142,36 +144,39 @@ function gibToggle() {
  * @param {string} [warnZusatz]
  */
 export function protokollZeile(r, warnZusatz = '') {
-  if (!r?.set_number) return null;
+  if (!r?.set_number && !r?.zeile) return null;
+  // Mit Zeilennummer findet man die Stelle in der Datei; eine Zeile ohne Setnummer hat sonst keinen Namen.
+  const wo = (r.zeile ? tRaw('csv.zeile', { n: r.zeile }) + (r.set_number ? ' · ' : '') : '') + (r.set_number || '');
   if (r.success) {
     // Ein bekanntes Set bekommt ein weiteres Exemplar; „aktualisiert“ verschwieg das.
-    const was = r.action === 'added'
-      ? tRaw('common.added') + (r.katalog_offen ? ' — ' + tRaw('csv.log_unbekannt') : '')
+    const was = r.action === 'added' ? tRaw('common.added')
       : r.menge ? tRaw('csv.log_mehr', { n: r.menge }) : tRaw('common.updated');
-    return { ok: true, text: r.set_number + ' – ' + was };
+    // Gebucht, aber dem Katalog unbekannt: gelb statt grün, sonst sähe ein Tippfehler wie ein Erfolg aus.
+    if (r.katalog_offen) return { ok: false, art: /** @type {const} */ ('warn'), text: wo + ' – ' + was + ' — ' + tRaw('csv.log_unbekannt') };
+    return { ok: true, art: /** @type {const} */ ('ok'), text: wo + ' – ' + was };
   }
   // `warnZusatz` nur fuer den CSV-Import: Dort heisst eine Anmerkung
   // „Zeitueberschreitung, wird erneut versucht". Beim Wanted-Listen-Import heisst sie „offen, keine
   // Rebrickable-Nummer" — derselbe Satz waere dort schlicht falsch. Der Zusatz kommt deshalb vom Aufrufer und
   // nicht von hier.
   if (r.isWarning) {
-    return { ok: false, text: r.set_number + ': ' + (r.error || '')
+    return { ok: false, art: /** @type {const} */ ('warn'), text: wo + ': ' + (r.error || '')
       + (warnZusatz ? ' (' + warnZusatz + ')' : '') };
   }
-  return { ok: false, text: r.set_number + ': ' + (r.error || t('settings.error')) };
+  return { ok: false, art: /** @type {const} */ ('er'), text: wo + ': ' + (r.error || tRaw('settings.error')) };
 }
 
 /**
  * @param {string} text
- * @param {boolean} ok
+ * @param {'ok' | 'warn' | 'er'} art
  */
-function gibAddLog(text, ok) {
+function gibAddLog(text, art) {
   // Write to both the overlay csv-log AND the gib detail log
   for (const logId of ['csv-log', 'gib-log']) {
     const log = G(logId);
     if (!log) continue;
     const line = document.createElement('div');
-    line.className = 'csv-log-line ' + (ok ? 'ok' : 'er');
+    line.className = 'csv-log-line ' + art;
     line.textContent = text;
     log.appendChild(line);
     log.scrollTop = log.scrollHeight;
@@ -249,6 +254,7 @@ export async function gibCheckOnLoad() {
       }
       failures = 0;
       const s = await r.json();
+      merkeLetztenImport(s);
       if (s.success && (s.status === 'running' || s.status === 'pending')) {
         clearInterval(_gibCheckTimer); _gibCheckTimer=null;
         gibStart();
@@ -262,6 +268,40 @@ export async function gibCheckOnLoad() {
 }
 /** @type {number | null} */
 let _gibCheckTimer = null;
+
+/** Das Ergebnis des letzten abgeschlossenen Imports, solange es höchstens einen Tag alt ist. */
+/** @type {ImportStand | null} */
+let _letzterImport = null;
+const LETZTER_IMPORT_MS = 24 * 3600_000;
+
+/**
+ * Ein Eintrag im Import-Menü führt nach dem Neuladen zur Ergebnisliste zurück; der Server hält sie in
+ * import_stand, nur der Weg dorthin fehlte.
+ * @param {ImportStand | null | undefined} s
+ */
+function merkeLetztenImport(s) {
+  const fertig = !!s?.success && (s.status === 'done' || s.status === 'cancelled') && (s.results?.length ?? 0) > 0;
+  const alter = s?.beendet_am ? Date.now() - Date.parse(String(s.beendet_am)) : Infinity;
+  _letzterImport = fertig && alter < LETZTER_IMPORT_MS ? /** @type {ImportStand} */ (s) : null;
+  const knopf = /** @type {HTMLButtonElement | null} */ (document.getElementById('letzter-import'));
+  if (!knopf) return;
+  knopf.hidden = !_letzterImport;
+  if (_letzterImport) G('letzter-import-text').textContent = tRaw('csv.letzter_import', { zaehler: importZaehler(_letzterImport) });
+}
+
+/** Öffnet den Fortschrittsdialog mit dem gespeicherten Ergebnis. */
+function zeigeLetztenImport() {
+  const s = _letzterImport;
+  if (!s) return;
+  const menue = document.querySelector('#tab-gallery details.import-menue');
+  if (menue instanceof HTMLDetailsElement) menue.open = false;
+  showProgress(tRaw('csv.import_title'), true);
+  setProgBar(100);
+  for (const r of s.results || []) { const z = protokollZeile(r); if (z) addCsvLog(z.text, z.art); }
+  G('prog-footer').textContent = `${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${importZaehler(s)}`;
+  const zu = G('btn-close-import');
+  if (zu) zu.style.display = '';
+}
 /**
  * Setzt den Balken auf „nichts läuft“. Eine Funktion statt Zeilen beim Abmelden: Wer von aussen zurücksetzt,
  * müsste sonst das Innenleben dieser Datei kennen und bei jeder neuen Variable mitdenken.
@@ -282,6 +322,7 @@ export function gibZuruecksetzen() {
 registerActions({
   gibToggle,
   hideProgress,
+  zeigeLetztenImport,
 });
 
 // ── PROGRESS OVERLAY ─────────────────────────────────
@@ -291,7 +332,7 @@ registerActions({
  */
 export function showProgress(title, csvMode){
   G('prog-title-txt').textContent=title;
-  G('prog-bar').style.width='0%';
+  setProgBar(0);
   G('prog-footer').textContent=tRaw('common.please_wait');
   G('prog-set-name').textContent='';
   G('csv-log').style.display=csvMode?'block':'none';
@@ -334,15 +375,19 @@ function setStep(stepId, state){
 /**
  * @param {number} pct
  */
-export function setProgBar(pct){ G('prog-bar').style.width=Math.min(100,pct)+'%'; }
+export function setProgBar(pct){
+  const wert = Math.max(0, Math.min(100, pct));
+  G('prog-bar').style.width = wert + '%';
+  G('prog-bar-wrap')?.setAttribute('aria-valuenow', String(Math.round(wert)));
+}
 
 /**
  * @param {string} text
- * @param {boolean} ok
+ * @param {'ok' | 'warn' | 'er'} art
  */
-export function addCsvLog(text, ok){
+export function addCsvLog(text, art){
   const d=G('csv-log'), line=document.createElement('div');
-  line.className='csv-log-line '+(ok?'ok':'er');
+  line.className='csv-log-line '+art;
   line.textContent=text; d.appendChild(line); d.scrollTop=d.scrollHeight;
 }
 

@@ -263,6 +263,8 @@
     .import-eintrag{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border-radius:8px;color:var(--txt);text-decoration:none;font-size:var(--fs-3);font-weight:500}
     @media (hover:hover){.import-eintrag:hover{background:var(--bg)}}
     .import-eintrag .ico,.import-eintrag svg{width:1.125rem;height:1.125rem;flex:0 0 auto}
+    button.import-eintrag{background:none;border:0;width:100%;text-align:start;font-family:inherit;cursor:pointer}
+    .import-eintrag[hidden]{display:none}
 
     /* Umschalter der Sammlung: Sets | Teile | Minifiguren */
     .sammlung-wahl{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--s100);border:1px solid var(--bedienrand);border-radius:10px}
@@ -409,7 +411,7 @@
 
     .csv-log{max-height:260px;overflow-y:auto;background:var(--s50);border:1px solid var(--bdr);border-radius:8px;padding:8px;font-size:var(--fs-1);font-family:var(--mono);margin-top:.75rem}
     .csv-log-line{padding:2px 0;border-bottom:1px solid var(--bdr)}
-    .csv-log-line.ok{color:var(--g700)}.csv-log-line.er{color:var(--r700)}
+    .csv-log-line.ok{color:var(--g700)}.csv-log-line.er{color:var(--r700)}.csv-log-line.warn{color:var(--txt);border-left:3px solid var(--a500);padding-left:6px}
 
     /* GALLERY */
     .add2{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem}

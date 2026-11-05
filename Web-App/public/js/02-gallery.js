@@ -5,7 +5,7 @@ import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, sch
 import { echt, registerActions } from './00-registry.js';
 import { LANG, locale, t, tRaw} from '../i18n.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
-import { fehlerMeldung, api } from './01-api.js';
+import { fehlerMeldung, api, apiDaten } from './01-api.js';
 import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './01-bilder.js';
 import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, zuruecksetzenKnopf, aktiverReiter, alle, fuegeHtmlEin, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk } from './01-format.js';
@@ -469,18 +469,27 @@ async function doAddSet(){
 
 // CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)
 async function startSetCsvImport(){
-  const fi=G('csv-file'); if(!fi.files?.[0]){toast(tRaw('csv.select_file'),'error');return;}
+  const fi=G('csv-file'); const datei = fi.files?.[0]; if(!datei){toast(tRaw('csv.select_file'),'error');return;}
+  /** @param {boolean} pruefen */
+  const formular = (pruefen) => { const fd=new FormData(); fd.append('file', datei); if (pruefen) fd.append('pruefen', '1'); return fd; };
+  // Erst lesen lassen, dann fragen: Der Import erhöht bei vorhandenen Sets die Menge, das Einzel-Erfassen
+  // lehnt dasselbe Set ab. Wer eine Datei zweimal wählt, soll das vorher erfahren.
+  const vorab = await api('POST', '/v1/sets/import/csv', formular(true));
+  if(!vorab.success){ toast(vorab.error||tRaw('settings.error'),'error'); fi.value=''; return; }
+  if((vorab.vorhanden ?? 0) > 0 && !await confirmDelete(tRaw('csv.vorhanden_titel'),
+    tRaw('csv.vorhanden_text', { n: vorab.vorhanden ?? 0, nummern: (vorab.vorhanden_nummern || []).slice(0, 5).join(', ') }),
+    'import', { knopf: 'csv.vorhanden_knopf', art: 'bp' })){ fi.value=''; return; }
   showProgress(tRaw('csv.import_title'), true);
-  const fd=new FormData(); fd.append('file',/** @type {File} */ (fi.files?.[0]));
   try{
     // Start import job (returns immediately)
-    const startData = await api('POST', '/v1/sets/import/csv', fd);
+    const startData = await api('POST', '/v1/sets/import/csv', formular(false));
     if(!startData.success){ hideProgress(); toast(startData.error||t('settings.error'),'error'); return; }
     const total = startData.total;
     // Übersprungene Zeilen nennen — der Import läuft trotzdem weiter, aber wer 500 Zeilen schickt und 498
     // importiert bekommt, soll es erfahren.
     if (startData.skipped_hint) toast(startData.skipped_hint, 'info');
     G('prog-footer').textContent=tRaw('csv.items_progress',{done:0,total});
+    G('prog-set-name').textContent=tRaw('csv.wartet');
 
     setzeCsvPollAktiv(true);
     gibStart(); // globalen Balken zeigen (dieses + andere Fenster)
@@ -537,7 +546,8 @@ function csvApplyOverlayStatus(s, ctx, fi){
     const pct = total>0 ? (done/total)*95 : 0;
     setProgBar(pct);
     G('prog-footer').textContent=`${tRaw('csv.items_progress',{done,total})} (${importZaehler(s)})`;
-    if(s.current) G('prog-set-name').textContent=tRaw('csv.verarbeite', { set: s.current, done, total });
+    G('prog-set-name').textContent = s.current ? tRaw('csv.verarbeite', { set: s.current, done, total })
+      : done === 0 && s.status === 'running' ? tRaw('csv.wartet') : '';
     // Update header progress bar directly
     { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+fmtPct(_p,{vorzeichen:false,stellen:0})+')';} }
     // Show live results as they come in
@@ -546,7 +556,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
       newResults.forEach(r => {
         // Derselbe Bauer wie in 01-fortschritt.js — die Begruendung steht dort.
         const z = protokollZeile(r);
-        if (z) addCsvLog(z.text, z.ok);
+        if (z) addCsvLog(z.text, z.art);
       });
       ctx.prevResultCount = s.results.length;
     }
@@ -565,7 +575,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
           // Hinweis auf Zeitüberschreitung gilt nur hier.
           // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#z
           const z = protokollZeile(r, tRaw('csv.timeout_retry'));
-          if (z) addCsvLog(z.text, z.ok);
+          if (z) addCsvLog(z.text, z.art);
         });
         ctx.prevResultCount = s.results.length;
       }
@@ -574,8 +584,8 @@ function csvApplyOverlayStatus(s, ctx, fi){
         const errList = errSets.map(r=>r.set_number+': '+(r.error||'?')).join('; ');
         console.warn('[CSV Import] Fehler: '+errList);
       }
-      const zaehler = importZaehler(s, 'csv.timeout_warn_n');
-      G('prog-footer').textContent=`Import: ${zaehler}`;
+      const zaehler = importZaehler(s, 'csv.warnings_n');
+      G('prog-footer').textContent=`${tRaw('csv.zeilen_gelesen', { n: s.total ?? 0 })} · ${zaehler}`;
       const btnClose = G('btn-close-import');
       if (btnClose) btnClose.style.display = '';
       loadGallery();
@@ -597,8 +607,9 @@ async function csvPollLoop(ctx, fi){
     await new Promise(r=>setTimeout(r,1500));
     if(!csvPollAktiv()) break;
     try{
-      const s = await api('GET','/v1/sets/import/csv/status');
-      if(csvApplyOverlayStatus(/** @type {import('./01-fortschritt.js').ImportStand} */ (s), ctx, fi)) break;
+      // apiDaten statt api: api() überschriebe das Feld `status` mit dem HTTP-Status, die Schleife endete nie.
+      const s = await apiDaten('GET','/v1/sets/import/csv/status');
+      if(s && csvApplyOverlayStatus(/** @type {import('./01-fortschritt.js').ImportStand} */ (s), ctx, fi)) break;
     }catch(e){ console.warn('Poll error:',e); }
   }
 }

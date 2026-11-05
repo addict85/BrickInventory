@@ -132,6 +132,7 @@ export const CsvImportStatus = z.looseObject({
   warn: z.number().int().nullable().optional(),
   err: z.number().int().nullable().optional(),
   error: z.string().nullable().optional(),
+  beendet_am: zeit.optional(),
 });
 
 export const JobSchedule = z.looseObject({

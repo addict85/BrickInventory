@@ -16,6 +16,16 @@ export type CsvZeile = CsvNutzlast['rows'][number];
 const zeilenFrist = () => konfig().csvZeileFristMs;
 
 async function importiereZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
+  const wo = z.zeile ? { zeile: z.zeile } : {};
+  if (z.fehler) {
+    const vars = z.fehler.wert !== undefined ? { wert: z.fehler.wert } : undefined;
+    return { set_number: z.sn, ...wo, success: false, code: z.fehler.code, ...(vars ? { vars } : {}),
+             error: fehlerText(z.fehler.code, 'de', vars) };
+  }
+  return { ...await bucheZeile(z, userId), ...wo };
+}
+
+async function bucheZeile(z: CsvZeile, userId: number): Promise<ImportErgebnis> {
   for (let versuch = 1; ; versuch++) {
     let wecker: NodeJS.Timeout | undefined;
     try {
