@@ -82,6 +82,28 @@ export function escHtmlAttr(v) {
     .replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Trusted Types (CSP `require-trusted-types-for 'script'`): Der Browser nimmt Markup nur als TrustedHTML.
+// Das prägt allein die Richtlinie `app` über alsHtml(), die nur setzeHtml()/fuegeHtmlEin() und das
+// Protokollfenster benutzen; jede andere Zuweisung an innerHTML landet bei `default` und scheitert.
+const tt = /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): unknown } } }} */ (
+  /** @type {unknown} */ (globalThis)).trustedTypes;
+const richtlinie = tt?.createPolicy('app', { createHTML: (/** @type {string} */ s) => s });
+/** Skripte nur aus der eigenen Herkunft: Sprachdateien und der Worker von pdf.js (auch als blob:). @param {string} u */
+function eigenesSkript(u) {
+  const url = new URL(u, globalThis.location?.href);
+  if (url.origin !== globalThis.location?.origin) return false;
+  return url.protocol === 'blob:' || /^\/(locales|vendor\/pdfjs|js)\//.test(url.pathname);
+}
+tt?.createPolicy('default', {
+  createHTML: (/** @type {string} */ s) => { if (s === '') return s; throw new TypeError('Trusted Types: Markup nur über setzeHtml()'); },
+  createScriptURL: (/** @type {string} */ u) => { if (eigenesSkript(u)) return u; throw new TypeError(`Trusted Types: fremdes Skript ${u}`); },
+  createScript: () => { throw new TypeError('Trusted Types: kein Skript aus Text'); },
+});
+
+/** Ein fertiges, schon maskiertes Markup für den Browser (TrustedHTML, ohne Trusted Types der Text).
+ * Nur für die Stellen, die test/ratschen.test.js als Markup-Senken zulässt. @param {string} s @returns {string} */
+export function alsHtml(s) { return richtlinie ? /** @type {string} */ (richtlinie.createHTML(s)) : s; }
+
 /** Fertiges Markup: aus html`` oder ungeprueft(). Nur so nimmt setzeHtml() (01-dom.js) Text als Markup an. */
 export class SicheresHtml {
   /** Macht die Klasse für tsc nominal: ein Objekt mit `text` ist noch kein SicheresHtml. */

@@ -200,6 +200,9 @@ function sicherheitsKoepfe(req: Request, res: Response, next: NextFunction): voi
     "form-action 'self'",
     "base-uri 'none'",
     "object-src 'none'",
+    // Markup nur über setzeHtml() (Richtlinie app); `default` lässt nur eigene Skript-Adressen durch.
+    "require-trusted-types-for 'script'",
+    "trusted-types app default",
   ].join('; '));
   next();
 }

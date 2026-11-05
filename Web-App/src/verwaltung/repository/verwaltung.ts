@@ -23,8 +23,7 @@ export async function leerePreisCache(): Promise<void> {
   await db.run('DELETE FROM price_cache');
 }
 
-/** Die Bildspalten kommen aus dem Katalog, gleich für alle Konten. Nur die Zahl
- * der Konten: Welches Konto ein Set führt, geht auch den Verwalter nichts an. */
+/** Nur die Zahl der Konten: Welches ein Set führt, geht auch den Verwalter nichts an. */
 export async function bildZeilenDerKonten(sn: string): Promise<KontoBildzeile> {
   const z = await db.get<KontoBildzeile>(
     `SELECT COUNT(DISTINCT s.user_id)::int AS anzahl_konten, MAX(c.image_local) AS image_local, MAX(c.image_url) AS image_url
@@ -112,7 +111,8 @@ export function setsOhneAnleitung(): Promise<{ set_number: string }[]> {
 
 export function protokollSeit(minuten: number): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
   return db.all(
-    `SELECT id, level, message, logged_at
+    // bigint käme als Text; der Vertrag (und das Protokollfenster) nennt eine Zahl.
+    `SELECT id::float8 AS id, level, message, logged_at
        FROM app_logs
        WHERE logged_at >= NOW() - ($1 || ' minutes')::INTERVAL
        ORDER BY logged_at ASC

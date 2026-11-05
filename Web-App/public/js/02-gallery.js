@@ -126,10 +126,10 @@ function appendGallery(batch){
   const grid = c.querySelector('.sgrid');
   const tbody = c.querySelector('.dt tbody');
   if (curView === 'grid' && grid) {
-    fuegeHtmlEin(grid, 'beforeend', ungeprueft(batch.map(gridCard).join('')));
+    fuegeHtmlEin(grid, 'beforeend', batch.map(gridCard));
     observeLazyImages(grid);
   } else if (tbody) {
-    fuegeHtmlEin(tbody, 'beforeend', ungeprueft(batch.map(tableRow).join('')));
+    fuegeHtmlEin(tbody, 'beforeend', batch.map(tableRow));
   } else {
     renderGallery();                        // Struktur fehlt (leerer Zustand)
   }
@@ -254,10 +254,10 @@ export function renderGallery(){
     return;
   }
   if(curView==='grid'){
-    setzeHtml(c, html`<div class="sgrid">${ungeprueft(list.map(gridCard).join(''))}</div>`);
+    setzeHtml(c, html`<div class="sgrid">${list.map(gridCard)}</div>`);
     observeLazyImages(c);
   } else {
-    setzeHtml(c, html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('col.image_th')}</th><th>${tRaw('col.nr')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.year')}</th><th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('detail.reimport_parts')}</span></th><th><span class="vh">${tRaw('detail.delete')}</span></th></tr></thead><tbody>${ungeprueft(list.map(tableRow).join(''))}</tbody></table></div>`);
+    setzeHtml(c, html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('col.image_th')}</th><th>${tRaw('col.nr')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.year')}</th><th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('detail.reimport_parts')}</span></th><th><span class="vh">${tRaw('detail.delete')}</span></th></tr></thead><tbody>${list.map(tableRow)}</tbody></table></div>`);
     observeLazyImages(c);   // fehlte für die Listenansicht komplett
   }
 }
@@ -347,7 +347,7 @@ function tableRow(s){
     <td>${src ? bildTag({ src: imgUrl(thumbUrl(src)||src, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
     <td><span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${s.set_number}</span></td>
     <td>${s.name || '—'}</td><td>${s.year || '—'}</td><td>${s.theme || '—'}</td>
-    <td>${s.pieces ? ungeprueft(s.pieces.toLocaleString(locale())) : '—'}</td><td>${s.minifigs || '—'}</td>
+    <td>${s.pieces ? s.pieces.toLocaleString(locale()) : '—'}</td><td>${s.minifigs || '—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>
     <td data-stil="font-size:var(--fs-1);color:var(--mut)">${ungeprueft(addedFmt)}</td>
     <td>${s.instructions?.length ? html`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>` : '—'}</td>
