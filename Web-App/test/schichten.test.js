@@ -126,7 +126,7 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
 
 test('keine Route importiert eine andere Routendatei', () => {
   // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
-  // api_v1/index.ts. Gegenprobe (29.10.2026): `import { requireLogin } from
+  // api_v1/index.ts und auth.ts (aus routes/auth/). Gegenprobe (29.10.2026): `import { requireLogin } from
   // './auth'` zurück in routes/minifigs.ts → rot.
   const dateien = [];
   const lauf = (rel) => {
@@ -142,7 +142,8 @@ test('keine Route importiert eine andere Routendatei', () => {
   for (const d of dateien.filter(d => d !== 'routes/api_v1/index.ts'))
     for (const ziel of importe(d).filter(z => z.startsWith('.'))) {
       const voll = path.posix.normalize(path.posix.join(path.posix.dirname(d), ziel)).replace(/\.js$/, '');
-      if (voll.startsWith('routes/') && voll !== 'routes/api_v1/middleware') treffer.push(`${d} -> ${ziel}`);
+      if (voll.startsWith('routes/') && voll !== 'routes/api_v1/middleware'
+          && !(d === 'routes/auth.ts' && voll.startsWith('routes/auth/'))) treffer.push(`${d} -> ${ziel}`);
     }
   assert.deepEqual(treffer, []);
 });

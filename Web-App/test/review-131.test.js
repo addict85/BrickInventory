@@ -109,7 +109,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   // zusammengezogen ist: Die Drossel (checkLoginAllowed) sitzt jetzt IN dieser
   // Funktion, POST /login ruft sie über anmelden() auf. Ohne den Eintrag würde
   // ausgerechnet das Zusammenlegen als ungeschützter Endpunkt gemeldet.
-  const src = quelle('routes/auth.ts');
+  const src = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
   const stellen = [...src.matchAll(/router\.(post|put|delete)\('([^']+)'/g)];
   assert.ok(stellen.length >= 6, `nur ${stellen.length} Endpunkte gefunden — die Prüfung liefe ins Leere`);
 

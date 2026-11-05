@@ -111,7 +111,7 @@ test('3. und jeder Aufrufer gibt sie mit', () => {
   // Der eigentliche Befund vom 25.09.: Die Funktion KONNTE es, der Aufrufer
   // gab es nur nicht mit. Deshalb werden hier die Aufrufe gezählt, nicht die
   // Signaturen.
-  const auth = lies('routes/auth.ts');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   const stellen = [...auth.matchAll(/(sendVerificationMail|sendPasswordResetMail)\s*\(/g)]
     .map(m => m[1]);
   assert.ok(stellen.length >= 3,

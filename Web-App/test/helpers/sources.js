@@ -305,7 +305,8 @@ module.exports.pruefeParameter = pruefeParameter;
  * @returns [{ mount: '/api/v1/sets', datei: '<abs>/routes/sets.ts', name: 'sets' }]
  *          ohne routes/api_v1/* — das ist der Index selbst.
  */
-function routerEinhaengungen() {
+/** @param {{ ohneTeile?: boolean }} [o] ohneTeile: nur die eingehängten Module, nicht die Dateien eines Zusammenbaus */
+function routerEinhaengungen(o = {}) {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   // `import xRouter = require('./routes/x')` oben, `app.use('/api/…', xRouter)` unten.
   const dateiJeName = new Map([...src.matchAll(/import\s+(\w+)\s*=\s*require\(\s*['"]\.\/(routes\/[^'"]+)['"]\s*\)/g)]
@@ -316,6 +317,12 @@ function routerEinhaengungen() {
     if (!datei || datei.startsWith('routes/api_v1')) continue;
     out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(ROOT, datei + '.ts'),
                name: datei.replace(/^routes\//, '') });
+    // Ein Zusammenbau (routes/auth.ts) hängt seine Teile unter derselben Adresse ein.
+    const teile = path.join(ROOT, datei);
+    if (!o.ohneTeile && fs.existsSync(teile) && fs.statSync(teile).isDirectory())
+      for (const n of fs.readdirSync(teile).filter(n => n.endsWith('.ts')).sort())
+        out.push({ mount: m[1].replace(/\/+$/, ''), datei: path.join(teile, n),
+                   name: `${datei.replace(/^routes\//, '')}/${n.replace(/\.ts$/, '')}` });
   }
   return out;
 }
@@ -455,3 +462,11 @@ function dienstQuelle(rel) {
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
 module.exports.dienstQuelle = dienstQuelle;
+
+/** Die Anmelderouten: routes/auth.ts setzt sie aus routes/auth/*.ts zusammen. */
+function anmeldeQuelle() {
+  const teile = fs.readdirSync(path.join(ROOT, 'routes', 'auth')).filter(n => n.endsWith('.ts')).sort();
+  return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`)]
+    .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+}
+module.exports.anmeldeQuelle = anmeldeQuelle;

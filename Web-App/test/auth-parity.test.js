@@ -150,7 +150,7 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
   assert.ok(!USERNAME_RE.test('a b'));
   assert.ok(!USERNAME_RE.test('a@b.c'), 'E-Mail-Adresse darf kein Benutzername sein');
 
-  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   const profile = auth.slice(auth.indexOf("router.put('/profile'"), auth.indexOf("router.get('/users'"));
   assert.match(profile, /USERNAME_RE\.test/, 'PUT /profile validiert den Benutzernamen nicht');
   // Die Abfrage steht seit dem 28.10.2026 in src/konto/repository/konten.ts.
@@ -162,7 +162,7 @@ test('Benutzernamen-Regel gilt für Login, Register UND Profil-Update', () => {
 
 test('bcrypt-Kostenfaktor ist überall derselbe', () => {
   assert.ok(BCRYPT_ROUNDS >= 12);
-  const auth = ['routes/auth.ts', 'src/konto/konten.ts'].map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+  const auth = [require('./helpers/sources').anmeldeQuelle(), fs.readFileSync(path.join(ROOT, 'src/konto/konten.ts'), 'utf8')].join('\n');
   const literals = [...auth.matchAll(/(?:bcrypt\.hash|hashePasswort)\([^,]+,\s*([^)]+)\)/g)].map(m => m[1].trim());
   assert.deepEqual([...new Set(literals)], ['BCRYPT_ROUNDS'],
     `bcrypt.hash wird mit unterschiedlichen Kosten aufgerufen: ${literals.join(', ')}`);
@@ -175,7 +175,7 @@ test('escapeLike entschärft Platzhalter beim Token-Löschen', () => {
 });
 
 test('QR-Login transportiert kein Passwort-Material mehr', () => {
-  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   // Nur den QR-Abschnitt betrachten: dahinter kommen /register und
   // /reset-password, die legitim mit password_hash arbeiten.
   // Nachtrag 154: Die Route ist jetzt POST (sie legt eine Nonce an).
@@ -199,7 +199,7 @@ test('die angezeigte QR-Gültigkeit stimmt mit dem Server überein', () => {
   // herunter — der Token läuft seit der Sicherheitshärtung aber nach 5 Minuten
   // ab. Der Zähler lief also 25 Minuten weiter, obwohl der Code längst
   // ungültig war.
-  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   const m = /const QR_TTL_MS = (\d+) \* 60 \* 1000;/.exec(auth);
   assert.ok(m, 'QR_TTL_MS nicht gefunden');
   const minutes = parseInt(m[1]);
@@ -228,7 +228,7 @@ test('Admins können das Passwort anderer Nutzer setzen', () => {
   // Der Dialog in den Einstellungen rief PUT /auth/users/:id/password schon
   // immer auf — die Route gab es nicht, das Speichern endete in
   // „API-Endpunkt nicht gefunden".
-  const auth = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth = require('./helpers/sources').anmeldeQuelle();
   assert.match(auth, /router\.put\('\/users\/:id\/password', requireAdmin/,
     'Route fehlt oder ist nicht auf Administratoren beschränkt');
 
@@ -271,7 +271,7 @@ test('Sicherheitsschritte am Konto scheitern nicht mehr stillschweigend', () => 
   //   • Das Verwerfen von Sessions und Tokens nach einem Passwortwechsel.
   //     Verschluckt hiess: neues Passwort gesetzt, alte Zugänge gelten weiter.
   //   • revokeAllTokens() — dieselbe Regel an der zentralen Stelle.
-  const auth  = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth  = require('./helpers/sources').anmeldeQuelle();
   const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
   // Das Feld heisst `token`; ausgestellt wird es in angemeldetAntworten(),
@@ -320,7 +320,7 @@ test('ein Passwortwechsel beendet auch die offenen Sitzungen', () => {
   //
   // Drei Wege ändern ein Passwort — Admin-Reset, Reset per E-Mail-Token und
   // die eigene Änderung. Alle drei müssen Tokens UND Sitzungen schliessen.
-  const auth  = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const auth  = require('./helpers/sources').anmeldeQuelle();
   const utils = require('./helpers/sources').dienstQuelle('src/konto/auth.ts');
 
   assert.doesNotMatch(auth, /to_regclass\('public\.session'\)/,

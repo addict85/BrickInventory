@@ -24,7 +24,7 @@ test('die Session-ID wird beim Anmelden erneuert', () => {
   assert.match(auth, /req\.session\.save\(/,
     'Ohne save() wäre die neue ID bei einer unmittelbar folgenden Anfrage noch nicht gültig');
 
-  const routes = read('routes/auth.ts');
+  const routes = require('./helpers/sources').anmeldeQuelle();
   // Zwei Aufrufe: angemeldetAntworten() (Login und Passkey-Anmeldung) und
   // /change-password, das nach dem Verwerfen aller Sitzungen die eigene neu
   // aufbaut. Ob die Passkey-Anmeldung wirklich eine Sitzung bekommt, prüft

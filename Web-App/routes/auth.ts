@@ -1,33 +1,33 @@
-
+/** Anmeldung, Token, Profil, QR und Passkeys; setzt die Teilrouter aus
+ * routes/auth/ zusammen. Alles hängt unter /api/v1/auth. */
 import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/infra/sitzungsKeks';
-import { protokolliere } from '../src/verwaltung/dienst';
 const router  = vertragsRouter();
 import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { logAndContinue, meldeUndWeiter, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
 import { fehlerAntwort, pfadParam } from '../src/infra/httpAntwort';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, beendeAndereZugaenge, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, verifiziereEmailToken } from '../src/konto/auth';
-import { zielGedrosselt, kontoGedrosselt } from '../src/konto/zielDrossel';
-import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeCode, bestaetigeMitFaktor, zugangVon, nutzerName, zweiterFaktorPflicht, gnadenfristVerbrauchen } from '../src/konto/http/anmeldung';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig } from '../src/konto/auth';
+import { kontoGedrosselt } from '../src/konto/zielDrossel';
+import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
 import type { TokenScope } from '../src/konto/auth';
 import { tlsStand } from '../src/infra/tlsWurzel';
-import { bestaetigeEinrichtungGebremst } from '../src/konto/passwortBestaetigung';
-import { hinweisNebenher, verwalterHinweisNebenher } from '../src/konto/kontoHinweis';
+import { hinweisNebenher } from '../src/konto/kontoHinweis';
 import crypto from 'crypto';
-import { strictBool } from '../src/infra/validate';
 import { passwortMangel } from '../src/infra/passwortRegel';
-import { sendEmailGeaendertMail, sendPasswordResetMail, sendVerificationMail, sendRegistrierungsVersuchMail, sendBenutzernameVergebenMail, mailBereit } from '../src/mail/mailer';
+import { sendEmailGeaendertMail, sendVerificationMail } from '../src/mail/mailer';
 import type { Request, Response } from 'express';
-import { registrierungOffen, getSetting } from '../src/einstellungen/settings';
-import { setUserSetting } from '../src/konto/nutzerEinstellung';
+import { getSetting } from '../src/einstellungen/settings';
 import { requireApiAdmin } from './api_v1/middleware';
-import { sendeFehler, fehlerText, antwortSprache, alsDoppelt } from '../src/infra/fehlerTexte';
-import { basisUrl, hinweisOhneBasisUrl } from '../src/infra/basisUrl';
+import { sendeFehler, fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
+import { basisUrl, hinweisOhneBasisUrl, mailBasisUrl } from '../src/infra/basisUrl';
 import * as zf from '../src/konto/zweiterFaktor';
 import * as P from '../src/konto/passkeys';
 import { loescheKontoDateien } from '../src/gutscheine/gutscheinDateien';
 import { vertragsRouter } from '../src/infra/vertrag/pruefen';
 import type { Antwort } from '../src/infra/vertrag';
+import benutzerRouter = require('./auth/benutzer');
+import zweiterFaktorRouter = require('./auth/zweiterFaktor');
+import registrierungRouter = require('./auth/registrierung');
 
 // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung und war mit
 // einem reinen Sitzungswächter von Routen ausgesperrt.
@@ -252,7 +252,7 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
     // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-profile-emailsent
     let emailSent = false;
     const lang = String(await getSetting(user.id, 'language', 'de').catch(() => 'de'));
-    const basis = getBaseUrl();
+    const basis = mailBasisUrl();
     if (basis) emailSent = await sendVerificationMail(email, token, basis, lang, 'adresse')
       .then(r => r.success, meldeUndLiefere('anmeldung:bestaetigungsmail', false));
     // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
@@ -262,123 +262,6 @@ router.put('/profile', requireLogin, async (req, res: Antwort<'PUT /api/v1/auth/
   }
 
   await K.aendereProfil(user.id, felder);
-  res.json({ success: true });
-});
-
-router.get('/users', requireAdmin, async (_req, res: Antwort<'GET /api/v1/auth/users'>) => {
-  const users = await K.kontenListe();
-  res.json({ success: true, users });
-});
-
-router.post('/users', requireAdmin, async (req, res: Antwort<'POST /api/v1/auth/users'>) => {
-  const { username, password } = req.body;
-  if (!username || !password) return sendeFehler(req, res, 400, 'benutzername_passwort');
-  if (!USERNAME_RE.test(String(username)))
-    return sendeFehler(req, res, 400, 'benutzername_ungueltig');
-  const mangel = passwortMangel(password, username);
-  if (mangel) return sendeFehler(req, res, 400, mangel);
-  // Streng: Die Zeichenkette "false" ist in JavaScript wahr und legte einen
-  // Verwalter an.
-  const roh = req.body.is_admin ?? req.body.isAdmin;
-  const alsVerwalter = roh === undefined ? false : strictBool(roh, 'is_admin');
-  // Passwort bestätigen und protokollieren — eine erbeutete Sitzung soll keinen
-  // Verwalter anlegen.
-  const verwalter = angemeldeteNutzerId(req);
-  if (!await bestaetigeMitFaktor(req, res, verwalter, req.body?.admin_password)) return;
-  // Wie bei der Registrierung auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
-  if (await K.nameVergeben(username, 0)) return sendeFehler(req, res, 409, 'benutzername_vergeben');
-  const neu = await K.legeKontoAn(username, password, alsVerwalter).catch(alsDoppelt('benutzername_vergeben'));
-  if (neu === null) return sendeFehler(req, res, 409, 'benutzername_vergeben');
-  await protokolliere(verwalter, neu, 'konto_angelegt');
-  if (alsVerwalter) await protokolliere(verwalter, neu, 'verwalter_ernannt');
-  if (alsVerwalter) verwalterHinweisNebenher('verwalter_ernannt', { konto: String(username), durch: nutzerName(req) ?? '' });
-  res.json({ success: true });
-});
-
-router.put('/users/:id/admin', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/admin'>) => {
-  const targetId = parseInt(pfadParam(req, 'id'));
-  // Streng: "false" ist in JavaScript wahr und entzöge sonst keine Rechte.
-  const soll = strictBool(req.body.is_admin, 'is_admin');
-  if (targetId === nutzerId(req) && !soll)
-    return sendeFehler(req, res, 400, 'eigene_adminrolle');
-  if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
-  const r = await K.setzeVerwalterRolle(targetId, soll);
-  if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'verwalter_ernannt' : 'verwalter_entzogen');
-  if (r.geaendert && soll) verwalterHinweisNebenher('verwalter_ernannt',
-    { konto: (await K.kontoKurz(targetId))?.username ?? String(targetId), durch: nutzerName(req) ?? '' });
-
-  // Sitzungen enden, weil istVerwalter() zuerst das nie nachgeführte
-  // `req.session.isAdmin` fragt; ein Entzug wirkte sonst im offenen Fenster nicht.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-admin
-  res.json({ success: true });
-});
-
-router.put('/users/:id/aktiv', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/aktiv'>) => {
-  const targetId = parseInt(pfadParam(req, 'id'));
-  const soll = strictBool(req.body.is_active, 'is_active');
-  if (!Number.isInteger(targetId)) return sendeFehler(req, res, 400, 'id_ungueltig');
-  if (targetId === nutzerId(req)) return sendeFehler(req, res, 400, 'eigenes_konto_deaktivieren');
-  if (!await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
-  const r = await K.setzeAktiv(targetId, soll);
-  if (!r) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (r.geaendert) await protokolliere(angemeldeteNutzerId(req), targetId, soll ? 'konto_reaktiviert' : 'konto_deaktiviert');
-  res.json({ success: true, is_active: soll });
-});
-
-// Für Registrierungen, deren Bestätigungsmail nie ankam: Der Verwalter bürgt für die Adresse.
-router.put('/users/:id/freischalten', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/freischalten'>) => {
-  const targetId = parseInt(pfadParam(req, 'id'));
-  if (!Number.isInteger(targetId) || !await K.kontoExistiert(targetId)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
-  const r = await K.schalteRegistrierungFrei(targetId);
-  if (r !== 'ok') return sendeFehler(req, res, 409, r === 'vergeben' ? 'email_vergeben' : 'konto_nicht_wartend');
-  await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_freigeschaltet');
-  res.json({ success: true });
-});
-
-/** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-password */
-router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
-  const { password } = req.body || {};
-  const targetId = parseInt(pfadParam(req, 'id'));
-  if (!targetId || targetId === nutzerId(req))
-    return sendeFehler(req, res, 400, 'eigenes_konto_passwort');
-  const mangel = passwortMangel(password, (await K.kontoKurz(targetId))?.username);
-  if (mangel) return sendeFehler(req, res, 400, mangel);
-
-  // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
-  // eine offene Verwaltersitzung allein genügt dafür nicht.
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
-  if (!await K.setzeFremdesPasswort(targetId, password)) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden');
-  await protokolliere(angemeldeteNutzerId(req), targetId, 'passwort_gesetzt');
-  // Wie beim entfernten Faktor: Eine Übernahme durch eine erbeutete Verwaltersitzung bliebe sonst unbemerkt.
-  const durch = nutzerName(req) ?? '';
-  hinweisNebenher(targetId, 'passwort_durch_verwalter', undefined, { durch });
-  verwalterHinweisNebenher('verwaltung_passwort_gesetzt', { konto: (await K.kontoKurz(targetId))?.username ?? String(targetId), durch });
-
-  res.json({ success: true });
-});
-
-router.delete('/users/:id', requireAdmin, async (req, res: Antwort<'DELETE /api/v1/auth/users/:id'>) => {
-  const targetId = parseInt(pfadParam(req, 'id'));
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
-  if (targetId !== nutzerId(req) && await K.kontoExistiert(targetId))
-    await protokolliere(angemeldeteNutzerId(req), targetId, 'konto_geloescht');
-  if (!await K.loescheKonto(targetId, nutzerId(req))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
-  // user_sessions hat keinen Fremdschlüssel auf users: Die offene Sitzung des
-  // gelöschten Kontos bliebe ohne diesen Aufruf gültig.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#delete-users-id
-  await revokeAllSessions(targetId);
-  // Eigene Anleitungen und Gutschein-PDFs gehören zum Konto; liegen blieben sie ohne Besitzer.
-  await loescheKontoDateien(targetId);
-  // Der Token-Cache bediente gelöschte Zeilen sonst noch bis zu 60 Sekunden.
-  leereTokenCache();
-  // account_links verschwindet per CASCADE, ohne dass der Haushalt davon
-  // erfährt; sonst bliebe das Unterkonto bis zu fünf Minuten im Blickfeld.
-  meldeHaushaltsaenderung();
   res.json({ success: true });
 });
 
@@ -416,85 +299,10 @@ router.post('/change-password', requireLogin, async (req: LoggedInRequest, res: 
   res.json({ success: true });
 });
 
-
-/** Nie aus Kopfzeilen: Ein Link aus Host oder X-Forwarded-Host liesse sich auf
- * eine fremde Seite lenken — auch ein „Testserver" steht oft im Netz. */
-function getBaseUrl(): string | null {
-  const basis = basisUrl();
-  if (!basis) hinweisOhneBasisUrl('auth', 'Links in E-Mails werden nicht verschickt.');
-  return basis;
-}
-
 // Der QR-Code trägt nur eine einmalige Nonce (SHA-256 in qr_login_tokens),
 // kein Geheimnis des Kontos.
 // Ausführlich: docs/begruendungen/routes/auth.ts.md#qr-ttl-ms
 const QR_TTL_MS = 5 * 60 * 1000;
-
-// ── Zweiter Faktor (src/konto/zweiterFaktor.ts) ─────────────────────────────────
-// Einrichten und Abschalten verlangen das Passwort: Wer nur eine offene
-// Sitzung erbeutet, soll das Konto weder aussperren noch den Schutz abbauen.
-
-router.get('/zweiter-faktor', requireLogin, async (req, res: Antwort<'GET /api/v1/auth/zweiter-faktor'>) => {
-  res.json({ success: true, ...(await zf.stand(angemeldeteNutzerId(req))) });
-});
-
-router.post('/zweiter-faktor/einrichten', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/einrichten'>) => {
-  const uid = angemeldeteNutzerId(req);
-  // Ohne Passwort nur, wo der Server den Faktor erzwingt (Verwalter direkt nach der
-  // Anmeldung); sonst sperrte eine erbeutete Sitzung den Inhaber aus. Die Absage zählt nicht zur Bremse.
-  const ohnePasswort = req.body?.password === undefined || req.body?.password === '';
-  if (ohnePasswort) {
-    if (!(await zweiterFaktorPflicht(req) && gnadenfristVerbrauchen(req))) return sendeFehler(req, res, 400, 'aktuelles_passwort_erforderlich');
-  } else if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
-  const geheimnis = await zf.beginneEinrichtung(uid);
-  if (!geheimnis) return sendeFehler(req, res, 409, 'zweiter_faktor_schon_aktiv');
-  const u = await K.kontoKurz(uid);
-  res.json({ success: true, geheimnis, otpauth: zf.otpauthAdresse(geheimnis, u?.username ?? String(uid)) });
-});
-
-// Auch mit App-Token (die Android-App richtet so ein): Wer Token und Passwort
-// hat, könnte ebenso das Passwort wechseln; eine Sitzungspflicht schützte nichts.
-router.post('/zweiter-faktor/bestaetigen', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/bestaetigen'>) => {
-  const uid = angemeldeteNutzerId(req);
-  const codes = await bestaetigeEinrichtungGebremst(uid, zugangVon(req), req.body?.code);
-  if (!Array.isArray(codes)) return sendeFehler(req, res, codes.status, codes.code, codes.vars);
-  const kopf = String(req.headers.authorization || '');
-  const version = await beendeAndereZugaenge(uid, kopf.startsWith('Bearer ') ? kopf.slice(7) : null,
-    req.session?.userId ? req.sessionID : null);
-  if (req.session?.userId) req.session.sitzungsVersion = version;
-  hinweisNebenher(uid, 'zweiter_faktor_eingerichtet');
-  res.json({ success: true, codes });
-});
-
-router.post('/zweiter-faktor/abschalten', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/abschalten'>) => {
-  const uid = angemeldeteNutzerId(req);
-  if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-  if (!await bestaetigeMitFaktor(req, res, uid, req.body?.password)) return;
-  await zf.schalteAb(uid);
-  hinweisNebenher(uid, 'zweiter_faktor_abgeschaltet');
-  res.json({ success: true });
-});
-
-router.post('/zweiter-faktor/codes', requireLogin, async (req, res: Antwort<'POST /api/v1/auth/zweiter-faktor/codes'>) => {
-  const uid = angemeldeteNutzerId(req);
-  if (!await zf.istAktiv(uid)) return sendeFehler(req, res, 409, 'zweiter_faktor_nicht_aktiv');
-  if (!await bestaetigeCode(req, res, uid, req.body?.code)) return;
-  res.json({ success: true, codes: await zf.erneuereCodes(uid) });
-});
-
-// Notausgang, wenn Telefon UND Wiederherstellungscodes weg sind.
-router.delete('/users/:id/zweiter-faktor', requireAdmin, async (req, res: Antwort<'DELETE /api/v1/auth/users/:id/zweiter-faktor'>) => {
-  const id = parseInt(pfadParam(req, 'id'));
-  if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-  if (id === nutzerId(req)) return sendeFehler(req, res, 400, 'eigener_zweiter_faktor');
-  if (!await bestaetigeMitFaktor(req, res, angemeldeteNutzerId(req), req.body?.admin_password)) return;
-  await zf.schalteAb(id);
-  await protokolliere(angemeldeteNutzerId(req), id, 'zweiter_faktor_entfernt');
-  const durch = nutzerName(req) ?? '';
-  hinweisNebenher(id, 'zweiter_faktor_entfernt', undefined, { durch });
-  verwalterHinweisNebenher('verwaltung_faktor_entfernt', { konto: (await K.kontoKurz(id))?.username ?? String(id), durch });
-  res.json({ success: true });
-});
 
 // POST, weil die Route eine Nonce anlegt, die fünf Minuten ein Konto öffnet;
 // ein GET liesse sich von fremden Seiten auslösen.
@@ -556,149 +364,6 @@ router.post('/qr-login', ipThrottle('qr-login', 30, 60 * 60 * 1000), async (req,
     user: { id: user.id, username: user.username }, token_info: await tokenAngaben(bearerToken) });
 });
 
-// Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
-router.get('/registration-status', async (_req, res: Antwort<'GET /api/v1/auth/registration-status'>) => {
-  const mail = await mailBereit();
-  res.json({ enabled: mail && await registrierungOffen(), passkey: !!P.vertrauenspartei(),
-             passwort_vergessen: mail, mail_versand: mail });
-});
-
-router.post('/register', ipThrottle('register', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/register'>) => {
-  const { username, email, first_name, last_name, password, language } = req.body;
-  const lang = ['de', 'en'].includes(language) ? language : 'de';
-
-  if (!await registrierungOffen() || !await mailBereit()) return sendeFehler(req, res, 403, 'registrierung_deaktiviert');
-
-  if (!username || !email || !password)
-    return sendeFehler(req, res, 400, 'registrierung_felder');
-  const mangel = passwortMangel(password, username);
-  if (mangel) return sendeFehler(req, res, 400, mangel);
-  if (!emailGueltig(email))
-    return sendeFehler(req, res, 400, 'email_ungueltig');
-  if (!USERNAME_RE.test(username))
-    return sendeFehler(req, res, 400, 'benutzername_ungueltig');
-  if (!nameGueltig(first_name) || !nameGueltig(last_name)) return sendeFehler(req, res, 400, 'name_ungueltig');
-  // Zählt jeden Versuch, ob es die Adresse gibt oder nicht: Die Absage verrät nichts.
-  const ziel = await zielGedrosselt('register-ziel', email, 3, 60 * 60 * 1000);
-  if (ziel) return sendeFehler(req, res, 429, 'zu_viele_anfragen', { minuten: ziel.waitMin });
-
-  // Vergebene Adresse oder vergebener Name: dieselbe Antwort wie bei Erfolg, sonst liesse
-  // sich abfragen, wer ein Konto hat. Die Rückmeldung geht per Mail an die Adresse.
-  const inhaber = await K.kontoMitEmail(email);
-  const nameVergeben = !inhaber && await K.nameVergeben(username, 0);
-  const basis = getBaseUrl();
-  let result: { success: boolean; mode: string };
-  if (inhaber) {
-    await K.rechneWieRegistrierung(password);
-    const sprache = String(await getSetting(inhaber.id, 'language', 'de').catch(() => 'de'));
-    result = basis ? await sendRegistrierungsVersuchMail(inhaber.email, sprache)
-      : { success: false, mode: 'ohne_basis' };
-  } else if (nameVergeben) {
-    await K.rechneWieRegistrierung(password);
-    result = basis ? await sendBenutzernameVergebenMail(email, lang, basis) : { success: false, mode: 'ohne_basis' };
-  } else {
-    const token  = crypto.randomBytes(32).toString('hex');
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    // Nur als SHA-256: Bei einem Datenbank-Leak wäre ein ausstehender
-    // Bestätigungslink sonst einlösbar.
-    const neuId = await K.registriere({ username, email, first_name, last_name, passwort: password,
-      tokenHash: hashToken(token), bis: expires }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
-    // Ohne Protokoll bliebe unklar, warum ein frisches Konto in der falschen
-    // Sprache startet.
-    if (neuId) await setUserSetting(neuId, 'language', lang).catch(logAndContinue(`registrierung:sprache ${neuId}`));
-    const mehrere = (await K.offeneRegistrierungen(email)) > 1;
-    result = basis ? await sendVerificationMail(email, token, basis, lang, 'registrierung', mehrere)
-      : { success: false, mode: 'ohne_basis' };
-  }
-
-  res.json({
-    success: true,
-    message: result.success ? 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.'
-      : 'Konto erstellt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann das Konto freischalten.',
-    email_sent: result.success,
-  });
-});
-
-const RUECKSETZ_GUELTIG_MIN = 60, RUECKSETZ_PAUSE_MIN = 15, RUECKSETZ_MINDESTDAUER_MS = 400;
-
-// Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
-router.post('/bestaetigung-erneut', ipThrottle('bestaetigung-erneut', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/bestaetigung-erneut'>) => {
-  const { email } = req.body ?? {};
-  if (!emailGueltig(email)) return sendeFehler(req, res, 400, email ? 'email_ungueltig' : 'email_erforderlich');
-  if (!basisUrl()) {
-    hinweisOhneBasisUrl('bestaetigung-erneut', 'Bestätigungs-Mails werden nicht versendet.');
-    return sendeFehler(req, res, 503, 'bestaetigung_nicht_eingerichtet');
-  }
-  const beginn = Date.now();
-  const gedrosselt = await zielGedrosselt('bestaetigung-ziel', String(email), 3, 60 * 60 * 1000);
-  const token = crypto.randomBytes(32).toString('hex');
-  const konto = gedrosselt ? null : await K.erneuereEmailTokenWennFrei(String(email), hashToken(token), 24, RUECKSETZ_PAUSE_MIN);
-  if (konto) {
-    getSetting(konto.id, 'language', 'de')
-      .catch(() => 'de')
-      .then((lang: unknown) => sendVerificationMail(konto.email, token, getBaseUrl()!, String(lang ?? 'de')))
-      .catch(logAndContinue('bestaetigung-erneut:mailversand'));
-  }
-  await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));
-  res.json({ success: true, message: fehlerText('bestaetigung_gesendet', antwortSprache(req)) });
-});
-
-router.post('/email-bestaetigen/vorschau', ipThrottle('email-vorschau', 30, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/email-bestaetigen/vorschau'>) => {
-  const token = req.body?.token;
-  const username = token ? await K.nameZuEmailToken(hashToken(String(token))) : null;
-  if (!username) return sendeFehler(req, res, 400, 'bestaetigungslink_ungueltig');
-  res.json({ success: true, username });
-});
-
-router.post('/email-bestaetigen', ipThrottle('email-bestaetigen', 30, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/email-bestaetigen'>) => {
-  const e = await verifiziereEmailToken(req.body?.token);
-  if (!e.ok) return sendeFehler(req, res, 400, e.grund === 'vergeben' ? 'email_vergeben' : 'bestaetigungslink_ungueltig');
-  res.json({ success: true });
-});
-
-router.post('/forgot-password', ipThrottle('forgot-password', 5, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/forgot-password'>) => {
-  const { email } = req.body;
-  if (!emailGueltig(email)) return sendeFehler(req, res, 400, email ? 'email_ungueltig' : 'email_erforderlich');
-  // Vor der Nutzersuche, damit die Absage nichts über die Adresse verrät.
-  if (!basisUrl()) {
-    hinweisOhneBasisUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
-    return sendeFehler(req, res, 503, 'passwort_reset_nicht_eingerichtet');
-  }
-  // Immer dieselbe Antwort nach derselben Mindestdauer: Weder Inhalt noch Zeit
-  // verraten, ob es die Adresse gibt.
-  const beginn = Date.now();
-  // Über der Grenze still keine Mail: Eine Absage verriete, dass jemand die Adresse bedrängt.
-  const gedrosselt = await zielGedrosselt('forgot-ziel', String(email), 3, 60 * 60 * 1000);
-  const user = gedrosselt ? null : await K.aktivesKontoNachEmail(email);
-  const token = crypto.randomBytes(32).toString('hex');
-  // Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach.
-  if (user && await K.setzeRuecksetzTokenWennFrei(user.id, hashToken(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN)) {
-    // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
-    // Ausführlich: docs/begruendungen/routes/auth.ts.md#post-forgot-password-2
-    getSetting(user.id, 'language', 'de')
-      .catch(() => 'de')
-      // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
-      .then((lang: unknown) => sendPasswordResetMail(
-        user.email ?? '', token, getBaseUrl()!, String(lang ?? 'de')))
-      .catch(logAndContinue('forgot-password:mailversand'));
-  }
-  await new Promise(r => setTimeout(r, Math.max(0, RUECKSETZ_MINDESTDAUER_MS - (Date.now() - beginn))));
-  res.json({ success: true, message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' });
-});
-
-router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000), async (req, res: Antwort<'POST /api/v1/auth/reset-password'>) => {
-  const { token, password } = req.body;
-  if (!token || !password) return sendeFehler(req, res, 400, 'token_passwort_erforderlich');
-  const mangel = passwortMangel(password);
-  if (mangel) return sendeFehler(req, res, 400, mangel);
-  const user = await K.kontoNachRuecksetzToken(hashToken(token));
-  if (!user) return sendeFehler(req, res, 400, 'token_ungueltig');
-  await K.setzePasswortZurueck(user.id, password);
-  hinweisNebenher(user.id, 'passwort_zurueckgesetzt');
-  res.json({ success: true, message: 'Passwort erfolgreich geändert.' });
-});
-
-
 // ── Passkeys: Verwalten im Konto, Anmelden auf der Anmeldeseite ─────────────
 const NAME_MAX = 60;
 const passkeyName = (roh: unknown) =>
@@ -756,6 +421,9 @@ router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 10
   await angemeldetAntworten(req, res, user, req.body?.mit_token === true);
 });
 
+router.use(benutzerRouter);
+router.use(zweiterFaktorRouter);
+router.use(registrierungRouter);
 router.use(fehlerAntwort);
 
 export = Object.assign(router, { requireLogin, requireAdmin });

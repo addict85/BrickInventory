@@ -889,7 +889,7 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
   assert.equal(USERNAME_RE.test('marco@example.com'), false);
   assert.ok(EMAIL_RE.test('marco@example.com'));
 
-  const src = fs.readFileSync(path.join(ROOT, 'routes/auth.ts'), 'utf8');
+  const src = require('./helpers/sources').anmeldeQuelle();
   const register = src.slice(src.indexOf("router.post('/register'"));
   assert.match(register, /USERNAME_RE\.test\(username\)/,
     'Registrieren muss beim Benutzernamen-Muster bleiben');

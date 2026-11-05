@@ -55,6 +55,9 @@ const ERLAUBT = {
   'api_v1/middleware.ts':
     'requireToken übersetzt die Sitzung IN die gemeinsame Form (req.apiUser). ' +
     'Hier entsteht sie.',
+  'auth/zweiterFaktor.ts':
+    'Nach dem Einrichten des Faktors enden alle anderen Zugänge; die eigene ' +
+    'Sitzung bleibt und bekommt die neue Version – das geht nur, wenn es eine gibt.',
   'auth.ts':
     'GET /me muss "nicht angemeldet" mit 200 beantworten statt mit 401 und ' +
     'meldet zusätzlich die Laufzeit des Tokens — es kann deshalb nicht hinter ' +

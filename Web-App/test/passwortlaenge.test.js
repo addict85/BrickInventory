@@ -67,7 +67,7 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
 });
 
 test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
-  const quelle = ohneKommentare(read('routes/auth.ts'));
+  const quelle = ohneKommentare(require('./helpers/sources').anmeldeQuelle());
 
   // Gezaehlt wird ueber das SETZEN: Gehasht wird nur im Kontodienst
   // (src/konto/konten.ts), jede Route, die ein Passwort setzt, ruft ihn.
