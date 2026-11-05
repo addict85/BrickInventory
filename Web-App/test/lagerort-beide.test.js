@@ -250,7 +250,7 @@ test('beim Set gilt die Liste des BESITZERS, nicht die des Betrachters', () => {
     /schreiben\s*\n?\s*\? await writableIds\(req\.apiUser\.user_id\)\s*\n?\s*: await scopeIds\(req\.apiUser\.user_id\)/,
     'Lesen und Schreiben verwenden dieselbe Menge');
 
-  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /ladeOrtAuswahl\(curSet\.owners\)/,
+  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /ladeOrtAuswahl\((curSet|set)\.owners\)/,
     'Die Webapp fragt nicht nach der Liste des Besitzers');
   assert.match(KT_SETDET, /vm\.loadLagerortVorrat\(set\.owners\.map \{ it\.id \}\)/,
     'Die App fragt nicht nach der Liste des Besitzers');

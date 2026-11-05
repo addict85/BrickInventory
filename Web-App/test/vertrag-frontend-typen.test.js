@@ -24,7 +24,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const { QUELLE, ZIEL, erzeuge } = require('../scripts/vertrag-frontend-typen.js');
-const TSC = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
+const TSC = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
 
 test('die eingecheckten Typen sind aus openapi.json erzeugt', () => {
   const soll = erzeuge(JSON.parse(fs.readFileSync(QUELLE, 'utf8')));
@@ -41,7 +41,7 @@ function pruefe(probe) {
         moduleResolution: 'bundler', moduleDetection: 'force', strict: true, types: [], skipLibCheck: true },
       files: ['probe.js', path.join(ROOT, 'frontend-typen', 'api.d.ts')],
     }));
-    const r = spawnSync(TSC, ['-p', dir], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [TSC, '-p', dir], { encoding: 'utf8' });
     const zeilen = (r.stdout + r.stderr).split('\n').filter(z => /error TS/.test(z));
     /** @type {Record<number, string>} */
     const je = {};

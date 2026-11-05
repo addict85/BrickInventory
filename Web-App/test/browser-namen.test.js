@@ -35,8 +35,10 @@ test('Oberfläche: strictNullChecks und noImplicitAny sind eingeschaltet', () =>
   const { spawnSync } = require('node:child_process');
   const path = require('node:path');
   const ROOT = path.join(__dirname, '..');
+  // Das Werkzeug liegt im Projekt; -p nimmt den Konfigurationsnamen relativ zu cwd.
   for (const config of LAEUFE) {
-    const r = spawnSync(path.join(ROOT, 'node_modules', '.bin', 'tsc'), ['-p', path.join(ROOT, config), '--showConfig'], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', config, '--showConfig'],
+      { cwd: ROOT, encoding: 'utf8' });
     const o = JSON.parse(r.stdout).compilerOptions;
     assert.equal(o.strictNullChecks, true, `${config}: strictNullChecks`);
     assert.equal(o.noImplicitAny, true, `${config}: noImplicitAny`);

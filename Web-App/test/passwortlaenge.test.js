@@ -142,8 +142,11 @@ test('beide Oberflaechen pruefen vor dem Absenden', () => {
   // gar nicht erst freigibt.
   const core = ohneKommentare(read('public/js/01-core.js'));
   const settings = ohneKommentare(read('public/js/05-settings.js'));
+  // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in 26-sitzung.js.
+  const sitzung = ohneKommentare(read('public/js/26-sitzung.js'));
   const webAufrufe = (core.match(/passwortRegelText\(/g) || []).length
-                   + (settings.match(/passwortRegelText\(/g) || []).length;
+                   + (settings.match(/passwortRegelText\(/g) || []).length
+                   + (sitzung.match(/passwortRegelText\(/g) || []).length;
   // Fuenf Stellen setzen in der Webapp ein Passwort: Registrieren,
   // Zuruecksetzen, Aendern, Konto anlegen, Konto-Passwort zuruecksetzen.
   // Dazu die Definition selbst in 01-core.js.

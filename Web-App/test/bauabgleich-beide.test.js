@@ -52,7 +52,7 @@ test('beide Oberflächen fragen denselben Endpunkt', () => {
     new RegExp(`router\\.post\\('${ROUTE}'`),
     'Der Endpunkt fehlt — dann fragt niemand irgendwo');
 
-  assert.match(web('public/js/08-init.js'), new RegExp(`'/v1${ROUTE}'`),
+  assert.match(web('public/js/08-init.js'), new RegExp(`['\`]/v1${ROUTE}['\`$]`),
     'Die Webapp ruft den Endpunkt nicht auf');
   assert.match(KT_API,
     new RegExp(`@POST\\("api/v1${ROUTE}"\\)`),

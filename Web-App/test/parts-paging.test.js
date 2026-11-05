@@ -52,7 +52,7 @@ const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 test('die Liste wird seitenweise angefordert', () => {
   assert.match(SRC, /p\.set\('page_size'/, 'ohne page_size liefert der Server alles');
-  assert.match(SRC, /p\.set\('page',\s*page\)/, 'die Seitennummer muss mitgehen');
+  assert.match(SRC, /p\.set\('page',\s*(String\(page\)|page)\)/, 'die Seitennummer muss mitgehen');
   assert.match(SRC, /const PARTS_PAGE_SIZE\s*=\s*\d+/, 'Seitengrösse gehört an eine Stelle');
 });
 
@@ -223,7 +223,7 @@ test('Detailansicht und Zoom zeigen die volle Auflösung', () => {
   assert.match(core, /function fullUrl/, 'Gegenstück zu thumbUrl() fehlt');
 
   const admin = stripModuleSyntax(require('./helpers/sources').adminQuelle());
-  assert.match(admin, /img\.src=fullUrl\(curSet\.image_local\|\|curSet\.image_url\)/,
+  assert.match(admin, /img\.src=fullUrl\((curSet|set)\.image_local\|\|(curSet|set)\.image_url\)/,
     'Detailansicht der Galerie muss die volle Auflösung nehmen');
 
   const act = stripModuleSyntax(fs.readFileSync(path.join(ROOT, 'public', 'js', '11-actions.js'), 'utf8'));
