@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eingabe } from '../validate';
-import { type Route, zeit, Erfolg, ganz, bestaetigt } from './grund';
+import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const Acquisition = z.looseObject({
@@ -101,21 +101,21 @@ export const routen = {
   'GET /api/v1/minifigs/:figNumber/acquisitions': { antwort: AcquisitionsResponse },
   'GET /api/v1/storage/locations': { antwort: LagerortVorratResponse },
   'GET /api/v1/storage': { antwort: LagerorteResponse },
-  'PUT /api/v1/minifigs/:figNumber/storage': { antwort: LagerortResponse },
+  'PUT /api/v1/minifigs/:figNumber/storage': { eingabe: z.looseObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
   'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': { antwort: GenericResponse, eingabe: Erfassungsaenderung },
-  'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': { antwort: GenericResponse },
+  'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
   'PUT /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': { antwort: GenericResponse, eingabe: Erfassungsaenderung },
-  'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': { antwort: DeleteWithQuantityResponse },
+  'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: DeleteWithQuantityResponse },
   'PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId': { antwort: GenericResponse, eingabe: Erfassungsaenderung },
-  'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId': { antwort: DeleteWithQuantityResponse },
-  'PUT /api/v1/sets/:setNumber/storage': { antwort: LagerortResponse },
-  'PUT /api/v1/parts/:partNumber/:colorId/storage': { antwort: LagerortResponse },
-  'POST /api/v1/storage/locations': { antwort: LagerortEintragResponse },
-  'PUT /api/v1/storage/locations/:id': { antwort: LagerortEintragResponse },
-  'DELETE /api/v1/storage/locations/:id': { antwort: LagerortResponse },
-  'PUT /api/v1/storage/default': { antwort: LagerortVorgabeResponse },
+  'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: DeleteWithQuantityResponse },
+  'PUT /api/v1/sets/:setNumber/storage': { eingabe: z.looseObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
+  'PUT /api/v1/parts/:partNumber/:colorId/storage': { eingabe: z.looseObject({ storage: TEXT().nullable().optional() }), antwort: LagerortResponse },
+  'POST /api/v1/storage/locations': { eingabe: z.looseObject({ name: TEXT().optional(), owner: KENNUNG.optional() }), antwort: LagerortEintragResponse },
+  'PUT /api/v1/storage/locations/:id': { eingabe: z.looseObject({ name: TEXT().optional(), owner: KENNUNG.optional() }), antwort: LagerortEintragResponse },
+  'DELETE /api/v1/storage/locations/:id': { eingabe: OHNE_RUMPF, antwort: LagerortResponse },
+  'PUT /api/v1/storage/default': { eingabe: z.looseObject({ id: KENNUNG.nullable().optional() }), antwort: LagerortVorgabeResponse },
   'GET /api/v1/papierkorb': { antwort: Papierkorb },
-  'POST /api/v1/papierkorb/:id/wiederherstellen': { antwort: Wiederhergestellt },
+  'POST /api/v1/papierkorb/:id/wiederherstellen': { eingabe: OHNE_RUMPF, antwort: Wiederhergestellt },
   'DELETE /api/v1/papierkorb/:id': { antwort: Erfolg, ...bestaetigt() },
   'DELETE /api/v1/papierkorb': { antwort: PapierkorbGeleert, ...bestaetigt() },
   'DELETE /api/v1/bestand': { antwort: BestandGeleert, ...bestaetigt() },

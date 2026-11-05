@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { VerwaltungZustand, VerwaltungDesign } from './verwaltung';
-import { type Route, Erfolg, ganz, zeit, bestaetigt } from './grund';
+import { type Route, Erfolg, ganz, zeit, bestaetigt, OHNE_RUMPF, TEXT, ZUSTAND, EINSTELLUNGEN } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const AppThemeResponse = z.looseObject({
@@ -76,22 +76,22 @@ export const routen = {
   'GET /api/v1/settings': { antwort: SettingsResponse },
   'GET /api/v1/settings/default-condition': { antwort: DefaultConditionResponse },
   'GET /api/v1/startup-status': { antwort: StartupStatus },
-  'POST /api/v1/settings/user/theme': { antwort: AppThemeResponse },
-  'PUT /api/v1/settings': { antwort: EinstellungenGespeichert },
-  'POST /api/v1/settings/user/default-condition': { antwort: VerwaltungZustand },
-  'POST /api/v1/settings/admin/theme': { antwort: VerwaltungDesign },
+  'POST /api/v1/settings/user/theme': { eingabe: z.looseObject({ theme: TEXT(40).nullable().optional() }), antwort: AppThemeResponse },
+  'PUT /api/v1/settings': { eingabe: EINSTELLUNGEN, antwort: EinstellungenGespeichert },
+  'POST /api/v1/settings/user/default-condition': { eingabe: z.looseObject({ condition: ZUSTAND.nullable().optional() }), antwort: VerwaltungZustand },
+  'POST /api/v1/settings/admin/theme': { eingabe: z.looseObject({ theme: TEXT(40).optional() }), antwort: VerwaltungDesign },
   'GET /api/v1/settings/einrichtung': { antwort: Einrichtung },
-  'POST /api/v1/settings/einrichtung/fertig': { antwort: Erfolg },
+  'POST /api/v1/settings/einrichtung/fertig': { eingabe: OHNE_RUMPF, antwort: Erfolg },
   'GET /api/v1/settings/raw': { antwort: RoheEinstellungen },
   'GET /api/v1/settings/tls': { antwort: TlsStand },
   'GET /api/v1/settings/user/default-condition': { antwort: DefaultConditionResponse },
   'POST /api/v1/settings': { antwort: Erfolg, ...bestaetigt({}, 'admin_password') },
   'GET /api/v1/settings/export': { antwort: Sicherung },
-  'POST /api/v1/settings/import': { antwort: SicherungEingespielt },
+  'POST /api/v1/settings/import': { formular: true, antwort: SicherungEingespielt },
   'GET /api/v1/health': { antwort: Gesundheit },
   'GET /api/v1/health/live': { antwort: Lebenszeichen },
   'GET /api/v1/health/ready': { antwort: Lebenszeichen },
   'GET /api/v1/settings/export/data': { art: 'zip' },
-  'POST /api/v1/settings/smtp-test': { antwort: SmtpProbe },
-  'POST /api/v1/settings/quelle-testen': { antwort: Erfolg },
+  'POST /api/v1/settings/smtp-test': { eingabe: z.looseObject({ to: TEXT(320).optional() }), antwort: SmtpProbe },
+  'POST /api/v1/settings/quelle-testen': { eingabe: z.looseObject({ quelle: TEXT(40) }), antwort: Erfolg },
 } satisfies Record<string, Route>;

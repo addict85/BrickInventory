@@ -50,7 +50,7 @@ export function vertragPruefen(req: Request, res: Response, next: NextFunction):
     if (route) {
       // Geprüft wird, was hinausgeht: Ein Date wird erst in res.json zum ISO-Text.
       pruefe('Antwort', route.antwort, JSON.parse(JSON.stringify(rumpf ?? null)));
-      if (!route.formular) pruefe('Anfrage', route.eingabe, req.body);
+      if (!route.formular) pruefe('Anfrage', route.eingabe, req.body ?? {});
     }
     // Auch der Fehlerweg hat eine Form; ohne Prüfung fiel eine 404 ohne Code nicht auf.
     if (res.statusCode >= 400) pruefe('Fehlerantwort', Fehler, JSON.parse(JSON.stringify(rumpf ?? null)));

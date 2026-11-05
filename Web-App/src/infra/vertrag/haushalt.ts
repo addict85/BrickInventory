@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { KontoName, type Route, bestaetigt } from './grund';
+import { KontoName, type Route, bestaetigt, OHNE_RUMPF, KENNUNG } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const GetrenntesKonto = z.looseObject({
@@ -47,9 +47,9 @@ export const HouseholdStatusResponse = z.looseObject({
 export const routen = {
   'GET /api/v1/settings/household': { antwort: HouseholdStatusResponse },
   'GET /api/v1/sets/household-members': { antwort: HouseholdMembersResponse },
-  'POST /api/v1/settings/household/invite': { antwort: HouseholdInviteResponse, geheim: true },
+  'POST /api/v1/settings/household/invite': { eingabe: OHNE_RUMPF, antwort: HouseholdInviteResponse, geheim: true },
   'POST /api/v1/settings/household/redeem/pruefen': { antwort: HouseholdInviteCheckResponse, eingabe: z.looseObject({ code: z.string().max(64).nullable().optional() }) },
   'POST /api/v1/settings/household/redeem': { antwort: GenericResponse, ...bestaetigt({ code: z.string().max(64).nullable().optional() }, 'password', 'faktor_code') },
-  'POST /api/v1/settings/household/unlink': { antwort: GenericResponse },
-  'POST /api/v1/settings/household/former/dismiss': { antwort: GenericResponse },
+  'POST /api/v1/settings/household/unlink': { eingabe: z.looseObject({ sub_user_id: KENNUNG.nullable().optional(), main_user_id: KENNUNG.nullable().optional() }), antwort: GenericResponse },
+  'POST /api/v1/settings/household/former/dismiss': { eingabe: z.looseObject({ sub_user_id: KENNUNG }), antwort: GenericResponse },
 } satisfies Record<string, Route>;

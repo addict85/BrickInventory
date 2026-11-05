@@ -1,3 +1,4 @@
+import { OHNE_RUMPF, ZAHL, ZUSTAND } from './grund';
 import { z } from 'zod';
 import { eingabe } from '../validate';
 import type { Route } from './grund';
@@ -105,8 +106,8 @@ export const routen = {
     color_hex: eingabe.farbcode(), quantity: eingabe.stueckzahl(), condition: eingabe.zustand(),
     unit_price: eingabe.preis('Stückpreis'), part_name: eingabe.text(200), image_url: eingabe.bildUrl(),
     category_name: eingabe.text(100) }) },
-  'PUT /api/v1/parts/:partNumber/:colorId': { antwort: GenericResponse },
-  'DELETE /api/v1/parts/:partNumber/:colorId': { antwort: InDenPapierkorb },
-  'POST /api/v1/parts/import/csv': { antwort: CsvImportErgebnis },
+  'PUT /api/v1/parts/:partNumber/:colorId': { eingabe: z.looseObject({ quantity: ZAHL.optional(), quantity_delta: ZAHL.nullable().optional(), unit_price: ZAHL.nullable().optional(), condition: ZUSTAND.nullable().optional() }), antwort: GenericResponse },
+  'DELETE /api/v1/parts/:partNumber/:colorId': { eingabe: OHNE_RUMPF, antwort: InDenPapierkorb },
+  'POST /api/v1/parts/import/csv': { formular: true, antwort: CsvImportErgebnis },
   'GET /api/v1/parts/bl-color-map': { antwort: BlFarbTabelle },
 } satisfies Record<string, Route>;

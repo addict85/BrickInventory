@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eingabe } from '../validate';
-import { type Route, zeit, Erfolg, ganz, bestaetigt } from './grund';
+import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, TEXT } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const AppToken = z.looseObject({
@@ -200,7 +200,7 @@ export const routen = {
   'GET /api/v1/settings/tokens': { antwort: TokensResponse },
   'POST /api/v1/auth/login': { antwort: LoginResponse, eingabe: Anmeldedaten, geheim: true },
   'POST /api/v1/auth/qr-login': { antwort: QrLoginResponse, eingabe: z.looseObject({ token: txt(200) }), geheim: true },
-  'POST /api/v1/auth/logout': { antwort: GenericResponse },
+  'POST /api/v1/auth/logout': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
   'POST /api/v1/auth/register': { antwort: RegisterResponse, eingabe: Registrierung },
   'POST /api/v1/auth/forgot-password': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
   'POST /api/v1/auth/bestaetigung-erneut': { antwort: ForgotPasswordResponse, eingabe: z.looseObject({ email: txt(254) }) },
@@ -213,8 +213,8 @@ export const routen = {
   'POST /api/v1/auth/zweiter-faktor/bestaetigen': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
   'POST /api/v1/auth/zweiter-faktor/abschalten': { antwort: GenericResponse, ...bestaetigt() },
   'POST /api/v1/auth/zweiter-faktor/codes': { antwort: ZweiterFaktorCodes, eingabe: NurCode, geheim: true },
-  'DELETE /api/v1/settings/tokens/:tokenId': { antwort: TokenWiderruf },
-  'POST /api/v1/auth/token-rotieren': { antwort: TokenRotation, geheim: true },
+  'DELETE /api/v1/settings/tokens/:tokenId': { eingabe: OHNE_RUMPF, antwort: TokenWiderruf },
+  'POST /api/v1/auth/token-rotieren': { eingabe: OHNE_RUMPF, antwort: TokenRotation, geheim: true },
   'GET /api/v1/auth/users': { antwort: KontenListe },
   'POST /api/v1/auth/users': { antwort: Erfolg, ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin', false), username: z.string().max(64).optional(), password: z.string().max(PASSWORT).optional() }) },
   'PUT /api/v1/auth/users/:id/admin': { antwort: Erfolg, ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin') }) },
@@ -231,7 +231,7 @@ export const routen = {
   'DELETE /api/v1/auth/passkeys/:id': { antwort: Geloescht, ...bestaetigt() },
   'POST /api/v1/auth/passkey/registrieren/optionen': { antwort: PasskeyOptionen, ...bestaetigt() },
   'POST /api/v1/auth/passkey/registrieren': { antwort: PasskeyAngelegt, eingabe: z.looseObject({ name: txtLeer(100) }) },
-  'POST /api/v1/auth/passkey/anmelden/optionen': { antwort: PasskeyOptionen },
+  'POST /api/v1/auth/passkey/anmelden/optionen': { eingabe: z.looseObject({ zweck: TEXT(40).optional() }), antwort: PasskeyOptionen },
   'POST /api/v1/auth/passkey/anmelden': { antwort: PasskeyAnmeldung, geheim: true,
     eingabe: z.looseObject({ antwort: z.record(z.string(), z.unknown()).nullable().optional(), mit_token: z.boolean().optional() }) },
   'POST /api/v1/settings/sessions/andere-beenden': { antwort: Geloescht, ...bestaetigt() },
