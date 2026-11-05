@@ -80,6 +80,11 @@ fun MonitoringScreen(vm: AppViewModel) {
     LaunchedEffect(snack) {
         snack?.let { vm.showSnackbar(it); snack = null }
     }
+    val hintergrund by mon.hintergrund.collectAsStateWithLifecycle()
+    val auftragsMeldung by mon.meldung.collectAsStateWithLifecycle()
+    LaunchedEffect(auftragsMeldung) {
+        auftragsMeldung?.let { snack = it; mon.meldungGezeigt() }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -100,7 +105,10 @@ fun MonitoringScreen(vm: AppViewModel) {
             }
 
             // Die Auftragstabelle: was im Hintergrund wartet, läuft oder scheiterte.
-            item { HintergrundSection(mon, onSnack = { snack = it }) }
+            item {
+                HintergrundSection(hintergrund, mon::auftragsArtStarten, mon::auftragsArtLeeren,
+                    mon::auftragAbbrechen, mon::auftragWiederholen)
+            }
 
             // Cache stats + API limits
             item {

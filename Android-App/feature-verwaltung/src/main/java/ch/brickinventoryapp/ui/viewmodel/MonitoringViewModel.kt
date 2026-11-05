@@ -1,6 +1,7 @@
 package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ui.VerwaltungUiState
@@ -15,6 +16,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -108,19 +110,39 @@ class MonitoringViewModel @Inject constructor(
      * Meldung — bei 409 der des Servers, denn nur er weiss, warum der Auftrag
      * inzwischen nicht mehr passt. Danach wird die Liste neu geholt, so oder so.
      */
-    suspend fun brichAuftragAb(id: String): String =
+    internal suspend fun brichAuftragAb(id: String): String =
         nachAuftrag(repo.verwaltung.brichAuftragAb(id)) { texte.text(R.string.hintergrund_abgebrochen_ok) }
 
-    suspend fun wiederholeAuftrag(id: String): String =
+    internal suspend fun wiederholeAuftrag(id: String): String =
         nachAuftrag(repo.verwaltung.wiederholeAuftrag(id)) { texte.text(R.string.hintergrund_wiederholt_ok) }
 
-    suspend fun starteAuftragsArt(art: String, name: String): String =
+    internal suspend fun starteAuftragsArt(art: String, name: String): String =
         nachAuftrag(repo.verwaltung.starteAuftragsArt(art)) {
             texte.text(if (it.gestartet) R.string.hintergrund_gestartet else R.string.hintergrund_nichts_gestartet, name)
         }
 
-    suspend fun leereAuftragsArt(art: String): String =
+    internal suspend fun leereAuftragsArt(art: String): String =
         nachAuftrag(repo.verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
+
+    private val _meldung = MutableStateFlow<String?>(null)
+
+    /** Satz zur letzten Auftragsaktion; der Bildschirm zeigt ihn und quittiert mit [meldungGezeigt]. */
+    val meldung = _meldung.asStateFlow()
+
+    fun meldungGezeigt() {
+        _meldung.value = null
+    }
+
+    // Im viewModelScope, nicht im Scope des Bildschirms: Wer die Seite verlässt,
+    // bricht die Aktion nicht ab, und der Satz geht nicht am Zustand vorbei.
+    fun auftragAbbrechen(id: String) = melde { brichAuftragAb(id) }
+    fun auftragWiederholen(id: String) = melde { wiederholeAuftrag(id) }
+    fun auftragsArtStarten(art: String, name: String) = melde { starteAuftragsArt(art, name) }
+    fun auftragsArtLeeren(art: String) = melde { leereAuftragsArt(art) }
+
+    private fun melde(aktion: suspend () -> String) {
+        viewModelScope.launch { _meldung.value = aktion() }
+    }
 
     private suspend fun <T> nachAuftrag(r: Result<T>, erfolg: (T) -> String): String {
         val satz = when (r) {

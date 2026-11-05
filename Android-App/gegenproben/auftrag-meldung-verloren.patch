@@ -1,0 +1,18 @@
+Gegenprobe: Eine Auftragsaktion läuft, ihr Satz kommt aber nicht in den Meldungszustand des MonitoringViewModels
+Modul: feature-verwaltung
+Test: ch.brickinventoryapp.HintergrundarbeitenTest
+Rot: eine Aktion laeuft im ViewModel
+
+diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
+index 3c1578c..7fb8ad5 100644
+--- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
++++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/ui/viewmodel/MonitoringViewModel.kt
+@@ -141,7 +141,7 @@ class MonitoringViewModel @Inject constructor(
+     fun auftragsArtLeeren(art: String) = melde { leereAuftragsArt(art) }
+ 
+     private fun melde(aktion: suspend () -> String) {
+-        viewModelScope.launch { _meldung.value = aktion() }
++        viewModelScope.launch { aktion() }
+     }
+ 
+     private suspend fun <T> nachAuftrag(r: Result<T>, erfolg: (T) -> String): String {
