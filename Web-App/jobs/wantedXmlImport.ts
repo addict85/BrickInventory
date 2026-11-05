@@ -13,7 +13,7 @@ export interface WantedXmlEingabe {
   xml: string; dateiName: string; schreiben: boolean; ueberRebrickable: boolean; korrekturen?: Korrektur[];
 }
 
-export async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: AuftragsKontext): Promise<Record<string, unknown>> {
+async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: AuftragsKontext): Promise<Record<string, unknown>> {
   // Zwei Merker: angefragt (für die Kette) und laufend (für den Abbruch).
   // Ausführlich: docs/begruendungen/jobs/wantedXmlImport.ts.md#post-wanted-list-import-xml-auftragangefragt
   let auftragAngefragt = false;
@@ -93,3 +93,5 @@ export async function importiereWantedXml(uid: number, e: WantedXmlEingabe, k: A
     throw f;
   }
 }
+
+export { importiereWantedXml };

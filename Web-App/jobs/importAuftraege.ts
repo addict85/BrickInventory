@@ -27,10 +27,12 @@ async function ergebnisVon(n: ImportNutzlast, k: AuftragsKontext): Promise<Recor
 
 /** Ein Fachfehler ist ein Ergebnis (die Anfrage meldet ihn mit Code), kein
  * Fehlschlag des Auftrags. */
-export async function fuehreImportAus(n: ImportNutzlast, k: AuftragsKontext, a: AuftragsZeile): Promise<void> {
+async function fuehreImportAus(n: ImportNutzlast, k: AuftragsKontext, a: AuftragsZeile): Promise<void> {
   try { await setzeErgebnis(a.id, await ergebnisVon(n, k)); }
   catch (e) {
     if (!(e instanceof Fachfehler)) throw e;
     await setzeFachfehler(a.id, e);
   }
 }
+
+export { fuehreImportAus };

@@ -188,15 +188,16 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   // ── Zwei Wege zum selben Ziel (Nachtrag 144) ────────────────────────────
   //
   // Der Set-Import liest selbst und antwortet selbst; Teile und Minifiguren
-  // gehen über csvZeilenAusAnfrage() und csvImportAntwort() in
-  // src/infra/csvExport.ts. Je Weg zählen Route und Dienst zusammen.
+  // gehen über csvZeilenAusAnfrage() und csvImportBericht() in
+  // src/infra/csvExport.ts. Je Weg zählen Route, Dienst und Auftrag zusammen.
   for (const [rel, dienst] of [['routes/api_v1/sets.ts', 'src/sets/dienst.ts'],
                                ['routes/api_v1/parts.ts', 'src/teile/manuelleTeile.ts'],
                                ['routes/api_v1/minifigs.ts', 'src/figuren/manuelleFiguren.ts']]) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8')
-      + '\n' + fs.readFileSync(path.join(ROOT, dienst), 'utf8'));
+      + '\n' + fs.readFileSync(path.join(ROOT, dienst), 'utf8')
+      + '\n' + fs.readFileSync(path.join(ROOT, 'jobs/importAuftraege.ts'), 'utf8'));
     assert.match(src, /csvEinlesen\(|csvZeilenAusAnfrage\(/, `${rel}: liest noch selbst`);
-    assert.match(src, /skipped_hint|csvImportAntwort\(/,
+    assert.match(src, /skipped_hint|csvImportBericht\(/,
       `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);
   }
   // Und die gemeinsame Fassung tut wirklich beides — sonst genügte oben der
@@ -204,8 +205,8 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   const geteilt = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/csvExport.ts'), 'utf8'));
   assert.match(geteilt, /function csvZeilenAusAnfrage[\s\S]*?csvEinlesen\(/,
     'csvZeilenAusAnfrage() liest die Datei nicht mehr ein');
-  assert.match(geteilt, /function csvImportAntwort[\s\S]*?skipped_hint/,
-    'csvImportAntwort() meldet die übersprungenen Zeilen nicht mehr');
+  assert.match(geteilt, /function csvImportBericht[\s\S]*?skipped_hint/,
+    'csvImportBericht() meldet die übersprungenen Zeilen nicht mehr');
   // Und die Oberfläche zeigt den Hinweis auch an.
   for (const rel of ['public/js/02-gallery.js', 'public/js/06-minifigs.js']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
