@@ -52,7 +52,7 @@ export async function getSetPriceHistory(uid: number | number[], setNumber: stri
   const set = await repo.ersterKaufDesSets(uids, setNumber, currency);
 
   const hasCost = set?.purchase_price != null;   // 0 zählt als erfasst
-  const purchasePrice = parseFloat(set?.purchase_price || 0);
+  const purchasePrice = Number(set?.purchase_price ?? 0);
 
   // An der Reihe SEINES Zustands, sonst vergliche das Diagramm einen
   // Gebrauchtkauf mit dem Neupreis.

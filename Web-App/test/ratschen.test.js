@@ -129,18 +129,8 @@ test('stille Faenge werden weniger, nie mehr', () => {
 });
 
 test('any wird weniger, nie mehr', () => {
-  // GEMESSEN am 19.09.2026 nach Nachtrag 175: 398 Stellen. Es waren 402,
-  // solange der Zaehler auch Kommentare las. 386 am 28.10.2026.
-  // 29.10.2026: 333. 30.10.2026: 288 (db.get<T>/db.all<T> statt any-Zeilen).
-  // 30.10.2026: 281 (Planer und Preis-Job-Zustand entfallen).
-  // 31.10.2026: 270 (typisierte Repositories, Fehlerweg ohne any).
-  // 31.10.2026: 256 (HTTP-Seite der Anmeldung, typisierte Repositories).
-  // 31.10.2026: 233 (SQL aus allen Diensten und Aufträgen in typisierte Repositories).
-  // 31.10.2026: 232 (Parameter der Repositories typisiert).
-  // 31.10.2026: 221 (Anreicherung und Bewertung ohne any-Karten und any-Fänge).
-  // 01.11.2026: 220 (SMTP-Test liefert seinen Fehlercode typisiert).
-  // 01.11.2026: 206 (Merklisten-CSV-Import fängt ohne any).
-  const SCHRANKE = 206;
+  // Gemessen 194 am 05.11.2026; wie die Zahl gesunken ist, steht im git log.
+  const SCHRANKE = 194;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(ist <= SCHRANKE,
     `${ist}-mal \`any\`, erlaubt sind ${SCHRANKE}. Jedes davon schaltet den ` +
@@ -149,6 +139,26 @@ test('any wird weniger, nie mehr', () => {
   if (ist < SCHRANKE) {
     console.log(`  ℹ any: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   }
+});
+
+test('Datenbankzeilen sind ohne Typargument unknown', () => {
+  // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
+  // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
+  // Gegenprobe (05.11.2026): `get<T = any>` in DbSchnittstelle → rot.
+  const quelle = fs.readFileSync(path.join(WEB, 'db', 'database.ts'), 'utf8');
+  assert.equal((quelle.match(/\b(?:all|get)\s*(?::\s*)?<T = unknown>/g) || []).length, 6,
+    'all/get in Schnittstelle, Pool und Transaktion');
+  assert.doesNotMatch(quelle, /<T = any>|lastID/);
+});
+
+test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
+  // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
+  // Übersetzer ohnehin ein Typargument. Gemessen 92 am 05.11.2026 (vorher 190).
+  // Gegenprobe (05.11.2026): Schranke auf 91 → rot.
+  const SCHRANKE = 92;
+  const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
+  assert.ok(ist <= SCHRANKE, `${ist} ungetypte db.get/all, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 /**

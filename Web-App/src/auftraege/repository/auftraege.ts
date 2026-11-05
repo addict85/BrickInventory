@@ -1,6 +1,8 @@
 import * as db from '../../../db/database';
 import { randomUUID } from 'node:crypto';
 import type { AuftragsArt, Einstellen, AuftragsZeile, Belegung, Fortschritt, Pause, AuftragsStatus } from '../auftraege';
+import type { z } from 'zod';
+import type { Auftrag, AuftragZaehler, AuftragPause, BricksetQueueEntry } from '../../infra/vertrag/verwaltung';
 
 /** Hier nur das SQL; Wecken, Wartezeiten und das Arbeiten im Namen eines Kontos
  * stehen im Dienst. */
@@ -9,7 +11,7 @@ type Stand = { s: string } | undefined;
 /** @returns die Kennung, oder null, wenn derselbe Auftrag schon offen steht */
 export async function fuegeAuftragEin(art: AuftragsArt, nutzlast: Record<string, unknown>,
   o: Einstellen = {}): Promise<string | null> {
-  const z = await db.get(
+  const z = await db.get<{ id: string }>(
     `INSERT INTO auftraege (art, nutzlast, user_id, schluessel, max_versuche, faellig_ab, fortschritt)
      VALUES ($1, $2, $3, $4, $5, COALESCE($7::timestamptz, NOW() + make_interval(secs => $6)), $8)
      ON CONFLICT (schluessel) WHERE status = 'offen' DO NOTHING
@@ -185,7 +187,7 @@ export async function loescheOffenen(schluessel: string): Promise<void> {
 
 /** Im Format der früheren Tabelle, damit die Oberfläche gleich bleibt. */
 export function bricksetWiedervorlage() {
-  return db.all(
+  return db.all<z.infer<typeof BricksetQueueEntry>>(
     `SELECT a.nutzlast->>'set_number' AS set_number, to_char(a.faellig_ab, 'YYYY-MM-DD') AS retry_after,
             COALESCE((a.nutzlast->>'versuch')::int, 1) AS attempts, a.fehler AS last_error,
             a.erstellt AS created_at, c.name
@@ -203,7 +205,7 @@ export function bricksetWartende() {
 /** Ohne Nutzlast (sie trägt ganze Listen). */
 
 export function auftragsListe(status: string[], art: string | null) {
-  return db.all(
+  return db.all<z.infer<typeof Auftrag>>(
     `SELECT id::text AS id, art, status, versuche, max_versuche, faellig_ab, frist_bis, gestartet, erstellt,
             aktualisiert, fortschritt, fehler, user_id, COALESCE(schluessel LIKE 'plan:%', false) AS geplant,
             nutzlast->>'set_number' AS set_number
@@ -215,9 +217,9 @@ export function auftragsListe(status: string[], art: string | null) {
 }
 
 export function zahlenJeArtUndStatus() {
-  return db.all(`SELECT art, status, COUNT(*)::int AS anzahl FROM auftraege GROUP BY art, status ORDER BY art, status`);
+  return db.all<z.infer<typeof AuftragZaehler>>(`SELECT art, status, COUNT(*)::int AS anzahl FROM auftraege GROUP BY art, status ORDER BY art, status`);
 }
 
 export function laufendePausen() {
-  return db.all(`SELECT art, bis, grund FROM auftrag_pausen WHERE bis > NOW() ORDER BY bis`);
+  return db.all<z.infer<typeof AuftragPause>>(`SELECT art, bis, grund FROM auftrag_pausen WHERE bis > NOW() ORDER BY bis`);
 }

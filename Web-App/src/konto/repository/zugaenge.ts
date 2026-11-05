@@ -1,5 +1,5 @@
 import * as db from '../../../db/database';
-import type { DbSchnittstelle } from '../../../db/database';
+import type { Zeile, DbSchnittstelle } from '../../../db/database';
 /** Tokens stehen nur als SHA-256 in der Tabelle; jede Funktion nimmt den Hash,
  * nie den Klartext. */
 
@@ -204,7 +204,7 @@ export async function loescheUngenutzte(leerlaufTage: number): Promise<number> {
 /** Zwei Treffer (ein Name gleich der Adresse eines anderen Kontos, nur im
  * Altbestand möglich) heissen „kein Konto": Welches gemeint war, ist nicht zu entscheiden. */
 export async function kontoZurAnmeldung(name: string) {
-  const treffer = await db.all('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1) LIMIT 2', [name]);
+  const treffer = await db.all<Zeile<{ id: number; password_hash: string; is_active: boolean; email_verified: boolean; is_admin: boolean; email: string | null; registrierung_offen: boolean }>>('SELECT * FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1) LIMIT 2', [name]);
   if (treffer.length > 1) console.warn('[anmeldung] Name passt auf zwei Konten (Benutzername und Adresse) — Anmeldung abgewiesen');
   return treffer.length === 1 ? treffer[0] : undefined;
 }

@@ -35,7 +35,7 @@ export async function getMinifigs(userId: number | number[], { search, source, s
   // Mit Gesamtzahl für den Endlos-Scroll, wie bei getSets.
   return {
     figs: await withOwners(uids, mappedFigs),
-    total: figCount ? parseInt(figCount.c) : mappedFigs.length,
+    total: figCount ? figCount.c : mappedFigs.length,
   };
 }
 

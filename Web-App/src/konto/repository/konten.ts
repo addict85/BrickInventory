@@ -122,7 +122,7 @@ export async function aktiveVerwalter(): Promise<number[]> {
 }
 
 export async function fuegeKontoEin(username: string, hash: string, verwalter: boolean): Promise<number | null> {
-  const neu = await db.get('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
+  const neu = await db.get<{ id: number }>('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
     [username, hash, verwalter]);
   return neu ? neu.id : null;
 }
@@ -204,7 +204,7 @@ export async function registriereKonto(k: { username: string; email: string; fir
     `INSERT INTO users (username, email_neu, email_neu_token, email_neu_bis, first_name, last_name, password_hash,
                         is_admin, is_active, email_verified, registrierung_offen) VALUES ($1,$2,$3,$4,$5,$6,$7,false,true,false,true)`,
     [k.username, k.email, k.tokenHash, k.bis, k.first_name || null, k.last_name || null, k.hash]);
-  const neu = await db.get('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [k.username]);
+  const neu = await db.get<{ id: number }>('SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [k.username]);
   return neu?.id ?? null;
 }
 

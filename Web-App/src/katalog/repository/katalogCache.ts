@@ -39,7 +39,7 @@ export async function cacheZahlen(): Promise<{ subsets: number; catalog: number;
 }
 
 export function blTypenDerSets(setNummern: string[]) {
-  return db.all('SELECT set_number, bl_type FROM catalog_cache WHERE set_number = ANY($1::text[])', [setNummern]);
+  return db.all<{ set_number: string; bl_type: string | null }>('SELECT set_number, bl_type FROM catalog_cache WHERE set_number = ANY($1::text[])', [setNummern]);
 }
 
 export function merkeBlTyp(n: string, name: string, found: string, isGear: boolean) {

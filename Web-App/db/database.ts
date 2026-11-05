@@ -140,77 +140,50 @@ async function datenbankAntwortet(): Promise<boolean> {
 }
 
 
-// ── Sync-compatible wrapper ───────────────────────────────────────────────────
-// All methods are async but named to mirror better-sqlite3's API.
-// Callers that use db.prepare().get()/.all()/.run() must now await them,
-// but since we rewrote all callers to be async anyway, this works.
-
-/**
- * Execute a query and return all rows.
- * Replaces: db.prepare(sql).all(...params)
- */
-/**
- * Alle Zeilen einer Abfrage.
- * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-4
- */
 /**
  * Die Abfrage-Schnittstelle, die dieses Modul anbietet — einmal als Typ.
  * Ausführlich: docs/begruendungen/db/database.ts.md#dbschnittstelle
  */
+/** Eine Zeile mit den Spalten, die der Aufrufer liest; weitere reisen als `unknown` mit. */
+export type Zeile<T extends object = object> = T & Record<string, unknown>;
+
 export interface DbSchnittstelle {
-  /** T beschreibt die Zeile; ohne Angabe bleibt sie untypisiert (Altbestand). */
-  all<T = any>(sql: string, params?: unknown[]): Promise<T[]>;
-  get<T = any>(sql: string, params?: unknown[]): Promise<T | undefined>;
-  run(sql: string, params?: any[]): Promise<{ changes: number | null; lastID: any }>;
-  exec(sql: string): Promise<any>;
+  /** T beschreibt die Zeile. Ohne Angabe ist sie `unknown`: Wer Felder liest,
+   * muss sagen, welche — numeric und bigint kommen als Zeichenkette. */
+  all<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;
+  get<T = unknown>(sql: string, params?: unknown[]): Promise<T | undefined>;
+  run(sql: string, params?: unknown[]): Promise<{ changes: number }>;
+  exec(sql: string): Promise<void>;
 }
 
-async function all<T = any>(sql: string, params: unknown[] = []): Promise<T[]> {
+/** Alle Zeilen einer Abfrage.
+ * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt-4 */
+async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
     return rows;
   }, istLesend(sql));
 }
 
-/**
- * Execute a query and return the first row (or undefined).
- * Replaces: db.prepare(sql).get(...params)
- */
 /** Erste Zeile einer Abfrage, oder undefined. Zum Typ siehe all(). */
-async function get<T = any>(sql: string, params: unknown[] = []): Promise<T | undefined> {
+async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
   return queryWithRetry(async () => {
     const { rows } = await pool.query(sql, params);
     return rows[0];
   }, istLesend(sql));
 }
 
-/**
- * Execute a query and return { changes, lastID }.
- * Replaces: db.prepare(sql).run(...params)
- */
-/** Schreibende Abfrage: Anzahl betroffener Zeilen und ggf. die neue id. */
-async function run(sql: string, params: any[] = []): Promise<{ changes: number; lastID: any }> {
-  return queryWithRetry(async () => {
-    const result = await pool.query(sql, params);
-    return {
-      changes: result.rowCount || 0,
-      lastID:  (result.rows?.[0] as any)?.id ?? null,
-    };
-  }, false);
+/** Schreibende Abfrage: Anzahl betroffener Zeilen. Wer die neue id braucht,
+ * schreibt RETURNING und liest mit get(). */
+async function run(sql: string, params: unknown[] = []): Promise<{ changes: number }> {
+  return queryWithRetry(async () => ({ changes: (await pool.query(sql, params)).rowCount || 0 }), false);
 }
 
-/**
- * Execute raw SQL (for schema/migrations).
- * Replaces: db.exec(sql)
- */
-async function exec(sql: string): Promise<any> {
+/** Rohes SQL ohne Parameter, für Schema und Migrationen. */
+async function exec(sql: string): Promise<void> {
   await pool.query(sql);
 }
 
-/**
- * Run multiple statements in a transaction.
- * Replaces: db.transaction(fn)()
- */
 async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<T> {
   const client = await pool.connect();
   let kaputt: Error | undefined;
@@ -220,12 +193,11 @@ async function transaction<T>(fn: (tx: DbSchnittstelle) => Promise<T>): Promise<
   client.on('error', abriss);
   try {
     await client.query('BEGIN');
-    // Provide a client-bound db interface for the transaction
     const txDb: DbSchnittstelle = {
-      all:  <T = any>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
-      get:  <T = any>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
-      run:  (sql: string, p?: any[]) => client.query(sql, p).then(r => ({ changes: r.rowCount, lastID: (r.rows?.[0] as any)?.id })),
-      exec: (sql: string)            => client.query(sql),
+      all:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows as T[]),
+      get:  <T = unknown>(sql: string, p?: unknown[]) => client.query(sql, p).then(r => r.rows[0] as T | undefined),
+      run:  (sql: string, p?: unknown[]) => client.query(sql, p).then(r => ({ changes: r.rowCount ?? 0 })),
+      exec: (sql: string)            => client.query(sql).then(() => undefined),
     };
     const result = await fn(txDb);
     await client.query('COMMIT');

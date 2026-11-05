@@ -17,7 +17,7 @@ export async function protokolliere(verwalterId: number, zielId: number, aktion:
 }
 
 export async function letzteEintraege(anzahl = 200) {
-  return db.all(
+  return db.all<Record<string, unknown>>(
     `SELECT p.id, p.zeit, p.aktion, p.einzelheiten, p.ziel_id, p.ziel_name, p.verwalter_id, u.username AS verwalter_name
        FROM verwaltungsprotokoll p LEFT JOIN users u ON u.id = p.verwalter_id
       ORDER BY p.zeit DESC, p.id DESC LIMIT $1`, [anzahl]);

@@ -38,7 +38,7 @@ export function alarmeImBlickfeld(userId: number, blickfeld: number[]) {
 }
 
 export function datenbankJetzt() {
-  return db.get('SELECT NOW() AS jetzt');
+  return db.get<{ jetzt: Date }>('SELECT NOW() AS jetzt');
 }
 
 export function alarmeDesKontos(userId: number, marke: Date, blickfeld: number[]) {
@@ -63,7 +63,7 @@ export function alleAktivenAlarme(setNumber: string) {
 }
 
 export function cachePreisFuerAlarm(set_number: string, condition: string, currency_code: string) {
-  return db.get(`SELECT avg_price FROM price_cache
+  return db.get<{ avg_price: number | null }>(`SELECT avg_price FROM price_cache
         WHERE set_number=$1 AND condition=$2 AND currency_code=$3`, [set_number, condition, currency_code]);
 }
 
@@ -78,7 +78,7 @@ export function loeseAlarmAus(user_id: number, set_number: string, condition: st
 }
 
 export function setNameAusStamm(set_number: string) {
-  return db.get('SELECT name FROM set_stamm WHERE set_number = $1', [set_number]);
+  return db.get<{ name: string | null }>('SELECT name FROM set_stamm WHERE set_number = $1', [set_number]);
 }
 
 export function alarmeFuerExport(uid: number) {

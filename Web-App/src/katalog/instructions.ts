@@ -22,7 +22,7 @@ export function letzterAbrufWarExtern(): boolean { return _letzterAbrufWarExtern
 
 export async function anzahlAnleitungen(setNumber: string): Promise<number> {
   const r = await repo.zaehleAnleitungen(mitVersion(setNumber)).catch(meldeUndLiefere('anleitung:mitVersion', null));
-  return parseInt(r?.c) || 0;
+  return Number(r?.c) || 0;
 }
 
 export async function anleitungenZuSet(setNumber: string) {

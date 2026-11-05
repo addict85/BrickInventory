@@ -314,7 +314,7 @@ export async function pruefeAnmeldedaten(herkunft: Herkunft, username: unknown, 
   const name = String(username);
   const gesperrt = await checkLoginAllowed(ip, name);
   if (gesperrt) {
-    meldeAnmeldeereignis('anmeldung_gesperrt', { ip, konto: (await repo.kontoZurAnmeldung(name))?.id });
+    meldeAnmeldeereignis('anmeldung_gesperrt', { ip, konto: (await repo.kontoZurAnmeldung(name))?.id ?? null });
     return absage(429, gesperrt.code, gesperrt.vars);
   }
 

@@ -39,27 +39,27 @@ export async function nimmOrtAuf(tx: DbSchnittstelle, ids: number[], ort: string
 }
 
 export function orteDerKonten(userIds: number[]) {
-  return db.all(`SELECT id, user_id, name FROM storage_locations
+  return db.all<{ id: number; user_id: number; name: string }>(`SELECT id, user_id, name FROM storage_locations
       WHERE user_id = ANY($1) ORDER BY lower(name)`, [userIds]);
 }
 
 /** Ohne Gross/klein eindeutig je Konto; null, wenn es ihn schon gibt. */
 export function fuegeOrtEin(userId: number, name: string) {
-  return db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, $2)
+  return db.get<{ id: number; user_id: number; name: string }>(`INSERT INTO storage_locations (user_id, name) VALUES ($1, $2)
      ON CONFLICT (user_id, lower(name)) DO NOTHING
      RETURNING id, user_id, name`, [userId, name]);
 }
 
 export function ortNachName(userId: number, name: string) {
-  return db.get('SELECT id, user_id, name FROM storage_locations WHERE user_id = $1 AND lower(name) = lower($2)', [userId, name]);
+  return db.get<{ id: number; user_id: number; name: string }>('SELECT id, user_id, name FROM storage_locations WHERE user_id = $1 AND lower(name) = lower($2)', [userId, name]);
 }
 
 export function ortName(id: number, userId: number) {
-  return db.get('SELECT name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
+  return db.get<{ name: string }>('SELECT name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }
 
 export function andererOrtGleichenNamens(userId: number, name: string, id: number) {
-  return db.get(`SELECT id FROM storage_locations
+  return db.get<{ id: number }>(`SELECT id FROM storage_locations
       WHERE user_id = $1 AND lower(name) = lower($2) AND id <> $3`, [userId, name, id]);
 }
 
@@ -68,7 +68,7 @@ export function schreibeOrtNamen(id: number, userId: number, name: string) {
 }
 
 export function ortBelegung(userId: number, id: number) {
-  return db.get(`SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage_id = $2)
+  return db.get<{ n: string }>(`SELECT (SELECT COUNT(*) FROM sets     WHERE user_id = $1 AND storage_id = $2)
           + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage_id = $2)
           + (SELECT COUNT(*) FROM minifigs WHERE user_id = $1 AND storage_id = $2) AS n`, [userId, id]);
 }
@@ -78,7 +78,7 @@ export function entferneOrt(id: number, userId: number) {
 }
 
 export function orteMitBestand(uids: number[]) {
-  return db.all(`SELECT ort,
+  return db.all<{ ort: string; sets: number; teile: number; figuren: number }>(`SELECT ort,
             SUM(sets)::int    AS sets,
             SUM(teile)::int   AS teile,
             SUM(figuren)::int AS figuren
@@ -104,7 +104,7 @@ export function orteMitBestand(uids: number[]) {
 
 /** Sofern es den Ort noch gibt. */
 export function vorgabeOrt(userId: number, schluessel: string) {
-  return db.get(`SELECT l.id, l.user_id, l.name
+  return db.get<{ id: number; user_id: number; name: string }>(`SELECT l.id, l.user_id, l.name
        FROM user_settings e
        JOIN storage_locations l
          ON l.id = NULLIF(btrim(e.value), '')::int AND l.user_id = e.user_id
@@ -112,5 +112,5 @@ export function vorgabeOrt(userId: number, schluessel: string) {
 }
 
 export function ortDesKontos(id: number, userId: number) {
-  return db.get('SELECT id, user_id, name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
+  return db.get<{ id: number; user_id: number; name: string }>('SELECT id, user_id, name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }

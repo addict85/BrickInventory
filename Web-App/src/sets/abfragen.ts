@@ -72,7 +72,7 @@ export async function getSets(userId: Blickfeld, query: any = {}) {
   // Mit Gesamtzahl für den Endlos-Scroll; ohne Paginierung ist total die Länge.
   return {
     sets: mitBesitzern,
-    total: countRow ? parseInt(countRow.c) : mapped.length,
+    total: countRow ? countRow.c : mapped.length,
     ...(themeRows ? { themes: themeRows.map(r => r.theme) } : {}),
   };
 }
@@ -81,8 +81,8 @@ export async function getSets(userId: Blickfeld, query: any = {}) {
 export async function getSetConditionAggregate(userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
   const acq = await repo.setErfassungsKennzahlen(uids, setNumber);
-  const acqCount  = parseInt(acq?.acq_count) || 0;
-  const usedCount = parseInt(acq?.used_count) || 0;
+  const acqCount  = Number(acq?.acq_count) || 0;
+  const usedCount = Number(acq?.used_count) || 0;
   return {
     condition: conditionFromAcquisitions(acqCount, usedCount),
     // Dieselben Felder wie getSets(): Die Kachel wird nach dem Speichern ohne

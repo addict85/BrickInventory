@@ -29,7 +29,7 @@ export const tabellenDerArt = (art: PapierArt): string[] => TABELLEN[art].map(t 
 export async function bestandsZeilen(tx: DbSchnittstelle, art: PapierArt, werte: unknown[]): Promise<Record<string, unknown[]>> {
   const zeilen: Record<string, unknown[]> = {};
   for (const { tabelle, wo } of TABELLEN[art]) {
-    const r = await tx.get(`SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${tabelle} t WHERE ${wo}`, werte);
+    const r = await tx.get<{ z: unknown[] }>(`SELECT COALESCE(jsonb_agg(to_jsonb(t)), '[]'::jsonb) AS z FROM ${tabelle} t WHERE ${wo}`, werte);
     zeilen[tabelle] = r?.z ?? [];
   }
   return zeilen;
@@ -69,7 +69,7 @@ export function eintraege(uids: number[], aufbewahrungTage: number) {
 }
 
 export function eintragSperren(tx: DbSchnittstelle, id: number, uids: number[]) {
-  return tx.get('SELECT * FROM papierkorb WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
+  return tx.get<{ art: string; zeilen: Record<string, Record<string, unknown>[]> | null; nummer: string; user_id: number }>('SELECT * FROM papierkorb WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
 }
 
 /** Nur Spalten, die es noch gibt und die nicht berechnet sind; eine seither

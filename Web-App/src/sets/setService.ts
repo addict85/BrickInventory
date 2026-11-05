@@ -41,13 +41,13 @@ async function priceForNewAcquisition(userId: number, setNumber: string, dbh: Db
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
   const currency = String(await getSetting(userId, 'currency', 'EUR'));
   const cached = await repo.marktpreisAusCache(dbh, setNumber, currency, cond).catch(meldeUndLiefere('set-service:cached', null));
-  let pp = parseFloat(cached?.avg_price || 0) || null;
+  let pp = Number(cached?.avg_price ?? 0) || null;
   if (!pp) pp = await getCurrentMarketPrice(setNumber, userId, cond).catch(meldeUndLiefere('set-service:getCurrentMarketPrice', null));
   if (!pp) {
     // Der Verlauf füllt die Lücke, wenn Cache und BrickLink-Kontingent beim
     // CSV-Import leer ausgehen; sonst entstünde die Erfassung ohne Kaufpreis.
     const hist = await repo.marktpreisAusVerlauf(dbh, setNumber, currency, cond).catch(meldeUndLiefere('set-service:hist', null));
-    pp = parseFloat(hist?.avg_price || 0) || null;
+    pp = Number(hist?.avg_price ?? 0) || null;
   }
   return { price: pp, condition: cond, geschaetzt: pp != null, currency };
 }

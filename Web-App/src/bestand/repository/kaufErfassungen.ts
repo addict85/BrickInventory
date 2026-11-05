@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbSchnittstelle, Zeile } from '../../../db/database';
 import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES } from '../../../db/bestandsmenge';
 import type { ErfassungsArt } from '../../../db/bestandsmenge';
 
@@ -18,7 +18,7 @@ export async function fuegeErfassungHinzu(dbh: DbSchnittstelle, art: ErfassungsA
   ph[ph.length - 1] = `COALESCE(${ph[ph.length - 1]}::timestamptz, NOW())`;
   const ziel = ['user_id', ...shape.keys, `(${erfassungsTagSql()})`, 'condition',
     `(COALESCE(${shape.price}, -1))`, 'price_estimated', 'currency'];
-  const row = await dbh.get(
+  const row = await dbh.get<{ merged: boolean }>(
     `INSERT INTO ${shape.table} AS t (${cols.join(', ')}) VALUES (${ph.join(', ')})
      ON CONFLICT (${ziel.join(', ')}) DO UPDATE SET quantity = t.quantity + EXCLUDED.quantity
      RETURNING (xmax <> 0) AS merged`, vals);
@@ -32,7 +32,7 @@ export async function gleicheErfassungAmTag(dbh: DbSchnittstelle, art: Erfassung
   const shape = SHAPES[art];
   const keyWhere = shape.keys.map((c, i) => `${c} = $${i + 2}`).join(' AND ');
   const n = shape.keys.length;
-  const row = await dbh.get(
+  const row = await dbh.get<{ id: number }>(
     `SELECT id FROM ${shape.table}
       WHERE user_id = $1 AND ${keyWhere}
         AND id <> $${n + 2} AND ${erfassungsTagSql()} = $${n + 3}::date
@@ -42,12 +42,12 @@ export async function gleicheErfassungAmTag(dbh: DbSchnittstelle, art: Erfassung
         AND ($${n + 7}::text IS NULL OR currency = $${n + 7})
       LIMIT 1`,
     [userId, ...schluessel, ausser, tag, m.zustand, m.preis, m.geschaetzt, m.waehrung]);
-  return row ? parseInt(row.id) : null;
+  return row ? Number(row.id) : null;
 }
 
 /** Mit dem Tag, wie der Index ihn führt. */
 export function erfassungSperren(tx: DbSchnittstelle, art: ErfassungsArt, id: number) {
-  return tx.get(`SELECT *, (${erfassungsTagSql()})::text AS tag FROM ${SHAPES[art].table} WHERE id = $1 FOR UPDATE`, [id]);
+  return tx.get<Zeile<{ user_id: number; tag: string; condition: string; currency: string | null; quantity: number }>>(`SELECT *, (${erfassungsTagSql()})::text AS tag FROM ${SHAPES[art].table} WHERE id = $1 FOR UPDATE`, [id]);
 }
 
 export async function legeErfassungZusammen(tx: DbSchnittstelle, art: ErfassungsArt, von: number, nach: number, menge: number): Promise<void> {

@@ -22,7 +22,7 @@ export function katalogCacheEintrag(setNumber: string) {
 }
 
 export function ersterKatalogTreffer(nummern: string[]) {
-  return db.get('SELECT set_number, name FROM catalog_cache WHERE set_number = ANY($1) LIMIT 1', [nummern]);
+  return db.get<{ set_number: string; name: string | null }>('SELECT set_number, name FROM catalog_cache WHERE set_number = ANY($1) LIMIT 1', [nummern]);
 }
 
 export function katalogCacheNachNummer(setNumber: string) {
@@ -51,7 +51,7 @@ export function inventarTeileDesSets(invId: number) {
 }
 
 export function inventarFigurenDesSets(invId: number) {
-  return db.all(`SELECT ip.part_num AS fig_number, ip.quantity, COALESCE(mc.fig_name, ip.part_num) AS fig_name, mc.image_url
+  return db.all<{ fig_number: string; fig_name: string | null; quantity: number; image_url: string | null }>(`SELECT ip.part_num AS fig_number, ip.quantity, COALESCE(mc.fig_name, ip.part_num) AS fig_name, mc.image_url
          FROM rb_inventory_parts ip
          LEFT JOIN minifigs_catalog mc ON mc.fig_number = ip.part_num
         WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`, [invId]);
