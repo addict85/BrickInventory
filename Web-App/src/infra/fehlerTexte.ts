@@ -55,6 +55,8 @@ export const FEHLER = {
   email_ungueltig:             { de: 'Ungültige E-Mail-Adresse.', en: 'Invalid email address.' },
   name_ungueltig:              { de: 'Vor- und Nachname: höchstens 100 Zeichen, ohne Steuerzeichen und ohne Webadressen.',
                                  en: 'First and last name: at most 100 characters, without control characters or web addresses.' },
+  geraetename_ungueltig:       { de: 'Gerätename: höchstens 100 Zeichen, ohne Steuerzeichen, Anführungszeichen und Webadressen.',
+                                 en: 'Device name: at most 100 characters, without control characters, quotes or web addresses.' },
   email_erforderlich:          { de: 'E-Mail erforderlich.', en: 'Email address required.' },
   passwort_zu_kurz:            { de: 'Passwort muss mindestens 12 Zeichen lang sein.',
                                  en: 'The password must be at least 12 characters long.' },

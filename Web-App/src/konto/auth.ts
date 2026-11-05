@@ -250,6 +250,15 @@ export function nameGueltig(v: unknown): boolean {
   return s.length <= 100 && !/[\p{Cc}\u2028\u2029]/u.test(s) && !/:\/\/|www\.|https?:/i.test(s);
 }
 
+/** Geräte- und Passkey-Namen stehen wörtlich in den Hinweismails an den Inhaber.
+ * Ohne Adressen und Anführungszeichen kann ein Eindringling dort keinen Satz
+ * anfügen, der entwarnt und auf eine fremde Seite zeigt. */
+export function geraeteNameGueltig(v: unknown): boolean {
+  if (!nameGueltig(v)) return false;
+  const s = String(v ?? '');
+  return !/["'`«»„“”‚‘’<>]/u.test(s) && !/[\p{L}\d-]\.\p{L}{2,}(?![\p{L}\d])/u.test(s);
+}
+
 export const EMAIL_RE = V.EMAIL_RE, emailGueltig: typeof V.emailGueltig = V.emailGueltig;
 
 /** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht.
