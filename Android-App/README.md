@@ -161,6 +161,20 @@ nach der Freigabe eines Prüfers. Siehe *Release signieren*.
 Die App kommuniziert ausschliesslich über `/api/v1/` mit Bearer-Token-Authentifizierung.
 Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile API.
 
+## Datenschutz: mit wem die App spricht
+
+- **Dein Server** — alles, was zum Konto gehört. Auch Bilder kommen nur über seinen
+  Proxy; der Bild-Client lässt keine Anfrage an ein CDN durch (`util/BildHosts.kt`).
+- **GitHub** — nur die Update-Prüfung (`util/AppUpdate.kt`): beim Start, solange
+  der Geräteschalter „Beim Start nach Updates suchen“ an ist (Vorgabe an), sonst auf
+  Knopfdruck. Umleitungen folgt der Update-Client nur zu GitHub-Hosts.
+- **Google Play-Dienste** — Barcode-Scan (ML Kit, nachgeladen) und Passkeys
+  (Credential Manager). Die eingebaute Texterkennung kann Nutzungsstatistiken an
+  Google senden.
+- **Browser-Ziele** (BrickLink, Hersteller-Anleitungen) — nur auf Tipp.
+
+Dieselbe Liste zeigt die App unter Einstellungen → Datenschutz.
+
 ## Sicherheit im Netz
 
 **Nur https.** Die Release-App sendet nichts unverschlüsselt. Zwei Linien:
@@ -222,6 +236,13 @@ steckt; er vergeht mit dem Betrachter oder dem Prozess. Drucken und
 Herunterladen gibt es nur für Anleitungen, nicht für Gutscheine (der
 Druckdialog kann „Als PDF speichern“).
 
+**Abmelden:** Token, Antwort-Cache, Bestand und Ausgang, Vorschauen, beide
+Bildcaches, PDFs, Update-APK, Widget-Zahlen und alle Meldungen der App sind danach
+weg, die Marke des Preisalarms ebenfalls. Zuletzt erneuert `Ablageschluessel` den
+Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war, auch
+gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `AbmeldenRaeumtAllesTest`
+prüft das ausgeführt.
+
 **Token-Schlüssel ohne `setUnlockedDeviceRequired`:** Preisalarm, Widget und
 Ausgang senden im Hintergrund, auch bei gesperrtem Gerät (Begründung in
 `util/TokenTresor.kt`). Abgefedert durch die Rotation mit Wiederverwendungs-
@@ -252,15 +273,16 @@ Installation geprüft.
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
-Konstruktor und `doWork()`, Rooms Datenbank-Konstruktoren und die Modelle unter
-`data.model`. Die Modelle bleiben ganz, weil Retrofit ihre Serializer zur
-Laufzeit über den Typ sucht; das prüft keine Probe am fertigen APK, und die Namen
-stehen ohnehin im Vertrag mit dem Server.
+Konstruktor und `doWork()` und Rooms Datenbank-Konstruktoren. Die API-Modelle
+werden umbenannt; ihre Serializer hält die Regel von kotlinx.serialization, und
+`tools/apk-pruefen.py` prüft am fertigen APK, dass `data.model.SetItem` nicht
+mehr unter seinem Namen steht.
 
-**PDFs im App-Prozess:** `PdfRenderer` (pdfium) öffnet nur PDFs des eigenen
-Servers (`pdfImBetrachter`). Ein kompromittierter eigener Server liegt
-ausserhalb des Bedrohungsmodells; pdfium gehört zum System und wird mit dessen
-Updates gepflegt, nicht mit der App.
+**PDFs im isolierten Prozess:** `PdfRenderer` (pdfium) läuft nur in
+`ui/pdf/PdfRenderDienst`, einem Dienst mit `isolatedProcess`: ohne
+Berechtigungen, Dateien, Token und Ablageschlüssel. Er bekommt den Deskriptor
+und gibt Bitmaps zurück. Anleitungen stammen inhaltlich von Dritten; eine
+pdfium-Lücke träfe so nur den leeren Render-Prozess.
 
 **TOTP-Geheimnis an die Authenticator-App:** immer über die Systemauswahl
 (`oeffneMitAuswahl`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
@@ -564,7 +586,48 @@ Ablaufdatum statt klassischer PATs mit `repo`-Scope.
 braucht sie nicht mehr; solange sie bestehen, könnte jeder Job auf `main` sie
 lesen, auch ohne Freigabe.
 
+### Was ein Etikett vor dem Signieren erfüllen muss (sec17)
+
+Der Job `signieren` bricht ab, statt zu signieren, wenn eine dieser Bedingungen fehlt;
+die Meldung nennt jeweils die Einstellung:
+
+- **Environment `release`:** mindestens ein Pflichtprüfer, nur das Etikett `android-v*`
+  und *Allow administrators to bypass* **aus** (`can_admins_bypass: false`).
+  *Prevent self-review* ergibt nur eine Warnung, solange nur eine Person prüft.
+- **`main` geschützt per Ruleset** (Settings → Rules → Rulesets → New branch ruleset,
+  Ziel `main`): *Require a pull request before merging*, *Require status checks to
+  pass* (Android-App, Sicherheit) und *Block force pushes*. Gelesen wird
+  `GET /repos/{repo}/rules/branches/main`; klassische Branch Protection allein zählt
+  dort nicht.
+- **Sicherheitslauf grün:** Der Job `Trivy (Android-Abhängigkeiten)` in `sicherheit.yml`
+  muss für genau den Commit des Etiketts grün sein (läuft bei jedem Push auf `main`).
+  Ist er noch nicht fertig, den Android-Lauf danach neu starten. Ausnahmen nur mit
+  Grund und Frist in `.github/trivy-android.ignore`.
+- **Werkzeuge:** `zipalign` und `apksigner.jar` aus `build-tools/37.0.0` des Images
+  `ubuntu-24.04`, gegen feste Prüfsummen. Verschwindet die Fassung aus dem Image,
+  bricht der Schritt ab; die neuen Werte stehen dann im Protokoll eines Probelaufs und
+  werden nach Prüfung im Schritt „Signieren“ eingetragen.
+
+Etiketten bauen ohne Gradle-Cache aus anderen Läufen und mit leerem
+Gradle-Benutzerverzeichnis; den Cache schreibt sonst nur der Baujob. Ausserhalb von
+Etiketten liegt das probe-signierte APK als `BrickInventory.apk.probe-nicht-installieren`
+im Artefakt. Die Herkunft bescheinigt `.github/workflows/android-bescheinigung.yml`
+(APK, Beschreibung, Bundle); `release` veröffentlicht nur Dateien mit den Prüfsummen,
+die `signieren` ausgab.
+
 ### Release-Zertifikat und Fassung
+
+**Vor einer Neuinstallation prüfen** (der feste Link `apk-neuste` kann von jedem mit
+Schreibrecht ersetzt werden; ein Update prüft die App selbst): Das Release-APK ist
+mit dem Zertifikat
+
+    SHA-256 a51ff2f425d94b6f31a06b7805013cc801791b28e58404dc26c7c8298380af06
+
+signiert. `apksigner verify --print-certs BrickInventory.apk` muss in der Zeile
+„certificate SHA-256 digest“ genau diesen Wert zeigen; derselbe steht im Text jedes
+Release. Herkunft: `gh attestation verify BrickInventory.apk --repo addict85/BrickInventory
+--signer-workflow addict85/BrickInventory/.github/workflows/android-bescheinigung.yml`
+(ebenso für `version-signiert.json` und das Bundle).
 
 Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
 (`tools/release-pruefen.py`):
@@ -623,6 +686,11 @@ APKs, die Beschreibung bekommt einen eigenen ECDSA-Schlüssel (P-256). Kennt die
 App einen solchen Schlüssel (`core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem`),
 nimmt sie nur noch dessen Signatur an; solange die Datei leer ist, gilt der
 Übergangsweg über die Signierer der App.
+
+**Stand:** Die Datei ist noch leer (Betreiberaufgabe). Jeder CI-Lauf warnt
+„Beschreibungsschlüssel fehlt“, und ein Etikett `android-v…` bricht im Job
+`apk-pruefen` ab, bis die Schritte unten erledigt sind; danach meldet derselbe
+Schritt „Beschreibungsschlüssel steht in der App.“
 
 Einrichten (einmalig, in dieser Reihenfolge):
 

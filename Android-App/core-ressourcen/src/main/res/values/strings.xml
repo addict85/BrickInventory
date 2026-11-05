@@ -1187,4 +1187,8 @@
         <item quantity="one">In the collection, %1$s copy</item>
         <item quantity="other">In the collection, %1$s copies</item>
     </plurals>
+    <string name="update_beim_start">Check for updates on start</string>
+    <string name="update_beim_start_hint">Asks GitHub once per start whether a newer version exists; GitHub sees the IP address of the device. Applies to this device.</string>
+    <string name="datenschutz_titel">Privacy</string>
+    <string name="datenschutz_text">The app talks to:\n• your own server, which stores everything you enter;\n• GitHub, only to look for updates (on start if switched on, otherwise when you tap “Check”);\n• Google Play services for barcode scanning and passkeys; on-device text recognition (ML Kit) may send usage statistics to Google;\n• other websites (BrickLink, instructions) only when you tap a link, in the browser.\nNo tracking, no advertising, no analytics.</string>
 </resources>

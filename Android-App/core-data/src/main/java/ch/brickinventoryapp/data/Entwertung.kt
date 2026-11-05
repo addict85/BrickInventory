@@ -18,13 +18,17 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.X509ExtendedTrustManager
 
 /**
- * Was eine spätere Entwertung braucht: der Server, dem das Token gehört, das
- * Token selbst — nur verschlüsselt (Keystore), denn der Auftrag liegt bis dahin
- * in der Datenbank von WorkManager — und der Pin dieses Servers. Nach einem
- * Serverwechsel ist er nicht mehr der eingerichtete; ohne seinen Pin gälten für
- * ihn nur die System-CAs.
+ * Was eine spätere Entwertung braucht: der Server, dem das Token gehört, das Token
+ * nur verschlüsselt (der Auftrag liegt in der Datenbank von WorkManager), der Pin
+ * dieses Servers und die Herkunft, an die das Token gebunden ist. Passt [herkunft]
+ * nicht zu [serverUrl], geht das Token nirgends hin (Entwerter).
  */
-data class Entwertungsauftrag(val serverUrl: String, val tokenGeheim: String, val pin: String? = null)
+data class Entwertungsauftrag(
+    val serverUrl: String,
+    val tokenGeheim: String,
+    val pin: String? = null,
+    val herkunft: String? = NetworkPolicy.herkunft(serverUrl),
+)
 
 /** Legt einen Auftrag in die dauerhafte Warteschlange (data/lokal/EntwertungsWorker). */
 fun interface EntwertungsPlaner {
@@ -88,13 +92,16 @@ class Entwerter(
     private val vertrauenFuer: ((schluessel: String, pin: String?) -> X509ExtendedTrustManager)? = null,
 ) {
 
-    fun entwerte(serverUrl: String, token: String, pin: String? = null): Entwertungsergebnis {
+    /** [herkunft]: wohin das Token gehört; ein Auftrag an einen anderen Server sendet nichts. */
+    fun entwerte(serverUrl: String, token: String, pin: String? = null,
+                 herkunft: String? = NetworkPolicy.herkunft(serverUrl)): Entwertungsergebnis {
         val ziel = eigeneAdresse(serverUrl, "api/v1/auth/logout")
         if (token.isBlank() || ziel == null) return Entwertungsergebnis.AUFGEBEN
+        if (herkunft == null || herkunft != NetworkPolicy.herkunft(serverUrl)) return Entwertungsergebnis.AUFGEBEN
         val lage = object : Zugangslage {
             override fun serverUrl() = serverUrl
             override fun token() = token
-            override fun tokenHerkunft() = NetworkPolicy.herkunft(serverUrl)
+            override fun tokenHerkunft() = herkunft
             override fun generation() = 0L
         }
         val abgelehnt = java.util.concurrent.atomic.AtomicBoolean(false)

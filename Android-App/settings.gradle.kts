@@ -3,6 +3,12 @@ pluginManagement {
     // der Module steht dort einmal statt in jedem build.gradle.kts.
     includeBuild("build-logic")
     repositories {
+        // Googles Android-Gruppen nur von Google: Ein gleichnamiges Paket aus mavenCentral
+        // oder dem Plugin-Portal würde gar nicht erst angefragt (sec17 B-N4).
+        exclusiveContent {
+            forRepository { google() }
+            filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
+        }
         google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
         mavenCentral()
         gradlePluginPortal()
@@ -12,8 +18,12 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        // Wie oben: google() nur für Googles Gruppen; alles andere kommt allein aus
-        // mavenCentral, kein gleichnamiges Paket rutscht über den zweiten Weg herein.
+        // Wie oben: Googles Gruppen nur von Google, alles andere allein aus mavenCentral;
+        // kein gleichnamiges Paket rutscht über den zweiten Weg herein.
+        exclusiveContent {
+            forRepository { google() }
+            filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
+        }
         google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
         mavenCentral()
     }

@@ -22,12 +22,11 @@ import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.ui.components.Schrittsperre
-import ch.brickinventoryapp.ui.components.Sichtschutz
+import ch.brickinventoryapp.ui.screens.GutscheinPdfSchutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.ui.viewmodel.gutscheinPdfAdresse
-import ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine
 
 /** Navigationsziele der Werkzeuge, von „Mehr“ und der Einstellungen. */
 fun NavGraphBuilder.toolsGraph(u: ZielUmgebung) {
@@ -94,7 +93,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
     }
     composable<Screen.PdfViewer> { backStackEntry ->
         val ziel = backStackEntry.toRoute<Screen.PdfViewer>()
-        if (zeigtGutscheine(ziel.url)) Sichtschutz()
+        GutscheinPdfSchutz(ziel.url)
         val vm: AppViewModel = aktivitaetsViewModel()
         val state by vm.state.collectAsStateWithLifecycle()
         PdfViewerRoute(

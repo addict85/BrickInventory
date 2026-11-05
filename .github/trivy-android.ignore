@@ -1,0 +1,12 @@
+# Bewusst hingenommene Lücken in den Laufzeit-Abhängigkeiten der Android-App.
+# Gelesen vom Job android-abhaengigkeiten in .github/workflows/sicherheit.yml
+# (sec17 M2); jede behebbare Lücke ab „high“, die hier nicht steht, macht den
+# Lauf rot, und der Signierjob signiert kein Etikett dieses Commits.
+#
+# Eine Zeile je Lücke, immer mit Ablaufdatum und Grund darüber:
+#
+#   # okhttp: betrifft nur den HTTP/2-Server-Push, den die App nicht nutzt; Fassung X folgt
+#   CVE-2026-12345 exp:2026-12-31
+#
+# Nach dem Datum gilt die Ausnahme nicht mehr und der Lauf wird wieder rot.
+# Eine Ausnahme ersetzt nie die neue Fassung, sie überbrückt nur die Zeit bis dahin.

@@ -1,0 +1,17 @@
+Gegenprobe: Abmelden lässt die Preisalarm-Meldungen in der Leiste
+Modul: app
+Test: ch.brickinventoryapp.AbmeldenRaeumtAllesTest
+Rot: nach dem Abmelden ist jede Ablage leer
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt
+index e5d5e16..a210234 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt
+@@ -69,7 +69,6 @@ class Abmelden @Inject constructor(
+         // Das Widget zeigt sonst die Zahlen des abgemeldeten Kontos weiter.
+         fangeAusserAbbruch { abmeldehaken.abgemeldet() }
+         // Preisalarme nennen Sets und Preise; die Leiste gehört dem abgemeldeten Konto.
+-        fangeAusserAbbruch { NotificationManagerCompat.from(ctx).cancelAll() }
+         // Zuletzt ein neuer Ablageschlüssel: Reste auf dem Flash sind danach nicht mehr lesbar.
+         withContext(io) { fangeAusserAbbruch { ablage.erneuere() } }
+         sitzung.abgemeldet()

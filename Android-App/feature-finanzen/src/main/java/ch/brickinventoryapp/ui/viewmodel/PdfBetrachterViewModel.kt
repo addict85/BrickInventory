@@ -12,7 +12,6 @@ import ch.brickinventoryapp.ui.pdf.PdfLoadState
 import ch.brickinventoryapp.ui.pdf.PdfQuelle
 import ch.brickinventoryapp.ui.pdf.PdfSchreiber
 import ch.brickinventoryapp.ui.pdf.kopiereAbbrechbar
-import ch.brickinventoryapp.ui.pdf.renderPdfPage
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
 import ch.brickinventoryapp.util.pdfImBetrachter
@@ -64,9 +63,9 @@ class PdfBetrachterViewModel @Inject constructor(
         }
     }
 
-    /** Eine Seite als Bitmap; PdfRenderer liest von der Platte und rechnet, beides nicht auf Main. */
+    /** Eine Seite als Bitmap; der Aufruf in den Render-Prozess blockiert, also nicht auf Main. */
     suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap? =
-        withContext(io) { renderPdfPage(quelle, index, breitePx) }
+        withContext(io) { lader.seite(quelle, index, breitePx) }
 
     /** Kopiert die geladene Datei für den Druck auf dem IO-Dispatcher; abbrechbar zwischen zwei Stücken. */
     val schreiber = PdfSchreiber { quelle, ziel -> withContext(io) { quelle.eingang().use { kopiereAbbrechbar(it, ziel) } } }

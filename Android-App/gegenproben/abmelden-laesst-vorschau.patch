@@ -1,0 +1,17 @@
+Gegenprobe: Abmelden lässt die Vorschaubilder liegen
+Modul: app
+Test: ch.brickinventoryapp.AbmeldenRaeumtAllesTest
+Rot: nach dem Abmelden ist jede Ablage leer
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt
+index e5d5e16..b5e196e 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt
+@@ -59,7 +59,6 @@ class Abmelden @Inject constructor(
+             fangeAusserAbbruch { raeumeAnleitungenAuf(ctx.cacheDir) }
+             fangeAusserAbbruch { raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null)) }
+             fangeAusserAbbruch { bildHttpClient.cache?.evictAll() }
+-            fangeAusserAbbruch { vorschau.leeren() }
+         }
+         // Speicher zuerst, sonst schreibt Coil beim nächsten Treffer wieder auf die Platte.
+         fangeAusserAbbruch {

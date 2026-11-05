@@ -1,0 +1,17 @@
+Gegenprobe: Abmelden lässt Teileliste und Update-APK in filesDir liegen
+Modul: app
+Test: ch.brickinventoryapp.AbmeldenRaeumtAllesTest
+Rot: nach dem Abmelden ist jede Ablage leer
+
+diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt
+index e5d5e16..e379a18 100644
+--- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt
++++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Abmelden.kt
+@@ -57,7 +57,6 @@ class Abmelden @Inject constructor(
+         withContext(io) {
+             fangeAusserAbbruch { raeumeVertraulichePdfsAuf(ctx.cacheDir) }
+             fangeAusserAbbruch { raeumeAnleitungenAuf(ctx.cacheDir) }
+-            fangeAusserAbbruch { raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null)) }
+             fangeAusserAbbruch { bildHttpClient.cache?.evictAll() }
+             fangeAusserAbbruch { vorschau.leeren() }
+         }

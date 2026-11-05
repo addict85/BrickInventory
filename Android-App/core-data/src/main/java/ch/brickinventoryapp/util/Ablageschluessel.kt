@@ -42,6 +42,30 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
         return neu
     }
 
+    /** Zählt die Erneuerungen; wer einen abgeleiteten Schlüssel hält, merkt so, dass er veraltet ist. */
+    @Volatile var stand: Long = 0
+        private set
+
+    private val vorErneuerung = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    /** Für Ablagen, die den Schlüssel länger halten als einen Zugriff (die Datenbank): zu und weg damit. */
+    fun vorErneuerung(hoerer: () -> Unit) { vorErneuerung += hoerer }
+
+    /**
+     * Krypto-Shredding beim Abmelden: Ein neuer Schlüssel macht alles unlesbar, was mit dem
+     * alten verschlüsselt lag, auch gelöschte Reste auf dem Flash. Unter der Sperre, damit
+     * niemand dazwischen mit dem alten Schlüssel neu öffnet.
+     */
+    @Synchronized
+    fun erneuere() {
+        vorErneuerung.forEach { it() }
+        datei.delete()
+        runCatching { tresor.vergiss() }
+        bekannt = null
+        stand++
+        hole()
+    }
+
     /** Abgeleitet mit HMAC-SHA256: Datenbank und Dateien teilen keinen Schlüssel. */
     fun fuer(zweck: String): ByteArray = Mac.getInstance("HmacSHA256").run {
         init(SecretKeySpec(hole(), "HmacSHA256"))

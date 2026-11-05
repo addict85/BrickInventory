@@ -3,6 +3,12 @@
 // Versionskatalog, damit AGP und Kotlin nur dort eine Nummer haben.
 pluginManagement {
     repositories {
+        // Googles Android-Gruppen nur von Google: Ein gleichnamiges Paket aus mavenCentral
+        // oder dem Plugin-Portal würde gar nicht erst angefragt (sec17 B-N4).
+        exclusiveContent {
+            forRepository { google() }
+            filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
+        }
         google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
         mavenCentral()
         gradlePluginPortal()
@@ -12,6 +18,12 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        // Googles Android-Gruppen nur von Google: Ein gleichnamiges Paket aus mavenCentral
+        // oder dem Plugin-Portal würde gar nicht erst angefragt (sec17 B-N4).
+        exclusiveContent {
+            forRepository { google() }
+            filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
+        }
         google { content { includeGroupByRegex("com\\.android.*"); includeGroupByRegex("com\\.google.*"); includeGroupByRegex("androidx.*") } }
         mavenCentral()
     }

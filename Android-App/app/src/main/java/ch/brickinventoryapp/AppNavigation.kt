@@ -90,9 +90,9 @@ fun BrickInventoryRoute(
     LaunchedEffect(state.isLoggedIn) {
         if (state.isLoggedIn) {
             csvImport.startCsvImportWatcher()
-            // Beim Start still nach einem Update sehen: kein Ladebalken, keine Meldung
-            // ohne Netz. Hier, weil die Frage der ganzen App gilt.
-            selbstUpdate.pruefeAufUpdate(still = true)
+            // Beim Start still nach einem Update sehen (wenn der Schalter an ist): kein
+            // Ladebalken, keine Meldung ohne Netz. Hier, weil die Frage der ganzen App gilt.
+            selbstUpdate.pruefeBeimStart()
         }
     }
 

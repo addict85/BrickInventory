@@ -279,6 +279,8 @@ fun SettingsScreen(
             onInstallieren = { update.starteInstallation() },
         )
 
+        DatenschutzKarte(updateZustand.startpruefung) { update.setzeStartpruefung(it) }
+
         Spacer(Modifier.height(Abstaende.klein))
 
         // Dieselbe Rückfrage wie unter „Mehr“: Abmelden ist von beiden Stellen gleich schwer.
@@ -458,5 +460,31 @@ private fun UpdateCard(
                 }
             }
         }
+    }
+}
+
+/** Je Gerät: Die Prüfung beim Start ist eine Anfrage an GitHub (Datenschutz). */
+@Composable
+private fun StartpruefungZeile(an: Boolean, onWechsel: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .toggleable(value = an, role = Role.Switch, onValueChange = onWechsel),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.update_beim_start), style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.update_beim_start_hint), style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = an, onCheckedChange = null)
+    }
+}
+
+/** Mit wem die App spricht (MASVS-PRIVACY): dieselbe Liste wie in PLAYSTORE.md. */
+@Composable
+private fun DatenschutzKarte(startpruefung: Boolean, onStartpruefung: (Boolean) -> Unit) {
+    SettingsCard(title = stringResource(R.string.datenschutz_titel), icon = Icons.Default.PrivacyTip) {
+        Text(stringResource(R.string.datenschutz_text), style = MaterialTheme.typography.bodyMedium)
+        StartpruefungZeile(startpruefung, onStartpruefung)
     }
 }

@@ -30,9 +30,10 @@
       Signierjob signiert hat (fehlt die Datei: keiner). APP_PEM ist
       res/raw/beschreibungs_schluessel.pem der App. Nennt die App Schlüssel, muss
       der gelieferte darunter sein; sonst lehnten die Geräte die Beschreibung ab
-      (sec11 H1). Nennt sie keinen, gilt der Übergangsweg über den APK-Schlüssel.
+      (sec11 H1). Nennt sie keinen, gilt der Übergangsweg über den APK-Schlüssel:
+      Rückgabe 3, damit der Workflow ihn sichtbar macht (Etikett: kein Release).
 
-Rückgabe 0 = in Ordnung, 1 = abgelehnt, 2 = Eingabe unbrauchbar. Die Meldung
+Rückgabe 0 = in Ordnung, 1 = abgelehnt, 2 = Eingabe unbrauchbar, 3 = Übergangsweg. Die Meldung
 geht auf stdout; das ::error:: setzt der Workflow, denn ein erwartetes Nein
 (Probe-Schlüssel) ist dort kein Fehler.
 """
@@ -164,7 +165,7 @@ def schluessel(geliefert_pfad, app_pfad):
         return 2
     if not app:
         print('Die App nennt keinen Beschreibungsschlüssel; es gilt der Übergangsweg über den APK-Schlüssel.')
-        return 0
+        return 3
     if len(geliefert) != 1:
         print('Die App verlangt einen Beschreibungsschlüssel, die Beschreibung trägt keinen.')
         return 1

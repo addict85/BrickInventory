@@ -1,14 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Für Android 11 und älter dieselben Ausnahmen wie data_extraction_rules.xml:
-     Kontodaten verlassen das Gerät nicht, auch wenn allowBackup einmal anders stünde. -->
+<!-- Für Android 11 und älter dieselben Ausnahmen wie data_extraction_rules.xml: ganze
+     Domänen, auch wenn allowBackup einmal anders stünde. -->
 <full-backup-content>
-    <exclude domain="file" path="datastore" />
-    <exclude domain="database" path="bestand.db" />
-    <exclude domain="database" path="androidx.work.workdb" />
-    <exclude domain="sharedpref" path="widget.xml" />
-    <exclude domain="sharedpref" path="design_spiegel.xml" />
-    <exclude domain="file" path="vorschau" />
-    <exclude domain="file" path="pdf" />
-    <exclude domain="file" path="update" />
-    <exclude domain="external" path="pdf" />
+    <exclude domain="root" path="." />
+    <exclude domain="file" path="." />
+    <exclude domain="database" path="." />
+    <exclude domain="external" path="." />
+    <exclude domain="device_root" path="." />
 </full-backup-content>

@@ -20,11 +20,6 @@ import javax.xml.parsers.DocumentBuilderFactory
  *      Debug-Build erlaubt Klartext nur …“
  *   C  in src/main ein <certificates src="user" /> → rot „beide Fassungen
  *      vertrauen nur System-CAs“
- *   D  in data_extraction_rules.xml unter device-transfer die Zeile widget.xml
- *      entfernt → rot „Kontodaten verlassen das Geraet nicht“
- *   E  in backup_rules.xml die Zeile files/vorschau entfernt → rot (dieselbe Prüfung)
- *   F  in backup_rules.xml die Zeile design_spiegel.xml entfernt →
- *      rot „Kontodaten verlassen das Geraet nicht“ (Pins, Schalter Nutzer-CA)
  *   G  in buildInterceptorClient `.followRedirects(false)` entfernt →
  *      rot „die Server-Clients folgen keiner Umleitung selbst“. Was der Wächter
  *      stattdessen tut, prüft UmleitungTest ausgeführt.
@@ -33,8 +28,9 @@ import javax.xml.parsers.DocumentBuilderFactory
  *      verlangt Certificate Transparency“
  *   J  gegenproben/debug-ohne-ct.patch: in
  *      src/debug <certificateTransparency> der base-config entfernt → rot „der Debug-Build …“
- *   I  in data_extraction_rules.xml unter device-transfer die
- *      Zeile androidx.work.workdb entfernt → rot „Kontodaten verlassen das Geraet nicht“
+ *   I  in data_extraction_rules.xml unter device-transfer `database` entfernt → rot
+ *      „Kontodaten verlassen das Geraet nicht“; gegenproben/workdb-wird-uebertragen.patch
+ *   K  in backup_rules.xml `root` entfernt → rot, derselbe Test
  */
 class NetzsicherheitTest {
 
@@ -116,8 +112,8 @@ class NetzsicherheitTest {
     /** Die dritte Linie: Was zum Konto gehört, wandert weder per Transfer noch per Sicherung mit. */
     @Test
     fun `Kontodaten verlassen das Geraet nicht`() {
-        val noetig = setOf("file:datastore", "database:bestand.db", "database:androidx.work.workdb", "sharedpref:widget.xml",
-            "sharedpref:design_spiegel.xml", "file:vorschau", "file:pdf", "file:update", "external:pdf")
+        // Ganze Domänen (sec17 B-N13): Eine neue Ablage geht nicht mit, nur weil sie hier fehlt.
+        val noetig = setOf("root:.", "file:.", "database:.", "external:.", "device_root:.")
         val r = regeln("data_extraction_rules.xml")
         val listen = mapOf(
             "cloud-backup" to r.alle("cloud-backup").single().ausgenommen(),

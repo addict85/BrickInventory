@@ -1,13 +1,6 @@
 package ch.brickinventoryapp.ui.pdf
 
-import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.graphics.Bitmap
-import android.graphics.Color as AndroidColor
-import android.graphics.pdf.PdfRenderer
-import android.os.ParcelFileDescriptor
-import androidx.core.graphics.createBitmap
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlin.math.sqrt
 
 /**
@@ -38,34 +31,3 @@ internal fun bitmapMasse(breitePx: Int, ratio: Float): Pair<Int, Int> {
 
 /** Rendert Seite (Quelle, Index, Breite in Pixeln); der Bildschirm bekommt sie vom ViewModel. */
 typealias SeitenRenderer = suspend (PdfQuelle, Int, Int) -> Bitmap?
-
-// PdfRenderer ist nicht thread-safe und öffnet nur eine Seite gleichzeitig →
-// alle Render-Zugriffe serialisieren.
-private val pdfRenderMutex = Mutex()
-
-/** Eine Seite in der Breite [targetWidthPx]; null, wenn PdfRenderer sie nicht lesen kann. */
-internal suspend fun renderPdfPage(quelle: PdfQuelle, index: Int, targetWidthPx: Int): Bitmap? =
-    pdfRenderMutex.withLock {
-        var pfd: ParcelFileDescriptor? = null
-        var renderer: PdfRenderer? = null
-        try {
-            fangeAusserAbbruch {
-            val geoeffnet = quelle.oeffne().also { pfd = it }
-            val leser = PdfRenderer(geoeffnet).also { renderer = it }
-            if (index >= leser.pageCount) return@withLock null
-            val page = leser.openPage(index)
-            val ratio = page.height.toFloat() / page.width.toFloat().coerceAtLeast(1f)
-            val (w, h) = bitmapMasse(targetWidthPx, ratio)
-            // KTX-Form; ARGB_8888 ist dort die Vorbelegung (gelesen in
-            // androidx.core.graphics.Bitmap.kt).
-            val bmp = createBitmap(w, h)
-            bmp.eraseColor(AndroidColor.WHITE)
-            page.render(bmp, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-            page.close()
-            bmp
-            }.getOrNull()
-        } finally {
-            renderer?.close()
-            pfd?.close()
-        }
-    }

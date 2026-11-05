@@ -1,0 +1,18 @@
+Gegenprobe: Das ViewModel fragt den Renderer des Laders nicht mehr
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.PdfBetrachterViewModelTest
+Rot: eine Seite rendert der Lader
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/PdfBetrachterViewModel.kt
+index 343239e..65d805b 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/PdfBetrachterViewModel.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/viewmodel/PdfBetrachterViewModel.kt
+@@ -65,7 +65,7 @@ class PdfBetrachterViewModel @Inject constructor(
+ 
+     /** Eine Seite als Bitmap; der Aufruf in den Render-Prozess blockiert, also nicht auf Main. */
+     suspend fun seite(quelle: PdfQuelle, index: Int, breitePx: Int): Bitmap? =
+-        withContext(io) { lader.seite(quelle, index, breitePx) }
++        withContext(io) { null }
+ 
+     /** Kopiert die geladene Datei für den Druck auf dem IO-Dispatcher; abbrechbar zwischen zwei Stücken. */
+     val schreiber = PdfSchreiber { quelle, ziel -> withContext(io) { quelle.eingang().use { kopiereAbbrechbar(it, ziel) } } }

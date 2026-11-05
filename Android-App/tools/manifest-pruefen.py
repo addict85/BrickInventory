@@ -6,11 +6,13 @@ Bibliotheken bringen eigene Komponenten mit (WorkManager, Profileinstaller, Glan
 und eine neue Fassung mit einer exportierten Komponente faellt im Quelltext nicht auf.
 
 Rot (Rueckgabe 1), wenn
-  - die Anwendung debuggable ist, allowBackup nicht false oder Klartext erlaubt,
+  - die Anwendung debuggable oder testOnly ist, allowBackup nicht false oder Klartext erlaubt,
   - eine exportierte Komponente nicht in tools/manifest-exportiert.txt steht oder
-    dort eine andere Berechtigung verlangt als im APK.
+    dort eine andere Berechtigung verlangt als im APK,
+  - das APK eine Berechtigung verlangt, die nicht in tools/manifest-berechtigungen.txt
+    steht (sec17 B-N12: etwa READ_PHONE_STATE aus einer neuen Bibliotheksfassung).
 
-Aufruf: manifest-pruefen.py <xmltree.txt> <positivliste.txt>
+Aufruf: manifest-pruefen.py <xmltree.txt> <positivliste.txt> <berechtigungen.txt>
 """
 import re
 import sys
@@ -59,7 +61,11 @@ def positivliste(pfad):
     return erlaubt
 
 
-def pruefe(xmltree, erlaubt):
+def berechtigungen(pfad):
+    return {z.split('#', 1)[0].strip() for z in open(pfad, encoding='utf-8')} - {''}
+
+
+def pruefe(xmltree, erlaubt, rechte=frozenset()):
     w = baum(xmltree)
     apps = list(alle(w, 'application'))
     if len(apps) != 1:
@@ -68,6 +74,13 @@ def pruefe(xmltree, erlaubt):
     fehler = []
     if app.get('debuggable') in WAHR:
         fehler.append('android:debuggable ist gesetzt')
+    if app.get('testOnly') in WAHR:
+        fehler.append('android:testOnly ist gesetzt')
+    for art in ('uses-permission', 'uses-permission-sdk-23'):
+        for el in alle(w, art):
+            name = el[1].get('name', '?')
+            if name not in rechte:
+                fehler.append(f'{art} {name} steht nicht in tools/manifest-berechtigungen.txt')
     if app.get('allowBackup') not in ('false', '0x0', '(type 0x12)0x0'):
         fehler.append(f'android:allowBackup ist nicht false ({app.get("allowBackup")})')
     if app.get('usesCleartextTraffic') in WAHR:
@@ -90,10 +103,11 @@ def pruefe(xmltree, erlaubt):
 
 
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print(__doc__)
         return 2
-    fehler = pruefe(open(sys.argv[1], encoding='utf-8').read(), positivliste(sys.argv[2]))
+    fehler = pruefe(open(sys.argv[1], encoding='utf-8').read(), positivliste(sys.argv[2]),
+                    berechtigungen(sys.argv[3]))
     for f in fehler:
         print(f'::error title=Manifest::{f}')
     print('Manifest in Ordnung' if not fehler else f'{len(fehler)} Befund(e) im Manifest')

@@ -8,29 +8,18 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 
-/** Dieselben Hosts wie ERLAUBTE_BILD_HOSTS der Webapp (src/infra/fremdeAdressen.ts). */
-internal val ERLAUBTE_BILD_HOSTS = setOf(
-    "cdn.rebrickable.com", "rebrickable.com",
-    "images.brickset.com",
-    "www.bricklink.com", "img.bricklink.com",
-)
-
-/** Genau ein Host der Liste, über https auf 443; Unterdomänen zählen nicht. */
-internal fun istErlaubterBildHost(url: HttpUrl): Boolean = url.isHttps && url.port == 443 && url.host in ERLAUBTE_BILD_HOSTS
-
 /**
  * Der eigene Server für den Bild-Client. localhost nur im Debug-Build ([entwicklung]):
  * Im Release-Build könnten Bild-Adressen aus einer Server-Antwort sonst Dienste
- * auf dem Gerät selbst ansprechen, an der Liste der erlaubten Hosts vorbei.
+ * auf dem Gerät selbst ansprechen, an der Regel „nur der eigene Server“ vorbei.
  */
 internal fun istEigenerBildServer(url: HttpUrl, serverUrl: String, entwicklung: Boolean): Boolean =
     (entwicklung && url.host == "localhost") || NetworkPolicy.isSameOrigin(url, serverUrl)
 
 /**
- * Wohin der Bild-Client darf: Der eigene Server bekommt die Anfrage unverändert, die
- * Bild-CDNs mit browserähnlicher Kennung (Cloudflare blockt OkHttp sonst), jeder
- * andere Host nichts — auch nicht über eine Umleitung. Darum folgt dieser Wächter
- * Umleitungen selbst; der Client folgt keinen (NetzModule).
+ * Der Bild-Client spricht nur den eigenen Server: Alle Bildadressen laufen über dessen
+ * Proxy (ImageUrls). Ein direkter Weg zu einem CDN gäbe Dritten die IP des Geräts und
+ * das Sammlungsinteresse. Umleitungen folgt dieser Wächter selbst (NetzModule).
  */
 class BildHostWaechter(
     /** Pfad des Servers hinter einem Proxy ("" ohne): Nur darunter darf der Token mit umziehen. */
@@ -55,17 +44,7 @@ class BildHostWaechter(
         return gesperrt(anfrage)
     }
 
-    private fun vorbereitet(r: Request): Request? = when {
-        eigenerServer(r.url) -> r
-        istErlaubterBildHost(r.url) -> r.newBuilder()
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-                "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-            .header("Referer", "https://rebrickable.com/")
-            // Kein image/avif: Nicht jedes Gerät hat einen AV1-Decoder.
-            .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
-            .build()
-        else -> null
-    }
+    private fun vorbereitet(r: Request): Request? = r.takeIf { eigenerServer(it.url) }
 
     private fun gesperrt(r: Request): Response = Response.Builder()
         .request(r).protocol(Protocol.HTTP_1_1).code(403).message("Bild-Host nicht erlaubt")

@@ -1,0 +1,17 @@
+Gegenprobe: Abmelden lässt den verschlüsselten Token stehen
+Modul: core-data
+Test: ch.brickinventoryapp.TokenTresorTest
+Rot: Abmelden entfernt beide Eintraege
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
+index 23815f2..535889c 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/PreferencesManager.kt
+@@ -618,7 +618,6 @@ class PreferencesManager @Inject constructor(
+             // BEIDE Schlüssel: Bliebe der alte stehen, wäre man nach dem
+             // Abmelden über den Altbestand wieder angemeldet.
+             it.remove(AUTH_TOKEN)
+-            it.remove(AUTH_TOKEN_ENC)
+             it.remove(TOKEN_HERKUNFT)
+             it.remove(USERNAME)
+             it.remove(ANGEMELDET_AM)
