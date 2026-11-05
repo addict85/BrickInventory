@@ -180,7 +180,11 @@ async function starteApp(t, opt = {}) {
     for (let i = 0; i < versuche; i++) { if (await b.auswerten(ausdruck).catch(() => false)) return; await warte(100); }
     const zustand = await b.auswerten(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
     const s401 = abgewiesen.length ? `\n401 auf: ${abgewiesen.join(', ')}` : '';
-    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}${s401}\nServer:\n${server.log().slice(-3000)}`);
+    // Ausnahmen der Seite (etwa Trusted Types): ohne sie zeigt ein CI-Lauf nur die Zeitüberschreitung.
+    const ausnahmen = b.ereignisse.filter(e => e.method === 'Runtime.exceptionThrown')
+      .slice(-5).map(e => e.params.exceptionDetails.exception?.description ?? e.params.exceptionDetails.text);
+    const sAus = ausnahmen.length ? `\nAusnahmen der Seite:\n${ausnahmen.join('\n')}` : '';
+    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}${s401}${sAus}\nServer:\n${server.log().slice(-3000)}`);
   };
   await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');

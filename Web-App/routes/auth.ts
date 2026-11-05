@@ -6,7 +6,7 @@ import * as K from '../src/konto/konten';
 import { meldeHaushaltsaenderung } from '../src/haushalt/haushalt';
 import { logAndContinue, meldeUndWeiter, fehlertext, meldeUndLiefere } from '../src/infra/fehler';
 import { fehlerAntwort, pfadParam } from '../src/infra/httpAntwort';
-import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig } from '../src/konto/auth';
+import { hashToken, createToken, pruefeToken, assertLoginAllowed, revokeAllSessions, deleteToken, USERNAME_RE, emailGueltig, leereTokenCache, laufzeitTage, rotiereToken, rotationFaellig, UNBEGRENZT, UEBERLAPPUNG_MS, nameGueltig, geraeteNameGueltig, geraeteNameInhaltGueltig } from '../src/konto/auth';
 import { kontoGedrosselt } from '../src/konto/zielDrossel';
 import { meldeAnmeldung } from '../src/konto/loginLimiter';
 import { perSitzung, anmelden, establishSession, requireLoginOrToken, nutzerId, angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, zweiterFaktorPflicht } from '../src/konto/http/anmeldung';
@@ -101,7 +101,7 @@ async function angemeldetAntworten(req: Request, res: Response, user: Angemeldet
  * Ausführlich: docs/begruendungen/routes/auth.ts.md#post-login */
 router.post('/login', async (req: OffeneAnfrage<'POST /api/v1/auth/login'>, res: Antwort<'POST /api/v1/auth/login'>) => {
   const { username, password, code: zweiterCode, ohne_token, passkey } = req.eingabe;
-  if (!geraeteNameGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
+  if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const pruefung = await anmelden(req, username, password, zweiterCode, passkey);
   if (!pruefung.ok) {
     const { status, code, vars, unverified, zweiterFaktor, passkey: mitPasskey } = pruefung.absage;
@@ -197,7 +197,7 @@ router.post('/token-rotieren', ipThrottle('token-rotieren', 120, 60 * 60 * 1000)
  * erbeuteter Zugang einen dauerhaften. Die Mail meldet ihn dem Inhaber. */
 router.post('/token-create', requireLogin, async (req: OffeneAnfrage<'POST /api/v1/auth/token-create'>, res: Antwort<'POST /api/v1/auth/token-create'>) => {
   if (!req.session?.userId) return sendeFehler(req, res, 403, 'nur_mit_sitzung');
-  if (!geraeteNameGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
+  if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const userId = angemeldeteNutzerId(req);
   if (!await bestaetigeMitFaktor(req, res, userId, req.eingabe.password)) return;
   const label = tokenLabel(req.eingabe.label, 'Android App');
@@ -427,7 +427,7 @@ router.post('/passkey/anmelden/optionen', ipThrottle('passkey-optionen', 60, 60 
 
 /** Die Sitzung für den Browser; einen Token nur auf `mit_token`, wie ihn die App braucht. */
 router.post('/passkey/anmelden', ipThrottle('passkey-anmelden', 30, 60 * 60 * 1000), async (req: OffeneAnfrage<'POST /api/v1/auth/passkey/anmelden'>, res: Antwort<'POST /api/v1/auth/passkey/anmelden'>) => {
-  if (!geraeteNameGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
+  if (!geraeteNameInhaltGueltig(req.eingabe.label)) return sendeFehler(req, res, 400, 'geraetename_ungueltig');
   const uid = await P.anmeldungPruefen(req.eingabe.antwort, 'anmelden');
   if (!uid) return sendeFehler(req, res, 401, 'passkey_ungueltig');
   const user = await K.kontoVoll(uid);

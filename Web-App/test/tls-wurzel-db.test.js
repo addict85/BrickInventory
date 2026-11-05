@@ -57,9 +57,12 @@ test('Fingerabdruck = Base64 SHA-256 des SPKI, 32 Byte', () => {
 });
 
 test('Cookie nur über TLS: in Produktion und hinter https, abschaltbar', () => {
-  assert.equal(cookieSicher(ladeKonfig({})), false);
-  assert.equal(cookieSicher(ladeKonfig({ APP_BASE_URL: 'https://lego.test' })), true);
-  assert.equal(cookieSicher(ladeKonfig({ APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
+  // Ohne NODE_ENV gelten die Regeln des Betriebs; locker ist nur die Entwicklung.
+  const ent = { NODE_ENV: 'development' };
+  assert.equal(cookieSicher(ladeKonfig({})), true);
+  assert.equal(cookieSicher(ladeKonfig(ent)), false);
+  assert.equal(cookieSicher(ladeKonfig({ ...ent, APP_BASE_URL: 'https://lego.test' })), true);
+  assert.equal(cookieSicher(ladeKonfig({ ...ent, APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
   assert.equal(cookieSicher(ladeKonfig({ NODE_ENV: 'production' })), true);
   assert.equal(cookieSicher(ladeKonfig({ APP_BASE_URL: 'https://lego.test', COOKIE_SECURE: '0' })), false);
 });
