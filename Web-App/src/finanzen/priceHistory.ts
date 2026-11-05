@@ -36,7 +36,7 @@ async function seriesFor(setNumber: string, currency: string, cond: 'N' | 'U'): 
  *   der nackten Betrachter-ID fände die Abfrage es nicht. */
 export async function getSetPriceHistory(uidWahl: Sicht | number | number[], setNumber: string, currency: string) {
   const uid = await blickfeldAus(uidWahl);
-  const uids = asIds(uid as any);
+  const uids = asIds(uid);
   const condition = await resolveSetCondition(uids, setNumber);
 
   const [historyNew, historyUsed] = await Promise.all([
@@ -123,10 +123,10 @@ export async function getSetPriceHistory(uidWahl: Sicht | number | number[], set
 
 /** Nur für Zustände mit Erfassung, sonst fehlte der Prozentangabe die Basis. */
 export async function conditionRows(
-  cacheTable: string, acqTable: string, keySql: string, keyVals: any[], uid: number | number[], currency: string,
-  acqKeySql: string = keySql, acqKeyVals: any[] = keyVals
+  cacheTable: string, acqTable: string, keySql: string, keyVals: unknown[], uid: number | number[], currency: string,
+  acqKeySql: string = keySql, acqKeyVals: unknown[] = keyVals
 ) {
-  const uids = asIds(uid as any);
+  const uids = asIds(uid);
   // DESC: Seit der Figuren-Verlauf beide Nummern abfragt, kann es zwei Zeilen
   // je Zustand geben, und `.find()` soll die neueste nehmen.
   const cacheRows = await repo.cachePreiseNachSchluessel(cacheTable, keySql, keyVals, currency);
@@ -153,8 +153,8 @@ export async function conditionRows(
 async function manualPriceHistory(
   uid: number | number[], currency: string,
   historyTable: string, cacheTable: string, acqTable: string,
-  keySql: string, keyVals: any[],
-  acqKeySql: string = keySql, acqKeyVals: any[] = keyVals
+  keySql: string, keyVals: unknown[],
+  acqKeySql: string = keySql, acqKeyVals: unknown[] = keyVals
 ) {
   const [historyNew, historyUsed, by_condition] = await Promise.all([
     repo.manualSeries(historyTable, keySql, keyVals, currency, 'N'),

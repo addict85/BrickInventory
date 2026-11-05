@@ -21,7 +21,7 @@ const ALLE_KONTEN = -1;
 const heute = () => new Date().toISOString().slice(0, 10);
 
 export async function getLimitForApi(apiName: ApiName): Promise<number> {
-  return parseInt(await getGlobalSetting(`api_limit_${apiName}`)) || VORGABEN[apiName] || 4000;
+  return parseInt(await getGlobalSetting(`api_limit_${apiName}`, '')) || VORGABEN[apiName] || 4000;
 }
 
 const grenzeJeKonto = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL_JE_KONTO));

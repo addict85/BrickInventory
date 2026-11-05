@@ -57,12 +57,12 @@ export async function cacheStatistik() {
   const leer = { count: 0, limit: 0, remaining: 0 };
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
     getCacheStats().catch(meldeUndLiefere('verwaltung:getCacheStats', { prices: 0, subsets: 0, catalog: 0 })),
-    verwaltung.veraltetePreise().catch(meldeUndLiefere('verwaltung:veraltetePreise', null)),
+    verwaltung.veraltetePreise().catch(meldeUndLiefere('verwaltung:veraltetePreise', 0)),
     getRateLimitStatus('bricklink').catch(meldeUndLiefere('verwaltung:kontingent', leer)),
     getRateLimitStatus('rebrickable').catch(meldeUndLiefere('verwaltung:kontingent', leer)),
     getRateLimitStatus('brickset').catch(meldeUndLiefere('verwaltung:kontingent', leer)),
   ]);
-  return { success: true, ...stats, price_stale: parseInt(stale?.c || 0),
+  return { success: true, ...stats, price_stale: stale,
     rate_limits: { bricklink: rlBL, rebrickable: rlRB, brickset: rlBS }, db_pool: verwaltung.getPoolStats() };
 }
 
@@ -151,173 +151,131 @@ export async function zeitplanNeuPlanen() {
   await verwaltung.bricksetTermineVorziehen(bis);
 }
 
-/** Ergänzt um Zahlen, die nur die Datenbank kennt. */
-export async function jobUebersicht() {
-    const jobs = await monitor.all(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
+type Kachel = Record<string, unknown>;
+type Kacheln = Record<string, Kachel>;
+const zahl = (p: Promise<number>, ort: string) => p.catch(meldeUndLiefere(`verwaltung:${ort}`, 0));
 
-  const [pending, done, failed] = await Promise.all([
-    zaehleArt('anleitung').then(z => z.offen + z.laeuft).catch(meldeUndLiefere('verwaltung:offeneAuftraege', 0)),
-    zaehleArt('anleitung').then(z => ({ c: z.erledigt })).catch(meldeUndLiefere('verwaltung:anleitungenErledigt', null)),
-    zaehleArt('anleitung').then(z => ({ c: z.fehler })).catch(meldeUndLiefere('verwaltung:anleitungenGescheitert', null)),
-  ]);
-  const blMapped = await verwaltung.zugeordneteTeile().catch(meldeUndLiefere('verwaltung:zugeordneteTeile', null));
-  const blTotal  = await verwaltung.bricklinkTeile().catch(meldeUndLiefere('verwaltung:bricklinkTeile', null));
-  const rbParts  = await verwaltung.rbTeile().catch(meldeUndLiefere('verwaltung:rbTeile', null));
-  const rbInvParts = await verwaltung.rbInventarTeile().catch(meldeUndLiefere('verwaltung:rbInventarTeile', null));
-  const lastSync = await liesZustand('rb_csv_last_sync');
+/** Ein JSON-Stand aus laufzustand; ein beschädigter zählt wie keiner. */
+async function liesStand<T>(schluessel: string): Promise<T | null> {
+  const roh = await liesZustand(schluessel).catch(meldeUndLiefere(`verwaltung:${schluessel}`, null));
+  try { return roh ? JSON.parse(roh) as T : null; } catch { return null; }
+}
 
-  const mappedC = parseInt(blMapped?.c||0);
-  const totalBl = parseInt(blTotal?.c||0);
-  if (totalBl > 0) {
-    jobs.blIds = {
-      ...jobs.blIds,
-      status:   mappedC < totalBl ? (jobs.blIds.status === 'running' ? 'running' : 'idle') : 'done',
-      progress: mappedC,
-      total:    totalBl,
-      sub:      mappedC < totalBl ? `${mappedC} / ${totalBl} gemappt` : `Alle ${totalBl} gemappt`
-    };
-  }
+function blIdsKachel(alt: Kachel, gemappt: number, gesamt: number): Kachel | null {
+  if (gesamt <= 0) return null;
+  return { ...alt, status: gemappt < gesamt ? (alt.status === 'running' ? 'running' : 'idle') : 'done',
+    progress: gemappt, total: gesamt, sub: gemappt < gesamt ? `${gemappt} / ${gesamt} gemappt` : `Alle ${gesamt} gemappt` };
+}
 
-  const pendingC = pending ?? 0;
-  const doneC    = done?.c ?? 0;
-  const failedC  = failed?.c ?? 0;
-  const totalC   = pendingC + doneC + failedC;
-  if (totalC > 0) {
-    const enriched = {
-      ...jobs.instrQueue,
-      status:   pendingC > 0 ? 'running' : 'done',
-      progress: doneC,
-      total:    totalC,
-      sub:      pendingC > 0 ? `${pendingC} ausstehend` : 'Alle erledigt'
-    };
-    jobs.instrQueue = enriched;
-  }
+/** Einmal gezählt: offen, erledigt und gescheitert aus derselben Abfrage. */
+async function anleitungsAuftraege() {
+  const z = await zaehleArt('anleitung').catch(meldeUndLiefere('verwaltung:anleitungen', null));
+  return { offen: z ? z.offen + z.laeuft : 0, erledigt: z?.erledigt ?? 0, fehler: z?.fehler ?? 0 };
+}
 
-  const bs = await bricksetZahlen().catch(meldeUndLiefere('verwaltung:bricksetZahlen', { wartend: 0, faellig: 0 }));
-  const bsRetryC = bs.wartend, bsRetryDueC = bs.faellig;
-  jobs.bricksetRetry = {
-    label:    'Brickset Retry Queue',
-    status:   bsRetryC === 0 ? 'done' : bsRetryDueC > 0 ? 'idle' : 'idle',
-    progress: 0,
-    total:    bsRetryC,
-    sub:      bsRetryC === 0
-      ? 'Keine ausstehenden Einträge'
-      : bsRetryDueC > 0
-        ? `${bsRetryDueC} Sets bereit zum Retry, ${bsRetryC - bsRetryDueC} warten`
-        : `${bsRetryC} Sets warten auf morgen`,
-    lastRun: null,
-  };
+function anleitungsKachel(alt: Kachel, a: { offen: number; erledigt: number; fehler: number }): Kachel | null {
+  const gesamt = a.offen + a.erledigt + a.fehler;
+  if (gesamt <= 0) return null;
+  return { ...alt, status: a.offen > 0 ? 'running' : 'done', progress: a.erledigt, total: gesamt,
+    sub: a.offen > 0 ? `${a.offen} ausstehend` : 'Alle erledigt' };
+}
 
-  const [imgDlPending, imgDlDone, imgDlPendingFigs, imgDlPendingOwnFigs] = await Promise.all([
-    verwaltung.teilbilderOffen().catch(meldeUndLiefere('verwaltung:teilbilderOffen', null)),
-    verwaltung.teilbilderFertig().catch(meldeUndLiefere('verwaltung:teilbilderFertig', null)),
-    verwaltung.setFigurenbilderOffen().catch(meldeUndLiefere('verwaltung:setFigurenbilderOffen', null)),
+async function bricksetKachel(): Promise<Kachel> {
+  const { wartend, faellig } = await bricksetZahlen().catch(meldeUndLiefere('verwaltung:bricksetZahlen', { wartend: 0, faellig: 0 }));
+  return { label: 'Brickset Retry Queue', status: wartend === 0 ? 'done' : 'idle', progress: 0, total: wartend, lastRun: null,
+    sub: wartend === 0 ? 'Keine ausstehenden Einträge'
+      : faellig > 0 ? `${faellig} Sets bereit zum Retry, ${wartend - faellig} warten` : `${wartend} Sets warten auf morgen` };
+}
+
+/** „läuft" heisst: hat KÜRZLICH etwas getan (Zeitstempel des Standes). */
+const frisch = (zeit: unknown) => typeof zeit === 'number' && Date.now() - zeit < JOB_FRISCH_MS;
+
+/** Bestand, Neuladen und Katalog in EINER Kachel, sonst meldete sie „alle gecacht",
+ * während der Hintergrund-Job nachlädt.
+ * Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-katalogoffen */
+async function bildKachel(): Promise<Kachel> {
+  const [teileOffen, fertig, setFiguren, bestandsFiguren, katalogOffen] = await Promise.all([
+    zahl(verwaltung.teilbilderOffen(), 'teilbilderOffen'), zahl(verwaltung.teilbilderFertig(), 'teilbilderFertig'),
+    zahl(verwaltung.setFigurenbilderOffen(), 'setFigurenbilderOffen'),
     // Figuren des Bestands legt derselbe Lauf lokal ab; sie gehören in die offene Menge.
-    verwaltung.bestandsFigurenbilderOffen().catch(meldeUndLiefere('verwaltung:bestandsFigurenbilderOffen', null)),
+    zahl(verwaltung.bestandsFigurenbilderOffen(), 'bestandsFigurenbilderOffen'),
+    zahl(verwaltung.katalogBilderOffen(), 'katalogBilderOffen'),
   ]);
-  const imgPending = parseInt(imgDlPending?.c||0) + parseInt(imgDlPendingFigs?.c||0)
-                   + parseInt(imgDlPendingOwnFigs?.c||0);
-  const imgDone    = parseInt(imgDlDone?.c||0);
-  // Über alle Stapel summiert, gedeckelt auf die wirklich offenen Bilder: Das
-  // heilt einen verwaisten Zähler nach einem Absturz.
-  const imgDlJob   = await monitor.get('imgDl').catch(meldeUndLiefere('verwaltung:get', null));
-  let imgActive    = await monitor.imgDlPending().catch(meldeUndLiefere('verwaltung:imgDlPending', 0));
-  if (imgPending === 0 && imgActive > 0) { await monitor.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset')); imgActive = 0; }
-  imgActive = Math.min(imgActive, imgPending);
-  const imgRunning = imgActive > 0;
-  let reDl: any = null;
-  try {
-    const roh = await liesZustand('imgredl_status');
-    if (roh) reDl = JSON.parse(roh);
-  } catch (_) { reDl = null; }
-  // „läuft" heisst: hat KÜRZLICH etwas getan (Zeitstempel `at` des Standes).
-  const seitReDl = typeof reDl?.at === 'number' ? Date.now() - reDl.at : null;
-  const reDlRunning = reDl?.running === true
-    && (seitReDl === null || seitReDl < JOB_FRISCH_MS);
-  const reDlSub = reDlRunning
-    ? (reDl.phase === 'scanning'
-        ? '↻ suche fehlende Bilder…'
-        : `↻ ${reDl.done || 0}/${reDl.total || 0} fehlende neu geladen`)
-    : null;
-  // Katalogbilder gehören in DIESE Kachel, sonst meldete sie „alle gecacht",
-  // während der Hintergrund-Job nachlädt.
-  // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-katalogoffen
-  const katalogOffen = (await verwaltung.katalogBilderOffen().catch(meldeUndLiefere('verwaltung:katalogBilderOffen', null)))?.c ?? 0;
-  // „läuft" heisst: hat kürzlich etwas getan — eine steckengebliebene
-  // Warteschlange sähe sonst aus wie eine arbeitende.
+  const offen = teileOffen + setFiguren + bestandsFiguren;
+  const job = await monitor.get('imgDl').catch(meldeUndLiefere('verwaltung:get', null));
+  // Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz.
+  let aktiv = await monitor.imgDlPending().catch(meldeUndLiefere('verwaltung:imgDlPending', 0));
+  if (offen === 0 && aktiv > 0) { await monitor.imgDlReset().catch(logAndContinue('verwaltung:imgDlReset')); aktiv = 0; }
+  aktiv = Math.min(aktiv, offen);
+  const reDl = await liesStand<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>('imgredl_status');
+  const reDlLaeuft = reDl?.running === true && (typeof reDl.at !== 'number' || frisch(reDl.at));
+  const reDlSub = !reDlLaeuft ? null : reDl?.phase === 'scanning' ? '↻ suche fehlende Bilder…'
+    : `↻ ${reDl?.done || 0}/${reDl?.total || 0} fehlende neu geladen`;
   // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-letzterlauf
-  let letzterLauf: { zeit?: number } | null = null;
-  try {
-    const roh = await liesZustand('imgqueue_last_run');
-    if (roh) letzterLauf = JSON.parse(roh);
-  } catch (_) { letzterLauf = null; }
+  const letzterLauf = await liesStand<{ zeit?: number }>('imgqueue_last_run');
   const seitLauf = letzterLauf?.zeit ? Date.now() - letzterLauf.zeit : null;
-  const jobLaeuft = seitLauf !== null && seitLauf < JOB_FRISCH_MS;
+  const jobLaeuft = frisch(letzterLauf?.zeit);
   const katalogSub = katalogOffen > 0
-    ? `${katalogOffen} Katalog-Bilder in Warteschlange` +
-      (jobLaeuft ? '' : seitLauf === null ? ' · Job noch nicht gelaufen'
-                                          : ` · seit ${Math.round(seitLauf / 60_000)} min kein Durchgang`)
+    ? `${katalogOffen} Katalog-Bilder in Warteschlange` + (jobLaeuft ? '' : seitLauf === null ? ' · Job noch nicht gelaufen'
+      : ` · seit ${Math.round(seitLauf / 60_000)} min kein Durchgang`)
     : null;
-
-  const bestandSub = imgRunning ? `${imgActive} Bilder werden geladen`
-              : imgPending > 0 ? `${imgPending} Bilder noch nicht gecacht`
-              : `Alle ${imgDone} Bilder gecacht`;
-  // „Bestand" benennen, sobald Katalogzahlen daneben stehen.
-  const imgBaseSub = katalogSub ? `Bestand: ${bestandSub} · ${katalogSub}` : bestandSub;
-  jobs.imgDl = {
-    label:    '📥 Bild-Download (CDN)',
-    // Auch wenn nur der Katalog-Job arbeitet, sonst stünde die Kachel auf „fertig".
-    status:   (imgRunning || reDlRunning || (katalogOffen > 0 && jobLaeuft)) ? 'running'
-              : (imgPending > 0 || katalogOffen > 0) ? 'idle' : 'done',
-    sub:      reDlSub ? `${imgBaseSub} · ${reDlSub}` : imgBaseSub,
+  const bestandSub = aktiv > 0 ? `${aktiv} Bilder werden geladen`
+    : offen > 0 ? `${offen} Bilder noch nicht gecacht` : `Alle ${fertig} Bilder gecacht`;
+  const basisSub = katalogSub ? `Bestand: ${bestandSub} · ${katalogSub}` : bestandSub;
+  return {
+    label: '📥 Bild-Download (CDN)',
+    status: (aktiv > 0 || reDlLaeuft || (katalogOffen > 0 && jobLaeuft)) ? 'running' : (offen > 0 || katalogOffen > 0) ? 'idle' : 'done',
+    sub: reDlSub ? `${basisSub} · ${reDlSub}` : basisSub,
     // Mit Warteschlange, sonst stünde der Balken auf 100 %, während Bilder ausstehen.
-    progress: imgDone,
-    total:    imgDone + imgPending + katalogOffen,
-    queue:    katalogOffen,
-    queueLastRun: letzterLauf?.zeit || null,
-    lastRun:  imgDlJob?.lastRun || null,
-    canRedownload: true,
+    progress: fertig, total: fertig + offen + katalogOffen, queue: katalogOffen,
+    queueLastRun: letzterLauf?.zeit || null, lastRun: job?.lastRun || null, canRedownload: true,
   };
+}
 
-  let pdfRunning = 0, pdfDone = 0;
+function pdfKachel(): Kachel {
+  let laufend = 0, fertig = 0;
   try {
-    const pdfFiles = fs.readdirSync(PDF_JOB_DIR).filter((f: string) => f.endsWith('.json'));
-    for (const f of pdfFiles) {
+    for (const f of fs.readdirSync(PDF_JOB_DIR).filter((f: string) => f.endsWith('.json'))) {
       try {
-        const j = JSON.parse(fs.readFileSync(path.join(PDF_JOB_DIR, f), 'utf8'));
-        if (j.status === 'running') pdfRunning++;
-        else if (j.status === 'done') pdfDone++;
+        const j = JSON.parse(fs.readFileSync(path.join(PDF_JOB_DIR, f), 'utf8')) as { status?: string };
+        if (j.status === 'running') laufend++; else if (j.status === 'done') fertig++;
       } catch (e) { meldeUndWeiter('admin:pdf-auftrag-lesen', e); }
     }
   } catch (e) { meldeUndWeiter('admin:auftragsordner-lesen', e); }
-  jobs.pdfJobs = {
-    label:   '📄 PDF-Jobs',
-    status:  pdfRunning > 0 ? 'running' : pdfDone > 0 ? 'idle' : 'done',
-    sub:     pdfRunning > 0 ? `${pdfRunning} PDF(s) werden erstellt`
-             : pdfDone > 0 ? `${pdfDone} PDF(s) bereit zum Download`
-             : 'Keine aktiven Jobs',
-    progress: 0,
-    total:    0,
-    lastRun:  null,
-  };
+  return { label: '📄 PDF-Jobs', status: laufend > 0 ? 'running' : fertig > 0 ? 'idle' : 'done', progress: 0, total: 0, lastRun: null,
+    sub: laufend > 0 ? `${laufend} PDF(s) werden erstellt` : fertig > 0 ? `${fertig} PDF(s) bereit zum Download` : 'Keine aktiven Jobs' };
+}
 
-  const schedules: any = {};
-  for (const dj of DAILY_JOBS) {
-    const zeit = await getGlobalSetting(`job_time_${dj.name}`);
-    schedules[dj.monitorKey] = { type: 'daily', time: zeit || dj.default };
-  }
-  const priceInt = await getGlobalSetting('price_job_interval_minutes');
-  schedules.priceJob = { type: 'interval', minutes: parseInt(priceInt || '60') };
+async function zeitplaene(): Promise<Record<string, { type: string; time?: string; minutes?: number }>> {
+  const aus: Record<string, { type: string; time?: string; minutes?: number }> = {};
+  for (const dj of DAILY_JOBS)
+    aus[dj.monitorKey] = { type: 'daily', time: await getGlobalSetting(`job_time_${dj.name}`) || dj.default };
+  aus.priceJob = { type: 'interval', minutes: parseInt(await getGlobalSetting('price_job_interval_minutes') || '60') };
+  return aus;
+}
 
+/** Ergänzt um Zahlen, die nur die Datenbank kennt; je Kachel eine Funktion. */
+export async function jobUebersicht() {
+  const jobs: Kacheln = await monitor.all(); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
+  const [anleitungen, gemappt, blGesamt, rbTeile, rbInventar, lastSync] = await Promise.all([
+    anleitungsAuftraege(),
+    zahl(verwaltung.zugeordneteTeile(), 'zugeordneteTeile'), zahl(verwaltung.bricklinkTeile(), 'bricklinkTeile'),
+    zahl(verwaltung.rbTeile(), 'rbTeile'), zahl(verwaltung.rbInventarTeile(), 'rbInventarTeile'),
+    liesZustand('rb_csv_last_sync'),
+  ]);
+  const blIds = blIdsKachel(jobs.blIds ?? {}, gemappt, blGesamt);
+  if (blIds) jobs.blIds = blIds;
+  const anleitung = anleitungsKachel(jobs.instrQueue ?? {}, anleitungen);
+  if (anleitung) jobs.instrQueue = anleitung;
+  [jobs.bricksetRetry, jobs.imgDl] = await Promise.all([bricksetKachel(), bildKachel()]);
+  jobs.pdfJobs = pdfKachel();
   return {
-    success: true,
-    jobs,
-    schedules,
+    success: true, jobs, schedules: await zeitplaene(),
     db: {
-      instrQueue: { pending: pendingC, done: doneC, failed: failedC },
-      blMapping:  { mapped: parseInt(blMapped?.c||0), total: parseInt(blTotal?.c||0) },
-      csvCache:   { parts: parseInt(rbParts?.c||0), inventoryParts: parseInt(rbInvParts?.c||0), lastSync: lastSync || null },
-    }
+      instrQueue: { pending: anleitungen.offen, done: anleitungen.erledigt, failed: anleitungen.fehler },
+      blMapping:  { mapped: gemappt, total: blGesamt },
+      csvCache:   { parts: rbTeile, inventoryParts: rbInventar, lastSync: lastSync || null },
+    },
   };
 }
 

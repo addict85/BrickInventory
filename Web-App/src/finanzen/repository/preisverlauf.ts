@@ -60,14 +60,14 @@ export function manualSeries(table: string, keySql: string, keyVals: any[], curr
 }
 
 
-export function cachePreiseNachSchluessel(cacheTable: string, keySql: string, keyVals: (string | number)[], currency: string) {
+export function cachePreiseNachSchluessel(cacheTable: string, keySql: string, keyVals: unknown[], currency: string) {
   return db.all<{ condition: string; avg_price: number | null }>(
     `SELECT condition, avg_price FROM ${cacheTable}
       WHERE ${keySql} AND currency_code = $${keyVals.length + 1} AND avg_price > 0
       ORDER BY fetched_at DESC`, [...keyVals, currency]);
 }
 
-export function kaufschnitteNachSchluessel(acqTable: string, acqKeySql: string, acqKeyVals: (string | number)[], uids: number[], currency: string) {
+export function kaufschnitteNachSchluessel(acqTable: string, acqKeySql: string, acqKeyVals: unknown[], uids: number[], currency: string) {
   return db.all<{ condition: string; avg_purchase: number | null }>(
     `SELECT condition, ${mittelUeber('k')} AS avg_purchase
        FROM (SELECT condition, quantity, ${kaufpreisIn('unit_price', `$${acqKeyVals.length + 2}`)} AS k

@@ -10,8 +10,13 @@ export type KontoBildzeile = { user_id: number } & Bildzeile;
 type Fehlanzeige = { checked_at: Date; reason: string | null };
 type Schluessel = { cache_key: string };
 
-export function veraltetePreise(): Promise<any> {
-  return db.get("SELECT COUNT(*) as c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
+/** COUNT als Zahl: ::int, denn bigint käme als Text an. */
+async function anzahl(sql: string): Promise<number> {
+  return (await db.get<{ c: number }>(sql))?.c ?? 0;
+}
+
+export function veraltetePreise(): Promise<number> {
+  return anzahl("SELECT COUNT(*)::int AS c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
 }
 
 export async function leerePreisCache(): Promise<void> {
@@ -89,9 +94,8 @@ export function offeneBildauftraege(): Promise<{ n: number } | undefined> {
   return db.get(`SELECT COUNT(*)::int AS n FROM image_wanted`);
 }
 
-export function katalogBilderOffen(): Promise<{ c: number } | undefined> {
-  return db.get(
-    `SELECT COUNT(*)::int AS c FROM image_wanted`);
+export function katalogBilderOffen(): Promise<number> {
+  return anzahl(`SELECT COUNT(*)::int AS c FROM image_wanted`);
 }
 
 export function setsOhneAnleitung(): Promise<{ set_number: string }[]> {
@@ -117,46 +121,45 @@ export function protokollSeit(minuten: number): Promise<{ id: number; level: str
 }
 
 /** Nur Art 'part': Die Kennzahl stellt nachgesehene Teile der Zahl der Teile gegenüber. */
-export function zugeordneteTeile(): Promise<any> {
-  return db.get(
-    `SELECT COUNT(*) as c FROM bl_zuordnung WHERE art='part'`);
+export function zugeordneteTeile(): Promise<number> {
+  return anzahl(`SELECT COUNT(*)::int AS c FROM bl_zuordnung WHERE art='part'`);
 }
 
-export function bricklinkTeile(): Promise<any> {
-  return db.get(`SELECT COUNT(DISTINCT part_number) as c FROM parts WHERE source!='manual'`);
+export function bricklinkTeile(): Promise<number> {
+  return anzahl(`SELECT COUNT(DISTINCT part_number)::int AS c FROM parts WHERE source!='manual'`);
 }
 
-export function rbTeile(): Promise<any> {
-  return db.get(`SELECT COUNT(*) as c FROM rb_parts`);
+export function rbTeile(): Promise<number> {
+  return anzahl(`SELECT COUNT(*)::int AS c FROM rb_parts`);
 }
 
-export function rbInventarTeile(): Promise<any> {
-  return db.get(`SELECT COUNT(*) as c FROM rb_inventory_parts`);
+export function rbInventarTeile(): Promise<number> {
+  return anzahl(`SELECT COUNT(*)::int AS c FROM rb_inventory_parts`);
 }
 
-export function teilbilderOffen(): Promise<any> {
-  return db.get(`SELECT COUNT(*) as c FROM set_parts_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`);
+export function teilbilderOffen(): Promise<number> {
+  return anzahl(`SELECT COUNT(*)::int AS c FROM set_parts_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`);
 }
 
-export function teilbilderFertig(): Promise<any> {
-  return db.get(`SELECT COUNT(*) as c FROM set_parts_catalog WHERE image_local IS NOT NULL`);
+export function teilbilderFertig(): Promise<number> {
+  return anzahl(`SELECT COUNT(*)::int AS c FROM set_parts_catalog WHERE image_local IS NOT NULL`);
 }
 
-export function setFigurenbilderOffen(): Promise<any> {
-  return db.get(`SELECT COUNT(*) as c FROM set_minifigs_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`);
+export function setFigurenbilderOffen(): Promise<number> {
+  return anzahl(`SELECT COUNT(*)::int AS c FROM set_minifigs_catalog WHERE image_url IS NOT NULL AND image_local IS NULL`);
 }
 
 /** Das EXISTS hält die Menge bei dem, was der Hintergrundlauf wirklich holt,
  * sonst passt die offene Zahl nicht zum Fortschritt. */
-export function bestandsFigurenbilderOffen(): Promise<any> {
-  return db.get(`SELECT COUNT(*) as c FROM minifigs_catalog mc
+export function bestandsFigurenbilderOffen(): Promise<number> {
+  return anzahl(`SELECT COUNT(*)::int AS c FROM minifigs_catalog mc
              WHERE mc.image_url IS NOT NULL AND mc.image_local IS NULL
                AND EXISTS (SELECT 1 FROM minifigs m WHERE m.fig_number = mc.fig_number)`);
 }
 
 /** Die Menge aus den Erfassungen — dieselbe Summe, die die Bewertung sieht. */
-export function probeSet(uid: number, setNumber: string): Promise<any> {
-  return db.get(`SELECT s.set_number, ${mengeSkalar('s')} AS quantity
+export function probeSet(uid: number, setNumber: string) {
+  return db.get<{ set_number: string; quantity: number }>(`SELECT s.set_number, ${mengeSkalar('s')} AS quantity
               FROM sets s WHERE s.user_id=$1 AND s.set_number=$2`, [uid, setNumber]);
 }
 
@@ -164,14 +167,14 @@ export function probeErfassungen(uid: number, setNumber: string): Promise<{ quan
   return db.all('SELECT quantity, condition, purchase_price, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at', [uid, setNumber]);
 }
 
-export function probePreisCache(setNumber: string): Promise<any[]> {
-  return db.all(`SELECT condition, currency_code, avg_price, qty_avg_price, min_price, max_price, fetched_at,
+export function probePreisCache(setNumber: string) {
+  return db.all<Record<string, unknown>>(`SELECT condition, currency_code, avg_price, qty_avg_price, min_price, max_price, fetched_at,
                    EXTRACT(EPOCH FROM (NOW() - fetched_at))/3600 AS age_hours
               FROM price_cache WHERE set_number=$1 ORDER BY condition, currency_code`, [setNumber]);
 }
 
-export function probePreisVerlauf(setNumber: string): Promise<any[]> {
-  return db.all(`SELECT condition, avg_price, qty_avg_price, recorded_at FROM price_history
+export function probePreisVerlauf(setNumber: string) {
+  return db.all<Record<string, unknown>>(`SELECT condition, avg_price, qty_avg_price, recorded_at FROM price_history
              WHERE set_number=$1 ORDER BY recorded_at DESC LIMIT 5`, [setNumber]);
 }
 
@@ -180,7 +183,7 @@ export function probeWaehrung(uid: number): Promise<{ value: string } | undefine
 }
 
 export function letzterLaufDerArt() {
-  return db.get<{ status: string; faellig_ab: Date; fortschritt: any }>(`SELECT status, faellig_ab, fortschritt FROM auftraege
+  return db.get<{ status: string; faellig_ab: Date; fortschritt: Record<string, unknown> | null }>(`SELECT status, faellig_ab, fortschritt FROM auftraege
       WHERE art = 'preise' AND status IN ('offen', 'laeuft') ORDER BY status = 'laeuft' DESC, faellig_ab LIMIT 1`);
 }
 

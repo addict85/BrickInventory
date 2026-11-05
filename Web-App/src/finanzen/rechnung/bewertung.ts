@@ -43,151 +43,127 @@ function fremdeKaufpreise(jeEintrag: Map<string, Array<{ kaufpreis_fremd?: boole
   return n;
 }
 
-/** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const ids = await blickfeldAus(idsWahl);
-  // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
-  // Filter „Unterkonten" fehlt das fragende Konto in ids.
-  const uids = asIds(ids);
-  const [currency, ttlHours, guideType] = await Promise.all([
-    getSetting(viewerId, 'currency', 'EUR'),
-    getSetting(viewerId, 'price_cache_ttl', '24'),
-    getSetting(viewerId, 'price_guide_type', 'sold'),
-  ]);
-  const defaultCondition = DEFAULT_PRICE_CONDITION;
+type BewertungsSet = Awaited<ReturnType<typeof repo.setsZurBewertung>>[number];
+type SetErfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
+type Preis = Awaited<ReturnType<typeof fetchPrice>>;
+/** Was jede Zeile braucht: Einstellungen des Betrachters und die vorgeladenen Tabellen. */
+type Bewertungslage = { guideType: string; currency: string; ttlHours: string; pre: NonNullable<Parameters<typeof fetchPrice>[5]> };
 
-  const sets = await repo.setsZurBewertung(uids);
-  if (!sets.length) return { currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours,
-    ttl_stunden: Number(ttlHours) || 24, kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, sets: [], totals: { min:'0.00', avg:'0.00', max:'0.00', qty_avg:'0.00' } };
-
-  // Je eine Abfrage für Katalog, Preiscache und Erfassungen statt einer je Set.
-  const ttl = Math.max(1, parseInt(String(ttlHours)));
-  const setNumbers = sets.map(s => s.set_number);
-  const [catRows, cacheRows, acqRows] = await Promise.all([
-    // catalog_cache führt Nummern mit Versionsanhang, price_cache unter der
-    // Schreibweise des Aufrufers.
-    repo.katalogMerkmale(setNumbers.map(mitVersion)),
-    setPreiseFrisch(setNumbers, String(currency), ttl),
-    ladeSetErfassungen(uids, String(currency)),
-  ]);
-  const pre = {
-    catalog: new Map(catRows.map(r => [r.set_number, r])),
-    cache:   new Map(cacheRows.map(r => [`${r.set_number}|${r.condition}`, r])),
-  };
-  // Je Konto und Set: Im Haushalt ist jede Zeile der Bestand EINES Kontos;
-  // nach Setnummer allein zählte jede Zeile die Käufe aller Konten mit.
-  const acqBySet = new Map<string, any[]>();
-  for (const a of acqRows) {
-    const k = `${a.user_id}|${a.set_number}`;
-    const list = acqBySet.get(k);
-    if (list) list.push(a); else acqBySet.set(k, [a]);
+/** Preise NUR für die vorkommenden Zustände: Jeder Abruf kostet Kontingent. Ein
+ * Fehler gilt nur dem einen Zustand. */
+async function preiseJeZustand(sn: string, zustaende: Array<'N' | 'U'>, l: Bewertungslage) {
+  const preise: Partial<Record<'N' | 'U', Preis | null>> = {};
+  const fehler: string[] = [];
+  for (const cond of zustaende) {
+    try { preise[cond] = await fetchPrice(sn, cond, l.guideType, l.currency, l.ttlHours, l.pre); }
+    catch (e) { preise[cond] = null; fehler.push(fehlertext(e)); }
   }
+  return { preise, fehler };
+}
 
-  const tasks = sets.map(set => async () => {
-    const acqs = acqBySet.get(`${set.user_id}|${set.set_number}`) || [];
-    const imgLocal = resolveImageLocal(set.image_local);
-    const imgUrl   = proxyImageUrl(set.image_url);
-    const base = {
-      user_id: set.user_id, set_number: set.set_number, name: set.name, year: set.year,
-      image_local: imgLocal, image_url: imgUrl, added_at: set.added_at,
-    };
+/** Eine Zeile der Bewertung: Je Kaufpreis der Preis SEINES Zustands, verdichtet
+ * in valueSet(), damit die Bewertungsregel an EINER Stelle bleibt. */
+async function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage) {
+  const fallbackCond: 'N' | 'U' = effectiveCondition(set);
+  const needed: Array<'N' | 'U'> = acqs.length
+    ? [...new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N') as 'N' | 'U'))] : [fallbackCond];
+  const { preise, fehler } = await preiseJeZustand(set.set_number, needed, l);
+  const preisMap = new Map<string, number>();
+  for (const cond of needed) {
+    const v = parseFloat(String(preise[cond]?.avg_price || 0));
+    if (v > 0) preisMap.set(`${set.set_number}|${cond}`, v);
+  }
+  const valued = valueSet(set.set_number, acqs, preisMap, fallbackCond, set.quantity || 1);
+  const rows = valueAcquisitionRows(set.set_number, acqs, preisMap);
+  // Ohne Erfassung kein Kaufpreis, nicht 0: Eine 0 sähe aus wie ein Geschenk.
+  const purchase = weightedPurchase(rows);
+  // Min/Max müssen zur selben Mengenaufteilung passen wie der Schnitt.
+  const qty = valued.quantity || 1;
+  const gewichtet = (key: 'min_price' | 'max_price' | 'qty_avg_price') => valued.by_condition
+    .map(bc => (parseFloat(String(preise[bc.condition as 'N' | 'U']?.[key] || 0)) || 0) * bc.quantity)
+    .reduce((a, b) => a + b, 0) / qty;
+  const einPreis = needed.map(c => preise[c]).find(p => p);
+  const unitAvg = valued.unit_price ?? 0;
+  // Fehler nur, wenn KEIN Zustand einen Preis hat: Die gelungene Hälfte soll nicht an der anderen scheitern.
+  const allesFehlt = fehler.length === needed.length;
+  const conditions = valued.by_condition.map(bc => bc.condition);
+  return {
+    user_id: set.user_id, set_number: set.set_number, name: set.name, year: set.year,
+    image_local: resolveImageLocal(set.image_local), image_url: proxyImageUrl(set.image_url), added_at: set.added_at,
+    quantity: qty,
+    // Nur für Aufrufer, die eine einzelne Angabe erwarten.
+    condition: conditions.includes('U') ? 'U' : 'N', conditions, mixed: conditions.length > 1,
+    purchase_price: purchase,
+    min_price: gewichtet('min_price'), avg_price: unitAvg, max_price: gewichtet('max_price'), qty_avg_price: gewichtet('qty_avg_price'),
+    // Aus dem ungerundeten Stückpreis: 120,3333 × 2 ist 240,67, nicht 240,66.
+    total_avg:     aufRappen((valued.unit_z ?? 0) * qty).toFixed(2),
+    wert_gesamt:   aufRappen((valued.unit_z ?? 0) * qty),
+    total_qty_avg: aufRappen((inZehntel4(gewichtet('qty_avg_price')) ?? 0) * qty).toFixed(2),
+    pnl_pct: calcPnlPct(purchase, unitAvg), pnl_prozent: pnlProzent(purchase, unitAvg),
+    acquisitions: rows,
+    from_cache: einPreis ? !!einPreis.from_cache : true,
+    is_fallback: einPreis ? !!einPreis.is_fallback : false,
+    no_price: !allesFehlt && valued.unit_price == null,
+    bl_unbekannt: needed.some(c => preise[c]?.bl_unbekannt === true),
+    ...(allesFehlt ? { error: fehler[0] } : {}),
+  };
+}
 
-    // Preise NUR für die vorkommenden Zustände: Jeder Abruf kostet Kontingent.
-    const fallbackCond: 'N' | 'U' = effectiveCondition(set);
-    const needed: Array<'N' | 'U'> = acqs.length
-      ? [...new Set(acqs.map(a => (a.condition === 'U' ? 'U' : 'N')))] as Array<'N'|'U'>
-      : [fallbackCond];
-
-    const priceByCond: Record<string, any> = {};
-    const errors: string[] = [];
-    for (const cond of needed) {
-      try {
-        priceByCond[cond] = await fetchPrice(set.set_number, cond, guideType, currency, ttlHours, pre);
-      } catch (e) {
-        priceByCond[cond] = null;
-        errors.push(fehlertext(e));
-      }
-    }
-
-    // Dieselbe Form wie loadConditionPrices(), damit die Bewertungsregel an
-    // EINER Stelle (valueSet) bleibt.
-    const priceMapForSet = new Map<string, number>();
-    for (const cond of needed) {
-      const v = parseFloat(String(priceByCond[cond]?.avg_price || 0));
-      if (v > 0) priceMapForSet.set(`${set.set_number}|${cond}`, v);
-    }
-
-    const valued = valueSet(set.set_number, acqs, priceMapForSet, fallbackCond, set.quantity || 1);
-    // Je Kaufpreis eine Zeile, jede mit dem Preis IHRES Zustands.
-    const rows = valueAcquisitionRows(set.set_number, acqs, priceMapForSet);
-    // Ohne Erfassung kein Kaufpreis, nicht 0: Eine 0 sähe aus wie ein Geschenk.
-    const purchase = weightedPurchase(rows);
-
-    // Min/Max müssen zur selben Mengenaufteilung passen wie der Schnitt.
-    const qty = valued.quantity || 1;
-    const weighted = (key: 'min_price' | 'max_price' | 'qty_avg_price') => {
-      const parts = valued.by_condition.map(bc => {
-        const raw = parseFloat(String(priceByCond[bc.condition]?.[key] || 0)) || 0;
-        return raw * bc.quantity;
-      });
-      return parts.reduce((a, b) => a + b, 0) / qty;
-    };
-
-    const anyPrice = needed.map(c => priceByCond[c]).find(p => p);
-    const unitAvg = valued.unit_price ?? 0;
-    // Fehler nur, wenn KEIN Zustand einen Preis hat: Die gelungene Hälfte eines
-    // gemischten Sets soll nicht an der anderen scheitern.
-    const failedAll = errors.length === needed.length;
-    const conditions = valued.by_condition.map(bc => bc.condition);
-
-    return {
-      ...base,
-      quantity: qty,
-      // Nur für Aufrufer, die eine einzelne Angabe erwarten; die Bewertung hängt
-      // an den Zuständen der Einzelzeilen.
-      condition: conditions.includes('U') ? 'U' : 'N',
-      conditions,
-      mixed: conditions.length > 1,
-      purchase_price: purchase,
-      min_price: weighted('min_price'),
-      avg_price: unitAvg,
-      max_price: weighted('max_price'),
-      qty_avg_price: weighted('qty_avg_price'),
-      // Aus dem ungerundeten Stückpreis: 120,3333 × 2 ist 240,67, nicht 240,66.
-      total_avg:     aufRappen((valued.unit_z ?? 0) * qty).toFixed(2),
-      wert_gesamt:   aufRappen((valued.unit_z ?? 0) * qty),
-      total_qty_avg: aufRappen((inZehntel4(weighted('qty_avg_price')) ?? 0) * qty).toFixed(2),
-      pnl_pct: calcPnlPct(purchase, unitAvg),
-      pnl_prozent: pnlProzent(purchase, unitAvg),
-      acquisitions: rows,
-      from_cache: anyPrice ? !!anyPrice.from_cache : true,
-      is_fallback: anyPrice ? !!anyPrice.is_fallback : false,
-      no_price: !failedAll && valued.unit_price == null,
-      bl_unbekannt: needed.some(c => priceByCond[c]?.bl_unbekannt === true),
-      ...(failedAll ? { error: errors[0] } : {}),
-    };
-  });
-
-  const results = await withOwnerNames(uids, await parallelLimit(tasks, 5));
-  // Summen aus den Zeilenwerten, gerundet erst am Schluss.
+/** Summen aus den Zeilenwerten, gerundet erst am Schluss. */
+function bewertungsSummen(zeilen: Array<{ quantity: number; min_price: number; max_price: number; qty_avg_price: number; total_avg: string }>) {
   let zMin = 0, zMax = 0, zQtyAvg = 0, zAvg = 0;
-  for (const r of results) {
+  for (const r of zeilen) {
     const q = r.quantity || 1;
     zMin += (inZehntel4(r.min_price) ?? 0) * q;
     zMax += (inZehntel4(r.max_price) ?? 0) * q;
     zQtyAvg += (inZehntel4(r.qty_avg_price) ?? 0) * q;
     zAvg += inZehntel4(r.total_avg) ?? 0;
   }
-  return {
-    currency, condition: defaultCondition, guide_type: guideType, ttl_hours: ttlHours,
+  return { min: aufRappen(zMin).toFixed(2), avg: aufRappen(zAvg).toFixed(2), max: aufRappen(zMax).toFixed(2), qty_avg: aufRappen(zQtyAvg).toFixed(2) };
+}
+
+/** Eine Umsetzung für Sitzungsroute und Token-API. */
+export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
+  // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
+  // Filter „Unterkonten" fehlt das fragende Konto in ids.
+  const uids = await blickfeldAus(idsWahl);
+  const [currency, ttlHours, guideType] = await Promise.all([
+    getSetting(viewerId, 'currency', 'EUR'), getSetting(viewerId, 'price_cache_ttl', '24'),
+    getSetting(viewerId, 'price_guide_type', 'sold')]);
+  const kopf = { currency, condition: DEFAULT_PRICE_CONDITION, guide_type: guideType, ttl_hours: ttlHours,
     // ttl_hours bleibt für ältere Clients Text.
-    ttl_stunden: Number(ttlHours) || 24,
-    // Fremde Kaufpreise fehlen in den Summen (keine Kurse); die Zahl sagt, wie
-    // viele es sind, statt sie still wegzulassen.
+    ttl_stunden: Number(ttlHours) || 24 };
+  const sets = await repo.setsZurBewertung(uids);
+  if (!sets.length) return { ...kopf, kaufpreise_fremde_waehrung: 0, kaufpreise_umgerechnet: 0, sets: [],
+    totals: { min: '0.00', avg: '0.00', max: '0.00', qty_avg: '0.00' } };
+
+  // Je eine Abfrage für Katalog, Preiscache und Erfassungen statt einer je Set.
+  const setNumbers = sets.map(s => s.set_number);
+  const [catRows, cacheRows, acqRows] = await Promise.all([
+    // catalog_cache führt Nummern mit Versionsanhang, price_cache unter der Schreibweise des Aufrufers.
+    repo.katalogMerkmale(setNumbers.map(mitVersion)),
+    setPreiseFrisch(setNumbers, currency, Math.max(1, parseInt(ttlHours))),
+    ladeSetErfassungen(uids, currency),
+  ]);
+  const lage: Bewertungslage = { guideType, currency, ttlHours, pre: {
+    catalog: new Map(catRows.map(r => [r.set_number, r])),
+    cache:   new Map(cacheRows.map(r => [`${r.set_number}|${r.condition}`, r])),
+  } };
+  // Je Konto und Set: Im Haushalt ist jede Zeile der Bestand EINES Kontos.
+  const jeKontoUndSet = new Map<string, SetErfassung[]>();
+  for (const a of acqRows) {
+    const k = `${a.user_id}|${a.set_number}`, l = jeKontoUndSet.get(k);
+    if (l) l.push(a); else jeKontoUndSet.set(k, [a]);
+  }
+  const results = await withOwnerNames(uids, await parallelLimit(
+    sets.map(set => () => bewerteSet(set, jeKontoUndSet.get(`${set.user_id}|${set.set_number}`) || [], lage)), 5));
+  return {
+    ...kopf,
+    // Fremde Kaufpreise fehlen in den Summen (keine Kurse); die Zahl sagt, wie viele es sind.
     kaufpreise_fremde_waehrung: zaehle(acqRows, 'kaufpreis_fremd'),
     kaufpreise_umgerechnet: zaehle(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
-    totals: { min: aufRappen(zMin).toFixed(2), avg: aufRappen(zAvg).toFixed(2), max: aufRappen(zMax).toFixed(2), qty_avg: aufRappen(zQtyAvg).toFixed(2) },
+    totals: bewertungsSummen(results),
   };
 }
 

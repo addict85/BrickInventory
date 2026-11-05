@@ -308,7 +308,7 @@ test('der P&L-Pfad wählt je Set nach dessen eigenem Zustand', () => {
   // mit dem Preis ihres Zustands bewerten. Der geschützte Fehler bleibt
   // derselbe: Der Marktpreis darf nicht aus dem falschen Zustand stammen.
   const fc = require('./helpers/sources').finanzQuelle();
-  assert.match(fc, /valueSet\(set\.set_number, acqs, asPriceMap\(cacheByKey\)/,
+  assert.match(fc, /valueSet\(set\.set_number, acqs, preise, zustand, /,
     'Der P&L-Pfad muss dieselbe Bewertungsregel benutzen wie die Anzeige');
   assert.match(fc, /effectiveCondition\(set\)/,
     'Ohne Erfassungen zählt weiterhin die gemeinsame Zustandsregel');

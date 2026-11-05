@@ -232,7 +232,7 @@ export type ScopeMode = 'all' | 'own' | 'subs' | number;
 
 /** Unbekanntes ergibt 'all'. Eine Zahl wird NICHT hier geprüft: Ob sie zum
  * Haushalt gehört, weiss erst scopeIds(). */
-export function parseScopeMode(v: any): ScopeMode {
+export function parseScopeMode(v: unknown): ScopeMode {
   if (v === 'own' || v === 'subs') return v;
   const n = parseInt(String(v));
   return Number.isFinite(n) && n > 0 ? n : 'all';
@@ -296,7 +296,7 @@ export async function schreibziel(nutzer: number, wunsch: unknown,
  * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#resolvewritetarget
  * @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403) */
 export async function resolveWriteTarget(
-  actorId: number, requested: any
+  actorId: number, requested: unknown
 ): Promise<number | null> {
   if (requested === undefined || requested === null || requested === '') return actorId;
   const target = parseInt(String(requested));

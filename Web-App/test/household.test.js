@@ -307,7 +307,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
 
   const fc = require('./helpers/sources').finanzQuelle();
   pruefeParameter(fc, 'withOwnerNames', ['uids', 'rows']);
-  const uses = (fc.match(/await withOwnerNames\(uids, await parallelLimit\(tasks, 5\)\)/g) || []).length;
+  const uses = (fc.match(/await withOwnerNames\(uids, await parallelLimit\(/g) || []).length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });

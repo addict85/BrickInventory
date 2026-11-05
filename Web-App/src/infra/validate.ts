@@ -57,7 +57,7 @@ function fail(msg: string): never {
   throw new Meldung(msg, 400);
 }
 
-export function requireItemNumber(value: any, field = 'part_number'): string {
+export function requireItemNumber(value: unknown, field = 'part_number'): string {
   const v = String(value ?? '').trim();
   if (!v) fail(`${field} erforderlich`);
   if (!ITEM_NUMBER_RE.test(v))
@@ -66,7 +66,7 @@ export function requireItemNumber(value: any, field = 'part_number'): string {
 }
 
 /** Gekappt statt abgelehnt: Katalognamen sind lang. */
-export function optionalText(value: any, maxLen = 200): string | null {
+export function optionalText(value: unknown, maxLen = 200): string | null {
   if (value === undefined || value === null) return null;
   const v = String(value).replace(/[\u0000-\u001F\u007F]/g, '').trim();
   return v ? v.slice(0, maxLen) : null;
@@ -74,7 +74,7 @@ export function optionalText(value: any, maxLen = 200): string | null {
 
 /** Nur https und ein wohlgeformter Host: "javascript:…", "data:…" und
  * Attribut-Ausbrüche fallen damit raus. */
-export function optionalImageUrl(value: any): string | null {
+export function optionalImageUrl(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
   const v = String(value).trim();
   if (v.length > 2048) fail('image_url ist zu lang');
@@ -84,7 +84,7 @@ export function optionalImageUrl(value: any): string | null {
   return u.toString();
 }
 
-export function positiveInt(value: any, fallback = 1, max = 1_000_000): number {
+export function positiveInt(value: unknown, fallback = 1, max = 1_000_000): number {
   const n = parseInt(String(value ?? ''), 10);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(1, n));
@@ -108,24 +108,24 @@ export function colorId(value: unknown): number {
 }
 
 /** Ungültige Werte werden verworfen, nicht abgelehnt. */
-export function optionalHex(value: any): string | null {
+export function optionalHex(value: unknown): string | null {
   const v = String(value ?? '').trim().replace(/^#/, '');
   return /^[0-9A-Fa-f]{6}$/.test(v) ? v.toUpperCase() : null;
 }
 
 /** null = keine Angabe. */
-export function optionalCondition(value: any): 'N' | 'U' | null {
+export function optionalCondition(value: unknown): 'N' | 'U' | null {
   return value === 'N' || value === 'U' ? value : null;
 }
 
 // Ausführlich: docs/begruendungen/src/infra/validate.ts.md#acquisitionquantity
-export function acquisitionQuantity(value: any, fallback = 1): number {
+export function acquisitionQuantity(value: unknown, fallback = 1): number {
   return positiveInt(value, fallback, 10_000);
 }
 
 /** @returns null bei leerer Angabe (= „kein Preis"), sonst der geprüfte Betrag
  * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#optionalprice */
-export function optionalPrice(value: any, feld = 'Preis'): number | null {
+export function optionalPrice(value: unknown, feld = 'Preis'): number | null {
   if (value === undefined || value === null || value === '') return null;
   const n = parseFloat(String(value).replace(',', '.'));
   if (!Number.isFinite(n)) return null;
@@ -136,7 +136,7 @@ export function optionalPrice(value: any, feld = 'Preis'): number | null {
 
 /** Streng: Die Zeichenkette "false" ist in JavaScript wahr.
  * Ausführlich: docs/begruendungen/src/infra/validate.ts.md#strictbool */
-export function strictBool(value: any, feld = 'Wert'): boolean {
+export function strictBool(value: unknown, feld = 'Wert'): boolean {
   if (value === true  || value === 'true'  || value === 1 || value === '1') return true;
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
   fail(`${feld} muss true oder false sein`);
