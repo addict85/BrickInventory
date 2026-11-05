@@ -463,4 +463,9 @@ async function starte(): Promise<void> {
   if (jobs) await starteJobs(web);
 }
 
-void starte();
+// Ein gescheiterter Start beendet den Prozess wie eine ungefangene Ausnahme:
+// Ohne Worker weiterzulaufen hiesse, einen Dienst vorzutäuschen.
+starte().catch((e: unknown) => {
+  console.error('❌ [start] Start gescheitert:', fehlertext(e));
+  process.exit(1);
+});

@@ -54,6 +54,9 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
   const laufend = new Map<string, { a: AuftragsZeile; fertig: Promise<void> }>();
   let beendet = false, gestartet = false, pumpt = false;
   let takt: NodeJS.Timeout | null = null;
+  // Das Lebenszeichen des Prozesses hängt hieran: Eine hängende Belegung hält
+  // die Runde an, und der Healthcheck soll das sehen.
+  let letzteRunde = 0;
 
   /** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan. */
   async function folgeplan(a: AuftragsZeile): Promise<void> {
@@ -118,13 +121,14 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
       }
     } catch (e) {
       logAndContinue('auftraege:belegen')(e);
-    } finally { pumpt = false; }
+    } finally { pumpt = false; letzteRunde = Date.now(); }
   }
   const geweckt = () => { void pumpe(); };
 
   function starte(): void {
     if (gestartet) return;
     gestartet = true;
+    letzteRunde = Date.now();
     listen(AUFTRAG_KANAL, geweckt);
     takt = setInterval(geweckt, o.taktMs ?? 5000);
     takt.unref();
@@ -144,7 +148,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     console.log(`[auftraege] beendet, ${rest.length} laufende Aufträge zurückgegeben`);
   }
 
-  return { verarbeiteEinen, starte, stoppe, laufend: () => laufend.size };
+  return { verarbeiteEinen, starte, stoppe, laufend: () => laufend.size, letzteRunde: () => letzteRunde };
 }
 
 export { AuftragUnterbrochen, AuftragVerschieben, erzeugeWorker };
