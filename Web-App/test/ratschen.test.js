@@ -317,10 +317,9 @@ function oberflaeche() {
 const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
 
 test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
-  // Gemessen am 05.11.2026: 35,9 %; nach dem Auslagern der langen Kommentare
-  // nach docs/begruendungen/public/ 26,1 %; ohne Typzeilen gezählt 22,0 %.
-  // Gegenprobe: 300 Kommentarzeilen an 01-dom.js gehängt → rot.
-  const SCHRANKE = 22.0;
+  // Ohne Typzeilen gezählt: 22,0 % vor, 20,0 % nach dem Streichen von Geschichte und dem Umbruch
+  // der Kommentare auf 110 Zeichen wie im Code. Gegenprobe: 300 Kommentarzeilen an 01-dom.js → rot.
+  const SCHRANKE = 20.0;
   let zeilen = 0, kommentar = 0;
   for (const f of oberflaeche()) {
     for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
@@ -446,9 +445,9 @@ test('ungeprueft() wird weniger, nie mehr', () => {
 
 test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt. Gemessen nach dem Teilen von
-  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 936 (nach dem Umbau auf html``), über 600 Zeilen 8.
-  // Gegenprobe: an 13-acquisition-modals.js 60 Kommentarzeilen gehängt → rot: „grösste Datei 996 Zeilen“.
-  const SCHRANKE_GROESSTE = 936, SCHRANKE_UEBER_600 = 8;
+  // 01-core.js, 05-settings.js und 13-acquisition-modals.js: grösste 917 (nach html`` und dem Umbruch der Kommentare), über 600 Zeilen 8.
+  // Gegenprobe: an 13-acquisition-modals.js 60 Kommentarzeilen gehängt → rot: „grösste Datei 977 Zeilen“.
+  const SCHRANKE_GROESSTE = 917, SCHRANKE_UEBER_600 = 8;
   const laengen = oberflaeche().map(f => ({ f: path.relative(WEB, f), n: fs.readFileSync(f, 'utf8').split('\n').length }));
   assert.ok(laengen.length > 40, `nur ${laengen.length} Dateien gefunden — greift die Suche noch?`);
   const ueber1000 = laengen.filter(x => x.n > 1000).map(x => `${x.f} (${x.n})`);

@@ -1,6 +1,5 @@
-// Die Sammlung: Kennzahlen, Galerie (Kacheln und Liste), Set erfassen, Set-
-// CSV-Import und Löschen. Neu geladen wird sie auch, wenn ein tieferes Modul
-// 'setsGeaendert' oder 'bestandGeaendert' meldet.
+// Die Sammlung: Kennzahlen, Galerie (Kacheln und Liste), Set erfassen, Set-CSV-Import und Löschen. Neu
+// geladen wird sie auch, wenn ein tieferes Modul 'setsGeaendert' oder 'bestandGeaendert' meldet.
 import { abonniere } from './00-ereignisse.js';
 import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
@@ -24,9 +23,8 @@ import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-o
 /** @typedef {import('./00-zustand.js').Kachel} Kachel */
 
 /**
- * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung: Ohne ihn
- * war das Design dort grau in grau. Ohne Thema-Nummer entscheidet der
- * Themenname, damit ein Thema immer denselben Ton trägt.
+ * Der Thementon für das Design „Farbfächer“ — auch in der Sammlung: Ohne ihn war das Design dort grau in
+ * grau. Ohne Thema-Nummer entscheidet der Themenname, damit ein Thema immer denselben Ton trägt.
  * @param {{ theme_id?: number | null, theme?: string | null }} s
  */
 function faecherTon(s) {
@@ -40,13 +38,13 @@ function faecherTon(s) {
 
 // ── STATS ─────────────────────────────────────────────
 export async function loadStats(){
-  // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe
-  // des ganzen Haushalts.
+  // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe des
+  // ganzen Haushalts.
   // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#d
   const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);
   if (d.success && d.stats) {
-    // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung.
-    // Stück wie Teile und Figuren daneben; die Zahl der verschiedenen Sets steht darunter.
+    // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung. Stück wie Teile und Figuren
+    // daneben; die Zahl der verschiedenen Sets steht darunter.
     const stueck = d.stats.total_quantity || d.stats.total_sets;
     G('bstat-sets').textContent     = fmtBig(stueck);
     const verschieden = G('bstat-sets').parentElement?.querySelector('.bstat-s');
@@ -66,8 +64,8 @@ export async function loadStats(){
 let curView='grid';
 
 /**
- * Übernimmt das Zustands-Aggregat vom Server: Die eigene Nachrechnung nahm die zuletzt erfasste
- * Position und zeigte bei [U, N] „neu“ statt „gebraucht“.
+ * Übernimmt das Zustands-Aggregat vom Server: Die eigene Nachrechnung nahm die zuletzt erfasste Position und
+ * zeigte bei [U, N] „neu“ statt „gebraucht“.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#applysetaggregate
  * @param {Partial<Kachel> | null | undefined} agg
  */
@@ -78,10 +76,9 @@ export function applySetAggregate(agg){
   if (allSets !== before) renderGallery();
 }
 // ── Endlos-Scroll der Galerie ───────────────────────────────────────────────
-// Muster wie im Katalog und in der Teileansicht. Filtern und Sortieren liegen
-// seit dieser Umstellung auf dem Server: Clientseitig über allSets zu filtern
-// verträgt sich nicht mit seitenweisem Laden — ein Filter hätte nur die bereits
-// geladene Seite durchsucht.
+// Muster wie im Katalog und in der Teileansicht. Filtern und Sortieren liegen seit dieser Umstellung auf dem
+// Server: Clientseitig über allSets zu filtern verträgt sich nicht mit seitenweisem Laden — ein Filter hätte
+// nur die bereits geladene Seite durchsucht.
 const GAL_PAGE_SIZE = 60;
 let _galGen = 0, _galPage = 1, _galDone = false, _galLoadingMore = false, _galTotal = 0;
 
@@ -144,8 +141,8 @@ function maybeLoadMoreGallery(){
 }
 
 /**
- * Selbst nachsehen, ob der Sentinel sichtbar ist: IntersectionObserver meldet nur Übergänge, und wird
- * der Inhalt darunter ersetzt, lädt sonst nichts mehr, bis man hoch- und wieder herunterscrollt.
+ * Selbst nachsehen, ob der Sentinel sichtbar ist: IntersectionObserver meldet nur Übergänge, und wird der
+ * Inhalt darunter ersetzt, lädt sonst nichts mehr, bis man hoch- und wieder herunterscrollt.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#kickgallerysentinel
  */
 function kickGallerySentinel(){
@@ -193,15 +190,14 @@ export async function loadGallery(opts = {}){
   // Tiefe und Position merken, BEVOR irgendetwas zurückgesetzt wird.
   const tiefe   = opts.restore ? Math.max(1, _galPage) : 1;
   const scrollY = opts.restore ? window.scrollY : null;
-  // Vielfaches von GAL_PAGE_SIZE unter der Serverdeckelung — sonst stimmt die
-  // Seitenrechnung für das nächste Nachladen nicht mehr.
+  // Vielfaches von GAL_PAGE_SIZE unter der Serverdeckelung — sonst stimmt die Seitenrechnung für das nächste
+  // Nachladen nicht mehr.
   const holen   = Math.min(tiefe * GAL_PAGE_SIZE, 480);
 
-  // Spinner NUR beim ersten Laden. Vorher wurde das Grid bei jedem Aufruf
-  // sofort geleert — also auch dann, wenn schon gültige Kacheln standen und
-  // bloss aufgefrischt wurde. Genau das war die kurz leere Wand beim Neuladen
-  // und nach dem Login. Sind bereits Sets da, bleiben sie stehen, bis die neue
-  // Antwort da ist; erst dann wird einmal neu gezeichnet.
+  // Spinner NUR beim ersten Laden. Vorher wurde das Grid bei jedem Aufruf sofort geleert — also auch dann,
+  // wenn schon gültige Kacheln standen und bloss aufgefrischt wurde. Genau das war die kurz leere Wand beim
+  // Neuladen und nach dem Login. Sind bereits Sets da, bleiben sie stehen, bis die neue Antwort da ist; erst
+  // dann wird einmal neu gezeichnet.
   const gal = G('gallery');
   if (!allSets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
     setzeHtml(gal, skelettKacheln(8, t('gallery.loading')));
@@ -214,17 +210,16 @@ export async function loadGallery(opts = {}){
   if (listeLadefehler(gal, d, { erneut: 'loadGallery', behalten: hatteListe })) { if (hatteListe) renderGallery(); return; }
   setAllSets(d.sets||[]);
   _galTotal = d.total ?? allSets.length;
-  // Seitenzähler an die tatsächlich geholte Menge angleichen, damit die nächste
-  // Folgeseite am richtigen Versatz ansetzt.
+  // Seitenzähler an die tatsächlich geholte Menge angleichen, damit die nächste Folgeseite am richtigen
+  // Versatz ansetzt.
   _galPage = Math.max(1, Math.ceil(allSets.length / GAL_PAGE_SIZE));
   if (allSets.length >= _galTotal) _galDone = true;
   bindGallerySentinel();
   // Füllt die erste Seite den Bildschirm nicht, gäbe es nie ein Scroll-Ereignis.
   requestAnimationFrame(maybeLoadMoreGallery);
   
-  // Populate theme dropdown
-  // Themen kommen vom Server: allSets enthält seit der Paginierung nur noch die
-  // erste Seite, das Auswahlfeld wäre sonst unvollständig.
+  // Populate theme dropdown Themen kommen vom Server: allSets enthält seit der Paginierung nur noch die erste
+  // Seite, das Auswahlfeld wäre sonst unvollständig.
   const themeEl = G('gtheme');
   if (themeEl && Array.isArray(d.themes)) {
     const current = themeEl.value;
@@ -233,20 +228,19 @@ export async function loadGallery(opts = {}){
   }
   if (themeEl && !themeEl._bound) { themeEl._bound = true; themeEl.addEventListener('change', () => loadGallery()); }
   renderGallery(); loadStats();
-  // Erst NACH dem Zeichnen zurückspringen — vorher ist das Dokument noch kurz
-  // und der Browser würde die Position wieder abschneiden.
+  // Erst NACH dem Zeichnen zurückspringen — vorher ist das Dokument noch kurz und der Browser würde die
+  // Position wieder abschneiden.
   if (scrollY != null) requestAnimationFrame(() => window.scrollTo({ top: scrollY, behavior: 'instant' }));
   enrichGalleryWithPrices();
 }
 export function renderGallery(){
-  // Filtern und Sortieren macht der Server (getSets in utils/handlers.ts) —
-  // hier wird nur noch gezeichnet, was geladen ist. Andernfalls würde ein
-  // Filter bloss die aktuell geladene Seite durchsuchen.
+  // Filtern und Sortieren macht der Server (getSets in utils/handlers.ts) — hier wird nur noch gezeichnet,
+  // was geladen ist. Andernfalls würde ein Filter bloss die aktuell geladene Seite durchsuchen.
   const q=G('gs')?.value?.toLowerCase()||'';
   const list=allSets;
   const c=G('gallery');
-  // Ein Filter ohne Suchtext (Thema, Lagerort) ist auch ein Filter: Sonst stünde
-  // „Noch keine Sets“ über einer Sammlung, die nur ausgeblendet ist.
+  // Ein Filter ohne Suchtext (Thema, Lagerort) ist auch ein Filter: Sonst stünde „Noch keine Sets“ über einer
+  // Sammlung, die nur ausgeblendet ist.
   const gefiltert = !!(q || G('gtheme')?.value || lagerModus('gallery'));
   // Ohne ein einziges Set filtern und sortieren die Felder nichts (N5).
   G('tab-gallery')?.classList.toggle('sammlung-leer', !list.length && !gefiltert);
@@ -268,8 +262,8 @@ export function renderGallery(){
   }
 }
 /**
- * Preise in die bestehenden Kacheln nachtragen statt die Wand neu zu bauen: Neu gebaute <img>
- * blendeten erneut ein und liessen die Galerie flackern.
+ * Preise in die bestehenden Kacheln nachtragen statt die Wand neu zu bauen: Neu gebaute <img> blendeten
+ * erneut ein und liessen die Galerie flackern.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#updategalleryprices
  */
 export function updateGalleryPrices(){
@@ -284,9 +278,9 @@ export function updateGalleryPrices(){
 }
 
 /**
- * Preis und Prozent der Kachel mit Beschriftung: Ohne sie war nicht zu sehen,
- * ob der Betrag Markt- oder Kaufpreis ist und wogegen das Prozent rechnet.
- * Ohne geladenen Marktpreis steht der mengengewichtete Kaufpreis da.
+ * Preis und Prozent der Kachel mit Beschriftung: Ohne sie war nicht zu sehen, ob der Betrag Markt- oder
+ * Kaufpreis ist und wogegen das Prozent rechnet. Ohne geladenen Marktpreis steht der mengengewichtete
+ * Kaufpreis da.
  * @param {Kachel} s
  */
 function preisZeile(s){
@@ -305,21 +299,20 @@ function preisZeile(s){
 /** @param {Kachel} s */
 function gridCard(s){
   const src=s.image_local||s.image_url||'';
-  // thumbUrl() greift nur bei lokal abgelegten Bildern (_thumb-Variante).
-  // Sets ohne lokale Kopie laufen über den Proxy — dort erzeugt imgUrl(…, true)
-  // die verkleinerte Fassung, sonst käme die volle Auflösung für eine Kachel.
+  // thumbUrl() greift nur bei lokal abgelegten Bildern (_thumb-Variante). Sets ohne lokale Kopie laufen über
+  // den Proxy — dort erzeugt imgUrl(…, true) die verkleinerte Fassung, sonst käme die volle Auflösung für
+  // eine Kachel.
   const thumb=src?imgUrl(thumbUrl(src)||src, true):null;
   // Ohne Alternativtext: Die Kachel ist ein Knopf, ihr Text nennt das Set schon.
   const img=src?bildTag({ src: thumb||src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' }):html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
-  // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis. Vorher stand
-  // hier max_purchase_price — bei 2x100 und 1x160 zeigte die Kachel 160 statt
-  // der tatsächlichen 120.
+  // Ohne geladenen Marktpreis der mengengewichtete Kaufpreis. Vorher stand hier max_purchase_price — bei
+  // 2x100 und 1x160 zeigte die Kachel 160 statt der tatsächlichen 120.
   const preis = preisZeile(s);
-  // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import
-  // für alle Sets derselbe Tag und sagte nichts.
+  // Das Datum des letzten Kaufs: Die Aufnahme ins Konto war bei einem Import für alle Sets derselbe Tag und
+  // sagte nichts.
   const kaufFmt = s.letzter_kauf ? fmtDatum(s.letzter_kauf) : '';
-  // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat —
-  // eine Plakette je Zustand, siehe condBadges().
+  // Zustand: Der Server liefert die vorkommenden Zustände als Aggregat — eine Plakette je Zustand, siehe
+  // condBadges().
   const condBadge = condBadges(s);
   // Ohne Jahr, Thema und echten Namen kennt der Katalog die Nummer (noch) nicht.
   const unbekannt = !s.year && !s.theme && (!s.name || s.name === 'Set ' + s.set_number);
@@ -368,9 +361,8 @@ G('btn-add').onclick=doAddSet;
 G('add-num').addEventListener('input', unbekanntZuruecksetzen);
 G('add-num').addEventListener('keydown',e=>e.key==='Enter'&&doAddSet());
 /**
- * Eine Nummer, die der Katalog nicht kennt, wird erst nach Rückfrage
- * angelegt: Sonst entsteht aus einem Tippfehler ein Set ohne Namen und Bild.
- * Die Rückfrage steht im Dialog; ein zweiter Klick legt an.
+ * Eine Nummer, die der Katalog nicht kennt, wird erst nach Rückfrage angelegt: Sonst entsteht aus einem
+ * Tippfehler ein Set ohne Namen und Bild. Die Rückfrage steht im Dialog; ein zweiter Klick legt an.
  */
 function unbekanntZuruecksetzen() {
   const box = G('add-unbekannt'); if (box) box.hidden = true;
@@ -385,8 +377,8 @@ async function setUnbekannt(num) {
   const nr = /-\d+$/.test(num) ? num : num + '-1';
   if (G('add-num').dataset.bestaetigt === nr) return false;
   const box = G('add-unbekannt');
-  // Erst die eigene Sammlung: Ein vorhandenes Set ist nie „unbekannt“, und
-  // der Server legt es ohnehin nicht doppelt an, sondern öffnet es.
+  // Erst die eigene Sammlung: Ein vorhandenes Set ist nie „unbekannt“, und der Server legt es ohnehin nicht
+  // doppelt an, sondern öffnet es.
   const eigen = await api('GET', `/v1/sets/${encodeURIComponent(nr)}`);
   if (eigen?.success && eigen.set) {
     G('add-num').dataset.bestaetigt = nr;
@@ -431,9 +423,8 @@ async function doAddSet(){
   const preis = betragAusFeld('add-price');
   const purchase_price = preis.wert;
   const condition = G('add-condition')?.value || 'N';
-  // Zielkonto nur mitschicken, wenn die Auswahl überhaupt sichtbar ist. Ohne
-  // Haushalt schickt die Webapp gar nichts, und der Server bleibt beim
-  // eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
+  // Zielkonto nur mitschicken, wenn die Auswahl überhaupt sichtbar ist. Ohne Haushalt schickt die Webapp gar
+  // nichts, und der Server bleibt beim eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
   if(!setnummerFeldGueltig('add-num', num) || !preis.ok) return;
   if (await setUnbekannt(num)) return;
@@ -443,9 +434,8 @@ async function doAddSet(){
     await streamRequest('/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
       handleSseEvent(ev, num);
       if(ev.step==='done' && ev.action==='exists'){
-        // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben
-        // (Marcos Festlegung, src/sets/setAdd.ts). Statt einer Meldung öffnet
-        // sich die Detailansicht, genau wie in der App.
+        // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben (Marcos Festlegung,
+        // src/sets/setAdd.ts). Statt einer Meldung öffnet sich die Detailansicht, genau wie in der App.
         streamFertig();
         hideProgress();
         G('add-num').value='';
@@ -487,8 +477,8 @@ async function startSetCsvImport(){
     const startData = await api('POST', '/v1/sets/import/csv', fd);
     if(!startData.success){ hideProgress(); toast(startData.error||t('settings.error'),'error'); return; }
     const total = startData.total;
-    // Übersprungene Zeilen nennen — der Import läuft trotzdem weiter, aber wer
-    // 500 Zeilen schickt und 498 importiert bekommt, soll es erfahren.
+    // Übersprungene Zeilen nennen — der Import läuft trotzdem weiter, aber wer 500 Zeilen schickt und 498
+    // importiert bekommt, soll es erfahren.
     if (startData.skipped_hint) toast(startData.skipped_hint, 'info');
     G('prog-footer').textContent=tRaw('csv.items_progress',{done:0,total});
 
@@ -498,8 +488,8 @@ async function startSetCsvImport(){
 
     // Fortschritt bevorzugt über SSE; nur bei Ausfall Polling-Fallback.
     const ctx = { total: total ?? 0, prevDone: /** @type {number | null | undefined} */ (-1), prevResultCount:0 };
-    // Ohne `?token=`: Das Cookie trägt den Kanal, der Token in der Adresse wäre
-    // nur der Sitzungstoken im Protokoll.
+    // Ohne `?token=`: Das Cookie trägt den Kanal, der Token in der Adresse wäre nur der Sitzungstoken im
+    // Protokoll.
     const url = `/api/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`;
 
     await /** @type {Promise<void>} */ (new Promise((resolve) => {
@@ -531,8 +521,8 @@ async function startSetCsvImport(){
   }catch(e){ hideProgress(); toast(fehlerMeldung(e),'error'); }
 }
 
-// Verarbeitet ein CSV-Status-Objekt fürs Overlay des startenden Fensters.
-// Gibt true zurück, wenn der Import abgeschlossen ist.
+// Verarbeitet ein CSV-Status-Objekt fürs Overlay des startenden Fensters. Gibt true zurück, wenn der Import
+// abgeschlossen ist.
 /**
  * @param {import('./01-fortschritt.js').ImportStand} s
  * @param {{ total: number, prevDone: number | null | undefined, prevResultCount: number }} ctx
@@ -616,16 +606,15 @@ async function csvPollLoop(ctx, fi){
 
 G('vg').onclick=()=>{ curView='grid'; G('vg').classList.add('active'); G('vl').classList.remove('active'); G('vg').setAttribute('aria-pressed','true'); G('vl').setAttribute('aria-pressed','false'); renderGallery(); };
 G('vl').onclick=()=>{ curView='list'; G('vl').classList.add('active'); G('vg').classList.remove('active'); G('vl').setAttribute('aria-pressed','true'); G('vg').setAttribute('aria-pressed','false'); renderGallery(); };
-// Suche entprellt: renderGallery baut das komplette Grid per innerHTML neu auf
-// (inkl. Lazy-Image-Observer) — bei jedem Tastendruck wäre das bei grossen
-// Sammlungen spürbar ruckelig. 250ms Debounce, wie bei der Parts-Suche.
-// Suche und Sortierung gehen an den Server, also neu LADEN statt neu zeichnen.
+// Suche entprellt: renderGallery baut das komplette Grid per innerHTML neu auf (inkl. Lazy-Image-Observer) —
+// bei jedem Tastendruck wäre das bei grossen Sammlungen spürbar ruckelig. 250ms Debounce, wie bei der
+// Parts-Suche. Suche und Sortierung gehen an den Server, also neu LADEN statt neu zeichnen.
 G('gs').addEventListener('input',()=>{ clearTimeout(G('gs')._t); G('gs')._t=setTimeout(loadGallery,250); });
 G('gsort').addEventListener('change',() => loadGallery());
 
 /**
- * Ein Set löschen, mit genau EINER Rückfrage hier an der einen Stelle, die löscht: Der Detail-Dialog
- * fragte vorher selbst und dann noch einmal.
+ * Ein Set löschen, mit genau EINER Rückfrage hier an der einen Stelle, die löscht: Der Detail-Dialog fragte
+ * vorher selbst und dann noch einmal.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#delset
  * @returns {Promise<boolean>} true, wenn wirklich gelöscht wurde
  * @param {string} sn
@@ -638,9 +627,9 @@ export async function delSet(sn){
   const d=await api('DELETE',`/v1/sets/${sn}`);
   if(!d.success){ toast(d.error,'error'); return false; }
   geloeschtMitRueckgaengig(tRaw('users.deleted',{name}), d);
-  // Alles nachladen, was mitgelöscht wurde. loadStats() fehlte: Die Kennzahlen
-  // im Kopf (Sets, Einheiten, Teile, Minifiguren) blieben nach dem Löschen auf
-  // dem alten Stand, obwohl die Teile und Minifiguren des Sets mit weg sind.
+  // Alles nachladen, was mitgelöscht wurde. loadStats() fehlte: Die Kennzahlen im Kopf (Sets, Einheiten,
+  // Teile, Minifiguren) blieben nach dem Löschen auf dem alten Stand, obwohl die Teile und Minifiguren des
+  // Sets mit weg sind.
   loadGallery(); loadParts(); loadStats();
   return true;
 }
@@ -651,17 +640,15 @@ export async function reimportParts(sn){ toast(tRaw('detail.importing_parts',{sn
 // Gemeinsames "Haufen von Steinen"-Icon für Teile (Nav-Tab, Platzhalter, Überschriften)
 export const PARTS_ICON_SVG = '<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;vertical-align:middle"><rect x="18" y="62" width="56" height="26" rx="2.5" fill="#0055BF"/><circle cx="28" cy="62" r="5.5" fill="#0055BF"/><circle cx="46" cy="62" r="5.5" fill="#0055BF"/><circle cx="64" cy="62" r="5.5" fill="#0055BF"/><g transform="rotate(-9 66 55)"><rect x="38" y="42" width="52" height="24" rx="2.5" fill="#F2CD37"/><circle cx="49" cy="42" r="5" fill="#F2CD37"/><circle cx="64" cy="42" r="5" fill="#F2CD37"/><circle cx="79" cy="42" r="5" fill="#F2CD37"/></g><g transform="rotate(7 58 80)"><rect x="26" y="76" width="58" height="26" rx="2.5" fill="#E63329"/><circle cx="37" cy="76" r="5.5" fill="#E63329"/><circle cx="55" cy="76" r="5.5" fill="#E63329"/><circle cx="73" cy="76" r="5.5" fill="#E63329"/></g></svg>';
 export async function enrichGalleryWithPrices(){
-  // Mit Kontofilter — aus demselben Grund wie loadStats(): Diese Funktion
-  // steht am Ende von loadGallery(), und loadGallery() laeuft bei jedem
-  // Wechsel des Kontofilters. Etwas neu zu laden, das sich dadurch nicht
+  // Mit Kontofilter — aus demselben Grund wie loadStats(): Diese Funktion steht am Ende von loadGallery(),
+  // und loadGallery() laeuft bei jedem Wechsel des Kontofilters. Etwas neu zu laden, das sich dadurch nicht
   // aendern kann, ergibt nur einen Sinn, wenn es sich aendern sollte.
   //
   const pnl = await api('GET',`/v1/finance/pnl${scopeQuery('gallery')}`);
   if(!pnl.success) return;
   set_pnlCache({});
-  // Betrag und G&V der Kachel rechnet der Server (kachel_preis,
-  // kachel_pnl_pct in /finance/pnl, src/finanzen/setValue.ts kachelWerte); im
-  // Haushalt tragen alle Zeilen eines Sets dieselben Werte.
+  // Betrag und G&V der Kachel rechnet der Server (kachel_preis, kachel_pnl_pct in /finance/pnl,
+  // src/finanzen/setValue.ts kachelWerte); im Haushalt tragen alle Zeilen eines Sets dieselben Werte.
   for(const s of pnl.sets){
     if(!_pnlCache[s.set_number]) _pnlCache[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
   }
@@ -672,9 +659,8 @@ export async function enrichGalleryWithPrices(){
     _quelle:  _pnlCache[s.set_number]?.quelle,
     _pnl_pct: _pnlCache[s.set_number]?.pnl_pct ?? undefined
   })));
-  // Nur die Preis-Container nachtragen statt die ganze Galerie neu zu bauen —
-  // ein voller renderGallery() erzeugt alle <img> neu und lässt sie erneut
-  // einblenden (sichtbares Flackern nach dem Laden).
+  // Nur die Preis-Container nachtragen statt die ganze Galerie neu zu bauen — ein voller renderGallery()
+  // erzeugt alle <img> neu und lässt sie erneut einblenden (sichtbares Flackern nach dem Laden).
   updateGalleryPrices();
 }
 

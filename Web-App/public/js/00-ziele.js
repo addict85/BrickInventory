@@ -1,7 +1,6 @@
-// Sprungziele: Ein tieferes Modul öffnet eine Ansicht, die weiter oben liegt
-// (das Set-Detail aus einer Erfassung, eine Sicht aus dem Router), ohne sie zu
-// importieren. Die Ansicht meldet sich beim Laden hier an; ein Import in die
-// Gegenrichtung gäbe einen Kreis im Modulgraphen.
+// Sprungziele: Ein tieferes Modul öffnet eine Ansicht, die weiter oben liegt (das Set-Detail aus einer
+// Erfassung, eine Sicht aus dem Router), ohne sie zu importieren. Die Ansicht meldet sich beim Laden hier an;
+// ein Import in die Gegenrichtung gäbe einen Kreis im Modulgraphen.
 
 /**
  * @typedef {object} Ziele

@@ -3,8 +3,8 @@ import { G } from './01-dom.js';
 import { toast } from './01-meldungen.js';
 import { leseBetrag } from './01-format.js';
 
-// Formulare: Meldungen am Feld, Passwortregeln, Beträge aus Eingaben. Eine Fassung für alle Dialoge,
-// damit Vorleser und Markierung überall gleich reagieren.
+// Formulare: Meldungen am Feld, Passwortregeln, Beträge aus Eingaben. Eine Fassung für alle Dialoge, damit
+// Vorleser und Markierung überall gleich reagieren.
 
 /**
  * Mindestlänge eines Passworts. Der Server setzt sie durch, der Browser sagt sie vorher;
@@ -30,8 +30,8 @@ export function passwortZuKurzText(){
 export const PASSWORT_MAX_BYTE = 72;
 
 /**
- * Was der Browser vor dem Absenden prüfen kann, als Meldung, sonst null. Die
- * Liste häufiger Passwörter kennt nur der Server; seine Meldung kommt zurück.
+ * Was der Browser vor dem Absenden prüfen kann, als Meldung, sonst null. Die Liste häufiger Passwörter kennt
+ * nur der Server; seine Meldung kommt zurück.
  * @param {string} p
  */
 export function passwortRegelText(p){
@@ -41,9 +41,8 @@ export function passwortRegelText(p){
 }
 
 /**
- * Sieht die Eingabe aus wie eine Set-Nummer? Ziffern, davor höchstens ein
- * Buchstaben-Präfix echter Nummern (llca30, comcon001), dahinter ein
- * Versionsanhang (-1). Der Server prüft selbst; hier geht es darum, dass
+ * Sieht die Eingabe aus wie eine Set-Nummer? Ziffern, davor höchstens ein Buchstaben-Präfix echter Nummern
+ * (llca30, comcon001), dahinter ein Versionsanhang (-1). Der Server prüft selbst; hier geht es darum, dass
  * „abc“ gar nicht erst als Set „abc-1“ angelegt wird.
  * @param {string} eingabe
  */
@@ -52,8 +51,8 @@ export function istSetnummer(eingabe) {
 }
 
 /**
- * Eine Fehlermeldung direkt am Feld (leerer Text räumt sie weg). Vorleser
- * hören sie über role="alert" und finden sie über aria-describedby.
+ * Eine Fehlermeldung direkt am Feld (leerer Text räumt sie weg). Vorleser hören sie über role="alert" und
+ * finden sie über aria-describedby.
  * @param {string} id
  * @param {string} text
  */
@@ -83,8 +82,8 @@ export function feldFehler(id, text) {
 }
 
 /**
- * Eine Absage des Servers: Gehört ihr Code zu einem Feld des Formulars, steht
- * die Meldung dort (wie feldFehler), sonst als Toast.
+ * Eine Absage des Servers: Gehört ihr Code zu einem Feld des Formulars, steht die Meldung dort (wie
+ * feldFehler), sonst als Toast.
  * @param {object | null | undefined} d Antwort von api()
  * @param {Record<string, string>} felder Fehlercode → Feld-ID
  * @param {string} ersatz Text, wenn die Antwort keinen hat
@@ -110,8 +109,8 @@ export function setnummerFeldGueltig(id, wert) {
 }
 
 /**
- * Liest ein Geldfeld; ist der Inhalt keine Zahl (oder negativ), steht die
- * Meldung am Feld und `ok` ist false — gesendet wird dann nichts.
+ * Liest ein Geldfeld; ist der Inhalt keine Zahl (oder negativ), steht die Meldung am Feld und `ok` ist false
+ * — gesendet wird dann nichts.
  * @param {string|HTMLInputElement} feld  ID oder Element
  * @returns {{ ok: boolean, wert: number|null }}
  */
@@ -130,10 +129,9 @@ export function betragAusFeld(feld) {
 
 // ── FORMULARE ─────────────────────────────────────────────────────────────
 /**
- * Fehler eines Formulars an die betroffenen Felder binden: aria-invalid
- * markiert das Feld, aria-describedby lässt Vorleser die Meldung beim Feld
- * nennen, und der Fokus springt in das erste, damit man gleich korrigiert.
- * Ohne Text verschwinden Meldung und Markierungen.
+ * Fehler eines Formulars an die betroffenen Felder binden: aria-invalid markiert das Feld, aria-describedby
+ * lässt Vorleser die Meldung beim Feld nennen, und der Fokus springt in das erste, damit man gleich
+ * korrigiert. Ohne Text verschwinden Meldung und Markierungen.
  * @param {HTMLElement} box  das Meldungsfeld (role=alert)
  * @param {string} text
  * @param {string[]} [felder] IDs der betroffenen Felder

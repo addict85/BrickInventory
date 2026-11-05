@@ -1,5 +1,5 @@
-// Bausteine für Ansichten (Detailzeile, Ladeanzeige, Leer- und Fehlerzustand) an einer Stelle: Was
-// überall gleich aussehen soll, stand vorher fünfzehnmal als eigene HTML-Zeichenkette in vier Modulen.
+// Bausteine für Ansichten (Detailzeile, Ladeanzeige, Leer- und Fehlerzustand) an einer Stelle: Was überall
+// gleich aussehen soll, stand vorher fünfzehnmal als eigene HTML-Zeichenkette in vier Modulen.
 // Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#01-core-js-sammelt-werkzeuge-escaping-bi
 import { api } from './01-api.js';
 import { ico, G, setzeHtml } from './01-dom.js';
@@ -43,17 +43,16 @@ export function detailZeile(label, wert, o = {}) {
  */
 export function ladeAnzeige(text, o = {}) {
   const stil = o.stil ? ` data-stil="${o.stil}"` : '';
-  // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo
-  // daneben schon steht, worauf gewartet wird.
+  // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo daneben schon steht, worauf
+  // gewartet wird.
   const inhalt = o.klein ? '<div class="skelett-flaeche"></div>'
     : '<div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div>';
   return html`${html`<div class="lade-geruest${o.klein ? ' klein' : ''}" role="status" aria-busy="true"${ungeprueft(stil)}>`}${html`<span class="vh">${(text) ? ungeprueft(text) : tRaw('common.loading')}</span>${ungeprueft(inhalt)}</div>`}`;
 }
 
 /**
- * Platzhalterkacheln in der Form des Inhalts, solange er lädt: Die Seite
- * springt danach nicht, und man sieht, was kommt. Der Text ist für
- * Vorleseprogramme.
+ * Platzhalterkacheln in der Form des Inhalts, solange er lädt: Die Seite springt danach nicht, und man sieht,
+ * was kommt. Der Text ist für Vorleseprogramme.
  * @param {number} anzahl
  * @param {string} text bereits übersetzt
  * @param {'set'|'teil'} [art]
@@ -65,8 +64,7 @@ export function skelettKacheln(anzahl, text, art = 'set') {
 }
 
 /**
- * Platzhalterzeilen für Listen und Detailansichten (Merkliste, Set-Detail),
- * wie skelettKacheln für Raster.
+ * Platzhalterzeilen für Listen und Detailansichten (Merkliste, Set-Detail), wie skelettKacheln für Raster.
  * @param {number} anzahl
  * @param {string} text bereits übersetzt
  */
@@ -77,9 +75,9 @@ export function skelettZeilen(anzahl, text) {
 
 /**
  * Ein Wert, der fehlen darf — sonst steht in der Zeile ein leeres Feld.
- * 
- * Die Aufrufer schrieben dafür `${x || '—'}` oder `${x ?? '–'}`, mit zwei
- * verschiedenen Strichen. Hier ist es einer.
+ *
+ * Die Aufrufer schrieben dafür `${x || '—'}` oder `${x ?? '–'}`, mit zwei verschiedenen Strichen. Hier ist es
+ * einer.
  * @param {unknown} wert
  */
 export function oderStrich(wert) {
@@ -95,9 +93,8 @@ export function textOderStrich(wert) {
 }
 
 /**
- * Fehlerzustand einer Liste: Grund und „Erneut versuchen“. Eine leere Liste
- * an dieser Stelle läse sich als „nichts erfasst“, obwohl nur der Server
- * nicht geantwortet hat.
+ * Fehlerzustand einer Liste: Grund und „Erneut versuchen“. Eine leere Liste an dieser Stelle läse sich als
+ * „nichts erfasst“, obwohl nur der Server nicht geantwortet hat.
  * @param {{ grund?: string, erneut: string, arg?: string, titel?: string, details?: string }} o  erneut: Name der Ladefunktion (data-click)
  */
 export function fehlerZustand(o) {
@@ -107,8 +104,8 @@ export function fehlerZustand(o) {
 }
 
 /**
- * Hat das Laden einer Liste versagt? Dann bleibt eine schon gezeigte Liste
- * stehen (mit Meldung), sonst zeigt `ziel` den Fehlerzustand.
+ * Hat das Laden einer Liste versagt? Dann bleibt eine schon gezeigte Liste stehen (mit Meldung), sonst zeigt
+ * `ziel` den Fehlerzustand.
  * @param {HTMLElement|null} ziel
  * @template D
  * @param {D} d          Antwort von api() — null zählt als Fehler
@@ -130,9 +127,8 @@ export function listeLadefehler(ziel, d, o) {
 }
 
 /**
- * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann;
- * der Rohtext steht unter „Details“ für die Meldung an den Verwalter.
- * 4xx-Texte schreibt der Server selbst verständlich.
+ * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann; der Rohtext steht unter
+ * „Details“ für die Meldung an den Verwalter. 4xx-Texte schreibt der Server selbst verständlich.
  * @param {{ networkError?: boolean, status?: number, error?: unknown } | null | undefined} d Antwort von api()
  * @returns {{ grund: string, details?: string }}
  */
@@ -153,8 +149,8 @@ export function teileAufschluesselung(ausSets, einzeln) {
 }
 
 /**
- * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0
- * gerechnet stünde dort „+327.600 %“, und das sagt nichts.
+ * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0 gerechnet stünde dort „+327.600
+ * %“, und das sagt nichts.
  * @param {number | string | null | undefined} pct
  * @param {unknown} [kauf]
  */
@@ -166,8 +162,8 @@ export function pnlBadge(pct, kauf){
 }
 
 /**
- * Besitzer-Plaketten nur, wenn ein ANDERES Konto mit drinsteckt: Im Haushalt verhindern sie, dass man
- * das falsche Exemplar verschiebt; der eigene Name auf jeder Kachel wäre nur Rauschen.
+ * Besitzer-Plaketten nur, wenn ein ANDERES Konto mit drinsteckt: Im Haushalt verhindern sie, dass man das
+ * falsche Exemplar verschiebt; der eigene Name auf jeder Kachel wäre nur Rauschen.
  * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#besitzer-plaketten-nur-im-haushalt
  * @param {{ owners?: { id: number, username: string }[] } | null | undefined} item
  */
@@ -178,9 +174,8 @@ export function ownerBadges(item) {
 }
 
 /**
- * Eine Plakette je erfasstem Zustand, aus `conditions` vom Server: Das Aggregat `condition` zeigte bei
- * neu und gebraucht nur „gebraucht“, und die Neu-Erfassung war unsichtbar, obwohl sie mitbewertet
- * wird.
+ * Eine Plakette je erfasstem Zustand, aus `conditions` vom Server: Das Aggregat `condition` zeigte bei neu
+ * und gebraucht nur „gebraucht“, und die Neu-Erfassung war unsichtbar, obwohl sie mitbewertet wird.
  * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#zustands-plaketten-eines-eintrags-eine-j
  * @param {{ conditions?: string[] | null, condition?: string | null } | null | undefined} item
  */
@@ -209,10 +204,9 @@ export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open');
 export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
 
 /**
- * Gewählte CSV-Datei hochladen und das Ergebnis melden — eine Fassung für
- * Teile, Figuren, Merkliste und Alarme. Übersprungene Zeilen und Zusatz-
- * hinweise stehen überall in der Meldung, sonst sähe ein lückenhafter Import
- * aus wie ein vollständiger.
+ * Gewählte CSV-Datei hochladen und das Ergebnis melden — eine Fassung für Teile, Figuren, Merkliste und
+ * Alarme. Übersprungene Zeilen und Zusatz-hinweise stehen überall in der Meldung, sonst sähe ein lückenhafter
+ * Import aus wie ein vollständiger.
  * @typedef {{ success: boolean, error?: string, added?: number, updated?: number, errors?: number,
  *   skipped?: number, skipped_hint?: string, [feld: string]: unknown }} CsvErgebnis
  * @param {{ feld: string, pfad: string, felder?: Record<string, string>,

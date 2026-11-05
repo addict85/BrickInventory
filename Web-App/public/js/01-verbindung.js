@@ -2,12 +2,12 @@ import { tRaw } from '../i18n.js';
 import { toast } from './01-meldungen.js';
 import { fmtDatum } from './01-format.js';
 
-// Verbindungsband und Sperre der schreibenden Knöpfe ohne Netz. Die API-Hülle meldet hier jede
-// Antwort und jeden Netzfehler; die Ansichten wissen davon nichts.
+// Verbindungsband und Sperre der schreibenden Knöpfe ohne Netz. Die API-Hülle meldet hier jede Antwort und
+// jeden Netzfehler; die Ansichten wissen davon nichts.
 
 // ── Verbindung ──────────────────────────────────────────────────────────────
-// Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es
-// einer ist und von wann — sonst hält man alte Zahlen für aktuell.
+// Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es einer ist und von wann — sonst
+// hält man alte Zahlen für aktuell.
 /** @type {Date | null} */
 let _letzteAntwort = null;
 
@@ -34,10 +34,9 @@ export function zeigeVerbindung(erreichbar) {
   schreibenSperren(true);
 }
 
-// Ohne Verbindung scheitert jede Änderung. Statt erst nach dem Klick eine
-// Meldung zu zeigen, sind die schreibenden Bedienelemente gesperrt und nennen
-// per aria-describedby das Band als Grund. Eine Regel statt einer Liste:
-// Hauptknöpfe, Datei-Wahl, Import-Menüs und jede Handlung, deren Name schreibt.
+// Ohne Verbindung scheitert jede Änderung. Statt erst nach dem Klick eine Meldung zu zeigen, sind die
+// schreibenden Bedienelemente gesperrt und nennen per aria-describedby das Band als Grund. Eine Regel statt
+// einer Liste: Hauptknöpfe, Datei-Wahl, Import-Menüs und jede Handlung, deren Name schreibt.
 const BEDIENT = 'button, input[type=file], .import-menue > summary';
 
 const IMMER_SCHREIBEND = 'button.bp, button.bd, input[type=file], .import-menue > summary';

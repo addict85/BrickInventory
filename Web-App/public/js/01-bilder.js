@@ -1,13 +1,13 @@
 import { html, sichereUrl, ungeprueft } from './00-escapen.js';
 import { ico, setzeHtml } from './01-dom.js';
 
-// Bildadressen und Platzhalter. Fremde Bilder gehen nur über den Proxy des Servers; was nicht lädt,
-// zeigt den Platzhalter seiner Art statt des Browsersymbols.
+// Bildadressen und Platzhalter. Fremde Bilder gehen nur über den Proxy des Servers; was nicht lädt, zeigt den
+// Platzhalter seiner Art statt des Browsersymbols.
 
 /**
- * Ein Vorschaubild aus einer Vorlage. Lädt es nicht, setzt 11-actions.js den
- * Platzhalter seiner Art (`ph`) an seine Stelle — dasselbe Bild wie für einen
- * Eintrag ganz ohne Bild, statt des Browser-Symbols für kaputte Bilder.
+ * Ein Vorschaubild aus einer Vorlage. Lädt es nicht, setzt 11-actions.js den Platzhalter seiner Art (`ph`) an
+ * seine Stelle — dasselbe Bild wie für einen Eintrag ganz ohne Bild, statt des Browser-Symbols für kaputte
+ * Bilder.
  * @param {{ src: string, alt: string, ph?: 'set'|'teil'|'figur', klasse?: string,
  *           orig?: string, stil?: string, fade?: boolean, extra?: string }} o
  */
@@ -20,17 +20,16 @@ export function bildTag(o) {
  * @param {string} art
  */
 export function platzhalterInhalt(art) {
-  // Dasselbe dezente Symbol wie bei Teilen und Figuren; das rote Logo füllte
-  // ohne Bilder jede Karte gleich.
+  // Dasselbe dezente Symbol wie bei Teilen und Figuren; das rote Logo füllte ohne Bilder jede Karte gleich.
   // Sets nehmen die Datei: Sie sieht in jedem Design gleich aus (UI-Prüfung 6, M3).
   if (art === 'set') return html`<img src="/assets/set-placeholder.svg" alt="" aria-hidden="true">`;
   return ico(art === 'figur' ? 'figur' : 'teil');
 }
 
 /**
- * Zeigt den Platzhalter, solange ein Bild noch einmal versucht wird; das Bild
- * bleibt verborgen daneben und ersetzt ihn, sobald es doch lädt. Ohne das
- * stand während des zweiten Versuchs das Symbol des Browsers in der Kachel.
+ * Zeigt den Platzhalter, solange ein Bild noch einmal versucht wird; das Bild bleibt verborgen daneben und
+ * ersetzt ihn, sobald es doch lädt. Ohne das stand während des zweiten Versuchs das Symbol des Browsers in
+ * der Kachel.
  * @param {HTMLImageElement} img
  */
 export function bildVorlaeufig(img) {
@@ -89,8 +88,8 @@ function istProxyPfad(src) {
 }
 
 /**
- * Adressen auf den eigenen Server auf ihren Pfad kürzen: imgEl.src liefert die absolute Adresse, und
- * der Proxy lehnt sich selbst als Ziel zu Recht ab (offene Weiterleitung). Ohne das brach der Zoom mit
+ * Adressen auf den eigenen Server auf ihren Pfad kürzen: imgEl.src liefert die absolute Adresse, und der
+ * Proxy lehnt sich selbst als Ziel zu Recht ab (offene Weiterleitung). Ohne das brach der Zoom mit
  * 403.
  * Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#stripownorigin
  * @param {string} src
@@ -103,9 +102,8 @@ function stripOwnOrigin(src) {
 }
 
 /**
- * Die Adresse, unter der ein Bild geladen wird. `thumb` wirkt nur bei Bildern
- * über den Proxy; bei lokalen Dateien entscheidet der Server (image_local
- * ist schon die richtige Adresse, siehe thumbUrl()).
+ * Die Adresse, unter der ein Bild geladen wird. `thumb` wirkt nur bei Bildern über den Proxy; bei lokalen
+ * Dateien entscheidet der Server (image_local ist schon die richtige Adresse, siehe thumbUrl()).
  * @param {string | null | undefined} src
  * @param {boolean | 'nur'} [thumb]  'nur': nur die verkleinerte Fassung, nie das Original nachladen
  */
@@ -113,8 +111,8 @@ export function imgUrl(src, thumb) {
   if (!src) return '';
   src = stripOwnOrigin(src);
 
-  // Lokale Datei oder schon über den Proxy: unverändert. Fremde Adressen lädt der Browser nie direkt —
-  // nur der Proxy setzt die Kopfzeilen gegen den Hotlink-Schutz und hält den Cache.
+  // Lokale Datei oder schon über den Proxy: unverändert. Fremde Adressen lädt der Browser nie direkt — nur
+  // der Proxy setzt die Kopfzeilen gegen den Hotlink-Schutz und hält den Cache.
   // Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#if-2
   if (src.startsWith('/data/') || src.startsWith('/images/') || istProxyPfad(src)) {
     return src;
@@ -122,11 +120,9 @@ export function imgUrl(src, thumb) {
   // Sonstige relative Pfade (z. B. /assets/…) unverändert.
   if (src.startsWith('/')) return src;
 
-  // Alles Absolute geht über den Proxy — unabhängig vom Host. Welche Hosts
-  // zulässig sind, entscheidet ausschliesslich der Server
-  // (isAllowedImageHost in routes/imgProxy.ts); ein zweiter, abweichender
-  // Allowlist-Test im Client wäre nur eine weitere Stelle, die man vergisst
-  // mitzupflegen.
+  // Alles Absolute geht über den Proxy — unabhängig vom Host. Welche Hosts zulässig sind, entscheidet
+  // ausschliesslich der Server (isAllowedImageHost in routes/imgProxy.ts); ein zweiter, abweichender
+  // Allowlist-Test im Client wäre nur eine weitere Stelle, die man vergisst mitzupflegen.
   if (/^https?:\/\//.test(src)) {
     // Vorschauen entstehen im Proxy. `thumb` 'nur' nutzt eine vorhandene, rechnet aber keine neue: für den
     // Katalog mit 25 000 fremden Sets, an denen man vorbeiscrollt. Der eigene Bestand bekommt die Vorschau
@@ -141,9 +137,8 @@ export function imgUrl(src, thumb) {
 /**
  * Gegenstück zu thumbUrl(): liefert die volle Auflösung.
  *
- * Nötig, weil manche Sets image_local direkt auf die _thumb-Datei zeigen
- * (der Server kann das so abgelegt haben) — und weil Detailansicht und Zoom
- * die grosse Fassung zeigen sollen, nicht die Kachelgrösse.
+ * Nötig, weil manche Sets image_local direkt auf die _thumb-Datei zeigen (der Server kann das so abgelegt
+ * haben) — und weil Detailansicht und Zoom die grosse Fassung zeigen sollen, nicht die Kachelgrösse.
  * @param {string | null | undefined} src
  * @returns {string}
  */
@@ -151,17 +146,15 @@ export function fullUrl(src) {
   if (!src) return '';
   src = stripOwnOrigin(src);
   if (istProxyPfad(src)) return src.replace(/&thumb=1\b/, '').replace(/&gen=0\b/, '');
-  // Absolute Adresse (CDN) auch hier über den Proxy — vorher wurde sie
-  // unverändert zurückgegeben, sodass Detailansicht und Zoom direkt beim CDN
-  // luden. Siehe die Begründung in imgUrl().
+  // Absolute Adresse (CDN) auch hier über den Proxy — vorher wurde sie unverändert zurückgegeben, sodass
+  // Detailansicht und Zoom direkt beim CDN luden. Siehe die Begründung in imgUrl().
   if (/^https?:\/\//.test(src)) return IMG_PROXY + '?url=' + encodeURIComponent(src);
   return src.replace(/_thumb(\.[^.?]+)(\?|$)/, '$1$2');
 }
 
 /**
- * Lokale Bildadressen bleiben, wie der Server sie liefert: Er weiss, ob es die Vorschau gibt. Eine
- * selbst gebaute _thumb-Adresse lud Bilder, die nicht existierten, auch nach dem Neuladen nicht
- * (gleich in der App).
+ * Lokale Bildadressen bleiben, wie der Server sie liefert: Er weiss, ob es die Vorschau gibt. Eine selbst
+ * gebaute _thumb-Adresse lud Bilder, die nicht existierten, auch nach dem Neuladen nicht (gleich in der App).
  * Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#thumburl
  * @template {string | null | undefined} T
  * @param {T} src
@@ -173,9 +166,8 @@ export function thumbUrl(src) {
 
 // Lazy image loading with IntersectionObserver and fade-in
 /**
- * Blendet Bilder beim Sichtbarwerden ein und markiert schon geladene sofort: Nach innerHTML starten
- * alle <img> bei opacity 0, und bis der Beobachter antwortet, stand sonst eine kurz weisse Kachelwand
- * da.
+ * Blendet Bilder beim Sichtbarwerden ein und markiert schon geladene sofort: Nach innerHTML starten alle
+ * <img> bei opacity 0, und bis der Beobachter antwortet, stand sonst eine kurz weisse Kachelwand da.
  * Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#observelazyimages
  * @param {ParentNode} [root]
  */

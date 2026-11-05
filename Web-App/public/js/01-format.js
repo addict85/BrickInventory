@@ -4,9 +4,8 @@ import { CURRENCY } from './00-zustand.js';
 // Zahlen, Beträge und Daten in der Schreibweise der Oberflächensprache, eine Fassung für alle Ansichten.
 
 /**
- * Ein Geldbetrag in der Währung des Nutzers. Ohne Angabe gilt die eingestellte Währung, nicht fest
- * EUR: Sonst stand bei Franken still „EUR“ da. test/geldformat.test.js hält fest, dass kein Aufruf sie
- * weglässt.
+ * Ein Geldbetrag in der Währung des Nutzers. Ohne Angabe gilt die eingestellte Währung, nicht fest EUR: Sonst
+ * stand bei Franken still „EUR“ da. test/geldformat.test.js hält fest, dass kein Aufruf sie weglässt.
  * Ausführlich: docs/begruendungen/public/js/01-format.js.md#fmtn
  * @param {number | string | null | undefined} v
  * @param {string} [cur]
@@ -35,11 +34,10 @@ export function fmtGeld(v, cur){
 }
 
 /**
- * Ein Betrag aus einem Eingabefeld. Komma und Punkt sind beide Dezimalzeichen,
- * Leerzeichen und ' sind Tausendertrenner; ein einzelnes Trennzeichen mit genau
- * drei Ziffern danach gilt als Tausender, wenn die Sprache es so schreibt
- * („1.234“ de-DE). Leer → null; keine Zahl → NaN, damit der Aufrufer am Feld
- * meldet, statt „149,95“ still zu 149 zu kürzen.
+ * Ein Betrag aus einem Eingabefeld. Komma und Punkt sind beide Dezimalzeichen, Leerzeichen und ' sind
+ * Tausendertrenner; ein einzelnes Trennzeichen mit genau drei Ziffern danach gilt als Tausender, wenn die
+ * Sprache es so schreibt („1.234“ de-DE). Leer → null; keine Zahl → NaN, damit der Aufrufer am Feld meldet,
+ * statt „149,95“ still zu 149 zu kürzen.
  * @param {unknown} roh
  * @returns {number|null}
  */
@@ -72,8 +70,8 @@ export function betragFuerFeld(v) {
 }
 
 /**
- * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit
- * sie neben den Beträgen aus fmtN() nicht in einer zweiten Schreibweise steht.
+ * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit sie neben den Beträgen aus
+ * fmtN() nicht in einer zweiten Schreibweise steht.
  * @param {number|string} v  Prozentwert (51.1, nicht 0.511)
  * @param {{vorzeichen?: boolean, stellen?: number}} [o]
  */
@@ -96,8 +94,8 @@ export function fmtBig(n){
 }
 
 /**
- * Ein Datum überall gleich: „05.01.2024“ (de), „5 Jan 2024“ (en). Vorher
- * stand je Stelle toLocaleDateString() („5.1.2024“) neben eigenen Formen.
+ * Ein Datum überall gleich: „05.01.2024“ (de), „5 Jan 2024“ (en). Vorher stand je Stelle toLocaleDateString()
+ * („5.1.2024“) neben eigenen Formen.
  * @param {string|number|Date|null|undefined} v
  * @param {'tag'|'zeit'|'tagzeit'|'lang'} [art]  lang: „1. Juni 2026“
  */
@@ -105,8 +103,8 @@ export function fmtDatum(v, art = 'tag'){
   if (v === null || v === undefined || v === '') return '';
   const d = v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
   if (isNaN(d.getTime())) return '';
-  // Englisch mit Monatsnamen: „03/11/2026“ liest sich in den USA als 11. März.
-  // Deutsch immer 24 Stunden, auch bei einem Browser mit 12-h-Vorgabe.
+  // Englisch mit Monatsnamen: „03/11/2026“ liest sich in den USA als 11. März. Deutsch immer 24 Stunden, auch
+  // bei einem Browser mit 12-h-Vorgabe.
   const tag = LANG === 'en' ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: '2-digit', month: '2-digit', year: 'numeric' };
   const zeit = LANG === 'en' ? { hour: '2-digit', minute: '2-digit' } : { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' };
   const o = art === 'zeit' ? zeit : art === 'tagzeit' ? { ...tag, ...zeit } : art === 'lang' ? { day: 'numeric', month: 'long', year: 'numeric' } : tag;

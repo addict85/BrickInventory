@@ -5,16 +5,15 @@ import { G, setzeHtml } from './01-dom.js';
 import { toast } from './01-meldungen.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
-// Einstellungen, Abschnitt Haushalt: Einladen, Beitreten, Trennen. Ein Konto sieht danach die
-// Bestände der verknüpften Konten; die Regeln dazu stehen im Server (src/haushalt).
+// Einstellungen, Abschnitt Haushalt: Einladen, Beitreten, Trennen. Ein Konto sieht danach die Bestände der
+// verknüpften Konten; die Regeln dazu stehen im Server (src/haushalt).
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HAUSHALT — Konten verknüpfen
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * Einladen und Beitreten brauchen beide Seiten: das Hauptkonto erzeugt, das andere löst ein. Je nach
- * Rolle steht nur einer der Kästen da — ein Knopf, den der Server immer ablehnt, ist schlimmer als
- * keiner.
+ * Einladen und Beitreten brauchen beide Seiten: das Hauptkonto erzeugt, das andere löst ein. Je nach Rolle
+ * steht nur einer der Kästen da — ein Knopf, den der Server immer ablehnt, ist schlimmer als keiner.
  * Ausführlich: docs/begruendungen/public/js/05-haushalt.js.md#loadhousehold
  */
 export async function loadHousehold(){
@@ -28,9 +27,9 @@ export async function loadHousehold(){
 }
 
 /**
- * Die Haushaltskarte: Elternkonten und Unterkonten sind zwei unabhängige
- * Abschnitte, weil ein Konto beides zugleich sein kann. Darunter der Hinweis
- * auf Konten, die nur über eine Kette sichtbar waren und es nicht mehr sind.
+ * Die Haushaltskarte: Elternkonten und Unterkonten sind zwei unabhängige Abschnitte, weil ein Konto beides
+ * zugleich sein kann. Darunter der Hinweis auf Konten, die nur über eine Kette sichtbar waren und es nicht
+ * mehr sind.
  * @param {import('../../frontend-typen/vertrag').HouseholdStatusResponse} d
  */
 function renderHousehold(d){
@@ -39,9 +38,9 @@ function renderHousehold(d){
   const redeemEl = G('household-redeem-box');
   if(!stateEl) return;
 
-  // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle
-  // Namen und alle Knöpfe in denselben zwei Spalten.
-  // Namen und alle Knöpfe in denselben zwei Spalten; das Sinnbild macht die Namen als Konten kenntlich.
+  // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle Namen und alle Knöpfe in
+  // denselben zwei Spalten. Namen und alle Knöpfe in denselben zwei Spalten; das Sinnbild macht die Namen als
+  // Konten kenntlich.
   const liste = (/** @type {{ id: number, username?: string | null, via?: string | null }[]} */ eintraege, /** @type {(a: { id: number, username?: string | null, via?: string | null }) => string} */ aktion) => html`<ul class="haushalt-liste">${eintraege.map(a => html`<li data-stil="display:contents">
       <span class="haushalt-name"><svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg>${a.username}</span>
       <span class="haushalt-aktion">${ungeprueft(aktion(a))}</span>
@@ -69,8 +68,8 @@ function renderHousehold(d){
   }
   setzeHtml(stateEl, ungeprueft(teile.join('')));
 
-  // Einladen und Einlösen darf jedes Konto: Ein Konto kann mehrere
-  // Elternkonten haben, und jedes braucht seine eigene Einladung.
+  // Einladen und Einlösen darf jedes Konto: Ein Konto kann mehrere Elternkonten haben, und jedes braucht
+  // seine eigene Einladung.
   if(inviteEl) inviteEl.style.display = '';
   if(redeemEl) redeemEl.style.display = '';
 }
@@ -87,8 +86,8 @@ export async function createHouseholdInvite(){
 export async function copyHouseholdInvite(){
   const el = G('household-invite-code');
   if(!el?.value) return;
-  // Zwischenablage kann fehlschlagen (kein HTTPS, Berechtigung verweigert) —
-  // dann markieren statt die Aktion still verpuffen zu lassen.
+  // Zwischenablage kann fehlschlagen (kein HTTPS, Berechtigung verweigert) — dann markieren statt die Aktion
+  // still verpuffen zu lassen.
   try {
     await navigator.clipboard.writeText(el.value);
     toast(tRaw('household.invite_copied'),'success');
@@ -115,8 +114,8 @@ export async function redeemHouseholdInvite(){
   if(!d.success){ toast(d.error || t('settings.error'),'error'); return; }
   G('household-redeem-code').value = '';
   if(G('household-redeem-faktor-code')) G('household-redeem-faktor-code').value = '';
-  // tRaw + roher Name: Der Toast setzt Text, keine HTML — mit esc() stünde
-  // dort "Marco &amp; Co" statt "Marco & Co".
+  // tRaw + roher Name: Der Toast setzt Text, keine HTML — mit esc() stünde dort "Marco &amp; Co" statt "Marco
+  // & Co".
   const verknuepft = /** @type {{ linked_to?: { username?: string } }} */ (d).linked_to;
   toast(tRaw('household.redeem_ok', { name: verknuepft?.username || '' }),'success');
   loadHousehold();

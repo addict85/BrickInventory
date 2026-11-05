@@ -10,8 +10,8 @@ import { CURRENCY, _settingsCache } from './00-zustand.js';
 import { html, ungeprueft } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 
-// Gutscheine (LEGO-Geschenkkarten) stehen direkt im Profil statt in einem eigenen Reiter: Sie sollen
-// schnell erreichbar sein, und wie in der App erfassen, ändern und anzeigen.
+// Gutscheine (LEGO-Geschenkkarten) stehen direkt im Profil statt in einem eigenen Reiter: Sie sollen schnell
+// erreichbar sein, und wie in der App erfassen, ändern und anzeigen.
 // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#im-eigenen-profil-sollen-lego-gutscheine
 
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
@@ -25,10 +25,9 @@ let _bearbeitet = null;
 /** @param {string} id */
 const el = (/** @type {string} */ id) => /** @type {Feld} */ (document.getElementById(id));
 
-// Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der
-// Verteiler in 11-actions.js reicht `data-arg`, `data-arg2` … in dieser
-// Reihenfolge durch und haengt das Ereignis ZULETZT an. Ein `(ev, id)` waere
-// also still verdreht — die id landete in `ev`.
+// Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der Verteiler in 11-actions.js reicht
+// `data-arg`, `data-arg2` … in dieser Reihenfolge durch und haengt das Ereignis ZULETZT an. Ein `(ev, id)`
+// waere also still verdreht — die id landete in `ev`.
 
 /** Eingeblendete PINs: auch nach dem Abruf nur auf Wunsch, gegen die Schulter daneben. */
 const _sichtbar = new Set();
@@ -53,9 +52,8 @@ async function holeKlartext(id) {
 /**
  * Das Kopieren-Symbol — zwei Blaetter, wie ueberall sonst auch.
  *
- * Inline und nicht als Schriftzeichen: Ein Emoji sieht auf jedem System
- * anders aus und faellt bei manchen Schriften ganz aus. `currentColor` laesst
- * es die Farbe des Knopfes annehmen, also auch im Dunkelmodus.
+ * Inline und nicht als Schriftzeichen: Ein Emoji sieht auf jedem System anders aus und faellt bei manchen
+ * Schriften ganz aus. `currentColor` laesst es die Farbe des Knopfes annehmen, also auch im Dunkelmodus.
  */
 const KOPIE_ICON_SVG =
   '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
@@ -93,10 +91,9 @@ function waehrungPruefen() {
 function zeile(g) {
   const k = _klartext.get(g.id);
   const pinOffen = _sichtbar.has(g.id) && !!k;
-  // Die Nummer in Vierergruppen: 19 Ziffern am Stück sind beim Abtippen an
-  // der Kasse nicht zu lesen, und genau dafür ist sie da. Erst die eigenen
-  // Trenner weg, sonst zählen sie mit („6123 -456 7-89“). Kopiert wird
-  // trotzdem die ROHE Nummer — mit Leerzeichen nimmt sie kein Bezahlfeld an.
+  // Die Nummer in Vierergruppen: 19 Ziffern am Stück sind beim Abtippen an der Kasse nicht zu lesen, und
+  // genau dafür ist sie da. Erst die eigenen Trenner weg, sonst zählen sie mit („6123 -456 7-89“). Kopiert
+  // wird trotzdem die ROHE Nummer — mit Leerzeichen nimmt sie kein Bezahlfeld an.
   const nummer = gruppiereNummer(k ? k.number : g.number);
   return html`
     <div class="voucher-row" data-id="${g.id}">
@@ -161,9 +158,8 @@ export async function ladeGutscheine() {
   // Summe, „alle abfragen“ und Export haben ohne Gutscheine nichts zu tun.
   document.querySelectorAll('[data-nur-mit-gutscheinen]').forEach(e => { /** @type {HTMLElement} */ (e).hidden = !_gutscheine.length; });
 
-  // Die Summe. Nur wenn alle dieselbe Währung haben — sonst stünde dort eine
-  // Zahl, die nichts bedeutet. Gemischte Währungen zusammenzuzählen wäre
-  // schlimmer als gar keine Summe, weil es richtig aussieht.
+  // Die Summe. Nur wenn alle dieselbe Währung haben — sonst stünde dort eine Zahl, die nichts bedeutet.
+  // Gemischte Währungen zusammenzuzählen wäre schlimmer als gar keine Summe, weil es richtig aussieht.
   const summeEl = el('vouchers-total');
   if (summeEl) {
     const waehrungen = new Set(_gutscheine.map(g => g.currency));
@@ -198,9 +194,8 @@ export function gutscheinBearbeiten(id) {
   const cur = el('v-currency'); if (cur) cur.value = g.currency;
   el('vouchers-form-title').textContent = tRaw('vouchers.edit');
   el('v-cancel').style.display = '';
-  // Die Datei bleibt, wie sie ist: Ein Gutschein bekommt sein PDF beim
-  // Anlegen. Es nachträglich auszutauschen wäre ein eigener Vorgang und
-  // beantwortet keine Frage, die jemand hat.
+  // Die Datei bleibt, wie sie ist: Ein Gutschein bekommt sein PDF beim Anlegen. Es nachträglich auszutauschen
+  // wäre ein eigener Vorgang und beantwortet keine Frage, die jemand hat.
   const pdfZeile = el('v-pdf').parentElement;
   if (pdfZeile) pdfZeile.style.display = 'none';
   el('v-number').focus();
@@ -217,9 +212,8 @@ const GUTSCHEIN_FELDER = { nummer_ungueltig: 'v-number', gutschein_existiert: 'v
   pin_ungueltig: 'v-pin', betrag_ungueltig: 'v-amount', waehrung_ungueltig: 'v-currency' };
 
 /**
- * Speichern, ein Knopf für beide Wege: Liegt eine Datei im Feld, liest der Server sie, und ausgefüllte
- * Felder gewinnen. So kann man ein PDF hochladen und den Betrag selbst ergänzen, wenn es ihn nicht
- * hergibt.
+ * Speichern, ein Knopf für beide Wege: Liegt eine Datei im Feld, liest der Server sie, und ausgefüllte Felder
+ * gewinnen. So kann man ein PDF hochladen und den Betrag selbst ergänzen, wenn es ihn nicht hergibt.
  * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#speichern-der-eine-knopf-fuer-beide-wege
  */
 export async function gutscheinSpeichern() {
@@ -242,13 +236,12 @@ export async function gutscheinSpeichern() {
   }
 
   if (datei) {
-    // FormData statt api(): Der Helfer schickt JSON. Eine Datei geht nur als
-    // multipart, und `Content-Type` setzt der Browser dabei selbst (samt
-    // boundary) — ihn hier zu setzen, zerbricht die Anfrage.
+    // FormData statt api(): Der Helfer schickt JSON. Eine Datei geht nur als multipart, und `Content-Type`
+    // setzt der Browser dabei selbst (samt boundary) — ihn hier zu setzen, zerbricht die Anfrage.
     const form = new FormData();
     form.append('file', datei);
-    // Nur ausgefüllte Felder mitschicken: Ein leeres Feld würde das aus dem
-    // PDF Gelesene überschreiben — mit nichts.
+    // Nur ausgefüllte Felder mitschicken: Ein leeres Feld würde das aus dem PDF Gelesene überschreiben — mit
+    // nichts.
     if (number)   form.append('number', number);
     if (pin)      form.append('pin', pin);
     if (amount !== '') form.append('amount', String(amount));
@@ -260,9 +253,8 @@ export async function gutscheinSpeichern() {
     } catch { toast(tRaw('vouchers.save_error'), 'error'); return; }
 
     if (r.status === 422) {
-      // Das PDF gab nicht genug her. Was gelesen WURDE, wird eingetragen —
-      // der Nutzer ergänzt den Rest und drückt noch einmal, mit derselben
-      // Datei. Das ist der Unterschied zwischen „hat nicht geklappt" und
+      // Das PDF gab nicht genug her. Was gelesen WURDE, wird eingetragen — der Nutzer ergänzt den Rest und
+      // drückt noch einmal, mit derselben Datei. Das ist der Unterschied zwischen „hat nicht geklappt" und
       // „hier fehlt noch der Betrag".
       const g = d?.gelesen || {};
       if (g.number && !number)     el('v-number').value = g.number;
@@ -275,8 +267,7 @@ export async function gutscheinSpeichern() {
     if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
 
     // Ob ein PDF einen oder mehrere Gutscheine ergab, entscheidet der Server; `mehrere` sagt es. Dann
-    // dieselbe Meldung wie bei CSV-Importen, damit niemand bei drei Gutscheinen „gespeichert“ liest und
-    // rät.
+    // dieselbe Meldung wie bei CSV-Importen, damit niemand bei drei Gutscheinen „gespeichert“ liest und rät.
     // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#if
     if (d.mehrere) {
       toast(tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated,
@@ -328,8 +319,8 @@ export async function gutscheinPinUmschalten(id) {
 }
 
 /**
- * Das PDF im Betrachter der Anleitungen, wie in der Android-App: Er kann anzeigen und herunterladen,
- * zwei eigene Knöpfe dafür wären doppelt.
+ * Das PDF im Betrachter der Anleitungen, wie in der Android-App: Er kann anzeigen und herunterladen, zwei
+ * eigene Knöpfe dafür wären doppelt.
  * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheinpdfoeffnen
  */
 /** @param {string} id */
@@ -378,9 +369,8 @@ export async function gutscheinKopieren(id, feld) {
     try {
       const feldchen = document.createElement('textarea');
       feldchen.value = wert;
-      // Ausserhalb des Bildes statt `display:none`: Ein verstecktes Element
-      // lässt sich nicht markieren, und ohne Markierung kopiert execCommand
-      // nichts.
+      // Ausserhalb des Bildes statt `display:none`: Ein verstecktes Element lässt sich nicht markieren, und
+      // ohne Markierung kopiert execCommand nichts.
       feldchen.style.cssText = 'position:fixed;top:-1000px;opacity:0';
       document.body.appendChild(feldchen);
       feldchen.select();
@@ -394,8 +384,8 @@ export async function gutscheinKopieren(id, feld) {
 }
 
 /**
- * Alle Gutscheine als ein PDF, per fetch statt Link: Die Kopfzeile X-Gutschein-Befunde sagt, wo der
- * Betrag nicht ersetzt werden konnte — ein <a href> würfe genau diese Auskunft weg.
+ * Alle Gutscheine als ein PDF, per fetch statt Link: Die Kopfzeile X-Gutschein-Befunde sagt, wo der Betrag
+ * nicht ersetzt werden konnte — ein <a href> würfe genau diese Auskunft weg.
  * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheineexportieren
  */
 async function gutscheineExportieren() {
@@ -417,8 +407,8 @@ async function gutscheineExportieren() {
       if (kopf) befunde = JSON.parse(atob(kopf));
     } catch { /* ohne Befunde ist das PDF trotzdem gut */ }
 
-    // Herunterladen über ein kurzlebiges Objekt-URL: Der Name kommt aus dem
-    // Content-Disposition, falls er lesbar ist, sonst aus dem Datum.
+    // Herunterladen über ein kurzlebiges Objekt-URL: Der Name kommt aus dem Content-Disposition, falls er
+    // lesbar ist, sonst aus dem Datum.
     const name = (r.headers.get('Content-Disposition') || '')
       .match(/filename="([^"]+)"/)?.[1]
       || `brickinventory-gutscheine-${new Date().toISOString().slice(0, 10)}.pdf`;
@@ -428,9 +418,8 @@ async function gutscheineExportieren() {
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
 
-    // Die Befunde: 'unveraendert' heisst jetzt genau eines — es hätte
-    // ersetzt werden sollen und ging nicht. „Stimmte schon" ist eine eigene
-    // Art und kein offener Punkt mehr.
+    // Die Befunde: 'unveraendert' heisst jetzt genau eines — es hätte ersetzt werden sollen und ging nicht.
+    // „Stimmte schon" ist eine eigene Art und kein offener Punkt mehr.
     const offen = befunde.filter(b => b.art === 'unveraendert' && b.grund);
     if (!offen.length) {
       toast(tRaw('vouchers.export_done', { n: befunde.length }), 'success');
@@ -448,9 +437,9 @@ async function gutscheineExportieren() {
   }
 }
 
-// Guthaben bei LEGO auf Knopfdruck abfragen. Die Grenze (eine Anfrage je 30 s über alle Benutzer)
-// setzt der Server; die Oberfläche befolgt sie: Bei 429 wartet sie wartenSek ab und fragt dieselbe
-// Karte erneut. Eine Sammelroute hielte dafür Minuten eine Verbindung offen.
+// Guthaben bei LEGO auf Knopfdruck abfragen. Die Grenze (eine Anfrage je 30 s über alle Benutzer) setzt der
+// Server; die Oberfläche befolgt sie: Bei 429 wartet sie wartenSek ab und fragt dieselbe Karte erneut. Eine
+// Sammelroute hielte dafür Minuten eine Verbindung offen.
 // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#kannst-du-dies-bei-den-gutscheinen-einba
 
 /** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
@@ -461,8 +450,7 @@ const _warte = (/** @type {number} */ ms) => new Promise(r => setTimeout(r, ms))
 /**
  * Sekunden abwarten und dabei herunterzählen.
  *
- * Der Text nennt die Karte: Bei „alle abfragen" ist sonst nicht zu sehen,
- * wofür gewartet wird.
+ * Der Text nennt die Karte: Bei „alle abfragen" ist sonst nicht zu sehen, wofür gewartet wird.
  */
 /** @param {number} sekunden @param {string} nummer */
 async function warteSichtbar(sekunden, nummer) {
@@ -476,9 +464,8 @@ async function warteSichtbar(sekunden, nummer) {
 /**
  * Eine Karte abfragen — ohne Takten, ohne Neuladen.
  *
- * Gibt zurück, was der Aufrufer wissen muss: ob es geklappt hat, und wenn
- * nicht, ob es am Abstand lag (dann lohnt Warten) oder am Bot-Schutz (dann
- * wird AUFGEHÖRT — weiterzufragen ist genau das, was nicht sein soll).
+ * Gibt zurück, was der Aufrufer wissen muss: ob es geklappt hat, und wenn nicht, ob es am Abstand lag (dann
+ * lohnt Warten) oder am Bot-Schutz (dann wird AUFGEHÖRT — weiterzufragen ist genau das, was nicht sein soll).
  * @param {number | string} id
  * @returns {Promise<{ art: 'ok', antwort: import('../../frontend-typen/vertrag').GuthabenAntwort } | { art: 'abstand', wartenSek: number } | { art: 'botschutz' | 'fehler', fehler: string }>}
  */
@@ -503,8 +490,8 @@ function meldeErfolg(antwort) {
     nummer: v.number,
     betrag: antwort.angezeigt || fmtN(v.amount, v.currency),
   }), 'success');
-  // Eine stillschweigend geänderte Währung wäre eine geänderte Summe ohne
-  // Hinweis — die Liste rechnet nur, wenn alle Gutscheine dieselbe tragen.
+  // Eine stillschweigend geänderte Währung wäre eine geänderte Summe ohne Hinweis — die Liste rechnet nur,
+  // wenn alle Gutscheine dieselbe tragen.
   if (antwort.waehrung_geaendert) {
     toast(tRaw('vouchers.balance_currency', { waehrung: v.currency }), 'info');
   }
@@ -529,8 +516,8 @@ export async function guthabenAbfragen(id) {
       continue;
     }
     if (status) status.textContent = '';
-    // Auch der Abstand wird hier zur Fehlermeldung: Nach vier Versuchen ist
-    // die Auskunft „es ist belegt" ehrlicher als weiteres Warten.
+    // Auch der Abstand wird hier zur Fehlermeldung: Nach vier Versuchen ist die Auskunft „es ist belegt"
+    // ehrlicher als weiteres Warten.
     toast(('fehler' in r && r.fehler) || tRaw('settings.error'), 'error');
     return;
   }
@@ -558,9 +545,8 @@ export async function guthabenAlleAbfragen() {
       fehler++;
       toast(r.fehler, 'error');
       erledigt = true;
-      // Bot-Schutz: HIER wird abgebrochen, nicht nur diese Karte übersprungen.
-      // Die übrigen Karten liefen in dieselbe Wand, und Marcos Vorgabe ist,
-      // dass dann „nicht mehr Aufrufe generiert werden".
+      // Bot-Schutz: HIER wird abgebrochen, nicht nur diese Karte übersprungen. Die übrigen Karten liefen in
+      // dieselbe Wand, und Marcos Vorgabe ist, dass dann „nicht mehr Aufrufe generiert werden".
       if (r.art === 'botschutz') {
         if (status) status.textContent = '';
         await ladeGutscheine();
@@ -578,10 +564,9 @@ export async function guthabenAlleAbfragen() {
 /**
  * Das Ausgabeland speichern — eine globale Einstellung.
  *
- * Eigener Weg und nicht der große Speichern-Knopf der Einstellungsseite: Das
- * Feld steht in der Gutschein-Rubrik, und wer dort etwas wählt, erwartet, dass
- * es gilt. Der Server nimmt den Wert nur von einem Verwalter an — deshalb ist
- * das Feld für alle anderen gar nicht sichtbar (`admin-only` in index.html).
+ * Eigener Weg und nicht der große Speichern-Knopf der Einstellungsseite: Das Feld steht in der
+ * Gutschein-Rubrik, und wer dort etwas wählt, erwartet, dass es gilt. Der Server nimmt den Wert nur von einem
+ * Verwalter an — deshalb ist das Feld für alle anderen gar nicht sichtbar (`admin-only` in index.html).
  */
 export async function gutscheinLandSpeichern() {
   const feld = el('gutschein-land');

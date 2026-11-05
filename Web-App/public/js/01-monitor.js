@@ -14,9 +14,8 @@ import { LANG, locale, t, tRaw } from '../i18n.js';
 /**
  * Zeitgeber, der die Jobliste nachzieht, solange der Reiter offen ist.
  *
- * Er steht hier, weil nur diese Datei ihn setzt —
- * js/02-gallery.js hält ihn beim Reiterwechsel an, dafür gibt es den Setter
- * unten.
+ * Er steht hier, weil nur diese Datei ihn setzt — js/02-gallery.js hält ihn beim Reiterwechsel an, dafür gibt
+ * es den Setter unten.
  */
 /** @type {ReturnType<typeof setInterval> | null} */
 let _monitorTimer = null;
@@ -26,10 +25,9 @@ function openLogViewer() {
   if (!win) { alert(tRaw('popup.blocked')); return; }
   const base  = window.location.origin;
 
-  // Die Zeitspannen als Daten statt als sechs ausgeschriebene <option>: So
-  // steht die Beschriftung EINMAL da, in der Sprache des Nutzers. Vorher
-  // waren es sechs deutsche Literale — in einem Fenster, das ein englischer
-  // Verwalter genauso oeffnet.
+  // Die Zeitspannen als Daten statt als sechs ausgeschriebene <option>: So steht die Beschriftung EINMAL da,
+  // in der Sprache des Nutzers. Vorher waren es sechs deutsche Literale — in einem Fenster, das ein
+  // englischer Verwalter genauso oeffnet.
   const spannen = [15, 30, 60, 360, 1440, 2880].map((min) => {
     const text = min < 60 ? t('log.minutes_n', { n: min })
       : min === 60 ? t('log.hour_1')
@@ -49,8 +47,8 @@ function openLogViewer() {
         'log.none_found':       t('log.none_found'),
         'log.entries':          t('log.entries'),
         'toast.error':          t('toast.error'),
-        // Die beiden Beschriftungen des Auto-Knopfes wechseln zur Laufzeit;
-        // logviewer.js hatte sie deshalb als deutsche Literale.
+        // Die beiden Beschriftungen des Auto-Knopfes wechseln zur Laufzeit; logviewer.js hatte sie deshalb
+        // als deutsche Literale.
         'log.auto':             t('log.auto'),
         'log.stop':             t('log.stop'),
       })) + '">' +
@@ -78,8 +76,8 @@ function openLogViewer() {
   win.document.close();
 }
 
-// Übersetzt Server-seitige Job-Sub-Texte (background jobs kennen die
-// Nutzersprache nicht). Bekannte Muster werden clientseitig ersetzt.
+// Übersetzt Server-seitige Job-Sub-Texte (background jobs kennen die Nutzersprache nicht). Bekannte Muster
+// werden clientseitig ersetzt.
 /**
  * @param {string} sub
  */
@@ -113,9 +111,8 @@ export async function saveJobSchedule(name, payload) {
 }
 
 
-// Bausteine der Dienstetabelle im Monitor.
-// Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die
-// Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
+// Bausteine der Dienstetabelle im Monitor. Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt
+// die Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
 /** @param {Record<string, import('../../frontend-typen/vertrag').JobSchedule> | null | undefined} schedules @param {string} k */
 const schedInput = (schedules, k) => {
   const sc = schedules?.[k];
@@ -179,8 +176,8 @@ export async function loadMonitor() {
   const render = async () => {
     const d = await apiDaten('GET', '/v1/admin/jobs');
     if (!d?.success) return;
-    // Nicht neu rendern, während der Nutzer gerade eine Zeitplan-Eingabe bearbeitet
-    // (sonst würde das 3s-Re-Render die Eingabe/den Fokus verwerfen).
+    // Nicht neu rendern, während der Nutzer gerade eine Zeitplan-Eingabe bearbeitet (sonst würde das
+    // 3s-Re-Render die Eingabe/den Fokus verwerfen).
     const _ae = document.activeElement;
     if (_ae && _ae.classList && _ae.classList.contains('job-sched-input')) return;
     const { jobs, schedules } = d;
@@ -263,8 +260,8 @@ const STATUSNAMEN = {
 const artName = (/** @type {string} */ art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : esc(art));
 
 /**
- * Eine Fehlermeldung des Servers in einem Satz, den man ohne Netzwerkwissen
- * versteht; der Originaltext bleibt aufklappbar, er ist für die Fehlersuche da.
+ * Eine Fehlermeldung des Servers in einem Satz, den man ohne Netzwerkwissen versteht; der Originaltext bleibt
+ * aufklappbar, er ist für die Fehlersuche da.
  * @param {unknown} text
  */
 export function fehlerKurz(text) {
@@ -283,9 +280,8 @@ function fehlerKasten(text) {
 }
 
 /**
- * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers
- * (GET /api/v1/admin/auftraege) — je Art die Zahlen mit „Jetzt“ und
- * „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
+ * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers (GET /api/v1/admin/auftraege) — je Art die
+ * Zahlen mit „Jetzt“ und „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
  */
 async function zeigeAuftraege() {
   const el = G('auftraege-karte');
@@ -349,8 +345,8 @@ async function zeigeAuftraege() {
       ${mehr > 0 ? html`<p class="mon-leise">${tRaw('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>` : html`<h3 class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${tRaw('monitor.auftraege.leer')}</p>`}`);
 }
 /**
- * Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick
- * gilt bis zum Neuladen, auch über das Nachzeichnen alle paar Sekunden.
+ * Die Liste der einzelnen Aufträge ist am Telefon zu, sonst offen; ein Klick gilt bis zum Neuladen, auch über
+ * das Nachzeichnen alle paar Sekunden.
  * @type {boolean | null}
  */
 let _einzelnOffen = null;

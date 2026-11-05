@@ -8,12 +8,12 @@ import { feldFehler, istSetnummer } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
 
-// Auffangnetz für unbehandelte Fehler und die temporäre Teileliste. Gestartet
-// wird die Anwendung von 26-sitzung.js (startApp), nicht beim Laden dieses Moduls.
+// Auffangnetz für unbehandelte Fehler und die temporäre Teileliste. Gestartet wird die Anwendung von
+// 26-sitzung.js (startApp), nicht beim Laden dieses Moduls.
 
 /**
- * Auffangnetz für Fehler, die niemand behandelt: api() wirft nicht mehr, aber ein Programmierfehler in
- * einem Rückruf endete sonst nur in der Konsole — man klickt, nichts passiert, und niemand erfährt es.
+ * Auffangnetz für Fehler, die niemand behandelt: api() wirft nicht mehr, aber ein Programmierfehler in einem
+ * Rückruf endete sonst nur in der Konsole — man klickt, nichts passiert, und niemand erfährt es.
  * Ausführlich: docs/begruendungen/public/js/08-init.js.md#letztefehlermeldung
  */
 let _letzteFehlermeldung = 0;
@@ -23,9 +23,8 @@ function meldeUnerwartet(quelle, fehler) {
   const jetzt = Date.now();
   if (jetzt - _letzteFehlermeldung < 5000) return;
   _letzteFehlermeldung = jetzt;
-  // tRaw statt t: Das Ergebnis geht über toast() nach textContent — t()
-  // maskiert die eingesetzten Werte und die Maskierung würde dort WÖRTLICH
-  // erscheinen (siehe frontend-escaping.test.js).
+  // tRaw statt t: Das Ergebnis geht über toast() nach textContent — t() maskiert die eingesetzten Werte und
+  // die Maskierung würde dort WÖRTLICH erscheinen (siehe frontend-escaping.test.js).
   toast(tRaw('api.unexpected'), 'error');
 }
 
@@ -47,8 +46,8 @@ export function bindGlobalErrorHandlers() {
   window.addEventListener('unhandledrejection', (ev) => {
     if (vonUns(ev.reason)) meldeUnerwartet('promise', ev.reason);
   });
-  // Ressourcenfehler (Bilder) laufen ebenfalls über 'error', blubbern aber
-  // nicht bis window hoch — hier kommen nur echte Skriptfehler an.
+  // Ressourcenfehler (Bilder) laufen ebenfalls über 'error', blubbern aber nicht bis window hoch — hier
+  // kommen nur echte Skriptfehler an.
   window.addEventListener('error', (ev) => {
     const fehler = ev.error || ev.message;
     if (vonUns(ev.error)) meldeUnerwartet('script', fehler);
@@ -81,9 +80,8 @@ function plAddSet() {
     const normalized = nr.includes('-') ? nr : nr + '-1';
     const eintrag = { set_number: normalized, name: normalized, unbekannt: false };
     _plSets.push(eintrag);
-    // Name aus dem Katalog; kennt er die Nummer nicht, sagt es der Chip, statt
-    // sie still als Set ohne Teile mitzuzählen.
-    // Try to get set name from catalog (works for any set, not just owned ones)
+    // Name aus dem Katalog; kennt er die Nummer nicht, sagt es der Chip, statt sie still als Set ohne Teile
+    // mitzuzählen. Try to get set name from catalog (works for any set, not just owned ones)
     api('GET', `/v1/sets/info/${normalized}`).then(d => {
       if (!d.success) return;
       if (d.name && d.name !== normalized) eintrag.name = d.name;
@@ -115,9 +113,8 @@ export function plRenderSets() {
       <button type="button" class="pl-chip-weg" data-click="plRemoveSet" data-arg="${i}" aria-label="${tRaw('pl.entfernen', { set: s.set_number })}">${ico('schliessen')}</button>
     </div>`));
 }
-// Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der
-// Auswertung aller Module aufruft. Im Modulrumpf lief er zu früh: Bei
-// gegenseitigen Importen ist das Übersetzungsobjekt aus i18n.js dann noch
+// Aufruf verschoben nach startApp() (js/08-init.js), das js/main.js NACH der Auswertung aller Module aufruft.
+// Im Modulrumpf lief er zu früh: Bei gegenseitigen Importen ist das Übersetzungsobjekt aus i18n.js dann noch
 // nicht initialisiert, und t() wirft.
 
 
@@ -162,9 +159,9 @@ async function plGenerate() {
       if (d.success && d.parts?.length) {
         for (const p of d.parts) {
           const blNum = p.bl_part_number || p.part_number;
-          // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand danach nachgefragt wird: Mehrere
-          // Formvarianten teilen eine BrickLink-Nummer, und nach ihr zusammengelegt zählte der Bedarf doppelt,
-          // der Bestand einfach.
+          // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand danach nachgefragt wird:
+          // Mehrere Formvarianten teilen eine BrickLink-Nummer, und nach ihr zusammengelegt zählte der Bedarf
+          // doppelt, der Bestand einfach.
           // Ausführlich: docs/begruendungen/public/js/08-init.js.md#key
           const key = `${p.part_number}|${p.color_id||0}`;
           if (combined[key]) {
@@ -224,9 +221,8 @@ async function plGenerate() {
 }
 
 /**
- * „Kann ich das bauen?“ füllt die vorhandene Spalte „Vorhanden“ aus dem Bestand statt einer zweiten
- * Ansicht: Zwei Tabellen wären zwei Orte, an denen die Rechnung auseinanderläuft. Die Zahl
- * überschreibt Handeingaben.
+ * „Kann ich das bauen?“ füllt die vorhandene Spalte „Vorhanden“ aus dem Bestand statt einer zweiten Ansicht:
+ * Zwei Tabellen wären zwei Orte, an denen die Rechnung auseinanderläuft. Die Zahl überschreibt Handeingaben.
  * Ausführlich: docs/begruendungen/public/js/08-init.js.md#plfuellebestand
  */
 async function plFuelleBestand() {
@@ -235,8 +231,8 @@ async function plFuelleBestand() {
   const nurLose = !!G('pl-bestand-lose')?.checked;
 
   // `data-key` ist `<rbPartNum>__<rbColorId>` — die Rebrickable-Schreibweise.
-  // Genau die steht auch in der eigenen Teile-Tabelle; die BrickLink-Nummer
-  // daneben ist nur für den Export da und taugt für den Abgleich nicht.
+  // Genau die steht auch in der eigenen Teile-Tabelle; die BrickLink-Nummer daneben ist nur für den Export da
+  // und taugt für den Abgleich nicht.
   const teile = felder.map(el => {
     const [num, farbe] = String(el.dataset.key || '').split('__');
     return { part_number: num, color_id: parseInt(farbe) || 0 };
@@ -246,8 +242,8 @@ async function plFuelleBestand() {
   const frei = knopfBesetzt(b);
   // Das Blickfeld kommt aus DIESER Ansicht, nicht mehr aus dem Teile-Reiter.
   // `own` und `all` sind die Namen, die der Server ohnehin kennt
-  // (src/haushalt/haushalt.ts, parseScopeMode) — die Wahl ist also nur eine andere
-  // Bedienung derselben Sache, kein zweiter Begriff daneben.
+  // (src/haushalt/haushalt.ts, parseScopeMode) — die Wahl ist also nur eine andere Bedienung derselben Sache,
+  // kein zweiter Begriff daneben.
   const mitSubs = !!G('pl-bestand-subs')?.checked;
   const d = await api('POST', `/v1/parts/owned${(mitSubs ? '' : '?accounts=own')}`,
     { teile }).catch(() => null);
@@ -337,9 +333,8 @@ function plRenderTable(fehler = 0) {
 async function plExportPdf() {
   if (!_plParts?.length) return;
   const btn = G('btn-pl-pdf');
-  // Die Freigabe merkt sich die Beschriftung, statt sie am Ende neu zu
-  // setzen: Hier stand '📄 PDF' als Literal, obwohl der Knopf im Markup ein
-  // data-i18n trägt.
+  // Die Freigabe merkt sich die Beschriftung, statt sie am Ende neu zu setzen: Hier stand '📄 PDF' als
+  // Literal, obwohl der Knopf im Markup ein data-i18n trägt.
   const frei = btn ? knopfBesetzt(btn, tRaw('pdf.creating')) : () => {};
   try {
     const pdfParts = _plParts.map(p => ({
@@ -361,8 +356,8 @@ async function plExportPdf() {
     const { jobId } = await startResp.json();
     if (!jobId) throw new Error(t('pdf.no_job_id'));
 
-    // Step 2: SSE statt Polling — Ergebnis kommt sofort wenn fertig.
-    // Fallback auf Polling falls EventSource nicht verfügbar.
+    // Step 2: SSE statt Polling — Ergebnis kommt sofort wenn fertig. Fallback auf Polling falls EventSource
+    // nicht verfügbar.
     if (btn) btn.textContent = tRaw('pdf.loading_images');
     await /** @type {Promise<void>} */ (new Promise((resolve, reject) => {
       let settled = false;
@@ -459,8 +454,8 @@ function fehlendeTeile() {
     if (diff > 0) {
       const rbColor = parseInt(inp.dataset.rbColor ?? '') || 0;
       // `data-color` ist leer, wenn der Katalog keine BrickLink-Farbe kennt
-      // (siehe plRenderTable). Die Karte wird noch einmal befragt, weil sie
-      // beim Zeichnen der Tabelle vielleicht noch nicht geladen war.
+      // (siehe plRenderTable). Die Karte wird noch einmal befragt, weil sie beim Zeichnen der Tabelle
+      // vielleicht noch nicht geladen war.
       const roh = inp.dataset.color;
       const ausKarte = _rbToBlColor[rbColor];
       const blColor = ausKarte ?? (roh === '' || roh === undefined ? null : parseInt(roh));
@@ -491,8 +486,8 @@ async function figurenAufloesen(missing) {
           const teile = /** @type {{ part_number: string, bl_part_number?: string | null, color_id: number, bl_color_id?: number | null, quantity?: number }[]} */ (dp.parts);
           for (const p of teile) {
             const blNum  = p.bl_part_number || p.part_number;
-            // Dieselbe Regel wie in der Tabelle: keine Zuordnung heisst
-            // UNBEKANNT, nicht „nimm die Rebrickable-Nummer".
+            // Dieselbe Regel wie in der Tabelle: keine Zuordnung heisst UNBEKANNT, nicht „nimm die
+            // Rebrickable-Nummer".
             const blColId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? null;
             const key    = `P|${blNum}|${blColId}`;
             const qty    = parseInt(String(p.quantity || 1)) * m.qty;
@@ -553,9 +548,9 @@ async function plExportBricklink() {
 
   const expanded = await figurenAufloesen(missing);
 
-  // Posten ohne bekannte BrickLink-Farbe gehen nicht mit, sie werden genannt: Eine geratene Farbe
-  // bestellt das falsche Teil, und das merkt man erst am Paket. Figuren (Typ M) haben keine Farbe und
-  // sind nie betroffen.
+  // Posten ohne bekannte BrickLink-Farbe gehen nicht mit, sie werden genannt: Eine geratene Farbe bestellt
+  // das falsche Teil, und das merkt man erst am Paket. Figuren (Typ M) haben keine Farbe und sind nie
+  // betroffen.
   // Ausführlich: docs/begruendungen/public/js/08-init.js.md#ohnefarbe
   const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
   const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
@@ -570,8 +565,8 @@ async function plExportBricklink() {
 
   toast(tRaw('pl.bl_exported', { n: exportierbar.length }), 'success');
   if (stuecke.length > 1) toast(tRaw('pl.bl_split', { n: stuecke.length }), 'info');
-  // Zuletzt und als eigene Meldung, damit sie nicht neben der Erfolgsmeldung
-  // untergeht: Was fehlt, muss man lesen.
+  // Zuletzt und als eigene Meldung, damit sie nicht neben der Erfolgsmeldung untergeht: Was fehlt, muss man
+  // lesen.
   if (ohneFarbe.length) {
     toast(tRaw('pl.bl_no_color', {
       n: ohneFarbe.length,
@@ -595,9 +590,8 @@ function plReset() {
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 /**
- * Ansichtswahl Karten/Tabelle bei Teilen und Minifiguren: dieselben Knöpfe wie
- * bei den Sets. Der Wert liegt weiter im (versteckten) Auswahlfeld, an dem die
- * Lade- und Zeichenlogik hängt.
+ * Ansichtswahl Karten/Tabelle bei Teilen und Minifiguren: dieselben Knöpfe wie bei den Sets. Der Wert liegt
+ * weiter im (versteckten) Auswahlfeld, an dem die Lade- und Zeichenlogik hängt.
  * @param {string} id
  * @param {string} wert
  */
@@ -628,8 +622,7 @@ registerActions({
 /**
  * Teileliste-Zustand zurücksetzen (beim Abmelden).
  *
- * Importierte
- * Bindungen sind in ES-Modulen schreibgeschützt. Die Funktion hält das Wissen,
- * was "leer" für diesen Zustand heisst, dort wo der Zustand definiert ist.
+ * Importierte Bindungen sind in ES-Modulen schreibgeschützt. Die Funktion hält das Wissen, was "leer" für
+ * diesen Zustand heisst, dort wo der Zustand definiert ist.
  */
 export function resetPartsList() { _plParts = null; _plSets = []; }

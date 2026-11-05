@@ -1,17 +1,17 @@
 // Läuft blockierend im <head>, vor dem ersten Paint: Auch Anmelde- und Startseite tragen so sofort das
-// richtige Design. Erst der letzte bekannte Wert, dann der Abgleich mit dem Server — so blinkt nichts
-// und nichts veraltet.
+// richtige Design. Erst der letzte bekannte Wert, dann der Abgleich mit dem Server — so blinkt nichts und
+// nichts veraltet.
 // Ausführlich: docs/begruendungen/public/js/00-theme-boot.js.md#laeuft-als-blockierendes-skript-im-head
 
 (function () {
   var KEY = 'bim_theme';
-  // Muss mit DESIGNS in src/konto/settings.ts uebereinstimmen — eine
-  // Pruefung haelt beide zusammen (theme.test.js).
+  // Muss mit DESIGNS in src/konto/settings.ts uebereinstimmen — eine Pruefung haelt beide zusammen
+  // (theme.test.js).
   var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
   /**
-   * Wendet ein Design an. Ein leerer Wert heisst „keine Auskunft“ und ändert nichts: Ein Rückfall auf
-   * classic liess die Seite beim Anmelden umspringen und schrieb den falschen Wert in den Cache.
+   * Wendet ein Design an. Ein leerer Wert heisst „keine Auskunft“ und ändert nichts: Ein Rückfall auf classic
+   * liess die Seite beim Anmelden umspringen und schrieb den falschen Wert in den Cache.
    * Ausführlich: docs/begruendungen/public/js/00-theme-boot.js.md#apply
    * @param {string | null | undefined} theme
    */
@@ -23,9 +23,9 @@
   }
 
   // ── Dunkel nach System, je Gerät (Profil-Einstellungen) ────────────────────
-  // Ob ein GERÄT dunkel will, weiss nur das Gerät. Vorgabe ist „system“: Bei
-  // dunklem System die dunkle Variante DESSELBEN Designs (data-dunkel, Farben
-  // aus tokens.css). Wer „server“ wählt, behält das Design ohne Variante.
+  // Ob ein GERÄT dunkel will, weiss nur das Gerät. Vorgabe ist „system“: Bei dunklem System die dunkle
+  // Variante DESSELBEN Designs (data-dunkel, Farben aus tokens.css). Wer „server“ wählt, behält das Design
+  // ohne Variante.
   var DUNKEL_KEY = 'bim_dunkel';
   var systemDunkel = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   /** @type {string | null} */
@@ -53,9 +53,8 @@
   window.__bimNurDunkel = function (theme) { return theme === 'werkbank'; };
 
   /**
-   * Setter für 01-konto.js und den Admin-Speichern-Handler. Nur gültige Werte
-   * werden angewendet UND gecacht — ein leerer oder fehlender Wert darf den
-   * Cache nicht überschreiben.
+   * Setter für 01-konto.js und den Admin-Speichern-Handler. Nur gültige Werte werden angewendet UND gecacht —
+   * ein leerer oder fehlender Wert darf den Cache nicht überschreiben.
    * @param {string} theme
    */
   function applier(theme) {
@@ -100,9 +99,8 @@
       .catch(function () { /* offline oder Server startet noch — Cache bleibt gültig */ });
   }
 
-  // Der Server nimmt Anfragen erst nach initSchemaOnce() an; ein Fehlschlag hier
-  // ist unkritisch, weil checkAuth() ohnehin auf den Startup wartet und
-  // applyTheme() nach dem Login den Serverwert erneut setzt.
+  // Der Server nimmt Anfragen erst nach initSchemaOnce() an; ein Fehlschlag hier ist unkritisch, weil
+  // checkAuth() ohnehin auf den Startup wartet und applyTheme() nach dem Login den Serverwert erneut setzt.
   sync();
 
   window.__bimApplyTheme = applier;

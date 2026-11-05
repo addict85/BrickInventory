@@ -10,15 +10,15 @@ import { scopeQuery } from './14-scope.js';
 import { ladeLagerorte, lagerortBlock, ladeOrtAuswahl } from './02-detailfelder.js';
 import { springe } from './00-ziele.js';
 import { registerActions } from './00-registry.js';
-// Detail-Dialog für Teile und Figuren aus Sets: mit Zoom und der Liste der Sets, in denen sie stecken,
-// ohne Marktpreis und ohne änderbare Anzahl — die Menge entsteht aus den Inventaren. Derselbe Rahmen
-// wie openManDetail.
+// Detail-Dialog für Teile und Figuren aus Sets: mit Zoom und der Liste der Sets, in denen sie stecken, ohne
+// Marktpreis und ohne änderbare Anzahl — die Menge entsteht aus den Inventaren. Derselbe Rahmen wie
+// openManDetail.
 // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#opensetitemdetail
 /** Die Sets, in denen ein Teil oder eine Figur steckt, als klickbare Liste. @param {{ set_number: string, name?: string | null, set_name?: string | null, image_local?: string | null, image_url?: string | null, quantity?: number | null }[]} sets */
 function verwendetInListe(sets) {
   // Die Sets als Tabelle (Bild, Nummer, Name) wie im Reiter Finanzen: Als Fliesstext stand jeder Name
-  // woanders. Jede Zeile öffnet das Set-Detail und schliesst diesen Dialog, zwei offene Fenster wären
-  // nicht zu schliessen.
+  // woanders. Jede Zeile öffnet das Set-Detail und schliesst diesen Dialog, zwei offene Fenster wären nicht
+  // zu schliessen.
   // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#setbild
   const setBild = (/** @type {{ image_local?: string | null, image_url?: string | null }} */ s) => {
     const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
@@ -73,10 +73,9 @@ export async function openSetItemDetail(type, id, colorId) {
   G('setitem-tit').textContent = item?.name || id;
   G('setitem-sub').textContent = id + (item?.color_name ? ' · ' + colorName(item.color_name) : '');
 
-  // Bild wie im manuellen Dialog: über den Server-Proxy in voller Auflösung.
-  // data-orig speist den Zoom (openImageLightboxFromEl in 11-actions.js) —
-  // ohne dieses Attribut gäbe es kein Vergrössern, und genau das war Teil des
-  // Wunsches.
+  // Bild wie im manuellen Dialog: über den Server-Proxy in voller Auflösung. data-orig speist den Zoom
+  // (openImageLightboxFromEl in 11-actions.js) — ohne dieses Attribut gäbe es kein Vergrössern, und genau das
+  // war Teil des Wunsches.
   const roh = item?.image_local || item?.image_url || '';
   const voll = roh ? imgUrl(fullUrl(roh), false) : '';
   if (voll) {
@@ -103,8 +102,8 @@ export async function openSetItemDetail(type, id, colorId) {
   if (item?.category_name) zeilen.push(detailZeile(t('setitem.category'), esc(item.category_name)));
   if (item?.is_spare) zeilen.push(detailZeile(t('parts.spare_tag'), ico('ok')));
 
-  // Lagerort nur für Teile: Eine Figur steckt in ihrem Set, dessen Ort im Set-Detail steht. Das Feld
-  // schreibt auf alle Zeilen des Teil-Farb-Paares, weil man das Teil meint, nicht eine seiner Zeilen.
+  // Lagerort nur für Teile: Eine Figur steckt in ihrem Set, dessen Ort im Set-Detail steht. Das Feld schreibt
+  // auf alle Zeilen des Teil-Farb-Paares, weil man das Teil meint, nicht eine seiner Zeilen.
   // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#if
   if (type === 'part') {
     // Die Ortsliste gehört dem Besitzer, wie beim Set. owner_ids statt owners, weil gruppierte Teilezeilen
@@ -119,8 +118,8 @@ export async function openSetItemDetail(type, id, colorId) {
   }
 
   const liste = verwendetInListe(sets);
-  // Die Tabelle steht unter der Beschriftung (flex-direction:column): In der .dr-Zeile rutschte sie bei
-  // einem einzigen Set neben „Verwendet in“, und das Bild berührte den Text.
+  // Die Tabelle steht unter der Beschriftung (flex-direction:column): In der .dr-Zeile rutschte sie bei einem
+  // einzigen Set neben „Verwendet in“, und das Bild berührte den Text.
   // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#marcos-befund-am-bild-der-text-verwendet
   zeilen.push(detailZeile(t('setitem.used_in'), liste,
     { zeilenStil: 'flex-direction:column;align-items:stretch;gap:4px',
@@ -130,8 +129,8 @@ export async function openSetItemDetail(type, id, colorId) {
 }
 
 /**
- * Lagerort eines Teils oder einer Figur speichern, beim Verlassen des Feldes (sonst ein Zwischenstand
- * je Zeichen). `this` statt fester Kennung, weil zwei Dialoge denselben Handler nutzen.
+ * Lagerort eines Teils oder einer Figur speichern, beim Verlassen des Feldes (sonst ein Zwischenstand je
+ * Zeichen). `this` statt fester Kennung, weil zwei Dialoge denselben Handler nutzen.
  * Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#speichereteillagerort
  * @this {unknown}
  */
@@ -146,8 +145,8 @@ async function speichereTeilLagerort() {
   const d = await api('PUT', adresse, { storage: el.value });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   await ladeLagerorte();
-  // Ein frisch getippter Ort ist jetzt im Vorrat — ohne das stünde er am Teil,
-  // fehlte aber in der Liste, aus der er beim nächsten Mal gewählt wird.
+  // Ein frisch getippter Ort ist jetzt im Vorrat — ohne das stünde er am Teil, fehlte aber in der Liste, aus
+  // der er beim nächsten Mal gewählt wird.
   await ladeOrtAuswahl(el.dataset.owners ? el.dataset.owners.split(',').map(Number) : []);
 }
 

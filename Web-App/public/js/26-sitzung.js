@@ -1,7 +1,6 @@
-// Anmeldung, Abmeldung und der Aufbau der Anwendung danach. Das Modul steht
-// ganz oben im Importgraphen: Es darf jede Ansicht starten oder leeren, und
-// keine Ansicht importiert es. Die API-Hülle meldet ein Sitzungsende nur als
-// Ereignis; reagiert wird hier.
+// Anmeldung, Abmeldung und der Aufbau der Anwendung danach. Das Modul steht ganz oben im Importgraphen: Es
+// darf jede Ansicht starten oder leeren, und keine Ansicht importiert es. Die API-Hülle meldet ein
+// Sitzungsende nur als Ereignis; reagiert wird hier.
 import { registerActions } from './00-registry.js';
 import { html } from './00-escapen.js';
 import { abonniere } from './00-ereignisse.js';
@@ -39,8 +38,8 @@ abonniere('passwortWechselNoetig', () => zeigePflichtwechsel());
 abonniere('zweiterFaktorPflicht', () => zeigeZweitpflicht());
 
 /**
- * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten
- * geht es zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
+ * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten geht es
+ * zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
  * Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#abonniere
  */
 abonniere('sitzungBeendet', (path) => {
@@ -69,21 +68,21 @@ function showPanel(name){
   });
 }
 
-// Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig);
-// die Anwendung käme sonst mit lauter Fehlern hoch.
+// Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig); die Anwendung käme
+// sonst mit lauter Fehlern hoch.
 
 function zeigePflichtwechsel(){
   G('login-screen').style.display='flex'; startgeruestWeg(); G('app').style.display='none';
   showPanel('pflichtwechsel');
-  // Das Startpasswort wurde eben getippt und reist aus dem Anmeldefeld mit,
-  // statt ein zweites Mal gefragt zu werden. Nach einem Neuladen fehlt es; dann steht das Feld da.
+  // Das Startpasswort wurde eben getippt und reist aus dem Anmeldefeld mit, statt ein zweites Mal gefragt zu
+  // werden. Nach einem Neuladen fehlt es; dann steht das Feld da.
   const eben = G('lp').value;
   G('pflicht-alt').value = eben; G('lp').value = '';
   G('pflicht-alt-zeile').hidden = !!eben;
   G(eben ? 'pflicht-neu' : 'pflicht-alt').focus();
 }
-// Verwalter ohne zweiten Faktor: Der Server lässt nur dessen Einrichtung zu (403
-// zweiter_faktor_pflicht); js/21-zweiter-faktor.js zeichnet sie in das Feld.
+// Verwalter ohne zweiten Faktor: Der Server lässt nur dessen Einrichtung zu (403 zweiter_faktor_pflicht);
+// js/21-zweiter-faktor.js zeichnet sie in das Feld.
 function zeigeZweitpflicht(){
   G('login-screen').style.display='flex'; startgeruestWeg(); G('app').style.display='none';
   showPanel('zweitpflicht');
@@ -139,11 +138,9 @@ G('btn-register')?.addEventListener('click', async () => {
   const err=G('reg-err');
   formularFehler(err, '');
   if(!u||!e||!p){ formularFehler(err, tRaw('register.req_fields'), [!u&&'reg-user', !e&&'reg-email', !p&&'reg-pass'].filter(x => typeof x === 'string')); return; }
-  // Reihenfolge: zu kurz VOR ungleich — dieselbe wie in der App
-  // (LoginScreen.kt). Deren Kommentar behauptete schon vorher „dieselben drei
-  // Pruefungen wie im Web-Formular, und in derselben Reihenfolge"; wahr war
-  // daran bis hierher weder das eine noch das andere, weil die Webapp die
-  // Laenge gar nicht prueft.
+  // Reihenfolge: zu kurz VOR ungleich — dieselbe wie in der App (LoginScreen.kt). Deren Kommentar behauptete
+  // schon vorher „dieselben drei Pruefungen wie im Web-Formular, und in derselben Reihenfolge"; wahr war
+  // daran bis hierher weder das eine noch das andere, weil die Webapp die Laenge gar nicht prueft.
   const regel = passwortRegelText(p);
   if (regel) { formularFehler(err, regel, ['reg-pass']); return; }
   if(p!==p2){ formularFehler(err, tRaw('settings.password.mismatch'), ['reg-pass2']); return; }
@@ -219,19 +216,16 @@ G('btn-reset')?.addEventListener('click', async () => {
 
 
 export async function checkAuth(){
-  // Sprache (aus localStorage oder Browser-Sprache) sofort anwenden, damit auch
-  // der Login-/Registrierungs- und Startup-Screen VOR dem Login übersetzt sind
-  // (bisher lief applyLang erst nach dem Login in showApp).
+  // Sprache (aus localStorage oder Browser-Sprache) sofort anwenden, damit auch der Login-/Registrierungs-
+  // und Startup-Screen VOR dem Login übersetzt sind (bisher lief applyLang erst nach dem Login in showApp).
   applyLang(LANG, false);
   await waitForStartup();
   const d=await api('GET','/v1/auth/me');
-  // Die Anmeldemaske ist schon bedienbar, während diese Frage läuft. Wer sich
-  // inzwischen angemeldet hat, bekäme sonst von der späten Antwort „nein“ die
-  // Maske zurück, obwohl die Sitzung gilt.
+  // Die Anmeldemaske ist schon bedienbar, während diese Frage läuft. Wer sich inzwischen angemeldet hat,
+  // bekäme sonst von der späten Antwort „nein“ die Maske zurück, obwohl die Sitzung gilt.
   if(ME) return;
-  // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort;
-  // ME behält isAdmin, id und username. Auch angemeldet (neue Adresse im
-  // Profil) wird erst bestätigt, dann öffnet die Anwendung.
+  // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort; ME behält isAdmin, id und
+  // username. Auch angemeldet (neue Adresse im Profil) wird erst bestätigt, dann öffnet die Anwendung.
   _verifyAngemeldet = !!d.loggedIn;
   if(_verifyToken) zeigeBestaetigungsziel(!!d.loggedIn);
   // Angemeldet heisst: `user` ist da; der Vertrag lässt es offen, weil /auth/me auch abgemeldet antwortet.
@@ -247,9 +241,8 @@ export async function checkAuth(){
   }
 }
 /**
- * Vor dem Einlösen nennt der Server das Konto des Links, und der Knopf nennt es
- * noch einmal: Wer von zwei gleichen Mails die eines fremden Kontos öffnet,
- * sieht dessen Namen, bevor er dessen Adresse bestätigt.
+ * Vor dem Einlösen nennt der Server das Konto des Links, und der Knopf nennt es noch einmal: Wer von zwei
+ * gleichen Mails die eines fremden Kontos öffnet, sieht dessen Namen, bevor er dessen Adresse bestätigt.
  * @param {boolean} angemeldet
  */
 async function zeigeBestaetigungsziel(angemeldet) {
@@ -275,8 +268,8 @@ async function zeigeBestaetigungsziel(angemeldet) {
   if (u) bestaetigungAngemeldet(u.email_neu);
 }
 /**
- * Angemeldet führt die Seite zurück in die Sammlung; wartet nichts, ist
- * „Bestätigen“ nicht mehr der nahegelegte Schritt.
+ * Angemeldet führt die Seite zurück in die Sammlung; wartet nichts, ist „Bestätigen“ nicht mehr der
+ * nahegelegte Schritt.
  * @type {string | null}
  */
 let _verifyEmail = null;
@@ -301,10 +294,9 @@ function startgeruestWeg() { G('startgeruest')?.remove(); }
 
 async function waitForStartup() {
   const ss = G('startup-screen');
-  // Kein hartes Gesamt-Timeout mehr: Download/Import der Rebrickable-CSVs kann
-  // bei einer Neuinstallation viele Minuten dauern. Stattdessen nur abbrechen,
-  // wenn sich der Fortschritt über längere Zeit gar nicht mehr ändert (Server
-  // hängt) — solange Fortschritt gemeldet wird, wird weiter gewartet.
+  // Kein hartes Gesamt-Timeout mehr: Download/Import der Rebrickable-CSVs kann bei einer Neuinstallation
+  // viele Minuten dauern. Stattdessen nur abbrechen, wenn sich der Fortschritt über längere Zeit gar nicht
+  // mehr ändert (Server hängt) — solange Fortschritt gemeldet wird, wird weiter gewartet.
   const STALL_TIMEOUT = 180000; // 3 Min ohne jede Statusänderung → aufgeben
   let lastChangeAt = Date.now();
   let lastSig = '';
@@ -345,8 +337,8 @@ async function waitForStartup() {
         subWrap.style.display = 'none';
         if (subLabel) subLabel.style.display = 'none';
       }
-      // Fortschritt erkennen: ändert sich Schritt, Prozent oder Sub-Status,
-      // gilt der Startvorgang als aktiv und der Stall-Timer wird zurückgesetzt.
+      // Fortschritt erkennen: ändert sich Schritt, Prozent oder Sub-Status, gilt der Startvorgang als aktiv
+      // und der Stall-Timer wird zurückgesetzt.
       const sig = `${s.step}|${s.progress}|${s.total}|${s.sub || ''}`;
       if (sig !== lastSig) { lastSig = sig; lastChangeAt = Date.now(); }
       if (s.ready) break;
@@ -375,15 +367,14 @@ function showLogin(o = {}){
   const hinweis = G('login-hinweis');
   if (hinweis) { hinweis.hidden = !o.abgelaufen; hinweis.textContent = o.abgelaufen ? tRaw('auth.session_expired') : ''; }
   formularFehler(G('lerr'), '');
-  // Der Fortschrittsbalken gehört js/01-fortschritt.js — dort steht auch, was
-  // „zurücksetzen“ für ihn bedeutet (Anzeige aus, beide Abfragen gestoppt,
-  // Protokoll geleert). Hier stand früher sein Innenleben ausgeschrieben.
+  // Der Fortschrittsbalken gehört js/01-fortschritt.js — dort steht auch, was „zurücksetzen“ für ihn bedeutet
+  // (Anzeige aus, beide Abfragen gestoppt, Protokoll geleert). Hier stand früher sein Innenleben
+  // ausgeschrieben.
   gibZuruecksetzen();
   sessionStorage.removeItem('webToken');
   leereZwischenspeicher();
-  // Clear sensitive data from all tabs before hiding
-  // Das Diagramm nur leeren, nicht seinen Abschnitt: Der trägt Kopf und Zeitraumwahl,
-  // die nach der nächsten Anmeldung sonst fehlten.
+  // Clear sensitive data from all tabs before hiding Das Diagramm nur leeren, nicht seinen Abschnitt: Der
+  // trägt Kopf und Zeitraumwahl, die nach der nächsten Anmeldung sonst fehlten.
   ['fin-tbl','portfolio-chart','portfolio-pnl','gallery-grid','parts-main','monitor-content'].forEach(id=>{
     const el=G(id); if(el) el.replaceChildren();
   });
@@ -428,14 +419,12 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   initDefaultCondition();
   // Kontoauswahl beim Erfassen — bleibt verborgen, wenn es nichts zu wählen gibt.
   loadHouseholdMembers();
-  // Ausgeloeste Preisalarme seit dem letzten Besuch — das Gegenstueck zum
-  // stuendlichen Abruf der Android-App.
+  // Ausgeloeste Preisalarme seit dem letzten Besuch — das Gegenstueck zum stuendlichen Abruf der Android-App.
   zeigeOffeneAlarme();
   // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
   if (ME?.isAdmin) pruefeEinrichtung();
-  // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil
-  // erst hier eine Sitzung besteht. Danach fällt der Parameter weg, damit F5 das Detail nicht erneut
-  // öffnet.
+  // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil erst
+  // hier eine Sitzung besteht. Danach fällt der Parameter weg, damit F5 das Detail nicht erneut öffnet.
   // Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#setauslink
   const setAusLink = new URLSearchParams(location.search).get('set');
   if (setAusLink) {
@@ -461,18 +450,16 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
     }
     _updateLangSelect();
   });
-  // Der Reiter „Einstellungen" traegt seit dem 16.10. nur noch, was ein
-  // Verwalter setzt (Marcos Vorgabe) — er wird deshalb wie das Monitoring
-  // erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
+  // Der Reiter „Einstellungen" traegt seit dem 16.10. nur noch, was ein Verwalter setzt (Marcos Vorgabe) — er
+  // wird deshalb wie das Monitoring erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
   // Reiter ist schlimmer als keiner: Man klickt ihn an und sucht.
   if(ME?.isAdmin){ const ns=G('ntab-settings'); if(ns) ns.style.display=''; }
   if(ME?.isAdmin){ alle('.admin-only').forEach(el=>el.style.display=''); const nm=G('ntab-monitor'); if(nm){ nm.style.display=''; const lbl=nm.querySelector('.tab-label'); if(lbl) lbl.textContent=tRaw('nav.monitoring'); } G('usermgmt').style.display='block'; ['bl-ao','rb-ao','bs-ao'].forEach(id=>{ const el=G(id); if(el) el.style.display='none'; }); const gg=G('global-settings-grid'); if(gg) gg.style.display='grid'; const gl=G('global-settings-label'); if(gl) gl.style.display='block'; }
   else { ['bl-ck','bl-cs','bl-tok','bl-ts','rb-key','bs-key','lim-rb','lim-bl','lim-bs'].forEach(id=>{const el=G(id);if(el){el.disabled=true;if(el.type!=='number')el.placeholder=tRaw('settings.admins_only_ph')}}); G('btn-sav-bl').disabled=true; G('btn-sav-rb').disabled=true; G('btn-sav-bs').disabled=true; }
-  // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in
-  // die Einstellungen bei jeder Anmeldung nimmt dem Verwalter seine Startseite.
-  // Ein Band weist einmal je Sitzung darauf hin.
-  // Erst die Einstellungen, dann Beträge: Sonst stünden die Preise kurz in
-  // der Vorgabewährung und sprängen dann um (UI-Prüfung 6, N12).
+  // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in die Einstellungen bei jeder
+  // Anmeldung nimmt dem Verwalter seine Startseite. Ein Band weist einmal je Sitzung darauf hin. Erst die
+  // Einstellungen, dann Beträge: Sonst stünden die Preise kurz in der Vorgabewährung und sprängen dann um
+  // (UI-Prüfung 6, N12).
   einstellungen.catch(() => {}).finally(() => {
     if (ME?.isAdmin) rbHinweisZeigen();
     loadGallery();
@@ -498,8 +485,8 @@ async function doLogin(){
   }
   G('lc-zeile').style.display='none'; G('lc').value='';
   if(d.success){ set_ME(/** @type {import('./00-zustand.js').Konto} */ ({ ...d, ...(d.user||{}), isAdmin: d.user?.is_admin === true }));
-    // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(),
-    // damit die Auswahlfelder gleich mit dem zurückgesetzten Wert entstehen.
+    // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(), damit die Auswahlfelder gleich mit dem
+    // zurückgesetzten Wert entstehen.
     resetScopeModes();
     formularFehler(G('lerr'), ''); G('login-hinweis').hidden = true;
     oeffneApp(); } else { const err=d.error||tRaw('settings.error');
@@ -510,8 +497,8 @@ async function doLogin(){
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
   const _wt = sessionStorage.getItem('webToken');
-  // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein
-  // „Sitzung abgelaufen“ und öffnen die Anmeldemaske kein zweites Mal.
+  // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein „Sitzung abgelaufen“ und
+  // öffnen die Anmeldemaske kein zweites Mal.
   set_ME(null);
   await apiRoh('POST', '/v1/auth/logout', {
     headers: _wt ? { 'Authorization': 'Bearer ' + _wt } : {},
@@ -520,8 +507,7 @@ G('btn-logout').onclick=async()=>{
   // Reset all admin-only elements before showing login
   const nm=G('ntab-monitor'); if(nm) nm.style.display='none';
   const ns=G('ntab-settings'); if(ns) ns.style.display='none';
-  // Auch die Verwaltereinträge im Menü: Meldet sich danach ein anderes Konto an,
-  // stünden sie sonst noch da.
+  // Auch die Verwaltereinträge im Menü: Meldet sich danach ein anderes Konto an, stünden sie sonst noch da.
   alle('.admin-only').forEach(el=>{ el.style.display='none'; });
   G('usermgmt').style.display='none';
 

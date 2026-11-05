@@ -1,6 +1,5 @@
-// Rückfragen vor heiklen Schritten: Bestätigen, eigenes Passwort, zweiter
-// Faktor. Eine Ebene über dem Kern, damit jede Ansicht sie nutzen kann, ohne
-// eine andere Ansicht zu importieren.
+// Rückfragen vor heiklen Schritten: Bestätigen, eigenes Passwort, zweiter Faktor. Eine Ebene über dem Kern,
+// damit jede Ansicht sie nutzen kann, ohne eine andere Ansicht zu importieren.
 import { api } from './01-api.js';
 import { G, ico, setzeHtml } from './01-dom.js';
 import { t, tRaw } from '../i18n.js';
@@ -17,8 +16,8 @@ export function confirmDelete(title, msg, icon, knopf = null) {
 }
 
 /**
- * Wie confirmDelete, verlangt aber das eigene Passwort — für Verwalteraktionen
- * an fremden Konten. Liefert das Passwort oder null (abgebrochen).
+ * Wie confirmDelete, verlangt aber das eigene Passwort — für Verwalteraktionen an fremden Konten. Liefert das
+ * Passwort oder null (abgebrochen).
  * @param {string} title
  * @param {string} msg
  * @param {string} icon
@@ -54,9 +53,8 @@ export async function mitZweitemFaktor(ruf) {
 const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.password.current' };
 
 /**
- * Eine Kontoänderung mit dem eigenen Passwort bestätigen — einmal beim
- * Speichern im Dialog statt je Abschnitt ein Feld „Aktuelles Passwort“, das
- * wie ein Fehler aussah. Bei falschem Passwort fragt der Dialog erneut.
+ * Eine Kontoänderung mit dem eigenen Passwort bestätigen — einmal beim Speichern im Dialog statt je Abschnitt
+ * ein Feld „Aktuelles Passwort“, das wie ein Fehler aussah. Bei falschem Passwort fragt der Dialog erneut.
  * @param {string} titel
  * @template T
  * @param {(passwort: string, zusatz: { code?: string, passkey?: object }) => Promise<T>} ruf

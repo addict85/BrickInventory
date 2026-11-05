@@ -1,5 +1,5 @@
-// Der Importbalken im Seitenkopf ist ein geschlossener Gegenstand: Nach aussen zählen gibCheckOnLoad()
-// und gibZuruecksetzen(), der Rest ist Innenleben.
+// Der Importbalken im Seitenkopf ist ein geschlossener Gegenstand: Nach aussen zählen gibCheckOnLoad() und
+// gibZuruecksetzen(), der Rest ist Innenleben.
 // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#der-block-lag-in-js-01-core-js-und-war-d
 import { html } from './00-escapen.js';
 import { registerActions } from './00-registry.js';
@@ -15,8 +15,8 @@ import { ME } from './00-zustand.js';
 /** @type {ReturnType<typeof setInterval> | null} */
 let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
 /**
- * Ein Eintrag im Ergebnis eines Imports. `results` nennt der Vertrag nicht
- * (CsvImportStatus ist offen); so schreibt ihn src/import/csvImport.ts.
+ * Ein Eintrag im Ergebnis eines Imports. `results` nennt der Vertrag nicht (CsvImportStatus ist offen); so
+ * schreibt ihn src/import/csvImport.ts.
  * @typedef {{ set_number?: string, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportErgebnis
  * @typedef {import('../../frontend-typen/vertrag').CsvImportStatus & { results?: ImportErgebnis[] }} ImportStand
  */
@@ -79,8 +79,8 @@ function gibApplyStatus(s) {
   }
   G('gib-stats').textContent = [`${s.ok || 0} ok`, tRaw('csv.warnings_n', { n: s.warn || 0 }), tRaw('csv.errors_n', { n: s.err || 0 })].join(' · ');
 
-  // Add new log entries — but only if the CSV poll loop isn't already writing them
-  // (_csvPollActive = true means this window started the import and the CSV loop handles logs)
+  // Add new log entries — but only if the CSV poll loop isn't already writing them (_csvPollActive = true
+  // means this window started the import and the CSV loop handles logs)
   if (!_csvPollActive && s.results && s.results.length > _gibLastCount) {
     s.results.slice(_gibLastCount).forEach(r => {
       const z = protokollZeile(r);
@@ -119,8 +119,8 @@ function gibToggle() {
     // Already open — minimize back to header bar
     hideProgress();
   } else if (overlay) {
-    // Opening from header bar click — initialize overlay in CSV mode
-    // so gibPoll() can write into it (needed when this is a 2nd browser window)
+    // Opening from header bar click — initialize overlay in CSV mode so gibPoll() can write into it (needed
+    // when this is a 2nd browser window)
     if (!_csvPollActive) {
       showProgress(t('csv.import_title'), true);
       // Immediately fill with whatever gibPoll already knows
@@ -134,9 +134,9 @@ function gibToggle() {
 
 
 /**
- * Eine Zeile fürs Import-Protokoll, oder null: Eine Zeile ohne Setnummer sagt nichts (sie erschien
- * 322-mal als „undefined – aktualisiert“). Eine Fassung für beide Protokolle, damit die Schranke nicht
- * an einer Stelle fehlt.
+ * Eine Zeile fürs Import-Protokoll, oder null: Eine Zeile ohne Setnummer sagt nichts (sie erschien 322-mal
+ * als „undefined – aktualisiert“). Eine Fassung für beide Protokolle, damit die Schranke nicht an einer
+ * Stelle fehlt.
  * Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#protokollzeile
  * @param {ImportErgebnis | null | undefined} r
  * @param {string} [warnZusatz]
@@ -151,9 +151,9 @@ export function protokollZeile(r, warnZusatz = '') {
     return { ok: true, text: r.set_number + ' – ' + was };
   }
   // `warnZusatz` nur fuer den CSV-Import: Dort heisst eine Anmerkung
-  // „Zeitueberschreitung, wird erneut versucht". Beim Wanted-Listen-Import
-  // heisst sie „offen, keine Rebrickable-Nummer" — derselbe Satz waere dort
-  // schlicht falsch. Der Zusatz kommt deshalb vom Aufrufer und nicht von hier.
+  // „Zeitueberschreitung, wird erneut versucht". Beim Wanted-Listen-Import heisst sie „offen, keine
+  // Rebrickable-Nummer" — derselbe Satz waere dort schlicht falsch. Der Zusatz kommt deshalb vom Aufrufer und
+  // nicht von hier.
   if (r.isWarning) {
     return { ok: false, text: r.set_number + ': ' + (r.error || '')
       + (warnZusatz ? ' (' + warnZusatz + ')' : '') };
@@ -178,8 +178,8 @@ function gibAddLog(text, ok) {
   }
 }
 
-// Startet die Live-Überwachung: bevorzugt SSE, mit automatischem Fallback auf
-// Polling, falls der Browser kein EventSource kann oder der Stream scheitert.
+// Startet die Live-Überwachung: bevorzugt SSE, mit automatischem Fallback auf Polling, falls der Browser kein
+// EventSource kann oder der Stream scheitert.
 export function gibStart() {
   if (_gibSse || _gibTimer) return; // läuft bereits
   _gibLastCount = 0;
@@ -188,8 +188,8 @@ export function gibStart() {
   G('gib-text').textContent = tRaw('csv.running_text');
   G('gib-fill').style.width = '0%';
 
-  // Kein Token in der Adresse: EventSource schickt mit withCredentials das Sitzungscookie, und ein
-  // ?token= stünde im Proxy-Protokoll und im Verlauf.
+  // Kein Token in der Adresse: EventSource schickt mit withCredentials das Sitzungscookie, und ein ?token=
+  // stünde im Proxy-Protokoll und im Verlauf.
   // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#url
   const url = `/api/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`;
 
@@ -201,8 +201,8 @@ export function gibStart() {
         try { gibApplyStatus(JSON.parse(e.data)); } catch(_) {}
       };
       es.onerror = () => {
-        // Verbindung verloren/abgelehnt → auf Polling zurückfallen,
-        // aber nur solange noch kein Fallback läuft.
+        // Verbindung verloren/abgelehnt → auf Polling zurückfallen, aber nur solange noch kein Fallback
+        // läuft.
         es.close();
         if (_gibSse === es) _gibSse = null;
         if (!_gibTimer) { _gibTimer = setInterval(gibPoll, 1500); gibPoll(); }
@@ -227,21 +227,20 @@ export async function gibCheckOnLoad() {
 
   async function doCheck() {
     if (_gibTimer || _gibSse) { clearInterval(_gibCheckTimer); _gibCheckTimer=null; return; }
-    // Ohne Anmeldung gibt es nichts zu prüfen — vorher lief die Abfrage auch
-    // auf dem Login-Screen im Drei-Sekunden-Takt weiter.
+    // Ohne Anmeldung gibt es nichts zu prüfen — vorher lief die Abfrage auch auf dem Login-Screen im
+    // Drei-Sekunden-Takt weiter.
     if (!ME) return;
     try {
       const r = await apiRoh('GET', '/v1/sets/import/csv/status');
 
-      // Antwort erst prüfen, dann parsen. Steht ein Reverse-Proxy oder Tunnel
-      // davor, liefert der bei Neustart oder Aussetzer eine HTML-Fehlerseite —
-      // r.json() warf dann "Unexpected token '<'". Das ist kein Fehler der
-      // App, soll aber auch keinen Stacktrace in der Konsole erzeugen.
+      // Antwort erst prüfen, dann parsen. Steht ein Reverse-Proxy oder Tunnel davor, liefert der bei Neustart
+      // oder Aussetzer eine HTML-Fehlerseite — r.json() warf dann "Unexpected token '<'". Das ist kein Fehler
+      // der App, soll aber auch keinen Stacktrace in der Konsole erzeugen.
       const ct = r.headers.get('content-type') || '';
       if (!r.ok || !ct.includes('application/json')) {
         if (++failures === 3) console.warn('[gibCheck] Antwort ist kein JSON (Status ' + r.status + ') — Abfrage pausiert');
-        // Nach mehreren Fehlschlägen langsamer weiterversuchen statt im
-        // Drei-Sekunden-Takt gegen eine Wand zu laufen.
+        // Nach mehreren Fehlschlägen langsamer weiterversuchen statt im Drei-Sekunden-Takt gegen eine Wand zu
+        // laufen.
         if (failures >= 3 && _gibCheckTimer) {
           clearInterval(_gibCheckTimer);
           _gibCheckTimer = setInterval(doCheck, 30000);
@@ -264,8 +263,8 @@ export async function gibCheckOnLoad() {
 /** @type {number | null} */
 let _gibCheckTimer = null;
 /**
- * Setzt den Balken auf „nichts läuft“. Eine Funktion statt Zeilen beim Abmelden: Wer von aussen
- * zurücksetzt, müsste sonst das Innenleben dieser Datei kennen und bei jeder neuen Variable mitdenken.
+ * Setzt den Balken auf „nichts läuft“. Eine Funktion statt Zeilen beim Abmelden: Wer von aussen zurücksetzt,
+ * müsste sonst das Innenleben dieser Datei kennen und bei jeder neuen Variable mitdenken.
  * Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#gibzuruecksetzen
  */
 export function gibZuruecksetzen() {
@@ -298,9 +297,8 @@ export function showProgress(title, csvMode){
   G('csv-log').style.display=csvMode?'block':'none';
   G('csv-log').replaceChildren();
   G('prog-steps').style.display=csvMode?'none':'';
-  // Der Hintergrund-Hinweis gilt nur fürs Erfassen eines einzelnen Sets. Beim
-  // CSV-Import ist die Schrittliste ohnehin ausgeblendet, dort zeigt das
-  // Protokoll (`csv-log`) je Zeile ein echtes Ergebnis.
+  // Der Hintergrund-Hinweis gilt nur fürs Erfassen eines einzelnen Sets. Beim CSV-Import ist die Schrittliste
+  // ohnehin ausgeblendet, dort zeigt das Protokoll (`csv-log`) je Zeile ein echtes Ergebnis.
   if (G('prog-hint')) G('prog-hint').style.display=csvMode?'none':'';
   ['ps-meta','ps-image'].forEach(id=>{
     const el=G(id); el.classList.remove('active','done','err');
@@ -322,8 +320,8 @@ export function hideProgress(){
 }
 
 // `extra` fiel weg: Es schrieb in ein `.step-count`-Feld, das nur die
-// entfernten Teile-/Teilbilder-Schritte hatten. Ohne diese Schritte gibt es
-// kein Element mehr, in das es hätte schreiben können.
+// entfernten Teile-/Teilbilder-Schritte hatten. Ohne diese Schritte gibt es kein Element mehr, in das es
+// hätte schreiben können.
 /**
  * @param {string} stepId
  * @param {string} state
@@ -351,9 +349,9 @@ export function addCsvLog(text, ok){
 /** Ein Ereignis des Stroms beim Erfassen; `step` sagt, welche Felder es trägt.
  * @typedef {{ step?: string, set?: string, set_number?: string, action?: string, error?: string, [feld: string]: unknown }} SseEreignis */
 
-// SSE-Ereignisse beim Erfassen eines Sets. Gewartet wird nur auf Set-Daten und Bild; Anleitungen,
-// Teile und Preis laufen danach im Hintergrund, und ein Balken für Arbeit, auf die niemand wartet,
-// wäre eine Behauptung.
+// SSE-Ereignisse beim Erfassen eines Sets. Gewartet wird nur auf Set-Daten und Bild; Anleitungen, Teile und
+// Preis laufen danach im Hintergrund, und ein Balken für Arbeit, auf die niemand wartet, wäre eine
+// Behauptung.
 // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#handlesseevent
 /**
  * @param {SseEreignis} ev
@@ -411,8 +409,8 @@ export function streamRequest(path, body, onEvent){
  */
 async function readSSE(res, onEvent, signal){
   // Antwortet der Server mit JSON statt einem Strom, ist die Sache entschieden (etwa: Set schon im
-  // Blickfeld). Die Antwort geht als ein Ereignis durch; sonst wartete die Anzeige auf eine data:-Zeile,
-  // die nie kommt.
+  // Blickfeld). Die Antwort geht als ein Ereignis durch; sonst wartete die Anzeige auf eine data:-Zeile, die
+  // nie kommt.
   // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#if
   if ((res.headers.get('content-type') || '').includes('application/json')) {
     const daten = await res.json().catch(() => null);

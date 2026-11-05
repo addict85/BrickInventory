@@ -10,8 +10,8 @@ import { mitZweitemFaktor, speichereEinstellungen } from './01-rueckfrage.js';
 import { html } from './00-escapen.js';
 
 // ═══ Einrichtung beim ersten Start (Server: routes/settings.ts /einrichtung) ═
-// Nur für Verwalter, nur solange etwas fehlt. „Später" schliesst bloss — beim
-// nächsten Anmelden kommt der Assistent wieder, bis er abgeschlossen ist.
+// Nur für Verwalter, nur solange etwas fehlt. „Später" schliesst bloss — beim nächsten Anmelden kommt der
+// Assistent wieder, bis er abgeschlossen ist.
 
 /** Die Schritte dieses Durchgangs; „passwort" nur, wenn es noch das Startpasswort ist. */
 /** @type {string[]} */
@@ -63,9 +63,9 @@ function quellenFehler(quelle, text, details = '', felder = []) {
 }
 
 /**
- * Von selbst geht der Assistent nur auf, wenn das Startpasswort noch gilt oder
- * die Sammlung leer ist. Über einer gefüllten Sammlung spränge er sonst nach
- * dem Rendern hinein; dort genügt das Hinweisband zum Rebrickable-Schlüssel.
+ * Von selbst geht der Assistent nur auf, wenn das Startpasswort noch gilt oder die Sammlung leer ist. Über
+ * einer gefüllten Sammlung spränge er sonst nach dem Rendern hinein; dort genügt das Hinweisband zum
+ * Rebrickable-Schlüssel.
  */
 export async function pruefeEinrichtung() {
   const d = await api('GET', '/v1/settings/einrichtung');

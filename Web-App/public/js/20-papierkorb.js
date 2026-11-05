@@ -9,8 +9,8 @@ import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 import { melde } from './00-ereignisse.js';
 
 // ═══ Papierkorb (Einstellungen → Daten) ═════════════════════════════════════
-// Der Server legt beim Löschen einen Schnappschuss ab (src/bestand/papierkorb.ts);
-// hier wird er angezeigt, zurückgeholt oder endgültig entfernt.
+// Der Server legt beim Löschen einen Schnappschuss ab (src/bestand/papierkorb.ts); hier wird er angezeigt,
+// zurückgeholt oder endgültig entfernt.
 
 const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
 

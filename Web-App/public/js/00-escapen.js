@@ -1,6 +1,6 @@
-// Eine einzige Fassung des Maskierens, ohne Zugriff auf document: Auch das DOM-freie
-// 19-bricklink-xml.js braucht sie, und ein zweiter Maskierer daneben ist genau die Doppelung, die
-// schon einmal auseinandergelaufen ist.
+// Eine einzige Fassung des Maskierens, ohne Zugriff auf document: Auch das DOM-freie 19-bricklink-xml.js
+// braucht sie, und ein zweiter Maskierer daneben ist genau die Doppelung, die schon einmal
+// auseinandergelaufen ist.
 // Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#hier-stand-esc-bis-zum-20-10-in-js-01-co
 
 /**
@@ -19,15 +19,15 @@ export function esc(s){
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// Ansichten entstehen per innerHTML aus Vorlagen; jeder Wert aus Datenbank, CSV oder Fremd-API muss
-// durch einen dieser Helfer, sonst ist jedes freie Textfeld ein gespeichertes XSS. esc() für Text,
-// escJs() in data-arg, escUrl() für src/href, escHex() für Farben.
+// Ansichten entstehen per innerHTML aus Vorlagen; jeder Wert aus Datenbank, CSV oder Fremd-API muss durch
+// einen dieser Helfer, sonst ist jedes freie Textfeld ein gespeichertes XSS. esc() für Text, escJs() in
+// data-arg, escUrl() für src/href, escHex() für Farben.
 // Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#alle-listen-und-detailansichten-werden-p
 
 /**
  * Wert in einem einfach-gequoteten JS-String innerhalb eines doppelt-gequoteten HTML-Attributs. Erst
- * JS-escapen (Backslash, Apostroph), dann HTML: esc() allein liesse den Apostroph als &#39; stehen,
- * der Browser dekodiert ihn vor dem JS-Parsen zurück, und der String bricht auf.
+ * JS-escapen (Backslash, Apostroph), dann HTML: esc() allein liesse den Apostroph als &#39; stehen, der
+ * Browser dekodiert ihn vor dem JS-Parsen zurück, und der String bricht auf.
  * @param {unknown} s
  */
 export function escJs(s){
@@ -38,9 +38,8 @@ export function escJs(s){
 }
 
 /**
- * src/href: nur relative Pfade und http(s) durchlassen. Manuell erfasste Teile
- * und Minifiguren dürfen eine Bild-URL mitbringen — ohne diese Prüfung landet
- * "javascript:…" ungefiltert in einem href.
+ * src/href: nur relative Pfade und http(s) durchlassen. Manuell erfasste Teile und Minifiguren dürfen eine
+ * Bild-URL mitbringen — ohne diese Prüfung landet "javascript:…" ungefiltert in einem href.
  * @param {unknown} u
  */
 export function escUrl(u){
@@ -104,8 +103,8 @@ export function einsetzen(wert) {
 }
 
 /**
- * Vorlage für Markup, die jeden eingesetzten Wert maskiert. Durch kommen nur Stücke, die selbst aus
- * html`` stammen (oder ungeprueft()); Listen werden aneinandergehängt, null/undefined/false fallen weg. Ein
+ * Vorlage für Markup, die jeden eingesetzten Wert maskiert. Durch kommen nur Stücke, die selbst aus html``
+ * stammen (oder ungeprueft()); Listen werden aneinandergehängt, null/undefined/false fallen weg. Ein
  * vergessenes esc() ist damit kein XSS mehr, sondern sichtbarer Text.
  * @param {TemplateStringsArray} teile
  * @param {...unknown} werte

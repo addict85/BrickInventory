@@ -11,8 +11,8 @@ import { allSets } from './00-zustand.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
 // Einstellungen, Abschnitt Preisalarme: Übersicht, Schwelle ändern, löschen, CSV-Import.
 
-// Lagerorte verwalten. Nur die eigenen: Ein Ort ist ein Regal in der eigenen Wohnung, fremde
-// umzubenennen wäre ein Versehen. Die Auswahl selbst steckt im Detailfenster (ladeOrtAuswahl).
+// Lagerorte verwalten. Nur die eigenen: Ein Ort ist ein Regal in der eigenen Wohnung, fremde umzubenennen
+// wäre ein Versehen. Die Auswahl selbst steckt im Detailfenster (ladeOrtAuswahl).
 // Ausführlich: docs/begruendungen/public/js/05-alarme.js.md#der-lagerort-soll-ein-auswahlfeld-mit-ei
 
 /** Ein Preisalarm direkt in der Übersicht, ohne Umweg über das Set. */
@@ -31,9 +31,9 @@ async function legeAlarmAn() {
 }
 
 /**
- * Alle Preisalarme an einem Ort: Im Set-Detail findet man einen Alarm nur, wenn man das Set schon
- * gefunden hat. Schwelle als Feld (speichert beim Verlassen), dazu der letzte Preis, ohne den sie
- * nicht zu beurteilen ist.
+ * Alle Preisalarme an einem Ort: Im Set-Detail findet man einen Alarm nur, wenn man das Set schon gefunden
+ * hat. Schwelle als Feld (speichert beim Verlassen), dazu der letzte Preis, ohne den sie nicht zu beurteilen
+ * ist.
  * Ausführlich: docs/begruendungen/public/js/05-alarme.js.md#alle-preisalarme-des-kontos-die-uebersic
  */
 export async function ladeAlarmUebersicht() {
@@ -51,8 +51,8 @@ export async function ladeAlarmUebersicht() {
   setzeHtml(el, alarme.map(a => {
     const zustand = a.condition === 'U' ? tRaw('common.condition_used') : tRaw('common.condition_new');
     const richtung = a.richtung === 'unter' ? tRaw('alerts.below') : tRaw('alerts.above');
-    // Der Schluessel ist (Set, Zustand) — beides muss mit, sonst trifft das
-    // Aendern den falschen der beiden moeglichen Alarme eines Sets.
+    // Der Schluessel ist (Set, Zustand) — beides muss mit, sonst trifft das Aendern den falschen der beiden
+    // moeglichen Alarme eines Sets.
     const schluessel = `${a.set_number}|${a.condition}`;
     const stand = a.zuletzt_preis == null
       ? ''
@@ -63,10 +63,9 @@ export async function ladeAlarmUebersicht() {
     const marke = a.ausgeloest
       ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
       : `<span class="alarm-marke alarm-marke-an">${esc(tRaw('alerts.armed'))}</span>`;
-    // Bild wie in den Finanzen: erst die heruntergeladene Kopie, dann die
-    // Adresse aus der eigenen Sammlung, zuletzt die des Katalogs. Ein Alarm
-    // auf ein Set, das man NICHT besitzt, hat nur die letzte — deshalb steht
-    // sie ueberhaupt in der Antwort.
+    // Bild wie in den Finanzen: erst die heruntergeladene Kopie, dann die Adresse aus der eigenen Sammlung,
+    // zuletzt die des Katalogs. Ein Alarm auf ein Set, das man NICHT besitzt, hat nur die letzte — deshalb
+    // steht sie ueberhaupt in der Antwort.
     const bildQuelle = a.image_local || a.image_url || a.set_img_url || '';
     const bild = bildQuelle
       ? bildTag({ src: imgUrl(thumbUrl(bildQuelle) || bildQuelle, true), alt: '', klasse: 'bild-38', ph: 'set' })
@@ -113,13 +112,12 @@ function alarmSchluessel(s) {
  */
 async function aendereAlarmSchwelle(schluessel, wert) {
   const schwelle = leseBetrag(wert);
-  // Kein stilles Zurueckschreiben bei Unsinn: Wer 0 oder Text eingibt, soll
-  // sehen, dass nichts passiert ist, statt spaeter einen Alarm zu suchen, den
-  // es nicht gibt.
+  // Kein stilles Zurueckschreiben bei Unsinn: Wer 0 oder Text eingibt, soll sehen, dass nichts passiert ist,
+  // statt spaeter einen Alarm zu suchen, den es nicht gibt.
   if (!(schwelle != null && schwelle > 0)) { toast(tRaw('alerts.bad_value'), 'error'); await ladeAlarmUebersicht(); return; }
   const { setNumber, condition } = alarmSchluessel(schluessel);
-  // Geschrieben wird ueber die BESTEHENDE Route zum Set — die Uebersicht
-  // bekommt keinen eigenen Schreibweg (siehe routes/api_v1/sets.ts).
+  // Geschrieben wird ueber die BESTEHENDE Route zum Set — die Uebersicht bekommt keinen eigenen Schreibweg
+  // (siehe routes/api_v1/sets.ts).
   const d = await api('PUT', `/v1/sets/${encodeURIComponent(setNumber)}/alert`,
     { condition, schwelle });
   if (!d?.success) toast(d?.error || tRaw('settings.error'), 'error');

@@ -1,14 +1,13 @@
-// Die CSP verbietet style-Attribute, damit eingeschleustes Markup die Seite nicht umgestalten kann.
-// Stile stehen deshalb als data-stil da und gelten nur, wenn sie im Quelltext vorkommen (Liste aus
+// Die CSP verbietet style-Attribute, damit eingeschleustes Markup die Seite nicht umgestalten kann. Stile
+// stehen deshalb als data-stil da und gelten nur, wenn sie im Quelltext vorkommen (Liste aus
 // scripts/build-frontend.js).
 // Ausführlich: docs/begruendungen/public/js/00-stile.js.md#die-csp-erlaubt-keine-style-attribute-im
 
 /* global __ERLAUBTE_STILE__ */
 const ERLAUBT = new Set(typeof __ERLAUBTE_STILE__ === 'undefined' ? [] : __ERLAUBTE_STILE__);
 
-// Werte, die erst zur Laufzeit feststehen, kommen über eigene Attribute mit
-// fester Form: eine Farbe, eine Zahl. Mehr als diese eine Eigenschaft können
-// sie nicht setzen.
+// Werte, die erst zur Laufzeit feststehen, kommen über eigene Attribute mit fester Form: eine Farbe, eine
+// Zahl. Mehr als diese eine Eigenschaft können sie nicht setzen.
 const FARBE = /^(#[0-9A-Fa-f]{6}|var\(--[a-z0-9-]+\))$/;
 const ZAHL = /^\d{1,5}(\.\d{1,3})?$/;
 /** @type {Array<[string, (el: HTMLElement, v: string) => void]>} */
@@ -43,9 +42,8 @@ export function wendeStileAn(wurzel) {
   }
 }
 
-// innerHTML & Co. umhüllen, damit der Stil im selben Schritt sitzt wie das
-// Markup: Code, der gleich danach el.style.display umschaltet, findet den
-// Ausgangswert vor und wird nicht nachträglich überschrieben.
+// innerHTML & Co. umhüllen, damit der Stil im selben Schritt sitzt wie das Markup: Code, der gleich danach
+// el.style.display umschaltet, findet den Ausgangswert vor und wird nicht nachträglich überschrieben.
 /**
  * @param {object} proto
  * @param {string} name

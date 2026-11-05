@@ -1,5 +1,5 @@
-// In ES-Modulen liegen Funktionen nicht auf window; data-click="name" findet seinen Handler deshalb
-// hier. Ein Tippfehler im Namen fällt so im Test auf statt erst beim Klicken.
+// In ES-Modulen liegen Funktionen nicht auf window; data-click="name" findet seinen Handler deshalb hier. Ein
+// Tippfehler im Namen fällt so im Test auf statt erst beim Klicken.
 // Ausführlich: docs/begruendungen/public/js/00-registry.js.md#js-11-actions-js-loest-die-handler-aus-d
 import { html } from './00-escapen.js';
 
@@ -9,9 +9,9 @@ const _actions = new Map();
 /**
  * Handler anmelden.
  *
- * Aufruf am Ende jedes Moduls mit einem Objektliteral aus den eigenen
- * Handlern: `registerActions({ loadGallery, openModal })`. Die Kurzschreibweise
- * sorgt dafür, dass Schlüssel und Funktionsname nicht auseinanderlaufen können.
+ * Aufruf am Ende jedes Moduls mit einem Objektliteral aus den eigenen Handlern: `registerActions({
+ * loadGallery, openModal })`. Die Kurzschreibweise sorgt dafür, dass Schlüssel und Funktionsname nicht
+ * auseinanderlaufen können.
  *
  * @param {Record<string, Function>} map
  */
@@ -33,9 +33,8 @@ export function resolveAction(name) {
   return typeof fn === 'function' ? fn : null;
 }
 
-// Zufallsmarke je Seitenladung. Gefährliche Aktionen laufen nur von Elementen,
-// die beim Laden schon im Markup standen oder deren Vorlage echt() trägt;
-// eingeschleustes HTML kennt die Marke nicht.
+// Zufallsmarke je Seitenladung. Gefährliche Aktionen laufen nur von Elementen, die beim Laden schon im Markup
+// standen oder deren Vorlage echt() trägt; eingeschleustes HTML kennt die Marke nicht.
 const _marke = typeof crypto !== 'undefined' && crypto.getRandomValues
   ? [...crypto.getRandomValues(new Uint8Array(12))].map(b => b.toString(16).padStart(2, '0')).join('')
   : String(Math.random()).slice(2);

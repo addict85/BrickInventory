@@ -1,6 +1,5 @@
-// Preisverlauf, Wertentwicklung und Marktpreiszeilen als SVG/HTML. Reine
-// Darstellung ohne Abrufe; Set-Detail, Merkliste, Teile-Detail und Finanzen
-// zeichnen damit dieselben Achsen und dasselbe Fadenkreuz.
+// Preisverlauf, Wertentwicklung und Marktpreiszeilen als SVG/HTML. Reine Darstellung ohne Abrufe; Set-Detail,
+// Merkliste, Teile-Detail und Finanzen zeichnen damit dieselben Achsen und dasselbe Fadenkreuz.
 import { CURRENCY } from './00-zustand.js';
 import { G, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtN } from './01-format.js';
@@ -9,8 +8,8 @@ import { locale, t, tRaw } from '../i18n.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
 
 /**
- * Marktpreis und Entwicklung je Zustand. Der Server liefert nur Zustände mit Erfassung; nach jedem
- * Speichern neu geladen, erscheint eine neue Zeile so von selbst.
+ * Marktpreis und Entwicklung je Zustand. Der Server liefert nur Zustände mit Erfassung; nach jedem Speichern
+ * neu geladen, erscheint eine neue Zeile so von selbst.
  * Ausführlich: docs/begruendungen/public/js/01-diagramme.js.md#rendermarketrows
  * @param {{ by_condition?: import('../../frontend-typen/vertrag').PriceByCondition }} ph
  */
@@ -47,9 +46,9 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
 }
 
 /**
- * Breite des Diagramms in Pixeln: Die viewBox bekommt die Breite des Behälters,
- * damit eine Schrift von 12 Einheiten auch am Telefon 12 px groß ist (vorher
- * 700 Einheiten auf 390 px, also rund 5 px). Ohne Layout (jsdom) 700.
+ * Breite des Diagramms in Pixeln: Die viewBox bekommt die Breite des Behälters, damit eine Schrift von 12
+ * Einheiten auch am Telefon 12 px groß ist (vorher 700 Einheiten auf 390 px, also rund 5 px). Ohne Layout
+ * (jsdom) 700.
  * @param {Element|null} el
  */
 export function diagrammBreite(el, ersatz = 700) {
@@ -58,9 +57,8 @@ export function diagrammBreite(el, ersatz = 700) {
 }
 
 /**
- * Die Schriftvergrösserung der Seite (200 % → 2). Schrift und Ränder der
- * Diagramme wachsen damit; die Breite bleibt die des Behälters, sonst
- * schrumpfte das ganze Bild, statt der Schrift mehr Platz zu geben.
+ * Die Schriftvergrösserung der Seite (200 % → 2). Schrift und Ränder der Diagramme wachsen damit; die Breite
+ * bleibt die des Behälters, sonst schrumpfte das ganze Bild, statt der Schrift mehr Platz zu geben.
  */
 export function schriftFaktor() {
   const wurzel = typeof getComputedStyle === 'function' && typeof document !== 'undefined'
@@ -81,9 +79,9 @@ function achsenRand(teilung, cur, fs) {
 }
 
 /**
- * Linker Rand und Lage der Achsenbeträge. Bliebe neben ihnen weniger als gut
- * die Hälfte für die Kurve (Telefon, grosse Schrift), stehen die Beträge innen
- * über ihren Rasterlinien: Sonst blieben bei 320 px und 200 % 15 px Kurve.
+ * Linker Rand und Lage der Achsenbeträge. Bliebe neben ihnen weniger als gut die Hälfte für die Kurve
+ * (Telefon, grosse Schrift), stehen die Beträge innen über ihren Rasterlinien: Sonst blieben bei 320 px und
+ * 200 % 15 px Kurve.
  * @param {Teilung} teilung
  * @param {string} cur
  * @param {number} fs
@@ -97,9 +95,8 @@ function achsenLage(teilung, cur, fs, W, rechts) {
 }
 
 // ── Achsen der Diagramme ─────────────────────────────────────────────────────
-// Werte in Schritten von 1, 2 oder 5 mal einer Zehnerpotenz (4'219 / 4'441
-// liest niemand), die Zeit als echte Achse statt nach Index — sonst stünde
-// ein Monat so breit da wie ein Tag.
+// Werte in Schritten von 1, 2 oder 5 mal einer Zehnerpotenz (4'219 / 4'441 liest niemand), die Zeit als echte
+// Achse statt nach Index — sonst stünde ein Monat so breit da wie ein Tag.
 
 /** Achsenteilung: erster und letzter Strich, dazwischen alle Werte. @typedef {{ von: number, bis: number, werte: number[] }} Teilung */
 /** Ein Punkt des Fadenkreuzes: x in viewBox-Einheiten, je Reihe ein y, Beschriftungszeilen. @typedef {{ x: number, y: (number | null)[], t: string[] }} Punkt */
@@ -133,8 +130,8 @@ export function zeitpunkt(s) {
 }
 
 /**
- * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem
- * Tag, Tage bis drei Monate („29. Okt.“), darüber Monate („Nov. 25“).
+ * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem Tag, Tage bis drei Monate („29.
+ * Okt.“), darüber Monate („Nov. 25“).
  * @param {number} von @param {number} bis  Millisekunden
  * @param {number} maxStriche
  * @returns {{ t: number, text: string }[]}
@@ -193,8 +190,8 @@ function xBeschriftung(striche, y, rechts, f, fs) {
 }
 
 // ── Gemeinsame Teile der beiden Diagramme ───────────────────────────────────
-// Preisverlauf und Wertdiagramm teilen Achsen, Einstand-Linie und Fadenkreuz,
-// damit dieselbe Grösse in beiden gleich aussieht und gleich bedient wird.
+// Preisverlauf und Wertdiagramm teilen Achsen, Einstand-Linie und Fadenkreuz, damit dieselbe Grösse in beiden
+// gleich aussieht und gleich bedient wird.
 
 /**
  * Betrag an der y-Achse: mit Währung, Nachkommastellen nur bei Schritten unter 1.
@@ -215,8 +212,8 @@ export function achsenBetrag(v, schritt, cur, kurz = false) {
 }
 
 /**
- * Gitter und Beschriftung der y-Achse. Beginnt sie nicht bei 0, trägt sie unten
- * einen Achsenbruch: Sonst läse man eine Bewegung von 5 % als Verdopplung.
+ * Gitter und Beschriftung der y-Achse. Beginnt sie nicht bei 0, trägt sie unten einen Achsenbruch: Sonst läse
+ * man eine Bewegung von 5 % als Verdopplung.
  * @param {Teilung} teilung
  * @param {number} min
  * @param {(v: number) => number} yOf
@@ -241,9 +238,8 @@ function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1, innen
 }
 
 /**
- * Die Beträge innen (achsenLage): nur unterste und oberste Linie, nach der
- * Kurve gezeichnet und mit Rand in der Kartenfarbe; keiner dort, wo die
- * Beschriftung einer Bezugslinie steht (`meiden`, y-Werte).
+ * Die Beträge innen (achsenLage): nur unterste und oberste Linie, nach der Kurve gezeichnet und mit Rand in
+ * der Kartenfarbe; keiner dort, wo die Beschriftung einer Bezugslinie steht (`meiden`, y-Werte).
  * @param {Teilung} teilung
  * @param {number} min
  * @param {(v: number) => number} yOf
@@ -262,9 +258,8 @@ function yBetraegeInnen(teilung, min, yOf, links, cur, f, meiden = []) {
 }
 
 /**
- * Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung
- * am rechten Ende. `endeY` ist die Höhe der Kurve dort: Läge die Schrift auf
- * ihr, steht sie auf der anderen Seite der Linie.
+ * Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung am rechten Ende. `endeY` ist
+ * die Höhe der Kurve dort: Läge die Schrift auf ihr, steht sie auf der anderen Seite der Linie.
  * @param {number} wert
  * @param {(v: number) => number} yOf
  * @param {number} links
@@ -274,9 +269,9 @@ function yBetraegeInnen(teilung, min, yOf, links, cur, f, meiden = []) {
  */
 function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)', /** @type {number | null} */ endeY = null, /** @type {number} */ f = 1, /** @type {number} */ unten = Infinity) {
   const y = yOf(wert);
-  // Breiter als die Zeichenfläche: umbrechen statt links über die Achse hinaus
-  // (am Telefon und bei grosser Schrift stand sonst nur „…rkpreis 2.149 €“).
-  // 0,68 em je Zeichen: Mit 0,62 passte „Kaufpreis 205,00 €“ rechnerisch in eine Zeile und wurde links abgeschnitten.
+  // Breiter als die Zeichenfläche: umbrechen statt links über die Achse hinaus (am Telefon und bei grosser
+  // Schrift stand sonst nur „…rkpreis 2.149 €“). 0,68 em je Zeichen: Mit 0,62 passte „Kaufpreis 205,00 €“
+  // rechnerisch in eine Zeile und wurde links abgeschnitten.
   const platz = rechts - links - 8, zeichen = 12 * f * 0.68, zeilen = [];
   for (const wort of String(text).split(' ')) {
     /** @type {string} */
@@ -296,9 +291,9 @@ function bezugsLinie(wert, yOf, links, rechts, text, farbe = 'var(--txt)', /** @
 }
 
 /**
- * Das Fadenkreuz: unsichtbar, bis jemand zeigt, tippt oder mit den Pfeiltasten
- * wandert. Die Punkte stehen als JSON am SVG (x in viewBox-Einheiten, je Reihe
- * ein y, dazu die Beschriftung), damit eine Steuerung für alle Diagramme reicht.
+ * Das Fadenkreuz: unsichtbar, bis jemand zeigt, tippt oder mit den Pfeiltasten wandert. Die Punkte stehen als
+ * JSON am SVG (x in viewBox-Einheiten, je Reihe ein y, dazu die Beschriftung), damit eine Steuerung für alle
+ * Diagramme reicht.
  * @param {Punkt[]} punkte
  * @param {string[]} farben
  * @param {number} oben
@@ -424,9 +419,9 @@ document.addEventListener('keydown', (e) => {
  * @typedef {Partial<Pick<import('../../frontend-typen/vertrag').PriceHistoryResponse, 'chart' | 'history_new' | 'history_used' | 'by_condition'>> | null | undefined} Preisdaten */
 
 /**
- * Die Reihen des Preisverlaufs je Zustand, aus den Diagrammdaten des Servers
- * (src/finanzen/chartData.ts). Vor firstRealIndex stehen aufgefüllte Nullen;
- * der Kaufpreis am Kauftag ist kein Marktpreis und steht als Punkt da.
+ * Die Reihen des Preisverlaufs je Zustand, aus den Diagrammdaten des Servers (src/finanzen/chartData.ts). Vor
+ * firstRealIndex stehen aufgefüllte Nullen; der Kaufpreis am Kauftag ist kein Marktpreis und steht als Punkt
+ * da.
  * @param {Preisdaten} data @returns {{ key: string, name: string, color: string, pts: { x: string, y: number }[], kauf: number, kaufTag: string | null }[]}
  */
 function preisReihen(data) {
@@ -471,9 +466,9 @@ function preisLinie(sd, gid, xOf, yOf, unten, f) {
 }
 
 /**
- * Preisverlauf mit zwei Linien (neu und gebraucht) auf gemeinsamer Skala. Die
- * x-Position kommt vom Datum, nicht vom Index: Gebrauchtpreise setzen oft
- * später ein, und gestreckte Reihen zeigten einen Vergleich, den es nicht gibt.
+ * Preisverlauf mit zwei Linien (neu und gebraucht) auf gemeinsamer Skala. Die x-Position kommt vom Datum,
+ * nicht vom Index: Gebrauchtpreise setzen oft später ein, und gestreckte Reihen zeigten einen Vergleich, den
+ * es nicht gibt.
  * @param {Preisdaten} data
  *   Antwort von /v1/sets/:nummer/price-history
  * @param {string} [uid]  Kürzel für die Verlaufs-IDs im SVG

@@ -1,7 +1,6 @@
-// Einstiegspunkt des Bündels. Jede Datei unter js/ steht hier, weil
-// scripts/build-frontend.js die Vollständigkeit am Einstieg prüft. Die
-// Reihenfolge der Auswertung bestimmt der Importgraph; er ist kreisfrei
-// (test/frontend-architektur.test.js), Rückwege laufen über Ereignisse.
+// Einstiegspunkt des Bündels. Jede Datei unter js/ steht hier, weil scripts/build-frontend.js die
+// Vollständigkeit am Einstieg prüft. Die Reihenfolge der Auswertung bestimmt der Importgraph; er ist
+// kreisfrei (test/frontend-architektur.test.js), Rückwege laufen über Ereignisse.
 import './00-stile.js';
 import './00-escapen.js';
 import './00-ereignisse.js';

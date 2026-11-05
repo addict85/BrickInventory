@@ -52,8 +52,8 @@ async function regMailHinweis(){
   hinweis.textContent = ohne ? tRaw(box.checked ? 'settings.reg_ruht' : 'settings.reg_braucht_mail') : '';
 }
 
-// Der Server verlangt das Verwalterpasswort, sobald sich ein SMTP-Wert ändert;
-// gefragt wird deshalb nur dann, nicht bei jedem Speichern oder Testen.
+// Der Server verlangt das Verwalterpasswort, sobald sich ein SMTP-Wert ändert; gefragt wird deshalb nur dann,
+// nicht bei jedem Speichern oder Testen.
 let geladeneSmtp = '';
 function smtpFormular() {
   return {
@@ -193,8 +193,8 @@ async function generateQrCode() {
   const frei = knopfBesetzt(btn);
   try {
     // POST, weil der Aufruf eine Nonce anlegt: Als GET löste ihn eine fremde Seite per Navigation aus
-    // (SameSite=lax). Die Laufzeit des späteren Tokens reist mit der Erzeugung, sonst wählte sich der
-    // Finder eines Codes die längste.
+    // (SameSite=lax). Die Laufzeit des späteren Tokens reist mit der Erzeugung, sonst wählte sich der Finder
+    // eines Codes die längste.
     // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#gueltigkeit
     const gueltigkeit = G('qr-validity')?.value || '';
     const pw = G('qr-password');
@@ -204,21 +204,20 @@ async function generateQrCode() {
     if (d === null) { frei(); return; }
     if (!d.success) {
       hint.textContent = tRaw('toast.error')+': ' + (d.error||t('common.unknown'));
-      // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein
-      // sichtbarer Code neben einer Fehlermeldung sieht aus wie ein Code, der
-      // trotzdem geht. Beim Ablaufzaehler weiter unten wird aus demselben
-      // Grund geleert.
+      // Den alten Code wegraeumen: Er ist vielleicht noch gueltig, und ein sichtbarer Code neben einer
+      // Fehlermeldung sieht aus wie ein Code, der trotzdem geht. Beim Ablaufzaehler weiter unten wird aus
+      // demselben Grund geleert.
       container.replaceChildren();
       frei(); return;
     }
-    // Nur die Adresse, die der Server nennt (APP_BASE_URL): Die in der Browserzeile ist die des
-    // Betrachters, etwa eine LAN-Adresse, die ausser Haus nicht existiert. Lieber kein Code als einer, der
-    // sich falsch scannen lässt.
+    // Nur die Adresse, die der Server nennt (APP_BASE_URL): Die in der Browserzeile ist die des Betrachters,
+    // etwa eine LAN-Adresse, die ausser Haus nicht existiert. Lieber kein Code als einer, der sich falsch
+    // scannen lässt.
     // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#serverurl
     const serverUrl = d.url;
 
-    // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat;
-    // der Server schickt ihn nur zu einer https-Adresse.
+    // Mit `fp` (Fingerabdruck der CA-Wurzel) pinnt die App das Zertifikat; der Server schickt ihn nur zu
+    // einer https-Adresse.
     const qrData = JSON.stringify({ url: serverUrl, token: d.token, ...(d.fp ? { fp: d.fp } : {}) });
     // Clear and render QR code
     container.replaceChildren();
@@ -235,10 +234,9 @@ async function generateQrCode() {
     }
     // Countdown timer
     //
-    // Dauer vom Server nehmen, nicht fest verdrahten: /qr-token liefert
-    // expires_in mit. Hier stand 1800 (30 Minuten), während der Token seit der
-    // Sicherheitshärtung nach 5 Minuten abläuft — der Zähler lief also 25
-    // Minuten weiter, obwohl der Code längst ungültig war.
+    // Dauer vom Server nehmen, nicht fest verdrahten: /qr-token liefert expires_in mit. Hier stand 1800 (30
+    // Minuten), während der Token seit der Sicherheitshärtung nach 5 Minuten abläuft — der Zähler lief also
+    // 25 Minuten weiter, obwohl der Code längst ungültig war.
     let secs = Number(d.expires_in) || 300;
     const fmt = (/** @type {number} */ v) => `${Math.floor(v/60)}:${(v%60).toString().padStart(2,'0')}`;
     const timer = setInterval(() => {
@@ -261,17 +259,16 @@ async function generateQrCode() {
       d.token_days === 0    ? tRaw('qr.access_unlimited')
       : (d.token_days ?? 0) > 0 ? tRaw('qr.access_days', { n: d.token_days })
                             : tRaw('qr.access_default');
-    // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine
-    // Stelle, an der die Beschriftung sich absichtlich ändert.
+    // Nach dem ersten Erzeugen heisst der Knopf „Neu generieren" — die eine Stelle, an der die Beschriftung
+    // sich absichtlich ändert.
     frei(tRaw('qr.regenerate'));
   } catch(e) { hint.textContent = tRaw('toast.error')+': ' + fehlerMeldung(e); frei(); }
 }
 
 G('btn-gen-qr').onclick = generateQrCode;
 
-// Angemeldete Geräte einzeln aussperren: Sonst blieb für ein verlorenes Telefon nur das Passwort zu
-// ändern, und das wirft alle Zugänge hinaus. Der Browser selbst hängt an der Sitzung, nicht an einem
-// Token.
+// Angemeldete Geräte einzeln aussperren: Sonst blieb für ein verlorenes Telefon nur das Passwort zu ändern,
+// und das wirft alle Zugänge hinaus. Der Browser selbst hängt an der Sitzung, nicht an einem Token.
 // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#die-endpunkte-v1-settings-tokens-gab-es
 
 /**
@@ -304,8 +301,8 @@ export async function loadTokens() {
 }
 
 /**
- * Der Fingerabdruck der CA-Wurzel zum Abgleich von Hand — derselbe Wert steht
- * als `fp` im QR-Code. Ohne interne CA (fremder Proxy) steht nur, ob HTTPS gilt.
+ * Der Fingerabdruck der CA-Wurzel zum Abgleich von Hand — derselbe Wert steht als `fp` im QR-Code. Ohne
+ * interne CA (fremder Proxy) steht nur, ob HTTPS gilt.
  */
 export async function ladeTls() {
   const ziel = G('tls-flaeche');
@@ -337,8 +334,8 @@ async function revokeToken(tokenId, label) {
 }
 
 /**
- * Alle Zugänge ausser dem eigenen entwerten, nacheinander über den bestehenden Endpunkt: Eine zweite
- * Adresse für „dasselbe, mehrfach“ wäre Doppelung. Gezählt wird, was wirklich weg ist.
+ * Alle Zugänge ausser dem eigenen entwerten, nacheinander über den bestehenden Endpunkt: Eine zweite Adresse
+ * für „dasselbe, mehrfach“ wäre Doppelung. Gezählt wird, was wirklich weg ist.
  * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#revokeothertokens
  */
 async function revokeOtherTokens() {
@@ -373,8 +370,7 @@ export async function loadProfile() {
   G('prof-user').value  = u.username   || '';
   G('prof-email').value = u.email      || '';
   G('prof-email').dataset.bisher = u.email || '';
-  // Ohne Adresse gibt es nichts zu bestätigen — „verifiziert“ neben einem
-  // leeren Feld widerspräche sich.
+  // Ohne Adresse gibt es nichts zu bestätigen — „verifiziert“ neben einem leeren Feld widerspräche sich.
   const vEl = G('prof-email-verified');
   if (vEl) setzeHtml(vEl, !u.email ? '' : u.email_verified ? html`<span class="email-ok">${tRaw('profile.verified')}</span>` : html`<span class="email-offen">${tRaw('profile.not_verified')}</span>`);
   // Die neue Adresse gilt erst nach dem Link; bis dahin steht sie nur hier.
@@ -399,8 +395,8 @@ function zeigeDesignWahl(d) {
   const vorgabeName = tRaw(/** @type {Record<string, string>} */ (NAMEN)[d.vorgabe ?? ''] || NAMEN.classic);
   sel.options[0].textContent = tRaw('settings.own_theme_default', { name: vorgabeName });
   sel.value = d.eigenes || '';
-  // Ein Satz zum gewählten Design: Namen wie „Noppe“ und „Hochglanz“ sagen allein
-  // nicht, wie es aussieht. Werkbank hat keine helle Fassung; das steht dabei.
+  // Ein Satz zum gewählten Design: Namen wie „Noppe“ und „Hochglanz“ sagen allein nicht, wie es aussieht.
+  // Werkbank hat keine helle Fassung; das steht dabei.
   const hinweis = G('design-hinweis');
   const aktiv = d.eigenes || d.vorgabe || 'classic';
   const BESCHREIBUNG = { classic: 'settings.theme_desc.classic', brick: 'settings.theme_desc.brick', werkbank: 'settings.theme_desc.werkbank',
@@ -453,8 +449,8 @@ G('btn-sav-prof').onclick = async () => {
   if (!username) { toast(tRaw('profile.username_empty'), 'error'); return; }
   const btn = G('btn-sav-prof'); btn.disabled = true;
   try {
-    // Jede Profiländerung bestätigt der Server mit dem Passwort; sonst verriete sie, ob ein Name vergeben ist.
-    // Eine neue Adresse nennt der Dialog, damit man sieht, was man bestätigt.
+    // Jede Profiländerung bestätigt der Server mit dem Passwort; sonst verriete sie, ob ein Name vergeben
+    // ist. Eine neue Adresse nennt der Dialog, damit man sieht, was man bestätigt.
     const neueAdresse = email && email !== (G('prof-email').dataset.bisher || '');
     const d = await mitPasswortBestaetigen(tRaw(neueAdresse ? 'profile.email_aendern_titel' : 'profile.speichern_titel'), (pwC, z) => api('PUT', '/v1/auth/profile',
       { username, email, first_name, last_name, password_current: pwC, ...z }),
@@ -506,11 +502,10 @@ function applySettings(s){
   const _set = (/** @type {string} */ id, /** @type {string} */ v) => { const el=G(id); if(el) el.value=v; };
   _set('s-cur',          CURRENCY);
   _set('s-default-condition', s.user_default_condition || s.default_price_condition || 'N');
-  // Das Ausgabeland der Gutscheine. AUSSERHALB des isAdmin-Blocks: Der Wert
-  // ist kein Geheimnis und wird allen ausgeliefert (sanitizeGlobal laesst
-  // ihn durch) — gesetzt werden darf er nur von einem Verwalter, und
-  // deshalb ist das Feld selbst `admin-only` (index.html). Ohne diese Zeile
-  // stuende im Auswahlfeld immer der erste Eintrag, egal was gespeichert ist.
+  // Das Ausgabeland der Gutscheine. AUSSERHALB des isAdmin-Blocks: Der Wert ist kein Geheimnis und wird allen
+  // ausgeliefert (sanitizeGlobal laesst ihn durch) — gesetzt werden darf er nur von einem Verwalter, und
+  // deshalb ist das Feld selbst `admin-only` (index.html). Ohne diese Zeile stuende im Auswahlfeld immer der
+  // erste Eintrag, egal was gespeichert ist.
   _set('gutschein-land', s.gutschein_land || /** @type {Record<string, string>} */ (LAND_ZUR_WAEHRUNG)[CURRENCY] || 'de-CH');
   if(ME?.isAdmin){
     _set('bl-ck',  s.bricklink_consumer_key||'');
@@ -563,8 +558,8 @@ async function zwischenspeicherLeeren(alle) {
 G('btn-clr-prices').onclick = () => zwischenspeicherLeeren(false);
 G('btn-clr-all-cache').onclick = () => zwischenspeicherLeeren(true);
 G('btn-dall').onclick=async()=>{
-  // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage
-  // statt des früheren Eintippens von „LÖSCHEN". Nur das EIGENE Konto (Server).
+  // Alles in den Papierkorb: 30 Tage wiederherstellbar, deshalb eine Rückfrage statt des früheren Eintippens
+  // von „LÖSCHEN". Nur das EIGENE Konto (Server).
   const password=await bestaetigeMitPasswort(tRaw('settings.delete_all.title'),tRaw('settings.delete_all.text'),'loeschen', { knopf: 'confirm.btn.alles_loeschen', art: 'bd' });
   if(password===null) return;
   const d=await mitZweitemFaktor(z => api('DELETE','/v1/bestand',{password, ...z}));
@@ -620,8 +615,8 @@ async function importConfig() {
   fi.value = '';
 }
 
-// Der Import von Wanted-Listen steht bei Sets, Teilen und Figuren (js/18-wanted-xml.js), nicht mehr
-// hier: Man importiert dort, wo man die Posten danach sieht.
+// Der Import von Wanted-Listen steht bei Sets, Teilen und Figuren (js/18-wanted-xml.js), nicht mehr hier: Man
+// importiert dort, wo man die Posten danach sieht.
 // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marcos-vorgabe-bitte-auch-den-import-der
 
 /**
@@ -640,9 +635,8 @@ function geheimUmschalten(id) {
 
 const EINST_KEY = 'bim_einst_abschnitt';
 /**
- * Die globalen Einstellungen als Unterseiten: Es steht immer genau ein
- * Abschnitt da, und die Leiste zeigt welcher. Gemerkt je Browser, damit ein
- * Neuladen nicht auf den ersten Abschnitt zurückspringt.
+ * Die globalen Einstellungen als Unterseiten: Es steht immer genau ein Abschnitt da, und die Leiste zeigt
+ * welcher. Gemerkt je Browser, damit ein Neuladen nicht auf den ersten Abschnitt zurückspringt.
  * @param {string|null} id  Abschnitt; unbekannt oder leer heisst der erste
  * @param {Event} [ev]      der Klick auf den Link — er springt dann nicht
  */

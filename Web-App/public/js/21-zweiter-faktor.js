@@ -9,8 +9,8 @@ import { esc, html, ungeprueft } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen } from './01-rueckfrage.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
-// Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn
-// Wiederherstellungscodes einmal zeigen. Danach: abschalten oder neue Codes.
+// Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn Wiederherstellungscodes einmal
+// zeigen. Danach: abschalten oder neue Codes.
 
 // Im Anmeldebildschirm, solange ein Verwalter ihn einrichten muss (js/01-api.js meldet es).
 let pflicht = false;
@@ -36,9 +36,8 @@ const knopfArt = () => pflicht ? 'knopf-breit' : 'btn-sm';
 const knopf = (/** @type {string} */ aktion, /** @type {string} */ text, art = 'bs') =>
   html`<button type="button" class="btn ${art} ${ungeprueft(knopfArt())}" data-click="${aktion}"${echt()}>${ungeprueft(text)}</button>`;
 const reihe = (/** @type {string} */ inhalt) => html`<div class="${pflicht ? 'zf-knoepfe-breit' : 'zf-knoepfe'}">${ungeprueft(inhalt)}</div>`;
-// Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js
-// findet nur wörtliche id-Angaben.
-// findet nur wörtliche id-Angaben. Das Passwort fragt der Dialog beim Auslösen.
+// Die Felder stehen ausgeschrieben da, nicht über einen Helfer: test/dom-ids.test.js findet nur wörtliche
+// id-Angaben. findet nur wörtliche id-Angaben. Das Passwort fragt der Dialog beim Auslösen.
 const CODEFELD = (/** @type {string} */ label, laenge = 24) =>
   html`<div class="fg"><label for="zf-code">${ungeprueft(label)}</label><input type="text" id="zf-code" inputmode="numeric" autocomplete="one-time-code" maxlength="${laenge}" data-erstfokus /></div>`;
 
@@ -65,8 +64,8 @@ export async function ladeZweitenFaktor() {
 }
 
 export async function zfEinrichten() {
-  // Kurz nach der Anmeldung lässt der Server das Passwort weg (Gnadenfrist);
-  // sonst antwortet er ohne Zählen mit aktuelles_passwort_erforderlich.
+  // Kurz nach der Anmeldung lässt der Server das Passwort weg (Gnadenfrist); sonst antwortet er ohne Zählen
+  // mit aktuelles_passwort_erforderlich.
   const erst = await api('POST', '/v1/auth/zweiter-faktor/einrichten', {});
   const d = erst?.code !== 'aktuelles_passwort_erforderlich' ? erst : await mitPasswortBestaetigen(tRaw('zf.title'), (password, z) => api('POST', '/v1/auth/zweiter-faktor/einrichten', { password, ...z }));
   if (!d) return;
@@ -110,8 +109,8 @@ export async function zfBestaetigen() {
   if (!code) { if (fehler) formularFehler(fehler, tRaw('zf.code_leer'), ['zf-code']); return; }
   const d = await api('POST', '/v1/auth/zweiter-faktor/bestaetigen', { code });
   if (!d?.success) {
-    // Am Feld statt als Toast: Der Fehler gehört zum Code, und ein Toast stünde
-    // nach dem richtigen Code noch neben „eingerichtet“.
+    // Am Feld statt als Toast: Der Fehler gehört zum Code, und ein Toast stünde nach dem richtigen Code noch
+    // neben „eingerichtet“.
     if (fehler) { formularFehler(fehler, d?.error || tRaw('settings.error'), ['zf-code']); feld?.select?.(); }
     else toast(d?.error || tRaw('settings.error'), 'error');
     return;

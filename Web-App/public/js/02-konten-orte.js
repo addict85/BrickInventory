@@ -1,6 +1,5 @@
-// Konto- und Lagerortfelder: Haushaltsmitglieder, Kontofilter und die
-// Lagerortfelder der Erfassungswege. Eine gemeinsame Quelle, damit alle
-// Formulare dieselbe Liste zeigen.
+// Konto- und Lagerortfelder: Haushaltsmitglieder, Kontofilter und die Lagerortfelder der Erfassungswege. Eine
+// gemeinsame Quelle, damit alle Formulare dieselbe Liste zeigen.
 import { api } from './01-api.js';
 import { G, setzeHtml } from './01-dom.js';
 import { SCOPE_VIEWS, scopeMode, setScopeMode } from './14-scope.js';
@@ -13,15 +12,14 @@ import { abonniere } from './00-ereignisse.js';
 /**
  * Kontofilter je Ansicht sichtbar machen und mit dem gespeicherten Wert füllen.
  *
- * Bleibt verborgen, solange das Konto keine Unterkonten hat: Ein Filter mit
- * genau einer möglichen Antwort ist keine Wahl, sondern eine Frage, die sich
- * nicht stellt.
+ * Bleibt verborgen, solange das Konto keine Unterkonten hat: Ein Filter mit genau einer möglichen Antwort ist
+ * keine Wahl, sondern eine Frage, die sich nicht stellt.
  * @param {HouseholdMember[]} members
  */
 export function initScopeSelects(members) {
   const isMain = members.length > 1;
-  // Alle, Eigene, dann jedes Unterkonto namentlich. „Unterkonten“ als Sammelposten fügte nichts hinzu;
-  // der Server versteht accounts=subs weiter für ältere Apps.
+  // Alle, Eigene, dann jedes Unterkonto namentlich. „Unterkonten“ als Sammelposten fügte nichts hinzu; der
+  // Server versteht accounts=subs weiter für ältere Apps.
   // Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#subs
   const subs = members.filter(m => !m.is_self);
   const opts = [
@@ -35,23 +33,22 @@ export function initScopeSelects(members) {
     if (!el) continue;
     if (!isMain) { el.style.display = 'none'; continue; }
     setzeHtml(el, ungeprueft(opts));
-    // Gespeicherte Wahl kann auf ein inzwischen entkoppeltes Konto zeigen —
-    // dann auf „Alle" zurückfallen statt eine leere Auswahl zu zeigen.
+    // Gespeicherte Wahl kann auf ein inzwischen entkoppeltes Konto zeigen — dann auf „Alle" zurückfallen
+    // statt eine leere Auswahl zu zeigen.
     const saved = scopeMode(view);
     el.value = [...el.options].some(o => o.value === saved) ? saved : 'all';
     if (el.value !== saved) setScopeMode(view, el.value);
     el.style.display = '';
   }
 
-  // Der Schalter „Unterkonten einbeziehen“ der Teileliste folgt derselben Regel: ohne Unterkonten nicht
-  // zu sehen. Er steht hier, weil isMain hier aus derselben Antwort feststeht.
+  // Der Schalter „Unterkonten einbeziehen“ der Teileliste folgt derselben Regel: ohne Unterkonten nicht zu
+  // sehen. Er steht hier, weil isMain hier aus derselben Antwort feststeht.
   // Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#subsbox
   const subsBox = G('pl-bestand-subs-box');
   if (subsBox) {
     subsBox.style.display = isMain ? 'inline-flex' : 'none';
-    // Kein Haken, wenn es nichts einzubeziehen gibt: Sonst bliebe die Wahl
-    // beim Entkoppeln des letzten Unterkontos unsichtbar gesetzt stehen und
-    // wirkte weiter.
+    // Kein Haken, wenn es nichts einzubeziehen gibt: Sonst bliebe die Wahl beim Entkoppeln des letzten
+    // Unterkontos unsichtbar gesetzt stehen und wirkte weiter.
     if (!isMain) { const cb = G('pl-bestand-subs'); if (cb) cb.checked = false; }
   }
 }
@@ -59,9 +56,8 @@ export function initScopeSelects(members) {
 /**
  * Die Konten des Haushalts, wie sie zuletzt geladen wurden.
  *
- * Gemerkt, weil nicht jede Auswahl in index.html steht: Das Detail der
- * Merkliste baut seine Zeilen beim Oeffnen und braucht die Liste dann —
- * lange nach loadHouseholdMembers(). Ein zweiter Abruf waere ein zweiter
+ * Gemerkt, weil nicht jede Auswahl in index.html steht: Das Detail der Merkliste baut seine Zeilen beim
+ * Oeffnen und braucht die Liste dann — lange nach loadHouseholdMembers(). Ein zweiter Abruf waere ein zweiter
  * Stand derselben Antwort.
  * @type {HouseholdMember[]}
  */
@@ -71,31 +67,28 @@ let _haushalt = [];
 export function haushaltsKonten() { return _haushalt; }
 
 /**
- * Kontoauswahl beim Erfassen, nur im Haushalt: Bei einem Konto ohne
- * Verknüpfung liefert der Server genau einen Eintrag, und eine Auswahl mit
- * einer Möglichkeit bleibt verborgen.
+ * Kontoauswahl beim Erfassen, nur im Haushalt: Bei einem Konto ohne Verknüpfung liefert der Server genau
+ * einen Eintrag, und eine Auswahl mit einer Möglichkeit bleibt verborgen.
  */
 export async function loadHouseholdMembers() {
   const d = await api('GET', '/v1/sets/household-members').catch(() => null);
   const members = d?.members || [];
   _haushalt = members;
-  // Dieselbe Antwort entscheidet über den Kontofilter: mehr als ein Konto
-  // heisst Hauptkonto mit Unterkonten.
+  // Dieselbe Antwort entscheidet über den Kontofilter: mehr als ein Konto heisst Hauptkonto mit Unterkonten.
   initScopeSelects(members);
-  // Die Lagerorte in EINEM Zug: Sie fuellen die Auswahlfelder der Filter UND
-  // die gemeinsame <datalist> der Eingabefelder. Zwei Aufrufe waeren zwei
-  // Staende derselben Liste.
+  // Die Lagerorte in EINEM Zug: Sie fuellen die Auswahlfelder der Filter UND die gemeinsame <datalist> der
+  // Eingabefelder. Zwei Aufrufe waeren zwei Staende derselben Liste.
   ladeLagerorte(members.map(m => m.id)).catch(() => {});
-  // Die Vorgabe fuer die Erfassungsfelder (Marcos Stern) — eigener Abruf,
-  // Begruendung bei ladeLagerortVorgabe().
+  // Die Vorgabe fuer die Erfassungsfelder (Marcos Stern) — eigener Abruf, Begruendung bei
+  // ladeLagerortVorgabe().
   ladeLagerortVorgabe().catch(() => {});
   zeichneKontoauswahl(members);
   zeichneLagerortFelder();
 }
 
 /**
- * Alle fünf Erfassungswege (Set, Teil, Figur, Katalog, Merkliste) bekommen dieselbe Kontoauswahl:
- * Etwas für ein Kind zu erfassen soll überall gleich gehen. Eine getroffene Wahl bleibt beim Neuzeichnen.
+ * Alle fünf Erfassungswege (Set, Teil, Figur, Katalog, Merkliste) bekommen dieselbe Kontoauswahl: Etwas für
+ * ein Kind zu erfassen soll überall gleich gehen. Eine getroffene Wahl bleibt beim Neuzeichnen.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#for
  * @param {HouseholdMember[]} members
  */
@@ -114,8 +107,8 @@ function zeichneKontoauswahl(members) {
   }
 }
 
-// Erzeugte Auswahlfelder tragen Texte der Sprache, in der sie gebaut wurden; beim Wechsel neu
-// zeichnen, die Wahl bleibt. Die Lagerorte zieht ladeLagerorte() samt Vorrat und Filtern nach.
+// Erzeugte Auswahlfelder tragen Texte der Sprache, in der sie gebaut wurden; beim Wechsel neu zeichnen, die
+// Wahl bleibt. Die Lagerorte zieht ladeLagerorte() samt Vorrat und Filtern nach.
 abonniere('spracheGewechselt', () => {
   if (!_haushalt.length) return;
   initScopeSelects(_haushalt);
@@ -124,8 +117,8 @@ abonniere('spracheGewechselt', () => {
 });
 
 /**
- * Die Lagerortfelder der fünf Erfassungswege, einmal aus lagerortBlock() gezeichnet statt fünfmal im
- * HTML. Zusammen mit der Kontoauswahl, weil beide warten, bis der Haushalt geladen ist.
+ * Die Lagerortfelder der fünf Erfassungswege, einmal aus lagerortBlock() gezeichnet statt fünfmal im HTML.
+ * Zusammen mit der Kontoauswahl, weil beide warten, bis der Haushalt geladen ist.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#erfassungs-ortfelder
  */
 export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage',
@@ -150,11 +143,10 @@ function zeichneOrtFeld(id, wert) {
   const slot = G(`${id}-slot`);
   if (!slot) return;
   setzeHtml(slot, lagerortBlock(id, wert));
-  // Die sichtbare Beschriftung steht im HTML, die beiden Bedienelemente
-  // entstehen hier — ein `for=` darauf waere im Quelltext ein Verweis ins
-  // Leere (test/a11y.test.js meldet genau das, zu Recht). aria-labelledby
-  // stellt die Verbindung zur Laufzeit her, und zwar fuer BEIDE: Auswahl und
-  // Textfeld tragen denselben Namen, weil sie dasselbe Feld sind.
+  // Die sichtbare Beschriftung steht im HTML, die beiden Bedienelemente entstehen hier — ein `for=` darauf
+  // waere im Quelltext ein Verweis ins Leere (test/a11y.test.js meldet genau das, zu Recht). aria-labelledby
+  // stellt die Verbindung zur Laufzeit her, und zwar fuer BEIDE: Auswahl und Textfeld tragen denselben Namen,
+  // weil sie dasselbe Feld sind.
   for (const el of slot.children) el.setAttribute('aria-labelledby', `${id}-label`);
   slot.dataset.gezeichnet = '1';
 }
@@ -169,8 +161,8 @@ export function zeichneLagerortFelder() {
 }
 
 /**
- * Die Vorgabe steht beim Vorrat (/v1/storage/locations), nicht bei den belegten Orten. Nachgezogen
- * wird nur ein noch leeres Feld: Wer inzwischen selbst gewählt hat, behält seine Wahl.
+ * Die Vorgabe steht beim Vorrat (/v1/storage/locations), nicht bei den belegten Orten. Nachgezogen wird nur
+ * ein noch leeres Feld: Wer inzwischen selbst gewählt hat, behält seine Wahl.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#ladelagerortvorgabe
  */
 export async function ladeLagerortVorgabe() {
@@ -184,25 +176,23 @@ export async function ladeLagerortVorgabe() {
 }
 
 /**
- * Den Anfangszustand herstellen: Ein Ort von vorhin sähe wie eine Vorgabe aus. Gibt es eine Vorgabe,
- * steht sie da; gezeichnet statt gesetzt, damit Auswahl und Textfeld dasselbe sagen.
+ * Den Anfangszustand herstellen: Ein Ort von vorhin sähe wie eine Vorgabe aus. Gibt es eine Vorgabe, steht
+ * sie da; gezeichnet statt gesetzt, damit Auswahl und Textfeld dasselbe sagen.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#leerelagerortfeld
  * @param {string} id
  */
 export function leereLagerortFeld(id) {
   if (G(`${id}-slot`)) { zeichneOrtFeld(id, _ortVorgabe); return; }
-  // Ohne Slot gibt es das zusammengesetzte Feld nicht; dann bleibt es beim
-  // alten Weg. Heute hat jeder der fuenf Erfassungswege einen (public/
-  // index.html), aber ein Formular ohne Slot soll hier nicht abstuerzen.
+  // Ohne Slot gibt es das zusammengesetzte Feld nicht; dann bleibt es beim alten Weg. Heute hat jeder der
+  // fuenf Erfassungswege einen (public/ index.html), aber ein Formular ohne Slot soll hier nicht abstuerzen.
   const feld = G(id), sel = G(`${id}-sel`);
   if (feld) { feld.value = _ortVorgabe; feld.style.display = 'none'; }
   if (sel) sel.selectedIndex = 0;
 }
 
 /**
- * Der gewählte Lagerort, `''` wenn keiner dasteht — nie undefined: Ein geleertes Feld heisst „kein
- * Ort“, ein fehlender Schlüssel „Vorgabe nehmen“, und der Server setzt die Vorgabe nur im zweiten Fall
- * ein.
+ * Der gewählte Lagerort, `''` wenn keiner dasteht — nie undefined: Ein geleertes Feld heisst „kein Ort“, ein
+ * fehlender Schlüssel „Vorgabe nehmen“, und der Server setzt die Vorgabe nur im zweiten Fall ein.
  * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#selectedstorage
  * @param {string} id
  */

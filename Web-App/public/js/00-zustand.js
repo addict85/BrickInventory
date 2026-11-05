@@ -1,7 +1,6 @@
-// Zustand, den mehrere Ansichten lesen. Er liegt in einem eigenen Modul ganz
-// unten, damit keine Ansicht eine andere importieren muss, nur um an ihn
-// heranzukommen. Geschrieben wird über die Setter: Importierte Bindungen sind
-// in ES-Modulen schreibgeschützt.
+// Zustand, den mehrere Ansichten lesen. Er liegt in einem eigenen Modul ganz unten, damit keine Ansicht eine
+// andere importieren muss, nur um an ihn heranzukommen. Geschrieben wird über die Setter: Importierte
+// Bindungen sind in ES-Modulen schreibgeschützt.
 import { setzeZahlenWaehrung } from '../i18n.js';
 
 /**
@@ -19,9 +18,8 @@ export let CURRENCY = 'EUR';
 /** Die Einstellungen aus /v1/settings/raw (settings). @type {Record<string, string> | null} */
 export let _settingsCache = null;
 /**
- * Ein Set der Galerie: die Zeile aus /v1/sets, dazu Kachelpreis, G&V und
- * deren Quelle aus /v1/finance/pnl (gesetzt in 02-gallery.js). letzter_kauf
- * schickt der Server mit, der Vertrag (SetItem) nennt es noch nicht.
+ * Ein Set der Galerie: die Zeile aus /v1/sets, dazu Kachelpreis, G&V und deren Quelle aus /v1/finance/pnl
+ * (gesetzt in 02-gallery.js). letzter_kauf schickt der Server mit, der Vertrag (SetItem) nennt es noch nicht.
  * @typedef {import('../../frontend-typen/vertrag').SetItem & { _price?: number | null, _pnl_pct?: number | null, _quelle?: string | null, letzter_kauf?: string | null }} Kachel
  */
 /** Die geladenen Sets der Galerie. @type {Kachel[]} */

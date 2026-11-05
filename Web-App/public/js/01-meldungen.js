@@ -2,8 +2,8 @@ import { tRaw } from '../i18n.js';
 import { ME } from './00-zustand.js';
 import { G, ico, setzeHtml } from './01-dom.js';
 
-// Toasts: kurze Meldungen unten im Bild. Gleiche Meldungen zählen statt zu stapeln, damit eine
-// wiederholte Störung nicht die Liste verdeckt.
+// Toasts: kurze Meldungen unten im Bild. Gleiche Meldungen zählen statt zu stapeln, damit eine wiederholte
+// Störung nicht die Liste verdeckt.
 
 /** Anzeigedauer je Art in ms. */
 const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
@@ -40,8 +40,8 @@ export function toast(msg, type='info', aktion, details) {
   const el = document.createElement('div');
   el.className=`toast ${type}`;
   if (type === 'error') el.setAttribute('role', 'alert');
-  // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen
-  // und Set-/Teilenummern aus Nutzereingaben.
+  // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen und Set-/Teilenummern aus
+  // Nutzereingaben.
   const icon = document.createElement('span');
   icon.className = 'toast-ico';
   setzeHtml(icon, ico(type === 'success' ? 'ok' : type === 'error' ? 'fehler' : 'info'));
@@ -71,9 +71,8 @@ export function toast(msg, type='info', aktion, details) {
     el.append(knopf);
     if (aktion.bleibt) el.dataset.bleibt = '';
   }
-  // Ein Fehler will gelesen werden, eine Bestätigung nur gesehen; mit Knopf
-  // muss man ihn auch treffen. Ein Klick auf die Meldung räumt sie weg, damit
-  // sie keine Karte verdeckt.
+  // Ein Fehler will gelesen werden, eine Bestätigung nur gesehen; mit Knopf muss man ihn auch treffen. Ein
+  // Klick auf die Meldung räumt sie weg, damit sie keine Karte verdeckt.
   el.addEventListener('click', e => { if (e.target === el || !(/** @type {Element} */ (e.target)).closest('button, details')) el.remove(); });
   c.appendChild(el);
   _toastStand.set(el, { schluessel, anzahl: 1, frist: setTimeout(() => el.remove(), Math.max(aktion ? 9000 : 0, TOAST_DAUER[type] ?? 4500)) });
@@ -81,8 +80,8 @@ export function toast(msg, type='info', aktion, details) {
 }
 
 /**
- * Beim Wechsel der Ansicht: Meldungen gehören zu der Ansicht, in der sie
- * entstanden; nur solche mit Knopf (Rückgängig, Ändern) bleiben bis zur Frist.
+ * Beim Wechsel der Ansicht: Meldungen gehören zu der Ansicht, in der sie entstanden; nur solche mit Knopf
+ * (Rückgängig, Ändern) bleiben bis zur Frist.
  */
 export function verwirfToasts() {
   for (const el of [...(G('toasts')?.children || [])]) if (!(/** @type {HTMLElement} */ (el)).hasAttribute('data-bleibt')) el.remove();

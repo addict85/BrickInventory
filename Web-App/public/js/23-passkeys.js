@@ -9,8 +9,8 @@ import { html } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './01-rueckfrage.js';
 
 // ═══ Passkeys (Server: src/konto/passkeys.ts, routes/passkeys.ts) ═══════════════
-// Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der
-// Browser braucht ArrayBuffer — die Umwandlung in beide Richtungen steht hier.
+// Ohne Fremdskript: Der Server schickt die Optionen als JSON (Base64URL), der Browser braucht ArrayBuffer —
+// die Umwandlung in beide Richtungen steht hier.
 
 const zuPuffer = (/** @type {string} */ b64u) => {
   const b64 = b64u.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(b64u.length / 4) * 4, '=');
@@ -22,8 +22,8 @@ const zuText = (/** @type {ArrayBuffer} */ puffer) => {
   return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 };
 /**
- * Die Optionen des Servers als JSON: Puffer stehen als Base64url da. Der
- * Vertrag (PasskeyOptionen) lässt ihre Felder offen; das sind die von WebAuthn.
+ * Die Optionen des Servers als JSON: Puffer stehen als Base64url da. Der Vertrag (PasskeyOptionen) lässt ihre
+ * Felder offen; das sind die von WebAuthn.
  * @typedef {{ id: string, type?: string, transports?: string[] }} KennungJson
  * @typedef {{ challenge: string, user?: { id: string, name: string, displayName: string },
  *   excludeCredentials?: KennungJson[], allowCredentials?: KennungJson[], [feld: string]: unknown }} OptionenJson

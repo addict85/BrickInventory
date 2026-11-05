@@ -1,5 +1,5 @@
-// Hintergrundarbeiten für Verwalter: Status des Auftrags-Workers, Katalog-
-// und Bild-Nachläufe, Brickset-Warteschlange.
+// Hintergrundarbeiten für Verwalter: Status des Auftrags-Workers, Katalog- und Bild-Nachläufe,
+// Brickset-Warteschlange.
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { api } from './01-api.js';
@@ -87,8 +87,8 @@ export async function triggerCsvSync(btn) {
 }
 
 /**
- * Alle fehlenden Katalogbilder einreihen. Der Server reiht nur ein und holt gedrosselt im Hintergrund;
- * die Rückmeldung nennt darum Aufträge, nicht Bilder — „fertig“ wäre bei Stunden Laufzeit irreführend.
+ * Alle fehlenden Katalogbilder einreihen. Der Server reiht nur ein und holt gedrosselt im Hintergrund; die
+ * Rückmeldung nennt darum Aufträge, nicht Bilder — „fertig“ wäre bei Stunden Laufzeit irreführend.
  * Ausführlich: docs/begruendungen/public/js/07-admin.js.md#queuecatalogimages
  */
 /** @param {HTMLButtonElement} btn */
@@ -98,17 +98,16 @@ export async function queueCatalogImages(btn) {
   const d = /** @type {{ success?: boolean, error?: string, pending?: number, skipped?: number, verworfen?: number, dauer_minuten?: number } | null} */ (
     await api('POST', '/v1/admin/catalog-images').catch(() => null));
   if (d?.success) {
-    // Beide Zahlen nennen: was ansteht UND was schon fertig war. Ohne die
-    // zweite sähe ein „0 Bilder in der Warteschlange" nach einem Fehlschlag
-    // aus, obwohl es die beste aller Meldungen ist — alles ist da.
+    // Beide Zahlen nennen: was ansteht UND was schon fertig war. Ohne die zweite sähe ein „0 Bilder in der
+    // Warteschlange" nach einem Fehlschlag aus, obwohl es die beste aller Meldungen ist — alles ist da.
     const n = (d.pending ?? 0).toLocaleString(locale());
     const fertig = d.skipped ?? 0;
     const teile = [fertig > 0
       ? tRaw('monitor.catalog_images_queued_skipped',
              { n, fertig: fertig.toLocaleString(locale()) })
       : tRaw('monitor.catalog_images_queued', { n })];
-    // Zurückgenommene Fehlanzeigen und die geschätzte Dauer nur nennen, wenn es
-    // etwas zu nennen gibt — sonst wächst die Meldung um zwei Nullen.
+    // Zurückgenommene Fehlanzeigen und die geschätzte Dauer nur nennen, wenn es etwas zu nennen gibt — sonst
+    // wächst die Meldung um zwei Nullen.
     if (d.verworfen && d.verworfen > 0)
       teile.push(tRaw('monitor.catalog_images_retried',
                       { n: d.verworfen.toLocaleString(locale()) }));
@@ -169,10 +168,9 @@ export async function toggleBricksetQueue(btn) {
 /**
  * Warteschlange holen und zeichnen — ohne Umschalten.
  *
- * Aus toggleBricksetQueue() herausgelöst, damit Retry und Löschen die Liste
- * nachladen können. Vorher ging beides nur über das Umschalten, und ein Aufruf
- * hätte die Anzeige zugeklappt statt aktualisiert — deshalb blieben Eintrag,
- * Versuchszähler und retry_after nach einem Klick sichtbar unverändert stehen.
+ * Aus toggleBricksetQueue() herausgelöst, damit Retry und Löschen die Liste nachladen können. Vorher ging
+ * beides nur über das Umschalten, und ein Aufruf hätte die Anzeige zugeklappt statt aktualisiert — deshalb
+ * blieben Eintrag, Versuchszähler und retry_after nach einem Klick sichtbar unverändert stehen.
  */
 export async function loadBricksetQueue() {
   const panel = G('brickset-queue-panel');
@@ -206,9 +204,8 @@ export async function loadBricksetQueue() {
 }
 
 /**
- * Erst das Element, dann data-arg: Bei data-self="1" legt der Dispatcher (js/11-actions.js) den Knopf
- * zuerst ab. Verdreht ging der Knopf als Setnummer in die Adresse, und der Server fand nie einen
- * Eintrag.
+ * Erst das Element, dann data-arg: Bei data-self="1" legt der Dispatcher (js/11-actions.js) den Knopf zuerst
+ * ab. Verdreht ging der Knopf als Setnummer in die Adresse, und der Server fand nie einen Eintrag.
  * Ausführlich: docs/begruendungen/public/js/07-admin.js.md#retrybricksetqueueentry
  */
 /** @param {HTMLButtonElement} btn @param {string} setNumber */
@@ -218,9 +215,8 @@ async function retryBricksetQueueEntry(btn, setNumber) {
   if (d?.success) {
     setzeHtml(btn, ico('ok'));
     toast(tRaw('monitor.retrying',{set:setNumber}), 'success');
-    // Warteschlange neu zeichnen — retry_after und Versuchszähler haben sich
-    // geändert. Vorher blieb der Eintrag mit den alten Werten stehen, was wie
-    // ein wirkungsloser Klick aussah.
+    // Warteschlange neu zeichnen — retry_after und Versuchszähler haben sich geändert. Vorher blieb der
+    // Eintrag mit den alten Werten stehen, was wie ein wirkungsloser Klick aussah.
     loadBricksetQueue();
     setTimeout(() => { btn.disabled = false; setzeHtml(btn, ico('aktualisieren')); }, 3000);
   } else {

@@ -8,8 +8,8 @@ import { toast } from './01-meldungen.js';
 import { ME } from './00-zustand.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
-// Einstellungen, Abschnitt Verwaltung: Konten anlegen, sperren, freischalten, Rechte. Nur Verwalter
-// sehen ihn, der Server prüft jede Aktion selbst.
+// Einstellungen, Abschnitt Verwaltung: Konten anlegen, sperren, freischalten, Rechte. Nur Verwalter sehen
+// ihn, der Server prüft jede Aktion selbst.
 /** @typedef {import('../../frontend-typen/vertrag').KontoInListe} Konto */
 
 // ── USER MGMT ─────────────────────────────────────────
@@ -24,8 +24,8 @@ export async function loadUsers(){
       <td>${nutzerAktionen(u)}</td></tr>`)}</tbody></table></div>`);
   ladeProtokoll();
 }
-// Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im
-// Quelltext steht und die Wörterbuchprüfung ihn findet.
+// Ausgeschrieben statt zusammengesetzt, damit jeder Schlüssel als Aufruf im Quelltext steht und die
+// Wörterbuchprüfung ihn findet.
 const AKTIONEN = {
   konto_angelegt:          () => t('users.aktion.konto_angelegt'),
   einstellungen_geaendert: () => t('users.aktion.einstellungen_geaendert'),
@@ -49,9 +49,9 @@ async function ladeProtokoll(){
       <td>${ungeprueft((/** @type {Record<string, () => string>} */ (AKTIONEN)[String(e.aktion)] || (() => esc(e.aktion)))())}${e.einzelheiten ? html`: ${e.einzelheiten}` : ''}</td><td>${e.ziel_name||'#'+e.ziel_id}</td></tr>`)}</tbody></table></div>` : html`<p data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('users.protokoll.leer')}</p>`);
 }
 /**
- * Gegen das eigene Konto gibt es hier nichts zu tun (der Server lehnt es
- * ohnehin ab); das sagt die Zeile. Die seltenen und harten Aktionen stehen
- * hinter „Weitere“, damit eine Zeile nicht aus fünf Rahmenknöpfen besteht.
+ * Gegen das eigene Konto gibt es hier nichts zu tun (der Server lehnt es ohnehin ab); das sagt die Zeile. Die
+ * seltenen und harten Aktionen stehen hinter „Weitere“, damit eine Zeile nicht aus fünf Rahmenknöpfen
+ * besteht.
  * @param {Konto} u
  */
 function nutzerAktionen(u) {
@@ -75,8 +75,8 @@ function nutzerAktionen(u) {
 }
 
 /**
- * Ein Knopf der Benutzertabelle: Symbol und Wort sichtbar, die längere
- * Beschreibung als Tooltip, der Name des Kontos für Vorleser im Namen.
+ * Ein Knopf der Benutzertabelle: Symbol und Wort sichtbar, die längere Beschreibung als Tooltip, der Name des
+ * Kontos für Vorleser im Namen.
  * @param {Konto} u
  * @param {string} art
  * @param {string} klick
@@ -127,8 +127,8 @@ G('btn-rpw').onclick=async()=>{
  * @param {string} name
  */
 async function toggleAdmin(uid,isAdmin,name){
-  // isAdmin kommt seit der data-arg-Umstellung als Zeichenkette. `!"0"` ist
-  // false — das Umschalten hätte damit IMMER auf "kein Admin" gesetzt.
+  // isAdmin kommt seit der data-arg-Umstellung als Zeichenkette. `!"0"` ist false — das Umschalten hätte
+  // damit IMMER auf "kein Admin" gesetzt.
   const cur = isAdmin === true || isAdmin === 1 || isAdmin === '1';
   // Der Dialog nennt das Konto: Die Knöpfe sehen in jeder Zeile gleich aus.
   const titel = tRaw(cur ? 'users.role_title_entziehen' : 'users.role_title_geben', { name });

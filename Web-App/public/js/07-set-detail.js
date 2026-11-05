@@ -1,6 +1,5 @@
-// Der Detail-Dialog eines Sets: Anzeige, Menge, Anleitungen, Bildzoom. Er
-// steht über Galerie und Kaufpreis-Dialog; wer ihn von unten öffnen muss,
-// nimmt springe('setDetail', …) aus 00-ziele.js.
+// Der Detail-Dialog eines Sets: Anzeige, Menge, Anleitungen, Bildzoom. Er steht über Galerie und
+// Kaufpreis-Dialog; wer ihn von unten öffnen muss, nimmt springe('setDetail', …) aus 00-ziele.js.
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions, echt } from './00-registry.js';
 import { CURRENCY, ME, curSet, set_curSet } from './00-zustand.js';
@@ -19,9 +18,9 @@ import { loadFinance } from './04-finance.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
 
-// Verschoben wird nur über den Kaufpreis (Kaufpreis-Dialog, Zeile für Zeile),
-// nicht das ganze Set: Mehrere Käufe eines Sets können im Haushalt
-// verschiedenen Konten gehören. Der Server verlangt dafür acquisition_ids.
+// Verschoben wird nur über den Kaufpreis (Kaufpreis-Dialog, Zeile für Zeile), nicht das ganze Set: Mehrere
+// Käufe eines Sets können im Haushalt verschiedenen Konten gehören. Der Server verlangt dafür
+// acquisition_ids.
 let _detailLauf = 0;
 
 /** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
@@ -101,8 +100,8 @@ function ladeSetNachtraege(sn) {
  */
 export async function openModal(sn){
   const lauf = ++_detailLauf;
-  // Der Dialog steht sofort da, mit Platzhalter: Bei langsamem Netz geschah
-  // sonst bis zur Antwort nichts, und ein zweiter Tipp öffnete ihn doppelt.
+  // Der Dialog steht sofort da, mit Platzhalter: Bei langsamem Netz geschah sonst bis zur Antwort nichts, und
+  // ein zweiter Tipp öffnete ihn doppelt.
   G('m-tit').textContent = sn; G('m-untertit').textContent = '';
   const bild = G('m-img'); bild.src = '/assets/set-placeholder.svg';
   setzeHtml(G('m-det'), skelettZeilen(4, t('common.loading')));
@@ -146,8 +145,7 @@ export async function openModal(sn){
   setzeAlarmFeld('m');
   G('set-modal').classList.add('open');
   ladeAlarm(sn).catch(() => {});
-  // Die Auswahlliste gehört dem BESITZER des Sets, nicht dem Betrachter —
-  // Begründung an ladeOrtAuswahl().
+  // Die Auswahlliste gehört dem BESITZER des Sets, nicht dem Betrachter — Begründung an ladeOrtAuswahl().
   ladeOrtAuswahl(set.owners).catch(() => {});
 
   ladeSetNachtraege(sn);
@@ -163,10 +161,9 @@ export function renderInstructions(instr, sn) {
   const items = instr.map(i => {
     const href = i.local_path || i.url;
     const isLocal = !!i.local_path;
-    // Selbst hochgeladen oder automatisch importiert? Das sagt der Server
-    // (is_manual, siehe utils/instructions.anleitungenZusammenlegen). Vorher
-    // stand die Regel hier als Pfadvergleich — eine zweite Fassung derselben
-    // Frage, die die Android-App gar nicht erst nachbauen konnte.
+    // Selbst hochgeladen oder automatisch importiert? Das sagt der Server (is_manual, siehe
+    // utils/instructions.anleitungenZusammenlegen). Vorher stand die Regel hier als Pfadvergleich — eine
+    // zweite Fassung derselben Frage, die die Android-App gar nicht erst nachbauen konnte.
     const isUpload = !!i.is_manual;
     const label = esc(i.description) || t('instr.label');
     // Lokale Dateien (PDF/Bild) im In-App-Viewer öffnen; externe URLs im neuen Tab.
@@ -243,10 +240,9 @@ export function openImageLightbox(src){
 }
 
 // `removeAttribute` und NICHT `src=''`: Ein leeres src ist keine leere
-// Adresse, sondern die Adresse der SEITE. Der Browser laedt sie als Bild,
-// scheitert daran, und der Fehlerlauscher in 11-actions.js meldete bei jedem
-// Schliessen des Zooms `[img] konnte nicht geladen werden: https://<host>/`.
-// Ohne Attribut laedt der Browser gar nichts.
+// Adresse, sondern die Adresse der SEITE. Der Browser laedt sie als Bild, scheitert daran, und der
+// Fehlerlauscher in 11-actions.js meldete bei jedem Schliessen des Zooms `[img] konnte nicht geladen werden:
+// https://<host>/`. Ohne Attribut laedt der Browser gar nichts.
 export function closeImageLightbox(){ G('img-lightbox').classList.remove('open'); G('lightbox-img').removeAttribute('src'); }
 
 // Escape schliesst den Zoom über js/01-dialoge.js, wie jeden Dialog.
@@ -272,9 +268,9 @@ export function autosaveSet(){
       const echt = d.quantity != null && Number.isInteger(d.quantity) ? d.quantity : qty;
       set.quantity = echt;
       if (echt !== qty) G('m-qty').value = String(echt);
-      // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim
-      // Erhöhen entsteht eine neue Zeile, beim Reduzieren fällt (LIFO) die
-      // letzte weg — sonst blieb die entfernte Zeile in der Detailsicht stehen.
+      // Bei jeder Mengenänderung die Erfassungs-Übersicht neu laden: beim Erhöhen entsteht eine neue Zeile,
+      // beim Reduzieren fällt (LIFO) die letzte weg — sonst blieb die entfernte Zeile in der Detailsicht
+      // stehen.
       const sn = set.set_number;
       if (echt !== prevQty && typeof renderAcquisitionSummary === 'function') {
         api('GET', `/v1/sets/${esc(sn)}/acquisitions`).then(ad => {
@@ -296,9 +292,8 @@ export function autosaveSet(){
 }
 
 /**
- * „+“ legt eine Kauferfassung an, meist mit dem Marktpreis als Schätzung. Das
- * verändert die Finanzen, also sagt der Toast es samt Betrag und bietet
- * „Ändern“ an, statt nur „Gespeichert“ zu melden.
+ * „+“ legt eine Kauferfassung an, meist mit dem Marktpreis als Schätzung. Das verändert die Finanzen, also
+ * sagt der Toast es samt Betrag und bietet „Ändern“ an, statt nur „Gespeichert“ zu melden.
  */
 /** @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[] | null | undefined} acqs @param {number} n */
 function meldeNeueExemplare(sn, acqs, n) {
@@ -311,9 +306,8 @@ function meldeNeueExemplare(sn, acqs, n) {
   toast(text, 'success', { text: tRaw('acq.aendern'), fn: () => openAcqModal(sn) });
 }
 
-// Keine eigene Rückfrage mehr — delSet() fragt (siehe dort). Der Dialog
-// schliesst nur, wenn wirklich gelöscht wurde; sonst stünde er nach einem
-// „Abbrechen" leer da.
+// Keine eigene Rückfrage mehr — delSet() fragt (siehe dort). Der Dialog schliesst nur, wenn wirklich gelöscht
+// wurde; sonst stünde er nach einem „Abbrechen" leer da.
 G('btn-md').onclick=async()=>{ if(!curSet) return; if(await delSet(curSet.set_number)) closeModal(); };
 
 /**

@@ -6,8 +6,8 @@ import { springe } from './00-ziele.js';
 import { ME } from './00-zustand.js';
 
 // Jede Ansicht als #/pfad, Filter als Query dahinter: Ein Hash-Router braucht keine Serverrouten, und
-// Anmeldelinks (?token=, ?set=) bleiben unberührt. Offene Dialoge sind Verlaufseinträge, damit
-// „Zurück“ sie schliesst.
+// Anmeldelinks (?token=, ?set=) bleiben unberührt. Offene Dialoge sind Verlaufseinträge, damit „Zurück“ sie
+// schliesst.
 // Ausführlich: docs/begruendungen/public/js/24-router.js.md#jede-ansicht-steht-als-pfad-in-der-adres
 
 /** Ansicht (data-tab bzw. Sicht) → Pfad in der Adresse. */
@@ -149,9 +149,8 @@ function dialogAdresse(id) {
 }
 
 /**
- * Öffnen und Schliessen jedes Dialogs (aus 01-dialoge.js, also nach einer
- * Mikroaufgabe). Ob der Eintrag schon stimmt, sagt deshalb der Verlauf selbst,
- * nicht ein Merker: Nach „Zurück“ fehlt der Dialog dort bereits.
+ * Öffnen und Schliessen jedes Dialogs (aus 01-dialoge.js, also nach einer Mikroaufgabe). Ob der Eintrag schon
+ * stimmt, sagt deshalb der Verlauf selbst, nicht ein Merker: Nach „Zurück“ fehlt der Dialog dort bereits.
  */
 /** @param {HTMLElement} dialog @param {boolean} offen */
 function dialogGewechselt(dialog, offen) {
@@ -163,8 +162,8 @@ function dialogGewechselt(dialog, offen) {
     history.pushState(zustand({ dlg: [...stapel, dialog.id] }), '', dialogAdresse(dialog.id));
     return;
   }
-  // Vom Nutzer geschlossen (Knopf, Escape, Speichern): den eigenen Eintrag
-  // wieder abnehmen, sonst bräuchte „Zurück“ einen leeren Schritt.
+  // Vom Nutzer geschlossen (Knopf, Escape, Speichern): den eigenen Eintrag wieder abnehmen, sonst bräuchte
+  // „Zurück“ einen leeren Schritt.
   if (stapel.at(-1) === dialog.id) { _eigeneZurueck++; history.back(); }
   else if (stapel.includes(dialog.id))
     history.replaceState(zustand({ dlg: stapel.filter(d => d !== dialog.id) }), '', location.href);
@@ -188,9 +187,8 @@ function schliesse(dialog) {
 }
 
 /**
- * Ansicht öffnen, ohne einen Eintrag anzulegen. Eine Verwalterseite öffnet für
- * andere Konten die Sammlung; true heisst „abgewiesen“, damit der Aufrufer die
- * Adresse dazu passend setzt und es sagt.
+ * Ansicht öffnen, ohne einen Eintrag anzulegen. Eine Verwalterseite öffnet für andere Konten die Sammlung;
+ * true heisst „abgewiesen“, damit der Aufrufer die Adresse dazu passend setzt und es sagt.
  * @param {string} ansicht
  * @param {string} unter
  */
@@ -278,8 +276,8 @@ window.addEventListener('popstate', (ev) => {
   }
   const ziel = leseAdresse();
   if (!ziel) {
-    // Ein Sprungverweis (#inhalt, href="#") ist kein Ziel: Adresse zurückstellen.
-    // Ein unbekannter Pfad dagegen zeigt die Sammlung und sagt es.
+    // Ein Sprungverweis (#inhalt, href="#") ist kein Ziel: Adresse zurückstellen. Ein unbekannter Pfad
+    // dagegen zeigt die Sammlung und sagt es.
     const unbekannt = istAppPfad();
     if (unbekannt) zeigeAnsicht('gallery', '');
     history.replaceState(zustand(), '', adresse());

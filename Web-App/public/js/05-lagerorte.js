@@ -9,8 +9,8 @@ import { esc, html, ungeprueft } from './00-escapen.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { ladeLagerortVorgabe } from './02-konten-orte.js';
 import { ladeLagerorte } from './02-detailfelder.js';
-// Einstellungen, Abschnitt Lagerorte: der Vorrat an Orten, aus dem die Detailfelder wählen;
-// anlegen, umbenennen, als Vorgabe setzen, löschen.
+// Einstellungen, Abschnitt Lagerorte: der Vorrat an Orten, aus dem die Detailfelder wählen; anlegen,
+// umbenennen, als Vorgabe setzen, löschen.
 
 /**
  * Die eigenen Orte samt Belegung.
@@ -18,9 +18,9 @@ import { ladeLagerorte } from './02-detailfelder.js';
 export async function ladeLagerortVerwaltung() {
   const el = G('storage-list');
   if (!el) return;
-  // Beide Listen zusammen: `locations` sagt, was zur WAHL steht, `storage`,
-  // was wirklich DRIN liegt. Ohne die zweite stünde neben jedem Ort nichts,
-  // und die Absage beim Löschen („da liegt noch was") käme aus dem Nichts.
+  // Beide Listen zusammen: `locations` sagt, was zur WAHL steht, `storage`, was wirklich DRIN liegt. Ohne die
+  // zweite stünde neben jedem Ort nichts, und die Absage beim Löschen („da liegt noch was") käme aus dem
+  // Nichts.
   const [v, b] = await Promise.all([
     api('GET', '/v1/storage/locations'),
     api('GET', '/v1/storage?accounts=own'),
@@ -34,19 +34,18 @@ export async function ladeLagerortVerwaltung() {
     setzeHtml(el, html`<div data-stil="color:var(--mut)">${tRaw('storage.empty')}</div>`);
     return;
   }
-  // Marcos Stern: „Weiter möchte ich ein Lagerort in den Einstellungen als
-  // Default setzen können. […] Ich stelle mir das mit einem Sternicon vor."
+  // Marcos Stern: „Weiter möchte ich ein Lagerort in den Einstellungen als Default setzen können. […] Ich
+  // stelle mir das mit einem Sternicon vor."
   const vorgabeId = v.vorgabe?.id ?? null;
   // Das Raster liegt an der Liste, die Zeilen sind display:contents: So teilen alle Zeilen dieselben
-  // Spaltenbreiten, und das Namensfeld wird nicht vom Belegungstext daneben schmal gedrückt.
-  // minmax(0,1fr), damit ein langer Name die Spalte nicht sprengt; der Trennstrich liegt darum an jeder
-  // Zelle.
+  // Spaltenbreiten, und das Namensfeld wird nicht vom Belegungstext daneben schmal gedrückt. minmax(0,1fr),
+  // damit ein langer Name die Spalte nicht sprengt; der Trennstrich liegt darum an jeder Zelle.
   // Ausführlich: docs/begruendungen/public/js/05-lagerorte.js.md#marcos-befund-dass-die-felder-alle-schoe
   setzeHtml(el, html`${html`<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:8px">`}${orte.map(o => {
     const n = belegung.get(o.name);
-    // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts):
-    // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
-    // Figuren, und niemand koennte der Zahl ansehen, was gemeint ist.
+    // Figuren stehen EIGEN da, nicht bei den Teilesorten (src/bestand/lagerort.ts): „18 Teilesorten" hiesse
+    // sonst mal 18 Teilesorten und mal 12 plus 6 Figuren, und niemand koennte der Zahl ansehen, was gemeint
+    // ist.
     const wie = n ? [t('storage.belegt.sets', { n: Number(n.sets) || 0 }), t('storage.belegt.teile', { n: Number(n.teile) || 0 }),
                      t('storage.belegt.figuren', { n: Number(n.figuren) || 0 })].filter(x => !x.startsWith('0 ')).join(', ')
                   : esc(tRaw('storage.leer'));
@@ -94,23 +93,22 @@ function lagerortTaste(id, ev) {
  */
 async function benenneLagerortUm(id, wert) {
   const name = String(wert || '').trim();
-  // Leer heisst hier NICHT löschen: Beim Umbenennen ist ein leergeräumtes Feld
-  // fast immer ein Versehen, und das Löschen hat seinen eigenen Knopf daneben.
-  // (Beim Lagerort AM SET ist es umgekehrt — dort ist Leeren die natürliche
-  // Geste, um die Zuordnung loszuwerden.)
+  // Leer heisst hier NICHT löschen: Beim Umbenennen ist ein leergeräumtes Feld fast immer ein Versehen, und
+  // das Löschen hat seinen eigenen Knopf daneben. (Beim Lagerort AM SET ist es umgekehrt — dort ist Leeren
+  // die natürliche Geste, um die Zuordnung loszuwerden.)
   if (!name) { await ladeLagerortVerwaltung(); return; }
   const d = await api('PUT', `/v1/storage/locations/${encodeURIComponent(id)}`, { name });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); }
   await ladeLagerortVerwaltung();
-  // Die Zuordnungen sind mitgewandert (benenneOrtUm im Server) — die Galerie
-  // zeigt sonst weiter den alten Namen.
+  // Die Zuordnungen sind mitgewandert (benenneOrtUm im Server) — die Galerie zeigt sonst weiter den alten
+  // Namen.
   loadGallery();
 }
 
 /**
  * Den Stern umschalten. ★/☆ unterscheiden sich in der Form, nicht in der Farbe, und tragen Titel und
- * aria-pressed. Ein zweiter Druck auf denselben Stern schaltet die Vorgabe ab — ein eigener Knopf
- * dafür wäre zu viel.
+ * aria-pressed. Ein zweiter Druck auf denselben Stern schaltet die Vorgabe ab — ein eigener Knopf dafür wäre
+ * zu viel.
  * Ausführlich: docs/begruendungen/public/js/05-lagerorte.js.md#schaltelagerortvorgabe
  * @param {string} id
  * @param {string} war
@@ -120,9 +118,9 @@ async function schalteLagerortVorgabe(id, war) {
                       { id: String(war) === '1' ? null : parseInt(id) });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   await ladeLagerortVerwaltung();
-  // Die Erfassungsformulare stehen schon — ohne das Nachziehen zeigten sie
-  // den alten Stand, bis jemand die Seite neu laedt. Dieselbe Geste wie beim
-  // Erfassungs-Zustand, der nach dem Speichern initDefaultCondition() ruft.
+  // Die Erfassungsformulare stehen schon — ohne das Nachziehen zeigten sie den alten Stand, bis jemand die
+  // Seite neu laedt. Dieselbe Geste wie beim Erfassungs-Zustand, der nach dem Speichern
+  // initDefaultCondition() ruft.
   ladeLagerortVorgabe();
 }
 

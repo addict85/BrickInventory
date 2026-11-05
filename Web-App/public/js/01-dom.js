@@ -1,24 +1,24 @@
 import { tRaw } from '../i18n.js';
 import { esc, einsetzen, html, ungeprueft } from './00-escapen.js';
 
-// Kleine DOM-Helfer, die jede Ansicht braucht: Elemente holen, Symbole, Leerzustand, besetzte Knöpfe.
-// Ohne Abhängigkeit über Escaping und Sprache hinaus, damit jedes Modul sie laden kann.
+// Kleine DOM-Helfer, die jede Ansicht braucht: Elemente holen, Symbole, Leerzustand, besetzte Knöpfe. Ohne
+// Abhängigkeit über Escaping und Sprache hinaus, damit jedes Modul sie laden kann.
 
-// function statt const: Andere Module rufen G() & Co. schon beim eigenen Laden. Eine
-// const-Pfeilfunktion läge dann noch in der Todeszone und würfe „G is not a function“.
+// function statt const: Andere Module rufen G() & Co. schon beim eigenen Laden. Eine const-Pfeilfunktion läge
+// dann noch in der Todeszone und würfe „G is not a function“.
 // Ausführlich: docs/begruendungen/public/js/01-dom.js.md#diese-helfer-werden-von-anderen-modulen
 /**
- * Als Formularelement typisiert: Die meisten Aufrufe lesen .value, .checked
- * oder .disabled. Für ein anderes Element sind diese Felder schlicht leer —
- * die Typprüfung soll an den echten Fehlern hängen, nicht an jedem Feldzugriff.
+ * Als Formularelement typisiert: Die meisten Aufrufe lesen .value, .checked oder .disabled. Für ein anderes
+ * Element sind diese Felder schlicht leer — die Typprüfung soll an den echten Fehlern hängen, nicht an jedem
+ * Feldzugriff.
  * @param {string} id
  * @returns {Feld}
  */
 export function G(id) { return /** @type {Feld} */ (document.getElementById(id)); }
 
 /**
- * querySelectorAll als HTMLElement[]: Die Oberfläche fragt nur HTML-Elemente
- * ab, und dataset, style und hidden gehören zu HTMLElement, nicht zu Element.
+ * querySelectorAll als HTMLElement[]: Die Oberfläche fragt nur HTML-Elemente ab, und dataset, style und
+ * hidden gehören zu HTMLElement, nicht zu Element.
  * @param {string} sel @param {ParentNode} [wurzel]
  * @returns {HTMLElement[]}
  */
@@ -40,8 +40,8 @@ export function ico(name) { return html`<svg class="ico" aria-hidden="true"><use
 let _trefferUhr;
 
 /**
- * Das Ergebnis einer Suche oder eines Filters für Vorleser (WCAG 4.1.3). Entprellt, damit nicht
- * jeder Tastendruck spricht; ein Zeichen wechselt, damit derselbe Text erneut angesagt wird.
+ * Das Ergebnis einer Suche oder eines Filters für Vorleser (WCAG 4.1.3). Entprellt, damit nicht jeder
+ * Tastendruck spricht; ein Zeichen wechselt, damit derselbe Text erneut angesagt wird.
  * @param {string} text
  */
 export function meldeTreffer(text) {
@@ -53,8 +53,8 @@ export function meldeTreffer(text) {
 }
 
 /**
- * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste
- * Schritt als Knopf. Texte kommen fertig übersetzt oder als Schlüssel; maskiert wird hier.
+ * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste Schritt als Knopf. Texte kommen
+ * fertig übersetzt oder als Schlüssel; maskiert wird hier.
  * @param {{ ico: string, titel?: string, text?: string, titelKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
  */
 export function leerZustand(o) {
@@ -74,9 +74,8 @@ export function zuruecksetzenKnopf(ansicht) {
 }
 
 /**
- * Sperrt einen Knopf für die Dauer eines Aufrufs und merkt sich seine Beschriftung, statt sie danach
- * neu zu setzen: Fest eingetragene Texte waren falsch übersetzt, und ein kurz leerer Knopf sah wie ein
- * Fehler aus.
+ * Sperrt einen Knopf für die Dauer eines Aufrufs und merkt sich seine Beschriftung, statt sie danach neu zu
+ * setzen: Fest eingetragene Texte waren falsch übersetzt, und ein kurz leerer Knopf sah wie ein Fehler aus.
  * Ausführlich: docs/begruendungen/public/js/01-dom.js.md#knopfbesetzt
  * @param {HTMLButtonElement | HTMLInputElement} btn
  * @param {string} [laeuft] Andere Beschriftung waehrend der Arbeit. NUR
@@ -90,8 +89,8 @@ export function zuruecksetzenKnopf(ansicht) {
  */
 export function knopfBesetzt(btn, laeuft) {
   const vorher = btn.textContent;
-  // Die Breite einfrieren, bevor sich etwas ändert: Ein kürzerer Wartetext liesse sonst die ganze
-  // flex-Zeile daneben nachrutschen.
+  // Die Breite einfrieren, bevor sich etwas ändert: Ein kürzerer Wartetext liesse sonst die ganze flex-Zeile
+  // daneben nachrutschen.
   // Ausführlich: docs/begruendungen/public/js/01-dom.js.md#breite
   const breite = btn.offsetWidth;
   const minVorher = btn.style.minWidth;
@@ -102,12 +101,12 @@ export function knopfBesetzt(btn, laeuft) {
   return (text) => {
     btn.disabled = false;
     btn.classList.remove('besetzt');
-    // Nur zuruecksetzen, was ueberhaupt gesetzt wurde — sonst schriebe die
-    // Freigabe eine Beschriftung neu, die nie weg war.
+    // Nur zuruecksetzen, was ueberhaupt gesetzt wurde — sonst schriebe die Freigabe eine Beschriftung neu,
+    // die nie weg war.
     if (text !== undefined) btn.textContent = text;
     else if (laeuft !== undefined) btn.textContent = vorher;
-    // Die eigene Vorgabe zurueckgeben, nicht blind leeren: Ein Knopf, der von
-    // sich aus eine min-width traegt, behaelt sie.
+    // Die eigene Vorgabe zurueckgeben, nicht blind leeren: Ein Knopf, der von sich aus eine min-width traegt,
+    // behaelt sie.
     btn.style.minWidth = minVorher;
   };
 }
@@ -124,8 +123,8 @@ export const XML_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.o
  * Papierkorb-Symbol für Löschknöpfe auf Kacheln und in Listenzeilen.
  *
  * `currentColor` statt fester Farbe: Der Knopf bestimmt die Farbe über sein
- * CSS (weiss auf rotem Grund bei .delbtn, rot auf hellem Grund bei .bd), das
- * Symbol übernimmt sie. So passt es in beide Umgebungen ohne zweite Fassung.
+ * CSS (weiss auf rotem Grund bei .delbtn, rot auf hellem Grund bei .bd), das Symbol übernimmt sie. So passt
+ * es in beide Umgebungen ohne zweite Fassung.
  */
 export const TRASH_ICON_SVG = html`<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" data-stil="width:1em;height:1em;display:block" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`;
 

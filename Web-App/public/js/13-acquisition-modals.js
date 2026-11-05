@@ -16,8 +16,8 @@ import { closeModal, lagerortBlock, ladeOrtAuswahl } from './02-detailfelder.js'
 import { confirmDelete } from './01-rueckfrage.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
 import { deleteManualPart, loadBrickColors, loadManualParts, manuelleTeile, updateManualPart } from './03-parts.js';
-// Kaufpreis-Modal und Detailfenster für manuelle Einträge: Beides ist Erfassung, keine Administration,
-// und gehört deshalb nicht nach 07-admin.js.
+// Kaufpreis-Modal und Detailfenster für manuelle Einträge: Beides ist Erfassung, keine Administration, und
+// gehört deshalb nicht nach 07-admin.js.
 // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#diese-708-zeilen-standen-in-js-07-admin
 /** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} Konto */
 /** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
@@ -44,18 +44,17 @@ export function openAcqModal(sn) {
   loadAcqModal(sn);
 }
 
-// Ein Klick auf den Hintergrund schliesst über closeAcqModal(), die einzige Fassung mit der
-// Rückkehr-Logik für Set und manuellen Eintrag.
+// Ein Klick auf den Hintergrund schliesst über closeAcqModal(), die einzige Fassung mit der Rückkehr-Logik
+// für Set und manuellen Eintrag.
 // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#acq-modal
 G('acq-modal').addEventListener('click', e => e.target === e.currentTarget && closeAcqModal());
 
 /**
  * Wessen Kaufpreise gerade im Dialog stehen.
  *
- * Die Erfassungen kommen für das BLICKFELD; im Haushalt können sie mehreren
- * Konten gehören. Der Server liefert `owner_user_id` je Zeile mit, sobald es
- * mehr als ein Konto gibt — ohne das wüsste die Auswahl nicht, worauf sie
- * steht, und ein Wechsel griffe die falsche Zeile ab.
+ * Die Erfassungen kommen für das BLICKFELD; im Haushalt können sie mehreren Konten gehören. Der Server
+ * liefert `owner_user_id` je Zeile mit, sobald es mehr als ein Konto gibt — ohne das wüsste die Auswahl
+ * nicht, worauf sie steht, und ein Wechsel griffe die falsche Zeile ab.
  * @type {number | null}
  */
 let _acqOwnerId = null;
@@ -67,8 +66,7 @@ let _householdMembers = [];
  *
  * Die Zahlen kommen fertig vom Server (`totals`); hier wird nur gezeichnet.
  * `amount === null` heisst „kein Kaufpreis erfasst" — das ist etwas anderes
- * als ein Betrag von null, und deshalb entscheidet der Server das und nicht
- * diese Funktion.
+ * als ein Betrag von null, und deshalb entscheidet der Server das und nicht diese Funktion.
  *
  * @param {Erfassungssumme | null | undefined} totals
  */
@@ -96,9 +94,8 @@ async function loadAcqModal(sn) {
 }
 
 /**
- * Neu zeichnen, ohne den Fokus zu verlieren: Das Speichern beim Verlassen
- * eines Feldes zeichnet die Tabelle neu, wenn Tab schon im nächsten Feld
- * steht — der Fokus fiel dann auf <body>, und die Tastatur war draussen.
+ * Neu zeichnen, ohne den Fokus zu verlieren: Das Speichern beim Verlassen eines Feldes zeichnet die Tabelle
+ * neu, wenn Tab schon im nächsten Feld steht — der Fokus fiel dann auf <body>, und die Tastatur war draussen.
  * @param {HTMLElement} ziel
  * @param {import('./00-escapen.js').Markup} markup
  */
@@ -119,8 +116,8 @@ function isoTag(v) {
 }
 
 /**
- * Datumsfeld mit dem Datum daneben in der Sprache der Oberfläche: Das Feld
- * selbst zeigt die Form des Browsers („06/01/2026“), nicht die der App.
+ * Datumsfeld mit dem Datum daneben in der Sprache der Oberfläche: Das Feld selbst zeigt die Form des Browsers
+ * („06/01/2026“), nicht die der App.
  * @param {string} attrs
  * @param {string} iso
  * @param {string} textId
@@ -202,10 +199,9 @@ export function renderAcqModalBody(sn, acqs, totals) {
 
   markup = html`${markup}${html`</tbody></table></div>`}`;
 
-  // Summenzeile: Der Server rechnet sie (acquisitionTotals in
-  // src/bestand/acquisitions.ts) und liefert sie als `totals` mit. Vorher stand die
-  // Rechnung hier und noch dreimal woanders — zweimal in dieser Datei, zweimal
-  // in der App, und mit verschiedenen Preisfeldern.
+  // Summenzeile: Der Server rechnet sie (acquisitionTotals in src/bestand/acquisitions.ts) und liefert sie
+  // als `totals` mit. Vorher stand die Rechnung hier und noch dreimal woanders — zweimal in dieser Datei,
+  // zweimal in der App, und mit verschiedenen Preisfeldern.
   markup = html`${markup}${acqSummary(totals)}`;
 
   setzeMitFokus(G('acq-modal-body'), markup);
@@ -239,18 +235,17 @@ async function acqSave(sn, id, field, value) {
   const d = await api('PUT', `/v1/sets/${sn}/acquisitions/${id}`, body);
   if (field === 'owner') {
     if (!d.success) { toast(d.error || t('settings.error'), 'error'); loadAcqModal(sn); return; }
-    // Nach einem Wechsel stimmt fast alles auf dem Schirm nicht mehr: Mengen,
-    // Summen, Besitzer-Plaketten. Lieber neu laden als vier Stellen einzeln
-    // nachziehen.
+    // Nach einem Wechsel stimmt fast alles auf dem Schirm nicht mehr: Mengen, Summen, Besitzer-Plaketten.
+    // Lieber neu laden als vier Stellen einzeln nachziehen.
     toast(tRaw(d.source_emptied ? 'household.move_ok' : 'household.owner_moved',
       { parts: d.parts ?? 0, figs: d.minifigs ?? 0 }), 'success');
-    // restore: Ohne das landet der Nutzer nach dem Wechsel wieder bei Seite 1;
-    // so bleiben Position und geladene Tiefe erhalten.
+    // restore: Ohne das landet der Nutzer nach dem Wechsel wieder bei Seite 1; so bleiben Position und
+    // geladene Tiefe erhalten.
     closeAcqModal(); closeModal(); loadGallery({ restore: true });
     return;
   }
-  // Der Server liefert das neu berechnete Zustands-Aggregat mit — direkt in die
-  // Galerie-Liste schreiben, damit die Kachel ohne Neuladen stimmt.
+  // Der Server liefert das neu berechnete Zustands-Aggregat mit — direkt in die Galerie-Liste schreiben,
+  // damit die Kachel ohne Neuladen stimmt.
   applySetAggregate(d.set);
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
@@ -261,14 +256,13 @@ async function acqSave(sn, id, field, value) {
   if (field === 'price') { const f = G(`acq-preis-${id}`); if (f && f !== document.activeElement) f.value = betragFuerFeld(body.purchase_price); }
   // Marktpreis-Zeilen neu holen.
   //
-  // Wird erstmals ein Kaufpreis in einem Zustand erfasst, entsteht dafür eine
-  // NEUE Zeile (der Server liefert by_condition nur für Zustände mit
-  // Erfassung). Ohne dieses Nachladen erschiene sie erst beim nächsten Öffnen
-  // des Dialogs.
+  // Wird erstmals ein Kaufpreis in einem Zustand erfasst, entsteht dafür eine NEUE Zeile (der Server liefert
+  // by_condition nur für Zustände mit Erfassung). Ohne dieses Nachladen erschiene sie erst beim nächsten
+  // Öffnen des Dialogs.
   api('GET', `/v1/sets/${sn}/price-history`).then(renderMarketRows).catch(()=>{});
 
-  // Galerie und Finanzen mitziehen: Kaufpreis und Menge wirken auf die Kachel und die Auswertung, die
-  // sonst bis zum Neuladen alt blieben. restore, damit der Wechsel nicht die gescrollte Tiefe kostet.
+  // Galerie und Finanzen mitziehen: Kaufpreis und Menge wirken auf die Kachel und die Auswertung, die sonst
+  // bis zum Neuladen alt blieben. restore, damit der Wechsel nicht die gescrollte Tiefe kostet.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#loadgallery
   loadGallery({ restore: true });
   loadFinance();
@@ -289,9 +283,8 @@ async function acqSave(sn, id, field, value) {
     loadAcqModal(sn);
     return;
   }
-  // Zusammenfassung im Detail-Dialog nachziehen. Das Zustands-Aggregat kommt
-  // inzwischen aus der PUT-Antwort (applySetAggregate oben) — hier wird nur
-  // noch die Erfassungsliste neu gerendert.
+  // Zusammenfassung im Detail-Dialog nachziehen. Das Zustands-Aggregat kommt inzwischen aus der PUT-Antwort
+  // (applySetAggregate oben) — hier wird nur noch die Erfassungsliste neu gerendert.
   if (field === 'cond') {
     api('GET', `/v1/sets/${sn}/acquisitions`).then(ad => {
       if (!ad?.success) return;
@@ -334,16 +327,16 @@ async function acqDelete(sn, id) {
   // Refresh compact summary in set-detail modal
   const dvEl = G('m-acq-summary');
   if (dvEl) setzeHtml(dvEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, sn))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
-  // Wie in acqSave(): Eine gelöschte Erfassung verändert Bestand und Wert —
-  // und lässt eine Zustands-Zeile verschwinden, wenn es die letzte war.
+  // Wie in acqSave(): Eine gelöschte Erfassung verändert Bestand und Wert — und lässt eine Zustands-Zeile
+  // verschwinden, wenn es die letzte war.
   api('GET', `/v1/sets/${sn}/price-history`).then(renderMarketRows).catch(()=>{});
   loadGallery({ restore: true });
   loadFinance();
 }
 
 /**
- * Preis einer Erfassung in ihrer eigenen Währung. Ein Marktpreis, den der
- * Server eingesetzt hat, ist kein bezahlter Betrag und trägt deshalb „≈“.
+ * Preis einer Erfassung in ihrer eigenen Währung. Ein Marktpreis, den der Server eingesetzt hat, ist kein
+ * bezahlter Betrag und trägt deshalb „≈“.
  * @param {{ currency?: string | null, price_estimated?: boolean }} a
  * @param {number | null | undefined} betrag
  */
@@ -420,8 +413,8 @@ function renderManAcqSummary(acqs, type, id, colorId) {
 function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   const rows = [];
 
-  // Qty stepper — die Stückzahl kommt aus derselben Serversumme wie die
-  // Summenzeile darunter (`totals`), nicht aus einer eigenen Schleife.
+  // Qty stepper — die Stückzahl kommt aus derselben Serversumme wie die Summenzeile darunter (`totals`),
+  // nicht aus einer eigenen Schleife.
   const totalQty = ad?.totals?.priced_rows !== undefined && acqs.length
     ? ad.totals.quantity : item.quantity;
   rows.push(detailZeile(t('detail.qty'), html`
@@ -438,9 +431,9 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
     `));
   }
 
-  // Die Farbe eines Teils ist änderbar, für den Fall, dass sie falsch geladen wurde — gerade ein Teil
-  // ohne Farbname braucht die Zeile. Dieselbe Liste wie beim Erfassen (loadBrickColors), nachgeladen
-  // nach dem Zeichnen.
+  // Die Farbe eines Teils ist änderbar, für den Fall, dass sie falsch geladen wurde — gerade ein Teil ohne
+  // Farbname braucht die Zeile. Dieselbe Liste wie beim Erfassen (loadBrickColors), nachgeladen nach dem
+  // Zeichnen.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#if-2
   if (type === 'part') {
     const swatch = html`<span id="man-farb-punkt" data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`;
@@ -454,8 +447,7 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   }
 
   // Lagerort auch im Detail der manuell erfassten Teile und Figuren: Dasselbe Bedienelement und derselbe
-  // Speicherweg wie bei Teilen aus Sets, nur die Adresse hängt am Typ. Die Ortsliste gehört dem
-  // Besitzer.
+  // Speicherweg wie bei Teilen aus Sets, nur die Adresse hängt am Typ. Die Ortsliste gehört dem Besitzer.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#ladeortauswahl-2
   ladeOrtAuswahl(item?.user_id != null ? [item.user_id] : []).catch(() => {});
   rows.push(detailZeile(t('detail.storage'),
@@ -473,8 +465,8 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
          wertId: 'man-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' }));
 
-  // Preisverlauf wie im Set-Detail, beide Zustände in einem Diagramm, der Marktpreis je Zustand darüber.
-  // Bis genug Punkte gesammelt sind, bleibt das Diagramm leer — das ist erwartet.
+  // Preisverlauf wie im Set-Detail, beide Zustände in einem Diagramm, der Marktpreis je Zustand darüber. Bis
+  // genug Punkte gesammelt sind, bleibt das Diagramm leer — das ist erwartet.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#preisverlauf-wie-im-set-detail-beide-zus
   rows.push(html`<div id="man-market-rows"></div>`);
 
@@ -489,15 +481,14 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
 /** Preisverlauf und Marktpreise nachladen, ohne den Dialog aufzuhalten.
  * @param {string} type @param {string} id @param {number | string} colorId */
 function ladeManPreisverlauf(type, id, colorId) {
-  // Derselbe Renderer wie beim Set — die Endpunkte liefern
-  // dieselbe Diagrammstruktur (src/finanzen/chartData.ts), also braucht es hier keine
-  // zweite Zeichenlogik.
+  // Derselbe Renderer wie beim Set — die Endpunkte liefern dieselbe Diagrammstruktur
+  // (src/finanzen/chartData.ts), also braucht es hier keine zweite Zeichenlogik.
   const histUrl = type === 'fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/price-history`
     : `/v1/parts/${encodeURIComponent(id)}/${colorId || 0}/price-history`;
   api('GET', histUrl).then(ph => {
-    // Dieselbe Funktion wie im Set-Detail — die Endpunkte liefern dieselbe
-    // by_condition-Struktur, also braucht es keine zweite Darstellungslogik.
+    // Dieselbe Funktion wie im Set-Detail — die Endpunkte liefern dieselbe by_condition-Struktur, also
+    // braucht es keine zweite Darstellungslogik.
     renderMarketRows(ph, 'man-market-rows');
     const el = G('man-chart-content');
     if (!el) return;
@@ -527,28 +518,26 @@ export async function openManDetail(type, id, colorId) {
     : manuelleTeile().find(p => p.part_number === id && (p.color_id||0) === ziel.colorId);
 
   let item = fromCache();
-  // Die Caches füllen die Reiter Teile und Minifiguren. Aus der Finanztabelle
-  // heraus ist der passende Reiter oft nie geöffnet worden — dann war der
-  // Eintrag nicht im Cache und der Dialog ging stillschweigend GAR NICHT auf.
-  // Also einmal nachladen und erneut suchen.
+  // Die Caches füllen die Reiter Teile und Minifiguren. Aus der Finanztabelle heraus ist der passende Reiter
+  // oft nie geöffnet worden — dann war der Eintrag nicht im Cache und der Dialog ging stillschweigend GAR
+  // NICHT auf. Also einmal nachladen und erneut suchen.
   if (!item) {
     if (type === 'fig') await loadManualFigsTable().catch(() => {});
     else                await loadManualParts().catch(() => {});
     item = fromCache();
   }
-  // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die
-  // Eintraege aller Konten; ohne diese Angabe schrieb der Server in die Zeile
-  // des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte des
-  // Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher
-  // 99|9), und die Antwort sagte „success".
+  // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die Eintraege aller Konten; ohne diese
+  // Angabe schrieb der Server in die Zeile des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte
+  // des Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher 99|9), und die Antwort
+  // sagte „success".
   ziel.owner = item?.user_id ?? undefined;
   if (!item) return;
 
   G('man-detail-tit').textContent = String(item.fig_name || item.part_name || id);
   G('man-detail-sub').textContent = id + (item.color_name ? ' · ' + colorName(String(item.color_name)) : '');
 
-  // Volle Auflösung über den Server-Proxy, nicht direkt vom CDN: Fremde Bildadressen lädt der Browser
-  // nie selbst (Hotlink-Schutz, Cache).
+  // Volle Auflösung über den Server-Proxy, nicht direkt vom CDN: Fremde Bildadressen lädt der Browser nie
+  // selbst (Hotlink-Schutz, Cache).
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#rawimgsrc
   const rawImgSrc = item.image_local || item.image_url || '';
   const imgSrc = rawImgSrc ? imgUrl(fullUrl(rawImgSrc), false) : '';
@@ -584,9 +573,8 @@ export async function openManDetail(type, id, colorId) {
 }
 
 /**
- * Die Farbliste getrennt vom Zeichnen füllen: Der erste Abruf geht zu Rebrickable, der Dialog steht
- * derweil offen. Scheitert er, bleibt die aktuelle Farbe als einzige Wahl — besser als eine Liste ohne
- * sie.
+ * Die Farbliste getrennt vom Zeichnen füllen: Der erste Abruf geht zu Rebrickable, der Dialog steht derweil
+ * offen. Scheitert er, bleibt die aktuelle Farbe als einzige Wahl — besser als eine Liste ohne sie.
  * Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#fuellefarbwahl
  * @param {number} aktuell
  */
@@ -595,24 +583,22 @@ async function fuelleFarbwahl(aktuell) {
   if (!sel) return;
   const farben = await loadBrickColors();
   if (!farben?.length || !G('man-farb-wahl')) return;
-  // data-name bleibt der englische Rebrickable-Name — er reist als
-  // color_name mit und wird für BrickLink-Abgleiche gebraucht. Übersetzt wird
-  // nur der sichtbare Text, mit derselben Funktion wie im Teile-Reiter
-  // (renderColorDropdown in 06-minifigs.js).
+  // data-name bleibt der englische Rebrickable-Name — er reist als color_name mit und wird für
+  // BrickLink-Abgleiche gebraucht. Übersetzt wird nur der sichtbare Text, mit derselben Funktion wie im
+  // Teile-Reiter (renderColorDropdown in 06-minifigs.js).
   setzeHtml(sel, farben.map(c =>
     html`${html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" `}${html`data-hex="${hexZiffern(c.hex)}"${Number(c.id) === Number(aktuell) ? ' selected' : ''}>`}${html`${colorName(c.name)}</option>`}`));
-  // Kennt die Liste die heutige Farbe nicht (ältere Bestände, eine Farbe, die
-  // Rebrickable zurückgezogen hat), wäre sie nach dem Ersetzen verschwunden
-  // und die Auswahl stünde auf einer FREMDEN Farbe — ohne dass jemand etwas
-  // geändert hätte. Dann kommt sie vorne wieder dazu.
+  // Kennt die Liste die heutige Farbe nicht (ältere Bestände, eine Farbe, die Rebrickable zurückgezogen hat),
+  // wäre sie nach dem Ersetzen verschwunden und die Auswahl stünde auf einer FREMDEN Farbe — ohne dass jemand
+  // etwas geändert hätte. Dann kommt sie vorne wieder dazu.
   if (!farben.some(c => Number(c.id) === Number(aktuell))) {
     fuegeHtmlEin(sel, 'afterbegin', html`<option value="${Number(aktuell) || 0}" selected>${String(aktuell)}</option>`);
   }
 }
 
 /**
- * Die Farbe eines manuellen Teils ändern (die Regeln stehen in src/teile/teilFarbeAendern.ts). Danach
- * öffnet der Dialog mit der neuen Farbe: Sie ist Teil der Adresse, der alte Dialog zeigte ins Leere.
+ * Die Farbe eines manuellen Teils ändern (die Regeln stehen in src/teile/teilFarbeAendern.ts). Danach öffnet
+ * der Dialog mit der neuen Farbe: Sie ist Teil der Adresse, der alte Dialog zeigte ins Leere.
  * Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#speichereteilfarbe
  * @this {unknown}
  */
@@ -630,9 +616,8 @@ async function speichereTeilFarbe() {
     { color_id: neu, color_name: wahl?.dataset.name || null, color_hex: wahl?.dataset.hex || null });
   if (!d?.success) { toast(d?.error || tRaw('settings.error'), 'error'); return; }
   // `bild` sagt, woher das Bild der neuen Farbe kommt (src/teile/teilFarbeAendern.ts).
-  // null heisst: keines gefunden — dann steht nach dem Neuöffnen der
-  // Platzhalter da, und genau das war Marcos Befund. Die Meldung sagt es,
-  // statt ihn ein zweites Mal vor einem leeren Platz stehen zu lassen.
+  // null heisst: keines gefunden — dann steht nach dem Neuöffnen der Platzhalter da, und genau das war Marcos
+  // Befund. Die Meldung sagt es, statt ihn ein zweites Mal vor einem leeren Platz stehen zu lassen.
   if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
   else                 toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
@@ -652,9 +637,8 @@ G('man-detail-modal').addEventListener('click', e => e.target === e.currentTarge
 function manQtyChange(delta) {
   const inp = G('man-det-qty');
   if (!inp) return;
-  // parseInt auf delta: Seit der Umstellung auf data-arg kommt der Wert als
-  // Zeichenkette ("1"/"-1"). Ohne Umwandlung wäre 1 + "1" die Zeichenkette
-  // "11" — aus einer 1 wurde beim Klick auf + eine 11.
+  // parseInt auf delta: Seit der Umstellung auf data-arg kommt der Wert als Zeichenkette ("1"/"-1"). Ohne
+  // Umwandlung wäre 1 + "1" die Zeichenkette "11" — aus einer 1 wurde beim Klick auf + eine 11.
   inp.value = String(Math.max(1, parseInt(inp.value || '1') + (parseInt(delta) || 0)));
   manQtySave();
 }
@@ -670,9 +654,8 @@ async function manQtySave() {
     await updateManualPart(id, colorId, { quantity: qty }, owner);
   }
 
-  // Die Erfassungsliste nach jeder Mengenänderung neu laden, in beide Richtungen: Beim Verringern
-  // entfernt der Server Erfassungen (LIFO), und nur beim Erhöhen neu zu laden zeigte gelöschte Einträge
-  // weiter an.
+  // Die Erfassungsliste nach jeder Mengenänderung neu laden, in beide Richtungen: Beim Verringern entfernt
+  // der Server Erfassungen (LIFO), und nur beim Erhöhen neu zu laden zeigte gelöschte Einträge weiter an.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#acqurl2
   const acqUrl2 = type==='fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
@@ -744,8 +727,8 @@ async function loadManAcqModal(type, id, colorId) {
     ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
     : `/v1/parts/${encodeURIComponent(id)}/${colorId}/acquisitions`;
   const ad = await api('GET', url).catch(()=>null);
-  // Wie im Set-Dialog: Ohne Mitgliederliste und ohne owner_user_id wüsste die
-  // Eigentümer-Auswahl nicht, worauf sie steht.
+  // Wie im Set-Dialog: Ohne Mitgliederliste und ohne owner_user_id wüsste die Eigentümer-Auswahl nicht,
+  // worauf sie steht.
   if (!_householdMembers.length) {
     const hm = await api('GET', '/v1/sets/household-members').catch(() => null);
     _householdMembers = hm?.members || [];
@@ -839,11 +822,10 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
     else if (field==='qty') body.quantity = Math.max(1,parseInt(value)||1);
     else if (field==='date') body.date = value;
     else if (field==='owner') {
-      // Eigentümerwechsel = Verschieben genau dieser Kaufpreis-Zeile. Ein
-      // manuell erfasstes Teil hat keinen Inhalt — es wandern nur Menge und
-      // Erfassung (src/sets/setMove.ts, moveManualAcquisition). KEIN
-      // from_user_id: Den Absender ermittelt der Server aus der Zeile selbst
-      // (acquisitionMoveSource) — hier stand der Betrachter, siehe acqSave().
+      // Eigentümerwechsel = Verschieben genau dieser Kaufpreis-Zeile. Ein manuell erfasstes Teil hat keinen
+      // Inhalt — es wandern nur Menge und Erfassung (src/sets/setMove.ts, moveManualAcquisition). KEIN
+      // from_user_id: Den Absender ermittelt der Server aus der Zeile selbst (acquisitionMoveSource) — hier
+      // stand der Betrachter, siehe acqSave().
       body.owner_user_id = parseInt(value);
     }
     else body.condition = value;
@@ -855,8 +837,8 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
     }
     zeigeGespeichert(acqId);
     if (field==='owner') {
-      // Danach stimmt fast nichts mehr auf dem Schirm: Mengen, Summen,
-      // Besitzer-Plaketten. Lieber neu laden als vier Stellen nachziehen.
+      // Danach stimmt fast nichts mehr auf dem Schirm: Mengen, Summen, Besitzer-Plaketten. Lieber neu laden
+      // als vier Stellen nachziehen.
       toast(tRaw('household.owner_moved', { parts: 0, figs: 0 }), 'success');
       closeAcqModal(); closeManDetail();
       if (type==='fig') loadManualFigsTable(); else loadManualParts();
@@ -870,8 +852,8 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
     if (type==='fig') loadManualFigsTable();
     else loadManualParts();
   } catch(e) { console.error('[manAcqSave]', e); toast(tRaw('settings.error'),'error'); }
-  // Marktpreis-Zeilen nachladen: Wird erstmals ein Kaufpreis in einem Zustand
-  // erfasst, entsteht dafür eine neue Zeile.
+  // Marktpreis-Zeilen nachladen: Wird erstmals ein Kaufpreis in einem Zustand erfasst, entsteht dafür eine
+  // neue Zeile.
   const mi = _manItem;
   if (mi) {
     const u = mi.type === 'fig'
@@ -916,8 +898,7 @@ async function manAcqDelete(type, id, colorId, acqId) {
 
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
-// Die elf Handler dieser beiden Fenster meldete früher js/07-admin.js
-// an — obwohl sie hier umgesetzt werden.
+// Die elf Handler dieser beiden Fenster meldete früher js/07-admin.js an — obwohl sie hier umgesetzt werden.
 
 registerActions({
   acqDelete,

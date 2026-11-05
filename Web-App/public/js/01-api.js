@@ -3,13 +3,13 @@ import { melde } from './00-ereignisse.js';
 import { merkeSitzungsende } from './01-meldungen.js';
 import { antwortErhalten, zeigeVerbindung } from './01-verbindung.js';
 
-// Die Hülle um die eigene API. Jeder Aufruf geht hierüber, damit Sprache, Verbindungsband,
-// Sitzungsende und Zwischenspeicher für alle gleich gelten.
+// Die Hülle um die eigene API. Jeder Aufruf geht hierüber, damit Sprache, Verbindungsband, Sitzungsende und
+// Zwischenspeicher für alle gleich gelten.
 
 /**
- * Jeder Weg zur eigenen API läuft hierüber: Sprache, Verbindungsband und das
- * Ende der Sitzung (401) gelten dann auch für Uploads, Downloads und Ströme.
- * Wirft nur bei Netzfehler oder Abbruch; den Status prüft der Aufrufer.
+ * Jeder Weg zur eigenen API läuft hierüber: Sprache, Verbindungsband und das Ende der Sitzung (401) gelten
+ * dann auch für Uploads, Downloads und Ströme. Wirft nur bei Netzfehler oder Abbruch; den Status prüft der
+ * Aufrufer.
  * @param {string} method
  * @param {string} path  ohne `/api`, z. B. `/v1/sets`
  * @param {{ body?: FormData | object | null, signal?: AbortSignal, headers?: Record<string, string>, cache?: RequestCache }} [o]
@@ -53,11 +53,10 @@ export async function apiDaten(method, path) {
 }
 
 /**
- * Aufruf der eigenen API mit JSON-Antwort. Liefert immer ein Objekt, nie eine
- * Ausnahme: Jeder Fehlschlag (Netz, Proxy-Fehlerseite, Status ohne `success`)
- * kommt als `{ success: false, error, status }`, wie vom Server. Den Typ der
- * Antwort liefert der Vertrag (frontend-typen/api.d.ts), wenn der Pfad als
- * Literal oder Vorlage dasteht. FormData geht als Upload, alles andere als JSON.
+ * Aufruf der eigenen API mit JSON-Antwort. Liefert immer ein Objekt, nie eine Ausnahme: Jeder Fehlschlag
+ * (Netz, Proxy-Fehlerseite, Status ohne `success`) kommt als `{ success: false, error, status }`, wie vom
+ * Server. Den Typ der Antwort liefert der Vertrag (frontend-typen/api.d.ts), wenn der Pfad als Literal oder
+ * Vorlage dasteht. FormData geht als Upload, alles andere als JSON.
  * @template {string} M
  * @template {string} P
  * @param {M} method
@@ -97,8 +96,8 @@ export async function api(method, path, body, o = {}) {
 }
 
 /**
- * Meldetext für eine Ausnahme aus fetch(). Der Browser sagt „Failed to
- * fetch“ oder „NetworkError…“; der Nutzer soll lesen, was es heisst.
+ * Meldetext für eine Ausnahme aus fetch(). Der Browser sagt „Failed to fetch“ oder „NetworkError…“; der
+ * Nutzer soll lesen, was es heisst.
  * @param {unknown} e
  */
 export function fehlerMeldung(e) {
@@ -109,8 +108,8 @@ export function fehlerMeldung(e) {
 }
 
 // ── Zwischenspeicher für Lesezugriffe ──────────────────────────────────────
-// Ohne Netz zeigen Listen den zuletzt geladenen Stand dieses Tabs statt eines
-// Fehlers. sessionStorage: nur dieser Tab, weg beim Abmelden (leereZwischenspeicher).
+// Ohne Netz zeigen Listen den zuletzt geladenen Stand dieses Tabs statt eines Fehlers. sessionStorage: nur
+// dieser Tab, weg beim Abmelden (leereZwischenspeicher).
 const ZS = 'bim_api:';
 
 const ZS_PFADE = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
