@@ -869,18 +869,37 @@ class BildschirmFotoVariantenTest {
         override fun setCatalogSort(sort: String) = Unit
     }
 
-    private fun katalogFoto(dunkel: Boolean, geraet: String) {
-        val zustand = ch.brickinventoryapp.ui.CatalogUiState(loadedPages = mapOf(1 to katalogSets), total = katalogSets.size)
-        zeige("katalog", dunkel = dunkel, geraet = geraet) {
+    private fun katalogFoto(
+        dunkel: Boolean, geraet: String, name: String = "katalog", schrift: Float = 1f,
+        zustand: ch.brickinventoryapp.ui.CatalogUiState =
+            ch.brickinventoryapp.ui.CatalogUiState(loadedPages = mapOf(1 to katalogSets), total = katalogSets.size),
+    ) {
+        zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
             ch.brickinventoryapp.ui.screens.CatalogScreen(zustand, serverUrl = "", katalog = KeineKatalogAktionen,
                 imageLoader = bilder, onSetClick = {})
         }
         anhalten()
-        foto("katalog", dunkel = dunkel, geraet = geraet)
+        foto(name, dunkel = dunkel, geraet = geraet)
     }
 
     @Test fun katalogTelefon() = katalogFoto(false, "telefon")
     @Test fun katalogTabletDunkel() = katalogFoto(true, "tablet")
+    @Test fun katalogSchrift200() = katalogFoto(false, "telefon", "katalog-schrift200", 2f)
+    @Test fun katalogLeer() = katalogFoto(false, "telefon", "katalog-leer", zustand = ch.brickinventoryapp.ui.CatalogUiState())
+    @Test fun katalogFehler() = katalogFoto(true, "telefon", "katalog-fehler",
+        zustand = ch.brickinventoryapp.ui.CatalogUiState(error = "Serverfehler (500)"))
+
+    @Test
+    fun merklisteFehler() {
+        welt.pfade.codes["/api/v1/wanted"] = 500
+        val vm = welt.merkliste().also { it.ladeMerkliste() }
+        zeige("merkliste-fehler", bereit = { vm.merklisteState.value.let { !it.laedt && it.fehler != null } },
+            zustand = { vm.merklisteState.value }) {
+            MerklisteRoute(vm = vm, imageLoader = bilder, onScan = {}, onOeffnenEinzeln = { _, _ -> })
+        }
+        anhalten()
+        foto("merkliste-fehler")
+    }
 
     @Test
     fun teileLeer() {
