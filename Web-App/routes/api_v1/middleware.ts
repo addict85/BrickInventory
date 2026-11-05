@@ -32,7 +32,7 @@ const OEFFENTLICH: ReadonlyArray<readonly [string, RegExp]> = [
   ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
 ];
 
-/** Das Startpasswort stand im Protokoll: Bis es ersetzt ist, geht nur der Wechsel selbst. */
+/** Start- oder vom Verwalter vergebenes Passwort: Bis es ersetzt ist, geht nur der Wechsel. */
 const VOR_DEM_WECHSEL = /^\/auth\/(change-password|logout)$/;
 /** Ein Verwalter ohne zweiten Faktor kommt nur bis zu dessen Einrichtung. */
 const ZUR_EINRICHTUNG: ReadonlyArray<readonly [string, RegExp]> = [

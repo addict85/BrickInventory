@@ -10,6 +10,15 @@
 # auf einen Raspberry Pi 4 mit 4 GB; anpassen in .env (APP_MEM_LIMIT, …).
 # ════════════════════════════════════════════════════════════════════════════════
 
+# Docker-Protokolle mit Grösse und Zahl begrenzt: Ohne Grenze wüchse json-file
+# bis die Platte voll ist, und Fehlanmeldungen samt Adressen und das
+# Startpasswort blieben für die Lebensdauer des Containers liegen.
+x-protokoll: &protokoll
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
 
   # ── PostgreSQL Datenbank ─────────────────────────────────────────────────────
@@ -20,6 +29,7 @@ services:
     # „PostgreSQL 18“; ./pgdata (16) bleibt als Rückfallebene liegen.
     image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
     container_name: brickinventory-db
+    logging: *protokoll
     restart: unless-stopped
     environment:
       POSTGRES_DB:       brickinventory
@@ -42,6 +52,11 @@ services:
       - no-new-privileges:true
     cap_drop: [ALL]
     cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
+    # Schreiben nur in die Daten und den Socket-Ordner.
+    read_only: true
+    tmpfs:
+      - /var/run/postgresql:rw,nosuid,nodev,size=16m
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
     volumes:
       - ./pgdata18:/var/lib/postgresql
       - ./postgres/app-rolle.sh:/docker-entrypoint-initdb.d/10-app-rolle.sh:ro
@@ -51,18 +66,19 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+    # Nur das interne Netz: Die Datenbank braucht keinen Weg nach draussen.
     networks:
-      - brickinventory-net
-      - pgweb-net
+      - db-net
 
   # ── Datenbankrolle der App ───────────────────────────────────────────────────
-  # `brickinventory` ist der Superuser der Datenbank. App, Jobs und pgweb
+  # `brickinventory` ist der Superuser der Datenbank. App und Jobs
   # verbinden sich als `brickinventory_app` ohne Superuser-Rechte, der Datenbank
   # und Tabellen gehören. Dieser Dienst legt die Rolle bei jedem `up` an bzw.
   # richtet sie nach und endet dann (UPGRADE.md, Abschnitt 29).
   db-rolle:
     image: postgres:18-alpine@sha256:10a5c69a83035ab5239f5620d708520e8b28f5aa1f2b20143e6024532edadfb5
     container_name: brickinventory-db-rolle
+    logging: *protokoll
     restart: "no"
     user: postgres
     security_opt:
@@ -82,13 +98,13 @@ services:
       PGDATABASE: brickinventory
       PGPASSWORD_FILE: /run/secrets/db_password
       DB_APP_PASSWORD_FILE: /run/secrets/db_app_password
-      # Leserolle brickinventory_lesen für pgweb; leere Datei = Rolle ohne Anmeldung.
+      # Leserolle brickinventory_lesen (psql, README „Datenbank ansehen“); leere Datei = Rolle ohne Anmeldung.
       PGWEB_DB_PASSWORD_FILE: /run/secrets/pgweb_db_password
     secrets: [db_password, db_app_password, pgweb_db_password]
     volumes:
       - ./postgres/app-rolle.sh:/rolle/app-rolle.sh:ro
     networks:
-      - brickinventory-net
+      - db-net
 
   # ── Datenschlüssel anlegen ───────────────────────────────────────────────────
   # Legt ./schluessel/datenschluessel beim ersten Start an (32 Zufallsbyte,
@@ -100,6 +116,7 @@ services:
     image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
     pull_policy: missing
     container_name: brickinventory-schluessel
+    logging: *protokoll
     restart: "no"
     user: root
     network_mode: none
@@ -128,6 +145,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: brickinventory-app
+    logging: *protokoll
     restart: unless-stopped
     # Kleiner init-Prozess als PID 1: reicht Signale weiter und räumt
     # verwaiste Kindprozesse (Bildwerkzeuge, PDF) ab.
@@ -146,7 +164,7 @@ services:
     cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
     depends_on:
       db-rolle:
         condition: service_completed_successfully
@@ -191,6 +209,8 @@ services:
       # Legt der erste Start an. Ältere Installationen mit data/.datenschluessel
       # laufen weiter und bekommen beim Start den Umzug erklärt (UPGRADE.md).
       DATA_KEY_FILE: /app/schluessel/datenschluessel
+      # Nur während eines Wechsels vorhanden (scripts/datenschluessel-wechseln.sh).
+      DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
       # Passkeys der Android-App und /.well-known/assetlinks.json (.env.example).
       PASSKEY_ANDROID_ZERTIFIKATE: ${PASSKEY_ANDROID_ZERTIFIKATE:-}
       PASSKEY_ANDROID_PAKET: ${PASSKEY_ANDROID_PAKET:-}
@@ -232,6 +252,7 @@ services:
       start_period: 20s
     networks:
       - brickinventory-net
+      - db-net
 
   # ── Hintergrundarbeit ────────────────────────────────────────────────────────
   # Derselbe Bau wie `app`, aber ROLLE=jobs: arbeitet die Auftragstabelle ab
@@ -243,6 +264,7 @@ services:
     image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
     pull_policy: missing
     container_name: brickinventory-jobs
+    logging: *protokoll
     restart: unless-stopped
     init: true
     mem_limit: ${JOBS_MEM_LIMIT:-1g}
@@ -255,7 +277,7 @@ services:
     cap_add: [CHOWN, DAC_OVERRIDE, SETUID, SETGID]
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev,size=256m
     depends_on:
       db-rolle:
         condition: service_completed_successfully
@@ -269,6 +291,7 @@ services:
     environment:
       ROLLE: jobs
       DATA_KEY_FILE: /app/schluessel/datenschluessel
+      DATA_KEY_ALT_FILE: /app/schluessel/datenschluessel.alt
       PGUSER: brickinventory_app
       PGPASSWORD_FILE: /run/secrets/db_app_password
       # Für Links in Mails (Preisalarm), die der Job-Prozess verschickt.
@@ -287,6 +310,7 @@ services:
       start_period: 60s
     networks:
       - brickinventory-net
+      - db-net
 
   # ── Caddy — HTTPS vor der App ────────────────────────────────────────────────
   #
@@ -298,9 +322,15 @@ services:
   # Ohne einen davon startet Caddy nicht. Port 80 leitet um und liefert nur
   # /ca.crt im Klartext; den Fingerabdruck nennt das Protokoll zum Abgleich.
   caddy:
-    # Fest per Digest wie pgweb; Renovate (docker-compose) schlägt neue Fassungen vor.
-    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+    # Hier gebaut (Dockerfile.caddy: offizielle Basis per Digest, go-jose
+    # nachgezogen); der erste `up` nach einem Update baut einige Minuten.
+    image: brickinventory-caddy:2.11.8
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
     container_name: brickinventory-caddy
+    logging: *protokoll
     restart: unless-stopped
     mem_limit: ${CADDY_MEM_LIMIT:-256m}
     pids_limit: 128
@@ -312,7 +342,7 @@ services:
     cap_add: [NET_BIND_SERVICE]
     read_only: true
     tmpfs:
-      - /tmp
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
     depends_on:
       - app
     # Nur root.crt verlässt Caddy: Die Schleife kopiert es in das Volume
@@ -388,66 +418,6 @@ services:
         # Genau diese Adresse steht in TRUST_PROXY der App.
         ipv4_address: 172.28.73.10
 
-  # ── pgweb — Datenbank im Browser ansehen (OPTIONAL) ──────────────────────────
-  # Nur auf Anforderung (Profil tools): docker compose --profile tools up -d pgweb,
-  # danach http://localhost:8081, von einem anderen Rechner per
-  # ssh -L 8081:127.0.0.1:8081. Wer angemeldet ist, liest die Allowlist der
-  # Leserolle (postgres/app-rolle.sh); deshalb nur an 127.0.0.1 gebunden.
-  pgweb:
-    # Fest per Digest: Ein Werkzeug mit Zugang zur ganzen Datenbank soll nicht
-    # unbemerkt durch ein umgehängtes Tag ersetzt werden.
-    image: sosedoff/pgweb:0.17.0@sha256:a5256d416e2e8b92d69a4459058e3eca33a9f075d8325491644411d0bc3bd70b
-    container_name: brickinventory-pgweb
-    # Der Benutzer pgweb des Images (uid 1000), ausdrücklich: Ein neues Image
-    # mit USER root liefe sonst still als root. Kein Schreibzugriff ausser /tmp,
-    # keine Capability.
-    user: "1000:1000"
-    read_only: true
-    tmpfs:
-      - /tmp
-    security_opt:
-      - no-new-privileges:true
-    cap_drop: [ALL]
-    profiles: ["tools"]
-    restart: "no"          # bewusst nicht "unless-stopped": Werkzeug auf Zeit
-    mem_limit: 256m
-    pids_limit: 64
-    cpus: 0.5
-    depends_on:
-      db-rolle:
-        condition: service_completed_successfully
-    environment:
-      HOME: /tmp
-      # HTTP-Basic-Anmeldung von pgweb; das Passwort steht in
-      # ./geheimnisse/pgweb_password (scripts/geheimnisse-einrichten.sh mit PGWEB=ja).
-      PGWEB_AUTH_USER: ${PGWEB_USER:-pgweb}
-    secrets: [pgweb_password, pgweb_db_password]
-    # Eine Leserolle mit Spalten-Allowlist (postgres/app-rolle.sh), weder
-    # Superuser noch App: --readonly lässt sich per SET TRANSACTION umgehen.
-    # --lock-session: nur zu dieser Datenbank, nicht zu anderen Hosts im Netz.
-    # Die Passwörter kommen aus Dateien und stehen so nicht in `docker inspect`.
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        PGWEB_AUTH_PASS=$$(cat /run/secrets/pgweb_password 2>/dev/null || true)
-        lesen=$$(cat /run/secrets/pgweb_db_password 2>/dev/null || true)
-        if [ -z "$$PGWEB_AUTH_PASS" ] || [ -z "$$lesen" ]; then
-          echo "pgweb: Passwörter fehlen - PGWEB=ja sh scripts/geheimnisse-einrichten.sh, dann docker compose up -d db-rolle (UPGRADE.md, Abschnitt 33)." >&2
-          exit 1
-        fi
-        case "$$lesen" in
-          *[!A-Za-z0-9._~-]*) echo "pgweb: ./geheimnisse/pgweb_db_password nur aus Buchstaben, Ziffern und ._~- (Teil einer Adresse)." >&2; exit 1 ;;
-        esac
-        export PGWEB_AUTH_PASS PGWEB_DATABASE_URL="postgres://brickinventory_lesen:$$lesen@postgres:5432/brickinventory?sslmode=disable"
-        exec /usr/bin/pgweb --bind=0.0.0.0 --listen=8081 --readonly --lock-session
-    ports:
-      - "127.0.0.1:8081:8081"
-    # Ein eigenes Netz nur mit postgres: app, jobs und caddy erreichen pgweb
-    # nicht, pgweb erreicht sie nicht.
-    networks:
-      - pgweb-net
-
 volumes:
   # Allein das Wurzelzertifikat der CA, von Caddy geschrieben, von der App gelesen.
   ca-wurzel:
@@ -465,8 +435,6 @@ secrets:
     file: ./geheimnisse/db_app_password
   pgweb_db_password:
     file: ./geheimnisse/pgweb_db_password
-  pgweb_password:
-    file: ./geheimnisse/pgweb_password
 
 networks:
   # Festes Netz: Ein Reverse-Proxy davor bekommt darin eine feste Adresse
@@ -477,7 +445,8 @@ networks:
     ipam:
       config:
         - subnet: 172.28.73.0/24
-  # Nur postgres und pgweb. Nicht `internal`: Docker veröffentlicht sonst den
-  # Port 127.0.0.1:8081 nicht.
-  pgweb-net:
+  # Nur postgres, db-rolle, app und jobs, ohne Weg nach draussen: Die Datenbank
+  # braucht keinen, und ein Fehler in ihr erreicht so kein fremdes Ziel.
+  db-net:
     driver: bridge
+    internal: true

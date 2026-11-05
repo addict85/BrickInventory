@@ -1857,3 +1857,95 @@ migriert beim Start, und der Katalog-Import arbeitet mit Schattentabellen;
 beides braucht Eigentümerrechte. Eine getrennte Migrationsrolle verlangt einen
 eigenen Migrationsdienst und einen umgebauten Import. Das kommt in einer
 eigenen Runde mit Anleitung.
+
+## 43. Runde 17 – Betrieb ohne NODE_ENV, Caddy selbst gebaut, pgweb entfernt
+
+**Für jeden Docker-Betreiber einmal zu tun:** nach dem Update
+`docker compose up -d`. Der erste Lauf baut Caddy (Punkt 1) und braucht dafür
+einige Minuten, Netz zu proxy.golang.org und gut 1 GB freien Speicher.
+
+**1. Caddy entsteht auf dem Rechner (`Dockerfile.caddy`)**
+
+Die offizielle Fassung von Caddy brachte Go-Module mit bekannten Lücken mit
+(go-jose), und Caddy ist der einzige Dienst mit offenen Ports. `compose.yaml`
+baut deshalb `brickinventory-caddy:2.11.8` aus `Dockerfile.caddy`: Bau mit
+`xcaddy` im offiziellen Builder-Image, Laufzeit das offizielle Alpine-Image,
+beide per Digest. Renovate schlägt neue Digests vor; ein neuer Bau entsteht
+mit `docker compose build caddy && docker compose up -d caddy`.
+
+**2. pgweb ist entfernt**
+
+pgweb lief auf Debian 11 ohne Pflege mit über 30 hingenommenen Lücken.
+`docker compose --profile tools up -d pgweb` gibt es nicht mehr. Nachsehen
+geht mit `psql` als Leserolle (README.md, „Datenbank ansehen“). Die Datei
+`./geheimnisse/pgweb_password` wird nicht mehr gebraucht und kann weg;
+`pgweb_db_password` bleibt (Passwort der Leserolle). `PGWEB_USER` und
+`PGWEB_PASSWORD` aus `.env` entfernen.
+
+**3. Netze, tmpfs, Protokolle (nichts zu tun)**
+
+- Postgres hängt nur noch im internen Netz `db-net` ohne Weg nach draussen,
+  app, jobs und db-rolle zusätzlich darin. Postgres läuft `read_only`
+  (Daten in `./pgdata18`, Socket als tmpfs).
+- Jedes `/tmp` ist ein begrenztes tmpfs ohne Ausführen (`noexec`).
+- Docker-Protokolle: `driver: local`, höchstens 5 × 10 MB je Dienst. Ältere
+  Zeilen (auch das Startpasswort des ersten Starts) verschwinden mit der
+  Rotation; `docker compose up -d` legt die Container dafür neu an.
+
+**4. Ohne `NODE_ENV` gelten die Regeln des Betriebs**
+
+Wer ohne Docker startet (`node dist/server.js`, eigener systemd-Dienst) und
+kein `NODE_ENV` setzt, bekommt jetzt dieselben Startverbote wie mit
+`production`: kein Start als Datenbank-Superuser (ausser
+`DB_SUPERUSER_ERLAUBT=1`), keiner mit `MAIL_KONSOLE_MIT_TOKEN=1`, keiner ohne
+`APP_BASE_URL`; 5xx-Antworten nennen keine Interna, das Sitzungs-Cookie ist
+`Secure` (über reines http also `COOKIE_SECURE=0` setzen, README.md „Ohne
+HTTPS“). Für einen Entwicklungsrechner `NODE_ENV=development`.
+
+Neue Startwarnungen: `HSTS_MAX_AGE=0`, und eine Datenbank auf einem anderen
+Rechner ohne `PGSSLMODE=verify-full` (bzw. `sslmode=verify-full` in
+`DATABASE_URL`).
+
+**5. Vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel**
+
+Ein Konto, das ein Verwalter anlegt, und ein Passwort, das er für ein anderes
+Konto setzt, muss der Inhaber bei der nächsten Anmeldung ersetzen; bis dahin
+geht nur der Wechsel selbst (wie beim Startpasswort). Bestehende Konten sind
+nicht betroffen.
+
+**6. Datenschlüssel wechseln**
+
+Bei Verdacht, dass `./schluessel/datenschluessel` abgeflossen ist:
+
+```bash
+sudo sh scripts/datenschluessel-wechseln.sh            # alter Schlüssel → datenschluessel.alt, neuer entsteht
+docker compose logs app | grep Schlüsselwechsel        # wie viele Werte neu geschrieben sind
+sudo sh scripts/datenschluessel-wechseln.sh abschliessen
+```
+
+Der Start schreibt alles, was nur der alte Schlüssel öffnet, mit dem neuen neu
+(API-Schlüssel, SMTP-Passwort, Faktor-Geheimnisse, Gutscheinnummern, PINs und
+PDFs, die Kopien vor Migrationen). Den neuen Schlüssel getrennt sichern
+(`BACKUP_SCHLUESSEL_ZIEL`). **Wiederherstellungscodes** des zweiten Faktors
+sind nur als HMAC gespeichert und lassen sich nicht umrechnen: Sie gelten,
+solange `datenschluessel.alt` liegt. Vor dem Abschliessen erzeugt jedes Konto
+mit zweitem Faktor neue Codes.
+
+**7. Datenschutz (nichts zu tun)**
+
+- Kopien `vor_migration_*` verfallen nach 30 Tagen; ein gelöschtes Konto
+  verschwindet auch aus ihnen.
+- Das Verwaltungsprotokoll behält Einträge ein Jahr; der Name eines
+  gelöschten Kontos verschwindet beim nächsten täglichen Aufräumen.
+- Unbekannte Anmeldenamen (oft vertippte Passwörter) stehen in
+  `rate_limit_attempts` nur noch als HMAC.
+- `backup.sh` sichert Sitzungen, Anmeldezähler und Protokollzeilen nur als
+  leere Tabellen und die Kopien vor Migrationen gar nicht.
+- Erfolgreiche Anmeldungen stehen als `[anmeldung] anmeldung_erfolgreich`
+  (Konto, Adresse, Weg) im Protokoll, Kontoänderungen als `[konto] <art>`.
+
+**8. Pipeline (nichts zu tun)**
+
+`docker-publish.yml` baut das signierte Image ohne Cache und prüft den Digest
+vor der Signatur mit Trivy; `web-ci.yml` prüft die Registry-Signaturen der
+npm-Pakete (`npm audit signatures`).

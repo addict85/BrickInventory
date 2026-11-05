@@ -245,7 +245,6 @@ data class Auftrag(
     val aktualisiert: String?,
     val fortschritt: AuftragFortschritt?,
     val fehler: String?,
-    @SerialName("user_id") val userId: Int?,
     val geplant: Boolean,
     @SerialName("set_number") val setNumber: String?,
 )

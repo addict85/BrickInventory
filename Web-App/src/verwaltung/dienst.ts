@@ -458,4 +458,4 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
     };
 }
 export { KontoBildzeile, bildZeilenDerKonten, fehlanzeigeDerVorschau, fehlanzeigeDesSets, katalogBild, protokollSeit, setFehlanzeigen, vorschauFehlanzeigen } from './repository/verwaltung';
-export { letzteEintraege, protokolliere } from './repository/protokoll';
+export { letzteEintraege, protokolliere, raeumeProtokollAuf } from './repository/protokoll';

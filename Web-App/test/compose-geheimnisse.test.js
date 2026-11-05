@@ -9,7 +9,6 @@
  *      Geheimnis als Umgebungsvariable (SESSION_SECRET)“
  *   B  bei jobs `secrets: [db_app_password]` gestrichen → rot: „jobs:
  *      PGPASSWORD_FILE zeigt auf ein nicht eingehängtes Secret“
- *   C  pgweb-Port wieder "8081:8081" → rot: „pgweb ist nur auf 127.0.0.1 erreichbar“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,35 +32,18 @@ test('Geheimnisse nur als Dateien unter /run/secrets', (t) => {
     t.skip(`kein docker compose: ${fehler}`); return;
   }
   const dienste = Object.keys(j.services).sort();
-  assert.deepEqual(dienste, ['app', 'caddy', 'db-rolle', 'jobs', 'pgweb', 'postgres', 'schluessel']);
+  assert.deepEqual(dienste, ['app', 'caddy', 'db-rolle', 'jobs', 'postgres', 'schluessel']);
   let dateien = 0;
   for (const [name, d] of Object.entries(j.services)) {
     const env = d.environment || {};
     const verdaechtig = Object.keys(env).filter(k => /(PASSWORD|SECRET|_PASS|DATABASE_URL|DATA_KEY)$/.test(k));
     assert.deepEqual(verdaechtig, [], `${name}: Geheimnis als Umgebungsvariable (${verdaechtig})`);
     const eingehaengt = (d.secrets || []).map(s => s.target || `/run/secrets/${s.source}`);
-    for (const [k, v] of Object.entries(env).filter(([k]) => k.endsWith('_FILE') && k !== 'DATA_KEY_FILE')) {
+    for (const [k, v] of Object.entries(env).filter(([k]) => k.endsWith('_FILE') && !['DATA_KEY_FILE', 'DATA_KEY_ALT_FILE'].includes(k))) {
       dateien++;
       assert.ok(eingehaengt.includes(v), `${name}: ${k} zeigt auf ein nicht eingehängtes Secret (${v})`);
     }
   }
   assert.ok(dateien >= 8, `nur ${dateien} *_FILE-Angaben — liest der Test noch die richtige Datei?`);
   for (const s of Object.values(j.secrets)) assert.match(s.file, /[\\/]geheimnisse[\\/][a-z_]+$/);
-});
-
-test('pgweb ist nur auf 127.0.0.1 erreichbar und teilt sein Netz nur mit postgres', (t) => {
-  const { j, fehler } = konfig();
-  if (!j) {
-    if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${fehler}`);
-    t.skip(`kein docker compose: ${fehler}`); return;
-  }
-  const p = j.services.pgweb;
-  assert.ok(p.ports.length > 0);
-  for (const port of p.ports) assert.equal(port.host_ip, '127.0.0.1', 'pgweb ist nur auf 127.0.0.1 erreichbar');
-  assert.equal(p.read_only, true);
-  assert.equal(p.user, '1000:1000');
-  assert.deepEqual(p.cap_drop, ['ALL']);
-  const imNetz = Object.entries(j.services).filter(([, d]) => Object.keys(d.networks || {}).includes('pgweb-net')).map(([n]) => n).sort();
-  assert.deepEqual(imNetz, ['pgweb', 'postgres']);
-  assert.deepEqual(Object.keys(p.networks), ['pgweb-net']);
 });

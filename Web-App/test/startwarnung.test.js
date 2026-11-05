@@ -10,6 +10,10 @@
  *      „MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb …“ (Code statt 1: Datenbankfehler)
  *   L  in server.ts die Schleife über startWarnungen() entfernt → rot:
  *      „COOKIE_SECURE=0 im Betrieb …“ (keine Warnzeile)
+ * Gegenproben N10/N11 (05.11.2026 gemessen, je einzeln):
+ *   M  den Zweig zu HSTS_MAX_AGE in startWarnungen() entfernt → rot:
+ *      „HSTS_MAX_AGE=0 …“
+ *   N  dbOhneTls() liefert immer false → rot: „entfernte Datenbank …“
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,7 +21,8 @@ const path   = require('node:path');
 const { spawn } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-require('./helpers/sources').buildAndRequire();
+const _req = require('./helpers/sources').buildAndRequire();
+const { startWarnungen } = _req('src/infra/konfig.js');
 
 /** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
 function starte(env, ms = 20000) {
@@ -53,4 +58,21 @@ test('COOKIE_SECURE=0 im Betrieb: Warnzeile beim Start', { timeout: 50_000 }, as
   assert.match(mit.log, /Database initialisation failed/, 'nur eine Warnung, kein Verbot');
   const ohne = await starte({ ...db, COOKIE_SECURE: '1' });
   assert.doesNotMatch(ohne.log, /COOKIE_SECURE/);
+});
+
+test('HSTS_MAX_AGE=0 im Betrieb: genau eine Warnung', () => {
+  const w = startWarnungen({ NODE_ENV: 'production', HSTS_MAX_AGE: '0' });
+  assert.equal(w.length, 1, JSON.stringify(w));
+  assert.match(w[0], /HSTS_MAX_AGE=0/);
+  assert.deepEqual(startWarnungen({ NODE_ENV: 'production', HSTS_MAX_AGE: '31536000' }), []);
+});
+
+test('entfernte Datenbank ohne geprüftes TLS: Warnung', () => {
+  const tls = (env) => startWarnungen({ NODE_ENV: 'production', ...env }).filter(x => x.startsWith('[datenbank]'));
+  assert.equal(tls({ PGHOST: 'db.example.org' }).length, 1);
+  assert.equal(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=require' }).length, 1);
+  assert.deepEqual(tls({ PGHOST: 'db.example.org', PGSSLMODE: 'verify-full' }), []);
+  assert.deepEqual(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=verify-full' }), []);
+  for (const nah of [{}, { PGHOST: 'postgres' }, { PGHOST: '127.0.0.1' }, { DATABASE_URL: 'postgres://u:p@localhost/x' }])
+    assert.deepEqual(tls(nah), [], JSON.stringify(nah));
 });

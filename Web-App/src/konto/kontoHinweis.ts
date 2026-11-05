@@ -22,6 +22,8 @@ export async function meldeKontoaenderung(uid: number, art: KontoHinweis, angabe
 
 /** Nebenher: Die Antwort wartet nicht auf den Mailserver, und ein Fehler macht die Änderung nicht rückgängig. */
 export function hinweisNebenher(uid: number, art: KontoHinweis, name?: string, angaben: Angaben = {}): void {
+  // Auch ohne Mailadresse eine Spur im Protokoll; ohne Namen und Label, die frei getippt sind.
+  console.info(`[konto] ${art}`, { ereignis: art, konto: uid });
   meldeKontoaenderung(uid, art, { ...angaben, name }).catch(logAndContinue(`konto:hinweismail ${art}`));
 }
 

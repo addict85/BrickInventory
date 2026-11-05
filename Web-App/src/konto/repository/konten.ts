@@ -1,4 +1,5 @@
 import * as db from '../../../db/database';
+import { entferneKontoAusSicherungen } from '../../../db/migrate';
 
 export type KontoKurz = { id: number; username: string; is_admin: boolean; must_change_password: boolean };
 
@@ -121,8 +122,10 @@ export async function aktiveVerwalter(): Promise<number[]> {
     .map(z => z.id);
 }
 
+/** Ein vergebenes Passwort kennen Verwalter und Weitergabe: nur bis zum ersten Wechsel. */
 export async function fuegeKontoEin(username: string, hash: string, verwalter: boolean): Promise<number | null> {
-  const neu = await db.get<{ id: number }>('INSERT INTO users (username, password_hash, is_admin) VALUES ($1, $2, $3) RETURNING id',
+  const neu = await db.get<{ id: number }>(
+    'INSERT INTO users (username, password_hash, is_admin, must_change_password) VALUES ($1, $2, $3, true) RETURNING id',
     [username, hash, verwalter]);
   return neu ? neu.id : null;
 }
@@ -145,8 +148,10 @@ export async function schreibeAktiv(id: number, ja: boolean): Promise<{ vorher: 
  * der Zeit davor und ginge sonst eine Stunde lang weiter. */
 const OHNE_RUECKSETZLINK = 'reset_token = NULL, reset_token_expires = NULL';
 
+/** Ein fremd gesetztes Passwort kennt auch der Verwalter: der Inhaber ersetzt es. */
 export async function setzePasswortHash(id: number, hash: string): Promise<boolean> {
-  return !!(await db.run(`UPDATE users SET password_hash = $1, ${OHNE_RUECKSETZLINK} WHERE id = $2`, [hash, id])).changes;
+  return !!(await db.run(`UPDATE users SET password_hash = $1, must_change_password = true, ${OHNE_RUECKSETZLINK} WHERE id = $2`,
+    [hash, id])).changes;
 }
 
 /** Eigenes Passwort geändert: auch die Aufforderung dazu ist erledigt. */
@@ -158,21 +163,38 @@ export async function kontoExistiert(id: number): Promise<boolean> {
   return !!await db.get('SELECT 1 FROM users WHERE id = $1', [id]);
 }
 
+/** Auch aus den Kopien vor Migrationen; den Namen im Protokoll nimmt raeumeProtokollAuf(). */
+async function spurenLoeschen(tx: db.DbSchnittstelle, id: number): Promise<void> {
+  await entferneKontoAusSicherungen(tx, id);
+}
+
 /** Nie das eigene Konto. */
 export async function loescheKonto(id: number, eigenes: number | null): Promise<boolean> {
-  return (await db.run('DELETE FROM users WHERE id = $1 AND id != $2', [id, eigenes])).changes > 0;
+  return db.transaction(async (tx) => {
+    if (!(await tx.run('DELETE FROM users WHERE id = $1 AND id != $2', [id, eigenes])).changes) return false;
+    await spurenLoeschen(tx, id);
+    return true;
+  });
 }
 
 /** Das eigene Konto; der letzte aktive Verwalter bleibt. */
 export async function loescheEigenesKonto(id: number): Promise<boolean> {
-  return (await db.run(`DELETE FROM users WHERE id = $1 AND (NOT is_admin
-    OR EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1))`, [id])).changes > 0;
+  return db.transaction(async (tx) => {
+    if (!(await tx.run(`DELETE FROM users WHERE id = $1 AND (NOT is_admin
+      OR EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1))`, [id])).changes) return false;
+    await spurenLoeschen(tx, id);
+    return true;
+  });
 }
 
 /** Registrierungen, deren Adresse nach `tage` Tagen nicht bestätigt ist. */
 export async function loescheOffeneRegistrierungen(tage: number): Promise<number> {
-  return (await db.run(`DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
-    AND created_at < NOW() - make_interval(days => $1::int)`, [tage])).changes ?? 0;
+  return db.transaction(async (tx) => {
+    const weg = await tx.all<{ id: number }>(`DELETE FROM users WHERE registrierung_offen AND NOT email_verified AND NOT is_admin
+      AND created_at < NOW() - make_interval(days => $1::int) RETURNING id`, [tage]);
+    for (const { id } of weg) await spurenLoeschen(tx, id);
+    return weg.length;
+  });
 }
 
 export async function raeumeQrTokensAuf(): Promise<void> {

@@ -1,9 +1,9 @@
 import * as db from '../../../db/database';
 
 /** TOTP-Geheimnisse ohne Kontext (v1) oder aus der Zeit vor der Verschlüsselung. */
-export async function alteFaktorGeheimnisse(): Promise<{ uid: number; v: string }[]> {
+export async function alteFaktorGeheimnisse(alle = false): Promise<{ uid: number; v: string }[]> {
   return db.all<{ uid: number; v: string }>(
-    "SELECT user_id AS uid, geheimnis AS v FROM zweiter_faktor WHERE geheimnis NOT LIKE 'v2:%'");
+    `SELECT user_id AS uid, geheimnis AS v FROM zweiter_faktor${alle ? '' : " WHERE geheimnis NOT LIKE 'v2:%'"}`);
 }
 
 /** `AND geheimnis = $3`: Hat ein anderer Prozess die Zeile inzwischen geändert, bleibt sie. @returns geänderte Zeilen */

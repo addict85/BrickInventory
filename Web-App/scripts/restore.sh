@@ -136,7 +136,7 @@ if [ ! -f schluessel/datenschluessel ] && [ ! -f data/.datenschluessel ]; then
 fi
 
 # 5. db-rolle noch einmal: Die eingespielten Tabellen bekommen die Rechte der
-#    Leserolle (pgweb).
+#    Leserolle (brickinventory_lesen).
 echo "[restore] Rolle der App wird nachgerichtet …"
 docker compose run --rm "${ROLLEN_SERVICE:-db-rolle}"
 

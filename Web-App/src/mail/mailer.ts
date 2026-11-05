@@ -413,9 +413,23 @@ export async function sendEmailGeaendertMail(to: string, username: string, neueA
 }
 
 /** Die Registrierung antwortet auf eine vergebene Adresse wie auf eine neue; das hier erfährt ihr Inhaber. */
-export async function sendRegistrierungsVersuchMail(to: string, lang = 'de') {
+export async function sendRegistrierungsVersuchMail(to: string, lang = 'de', anlass: 'registrierung' | 'adresse' = 'registrierung') {
   const theme = await getMailTheme();
-  const L = lang === 'en' ? {
+  const L = anlass === 'adresse' ? (lang === 'en' ? {
+    subject: 'BrickInventory Manager — Your email address in another account',
+    title: 'Email address entered elsewhere',
+    text: `Hello,\n\nsomeone tried to change the email address of another account to yours. Your account keeps it; nothing was changed.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hello,</p>
+       <p style="margin:0 0 16px">someone tried to change the email address of another account to yours. Your account keeps it; nothing was changed.</p>`,
+    note: 'You do not need to do anything.',
+  } : {
+    subject: 'BrickInventory Manager — Deine E-Mail-Adresse in einem anderen Konto',
+    title: 'Adresse anderswo eingetragen',
+    text: `Hallo,\n\njemand hat versucht, die E-Mail-Adresse eines anderen Kontos auf deine zu ändern. Dein Konto behält sie; geändert wurde nichts.\n\nBrickInventory Manager`,
+    html: `<p style="margin:0 0 8px">Hallo,</p>
+       <p style="margin:0 0 16px">jemand hat versucht, die E-Mail-Adresse eines anderen Kontos auf deine zu ändern. Dein Konto behält sie; geändert wurde nichts.</p>`,
+    note: 'Du musst nichts tun.',
+  }) : lang === 'en' ? {
     subject: 'BrickInventory Manager — Registration with your email address',
     title: 'Registration attempt',
     text: `Hello,\n\nsomeone tried to register a new account with your email address. You already have an account; nothing was changed.\n\nIf you forgot your password, use “Forgot password” on the sign-in page.\n\nBrickInventory Manager`,

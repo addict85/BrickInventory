@@ -22,6 +22,9 @@
  *   G  Passwortpflicht wieder nur bei neuer Adresse → rot: „auch ohne neue
  *      Adresse nur mit Passwort“ und „ein belegter Benutzername verrät sich
  *      nur mit Passwort“
+ * Gegenprobe Runde 17 (05.11.2026 gemessen):
+ *   H  die Vorprüfung `emailVergeben → 400 email_vergeben` wieder eingebaut →
+ *      rot: „eine belegte Adresse antwortet wie eine freie“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -40,11 +43,13 @@ const { testServer } = require('./helpers/server');
 // Versandte Hinweise mitschreiben, bevor routes/auth die Mail-Funktionen bindet.
 const gesendet = [];
 const bestaetigt = [];
+const versuche = [];
 const mailerPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'src/mail/mailer.js'));
 const echt = _req('src/mail/mailer.js');
 require.cache[mailerPfad].exports = Object.assign({}, echt, {
   sendEmailGeaendertMail: async (an, name, neu) => { gesendet.push({ an, name, neu }); return { success: true }; },
-  sendVerificationMail: async (an, token, basis) => { bestaetigt.push(basis); return { success: true }; },
+  sendVerificationMail: async (an, token, basis) => { bestaetigt.push(basis); versuche.push({ an, art: 'link' }); return { success: true }; },
+  sendRegistrierungsVersuchMail: async (an, _sprache, anlass) => { versuche.push({ an, art: anlass }); return { success: true }; },
 });
 
 const db = _req('db/database.js');
@@ -132,11 +137,21 @@ test('E-Mail ändern', { concurrency: 1 }, async (t) => {
     }
   });
 
-  await t.test('eine belegte Adresse verrät sich nur mit Passwort', async () => {
+  await t.test('eine belegte Adresse antwortet wie eine freie', async () => {
     const belegt = `${NAME}@belegt.example`;
     assert.equal((await profil({ email: belegt })).body.code, 'aktuelles_passwort_erforderlich');
     assert.equal((await profil({ email: belegt, password_current: 'falsch-falsch' })).body.code, 'aktuelles_passwort_falsch');
-    assert.equal((await profil({ email: belegt, password_current: PASS })).body.code, 'email_vergeben');
+    process.env.APP_BASE_URL = 'https://lego.example.org';
+    try {
+      versuche.length = 0;
+      const frei = await profil({ email: `${NAME}@frei.example`, password_current: PASS });
+      const vergeben = await profil({ email: belegt.toUpperCase(), password_current: PASS });
+      assert.deepEqual(vergeben, frei, 'Status und Felder gleich');
+      assert.deepEqual(frei, { status: 200, body: { success: true, emailChanged: true, emailSent: true } });
+      // Der Inhaber der belegten Adresse bekommt einen Hinweis statt eines Links.
+      assert.deepEqual(versuche, [{ an: `${NAME}@frei.example`, art: 'link' }, { an: belegt, art: 'adresse' }]);
+      assert.equal(await adresse(), `${NAME}@alt.example`);
+    } finally { delete process.env.APP_BASE_URL; }
   });
 
   await t.test('Vergabeprüfungen sind gebremst', async () => {

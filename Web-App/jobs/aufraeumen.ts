@@ -11,6 +11,9 @@ import { loescheVerfallene } from '../src/katalog/bilder/bildbedarf';
 import { fehlertext } from '../src/infra/fehler';
 import { raeumeIdempotenzAuf } from '../src/idempotenz/dienst';
 import { raeumeOffeneRegistrierungenAuf } from '../src/konto/konten';
+import { raeumeProtokollAuf } from '../src/verwaltung/dienst';
+import { raeumeAlteSicherungenAuf } from '../db/migrate';
+import * as db from '../db/database';
 
 type Schritt = [name: string, lauf: () => Promise<unknown>];
 
@@ -42,6 +45,8 @@ function aufraeumenTaeglich(): Promise<void> {
     ['Preisverlauf', purgeAltePreise],
     ['unbestätigte Registrierungen', raeumeOffeneRegistrierungenAuf],
     ['Bild-Cache', raeumeBildCacheAuf],
+    ['Verwaltungsprotokoll', () => raeumeProtokollAuf()],
+    ['Kopien vor Migrationen', () => raeumeAlteSicherungenAuf(db)],
   ]);
 }
 

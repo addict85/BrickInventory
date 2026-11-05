@@ -148,7 +148,6 @@ export type Auftrag = {
   aktualisiert: string | null;
   fortschritt: AuftragFortschritt | null;
   fehler: string | null;
-  user_id: number | null;
   geplant: boolean;
   set_number: string | null;
   [feld: string]: unknown;
@@ -228,10 +227,9 @@ export type BildDiagnose = {
   set_number: string;
   hinweise: string[];
   datenbank: {
-    zeilen: {
-      user_id: number;
-      [feld: string]: unknown;
-    }[];
+    anzahl_konten: number;
+    image_local: string | null;
+    image_url: string | null;
     katalog_bild: string | null;
     [feld: string]: unknown;
   };

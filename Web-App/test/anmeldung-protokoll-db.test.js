@@ -14,6 +14,11 @@
  *      Mail), „die Mail höchstens einmal am Tag“
  *   E  kontoGedrosselt() vor der Mail entfernt → rot: „die Mail höchstens einmal am Tag“
  *   F  in meldeAnmeldeereignis() `name` mitgegeben → rot: „ein unbekannter Name …“
+ * Gegenproben Runde 17 (05.11.2026 gemessen, je einzeln):
+ *   G  kontoKennung() gibt für unbekannte Namen wieder den Klartext zurück →
+ *      rot: „ein unbekannter Name steht nur als HMAC …“ (Teil 1)
+ *   H  meldeAnmeldung() in pruefeAnmeldedaten() entfernt → rot: „eine
+ *      gelungene Anmeldung …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -59,8 +64,8 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async (t) => {
   const leereZaehler = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%' OR key LIKE 'sperr-hinweis%' OR key LIKE $1`, [`%-bestaetigen|${uid}|%`]);
   await leereZaehler();
 
-  const zeilen = [];
-  const zurueck = protokoll.installiereProtokoll({ out: () => {}, err: (z) => zeilen.push(z), jetzt: () => Date.now() });
+  const zeilen = [], infos = [];
+  const zurueck = protokoll.installiereProtokoll({ out: (z) => infos.push(z), err: (z) => zeilen.push(z), jetzt: () => Date.now() });
   protokoll.protokollInDieDatenbank(db.pool);
   t.after(async () => {
     zurueck();
@@ -87,6 +92,30 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async (t) => {
     assert.match(z.kontext.adresse, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
     assert.equal(z.kontext.konto, 'unbekannt');
     assert.ok(!zeilen.join('\n').includes(`niemand_${P}`) && !zeilen.join('\n').includes(FALSCH), 'Name oder Passwort im Protokoll');
+  });
+
+  await t.test('ein unbekannter Name steht nur als HMAC in rate_limit_attempts', async () => {
+    const X = `Vertippt-Geheim-${P}-Passwort`;
+    await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
+    assert.equal(await anmelden(X, FALSCH), 401);
+    assert.equal(await anmelden(X, FALSCH), 401);
+    const klar = await db.get(`SELECT count(*)::int n FROM rate_limit_attempts WHERE key ILIKE '%' || lower($1) || '%'`, [X]);
+    assert.equal(klar.n, 0, 'der eingegebene Name steht im Klartext in der Tabelle');
+    const je = await db.get(`SELECT count FROM rate_limit_attempts WHERE key LIKE 'login-name|name:%'`);
+    assert.equal(Number(je?.count), 2, 'zwei Versuche mit demselben Namen zählen auf denselben Schlüssel');
+    await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
+  });
+
+  await t.test('eine gelungene Anmeldung: genau eine Infozeile mit Konto und Adresse', async () => {
+    infos.length = 0;
+    assert.equal(await anmelden(NAME, PASS), 200);
+    const erfolg = infos.map(z => JSON.parse(z)).filter(z => /^\[anmeldung\] anmeldung_erfolgreich/.test(z.nachricht));
+    assert.equal(erfolg.length, 1, infos.join('\n'));
+    assert.equal(erfolg[0].kontext.konto, uid);
+    assert.match(erfolg[0].kontext.adresse, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
+    assert.equal(erfolg[0].kontext.zugang, 'passwort');
+    assert.ok(![...infos, ...zeilen].join('\n').includes(NAME) && !infos.join('\n').includes(PASS), 'Name oder Passwort im Protokoll');
+    await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
   });
 
   await t.test('falsches Passwort: Zeile mit Konto, beim Erreichen der Sperre eine Mail', async () => {
