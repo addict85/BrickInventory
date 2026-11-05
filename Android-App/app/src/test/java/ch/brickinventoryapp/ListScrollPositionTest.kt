@@ -186,12 +186,12 @@ class ListScrollPositionTest {
         // umgesetzt in ScrollMemory.kt statt dreimal abgeschrieben.
         val col = code(read("nav/CollectionGraph.kt"))
         val tools = code(read("nav/ToolsGraph.kt"))
-        for (schluessel in listOf("\"gallery\"", "\"parts\"", "\"minifigs\"")) {
+        for (schluessel in listOf("Screen.Gallery.rollSchluessel", "Screen.Parts.rollSchluessel", "Screen.Minifigs.rollSchluessel")) {
             assert(col.contains("ScrollPositionKeeper(") && col.contains(schluessel)) {
                 "Für $schluessel wird die Position nicht ausdrücklich wiederhergestellt"
             }
         }
-        assert(tools.contains("ScrollPositionKeeper(") && tools.contains("\"finance\"")) {
+        assert(tools.contains("ScrollPositionKeeper(") && tools.contains("Screen.Finance.rollSchluessel")) {
             "Die Finanz-Liste stellt ihre Position nicht ausdrücklich wieder her"
         }
 

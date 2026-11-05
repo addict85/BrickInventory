@@ -226,12 +226,12 @@ class AlarmUebersichtTest {
             "Die Einstellungen halten ihren Rollzustand noch selbst — nach der " +
                 "Rueckkehr aus der Detailansicht stuende man wieder ganz oben."
         }
-        assert(Regex(""""settings",\s*settingsScrollState""").containsMatchIn(graph)) {
+        assert(Regex("""Screen\.Settings\.rollSchluessel,\s*settingsScrollState""").containsMatchIn(graph)) {
             "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
                 "springt zurueck."
         }
         val nav = quelle("AppNavigation.kt")
-        assert(nav.contains("val settingsScrollState")) {
+        assert(nav.contains("einstellungen = androidx.compose.foundation.rememberScrollState()")) {
             "Der Zustand entsteht nicht oberhalb des NavHost — dort, wo er ueberlebt."
         }
         val screen = quelle("ui/screens/SettingsScreen.kt")

@@ -44,7 +44,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
                     if (state.serverUrl.isNotBlank() && financeState.historyPoints.isEmpty()) finanzen.loadPortfolioHistory()
                 }
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
-                    "finance", financeListState,
+                    Screen.Finance.rollSchluessel, financeListState,
                     financeState.valuation != null, vm.scrollMemory)
                 FinanceScreen(
                     vm = finanzen,
@@ -153,7 +153,7 @@ private fun NavGraphBuilder.mehrZiele(u: ZielUmgebung) {
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) vm.loadSettings() }
             ReiterGeruest(stringResource(R.string.nav_settings), u) {
                 ch.brickinventoryapp.ui.ScrollPositionKeeper(
-                    "settings", settingsScrollState, vm.scrollMemory)
+                    Screen.Settings.rollSchluessel, settingsScrollState, vm.scrollMemory)
                 SettingsScreen(
                     vm = hiltViewModel<EinstellungenViewModel>(),
                     onLogout = { vm.logout(); navController.navigate(Screen.Login) { popUpTo(0) { inclusive = true } } },
