@@ -185,7 +185,7 @@ export async function loadApiLimits() {
   G('lim-bs').value = String(d.limits.brickset);
 }
 
-// QR Code generation using qrcode.js CDN
+// QR-Code über QRCode.js aus public/vendor/qrcode (npm qrcodejs, scripts/qrcode-kopieren.js)
 async function generateQrCode() {
   const btn = G('btn-gen-qr');
   const hint = G('qr-hint');

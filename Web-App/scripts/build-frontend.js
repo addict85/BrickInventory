@@ -137,6 +137,8 @@ function main() {
 
   const pdfjs = require('./pdfjs-kopieren').kopierePdfjs();
   if (pdfjs) console.log(`[build-frontend] PDF.js ${pdfjs} aus pdfjs-dist → public/vendor/pdfjs/`);
+  const qr = require('./qrcode-kopieren').kopiereQrcode();
+  if (qr) console.log(`[build-frontend] QRCode.js ${qr} aus qrcodejs → public/vendor/qrcode/`);
 }
 
 if (require.main === module) main();
