@@ -10,7 +10,7 @@ import ch.brickinventoryapp.ressourcen.R
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel
 import ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel
-import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.viewmodel.GeraeteEinstellungenViewModel
 import ch.brickinventoryapp.ui.*
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 
@@ -19,6 +19,13 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
  * Zurück-Pfeil, damit das Seltene nicht so viel Platz bekommt wie das Häufige. Die
  * Karten liegen je Rubrik in Einstellungen*.kt.
  */
+
+/** Der Melde-Schalter mit den Geräte-Einstellungen verdrahtet. */
+@Composable
+private fun PreisalarmSchalter(geraet: GeraeteEinstellungenViewModel = hiltViewModel()) {
+    val an by geraet.alarmMeldungenAn.collectAsStateWithLifecycle()
+    PreisalarmCard(an, geraet::alarmMeldungen)
+}
 
 /**
  * Preisalarme — die Übersicht und der Melde-Schalter auf einer Seite: zwei Karten
@@ -33,8 +40,8 @@ fun PreisalarmeUnterseite(
     snackbarHostState: SnackbarHostState,
     onSetClick: (String) -> Unit,
     onZurueck: () -> Unit,
-    /** Der Melde-Schalter; als Platz, weil er die Geräte-Einstellungen der Aktivität liest. */
-    meldeSchalter: @Composable () -> Unit = { PreisalarmCard(aktivitaetsViewModel()) },
+    /** Der Melde-Schalter; als Platz, weil er sein eigenes ViewModel holt. */
+    meldeSchalter: @Composable () -> Unit = { PreisalarmSchalter() },
 ) {
     Unterseite(stringResource(R.string.alerts_group), snackbarHostState, onZurueck,
         breite = ch.brickinventoryapp.ui.theme.Lesebreite.formular) {

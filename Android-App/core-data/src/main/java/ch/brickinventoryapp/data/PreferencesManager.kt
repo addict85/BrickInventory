@@ -36,7 +36,7 @@ class PreferencesManager @Inject constructor(
     /** Die Spiegel laufen, solange die App lebt; kein eigener Bereich ohne Besitzer. */
     @param:ApplicationScope private val prefsScope: CoroutineScope,
 ) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle,
-    ch.brickinventoryapp.util.UpdateStandAblage {
+    ch.brickinventoryapp.util.UpdateStandAblage, GeraeteEinstellungen {
     companion object {
         /**
          * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
@@ -157,7 +157,7 @@ class PreferencesManager @Inject constructor(
     val appTheme:  Flow<String> = context.dataStore.data.map { it[APP_THEME]  ?: "classic" }
 
     // Vorgabe AUS — Begruendung am Schluessel oben.
-    val alarmMeldungenAn: Flow<Boolean> = context.dataStore.data.map { it[ALARM_MELDUNGEN] ?: false }
+    override val alarmMeldungenAn: Flow<Boolean> = context.dataStore.data.map { it[ALARM_MELDUNGEN] ?: false }
     /**
      * null = noch nie abgerufen: Beim allerersten Durchgang markiert Alarmabholung nur
      * und meldet nichts. Ein leerer Text brächte alles Alte auf einmal.
@@ -404,9 +404,24 @@ class PreferencesManager @Inject constructor(
         context.dataStore.edit { it[ALARM_MARKE] = marke }
     }
 
-    suspend fun setzeAlarmMeldungen(an: Boolean) {
+    override suspend fun setzeAlarmMeldungen(an: Boolean) {
         context.dataStore.edit { it[ALARM_MELDUNGEN] = an }
     }
+
+    override fun vorwaermenErlaubt(netz: VorwaermNetz): Flow<Boolean> = when (netz) {
+        VorwaermNetz.WLAN -> vorwaermenWlan
+        VorwaermNetz.MOBIL -> vorwaermenMobil
+        VorwaermNetz.ROAMING -> vorwaermenRoaming
+    }
+
+    override suspend fun setzeVorwaermen(netz: VorwaermNetz, erlaubt: Boolean) = saveVorwaermenNetz(
+        when (netz) {
+            VorwaermNetz.WLAN -> VORWAERMEN_WLAN
+            VorwaermNetz.MOBIL -> VORWAERMEN_MOBIL
+            VorwaermNetz.ROAMING -> VORWAERMEN_ROAMING
+        },
+        erlaubt,
+    )
 
     suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }

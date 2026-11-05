@@ -66,24 +66,36 @@ test('2. der Schalter ruft es NICHT auf dem Hauptthread', () => {
   // Beim ersten Zugriff fährt WorkManager hoch und liest dabei von der Platte.
   // Auf dem Hauptthread einer sichtbaren Oberfläche ist das im besten Fall ein
   // Ruckeln — und es war die Stelle, an der die App starb.
-  const s = app('ui/screens/EinstellungenAlarme.kt');
+  // Der Schalter selbst plant nicht ein; er meldet den Wunsch an das ViewModel,
+  // und das plant über den AlarmPlaner ein.
+  assert.doesNotMatch(app('ui/screens/EinstellungenAlarme.kt'), /einplanen\(/,
+    'Der Bildschirm plant wieder selbst ein — dann läuft es auf dem Hauptthread.');
+  const vm = app('ui/viewmodel/GeraeteEinstellungenViewModel.kt');
+  assert.match(vm, /planer\.einplanen\(/, 'Das ViewModel plant nicht mehr ein — umgebaut?');
+
+  const s = app('alarm/WorkManagerAlarmPlaner.kt');
   const i = s.indexOf('PreisalarmWorker.einplanen(');
-  assert.ok(i >= 0, 'Der Schalter plant nicht mehr ein — umgebaut?');
-  // Der umgebende Ausschnitt muss den Wechsel auf einen anderen Thread zeigen.
-  const umfeld = s.slice(Math.max(0, i - 400), i);
-  assert.match(umfeld, /withContext\(\s*kotlinx\.coroutines\.Dispatchers\.IO\s*\)/,
-    'Der Aufruf steht wieder auf dem Hauptthread.');
+  assert.ok(i >= 0, 'Der AlarmPlaner plant nicht mehr ein — umgebaut?');
+  // Der umgebende Ausschnitt muss den Wechsel auf den IO-Dispatcher zeigen …
+  const umfeld = s.slice(Math.max(0, i - 200), i);
+  assert.match(umfeld, /withContext\(\s*io\s*\)/, 'Der Aufruf steht wieder auf dem Hauptthread.');
+  assert.match(s, /@param:Dispatcher\(BrickDispatchers\.IO\)\s+private val io: CoroutineDispatcher/,
+    'Der Dispatcher des Planers ist nicht der IO-Dispatcher.');
+  // … und der IO-Dispatcher ist wirklich Dispatchers.IO.
+  assert.match(app('di/KoroutinenModule.kt'),
+    /@Dispatcher\(BrickDispatchers\.IO\)\s*fun \w+\(\)\s*:\s*CoroutineDispatcher\s*=\s*Dispatchers\.IO/,
+    'Der IO-Dispatcher zeigt nicht auf Dispatchers.IO.');
 });
 
 test('3. und wirft den Fehler nicht weg', () => {
   // Ein Schalter auf „an", von dem nie eine Meldung kommt, ist die zweite
   // Hälfte desselben Fehlers: Die App stürzt nicht mehr ab, der Alarm läuft
   // aber trotzdem nicht — und niemand erfährt es.
-  const s = app('ui/screens/EinstellungenAlarme.kt');
-  const i = s.indexOf('PreisalarmWorker.einplanen(');
-  const danach = s.slice(i, i + 500);
-  assert.match(danach, /showSnackbar\(/,
-    'Der Einstellungsbildschirm zeigt einen Fehlschlag nicht an.');
+  const s = app('ui/viewmodel/GeraeteEinstellungenViewModel.kt');
+  const i = s.indexOf('planer.einplanen(');
+  const danach = s.slice(i, i + 400);
+  assert.match(danach, /_snackbar\.value\s*=/,
+    'Ein Fehlschlag des Einplanens wird nicht gemeldet.');
   assert.match(danach, /alert_schedule_failed/,
     'Für den Fehlschlag gibt es keinen eigenen Text.');
 

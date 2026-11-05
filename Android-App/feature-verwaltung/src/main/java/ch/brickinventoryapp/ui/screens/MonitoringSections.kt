@@ -20,7 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.VorwaermNetz
 import ch.brickinventoryapp.ui.model.*
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
 import ch.brickinventoryapp.ui.viewmodel.MonitoringUiState
-import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ui.*
 import kotlinx.coroutines.launch
@@ -127,7 +126,7 @@ internal fun BricksetQueueRow(
 class CacheEreignisse(
     val vorgabeZustand: (String) -> Unit,
     val ablageLeeren: () -> Unit,
-    val netz: (Preferences.Key<Boolean>, Boolean) -> Unit,
+    val netz: (VorwaermNetz, Boolean) -> Unit,
     val design: (String) -> Unit,
     val cacheDauer: (Int) -> Unit,
     val cacheLeeren: (Boolean) -> Unit,
@@ -140,10 +139,8 @@ class CacheEreignisse(
 @Composable
 fun CacheAndLimitsSection(
     monState: MonitoringUiState,
-    /** Die drei Netzerlaubnisse fürs Vorwärmen (WLAN, mobil, Roaming), Geräte-Einstellungen. */
-    netzWlan: Boolean,
-    netzMobil: Boolean,
-    netzRoaming: Boolean,
+    /** Die Netzerlaubnisse fürs Vorwärmen (WLAN, mobil, Roaming), Geräte-Einstellungen. */
+    netze: Map<VorwaermNetz, Boolean>,
     /** Das wirksame Design, wenn der Server noch keine Vorgabe nannte. */
     wirksamesDesign: String,
     ablageBytes: Long,
@@ -239,7 +236,7 @@ fun CacheAndLimitsSection(
             // ── In welchen Netzen darf vorgewärmt werden ──
             //
             // Drei unabhängige Chips, je einer für eine Lage; die Begründung steht an den
-            // Schlüsseln in PreferencesManager.
+            // Schlüsseln in PreferencesManager (VORWAERMEN_*).
             Text(stringResource(R.string.monitoring_vorwaermen_netz),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -247,17 +244,15 @@ fun CacheAndLimitsSection(
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
-                for ((erlaubt, schluessel, text) in listOf(
-                    Triple(netzWlan, PreferencesManager.VORWAERMEN_WLAN,
-                        R.string.monitoring_vorwaermen_wlan),
-                    Triple(netzMobil, PreferencesManager.VORWAERMEN_MOBIL,
-                        R.string.monitoring_vorwaermen_mobil),
-                    Triple(netzRoaming, PreferencesManager.VORWAERMEN_ROAMING,
-                        R.string.monitoring_vorwaermen_roaming),
+                for ((netz, text) in listOf(
+                    VorwaermNetz.WLAN to R.string.monitoring_vorwaermen_wlan,
+                    VorwaermNetz.MOBIL to R.string.monitoring_vorwaermen_mobil,
+                    VorwaermNetz.ROAMING to R.string.monitoring_vorwaermen_roaming,
                 )) {
+                    val erlaubt = netze[netz] == true
                     AuswahlChip(
                         selected = erlaubt,
-                        onClick = { ereignisse.netz(schluessel, !erlaubt) },
+                        onClick = { ereignisse.netz(netz, !erlaubt) },
                         label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
                     )
                 }
