@@ -1,12 +1,11 @@
 // Ein API-Client, kein Router: Deshalb liegt er nicht unter routes/.
-import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait } from '../src/katalog/rateLimiter';
+import { rebrickableLimiter, consumeRebrickableDaily, rebrickableDailyStatus, parseThrottleWait, rebrickableBackgroundLimiter } from '../src/katalog/rateLimiter';
 import { KEINE_FARBE } from '../src/infra/validate';
 
 import { pipeline } from 'stream/promises';
 import { holeHttps, oeffneHttps, AbrufFehler } from '../src/infra/abruf';
 import path from 'path';
 import fs from 'fs';
-import { rebrickableBackgroundLimiter } from '../src/katalog/rateLimiter';
 import { fehlertext, meldeUndLiefere } from '../src/infra/fehler';
 import { mitVersion } from '../src/sets/setNummer';
 import { getGlobalSetting } from '../src/konto/settings';

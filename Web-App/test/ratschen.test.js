@@ -256,6 +256,23 @@ test('kein Verweis auf „Nachtrag N" im Code', () => {
   assert.deepEqual(treffer, []);
 });
 
+test('kein Modul wird in einer Datei zweimal importiert', () => {
+  // Je Modul ein Wert-Import und höchstens ein `import type`; neun Zeilen für
+  // neun Namen aus derselben Datei verdecken, was wirklich gebraucht wird.
+  // Gegenprobe (05.11.2026): `import { fehlertext } from '../infra/fehler';`
+  // zusätzlich in src/finanzen/preisalarm.ts → rot.
+  const treffer = [];
+  for (const f of quellen()) {
+    const gesehen = new Set();
+    for (const m of fs.readFileSync(f, 'utf8').matchAll(/^import\s+(type\s+)?[^;]*?from\s*'([^']+)';/gm)) {
+      const k = `${m[1] ? 'type ' : ''}${m[2]}`;
+      if (gesehen.has(k)) treffer.push(`${path.relative(WEB, f)}: ${k}`);
+      gesehen.add(k);
+    }
+  }
+  assert.deepEqual(treffer, []);
+});
+
 test('der Kommentaranteil im Server sinkt, nie steigt', () => {
   // Gemessen 13,8 % in server.ts, routes/, src/, utils/ und jobs/; 13,2 % mit dem
   // API-Vertrag (src/infra/vertrag/). Schranke 13,2.

@@ -13,7 +13,6 @@ import type { Anmeldeereignis } from './loginLimiter';
 import { kontoGedrosselt } from './zielDrossel';
 import * as zf from './zweiterFaktor';
 import * as passkeys from './passkeys';
-import { ausTabelle } from '../infra/validate';
 import * as V from '../infra/validate';
 import type { FehlerCode } from '../infra/fehlerTexte';
 import * as repo from './repository/zugaenge';
@@ -389,7 +388,7 @@ const TOKEN_LAUFZEITEN: Record<string, number> = {
  * @returns Tage, oder null für „keine feste Frist" */
 export function laufzeitTage(wahl: unknown): number | null {
   if (wahl === undefined || wahl === null || wahl === '') return null;
-  return ausTabelle(TOKEN_LAUFZEITEN, String(wahl)) ?? null;
+  return V.ausTabelle(TOKEN_LAUFZEITEN, String(wahl)) ?? null;
 }
 
 export interface TokenOptionen {

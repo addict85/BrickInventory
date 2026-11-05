@@ -1,7 +1,6 @@
-import { getCurrentMarketPrice } from '../src/finanzen/marketPrice';
+import { getCurrentMarketPrice, getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../src/finanzen/marketPrice';
 import { setzeGeschaetztenPreis, setErfassungenOhnePreis, teilErfassungenOhnePreis, figurErfassungenOhnePreis } from '../src/bestand/acquisitions';
 import { teilfarbenbilderNachtragen } from '../src/katalog/katalogAbgleich';
-import { getCurrentFigMarketPrice, getCurrentPartMarketPrice } from '../src/finanzen/marketPrice';
 import { blAbrufNummer } from '../src/katalog/blZuordnung';
 import { fehlertext, meldeUndWeiter, meldeUndLiefere } from '../src/infra/fehler';
 import { sleep } from '../clients/rebrickable';

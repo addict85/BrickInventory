@@ -1,11 +1,9 @@
 import * as repo from './repository/marktpreise';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { getSetValue } from './setValue';
-import { nutzerStandardZustand as userDefaultCondition } from '../konto/settings';
-import { getGlobalSetting } from '../konto/settings';
+import { nutzerStandardZustand as userDefaultCondition, getGlobalSetting, getSetting } from '../konto/settings';
 import { DEFAULT_PRICE_CONDITION, fetchPartPrice, fetchMinifigPrice, ladeBlNummernVor,
          resolveBlPartNumber, resolveBlColorId } from './rechnung/preise';
-import { getSetting } from '../konto/settings';
 import { meldeUndWeiter, fehlertext, logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { getMinifigParts } from '../katalog/rebrickableKatalog';
 import { KEINE_FARBE } from '../infra/validate';

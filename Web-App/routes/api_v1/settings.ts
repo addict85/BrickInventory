@@ -5,19 +5,7 @@ import { FORMULAR_GRENZEN } from '../../src/infra/dateiEmpfang';
 import { logAndContinue } from '../../src/infra/fehler';
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { requireApiAdmin as requireAdmin, requireToken, bearerToken, kontoSchranke } from './middleware';
-import {
-  SECRET_KEYS, isMaskedValue,
-  readSettings, globaleWerteOhneGeheimnisse, 
-  DESIGNS, designFuer, setzeEigenesDesign,
-} from '../../src/konto/settings';
-import { nutzerEinstellungen } from '../../src/konto/settings';
-import { deleteUserSetting } from '../../src/konto/settings';
-import { setGlobalSetting, globalerWertGueltig, deleteGlobalSetting } from '../../src/konto/settings';
-import { globalDefaultCondition } from '../../src/konto/settings';
-import { nutzerStandardZustand } from '../../src/konto/settings';
-import { setUserSetting } from '../../src/konto/settings';
-import { getGlobalSetting } from '../../src/konto/settings';
-import { getSetting } from '../../src/konto/settings';
+import { SECRET_KEYS, isMaskedValue, readSettings, globaleWerteOhneGeheimnisse, DESIGNS, designFuer, setzeEigenesDesign, nutzerEinstellungen, deleteUserSetting, setGlobalSetting, globalerWertGueltig, deleteGlobalSetting, globalDefaultCondition, nutzerStandardZustand, setUserSetting, getGlobalSetting, getSetting } from '../../src/konto/settings';
 import { buildSetsCsv } from '../../src/sets/setService';
 import { buildPartsCsv, buildFigsCsv } from '../../src/bestand/bestandExport';
 import { buildMerklisteCsv } from '../../src/merkliste/merkliste';

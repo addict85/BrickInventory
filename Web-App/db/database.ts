@@ -5,13 +5,12 @@
  * Ausführlich: docs/begruendungen/db/database.ts.md#abschnitt
  */
 
-import { Pool, types as pgTypes } from 'pg';
+import { Pool, types as pgTypes, Client } from 'pg';
 import { runMigrations, sichereNutzerdaten, abgeloestesEntfernen } from './migrate';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { Client } from 'pg';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { fehlerCode, meldeUndWeiter, logAndContinue } from '../src/infra/fehler';
 import { konfig, datenbankVerbindung } from '../src/infra/konfig';

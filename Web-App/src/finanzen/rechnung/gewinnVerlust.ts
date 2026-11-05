@@ -1,7 +1,6 @@
 
 import { asIds } from '../../haushalt/haushalt';
-import { getGlobalSetting } from '../../konto/settings';
-import { getSetting } from '../../konto/settings';
+import { getGlobalSetting, getSetting } from '../../konto/settings';
 import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
 import { computeMinifigsValuation, computePartsValuation } from './bewertung';

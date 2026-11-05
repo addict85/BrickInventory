@@ -6,8 +6,7 @@ import { recordAcquisitionForDay } from '../bestand/acquisitions';
 import { withInventoryLock } from '../../db/txLock';
 import { downloadSetImage } from '../katalog/bilder/setImages';
 import { getCurrentMarketPrice } from '../finanzen/marketPrice';
-import { zustandFuerPreis } from '../konto/settings';
-import { getSetting } from '../konto/settings';
+import { zustandFuerPreis, getSetting } from '../konto/settings';
 import { deleteSetRows } from './abfragen';
 import { legeInPapierkorb } from '../bestand/papierkorb';
 import { toCsv } from '../infra/csvExport';
@@ -221,10 +220,6 @@ async function addSetIntern(setNumber: string, quantity: number, userId: number,
   // statt eines schlichten „hinzugefügt".
   return { action:'added', set_number:normalized, name: name ?? `Set ${normalized}`, katalog_offen: !name };
 }
-
-/** `uid` ist eine einzelne ID; das Blickfeld entsteht im Rumpf.
- * @returns die Gesamtmenge des Blickfelds NACH der Änderung: Eine bei 0
- *   gedeckelte Verringerung ergibt eine andere Zahl als die gesendete. */
 
 /** Die LETZTE Erfassung, weil der Detail-Dialog genau sie bearbeitet.
  * @param feld  fester Spaltenname, KEINE Eingabe von aussen */

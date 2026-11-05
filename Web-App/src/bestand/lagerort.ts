@@ -8,8 +8,6 @@ import type { LagerTabelle } from './repository/lagerort';
 import { asIds } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
 import { fehlerWerfen } from '../infra/fehlerTexte';
-// Statisch: Es gibt keinen Kreis, und `await import('./settings')` verlangte
-// unter node16 die Dateiendung.
 import { setUserSetting, deleteUserSetting } from '../konto/settings';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine

@@ -22,7 +22,6 @@ import { withInventoryLock } from '../../db/txLock';
 import { addSet, updateSet } from '../../src/sets/setService';
 import { deleteSet, getSet, getSets } from '../../src/sets/abfragen';
 import { getSetPriceHistory } from '../../src/finanzen/priceHistory';
-import { einzelwert, ausTabelle } from '../../src/infra/validate';
 import * as V from '../../src/infra/validate';
 import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/sets/setNummer';
 import { sendeFehler, dateiFehler } from '../../src/infra/fehlerTexte';
@@ -212,7 +211,7 @@ router.get('/sets', requireToken, async (req: AuthedRequest, res: Antwort<'GET /
 
 router.get('/sets/:setNumber/price', requireToken, async (req: AuthedRequest, res: Antwort<'GET /api/v1/sets/:setNumber/price'>) => {
   const uid = req.apiUser.user_id;
-  const sn  = einzelwert(req.params.setNumber);
+  const sn  = V.einzelwert(req.params.setNumber);
   // Blickfeld statt eigener ID: Im Haushalt gehört das Set oft einem Unterkonto.
   const preis = await setPreis(uid, await scopeIds(uid, parseScopeMode(req.query.accounts)), sn);
   if (!preis) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
@@ -442,14 +441,14 @@ const uploadInstr = multer({
     filename: (req, file, cb) => {
       const safe = String(req.params.setNumber).replace(/[^a-z0-9-]/gi, '_');
       // ausTabelle: Ein geerbter Schlüssel wie 'constructor' ist keine Endung.
-      const ext = ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
+      const ext = V.ausTabelle(INSTR_EXT_BY_MIME, file.mimetype);
       if (!ext) return cb(dateiFehler('datei_typ_falsch', 415), '');
       // Zufällig statt Zeitstempel: Der Name soll sich nicht erraten lassen.
       cb(null, `${safe}_${crypto.randomBytes(12).toString('hex')}${ext}`);
     },
   }),
   limits: { ...FORMULAR_GRENZEN, fileSize: 50 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => { if (ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
+  fileFilter: (_req, file, cb) => { if (V.ausTabelle(INSTR_EXT_BY_MIME, file.mimetype)) cb(null, true); else cb(dateiFehler('datei_typ_falsch', 415)); },
 });
 
 /** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der

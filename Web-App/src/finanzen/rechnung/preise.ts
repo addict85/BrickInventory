@@ -15,11 +15,7 @@ import { effectiveCondition } from './zustand';
 import { blAbrufNummer, blAbrufNummern } from '../../katalog/blZuordnung';
 import { KEINE_FARBE } from '../../infra/validate';
 
-/**
- * Blickfeld: wessen DATEN gerechnet werden. Getrennt von `viewerId`, wessen
- * EINSTELLUNGEN gelten — die beiden fallen auseinander, sobald der Kontofilter
- * auf „Unterkonten" steht (siehe computeSetsValuation).
- */
+/** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
 export type { Blickfeld } from '../../haushalt/haushalt';
 
 type PreisZeile = { avg_price?: number | string | null; fetched_at?: string | Date | null } | null | undefined;

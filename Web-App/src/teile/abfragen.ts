@@ -1,7 +1,7 @@
 import * as repo from './repository/teileListe';
 import { resolveImageLocal } from '../katalog/bilder/images';
 import { asIds } from '../haushalt/haushalt';
-import type { BlickfeldEingabe } from '../haushalt/haushalt';
+import type { BlickfeldEingabe, BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { ensureFresh } from './partsSummary';
 import { fetchMissingBlIds } from '../katalog/partsImport';
@@ -20,7 +20,6 @@ import { merkeBlFarbnummer, blFarbnummerAus } from '../katalog/blZuordnung';
  * ohne eigene Zeilen eine Teileliste zeigt.
  * Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#abschnitt */
 
-import type { BlickfeldEingabe as Blickfeld } from '../haushalt/haushalt';
 import { marktpreiseAusCacheFuerTeile } from '../finanzen/marketPrice';
 
 /** Ohne manuelle Positionen — die haben eine eigene Ansicht. Hex-Rückfall aus

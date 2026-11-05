@@ -7,13 +7,12 @@ import { addSet, sanitizeSetNumber } from '../sets/setService';
 import { findSetInScope } from '../sets/setAdd';
 import { loescheAlarm } from '../finanzen/preisalarm';
 import * as V from '../infra/validate';
-import { nutzerStandardZustand } from '../konto/settings';
+import { nutzerStandardZustand, getSetting } from '../konto/settings';
 import { meldeUndWeiter, meldeUndLiefere } from '../infra/fehler';
 import { fuerSet } from '../finanzen/preisvergleich';
 import { resolveIfExists } from '../katalog/bilder/images';
 import { toCsv } from '../infra/csvExport';
 import * as repo from './repository/merkliste';
-import { getSetting } from '../konto/settings';
 import { fetchPrice } from '../finanzen/financeCalc';
 
 /** Jeder Zustand für sich: Kennt BrickLink einen nicht, kommt der andere

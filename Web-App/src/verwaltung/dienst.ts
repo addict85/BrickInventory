@@ -6,7 +6,7 @@ import { oeffneHttps, AbrufFehler, type AbrufStrom } from '../infra/abruf';
 import { ERLAUBTE_BILD_HOSTS } from '../infra/fremdeAdressen';
 import path from 'path';
 import * as verwaltung from './repository/verwaltung';
-import { naechsteUhrzeit, taeglicheUhrzeit } from '../auftraege/zeitplan';
+import { naechsteUhrzeit, taeglicheUhrzeit, DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../auftraege/zeitplan';
 import { DATA_DIR, PDF_JOB_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, meldeUndWeiter, logAndContinue, meldeUndLiefere, ohneFehlendeDatei } from '../infra/fehler';
 import { fetchPrice } from '../finanzen/financeCalc';
@@ -16,14 +16,10 @@ import { katalogEintrag, clearCatalogCache, clearSubsetsCache, getPriceGuide, ge
 import { loescheAnleitungen } from '../katalog/instructions';
 import { imgProxyFailures } from '../katalog/bilder/imgProxyStats';
 import { vergissFehlend } from '../katalog/bilder/imageMisses';
-import { setGlobalSetting } from '../konto/settings';
-import { getGlobalSetting } from '../konto/settings';
-import { getSetting } from '../konto/settings';
+import { setGlobalSetting, getGlobalSetting, getSetting } from '../konto/settings';
 import { liesZustand } from '../auftraege/laufzustand';
 import * as monitor from '../auftraege/jobMonitor';
-import { DAILY_JOBS, ziehePlanVor, zeitplanGeaendert } from '../auftraege/zeitplan';
-import { zaehleArt } from '../auftraege/dienst';
-import { stelleAuftragEin } from '../auftraege/dienst';
+import { zaehleArt, stelleAuftragEin } from '../auftraege/dienst';
 import { anleitungEinreihen } from '../auftraege/anleitungsAuftrag';
 import { bricksetJetzt, bricksetZahlen } from '../auftraege/bricksetAuftrag';
 import { anfragenJeMinute, bildbedarfAnstossen } from '../katalog/bilder/bildbedarf';
@@ -32,7 +28,6 @@ import { alsAbrufFehler } from '../../clients/abrufFehler';
 import { pruefeBricklinkZugang } from '../../clients/bricklink';
 import { ausRetryWarteschlange, pruefeBricksetZugang } from '../../clients/brickset';
 import { pruefeRebrickableZugang } from '../../clients/rebrickable';
-import * as verwaltungRepo from './repository/verwaltung';
 
 // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#job-frisch-ms
 const JOB_FRISCH_MS = 3 * 60_000;
@@ -100,7 +95,7 @@ export async function anleitungenNeuEinreihen() {
 
 /** Im Format von früher, damit die Oberfläche unverändert bleibt. */
 export async function preisJobStand() {
-  const plan = await verwaltungRepo.letzterLaufDerArt();
+  const plan = await verwaltung.letzterLaufDerArt();
   let letzter: Record<string, any> = {};
   try { letzter = JSON.parse(await liesZustand('preis_job_stand') ?? '{}'); } catch (e) { meldeUndWeiter('verwaltung:preis-stand', e); }
   const laeuft = plan?.status === 'laeuft';
@@ -156,7 +151,7 @@ export async function zeitplanNeuPlanen() {
   await zeitplanGeaendert('csv_sync');
   await zeitplanGeaendert('preise');
   const bis = naechsteUhrzeit(await taeglicheUhrzeit('brickset_retry'));
-  await verwaltungRepo.bricksetTermineVorziehen(bis);
+  await verwaltung.bricksetTermineVorziehen(bis);
 }
 
 /** Ergänzt um Zahlen, die nur die Datenbank kennt. */

@@ -1,7 +1,6 @@
 import * as repo from './repository/gemeinsam';
-import { istErsatzteil } from '../infra/validate';
+import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
 import { asIds } from '../haushalt/haushalt';
-import { KEINE_FARBE } from '../infra/validate';
 
 // Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#abschnitt
 
