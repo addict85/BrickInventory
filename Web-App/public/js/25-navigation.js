@@ -2,7 +2,7 @@
 // darf jede laden; der Router erreicht die Sichten über 00-ziele.js, nicht über einen Import.
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions } from './00-registry.js';
-import { G, leerZustand, alle, eins, setzeHtml } from './01-dom.js';
+import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './01-dom.js';
 import { ME, _lastImportAt } from './00-zustand.js';
 import { loadMonitor, stoppeMonitor } from './01-monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './06-minifigs.js';
@@ -205,7 +205,7 @@ export function oeffneSicht(name){
   G('btn-umenu')?.setAttribute('aria-current', 'page');
   // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige gerollt war, und man sieht die
   // Mitte einer fremden Seite.
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: rollArt() });
   if (ausMenue) fokusAufTitel(flaeche);
   SICHTEN[name]();
 }
@@ -307,6 +307,16 @@ document.addEventListener('click', (ev) => {
 
 document.addEventListener('keydown', (ev) => {
   if(ev.key === 'Escape') { menueSchliessen(true); importMenuesSchliessen(null, true); }
+});
+
+// Abgemeldet ist #inhalt verborgen; der Sprunglink führt dann ins Anmeldeformular statt ins Leere.
+document.querySelector('.sprunglink')?.addEventListener('click', (ev) => {
+  if (G('inhalt')?.checkVisibility?.() !== false) return;
+  const felder = /** @type {HTMLElement[]} */ ([...document.querySelectorAll('#login-screen input:not([type=hidden])')]);
+  const feld = felder.find(f => f.checkVisibility?.() !== false);
+  if (!feld) return;
+  ev.preventDefault();
+  feld.focus();
 });
 
 /**

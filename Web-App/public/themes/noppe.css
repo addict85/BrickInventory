@@ -274,3 +274,7 @@
 [data-theme="noppe"][data-dunkel] nav .ntab{color:#e6e8ee}
 [data-theme="noppe"] .hinweis-band{background:var(--sur);border-left:4px solid var(--chart-new)}
 [data-theme="noppe"] .hinweis-band > .ico{color:var(--chart-new)}
+
+/* Fokusring auf der roten Leiste: weiss; auf dem hellen aktiven Reiter in Tinte. */
+[data-theme="noppe"],[data-theme="hochglanz"]{--fokus-kopf:#fff;--fokus-nav:#fff;--fokus-nav-aktiv:var(--ink)}
+[data-theme="noppe"][data-dunkel],[data-theme="hochglanz"][data-dunkel]{--fokus-nav-aktiv:#fff}

@@ -28,6 +28,11 @@ export function alle(sel, wurzel = document) { return /** @type {HTMLElement[]} 
 export function eins(sel, wurzel = document) { return /** @type {HTMLElement | null} */ (wurzel.querySelector(sel)); }
 
 /** Der offene Reiter (data-tab des aktiven Knopfs in der Leiste). */
+/** Weich rollen nur ohne Wunsch nach weniger Bewegung: Ein ausdrückliches 'smooth' übergeht die CSS-Regel. */
+export function rollArt() {
+  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+}
+
 export function aktiverReiter() { return eins('.ntab.active')?.dataset.tab; }
 
 /**

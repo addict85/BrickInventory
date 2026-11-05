@@ -3,8 +3,8 @@ import { detailZeile, ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
 import { fehlerMeldung, api } from './01-api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
-import { leerZustand, ico, G, zuruecksetzenKnopf, alle, eins, setzeHtml, fuegeHtmlEin } from './01-dom.js';
+import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild, PLATZHALTER_SET } from './01-bilder.js';
+import { leerZustand, meldeTreffer, ico, G, zuruecksetzenKnopf, alle, eins, setzeHtml, fuegeHtmlEin } from './01-dom.js';
 import { betragAusFeld } from './01-formular.js';
 import { toast } from './01-meldungen.js';
 import { setScrollLabel } from './15-scrollbar.js';
@@ -179,6 +179,7 @@ async function loadCatalogSets(){
   _catPageCount = Math.max(1, Math.ceil(_catTotal / CAT_LIMIT));
   _catItems = d.sets || [];
   G('cat-count').textContent = tRaw(_catTotal === 1 ? 'catalog.result_count_one' : 'catalog.result_count', { count: _catTotal.toLocaleString(locale()) });
+  meldeTreffer(_catTotal ? G('cat-count').textContent : tRaw('common.no_hits', { query: G('cat-search')?.value.trim() || '' }));
 
   if (!_catItems.length) {
     // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
@@ -389,7 +390,7 @@ async function openCatModal(setNumber){
   // das schneller und entlastet den Server; der Proxy lohnt sich nur für die vielen kleinen Vorschauen.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#detailsrc
   const detailSrc = s.image_local || s.image_url;
-  G('cat-m-img').src = detailSrc ? fullUrl(detailSrc) : '/assets/set-placeholder.svg';
+  setzeDialogbild(G('cat-m-img'), detailSrc ? fullUrl(detailSrc) : PLATZHALTER_SET, PLATZHALTER_SET);
   /** @type {[string, string | number][]} */
   const rows = [
     [tRaw('detail.year'),     s.year || '—'],

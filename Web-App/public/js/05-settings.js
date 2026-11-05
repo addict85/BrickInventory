@@ -286,7 +286,7 @@ export async function loadTokens() {
   const d = await api('GET', '/v1/settings/tokens');
   if (!d.success) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${d.error || t('settings.error')}</p>`); return; }
   if (!d.tokens.length) { setzeHtml(ziel, html`<p data-stil="color:var(--mut)">${tRaw('tokens.none')}</p>`); return; }
-  setzeHtml(ziel, html`<div class="tw"><table class="dt"><thead><tr>
+  setzeHtml(ziel, html`<div class="tw"><table class="dt" aria-label="${tRaw('tokens.title')}"><thead><tr>
       <th>${tRaw('tokens.col.label')}</th><th>${tRaw('tokens.col.created')}</th>
       <th>${tRaw('tokens.col.last_used')}</th><th>${tRaw('tokens.col.scope')}</th><th>${tRaw('tokens.col.ip')}</th>
       <th>${tRaw('tokens.col.expires')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.tokens.map(tk => html`<tr>

@@ -72,7 +72,7 @@
     // Nur wenn die Leiste überhaupt scrollt — auf dem Desktop passiert nichts.
     if (nav.scrollWidth <= nav.clientWidth + 4) return;
     const target = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
-    nav.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+    nav.scrollTo({ left: Math.max(0, target), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
 
   function bindNavAutoScroll() {

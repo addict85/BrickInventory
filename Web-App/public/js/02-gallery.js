@@ -1,7 +1,7 @@
 // Die Sammlung: Kennzahlen, Galerie (Kacheln und Liste), Set erfassen, Set-CSV-Import und Löschen. Neu
 // geladen wird sie auch, wenn ein tieferes Modul 'setsGeaendert' oder 'bestandGeaendert' meldet.
 import { abonniere } from './00-ereignisse.js';
-import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung, geschaetztKauf } from './01-bausteine.js';
+import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung, geschaetztKauf, zeilenKnopf } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { LANG, locale, t, tRaw} from '../i18n.js';
 import { html, ungeprueft } from './00-escapen.js';
@@ -257,7 +257,7 @@ export function renderGallery(){
     setzeHtml(c, html`<div class="sgrid">${ungeprueft(list.map(gridCard).join(''))}</div>`);
     observeLazyImages(c);
   } else {
-    setzeHtml(c, html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('col.image_th')}</th><th>${tRaw('col.nr')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.year')}</th><th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('detail.reimport_parts')}</span></th><th><span class="vh">${tRaw('detail.delete')}</span></th></tr></thead><tbody>${ungeprueft(list.map(tableRow).join(''))}</tbody></table></div>`);
+    setzeHtml(c, html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.collection')}"><thead><tr><th>${tRaw('col.image_th')}</th><th>${tRaw('col.nr')}</th><th>${tRaw('col.name')}</th><th>${tRaw('detail.year')}</th><th>${tRaw('detail.theme')}</th><th>${tRaw('detail.pieces')}</th><th>${tRaw('detail.minifigs')}</th><th>${tRaw('detail.qty')}</th><th>${tRaw('detail.created')}</th><th>${tRaw('detail.instructions')}</th><th><span class="vh">${tRaw('detail.reimport_parts')}</span></th><th><span class="vh">${tRaw('detail.delete')}</span></th></tr></thead><tbody>${ungeprueft(list.map(tableRow).join(''))}</tbody></table></div>`);
     observeLazyImages(c);   // fehlte für die Listenansicht komplett
   }
 }
@@ -344,9 +344,9 @@ function gridCard(s){
 function tableRow(s){
   const src=s.image_local||s.image_url||'';
   const addedFmt = s.added_at ? fmtDatum(s.added_at) : '—';
-  return html`<tr data-stil="cursor:pointer" tabindex="0" data-click="openModal" data-arg="${s.set_number}">
+  return html`<tr data-stil="cursor:pointer" data-click="openModal" data-arg="${s.set_number}">
     <td>${src ? bildTag({ src: imgUrl(thumbUrl(src)||src, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
-    <td><span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1)">${s.set_number}</span></td>
+    <td>${zeilenKnopf({ click: 'openModal', arg: s.set_number }, html`<span data-stil="font-family:var(--mono);color:var(--b600);font-size:var(--fs-1);white-space:nowrap">${s.set_number}</span>`, tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}</td>
     <td>${s.name || '—'}</td><td>${s.year || '—'}</td><td>${s.theme || '—'}</td>
     <td>${s.pieces ? ungeprueft(s.pieces.toLocaleString(locale())) : '—'}</td><td>${s.minifigs || '—'}</td>
     <td><span class="qbadge">×${s.quantity}</span></td>

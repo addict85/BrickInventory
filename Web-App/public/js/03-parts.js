@@ -1,7 +1,7 @@
 // Der Reiter Teile: Teile aus Sets (seitenweise) und die manuell erfassten Teile samt Erfassen, Farbwahl und
 // CSV-Import — beide Listen teilen Filter und Leerzustand.
 import { abonniere } from './00-ereignisse.js';
-import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
+import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen, csvHochladen, zeilenKnopf } from './01-bausteine.js';
 import { registerActions, echt } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, hexZiffern, html, ungeprueft } from './00-escapen.js';
@@ -240,6 +240,9 @@ async function loadPartsPage(isFirst){
   }
 
   if (isFirst) { _setTeileLeer = false; teileLeerAbgleichen(); preparePartsShell(); }
+  // Wie in der Sammlung: Eine Suche sagt Vorlesern, wie viele Einträge sie fand.
+  if (isFirst && (activeColor || activeCat || G('parts-search')?.value.trim() || G('parts-spare')?.value))
+    meldeTreffer(tRaw('treffer.eintraege', { n: _partsTotal || parts.length }));
   appendParts(parts);
 
   _partsShown += parts.length;
@@ -257,7 +260,7 @@ async function loadPartsPage(isFirst){
 function preparePartsShell(){
   const main = G('parts-main');
   if (G('parts-view').value === 'table'){
-    setzeHtml(main, html`${html`<div class="tw"><table class="dt"><thead><tr>`}${html`<th>${tRaw('col.image_th')}</th><th>${tRaw('col.part_nr')}</th><th>${tRaw('col.name')}</th>`}${html`<th>${tRaw('col.color')}</th><th>${tRaw('col.category')}</th><th>${tRaw('detail.qty')}</th>`}${html`<th>${tRaw('col.sets')}</th>`}${html`</tr></thead><tbody class="parts-body"></tbody></table></div>`}`);
+    setzeHtml(main, html`${html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.parts')}"><thead><tr>`}${html`<th>${tRaw('col.image_th')}</th><th>${tRaw('col.part_nr')}</th><th>${tRaw('col.name')}</th>`}${html`<th>${tRaw('col.color')}</th><th>${tRaw('col.category')}</th><th>${tRaw('detail.qty')}</th>`}${html`<th>${tRaw('col.sets')}</th>`}${html`</tr></thead><tbody class="parts-body"></tbody></table></div>`}`);
   } else {
     setzeHtml(main, html`<div class="parts-list"></div>`);
   }
@@ -382,9 +385,11 @@ function partsCard(p){
 function partsTableRow(p){
   // Dieselbe Handlung wie auf der Kachel — eine Ansicht darf nicht koennen, was die andere nicht kann. Genau
   // daran ist in diesem Projekt schon mehrfach etwas auseinandergelaufen.
-  return html`<tr data-stil="cursor:pointer" tabindex="0" data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
+  return html`<tr data-stil="cursor:pointer" data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
     <td>${(p.image_local||p.image_url) ? bildTag({ src: imgUrl(thumbUrl(p.image_local||p.image_url)||p.image_local||p.image_url, true), alt: '', klasse: 'bild-klein', ph: 'teil' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}</td>
-    <td><span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${p.part_number}">${p.bl_part_number||p.part_number}</span></td>
+    <td>${zeilenKnopf({ click: 'openSetItemDetail', arg: 'part', arg2: p.part_number, arg3: p.color_id || 0 },
+      html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${p.part_number}">${p.bl_part_number||p.part_number}</span>`,
+      tRaw('zeile.oeffnen', { name: p.part_name || p.part_number, nr: p.bl_part_number || p.part_number }))}</td>
     <td data-stil="max-width:200px">${p.part_name || '—'} ${ersatzteilPlakette(p)}</td>
     <td><div data-stil="display:flex;align-items:center;gap:5px"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${colorName(p.color_name)}</div></td>
     <td>${catLabel(p.category_name)}</td>

@@ -1,5 +1,5 @@
 import { registerActions } from './00-registry.js';
-import { locale, t, tRaw} from '../i18n.js';
+import { colorName, locale, t, tRaw} from '../i18n.js';
 import { escHex, esc, html, ungeprueft } from './00-escapen.js';
 import { fehlerMeldung, api, apiRoh } from './01-api.js';
 import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './01-bilder.js';
@@ -212,7 +212,7 @@ async function plGenerate() {
   }
 
   _plParts = Object.values(combined);
-  G('pl-status').textContent = `${tRaw('pl.summary_teile', { n: _plParts.length })} ${tRaw('pl.summary_sets', { n: bekannt.length })}`
+  G('pl-status').textContent = `${tRaw('pl.summary_teile', { n: _plParts.length, teile: _plParts.reduce((s, x) => s + (Number(x.quantity) || 0), 0).toLocaleString(locale()) })} ${tRaw('pl.summary_sets', { n: bekannt.length })}`
     + (errors ? ` (${tRaw('monitor.errors_n',{n:errors})})` : '')
     + (unbekannt.length ? ` · ${tRaw('pl.unbekannt_n', { n: unbekannt.length, nummern: unbekannt.map(s => s.set_number).join(', ') })}` : '');
   G('btn-pl-gen').disabled = false;
@@ -308,8 +308,8 @@ function plRenderTable(fehler = 0) {
   let totalParts = 0;
   for (const grp of sorted) {
     const colorDot = grp.color_hex ? html`<span data-stil="display:inline-block;width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;margin-right:6px" data-farbe="${escHex(grp.color_hex, 'var(--s300)')}"></span>` : '';
-    markup = html`${markup}${html`<div data-stil="margin-bottom:1.5rem"><div data-stil="font-weight:700;font-size:var(--fs-4);padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${grp.color_name} <span data-stil="font-weight:400;color:var(--mut);font-size:var(--fs-3)">${tRaw('pl.types', {n:grp.parts.length})}</span></div><div>`}`;
-      markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:var(--fs-0);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span data-stil="width:44px;flex-shrink:0"></span><span data-stil="min-width:65px;flex-shrink:0">${tRaw('col.nr')}</span><span data-stil="flex:1">${tRaw('pl.col_name')}</span><span data-stil="width:70px;text-align:right;flex-shrink:0">${tRaw('pl.col_needed')}</span><span data-stil="width:70px;padding-left:6px;flex-shrink:0">${tRaw('pl.col_have')}</span></div>`}`;
+    markup = html`${markup}${html`<div data-stil="margin-bottom:1.5rem"><div data-stil="font-weight:700;font-size:var(--fs-4);padding:6px 0;border-bottom:2px solid var(--b200);margin-bottom:.5rem;color:var(--b700)">${colorDot}${colorName(grp.color_name)} <span data-stil="font-weight:400;color:var(--mut);font-size:var(--fs-3)">${tRaw('pl.types', {n:grp.parts.length})}</span></div><div>`}`;
+      markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:3px 4px;font-size:var(--fs-0);font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.4px;border-bottom:1.5px solid var(--b200)"><span data-stil="width:44px;flex-shrink:0"></span><span data-stil="min-width:65px;flex-shrink:0">${tRaw('col.nr')}</span><span data-stil="flex:1">${tRaw('pl.col_name')}</span><span data-stil="width:6.5em;text-align:right;flex-shrink:0;white-space:nowrap">${tRaw('pl.col_needed')}</span><span data-stil="width:6.5em;padding-left:6px;flex-shrink:0;white-space:nowrap">${tRaw('pl.col_have')}</span></div>`}`;
     for (const p of grp.parts.sort((a,b) => (a.bl_part_number||a.part_number).localeCompare(b.bl_part_number||b.part_number, undefined, { numeric: true }))) {
       totalParts += p.quantity;
       // Build image source: prefer local cached file, then stored URL, then Rebrickable CDN
@@ -322,7 +322,7 @@ function plRenderTable(fehler = 0) {
       // Leer heisst unbekannt; plExportBricklink lässt solche Posten weg und nennt sie.
       // Ausführlich: docs/begruendungen/public/js/08-init.js.md#blcolorid
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
-      markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number||p.part_number}</span><span data-stil="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${ungeprueft(p.quantity.toLocaleString(locale()))}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number||p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name||''}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number||p.part_number} ${p.color_name||''}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`}`;
+      markup = html`${markup}${html`<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${p.part_number}">${p.bl_part_number||p.part_number}</span><span data-stil="flex:1;font-size:var(--fs-3)">${p.part_name}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:6.5em;text-align:right;flex-shrink:0">×${ungeprueft(p.quantity.toLocaleString(locale()))}</span><span data-stil="width:6.5em;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${p.bl_part_number||p.part_number}" data-color="${blColorId}" data-rb-color="${p.color_id || 0}" data-color-name="${p.color_name||''}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-') ? 'M' : 'P'}" class="pl-have-input" aria-label="${tRaw('pl.col_have')}: ${p.bl_part_number||p.part_number} ${p.color_name||''}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`}`;
     }
     markup = html`${markup}</div></div>`;
   }

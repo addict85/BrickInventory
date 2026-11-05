@@ -42,33 +42,34 @@ function openLogViewer() {
     '</head><body' +
       ' data-base="' + escHtmlAttr(base) + '"' +
       ' data-i18n="' + escHtmlAttr(JSON.stringify({
-        'common.loading':       t('common.loading'),
-        'common.network_error': t('common.network_error'),
-        'log.none_found':       t('log.none_found'),
-        'log.entries':          t('log.entries'),
-        'toast.error':          t('toast.error'),
+        'common.loading':       tRaw('common.loading'),
+        'common.network_error': tRaw('common.network_error'),
+        'log.none_found':       tRaw('log.none_found'),
+        'log.entries':          tRaw('log.entries'),
+        'toast.error':          tRaw('toast.error'),
         // Die beiden Beschriftungen des Auto-Knopfes wechseln zur Laufzeit; logviewer.js hatte sie deshalb
         // als deutsche Literale.
-        'log.auto':             t('log.auto'),
-        'log.stop':             t('log.stop'),
+        'log.auto':             tRaw('log.auto'),
+        'log.stop':             tRaw('log.stop'),
       })) + '">' +
     '<header>' +
       '<h1>' + esc(tRaw('log.title')) + '</h1>' +
       '<div class="toolbar">' +
+        '<label class="vh" for="period">' + esc(tRaw('log.zeitraum')) + '</label>' +
         '<select id="period" data-change="loadLogs">' + spannen + '</select>' +
         '<span class="sep">|</span>' +
-        '<button class="lvbtn info-btn" id="btn-info" data-click="toggleLevel" data-arg="info">\u2139 Info</button>' +
-        '<button class="lvbtn warn-btn active" id="btn-warn" data-click="toggleLevel" data-arg="warn">\u26A0 Warn</button>' +
-        '<button class="lvbtn error-btn active" id="btn-error" data-click="toggleLevel" data-arg="error">\u2716 Error</button>' +
+        '<button type="button" class="lvbtn info-btn" id="btn-info" data-click="toggleLevel" data-arg="info" aria-pressed="false"><span aria-hidden="true">\u2139</span> Info</button>' +
+        '<button type="button" class="lvbtn warn-btn active" id="btn-warn" data-click="toggleLevel" data-arg="warn" aria-pressed="true"><span aria-hidden="true">\u26A0</span> Warn</button>' +
+        '<button type="button" class="lvbtn error-btn active" id="btn-error" data-click="toggleLevel" data-arg="error" aria-pressed="true"><span aria-hidden="true">\u2716</span> Error</button>' +
         '<span class="sep">|</span>' +
-        '<input id="search" type="text" placeholder="' + escHtmlAttr(tRaw('log.search')) + '" data-input="renderLogs">' +
+        '<input id="search" type="search" aria-label="' + escHtmlAttr(tRaw('log.search')) + '" placeholder="' + escHtmlAttr(tRaw('log.search')) + '" data-input="renderLogs">' +
         '<span class="sep">|</span>' +
-        '<button data-click="loadLogs">'+t('log.reload')+'</button>' +
-        '<button data-click="toggleAuto" id="btn-auto">' + esc(tRaw('log.auto')) + '</button>' +
-        '<span id="status">\u2013</span>' +
+        '<button type="button" data-click="loadLogs">' + esc(tRaw('log.reload')) + '</button>' +
+        '<button type="button" data-click="toggleAuto" id="btn-auto" aria-pressed="false">' + esc(tRaw('log.auto')) + '</button>' +
+        '<span id="status" role="status">\u2013</span>' +
       '</div>' +
     '</header>' +
-    '<div id="log-wrap"></div>' +
+    '<main id="log-wrap" tabindex="0" aria-label="' + escHtmlAttr(tRaw('log.title')) + '"></main>' +
     '<script src="/js/logviewer.js?v=' + (window.__APP_VERSION || Date.now()) + '"><\/script>' +
     '</body></html>';
 
@@ -76,12 +77,40 @@ function openLogViewer() {
   win.document.close();
 }
 
+/** Je Code des Servers ein ausgeschriebener Schlüssel: So prüft test/i18n-aufrufe.test.js, dass es ihn gibt. */
+/** @type {Record<string, (w?: Record<string, string | number>) => string>} */
+const SUB_TEXTE = {
+  teil_gemappt: (w) => tRaw('monitor.sub.teil_gemappt', w),
+  all_mapped: (w) => tRaw('monitor.sub.all_mapped', w),
+  ausstehend: (w) => tRaw('monitor.sub.ausstehend', w),
+  all_done: (w) => tRaw('monitor.sub.all_done', w),
+  keine_ausstehenden: (w) => tRaw('monitor.sub.keine_ausstehenden', w),
+  retry_ready: (w) => tRaw('monitor.sub.retry_ready', w),
+  warten_morgen: (w) => tRaw('monitor.sub.warten_morgen', w),
+  bilder_laden: (w) => tRaw('monitor.sub.bilder_laden', w),
+  bilder_offen: (w) => tRaw('monitor.sub.bilder_offen', w),
+  imgs_cached: (w) => tRaw('monitor.sub.imgs_cached', w),
+  katalog_warteschlange: (w) => tRaw('monitor.sub.katalog_warteschlange', w),
+  job_nie: (w) => tRaw('monitor.sub.job_nie', w),
+  kein_durchgang: (w) => tRaw('monitor.sub.kein_durchgang', w),
+  neu_suche: (w) => tRaw('monitor.sub.neu_suche', w),
+  neu_geladen: (w) => tRaw('monitor.sub.neu_geladen', w),
+  pdf_laufend: (w) => tRaw('monitor.sub.pdf_laufend', w),
+  pdf_bereit: (w) => tRaw('monitor.sub.pdf_bereit', w),
+  no_active: (w) => tRaw('monitor.sub.no_active', w),
+  bestand: (w) => tRaw('monitor.sub.bestand', w),
+};
+
 /**
  * Untertitel aus den Codes des Servers (src/verwaltung/dienst.ts); die Sätze stehen nur in den Sprachdateien.
- * @param {{ code: string, werte?: Record<string, string | number>, vor?: string }[]} teile
+ * Ein unbekannter Code (neuerer Server) fällt auf den Text des Servers zurück.
+ * @param {{ code: string, werte?: Record<string, string | number>, vor?: string }[]} teile @param {string} sub
  */
-function subAusCodes(teile) {
-  return teile.map(t => (t.vor ? tRaw('monitor.sub.' + t.vor) + ' ' : '') + tRaw('monitor.sub.' + t.code, t.werte)).join(' · ');
+function subAusCodes(teile, sub) {
+  const text = (/** @type {string} */ code, /** @type {Record<string, string | number> | undefined} */ werte) => {
+    const f = Object.hasOwn(SUB_TEXTE, code) ? SUB_TEXTE[code] : null; return f ? f(werte) : null; };
+  const stuecke = teile.map(t => { const s = text(t.code, t.werte); return s === null ? null : (t.vor ? (text(t.vor, undefined) ?? '') + ' ' : '') + s; });
+  return stuecke.includes(null) ? translateJobSub(sub) : stuecke.join(' · ');
 }
 
 // Übersetzt Server-seitige Job-Sub-Texte (background jobs kennen die Nutzersprache nicht). Bekannte Muster
@@ -202,12 +231,12 @@ export async function loadMonitor() {
 
     setzeHtml(el, html`
       <p class="mon-hinweis">${tRaw('monitor.services_hint')}</p>
-      <div class="tw"><table class="dt mon-tabelle mon-dienste">
+      <div class="tw"><table class="dt mon-tabelle mon-dienste" aria-label="${tRaw('tabelle.dienste')}">
         <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeitplan')}</th><th>${tRaw('monitor.col.zuletzt')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(([k, j]) => html`<tr>
           <td><span class="mon-name">${k === 'bricksetRetry' ? ungeprueft(jobIconSvg('brickset')) : ungeprueft(jobIconSvg(k))}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
-            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile) : translateJobSub(j.sub ?? '')}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedInput(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'zeit') : ''}</td>
           <td><div class="mon-knoepfe">${(aktionen(k, j)) ? ungeprueft(aktionen(k, j)) : html`<span class="mon-leise">–</span>`}</div></td>
@@ -335,7 +364,7 @@ async function zeigeAuftraege() {
     ${d.job_prozess.laeuft ? '' : html`<p class="mon-warnung">${ico('warnung')} ${tRaw('monitor.auftraege.kein_prozess')}</p>`}
     ${d.pausen.map(p => html`<p class="mon-leise">${ico('pause')} ${pause(p)}</p>`)}
     ${d.bildbedarf ? html`<p class="mon-leise">${tRaw('monitor.auftraege.bildbedarf', { n: d.bildbedarf })}</p>` : ''}
-    ${arten.length ? html`<div class="tw"><table class="dt mon-tabelle mon-arten">
+    ${arten.length ? html`<div class="tw"><table class="dt mon-tabelle mon-arten" aria-label="${tRaw('tabelle.auftragsarten')}">
       <thead><tr><th>${tRaw('monitor.col.art')}</th><th class="zahl">${tRaw('monitor.col.offen')}</th><th class="zahl">${tRaw('monitor.col.laeuft')}</th><th class="zahl">${tRaw('monitor.col.fehler')}</th><th>${tRaw('monitor.col.naechster')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
       <tbody>${arten.map(art => html`<tr>
         <td>${artName(art)}</td>
@@ -347,7 +376,7 @@ async function zeigeAuftraege() {
       </tr>`)}</tbody></table></div>` : ''}
     ${d.auftraege.length ? html`<details class="mon-einzeln"${einzelnOffen() ? ' open' : ''}>
       <summary class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
-      <div class="tw"><table class="dt mon-tabelle">
+      <div class="tw"><table class="dt mon-tabelle" aria-labelledby="mon-t-auftraege">
       <thead><tr><th>${tRaw('monitor.col.auftrag')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeit')}</th><th>${tRaw('monitor.col.hinweis')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
       <tbody>${ungeprueft(d.auftraege.slice(0, 40).map(zeile).join(''))}</tbody></table></div>
       ${mehr > 0 ? html`<p class="mon-leise">${tRaw('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>` : html`<h3 class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${tRaw('monitor.auftraege.leer')}</p>`}`);

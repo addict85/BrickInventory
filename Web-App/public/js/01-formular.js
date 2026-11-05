@@ -71,14 +71,12 @@ export function feldFehler(id, text) {
   }
   el.textContent = text || '';
   el.hidden = !text;
-  if (text) {
-    feld.setAttribute('aria-invalid', 'true');
-    feld.setAttribute('aria-describedby', el.id);
-    feld.focus();
-  } else {
-    feld.removeAttribute('aria-invalid');
-    feld.removeAttribute('aria-describedby');
-  }
+  // Die eigene Kennung ergänzen und wieder nehmen: Ein vorhandener Hinweis (Passwortregel) bleibt verknüpft.
+  const ids = new Set((feld.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
+  if (text) { ids.add(el.id); feld.setAttribute('aria-invalid', 'true'); }
+  else { ids.delete(el.id); feld.removeAttribute('aria-invalid'); }
+  if (ids.size) feld.setAttribute('aria-describedby', [...ids].join(' ')); else feld.removeAttribute('aria-describedby');
+  if (text) feld.focus();
 }
 
 /**

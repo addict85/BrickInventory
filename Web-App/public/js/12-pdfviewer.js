@@ -112,6 +112,9 @@ async function _renderPdfLazy(pdf, container) {
     const ph = document.createElement('div');
     ph.className = 'pdf-page-ph';
     ph.dataset.page = String(n);
+    // Die Seite ist ein Bild ohne Textebene; ihr Name sagt Vorlesern wenigstens, wo sie sind.
+    ph.setAttribute('role', 'img');
+    ph.setAttribute('aria-label', tRaw('pdf.seite_von', { n, m: pdf.numPages }));
     ph.style.cssText = 'background:#fff;box-shadow:0 1px 5px rgba(0,0,0,.35);flex-shrink:0;margin:0 auto';
     _pdfMassPlatzhalter(ph);
     container.appendChild(ph);
@@ -153,6 +156,7 @@ async function _renderPdfPage(pdf, n, ph) {
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(vp.width); canvas.height = Math.round(vp.height);
     canvas.style.cssText = 'width:100%;height:100%;display:block';
+    canvas.setAttribute('aria-hidden', 'true');
     const task = page.render({ canvasContext: canvas.getContext('2d'), viewport: vp });
     _pdfRenderTasks.set(n, task);
     await task.promise;
@@ -225,7 +229,8 @@ function _pdfSetzeZoom(neu, ankerX, ankerY) {
 /** Den Faktor als Prozentzahl anzeigen — nicht als Farbe oder Balken. */
 function _pdfZeigeFaktor() {
   const el = G('pdf-viewer-zoom');
-  if (el) el.textContent = Math.round(_pdfZoom * 100) + '%';
+  // Der Name beginnt mit der sichtbaren Zahl (WCAG 2.5.3): Sprachsteuerung trifft den Knopf mit „100 %“.
+  if (el) { el.textContent = Math.round(_pdfZoom * 100) + '%'; el.setAttribute('aria-label', tRaw('pdf.zoom_reset_n', { p: el.textContent })); }
   const minus = G('pdf-viewer-zoom-out'), plus = G('pdf-viewer-zoom-in');
   // Am Anschlag abschalten. `disabled` ist für Screenreader und Tastatur verbindlich; die Ausgrauung ist nur
   // die Begleitung davon, nicht das Signal.

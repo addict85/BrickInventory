@@ -129,7 +129,8 @@ w.eval(`
   window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
   window.t = (k, v) => { let s = k; if (v) for (const [a,b] of Object.entries(v)) s += ' ' + b; return s; };
   window.locale = () => 'de-CH';
-  window.toast = () => {};
+  window.toast = () => {}; window.meldeTreffer = () => {};
+  window.PLATZHALTER_SET = '/assets/set-placeholder.svg'; window.setzeDialogbild = (img, src) => { img.src = src; };
   // Das Teile-Symbol kommt aus 02-gallery.js und wird hier nur als Marke
   // gebraucht: Der Test prüft die Katalog-Kachel, nicht das Bild darin.
   // Seit Nachtrag 89 steht es dort statt des Puzzleteil-Emojis.

@@ -153,7 +153,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
     setzeHtml(G('acq-modal-body'), html`<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`);
     return;
   }
-  let markup = html`<div class="tw"><table class="dt acq-tabelle">
+  let markup = html`<div class="tw"><table class="dt acq-tabelle" aria-label="${tRaw('detail.purchase_price')}">
     <thead>
       <tr>
         <th>${tRaw('detail.qty')}</th>
@@ -408,7 +408,7 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   rows.push(html`<div id="man-market-rows"></div>`);
 
   rows.push(html`<div data-stil="margin-top:10px">
-    <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${tRaw('detail.price_history')}</div>
+    <h3 class="bereich-titel" data-stil="margin-bottom:4px">${tRaw('detail.price_history')}</h3>
     <div id="man-chart-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('common.loading')}</span></div>
   </div>`);
 
@@ -692,7 +692,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
     setzeHtml(G('acq-modal-body'), html`<div data-stil="color:var(--mut);font-size:var(--fs-3);padding:.5rem 0">—</div>`);
     return;
   }
-  let markup = html`<div class="tw"><table class="dt acq-tabelle">
+  let markup = html`<div class="tw"><table class="dt acq-tabelle" aria-label="${tRaw('detail.purchase_price')}">
     <thead><tr>
       <th>${tRaw('detail.qty')}</th><th>${tRaw('detail.added')}</th>
       <th>${tRaw('common.condition')}</th>

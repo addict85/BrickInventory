@@ -148,6 +148,18 @@ export function teileAufschluesselung(ausSets, einzeln) {
   return tRaw('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
 }
 
+/**
+ * Der Tastaturweg einer anklickbaren Tabellenzeile: ein echter Knopf in einer Zelle. Die Zeile selbst bleibt
+ * für die Maus anklickbar, nimmt aber keinen Fokus mehr; eine fokussierbare <tr> nannte Vorlesern weder
+ * Rolle noch Ziel.
+ * @param {{ click: string, arg?: string | number, arg2?: string | number, arg3?: string | number }} ziel
+ * @param {import('./00-escapen.js').Markup | string} sichtbar  Inhalt der Zelle
+ * @param {string} name  Name des Knopfs; enthält den sichtbaren Text
+ */
+export function zeilenKnopf(ziel, sichtbar, name) {
+  return html`<button type="button" class="zeile-oeffnen" data-click="${ziel.click}"${ziel.arg !== undefined ? html` data-arg="${ziel.arg}"` : ''}${ziel.arg2 !== undefined ? html` data-arg2="${ziel.arg2}"` : ''}${ziel.arg3 !== undefined ? html` data-arg3="${ziel.arg3}"` : ''} aria-label="${name}">${sichtbar}</button>`;
+}
+
 /** „≈“ vor einem Kaufpreis, der ein eingesetzter Marktpreis ist; sonst läse er sich wie bezahlt.
  * @param {string | import('./00-escapen.js').SicheresHtml} markup schon maskiertes Markup */
 export function geschaetztKauf(markup) {

@@ -2,7 +2,7 @@ import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
 import { api } from './01-api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
+import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './01-bilder.js';
 import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, knopfBesetzt, zuruecksetzenKnopf, setzeHtml } from './01-dom.js';
 import { fmtDatum, fmtN, leseBetrag } from './01-format.js';
 import { setnummerFeldGueltig, betragAusFeld } from './01-formular.js';
@@ -330,8 +330,7 @@ export async function oeffneMerkpostenDetail(arg) {
   // durch den Bild-Proxy (01-bilder.js). Das lokale Bild hat Vorrang — es liegt schon da.
   const bild = (w.image_local || w.image_url)
     ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
-  G('mk-m-img').src = bild;
-  G('mk-m-img').dataset.orig = bild;
+  setzeDialogbild(G('mk-m-img'), bild, bild);
   setzeHtml(G('mk-m-sparkline-content'), html`<span class="text-mut schrift-1">${tRaw('common.loading')}</span>`);
   G('mk-m-market-rows').replaceChildren();
   setzeHtml(G('mk-m-det'), ungeprueft(zeilen(w)));

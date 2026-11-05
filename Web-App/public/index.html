@@ -192,7 +192,7 @@
         <div class="fg"><label for="lu" data-i18n="login.email_or_user">Benutzername oder E-Mail</label><input type="text" id="lu" autocomplete="username" /></div>
         <div class="fg"><label for="lp" data-i18n="login.password">Passwort</label><div class="geheim-feld"><input type="password" id="lp" autocomplete="current-password" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="lp" aria-pressed="false" aria-controls="lp" aria-label="Passwort anzeigen" data-i18n="login.passwort_zeigen" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
         <!-- Erst sichtbar, wenn der Server einen zweiten Faktor verlangt (utils/zweiterFaktor.ts). -->
-        <div class="fg" id="lc-zeile" data-stil="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" inputmode="numeric" autocomplete="one-time-code" maxlength="24" /><div class="text-klein abstand-o-3" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div>
+        <div class="fg" id="lc-zeile" data-stil="display:none"><label for="lc" data-i18n="login.code">Code aus der Authenticator-App</label><input type="text" id="lc" autocomplete="one-time-code" autocapitalize="off" spellcheck="false" maxlength="24" aria-describedby="lc-hinweis" /><div class="text-klein abstand-o-3" id="lc-hinweis" data-i18n="login.code_hint">Oder einer deiner Wiederherstellungscodes.</div>
           <button type="button" class="btn bs btn-sm abstand-o-075" id="lc-passkey" data-click="passkeyZweiterFaktor" data-i18n="pk.statt_code" hidden>Passkey statt Code verwenden</button></div>
         <button type="button" class="btn bp knopf-breit" id="btn-login" data-i18n="login.submit">Anmelden</button>
         <button type="button" class="btn bs knopf-breit abstand-o-075" id="btn-passkey" data-click="passkeyAnmelden" data-i18n="pk.login" hidden>Mit Passkey anmelden</button>
@@ -223,8 +223,8 @@
         <div class="fg"><label for="reg-pass2" data-i18n="register.password_repeat">Passwort wiederholen *</label><input type="password" id="reg-pass2" autocomplete="new-password" required aria-required="true" /></div>
         <div class="fg"><label for="reg-lang" data-i18n="register.language">Sprache</label>
           <select id="reg-lang">
-            <option value="de">Deutsch</option>
-            <option value="en">English</option>
+            <option value="de" lang="de">Deutsch</option>
+            <option value="en" lang="en">English</option>
           </select>
         </div>
         <button type="button" class="btn bp knopf-breit" id="btn-register" data-i18n="register.submit">Konto erstellen</button>
@@ -385,7 +385,7 @@
           <button class="ubadge ubadge-knopf" id="btn-umenu" data-click="benutzerMenue"
                   aria-haspopup="true" aria-expanded="false"
                   aria-controls="umenu-pop"><svg class="ico ubadge-ico" aria-hidden="true"><use href="#i-profil"/></svg><span class="ubadge-name" id="ubadge">—</span><span class="ubadge-striche" aria-hidden="true"><svg class="ico" aria-hidden="true"><use href="#i-menue"/></svg></span><span class="vh" data-i18n="menu.open">Menü</span></button>
-          <div class="umenu-pop" id="umenu-pop" role="menu" data-stil="display:none">
+          <div class="umenu-pop" id="umenu-pop" role="menu" aria-labelledby="btn-umenu" data-stil="display:none">
             <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="profil">
                     <svg class="ico" aria-hidden="true"><use href="#i-profil"/></svg><span data-i18n="settings.group.profile">Konto</span></button>
             <button class="umenu-item" role="menuitem" tabindex="-1" data-click="oeffneSicht" data-arg="gutscheine">
@@ -465,7 +465,7 @@
           <div class="import-klappe">
             <label for="csv-file" class="import-eintrag zeiger"><svg class="ico" aria-hidden="true"><use href="#i-datei"/></svg><span data-i18n="import.csv_read">CSV-Datei einlesen</span><input type="file" id="csv-file" aria-label="CSV-Datei" data-i18n="import.csv_file" data-i18n-attr="aria-label" accept=".csv" class="datei-versteckt" data-change="startSetCsvImport" /></label>
             <a class="import-eintrag" id="btn-set-csv-template" href="#" data-i18n="import.template_download" data-ico="import">CSV-Vorlage herunterladen</a>
-            <button type="button" class="import-eintrag" id="letzter-import" data-click="zeigeLetztenImport" hidden><svg class="ico" aria-hidden="true"><use href="#i-liste"/></svg><span id="letzter-import-text"></span></button>
+            <button type="button" class="import-eintrag" id="letzter-import" data-click="zeigeLetztenImport" hidden><svg class="ico" aria-hidden="true"><use href="#i-liste"/></svg><span id="letzter-import-text" data-i18n="csv.letzter_import_kurz">Letzter Import – ansehen</span></button>
             <label class="import-eintrag zeiger"><span data-wanted-icon="1"></span><span data-i18n="import.bricklink_xml">BrickLink-Wanted-Liste (XML) einlesen</span><input type="file" id="wanted-xml-set" aria-label="BrickLink-Wanted-Liste" data-i18n="wanted.pick" data-i18n-attr="aria-label" accept=".xml,text/xml,application/xml" class="datei-versteckt" data-change="wantedXmlGewaehlt" data-art="set" /></label>
           </div>
         </details>
@@ -784,7 +784,7 @@
       <!-- Portfolio Chart -->
       <div id="portfolio-chart-section" class="diagramm-karte">
         <div class="diagramm-kopf">
-          <div class="bereich-titel ohne-abstand-u" data-i18n="finance.chart.label">Wert der Sammlung</div>
+          <h2 class="bereich-titel ohne-abstand-u" data-i18n="finance.chart.label">Wert der Sammlung</h2>
           <div class="diagramm-werte">
             <div class="text-klein"><span data-i18n="finance.market_label">Marktwert</span>: <span class="wert-primaer" id="portfolio-current">—</span></div>
           </div>
@@ -923,7 +923,7 @@
           <a class="einst-link" href="#einst-konfig" data-click="einstAbschnitt" data-arg="einst-konfig" data-i18n="settings.group_config">Konfiguration</a>
         </nav>
         <div class="ssec" id="einst-design">
-          <div class="stit" data-i18n="settings.general_title" data-ico="einstellungen">Erscheinungsbild</div>
+          <h2 class="stit" data-i18n="settings.general_title" data-ico="einstellungen">Erscheinungsbild</h2>
           <div class="sform">
             <div class="fg"><label for="mon-app-theme" data-i18n="settings.app_theme">App-Design</label>
               <select id="mon-app-theme">
@@ -940,7 +940,7 @@
           </div>
         </div>
         <div class="ssec" id="einst-bl">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-schluessel"/></svg> BrickLink API <span class="ao" id="bl-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
           <div class="sform">
             <div class="fg"><label for="bl-ck">Consumer Key</label><input type="text" id="bl-ck" autocomplete="off" /></div>
             <div class="fg"><label for="bl-cs">Consumer Secret</label><div class="geheim-feld"><input type="password" id="bl-cs" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bl-cs" aria-pressed="false" aria-controls="bl-cs" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -955,7 +955,7 @@
           </div>
         </div>
         <div class="ssec" id="einst-rb">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-link"/></svg> Rebrickable API <span class="ao" id="rb-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://rebrickable.com/api/" target="_blank" rel="noopener noreferrer">rebrickable.com → API → Generate Key</a><br><span class="schrift-1" data-i18n="settings.rebrickable_hint">Set-Infos, Teile &amp; Bilder</span></div>
             <div class="fg"><label for="rb-key">Rebrickable API Key</label><div class="geheim-feld"><input type="password" id="rb-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="rb-key" aria-pressed="false" aria-controls="rb-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -968,7 +968,7 @@
           </div>
         </div>
         <div class="ssec" id="einst-bs">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-katalog"/></svg> Brickset API <span class="ao" id="bs-ao" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
           <div class="sform">
             <div class="ibox abstand-u-4"><a href="https://brickset.com/tools/webservices/requestkey" target="_blank" rel="noopener noreferrer"><span data-i18n="settings.brickset_link">brickset.com → Tools → API Key anfordern</span></a><br><span class="schrift-1" data-i18n="settings.brickset_hint">Anleitungen, Fallback Set-Infos</span></div>
             <div class="fg"><label for="bs-key">Brickset API Key</label><div class="geheim-feld"><input type="password" id="bs-key" autocomplete="off" spellcheck="false" /><button type="button" class="btn bs geheim-knopf" data-click="geheimUmschalten" data-arg="bs-key" aria-pressed="false" aria-controls="bs-key" aria-label="Anzeigen" data-i18n="settings.secret_show" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-auge"/></svg></button></div></div>
@@ -981,7 +981,7 @@
           </div>
         </div>
         <div class="ssec full" id="usermgmt" data-stil="display:none">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></div>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-haushalt"/></svg> <span data-i18n="settings.users_title">Benutzerverwaltung</span> <span class="admin-hinweis" data-i18n="settings.users_admin_badge">(Verwalter)</span></h2>
           <div data-stil="display:flex;align-items:center;justify-content:space-between;padding:.65rem .9rem;background:var(--s50);border:1px solid var(--bdr);border-radius:var(--rad);margin-bottom:1rem">
             <div>
               <!-- Umschliessendes Label (die Checkbox liegt darin) — kein for= nötig. -->
@@ -999,7 +999,7 @@
             <div id="vw-protokoll"></div>
           </details>
           <div class="trenner-oben">
-            <div class="ctitle" data-i18n="settings.users_new">Neuen Benutzer erstellen</div>
+            <h3 class="ctitle" data-i18n="settings.users_new">Neuen Benutzer erstellen</h3>
             <!-- Formular wie bei den Anmeldefeldern; display:contents haelt die
                  Zeile (.frow) unveraendert. -->
             <form class="nur-inhalt" data-submit="btn-cu">
@@ -1017,7 +1017,7 @@
           </div>
         </div>
         <div class="ssec full" id="einst-smtp">
-          <div class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" data-stil="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></div>
+          <h2 class="stit"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg> E-Mail / SMTP <span class="ao" data-stil="display:none" data-i18n="settings.admins_only" data-ico="warnung">Nur Verwalter</span></h2>
           <div class="sform">
             <div class="ibox abstand-u-075" data-i18n="settings.smtp.hint">Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.</div>
             <div class="host-port">
@@ -1043,7 +1043,7 @@
 
         <!-- Konfiguration: nur Verwalter, deshalb bei den globalen Einstellungen. -->
         <div class="ssec full" id="einst-konfig">
-          <div class="stit" data-i18n="settings.group_config" data-ico="werkzeug">Konfiguration</div>
+          <h2 class="stit" data-i18n="settings.group_config" data-ico="werkzeug">Konfiguration</h2>
           <div>
               <!-- Konfiguration-Export/-Import: nur für Admins sichtbar -->
               <div class="admin-only" data-stil="display:none">
@@ -1092,8 +1092,8 @@
           </div>
           <div class="fg"><label for="lang-select" data-i18n="settings.language">Sprache</label>
             <select id="lang-select" data-change="setLangFromEl">
-              <option value="de" data-i18n="settings.lang.de">Deutsch</option>
-              <option value="en" data-i18n="settings.lang.en">Englisch</option>
+              <option value="de" lang="de">Deutsch</option>
+              <option value="en" lang="en">English</option>
             </select>
           </div>
           <div class="fg"><label for="s-cur" data-i18n="settings.currency">Währung</label>
@@ -1138,7 +1138,8 @@
         <h2 class="stit" id="konto-t-passwort"><svg class="ico" aria-hidden="true"><use href="#i-schloss"/></svg> <span data-i18n="settings.password.change">Passwort ändern</span></h2>
         <form class="nur-inhalt sform" data-submit="btn-sav-pw">
           <div class="profil-raster">
-            <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" autocomplete="new-password" /></div>
+            <div class="fg"><label for="pw-n" data-i18n="settings.password.new">Neues Passwort</label><input type="password" id="pw-n" autocomplete="new-password" aria-describedby="pw-n-regel" />
+              <div class="text-klein" id="pw-n-regel" data-i18n="pflicht.regel" data-i18n-vars='{"n":"12"}'>Mindestens 12 Zeichen, kein häufig verwendetes Passwort.</div></div>
             <div class="fg"><label for="pw-r" data-i18n="settings.password.repeat">Passwort wiederholen</label><input type="password" id="pw-r" autocomplete="new-password" /></div>
           </div>
           <label class="zeile mittig luecke-8 zeiger"><input class="w-auto" type="checkbox" id="pw-pk" /> <span data-i18n="settings.password.revoke_passkeys">Auch alle Passkeys entfernen (falls jemand Fremdes Zugang hatte)</span></label>
@@ -1149,14 +1150,14 @@
 
       <!-- Zweiter Faktor (TOTP) — Inhalt zeichnet js/21-zweiter-faktor.js -->
       <div class="ssec abstand-u-125">
-        <div class="stit" data-i18n="zf.title" data-ico="schloss">Zweiter Faktor</div>
+        <h2 class="stit" data-i18n="zf.title" data-ico="schloss">Zweiter Faktor</h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="zf.hint">Zusätzlich zum Passwort ein Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator, 1Password). Schützt, falls jemand dein Passwort kennt.</p>
         <div id="zf-flaeche"></div>
       </div>
 
       <!-- Passkeys — Inhalt zeichnet js/23-passkeys.js -->
       <div class="ssec abstand-u-125">
-        <div class="stit" data-i18n="pk.title" data-ico="schluessel">Passkeys</div>
+        <h2 class="stit" data-i18n="pk.title" data-ico="schluessel">Passkeys</h2>
         <p class="hinweis-absatz abstand-u-075" data-i18n="pk.hint">Anmelden ohne Passwort mit Fingerabdruck, Gesicht oder Geräte-PIN. Mit eingeschaltetem zweitem Faktor ersetzt ein Passkey auch den Code.</p>
         <div id="pk-flaeche"></div>
       </div>
@@ -1480,7 +1481,7 @@
 
         <div class="ssec full">
           <div>
-            <div class="stit" data-i18n="settings.data_export_title" data-ico="export">Daten exportieren</div>
+            <h2 class="stit" data-i18n="settings.data_export_title" data-ico="export">Daten exportieren</h2>
 
 
             <p class="hinweis-absatz">
@@ -1513,7 +1514,7 @@
         <!-- Papierkorb: gelöschte Sets, manuelle Teile und Figuren (utils/papierkorb.ts) -->
         <div class="ssec full">
           <div>
-            <div class="stit" data-i18n="trash.title" data-ico="loeschen">Papierkorb</div>
+            <h2 class="stit" data-i18n="trash.title" data-ico="loeschen">Papierkorb</h2>
             <p class="hinweis-absatz" data-i18n="trash.hint">Gelöschte Sets, manuell erfasste Teile und Minifiguren bleiben 30 Tage hier und lassen sich zurückholen. Danach werden sie endgültig entfernt.</p>
             <div id="papierkorb-liste" class="papierkorb-liste"></div>
             <div class="abstand-o-06">
@@ -1545,7 +1546,7 @@
            test/apk-download.test.js — eine tote Adresse hinter einem
            Download-Knopf merkt sonst niemand, bis jemand darauf klickt. -->
       <div class="ssec abstand-u-125">
-        <div class="stit" data-i18n="apk.title" data-ico="import">App herunterladen</div>
+        <h2 class="stit" data-i18n="apk.title" data-ico="import">App herunterladen</h2>
         <p class="text-mittel abstand-u-1" data-i18n="apk.hint">Immer die neuste Fassung, direkt aus der Ablage auf GitHub. Android fragt beim Öffnen der Datei nach der Erlaubnis, Apps aus dieser Quelle zu installieren.</p>
         <a class="apk-btn" href="https://github.com/addict85/BrickInventory/releases/download/apk-neuste/BrickInventory.apk"
            rel="noopener" target="_blank">
@@ -1563,7 +1564,7 @@
         </a>
       </div>
       <div class="ssec abstand-u-125">
-        <div class="stit" data-i18n="settings.qr.title" data-ico="app">QR-Code für Android App</div>
+        <h2 class="stit" data-i18n="settings.qr.title" data-ico="app">QR-Code für Android App</h2>
         <p class="text-mittel abstand-u-1" data-i18n="settings.qr.hint">Scanne diesen Code in der Android App um Server-URL und Login automatisch zu konfigurieren. Der Code ist 5 Minuten gültig und kann nur einmal verwendet werden.</p>
         <div id="qr-container" data-stil="display:flex;flex-direction:column;align-items:flex-start;gap:.75rem">
           <!-- Hidden URL field — auto-filled from window.location -->
@@ -1600,13 +1601,13 @@
 
       <!-- Server-Zertifikat: Fingerabdruck der CA-Wurzel zum Abgleich (js/05-settings.js, ladeTls) -->
       <div class="ssec abstand-u-125">
-        <div class="stit" data-i18n="tls.title" data-ico="schloss">Server-Zertifikat</div>
+        <h2 class="stit" data-i18n="tls.title" data-ico="schloss">Server-Zertifikat</h2>
         <div id="tls-flaeche"></div>
       </div>
 
       <!-- Angemeldete Geraete: die ausgestellten Zugaenge sehen und entwerten -->
       <div class="ssec abstand-u-125">
-        <div class="stit" data-i18n="tokens.title" data-ico="schluessel">Angemeldete Geräte</div>
+        <h2 class="stit" data-i18n="tokens.title" data-ico="schluessel">Angemeldete Geräte</h2>
         <p class="text-mittel abstand-u-1" data-i18n="tokens.hint">Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.</p>
         <div id="tokens-tbl"></div>
         <div class="zeile luecke-10 umbruch mittig abstand-o-075">
@@ -1720,7 +1721,7 @@
 <!-- Set Detail Modal -->
 <div class="ovl" id="add-part-modal" role="dialog" aria-modal="true" aria-labelledby="add-part-tit">
   <div class="modal max-720">
-    <div class="mhd"><div class="mtit" id="add-part-tit" data-i18n="parts.add_title">Teil hinzufügen</div><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="part" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
+    <div class="mhd"><h2 class="mtit" id="add-part-tit" data-i18n="parts.add_title">Teil hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="part" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div id="add-part-inline">
           <div class="raster-160">
             <div class="fg"><label for="ap-num-inline" data-i18n="parts.num_label">Teilenummer *</label><input type="text" id="ap-num-inline" data-erstfokus placeholder="z. B. 3001" data-i18n="parts.num_ph" data-i18n-attr="placeholder" aria-required="true" /></div>
@@ -1745,7 +1746,7 @@
 </div>
 <div class="ovl" id="add-fig-modal" role="dialog" aria-modal="true" aria-labelledby="add-fig-tit">
   <div class="modal max-720">
-    <div class="mhd"><div class="mtit" id="add-fig-tit" data-i18n="figs.add_title">Minifigur hinzufügen</div><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="fig" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
+    <div class="mhd"><h2 class="mtit" id="add-fig-tit" data-i18n="figs.add_title">Minifigur hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="fig" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div id="add-fig-inline">
         <div class="raster-160">
           <div class="fg"><label for="af-num-inline"><span data-i18n="figs.num_label">Figur-Nummer *</span> <span class="text-klein" data-i18n="figs.num_hint">(Rebrickable-Nummer)</span></label>
@@ -1769,7 +1770,7 @@
 </div>
 <div class="ovl" id="add-set-modal" role="dialog" aria-modal="true" aria-labelledby="add-set-tit">
   <div class="modal max-620">
-    <div class="mhd"><div class="mtit" id="add-set-tit" data-i18n="gallery.add.title">Set hinzufügen</div><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="set" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
+    <div class="mhd"><h2 class="mtit" id="add-set-tit" data-i18n="gallery.add.title">Set hinzufügen</h2><button class="btn bs btn-sm" data-click="schliesseErfassen" data-arg="set" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <!-- Ein Raster mit zwei Spalten: Beschriftungen und Felder stehen bündig,
          der Knopf schliesst rechts unten ab (vorher eine umbrechende Zeile). -->
     <div class="erfassen-raster">
@@ -1791,7 +1792,7 @@
 </div>
 <div class="ovl" id="set-modal" role="dialog" aria-modal="true" aria-labelledby="m-tit">
   <div class="modal">
-    <div class="mhd"><div><div class="mtit" id="m-tit">Set</div><div class="muntertit" id="m-untertit"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
+    <div class="mhd"><div><h2 class="mtit" id="m-tit">Set</h2><div class="muntertit" id="m-untertit"></div></div><button class="btn bs btn-sm" data-click="closeModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div class="m-kopfteil">
       <img id="m-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
       <div id="m-det"></div>
@@ -1850,16 +1851,16 @@
   <div class="modal max-520">
     <div class="mhd">
       <div>
-        <div class="mtit" id="mk-m-tit">—</div>
+        <h2 class="mtit" id="mk-m-tit">—</h2>
         <div class="text-klein abstand-o-2" id="mk-m-sub"></div>
       </div>
       <button class="btn bs btn-sm" data-click="schliesseMerkpostenDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="mk-m-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="mk-m-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="mk-m-det"></div>
     <div id="mk-m-market-rows"></div>
     <div class="abstand-o-075" id="mk-m-price-chart">
-      <div class="bereich-titel abstand-u-4" data-i18n="detail.price_history">Preisverlauf</div>
+      <h3 class="bereich-titel abstand-u-4" data-i18n="detail.price_history">Preisverlauf</h3>
       <div class="sparkline-wrap" id="mk-m-sparkline-content"></div>
     </div>
     <div class="mfooter verteilt umbruch luecke-8">
@@ -1906,7 +1907,7 @@
 <div class="ovl" id="mk-take-modal" role="dialog" aria-modal="true" aria-labelledby="mk-take-tit">
   <div class="modal max-420">
     <div class="mhd">
-      <div class="mtit" id="mk-take-tit">—</div>
+      <h2 class="mtit" id="mk-take-tit">—</h2>
       <button class="btn bs btn-sm" data-click="schliesseUebernahme" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
     <div data-stil="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:12px">
@@ -1925,12 +1926,12 @@
   <div class="modal max-520">
     <div class="mhd">
       <div>
-        <div class="mtit" id="cat-m-tit">—</div>
+        <h2 class="mtit" id="cat-m-tit">—</h2>
         <div class="text-klein abstand-o-2" id="cat-m-sub"></div>
       </div>
       <button class="btn bs btn-sm" data-click="closeCatModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
-    <img id="cat-m-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
+    <img id="cat-m-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" class="mimg zoombar" referrerpolicy="no-referrer" data-orig="/assets/set-placeholder.svg" data-click="openImageLightboxFromEl" />
     <div id="cat-m-det"></div>
     <div class="mfooter verteilt umbruch luecke-8">
       <div class="zeile luecke-8 unten umbruch">
@@ -2002,7 +2003,7 @@
   <div class="modal max-1360">
     <div class="mhd">
       <div>
-        <div class="mtit" id="wxml-tit" data-stil="display:flex;align-items:center;gap:7px"><span data-wanted-icon="1"></span><span data-i18n="wanted.preview_title">Wanted-Liste prüfen</span></div>
+        <h2 class="mtit" id="wxml-tit" data-stil="display:flex;align-items:center;gap:7px"><span data-wanted-icon="1"></span><span data-i18n="wanted.preview_title">Wanted-Liste prüfen</span></h2>
         <div class="text-klein abstand-o-2" id="wanted-xml-sub"></div>
       </div>
       <button class="btn bs btn-sm" data-click="wantedXmlSchliessen" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
@@ -2049,7 +2050,7 @@
   <div class="modal max-480">
     <div class="mhd">
       <div>
-        <div class="mtit" id="man-detail-tit">—</div>
+        <h2 class="mtit" id="man-detail-tit">—</h2>
         <div class="text-klein abstand-o-2" id="man-detail-sub"></div>
       </div>
       <button class="btn bs btn-sm" data-click="closeManDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
@@ -2073,14 +2074,14 @@
   <div class="modal max-480">
     <div class="mhd">
       <div>
-        <div class="mtit" id="setitem-tit">—</div>
+        <h2 class="mtit" id="setitem-tit">—</h2>
         <div class="text-klein abstand-o-2" id="setitem-sub"></div>
       </div>
       <button class="btn bs btn-sm" data-click="closeSetItemDetail" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
     </div>
     <!-- data-click="openImageLightboxFromEl" ist der Zoom (11-actions.js);
          die Adresse dafuer steht in data-orig und wird beim Oeffnen gesetzt. -->
-    <img id="setitem-img" alt="" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-click="openImageLightboxFromEl"
+    <img id="setitem-img" tabindex="0" role="button" aria-label="Bild vergrössern" data-i18n="common.zoom_image" data-i18n-attr="aria-label" data-click="openImageLightboxFromEl"
          data-stil="width:100%;max-height:160px;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem;display:none;cursor:zoom-in" />
     <div id="setitem-body"></div>
     <div class="mfooter">
@@ -2093,14 +2094,14 @@
 <div class="ovl" id="pdf-viewer-modal" role="dialog" aria-modal="true" aria-labelledby="pdf-viewer-title" data-stil="display:none;z-index:500">
   <div class="pdf-rahmen">
     <div class="pdf-kopf">
-      <div id="pdf-viewer-title" class="pdf-titel">PDF</div>
+      <h2 id="pdf-viewer-title" class="pdf-titel">PDF</h2>
       <div class="pdf-werkzeuge">
         <!-- Zoom: Minus, Faktor, Plus, und der Faktor selbst ist der
              Zurueck-auf-100%-Knopf. Der Faktor steht als ZAHL da, nicht als
              Balken oder Farbe -- man muss ablesen koennen, wo man ist. -->
         <div class="pdf-zoom">
           <button id="pdf-viewer-zoom-out" class="btn bs btn-sm" data-click="pdfZoomOut" aria-label="Verkleinern (Taste −, oder Strg + Mausrad)" data-i18n="pdf.zoom_out" data-i18n-attr="aria-label">−</button>
-          <button id="pdf-viewer-zoom" class="btn bs btn-sm min-34rem" data-click="pdfZoomReset" aria-label="Zoom zurücksetzen (Taste 0)" data-i18n="pdf.zoom_reset" data-i18n-attr="aria-label">100%</button>
+          <button id="pdf-viewer-zoom" class="btn bs btn-sm min-34rem" data-click="pdfZoomReset" aria-label="100% – Zoom zurücksetzen (Taste 0)">100%</button>
           <button id="pdf-viewer-zoom-in" class="btn bs btn-sm" data-click="pdfZoomIn" aria-label="Vergrössern (Taste +, oder Strg + Mausrad)" data-i18n="pdf.zoom_in" data-i18n-attr="aria-label">+</button>
         </div>
         <button id="pdf-viewer-print" class="btn bs btn-sm" data-click="printPdfViewer"><svg class="ico" aria-hidden="true"><use href="#i-drucker"/></svg> <span data-i18n="pdf.print">Drucken</span></button>
@@ -2112,7 +2113,7 @@
       <div id="pdf-viewer-loading" class="pdf-laden">
         <div class="spin"></div><span data-i18n="pdf.loading">PDF wird geladen…</span>
       </div>
-      <div id="pdf-viewer-pages" class="pdf-seiten"></div>
+      <div id="pdf-viewer-pages" class="pdf-seiten" tabindex="0" role="region" aria-label="Seiten" data-i18n="pdf.seiten" data-i18n-attr="aria-label" data-erstfokus></div>
     </div>
   </div>
 </div>
@@ -2129,7 +2130,7 @@
   <div class="modal acq-wide max-780">
     <div class="mhd">
       <div>
-        <div class="mtit" id="acq-modal-tit" data-i18n="detail.purchase_price">Kaufpreis</div>
+        <h2 class="mtit" id="acq-modal-tit" data-i18n="detail.purchase_price">Kaufpreis</h2>
         <div class="text-klein abstand-o-2" id="acq-modal-sub"></div>
       </div>
       <button class="btn bs btn-sm" data-click="closeAcqModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button>
@@ -2150,7 +2151,7 @@
 <!-- Einrichtung beim ersten Start — Ablauf in js/22-einrichtung.js -->
 <div class="ovl" id="einrichtung-modal" role="dialog" aria-modal="true" aria-labelledby="ew-titel">
   <div class="modal max-560">
-    <div class="mhd"><div class="mtit" id="ew-titel" data-i18n="setup.title">Willkommen — BrickInventory einrichten</div><button class="btn bs btn-sm" data-click="einrichtungSpaeter" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
+    <div class="mhd"><h2 class="mtit" id="ew-titel" data-i18n="setup.title">Willkommen — BrickInventory einrichten</h2><button class="btn bs btn-sm" data-click="einrichtungSpaeter" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <div class="text-klein abstand-u-075" id="ew-schritte"></div>
 
     <section class="ew-schritt" data-schritt="passwort">
@@ -2224,7 +2225,7 @@
 <!-- Reset PW Modal -->
 <div class="ovl" id="pw-modal" role="dialog" aria-modal="true" aria-labelledby="pw-tit">
   <div class="modal max-360">
-    <div class="mhd"><div class="mtit" id="pw-tit" data-i18n="users.pw_reset_title">Passwort zurücksetzen</div><button class="btn bs btn-sm" data-click="closePwModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
+    <div class="mhd"><h2 class="mtit" id="pw-tit" data-i18n="users.pw_reset_title">Passwort zurücksetzen</h2><button class="btn bs btn-sm" data-click="closePwModal" data-dialog-zu aria-label="Schliessen" data-i18n="common.close" data-i18n-attr="aria-label"><svg class="ico" aria-hidden="true"><use href="#i-schliessen"/></svg></button></div>
     <form class="sform" data-submit="btn-rpw">
       <div class="fg"><label for="rpw-v" data-i18n="users.pw_modal.new_password">Neues Passwort</label><input type="password" id="rpw-v" data-erstfokus /></div>
       <input type="hidden" id="rpw-uid" />

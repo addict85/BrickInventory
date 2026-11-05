@@ -317,6 +317,11 @@
        als die Primärfläche, so bleibt der Ring auch neben einem blauen Knopf
        sichtbar; ein Design kann --fokus setzen. */
     :focus-visible{outline:3px solid var(--fokus,var(--b700));outline-offset:2px}
+    /* Kopf- und Reiterleiste sind in manchen Designs selbst in Markenfarbe gestrichen; der Ring braucht dort
+       eine eigene Farbe, sonst liegt er bei 1,2:1 auf der Leiste. */
+    header :focus-visible{outline-color:var(--fokus-kopf,var(--fokus,var(--b700)))}
+    nav .ntab:focus-visible{outline-color:var(--fokus-nav,var(--fokus,var(--b700)))}
+    nav .ntab.active:focus-visible{outline-color:var(--fokus-nav-aktiv,var(--fokus-nav,var(--fokus,var(--b700))))}
     input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--fokus,var(--b700));outline-offset:0}
     /* Datei-Felder in einem Knopf-Label: unsichtbar, aber per Tab erreichbar;
        den Ring trägt das Label. */
@@ -499,6 +504,10 @@
     .acq-aktion{text-align:right;white-space:nowrap}
     .acq-ok{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-1);font-weight:600;color:var(--gewinn,var(--g700));margin-right:6px}
     .acq-ok[hidden]{display:inline-flex;visibility:hidden}
+    /* Knopf einer anklickbaren Tabellenzeile: sieht aus wie der Zellentext, bedient sich wie ein Knopf. */
+    .zeile-oeffnen{background:none;border:0;padding:0;margin:0;font:inherit;color:inherit;text-align:inherit;cursor:pointer;min-height:24px;display:inline-flex;align-items:center;max-width:100%;overflow-wrap:anywhere}
+    .toast-zu{background:none;border:0;color:inherit;cursor:pointer;min-width:24px;min-height:24px;display:inline-flex;align-items:center;justify-content:center;margin-left:4px;border-radius:6px;flex:0 0 auto}
+    .toast-zu .ico{width:1rem;height:1rem}
     .preis-mit-waehrung{display:flex;gap:6px;align-items:stretch}
     .preis-mit-waehrung input{flex:1 1 auto;min-width:0}
     .preis-mit-waehrung select{flex:0 0 auto;width:auto}
@@ -506,6 +515,7 @@
     .acq-waehrung{font-size:var(--fs-1);color:var(--mut);font-weight:600}
     .acq-umgerechnet{display:block;font-size:var(--fs-1);color:var(--mut)}
     .acq-umgerechnet:empty{display:none}
+    .kauf-geschaetzt{white-space:nowrap}
     .acq-umgerechnet-inline{font-size:var(--fs-1);color:var(--mut)}
     .acq-loeschen{background:none;border:none;cursor:pointer;color:var(--r700);min-width:32px;min-height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
     @media (hover:hover){.acq-loeschen:hover{background:var(--r100)}}

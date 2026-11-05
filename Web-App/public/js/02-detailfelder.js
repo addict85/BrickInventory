@@ -393,8 +393,10 @@ registerActions({
  * @param {import('../../frontend-typen/vertrag').Lagerort[]} orte
  */
 export function initStorageSelects(orte) {
+  // Lange Namen gekürzt: Ein Auswahlfeld ist so breit wie seine längste Option; der volle Name steht im title.
+  const kurz = (/** @type {string} */ s) => s.length > 32 ? s.slice(0, 30) + '…' : s;
   const opts = [html`<option value="">${tRaw('filter.storage_all')}</option>`,
-    ...orte.map(o => html`<option value="${o.ort}">${o.ort}</option>`)].join('');
+    ...orte.map(o => html`<option value="${o.ort}"${o.ort.length > 32 ? html` title="${o.ort}"` : ''}>${kurz(o.ort)}</option>`)].join('');
   for (const view of LAGER_VIEWS) {
     const el = G('storage-' + view);
     if (!el) continue;

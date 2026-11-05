@@ -16,7 +16,7 @@ import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 export async function loadUsers(){
   const d=await api('GET','/v1/auth/users'); if(!d.success) return;
   // Der Name zuerst: Am Telefon ist er der Kartentitel (data-label leer), die ID steht nur am Rechner.
-  setzeHtml(G('users-tbl'), html`<div class="tw"><table class="dt user-tbl"><thead><tr><th>${tRaw('users.col.username')}</th><th class="nutzer-id">ID</th><th>${tRaw('users.col.role')}</th><th>${tRaw('users.col.created')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.users.map(u=>html`<tr><td class="nutzer-name" data-label=""><strong>${u.username}</strong></td><td class="nutzer-id">${u.id}</td>
+  setzeHtml(G('users-tbl'), html`<div class="tw"><table class="dt user-tbl" aria-label="${tRaw('settings.users_title')}"><thead><tr><th>${tRaw('users.col.username')}</th><th class="nutzer-id">ID</th><th>${tRaw('users.col.role')}</th><th>${tRaw('users.col.created')}</th><th>${tRaw('users.col.actions')}</th></tr></thead><tbody>${d.users.map(u=>html`<tr><td class="nutzer-name" data-label=""><strong>${u.username}</strong></td><td class="nutzer-id">${u.id}</td>
       <td><span class="rb ${u.is_admin ? 'rv' : 'ru'}">${u.is_admin ? tRaw('users.role.admin') : tRaw('users.role.user')}</span>
         ${u.is_active === false ? html`<span class="rb ru">${tRaw('users.status.inaktiv')}</span>` : ''}
         ${u.wartet_auf_bestaetigung ? html`<span class="rb ru">${tRaw('users.status.wartet')}</span>` : ''}</td>
@@ -45,7 +45,7 @@ const AKTIONEN = {
 async function ladeProtokoll(){
   const d=await api('GET','/v1/admin/protokoll'); if(!d.success) return;
   const eintraege = d.eintraege || [];
-  setzeHtml(G('vw-protokoll'), eintraege.length ? html`<div class="tw"><table class="dt"><thead><tr><th>${tRaw('users.protokoll.zeit')}</th><th>${tRaw('users.protokoll.verwalter')}</th><th>${tRaw('users.protokoll.aktion')}</th><th>${tRaw('users.protokoll.konto')}</th></tr></thead><tbody>${eintraege.map(e=>html`<tr><td>${ungeprueft(new Date(String(e.zeit)).toLocaleString(locale()))}</td><td>${e.verwalter_name||'—'}</td>
+  setzeHtml(G('vw-protokoll'), eintraege.length ? html`<div class="tw"><table class="dt" aria-label="${tRaw('users.protokoll')}"><thead><tr><th>${tRaw('users.protokoll.zeit')}</th><th>${tRaw('users.protokoll.verwalter')}</th><th>${tRaw('users.protokoll.aktion')}</th><th>${tRaw('users.protokoll.konto')}</th></tr></thead><tbody>${eintraege.map(e=>html`<tr><td>${ungeprueft(new Date(String(e.zeit)).toLocaleString(locale()))}</td><td>${e.verwalter_name||'—'}</td>
       <td>${((/** @type {Record<string, () => string>} */ (AKTIONEN))[String(e.aktion)] || (() => String(e.aktion)))()}${e.einzelheiten ? html`: ${e.einzelheiten}` : ''}</td><td>${e.ziel_name||'#'+e.ziel_id}</td></tr>`)}</tbody></table></div>` : html`<p data-stil="color:var(--mut);font-size:var(--fs-2)">${tRaw('users.protokoll.leer')}</p>`);
 }
 /**
