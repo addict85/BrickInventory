@@ -29,8 +29,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import java.io.File
 import javax.inject.Inject
 
@@ -205,25 +207,28 @@ class TeilelisteViewModel @Inject constructor(
 
     private fun exportRumpf(sets: List<PlSet>, parts: List<PlPart>): String {
         val serverUrl = dienste.sitzung.state.value.serverUrl.trimEnd('/')
-        val setsArr = JSONArray()
-        sets.forEach { s -> setsArr.put(JSONObject().put("set_number", s.setNumber).put("name", s.name)) }
-        val partsArr = JSONArray()
-        parts.forEach { p ->
-            val imgUrl = p.imageUrl ?: ""
-            val imgRelative = if (imgUrl.startsWith(serverUrl)) imgUrl.removePrefix(serverUrl) else imgUrl
-            partsArr.put(JSONObject()
-                .put("part_number",    p.partNumber)
-                .put("bl_part_number", p.blPartNumber ?: p.partNumber)
-                .put("part_name",      p.partName)
-                .put("color_name",     p.colorName)
-                .put("color_hex",      p.colorHex ?: "")
-                .put("color_id",       p.colorId)
-                .put("quantity",       p.quantity)
-                .put("image_local",    p.imageLocal ?: "")
-                .put("image_url",      imgRelative)
-                .put("is_fig",         p.isFig))
-        }
-        return JSONObject().put("sets", setsArr).put("parts", partsArr).toString()
+        return buildJsonObject {
+            putJsonArray("sets") {
+                sets.forEach { s -> addJsonObject { put("set_number", s.setNumber); put("name", s.name) } }
+            }
+            putJsonArray("parts") {
+                parts.forEach { p ->
+                    val imgUrl = p.imageUrl ?: ""
+                    addJsonObject {
+                        put("part_number", p.partNumber)
+                        put("bl_part_number", p.blPartNumber ?: p.partNumber)
+                        put("part_name", p.partName)
+                        put("color_name", p.colorName)
+                        put("color_hex", p.colorHex ?: "")
+                        put("color_id", p.colorId)
+                        put("quantity", p.quantity)
+                        put("image_local", p.imageLocal ?: "")
+                        put("image_url", if (imgUrl.startsWith(serverUrl)) imgUrl.removePrefix(serverUrl) else imgUrl)
+                        put("is_fig", p.isFig)
+                    }
+                }
+            }
+        }.toString()
     }
 
     private companion object {
