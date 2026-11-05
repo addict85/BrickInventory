@@ -117,7 +117,7 @@ class GutscheinPdfAblageTest {
         assertTrue("Der Speicherbereich bleibt nach dem Verlassen offen",
             Regex("""onDispose\s*\{\s*offen\.close\(\)""").containsMatchIn(betrachter))
         assertTrue("Herunterladen steht ohne Prüfung da",
-            Regex("""if \(speicherbar\) \{\s*IconButton\(onClick = \{ (melde\()?savePdfToDownloads\(""").containsMatchIn(betrachter))
+            Regex("""if \(speicherbar\) \{\s*(ch\.brickinventoryapp\.ui\.components\.MitTooltip\([^\n]*\{\s*)?IconButton\(onClick = \{ (melde\()?savePdfToDownloads\(""").containsMatchIn(betrachter))
         // Der Druckdialog bietet „Als PDF speichern“: Drucken nur, wo auch Speichern erlaubt ist.
         val geschuetzt = betrachter.substringAfter("if (speicherbar) {").substringBefore("\n                    }\n")
         assertTrue("Drucken steht ohne Prüfung da", betrachter.split("printPdf(ctx,").size == 2 && "printPdf(ctx," in geschuetzt)
