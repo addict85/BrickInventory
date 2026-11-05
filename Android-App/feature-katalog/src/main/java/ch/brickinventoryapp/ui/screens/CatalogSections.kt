@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.runtime.MutableState
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.selection.selectableGroup
@@ -38,7 +40,7 @@ import ch.brickinventoryapp.ui.components.mitSchrift
 
 /** Filterzeile: Thema und Jahr; sortiert wird über das Menü neben der Suche. */
 @Composable
-fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThemeSheet: androidx.compose.runtime.MutableState<Boolean>, showYearSheet: androidx.compose.runtime.MutableState<Boolean>) {
+fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThemeSheet: MutableState<Boolean>, showYearSheet: MutableState<Boolean>) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -72,7 +74,7 @@ fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThem
 fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (String) -> Unit) {
     // Suchfeld — derselbe Baustein wie in Galerie, Teilen und Minifiguren
     // (TabellenZeile.kt), damit der Leeren-Knopf überall gleich heisst.
-    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Suchfeld(
             wert = state.query,
             onWert = onQueryChange,
@@ -93,7 +95,7 @@ fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, o
 /** Auswahlblatt für das Jahr. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CatalogYearSheet(state: CatalogUiState, showYearSheet: androidx.compose.runtime.MutableState<Boolean>, onYearChange: (Int?) -> Unit) {
+fun CatalogYearSheet(state: CatalogUiState, showYearSheet: MutableState<Boolean>, onYearChange: (Int?) -> Unit) {
     if (showYearSheet.value) {
         ModalBottomSheet(onDismissRequest = { showYearSheet.value = false }) {
             Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
@@ -104,7 +106,7 @@ fun CatalogYearSheet(state: CatalogUiState, showYearSheet: androidx.compose.runt
                     val max = state.yearMax ?: 0; val min = state.yearMin ?: 0
                     if (max >= min && max > 0) (max downTo min).toList() else emptyList()
                 }
-                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp).selectableGroup()) {
+                LazyColumn(Modifier.heightIn(max = 420.dp).selectableGroup()) {
                     item {
                         ThemeRow(stringResource(R.string.catalog_all_years), state.year == null) {
                             showYearSheet.value = false; onYearChange(null)
@@ -125,7 +127,7 @@ fun CatalogYearSheet(state: CatalogUiState, showYearSheet: androidx.compose.runt
 /** Auswahlblatt für das Thema (durchsuchbare Liste). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: androidx.compose.runtime.MutableState<Boolean>, onThemeChange: (Int?) -> Unit) {
+fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: MutableState<Boolean>, onThemeChange: (Int?) -> Unit) {
     if (showThemeSheet.value) {
         ModalBottomSheet(onDismissRequest = { showThemeSheet.value = false }) {
             var themeFilter by rememberSaveable { mutableStateOf("") }
@@ -143,7 +145,7 @@ fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: androidx.compose.ru
                     if (themeFilter.isBlank()) state.themes
                     else state.themes.filter { it.name.contains(themeFilter, ignoreCase = true) }
                 }
-                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp).selectableGroup()) {
+                LazyColumn(Modifier.heightIn(max = 420.dp).selectableGroup()) {
                     item {
                         ThemeRow(stringResource(R.string.catalog_all_themes), state.themeId == null) {
                             showThemeSheet.value = false; onThemeChange(null)

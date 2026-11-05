@@ -1,5 +1,12 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.runtime.LaunchedEffect
 import ch.brickinventoryapp.ui.LagerUiState
 import ch.brickinventoryapp.ui.MerkpostenDetailUiState
@@ -103,7 +110,7 @@ fun MerklisteRoute(
  * ohne Rückgängig endet — auch wenn sie verschwindet, weil man die Merkliste verlässt.
  */
 @Composable
-fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: androidx.compose.material3.SnackbarHostState) {
+fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: SnackbarHostState) {
     val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
     val text = vorgemerkt?.let { stringResource(R.string.wanted_deleted, it.name) }
     val rueckgaengig = stringResource(R.string.common_undo)
@@ -112,8 +119,8 @@ fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: andro
         var zurueck = false
         try {
             zurueck = snackbarHostState.showSnackbar(text ?: v.name, rueckgaengig,
-                duration = androidx.compose.material3.SnackbarDuration.Long) ==
-                androidx.compose.material3.SnackbarResult.ActionPerformed
+                duration = SnackbarDuration.Long) ==
+                SnackbarResult.ActionPerformed
         } finally {
             if (zurueck) vm.merkpostenRueckgaengig(v) else vm.merkpostenLoeschenAusfuehren(v)
         }
@@ -260,8 +267,8 @@ fun MerklisteScreen(
                 ) {
                     BoxWithConstraints {
                     val mehrspaltig = maxWidth >= MERKLISTE_SPALTE * 2
-                    androidx.compose.foundation.lazy.grid.LazyVerticalGrid(
-                        columns = androidx.compose.foundation.lazy.grid.GridCells.Adaptive(MERKLISTE_SPALTE),
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(MERKLISTE_SPALTE),
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -481,7 +488,7 @@ private fun MerkpostenZeile(
         Modifier.fillMaxWidth()
             .semantics { selected = gewaehlt }
             .clickable(role = Role.Button, onClick = onOeffnen),
-        border = if (gewaehlt) androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
+        border = if (gewaehlt) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         // Dieselbe Karte wie Galerie und Finanzen (AppKarte): Die graue Fläche der
         // Vorgabe-Card war ein dritter Kartenstil für dieselbe Ebene.
         shape = Formen.karte,
@@ -510,7 +517,7 @@ private fun MerkpostenZeile(
                     // Immer zwei Zeilen Platz wie in der Galerie: Im Tablet-Raster stand eine
                     // Karte mit kurzem Namen niedriger als ihre Nachbarn.
                     Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, minLines = if (mehrspaltig) 2 else 1, maxLines = 2,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        overflow = TextOverflow.Ellipsis)
                     Text(
                         listOfNotNull(
                             w.setNumber,

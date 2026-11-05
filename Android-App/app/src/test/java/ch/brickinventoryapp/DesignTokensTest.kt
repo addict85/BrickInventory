@@ -172,22 +172,4 @@ class DesignTokensTest {
                 "\nKnöpfe tragen die Vorgabe des Themas; Formen.feld gilt nur für Eingabefelder."
         }
     }
-
-    /**
-     * Ein Schalter oder Kästchen mit eigenem Rückruf ist ein namenloses Element neben
-     * seinem Text (TalkBack: „Aus, Schalter“). Die Zeile schaltet, das Steuerelement
-     * zeigt nur an (SchalterZeile, KaestchenZeile). Gegenprobe schalter-ohne-namen.
-     */
-    @Test
-    fun `Schalter und Kaestchen schalten nur ueber ihre Zeile`() {
-        val aufruf = Regex("""\b(Switch|Checkbox)\(\s*checked\s*=[^,]+,\s*onCheckedChange\s*=\s*+(?!null\b)""")
-        var gesehen = 0
-        val fehler = Quellen.alle().flatMap { datei ->
-            val s = Quellen.ohneKommentare(datei.readText())
-            gesehen += Regex("""\b(Switch|Checkbox)\(""").findAll(s).count()
-            aufruf.findAll(s).map { "${datei.name}:${s.substring(0, it.range.first).count { c -> c == '\n' } + 1}" }.toList()
-        }
-        assert(gesehen >= 6) { "Nur $gesehen Schalter gefunden — greift die Suche noch?" }
-        assert(fehler.isEmpty()) { "Schalter mit eigenem Rückruf neben getrenntem Text:\n  " + fehler.joinToString("\n  ") }
-    }
 }

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
 import ch.brickinventoryapp.ui.components.SperrGrund
@@ -285,7 +287,7 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
 @Composable
 fun PreisalarmCard(an: Boolean, onUmschalten: (Boolean) -> Unit) {
     val frage = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        ActivityResultContracts.RequestPermission()
     ) { /* Antwort egal — Begruendung im Kommentar ueber dieser Funktion. */ }
 
     SettingsCard(
@@ -295,7 +297,7 @@ fun PreisalarmCard(an: Boolean, onUmschalten: (Boolean) -> Unit) {
         SchalterZeile(stringResource(R.string.alert_notify), an, { neu ->
             // Die Berechtigung ZUERST und auf dem Hauptthread: Sie öffnet einen
             // Systemdialog, und der gehört nicht hinter eine Hintergrundarbeit.
-            if (neu && android.os.Build.VERSION.SDK_INT >= 33) {
+            if (neu && Build.VERSION.SDK_INT >= 33) {
                 frage.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
             onUmschalten(neu)

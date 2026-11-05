@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.AnnotatedString
+import coil3.compose.AsyncImagePainter
 import ch.brickinventoryapp.ui.components.katalogName
 import ch.brickinventoryapp.ui.components.fokusRahmen
 import ch.brickinventoryapp.ui.components.grosseSchrift
@@ -96,7 +100,7 @@ fun TabellenZeile(
                     // Ohne Beschreibung: Der Name steht daneben, TalkBack las ihn sonst zweimal.
                     contentDescription = null,
                     onState = { st ->
-                        if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
+                        if (st is AsyncImagePainter.State.Error) onBildFehler()
                     },
                     modifier = Modifier.size(36.dp).clip(Formen.etikett),
                     contentScale = ContentScale.Fit,
@@ -107,7 +111,7 @@ fun TabellenZeile(
                         horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         if (farbe != null) {
                             Surface(color = farbe,
-                                shape = androidx.compose.foundation.shape.CircleShape,
+                                shape = CircleShape,
                                 modifier = Modifier.size(10.dp)) {}
                         }
                         Text(
@@ -122,7 +126,7 @@ fun TabellenZeile(
                     }
                     // Katalognamen sind englisch; TalkBack spricht sie so aus (katalogName).
                     Text(
-                        name?.let { katalogName(it) } ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
+                        name?.let { katalogName(it) } ?: AnnotatedString(stringResource(R.string.name_unknown)),
                         color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
@@ -227,7 +231,7 @@ fun Zustandszeile(
 ) {
     // Ab 130 % Schrift steht die Beschriftung über der Wahl: In der festen Spalte
     // daneben brach „Zustan|d“ mitten im Wort.
-    if (androidx.compose.ui.platform.LocalDensity.current.fontScale > 1.3f) {
+    if (LocalDensity.current.fontScale > 1.3f) {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Text(stringResource(R.string.common_condition), style = MaterialTheme.typography.bodyMedium)
             ConditionToggle(selected = zustand, onSelect = onZustand, optionen = optionen)

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.focus.FocusManager
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.foundation.verticalScroll
@@ -112,7 +114,7 @@ fun LoginScreen(
                 shape = Formen.chip,
                 color = MaterialTheme.colorScheme.surface,
                 // outline: Der Rand ist die einzige Grenze des Chips und braucht 3:1.
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
                 Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
                     verticalAlignment = Alignment.CenterVertically,
@@ -254,7 +256,7 @@ private fun AnmeldeFelder(
     codeNoetig: Boolean, code: String, onCode: (String) -> Unit,
     isLoading: Boolean, error: String?,
     registrierungOffen: Boolean?,
-    focusMgr: androidx.compose.ui.focus.FocusManager,
+    focusMgr: FocusManager,
     onLogin: (String, String, String?) -> Unit,
     onFormular: (AnmeldeFormular) -> Unit,
     vollerZugriff: Boolean,
@@ -387,7 +389,7 @@ private fun AnmeldeFelder(
 @Composable
 private fun RegistrierFelder(
     laeuft: Boolean, meldung: String?, fehler: String?,
-    focusMgr: androidx.compose.ui.focus.FocusManager,
+    focusMgr: FocusManager,
     namenNebeneinander: Boolean,
     onRegistrieren: (String, String, String, String, String) -> Unit,
     onFormular: (AnmeldeFormular) -> Unit,

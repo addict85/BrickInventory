@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import android.content.Context
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.ui.components.zeichenweise
 import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
@@ -201,20 +205,20 @@ internal fun KontoCard(
  * Die Notfallcodes an eine App der Wahl (Passwortmanager, Notizen): nur auf Tipp und
  * über die Auswahl des Systems, nicht über die Zwischenablage, deren Verlauf sie behielte.
  */
-internal fun teileCodes(ctx: android.content.Context, titel: String, codes: List<String>) {
-    val senden = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+internal fun teileCodes(ctx: Context, titel: String, codes: List<String>) {
+    val senden = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
-        putExtra(android.content.Intent.EXTRA_TEXT, codes.joinToString("\n"))
-        putExtra(android.content.Intent.EXTRA_TITLE, titel)
+        putExtra(Intent.EXTRA_TEXT, codes.joinToString("\n"))
+        putExtra(Intent.EXTRA_TITLE, titel)
     }
-    runCatching { ctx.startActivity(android.content.Intent.createChooser(senden, titel)) }
+    runCatching { ctx.startActivity(Intent.createChooser(senden, titel)) }
 }
 
 /** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
-internal fun oeffneMitAuswahl(ctx: android.content.Context, uri: String, titel: String): Boolean {
-    val ansicht = android.content.Intent(android.content.Intent.ACTION_VIEW, uri.toUri())
+internal fun oeffneMitAuswahl(ctx: Context, uri: String, titel: String): Boolean {
+    val ansicht = Intent(Intent.ACTION_VIEW, uri.toUri())
     if (ansicht.resolveActivity(ctx.packageManager) == null) return false
-    return runCatching { ctx.startActivity(android.content.Intent.createChooser(ansicht, titel)) }.isSuccess
+    return runCatching { ctx.startActivity(Intent.createChooser(ansicht, titel)) }.isSuccess
 }
 
 /**
@@ -240,7 +244,7 @@ internal fun ZweiterFaktorCard(
     var ohneApp    by rememberSaveable { mutableStateOf(false) }
     var gesichert  by rememberSaveable(zfZustand.codes) { mutableStateOf(false) }
     val auswahlTitel = stringResource(R.string.zf_open_app)
-    val kontext = androidx.compose.ui.platform.LocalContext.current
+    val kontext = LocalContext.current
     val schluesselEtikett = stringResource(R.string.app_name)
     val teilenTitel = stringResource(R.string.zf_share_title)
     val kopieren: (String) -> Unit = { text ->
@@ -281,7 +285,7 @@ internal fun ZweiterFaktorCard(
                 Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
                 // Zeichen für Zeichen vorgelesen: Als Wort las TalkBack „i9j0“.
                 Text(zfZustand.codes.joinToString("\n"),
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    fontFamily = FontFamily.Monospace,
                     modifier = Modifier.vorgelesenAls(zfZustand.codes.joinToString(", ") { zeichenweise(it) }))
                 OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_copy)) }
                 OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, zfZustand.codes) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_share)) }
@@ -304,7 +308,7 @@ internal fun ZweiterFaktorCard(
                         color = MaterialTheme.colorScheme.error, modifier = Modifier.ansagen())
                 }
                 Text(zfZustand.geheimnis.chunked(4).joinToString(" "),
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                    fontFamily = FontFamily.Monospace)
                 OutlinedButton(onClick = { kopieren(zfZustand.geheimnis) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                     Text(stringResource(R.string.zf_copy_key))
                 }

@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.platform.LocalContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.compose.material.icons.filled.Share
 import ch.brickinventoryapp.ui.components.mitSchrift
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
@@ -60,7 +64,7 @@ internal fun HouseholdCard(
     LaunchedEffect(state.eingeloest) { if (state.eingeloest > 0) code = "" }
     // Über GeheimeZwischenablage statt LocalClipboard: Sie nimmt den Code nach
     // einer Minute wieder heraus, auch wenn die Seite dann schon zu ist.
-    val kontext = androidx.compose.ui.platform.LocalContext.current
+    val kontext = LocalContext.current
     // Das Etikett eines ClipData ist auf manchen Android-Oberflächen sichtbar und
     // gehört darum in die Sprachdateien. Geholt hier, weil der Klick-Rumpf nicht
     // @Composable ist.
@@ -151,7 +155,7 @@ internal fun HouseholdCard(
             )
             state.inviteGueltigBis?.let { bis ->
                 Text(stringResource(R.string.household_invite_gueltig_bis,
-                        java.text.SimpleDateFormat("dd.MM. HH:mm", java.util.Locale.getDefault()).format(java.util.Date(bis))),
+                        SimpleDateFormat("dd.MM. HH:mm", Locale.getDefault()).format(Date(bis))),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // Der Code gehört auf ein anderes Gerät: teilen wie kopieren, beide gleich gewichtet.

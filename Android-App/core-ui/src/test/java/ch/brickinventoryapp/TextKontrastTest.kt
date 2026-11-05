@@ -36,7 +36,7 @@ import org.junit.Test
  *      primary/secondary, Marktwert Petrol) → rot „im Dunkeln leuchtet …“ mit
  *      brick/dunkel.leiste 0,45, .detailLeiste 0,63, .markt 0,17
  *
- * Prüfung 17 (05.11.2026, thema.py gegen Compose Desktop; Patches unter gegenproben/):
+ * Gegenproben der Farbrollen (thema.py gegen Compose Desktop; Patches unter gegenproben/):
  *   container-ohne-stauchung   → rot classic.primary/surfaceContainerHighest 4,18
  *   primarycontainer-blau50    → rot classic.primary/primaryContainer 4,24
  *   inverseprimary-ungeprueft  → rot farbfaecher.inversePrimary/inverseSurface 3,73
