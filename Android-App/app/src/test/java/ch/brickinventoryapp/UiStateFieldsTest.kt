@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Ersatz für den Compiler: Verweist irgendwo Code auf ein Zustandsfeld, das es
@@ -267,8 +268,8 @@ class UiStateFieldsTest {
         // Fluss-Deklarationen des AppViewModels und der Grundlage der Bereiche.
         // Ein baumweiter Lauf wäre hier falsch — MonitoringViewModel nennt
         // seinen eigenen Fluss ebenfalls `_state`, und der trägt MonitoringUiState.
-        val mvm = ohneKommentare(java.io.File(wurzel, "ui/AppViewModel.kt").readText() + "\n" +
-            java.io.File(wurzel, "ui/viewmodel/BereichsViewModel.kt").readText())
+        val mvm = ohneKommentare(File(wurzel, "ui/AppViewModel.kt").readText() + "\n" +
+            File(wurzel, "ui/viewmodel/BereichsViewModel.kt").readText())
         val privGlobal = Regex("""val\s+_(\w+)\s*=\s*MutableStateFlow\((\w+UiState)\(""")
             .findAll(mvm).associate { it.groupValues[1] to it.groupValues[2] }
         val oeffentlich = Regex("""val\s+(\w+)\s*=\s*_(\w+)\.asStateFlow\(\)""")

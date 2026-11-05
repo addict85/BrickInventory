@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Absicherung der Ziel-Plattform (SDK 36 / Android 16).
@@ -18,10 +19,10 @@ import org.junit.Test
  */
 class TargetSdkConfigTest {
 
-    private val buildLogic = java.io.File(Quellen.projekt, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic")
+    private val buildLogic = File(Quellen.projekt, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic")
 
     private val gradle: String by lazy {
-        val f = java.io.File(buildLogic, "Sdk.kt")
+        val f = File(buildLogic, "Sdk.kt")
         assert(f.exists()) { "build-logic/…/Sdk.kt nicht gefunden" }
         f.readText()
     }
@@ -47,11 +48,11 @@ class TargetSdkConfigTest {
 
     @Test
     fun `kein Modulskript setzt die SDK-Stände selbst`() {
-        val skripte = Quellen.module.map { java.io.File(it, "build.gradle.kts") }
+        val skripte = Quellen.module.map { File(it, "build.gradle.kts") }
         assert(skripte.size >= 12) { "Nur ${skripte.size} Modulskripte gefunden — Suche veraltet?" }
         val setzen = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=""")
         val eigene = skripte.filter { setzen.containsMatchIn(Quellen.ohneKommentare(it.readText())) }
-            .map { it.parentFile.name }
+            .map { it.parentFile!!.name }
         assert(eigene.isEmpty()) { "Diese Module setzen SDK-Stände selbst statt über build-logic: $eigene" }
         // Und die Konventionen nehmen sie aus Sdk.kt, nicht als eigene Zahl.
         val konventionen = buildLogic.listFiles { f -> f.extension == "kt" && f.name != "Sdk.kt" }.orEmpty()

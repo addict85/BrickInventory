@@ -30,6 +30,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Retrofit
 import ch.brickinventoryapp.data.api.ApiJson
+import java.lang.reflect.Method
 
 /**
  * Die Schnittstelle zum Server ist nach Bereichen geteilt: Jedes Repository
@@ -76,7 +77,7 @@ class ApiBereicheTest {
     @Test
     fun `jede Adresse steht in genau einem Bereich`() {
         // Ohne die Hilfsmethoden, die Kotlin für Vorgabewerte erzeugt (…$default).
-        fun adressen(m: Array<java.lang.reflect.Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
+        fun adressen(m: Array<Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
         val namen = bereiche.flatMap { b -> adressen(b.java.declaredMethods) }
         val doppelt = namen.groupingBy { it }.eachCount().filterValues { it > 1 }
         assertTrue("Doppelt deklariert: $doppelt", doppelt.isEmpty())

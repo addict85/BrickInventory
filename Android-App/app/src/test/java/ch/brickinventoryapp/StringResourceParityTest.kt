@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Jeder Text steht in BEIDEN Sprachen, und kein Text steht im Quelltext.
@@ -42,7 +43,7 @@ class StringResourceParityTest {
 
     private fun schluessel(datei: String): Set<String> =
         Regex("""<string name="([^"]+)"""")
-            .findAll(java.io.File(Quellen.res, "$datei").readText())
+            .findAll(File(Quellen.res, "$datei").readText())
             .map { it.groupValues[1] }.toSet()
 
     @Test
@@ -68,7 +69,7 @@ class StringResourceParityTest {
     /** Name → Mengenklassen („one", „other", …) einer `<plurals>`. */
     private fun mengenformen(datei: String): Map<String, Set<String>> =
         Regex("""<plurals name="([^"]+)">(.*?)</plurals>""", RegexOption.DOT_MATCHES_ALL)
-            .findAll(java.io.File(Quellen.res, "$datei").readText())
+            .findAll(File(Quellen.res, "$datei").readText())
             .associate { m ->
                 m.groupValues[1] to Regex("""quantity="([^"]+)"""")
                     .findAll(m.groupValues[2]).map { it.groupValues[1] }.toSet()
@@ -247,7 +248,7 @@ class StringResourceParityTest {
      */
     private fun texte(datei: String): Map<String, String> =
         Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
-            .findAll(java.io.File(Quellen.res, "$datei").readText())
+            .findAll(File(Quellen.res, "$datei").readText())
             .associate { it.groupValues[1] to it.groupValues[2] }
 
     /**

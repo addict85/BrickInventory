@@ -6,7 +6,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.navigation.NavDestination
@@ -29,7 +29,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
+import android.content.Context
 
 /**
  * Jedes Ziel steht im Graphen der App, und zu jedem Ziel ohne Werte führt ein Weg.
@@ -43,13 +43,12 @@ import org.robolectric.annotation.Config
  *                            → rot „zu jedem Ziel ohne Werte führt ein Weg“
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class ErreichbareRoutenTest {
 
     @get:Rule
     val compose = createComposeRule()
 
-    private val ctx: android.content.Context = ApplicationProvider.getApplicationContext()
+    private val ctx: Context = ApplicationProvider.getApplicationContext()
 
     /** Serienname je Ziel; für Ziele ohne Werte zugleich der Name ihrer Route. */
     private val ziele = Screen.serializer().descriptor.getElementDescriptor(1).let { d ->

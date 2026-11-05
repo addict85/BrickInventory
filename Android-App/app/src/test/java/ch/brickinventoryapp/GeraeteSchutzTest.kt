@@ -10,7 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ApplicationProvider
 import ch.brickinventoryapp.data.PreferencesManager
@@ -29,7 +29,6 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -55,7 +54,6 @@ import kotlinx.coroutines.SupervisorJob
  *       vor Ueberlagerung geschuetzt“ (gegenproben/sichtschutz-ohne-ueberdeckung.patch)
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class GeraeteSchutzTest {
 
     @get:Rule

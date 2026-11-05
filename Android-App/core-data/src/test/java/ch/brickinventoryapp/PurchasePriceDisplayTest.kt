@@ -4,6 +4,7 @@ import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.model.SetItem
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Beide Clients zeigen denselben Kaufpreis: den MENGENGEWICHTETEN.
@@ -33,7 +34,7 @@ import org.junit.Test
 class PurchasePriceDisplayTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
@@ -46,7 +47,7 @@ class PurchasePriceDisplayTest {
      * Klassen nichts geaendert hat. Gemeint sind DIE MODELLE, nicht eine Datei.
      */
     private fun modelle(): String =
-        java.io.File(Quellen.wurzel, "data/model")
+        File(Quellen.wurzel, "data/model")
             .listFiles { f -> f.extension == "kt" }
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }

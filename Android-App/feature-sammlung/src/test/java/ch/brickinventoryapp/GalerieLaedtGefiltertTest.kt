@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.data.repository.FinanzenRepository
@@ -45,6 +46,7 @@ import org.junit.Test
  * Gegenprobe (29.10.2026, gemessen): in GalerieViewModel.holeSeite `search =
  * null` → rot „erste Seite und Nachladen tragen dieselben Filter“.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class GalerieLaedtGefiltertTest {
 
     @Test

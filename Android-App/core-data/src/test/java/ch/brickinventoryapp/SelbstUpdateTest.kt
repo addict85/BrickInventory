@@ -4,6 +4,7 @@ import ch.brickinventoryapp.util.UPDATE_RELEASE_BASIS
 import ch.brickinventoryapp.util.istErlaubteApkAdresse
 import ch.brickinventoryapp.util.istNeuer
 import org.junit.Test
+import java.io.File
 
 /**
  * Die App aktualisiert sich selbst — und tut es vorsichtig.
@@ -158,7 +159,7 @@ class SelbstUpdateTest {
     @Test
     fun `die Aktualisierung vertraut nur System-Zertifikaten`() {
         // Von GitHub kommt ein APK: nur System-CAs, kein Klartext.
-        val cfg = java.io.File(Quellen.res, "xml/network_security_config.xml").readText()
+        val cfg = File(Quellen.res, "xml/network_security_config.xml").readText()
         val ab = cfg.indexOf("<domain-config")
         assert(ab > 0) {
             "Es gibt keinen eigenen domain-config-Block mehr — dann gilt fuer GitHub " +

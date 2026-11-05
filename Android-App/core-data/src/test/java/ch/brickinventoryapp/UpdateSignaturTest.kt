@@ -17,6 +17,8 @@ import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.util.Base64
+import java.security.KeyFactory
+import java.security.spec.X509EncodedKeySpec
 
 /**
  * Die Fassungsbeschreibung des Selbst-Updaters ist mit dem Release-Schlüssel
@@ -126,7 +128,7 @@ class UpdateSignaturTest {
         val text = datei.readText()
         val schluessel = beschreibungsSchluessel(text)
         assertEquals("Ein Block ist kein lesbarer Schlüssel", text.split("-----BEGIN PUBLIC KEY-----").size - 1, schluessel.size)
-        for (s in schluessel) java.security.KeyFactory.getInstance("EC").generatePublic(java.security.spec.X509EncodedKeySpec(s))
+        for (s in schluessel) KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(s))
     }
 
     @Test

@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * Galerie: Suchen, Filtern, Sortieren und Blättern macht der SERVER.
@@ -37,7 +38,7 @@ import org.junit.Test
 class GalleryServerFilterTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
     private fun code(s: String) = s.lines()
@@ -101,7 +102,7 @@ class GalleryServerFilterTest {
     @Test
     fun `der Ablage-Cache greift nur ungefiltert`() {
         val pfade = PfadServer("/api/v1/sets" to """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke"}]}""")
-        val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-galerie-${System.nanoTime()}").apply { mkdirs() }
+        val ordner = File(System.getProperty("java.io.tmpdir"), "bim-galerie-${System.nanoTime()}").apply { mkdirs() }
         try {
             val sets = SetsRepository(TestApi.fuer(pfade.server), ResponseCache { ordner })
             runBlocking { sets.getSets(search = "Falke") }

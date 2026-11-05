@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Absicherung der Aufräumrunde: Kamera-Ressourcen, PDF-Cache-Budget,
@@ -10,7 +11,7 @@ import org.junit.Test
 class ResourceAndCacheTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -88,7 +89,7 @@ class ResourceAndCacheTest {
 
     @Test
     fun `Debug-Builds haben eine feste Version`() {
-        val bg = java.io.File("build.gradle.kts")
+        val bg = File("build.gradle.kts")
         assert(bg.exists()) { "app/build.gradle.kts nicht gefunden" }
         val src = code(bg.readText())
         assert(src.contains("withBuildType(\"debug\")")) {
@@ -109,7 +110,7 @@ class ResourceAndCacheTest {
      */
     @Test
     fun `die Version kommt aus Git, nicht aus der Uhr`() {
-        val src = code(java.io.File("build.gradle.kts").readText())
+        val src = code(File("build.gradle.kts").readText())
         assert(src.contains("git(\"rev-list\", \"--count\", \"HEAD\")") && src.contains("\"describe\", \"--tags\"")) {
             "versionCode/-Name kommen nicht aus Git"
         }

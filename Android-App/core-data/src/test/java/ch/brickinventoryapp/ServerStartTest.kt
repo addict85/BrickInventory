@@ -6,6 +6,7 @@ import ch.brickinventoryapp.ui.model.alsAnsicht
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Waehrend der Server startet, zeigt die App den Fortschritt — keinen Fehler.
@@ -33,7 +34,7 @@ import org.junit.Test
 class ServerStartTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 

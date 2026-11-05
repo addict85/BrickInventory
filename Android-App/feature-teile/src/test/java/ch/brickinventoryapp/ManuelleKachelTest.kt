@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.model.FigValuationItem
 import ch.brickinventoryapp.data.model.PartValuationItem
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Was auf einer manuell erfassten Kachel steht — und was frueher fehlte.
@@ -36,7 +37,7 @@ import org.junit.Test
 class ManuelleKachelTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 

@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import ch.brickinventoryapp.ui.model.SetAnsicht
 import ch.brickinventoryapp.data.lokal.Lokal
 import ch.brickinventoryapp.data.model.SetItem
@@ -23,6 +24,7 @@ import org.junit.Test
  *   B  die Bedingung `l.stand != null` entfernt → rot „eine nie geladene Liste
  *      leert die Galerie nicht“
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class GalerieLokalTest {
 
     private fun set(nr: Int, menge: Int = 1) = SetItem(setNumber = "$nr-1", quantity = menge)

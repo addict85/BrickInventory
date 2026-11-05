@@ -146,7 +146,7 @@ class AblageVerschluesselungTest {
         val name = ResponseCache.bereichsName("konto")
         val stand = System.currentTimeMillis() - 3_600_000
         File(ordner, "api-3/$name/sets.json").apply {
-            parentFile.mkdirs()
+            parentFile!!.mkdirs()
             writeBytes(ungebunden(k.fuer("antworten"), """["Millennium Falcon 75192"]""".toByteArray()))
             setLastModified(stand)
         }
@@ -165,7 +165,7 @@ class AblageVerschluesselungTest {
     fun `der Antwort-Cache liegt nicht im Klartext auf der Platte`() = runBlocking {
         val k = Ablageschluessel(datei, tresor)
         // Ein Altbestand der Klartext-Fassung liegt daneben und wird geräumt.
-        File(ordner, "api-2/fach/sets.json").apply { parentFile.mkdirs(); writeText("""["Millennium Falcon"]""") }
+        File(ordner, "api-2/fach/sets.json").apply { parentFile!!.mkdirs(); writeText("""["Millennium Falcon"]""") }
         val cache = ResponseCache(chiffre = AblageChiffre { k.fuer("antworten") }) { ordner }
         val liste = ListSerializer(String.serializer())
         cache.put("konto", "sets", liste, listOf("Millennium Falcon 75192"))

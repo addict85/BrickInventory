@@ -87,7 +87,7 @@ class BildZwischenspeicherTest {
         val cacheDir = File(ordner, "cache")
         val http = File(cacheDir, "image_http_cache")
         val coil = File(cacheDir, "image_cache").apply { mkdirs() }
-        File(http, "journal").apply { parentFile.mkdirs(); writeText("libcore.io.DiskLruCache\n1\n201105\n2\n") }
+        File(http, "journal").apply { parentFile!!.mkdirs(); writeText("libcore.io.DiskLruCache\n1\n201105\n2\n") }
         File(http, "abc.1").writeText("SAMMLUNG-75192")
         File(coil, "x.1").writeText("SAMMLUNG-75192")
         raeumeKlartextBildcachesAuf(cacheDir)

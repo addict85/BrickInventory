@@ -33,6 +33,8 @@ import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.di.PLATZHALTER_BASIS
+import java.io.IOException
+import okhttp3.mockwebserver.SocketPolicy
 
 /**
  * Der Tausch des Tokens im echten Netzweg: Wächter, Konto-Repository und
@@ -115,7 +117,7 @@ class TokenRotationTest {
         server.start()
     }
 
-    private lateinit var konto: KontoRepository
+    private val konto: KontoRepository
     private val tausch = tauschFuer({ konto }) { ereignisse += "speichere $it"; gespeichert = it }
     private val client = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen++ }, rotation = tausch))
@@ -162,7 +164,7 @@ class TokenRotationTest {
         val codes: MutableList<Int> = Collections.synchronizedList(mutableListOf())
         repeat(2) {
             c.newCall(Request.Builder().url(server.url("/api/v1/sets")).build()).enqueue(object : okhttp3.Callback {
-                override fun onFailure(call: okhttp3.Call, e: java.io.IOException) { codes += -1 }
+                override fun onFailure(call: okhttp3.Call, e: IOException) { codes += -1 }
                 override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) { response.use { codes += it.code } }
             })
         }
@@ -202,7 +204,7 @@ class TokenRotationTest {
                 kotlinx.coroutines.runBlocking {
                     schranke.schreibe { gespeichert = ""; umgezogen = neuer.url("/").toString().trimEnd('/') }
                 }
-                MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_AFTER_REQUEST)
+                MockResponse().setSocketPolicy(SocketPolicy.DISCONNECT_AFTER_REQUEST)
             }
             val ergebnis = kotlinx.coroutines.runBlocking { tausch.tausche("alt") }
             assertEquals(Tauschergebnis.VERWORFEN, ergebnis)

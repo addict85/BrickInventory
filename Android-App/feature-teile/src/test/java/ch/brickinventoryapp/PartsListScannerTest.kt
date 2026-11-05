@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Der Barcode-Scanner der TEILELISTE zeigt keine Erfassungsfelder.
@@ -32,8 +33,8 @@ class PartsListScannerTest {
     // Voranstellen von AppNavigation.kt nicht.
     private val src: String by lazy {
         val w = ""
-        java.io.File(Quellen.wurzel, w + "AppNavigation.kt").readText() + "\n" +
-            java.io.File(Quellen.wurzel, w + "ui/dialogs/BarcodeResultDialog.kt").readText()
+        File(Quellen.wurzel, w + "AppNavigation.kt").readText() + "\n" +
+            File(Quellen.wurzel, w + "ui/dialogs/BarcodeResultDialog.kt").readText()
     }
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */

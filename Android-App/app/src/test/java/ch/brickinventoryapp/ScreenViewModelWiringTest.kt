@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Bildschirme sind zustandslos: Nur eine Route (Name endet auf `Route`) nimmt ein
@@ -25,7 +26,7 @@ class ScreenViewModelWiringTest {
         val kopf = Regex("""@Composable\s*(?:\n\s*@[\w.]+(?:\([^)]*\))?\s*)*\n\s*(?:(?:internal|private|public)\s+)?fun\s+(?:<[^>]*>\s*)?(\w+)\s*\(""")
         val liste = mutableListOf<Composable>()
         for (modul in module) {
-            val wurzel = java.io.File(modul, "src/main")
+            val wurzel = File(modul, "src/main")
             wurzel.walkTopDown().filter { it.extension == "kt" }.forEach { datei ->
                 val s = Quellen.ohneKommentare(datei.readText())
                 for (m in kopf.findAll(s)) {

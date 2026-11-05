@@ -1,7 +1,6 @@
 package ch.brickinventoryapp
 
 import ch.brickinventoryapp.data.cache.ResponseCache
-import ch.brickinventoryapp.data.model.CatalogMetaResponse
 import ch.brickinventoryapp.data.repository.KatalogRepository
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.test.runTest
@@ -86,7 +85,7 @@ class CacheBereichTest {
     private suspend fun offlineJahr(r: KatalogRepository): Int? {
         runCatching { server.shutdown() }
         return when (val x = r.getCatalogMeta()) {
-            is Result.Success -> (x.data as CatalogMetaResponse).yearMin
+            is Result.Success -> x.data.yearMin
             is Result.Error -> null
         }
     }
@@ -122,7 +121,7 @@ class CacheBereichTest {
         fuellen(r, 1999)
         bereich = "http://heim:3000\ntoken-b"
         fuellen(r, 2024)
-        val ordnerMitDaten = dateien().map { it.parentFile.name }.toSet()
+        val ordnerMitDaten = dateien().map { it.parentFile!!.name }.toSet()
         assertEquals("Nur das Fach des aktuellen Kontos bleibt: ${dateien()}", 1, ordnerMitDaten.size)
         bereich = "http://heim:3000\ntoken-a"
         assertEquals(null, offlineJahr(r))

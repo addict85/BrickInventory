@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Der Navigationsaufbau baut Navigation — sonst nichts.
@@ -22,7 +23,7 @@ import org.junit.Test
 class NavigationHostSizeTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

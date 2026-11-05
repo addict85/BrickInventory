@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Abstaende und Schriftgroessen kommen aus der Skala — und die Ausnahmen
@@ -55,9 +56,9 @@ class AbstandsskalaTest {
 
     /** Die Bildschirme — ui/theme selbst ist die Skala und zaehlt nicht mit. */
     private fun quellen(): List<Pair<String, String>> =
-        java.io.File(Quellen.wurzel, "ui")
+        File(Quellen.wurzel, "ui")
             .walkTopDown()
-            .filter { it.isFile && it.extension == "kt" && "theme" !in it.path.split(java.io.File.separator) }
+            .filter { it.isFile && it.extension == "kt" && "theme" !in it.path.split(File.separator) }
             .map { it.name to Quellen.ohneKommentare(it.readText()) }
             .toList()
 
@@ -113,7 +114,7 @@ class AbstandsskalaTest {
     fun `es gibt nur die Schriftskala von Material`() {
         val zweite = quellen().filter { (_, s) -> Regex("""\bSchrift\.\w+""").containsMatchIn(s) }.map { it.first }
         assert(zweite.isEmpty()) { "Zweite Schriftskala benutzt in: $zweite — nimm MaterialTheme.typography." }
-        assert(!java.io.File(Quellen.wurzel, "ui/theme/Schrift.kt").exists()) {
+        assert(!File(Quellen.wurzel, "ui/theme/Schrift.kt").exists()) {
             "ui/theme/Schrift.kt ist wieder da."
         }
     }

@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Was nicht mehr benutzt wird, fällt auf.
@@ -42,7 +43,7 @@ class DeadCodeTest {
 
     @Test
     fun `jede Textressource wird benutzt`() {
-        val en = java.io.File(Quellen.res, "values/strings.xml").readText()
+        val en = File(Quellen.res, "values/strings.xml").readText()
         val schluessel = Regex("""<string name="([^"]+)"""").findAll(en)
             .map { it.groupValues[1] }.toSet()
         assert(schluessel.size > 300) { "Nur ${schluessel.size} Texte gefunden — Muster veraltet?" }

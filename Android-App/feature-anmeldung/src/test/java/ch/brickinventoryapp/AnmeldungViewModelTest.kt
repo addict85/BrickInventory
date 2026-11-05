@@ -22,6 +22,9 @@ import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.ui.Blickfeld
 import ch.brickinventoryapp.ui.FilterAblage
 import ch.brickinventoryapp.ui.viewmodel.AppDienste
+import java.util.Base64
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Das Anmelde-ViewModel, ausgeführt gegen einen PfadServer ohne Netz und eine Ablage im
@@ -87,12 +90,12 @@ class AnmeldungViewModelTest {
 
     /** Schreibt mit, was in welcher Reihenfolge abgelegt wird. */
     private class Ablage(var url: String = "https://server") : Anmeldeablage {
-        val protokoll = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val protokoll = Collections.synchronizedList(mutableListOf<String>())
         override suspend fun serverUrlJetzt() = url
         override suspend fun saveServerUrl(url: String) { this.url = url; protokoll += "url:$url" }
         override suspend fun saveAuthToken(token: String) { protokoll += "token:$token" }
         override suspend fun saveUsername(name: String) { protokoll += "name:$name" }
-        val pins = java.util.concurrent.ConcurrentHashMap<String, String>()
+        val pins = ConcurrentHashMap<String, String>()
         override fun merkePin(schluessel: String, fingerabdruck: String) {
             pins[schluessel] = fingerabdruck; protokoll += "pin:$schluessel=$fingerabdruck"
         }
@@ -191,8 +194,8 @@ class AnmeldungViewModelTest {
         assertEquals("Derselbe Server: keine Abmeldung", "url:https://server", ablage.protokoll.first())
     }
 
-    private val fp = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 7 })
-    private val fpAlt = java.util.Base64.getEncoder().encodeToString(ByteArray(32) { 9 })
+    private val fp = Base64.getEncoder().encodeToString(ByteArray(32) { 7 })
+    private val fpAlt = Base64.getEncoder().encodeToString(ByteArray(32) { 9 })
 
     @Test
     fun `ein QR-Code mit Fingerabdruck haelt den Pin fuer die erste Anfrage vor und merkt ihn erst danach`() {

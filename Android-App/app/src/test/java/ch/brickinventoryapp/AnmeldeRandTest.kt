@@ -20,7 +20,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -44,6 +44,7 @@ import org.robolectric.annotation.GraphicsMode
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import java.util.Locale
 
 /**
  * Anmelden, Registrieren und Einrichten stehen ohne Gerüst auf dem ganzen Fenster
@@ -62,18 +63,18 @@ import kotlin.math.roundToInt
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
+@Config(qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")
 class AnmeldeRandTest {
 
     @get:Rule
     val compose = createAndroidComposeRule<ComponentActivity>()
 
-    private val vorher = java.util.Locale.getDefault()
+    private val vorher = Locale.getDefault()
 
-    init { java.util.Locale.setDefault(java.util.Locale.forLanguageTag("de-CH")) }
+    init { Locale.setDefault(Locale.forLanguageTag("de-CH")) }
 
     @After
-    fun zu() = java.util.Locale.setDefault(vorher)
+    fun zu() = Locale.setDefault(vorher)
 
     private fun text(id: Int) = compose.activity.getString(id)
     private val dichte get() = compose.activity.resources.displayMetrics.density

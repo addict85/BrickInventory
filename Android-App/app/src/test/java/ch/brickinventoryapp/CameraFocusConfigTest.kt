@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Die Fokus-Einstellungen des Barcodescanners.
@@ -25,7 +26,7 @@ import org.junit.Test
 class CameraFocusConfigTest {
 
     private fun scanner(): String =
-        java.io.File(Quellen.wurzel, "ui/screens/BarcodeScannerScreen.kt").readText()
+        File(Quellen.wurzel, "ui/screens/BarcodeScannerScreen.kt").readText()
 
     private fun code(src: String) = src.lines()
         .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
@@ -74,8 +75,8 @@ class CameraFocusConfigTest {
      * Vergleich gleicher Codeblöcke über den ganzen Baum. Eine Regel, die an
      * zwei Stellen steht, sieht an jeder einzelnen Stelle richtig aus.
      */
-    private fun mitTapToFocus(): List<java.io.File> {
-        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
+    private fun mitTapToFocus(): List<File> {
+        val ordner = File(Quellen.wurzel, "ui/screens")
         val treffer = ordner.listFiles { f -> f.extension == "kt" }
             ?.filter { code(it.readText()).let { c -> c.contains("tippZumFokus(") || c.contains("startFocusAndMetering(") } }
             ?: emptyList()
@@ -129,7 +130,7 @@ class CameraFocusConfigTest {
      */
     @Test
     fun `der Kamera-Aufbau steht nur in KameraAufbau`() {
-        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
+        val ordner = File(Quellen.wurzel, "ui/screens")
         val dateien = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray()).toList()
         assert(dateien.size >= 5) {
             "Nur ${dateien.size} Bildschirmdateien gefunden — der Pfad stimmt nicht, und ein " +
@@ -169,7 +170,7 @@ class CameraFocusConfigTest {
     fun `beide Scanner holen ihre Kamera dort`() {
         // Sonst nützt die Regel oben nichts: Wer sich die Kamera selbst bindet,
         // umgeht autofokusDauerhaft() — und sieht dabei richtig aus.
-        val ordner = java.io.File(Quellen.wurzel, "ui/screens")
+        val ordner = File(Quellen.wurzel, "ui/screens")
         val nutzer = (ordner.listFiles { f -> f.extension == "kt" } ?: emptyArray())
             .filter { it.name != "KameraAufbau.kt" }
             .filter { code(it.readText()).contains("kameraBinden(") }

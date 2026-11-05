@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.repository.VerwaltungRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Das Design des Servers steht schon vor der Anmeldung fest.
@@ -51,7 +52,7 @@ import org.junit.Test
 class DesignVorAnmeldungTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
@@ -134,7 +135,7 @@ class DesignVorAnmeldungTest {
 class CacheLeerenTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 

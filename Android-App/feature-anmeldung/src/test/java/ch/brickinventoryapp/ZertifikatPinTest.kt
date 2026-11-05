@@ -35,6 +35,9 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509ExtendedTrustManager
 import ch.brickinventoryapp.util.ErneuerbareTlsFabrik
+import java.net.Socket
+import java.security.cert.CertificateException
+import javax.net.ssl.SSLEngine
 
 /**
  * Pinning des eigenen Servers, über echtes TLS gegen einen Testserver: Wurzel →
@@ -387,12 +390,12 @@ class ZertifikatPinTest {
         starte(WURZEL_BLATT_KEY, listOf(WURZEL_BLATT, WURZEL))
         val basis = system(WURZEL)
         val ohneCt = object : X509ExtendedTrustManager() {
-            private fun nein(): Nothing = throw java.security.cert.CertificateException("nicht in den CT-Protokollen")
-            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) { nein() }
-            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) { nein() }
+            private fun nein(): Nothing = throw CertificateException("nicht in den CT-Protokollen")
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: Socket?) { nein() }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) { nein() }
             override fun checkServerTrusted(c: Array<X509Certificate>, a: String) { nein() }
-            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) = basis.checkClientTrusted(c, a, s)
-            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) = basis.checkClientTrusted(c, a, e)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: Socket?) = basis.checkClientTrusted(c, a, s)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) = basis.checkClientTrusted(c, a, e)
             override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = basis.checkClientTrusted(c, a)
             override fun getAcceptedIssuers(): Array<X509Certificate> = basis.acceptedIssuers
         }
@@ -421,13 +424,13 @@ class ZertifikatPinTest {
     @Test
     fun `ohne Handshake-Sitzung gilt der Pin des eigenen Servers`() {
         val tm = PinVertrauen(system(FREMD), pins, eigenerServer = { "nas:8443" }, frage = frage, fremdeHosts = system(FREMD))
-        tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as java.net.Socket?)
+        tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as Socket?)
         pins.merkePin("nas:8443", spkiFingerabdruck(zert(INTER)))
         val abgelehnt = runCatching {
-            tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as java.net.Socket?)
+            tm.checkServerTrusted(arrayOf(zert(FREMD)), "ECDHE_ECDSA", null as Socket?)
         }.isFailure
         assertTrue("Eine System-CA ersetzt den Pin nicht", abgelehnt)
-        tm.checkServerTrusted(arrayOf(zert(LEAF), zert(INTER)), "ECDHE_ECDSA", null as java.net.Socket?)
+        tm.checkServerTrusted(arrayOf(zert(LEAF), zert(INTER)), "ECDHE_ECDSA", null as Socket?)
     }
 
     /**
@@ -441,16 +444,16 @@ class ZertifikatPinTest {
         val basis = system(ROOT)
         var erlaubt = true
         val tm = object : X509ExtendedTrustManager() {
-            private fun darf() { if (!erlaubt) throw java.security.cert.CertificateException("entzogen") }
-            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) {
+            private fun darf() { if (!erlaubt) throw CertificateException("entzogen") }
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, s: Socket?) {
                 darf(); basis.checkServerTrusted(c, a, s)
             }
-            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) {
+            override fun checkServerTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) {
                 darf(); basis.checkServerTrusted(c, a, e)
             }
             override fun checkServerTrusted(c: Array<X509Certificate>, a: String) { darf(); basis.checkServerTrusted(c, a) }
-            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: java.net.Socket?) = basis.checkClientTrusted(c, a, s)
-            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: javax.net.ssl.SSLEngine?) = basis.checkClientTrusted(c, a, e)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, s: Socket?) = basis.checkClientTrusted(c, a, s)
+            override fun checkClientTrusted(c: Array<X509Certificate>, a: String, e: SSLEngine?) = basis.checkClientTrusted(c, a, e)
             override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = basis.checkClientTrusted(c, a)
             override fun getAcceptedIssuers(): Array<X509Certificate> = basis.acceptedIssuers
         }

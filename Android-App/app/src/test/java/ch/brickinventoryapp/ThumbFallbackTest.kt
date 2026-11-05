@@ -8,6 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.io.File
 
 /** Serveradresse mit Schrägstrich am Ende: Die Helfer schneiden ihn ab. */
 private const val SERVER = "http://nas:3000/"
@@ -29,7 +30,7 @@ private const val SERVER = "http://nas:3000/"
 class ThumbFallbackTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -170,7 +171,7 @@ class FullResolutionBypassesProxyTest {
  */
 class PartsMinifigsFullResBypassProxyTest {
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -239,7 +240,7 @@ class PartsMinifigsFullResBypassProxyTest {
  */
 class SetDetailUsesFullResolutionTest {
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

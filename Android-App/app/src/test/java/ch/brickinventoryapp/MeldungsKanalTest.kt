@@ -15,6 +15,7 @@ import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import javax.inject.Singleton
 
 /**
  * Es gibt genau EINEN Weg zur Snackbar.
@@ -111,7 +112,7 @@ class MeldungsKanalTest {
         assertEquals(null, kanal.meldung.value)
         assertTrue("Ohne @Singleton bekäme jedes ViewModel eine eigene Instanz — dann gibt es " +
             "wieder so viele Kanäle wie ViewModels, nur unsichtbar",
-            MeldungsKanal::class.java.isAnnotationPresent(javax.inject.Singleton::class.java))
+            MeldungsKanal::class.java.isAnnotationPresent(Singleton::class.java))
     }
 
     @Test

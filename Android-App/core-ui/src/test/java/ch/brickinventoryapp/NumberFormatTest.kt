@@ -8,6 +8,8 @@ import ch.brickinventoryapp.util.fmtMoneyOrDash
 import ch.brickinventoryapp.util.zahlenLocale
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
+import java.util.Locale
 
 /**
  * Zahlen und Beträge kommen aus EINER Fassung — und die folgt der App-Sprache.
@@ -45,7 +47,7 @@ import org.junit.Test
 class NumberFormatTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
 
     /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
     private fun code(s: String) = s.lines()
@@ -145,9 +147,9 @@ class NumberFormatTest {
     // ── Teil 3: die Landesform folgt dem Gerät, wie im Web ──────────────────
 
     private fun mitGeraet(tag: String, block: () -> Unit) {
-        val vorher = java.util.Locale.getDefault()
-        java.util.Locale.setDefault(java.util.Locale.forLanguageTag(tag))
-        try { block() } finally { java.util.Locale.setDefault(vorher) }
+        val vorher = Locale.getDefault()
+        Locale.setDefault(Locale.forLanguageTag(tag))
+        try { block() } finally { Locale.setDefault(vorher) }
     }
 
     @Test
@@ -167,13 +169,13 @@ class NumberFormatTest {
 
     @Test
     fun `ohne passende Landesform gelten de-CH und en-GB`() {
-        val de = java.util.Locale.forLanguageTag("de")
-        assertEquals("de-CH", zahlenLocale(de, java.util.Locale.forLanguageTag("en-US")).toLanguageTag())
+        val de = Locale.forLanguageTag("de")
+        assertEquals("de-CH", zahlenLocale(de, Locale.forLanguageTag("en-US")).toLanguageTag())
         assertEquals("de-CH", zahlenLocale(de, de).toLanguageTag())
-        assertEquals("en-GB", zahlenLocale(java.util.Locale.forLanguageTag("fr-FR"), java.util.Locale.forLanguageTag("fr-FR")).toLanguageTag())
+        assertEquals("en-GB", zahlenLocale(Locale.forLanguageTag("fr-FR"), Locale.forLanguageTag("fr-FR")).toLanguageTag())
         assertEquals("Das Land kommt vom Gerät, die Sprache von der App",
-            "de-AT", zahlenLocale(de, java.util.Locale.forLanguageTag("de-AT")).toLanguageTag())
-        assertEquals("en-GB", zahlenLocale(java.util.Locale.forLanguageTag("en"), java.util.Locale.forLanguageTag("de-DE")).toLanguageTag())
+            "de-AT", zahlenLocale(de, Locale.forLanguageTag("de-AT")).toLanguageTag())
+        assertEquals("en-GB", zahlenLocale(Locale.forLanguageTag("en"), Locale.forLanguageTag("de-DE")).toLanguageTag())
     }
 
     /**

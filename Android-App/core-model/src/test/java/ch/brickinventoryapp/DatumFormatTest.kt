@@ -5,6 +5,9 @@ import ch.brickinventoryapp.util.fmtDatum
 import ch.brickinventoryapp.util.fmtStand
 import ch.brickinventoryapp.util.fmtUhrzeit
 import org.junit.Test
+import java.time.Instant
+import java.time.ZoneOffset
+import java.util.Locale
 
 /**
  * Der gemeinsame Datumsformatierer — und der Grund, warum es ihn gibt.
@@ -23,20 +26,20 @@ import org.junit.Test
  */
 class DatumFormatTest {
 
-    private val DE = java.util.Locale.forLanguageTag("de-CH")
+    private val DE = Locale.forLanguageTag("de-CH")
 
     /** Wie Intl.DateTimeFormat mit 2-stelligem Tag und Monat in der Webapp (fmtDatum). */
     @Test
     fun `je Sprache eine Form wie im Web`() {
         val tag = "2026-08-01T10:00:00Z"
         assert(fmtDatum(tag, DE) == "01.08.2026") { fmtDatum(tag, DE).toString() }
-        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-GB")) == "1 Aug 2026")
-        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-US")) == "Aug 1, 2026")
+        assert(fmtDatum(tag, Locale.forLanguageTag("en-GB")) == "1 Aug 2026")
+        assert(fmtDatum(tag, Locale.forLanguageTag("en-US")) == "Aug 1, 2026")
         assert(fmtDatum(tag, DE, DatumJahr.OHNE) == "01.08.") { fmtDatum(tag, DE, DatumJahr.OHNE).toString() }
-        assert(fmtDatum(tag, java.util.Locale.forLanguageTag("en-GB"), DatumJahr.OHNE) == "1 Aug")
+        assert(fmtDatum(tag, Locale.forLanguageTag("en-GB"), DatumJahr.OHNE) == "1 Aug")
         // Keine Ziffernform „dd/mm“ im Englischen: Sie liest sich je nach Land verschieden.
         for (land in listOf("en-GB", "en-US")) {
-            val l = java.util.Locale.forLanguageTag(land)
+            val l = Locale.forLanguageTag(land)
             for (j in DatumJahr.entries) {
                 val s = fmtDatum(tag, l, j).orEmpty()
                 assert(!Regex("""\d{1,2}/\d{1,2}""").containsMatchIn(s)) { "$land $j: $s" }
@@ -46,10 +49,10 @@ class DatumFormatTest {
 
     @Test
     fun `der Stand folgt derselben Form`() {
-        val utc = java.time.ZoneOffset.UTC
-        val millis = java.time.Instant.parse("2026-08-01T09:05:00Z").toEpochMilli()
-        assert(fmtStand(millis, java.util.Locale.forLanguageTag("en-GB"), utc) == "1 Aug 2026 09:05") {
-            fmtStand(millis, java.util.Locale.forLanguageTag("en-GB"), utc)
+        val utc = ZoneOffset.UTC
+        val millis = Instant.parse("2026-08-01T09:05:00Z").toEpochMilli()
+        assert(fmtStand(millis, Locale.forLanguageTag("en-GB"), utc) == "1 Aug 2026 09:05") {
+            fmtStand(millis, Locale.forLanguageTag("en-GB"), utc)
         }
         assert(fmtStand(millis, DE, utc) == "01.08.2026 09:05")
     }

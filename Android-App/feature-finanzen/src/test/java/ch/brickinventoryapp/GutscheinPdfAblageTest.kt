@@ -59,7 +59,7 @@ class GutscheinPdfAblageTest {
     @After
     fun zu() { cache.deleteRecursively() }
 
-    private fun anlegen(f: File) = f.apply { parentFile.mkdirs(); writeText("PIN 1234") }
+    private fun anlegen(f: File) = f.apply { parentFile!!.mkdirs(); writeText("PIN 1234") }
 
     @Test
     fun `ein Gutschein-PDF bekommt keine Datei, eine Anleitung liegt im Zwischenspeicher`() {

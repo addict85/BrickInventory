@@ -6,6 +6,7 @@ import ch.brickinventoryapp.data.model.CatalogSetItem
 import ch.brickinventoryapp.data.model.CatalogSetDetail
 import ch.brickinventoryapp.data.api.ApiJson
 import org.junit.Test
+import java.io.File
 
 /**
  * Katalog-Bilder nutzen die vom Server ermittelte, nutzerunabhängige lokale
@@ -25,7 +26,7 @@ import org.junit.Test
 class CatalogUsesLocalImagesTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

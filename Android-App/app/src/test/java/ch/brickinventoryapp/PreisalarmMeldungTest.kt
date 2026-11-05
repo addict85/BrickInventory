@@ -10,7 +10,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
+import android.content.Context
 
 /**
  * Ein Preisalarm nennt Set und Preis nur entsperrt; auf dem Sperrbildschirm steht
@@ -21,10 +21,9 @@ import org.robolectric.annotation.Config
  *   „auf dem Sperrbildschirm …“ (gegenproben/preisalarm-oeffentlich.patch)
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class PreisalarmMeldungTest {
 
-    private val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+    private val ctx = ApplicationProvider.getApplicationContext<Context>()
 
     @Test
     fun `auf dem Sperrbildschirm stehen weder Set noch Preis`() {

@@ -12,6 +12,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
+import java.awt.Color
 
 /**
  * Die dunkle Fassung je Design kommt aus denselben Tokens wie im Web
@@ -128,7 +129,7 @@ class DunkelTokensTest {
     fun `im Dunkeln traegt jedes Design einen Akzent`() {
         fun hsb(argb: Long): FloatArray {
             val c = argb.toInt()
-            return java.awt.Color.RGBtoHSB((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, null)
+            return Color.RGBtoHSB((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF, null)
         }
         for (design in DunkelTokens.designs.keys) {
             val r = dunkleRollen(design)

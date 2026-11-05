@@ -8,6 +8,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 /**
  * Diagramm-Mathematik für den Preisverlauf (ui/PriceChartMath.kt).
@@ -146,10 +147,10 @@ class PriceChartMathTest {
 
     @Test
     fun `Datumsformat und Achsenraender`() {
-        val de = java.util.Locale.forLanguageTag("de-CH")
+        val de = Locale.forLanguageTag("de-CH")
         assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31", de))
         assertEquals("31.01.2026", PriceChartMath.formatDay("2026-01-31T10:00:00Z", de))
-        assertEquals("31 Jan 2026", PriceChartMath.formatDay("2026-01-31", java.util.Locale.forLanguageTag("en-GB")))
+        assertEquals("31 Jan 2026", PriceChartMath.formatDay("2026-01-31", Locale.forLanguageTag("en-GB")))
         assertEquals("kaputt", PriceChartMath.formatDay("kaputt", de))
         val range = PriceChartMath.axisRange(
             PreisDiagrammAnsicht(x = listOf("2026-01-01", "2026-02-01", "2026-03-01")))
@@ -166,7 +167,7 @@ class PriceChartMathTest {
             ),
             x = listOf("2026-01-01", "2026-02-01", "2026-03-01")
         )
-        val z = PriceChartMath.zusammenfassung(PriceChartMath.buildLines(chart), java.util.Locale.forLanguageTag("de-CH")).associateBy { it.zustand }
+        val z = PriceChartMath.zusammenfassung(PriceChartMath.buildLines(chart), Locale.forLanguageTag("de-CH")).associateBy { it.zustand }
         val neu = z.getValue("N")
         assertEquals(listOf("01.01.2026", "01.03.2026"), listOf(neu.von, neu.bis))
         assertEquals(listOf(100.0, 120.0, 90.0, 120.0), listOf(neu.anfang, neu.ende, neu.tief, neu.hoch))

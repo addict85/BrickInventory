@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import ch.brickinventoryapp.util.resolveThumbUrl
 import ch.brickinventoryapp.util.resolveFullUrl
 import org.junit.Test
+import java.io.File
 
 /**
  * Alle Bilder laufen über den Server — nie direkt vom Gerät zum CDN.
@@ -28,7 +29,7 @@ import org.junit.Test
 class NoDirectCdnAccessTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

@@ -20,6 +20,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
  * Die Abbildungen von Server-Modellen auf UI-Modelle (ui/model): Was die
@@ -102,7 +103,7 @@ class UiModellAbbildungTest {
 
     @Test
     fun `jede Datei mit Abbildungen steht in der Liste`() {
-        val ordner = java.io.File("src/main/java/ch/brickinventoryapp/ui/model")
+        val ordner = File("src/main/java/ch/brickinventoryapp/ui/model")
         val mitAbbildung = ordner.listFiles().orEmpty()
             .filter { f -> f.name.endsWith(".kt") && Regex("""fun \S+\.alsAnsicht\(""").containsMatchIn(f.readText()) }
             .map { it.name.removeSuffix(".kt") }.sorted()

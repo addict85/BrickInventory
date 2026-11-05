@@ -9,6 +9,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import ch.brickinventoryapp.data.repository.Result
+import java.io.File
+import org.json.JSONObject
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
@@ -50,7 +52,7 @@ import ch.brickinventoryapp.data.repository.Result
 class GutscheineContractTest {
 
     private fun lies(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, rel)
+        val f = File(Quellen.wurzel, rel)
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -65,10 +67,10 @@ class GutscheineContractTest {
     private val karte by lazy { code(lies("ui/screens/GutscheineCard.kt")) }
 
     /** Gutscheine gegen einen Testserver, mit Plattenablage in einem Wegwerf-Ordner. */
-    private fun <T> mitServer(block: (PfadServer, GutscheineRepository, java.io.File) -> T): T {
+    private fun <T> mitServer(block: (PfadServer, GutscheineRepository, File) -> T): T {
         val pfade = PfadServer("/api/v1/vouchers" to """{"success":true,"vouchers":[
             {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
-        val ordner = java.io.File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
+        val ordner = File(System.getProperty("java.io.tmpdir"), "bim-gutschein-${System.nanoTime()}").apply { mkdirs() }
         try {
             return block(pfade, GutscheineRepository(TestApi.fuer(pfade.server), ResponseCache { ordner }), ordner)
         } finally {
@@ -111,7 +113,7 @@ class GutscheineContractTest {
         }
         assertEquals(4, pfade.koerper.size)
         for ((i, k) in pfade.koerper.withIndex()) {
-            val o = org.json.JSONObject(k)
+            val o = JSONObject(k)
             assertEquals("${pfade.anfragen[i]}: Passwort", "geheim", o.getString("password"))
             assertEquals("${pfade.anfragen[i]}: Code", "123456", o.getString("code"))
         }

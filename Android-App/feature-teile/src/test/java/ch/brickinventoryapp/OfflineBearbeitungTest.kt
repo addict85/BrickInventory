@@ -31,6 +31,8 @@ import java.io.File
 import java.util.Collections
 import ch.brickinventoryapp.data.api.ApiJson
 import ch.brickinventoryapp.data.api.BrickApiService
+import java.net.ConnectException
+import java.net.SocketTimeoutException
 
 /**
  * Offline bearbeiten von Anfang bis Ende: Repository, Ausgang und Sender gegen
@@ -96,12 +98,12 @@ class OfflineBearbeitungTest {
     /** Ohne Netz: Die Verbindung kommt gar nicht erst zustande, wie im Funkloch. */
     private val api = retrofit2.Retrofit.Builder().baseUrl(s.mock.url("/"))
         .client(okhttp3.OkHttpClient.Builder().addInterceptor { kette ->
-            if (s.offline) throw java.net.ConnectException("kein Netz")
+            if (s.offline) throw ConnectException("kein Netz")
             val antwort = kette.proceed(kette.request())
             if (s.antwortVerlieren) {
                 s.antwortVerlieren = false
                 antwort.close()
-                throw java.net.SocketTimeoutException("Antwort verloren")
+                throw SocketTimeoutException("Antwort verloren")
             }
             antwort
         }.build())

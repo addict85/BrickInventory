@@ -20,7 +20,6 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
-import org.robolectric.annotation.Config
 import java.io.File
 
 /**
@@ -34,7 +33,6 @@ import java.io.File
  *   die nicht zum System-Installer fuehrt …“ (gegenproben/installer-ziel-ungeprueft.patch)
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class InstallationsSitzungTest {
 
     private val app = ApplicationProvider.getApplicationContext<Application>()

@@ -44,11 +44,11 @@ class TeilelistenAblageTest {
 
     @Test
     fun `die Teileliste liegt intern, eine alte externe Kopie verschwindet`() {
-        val alt = File(extern, "pdf/teileliste.pdf").apply { parentFile.mkdirs(); writeText("Inventar") }
-        val klartext = File(intern, "pdf/teileliste.pdf").apply { parentFile.mkdirs(); writeText("Inventar") }
+        val alt = File(extern, "pdf/teileliste.pdf").apply { parentFile!!.mkdirs(); writeText("Inventar") }
+        val klartext = File(intern, "pdf/teileliste.pdf").apply { parentFile!!.mkdirs(); writeText("Inventar") }
         val ziel = teilelistenAblage(intern, extern)
         assertEquals(File(intern, "pdf/$TEILELISTE_DATEI"), ziel)
-        assertEquals("pdf/ angelegt", true, ziel.parentFile.isDirectory)
+        assertEquals("pdf/ angelegt", true, ziel.parentFile!!.isDirectory)
         assertFalse("Die alte Kopie im externen Bereich bleibt liegen", alt.exists())
         assertFalse("Die Klartext-Liste älterer Fassungen bleibt liegen", klartext.exists())
     }
@@ -56,9 +56,9 @@ class TeilelistenAblageTest {
     @Test
     fun `Abmelden raeumt Teileliste, geteilte PDFs und Update weg, anderes bleibt`() {
         val liste = teilelistenAblage(intern, extern).apply { writeText("Inventar") }
-        val apk = File(intern, "update/BrickInventory.apk").apply { parentFile.mkdirs(); writeText("apk") }
-        val geteilt = File(extern, "pdf/anleitung.pdf").apply { parentFile.mkdirs(); writeText("pdf") }
-        val bleibt = File(intern, "datastore/einstellungen.pb").apply { parentFile.mkdirs(); writeText("x") }
+        val apk = File(intern, "update/BrickInventory.apk").apply { parentFile!!.mkdirs(); writeText("apk") }
+        val geteilt = File(extern, "pdf/anleitung.pdf").apply { parentFile!!.mkdirs(); writeText("pdf") }
+        val bleibt = File(intern, "datastore/einstellungen.pb").apply { parentFile!!.mkdirs(); writeText("x") }
         raeumeKontoDateienAuf(intern, extern)
         assertFalse("Die Teileliste überlebt das Abmelden", liste.exists())
         assertFalse("Das geladene Update bleibt liegen", apk.exists())

@@ -4,7 +4,7 @@ import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.core.net.toUri
@@ -27,11 +27,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
 import ch.brickinventoryapp.service.TeilelistenProvider
 import ch.brickinventoryapp.service.teilelistenAuswahl
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import androidx.core.content.IntentCompat
 
 /**
  * Was eine fremde App erreichen kann: Den Einstieg der Meldungen gar nicht, die
@@ -56,7 +56,6 @@ import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
  *       „die Teileliste geht nur ueber die Auswahl …“ (gegenproben/teileliste-ohne-auswahl.patch)
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class FremderEinstiegTest {
 
     @get:Rule
@@ -159,7 +158,7 @@ class FremderEinstiegTest {
     fun `die Teileliste geht nur ueber die Auswahl des Systems hinaus`() {
         val auswahl = teilelistenAuswahl(ctx, "Teileliste")
         assertEquals("Ohne Auswahl bekäme die Standard-App das Inventar", Intent.ACTION_CHOOSER, auswahl.action)
-        val ziel = androidx.core.content.IntentCompat.getParcelableExtra(auswahl, Intent.EXTRA_INTENT, Intent::class.java)!!
+        val ziel = IntentCompat.getParcelableExtra(auswahl, Intent.EXTRA_INTENT, Intent::class.java)!!
         assertEquals(Intent.ACTION_VIEW, ziel.action)
         assertEquals("content", ziel.data?.scheme)
         assertTrue("Ohne Leserecht öffnet keine App die Datei", (ziel.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION) != 0)

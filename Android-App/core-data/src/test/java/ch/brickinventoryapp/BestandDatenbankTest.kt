@@ -23,7 +23,6 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 
 /**
  * Die Room-Ablage selbst (nur in der CI: Room braucht Android). Dieselben
@@ -36,7 +35,6 @@ import org.robolectric.annotation.Config
  *   D  in RoomAusgang.lies `z.schluessel` → `""` → „ein unlesbarer Posten …“ (Schlüssel kommt nicht zurück)
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
 class BestandDatenbankTest {
 
     private val db = Room.inMemoryDatabaseBuilder(ApplicationProvider.getApplicationContext(), BestandDatenbank::class.java)

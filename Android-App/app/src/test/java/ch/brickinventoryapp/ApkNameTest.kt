@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Der Name der Release-APK steht an genau EINER Stelle.
@@ -54,7 +55,7 @@ import org.junit.Test
  */
 class ApkNameTest {
 
-    private val bauskript = java.io.File("build.gradle.kts")
+    private val bauskript = File("build.gradle.kts")
 
     /**
      * Der Workflow liegt ausserhalb des Gradle-Moduls. Der Pfad wird deshalb

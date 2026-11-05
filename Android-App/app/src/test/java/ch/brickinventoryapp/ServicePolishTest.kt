@@ -1,6 +1,7 @@
 package ch.brickinventoryapp
 
 import org.junit.Test
+import java.io.File
 
 /**
  * Absicherung der Aufräumrunde: lokalisierte Service-Benachrichtigungen,
@@ -18,9 +19,9 @@ class ServicePolishTest {
     private fun read(rel: String): String {
         // Quellen und Ressourcen über alle Module; das Manifest liegt in app/.
         val f = when {
-            rel.startsWith("java/ch/brickinventoryapp/") -> java.io.File(Quellen.wurzel, rel.removePrefix("java/ch/brickinventoryapp/"))
-            rel.startsWith("res/") -> java.io.File(Quellen.res, rel.removePrefix("res/"))
-            else -> java.io.File(Quellen.projekt, "app/src/main/$rel")
+            rel.startsWith("java/ch/brickinventoryapp/") -> File(Quellen.wurzel, rel.removePrefix("java/ch/brickinventoryapp/"))
+            rel.startsWith("res/") -> File(Quellen.res, rel.removePrefix("res/"))
+            else -> File(Quellen.projekt, "app/src/main/$rel")
         }
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
@@ -94,7 +95,7 @@ class ServicePolishTest {
 
     @Test
     fun `Benachrichtigungen benutzen das monochrome Status-Icon`() {
-        assert(java.io.File(Quellen.res, "drawable/ic_stat_brick.xml").exists()) {
+        assert(File(Quellen.res, "drawable/ic_stat_brick.xml").exists()) {
             "drawable/ic_stat_brick.xml fehlt"
         }
         for (rel in listOf(
@@ -128,7 +129,7 @@ class ServicePolishTest {
         assert(eintrag.contains("android:grantUriPermissions=\"true\"")) {
             "Ohne grantUriPermissions öffnet die gewählte App die Teileliste nicht"
         }
-        assert(!java.io.File(Quellen.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }
+        assert(!File(Quellen.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }
     }
 
     // ── PdfViewer-Client ─────────────────────────────────────────────────────
@@ -154,7 +155,7 @@ class ServicePolishTest {
     @Test
     fun `keine tote Gson-Regel in ProGuard`() {
         // proguard-rules.pro liegt im Modulwurzelverzeichnis, nicht unter src/
-        val f = java.io.File("proguard-rules.pro")
+        val f = File("proguard-rules.pro")
         assert(f.exists()) { "proguard-rules.pro nicht gefunden" }
         assert(!f.readText().contains("SerializedName")) {
             "Die Gson-Keep-Regel ist zurück — das Projekt serialisiert mit " +

@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.model.AcquisitionsResponse
 import ch.brickinventoryapp.data.model.GenericResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Die Oberflächen rechnen nicht — sie zeigen an.
@@ -36,7 +37,7 @@ import org.junit.Test
 class ServerComputedValuesTest {
 
     private fun read(rel: String) =
-        java.io.File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.wurzel, "$rel").readText()
 
     /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
     private fun code(s: String) = s.lines()

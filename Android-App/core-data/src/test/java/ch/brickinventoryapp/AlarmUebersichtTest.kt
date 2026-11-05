@@ -7,6 +7,9 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+import retrofit2.http.DELETE
+import retrofit2.http.PUT
 
 /**
  * Die Preisalarm-Uebersicht gibt es in der App genauso wie in der Webapp.
@@ -92,7 +95,7 @@ class AlarmUebersichtTest {
         try {
             runBlocking {
                 SetsRepository(TestApi.fuer(pfade.server),
-                    ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-alarme") }).getAlleAlarme()
+                    ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-alarme") }).getAlleAlarme()
             }
             assertEquals(listOf("GET /api/v1/alerts"), pfade.anfragen.toList())
         } finally {
@@ -132,8 +135,8 @@ class AlarmUebersichtTest {
         // Anfragen. Hier die Annotationen der Schnittstelle, per Reflexion.
         // Der CSV-Import (POST …/alerts/import/csv) legt an, er ändert keinen Alarm.
         val aendernd = BrickApiService::class.java.methods.mapNotNull { m ->
-            m.getAnnotation(retrofit2.http.PUT::class.java)?.value
-                ?: m.getAnnotation(retrofit2.http.DELETE::class.java)?.value
+            m.getAnnotation(PUT::class.java)?.value
+                ?: m.getAnnotation(DELETE::class.java)?.value
         }
         assertTrue("Keine ändernden Adressen gefunden — Reflexion greift nicht?", aendernd.size > 10)
         val zweiterWeg = aendernd.filter { it.startsWith("api/v1/alerts") }
@@ -334,7 +337,7 @@ class AlarmUebersichtTest {
     @Test
     fun `die beiden Alarmzustaende sagen ohne Farbe und Zeichen, was gilt`() {
         for (datei in listOf("values/strings.xml", "values-de/strings.xml")) {
-            val xml = java.io.File(Quellen.res, datei).readText()
+            val xml = File(Quellen.res, datei).readText()
             fun text(name: String) =
                 Regex("<string name=\"" + name + "\">(.*?)</string>")
                     .find(xml)?.groupValues?.get(1) ?: ""

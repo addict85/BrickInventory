@@ -49,7 +49,7 @@ class VorschauVerschluesseltTest {
 
     @Test
     fun `Klartext aelterer Fassungen verschwindet beim ersten Zugriff`() {
-        val alt = File(wurzel, "a".repeat(64)).apply { parentFile.mkdirs(); writeBytes(bild) }
+        val alt = File(wurzel, "a".repeat(64)).apply { parentFile!!.mkdirs(); writeBytes(bild) }
         val s = speicher()
         assertNull(s.lies(adresse))
         assertFalse("Das Klartext-Bild der Vorfassung bleibt liegen", alt.exists())

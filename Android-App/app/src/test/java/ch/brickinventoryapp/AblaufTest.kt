@@ -12,7 +12,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -41,8 +41,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 
 /**
  * Die Kernabläufe als Oberflächentest auf der JVM (Robolectric): anmelden, Set
@@ -73,7 +74,6 @@ import org.robolectric.annotation.GraphicsMode
 // NATIVE wie bei den Bildschirmfotos: Die Kontrastprüfung des ATF liest ein
 // Bildschirmfoto, und im LEGACY-Grafikmodus von Robolectric gibt es keins.
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [35])
 class AblaufTest {
 
     @get:Rule
@@ -148,7 +148,7 @@ class AblaufTest {
         // Robolectric-Bildschirm (320 × 470 dp) ist sie erst nach dem Rollen da.
         val plus = androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.cd_qty_increase))
         compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction() and
-            androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))
+            SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .performScrollToNode(plus)
         compose.onNode(plus).performClick()
         compose.waitUntil(10_000) { w.pfade.anfragenAn("PUT /api/v1/sets/75192-1").isNotEmpty() }

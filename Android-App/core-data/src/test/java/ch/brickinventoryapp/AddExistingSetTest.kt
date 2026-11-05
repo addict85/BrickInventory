@@ -5,6 +5,7 @@ import ch.brickinventoryapp.data.repository.SetsRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import java.io.File
 
 /**
  * Ein bereits erfasstes Set wird geöffnet, nicht stillschweigend erhöht.
@@ -60,7 +61,7 @@ class AddExistingSetTest {
         val pfade = PfadServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
         try {
             val sets = SetsRepository(TestApi.fuer(pfade.server),
-                ResponseCache { java.io.File(System.getProperty("java.io.tmpdir"), "bim-exists") })
+                ResponseCache { File(System.getProperty("java.io.tmpdir"), "bim-exists") })
             runBlocking { sets.getSetExists("75192-1") }
             assertEquals(listOf("GET /api/v1/sets/exists/75192-1"), pfade.anfragen.toList())
         } finally {
@@ -72,7 +73,7 @@ class AddExistingSetTest {
     fun `der Auslöser wird auch ausgewertet und wieder zurückgesetzt`() {
         // Ein gesetzter Auslöser ohne Empfänger wäre wirkungslos — und ohne
         // Zurücksetzen liesse sich dasselbe Set kein zweites Mal öffnen.
-        val nav = code(java.io.File(Quellen.wurzel, "nav/CollectionGraph.kt").readText())
+        val nav = code(File(Quellen.wurzel, "nav/CollectionGraph.kt").readText())
         // Geprueft wird das FELD, nicht der Name des Zustands davor.
         assert(Regex("""\w+\.gefundenesSet""").containsMatchIn(nav)) {
             "die Galerie beobachtet den Auslöser nicht — es passiert dann gar nichts"

@@ -5,6 +5,7 @@ import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 import ch.brickinventoryapp.ui.erfassungsWerte
 import ch.brickinventoryapp.ui.ErfassungsWerte
 import org.junit.Test
+import java.io.File
 
 /**
  * Jeder Erfassungsweg lässt den Eigentümer wählen — auch der Barcode-Scanner.
@@ -32,7 +33,7 @@ import org.junit.Test
 class AddPathOwnerTest {
 
     private fun read(rel: String): String {
-        val f = java.io.File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.wurzel, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

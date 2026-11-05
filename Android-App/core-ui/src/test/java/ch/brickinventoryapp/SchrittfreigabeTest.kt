@@ -9,6 +9,7 @@ import org.junit.Test
 import java.security.KeyPairGenerator
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
+import java.security.PrivateKey
 
 /**
  * Die Rückfrage per Gerätesperre ist an den Keystore gebunden (sec8 N3): Weiter geht
@@ -31,7 +32,7 @@ class SchrittfreigabeTest {
     private val geraet = paar()
     private val freigabe = Schrittfreigabe({ geraet.public })
 
-    private fun signatur(mit: java.security.PrivateKey) =
+    private fun signatur(mit: PrivateKey) =
         Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(mit) }
 
     @Test

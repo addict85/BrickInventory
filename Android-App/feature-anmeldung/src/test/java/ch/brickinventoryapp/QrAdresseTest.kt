@@ -21,6 +21,7 @@ import org.junit.Test
 import ch.brickinventoryapp.data.repository.HaushaltRepository
 import ch.brickinventoryapp.ui.Blickfeld
 import ch.brickinventoryapp.ui.viewmodel.AppDienste
+import java.util.Collections
 
 /**
  * Der QR-Dialog ist die einzige Hürde gegen einen untergeschobenen Code. Geprüft
@@ -98,7 +99,7 @@ class QrAdresseTest {
     // ── Das ViewModel als zweite Linie ─────────────────────────────────────────
 
     private class Ablage : Anmeldeablage {
-        val protokoll = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val protokoll = Collections.synchronizedList(mutableListOf<String>())
         override suspend fun serverUrlJetzt() = "https://brick.meinserver.ch"
         override suspend fun saveServerUrl(url: String) { protokoll += "url:$url" }
         override suspend fun saveAuthToken(token: String) { protokoll += "token:$token" }
