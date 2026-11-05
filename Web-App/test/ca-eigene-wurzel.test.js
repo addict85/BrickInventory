@@ -2,11 +2,8 @@
  * Die eigene Wurzel-CA (scripts/ca-einrichten.sh) gilt nur für BRICK_HOST,
  * ihr Schlüssel bleibt nicht liegen, und Caddy signiert mit der Zwischenstelle
  * nur, wenn ./caddy/ca eingerichtet ist; ohne startet Caddy nur mit
- * BRICK_TLS=acme oder ausdrücklich mit CA_OHNE_NAMENSBESCHRAENKUNG=ja.
- * Geprüft mit openssl an echten Zertifikaten, das Startskript aus compose.yaml
- * läuft wirklich (sh, Pfade umgebogen). Ist ein Caddy da (CADDY_BIN oder
- * `caddy` im Pfad), startet er mit dem echten Caddyfile, und ein TLS-Client
- * prüft Kette und Wurzel; ohne Caddy wird nur dieser Teil übersprungen.
+ * BRICK_TLS=acme oder ausdrücklich mit CA_OHNE_NAMENSBESCHRAENKUNG=ja. …
+ * Ausführlich: docs/begruendungen/test/ca-eigene-wurzel.test.js.md#kopf
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln):
  *   A  nameConstraints aus [wurzel] in ca-einrichten.sh gestrichen → rot:
@@ -222,6 +219,8 @@ test('das Startskript wählt eigene CA, acme oder ausdrücklich Caddys CA — so
 });
 
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
+// REQUIRE_CADDY=1 (CI): ein fehlender Caddy ist ein Fehler, kein stilles Überspringen.
+if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
 
 test('Caddy liefert die Wurzel mit aus', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, async (t) => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-echt-'));

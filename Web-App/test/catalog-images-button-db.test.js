@@ -1,36 +1,6 @@
 /**
  * Knopf „Katalogbilder holen" und die Vorschau dazu.
- *
- * ── Marcos Wunsch ───────────────────────────────────────────────────────────
- * „Kannst du im Monitoring beim Bilder-Download-Job noch einen Button
- * erstellen. Wenn dieser geklickt wird, sollen alle fehlenden Bilder des
- * Katalogs heruntergeladen werden resp. in die Queue gestellt werden. Bitte
- * auch prüfen, dass für Katalogbilder jeweils ein Thumbs-Image erstellt wird,
- * wenn es heruntergeladen wurde."
- *
- * Bisher füllte sich der lokale Bildbestand nur beim Blättern: Was man nie
- * ansieht, wird nie geholt. Für ein gezieltes Vorbefüllen fehlte der Anstoss.
- *
- * ── Die Aufteilung, die hier geprüft wird ───────────────────────────────────
- * Der Knopf REIHT NUR EIN — in einer einzigen Anweisung, ohne je Datei zu
- * prüfen. Bei 25 000 Sets wären das ebenso viele Dateizugriffe in einer
- * Anfrage; auf einem Raspberry Pi eine spürbare Blockade.
- *
- * Die Prüfung gehört dorthin, wo ohnehin gedrosselt gearbeitet wird: Der Job
- * überspringt, was schon lokal liegt — und holt dort eine FEHLENDE Vorschau
- * nach. Das ist der zweite Teil von Marcos Frage, und er betrifft alle Bilder,
- * die vor dem Hintergrund-Job abgelegt wurden.
- *
- * ── Gemessen ────────────────────────────────────────────────────────────────
- * Zehn Katalog-Sets; eines mit Bild ohne Vorschau, eines mit beidem, eines mit
- * bekannter Fehlanzeige:
- *
- *     eingereiht        9   (die Fehlanzeige bleibt aussen vor)
- *     Downloads         7   (die beiden vorhandenen werden übersprungen)
- *     Vorschau für das Bild ohne Vorschau: ja
- *     Vorschau für das Bild mit Vorschau:  nein
- *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Ausführlich: docs/begruendungen/test/catalog-images-button-db.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -47,7 +17,7 @@ const verkleinert = [];
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
+  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -95,7 +65,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
                   FROM generate_series(1,10) g`, [P]);
   // _1: Bild liegt, Vorschau fehlt. _2: beides liegt.
   // _3: BESTÄTIGTER 404 — bleibt draussen.
-  // _4: Fehlanzeige OHNE Grund (Altbestand aus der Zeit vor Nachtrag 123, als
+  // _4: Fehlanzeige OHNE Grund (Altbestand aus der Zeit vor einer früheren Runde, als
   //     jeder Netzwerkaussetzer als „gibt es nicht" galt) — wird zurückgenommen.
   fs.writeFileSync(path.join(SET_IMAGES_DIR, `${P}_1.jpg`), 'x');
   fs.writeFileSync(path.join(SET_IMAGES_DIR, `${P}_2.jpg`), 'x');
@@ -115,21 +85,8 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
     await t.test('der Knopf reiht ein, ohne bekannte Fehlanzeigen', async () => {
       const d = await (await fetch(`${base}/api/v1/admin/catalog-images`, { method: 'POST' })).json();
       assert.equal(d.success, true);
-      // ── Fertiges bleibt aussen vor (Nachtrag 119) ────────────────────────
-      //
-      // Marcos Befund: „Wenn ich auf den Button klicke, werden immer ca. 29 000
-      // Bilder eingereiht. Auch wenn der Job bereits einmal erfolgreich
-      // durchgelaufen ist."
-      //
-      // In der Bühne oben liegt _2 mit Bild UND Vorschau — das ist fertig und
-      // gehört nicht in die Warteschlange. _1 hat nur das Bild, ihm fehlt die
-      // Vorschau: Das gehört hinein, der Job holt sie nach, ohne erneut zu
-      // laden. _3 trägt einen BESTÄTIGTEN 404 und bleibt draussen. _4 trägt
-      // eine Fehlanzeige ohne Grund — die wird zurückgenommen (Nachtrag 124),
-      // ist also dabei.
-      //
-      // Bleiben also acht von zehn — und _4 ist eine davon. Ohne die Rücknahme
-      // wären es sieben.
+      // Fertiges bleibt aussen vor
+      // Ausführlich: docs/begruendungen/test/catalog-images-button-db.test.js.md#stelle
       assert.equal(d.queued, 8,
         `${d.queued} eingereiht statt 8 — draussen bleiben Sets mit BESTÄTIGTER ` +
         'Fehlanzeige UND solche, die Bild samt Vorschau schon lokal haben');
@@ -137,10 +94,10 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
         `skipped=${d.skipped} statt 1 — die Rückmeldung soll nennen, wie viele ` +
         'schon fertig waren');
 
-      // ── Marcos Wunsch (Nachtrag 124) ─────────────────────────────────────
+      // ── Marcos Wunsch ─────────────────────────────────────
       // „Kannst du die Logik so anpassen, dass er die image_misses löscht und
       // sie erneut versucht? Aktuell stehen in der Tabelle sehr viele
-      // Einträge." — Die vielen Einträge sind der Fehler aus Nachtrag 123:
+      // Einträge." — Die vielen Einträge sind der Fehler aus einer früheren Runde:
       // Jeder Netzwerkaussetzer galt als „gibt es nicht".
       assert.equal(d.verworfen, 1,
         `verworfen=${d.verworfen} statt 1 — genau die Fehlanzeige ohne Grund ` +
@@ -164,9 +121,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
       // den ganzen Katalog zurück in die Warteschlange. Der Job arbeitete das
       // richtig ab (Datei da → überspringen), aber die Kachel zeigte
       // Zehntausende offene Bilder, und jede Notiz kostete einen Durchgang.
-      //
-      // Hier wird der Durchlauf nachgestellt: ALLE Sets bekommen Bild und
-      // Vorschau. Danach darf nichts mehr eingereiht werden.
+      // Ausführlich: docs/begruendungen/test/catalog-images-button-db.test.js.md#stelle-2
       await db.run(`DELETE FROM image_wanted`);
       const extra = [];
       for (let i = 1; i <= 10; i++) {
@@ -192,7 +147,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async (t) => {
       const IQ = _req('jobs/imageQueue.js');
       let n = 0;
       // `.gesamt` = bearbeitete Notizen (geladen, Vorschau erzeugt oder
-      // übersprungen). Seit Nachtrag 120 liefert der Durchgang eine
+      // übersprungen). Seit einer früheren Runde liefert der Durchgang eine
       // Aufschlüsselung statt einer nackten Zahl — der Job schwieg sonst
       // genau dann, wenn er nur überspringt.
       for (let i = 0; i < 3; i++) n += (await IQ._arbeiteStapel()).gesamt;
@@ -263,7 +218,7 @@ test('der Knopf ist in der Kachel verdrahtet', () => {
     // es die beste aller Meldungen ist.
     assert.match(l, /'monitor\.catalog_images_queued_skipped':/,
       `Rückmeldung für „schon vorhanden" fehlt in ${loc}`);
-    // Nachtrag 124: Der Knopf nimmt jetzt Fehlanzeigen zurück und schätzt die
+    // Der Knopf nimmt jetzt Fehlanzeigen zurück und schätzt die
     // Dauer. Ohne beide Zahlen bliebe unklar, warum plötzlich wieder Bilder
     // anstehen, die zuletzt als fehlend galten — und ob das Minuten oder
     // Stunden dauert.

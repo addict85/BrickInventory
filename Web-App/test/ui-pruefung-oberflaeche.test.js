@@ -34,7 +34,7 @@ test('Gutscheinnummer: erst Trenner weg, dann Vierergruppen; ohne PDF steht es i
 });
 
 test('Anmeldefehler wird vorgelesen (role=alert) und steht da', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/auth/login': { $status: 401, success: false, error: 'Benutzername oder Passwort falsch' } },
+  const { w, d } = await oeffneOberflaeche({ '/v1/auth/login': { $status: 401, success: false, error: 'Benutzername oder Passwort falsch', code: 'anmeldedaten_ungueltig' } },
     { angemeldet: false });
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
@@ -131,7 +131,7 @@ test('Hintergrundarbeiten: technischer Fehler als Satz, Einzelheiten aufklappbar
     '/v1/admin/jobs': { success: true, jobs: {}, schedules: {},
     db: { csvCache: {}, blMapping: {} } }, '/v1/admin/auftraege': { success: true, zusammenfassung: [{ art: 'anleitung', status: 'fehler', anzahl: 1 }],
     job_prozess: { laeuft: true }, pausen: [], bildbedarf: 0,
-    auftraege: [{ id: 7, art: 'anleitung', status: 'fehler', set_number: '10294-1', fehler: roh, versuche: 3, max_versuche: 3 }] } });
+    auftraege: [{ id: '7', art: 'anleitung', status: 'fehler', set_number: '10294-1', fehler: roh, versuche: 3, max_versuche: 3 }] } });
   try {
     await reiter(w, 'monitor');
     await warte(() => d.querySelector('#auftraege-karte .fehler-kasten'), 3000);

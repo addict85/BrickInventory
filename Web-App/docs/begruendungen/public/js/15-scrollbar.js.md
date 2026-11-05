@@ -41,7 +41,7 @@ verborgen ist, hatte die Anwendung GAR KEINEN mehr.
 Selbst erzeugt hängt der Balken an keiner Reihenfolge im HTML.
 ```
 
-<a id="if"></a>
+<a id="die-inline-gesetzte-sichtbarkeit-wieder"></a>
 ## `if`
 
 ```text

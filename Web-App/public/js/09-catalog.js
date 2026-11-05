@@ -342,7 +342,7 @@ export async function ladeSeite(seite){
 function catCard(s){
   // Vorschau über den Server wie bei Sets, Teilen und Figuren: kleiner als die volle CDN-Auflösung, und schon
   // heruntergeladene Bilder (image_local) sparen den Weg zum CDN ganz.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#src
+  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#vorschau-ueber-den-server-wie
   const src = s.image_local || s.image_url;
   const img = src
     ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: '', fade: true, ph: 'set' })
@@ -402,7 +402,7 @@ async function openCatModal(setNumber){
   // Der Kauf-Link kommt fertig vom Server (bricklinkLink.ts): Aus der Rebrickable-Nummer gebaut, war er für
   // Gear, Bücher und Sammelfiguren falsch. Ist der Artikel nicht eindeutig, zeigt er auf die Suche — nie
   // ausblenden.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#bl
+  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#der-kauf-link-kommt-fertig
   const bl = s.bricklink;
   const blBtn = G('cat-m-bricklink');
   blBtn.style.display = '';
@@ -506,7 +506,7 @@ function _jahrAnPosition(){
   }
   // Zweite Wahl: über die tatsächliche Verteilung der Jahre rechnen. Linear auf 1949–2027 umgerechnet stand
   // bei neun Zehnteln „1965“, weil der Katalog fast ganz aus den letzten Jahrzehnten stammt.
-  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#if
+  // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#zweite-wahl-ueber-die-tatsaechliche
   if (!_catJahrVerteilung.length || !_catTotal) return null;
   const doc = document.documentElement;
   const rollbar = Math.max(1, doc.scrollHeight - window.innerHeight);

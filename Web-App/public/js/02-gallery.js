@@ -40,7 +40,7 @@ function faecherTon(s) {
 export async function loadStats(){
   // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe des
   // ganzen Haushalts.
-  // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#d
+  // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#kennzahlen-mit-demselben-kontofilter-wie
   const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);
   if (d.success && d.stats) {
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung. Stück wie Teile und Figuren
@@ -452,7 +452,7 @@ async function doAddSet(){
           leereLagerortFeld('add-storage');
           if (ev.katalog_offen) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
           else toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`,'success');
-          // Background jobs still running — refresh all tabs periodically
+          // Hintergrundaufträge laufen noch: alle Reiter regelmässig auffrischen
           set_lastImportAt(Date.now());
           [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
             loadGallery(); loadStats();
@@ -538,7 +538,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
     setProgBar(pct);
     G('prog-footer').textContent=`${t('csv.items_progress',{done,total})} (${importZaehler(s)})`;
     if(s.current) G('prog-set-name').textContent=tRaw('csv.verarbeite', { set: s.current, done, total });
-    // Update header progress bar directly
+    // Fortschrittsbalken im Kopf direkt nachführen
     { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+fmtPct(_p,{vorzeichen:false,stellen:0})+')';} }
     // Show live results as they come in
     if(s.results && s.results.length > ctx.prevResultCount) {
@@ -563,7 +563,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
         remaining.forEach(r=>{
           // Derselbe Zeilenbauer wie in 01-fortschritt.js. Ohne esc(), weil addCsvLog textContent setzt; der
           // Hinweis auf Zeitüberschreitung gilt nur hier.
-          // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#z
+          // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#derselbe-zeilenbauer-wie-in-01
           const z = protokollZeile(r, t('csv.timeout_retry'));
           if (z) addCsvLog(z.text, z.ok);
         });

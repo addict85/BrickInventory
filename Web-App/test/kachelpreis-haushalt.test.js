@@ -1,11 +1,6 @@
 /**
  * Eine Kachel, mehrere Besitzer — welchen Preis und welche G&V zeigt sie?
- *
- * /finance/pnl liefert eine Zeile je Besitzer; die Galerie fasst dieselbe
- * Setnummer zu einer Kachel zusammen. Bei mehreren Zeilen wird nach Menge
- * gewichtet (über baseline_price), bei einer bleibt der Wert des Servers.
- * Seit kachel_preis und kachel_pnl_pct rechnet das der Server
- * (src/finanzen/setValue.ts kachelWerte); Web und App zeigen nur an.
+ * Ausführlich: docs/begruendungen/test/kachelpreis-haushalt.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in kachelWerte() bei mehreren Zeilen die letzte statt der gewichteten

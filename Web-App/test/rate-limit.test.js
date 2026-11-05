@@ -1,19 +1,6 @@
 /**
  * Tageslimit für Rebrickable-API-Aufrufe.
- *
- * Zwei Dinge waren hier auseinandergelaufen:
- *
- *   1. Der gespeicherte Wert (global_settings.api_limit_rebrickable) wurde
- *      ausschliesslich im PUT-Handler von /api/v1/admin/api-limits per setMax()
- *      in den Limiter geschrieben. Beim Serverstart passierte das nicht — nach
- *      jedem Neustart galt wieder der hartkodierte Konstruktorwert, egal was in
- *      den Einstellungen stand.
- *   2. Die Fehlertexte in clients/rebrickable.ts nannten "100/Tag", während das
- *      tatsächliche Limit längst bei 4000 lag. Gleiches Muster in den
- *      Monitor-Labels (i18n) und im Standardwert des Eingabefelds.
- *
- * Der Test hält Standardwert und Verdrahtung zusammen, damit sie nicht wieder
- * getrennt driften. Ohne DB. Ausführen: npm test
+ * Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,9 +21,8 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   // getLimitForApi() hatte eine eigene Kopie des Rückfallwerts (4000). Solange
   // Rebrickable seinen eigenen Zähler hatte, sah es diese Tabelle nie — seit
   // beide über checkAndIncrementRateLimit laufen, wäre es eine stille Kürzung
-  // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften
-  // auseinander; hier wird festgehalten, dass es nur noch eine gibt.
-  // Seit die Zähler in src/katalog/apiKontingent.ts stehen, steht dort auch die Konstante.
+  // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften …
+  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#fc-stelle
   const fc = fs.readFileSync(path.join(ROOT, 'src/katalog/apiKontingent.ts'), 'utf8');
   assert.match(fc, /rebrickable: REBRICKABLE_DEFAULT_DAILY/,
     'Der Rückfallwert muss die gemeinsame Konstante sein, nicht eine eigene Zahl danebenstehen');
@@ -44,23 +30,8 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
 });
 
 test('das Tageskontingent zählt für die Installation, nicht je Worker', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Der Rebrickable-Zähler lag in `this.count` einer DailyLimiter-Instanz —
-  // also im Speicher EINES Prozesses. Der Server läuft im Cluster: Jeder
-  // Worker legte seine eigene Instanz an und zählte für sich bis zum Limit.
-  // Bei WORKERS = max(2, CPU-Kerne) waren auf einem Vierkerner 100'000 Aufrufe
-  // möglich, wo 25'000 eingestellt sind. Die DB-Schreibvorgänge täuschten
-  // Gemeinsamkeit vor, überschrieben aber nur den Stand des jeweils letzten
-  // Workers.
-  //
-  // Genau dasselbe war beim Login-Zähler schon behoben worden (Test weiter
-  // unten: „die Login-Zähler liegen nicht mehr im Prozessspeicher"), und für
-  // BrickLink und Brickset war es von Anfang an richtig. Rebrickable war die
-  // dritte Instanz desselben Musters.
-  //
-  // Gegen echte Datenbank nachgestellt: Limit 3, drei Aufrufe erlaubt, der
-  // vierte abgelehnt — und ein zweiter Modulzustand (= zweiter Worker) fängt
-  // NICHT wieder bei null an.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#rl-stelle
   const rl = fs.readFileSync(path.join(ROOT, 'src/katalog/rateLimiter.ts'), 'utf8');
   assert.match(rl, /async function consumeRebrickableDaily/,
     'Der Verbrauch muss über den gemeinsamen Zähler laufen');
@@ -81,9 +52,8 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   // Und das Nachladen beim Start ist entfallen — die Grenze wird bei jedem
   // Aufruf gelesen, statt in einen Prozessspeicher kopiert zu werden.
   // Kommentare raus: Die Notiz an der alten Stelle nennt den Namen weiterhin
-  // (sie erklärt ja, warum dort nichts mehr steht) — ohne das Ausblenden hielte
-  // der Test den Kommentar für den Aufruf. Dieselbe Falle wie schon zweimal
-  // zuvor in dieser Suite.
+  // (sie erklärt ja, warum dort nichts mehr steht) — ohne das Ausblenden hielte …
+  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#server
   const server = require('./helpers/sources').serverAll().replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(server, /loadDailyLimitsFromDb\(\)/,
     'Ein In-Memory-Limit muss nicht mehr geladen werden');
@@ -94,10 +64,7 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   // Worker, der die Anfrage bearbeitet hat. Die übrigen liefen bis zum
   // Neustart mit dem alten Wert weiter, und beim Start musste
   // loadDailyLimitsFromDb() den Wert in jeden Prozess kopieren.
-  //
-  // Jetzt liest getLimitForApi() die Grenze bei jedem Aufruf aus
-  // global_settings — kein Kopieren, kein Nachziehen, keine Abweichung
-  // zwischen Workern.
+  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#admin
   const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8')
     .replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(admin, /setMax\(/,
@@ -114,7 +81,7 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
 });
 
 test('keine hartkodierten Limitzahlen mehr in Meldungen und Labels', () => {
-  // Fundort seit Nachtrag 126: clients/rebrickable.ts. Die Datei enthält keine
+  // Fundort seit einer früheren Runde: clients/rebrickable.ts. Die Datei enthält keine
   // einzige Route und wurde nie als Router montiert — sie lag nur aus
   // Gewohnheit in routes/. Die Aussage dieser Prüfung ist unverändert.
   const rb = fs.readFileSync(path.join(ROOT, 'clients/rebrickable.ts'), 'utf8');
@@ -165,11 +132,7 @@ test('bei DB-Ausfall greift die Rückfallebene', () => {
 test('die Aufrufstellen warten auf das Ergebnis', () => {
   // checkLoginAllowed ist seit der Umstellung asynchron — ein vergessenes
   // await liefert ein Promise, das immer truthy ist und JEDEN Login sperrt.
-  //
-  // Hier standen zwei Dateinamen. Das ging gut, solange die Anmeldung an genau
-  // diesen zwei Stellen stand; als sie in src/konto/auth.ts zusammengezogen wurde,
-  // prüfte der Test Dateien, in denen es nichts mehr zu prüfen gab, und
-  // meldete das Zusammenlegen als Fehler. Gesucht wird deshalb im Baum.
+  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#dateien
   const dateien = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
     const p = path.join(dir, e.name);
     return e.isDirectory() ? dateien(p) : (e.name.endsWith('.ts') ? [p] : []);
@@ -201,31 +164,8 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
 });
 
 test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Der Preis-Job schützte sich mit `state.running` — einer Variablen im
-  // Speicher EINES Prozesses. Geplant lief er nur im Primary-Worker, aber die
-  // beiden manuellen Auslöser (POST /api/finance/job-trigger und
-  // POST /api/v1/admin/trigger-price-job) laufen in dem Worker, der die
-  // Anfrage bearbeitet. Dort war state.running false — also startete ein
-  // vollständiger Lauf über alle Sets, unabhängig davon, ob im Primary gerade
-  // einer lief. Zwei Klicks auf verschiedenen Workern ergaben zwei komplette
-  // Durchgänge, jeder mit eigenen BrickLink-Aufrufen, und beide schrieben in
-  // dasselbe Fortschrittsfeld.
-  //
-  // Mit einem ECHTEN zweiten Prozess nachgestellt (eigener Speicher,
-  // state.running dort false): mit Sperre wird er abgewiesen, ohne Sperre
-  // startet er mit.
-  //
-  // Das war die vierte Instanz desselben Musters — nach Login-Zähler,
-  // Bild-Cache-Aufräumlauf und Rebrickable-Tageskontingent. Deshalb prüft
-  // dieser Test die REGEL: Wer ein externes Kontingent verbraucht und aus
-  // einer Route angestossen werden kann, braucht mehr als eine Variable im
-  // Prozessspeicher.
-  // Kommentare raus, BEVOR geprüft wird: Der Erklärtext in priceJob.ts nennt
-  // pg_try_advisory_xact_lock (als das, was dort bewusst NICHT benutzt wird) —
-  // ohne das Ausblenden schlüge die Prüfung darauf am Kommentar an. Dieselbe
-  // Falle wie mehrfach zuvor in dieser Suite; sie ist der häufigste Fehler
-  // beim Schreiben quelltextlesender Tests.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#job-stelle
   const job = (fs.readFileSync(path.join(ROOT, 'jobs/priceJob.ts'), 'utf8') + fs.readFileSync(path.join(ROOT, 'db/txLock.ts'), 'utf8'))
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
@@ -256,13 +196,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
     'routes/api_v1/admin.ts: ohne await meldet die Route ein Promise als „gestartet"');
 
   // Der Namensraum kommt aus der gemeinsamen Liste.
-  //
-  // Hier stand bis Nachtrag 149 eine von Hand gepflegte Abschrift:
-  //     const belegt = ['42', '77', '11223344', '99999999'];
-  // Sie kannte 55, 56, 57 und 58 nicht, obwohl es alle vier längst gab — eine
-  // Kollision mit dreien davon wäre durchgegangen, und der Test wäre dabei
-  // grün geblieben. Dass die Namensräume sich wirklich nicht behindern, misst
-  // jetzt test/lock-namespaces-db.test.js gegen eine echte Datenbank.
+  // Ausführlich: docs/begruendungen/test/rate-limit.test.js.md#stelle
   assert.match(job, /LOCKS\.PREIS_JOB/,
     'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
 });

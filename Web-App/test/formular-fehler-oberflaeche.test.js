@@ -15,7 +15,7 @@ const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
 
 test('Anmeldung: Fehler am Feld', async (t) => {
   const { w, d } = await oeffneOberflaeche({
-    '/v1/auth/login': { $status: 401, success: false, error: 'Benutzername oder Passwort falsch' },
+    '/v1/auth/login': { $status: 401, success: false, error: 'Benutzername oder Passwort falsch', code: 'anmeldedaten_ungueltig' },
   }, { angemeldet: false });
   try {
     d.getElementById('lu').value = 'anna'; d.getElementById('lp').value = 'falsch';

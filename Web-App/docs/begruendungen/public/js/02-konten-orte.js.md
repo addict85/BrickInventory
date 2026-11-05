@@ -34,7 +34,7 @@ ergibt sich aus der Haushaltsantwort, die diese Funktion ohnehin schon
 gelesen hat. Ein zweiter Abruf dafür wäre eine zweite Wahrheit.
 ```
 
-<a id="for"></a>
+<a id="alle-fuenf-erfassungswege-set-teil"></a>
 ## `for`
 
 ```text

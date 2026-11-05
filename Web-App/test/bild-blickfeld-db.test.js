@@ -31,7 +31,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 
 const P = process.pid;

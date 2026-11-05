@@ -1,12 +1,6 @@
 /**
  * Das Wertdiagramm in Finanzen — am echten Bündel in jsdom.
- *
- *   - Vorgewählt ist „Max“; die erste Abfrage fragt period=max.
- *   - Mit weniger als zwei echten Messpunkten (der Server ergänzt dann einen
- *     künstlichen Startwert) steht ein Leerzustand statt einer flachen Linie,
- *     und neben dem Titel steht keine Veränderung.
- *   - Mit Verlauf steht die Veränderung mit ihrem Zeitraum da.
- *   - Der Leerzustand ist übersetzt (vorher fest „Noch keine Verlaufsdaten.“).
+ * Ausführlich: docs/begruendungen/test/wertdiagramm-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in loadPortfolioChart die Bedingung `messpunkte < 2` entfernt → rot:
@@ -21,7 +15,7 @@ const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
 
 const punkte = (werte) => werte.map((value, i) => ({ x_label: `0${i + 1}.10`, value, y_frac: 0.5 }));
-const PNL = { '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: '500', pnl_pct: 22.7 } } };
+const PNL = { '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: '500', pnl_pct: '22.7' } } };
 
 test('ein Messpunkt: Leerzustand statt Linie', async () => {
   const { w, d } = await oeffneOberflaeche({ ...PNL,

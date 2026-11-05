@@ -52,7 +52,7 @@ function zustandText(c) {
 function zeile(w) {
   // Bild über imgUrl(), nicht thumbUrl() allein: thumbUrl() reicht fremde Adressen unverändert durch, der
   // Browser rief das CDN direkt, und die Sicherheitsrichtlinie blockte es.
-  // Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#roh
+  // Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#bild-ueber-imgurl-nicht-thumburl
   const roh = w.image_local || w.image_url;
   const bild = roh
     ? bildTag({ src: imgUrl(thumbUrl(roh) || roh, 'nur'), alt: '', klasse: 'bild-56', ph: 'set' })
@@ -491,7 +491,7 @@ export function merkpostenDetailUebernehmen() {
 
 // Suche entprellt (250 ms wie Galerie und Teile), sonst ein Abruf je Taste. Der Wächter `?.`, weil die Datei
 // in den Tests auch ohne DOM geladen wird.
-// Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#mks
+// Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#suche-entprellt-250-ms-wie
 G('mks')?.addEventListener('input', () => {
   clearTimeout(G('mks')._t);
   G('mks')._t = setTimeout(ladeMerkliste, 250);

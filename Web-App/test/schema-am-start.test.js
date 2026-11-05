@@ -1,13 +1,6 @@
 /**
  * Keine Schema-Anweisung im Anfragepfad.
- *
- * Der Wächter selbst steht in scripts/check-schema-am-start.js — samt der
- * Begründung, woher die Regel kommt und was der erste, zu weit gefasste
- * Entwurf gemeldet hat. Hier wird er nur ausgeführt, damit er beim normalen
- * `npm test` mitläuft und nicht nur, wenn jemand daran denkt.
- *
- * Dasselbe Muster wie bei check-antwortfelder.js und
- * check-doppelte-operanden.js.
+ * Ausführlich: docs/begruendungen/test/schema-am-start.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

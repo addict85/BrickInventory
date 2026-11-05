@@ -26,7 +26,7 @@ const SET = { set_number: '21318-1', name: 'Tree House', theme: 'Ideas', year: 2
 
 test('unbekannte Setnummer: erst Rückfrage, dann anlegen', async () => {
   const { w, d, aufrufe } = await oeffneOberflaeche({
-    '/v1/catalog/sets/99999-1': { $status: 404, success: false, code: 'set_nicht_im_katalog' } });
+    '/v1/catalog/sets/99999-1': { $status: 404, success: false, code: 'set_nicht_im_katalog', error: 'Set nicht im Katalog' } });
   try {
     d.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click();
     d.getElementById('add-num').value = '99999';
@@ -62,7 +62,7 @@ test('Preisverlauf: Kaufpreis als Punkt, nicht als Anfang der Kurve', async () =
 
 test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async () => {
   const { w, d, aufrufe } = await oeffneOberflaeche({
-    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: 1 } } });
+    '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } } });
   try {
     await sicht(w, 'profil');
     const feld = d.getElementById('s-cur');
@@ -82,7 +82,9 @@ test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async ()
 
 test('Merkposten löschen: Rückgängig legt ihn wieder an', async () => {
   const { w, d, aufrufe } = await oeffneOberflaeche({
-    '/v1/wanted': { success: true, merkposten: [{ set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' }] } });
+    '/v1/wanted': (_u, o) => o.method === 'POST'
+      ? { success: true, merkposten: { set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' } }
+      : { success: true, merkposten: [{ set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' }] } });
   try {
     await reiter(w, 'wanted');
     await warte(() => d.querySelector('.mk-zeile .delbtn'));
@@ -129,7 +131,7 @@ test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in
       schedules: { csvImport: { type: 'daily', time: '03:00' } }, db: { csvCache: { parts: 5 }, blMapping: {} } },
     '/v1/admin/auftraege': { success: true, zusammenfassung: [{ art: 'wechselkurse', status: 'fehler', anzahl: 1 }],
       job_prozess: { laeuft: true }, pausen: [], bildbedarf: 0,
-      auftraege: [{ id: 9, art: 'wechselkurse', status: 'fehler', fehler: 'ENOTFOUND ecb', versuche: 6, max_versuche: 6 }] } });
+      auftraege: [{ id: '9', art: 'wechselkurse', status: 'fehler', fehler: 'ENOTFOUND ecb', versuche: 6, max_versuche: 6 }] } });
   try {
     await reiter(w, 'monitor');
     await warte(() => d.querySelector('#auftraege-karte table') && d.querySelector('#monitor-content table'));

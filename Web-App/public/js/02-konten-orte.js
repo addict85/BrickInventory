@@ -89,7 +89,7 @@ export async function loadHouseholdMembers() {
 /**
  * Alle fünf Erfassungswege (Set, Teil, Figur, Katalog, Merkliste) bekommen dieselbe Kontoauswahl: Etwas für
  * ein Kind zu erfassen soll überall gleich gehen. Eine getroffene Wahl bleibt beim Neuzeichnen.
- * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#for
+ * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#alle-fuenf-erfassungswege-set-teil
  * @param {HouseholdMember[]} members
  */
 function zeichneKontoauswahl(members) {

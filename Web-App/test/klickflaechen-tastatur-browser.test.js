@@ -2,11 +2,8 @@
  * Jede Klickfläche ist mit der Tastatur bedienbar (WCAG 2.1.1, Stufe A): Auf
  * allen Hauptseiten, in Karten- und Tabellenansicht und im Haushalt, hat jedes
  * sichtbare Element mit data-click, das kein Knopf, Link oder Feld ist,
- * tabindex="0" und eine Rolle (eine Tabellenzeile hat ihre eigene). Ausgenommen
- * sind nur aria-hidden-Abkürzungen in einer selbst bedienbaren Karte (der
- * Papierkorb der Kachel löscht, was ihr Dialog auch löscht) und stopEvent,
- * das nur den Klick der Zeile von ihren Knöpfen fernhält. Dazu der Befund
- * selbst: Die Figur aus einem Set wird mit Tab erreicht und öffnet mit Eingabe.
+ * tabindex="0" und eine Rolle (eine Tabellenzeile hat ihre eigene). Ausgenommen …
+ * Ausführlich: docs/begruendungen/test/klickflaechen-tastatur-browser.test.js.md#kopf
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  Figurenkachel aus Sets wieder ohne tabindex und role (06-minifigs.js) →
@@ -61,9 +58,9 @@ const UNBEDIENBAR = `(() => {
 test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async (t) => {
   const app = await starteApp(t, { name: `kft_${process.pid}`, bestand: musterHaushalt });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(800);
-  await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const ruhe = () => b.auswerten(`new Promise(r => setTimeout(() => requestAnimationFrame(() => r(true)), 700))`);
 
   await t.test('jede Klickfläche ist bedienbar', async () => {

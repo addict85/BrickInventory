@@ -1,11 +1,7 @@
 /**
  * Finanzen: Ein gebrauchtes Set ohne Gebraucht-Preis bekommt den Preis für
  * „Neu" — auch wenn der nur noch alt im Cache liegt.
- *
- * Fall vom 25.10. (Holiday House, 2026): Für „Gebraucht" stand ein frischer
- * Eintrag ohne Preis, der Neu-Preis war älter als die Cache-Dauer. Die
- * Detailansicht zeigte ihn (sie liest jeden Cache-Eintrag), Finanzen zeigte
- * „—": fetchPrice sah im frischen Cache nach „Neu" nach und rief es nie ab.
+ * Ausführlich: docs/begruendungen/test/preis-rueckfall-db.test.js.md#kopf
  *
  * Gegenproben (am 25.10. gemessen):
  *   A  der Abruf des anderen Zustands im Null-Zweig entfernt (der Stand vor

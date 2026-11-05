@@ -468,7 +468,7 @@ G('wanted-xml-modal')?.addEventListener('click',
 
 // Das Symbol einmal hier an die drei Knöpfe hängen statt dreimal ins HTML. In ein eigenes <span> ohne
 // data-i18n: Die Übersetzung setzt textContent und würfe es beim Sprachwechsel hinaus.
-// Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#for
+// Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#das-symbol-einmal-hier-an
 for (const el of document.querySelectorAll('[data-wanted-icon]')) setzeHtml(el, XML_ICON_SVG);
 
 registerActions({

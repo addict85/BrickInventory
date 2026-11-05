@@ -2,10 +2,8 @@
  * Eine neue E-Mail-Adresse gilt erst nach dem Link an sie (Sicherheitsprüfung
  * Runde 12, N1). Bis dahin bleibt die alte, und die neue belegt nichts: Ihr
  * Inhaber kann sich mit ihr registrieren, und Passwort-vergessen findet über
- * eine unbestätigte Adresse kein Konto. Seit Runde 13 (N1) legt auch eine
- * Registrierung ihre Adresse nur als ausstehend ab; die erste Bestätigung
- * gewinnt. Migration 0096 macht aus dem Altbestand ausstehende Adressen (H5),
- * 0097 ebenso aus offenen Registrierungen, und der Start meldet die ohne Link.
+ * eine unbestätigte Adresse kein Konto. Seit Runde 13 (N1) legt auch eine …
+ * Ausführlich: docs/begruendungen/test/email-neu-db.test.js.md#kopf
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  PUT /profile schreibt die Adresse wieder sofort nach users.email → rot:

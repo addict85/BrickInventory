@@ -18,8 +18,8 @@ const { starteApp, warte } = require('./helpers/app-browser');
 test('Anmeldewege: die jüngste Antwort gilt', { timeout: 120_000 }, async (t) => {
   const app = await starteApp(t, { name: `aw_${process.pid}` });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(500);
+  const { b, bis, ruhig } = app;
+  await ruhig();
   // Die erste Abfrage antwortet spät und verneint „Passwort vergessen?“, die zweite sofort und bejaht.
   await b.auswerten(`(() => {
     const echt = window.fetch.bind(window); let n = 0;
@@ -36,7 +36,7 @@ test('Anmeldewege: die jüngste Antwort gilt', { timeout: 120_000 }, async (t) =
   await b.auswerten(`document.getElementById('btn-logout').click(); true`);
   await bis(`document.getElementById('login-screen').dataset.anmeldewege === 'geladen'`, 'Anmeldewege eingetragen');
   // Die späte erste Antwort abwarten.
-  await warte(1800);
+  await ruhig();
   assert.equal(await b.auswerten(`document.getElementById('link-forgot').hidden`), false, 'die jüngste Antwort gilt');
   assert.equal(await b.auswerten(`document.getElementById('login-screen').dataset.anmeldewege`), 'geladen');
 });

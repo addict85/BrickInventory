@@ -16,10 +16,10 @@ const { musterHaushalt } = require('./helpers/bestand');
 test('Merkliste: CSV-Import in das gewählte Konto', { timeout: 120_000 }, async (t) => {
   const app = await starteApp(t, { name: `mkcsv_${process.pid}`, bestand: musterHaushalt });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis, db } = app;
+  const { b, bis, db, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const kid = (await db.get('SELECT id FROM users WHERE username = $1', [`mkcsv_${process.pid}_kind`])).id;
-  await warte(500);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
   await b.auswerten(`location.hash = '#/merkliste'; true`);
   // Das Konto-Feld erscheint, sobald die Haushaltsmitglieder geladen sind.
   await bis(`[...document.querySelectorAll('#mk-owner option')].some(o => o.value === '${kid}')

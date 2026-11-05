@@ -162,7 +162,7 @@ async function plGenerate() {
           // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand danach nachgefragt wird:
           // Mehrere Formvarianten teilen eine BrickLink-Nummer, und nach ihr zusammengelegt zählte der Bedarf
           // doppelt, der Bestand einfach.
-          // Ausführlich: docs/begruendungen/public/js/08-init.js.md#key
+          // Ausführlich: docs/begruendungen/public/js/08-init.js.md#zusammengefasst-wird-nach-der-rebrickabl
           const key = `${p.part_number}|${p.color_id||0}`;
           if (combined[key]) {
             combined[key].quantity += parseInt(String(p.total_quantity || p.quantity || 1));
@@ -443,7 +443,7 @@ export function plInit() {
 
 /** Was laut Tabelle fehlt (Bedarf minus vorhanden), mit BrickLink-Farbe. */
 function fehlendeTeile() {
-  // Collect all "vorhanden" inputs from the table
+  // Alle Felder „vorhanden“ aus der Tabelle einsammeln
   const inputs = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
   /** @type {Fehlteil[]} */
   const missing = [];
@@ -560,7 +560,7 @@ async function plExportBricklink() {
 
   // BrickLink weist eine Datei über BL_UPLOAD_MAX_BYTES ganz ab. Ein Stück öffnet wie bisher im Tab zum
   // Kopieren; mehrere werden heruntergeladen — ein Tab je Stück wäre ein Popup-Gewitter.
-  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#if
+  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#bricklink-weist-eine-datei-ueber
   wantedXmlAusliefern(stuecke);
 
   toast(tRaw('pl.bl_exported', { n: exportierbar.length }), 'success');

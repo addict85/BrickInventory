@@ -2,13 +2,8 @@
  * Einzelne Bedienbefunde in Chrome, an der echten App:
  *   - Bestätigungsdialog: Escape gibt den Fokus an den Auslöser zurück; ist
  *     „Weitere Aktionen“ zugeklappt (es klappt bei der Wahl zu), an dessen <summary>;
- *   - Set-Ansicht: „Teile neu importieren“ (unter „Weitere Aktionen“) ist ein
- *     beschrifteter Knopf von mindestens 24 × 24 px ohne Inline-Stil;
- *   - Konto: das Häkchen „Auch alle Passkeys entfernen“ ist selbst 24 × 24 px;
- *   - jede :hover-Regel der geladenen Stylesheets steht in @media (hover:hover):
- *     Auf Touchgeräten bleibt sonst der Hover-Zustand nach dem Tippen kleben;
- *   - Anmeldemaske in allen sechs Designs hell und dunkel: Knöpfe und Felder
- *     grenzen sich 3:1 ab („Mit Passkey anmelden“), Text 4,5:1.
+ *   - Set-Ansicht: „Teile neu importieren“ (unter „Weitere Aktionen“) ist ein …
+ * Ausführlich: docs/begruendungen/test/bedienung-browser.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  rueckziel() in 01-dialoge.js gibt nur `el` zurück → rot:
@@ -38,15 +33,15 @@ const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }, async (t) => {
   const app = await starteApp(t, { name: `bedien_${process.pid}`, bestand: musterSammlung });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(1000);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
   const escape = async () => {
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...ESC });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...ESC });
-    await warte(150);
+    await ruhig();
   };
   const fokus = () => b.auswerten(`(() => { const a = document.activeElement; return a.id || a.tagName.toLowerCase() + '.' + a.className; })()`);
 

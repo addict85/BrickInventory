@@ -1,11 +1,7 @@
 /**
  * Meldungen (Toasts): Fehler bleiben länger stehen, ein Klick räumt weg — am
  * echten Bündel in jsdom.
- *
- *   - Eine Fehlermeldung steht nach allen Zeitgebern unter 8 s noch da und
- *     ist erst nach dem langen weg. Vorher verschwand jede Meldung ohne Knopf
- *     nach 4,5 s, auch ein Fehler, den man lesen will.
- *   - Ein Klick auf die Meldung entfernt sie sofort.
+ * Ausführlich: docs/begruendungen/test/meldungen-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  TOAST_DAUER.error auf 4500 → rot: „Fehler bleibt länger stehen“

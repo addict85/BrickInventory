@@ -44,7 +44,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt  = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `sperre_${process.pid}`, PASS = 'richtigesPasswort1';
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 
 let UID = null;
 /** Schlüssel des Zählers je Konto (Name und E-Mail zählen gemeinsam). */

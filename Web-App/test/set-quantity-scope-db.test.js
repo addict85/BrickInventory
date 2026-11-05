@@ -1,23 +1,6 @@
 /**
  * Menge eines UNTERKONTO-Sets ändern — beide Routenfamilien.
- *
- * ── Woher dieser Test kommt (Marcos Bericht, Nachtrag 52) ───────────────────
- * „Wenn die Anzahl eines Sets erhöht wird, welches einem Unterkonto gehört,
- * funktioniert die ganze Logik nicht mit dem Kaufpreis und die Anzahl wird
- * nicht gespeichert."
- *
- * Ursache: `updateSet()` suchte das Set mit `WHERE user_id=$1` und der EIGENEN
- * Betrachter-ID — 404 für jedes Set des Unterkontos. Beim Nachmessen zeigte
- * sich, dass es BEIDE Wege trifft, auch die Webapp, die Marco noch nicht
- * getestet hatte.
- *
- * Dieselbe Klasse wie Nachtrag 45 (dort der Kaufpreis, hier die Menge) — und
- * weil die Mengenänderung über adjustAcquisitionsToQuantity() auch Erfassungen
- * anlegt und Preise bestimmt, blieb gleich die ganze Kette wirkungslos. Genau
- * das beschreibt Marcos Satz „die ganze Logik mit dem Kaufpreis".
- *
- * Nach dem Finden zählt der BESITZER der Zeile, nicht der Betrachter — sonst
- * entstünden die Erfassungen im falschen Konto. Das prüft der Test mit.
+ * Ausführlich: docs/begruendungen/test/set-quantity-scope-db.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): writableIds in updateSet zurück auf die eigene ID
  * → beide Teilschritte enden wieder in 404.
@@ -90,17 +73,10 @@ test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto',
       assert.equal(r.status, 200, `${name}: die Mengenänderung darf nicht mehr in 404 enden`);
 
       // (Die Mengen kommen jetzt alle aus den Erfassungen — Migration 0036.)
-      // ── Marcos neue Regel (Nachtrag 85) ────────────────────────────────
+      // ── Marcos neue Regel ────────────────────────────────
       // „Die Anzahl soll immer von allen angezeigt werden. Wenn ich diese
-      // erhöhe, soll es für meinen Account einen neuen Kaufpreis-Eintrag
-      // erstellen."
-      //
-      // Bis Nachtrag 52 endete das hier in einem 404 — das bleibt geprüft.
-      // Bis Nachtrag 84 landete die Erhöhung dann beim BESITZER der Zeile, und
-      // dieser Test verlangte ausdrücklich, dass im Konto des Betrachters
-      // KEINE Erfassung entsteht. Genau das ist jetzt umgekehrt: Die
-      // angezeigte 3 ist die Gesamtmenge des Haushalts, die Differenz gehört
-      // dem, der sie auslöst.
+      // erhöhe, soll es für meinen Account einen neuen Kaufpreis-Eintrag …
+      // Ausführlich: docs/begruendungen/test/set-quantity-scope-db.test.js.md#beimbesitzer
       const beimBesitzer = await mengeVon(db, subId, SN);
       assert.equal(beimBesitzer, 1,
         `${name}: der Bestand des Unterkontos darf sich durch eine fremde Erhöhung nicht ändern`);

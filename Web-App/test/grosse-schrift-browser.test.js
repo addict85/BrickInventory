@@ -2,13 +2,7 @@
  * Doppelte Schriftgrösse (Browser-Einstellung 32 px) und schmale Geräte:
  * Die Sammlung bleibt lesbar. Gemessen in Chrome mit Page.setFontSizes,
  * also so, wie ein Nutzer die Schrift im Browser vergrössert.
- *
- *   - kein waagrechter Überlauf der Seite;
- *   - Set-Nummern stehen auf einer Zeile;
- *   - nichts in einer Kachel ragt über ihren Rand;
- *   - Kachelüberschriften der Kennzahlen brechen nicht im Wort;
- *   - die untere Leiste zeigt ganze Beschriftungen, nie „Sam…“ und nie nur Symbole;
- *   - ab etwa 360 px Breite zwei Spalten, darunter eine.
+ * Ausführlich: docs/begruendungen/test/grosse-schrift-browser.test.js.md#kopf
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
  *   A  .sgrid in mobile.css wieder minmax(150px, 1fr) → rot: „390 px, 200 %“
@@ -68,15 +62,15 @@ const MESSUNG = `(() => {
 test('grosse Schrift und schmale Geräte: Sammlung lesbar', { timeout: 180_000 }, async (t) => {
   const app = await starteApp(t, { name: `gross_${process.pid}`, bestand: musterSammlung });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b } = app;
-  await warte(1000);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+  const { b, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await app.bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
   const fall = async (breite, schrift) => {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: 844, deviceScaleFactor: 1, mobile: true });
     await b.tab('Page.setFontSizes', { fontSizes: { standard: schrift, fixed: Math.round(schrift * 0.8) } });
-    await warte(400);
+    await ruhig();
     return b.auswerten(MESSUNG);
   };
   for (const [breite, schrift, spalten] of [[390, 16, 2], [320, 16, 1], [390, 32, 1], [320, 32, 1]]) {

@@ -2,11 +2,7 @@
  * Kein Index ist der Anfang eines anderen derselben Tabelle, und jeder
  * Fremdschlüssel hat einen Index, der mit seinen Spalten beginnt — geprüft am
  * Katalog der migrierten Datenbank (Migration 0068).
- *
- * Ein Präfix-Doppel bedient keine Suche, die der längere Index nicht auch
- * bedient, kostet aber bei jedem Schreiben. Ein Fremdschlüssel ohne Index
- * lässt jedes Löschen in der Elterntabelle die Kindtabelle durchsuchen
- * (minifigs_set_fk fehlte).
+ * Ausführlich: docs/begruendungen/test/indizes-db.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen, je auf frischer Datenbank):
  *   A  `DROP INDEX IF EXISTS idx_sets_user` aus 0068 entfernt → rot: „kein

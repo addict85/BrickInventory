@@ -2,9 +2,8 @@
  * Unter /api/v1/sets hängen zwei Router (routes/api_v1 und routes/sets.ts,
  * wie in server.ts). Der Namensabruf /sets/info/:setNumber stand im zweiten,
  * und eine Nummer, die wie ein Pfadwort der ersten aussieht, landete dort:
- * GET /api/v1/sets/info/price-history traf /sets/:setNumber/price-history mit
- * „info“ als Setnummer. Jetzt steht der Abruf im v1-Router vor allen Pfaden
- * mit Parameter.
+ * GET /api/v1/sets/info/price-history traf /sets/:setNumber/price-history mit …
+ * Ausführlich: docs/begruendungen/test/sets-info-eindeutig-db.test.js.md#kopf
  *
  * Gegenprobe (am 29.10.2026 gemessen): die Route /sets/info/:setNumber aus
  * routes/api_v1/sets.ts zurück an ihren alten Platz in routes/sets.ts → rot:

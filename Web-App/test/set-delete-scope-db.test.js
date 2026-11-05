@@ -72,7 +72,7 @@ test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht',
   try {
     // 1. VORWÄRTS: Hauptkonto löscht ein Set des Unterkontos — und zwar ganz.
     for (const [name, base, pfad] of [
-      // Nachtrag 74: Es gibt nur noch EINE Adresse. Beide Zeilen prüfen sie —
+      // Es gibt nur noch EINE Adresse. Beide Zeilen prüfen sie —
       // die Unterscheidung Webapp/App liegt jetzt am Ausweis, nicht am Pfad,
       // und die Sitzung ist in diesem Test für beide gesetzt.
       ['Webapp',  baseHaupt, `/api/v1/sets/${SN}`],

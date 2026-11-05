@@ -36,9 +36,11 @@ const MESSUNG = `(() => {
 })()`;
 
 async function tabGang(app, ansicht) {
-  const { b } = app;
+  const { b, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   await b.auswerten(`location.hash = '#/${ansicht}'; true`);
-  await warte(600);
+  await ruhig();
   await app.bis(`!document.querySelector('.tab.active .skelett-zeile, .skelett-raster')`, 'geladen', 60).catch(() => {});
   await b.auswerten(`scrollTo(0, 0); document.getElementById('inhalt').focus({ preventScroll: true }); true`);
   const funde = [];
@@ -59,11 +61,9 @@ async function tabGang(app, ansicht) {
 test('Fokus unter festen Leisten', { concurrency: 1, timeout: 400_000 }, async (t) => {
   const app = await starteApp(t, { name: `fokl_${process.pid}`, bestand: musterHaushalt });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b } = app;
+  const { b, ruhig } = app;
   for (const [breite, hoehe, gross] of [[390, 844, false], [320, 640, true]]) {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 1, mobile: true });
-    await warte(800);
-    await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
     if (gross) await b.tab('Page.setFontSizes', { fontSizes: { standard: 32, fixed: 26 } });
     for (const ansicht of ANSICHTEN) {
       const { funde, gesehen } = await tabGang(app, ansicht);

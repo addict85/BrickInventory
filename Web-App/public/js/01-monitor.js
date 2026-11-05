@@ -219,7 +219,7 @@ export async function loadMonitor() {
 
     await zeigeAuftraege();
 
-    // Refresh faster when img-dl or PDF jobs are actively running
+    // Schneller auffrischen, solange Bild- oder PDF-Aufträge laufen
     const anyActive = Object.values(jobs).some(j => j.status === 'running');
     const interval = anyActive ? 2000 : 5000;
     if (_monitorTimer) clearInterval(_monitorTimer);

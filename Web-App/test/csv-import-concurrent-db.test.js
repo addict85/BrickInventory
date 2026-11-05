@@ -12,7 +12,7 @@
  * `_csvSyncRunning` in server.ts schützt nur den manuellen Weg gegen sich
  * selbst und liegt ohnehin im Speicher EINES Prozesses.
  *
- * Vor Nachtrag 29 scheiterte dann einer der beiden Läufe beim CREATE mit
+ * Vor einer früheren Runde scheiterte dann einer der beiden Läufe beim CREATE mit
  * „duplicate key value violates unique constraint pg_type_typname_nsp_index" —
  * einem Fehler, der nichts über die Ursache verrät. In csvSync.run() bricht
  * das den ganzen Durchgang ab, der Tagesmarker bleibt ungesetzt.

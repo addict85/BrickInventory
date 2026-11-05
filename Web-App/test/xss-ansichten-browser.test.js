@@ -1,12 +1,7 @@
 /**
  * Kein Markup aus Daten: Namen, Themen, Kategorien und Lagerorte mit XSS-Nutzlast
  * durch die Hauptansichten gerendert, im echten Chrome.
- *
- * Geprüft wird das Ergebnis im DOM, nicht der Quelltext: Kein Element trägt einen
- * Ereignis-Handler aus den Daten, kein <img src=x> oder <svg> aus der Nutzlast
- * entsteht, und die Nutzlast steht als Text da (sonst wäre die Ansicht leer und
- * der Test bewiese nichts). Die CSP würde einen Handler ohnehin nicht ausführen;
- * deshalb zählt das Element, nicht der Aufruf.
+ * Ausführlich: docs/begruendungen/test/xss-ansichten-browser.test.js.md#kopf
  *
  * Gegenproben (gemessen):
  *   A  im Kachelnamen der Sammlung (02-gallery.js) den Namen in ungeprueft()
@@ -52,16 +47,16 @@ test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, time
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(800);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
 
   /** @param {string} name @param {string} hash @param {string} [bereit] Ausdruck, der wahr wird, wenn die Daten stehen */
   const ansicht = async (name, hash, bereit) => {
     await t.test(name, async () => {
       await b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
       await bis(bereit ?? `document.body.innerText.includes(${JSON.stringify(SPUR + ' ')})`, `${name}: Daten sichtbar`);
-      await warte(300);
+      await ruhig();
       const r = await b.auswerten(PRUEFE);
       assert.deepEqual(r.fremd, [], `${name}: Markup aus Daten im DOM`);
       assert.equal(r.xss, null, `${name}: Nutzlast ausgeführt`);

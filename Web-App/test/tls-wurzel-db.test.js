@@ -2,10 +2,7 @@
  * Die Wurzel der internen CA: Fingerabdruck (Base64 SHA-256 SPKI), /ca.crt,
  * die Anzeige in den Einstellungen, `fp` im QR-Code nur zu einer https-Adresse
  * und das Sitzungscookie nur über TLS.
- *
- * Feste Testvektoren: test/fixtures/ca-wurzel-{1,2}.crt, Fingerabdrücke mit
- * openssl gerechnet (x509 -pubkey | pkey -pubin -outform der | dgst -sha256
- * -binary | base64), nicht mit dem Code unter Prüfung.
+ * Ausführlich: docs/begruendungen/test/tls-wurzel-db.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in tlsStandAus() über das ganze Zertifikat (zert.raw) statt über SPKI

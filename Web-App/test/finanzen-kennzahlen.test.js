@@ -44,7 +44,7 @@ function antworten({ mitPreis }) {
       figs: [{ fig_number: 'fig-1', fig_name: 'Chewbacca', quantity: 1, avg_price: 0, acquisitions: [] }] },
     '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [],
       totals: { purchase: '1097.93', sets_purchase: '1028.00', parts_purchase: '69.93', figs_purchase: '0.00',
-                grand_total: String(setPreis), pnl_pct: mitPreis ? 11.3 : null, pnl_prozent: mitPreis ? 11.3 : null,
+                grand_total: String(setPreis), pnl_pct: mitPreis ? '11.3' : null, pnl_prozent: mitPreis ? 11.3 : null,
                 pnl_purchase: mitPreis ? '629.00' : '0.00', pnl_current: mitPreis ? '700.00' : '0.00',
                 positionen: 4, positionen_bewertet: mitPreis ? 1 : 0, positionen_ohne_marktpreis: mitPreis ? 3 : 4,
                 positionen_ohne_kaufpreis: 0, basis_einstand: mitPreis ? '629.00' : '0.00',

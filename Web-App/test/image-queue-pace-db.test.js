@@ -5,7 +5,7 @@
  *
  * Die Taktung des Bild-Hintergrundjobs — und wer sie von aussen sehen kann.
  *
- * ── Marcos Log (Nachtrag 121) ───────────────────────────────────────────────
+ * ── Marcos Log ───────────────────────────────────────────────
  *     [image-queue] 10 bearbeitet: 0 geladen, 0 Vorschau erzeugt, 10 bereits vorhanden
  * fünfmal hintereinander, bei 1113 Notizen in der Warteschlange, und in der
  * Kachel daneben „Job noch nicht gelaufen".
@@ -43,20 +43,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const ladeZeiten = [];
 /**
  * Schalter für den abgefangenen Download.
- *
- * EIGENE FALLE (Nachtrag 122): Der erste Anlauf stellte `downloadSetImage` im
- * Teilschritt per Object.defineProperty auf null um. Wirkungslos — der
- * require-Abfang oben in dieser Datei liefert für diesen Namen IMMER seinen
- * eigenen Ersatz und überschreibt den Patch stillschweigend. (Dieselbe Klasse
- * wie die esbuild-Getter aus Nachtrag 143: Ein Monkeypatch, dessen WIRKUNG man
- * nicht beobachtet, ist keine Prüfung.) Der Ersatz trägt den Schalter deshalb
- * selbst.
+ * Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#ladenschlaegtfehl
  */
 let ladenSchlaegtFehl = false;
 const echtesRequire = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echtesRequire.apply(this, arguments);
-  // Seit Nachtrag 125 liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
+  // Seit einer früheren Runde liegt downloadSetImage in src/katalog/bilder/setImages.ts statt im
   // Router — der Abfang muss dorthin zeigen, sonst greift er ins Leere und
   // der Test misst still den echten Download.
   if (typeof name === 'string' && /setImages(\.js)?$/.test(name) && m && m.downloadSetImage) {
@@ -279,12 +272,8 @@ test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch',
 });
 
 test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async (t) => {
-  // ── Was der Kommentar behauptete und der Code nicht tat ───────────────────
-  // Bei NOTIZ_GILT_MS stand „Ältere Notizen als diese verfallen". Die Abfrage
-  // des Stapels grenzte aber nur ein, was sie AUSWÄHLT — gelöscht wurde nie
-  // etwas. Alte Notizen blieben also für immer liegen, zählten weiter in der
-  // Kachel und liessen den Job verstummen, weil die Logzeile an `gesamt > 0`
-  // hängt. Von aussen: eine Warteschlange, die bei einer Zahl stehenbleibt.
+  // Was der Kommentar behauptete und der Code nicht tat
+  // Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#stelle
   try { await db.initSchemaOnce(); }
   catch (e) {
     if (process.env.REQUIRE_DB === '1') throw e;
@@ -321,7 +310,7 @@ test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async (
 });
 
 test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 }, async (t) => {
-  // ── Warum als eigener Prozess (Lehre aus Nachtrag 126) ────────────────────
+  // ── Warum als eigener Prozess (Lehre aus einer früheren Runde) ────────────────────
   // Ein Test, der im selben Prozess prüft, kann diesen Fehler nicht sehen: Der
   // Merker liegt ja genau dort. Die Kachel wird aber von einem BELIEBIGEN der
   // vier Arbeitsprozesse beantwortet, und keiner davon führt den Job aus.
@@ -344,22 +333,8 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   // Der Kindprozess kennt NICHTS aus diesem hier — er baut nicht, sondern nutzt
   // das bereits erzeugte dist/ und legt nur einen Takt hin.
   // ── Warum das Kind die Adresse NICHT selbst setzt ────────────────────────
-  // Hier stand als erste Zeile des Kind-Skripts
-  //     process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
-  // und genau das hat diesen Test in einer Umgebung ohne TEST_DATABASE_URL nie
-  // laufen lassen: Der Elternprozess faellt oben auf
-  // 'postgres://tester:test@localhost/cattest' zurueck, das Kind nicht. Es
-  // bekam undefined, die Verbindung scheiterte, execFileSync warf.
-  //
-  // Dass dieser Untertest rot ist, war dabei noch das Harmlose. Mehrfach
-  // beobachtet: Der Lauf der ganzen Datei brach danach ab mit
-  //     Unable to deserialize cloned data due to invalid or unsupported version
-  // — 2 statt 13 Untertests, und die Meldung sagt nichts ueber die Ursache.
-  // Nicht jedes Mal; die Reparatur zielt deshalb auf die Ursache, nicht auf
-  // das Abbruchverhalten.
-  //
-  // DATABASE_URL ist ueber env: process.env ohnehin geerbt, und zwar mit dem
-  // Wert, den der Elternprozess WIRKLICH benutzt. Es gibt also nichts zu setzen.
+  // Hier stand als erste Zeile des Kind-Skripts …
+  // Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#execfilesync
   execFileSync(process.execPath, ['-e', `
     const db = require(${JSON.stringify(path.join(ROOT, 'dist', 'db', 'database.js'))});
     const IQ = require(${JSON.stringify(path.join(ROOT, 'dist', 'jobs/imageQueue.js'))});
@@ -379,16 +354,8 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   const stand = JSON.parse(zeile.value);
   assert.ok(Date.now() - stand.zeit < 60_000, 'Der abgelegte Zeitpunkt ist nicht plausibel');
 
-  // ── Und jetzt bis zur KACHEL ──────────────────────────────────────────────
-  //
-  // Die Zeile in der Datenbank allein sagt nichts: Läse die Route weiterhin den
-  // Modulspeicher, bliebe alles beim Alten. Gefragt wird deshalb der Endpunkt,
-  // den die Überwachung fragt — in diesem Prozess, der den Job NIE ausgeführt
-  // hat.
-  // Der Modulspeicher DIESES Prozesses wird geleert: Frühere Prüfungen dieser
-  // Datei haben den Job hier laufen lassen, ein Worker, der nur Anfragen
-  // bedient, hätte den Merker aber nie gefüllt. Genau dieser Zustand ist der
-  // Normalfall — in drei von vier Prozessen.
+  // Und jetzt bis zur KACHEL
+  // Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#iqhier
   const IQhier = _req('jobs/imageQueue.js');
   IQhier.letzterLauf.zeit = null;
   IQhier.letzterLauf.ergebnis = null;
@@ -424,12 +391,8 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
 });
 
 
-// ── Nachtrag 122 ────────────────────────────────────────────────────────────
-// Marcos Log: „2 bearbeitet: 0 geladen, 0 Vorschau erzeugt, 0 bereits
-// vorhanden" — zweimal, und seine Frage: „Wieso werden die 2 Bilder nicht
-// geladen?" Die Zahlen gingen nicht auf, weil VIER Wege durch die Schleife
-// endeten, ohne einen der drei Zähler zu erhöhen. Die Meldung konnte die vier
-// nicht unterscheiden.
+//
+// Ausführlich: docs/begruendungen/test/image-queue-pace-db.test.js.md#jeder-ausgang-der-schleife-hat-einen-zae
 
 test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async (t) => {
   try { await db.initSchemaOnce(); }
@@ -518,7 +481,7 @@ test('aufräumen', { concurrency: 1 }, async () => {
   for (const f of angelegt) fs.rmSync(f, { force: true });
   Module.prototype.require = echtesRequire;
   // Letzter Test dieser Datei — nur hier wird der Pool geschlossen. (Lehre aus
-  // Nachtrag 116: Ein früher geschlossener Pool macht jeden folgenden DB-Test
+  // Ein früher geschlossener Pool macht jeden folgenden DB-Test
   // rot, und die Meldung nennt den Grund nicht.)
   await db.pool.end().catch(() => {});
 });

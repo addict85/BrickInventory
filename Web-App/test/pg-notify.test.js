@@ -19,6 +19,7 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
+const { bis } = require('./helpers/zeit');
 const ROOT = path.join(__dirname, '..');
 const NOTIFY = fs.readFileSync(path.join(ROOT, 'db/pgNotify.ts'), 'utf8');
 test('kein Planer fragt mehr nach Auslösern', () => {
@@ -42,26 +43,24 @@ test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, a
   t.after(async () => { await pgNotify.close(); await db.pool.end().catch(() => {}); });
   const KANAL = `ae_probe_${process.pid}`;
   const bekommen = [];
-  const warte = async (n) => {
-    for (let i = 0; i < 100 && bekommen.length < n; i++) await new Promise(r => setTimeout(r, 50));
-  };
+  const warteAuf = (n) => bis(() => bekommen.length >= n, 5000);
 
   assert.throws(() => pgNotify.listen('kein kanal', () => {}), /Ungültiger Kanalname/,
     'ein Kanalname mit Leerzeichen wird abgewiesen');
 
   pgNotify.listen(KANAL, (nutzlast) => { bekommen.push(nutzlast ?? null); });
-  await warte(1);
+  await warteAuf(1);
   assert.deepEqual(bekommen, [null], 'beim Verbinden fragt der Handler einmal von sich aus');
 
   await pgNotify.notify(KANAL, 'hallo');
-  await warte(2);
+  await warteAuf(2);
   assert.deepEqual(bekommen, [null, 'hallo'], 'das Signal kommt an');
 
   // Die lauschende Verbindung abreissen: Ein Signal in der Lücke ginge
   // verloren, deshalb holt der Handler beim Wiederverbinden nach.
   await db.run(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
                  WHERE pid <> pg_backend_pid() AND query LIKE $1`, [`LISTEN "${KANAL}"%`]);
-  await warte(3);
+  await warteAuf(3);
   assert.deepEqual(bekommen, [null, 'hallo', null], 'nach dem Wiederverbinden holt der Handler nach');
 });
 

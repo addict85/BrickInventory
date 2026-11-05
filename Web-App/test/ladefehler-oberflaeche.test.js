@@ -1,16 +1,6 @@
 /**
  * Ladefehler und fehlende Verbindung — am echten Bündel in jsdom.
- *
- *   - Antwortet der Server beim ersten Laden einer Liste mit einem Fehler,
- *     steht der Grund mit „Erneut versuchen“ da, nicht „Noch keine Sets“.
- *     Der Knopf lädt neu. Dasselbe gilt für Merkliste, Teile, Minifiguren,
- *     Katalog und Finanzen (ein Baustein: fehlerZustand).
- *   - Scheitert ein späteres Neuladen, bleibt die alte Liste stehen; eine
- *     Meldung sagt, dass es der letzte Stand ist.
- *   - Ein Netzfehler beim Erfassen meldet „Keine Verbindung zum Server“ statt
- *     des Browsertexts „Failed to fetch“.
- *   - Ohne Verbindung steht ein Band „Keine Verbindung seit …“; mit
- *     Verbindung verschwindet es.
+ * Ausführlich: docs/begruendungen/test/ladefehler-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in loadGallery den Aufruf von listeLadefehler entfernt → rot:
@@ -26,7 +16,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
 
-const SERVERFEHLER = { $status: 500, success: false, error: 'Interner Fehler' };
+const SERVERFEHLER = { $status: 500, success: false, error: 'Interner Fehler', code: 'interner_fehler' };
 const ZWEI_SETS = { success: true, total: 2, themes: [], sets: [
   { set_number: '10294-1', name: 'Titanic', quantity: 1, year: 2021 },
   { set_number: '42143-1', name: 'Ferrari', quantity: 1, year: 2022 },

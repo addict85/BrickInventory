@@ -2,10 +2,8 @@
  * Der Schnellstart in README.md (Wurzel) und Web-App/README.md führt zu einer
  * Installation, die compose.yaml starten kann. Die Befehle des Blocks laufen
  * wirklich, in einem Sandkasten mit compose.yaml, .env.example und scripts/;
- * nur git und docker nicht. Danach liest `docker compose config` das Ergebnis:
- * Jedes Secret liegt als Datei da, Caddy findet die eigene CA, die App
- * veröffentlicht keinen Port, und `pull` holt das veröffentlichte Image.
- * Ohne Docker-CLI wird übersprungen, in CI nicht.
+ * nur git und docker nicht. Danach liest `docker compose config` das Ergebnis: …
+ * Ausführlich: docs/begruendungen/test/schnellstart-doku.test.js.md#kopf
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  compose.yaml: Secret-Datei ./geheimnisse/db_app_passwort statt …_password

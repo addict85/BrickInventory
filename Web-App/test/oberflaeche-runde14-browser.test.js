@@ -50,11 +50,11 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
       VALUES ($1, $2, 'x', true, false, true)`, [WARTET, `${WARTET}@example.org`]);
   } });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis, db, port, uid } = app;
+  const { b, bis, db, port, uid, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const smtpVorher = await db.all("SELECT key, value FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')");
   await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')");
-  await warte(800);
-  await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
   const geh = async (pfad) => { await b.auswerten(`location.hash = '#/${pfad}'; true`); await warte(400); };
   const zu = async () => { await b.auswerten(klick('#cd-cancel')); await bis(`!(${offen})`, 'Dialog zu'); };
   const telefon = (breite, hoehe) => b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: 1, mobile: true });
@@ -131,7 +131,7 @@ test('UI-Prüfung 14: Registrierung, Kategorien, Telefon, Begriffe', { timeout: 
 
   await schrift('');
   await b.tab('Emulation.clearDeviceMetricsOverride');
-  await warte(300);
+  await ruhig();
 
   await t.test('Verknüpfung lösen nennt das Konto', async () => {
     await geh('haushalt');

@@ -26,7 +26,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, v1Routen } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = _req('db/database.js');
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 
 /** Absichtlich ohne Anmeldung erreichbar — mit Grund. Wächst die Liste, muss jemand sie begründen. */
 const ERWARTET_OFFEN = new Map([

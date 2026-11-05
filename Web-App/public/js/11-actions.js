@@ -160,7 +160,7 @@ import { deleteManualPart } from './03-parts.js';
 
     // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN) liess
     // die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
-    // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#if
+    // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#einmal-wiederholen-bevor-aufgegeben-wird
     if (!el.dataset.retried && el.src) {
       el.dataset.retried = '1';
       if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);

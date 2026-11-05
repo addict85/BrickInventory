@@ -1,12 +1,7 @@
 /**
  * „Filter zurücksetzen“ im Leerzustand ohne Treffer — am echten Bündel in
  * jsdom.
- *
- *   - Sammlung: Eine Suche ohne Treffer zeigt den Knopf; ein Klick leert das
- *     Suchfeld und lädt ohne `search` neu.
- *   - Ein Themenfilter ohne Suchtext ist auch ein Filter: Es steht „Keine Sets
- *     passen zu diesem Filter“ mit Knopf, nicht „Noch keine Sets“.
- *   - Merkliste: dasselbe für die Suche.
+ * Ausführlich: docs/begruendungen/test/filter-zuruecksetzen-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in renderGallery `knopf: zuruecksetzenKnopf('gallery')` entfernt → rot:

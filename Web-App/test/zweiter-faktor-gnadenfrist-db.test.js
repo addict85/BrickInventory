@@ -2,9 +2,8 @@
  * Gnadenfrist beim Einrichten des zweiten Faktors: Ein Verwalter ohne Faktor
  * (dort erzwingt ihn der Server), der sich eben mit dem Passwort angemeldet
  * (oder es gewechselt) hat, richtet ohne erneute Eingabe ein — einmal,
- * höchstens fünf Minuten lang, nur mit Sitzung. Jedes andere Konto nennt das Passwort. Ohne Frist und
- * ohne Passwort kommt `aktuelles_passwort_erforderlich`, ohne dass die Bremse
- * zählt; mit Passwort bleibt alles wie bisher.
+ * höchstens fünf Minuten lang, nur mit Sitzung. Jedes andere Konto nennt das Passwort. Ohne Frist und …
+ * Ausführlich: docs/begruendungen/test/zweiter-faktor-gnadenfrist-db.test.js.md#kopf
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  in angemeldetAntworten `passwortBestaetigtAm` nie gesetzt → rot:

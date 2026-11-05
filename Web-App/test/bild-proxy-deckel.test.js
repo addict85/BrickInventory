@@ -31,6 +31,7 @@ process.env.APP_ROOT = wurzel;
 process.env.BILD_ABRUFE_JE_MINUTE = '3';
 const express = require('express');
 const _req = require('./helpers/sources').buildAndRequire();
+const { warte: pause, bis } = require('./helpers/zeit');
 const { bildDurchreichen } = _req('routes/imgProxy.js');
 const { raeumeBildCacheAuf } = _req('src/katalog/bilder/imgCacheServe.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
@@ -55,7 +56,8 @@ const srv = app.listen(0);
 const basis = `http://127.0.0.1:${srv.address().port}/p?url=`;
 const hole = (adresse) => fetch(basis + encodeURIComponent(adresse))
   .then(async r => ({ status: r.status, n: (await r.arrayBuffer()).byteLength, cache: r.headers.get('cache-control') }));
-const warte = () => new Promise(r => setTimeout(r, 100));
+// Der Cache schreibt nach der Antwort; gewartet wird auf die Dateien, nicht auf eine feste Zeit.
+const bilderImCache = () => fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length : 0;
 
 test.after(async () => {
   https.get = echt;
@@ -69,7 +71,7 @@ test('ein Zeitstempel im Anfrageteil holt das Bild nicht neu', async () => {
   geholt.length = 0;
   const a = await hole('https://cdn.rebrickable.com/media/sets/10294-1.jpg?1700000000');
   assert.equal(a.status, 200);
-  await warte();
+  assert.ok(await bis(() => bilderImCache() >= 1), 'das erste Bild landet nicht im Cache');
   const b = await hole('https://cdn.rebrickable.com/media/sets/10294-1.jpg?1800000000#x');
   assert.equal(b.status, 200);
   // Nur für Angemeldete: Ein geteilter Zwischenspeicher darf die Antwort nicht halten.
@@ -78,8 +80,8 @@ test('ein Zeitstempel im Anfrageteil holt das Bild nicht neu', async () => {
   // Wo der Anfrageteil das Bild bestimmt, bleibt er — sortiert.
   await hole('https://www.bricklink.com/getPic.asp?itemNo=3001&colorID=5');
   assert.equal(geholt.at(-1), 'https://www.bricklink.com/getPic.asp?colorID=5&itemNo=3001');
-  await warte();
-  assert.equal(fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length, 2);
+  await bis(() => bilderImCache() >= 2);
+  assert.equal(bilderImCache(), 2);
 });
 
 test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', async () => {
@@ -88,14 +90,14 @@ test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', 
   const vierte = await fetch(basis + encodeURIComponent('https://cdn.rebrickable.com/media/parts/d4.png'));
   assert.equal(vierte.status, 429);
   assert.ok(Number(vierte.headers.get('retry-after')) > 0);
-  await warte();
+  assert.ok(await bis(() => bilderImCache() >= 5), 'd1 bis d3 landen nicht im Cache');
   assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d1.png')).status, 200, 'Cache-Treffer gedrosselt');
   konto += 1;
   assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d4.png')).status, 200, 'anderes Konto gedrosselt');
   // Der Cache schreibt nach der Antwort weiter; landet die Datei erst im
   // nächsten Test, zählt sie dort gegen den Deckel (im Volllauf so gesehen).
   const bilder = () => fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length;
-  for (const ende = Date.now() + 5000; bilder() < 6 && Date.now() < ende;) await warte();
+  for (const ende = Date.now() + 5000; bilder() < 6 && Date.now() < ende;) await pause(100);
   assert.equal(bilder(), 6);
 });
 
@@ -112,7 +114,7 @@ test('eine Komma-Liste im Content-Type des CDN geht nicht hinaus', async () => {
     assert.deepEqual(await typ('image/webp; q=1', 'https://cdn.rebrickable.com/media/parts/k2.webp'), [200, 'image/webp']);
   } finally { cdnTyp = 'image/png'; }
   // Der Cache schreibt nach der Antwort weiter; der Deckel unten zählt sonst mit.
-  for (const ende = Date.now() + 5000; fs.readdirSync(cacheDir).filter(f => f.endsWith('.ct')).length < 8 && Date.now() < ende;) await warte();
+  for (const ende = Date.now() + 5000; fs.readdirSync(cacheDir).filter(f => f.endsWith('.ct')).length < 8 && Date.now() < ende;) await pause(100);
 });
 
 test('der Deckel löscht das am längsten unbenutzte Bild', async () => {

@@ -65,7 +65,7 @@ export function _updateLangSelect() {
 export function applyTheme(theme){
   // Keine eigene Liste gültiger Designs: Die alte kannte zwei von sechs, und die neueren wirkten erst nach
   // dem Neuladen. Gültig ist, was 00-theme-boot.js kennt; ohne dieses Skript wird nichts gesetzt.
-  // Ausführlich: docs/begruendungen/public/js/01-konto.js.md#if
+  // Ausführlich: docs/begruendungen/public/js/01-konto.js.md#keine-eigene-liste-gueltiger-designs
   if (typeof window.__bimApplyTheme !== 'function') return null;
   return window.__bimApplyTheme(theme);
 }

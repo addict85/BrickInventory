@@ -66,19 +66,8 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
 });
 
 test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
-  // ── Zweimal dieselbe Lücke (Nachträge 146 und 147) ────────────────────────
-  //
-  // 146 hat das BEARBEITEN behoben (resolvePrice in den Erfassungsrouten).
-  // Marcos nächster Befund zeigte, dass das ERFASSEN denselben Fehler hatte:
-  // Zwei heute angelegte Einträge derselben Figur, „Neu" und „Gebraucht",
-  // beide Kaufpreis CHF 2.18 — obwohl die Marktpreise 2.18 und 2.20 sind.
-  //
-  // Beim Anlegen der zweiten Zeile gab es erst die erste; der ohne Zustand
-  // geholte Preis leitete sich also aus ihr ab.
-  //
-  // Ich hatte beim ersten Mal nur die Stellen angesehen, die im Fehlerbericht
-  // vorkamen. Diese Prüfung sieht ALLE — auch die, die noch niemand gemeldet
-  // hat.
+  // Zweimal dieselbe Lücke
+  // Ausführlich: docs/begruendungen/test/acquisition-condition-price-db.test.js.md#fs-stelle
   const fs = require('node:fs');
   const path = require('node:path');
 const { ohneKommentare } = require('./helpers/sources');

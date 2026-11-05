@@ -64,7 +64,7 @@ schreibt in beide Protokolle, addCsvLog nur in das des Dialogs); gemeinsam
 ist, WAS dasteht.
 ```
 
-<a id="url"></a>
+<a id="kein-token-in-der-adresse"></a>
 ## `url`
 
 ```text
@@ -122,7 +122,7 @@ den Bild-Schritt ab. Ohne ihn bliebe „Bild herunterladen" bis zum Ende auf
 „aktiv", weil das früher der `instructions`-Zweig erledigt hat.
 ```
 
-<a id="if"></a>
+<a id="antwortet-der-server-mit-json"></a>
 ## `if`
 
 ```text

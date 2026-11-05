@@ -141,7 +141,7 @@ export function bindTabs(){
       if(tab==='wanted')     { ladeMerkliste(); }
       if(tab==='parts')        {
         loadParts(); loadManualParts(); loadBrickColors();
-        // If import was recent, reload again after background job completes
+        // War der Import eben erst, nach dem Hintergrundauftrag noch einmal laden
         if(Date.now()-_lastImportAt<30000) setTimeout(()=>{ loadParts(); loadManualParts(); },5000);
       }
       if(tab==='minifigs')     {

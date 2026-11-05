@@ -38,9 +38,9 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
   const NAME = `r12_${process.pid}`, KIND = `${NAME}_kind`, ANDERE = `r12x_${process.pid}`;
   const app = await starteApp(t, { name: NAME, bestand: musterHaushalt });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis, db } = app;
-  await warte(800);
-  await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
+  const { b, bis, db, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const geh = async (pfad) => { await b.auswerten(`location.hash = '#/${pfad}'; true`); await warte(300); };
   const telefon = (an) => b.tab('Emulation.setDeviceMetricsOverride', an
     ? { width: 390, height: 844, deviceScaleFactor: 2, mobile: true } : { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
@@ -120,7 +120,7 @@ test('UI-Prüfung 12: Haushalt, Dialoge, Telefon', { timeout: 280_000 }, async (
     await geh('sammlung/set/99999-9');
     await bis(`[...document.querySelectorAll('#toasts .toast')].some(x => /nicht in deiner Sammlung/.test(x.textContent))`, 'Toast');
     await b.auswerten(`scrollTo(0, 0); true`);
-    await warte(300);
+    await ruhig();
     const z = await b.auswerten(`(() => { const r = e => e.getBoundingClientRect();
       const toast = r(document.querySelector('#toasts .toast')), titel = r(document.querySelector('#tab-gallery h1')), leiste = r(document.querySelector('nav.tabs, nav:not(.einst-nav)'));
       return { ueberTitel: toast.top < titel.bottom && toast.bottom > titel.top, ueberLeiste: toast.bottom <= leiste.top + 1, unten: toast.top > innerHeight / 2 }; })()`);

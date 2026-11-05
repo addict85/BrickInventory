@@ -225,7 +225,7 @@ schreiben (braucht `pg_dump`; der Schema-Test meldet einen veralteten Stand).
 
 ```bash
 # Web-App
-cd Web-App && npm ci
+cd Web-App && npm ci --ignore-scripts && npm rebuild esbuild
 npm run build
 TEST_DATABASE_URL=postgres://…  REQUIRE_DB=1  npm test
 

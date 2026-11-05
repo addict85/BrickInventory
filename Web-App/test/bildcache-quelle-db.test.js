@@ -3,10 +3,7 @@
  * Setnummer liegt, sehen alle. Deshalb holt der Server Bilder nur von
  * Adressen aus dem Katalog, die aus geprüfter Quelle stammen — nie von einer,
  * die ein Client mitschickt oder eingetippt hat.
- *
- * Geprüft am PDF-Auftrag (jobs/pdfErzeugung.ts) mit abgefangenem https.get:
- * Welche Adressen werden wirklich abgerufen? Und am Bild-Proxy: Welche
- * Adresse ergibt eine Setnummer?
+ * Ausführlich: docs/begruendungen/test/bildcache-quelle-db.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  bilderAusKatalog() setzt image_url/image_local des Clients nicht mehr

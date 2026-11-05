@@ -70,3 +70,39 @@ Android-Client (`test/vertrag-kotlin.test.js`).
 
 Lange Begründungen einzelner Stellen liegen unter `docs/begruendungen/`;
 der Code verweist mit `Ausführlich: docs/begruendungen/…#anker`.
+
+## Oberfläche
+
+`public/` ist eine Seite (`index.html`) mit einem Bündel. `npm run build:frontend`
+(esbuild, `scripts/build-frontend.js`) macht aus `public/js/main.js` und allem,
+was es importiert, `public/js/app.bundle.js` (IIFE, minifiziert, eingecheckt;
+die CI prüft, dass es zu den Quellen passt). Ausserhalb des Bündels laufen nur
+`public/js/00-theme-boot.js` (Design vor dem ersten Bild), die Wörterbücher
+`public/locales/de.js` und `public/locales/en.js`, `public/js/pdfjs-boot.js`
+und `public/js/logviewer.js`.
+
+| Schicht | Dateien | Regel |
+|---|---|---|
+| Kern | `00-*.js`, `public/i18n.js` | kennt keine Ansicht |
+| Bausteine | `01-*.js` | kennt keine Ansicht; `01-api.js` ist der einzige Weg zum Server |
+| Ansichten | `02-*.js` bis `26-*.js` | dürfen Kern und Bausteine importieren |
+
+- **Handler:** Markup nennt Aktionen nur als `data-click`, `data-change` …;
+  `public/js/00-registry.js` ordnet sie den registrierten Funktionen zu (die CSP
+  verbietet Inline-Handler).
+- **Rückwege ohne Importkreis:** Ansichten melden Ereignisse
+  (`public/js/00-ereignisse.js`, `melde`/`abonniere`) statt einander zu importieren.
+- **Geteilter Zustand** steht nur in `public/js/00-zustand.js` (mit Settern).
+- **Markup** entsteht mit dem Tag `html` (`public/js/00-escapen.js`, maskiert jeden
+  Wert) und kommt nur über `setzeHtml()`/`fuegeHtmlEin()` (`public/js/01-dom.js`)
+  in die Seite. Inline-Stile heissen `data-stil` und werden von
+  `public/js/00-stile.js` gegen eine beim Bauen erzeugte Freigabeliste gesetzt.
+- **Texte:** `t()` maskiert eingesetzte Werte für Markup, `tRaw()` nicht (für
+  `textContent`); beide aus `public/i18n.js`.
+- **Typen:** `tsconfig.frontend.json` prüft die Module streng (JSDoc, `strict`),
+  die Routentypen kommen aus `frontend-typen/vertrag.d.ts` (aus dem API-Vertrag erzeugt).
+
+Die Schichten prüft `test/frontend-architektur.test.js`, das Verhalten prüfen
+die jsdom-Tests über `test/helpers/oberflaeche.js` (echtes `index.html`,
+echtes Bündel, Antworten gegen den Vertrag) und die Chrome-Tests über
+`test/helpers/app-browser.js`.

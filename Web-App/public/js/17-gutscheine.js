@@ -268,7 +268,7 @@ export async function gutscheinSpeichern() {
 
     // Ob ein PDF einen oder mehrere Gutscheine ergab, entscheidet der Server; `mehrere` sagt es. Dann
     // dieselbe Meldung wie bei CSV-Importen, damit niemand bei drei Gutscheinen „gespeichert“ liest und rät.
-    // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#if
+    // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#ob-ein-pdf-einen-oder
     if (d.mehrere) {
       toast(tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated,
                                      errors: d.mehrere.errors }),

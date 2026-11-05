@@ -185,7 +185,7 @@ export async function loadApiLimits() {
   G('lim-bs').value = String(d.limits.brickset);
 }
 
-// QR Code generation using qrcode.js CDN
+// QR-Code über QRCode.js aus public/vendor/qrcode (npm qrcodejs, scripts/qrcode-kopieren.js)
 async function generateQrCode() {
   const btn = G('btn-gen-qr');
   const hint = G('qr-hint');
@@ -493,7 +493,7 @@ G('btn-sav-pw').onclick = async () => {
 
 /** @param {Record<string, string>} s */
 function applySettings(s){
-  // Only apply if the settings tab fields are present in the DOM
+  // Nur anwenden, wenn die Felder des Einstellungsreiters im DOM stehen
   if(!G('s-cur') && !G('bl-ck')) return;
   set_CURRENCY(s.currency||'EUR');
   // Apply language preference from server only if explicitly set
@@ -522,7 +522,7 @@ function applySettings(s){
   if(ME?.isAdmin) loadRateLimitStats();
 }
 export async function loadSettings(){
-  // Show cached data instantly so the tab never appears empty
+  // Zwischengespeicherte Daten sofort zeigen, damit der Reiter nie leer erscheint
   if(_settingsCache) applySettings(_settingsCache);
   loadHousehold();
   const d=await api('GET','/v1/settings/raw'); if(!d.success) return;

@@ -18,7 +18,7 @@ ganze Set. Wer ein Exemplar neu und eines gebraucht besitzt, sah damit eine
 vermischte Entwicklung.
 ```
 
-<a id="api"></a>
+<a id="die-figurenzahl-aus-der-figurentabelle"></a>
 ## `api`
 
 ```text

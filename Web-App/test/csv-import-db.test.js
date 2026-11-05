@@ -43,17 +43,8 @@ test('Katalog-Import tauscht, statt zu leeren', async (t) => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // ── Und die MIGRATIONEN, nicht nur das Schema ───────────────────────────
-  //
-  // Diese Datei loescht das Schema und baut es neu auf. Ohne die Migrationen
-  // bleibt die Datenbank auf dem Stand von db/schema.sql stehen — also VOR
-  // allen Migrationen —, und das ist nicht nur fuer sie selbst falsch,
-  // sondern fuer jede Datei danach: Sie erbt eine halbe Datenbank.
-  //
-  // GEMESSEN beim Umzug der Teilemengen (Migration 0038): db/schema.sql legt
-  // `parts.quantity DEFAULT 1` an, die Katalogzeilen tragen die echte Zahl.
-  // Die naechste Datei, die die Migrationen laufen liess, brach ab — „Bei 8
-  // Set-Teilen weicht parts.quantity vom Katalog ab". Der Riegel hatte recht.
+  // Und die MIGRATIONEN, nicht nur das Schema
+  // Ausführlich: docs/begruendungen/test/csv-import-db.test.js.md#stelle
   {
     const mc = await db.pool.connect();
     try { await _req('db/migrate.js').runMigrations(mc); } finally { mc.release(); }
@@ -161,6 +152,7 @@ test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', (
     assert.ok(aufruf.includes(feld), `der Download ruft oeffneHttps ohne ${feld}`);
   assert.doesNotMatch(ohneKommentare(fs.readFileSync(path.join(ROOT, 'jobs/rebrickableCsvSync.ts'), 'utf8')),
     /from 'https'/, 'der Job lädt nicht mehr selbst');
+
 });
 
 test('die entpackten Zwischendateien werden aufgeräumt', () => {

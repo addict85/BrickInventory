@@ -31,9 +31,9 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(1200);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const toastsWeg = () => b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
 
   await t.test('Gutschein: leere Nummer am Feld', async () => {
@@ -53,7 +53,7 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
     await toastsWeg();
     await b.auswerten(`(() => { const G = id => document.getElementById(id); G('pw-n').value = 'neu-Passwort-1';
       G('pw-r').value = 'anders-Passwort-1'; G('btn-sav-pw').click(); return true; })()`);
-    await warte(300);
+    await ruhig();
     const z = await b.auswerten(FELD('pw-r'));
     assert.deepEqual({ markiert: z.markiert, toasts: z.toasts }, { markiert: true, toasts: [] });
     assert.match(z.meldung, /stimmen nicht überein/);
@@ -64,7 +64,7 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
     await bis(`!!document.querySelector('[data-click="legeLagerortAn"]')?.getClientRects().length && document.querySelectorAll('.lager-eingabe').length === 2`, 'Lagerorte');
     await toastsWeg();
     await b.auswerten(`document.querySelector('[data-click="legeLagerortAn"]').click(); true`);
-    await warte(300);
+    await ruhig();
     const z = await b.auswerten(FELD('storage-new'));
     assert.equal(z.markiert, true);
     assert.match(z.meldung, /Namen/);
@@ -76,7 +76,7 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
       f.value = 'Keller'; f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
     await bis(`document.querySelectorAll('#toasts .toast.error').length > 0`, 'Fehler-Toast');
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-    await warte(300);
+    await ruhig();
     assert.deepEqual(await b.auswerten(`[...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent)`), []);
   });
 });

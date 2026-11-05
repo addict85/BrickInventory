@@ -1,12 +1,7 @@
 'use strict';
 /**
  * Der Preisverlauf zeichnet nur Zustände, zu denen es eine Erfassung gibt.
- *
- * Marco: „Das gezeigte Teil hat nur einen Kaufpreis mit dem Zustand gebraucht.
- * Trotzdem wird im Preisverlauf auch eine Linie mit 'neu' angezeigt." Für Sets
- * galt die Regel schon, für manuelle Teile und Figuren nicht. Geprüft wird am
- * Verlauf einer Figur mit Preisen in beiden Zuständen und nur einer
- * Gebraucht-Erfassung.
+ * Ausführlich: docs/begruendungen/test/preisverlauf-zustand.test.js.md#test
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in manualPriceHistory() wieder beide Zustände fest gezeichnet

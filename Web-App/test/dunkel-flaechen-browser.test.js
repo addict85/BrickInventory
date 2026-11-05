@@ -2,15 +2,8 @@
  * Im Dunkelmodus jedes Designs bleibt keine Fläche hell und kein Text
  * unlesbar. Gemessen in Chrome an der echten App: je Design data-dunkel
  * setzen, jeden Reiter und das Set-Detail öffnen und jedes sichtbare Element
- * prüfen — eigene Hintergrundfarbe nicht hell (relative Helligkeit ≤ 0,4),
- * Text mindestens 4,5:1 (gross 3:1) gegen den tatsächlichen Grund.
- *
- * Ausgenommen sind Inhalte, deren Farbe Information ist (Farbpunkte, Bilder,
- * Diagramme), und Flächen in Marken- oder Diagrammfarbe — deren Text wird
- * trotzdem auf Kontrast geprüft. Die Bildfläche .sci ist seit dem 29.10.
- * dunkel und wird mitgeprüft.
- *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
+ * prüfen — eigene Hintergrundfarbe nicht hell (relative Helligkeit ≤ 0,4), …
+ * Ausführlich: docs/begruendungen/test/dunkel-flaechen-browser.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in styles.css .cond-used wieder `background:#fef3c7;color:#92400e`
@@ -94,7 +87,7 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
+  const { b, bis, ruhig } = app;
   const reiter = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
   assert.ok(reiter.length >= 8, `nur ${reiter.length} Reiter`);
 
@@ -112,7 +105,7 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     };
     for (const r of reiter) {
       await b.auswerten(`document.querySelector('.ntab[data-tab="${r}"]').click(); true`);
-      await warte(600);
+      await ruhig();
       // Die Einstellungen zeigen je einen Abschnitt; gemessen werden alle.
       const seiten = r === 'settings'
         ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`) : [null];
@@ -125,11 +118,11 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     await bis(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');
     await b.auswerten(`document.querySelector('[data-click="openModal"]').click(); true`);
     await bis(`document.getElementById('m-tit').textContent.length > 0`, 'Set-Detail offen');
-    await warte(600);
+    await ruhig();
     await sammle('Set-Detail');
     await b.auswerten(`document.querySelector('.ovl.open .mx, .ovl.open [data-click="closeModal"]')?.click(); true`);
     await b.auswerten(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true`);
-    await warte(300);
+    await ruhig();
 
     await t.test(`${design}: keine helle Fläche`, () => assert.deepEqual([...funde.flaechen], []));
     await t.test(`${design}: Text lesbar`, () => assert.deepEqual([...funde.texte], []));
