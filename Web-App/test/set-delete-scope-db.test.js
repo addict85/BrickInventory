@@ -1,26 +1,9 @@
 /**
  * Set eines UNTERKONTOS löschen — beide Wege, beide Richtungen.
  *
- * ── Woher dieser Test kommt (Marcos Rückfrage, Nachtrag 53) ─────────────────
- * Nach den Funden zum Kaufpreis (45) und zur Menge (52) fragte Marco, ob ich
- * die LÖSCHlogik ebenfalls geprüft habe. Hatte ich nicht — und sie hatte
- * dieselbe Lücke: Beide Wege suchten mit der eigenen Betrachter-ID und gaben
- * für jedes Set des Unterkontos 404. Immerhin ungefährlich (es wurde nie
- * fälschlich etwas gelöscht), aber im Haushalt liess sich schlicht nichts
- * entfernen.
- *
- * Zwei Auffälligkeiten kamen dabei ans Licht:
- *   • `deleteSet()` in utils/handlers.ts KONNTE das Blickfeld längst (asIds +
- *     ANY) — es bekam vom Aufrufer nur eine nackte ID.
- *   • Die Webapp-Route führte vier einzelne DELETEs ohne Transaktion aus,
- *     obwohl der andere Weg dafür längst eine hatte. Bricht eins ab, bleiben
- *     Teile und Minifiguren ohne Set zurück. Jetzt läuft auch sie in EINER
- *     Transaktion.
- *
- * Die Gegenrichtung ist hier besonders wichtig: Löschen ist der Schritt, bei
- * dem „Lesen weit, Schreiben eng" am meisten zählt. Ein Unterkonto darf ein
- * Set des Hauptkontos NICHT löschen — deshalb writableIds() und nicht
- * scopeIds().
+ * Lesen weit, Schreiben eng: Ein Hauptkonto löscht Sets seiner Unterkonten,
+ * ein Unterkonto aber kein Set des Hauptkontos. Beide Löschwege laufen in
+ * einer Transaktion, damit kein Teil ohne Set zurückbleibt.
  *
  * Gegenprobe (durchgeführt): writableIds in beiden Routen zurück auf die
  * eigene ID → der erste Teilschritt endet wieder in 404.

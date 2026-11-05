@@ -452,6 +452,28 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
   assert.deepEqual(zuViel, []);
 });
 
+test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
+  // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
+  // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
+  // den typischen Erzählmarken. Gemessen 424 am 05.11.2026.
+  // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
+  const SCHRANKE = 424;
+  const MARKE = /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
+  const dateien = [
+    ...fs.readdirSync(__dirname).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, n)),
+    ...fs.readdirSync(path.join(__dirname, 'helpers')).filter(n => n.endsWith('.js')).map(n => path.join(__dirname, 'helpers', n)),
+  ];
+  let ist = 0;
+  for (const f of dateien)
+    for (const z of fs.readFileSync(f, 'utf8').split('\n')) {
+      const t = z.trim();
+      if ((t.startsWith('//') || t.startsWith('*')) && MARKE.test(t)) ist++;
+    }
+  assert.ok(ist > 0, 'keine Marke gefunden — greift die Suche noch?');
+  assert.ok(ist <= SCHRANKE, `${ist} Kommentarzeilen mit Geschichte in den Tests, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ Geschichte in Testkommentaren: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
