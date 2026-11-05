@@ -64,9 +64,6 @@ internal fun comparePartNumbers(a: String, b: String): Int = plPartCollator.comp
 @Composable
 fun PartsListRoute(
     serverUrl: String,
-    // Ungelesen, aber die einzige Stelle, an der die Oberfläche AppUiState.authToken
-    // abnimmt (ErrorChannelTest); Parameter und Feld fallen nur zusammen weg.
-    @Suppress("UnusedParameter") authToken: String = "",
     imageLoader: ImageLoader,
     onScanBarcode: () -> Unit,
     hatUnterkonten: Boolean,

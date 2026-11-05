@@ -187,7 +187,7 @@ class AppViewModel @Inject constructor(
             combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
                 .distinctUntilChanged()
                 .collect { (url, token) ->
-                    sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank(), authToken = token) }
+                    sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank()) }
                     if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
                         _snackbar.value = texte.text(R.string.vm_anmeldung_zu_alt)
                         logout()

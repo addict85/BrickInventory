@@ -114,7 +114,6 @@ fun NavGraphBuilder.toolsGraph(
             ReiterGeruest(stringResource(R.string.nav_partslist), vm, navController, bottomNavItems, snackbarHostState) {
                 PartsListRoute(
                     serverUrl = state.serverUrl,
-                    authToken = state.authToken,
                     imageLoader = imageLoader,
                     onScanBarcode = { erfassung.setScannerSource("partslist"); navController.navigate(Screen.BarcodeScanner.route) },
                     // Erfolgloser Scan → Cursor ins Set-Feld.

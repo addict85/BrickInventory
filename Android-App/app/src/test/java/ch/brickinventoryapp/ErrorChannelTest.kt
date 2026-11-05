@@ -63,7 +63,7 @@ class ErrorChannelTest {
         assert(leser.size >= 20) { "Nur ${'$'}{leser.size} Leser-Dateien gefunden — Muster veraltet?" }
         val leserQuellen = leser.joinToString("\n") { Quellen.ohneKommentare(it.readText()) }
 
-        // `authToken` und `serverUrl` gehen an Bildkomponenten und den
+        // `serverUrl` geht an Bildkomponenten und den
         // PDF-Betrachter, `scopeModes` an ScopeFilter — die tauchen als
         // Parameter auf, nicht als `state.feld`. Deshalb wird auf den blossen
         // Feldnamen geprüft, nicht auf den qualifizierten Zugriff.
