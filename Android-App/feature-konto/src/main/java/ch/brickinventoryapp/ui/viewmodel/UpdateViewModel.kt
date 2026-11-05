@@ -25,7 +25,7 @@ import ch.brickinventoryapp.util.signaturPasst
 import ch.brickinventoryapp.util.updateDatei
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -39,6 +39,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Named
+import ch.brickinventoryapp.di.BrickDispatchers
+import ch.brickinventoryapp.di.Dispatcher
 
 /**
  * Selbstaktualisierung: nachsehen, laden, installieren lassen. Beim Start still
@@ -57,6 +59,7 @@ class UpdateViewModel @Inject constructor(
     private val texte: Texte,
     private val prefs: PreferencesManager,
     private val fassung: ch.brickinventoryapp.util.AppFassung,
+    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UpdateUiState())
@@ -89,7 +92,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(laedtPruefung = !still, fehler = null) }
             try {
-                val roh = withContext(Dispatchers.IO) {
+                val roh = withContext(io) {
                     updateHttpClient.newCall(Request.Builder().url(UPDATE_VERSION_URL).build())
                         .execute().use { antwort ->
                             if (!antwort.isSuccessful) throw java.io.IOException("HTTP ${antwort.code}")
@@ -103,7 +106,7 @@ class UpdateViewModel @Inject constructor(
                 // Nur eine signierte Beschreibung zählt: Schreibrecht am Repository allein
                 // reicht dann nicht, um ein Update zu unterdrücken oder umzuleiten. Danach
                 // wird die Adresse trotzdem geprüft, nicht geglaubt.
-                val beschreibung = withContext(Dispatchers.IO) {
+                val beschreibung = withContext(io) {
                     val pem = ctx.resources.openRawResource(R.raw.beschreibungs_schluessel).bufferedReader().use { it.readText() }
                     gepruefteBeschreibung(roh, eigeneZertifikate(ctx), beschreibungsSchluessel(pem))
                 }
@@ -159,7 +162,7 @@ class UpdateViewModel @Inject constructor(
             _state.update { it.copy(fortschritt = 0, fehler = null, bereitZurInstallation = false) }
             val ziel = updateDatei(ctx)
             try {
-                withContext(Dispatchers.IO) {
+                withContext(io) {
                     updateHttpClient.newCall(Request.Builder().url(fassung.apkUrl).build())
                         .execute().use { antwort ->
                             if (!antwort.isSuccessful) throw java.io.IOException("HTTP ${antwort.code}")
@@ -217,7 +220,7 @@ class UpdateViewModel @Inject constructor(
                 }
                 // Genau das APK, das der Signierjob beschrieben hat — nicht ein anderes
                 // mit derselben Signatur (etwa eine ältere Fassung).
-                if (!withContext(Dispatchers.IO) { pruefsummePasst(ziel, fassung.apkSha256) }) {
+                if (!withContext(io) { pruefsummePasst(ziel, fassung.apkSha256) }) {
                     ziel.delete()
                     _state.update {
                         it.copy(fortschritt = null, fehler = texte.text(R.string.update_pruefsumme_falsch))
@@ -227,14 +230,14 @@ class UpdateViewModel @Inject constructor(
                 // Die Signatur wird geprueft, BEVOR der Nutzer gefragt wird —
                 // siehe util/AppUpdate.kt. Passt sie nicht, wird die Datei
                 // geloescht: Ein APK unbekannter Herkunft soll nicht liegenbleiben.
-                if (!withContext(Dispatchers.IO) { signaturPasst(ctx, ziel) }) {
+                if (!withContext(io) { signaturPasst(ctx, ziel) }) {
                     ziel.delete()
                     _state.update {
                         it.copy(fortschritt = null, fehler = texte.text(R.string.update_signatur_falsch))
                     }
                     return@launch
                 }
-                if (!fassungPasst(withContext(Dispatchers.IO) { apkFassung(ctx, ziel) }, fassung.versionCode, this@UpdateViewModel.fassung.code)) {
+                if (!fassungPasst(withContext(io) { apkFassung(ctx, ziel) }, fassung.versionCode, this@UpdateViewModel.fassung.code)) {
                     ziel.delete()
                     _state.update {
                         it.copy(fortschritt = null, fehler = texte.text(R.string.update_fassung_falsch))
@@ -272,7 +275,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             // Rund 46 MB hashen und zwei APK-Analysen: auf dem Hauptfaden droht ein ANR.
             // Die Reihenfolge bleibt; `&&` bricht beim ersten Fehlschlag ab.
-            val geprueft = withContext(Dispatchers.IO) {
+            val geprueft = withContext(io) {
                 val datei = updateDatei(ctx)
                 val echt = datei.isFile && pruefsummePasst(datei, pruefsumme) && signaturPasst(ctx, datei) &&
                     fassungPasst(apkFassung(ctx, datei), gemeldet, fassung.code)
@@ -289,7 +292,7 @@ class UpdateViewModel @Inject constructor(
                 _state.update { it.copy(erlaubnisFehlt = true) }
                 return@launch
             }
-            withContext(Dispatchers.IO) { runCatching { installiere(ctx, geprueft) } }
+            withContext(io) { runCatching { installiere(ctx, geprueft) } }
                 .onFailure {
                     _state.update { s -> s.copy(fehler = texte.text(R.string.update_installer_fehlt)) }
                 }

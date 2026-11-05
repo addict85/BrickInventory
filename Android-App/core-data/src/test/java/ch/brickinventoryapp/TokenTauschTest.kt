@@ -10,7 +10,12 @@ import ch.brickinventoryapp.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Fehlerart
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
@@ -47,10 +52,14 @@ import org.junit.Test
  * Gegenprobe (03.11.2026, gemessen mit kotlinc lokal):
  *   J  noetig() wieder ohne Herkunft und Generation (`stand().token.takeIf …`) →
  *      rot „schon getauscht heisst nicht: den Token einer anderen Sitzung nehmen“
+ * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; tausch-faellig-im-aufrufer.patch):
+ *   K  faellig() tauscht mit runBlocking im Aufrufer statt im übergebenen Bereich →
+ *      rot „faellig tauscht im Anwendungsbereich und kehrt sofort zurueck“
  */
 class TokenTauschTest {
 
-    private class Welt {
+    /** [hintergrund] nimmt faellig() auf; ohne Angabe ein Bereich, den niemand abarbeitet. */
+    private class Welt(hintergrund: CoroutineScope = CoroutineScope(Job())) {
         var gespeichert = "alt"
         var herkunft: String? = HIER
         var antwortHerkunft: String? = HIER
@@ -82,6 +91,7 @@ class TokenTauschTest {
                 }
             },
             pausen = listOf(1, 1, 1),
+            hintergrund = hintergrund,
         )
     }
 
@@ -181,6 +191,18 @@ class TokenTauschTest {
         // Dieselbe Sitzung: Eine andere Anfrage hat eben getauscht, ihr Token gilt.
         assertEquals("vom-neuen", w.tausch.noetig("alt", "https://neu.example:443", w.schranke.generation))
         assertFalse(w.protokoll.toString(), w.protokoll.any { it.startsWith("rotiere") })
+    }
+
+    /** Mit dem Testtakt statt Warten: Der Tausch läuft erst, wenn der Bereich ihn abarbeitet. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `faellig tauscht im Anwendungsbereich und kehrt sofort zurueck`() = runTest {
+        val w = Welt(CoroutineScope(StandardTestDispatcher(testScheduler))).apply { antworten = mutableListOf(verloren) }
+        w.tausch.faellig("alt")
+        assertEquals("faellig() hat im Aufrufer getauscht", emptyList<String>(), w.protokoll)
+        advanceUntilIdle()
+        assertEquals(listOf("rotiere alt", "rotiere alt", "speichere neu"), w.protokoll)
+        assertEquals("neu", w.gespeichert)
     }
 
     @Test

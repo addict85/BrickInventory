@@ -7,6 +7,8 @@ import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.di.ServerWaechter
 import ch.brickinventoryapp.di.Zugangslage
 import ch.brickinventoryapp.util.NetworkPolicy
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -144,6 +146,8 @@ class ServerwechselTest {
             ersetze = { _, _, _ -> false },
             rotiere = { Result.Error("", httpCode = 500) },
             pausen = emptyList(),
+            // Der Test wartet auf noetig(); faellig() bräuchte einen eigenen Bereich nicht.
+            hintergrund = CoroutineScope(Job()),
         )
         val status = waehrendDesWechsels(client(tausch), Request.Builder().url(a.url("/api/v1/sets"))
             .post("geheim".toRequestBody()).build()) {

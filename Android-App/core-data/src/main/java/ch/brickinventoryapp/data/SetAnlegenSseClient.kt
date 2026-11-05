@@ -1,7 +1,9 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.model.AddSetResponse
-import kotlinx.coroutines.Dispatchers
+import ch.brickinventoryapp.di.BrickDispatchers
+import ch.brickinventoryapp.di.Dispatcher
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -35,6 +37,7 @@ import javax.inject.Singleton
 class SetAnlegenSseClient @Inject constructor(
     @Named("sse") private val client: OkHttpClient,
     private val prefs: PreferencesManager,
+    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : SetAnleger {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -122,7 +125,7 @@ class SetAnlegenSseClient @Inject constructor(
             close()
         }
         awaitClose { aufruf.cancel() }
-    }.flowOn(Dispatchers.IO)
+    }.flowOn(io)
 
     /**
      * Ein Ereignis auswerten.

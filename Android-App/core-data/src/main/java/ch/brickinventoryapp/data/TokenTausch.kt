@@ -3,8 +3,6 @@ package ch.brickinventoryapp.data
 import ch.brickinventoryapp.data.model.TokenRotation
 import ch.brickinventoryapp.data.repository.Result
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -79,7 +77,8 @@ class TokenTausch(
     private val rotiere: suspend (alterToken: String) -> Result<GetauschterToken>,
     private val uhr: () -> Long = System::currentTimeMillis,
     private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
-    private val hintergrund: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+    /** Für [faellig]: der Anwendungsbereich, damit der Tausch das Verlassen eines Bildschirms überlebt. */
+    private val hintergrund: CoroutineScope,
 ) : ch.brickinventoryapp.di.Rotationsanlass {
     private val sperre = Mutex()
 

@@ -23,6 +23,7 @@ import ch.brickinventoryapp.data.Entwertungsauftrag
 import ch.brickinventoryapp.data.EntwertungsPlaner
 import ch.brickinventoryapp.data.Entwertungsschritt
 import ch.brickinventoryapp.data.entwertungsSchritt
+import ch.brickinventoryapp.di.Anwendungsbereiche
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.util.LanguageManager
 import ch.brickinventoryapp.util.NetworkPolicy
@@ -33,7 +34,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
@@ -51,6 +51,7 @@ class EntwertungsWorker(context: Context, params: WorkerParameters) : CoroutineW
         fun entwerter(): Entwerter
         fun tresor(): TokenVerschluesselung
         fun prefs(): PreferencesManager
+        fun bereiche(): Anwendungsbereiche
     }
 
     override suspend fun doWork(): Result {
@@ -58,7 +59,7 @@ class EntwertungsWorker(context: Context, params: WorkerParameters) : CoroutineW
         val geheim = inputData.getString(TOKEN) ?: return Result.success()
         val pin = inputData.getString(PIN)
         val zugang = EntryPointAccessors.fromApplication(applicationContext, Zugang::class.java)
-        val schritt = withContext(Dispatchers.IO) {
+        val schritt = withContext(zugang.bereiche().io) {
             entwertungsSchritt(zugang.tresor().oeffne(geheim), runAttemptCount) { zugang.entwerter().entwerte(server, it, pin) }
         }
         return when (schritt) {
