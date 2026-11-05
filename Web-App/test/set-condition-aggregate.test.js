@@ -69,7 +69,7 @@ test('BEIDE Routenfamilien liefern das Aggregat mit', () => {
   const h   = require('./helpers/sources').handlerQuelle();
 
   assert.match(h, /async function withSetAggregate/,
-    'Der Wrapper gehört in utils/handlers.ts, damit ihn beide Routenfamilien teilen');
+    'Der Wrapper gehört in den Dienst der Sets, damit ihn beide Routenfamilien teilen');
 
   assert.equal([...v1.matchAll(/return antwort\(art, uid, keys,/g)].length, 2,
     'Ändern und Löschen müssen beide das Aggregat zurückgeben');

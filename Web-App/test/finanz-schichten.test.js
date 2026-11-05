@@ -47,7 +47,7 @@ test('die Schichten sind vollstaendig da', () => {
   const da = fs.readdirSync(ORDNER).filter(n => n.endsWith('.ts'))
     .map(n => path.basename(n, '.ts')).sort();
   assert.deepEqual(da, [...SCHICHTEN].sort(),
-    'Die Dateien unter utils/finance/ stimmen nicht mehr mit der Schichtung ' +
+    'Die Dateien unter src/finanzen/rechnung/ stimmen nicht mehr mit der Schichtung ' +
     'ueberein. Kommt eine dazu, gehoert sie an ihren Platz in SCHICHTEN — ' +
     'sonst prueft hier niemand ihre Richtung.');
 });
@@ -86,7 +86,7 @@ test('die Fassade reicht nur durch', () => {
     `Die Fassade hat ${zeilen} Zeilen Code. Sie soll nur weiterreichen.`);
   assert.ok(!/\bfunction\b|\bdb\./.test(ohneKommentar),
     'In der Fassade steht wieder Logik. Sie gehoert in die Schicht, zu der sie ' +
-    'passt — dafuer gibt es utils/finance/.');
+    'passt — dafuer gibt es src/finanzen/rechnung/.');
 });
 
 test('Blickfeld ist an einer Stelle erklaert', () => {

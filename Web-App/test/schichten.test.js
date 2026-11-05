@@ -111,7 +111,7 @@ test('keine Fachschicht importiert aus routes/ — ausser den benannten Faellen'
 });
 
 test('eine v1-Route importiert keine andere Routendatei', () => {
-  // Gemeinsames gehört nach utils/ (manuelleTeile, manuelleFiguren). Eine
+  // Gemeinsames gehört nach src/<bereich>/ (manuelleTeile, manuelleFiguren). Eine
   // Route, die eine Route importiert, zieht deren Router samt Middleware mit.
   // Gegenprobe (28.10.2026): require('../parts') in wanted.ts → rot.
   const ordner = path.join(ROOT, 'routes/api_v1');
@@ -161,7 +161,7 @@ test('kein Zustand auf global', () => {
 });
 
 test('src/ und clients/ importieren nichts aus jobs/', () => {
-  // Was utils/ an Hintergrundarbeit anstösst, läuft über src/auftraege/nacharbeit.ts;
+  // Was src/ an Hintergrundarbeit anstösst, läuft über src/auftraege/nacharbeit.ts;
   // die Ausführung setzt jobs/verdrahtung.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in merkliste.ts → rot.
   const treffer = [];
@@ -247,7 +247,7 @@ test('nur der Bild-Proxy ruft aus einer Route selbst ins Netz', () => {
 });
 
 test('startup/ importiert nichts aus routes/', () => {
-  // Was der Start anstösst (Aufräumläufe), steht in utils/; eine Route
+  // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route
   // gehört nur in server.ts.
   // Gegenprobe (29.10.2026): startPdfJobCleanup wieder aus
   // '../routes/api_v1/pdf' in startup/backgroundJobs.ts → rot.
@@ -307,14 +307,17 @@ test('in routes/ liegt nichts, was keine Route ist', () => {
   // etwas Falsches ueber den Inhalt — und weil die Datei dort lag, mussten
   // sechs Fachdateien aus der aeussersten Schicht importieren.
   //
-  // Drei Dateien in routes/ definieren ebenfalls kein `router.<methode>`,
+  // Zwei Dateien in routes/ definieren ebenfalls kein `router.<methode>`,
   // gehoeren aber dorthin, jede aus einem eigenen Grund. Sie stehen deshalb
   // hier mit Begruendung statt als stille Ausnahme.
   const erlaubtOhneRouter = {
     'imgProxy.ts':          'registriert seine Routen ueber app.get() statt router.get()',
-    'mailer.ts':            'Mailversand, ausschliesslich von Routen benutzt — keine Schicht wird verletzt',
     'api_v1/middleware.ts': 'Waechter FUER Routen; ohne Routen sinnlos',
   };
+  // Wie bei AUSNAHMEN: Ein Eintrag ohne Datei ist tot.
+  // Gegenprobe: 'mailer.ts' wieder eingetragen → rot.
+  assert.deepEqual(Object.keys(erlaubtOhneRouter).filter(d => !fs.existsSync(path.join(ROOT, 'routes', d))), [],
+    'erlaubtOhneRouter nennt Dateien, die es nicht mehr gibt');
   const dateien = [];
   const lauf = (rel) => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -333,7 +336,7 @@ test('in routes/ liegt nichts, was keine Route ist', () => {
   });
   assert.deepEqual(ohneRoute, [],
     'Diese Datei liegt in routes/, definiert aber keine Route. Entweder sie gehoert ' +
-    'in utils/, oder ihr Grund gehoert nach erlaubtOhneRouter — die stille Variante ' +
+    'nach src/<bereich>/, oder ihr Grund gehoert nach erlaubtOhneRouter — die stille Variante ' +
     'hat schon einmal neun Importe in die falsche Richtung erzeugt.');
 });
 

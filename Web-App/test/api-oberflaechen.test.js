@@ -130,7 +130,7 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
     'Diese Adressen stehen auf BEIDEN Oberflaechen, ohne dass ein Grund ' +
     'eingetragen waere:\n  ' + unbegruendet.join('\n  ') +
     '\nZwei Umsetzungen derselben Antwort driften — gemessen bei ' +
-    'GET /settings: Webapp 48, App 24. Entweder die Logik in utils/ ' +
+    'GET /settings: Webapp 48, App 24. Entweder die Logik in einem Dienst ' +
     'zusammenlegen und beide Routen daraus bedienen, oder in ERLAUBT ' +
     'eintragen, WARUM es zwei sein muessen.');
 
