@@ -67,7 +67,7 @@ async function bricklinkRequest(method: string, path: string,
   const roh = await getCredentials();
   if (!roh.bricklink_consumer_key || !roh.bricklink_consumer_secret ||
       !roh.bricklink_token || !roh.bricklink_token_secret)
-    throw new Error('BrickLink API Zugangsdaten nicht vollständig.');
+    throw Object.assign(new Error('BrickLink API Zugangsdaten nicht vollständig.'), { code: 'bricklink_zugang_fehlt' });
   // Der Waechter darueber prueft genau diese vier Felder — er soll den Typ
   // deshalb auch HERSTELLEN und nicht nur behaupten. getCredentials() liefert
   // ein Record<string,string>, und aus Wahrheitspruefungen kann der Uebersetzer

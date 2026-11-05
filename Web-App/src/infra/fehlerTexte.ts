@@ -186,6 +186,8 @@ export const FEHLER = {
   erfassung_felder:            { de: 'quantity, purchase_price oder condition erforderlich',
                                  en: 'quantity, purchase_price or condition is required' },
   kein_bricklink_preis:        { de: 'kein BrickLink-Preis gefunden', en: 'no BrickLink price found' },
+  bricklink_tageslimit:        { de: 'BrickLink-Tageslimit erreicht', en: 'BrickLink daily limit reached' },
+  bricklink_zugang_fehlt:      { de: 'BrickLink-API-Zugangsdaten nicht vollständig.', en: 'BrickLink API credentials are incomplete.' },
 
   // ── Dateien, Import, Export ──────────────────────────────────────────────
   keine_datei:                 { de: 'Keine Datei', en: 'No file' },

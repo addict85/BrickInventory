@@ -422,13 +422,20 @@ async function setzeEigenesDesign() {
 // Darstellung wirkt sofort: Währung und Standard-Zustand speichern beim Wählen.
 async function speichereWaehrung() {
   const wert = G('s-cur').value;
+  // Marktpreise gibt es je Währung; nach dem Wechsel fehlen sie, bis der Preisauftrag sie geholt hat. Ohne
+  // Rückfrage sah das aus, als seien alle Werte verloren.
+  if (wert !== CURRENCY && !await confirmDelete(tRaw('konto.waehrung_wechsel_titel'),
+    tRaw('konto.waehrung_wechsel_text', { alt: CURRENCY, neu: wert }), 'finanzen', { knopf: 'konto.waehrung_wechsel_knopf', art: 'bp' })) {
+    G('s-cur').value = CURRENCY;
+    return;
+  }
   const d = await api('POST', '/v1/settings', { currency: wert });
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   set_CURRENCY(wert);
   if (_settingsCache) _settingsCache.currency = wert;
   await loadHousehold().catch(() => {});
   loadStats(); if (document.getElementById('tab-gallery')?.classList.contains('active')) loadGallery();
-  toast(tRaw('konto.waehrung_gespeichert', { w: wert }), 'success');
+  toast(tRaw('konto.waehrung_gespeichert_markt', { w: wert }), 'success');
 }
 
 async function speichereZustand() {

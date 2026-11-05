@@ -8,6 +8,7 @@ import { asIds } from '../../haushalt/haushalt';
 import { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus } from '../../katalog/apiKontingent';
 import { bricklinkRequest } from '../../katalog/quellen';
 import { fehlertext, logAndContinue, meldeUndLiefere } from '../../infra/fehler';
+import { fehlerWerfen } from '../../infra/fehlerTexte';
 import { mitVersion, ohneBricklinkPreis } from '../../infra/setNummer';
 import { katalogEintrag, getPriceGuide, hatPreis } from '../../katalog/bricklinkPreise';
 import { effectiveCondition } from './zustand';
@@ -136,7 +137,7 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
   }
 
   const rl1 = await kontingentFrei('bricklink');
-  if (!rl1.allowed) throw new Error(`BrickLink Tageslimit erreicht (${rl1.limit} Aufrufe/Tag)`);
+  if (!rl1.allowed) fehlerWerfen('bricklink_tageslimit', 429);
 
   const pd = await tryFetch(condition);
   // An avg_price festgemacht, weil alle Verbraucher diesen Wert lesen.
@@ -147,12 +148,12 @@ export async function fetchPrice(setNumber: string, condition: string, guideType
     return { min_price: cachedFallback.min_price, avg_price: cachedFallback.avg_price, max_price: cachedFallback.max_price, qty_avg_price: cachedFallback.qty_avg_price, from_cache: true, condition_used: fallbackCondition, is_fallback: true };
 
   const rl2 = await kontingentFrei('bricklink');
-  if (!rl2.allowed) { if (pd) return { ...pd, condition_used: condition }; throw new Error('BrickLink Tageslimit erreicht'); }
+  if (!rl2.allowed) { if (pd) return { ...pd, condition_used: condition }; fehlerWerfen('bricklink_tageslimit', 429); }
 
   const pd2 = await tryFetch(fallbackCondition);
   if (hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
   if (pd) return { ...pd, condition_used: condition };
-  throw new Error(`${setNumber} — kein BrickLink-Preis gefunden`);
+  fehlerWerfen('kein_bricklink_preis', 404);
 }
 
 export async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: number) {
@@ -343,7 +344,7 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
   let pd: any = null;
   if (!skipPrimaryFetch) {
     const rl1 = await kontingentFrei('bricklink');
-    if (!rl1.allowed) throw new Error('BrickLink Tageslimit erreicht');
+    if (!rl1.allowed) fehlerWerfen('bricklink_tageslimit', 429);
     pd = await tryFetch(condition);
     if (hatPreis(pd)) return { ...pd, condition_used: condition };
 
@@ -355,7 +356,7 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
   const rl2 = await kontingentFrei('bricklink');
   if (!rl2.allowed) {
     if (pd) return { ...pd, condition_used: condition };
-    throw new Error('BrickLink Tageslimit erreicht');
+    fehlerWerfen('bricklink_tageslimit', 429);
   }
 
   const pd2 = await tryFetch(fallbackCondition);
@@ -364,7 +365,7 @@ export async function fetchPartPrice(partNumber: string, rbColorId: number, cond
   if (pd)  return { ...pd, condition_used: condition };
   // KEINE Nutzermeldung, sondern ein Merkmal: Der Preis-Job zählt daran
   // „übersprungen" statt „Fehler". Deshalb bewusst unübersetzt.
-  return { avg_price: 0, qty_avg_price: 0, from_cache: false, error: 'kein BrickLink-Preis gefunden' };
+  return { avg_price: 0, qty_avg_price: 0, from_cache: false, error: 'kein BrickLink-Preis gefunden', error_code: 'kein_bricklink_preis' };
 }
 
 /** Rückfall wie bei fetchPartPrice ('U' ↔ 'N').
@@ -418,7 +419,7 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
   let pd: any = null;
   if (!skipPrimaryFetch) {
     const rl1 = await kontingentFrei('bricklink');
-    if (!rl1.allowed) throw new Error('BrickLink Tageslimit erreicht');
+    if (!rl1.allowed) fehlerWerfen('bricklink_tageslimit', 429);
     pd = await tryFetch(condition);
     if (hatPreis(pd)) return { ...pd, condition_used: condition };
 
@@ -430,14 +431,14 @@ export async function fetchMinifigPrice(figNumber: string, condition: string, cu
   const rl2 = await kontingentFrei('bricklink');
   if (!rl2.allowed) {
     if (pd) return { ...pd, condition_used: condition };
-    throw new Error('BrickLink Tageslimit erreicht');
+    fehlerWerfen('bricklink_tageslimit', 429);
   }
 
   const pd2 = await tryFetch(fallbackCondition);
   if (hatPreis(pd2)) return { ...pd2, condition_used: fallbackCondition, is_fallback: true };
   if (pd2) return { ...pd2, condition_used: fallbackCondition };
   if (pd)  return { ...pd, condition_used: condition };
-  return { avg_price: 0, qty_avg_price: 0, from_cache: false, error: 'kein BrickLink-Preis gefunden' };
+  return { avg_price: 0, qty_avg_price: 0, from_cache: false, error: 'kein BrickLink-Preis gefunden', error_code: 'kein_bricklink_preis' };
 }
 
 export { checkAndIncrementRateLimit, kontingentFrei, getLimitForApi, getRateLimitStatus };

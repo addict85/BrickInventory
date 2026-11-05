@@ -1,7 +1,7 @@
 /** Was der Bestand heute wert ist; steht auf der Preisschicht (preise.ts) und
  * trägt die Gewinnrechnung, nicht umgekehrt. */
 
-import { meldeUndLiefere, fehlertext } from '../../infra/fehler';
+import { meldeUndLiefere, fehlertext, fehlerCode } from '../../infra/fehler';
 import * as repo from '../repository/bewertung';
 import { setPreiseFrisch } from '../repository/preisCache';
 import { asIds, withOwners, blickfeldAus, type Sicht } from '../../haushalt/haushalt';
@@ -43,6 +43,12 @@ function fremdeKaufpreise(jeEintrag: Map<string, Array<{ kaufpreis_fremd?: boole
   return n;
 }
 
+/** Der Code reist mit, damit die Route den Text in der Sprache der Anfrage setzt (routes/api_v1/finance.ts). */
+function mitCode(e: unknown): { error: string; error_code?: string } {
+  const code = fehlerCode(e);
+  return { error: fehlertext(e), ...(code ? { error_code: code } : {}) };
+}
+
 type BewertungsSet = Awaited<ReturnType<typeof repo.setsZurBewertung>>[number];
 type SetErfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
 type Preis = Awaited<ReturnType<typeof fetchPrice>>;
@@ -53,10 +59,10 @@ type Bewertungslage = { guideType: string; currency: string; ttlHours: string; p
  * Fehler gilt nur dem einen Zustand. */
 async function preiseJeZustand(sn: string, zustaende: Array<'N' | 'U'>, l: Bewertungslage) {
   const preise: Partial<Record<'N' | 'U', Preis | null>> = {};
-  const fehler: string[] = [];
+  const fehler: { error: string; error_code?: string }[] = [];
   for (const cond of zustaende) {
     try { preise[cond] = await fetchPrice(sn, cond, l.guideType, l.currency, l.ttlHours, l.pre); }
-    catch (e) { preise[cond] = null; fehler.push(fehlertext(e)); }
+    catch (e) { preise[cond] = null; fehler.push(mitCode(e)); }
   }
   return { preise, fehler };
 }
@@ -105,7 +111,7 @@ async function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertung
     is_fallback: einPreis ? !!einPreis.is_fallback : false,
     no_price: !allesFehlt && valued.unit_price == null,
     bl_unbekannt: needed.some(c => preise[c]?.bl_unbekannt === true),
-    ...(allesFehlt ? { error: fehler[0] } : {}),
+    ...(allesFehlt ? fehler[0] : {}),
   };
 }
 
@@ -195,7 +201,7 @@ export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht 
       let pd: any;
       if (fig.bl_fig_number) {
         try { pd = await fetchMinifigPrice(fig.bl_fig_number, cond, currency, ttlHours, figVorrat); }
-        catch (e) { pd = { avg_price: 0, qty_avg_price: 0, error: fehlertext(e) }; }
+        catch (e) { pd = { avg_price: 0, qty_avg_price: 0, ...mitCode(e) }; }
       } else {
         // Ohne BL-Nummer aus den Teilepreisen schätzen: Die Zuordnung RB→BL ist für
         // Teile verlässlich, für Figuren nicht.
@@ -273,7 +279,7 @@ export async function computePartsValuation(viewerId: number, idsWahl: Sicht | B
       try {
         pd = await fetchPartPrice(part.bl_part_number || part.part_number, part.color_id ?? KEINE_FARBE, cond, currency, ttlHours, teilVorrat);
       } catch (e) {
-        pd = { avg_price: 0, qty_avg_price: 0, error: fehlertext(e) };
+        pd = { avg_price: 0, qty_avg_price: 0, ...mitCode(e) };
       }
       // avg_price zuerst, wie bei den Figuren.
       const v = parseFloat(String(pd.avg_price || 0)) || parseFloat(String(pd.qty_avg_price || 0)) || 0;

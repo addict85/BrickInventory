@@ -15,6 +15,9 @@
  *   F  legeAlarmAn ohne -1-Ergänzung → rot: „Preisalarm in seiner Ansicht“
  *   G  Hinweisspalte der Auftragszeile ohne Fehlerkasten → rot: „Hintergrundarbeiten“
  *   H  fmtDatum in Englisch wieder 2-stellig numerisch → rot: „Datum auf Englisch“
+ *   I  (05.11.2026, UI-Prüfung 17 M5) Rückfrage vor dem Währungswechsel aus
+ *      speichereWaehrung entfernt → rot: „Konto: Währung wirkt sofort“ (kein
+ *      Dialog mit „Marktpreise“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -68,7 +71,12 @@ test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async ()
     const feld = d.getElementById('s-cur');
     feld.value = 'CHF';
     feld.dispatchEvent(new w.Event('change', { bubbles: true }));
+    // Vor dem Wechsel sagt eine Rückfrage, dass die Marktpreise neu geladen werden.
+    assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Rückfrage vor dem Währungswechsel');
+    assert.match(d.getElementById('cd-msg').textContent, /Marktpreise/);
+    d.getElementById('cd-confirm').click();
     await warte(() => aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && /CHF/.test(a.body)));
+    await warte(() => d.getElementById('confirm-modal').style.display !== 'flex');
     assert.ok(aufrufe.some(a => a.method === 'POST' && a.url.endsWith('/v1/settings') && JSON.parse(a.body).currency === 'CHF'));
     d.getElementById('pw-n').value = d.getElementById('pw-r').value = 'neu-Passwort-1';
     d.getElementById('btn-sav-pw').click();

@@ -834,6 +834,11 @@ export type JobStatus = {
   progress: number;
   total: number;
   sub?: string | null;
+  sub_teile?: Array<{
+    code: string;
+    werte?: Record<string, string | number>;
+    vor?: "bestand";
+  }>;
   [feld: string]: unknown;
 };
 export type KontenListe = {

@@ -76,6 +76,14 @@ function openLogViewer() {
   win.document.close();
 }
 
+/**
+ * Untertitel aus den Codes des Servers (src/verwaltung/dienst.ts); die Sätze stehen nur in den Sprachdateien.
+ * @param {{ code: string, werte?: Record<string, string | number>, vor?: string }[]} teile
+ */
+function subAusCodes(teile) {
+  return teile.map(t => (t.vor ? tRaw('monitor.sub.' + t.vor) + ' ' : '') + tRaw('monitor.sub.' + t.code, t.werte)).join(' · ');
+}
+
 // Übersetzt Server-seitige Job-Sub-Texte (background jobs kennen die Nutzersprache nicht). Bekannte Muster
 // werden clientseitig ersetzt.
 /**
@@ -199,7 +207,7 @@ export async function loadMonitor() {
         <tbody>${Object.entries(jobs).map(([k, j]) => html`<tr>
           <td><span class="mon-name">${k === 'bricksetRetry' ? ungeprueft(jobIconSvg('brickset')) : ungeprueft(jobIconSvg(k))}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
-            ${j.sub ? html`<div class="mon-leise">${translateJobSub(j.sub)}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile) : translateJobSub(j.sub ?? '')}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedInput(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'zeit') : ''}</td>
           <td><div class="mon-knoepfe">${(aktionen(k, j)) ? ungeprueft(aktionen(k, j)) : html`<span class="mon-leise">–</span>`}</div></td>

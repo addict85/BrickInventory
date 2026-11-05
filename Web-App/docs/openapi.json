@@ -17616,6 +17616,37 @@
               "string",
               "null"
             ]
+          },
+          "sub_teile": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "werte": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                },
+                "vor": {
+                  "type": "string",
+                  "const": "bestand"
+                }
+              },
+              "required": [
+                "code"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
