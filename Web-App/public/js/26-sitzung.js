@@ -394,16 +394,23 @@ function showLogin(o = {}){
   showPanel('login');
   checkRegistrationEnabled();
 }
+/** Zähler der Abfragen nach den Anmeldewegen. Abmelden und abgelaufene Sitzung
+ * fragen beide; kommt die ältere Antwort zuletzt an, gilt sie nicht mehr. */
+let _anmeldewegeLauf = 0;
 async function checkRegistrationEnabled(){
+  const lauf = ++_anmeldewegeLauf;
+  // Steht erst wieder, wenn die jüngste Antwort eingetragen ist (Browser-Tests warten darauf).
+  delete G('login-screen').dataset.anmeldewege;
   try {
     const d = await api('GET', '/v1/auth/registration-status');
-    if (d.success === false) return;
+    if (lauf !== _anmeldewegeLauf || d.success === false) return;
     const wrap = G('link-register-wrap');
     if(wrap) wrap.style.display = d.enabled ? '' : 'none';
     // Nur Wege anbieten, die der Server kann; fehlt die Angabe (älterer Server), bleibt alles wie es war.
     if (d.passkey === false && G('btn-passkey')) G('btn-passkey').hidden = true;
     if (G('link-forgot')) G('link-forgot').hidden = d.passwort_vergessen === false;
     if (G('forgot-verwalter')) G('forgot-verwalter').hidden = d.passwort_vergessen !== false;
+    G('login-screen').dataset.anmeldewege = 'geladen';
   } catch(_){}
 }
 
@@ -497,10 +504,13 @@ async function doLogin(){
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
   const _wt = sessionStorage.getItem('webToken');
+  // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein
+  // „Sitzung abgelaufen“ und öffnen die Anmeldemaske kein zweites Mal.
+  set_ME(null);
   await apiRoh('POST', '/v1/auth/logout', {
     headers: _wt ? { 'Authorization': 'Bearer ' + _wt } : {},
   }).catch(()=>{});
-  set_ME(null); setAllSets([]);
+  setAllSets([]);
   // Reset all admin-only elements before showing login
   const nm=G('ntab-monitor'); if(nm) nm.style.display='none';
   const ns=G('ntab-settings'); if(ns) ns.style.display='none';
