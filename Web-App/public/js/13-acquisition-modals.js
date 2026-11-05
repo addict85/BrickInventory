@@ -363,55 +363,10 @@ function renderManAcqSummary(acqs, type, id, colorId) {
   }).join('') + legendeGeschaetzt(acqs);
 }
 
-export async function openManDetail(type, id, colorId) {
-  _manItem = { type, id, colorId: parseInt(colorId)||0 };
-  const modal = G('man-detail-modal');
-  const bodyEl = G('man-detail-body');
-  const imgEl  = G('man-detail-img');
-
-  // Load item from cache
-  const fromCache = () => type === 'fig'
-    ? manuelleFiguren().find(f => f.fig_number === id)
-    : manuelleTeile().find(p => p.part_number === id && (p.color_id||0) === _manItem.colorId);
-
-  let item = fromCache();
-  // Die Caches füllen die Reiter Teile und Minifiguren. Aus der Finanztabelle
-  // heraus ist der passende Reiter oft nie geöffnet worden — dann war der
-  // Eintrag nicht im Cache und der Dialog ging stillschweigend GAR NICHT auf.
-  // Also einmal nachladen und erneut suchen.
-  if (!item) {
-    if (type === 'fig') await loadManualFigsTable().catch(() => {});
-    else                await loadManualParts().catch(() => {});
-    item = fromCache();
-  }
-  // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die
-  // Eintraege aller Konten; ohne diese Angabe schrieb der Server in die Zeile
-  // des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte des
-  // Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher
-  // 99|9), und die Antwort sagte „success".
-  _manItem.owner = item?.user_id;
-  if (!item) return;
-
-  G('man-detail-tit').textContent = item.fig_name || item.part_name || id;
-  G('man-detail-sub').textContent = id + (item.color_name ? ' · ' + item.color_name : '');
-
-  // War: fullUrl(...) allein — bei einer CDN-Quelle ohne imgUrl()-Umwicklung
-  // lädt der Browser direkt von Rebrickable, am Server vorbei. Das ist der
-  // eigenständige Kaufpreis-Detail-Dialog für manuell erfasste Teile/
-  // Minifiguren — ein anderer Ort als die Kachel-Zoom-Funktion in 03-parts.js/ …
-  // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#rawimgsrc
-  const rawImgSrc = item.image_local || item.image_url || '';
-  const imgSrc = rawImgSrc ? imgUrl(fullUrl(rawImgSrc), false) : '';
-  if (imgSrc) { imgEl.src = imgSrc; imgEl.style.display = ''; } else { imgEl.style.display = 'none'; }
-
-  // Load acquisitions
-  const acqUrl = type === 'fig'
-    ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
-    : `/v1/parts/${encodeURIComponent(id)}/${parseInt(colorId)||0}/acquisitions`;
-  const ad = await api('GET', acqUrl).catch(()=>null);
-  const acqs = ad?.acquisitions || [];
-
-  // Build detail rows
+/** Die Zeilen des Detail-Dialogs eines manuell erfassten Teils oder einer Figur.
+ * @param {string} type @param {string} id @param {any} colorId @param {any} item @param {any[]} acqs @param {any} ad
+ * @returns {string[]} */
+function manDetailZeilen(type, id, colorId, item, acqs, ad) {
   const rows = [];
 
   // Qty stepper — die Stückzahl kommt aus derselben Serversumme wie die
@@ -476,13 +431,13 @@ export async function openManDetail(type, id, colorId) {
     <div id="man-chart-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
   </div>`);
 
-  bodyEl.innerHTML = rows.join('');
-  modal.classList.add('open');
+  return rows;
+}
 
-  // Farbauswahl nachfüllen — siehe die Begründung an der Zeile oben.
-  if (type === 'part') fuelleFarbwahl(_manItem.colorId).catch(() => {});
-
-  // Verlauf nachladen. Derselbe Renderer wie beim Set — die Endpunkte liefern
+/** Preisverlauf und Marktpreise nachladen, ohne den Dialog aufzuhalten.
+ * @param {string} type @param {string} id @param {any} colorId */
+function ladeManPreisverlauf(type, id, colorId) {
+  // Derselbe Renderer wie beim Set — die Endpunkte liefern
   // dieselbe Diagrammstruktur (src/finanzen/chartData.ts), also braucht es hier keine
   // zweite Zeichenlogik.
   const histUrl = type === 'fig'
@@ -501,6 +456,64 @@ export async function openManDetail(type, id, colorId) {
     const el = G('man-chart-content');
     if (el) el.innerHTML = `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
   });
+
+}
+
+export async function openManDetail(type, id, colorId) {
+  _manItem = { type, id, colorId: parseInt(colorId)||0 };
+  const modal = G('man-detail-modal');
+  const bodyEl = G('man-detail-body');
+  const imgEl  = G('man-detail-img');
+
+  // Load item from cache
+  const fromCache = () => type === 'fig'
+    ? manuelleFiguren().find(f => f.fig_number === id)
+    : manuelleTeile().find(p => p.part_number === id && (p.color_id||0) === _manItem.colorId);
+
+  let item = fromCache();
+  // Die Caches füllen die Reiter Teile und Minifiguren. Aus der Finanztabelle
+  // heraus ist der passende Reiter oft nie geöffnet worden — dann war der
+  // Eintrag nicht im Cache und der Dialog ging stillschweigend GAR NICHT auf.
+  // Also einmal nachladen und erneut suchen.
+  if (!item) {
+    if (type === 'fig') await loadManualFigsTable().catch(() => {});
+    else                await loadManualParts().catch(() => {});
+    item = fromCache();
+  }
+  // Besitzer der KARTE merken. Im Haushalt zeigt der manuelle Bereich die
+  // Eintraege aller Konten; ohne diese Angabe schrieb der Server in die Zeile
+  // des Aufrufers. NACHGEMESSEN: Das Hauptkonto setzte auf der Karte des
+  // Kindes die Menge auf 99 — geaendert wurde die eigene (vorher 5|9, nachher
+  // 99|9), und die Antwort sagte „success".
+  _manItem.owner = item?.user_id;
+  if (!item) return;
+
+  G('man-detail-tit').textContent = item.fig_name || item.part_name || id;
+  G('man-detail-sub').textContent = id + (item.color_name ? ' · ' + item.color_name : '');
+
+  // War: fullUrl(...) allein — bei einer CDN-Quelle ohne imgUrl()-Umwicklung
+  // lädt der Browser direkt von Rebrickable, am Server vorbei. Das ist der
+  // eigenständige Kaufpreis-Detail-Dialog für manuell erfasste Teile/
+  // Minifiguren — ein anderer Ort als die Kachel-Zoom-Funktion in 03-parts.js/ …
+  // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#rawimgsrc
+  const rawImgSrc = item.image_local || item.image_url || '';
+  const imgSrc = rawImgSrc ? imgUrl(fullUrl(rawImgSrc), false) : '';
+  if (imgSrc) { imgEl.src = imgSrc; imgEl.style.display = ''; } else { imgEl.style.display = 'none'; }
+
+  // Load acquisitions
+  const acqUrl = type === 'fig'
+    ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`
+    : `/v1/parts/${encodeURIComponent(id)}/${parseInt(colorId)||0}/acquisitions`;
+  const ad = await api('GET', acqUrl).catch(()=>null);
+  const acqs = ad?.acquisitions || [];
+
+  bodyEl.innerHTML = manDetailZeilen(type, id, colorId, item, acqs, ad).join('');
+  modal.classList.add('open');
+
+  // Farbauswahl nachfüllen — siehe die Begründung an der Zeile oben.
+  if (type === 'part') fuelleFarbwahl(_manItem.colorId).catch(() => {});
+
+  ladeManPreisverlauf(type, id, colorId);
 
   // Wire delete button — deleteManualFig/deleteManualPart already have their own confirmDelete
   G('man-detail-del').onclick = async () => {
@@ -521,6 +534,29 @@ export async function openManDetail(type, id, colorId) {
 // weggelassen werden. Die Anzahl soll nicht geändert werden können. Dafür soll
 // angezeigt werden, welche Sets dieses Teil und Minifigur verwenden — inkl. …
 // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#opensetitemdetail
+/** Die Sets, in denen ein Teil oder eine Figur steckt, als klickbare Liste. @param {any[]} sets */
+function verwendetInListe(sets) {
+  // Jede Zeile öffnet das Set-Detail. `openSetAusItem` schliesst diesen Dialog
+  // zuerst — zwei offene Fenster übereinander wären nicht mehr zu schliessen.
+  // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#setbild
+  const setBild = (s) => {
+    const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
+    return klein
+      ? bildTag({ src: imgUrl(klein, true), orig: imgUrl(s.image_url || ''), alt: '', klasse: 'bild-34', ph: 'set' })
+      : `<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+  };
+  return sets.length
+    ? `<table data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(s => `
+        <tr tabindex="0" data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
+            title="${esc(t('setitem.open_set'))}" data-stil="cursor:pointer">
+          <td data-stil="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
+          <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(s.set_number)}</td>
+          <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${esc(s.set_name || '')}</td>
+          <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${(s.quantity || 0).toLocaleString(locale())}</td>
+        </tr>`).join('')}</tbody></table>`
+    : `<span data-stil="color:var(--mut);font-size:var(--fs-2)">${esc(t('setitem.used_in_none'))}</span>`;
+}
+
 export async function openSetItemDetail(type, id, colorId) {
   const farbe = parseInt(colorId) || 0;
   _manItem = null;                       // fremder Dialog, fremder Zustand
@@ -600,25 +636,7 @@ export async function openSetItemDetail(type, id, colorId) {
       { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' }));
   }
 
-  // Jede Zeile öffnet das Set-Detail. `openSetAusItem` schliesst diesen Dialog
-  // zuerst — zwei offene Fenster übereinander wären nicht mehr zu schliessen.
-  // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#setbild
-  const setBild = (s) => {
-    const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
-    return klein
-      ? bildTag({ src: imgUrl(klein, true), orig: imgUrl(s.image_url || ''), alt: '', klasse: 'bild-34', ph: 'set' })
-      : `<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
-  };
-  const liste = sets.length
-    ? `<table data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(s => `
-        <tr tabindex="0" data-click="openSetAusItem" data-arg="${escJs(s.set_number)}"
-            title="${esc(t('setitem.open_set'))}" data-stil="cursor:pointer">
-          <td data-stil="width:34px;padding:4px 8px 4px 0">${setBild(s)}</td>
-          <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${esc(s.set_number)}</td>
-          <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${esc(s.set_name || '')}</td>
-          <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${(s.quantity || 0).toLocaleString(locale())}</td>
-        </tr>`).join('')}</tbody></table>`
-    : `<span data-stil="color:var(--mut);font-size:var(--fs-2)">${esc(t('setitem.used_in_none'))}</span>`;
+  const liste = verwendetInListe(sets);
   // Marcos Befund am Bild: „Der Text 'Verwendet in' kommt in das erste Bild
   // der Sets." Die Zeile ist ein `.dr` und damit ein Flex-Kasten mit
   // `justify-content:space-between` (styles.css): Beschriftung links, Wert

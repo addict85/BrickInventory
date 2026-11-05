@@ -134,97 +134,168 @@ function priceStatusBadge(s){
 /** Platzhalter einer Kennzahl, solange sie lädt — „—“ hiesse „kein Wert“. */
 const WERT_SKELETT = '<span class="skelett-zeile skelett-wert" aria-hidden="true"></span>';
 
-export async function loadFinance(){
+const condBadge = (/** @type {string} */ c) => condBadges({ conditions: [c] });
+// Feste Spaltenbreiten (colgroup, table-layout:fixed), damit die Preisspalten
+// der Teile- und Figurentabellen unter denen der Sets stehen.
+// Ausführlich: docs/begruendungen/public/js/04-finance.js.md#condbadge
+const PM_COLGROUP = `<colgroup>
+    <col class="sp-60"><col class="sp-380"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-55">
+  </colgroup>`;
+/** Klick auf eine Teile- oder Figurenzeile öffnet ihr Detail.
+ * Ausführlich: docs/begruendungen/public/js/04-finance.js.md#manargs
+ * @param {any} it */
+const manArgs = it => it.fig_number
+  ? `data-click="openManDetail" data-arg="fig" data-arg2="${escJs(it.fig_number)}" data-arg3="0"`
+  : `data-click="openManDetail" data-arg="part" data-arg2="${escJs(it.part_number)}" data-arg3="${it.color_id||0}"`;
+/** Ein aus Teilepreisen geschätzter Figurenpreis bekommt „≈" und die Abdeckung. */
+function geschaetztMarke(it, html){
+  if (!it.estimated_from_parts) return html;
+  const p = it.abdeckung != null ? Math.round(it.abdeckung * 100) : '?';
+  const hinweis = esc(tRaw('finance.aus_teilen_geschaetzt', { p }));
+  return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${html}</span>`;
+}
+
+/** @param {any} it @param {string} label @param {any} acq @param {string} cur */
+function pmRow(it, label, acq, cur){
+  const qty = acq ? acq.quantity : (it.quantity || 1);
+  // avg_price zuerst — wie überall seit der Preisumstellung.
+  const current = acq ? parseFloat(acq.avg_price ?? 0)
+                      : parseFloat(it.avg_price ?? it.qty_avg_price ?? 0);
+  const purchase = acq
+    ? (acq.purchase_price!=null ? parseFloat(acq.purchase_price) : null)
+    : (it.purchase_price!=null ? parseFloat(it.purchase_price) : null);
+  const total = acq ? (acq.wert_gesamt ?? 0) : (it.wert_gesamt ?? 0);
+  const pnl = acq ? acq.pnl_prozent : it.pnl_prozent;
+  const art = it.fig_number ? 'figur' : 'teil';
+  const img = it.image_local||it.image_url ? bildTag({ src: imgUrl(thumbUrl(it.image_local||it.image_url)||it.image_local||it.image_url, true), orig: imgUrl(it.image_url||''), alt: '', ph: art }) : `<span class="bild-ph" aria-hidden="true">${platzhalterInhalt(art)}</span>`;
+  // Der frühere dritte Parameter onclickAttr wurde von keinem Aufrufer
+  // gesetzt — der Zweig war tot und hätte als Inline-Handler die CSP blockiert.
+  return `<tr class="zeiger" ${manArgs(it)}>
+    <td class="fin-bild">${img}</td>
+    <td class="fin-name"><span class="fin-name-text">${label}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(it)}</span><span class="fin-unter">×${qty}</span></td>
+    <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
+    <td class="fin-detail fin-datum">${acq?.created_at?fmtDatum(acq.created_at):''}</td>
+    <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
+    <td class="fin-detail price-cell zahl">${current>0?geschaetztMarke(it, fmtN(current,cur)):'<span class="text-mut">—</span>'}</td>
+    <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total,cur) : '<span class="text-mut">—</span>'}</td>
+    <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
+    <td class="fin-status"></td>
+  </tr>`;
+}
+
+/** Eine Zeile je Kaufpreis-Erfassung (mindestens eine), jede mit dem Marktpreis ihres Zustands.
+ * @param {any} it @param {string} label @param {string} cur */
+function pmRows(it, label, cur){
+  const acqs = it.acquisitions || [];
+  if (!acqs.length) return pmRow(it, label, null, cur);
+  return acqs.map(a => pmRow(it, label, a, cur)).join('');
+}
+
+function pmTableHead() {
+  return `<thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead>`;
+}
+
+/** Abschnitt der manuell erfassten Teile oder Figuren; leer ohne Einträge.
+ * @param {{ art: string, titel: string, symbol: string, zeilen: string, anzahl: number, kauf: number, wert: number, cur: string }} o */
+function manuellerAbschnitt(o) {
+  if (!o.anzahl) return '';
+  const fuss = `<tfoot><tr><td colspan="4" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(o.kauf, o.wert, o.cur, 1)}<td colspan="2"></td></tr></tfoot>`;
+  return `
+    <div class="tw abstand-o-125" data-fin-art="${o.art}" tabindex="0" role="region" aria-label="${esc(o.titel)}">
+      <div class="ctitle fin-abschnitt">${ico(o.symbol)} ${o.titel}</div>
+      <table class="dt dt-fin">${PM_COLGROUP}${pmTableHead()}<tbody>${o.zeilen}</tbody>${fuss}</table>
+    </div>`;
+}
+
+// Eine Zeile je Kaufpreis-Erfassung, jede mit dem Marktpreis ihres Zustands.
+// Ausführlich: docs/begruendungen/public/js/04-finance.js.md#setrow
+/** @param {any} s @param {any} acq @param {string} cur */
+function setRow(s, acq, cur){
+  const qty      = acq ? acq.quantity : s.quantity;
+  const purchase = acq ? acq.purchase_price : s.purchase_price;
+  const market   = acq ? acq.avg_price : s.avg_price;
+  const total    = acq ? acq.wert_gesamt : s.wert_gesamt;
+  // G&V je Zeile vom Server (gegen den Kaufpreis DIESER Erfassung). Ohne
+  // Erfassungen bleibt der bisherige Wert aus der G&V-Antwort.
+  const pnl      = acq ? acq.pnl_prozent
+                       : (s.pnl_prozent ?? _pnlCache[s.set_number]?.pnl_pct);
+  const dateSrc  = acq ? acq.created_at : s.added_at;
+  // Die Fehlermeldung steht im Status-Symbol (Tooltip), nicht in der Summe:
+  // Dort brach sie die Spalte fünfzeilig um.
+  return `<tr class="zeiger" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
+  <td class="fin-bild">${s.image_local||s.image_url?bildTag({ src: imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
+  <td class="fin-detail"><span class="nummer-klein">${esc(s.set_number)}</span></td>
+  <td class="fin-name">${esc(s.name)||'—'}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td><td class="fin-detail">${s.year||'—'}</td>
+  <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
+  <td class="fin-detail fin-datum">${dateSrc?fmtDatum(dateSrc):'—'}</td>
+  <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
+  <td class="fin-detail zahl ${s.error?'':'price-cell'}">${s.error?`<span class="fin-fehlt" title="${esc(t('finance.price_failed'))}: ${esc(s.error)}">${t('finance.price_missing_short')}</span>`:fmtN(market,cur)}</td>
+  <td class="fin-wert zahl ${s.error?'':'price-total'}">${s.error?'<span class="text-mut">—</span>':fmtN(total,cur)}</td>
+  <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
+  <td class="fin-status">${priceStatusBadge(s)}</td>
+</tr>`;
+}
+
+/** @param {string} rows @param {{ sets: number }} einstand @param {number} setsQtyAvg @param {string} cur */
+function setsTabelle(rows, einstand, setsQtyAvg, cur) {
+  return `<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-235"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>`;
+}
+
+/** Gesamtübersicht: Einstand und Wert je Bereich und zusammen.
+ * @param {{ sets: number, parts: number, figs: number, alle: number }} einstand
+ * @param {{ sets: number, parts: number, figs: number, alle: number }} wert @param {string} cur */
+function summenTabelle(einstand, wert, cur) {
+  const zeile = (/** @type {string} */ name, /** @type {number} */ kauf, /** @type {number} */ w) =>
+    `<tr><td class="fin-fuss-name">${name}</td>${summenZellen(kauf, w, cur, 0)}</tr>`;
+  return `
+    <div class="tw abstand-o-125">
+      <table class="dt dt-summe">
+        <thead><tr><th><span class="vh">${t('finance.bereich')}</span></th><th>${t('finance.stat.purchase')}</th><th>${t('finance.grand.value')}</th></tr></thead>
+        <tbody>
+          ${zeile(t('finance.filter.sets'), einstand.sets, wert.sets)}
+          ${zeile(t('finance.grand.parts'), einstand.parts, wert.parts)}
+          ${zeile(t('finance.figs_section'), einstand.figs, wert.figs)}
+        </tbody>
+        <tfoot>${zeile(t('finance.grand.total'), einstand.alle, wert.alle)}</tfoot>
+      </table>
+    </div>`;
+}
+
+/** Platzhalter, solange geladen wird; eine vorhandene Tabelle bleibt stehen. @returns {boolean} ob schon eine Tabelle da war */
+function finanzenLaedt() {
   const hatteTabelle = !!G('fin-tbl').querySelector('table');
   if (!hatteTabelle) G('fin-tbl').innerHTML = ladeAnzeige(t('finance.fetch_prices'));
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').setAttribute('aria-busy', 'true');
     for (const id of ['fin-einstand', 'fin-wert', 'portfolio-current']) G(id).innerHTML = WERT_SKELETT;
   }
-  // Fetch all finance data in parallel
+  return hatteTabelle;
+}
+
+/** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {any} d */
+function finanzenFehlen(d) {
+  if (!_letzteKurve) G('portfolio-chart').innerHTML = diagrammNichtDa(!!d.networkError);
+  if (!G('fin-sum').dataset.geladen) {
+    G('fin-sum').removeAttribute('aria-busy');
+    for (const id of ['fin-einstand', 'fin-wert', 'portfolio-current']) G(id).textContent = '—';
+  }
+}
+
+export async function loadFinance(){
+  const hatteTabelle = finanzenLaedt();
+  // Alle vier mit demselben Kontofilter — sonst stünde eine Summe aus einem
+  // Blickfeld neben einer Aufstellung aus einem anderen.
   const [d, partsVal, figsVal, pnlData] = await Promise.all([
-    // Alle vier mit demselben Kontofilter — sonst stünde eine Summe aus
-    // einem Blickfeld neben einer Aufstellung aus einem anderen.
     api('GET','/v1/finance/valuation'+scopeQuery('finance')),
     api('GET','/v1/finance/parts-valuation'+scopeQuery('finance')),
     api('GET','/v1/finance/minifigs-valuation'+scopeQuery('finance')),
     api('GET','/v1/finance/pnl'+scopeQuery('finance')),
   ]);
-  if (listeLadefehler(G('fin-tbl'), d, { erneut: 'loadFinance', behalten: hatteTabelle })) {
-    // Das Diagramm lädt erst nach den Werten; ohne sie bliebe „Laden…“ stehen.
-    if (!_letzteKurve) G('portfolio-chart').innerHTML = diagrammNichtDa(!!d.networkError);
-    if (!G('fin-sum').dataset.geladen) {
-      G('fin-sum').removeAttribute('aria-busy');
-      for (const id of ['fin-einstand', 'fin-wert', 'portfolio-current']) G(id).textContent = '—';
-    }
-    return;
-  }
+  if (listeLadefehler(G('fin-tbl'), d, { erneut: 'loadFinance', behalten: hatteTabelle })) { finanzenFehlen(d); return; }
   const cur=d.currency;
-  const partsExtra = parseFloat(partsVal.success ? partsVal.total_value||0 : 0);
-  const figsExtra  = parseFloat(figsVal.success  ? figsVal.total_value||0  : 0);
-  const extra = partsExtra + figsExtra;
-  // Die Kachel „Ø Marktpreis" (qty_avg) ist entfallen.
+  const extra = parseFloat(partsVal.success ? partsVal.total_value||0 : 0) + parseFloat(figsVal.success ? figsVal.total_value||0 : 0);
   // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#gesamtguv
   const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_prozent : null;
-
-  // (fliesst bereits in "extra"/Gesamtsumme oben ein — hier zusätzlich transparent
-  // als eigene Zeilen mit Kaufpreis, aktuellem Wert und G&V ausgewiesen)
-  // Feste Spaltenbreiten (colgroup + table-layout:fixed): Bild/Name/Anz. sowie
-  // ein Platzhalter (entspricht der Erfasst-Spalte der Sets-Tabelle) sorgen …
-  // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#condbadge
-  const condBadge = c => condBadges({ conditions: [c] });
-  const pmColgroup = `<colgroup>
-    <col class="sp-60"><col class="sp-380"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-55">
-  </colgroup>`;
-  // Wie bei den Sets: eine VOLLSTÄNDIGE Zeile je Kaufpreis-Erfassung, jede mit
-  // dem Marktpreis ihres Zustands und ihrer eigenen Entwicklung. Ein Teil, das
-  // einmal neu und einmal gebraucht gekauft wurde, steht mit zwei Zeilen da.
-  // Ohne Erfassungen (Altbestand) bleibt es bei der einen Zeile. …
-  // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#manargs
-  const manArgs = it => it.fig_number
-    ? `data-click="openManDetail" data-arg="fig" data-arg2="${escJs(it.fig_number)}" data-arg3="0"`
-    : `data-click="openManDetail" data-arg="part" data-arg2="${escJs(it.part_number)}" data-arg3="${it.color_id||0}"`;
-  /** Ein aus Teilepreisen geschätzter Figurenpreis bekommt „≈" und die Abdeckung. */
-  function geschaetztMarke(it, html){
-    if (!it.estimated_from_parts) return html;
-    const p = it.abdeckung != null ? Math.round(it.abdeckung * 100) : '?';
-    const hinweis = esc(tRaw('finance.aus_teilen_geschaetzt', { p }));
-    return `<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${html}</span>`;
-  }
-
-  function pmRow(it, label, acq){
-    const qty = acq ? acq.quantity : (it.quantity || 1);
-    // avg_price zuerst — wie überall seit der Preisumstellung.
-    const current = acq ? parseFloat(acq.avg_price ?? 0)
-                        : parseFloat(it.avg_price ?? it.qty_avg_price ?? 0);
-    const purchase = acq
-      ? (acq.purchase_price!=null ? parseFloat(acq.purchase_price) : null)
-      : (it.purchase_price!=null ? parseFloat(it.purchase_price) : null);
-    const total = acq ? (acq.wert_gesamt ?? 0) : (it.wert_gesamt ?? 0);
-    const pnl = acq ? acq.pnl_prozent : it.pnl_prozent;
-    const art = it.fig_number ? 'figur' : 'teil';
-    const img = it.image_local||it.image_url ? bildTag({ src: imgUrl(thumbUrl(it.image_local||it.image_url)||it.image_local||it.image_url, true), orig: imgUrl(it.image_url||''), alt: '', ph: art }) : `<span class="bild-ph" aria-hidden="true">${platzhalterInhalt(art)}</span>`;
-    // Der frühere dritte Parameter onclickAttr wurde von keinem Aufrufer
-    // gesetzt — der Zweig war tot und hätte als Inline-Handler die CSP blockiert.
-    return `<tr class="zeiger" ${manArgs(it)}>
-      <td class="fin-bild">${img}</td>
-      <td class="fin-name"><span class="fin-name-text">${label}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(it)}</span><span class="fin-unter">×${qty}</span></td>
-      <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
-      <td class="fin-detail fin-datum">${acq?.created_at?fmtDatum(acq.created_at):''}</td>
-      <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
-      <td class="fin-detail price-cell zahl">${current>0?geschaetztMarke(it, fmtN(current,cur)):'<span class="text-mut">—</span>'}</td>
-      <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total,cur) : '<span class="text-mut">—</span>'}</td>
-      <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
-      <td class="fin-status"></td>
-    </tr>`;
-  }
-
-  /** Ein Eintrag → eine Zeile je Erfassung (mindestens eine). */
-  function pmRows(it, label){
-    const acqs = it.acquisitions || [];
-    if (!acqs.length) return pmRow(it, label, null);
-    return acqs.map(a => pmRow(it, label, a)).join('');
-  }
   const partsItems = partsVal.success ? partsVal.parts : [];
   const figsItems  = figsVal.success  ? figsVal.figs   : [];
   // Einstand je Abschnitt: vom Server (pnl), sonst aus den Zeilen gerechnet.
@@ -233,76 +304,16 @@ export async function loadFinance(){
     sets:  zahlOder(pt.sets_purchase,  einstandAus(d.sets)),
     parts: zahlOder(pt.parts_purchase, einstandAus(partsItems)),
     figs:  zahlOder(pt.figs_purchase,  einstandAus(figsItems)),
+    alle: 0,
   };
   einstand.alle = zahlOder(pt.purchase, einstand.sets + einstand.parts + einstand.figs);
   const ohnePreis = d.sets.filter(s => s.error || !(parseFloat(s.avg_price) > 0)).length
     + [...partsItems, ...figsItems].filter(it => !(parseFloat(it.avg_price ?? it.qty_avg_price) > 0)).length;
-  const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?` <span class="text-mut schrift-1">(${esc(colorName(p.color_name))})</span>`:''}`)).join('');
-  const figsRows  = figsItems.map(f => pmRows(f, esc(f.fig_name||f.fig_number))).join('');
-  // Die vierte Spalte war ein reiner Platzhalter, damit die Preisspalten an
-  // derselben Stelle wie in der Sets-Tabelle beginnen. Sie trägt jetzt dasselbe
-  // wie dort: das Erfassungsdatum der Zeile.
-  const pmTableHead = `<thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead>`;
-  // Die Summen liefert der Server (`total_value`) — Android liest sie seit jeher
-  // von dort. Hier wurde stattdessen über `display_value` addiert; heute kommt
-  // dasselbe heraus, aber sobald der Server Zeilen ohne Preis anders behandelt,
-  // zeigen die beiden Clients verschiedene Zahlen.
-  const partsTotal = parseFloat(partsVal?.total_value || 0);
-  const figsTotal  = parseFloat(figsVal?.total_value || 0);
-  const pmFoot = (kauf, total) => `<tfoot><tr><td colspan="4" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(kauf, total, cur, 1)}<td colspan="2"></td></tr></tfoot>`;
-  const partsSectionHtml = partsItems.length ? `
-    <div class="tw abstand-o-125" data-fin-art="parts" tabindex="0" role="region" aria-label="${esc(t('parts.manual_section'))}">
-      <div class="ctitle fin-abschnitt">${ico('teil')} ${t('parts.manual_section')}</div>
-      <table class="dt dt-fin">${pmColgroup}${pmTableHead}<tbody>${partsRows}</tbody>${pmFoot(einstand.parts, partsTotal)}</table>
-    </div>` : '';
-  const figsSectionHtml = figsItems.length ? `
-    <div class="tw abstand-o-125" data-fin-art="figs" tabindex="0" role="region" aria-label="${esc(t('finance.figs_section'))}">
-      <div class="ctitle fin-abschnitt">${ico('figur')} ${t('finance.figs_section')}</div>
-      <table class="dt dt-fin">${pmColgroup}${pmTableHead}<tbody>${figsRows}</tbody>${pmFoot(einstand.figs, figsTotal)}</table>
-    </div>` : '';
-
-  // Ein Set mit einem Kaufpreis für „Neu" und einem für „Gebraucht" steht
-  // jetzt mit ZWEI Zeilen in der Tabelle, jede mit dem Marktpreis ihres
-  // Zustands. Vorher gab es eine Zeile je Set — und weil eine einzige
-  // Gebraucht-Erfassung das ganze Set als gebraucht führte, wurde auch das neu …
-  // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#setrow
-  function setRow(s, acq){
-    const qty      = acq ? acq.quantity : s.quantity;
-    const purchase = acq ? acq.purchase_price : s.purchase_price;
-    const market   = acq ? acq.avg_price : s.avg_price;
-    const total    = acq ? acq.wert_gesamt : s.wert_gesamt;
-    // G&V je Zeile vom Server (gegen den Kaufpreis DIESER Erfassung). Ohne
-    // Erfassungen bleibt der bisherige Wert aus der G&V-Antwort.
-    const pnl      = acq ? acq.pnl_prozent
-                         : (s.pnl_prozent ?? _pnlCache[s.set_number]?.pnl_pct);
-    const dateSrc  = acq ? acq.created_at : s.added_at;
-    // Die Fehlermeldung steht im Status-Symbol (Tooltip), nicht in der Summe:
-    // Dort brach sie die Spalte fünfzeilig um.
-    return `<tr class="zeiger" tabindex="0" data-click="openModal" data-arg="${escJs(s.set_number)}">
-    <td class="fin-bild">${s.image_local||s.image_url?bildTag({ src: imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url, true), alt: '', ph: 'set' }):`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
-    <td class="fin-detail"><span class="nummer-klein">${esc(s.set_number)}</span></td>
-    <td class="fin-name">${esc(s.name)||'—'}${acq?` ${condBadge(acq.condition)}`:''} ${ownerBadges(s)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td><td class="fin-detail">${s.year||'—'}</td>
-    <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
-    <td class="fin-detail fin-datum">${dateSrc?fmtDatum(dateSrc):'—'}</td>
-    <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
-    <td class="fin-detail zahl ${s.error?'':'price-cell'}">${s.error?`<span class="fin-fehlt" title="${esc(t('finance.price_failed'))}: ${esc(s.error)}">${t('finance.price_missing_short')}</span>`:fmtN(market,cur)}</td>
-    <td class="fin-wert zahl ${s.error?'':'price-total'}">${s.error?'<span class="text-mut">—</span>':fmtN(total,cur)}</td>
-    <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
-    <td class="fin-status">${priceStatusBadge(s)}</td>
-  </tr>`;
-  }
-  const rows=d.sets.map(s=>{
-    const acqs = s.acquisitions || [];
-    if (acqs.length <= 1) return setRow(s, acqs[0] || null);
-    return acqs.map(a => setRow(s, a)).join('');
-  }).join('');
+  // Summen vom Server (`total_value`), wie in der App.
   const setsQtyAvg = parseFloat(d.totals.avg||0);
-  // Hier stand `setsQtyAvg + extra` — und in FinanceSections.kt derselbe
-  // Ausdruck noch einmal. Die Regel „was zählt zum Gesamtwert" lag damit an
-  // drei Stellen, und /finance/pnl liefert sie ohnehin schon: `totals.grand_total`
-  // wird dort aus den Preisen JE ZEILE gebildet statt aus drei gerundeten …
   // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#grandtotal
   const grandTotal = parseFloat(pnlData?.totals?.grand_total || 0) || (setsQtyAvg + extra);
+  const wert = { sets: setsQtyAvg, parts: parseFloat(partsVal?.total_value || 0), figs: parseFloat(figsVal?.total_value || 0), alle: grandTotal };
   window._finPartsExtra = extra;
   window._finGrandTotal  = grandTotal; // used by chart to scale last point
   if(G('portfolio-current')) G('portfolio-current').textContent = fmtN(grandTotal, cur);
@@ -317,24 +328,19 @@ export async function loadFinance(){
     G('fin-tbl').innerHTML = leerZustand({ ico: 'finanzen', titel: tRaw('finance.empty'), text: tRaw('finance.empty_text') });
     return;
   }
-  const summenZeile = (name, kauf, wert) => `<tr><td class="fin-fuss-name">${name}</td>${summenZellen(kauf, wert, cur, 0)}</tr>`;
-  const grandTotalHtml = `
-    <div class="tw abstand-o-125">
-      <table class="dt dt-summe">
-        <thead><tr><th><span class="vh">${t('finance.bereich')}</span></th><th>${t('finance.stat.purchase')}</th><th>${t('finance.grand.value')}</th></tr></thead>
-        <tbody>
-          ${summenZeile(t('finance.filter.sets'), einstand.sets, setsQtyAvg)}
-          ${summenZeile(t('finance.grand.parts'), einstand.parts, partsTotal)}
-          ${summenZeile(t('finance.figs_section'), einstand.figs, figsTotal)}
-        </tbody>
-        <tfoot>${summenZeile(t('finance.grand.total'), einstand.alle, grandTotal)}</tfoot>
-      </table>
-    </div>`;
-  G('fin-tbl').innerHTML=`<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-235"><col class="sp-55"><col class="sp-70"><col class="sp-90"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-80"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th>${t('detail.year')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="6" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${partsSectionHtml}${figsSectionHtml}${grandTotalHtml}`;
-  // Der Filter ueberlebt das Neuzeichnen. Ohne diesen Aufruf stuenden nach
-  // jedem „Preise laden" wieder alle drei Abschnitte da, waehrend die Chips
-  // daneben weiter eine Auswahl anzeigen — die Anzeige waere dann eine
-  // Behauptung.
+  const rows = d.sets.map(s => {
+    const acqs = s.acquisitions || [];
+    if (acqs.length <= 1) return setRow(s, acqs[0] || null, cur);
+    return acqs.map(a => setRow(s, a, cur)).join('');
+  }).join('');
+  const partsRows = partsItems.map(p => pmRows(p, `${esc(p.part_name||p.part_number)}${p.color_name?` <span class="text-mut schrift-1">(${esc(colorName(p.color_name))})</span>`:''}`, cur)).join('');
+  const figsRows  = figsItems.map(f => pmRows(f, esc(f.fig_name||f.fig_number), cur)).join('');
+  G('fin-tbl').innerHTML = setsTabelle(rows, einstand, setsQtyAvg, cur)
+    + manuellerAbschnitt({ art: 'parts', titel: t('parts.manual_section'), symbol: 'teil', zeilen: partsRows, anzahl: partsItems.length, kauf: einstand.parts, wert: wert.parts, cur })
+    + manuellerAbschnitt({ art: 'figs', titel: t('finance.figs_section'), symbol: 'figur', zeilen: figsRows, anzahl: figsItems.length, kauf: einstand.figs, wert: wert.figs, cur })
+    + summenTabelle(einstand, wert, cur);
+  // Der Filter überlebt das Neuzeichnen; sonst zeigten die Chips eine Auswahl,
+  // die die Tabelle nicht mehr hat.
   finFilterAnwenden();
 }
 

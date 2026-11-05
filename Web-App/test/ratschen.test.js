@@ -333,6 +333,36 @@ test('kein Kommentar der Oberfläche hat mehr als fünf Zeilen Prosa', () => {
   assert.deepEqual(lang, [], 'Lange Begründung: Warum in den Code (höchstens fünf Zeilen), Geschichte in den Commit');
 });
 
+/** Funktionen der Oberfläche mit ihrer Länge (Deklaration bis zur schliessenden Klammer gleicher Einrückung). */
+function funktionsLaengen() {
+  const raus = [];
+  for (const f of oberflaeche()) {
+    const z = fs.readFileSync(f, 'utf8').split('\n');
+    z.forEach((l, i) => {
+      const m = l.match(/^(\s*)(?:export\s+)?(?:async\s+)?function\s*\*?\s*(\w+)\s*\(/);
+      if (!m || /\}\s*;?\s*$/.test(l)) return;
+      const ende = z.findIndex((x, j) => j > i && x.startsWith(m[1] + '}'));
+      if (ende > i) raus.push({ ort: `${path.relative(WEB, f)}:${i + 1} ${m[2]}`, zeilen: ende - i + 1 });
+    });
+  }
+  return raus;
+}
+
+test('keine Funktion der Oberfläche über 100 Zeilen, über 80 werden weniger', () => {
+  // Gemessen am 05.11.2026: 13 über 100 (loadFinance 262); nach dem Aufteilen
+  // 0 über 100 und 8 über 80. Gegenprobe: loadFinance wieder in einem Stück
+  // (vor dem Aufteilen) → rot mit „04-finance.js … loadFinance“.
+  const SCHRANKE_80 = 8;
+  const alle = funktionsLaengen();
+  assert.ok(alle.length > 500, `nur ${alle.length} Funktionen gefunden — greift die Suche noch?`);
+  const ueber100 = alle.filter(x => x.zeilen > 100).map(x => `${x.ort} (${x.zeilen})`);
+  assert.deepEqual(ueber100, [], 'Eine Funktion über 100 Zeilen: in benannte Teile zerlegen');
+  const ueber80 = alle.filter(x => x.zeilen > 80);
+  assert.ok(ueber80.length <= SCHRANKE_80,
+    `${ueber80.length} Funktionen über 80 Zeilen, erlaubt sind ${SCHRANKE_80}:\n${ueber80.map(x => x.ort).join('\n')}`);
+  if (ueber80.length < SCHRANKE_80) console.log(`  ℹ Funktionen über 80 Zeilen: ${ueber80.length} (Schranke ${SCHRANKE_80}) — Schranke nachziehen`);
+});
+
 test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in

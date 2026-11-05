@@ -105,6 +105,60 @@ export async function saveJobSchedule(name, payload) {
 }
 
 
+// Bausteine der Dienstetabelle im Monitor.
+// Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die
+// Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
+/** @param {any} schedules @param {string} k */
+const schedInput = (schedules, k) => {
+  const sc = schedules?.[k];
+  if (!sc) return `<span class="mon-leise">${t('monitor.sched.keiner')}</span>`;
+  if (sc.type === 'daily') {
+    return `<label class="mon-plan">${t('monitor.sched.taeglich')} <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="job-sched-input mon-zeit" value="${esc(sc.time)}" aria-label="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}"></label>`;
+  }
+  if (sc.type === 'interval') {
+    return `<label class="mon-plan">${t('monitor.sched.alle')} <input inputmode="numeric" type="number" min="5" class="job-sched-input mon-minuten" aria-label="${t('monitor.sched.interval_hint')}" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}"> ${t('monitor.sched.min')}</label>`;
+  }
+  return '';
+};
+const jobIconSvg = (k) => {
+  const svgs = {
+    // CSV-Import (Rebrickable): kleine Tabelle/Raster mit farbigen Zeilen
+    csvImport: '<rect x="12" y="20" width="96" height="18" rx="2" fill="#0055BF"/><rect x="12" y="44" width="96" height="18" rx="2" fill="#F2CD37"/><rect x="12" y="68" width="96" height="18" rx="2" fill="#E63329"/><rect x="12" y="92" width="96" height="18" rx="2" fill="#9BA19D"/>',
+    // BrickLink IDs nachladen: zwei verbundene Ringe (Verknüpfung/Mapping)
+    blIds: '<path d="M40,45 a20,20 0 1,0 0.1,0" fill="none" stroke="#0055BF" stroke-width="12"/><path d="M80,75 a20,20 0 1,0 0.1,0" fill="none" stroke="#E63329" stroke-width="12"/>',
+    // Handbücher herunterladen: kleines aufgeschlagenes Buch
+    instrQueue: '<path d="M60,28 C50,22 30,20 16,24 L16,92 C30,88 50,90 60,96 Z" fill="#E63329"/><path d="M60,28 C70,22 90,20 104,24 L104,92 C90,88 70,90 60,96 Z" fill="#CC2A21"/><rect x="24" y="38" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="50" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="62" width="20" height="4" rx="2" fill="#fff"/>',
+    // Preise aktualisieren: Preisschild (Gold) mit Loch
+    brickset: '<rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/>',
+    priceJob: '<path d="M18,60 L58,20 L100,20 Q108,20 108,28 L108,70 Q108,78 100,78 L58,100 Z" fill="#F2CD37"/><circle cx="84" cy="42" r="9" fill="#fff"/>',
+  };
+  return svgs[k] ? `<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${svgs[k]}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
+};
+const jobZustand = (s) => ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'),
+  error: tRaw('monitor.state.error') })[s] || tRaw('monitor.state.idle');
+const statusIcon = (s, j) => {
+  if (s === 'running') return ico('uhr');
+  if (s === 'done')    return ico('ok');
+  if (s === 'error')   return ico('fehler');
+  // idle: show warning if there's pending work (total > progress or sub mentions pending)
+  if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
+  return ico('pause');
+};
+const bar = (v, gesamt) => {
+  if (!gesamt) return '';
+  const pct = Math.min(100, Math.round(v / gesamt * 100));
+  return `<div class="mon-balken"><div data-breite="${pct}"></div></div>`;
+};
+const aktionen = (k, j) => [
+  k === 'priceJob' ? `<button class="btn bs btn-sm" type="button" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : '',
+  k === 'instrQueue' ? `<button class="btn bs btn-sm" type="button" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : '',
+  k === 'csvImport' ? `<button class="btn bs btn-sm" type="button" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : '',
+  k === 'imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" type="button" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : '',
+  k === 'imgDl' ? `<button class="btn bs btn-sm" type="button" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : '',
+  k === 'bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${t('monitor.show')}</span></button>` : '',
+].join('');
+const dienstName = (k, j) => t('monitor.job.' + k, {}) !== 'monitor.job.' + k ? t('monitor.job.' + k) : esc(j.label || k);
+
 export async function loadMonitor() {
   const el = G('monitor-content');
   if (!el) return;
@@ -117,57 +171,6 @@ export async function loadMonitor() {
     const _ae = document.activeElement;
     if (_ae && _ae.classList && _ae.classList.contains('job-sched-input')) return;
     const { jobs, db: dbStats, schedules } = d;
-    // Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die
-    // Form des Browsers („03:00 AM“), unabhängig von der Sprache der Seite.
-    const schedInput = (k) => {
-      const sc = schedules?.[k];
-      if (!sc) return `<span class="mon-leise">${t('monitor.sched.keiner')}</span>`;
-      if (sc.type === 'daily') {
-        return `<label class="mon-plan">${t('monitor.sched.taeglich')} <input type="text" inputmode="numeric" maxlength="5" placeholder="HH:MM" class="job-sched-input mon-zeit" value="${esc(sc.time)}" aria-label="${t('monitor.sched.daily_hint')}" data-change="saveJobTime" data-arg="${esc(k)}"></label>`;
-      }
-      if (sc.type === 'interval') {
-        return `<label class="mon-plan">${t('monitor.sched.alle')} <input inputmode="numeric" type="number" min="5" class="job-sched-input mon-minuten" aria-label="${t('monitor.sched.interval_hint')}" value="${esc(sc.minutes)}" data-change="saveJobMinutes" data-arg="${esc(k)}"> ${t('monitor.sched.min')}</label>`;
-      }
-      return '';
-    };
-    const jobIconSvg = (k) => {
-      const svgs = {
-        // CSV-Import (Rebrickable): kleine Tabelle/Raster mit farbigen Zeilen
-        csvImport: '<rect x="12" y="20" width="96" height="18" rx="2" fill="#0055BF"/><rect x="12" y="44" width="96" height="18" rx="2" fill="#F2CD37"/><rect x="12" y="68" width="96" height="18" rx="2" fill="#E63329"/><rect x="12" y="92" width="96" height="18" rx="2" fill="#9BA19D"/>',
-        // BrickLink IDs nachladen: zwei verbundene Ringe (Verknüpfung/Mapping)
-        blIds: '<path d="M40,45 a20,20 0 1,0 0.1,0" fill="none" stroke="#0055BF" stroke-width="12"/><path d="M80,75 a20,20 0 1,0 0.1,0" fill="none" stroke="#E63329" stroke-width="12"/>',
-        // Handbücher herunterladen: kleines aufgeschlagenes Buch
-        instrQueue: '<path d="M60,28 C50,22 30,20 16,24 L16,92 C30,88 50,90 60,96 Z" fill="#E63329"/><path d="M60,28 C70,22 90,20 104,24 L104,92 C90,88 70,90 60,96 Z" fill="#CC2A21"/><rect x="24" y="38" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="50" width="28" height="4" rx="2" fill="#fff"/><rect x="24" y="62" width="20" height="4" rx="2" fill="#fff"/>',
-        // Preise aktualisieren: Preisschild (Gold) mit Loch
-        brickset: '<rect x="10" y="48" width="28" height="24" rx="3" fill="#0055BF"/><circle cx="24" cy="48" r="4.5" fill="#0055BF"/><rect x="46" y="48" width="28" height="24" rx="3" fill="#F2CD37"/><circle cx="60" cy="48" r="4.5" fill="#F2CD37"/><rect x="82" y="48" width="28" height="24" rx="3" fill="#E63329"/><circle cx="96" cy="48" r="4.5" fill="#E63329"/>',
-        priceJob: '<path d="M18,60 L58,20 L100,20 Q108,20 108,28 L108,70 Q108,78 100,78 L58,100 Z" fill="#F2CD37"/><circle cx="84" cy="42" r="9" fill="#fff"/>',
-      };
-      return svgs[k] ? `<svg class="mon-sinnbild" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${svgs[k]}</svg>` : '<span class="mon-sinnbild" aria-hidden="true"></span>';
-    };
-    const jobZustand = (s) => ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'),
-      error: tRaw('monitor.state.error') })[s] || tRaw('monitor.state.idle');
-    const statusIcon = (s, j) => {
-      if (s === 'running') return ico('uhr');
-      if (s === 'done')    return ico('ok');
-      if (s === 'error')   return ico('fehler');
-      // idle: show warning if there's pending work (total > progress or sub mentions pending)
-      if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
-      return ico('pause');
-    };
-    const bar = (v, gesamt) => {
-      if (!gesamt) return '';
-      const pct = Math.min(100, Math.round(v / gesamt * 100));
-      return `<div class="mon-balken"><div data-breite="${pct}"></div></div>`;
-    };
-    const aktionen = (k, j) => [
-      k === 'priceJob' ? `<button class="btn bs btn-sm" type="button" data-click="clickJobTrigger">${t('monitor.run_now')}</button>` : '',
-      k === 'instrQueue' ? `<button class="btn bs btn-sm" type="button" data-click="reimportMissingInstructions" data-self="1">${t('monitor.import_missing')}</button>` : '',
-      k === 'csvImport' ? `<button class="btn bs btn-sm" type="button" data-click="triggerCsvSync" data-self="1">${t('monitor.sync_now')}</button>` : '',
-      k === 'imgDl' && j.canRedownload ? `<button class="btn bs btn-sm" type="button" data-click="redownloadMissingImages" data-self="1">${t('monitor.redownload_missing')}</button>` : '',
-      k === 'imgDl' ? `<button class="btn bs btn-sm" type="button" data-click="queueCatalogImages" data-self="1">${t('monitor.catalog_images')}</button>` : '',
-      k === 'bricksetRetry' && j.total > 0 ? `<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${t('monitor.show')}</span></button>` : '',
-    ].join('');
-    const name = (k, j) => t('monitor.job.' + k, {}) !== 'monitor.job.' + k ? t('monitor.job.' + k) : esc(j.label || k);
     const panel = G('brickset-queue-panel');
     const panelHTML = panel && panel.style.display !== 'none' ? panel.innerHTML : null;
     const zahl = (n) => (n || 0).toLocaleString(locale());
@@ -182,10 +185,10 @@ export async function loadMonitor() {
       <div class="tw"><table class="dt mon-tabelle">
         <thead><tr><th>${t('monitor.col.dienst')}</th><th>${t('monitor.col.zustand')}</th><th>${t('monitor.col.zeitplan')}</th><th>${t('monitor.col.zuletzt')}</th><th>${t('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(([k, j]) => `<tr>
-          <td><span class="mon-name">${k === 'bricksetRetry' ? jobIconSvg('brickset') : jobIconSvg(k)}${name(k, j)}</span></td>
+          <td><span class="mon-name">${k === 'bricksetRetry' ? jobIconSvg('brickset') : jobIconSvg(k)}${dienstName(k, j)}</span></td>
           <td><span class="mon-zustand mon-${esc(j.status || 'idle')}">${statusIcon(j.status, j)} ${esc(jobZustand(j.status))}</span>
             ${j.sub ? `<div class="mon-leise">${translateJobSub(j.sub)}</div>` : ''}${j.total > 0 ? bar(j.progress, j.total) : ''}</td>
-          <td>${schedInput(k)}</td>
+          <td>${schedInput(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(j.lastRun, 'zeit') : '–'}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j) || '<span class="mon-leise">–</span>'}</div></td>
         </tr>`).join('')}</tbody>

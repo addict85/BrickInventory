@@ -55,7 +55,8 @@ test('Finanzen-Filter: dieselben vier Arten in Webapp und App', () => {
   // Und jede Art blendet auch wirklich etwas aus: Ein Chip ohne zugehoerigen
   // Abschnitt waere ein Knopf, der nichts tut.
   for (const art of appArten) {
-    assert.ok(web.includes(`data-fin-art="${art}"`),
+    // Teile und Figuren baut manuellerAbschnitt({ art: … }) mit demselben Attribut.
+    assert.ok(web.includes(`data-fin-art="${art}"`) || web.includes(`art: '${art}'`),
       `Zur Art „${art}" gibt es in der Webapp keinen gekennzeichneten Abschnitt`);
   }
 
@@ -87,7 +88,7 @@ test('Finanzen-Filter: dieselben vier Arten in Webapp und App', () => {
   // zum Dateiende fand deshalb IMMER einen Treffer — auch nachdem ich den
   // Aufruf aus loadFinance() entfernt hatte. Die Pruefung war gruen und
   // pruefte nichts.
-  const ab = web.indexOf("G('fin-tbl').innerHTML=`<div");
+  const ab = web.indexOf("G('fin-tbl').innerHTML = setsTabelle(");
   assert.ok(ab > 0, 'Die Zeile, die die Tabelle zeichnet, wurde nicht gefunden — Muster veraltet?');
   const ende = web.indexOf('\n}', ab);
   assert.ok(ende > ab, 'Das Ende von loadFinance() wurde nicht gefunden');

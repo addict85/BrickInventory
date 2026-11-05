@@ -20,6 +20,79 @@ import { esc } from './00-escapen.js';
 // verschiedenen Konten gehören. Der Server verlangt dafür acquisition_ids.
 let _detailLauf = 0;
 
+/** Inhalt des Set-Dialogs aus curSet und den Erfassungen. @param {string} sn @param {any[]} acqs */
+function setDetailHtml(sn, acqs) {
+  const addedFmt = curSet.added_at ? fmtDatum(curSet.added_at) : '—';
+  // Marktpreis und Entwicklung stehen jetzt JE ZUSTAND — und die Werte dafür
+  // kommen aus derselben Abfrage wie der Preisverlauf (by_condition). Hier nur
+  // der Platzhalter; gefüllt wird er in renderMarketRows() weiter unten,
+  // sobald die Antwort da ist.
+  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#pricerow
+  const priceRow = '<div id="m-market-rows"></div>';
+  const pnlRow  = '';
+  const qtyRow = detailZeile(t('detail.qty'), `
+      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}">−</button>
+      <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-feld menge-feld" aria-label="${esc(tRaw('detail.qty'))}" data-change="autosaveSet" />
+      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}">+</button>
+    `, { wertStil: 'display:flex;align-items:center;gap:6px' });
+
+  // Acquisition summary: compact read-only rows + button to open full editor
+  const acqRows = detailZeile(t('detail.purchase_price'), `
+      ${renderAcquisitionSummary(acqs, sn)}
+      <button class="btn bs btn-sm detail-knopf" data-click="openAcqModal" data-arg="${escJs(sn)}">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
+    `, { zeilenStil: 'align-items:flex-start',
+         wertId: 'm-acq-summary',
+         wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
+
+  return `
+    ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
+    ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
+    ${qtyRow}
+    ${detailZeile(t('detail.pieces'), curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—')}
+    ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
+    ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`)}
+    ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
+         zeilenStil: 'align-items:flex-start',
+         wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
+    ${detailZeile(t('detail.storage'),
+        lagerortBlock('m-storage', curSet.storage,
+                      `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`),
+        { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
+    ${acqRows}
+    ${priceRow}${pnlRow}
+    <div id="m-price-chart" data-stil="margin-top:.75rem">
+      <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
+      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
+    </div>`;
+}
+
+/** Figurenzahl und Preisverlauf nachladen, ohne den Dialog aufzuhalten. @param {string} sn */
+function ladeSetNachtraege(sn) {
+  // Load actual minifig count from minifigs table (more reliable than sets.minifigs)
+  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#api
+  api('GET', `/v1/minifigs?source=set`).then(md => {
+    const el = G('m-minifigs-val');
+    if (!el || !curSet || curSet.set_number !== sn) return;
+    if (md.success && md.figs) {
+      const setFigs = md.figs.filter(f => f.in_sets && f.in_sets.split(',').includes(sn));
+      const total   = setFigs.reduce((s, f) => s + (parseInt(f.total_quantity) || parseInt(f.quantity) || 0), 0);
+      if (total > 0) el.textContent = total;
+      else if (!curSet.minifigs) el.textContent = '0';
+    }
+  });
+
+  // Load price history async
+  api('GET', `/v1/sets/${sn}/price-history`).then(ph => {
+    renderMarketRows(ph);
+    const el = G('m-sparkline-content');
+    if(!el) return;
+    // Beide Zustände in EINEM Diagramm — siehe priceChartSVG().
+    el.innerHTML = ph.success
+      ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el))
+      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`;
+  });
+}
+
 export async function openModal(sn){
   const lauf = ++_detailLauf;
   // Der Dialog steht sofort da, mit Platzhalter: Bei langsamem Netz geschah
@@ -44,49 +117,7 @@ export async function openModal(sn){
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
   const img=G('m-img'); img.src=fullUrl(curSet.image_local||curSet.image_url)||'/assets/set-placeholder.svg'; img.style.display='block';
 
-  const addedFmt = curSet.added_at ? fmtDatum(curSet.added_at) : '—';
-  // Marktpreis und Entwicklung stehen jetzt JE ZUSTAND — und die Werte dafür
-  // kommen aus derselben Abfrage wie der Preisverlauf (by_condition). Hier nur
-  // der Platzhalter; gefüllt wird er in renderMarketRows() weiter unten,
-  // sobald die Antwort da ist.
-  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#pricerow
-  const priceRow = '<div id="m-market-rows"></div>';
-  const pnlRow  = '';
-  const qtyRow = detailZeile(t('detail.qty'), `
-      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyDec" aria-label="${esc(tRaw('detail.qty_less'))}">−</button>
-      <input inputmode="numeric" type="number" id="m-qty" min="1" class="detail-feld menge-feld" aria-label="${esc(tRaw('detail.qty'))}" data-change="autosaveSet" />
-      <button class="btn bs btn-sm detail-knopf menge-knopf" data-click="mQtyInc" aria-label="${esc(tRaw('detail.qty_more'))}">+</button>
-    `, { wertStil: 'display:flex;align-items:center;gap:6px' });
-
-  // Acquisition summary: compact read-only rows + button to open full editor
-  const acqs = ad?.acquisitions || [];
-  const acqRows = detailZeile(t('detail.purchase_price'), `
-      ${renderAcquisitionSummary(acqs, sn)}
-      <button class="btn bs btn-sm detail-knopf" data-click="openAcqModal" data-arg="${escJs(sn)}">${ico('bearbeiten')} ${t('detail.edit_prices')}</button>
-    `, { zeilenStil: 'align-items:flex-start',
-         wertId: 'm-acq-summary',
-         wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' });
-
-  G('m-det').innerHTML = `
-    ${detailZeile(t('detail.year'), oderStrich(curSet.year))}
-    ${detailZeile(t('detail.theme'), esc(oderStrich(curSet.theme)))}
-    ${qtyRow}
-    ${detailZeile(t('detail.pieces'), curSet.pieces ? curSet.pieces.toLocaleString(locale()) : '—')}
-    ${detailZeile(t('detail.minifigs'), oderStrich(curSet.minifigs), { wertId: 'm-minifigs-val' })}
-    ${detailZeile(t('detail.created'), `${ico('kalender')} ${addedFmt}`)}
-    ${detailZeile(t('detail.alert'), alarmBlock(sn), { klasse: 'alarm-zeile',
-         zeilenStil: 'align-items:flex-start',
-         wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
-    ${detailZeile(t('detail.storage'),
-        lagerortBlock('m-storage', curSet.storage,
-                      `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`),
-        { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' })}
-    ${acqRows}
-    ${priceRow}${pnlRow}
-    <div id="m-price-chart" data-stil="margin-top:.75rem">
-      <div data-stil="font-size:var(--fs-1);font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin-bottom:4px">${t('detail.price_history')}</div>
-      <div class="sparkline-wrap" id="m-sparkline-content"><span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('common.loading')}</span></div>
-    </div>`;
+  G('m-det').innerHTML = setDetailHtml(sn, ad?.acquisitions || []);
 
   G('m-qty').value=curSet.quantity;
 
@@ -99,30 +130,7 @@ export async function openModal(sn){
   // Begründung an ladeOrtAuswahl().
   ladeOrtAuswahl(curSet.owners).catch(() => {});
 
-  // Load actual minifig count from minifigs table (more reliable than sets.minifigs)
-  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#api
-  api('GET', `/v1/minifigs?source=set`).then(md => {
-    const el = G('m-minifigs-val');
-    if (!el || !curSet || curSet.set_number !== sn) return;
-    if (md.success && md.figs) {
-      const setFigs = md.figs.filter(f => f.in_sets && f.in_sets.split(',').includes(sn));
-      const total   = setFigs.reduce((s, f) => s + (parseInt(f.total_quantity) || parseInt(f.quantity) || 0), 0);
-      if (total > 0) el.textContent = total;
-      else if (!curSet.minifigs) el.textContent = '0';
-    }
-  });
-
-  // Load price history async
-  api('GET', `/v1/sets/${sn}/price-history`).then(ph => {
-    renderMarketRows(ph);
-    const el = G('m-sparkline-content');
-    if(!el) return;
-    // Beide Zustände in EINEM Diagramm — siehe priceChartSVG().
-    el.innerHTML = ph.success
-      ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el))
-      : `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`;
-  });
-
+  ladeSetNachtraege(sn);
 }
 
 /** Aus „Weitere Aktionen“ im Set-Detail: das offene Set. */

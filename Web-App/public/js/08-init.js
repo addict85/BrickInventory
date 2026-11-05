@@ -401,18 +401,11 @@ export function plInit() {
 }
 
 
-async function plExportBricklink() {
-  // Ensure BL color mapping is loaded (may be empty if plGenerate was called before sync)
-  if (!Object.keys(_rbToBlColor).length) {
-    try {
-      const cm = await api('GET', '/v1/parts/bl-color-map');
-      if (cm?.success && cm.map) _rbToBlColor = cm.map;
-    } catch(_) {}
-  }
+/** Was laut Tabelle fehlt (Bedarf minus vorhanden), mit BrickLink-Farbe. */
+function fehlendeTeile() {
   // Collect all "vorhanden" inputs from the table
   const inputs = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
   const missing = [];
-  const condition = G('pl-bl-condition')?.value || 'X';
   inputs.forEach(inp => {
     const need = parseInt(inp.dataset.need) || 0;
     const have = parseInt(inp.value) || 0;
@@ -434,8 +427,12 @@ async function plExportBricklink() {
       });
     }
   });
-  if (!missing.length) { toast(tRaw('pl.none_missing'), 'info'); return; }
+  return missing;
+}
 
+/** Figuren in ihre Teile auflösen und gleiche BrickLink-Nummer+Farbe zusammenzählen.
+ * @param {any[]} missing @returns {Promise<any[]>} */
+async function figurenAufloesen(missing) {
   // Expand minifigs into individual parts and deduplicate by BL-ID + color
   const blMap = {}; // key: "type|partNum|colorId" → {type,part,color,qty}
   for (const m of missing) {
@@ -466,24 +463,11 @@ async function plExportBricklink() {
       else blMap[key] = { ...m };
     }
   }
-  const expanded = Object.values(blMap);
+  return Object.values(blMap);
+}
 
-  // Sie werden genannt. Eine geratene Farbnummer ergibt eine gültige Datei,
-  // die das falsche Teil bestellt — und das fällt erst auf, wenn das Paket da
-  // ist. Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich
-  // nicht abbilden lässt, bleibt offen und wird gesagt.
-  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#ohnefarbe
-  const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
-  const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
-
-  const stuecke = baueWantedXmlStuecke(
-    exportierbar.map(m => ({ ...m, condition })));
-
-  // BrickLink nimmt höchstens BL_UPLOAD_MAX_BYTES je Upload und weist eine
-  // grössere Datei GANZ ab. Passt alles in ein Stück, bleibt es beim alten
-  // Verhalten: in einem neuen Tab öffnen, damit man den Text kopieren kann.
-  // Sonst werden die Stücke heruntergeladen — ein Tab je Stück wäre ein …
-  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#if
+/** Ein Stück im neuen Tab (zum Kopieren), mehrere als Downloads. @param {string[]} stuecke */
+function wantedXmlAusliefern(stuecke) {
   if (stuecke.length === 1) {
     const blob = new Blob([stuecke[0]], { type: 'text/plain; charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -503,6 +487,40 @@ async function plExportBricklink() {
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }
   }
+
+}
+
+async function plExportBricklink() {
+  // Ensure BL color mapping is loaded (may be empty if plGenerate was called before sync)
+  if (!Object.keys(_rbToBlColor).length) {
+    try {
+      const cm = await api('GET', '/v1/parts/bl-color-map');
+      if (cm?.success && cm.map) _rbToBlColor = cm.map;
+    } catch(_) {}
+  }
+  const condition = G('pl-bl-condition')?.value || 'X';
+  const missing = fehlendeTeile();
+  if (!missing.length) { toast(tRaw('pl.none_missing'), 'info'); return; }
+
+  const expanded = await figurenAufloesen(missing);
+
+  // Sie werden genannt. Eine geratene Farbnummer ergibt eine gültige Datei,
+  // die das falsche Teil bestellt — und das fällt erst auf, wenn das Paket da
+  // ist. Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich
+  // nicht abbilden lässt, bleibt offen und wird gesagt.
+  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#ohnefarbe
+  const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
+  const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
+
+  const stuecke = baueWantedXmlStuecke(
+    exportierbar.map(m => ({ ...m, condition })));
+
+  // BrickLink nimmt höchstens BL_UPLOAD_MAX_BYTES je Upload und weist eine
+  // grössere Datei GANZ ab. Passt alles in ein Stück, bleibt es beim alten
+  // Verhalten: in einem neuen Tab öffnen, damit man den Text kopieren kann.
+  // Sonst werden die Stücke heruntergeladen — ein Tab je Stück wäre ein …
+  // Ausführlich: docs/begruendungen/public/js/08-init.js.md#if
+  wantedXmlAusliefern(stuecke);
 
   toast(tRaw('pl.bl_exported', { n: exportierbar.length }), 'success');
   if (stuecke.length > 1) toast(tRaw('pl.bl_split', { n: stuecke.length }), 'info');
