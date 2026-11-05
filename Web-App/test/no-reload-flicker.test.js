@@ -54,6 +54,7 @@ function stripModuleSyntax(src) {
 const PUB = path.join(__dirname, '..', 'public');
 const i18n = require('./helpers/sources').i18nAll();
 const gallery = stripModuleSyntax(fs.readFileSync(path.join(PUB, 'js', '02-gallery.js'), 'utf8'));
+const navigation = fs.readFileSync(path.join(PUB, 'js', '25-navigation.js'), 'utf8');
 
 test('applyLang ist bei gleicher Sprache ein No-Op', () => {
   assert.match(i18n, /_langApplied/,
@@ -65,13 +66,15 @@ test('applyLang ist bei gleicher Sprache ein No-Op', () => {
 test('nur ein echter Sprachwechsel baut den aktiven Tab neu auf', () => {
   assert.match(i18n, /const isRealSwitch = _langApplied !== null && _langApplied !== lang;/,
     'Der erste Aufruf ist kein Wechsel — da lädt der normale Startpfad ohnehin alles');
-  assert.match(i18n, /if \(!isRealSwitch\) return;/,
+  assert.match(i18n, /melde\('spracheGewechselt', \{[^}]*echterWechsel: !!isRealSwitch/,
+    'i18n.js muss melden, ob es ein echter Wechsel war');
+  assert.match(navigation, /abonniere\('spracheGewechselt', \(\{ echterWechsel \}\) => \{\s*if \(!echterWechsel\) return;/,
     'Der Neuaufbau-Block darf beim Start nicht laufen');
 });
 
 test('ein Sprachwechsel lädt die Galerie nicht neu', () => {
-  const block = i18n.slice(i18n.indexOf('if (!isRealSwitch) return;'));
-  const galleryBranch = block.slice(block.indexOf("activeTab === 'gallery'"));
+  const block = navigation.slice(navigation.indexOf("abonniere('spracheGewechselt'"));
+  const galleryBranch = block.slice(block.indexOf("aktiv === 'gallery'"));
   assert.doesNotMatch(galleryBranch.slice(0, 200), /loadGallery\(\)/,
     'Ein Sprachwechsel ändert keine Daten — renderGallery() aus dem Cache genügt');
   assert.match(galleryBranch.slice(0, 200), /renderGallery\(\)/,

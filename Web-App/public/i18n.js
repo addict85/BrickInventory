@@ -1,10 +1,4 @@
-import { api } from './js/01-core.js';
-import { loadMonitor } from './js/01-monitor.js';
-import { renderGallery } from './js/02-gallery.js';
-import { loadParts } from './js/03-parts.js';
-import { loadFinance } from './js/04-finance.js';
-import { loadCacheStats, loadProfile, loadSettings } from './js/05-settings.js';
-import { loadManualParts, loadMinifigs } from './js/06-minifigs.js';
+import { melde } from './js/00-ereignisse.js';
 
 // ── i18n ─────────────────────────────────────────────────────────────────────
 // Minimales Übersetzungs-System. Sprache wird beim App-Start aus den User-
@@ -318,59 +312,9 @@ export function applyLang(lang, persist) {
   const sel = document.getElementById('lang-select');
   if (sel) sel.value = lang;
 
-  if (persist) {
-    // ── '/v1/settings' und nicht '/settings' ────────────────────────────────
-    //
-    // Marcos Befund vom 25.09.: „Die Sprache kann in der Webapp nicht
-    // ausgewaehlt werden." In der Browserkonsole stand fuenfmal
-    // `/api/settings 404 (Not Found)`.
-    //
-    // Der Router haengt unter /api/v1/settings (server.ts), und GET
-    // /api/settings ist ausdruecklich ENTFERNT (routes/settings.ts). Der
-    // Aufruf hier blieb auf der alten Adresse stehen — als einziger im ganzen
-    // Frontend, alle anderen schreiben laengst /v1/settings.
-    //
-    // Sichtbar wurde es erst beim NEULADEN: Die Oberflaeche schaltete um
-    // (alles darueber laeuft ohne Server), nur gespeichert wurde nichts. Beim
-    // naechsten Start gewann wieder der Wert vom Server, und aus Sicht des
-    // Benutzers liess die Sprache sich nicht waehlen.
-    //
-    // Das `.catch(() => {})` ist der Grund, warum es so lange unbemerkt blieb,
-    // und es bleibt trotzdem stehen: Ein Sprachwechsel soll nicht an einer
-    // wackeligen Verbindung scheitern. Die Absicherung dagegen ist die Regel
-    // in test/frontend-api-paths.test.js — die hat diese Datei bis heute nur
-    // nicht gelesen, weil sie ausserhalb von public/js/ liegt.
-    api('POST', '/v1/settings', { language: lang }).catch(() => {});
-  }
-
-  // Aktiven Tab neu aufbauen, damit auch dynamisch erzeugte Texte umschalten —
-  // aber NUR bei einem echten Sprachwechsel.
-  //
-  // Vorher lief dieser Block bei JEDEM Aufruf, also auch beim Start, wo
-  // applyLang() zweimal mit derselben Sprache kommt (checkAuth und showApp).
-  // Für die Galerie stand hier `renderGallery(); loadGallery();` — und
-  // loadGallery() leert das Grid sofort auf einen Spinner und holt die Sets neu
-  // vom Server. Ergebnis war der sichtbare Doppel-Neuaufbau beim Neuladen und
-  // direkt nach dem Login: Inhalt → leer → Inhalt → leer → Inhalt.
-  //
-  // Beim ersten Anwenden gibt es nichts nachzuziehen: Der normale Startpfad
-  // (showApp → loadGallery) lädt ohnehin gleich alles. Nur wenn der Nutzer die
-  // Sprache tatsächlich umstellt — oder die Servereinstellung von der lokal
-  // gespeicherten abweicht — muss der aktive Tab neu geladen werden.
-  if (!isRealSwitch) return;
-
-  const activeTab = document.querySelector('.ntab.active')?.dataset?.tab;
-  if (activeTab) {
-    if (activeTab === 'parts')     { if (typeof loadParts     === 'function') { loadParts(); loadManualParts(); } }
-    if (activeTab === 'minifigs')  { if (typeof loadMinifigs  === 'function') loadMinifigs(); }
-    if (activeTab === 'finance')   { if (typeof loadFinance   === 'function') loadFinance(); }
-    if (activeTab === 'settings')  { if (typeof loadSettings  === 'function') { loadSettings(); loadProfile(); } }
-    if (activeTab === 'monitor')   { if (typeof loadMonitor   === 'function') { loadMonitor(); loadCacheStats(); } }
-    // Galerie: aus den bereits geladenen Sets neu zeichnen. Ein loadGallery()
-    // stand hier zusätzlich — überflüssig, weil ein Sprachwechsel keine Daten
-    // ändert, und teuer, weil es das Grid zwischendurch leert.
-    if (activeTab === 'gallery')   { if (typeof renderGallery === 'function') renderGallery(); }
-  }
+  // Speichern (01-core.js) und das Neuladen des offenen Reiters (25-navigation.js)
+  // hören auf dieses Ereignis: Die Übersetzung selbst kennt keine Ansicht.
+  melde('spracheGewechselt', { sprache: lang, speichern: !!persist, echterWechsel: !!isRealSwitch });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

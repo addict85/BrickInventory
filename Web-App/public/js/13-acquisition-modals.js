@@ -16,12 +16,18 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
-import { applySetAggregate, closeModal, curSet, loadGallery } from './02-gallery.js';
+import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, G, api, escJs, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
+import { applySetAggregate, loadGallery } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
-import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
-import { confirmDelete, diagrammBreite, ladeLagerorte, lagerortBlock, openModal, priceChartSVG, renderMarketRows, ladeOrtAuswahl } from './07-admin.js';
+import { deleteManualFig, loadManualFigsTable, manualFigsCache, updateManualFig } from './06-minifigs.js';
 import { scopeQuery } from './14-scope.js';
+import { CURRENCY, ME, curSet } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { closeModal, ladeLagerorte, lagerortBlock, ladeOrtAuswahl } from './02-detailfelder.js';
+import { confirmDelete } from './01-rueckfrage.js';
+import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
+import { springe } from './00-ziele.js';
+import { deleteManualPart, loadBrickColors, loadManualParts, manualPartsCache, updateManualPart } from './03-parts.js';
 
 // ── KAUFPREIS-MODAL ─────────────────────────────────────────────────────────
 let _acqModalSn = null;
@@ -846,7 +852,7 @@ G('setitem-modal').addEventListener('click',
 /** Aus dem Teil-Dialog ins Set-Detail — der eine schliesst, der andere öffnet. */
 function openSetAusItem(setNumber) {
   closeSetItemDetail();
-  openModal(setNumber);
+  springe('setDetail', setNumber);
 }
 
 function closeManDetail() {

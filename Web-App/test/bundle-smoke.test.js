@@ -210,7 +210,8 @@ test('unbehandelte Fehler landen nicht nur in der Konsole', () => {
   assert.match(init, /addEventListener\('unhandledrejection'/,
     'Abgewiesene Zusagen brauchen ein Auffangnetz');
   assert.match(init, /addEventListener\('error'/, 'Skriptfehler ebenso');
-  assert.match(init, /startApp\(\)\s*\{\s*\n\s*bindGlobalErrorHandlers\(\);/,
+  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
+  assert.match(sitzung, /startApp\(\)\s*\{\s*\n\s*bindGlobalErrorHandlers\(\);/,
     'Die Handler müssen VOR allem anderen hängen, sonst fehlt gerade der Startfehler');
 });
 
@@ -229,12 +230,12 @@ test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () 
   //   abgemeldet + 401 → nichts        (sonst Schleife auf der Anmeldemaske)
   //   angemeldet + 401 → login-screen: flex, app: none
   const core = require('./helpers/sources').coreQuelle();
-  assert.match(core, /if \(res\.status === 401\) meldeSitzungBeendet\(path\);/,
+  assert.match(core, /if \(res\.status === 401\) melde\('sitzungBeendet', path\);/,
     'Der 401 muss zentral behandelt werden, nicht an 88 Aufrufstellen');
-  assert.match(core, /function meldeSitzungBeendet/);
-
-  const fn = core.slice(core.indexOf('function meldeSitzungBeendet'),
-                        core.indexOf('export function fmtN'));
+  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', '26-sitzung.js'), 'utf8');
+  const von = sitzung.indexOf("abonniere('sitzungBeendet'");
+  assert.ok(von > 0, 'Niemand reagiert auf das Sitzungsende');
+  const fn = sitzung.slice(von, sitzung.indexOf('\n});\n', von));
   assert.match(fn, /if \(!ME\) return;/,
     'Ohne angemeldeten Zustand gibt es keine Sitzung zu beenden');
   assert.match(fn, /\/auth\/me/, '/auth/me beantwortet mit 401 nur „nicht angemeldet"');

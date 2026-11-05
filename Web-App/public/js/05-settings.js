@@ -1,18 +1,18 @@
+// Einstellungen, Konto, Benutzerverwaltung, Haushalt, Lagerorte und
+// Konfigurations-Import/-Export.
+import { stelleZielBereit } from './00-ziele.js';
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { antwortFehler, feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen, set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
-import { allSets, loadGallery, loadStats } from './02-gallery.js';
+import { antwortFehler, feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, G, _updateLangSelect, api, applyTheme, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
+import { loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
-import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 import { meldeAbschnitt } from './24-router.js';
-
-// ═══ Einstellungen, SMTP, Profil, API-Keys, Benutzerverwaltung ═══
-// Teil von app.js — die Dateien in public/js/ werden in nummerierter
-// Reihenfolge geladen und teilen sich den globalen Scope (kein Modul-
-// System noetig, Inline-onclick-Handler in index.html funktionieren
-// unveraendert). Der Split ist rein sequenziell und verhaelt sich
-// identisch zur frueheren Einzeldatei.
+import { CURRENCY, ME, _settingsCache, set_CURRENCY, set_settingsCache, allSets } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
+import { loadFinance } from './04-finance.js';
+import { ladeLagerortVorgabe } from './02-konten-orte.js';
 
 // ── SETTINGS ──────────────────────────────────────────
 // SMTP + Registration settings load/save
@@ -686,6 +686,7 @@ G('btn-save-theme').onclick=async()=>{
   if(d.success){ const w=await api('GET','/v1/settings/theme'); if(w.success){ applyTheme(w.theme); if(_settingsCache) _settingsCache.app_theme=w.theme; } }
   toast(d.success?t('settings.theme_saved'):t('settings.error'),d.success?'success':'error');
 };
+G('btn-clr').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'info'); loadCacheStats(); loadFinance(); };
 G('btn-clr-prices').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'success'); loadCacheStats(); };
 G('btn-clr-all-cache').onclick=async()=>{
   if(!await confirmDelete(tRaw('settings.all_cache.clear'),t('settings.all_cache.clear'),'daten')) return;
@@ -802,6 +803,40 @@ async function toggleAktiv(uid, aktiv){
 async function delUser(uid,name){ const admin_password = await bestaetigeMitPasswort(tRaw('users.delete.title'),tRaw('users.delete.text'),'profil'); if(admin_password === null) return; const d=await mitZweitemFaktor(z => api('DELETE',`/v1/auth/users/${uid}`,{admin_password, ...z})); if(d===null) return; if(d.success){toast(name+' '+t('common.updated'),'success');loadUsers();} else toast(d.error||t('settings.error'),'error'); }
 
 
+// ── CONFIG EXPORT / IMPORT ───────────────────────────────────
+G('btn-cfg-export').onclick = async () => {
+  const a = document.createElement('a');
+  a.href = '/api/v1/settings/export';
+  a.download = `brickinventory-manager-config-${new Date().toISOString().substring(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+};
+
+async function importConfig() {
+  const fi = G('cfg-import-file');
+  if (!fi.files[0]) return;
+  const st = G('cfg-import-status');
+  st.textContent = tRaw('settings.importing');
+  const fd = new FormData(); fd.append('file', fi.files[0]);
+  try {
+    const d = await api('POST', '/v1/settings/import', fd);
+    if (d.success) {
+      // Welche SMTP-Werte die Datei mitbrachte, steht dabei: Sie werden nur im Formular gesetzt.
+      const smtp = (d.smtp_uebergangen || []).join(', ');
+      st.textContent = tRaw('settings.imported_note',{n:d.imported,note:[d.note, smtp].filter(Boolean).join(': ')});
+      st.style.color = 'var(--g500)';
+      toast(tRaw('admin.config_imported'), 'success');
+      // SMTP-Werte übernimmt der Import nie (Passwortbestätigung); welche, steht hier.
+      if (d.smtp_uebergangen?.length) toast(tRaw('settings.smtp_skipped', { keys: d.smtp_uebergangen.join(', ') }), 'info');
+      loadSettings();
+      set_settingsCache(null); // invalidate cache so next loadSettings fetches fresh
+      if (ME?.isAdmin) { loadCacheTtl(); loadApiLimits(); }
+    } else {
+      st.textContent = d.error || t('settings.error');
+      st.style.color = 'var(--r500)';
+    }
+  } catch(e) { st.textContent = tRaw('common.network_error'); }
+  fi.value = '';
+}
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────
 // ═══ LAGERORTE VERWALTEN ════════════════════════════════════════════════════
@@ -1085,7 +1120,7 @@ async function schalteLagerortVorgabe(id, war) {
   // Die Erfassungsformulare stehen schon — ohne das Nachziehen zeigten sie
   // den alten Stand, bis jemand die Seite neu laedt. Dieselbe Geste wie beim
   // Erfassungs-Zustand, der nach dem Speichern initDefaultCondition() ruft.
-  import('./02-gallery.js').then(m => m.ladeLagerortVorgabe?.()).catch(() => {});
+  ladeLagerortVorgabe();
 }
 
 async function loescheLagerort(id, name) {
@@ -1182,6 +1217,8 @@ export function einstAbschnitt(id, ev){
 }
 einstAbschnitt((() => { try { return localStorage.getItem(EINST_KEY); } catch (_) { return null; } })());
 
+stelleZielBereit({ einstAbschnitt });
+
 registerActions({
   legeAlarmAn,
   speichereWaehrung,
@@ -1212,4 +1249,5 @@ registerActions({
   unlinkHousehold,
   unlinkFromParent,
   dismissFormerLink,
+  importConfig,
 });

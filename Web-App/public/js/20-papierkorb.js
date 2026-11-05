@@ -1,10 +1,9 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { fmtDatum, ico, G, api, esc, toast } from './01-core.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
-import { loadGallery, loadStats } from './02-gallery.js';
-import { loadParts } from './03-parts.js';
-import { loadManualFigsTable, loadManualParts, loadMinifigs } from './06-minifigs.js';
+import { fmtDatum, ico, G, api, toast } from './01-core.js';
+import { esc } from './00-escapen.js';
+import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
+import { melde } from './00-ereignisse.js';
 
 // ═══ Papierkorb (Einstellungen → Daten) ═════════════════════════════════════
 // Der Server legt beim Löschen einen Schnappschuss ab (src/bestand/papierkorb.ts);
@@ -39,9 +38,7 @@ export async function ladePapierkorb() {
 }
 
 /** Alles nachladen, was ein Wiederherstellen verändert haben kann. */
-function bestandNeuLaden() {
-  loadGallery(); loadParts(); loadStats(); loadMinifigs(); loadManualParts(); loadManualFigsTable();
-}
+function bestandNeuLaden() { melde('bestandGeaendert'); }
 
 async function wiederherstellen(ids) {
   for (const id of ids) {

@@ -89,10 +89,10 @@ function rumpf(src, kopf) {
 
 test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', () => {
   const module = alleModule();
-  const gallery = module['02-gallery.js'];
-  assert.ok(gallery, '02-gallery.js nicht gefunden');
+  const navigation = module['25-navigation.js'];
+  assert.ok(navigation, '25-navigation.js nicht gefunden');
 
-  const wechsel = rumpf(gallery, 'export function onScopeChange(');
+  const wechsel = rumpf(navigation, 'export function onScopeChange(');
   assert.ok(wechsel, 'onScopeChange() nicht gefunden — umbenannt?');
 
   // Was der Wechsel neu lädt: jeder Aufruf `loadXyz()` in seinem Rumpf.

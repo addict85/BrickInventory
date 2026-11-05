@@ -1,27 +1,11 @@
-import { bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, apiRoh, checkAuth, esc, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
-import { initScrollbalken } from './15-scrollbar.js';
+import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, apiRoh, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
+import { esc } from './00-escapen.js';
 
-// ═══ App-Initialisierung + temporaere Teileliste ═══
-//
-// ── Warum der Start nicht mehr hier steht ───────────────────────────────────
-// Hier stand `checkAuth();` direkt im Modulrumpf. Mit klassischen Skripten war
-// das unproblematisch: Alle Dateien waren zu diesem Zeitpunkt geladen.
-//
-// Als ES-Modul ist es das nicht. Bei gegenseitigen Importen wertet JavaScript
-// das importierte Modul VOR dem importierenden aus — und weil i18n.js aus
-// 01-core.js importiert, war das Übersetzungsobjekt `I18N` noch nicht
-// initialisiert, wenn checkAuth() darüber applyLang() aufrief. Ergebnis:
-// "Cannot read properties of undefined" beim Laden der Seite, also ein
-// vollständig toter Start.
-//
-// Der Start gehört deshalb NACH die Auswertung aller Module: js/main.js ruft
-// startApp() als letzten Schritt auf. Das ist auch unabhängig vom Modulsystem
-// die sauberere Aufteilung — ein Modul beschreibt, was es kann, und startet
-// nicht beim Geladenwerden die Anwendung.
+// Auffangnetz für unbehandelte Fehler und die temporäre Teileliste. Gestartet
+// wird die Anwendung von 26-sitzung.js (startApp), nicht beim Laden dieses Moduls.
 
 /**
  * Auffangnetz für Fehler, die niemand behandelt.
@@ -90,7 +74,7 @@ function vonUns(fehler) {
   return adressen.some(a => a.startsWith(location.origin + '/'));
 }
 
-function bindGlobalErrorHandlers() {
+export function bindGlobalErrorHandlers() {
   window.addEventListener('unhandledrejection', (ev) => {
     if (vonUns(ev.reason)) meldeUnerwartet('promise', ev.reason);
   });
@@ -102,16 +86,6 @@ function bindGlobalErrorHandlers() {
   });
 }
 
-/** Startet die Anwendung. Aufruf ausschliesslich aus js/main.js. */
-export function startApp() {
-  bindGlobalErrorHandlers();
-  bindTabs();
-  plRenderSets();
-  // Eigener Scrollbalken für die ganze Anwendung. Der des
-  // Browsers ist per CSS ausgeblendet; ohne diesen Aufruf gäbe es gar keinen.
-  initScrollbalken();
-  checkAuth();
-}
 // ── TEILELISTE (temporary parts list, resets on page leave) ──────────────────
 export let _plSets = []; // { set_number, name }
 export let _plParts = null; // generated parts list
@@ -146,7 +120,7 @@ function plAddSet() {
 
 G('pl-setnr')?.addEventListener('keydown', e => e.key === 'Enter' && plAddSet());
 
-function plRenderSets() {
+export function plRenderSets() {
   const c = G('pl-sets'); if (!c) return;
   // Zurücksetzen hat erst etwas zu tun, wenn Sets oder eine fertige Liste da sind.
   G('btn-pl-reset').disabled = !_plSets.length && !_plParts;

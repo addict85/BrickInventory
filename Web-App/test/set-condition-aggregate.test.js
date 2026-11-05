@@ -814,13 +814,13 @@ test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
 });
 
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-gallery.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-bausteine.js'), 'utf8');
   assert.match(gal, /export function condBadges/,
     'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
   // Vorher stand dieselbe Plakette viermal im Code, dreimal mit fest
   // eingetragenen Farben statt der CSS-Klassen. Geprüft wird genau das:
   // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
-  for (const f of ['public/js/06-minifigs.js', 'public/js/04-finance.js']) {
+  for (const f of ['public/js/03-parts.js', 'public/js/06-minifigs.js', 'public/js/04-finance.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l =>
       /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));

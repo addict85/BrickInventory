@@ -1,16 +1,15 @@
+// Der Katalog: Sets suchen, Details zeigen und in die Sammlung übernehmen.
 import { detailZeile, ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
+import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
-import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
-import { _lastImportAt , set_lastImportAt} from './07-admin.js';
+import { PARTS_ICON_SVG, loadGallery, loadStats } from './02-gallery.js';
+import { _lastImportAt, set_lastImportAt } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './01-fortschritt.js';
+import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
 
-// ═══ Katalog: Rebrickable-Set-Katalog browsen, suchen, filtern ═══
-// Teil von app.js — gleiche Konvention wie 01–08: globaler Scope, Helfer
-// (G, api, t, esc, toast, showProgress, streamRequest, handleSseEvent)
-// kommen aus den vorher geladenen Dateien.
-//
 // Datenquelle ist /api/v1/catalog/* (lokale rb_*-Tabellen aus dem täglichen
 // CSV-Sync) — serverseitig paginiert, da der Katalog ~25k Sets umfasst.
 

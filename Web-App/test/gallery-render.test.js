@@ -85,7 +85,7 @@ test('beide Galerie-Ansichten beobachten ihre Bilder', () => {
 });
 
 test('Preisdaten lösen keinen kompletten Neuaufbau mehr aus', () => {
-  const src = code(admin);
+  const src = code(gallery);
   // Ankertext angepasst: `_pnlCache = {}` ist mit den ES-Modulen zu
   // `set_pnlCache({})` geworden — importierte Bindungen sind schreibgeschützt,
   // deshalb der Setter (siehe js/02-gallery.js). Der geprüfte Sachverhalt ist

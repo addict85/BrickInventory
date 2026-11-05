@@ -1,8 +1,9 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, esc, toast } from './01-core.js';
-import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
+import { ico, G, api, toast } from './01-core.js';
 import { loadUsers } from './05-settings.js';
+import { esc } from './00-escapen.js';
+import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 
 // ═══ Zweiter Faktor im Profil (Server: src/konto/zweiterFaktor.ts) ══════════════
 // Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn

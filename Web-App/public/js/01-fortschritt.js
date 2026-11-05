@@ -21,9 +21,10 @@
 // längst denselben); kritisch wäre nur ein const-Zugriff während der
 // Auswertung, und den gibt es hier nicht.
 import { registerActions } from './00-registry.js';
-import { ico, G, ME, apiRoh, fmtPct } from './01-core.js';
-import { _csvPollActive, hideProgress, loadGallery, loadStats, showProgress } from './02-gallery.js';
+import { ico, G, apiRoh, fmtPct, api, toast } from './01-core.js';
+import { melde } from './00-ereignisse.js';
 import { t, tRaw } from '../i18n.js';
+import { ME } from './00-zustand.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
 export let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
@@ -94,7 +95,7 @@ function gibApplyStatus(s) {
     // Show close button so user can dismiss the overlay when ready
     const btnClose = G('btn-close-import');
     if (btnClose) btnClose.style.display = '';
-    loadGallery(); loadStats();
+    melde('setsGeaendert');
     gibStop();
   }
 }
@@ -298,4 +299,155 @@ export function gibZuruecksetzen() {
 // Der Handler gehört zu dem Modul, das ihn umsetzt.
 registerActions({
   gibToggle,
+  hideProgress,
 });
+
+// ── PROGRESS OVERLAY ─────────────────────────────────
+export function showProgress(title, csvMode){
+  G('prog-title-txt').textContent=title;
+  G('prog-bar').style.width='0%';
+  G('prog-footer').textContent=tRaw('common.please_wait');
+  G('prog-set-name').textContent='';
+  G('csv-log').style.display=csvMode?'block':'none';
+  G('csv-log').innerHTML='';
+  G('prog-steps').style.display=csvMode?'none':'';
+  // Der Hintergrund-Hinweis gilt nur fürs Erfassen eines einzelnen Sets. Beim
+  // CSV-Import ist die Schrittliste ohnehin ausgeblendet, dort zeigt das
+  // Protokoll (`csv-log`) je Zeile ein echtes Ergebnis.
+  if (G('prog-hint')) G('prog-hint').style.display=csvMode?'none':'';
+  ['ps-meta','ps-image'].forEach(id=>{
+    const el=G(id); el.classList.remove('active','done','err');
+  });
+  G('progress-overlay').classList.add('open');
+  // Reset buttons for new import
+  G('btn-cancel-import').style.display='none';
+  const btnClose = G('btn-close-import');
+  if (btnClose) btnClose.style.display='none';
+}
+
+export function hideProgress(){
+  G('progress-overlay').classList.remove('open');
+  G('prog-steps').style.display='';
+  // Show header bar when minimizing if import is polling
+  if ((_gibTimer || _gibSse) && ME) {
+    G('global-import-bar').style.display = 'flex';
+  }
+}
+
+// `extra` fiel weg: Es schrieb in ein `.step-count`-Feld, das nur die
+// entfernten Teile-/Teilbilder-Schritte hatten. Ohne diese Schritte gibt es
+// kein Element mehr, in das es hätte schreiben können.
+function setStep(stepId, state){
+  const el=G('ps-'+stepId); if(!el) return;
+  el.classList.remove('active','done','err'); el.classList.add(state);
+}
+
+export function setProgBar(pct){ G('prog-bar').style.width=Math.min(100,pct)+'%'; }
+
+export function addCsvLog(text, ok){
+  const d=G('csv-log'), line=document.createElement('div');
+  line.className='csv-log-line '+(ok?'ok':'er');
+  line.textContent=text; d.appendChild(line); d.scrollTop=d.scrollHeight;
+}
+
+// Verarbeitet die SSE-Ereignisse beim Erfassen EINES Sets.
+//
+// ── Warum hier nur noch zwei Schritte stehen ────────────────────────────────
+// Der Dialog listete früher sechs Schritte: Set-Infos, Bild, Anleitungen,
+// Teile, Teilbilder, Preis. Davon wartet der Aufrufer heute nur noch auf die
+// ersten beiden — `addSet()` (src/sets/setService.ts) holt Set-Daten und Bild
+// synchron und schiebt alles Übrige in ein `setTimeout`, das erst nach der
+// Antwort läuft. Die vier hinteren Schritte konnten den Browser deshalb gar
+// nicht mehr erreichen:
+//   • `instructions` wurde zwar noch gesendet, aber der Download lief bereits
+//     in einem `setImmediate` — der Punkt sprang auf „aktiv" und blieb dort
+//     stehen, weil ihn nie ein Abschluss erreichte.
+//   • `parts_start`, `parts_importing`, `parts_done`, `parts_images` und
+//     `parts_error` stammen aus `importPartsForSet()`. NACHGEMESSEN: alle fünf
+//     Aufrufstellen übergeben dort `null` als Fortschritts-Melder.
+//   • `step:'price'` wurde von KEINER Serverstelle je gesendet.
+// Ein Fortschrittsbalken, der Arbeit anzeigt, auf die niemand wartet, ist
+// keine Auskunft, sondern eine Behauptung. Statt der vier Punkte steht jetzt
+// ein fester Hinweis im Dialog (`prog-hint`), dass diese Arbeit im Hintergrund
+// weiterläuft — was zutrifft und den Dialog nicht künstlich offen hält.
+//
+// `done_meta` markiert die Stelle, an der der synchrone Teil fertig ist. Der
+// Schritt wurde bisher gesendet und vom Browser verworfen; er schliesst jetzt
+// den Bild-Schritt ab. Ohne ihn bliebe „Bild herunterladen" bis zum Ende auf
+// „aktiv", weil das früher der `instructions`-Zweig erledigt hat.
+export function handleSseEvent(ev, singleSetName){
+  switch(ev.step){
+    case 'meta':      setStep('meta','active'); setProgBar(10); G('prog-set-name').textContent=ev.set||singleSetName||''; break;
+    case 'image':     setStep('meta','done'); setStep('image','active'); setProgBar(35); break;
+    case 'done_meta': setStep('image','done'); setProgBar(90); break;
+    case 'done':      setProgBar(100); G('prog-footer').textContent=`${ev.action==='added'?tRaw('common.added_cap'):tRaw('common.updated_cap')}: ${ev.set_number ?? ''}`; break;
+    case 'error':     G('prog-footer').textContent=String(ev.error ?? ''); break;
+  }
+}
+
+// ── CSV import polling state ─────────────────────────────────────────────────
+export let _csvPollActive = false;
+/** @param {boolean} v */
+export function setzeCsvPollAktiv(v) { _csvPollActive = v; }
+
+/** Der laufende Ereignisstrom (Set erfassen) — damit „Abbrechen" ihn beenden kann. */
+let _activeAbort = null;
+
+export function streamFertig(){ _activeAbort = null; G('btn-cancel-import').style.display='none'; }
+
+function cancelImport(){
+  _csvPollActive = false;
+  _activeAbort?.abort();
+  _activeAbort = null;
+  api('POST','/v1/sets/import/csv/cancel').catch(()=>{});
+  G('btn-cancel-import').style.display='none';
+  hideProgress();
+  toast(tRaw('csv.cancelled'),'info');
+  melde('setsGeaendert');
+}
+
+/** Abbrechbarer Ereignisstrom (POST mit JSON-Körper); ein Abbruch endet ohne Fehler.
+ * @param {string} path @param {object} body @param {(ev: any) => void} onEvent
+ * @returns {Promise<void>} */
+export function streamRequest(path, body, onEvent){
+  const ac = _activeAbort = new AbortController();
+  G('btn-cancel-import').style.display='inline-flex';
+  return apiRoh('POST', path, { body, signal: ac.signal })
+    .then(res=>readSSE(res,onEvent,ac.signal))
+    .catch(e=>{ if(e.name!=='AbortError') throw e; });
+}
+
+async function readSSE(res, onEvent, signal){
+  // Antwortet der Server mit gewöhnlichem JSON statt einem Ereignisstrom, ist
+  // die Sache schon entschieden — beim Erfassen etwa, wenn das Set bereits im
+  // Blickfeld steht (src/sets/setAdd.ts). Dann gibt es nichts zu verfolgen, und
+  // die eine Antwort wird wie ein einzelnes Ereignis durchgereicht. Ohne
+  // diesen Zweig liefe der Leser über JSON-Text, fände keine `data:`-Zeile und
+  // der Aufrufer bekäme nie ein Ereignis — die Anzeige bliebe hängen.
+  if ((res.headers.get('content-type') || '').includes('application/json')) {
+    const daten = await res.json().catch(() => null);
+    if (daten) onEvent({ step: daten.success === false ? 'error' : 'done', ...daten });
+    return;
+  }
+  const reader=res.body.getReader(), dec=new TextDecoder(); let buf='';
+  try{
+    while(true){
+      if(signal?.aborted) break;
+      const {done,value}=await reader.read();
+      if(done) break;
+      buf+=dec.decode(value,{stream:true});
+      const lines=buf.split('\n'); buf=lines.pop();
+      for(const line of lines){
+        if(line.startsWith('data: ')){
+          try{ onEvent(JSON.parse(line.slice(6))); }catch(e){}
+        }
+      }
+    }
+  } catch(e){
+    if(e.name!=='AbortError') throw e;
+  } finally {
+    try{ reader.cancel(); }catch(_){}
+  }
+}
+
+G('btn-cancel-import').onclick = cancelImport;

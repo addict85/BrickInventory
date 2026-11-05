@@ -122,7 +122,7 @@ test('5. Löschen: Papierkorb in der Webapp, nur im Detail in der App', () => {
   //   d) Den Papierkorb im Webapp-Detail entfernt  → Schritt 5 rot.
 
   // ── Webapp: auf den Kacheln UND in der Merklisten-Zeile ──────────────────
-  const kacheln = web('public/js/06-minifigs.js');
+  const kacheln = web('public/js/06-minifigs.js') + web('public/js/03-parts.js');
   assert.match(kacheln, /class="delbtn" data-click="deleteManualFigStop"/,
     'Auf den Kacheln der manuell erfassten Minifiguren fehlt der Papierkorb.');
   assert.match(kacheln, /class="delbtn" data-click="deleteManualPartStop"/,

@@ -13,8 +13,9 @@
 // Seiten der Überwachung beieinander — die Liste, die zeigt, was läuft, und
 // das Fenster, das zeigt, was dabei protokolliert wurde.
 import { echt, registerActions } from './00-registry.js';
-import { fmtDatum, ico, G, api, apiRoh, esc, escHtmlAttr, toast } from './01-core.js';
+import { fmtDatum, ico, G, api, apiRoh, escHtmlAttr, toast } from './01-core.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
+import { esc } from './00-escapen.js';
 
 /**
  * Zeitgeber, der die Jobliste nachzieht, solange der Reiter offen ist.

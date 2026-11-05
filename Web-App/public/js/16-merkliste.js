@@ -1,10 +1,14 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
 import { detailZeile, listeLadefehler, skelettZeilen } from './01-bausteine.js';
-import { alarmBlock, diagrammBreite, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
-import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
+import { loadGallery, loadStats } from './02-gallery.js';
 import { addScopeParam } from './14-scope.js';
+import { CURRENCY } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { alarmBlock, ladeAlarm, setzeAlarmFeld } from './02-detailfelder.js';
+import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
+import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten } from './02-konten-orte.js';
 
 // ═══ Merkliste ═════════════════════════════════════════════════════════════
 //

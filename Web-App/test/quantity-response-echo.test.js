@@ -38,7 +38,7 @@ const { testServer } = require('./helpers/server');
 const { haeltSet } = require('./helpers/bestand');
 
 test('die Webapp übernimmt die Menge aus der Antwort', () => {
-  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/02-gallery.js'), 'utf8'));
+  const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/07-set-detail.js'), 'utf8'));
   const fn = src.slice(src.indexOf('export function autosaveSet'),
                        src.indexOf('G(\'btn-md\').onclick'));
   assert.match(fn, /d\.quantity/,

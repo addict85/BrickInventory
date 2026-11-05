@@ -18,9 +18,11 @@
 // der Sache, um die es geht.
 import { registerActions } from './00-registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
-import { bildTag, platzhalterInhalt, ico, G, XML_ICON_SVG, apiRoh, esc, escHex, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
-import { loadBrickColors, loadManualParts, loadManualFigsTable } from './06-minifigs.js';
+import { bildTag, platzhalterInhalt, ico, G, XML_ICON_SVG, apiRoh, escHex, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
+import { loadManualFigsTable } from './06-minifigs.js';
 import { loadGallery } from './02-gallery.js';
+import { esc } from './00-escapen.js';
+import { loadBrickColors, loadManualParts } from './03-parts.js';
 
 /**
  * Die gewählte Datei bleibt im Speicher, bis importiert oder geschlossen wird.

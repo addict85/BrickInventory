@@ -1,3 +1,4 @@
+import { registerActions } from './00-registry.js';
 // ── Bausteine für Ansichten ──────────────────────────────────────────────────
 //
 // 01-core.js sammelt WERKZEUGE: Escaping, Bild-URLs, Formatierung, Toasts,
@@ -27,9 +28,11 @@
 // verbessert, das man sehen kann. Ab jetzt sind sie eine INNERE Angelegenheit
 // dieser Datei — wer eine Detailzeile braucht, schreibt `detailZeile(…)` und
 // sieht die Kürzel nie. In styles.css steht daneben, wofür sie stehen.
-import { esc, ico, toast } from './01-core.js';
-import { tRaw } from '../i18n.js';
+import { ico, toast, G, fmtBig, fmtPct, istGeschenk } from './01-core.js';
+import { tRaw, t } from '../i18n.js';
 import { resolveAction } from './00-registry.js';
+import { esc } from './00-escapen.js';
+import { ME } from './00-zustand.js';
 
 /**
  * Eine Zeile „Label — Wert" in einer Detailansicht.
@@ -141,3 +144,83 @@ export function listeLadefehler(ziel, d, o) {
   else if (ziel) ziel.innerHTML = fehlerZustand({ grund, erneut: o.erneut, arg: o.arg });
   return true;
 }
+
+/** „144 aus Sets · 250 einzeln“ — leer, solange nur eine der beiden Quellen etwas hat. */
+export function teileAufschluesselung(ausSets, einzeln) {
+  if (!ausSets || !einzeln) return '';
+  return t('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
+}
+
+/**
+ * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0
+ * gerechnet stünde dort „+327.600 %“, und das sagt nichts.
+ */
+export function pnlBadge(pct, kauf){
+  if(istGeschenk(kauf)) return `<span class="pnl-geschenk">${t('finance.gift')}</span>`;
+  if(pct===null||pct===undefined) return '';
+  const v=parseFloat(pct); const cls=v>0?'pnl-pos':v<0?'pnl-neg':'pnl-neu';
+  return `<span class="${cls}">${fmtPct(v)}</span>`;
+}
+
+/**
+ * Zustands-Plaketten eines Eintrags — eine je erfasstem Zustand.
+ *
+ * ── Warum eine Liste ────────────────────────────────────────────────────────
+ * `condition` ist ein Aggregat und liefert genau einen Wert („gebraucht,
+ * sobald eine Erfassung gebraucht ist"). Wer ein Exemplar neu und eines
+ * gebraucht gekauft hat, sah damit nur „Gebraucht" — die Neu-Erfassung war
+ * unsichtbar, obwohl sie mit ihrem eigenen Preis in die Bewertung eingeht.
+ *
+ * `conditions` kommt vom Server (utils/handlers.ts, conditionsFromAcquisitions)
+ * und ist die EINE Stelle, an der entschieden wird, welche Plaketten es gibt.
+ * Hier wird nichts nachgerechnet; ältere Antworten ohne das Feld fallen auf
+ * `condition` zurück.
+ *
+ * Steht in dieser Datei, weil Galerie-, Minifiguren- und Teile-Kacheln sie
+ * alle brauchen — vorher stand dieselbe Plakette viermal im Code, dreimal
+ * davon mit fest eingetragenen Farben statt der CSS-Klassen.
+ */
+/**
+ * Besitzer-Plaketten — nur im Haushalt.
+ *
+ * Der Server hängt `owners` nur an, wenn mehrere Konten im Blickfeld sind. Im
+ * Einzelkonto stünde an jeder Kachel „gehört mir", und das ist reines
+ * Rauschen. Im Haushalt ist es dagegen die wichtigste Angabe der Kachel: Ohne
+ * sie verschiebt man das falsche Exemplar.
+ *
+ * Mehrere Namen heisst, dass dasselbe Set in mehreren Konten liegt — die
+ * Kachel zeigt es bewusst nur EINMAL, mit der Summe der Mengen.
+ */
+/**
+ * Wem gehört das? Nur gezeigt, wenn ein ANDERES Konto des Haushalts mit
+ * drinsteckt — ein Etikett mit dem eigenen Namen auf jeder Kachel beantwortet
+ * keine Frage. Ohne Haushalt gibt es kein anderes Konto, also keins.
+ */
+export function ownerBadges(item) {
+  if (!item?.owners?.length) return '';
+  if (item.owners.every(o => ME && o.id === ME.id)) return '';
+  return item.owners.map(o => `<span class="cond-badge besitzer-badge">${esc(o.username)}</span>`).join('');
+}
+
+export function condBadges(item) {
+  const list = Array.isArray(item?.conditions) && item.conditions.length
+    ? item.conditions
+    : [item?.condition === 'U' ? 'U' : 'N'];
+  return list.map(c => c === 'U'
+    ? `<span class="cond-badge cond-used"><span class="vh">${t('common.condition')}: </span>${t('common.condition_used')}</span>`
+    : `<span class="cond-badge cond-new"><span class="vh">${t('common.condition')}: </span>${t('common.condition_badge_new')}</span>`
+  ).join('');
+}
+
+/** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */
+// Ohne data-arg reicht der Dispatcher das Ereignis als erstes Argument.
+const erfassenDialog = (art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
+
+export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open'); }
+
+export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
+
+registerActions({
+  oeffneErfassen,
+  schliesseErfassen,
+});

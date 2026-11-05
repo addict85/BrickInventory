@@ -3,9 +3,12 @@ import { G, bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl, setLang, toas
 import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';
-import { autosaveSet, closeImageLightbox, delSet, hideProgress, openImageLightbox } from './02-gallery.js';
-import { allFigsCache, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig, deleteManualPart} from './06-minifigs.js';
+import { delSet } from './02-gallery.js';
+import { allFigsCache, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './06-minifigs.js';
 import { merkpostenLoeschen } from './16-merkliste.js';
+import { autosaveSet, closeImageLightbox, openImageLightbox } from './07-set-detail.js';
+import { hideProgress } from './01-fortschritt.js';
+import { deleteManualPart } from './03-parts.js';
 
 // ═══ AKTIONEN OHNE INLINE-HANDLER ═══════════════════════════════════════════
 //

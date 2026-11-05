@@ -46,7 +46,7 @@ test('beide Oberflächen sprechen dieselben drei Endpunkte an', () => {
     assert.match(route, new RegExp(`router\\.${m}\\('/sets/:setNumber/alert'`),
       `Der Endpunkt ${m.toUpperCase()} fehlt`);
   }
-  const js = web('public/js/07-admin.js');
+  const js = web('public/js/02-detailfelder.js');
   assert.match(js, /\/alert`\)/,  'Die Webapp liest den Alarm nicht');
   assert.match(js, /'PUT', `\/v1\/sets\/\$\{encodeURIComponent\(sn\)\}\/alert`/, 'Die Webapp setzt ihn nicht');
   assert.match(js, /'DELETE', `\/v1\/sets\/\$\{encodeURIComponent\(sn\)\}\/alert\?condition=/, 'Die Webapp löscht ihn nicht');
@@ -84,7 +84,7 @@ test('ein leeres Feld löscht — in beiden', () => {
   // Beide entscheiden es an derselben Stelle: „ist das eine Zahl > 0?". Die
   // Webapp misst es zusätzlich am Verhalten (test/alarm-entprellt.test.js),
   // die App an der Umrechnung (AlarmeingabeTest).
-  assert.match(web('public/js/07-admin.js'), /const loeschen = !\(zahl > 0\);/,
+  assert.match(web('public/js/02-detailfelder.js'), /const loeschen = !\(zahl > 0\);/,
     'Die Webapp löscht bei leerem Feld nicht');
   assert.match(KT_ALARMEINGABE, /return if \(z > 0\.0\) z else null/,
     'Die App löscht bei leerem Feld nicht');
@@ -100,7 +100,7 @@ test('beide speichern beim TIPPEN, entprellt, mit derselben Ruhezeit', () => {
   //
   // Beide hingen am Verlassen des Feldes. Am Telefon tippt man die Zahl,
   // schliesst die Tastatur und geht zurück — dieser Fokuswechsel kommt nie.
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
   assert.match(js, /data-input="alarmGetippt"/,
     'Das Schwellenfeld der Webapp hängt nicht am Tippen');
   assert.doesNotMatch(js, /id="m-alert-val"[^>]*data-change/,
@@ -154,7 +154,7 @@ test('beide zeigen, ob schon gemeldet wurde', () => {
   // Der Unterschied zwischen „der Alarm steht" und „der Alarm hat gefeuert".
   // Ohne diese Zeile fragt man sich, warum keine Mail mehr kommt — und die
   // Antwort (Hysterese) steht nirgends auf dem Bildschirm.
-  assert.match(web('public/js/07-admin.js'), /a\.ausgeloest \? tRaw\('detail\.alert_fired'\)/,
+  assert.match(web('public/js/02-detailfelder.js'), /a\.ausgeloest \? tRaw\('detail\.alert_fired'\)/,
     'Die Webapp zeigt den Merker nicht');
   assert.match(KT_SECT, /alarm\.ausgeloest\) R\.string\.detail_alert_fired/,
     'Die App zeigt den Merker nicht');
@@ -210,7 +210,7 @@ test('die Prüfung hängt am Ende des Preislaufs, nicht an jedem Preisabruf', ()
 test('beide holen dieselbe Liste beim selben Endpunkt ab', () => {
   assert.match(web('routes/api_v1/sets.ts'), /router\.get\('\/alerts\/pending'/,
     'Der Endpunkt fehlt');
-  assert.match(web('public/js/07-admin.js'), /'\/v1\/alerts\/pending'/,
+  assert.match(web('public/js/02-detailfelder.js'), /'\/v1\/alerts\/pending'/,
     'Die Webapp fragt nicht nach');
   assert.match(KT_API, /@GET\("api\/v1\/alerts\/pending"\)/,
     'Die App fragt nicht nach');
@@ -222,7 +222,7 @@ test('beide holen dieselbe Liste beim selben Endpunkt ab', () => {
   // vor — die Prüfung fand also ihre eigene Erklärung und hätte auch einen
   // gelöschten Aufruf durchgehen lassen. Dieselbe Falle wie in
   // household.test.js und ratschen.test.js.
-  assert.match(require('./helpers/sources').ohneKommentare(web('public/js/01-core.js')),
+  assert.match(require('./helpers/sources').ohneKommentare(web('public/js/26-sitzung.js')),
     /zeigeOffeneAlarme/,
     'zeigeOffeneAlarme() wird beim Anmelden nicht aufgerufen');
 });
@@ -248,7 +248,7 @@ test('beide fragen auch beim Nach-vorn-Kommen, nicht nur im Hintergrund', () => 
   const ohne = require('./helpers/sources').ohneKommentare;
 
   // Webapp: beim Anmelden (die Zeile selbst prüft die Regel darüber).
-  assert.match(ohne(web('public/js/01-core.js')), /zeigeOffeneAlarme/,
+  assert.match(ohne(web('public/js/26-sitzung.js')), /zeigeOffeneAlarme/,
     'Die Webapp fragt beim Anmelden nicht nach');
 
   // App: beim Nach-vorn-Kommen der Activity.
@@ -282,7 +282,7 @@ test('die Marke kommt vom SERVER, nicht von der eigenen Uhr', () => {
   assert.match(web('src/finanzen/repository/preisalarme.ts'), /SELECT NOW\(\) AS jetzt/,
     'Der Server reicht seinen Zeitpunkt nicht mit');
 
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
   const i = js.indexOf('export async function zeigeOffeneAlarme');
   assert.ok(i > 0, 'zeigeOffeneAlarme() nicht gefunden');
   const block = js.slice(i, js.indexOf('\nexport ', i + 10));
@@ -303,7 +303,7 @@ test('der erste Durchgang meldet NICHTS — in beiden', () => {
   // sind. Der Server liefert ohne `since` schon eine leere Liste; beide
   // Oberflächen sagen es trotzdem selbst, damit es im Code steht und nicht
   // nur als Nebenwirkung einer Serverantwort existiert.
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
   const i = js.indexOf('export async function zeigeOffeneAlarme');
   assert.match(js.slice(i, js.indexOf('\nexport ', i + 10)), /if \(!marke\) return;/,
     'Die Webapp meldet beim ersten Besuch');
@@ -350,7 +350,7 @@ test('beide formulieren die Meldung gleich', () => {
   // jener Währung gesetzt, und 200 CHF sind nicht 200 EUR.
   assert.match(KT_ABHOL, /a\.currencyCode/, 'Die App nimmt nicht die Währung des Alarms');
   assert.match(KT_ABHOL, /"%\.2f"/, 'Die App rundet nicht auf zwei Stellen');
-  const js = web('public/js/07-admin.js');
+  const js = web('public/js/02-detailfelder.js');
   assert.match(js, /a\.currency_code/, 'Die Webapp nimmt nicht die Währung des Alarms');
   assert.match(js, /toFixed\(2\)/, 'Die Webapp rundet nicht auf zwei Stellen');
   // Dieselben zwei Richtungstexte wie im Detailfenster, nicht zwei neue.
@@ -387,7 +387,7 @@ test('der Alarm gilt für einen ZUSTAND, und der ist wählbar — in beiden', ()
   // Zustand im Schlüssel, und test/preisalarm-db.test.js prüft seit jeher
   // „der Zustand trennt die Alarme". Nur wählen liess er sich nicht. Neu und
   // gebraucht liegen oft um ein Vielfaches auseinander.
-  const js = require('./helpers/sources').ohneKommentare(web('public/js/07-admin.js'));
+  const js = require('./helpers/sources').ohneKommentare(web('public/js/02-detailfelder.js'));
   assert.doesNotMatch(js, /const ALARM_ZUSTAND = /,
     'Die Webapp hat den Zustand wieder festgenagelt');
   // Der Anker ist gewandert: Das Markup lag inline im Set-Dialog und trug

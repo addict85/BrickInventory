@@ -64,7 +64,7 @@ test('beide Oberflächen setzen den Lagerort über dieselben Endpunkte', () => {
   assert.match(web('public/js/13-acquisition-modals.js'),
     /\/v1\/minifigs\/\$\{encodeURIComponent\(nummer\)\}\/storage/,
     'Die Webapp kennt die Lagerort-Adresse der Minifiguren nicht (Migration 0024)');
-  assert.match(web('public/js/07-admin.js'), /\/storage`, \{ storage: el\.value \}/,
+  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /\/storage`, \{ storage: el\.value \}/,
     'Die Webapp speichert den Lagerort eines Sets nicht');
 
   assert.match(KT_API, /@PUT\("api\/v1\/parts\/\{partNumber\}\/\{colorId\}\/storage"\)/);
@@ -79,7 +79,7 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
   // Antworten auseinanderlaufen können.
   // Beide Oberflaechen bauen das Feld aus EINEM Baustein (07-admin.js,
   // lagerortBlock) — vorher stand die Auszeichnung an jeder Stelle einzeln.
-  assert.match(web('public/js/07-admin.js'), /lagerortBlock\('m-storage'/, 'Webapp: Set-Detail');
+  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /lagerortBlock\('m-storage'/, 'Webapp: Set-Detail');
   assert.match(web('public/js/13-acquisition-modals.js'), /lagerortBlock\('setitem-storage'/,
     'Webapp: Teil-Detail');
 
@@ -87,7 +87,7 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
   // Feldern beim Preisalarm), zusaetzlich sollen dort aber auch neue Werte
   // erfasst werden koennen." Ein blosses Textfeld mit datalist war genau das
   // nicht — es sieht aus wie ein Textfeld und klappt in Chrome nicht auf.
-  const baustein = web('public/js/07-admin.js');
+  const baustein = (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js'));
   const block = baustein.slice(baustein.indexOf('export function lagerortBlock'),
                                baustein.indexOf('export function lagerortGewaehlt'));
   assert.match(block, /<select/, 'Der Lagerort ist kein Auswahlfeld mehr');
@@ -187,7 +187,7 @@ test('die Längengrenze steht in beiden Fassungen gleich', () => {
   assert.ok(web('src/infra/fehlerTexte.ts').includes(`höchstens ${max} Zeichen`),
     `Der Fehlertext nennt eine andere Zahl als ${max}`);
   assert.ok(web('public/index.html').includes(`maxlength="${max}"`) ||
-            web('public/js/07-admin.js').includes(`maxlength="${max}"`),
+            (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')).includes(`maxlength="${max}"`),
     `Das Eingabefeld der Webapp begrenzt nicht auf ${max}`);
   assert.ok(KT_FELD.includes(`it.length <= ${max}`),
     `Das Eingabefeld der App begrenzt nicht auf ${max}`);
@@ -225,7 +225,7 @@ test('beide sprechen dieselben vier Endpunkte des Vorrats an', () => {
   assert.match(route, /router\.put\('\/storage\/locations\/:id'/);
   assert.match(route, /router\.delete\('\/storage\/locations\/:id'/);
 
-  const js = web('public/js/07-admin.js') + web('public/js/05-settings.js');
+  const js = (web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')) + web('public/js/05-settings.js');
   assert.match(js, /'\/v1\/storage\/locations'/, 'Die Webapp liest den Vorrat nicht');
   assert.match(js, /'POST', '\/v1\/storage\/locations'/, 'Die Webapp legt nichts an');
   assert.match(js, /'PUT', `\/v1\/storage\/locations\/\$\{encodeURIComponent\(id\)\}`/,
@@ -250,7 +250,7 @@ test('beim Set gilt die Liste des BESITZERS, nicht die des Betrachters', () => {
     /schreiben\s*\n?\s*\? await writableIds\(req\.apiUser\.user_id\)\s*\n?\s*: await scopeIds\(req\.apiUser\.user_id\)/,
     'Lesen und Schreiben verwenden dieselbe Menge');
 
-  assert.match(web('public/js/07-admin.js'), /ladeOrtAuswahl\(curSet\.owners\)/,
+  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /ladeOrtAuswahl\(curSet\.owners\)/,
     'Die Webapp fragt nicht nach der Liste des Besitzers');
   assert.match(KT_SETDET, /vm\.loadLagerortVorrat\(set\.owners\.map \{ it\.id \}\)/,
     'Die App fragt nicht nach der Liste des Besitzers');
@@ -284,7 +284,7 @@ test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
   // Ein reines Auswahlfeld kann nur das erste, ein reines Textfeld nur das
   // zweite. Die Webapp nimmt eine datalist, die App einen
   // ExposedDropdownMenuBox — dasselbe Verhalten, die jeweils übliche Form.
-  assert.match(web('public/js/07-admin.js'), /list="lagerorte"/,
+  assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /list="lagerorte"/,
     'Das Feld der Webapp klappt nicht auf');
   assert.match(KT_FELD, /ExposedDropdownMenuBox/,
     'Das Feld der App klappt nicht auf');

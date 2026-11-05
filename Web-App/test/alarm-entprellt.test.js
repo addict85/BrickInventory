@@ -22,7 +22,7 @@
  *
  * ── Was hier gemessen wird ──────────────────────────────────────────────────
  *
- * Der echte public/js/07-admin.js (über das gebaute Bündel) in jsdom. „249.90"
+ * Der echte public/js/02-detailfelder.js (über das gebaute Bündel) in jsdom. „249.90"
  * wird Zeichen für Zeichen getippt, danach gezählt, wie viele Anfragen das
  * ergibt.
  *
@@ -45,7 +45,7 @@ const ROOT   = path.join(__dirname, '..');
 const jsdom  = require(path.join(ROOT, 'node_modules', 'jsdom'));
 const HTML   = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const BUNDLE = fs.readFileSync(path.join(ROOT, 'public', 'js', 'app.bundle.js'), 'utf8');
-const ADMIN  = fs.readFileSync(path.join(ROOT, 'public', 'js', '07-admin.js'), 'utf8');
+const ADMIN  = fs.readFileSync(path.join(ROOT, 'public', 'js', '02-detailfelder.js'), 'utf8');
 
 /**
  * Die drei Bedienelemente des Alarms — AUS DEM ECHTEN QUELLTEXT geschnitten.
@@ -96,7 +96,7 @@ function alarmMarkup(sn) {
     .replace(/\$\{[^}]*\}/g, 'x');
 }
 
-/** Die Ruhezeit aus 07-admin.js — hier nur, um DARÜBER und DARUNTER zu takten. */
+/** Die Ruhezeit aus 02-detailfelder.js — hier nur, um DARÜBER und DARUNTER zu takten. */
 const RUHE = 800;
 
 /** Ein Fenster mit geladenem Bündel und dem Alarm-Markup des Detailfensters. */

@@ -1,23 +1,16 @@
-import { ladeAnzeige, listeLadefehler } from './01-bausteine.js';
+// Finanzen: Bewertung, G&V und Wertentwicklung des Bestands.
+import { ladeAnzeige, listeLadefehler, condBadges, ownerBadges, pnlBadge } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, api, esc, escJs, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
+import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, leerZustand, ico, G, api, escJs, fmtN, imgUrl, thumbUrl } from './01-core.js';
 import { scopeMode, scopeQuery } from './14-scope.js';
-import { _pnlCache, condBadges, ownerBadges, pnlBadge } from './02-gallery.js';
-import { loadCacheStats } from './05-settings.js';
-import { diagrammBreite, portfolioChartSVG, zeitpunkt } from './07-admin.js';
-
-// ═══ Finanzen: Bewertung, G&V, Portfolio-Chart ═══
-// Teil von app.js — die Dateien in public/js/ werden in nummerierter
-// Reihenfolge geladen und teilen sich den globalen Scope (kein Modul-
-// System noetig, Inline-onclick-Handler in index.html funktionieren
-// unveraendert). Der Split ist rein sequenziell und verhaelt sich
-// identisch zur frueheren Einzeldatei.
+import { CURRENCY, _pnlCache } from './00-zustand.js';
+import { esc } from './00-escapen.js';
+import { diagrammBreite, portfolioChartSVG, zeitpunkt, diagrammLeer } from './01-diagramme.js';
 
 // ── FINANCE ───────────────────────────────────────────
 
 
-G('btn-clr').onclick=async()=>{ await api('POST','/v1/admin/cache-clear'); toast(tRaw('settings.cache_cleared'),'info'); loadCacheStats(); loadFinance(); };
 // Vorgewählt ist der längste Zeitraum: Eine Woche hat bei neuem Bestand oft
 // nur einen Messpunkt und zeigte dann eine flache Linie mit „0 %“.
 let _chartPeriod  = 'max';
@@ -117,11 +110,6 @@ async function loadPortfolioChart(){
       }
     }
   }
-}
-
-/** Leerzustand des Wertdiagramms (auch aus portfolioChartSVG). */
-export function diagrammLeer(){
-  return `<div class="diagramm-leer" role="status"><strong>${t('finance.chart.too_few_title')}</strong><span>${t('finance.chart.too_few_text')}</span></div>`;
 }
 
 /**
@@ -540,7 +528,6 @@ function finFilter(art){
   else finKategorien.add(art);
   finFilterAnwenden();
 }
-
 
 
 // ── Handler beim Dispatcher anmelden (siehe js/00-registry.js) ──────────────

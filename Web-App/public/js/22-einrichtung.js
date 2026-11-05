@@ -1,8 +1,8 @@
 import { registerActions } from './00-registry.js';
 import { tRaw } from '../i18n.js';
 import { ico, G, api, toast, passwortRegelText, rbHinweisVerbergen, rbHinweisZeigen } from './01-core.js';
-import { oeffneErfassen } from './02-gallery.js';
-import { mitZweitemFaktor } from './07-admin.js';
+import { oeffneErfassen } from './01-bausteine.js';
+import { mitZweitemFaktor } from './01-rueckfrage.js';
 
 // ═══ Einrichtung beim ersten Start (Server: routes/settings.ts /einrichtung) ═
 // Nur für Verwalter, nur solange etwas fehlt. „Später" schliesst bloss — beim
