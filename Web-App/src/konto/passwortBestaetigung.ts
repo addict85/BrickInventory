@@ -5,6 +5,8 @@ import type { FehlerCode } from '../infra/fehlerTexte';
 import * as zugaenge from './repository/zugaenge';
 import * as zf from './zweiterFaktor';
 import * as P from './passkeys';
+import { kontoGedrosselt } from './zielDrossel';
+import { hinweisNebenher } from './kontoHinweis';
 
 export type BestaetigungsAbsage = { status: number; code: FehlerCode; vars?: Record<string, string | number>; passkey?: boolean };
 export type Faktor = { code?: unknown; passkey?: unknown };
@@ -20,7 +22,12 @@ async function gebremst(art: Bremse, uid: number, zugang: string, pruefung: () =
   }
   if (!await pruefung()) {
     meldeAnmeldeereignis('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
-    await bestaetigungFehlgeschlagen(art, uid, zugang);
+    // Wie beim Login erfährt der Inhaber vom Erreichen der Bremse, höchstens einmal am Tag:
+    // Wer in einer laufenden Sitzung rät, hat schon einen Zugang erbeutet.
+    if (await bestaetigungFehlgeschlagen(art, uid, zugang)) {
+      meldeAnmeldeereignis('bestaetigung_gebremst', { konto: uid, art, zugang });
+      if (!await kontoGedrosselt('bestaetigung-hinweis', uid, 1, 86_400_000)) hinweisNebenher(uid, 'bestaetigung_gebremst');
+    }
     return { status: 400, code: absage };
   }
   await bestaetigungGelungen(art, uid, zugang);
