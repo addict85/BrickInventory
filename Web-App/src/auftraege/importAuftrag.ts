@@ -162,3 +162,8 @@ export async function istAbgebrochen(userId: number): Promise<boolean> {
   return !stand || stand.status !== 'running';
 }
 
+/** Weckt, wenn ein anderer Prozess den Stand eines Kontos schrieb; gibt das Abmelden zurück. */
+export function beiImportStand(f: (konto?: string) => void): () => void {
+  pgNotify.listen('csv_import_progress', f);
+  return () => pgNotify.unlisten('csv_import_progress', f);
+}

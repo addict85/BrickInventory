@@ -205,24 +205,25 @@ function routenDateien() {
   return dateien;
 }
 
-test('keine Route führt SQL aus oder importiert die Datenbank', () => {
+test('keine Route führt SQL aus oder importiert aus db/', () => {
   // Routen lesen die Anfrage, rufen einen Dienst und schreiben die Antwort;
-  // der Datenzugriff steht in utils/ (utils/dienste/ je Gebiet).
-  // Gegenprobe (29.10.2026): `import * as db from '../../db/database'` und
-  // eine db.get-Zeile zurück in routes/api_v1/catalog.ts → rot, beide Treffer.
+  // Datenzugriff, Sperren und Benachrichtigungen stehen hinter src/<bereich>/.
+  // Gegenproben: `import * as db from '../../db/database'` und eine db.get-Zeile
+  // in routes/api_v1/catalog.ts → rot, beide Treffer (29.10.2026);
+  // `import { withInventoryLock } from '../../db/txLock'` in api_v1/sets.ts → rot (05.11.2026).
   const dateien = routenDateien();
   assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
   const treffer = [];
   for (const d of dateien) {
     for (const m of quelltext(d).matchAll(/\b(?:db|tx)\.(?:get|all|run|exec|transaction|pool)\b/g)) treffer.push(`${d}: ${m[0]}`);
-    for (const ziel of importe(d).filter(z => /db\/database/.test(z))) treffer.push(`${d} -> ${ziel}`);
+    for (const ziel of importe(d).filter(z => /(?:^|\/)db\//.test(z))) treffer.push(`${d} -> ${ziel}`);
   }
   assert.deepEqual(treffer, []);
 });
 
 test('keine Route importiert aus jobs/ oder clients/', () => {
   // Jobs steuert eine Route über src/auftraege/nacharbeit.ts und die Auftragstabelle,
-  // fremde Dienste erreicht sie über einen Dienst in utils/.
+  // fremde Dienste erreicht sie über einen Dienst in src/<bereich>/.
   // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
   // in admin.ts und `import { getSetByEan } from '../../clients/brickset'` in
   // api_v1/sets.ts → rot, beide Treffer.

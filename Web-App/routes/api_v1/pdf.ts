@@ -8,8 +8,7 @@ import { registerSse } from '../../src/infra/sseRegistry';
 import _pdfFs from 'fs/promises';
 import _fsSync from 'fs';
 import { liesAuftrag, loescheAuftrag, pdfSchluessel, gueltigeAuftragsKennung, pdfDateiPfad, pdfAuftragStarten } from '../../src/auftraege/pdfAuftraege';
-import { AUFTRAG_STAND_KANAL } from '../../src/auftraege/dienst';
-import { listen, unlisten } from '../../db/pgNotify';
+import { beiAuftragsStand } from '../../src/auftraege/dienst';
 import { sendeFehler, fehlerText, antwortSprache } from '../../src/infra/fehlerTexte';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Antwort } from '../../src/infra/vertrag';
@@ -99,7 +98,7 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, kontoSchranke('str
     if (isDone(job.status)) cleanup();
   };
   const onStatus = (nutzlast?: string) => { if (!nutzlast || nutzlast === pdfSchluessel(jobId)) return pruefe(); };
-  listen(AUFTRAG_STAND_KANAL, onStatus);
+  const abmelden = beiAuftragsStand(onStatus);
 
   // Rückfall, falls ein Signal während einer Verbindungsstörung verloren geht.
   const fallback = setInterval(pruefe, 15000);
@@ -109,7 +108,7 @@ router.get('/sets/partslist-pdf/stream/:jobId', requireToken, kontoSchranke('str
   function cleanup() {
     if (closed) return;
     closed = true;
-    unlisten(AUFTRAG_STAND_KANAL, onStatus);
+    abmelden();
     clearInterval(fallback);
     clearInterval(heartbeat);
     unregisterSse();

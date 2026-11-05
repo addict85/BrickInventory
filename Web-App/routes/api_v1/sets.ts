@@ -11,14 +11,13 @@ import { requireToken, kontoSchranke } from './middleware';
 import { getSetting } from '../../src/einstellungen/settings';
 import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
 import { scopeIds, parseScopeMode, writableIds, householdMembers, resolveWriteTarget } from '../../src/haushalt/haushalt';
-import { moveSetBetweenAccounts } from '../../src/sets/setMove';
+import { verschiebeSet } from '../../src/sets/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
          orteVon, legeOrtAn, benenneOrtUm, loescheOrt,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN, privaterOrdner } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
-import { withInventoryLock } from '../../db/txLock';
 import { addSet, updateSet } from '../../src/sets/setService';
 import { deleteSet, getSet, getSets } from '../../src/sets/abfragen';
 import { getSetPriceHistory } from '../../src/finanzen/priceHistory';
@@ -32,8 +31,7 @@ import { downloadSetInstructions, anleitungenZuSet, loescheAnleitungen, anleitun
 import { importPartsForSet } from '../../src/katalog/partsImport';
 import { registerSse } from '../../src/infra/sseRegistry';
 import { loginOrTokenGuard, angemeldeteNutzerId, istVerwalter } from '../../src/konto/http/anmeldung';
-import { csvImportBus, buildJobStatus, jobGet } from '../../src/auftraege/importAuftrag';
-import * as pgNotify from '../../db/pgNotify';
+import { csvImportBus, buildJobStatus, jobGet, beiImportStand } from '../../src/auftraege/importAuftrag';
 import { DATA_DIR } from '../../src/infra/appPaths';
 import { setBildSichtbar } from '../../src/katalog/bilder/bildBlickfeld';
 import { zaehleAnfrage } from '../../src/konto/loginLimiter';
@@ -301,8 +299,7 @@ router.post('/sets/:sn/move', requireToken, async (req: AuthedRequest, res: Antw
     : [];
   if (!acqIds.length)
     return sendeFehler(req, res, 400, 'kaufpreise_angeben');
-  const moved = await withInventoryLock(fromId, sn, (tx) =>
-    moveSetBetweenAccounts(tx, sn, fromId, toId, acqIds));
+  const moved = await verschiebeSet(sn, fromId, toId, acqIds);
   res.json({ success: true, set_number: sn, from_user_id: fromId, to_user_id: toId, ...moved });
 });
 
@@ -345,7 +342,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
   csvImportBus.on(`progress:${uid}`, onProgress);
   // Andere Worker melden über LISTEN/NOTIFY; der Takt fängt Verpasstes auf.
   const onNotify = async (payload: unknown) => { if (String(payload) === String(uid)) send(await stand()); };
-  pgNotify.listen('csv_import_progress', onNotify);
+  const abmelden = beiImportStand(onNotify);
   const fallbackTimer = setInterval(async () => { send(await stand()); }, 120000);
   const heartbeat = setInterval(() => { if (!closed) res.write(': keep-alive\n\n'); }, 20000);
   send(await stand());
@@ -354,7 +351,7 @@ router.get('/sets/import/csv/stream', zustandsWaechter, kontoSchranke('strom'), 
     if (closed) return;
     closed = true;
     csvImportBus.off(`progress:${uid}`, onProgress);
-    pgNotify.unlisten('csv_import_progress', onNotify);
+    abmelden();
     clearInterval(fallbackTimer);
     clearInterval(heartbeat);
     unregisterSse();
