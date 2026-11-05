@@ -115,7 +115,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
+  const { b, bis, ruhig } = app;
   // Gemessen wird der Endzustand: Ein Dialog, der gerade aufgeht (etwa die
   // Einrichtung nach der Anmeldung), steht im ersten Bild auf scale(.985).
   const ruhe = () => b.auswerten(`Promise.all(document.getAnimations()
@@ -175,7 +175,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.ok(fokus.oben >= 0 && fokus.hoehe >= 24, `Der Sprunglink ist mit Fokus nicht sichtbar: ${JSON.stringify(fokus)}`);
     await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
-    await warte(100);
+    await ruhig();
     assert.equal(await b.auswerten(`document.activeElement.id`), 'inhalt');
   });
 
@@ -193,7 +193,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     assert.equal(vorher.navZeilen, 1, 'am Telefon steht die Leiste in einer Zeile');
     assert.ok(vorher.seitenBreite <= 390, `Seite ${vorher.seitenBreite} px breit`);
     await b.auswerten(`document.querySelector('.einst-nav a[data-arg="einst-smtp"]').click(); true`);
-    await warte(100);
+    await ruhig();
     const nachher = await stand();
     assert.deepEqual([nachher.sichtbar, nachher.aktuell], [['einst-smtp'], 'einst-smtp']);
     assert.equal(await b.auswerten(`localStorage.getItem('bim_einst_abschnitt')`), 'einst-smtp');
@@ -202,7 +202,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
   await t.test('Teile und Minifiguren in der Leiste auffindbar', async () => {
     await reiter('gallery');
     await b.auswerten(`document.querySelector('#tab-gallery .sammlung-wahl [data-arg="parts"]').click(); true`);
-    await warte(300);
+    await ruhig();
     const telefon = await b.auswerten(`(() => { const s = document.querySelector('.ntab[data-tab="gallery"]');
       return { text: s.innerText.trim(), aktuell: s.getAttribute('aria-current'),
                teileSichtbar: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
@@ -213,13 +213,13 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     // Am Rechner EINE Navigation: „Sammlung“ in der Leiste, Sets/Teile/
     // Minifiguren nur im Umschalter auf der Seite (vorher beides).
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
-    await warte(200);
+    await ruhig();
     const rechner = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
       return { teile: r('parts').getClientRects().length > 0, figuren: r('minifigs').getClientRects().length > 0,
                umschalter: document.querySelector('#tab-parts .sammlung-wahl').getClientRects().length > 0,
                sammlungAktiv: r('gallery').classList.contains('gruppe-aktiv') }; })()`);
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
-    await warte(200);
+    await ruhig();
     assert.deepEqual(rechner, { teile: false, figuren: false, umschalter: true, sammlungAktiv: true });
     await reiter('gallery');
     assert.equal(await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').innerText.trim()`), 'Sammlung');
@@ -261,7 +261,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     })`);
     for (const [breite, hoehe, mobil] of [[1280, 900, false], [390, 844, true]]) {
       await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: hoehe, deviceScaleFactor: mobil ? 2 : 1, mobile: mobil });
-      await warte(200);
+      await ruhig();
       const m = await messen();
       // Am Telefon brechen die Felder um; dort zählt nur die gleiche Höhe.
       const zeile = mobil ? m : m.filter(x => x.oben === m[0].oben);
@@ -294,7 +294,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async (t) => {
     const sichtbar = (sel) => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;
     assert.equal(await b.auswerten(sichtbar('#btn-md')), false, 'Löschen steht offen im Fuss');
     await b.auswerten(`document.querySelector('#set-modal .mehr-menue > summary').click(); true`);
-    await warte(150);
+    await ruhig();
     assert.equal(await b.auswerten(sichtbar('#btn-md')), true, 'Löschen ist hinter „Weitere Aktionen“ nicht zu finden');
     const alarm = await b.auswerten(`(() => {
       const zeile = document.querySelector('#set-modal .alarm-zeile');

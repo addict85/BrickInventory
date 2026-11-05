@@ -39,6 +39,7 @@ Module.prototype.require = function (name) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
+const { warte } = require('./helpers/zeit');
 
 test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 1 }, async (t) => {
   const db = _req('db/database.js');
@@ -85,7 +86,6 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   await t.test('das Lebenszeichen folgt dem Worker', async () => {
     const jp = _req('startup/jobsProzess.js');
     const { liesZustand, loescheZustand } = _req('src/auftraege/laufzustand.js');
-    const warte = (ms) => new Promise(r => setTimeout(r, ms));
     for (let i = 0; i < 50 && !await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL); i++) await warte(20);
     assert.ok(await liesZustand(jp.LEBENSZEICHEN_SCHLUESSEL), 'nach dem Start fehlt das Lebenszeichen');
     await jp.stoppeJobs();

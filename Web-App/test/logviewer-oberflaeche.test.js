@@ -16,10 +16,10 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { pruefeAntwort } = require('./helpers/oberflaeche');
+const { warte: takt } = require('./helpers/zeit');
 
 const ROOT = path.join(__dirname, '..');
 const SKRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 'utf8');
-const takt = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
 function oeffne() {
   const { JSDOM } = require(path.join(ROOT, 'node_modules', 'jsdom'));

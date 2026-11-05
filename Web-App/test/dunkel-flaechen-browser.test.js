@@ -94,7 +94,7 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
+  const { b, bis, ruhig } = app;
   const reiter = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
   assert.ok(reiter.length >= 8, `nur ${reiter.length} Reiter`);
 
@@ -112,7 +112,7 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     };
     for (const r of reiter) {
       await b.auswerten(`document.querySelector('.ntab[data-tab="${r}"]').click(); true`);
-      await warte(600);
+      await ruhig();
       // Die Einstellungen zeigen je einen Abschnitt; gemessen werden alle.
       const seiten = r === 'settings'
         ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`) : [null];
@@ -125,11 +125,11 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     await bis(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');
     await b.auswerten(`document.querySelector('[data-click="openModal"]').click(); true`);
     await bis(`document.getElementById('m-tit').textContent.length > 0`, 'Set-Detail offen');
-    await warte(600);
+    await ruhig();
     await sammle('Set-Detail');
     await b.auswerten(`document.querySelector('.ovl.open .mx, .ovl.open [data-click="closeModal"]')?.click(); true`);
     await b.auswerten(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true`);
-    await warte(300);
+    await ruhig();
 
     await t.test(`${design}: keine helle Fläche`, () => assert.deepEqual([...funde.flaechen], []));
     await t.test(`${design}: Text lesbar`, () => assert.deepEqual([...funde.texte], []));

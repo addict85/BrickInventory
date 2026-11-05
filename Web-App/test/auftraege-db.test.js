@@ -36,7 +36,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 
 test('Auftragstabelle', { concurrency: 1 }, async (t) => {
   if (!await dbOderSkip(t, _req)) return;

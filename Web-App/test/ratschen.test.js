@@ -238,6 +238,27 @@ test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
   if (n < SCHRANKE) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
+test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
+  // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
+  // eine Bedingung (helpers/zeit.js bis(), ruhig() der Oberflächenhilfen).
+  // Gemessen 111 laut Prüfbericht, 37 am 05.11.2026. Eigene Warte-Helfer: 0.
+  // Gegenprobe (05.11.2026): `await warte(500);` in verlauf-browser.test.js → rot (38).
+  const SCHRANKE = 37;
+  const FEST = /^\s*await (warte|takt|new Promise\(r(esolve)? => setTimeout\(r(esolve)?,)\s*\(?\s*[0-9]{3,}/;
+  const EIGEN = /^\s*const (warte|takt|sleep|schlafe)\s*=/;
+  let ist = 0;
+  const eigene = [];
+  for (const n of fs.readdirSync(__dirname).filter(x => x.endsWith('.js'))) {
+    for (const z of fs.readFileSync(path.join(__dirname, n), 'utf8').split('\n')) {
+      if (FEST.test(z)) ist++;
+      if (EIGEN.test(z)) eigene.push(n);
+    }
+  }
+  assert.deepEqual(eigene, [], 'eigene Warte-Helfer: test/helpers/zeit.js benutzen');
+  assert.ok(ist <= SCHRANKE, `${ist} feste Wartezeiten ab 100 ms, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ feste Wartezeiten: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 /**
  * Emoji in der Oberfläche. Seit dem 25.10. gibt es eine Symbolfamilie (Sprite
  * in index.html); Emoji sehen je Gerät anders aus und passen weder in Grösse

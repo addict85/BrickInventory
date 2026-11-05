@@ -36,9 +36,8 @@ const { haeltSet } = require('./helpers/bestand');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `stile_${process.pid}`, PASS = 'stile-Passwort-1';
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
 
-const { chrome } = require('./helpers/app-browser');
+const { chrome, warte } = require('./helpers/app-browser');
 
 const freierPort = () => new Promise(r => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => r(p)); }); });
 

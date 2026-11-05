@@ -137,13 +137,13 @@ test('Konto: eine ausstehende Adresse steht unter dem Feld, im Feld die geltende
 });
 
 test('kein Hinweis zum Rebrickable-Schlüssel über dem Einrichtungsassistenten', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d, ruhig } = await oeffneOberflaeche({
     '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
     '/v1/settings/einrichtung': { success: true, offen: true, passwort_aendern: false, quellen: { rebrickable: false } },
   });
   try {
     await warte(() => d.getElementById('einrichtung-modal').classList.contains('open'));
-    await takt(700);
+    await ruhig();
     assert.ok(d.getElementById('einrichtung-modal').classList.contains('open'), 'der Assistent ist zu');
     const hinweise = [...d.querySelectorAll('#toasts .toast')].map(t => t.textContent).filter(t => /Rebrickable/.test(t));
     assert.deepEqual(hinweise, []);

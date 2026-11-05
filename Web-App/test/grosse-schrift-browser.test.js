@@ -68,15 +68,15 @@ const MESSUNG = `(() => {
 test('grosse Schrift und schmale Geräte: Sammlung lesbar', { timeout: 180_000 }, async (t) => {
   const app = await starteApp(t, { name: `gross_${process.pid}`, bestand: musterSammlung });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b } = app;
-  await warte(1000);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+  const { b, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await app.bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
   const fall = async (breite, schrift) => {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: breite, height: 844, deviceScaleFactor: 1, mobile: true });
     await b.tab('Page.setFontSizes', { fontSizes: { standard: schrift, fixed: Math.round(schrift * 0.8) } });
-    await warte(400);
+    await ruhig();
     return b.auswerten(MESSUNG);
   };
   for (const [breite, schrift, spalten] of [[390, 16, 2], [320, 16, 1], [390, 32, 1], [320, 32, 1]]) {

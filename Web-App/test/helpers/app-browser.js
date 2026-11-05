@@ -106,6 +106,10 @@ async function starteApp(t, opt = {}) {
   const uid = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified, is_admin)
     VALUES ($1, $2, $3, true, true, true) RETURNING id`, [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [uid, opt.sprache || 'de']);
+  // Ohne diesen Wert ginge der Einrichtungsassistent über leerer Sammlung auf und
+  // jeder Test müsste erst auf ihn warten; wer ihn prüft, löscht den Wert in `bestand`.
+  await db.run(`INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')
+                ON CONFLICT (key) DO UPDATE SET value = '1'`);
   if (opt.bestand) await opt.bestand(db, uid);
   // Verwalter ohne Code-Generator kämen nur bis zu dessen Einrichtung; angemeldet
   // wird mit einem Wiederherstellungscode im Codefeld.
@@ -150,9 +154,13 @@ async function starteApp(t, opt = {}) {
   // nennt der Test damit die Anfrage, die die Sitzung beendet hat.
   const abgewiesen = [];
   await b.tab('Network.enable');
+  // Laufende fetch/XHR-Anfragen für ruhig(); Bilder zählen nicht, sie hängen am CDN.
+  const laufend = new Set();
   b.hoerer.push((d) => {
     if (d.method === 'Network.responseReceived' && d.params.response.status === 401)
       abgewiesen.push(d.params.response.url.replace(/^https?:\/\/[^/]+/, ''));
+    if (d.method === 'Network.requestWillBeSent' && ['Fetch', 'XHR'].includes(d.params.type)) laufend.add(d.params.requestId);
+    if (d.method === 'Network.loadingFinished' || d.method === 'Network.loadingFailed') laufend.delete(d.params.requestId);
   });
   if (opt.abfangen?.length) {
     await b.tab('Fetch.enable', { patterns: opt.abfangen.map(a => ({ urlPattern: a.muster, requestStage: 'Request' })) });
@@ -199,7 +207,13 @@ async function starteApp(t, opt = {}) {
     if (document.querySelector('.ntab[data-tab="settings"]')?.classList.contains('active')) return true;
     const g = document.getElementById('gallery');
     return !!g && g.children.length > 0 && !g.querySelector('.skelett-raster'); })()`, 'Start abgeschlossen');
-  return { b, bis, warte, port, uid, db, abgewiesen, weitereCodes };
+  /** Bis keine Anfrage mehr läuft (zweimal hintereinander) und zwei Bilder gezeichnet sind. */
+  const ruhig = async (ms = 10_000) => {
+    const ende = Date.now() + ms;
+    for (let still = 0; still < 2 && Date.now() < ende; await warte(50)) still = laufend.size ? 0 : still + 1;
+    await b.auswerten('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))');
+  };
+  return { b, bis, warte, ruhig, port, uid, db, abgewiesen, weitereCodes };
 }
 
 module.exports = { starteApp, warte, chrome };

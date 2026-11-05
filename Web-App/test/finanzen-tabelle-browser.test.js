@@ -39,10 +39,10 @@ test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, t
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const groesse = async (w) => { await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: 900, deviceScaleFactor: 1, mobile: false }); await warte(300); };
-  await warte(1200);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
   await b.auswerten(`location.hash = '#/finanzen'; true`);
   await bis(`document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2`, 'Sets in der Finanztabelle');
 

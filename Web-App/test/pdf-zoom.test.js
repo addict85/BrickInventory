@@ -54,6 +54,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
+const { warte } = require('./helpers/zeit');
 
 const QUELLE = path.join(__dirname, '..', 'public', 'js', '12-pdfviewer.js');
 
@@ -170,7 +171,6 @@ async function werkbank(umbau) {
   w.t = k => k; w.tRaw = k => k;
   w.eval(code);
 
-  const warte = ms => new Promise(r => setTimeout(r, ms));
   await w.window.openPdfViewer('/data/instructions/BI-3004.pdf', 'Test');
   await warte(40);
 

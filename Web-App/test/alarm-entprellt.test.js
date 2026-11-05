@@ -128,7 +128,7 @@ function fenster() {
            schliesse: () => w.close() };
 }
 
-const warte = ms => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 
 /** „249.90" Zeichen für Zeichen, mit [takt] ms zwischen den Anschlägen. */
 async function tippe(f, takt, text = '249.90') {

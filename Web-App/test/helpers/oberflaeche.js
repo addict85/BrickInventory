@@ -121,9 +121,12 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
   try { w.localStorage.setItem('bim_lang', opt.sprache || 'de'); } catch (_) { /* jsdom ohne Speicher */ }
   // Eine Antwort darf ein Promise sein (verzögert) oder werfen (Netzfehler);
   // `$status` setzt den HTTP-Status, z. B. { $status: 500, success: false }.
+  let offen = 0;
   w.fetch = async (url, o = {}) => {
     aufrufe.push({ url: String(url), method: o.method || 'GET', body: o.body, headers: o.headers || {} });
-    let daten = await antwortFuer(alle, url, o);
+    offen++;
+    let daten;
+    try { daten = await antwortFuer(alle, url, o); } finally { setTimeout(() => offen--, 0); }
     // Ausserhalb des Fensters geworfen: Die Oberfläche finge den Fehler sonst als Netzfehler ab.
     try { daten = pruefeAntwort(o.method || 'GET', url, daten); } catch (e) { setImmediate(() => { throw e; }); }
     const status = daten?.$status ?? 200;
@@ -143,7 +146,13 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
   if (opt.angemeldet !== false)
     await warte(() => w.document.getElementById('app')?.style.display !== 'none' && w.document.getElementById('app')?.style.display !== '');
   await takt(20);
-  return { w, d: w.document, aufrufe, warte, takt, fehler };
+  /** Bis keine Antwort mehr aussteht und die Oberfläche die letzte verarbeitet hat. */
+  const ruhig = async (ms = 3000) => {
+    const ok = await warte(() => offen === 0, ms);
+    for (let i = 0; i < 3; i++) await takt(0);
+    return ok;
+  };
+  return { w, d: w.document, aufrufe, warte, takt, ruhig, fehler };
 }
 
 /** Einen Reiter öffnen, wie ein Klick in der Leiste. */

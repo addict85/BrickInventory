@@ -61,9 +61,9 @@ const UNBEDIENBAR = `(() => {
 test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async (t) => {
   const app = await starteApp(t, { name: `kft_${process.pid}`, bestand: musterHaushalt });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(800);
-  await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const ruhe = () => b.auswerten(`new Promise(r => setTimeout(() => requestAnimationFrame(() => r(true)), 700))`);
 
   await t.test('jede Klickfläche ist bedienbar', async () => {

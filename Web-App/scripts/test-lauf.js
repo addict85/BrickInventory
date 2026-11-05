@@ -9,6 +9,7 @@
  *   TEST_DATABASE_URL  Basis; ohne sie laufen die Tests ohne Datenbank
  *   TEST_PARALLEL      gleichzeitige Testdateien (Vorgabe: doppelte Kernzahl, höchstens 8)
  *   TEST_FRIST_MS      feste Frist je Datei; ohne sie 60 s, mit der Last wachsend
+ *   TEST_NACHLAUF=aus  eine Fristüberschreitung ist rot statt nachzulaufen
  *   --seriell          alles nacheinander auf der Basis-Datenbank, wie früher
  *   weitere Argumente  Testdateien statt test/*.test.js
  */
@@ -78,15 +79,39 @@ function fristFehler(tap, dateien) {
   return { frist, andere };
 }
 
+/** Dateien, die nur im Nachlauf grün wurden: Sie stehen am Ende des Laufs
+ * und als Warnung in der CI, damit ein langsamer Test nicht still bleibt. */
+/** @type {string[]} */
+const nachgelaufen = [];
+
 /** Was nur an der Frist scheiterte, läuft einzeln nach: unter Last ein
- * Ausrutscher, einzeln rot ein Fehler. Übersprungen wird nichts. */
+ * Ausrutscher, einzeln rot ein Fehler. Mit TEST_NACHLAUF=aus gibt es keinen
+ * Nachlauf, dann ist schon die Fristüberschreitung rot. */
 async function mitNachlauf(/** @type {{ code: number, frist: string[], andere: number }} */ r,
                            /** @type {Record<string, string>} */ env, /** @type {number} */ frist) {
   if (!r.frist.length) return r.code;
+  for (const d of r.frist) console.log(`::warning title=Frist überschritten::${d} (Frist ${frist / 1000} s)`);
+  if (process.env.TEST_NACHLAUF === 'aus') {
+    console.log(`[test-lauf] Frist überschritten, kein Nachlauf (TEST_NACHLAUF=aus): ${r.frist.join(', ')}`);
+    return r.code || 1;
+  }
   console.log(`[test-lauf] Frist überschritten, Nachlauf einzeln: ${r.frist.join(', ')}`);
   const nach = await lauf(r.frist, 1, env, frist * 2);
   console.log(`[test-lauf] Nachlauf ${nach.code === 0 ? 'grün' : 'ROT'}: ${r.frist.length} Dateien`);
+  if (nach.code === 0) nachgelaufen.push(...r.frist);
   return r.andere > 0 ? (r.code || 1) : nach.code;
+}
+
+/** Am Ende des Laufs, nicht zwischen hunderten Testzeilen. */
+function meldeNachlauf() {
+  if (!nachgelaufen.length) return;
+  const text = `${nachgelaufen.length} Datei(en) nur im Nachlauf grün — unter Last zu langsam: ${nachgelaufen.join(', ')}`;
+  console.log(`[test-lauf] WARNUNG: ${text}`);
+  console.log(`::warning title=Nachlauf::${text}`);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    try { fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n### Nachlauf\n\n${text}\n`); }
+    catch (e) { console.log(`[test-lauf] Zusammenfassung nicht schreibbar: ${e instanceof Error ? e.message : e}`); }
+  }
 }
 
 async function main() {
@@ -143,6 +168,7 @@ async function main() {
   } finally {
     if (admin) { await raeumeAuf(admin, vorlage, true).catch(() => {}); await admin.end(); }
   }
+  meldeNachlauf();
   console.log(`[test-lauf] ${uebrige.length} Dateien zu ${n} parallel, ${browser.length} Dateien einzeln (Browser, @einzeln), `
     + `${Math.round((Date.now() - start) / 1000)} s`);
   process.exit(code);

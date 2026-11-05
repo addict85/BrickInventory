@@ -24,14 +24,14 @@ test('dieselben Ansichtsknöpfe in allen drei Reitern', async () => {
 });
 
 test('Teile: die Tabelle lädt die Set-Zuordnung', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche();
+  const { w, d, aufrufe, ruhig } = await oeffneOberflaeche();
   try {
     await reiter(w, 'parts');
-    await takt(500);     // erst das Laden des Reiters abwarten
+    assert.ok(await ruhig(), 'der Reiter lädt nicht fertig');
     const vorher = aufrufe.length;
     const knopf = d.querySelector('[data-click="ansichtWaehlen"][data-arg="parts-view"][data-arg2="table"]');
     knopf.click();
-    await takt(200);
+    await ruhig();
     assert.ok(aufrufe.slice(vorher).some(a => /\/v1\/parts\?.*with_sets=1/.test(a.url)),
       'der Wechsel hat nicht neu geladen');
     assert.equal(d.getElementById('parts-view').value, 'table');

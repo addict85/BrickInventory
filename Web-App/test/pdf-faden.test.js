@@ -25,10 +25,10 @@ test('die Ereignisschleife bleibt frei, während das PDF entsteht', async () => 
     part_number: `p${i}`, part_name: `Teil ${i}`, color_id: 1, color_name: 'Rot', color_hex: 'C91A09', quantity: 1 + (i % 3),
   }));
   let letzte = Date.now(), laengste = 0;
-  const takt = setInterval(() => { const j = Date.now(); laengste = Math.max(laengste, j - letzte); letzte = j; }, 5);
+  const uhr = setInterval(() => { const j = Date.now(); laengste = Math.max(laengste, j - letzte); letzte = j; }, 5);
   try {
     await zeichnePdfImFaden([{ set_number: '1-1' }], parts, ziel);
-  } finally { clearInterval(takt); }
+  } finally { clearInterval(uhr); }
   try {
     assert.equal(fs.readFileSync(ziel).subarray(0, 5).toString(), '%PDF-');
     assert.ok(laengste < 150, `längste Pause der Ereignisschleife: ${laengste} ms`);

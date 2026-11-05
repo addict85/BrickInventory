@@ -24,10 +24,10 @@ const TASTEN = { Enter: 13, Escape: 27, ArrowDown: 40, ArrowUp: 38, Home: 36, En
 test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, async (t) => {
   const app = await starteApp(t, { name: `umenu_${process.pid}`, bestand: musterSammlung });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b } = app;
+  const { b, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   // Der Einrichtungsassistent ist ein Dialog und finge Escape ab.
-  await warte(1000);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
   const taste = async (key) => {
     const k = { key, code: key, windowsVirtualKeyCode: TASTEN[key] };
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...k });
@@ -74,7 +74,7 @@ test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, asyn
     await taste('Enter');
     await taste('ArrowDown');            // Gutscheine
     await taste('Enter');
-    await warte(300);
+    await ruhig();
     assert.equal(await offen(), false);
     assert.equal(await b.auswerten(`document.activeElement.classList.contains('ptitle')
       && !!document.activeElement.closest('#tab-gutscheine')`), true, `Fokus auf ${await fokus()}`);

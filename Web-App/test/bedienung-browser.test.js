@@ -38,15 +38,15 @@ const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }, async (t) => {
   const app = await starteApp(t, { name: `bedien_${process.pid}`, bestand: musterSammlung });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(1000);
-  await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
   const escape = async () => {
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...ESC });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...ESC });
-    await warte(150);
+    await ruhig();
   };
   const fokus = () => b.auswerten(`(() => { const a = document.activeElement; return a.id || a.tagName.toLowerCase() + '.' + a.className; })()`);
 

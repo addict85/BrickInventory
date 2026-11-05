@@ -61,9 +61,9 @@ test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1,
     await haeltSet(db, kid, '75313-1', 1, { preis: 700 });
   } });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
-  await warte(800);
-  await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
+  const { b, bis, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const geh = async (pfad) => { await b.auswerten(`location.hash = '#/${pfad}'; true`); await warte(400); };
   const groesse = async (w, h = 900) => { await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false }); await warte(400); };
   const beleg = async (name) => {
@@ -75,7 +75,7 @@ test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1,
   const sprache = async (l) => {
     await b.auswerten(`(() => { const s = document.getElementById('lang-select'); s.value = '${l}'; s.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
     await bis(`document.documentElement.lang === '${l}'`, `Sprache ${l}`);
-    await warte(800);
+    await ruhig();
   };
 
   await geh('finanzen');
@@ -151,8 +151,12 @@ test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1,
   await t.test('Trefferzahl nach der Suche in einer Live-Region', async () => {
     await geh('sammlung');
     const suche = async (q) => {
-      await b.auswerten(`(() => { const f = document.getElementById('gs'); f.value = ${JSON.stringify(q)}; f.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
-      await warte(1800);
+      // Die Suche ist entprellt: gewartet wird auf die Änderung der Live-Region, höchstens 5 s.
+      await b.auswerten(`new Promise(r => { const e = document.getElementById('treffer-live');
+        const mo = new MutationObserver(() => { mo.disconnect(); r(true); });
+        mo.observe(e, { childList: true, characterData: true, subtree: true }); setTimeout(() => r(false), 5000);
+        const f = document.getElementById('gs'); f.value = ${JSON.stringify(q)}; f.dispatchEvent(new Event('input', { bubbles: true })); })`);
+      await ruhig();
       return b.auswerten(text('#treffer-live'));
     };
     assert.deepEqual(await b.auswerten(`(() => { const e = document.getElementById('treffer-live'); return [e.getAttribute('role'), e.getAttribute('aria-live')]; })()`), ['status', 'polite']);
@@ -175,7 +179,7 @@ test('UI-Prüfung 16: Finanzen, Lagerorte, Sprache, Vorleser', { concurrency: 1,
     await bis(`document.getElementById('mk-detail-modal').classList.contains('open')`, 'Merkposten-Dialog');
     // Der BrickLink-Knopf erscheint erst mit einer Katalogantwort; gemessen wird er auch ohne.
     await b.auswerten(`document.getElementById('mk-m-bricklink').style.display = ''; document.getElementById('mk-m-vergleich').style.display = ''; true`);
-    await warte(200);
+    await ruhig();
     const eng = await b.auswerten(`[...document.querySelectorAll('#mk-detail-modal .knopf-fuellend')].filter(k => k.scrollWidth > k.clientWidth + 1).map(k => k.textContent.trim())`);
     assert.deepEqual(eng, []);
   });

@@ -159,7 +159,7 @@ w.eval(`
   Element.prototype.scrollIntoView = function () { window.__scrollZiele.push(this); };
 `);
 w.eval(CODE);
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const { warte: sleep } = require('./helpers/zeit');
 const fire = (el, type) => el.dispatchEvent(new w.Event(type, { bubbles: true }));
 const problems = [];
 const check = (name, cond, extra) => {

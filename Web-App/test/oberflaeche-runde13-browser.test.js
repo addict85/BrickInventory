@@ -44,10 +44,10 @@ test('UI-Prüfung 13: Haushalt, Dialoge, Finanzen', { timeout: 280_000 }, async 
   const NAME = `r13_${process.pid}`, KIND = `${NAME}_kind`, ANDERE = `r13x_${process.pid}`;
   const app = await starteApp(t, { name: NAME, bestand: musterHaushalt });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis, db, port } = app;
+  const { b, bis, db, port, ruhig } = app;
+  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  await ruhig();
   const haushalt = buildAndRequire()('src/haushalt/haushalt.js');
-  await warte(800);
-  await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
   const geh = async (pfad) => { await b.auswerten(`location.hash = '#/${pfad}'; true`); await warte(300); };
   const zu = async () => { await b.auswerten(klick('#cd-cancel')); await bis(`!(${offen})`, 'Dialog zu'); };
   const andere = (await db.get(`INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true) RETURNING id`,

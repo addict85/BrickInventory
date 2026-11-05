@@ -148,7 +148,7 @@ const anmelden = async base => {
 };
 const wer = async (base, keks) =>
   (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).uid;
-const schlafe = ms => new Promise(r => setTimeout(r, ms));
+const { warte: schlafe } = require('./helpers/zeit');
 
 /**
  * Aufräumen — und zwar in `after`, nicht am Ende eines Falls.

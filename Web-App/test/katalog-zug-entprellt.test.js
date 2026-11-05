@@ -53,6 +53,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
+const { warte } = require('./helpers/zeit');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
 
@@ -146,7 +147,6 @@ async function zugMessen(entprellt) {
   };
 
   w.eval(code);
-  const warte = ms => new Promise(r => setTimeout(r, ms));
   w.eval('initCatalog()');
   await warte(300);
   const vorDemZug = abrufe.length;

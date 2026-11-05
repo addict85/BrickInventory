@@ -56,16 +56,16 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
     },
   });
   if (app.grund) { t.skip(app.grund); return; }
-  const { b, bis } = app;
+  const { b, bis, ruhig } = app;
   const reiter = async (name) => { await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`); await warte(500); };
   const groesse = async (w, h, mobil) => {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: mobil ? 2 : 1, mobile: mobil });
-    await warte(250);
+    await ruhig();
   };
 
   // Ohne Rebrickable-Schlüssel springt die App kurz nach dem Start in die
   // Einstellungen; erst danach den Reiter wechseln.
-  await warte(1200);
+  await ruhig();
 
   await t.test('Telefon: Beträge in einer Zeile', async () => {
     await reiter('finance');
@@ -109,7 +109,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
 
   await t.test('Noppe: untere Leiste mindestens 4,5:1', async () => {
     await b.auswerten(`document.documentElement.setAttribute('data-theme', 'noppe'); true`);
-    await warte(200);
+    await ruhig();
     const werte = await b.auswerten(`(() => { const k = ${KONTRAST};
       const nav = getComputedStyle(document.querySelector('nav')).backgroundColor;
       return [...document.querySelectorAll('nav .ntab:not(.active)')].filter(e => e.getClientRects().length)
@@ -125,7 +125,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
     await reiter('gallery');
     // Der Einrichtungsassistent des neuen Verwalters hielte den Fokus fest.
     await b.auswerten(`document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`);
-    await warte(200);
+    await ruhig();
     // Mit der Tastatur bis zum ersten Reiter: Erst dann gilt :focus-visible.
     await b.auswerten(`document.activeElement?.blur(); document.querySelector('.sprunglink').focus(); true`);
     const weg = [];
@@ -154,7 +154,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
   await t.test('Rechner: Set hinzufügen bündig', async () => {
     await reiter('gallery');
     await b.auswerten(`document.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
-    await warte(300);
+    await ruhig();
     const m = await b.auswerten(`(() => { const r = e => e.getBoundingClientRect();
       const felder = ['add-num', 'add-qty', 'add-price', 'add-condition'].map(id => document.getElementById(id));
       const labels = felder.map(f => document.querySelector('label[for="' + f.id + '"]'));
@@ -170,7 +170,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async (t) =>
 
   await t.test('Rechner: Konto mit begrenzter Breite', async () => {
     await b.auswerten(`document.querySelector('.umenu-item[data-arg="profil"]').click(); true`);
-    await warte(400);
+    await ruhig();
     const breite = await b.auswerten(`Math.round(document.getElementById('profile-settings-card').getBoundingClientRect().width)`);
     assert.ok(breite > 300 && breite <= 52 * 16, `Konto-Karte ${breite} px breit`);
   });

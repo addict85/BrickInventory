@@ -33,7 +33,7 @@ const { dbOderSkip } = require('./helpers/db');
 const db = _req('db/database.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const warte = (ms) => new Promise(r => setTimeout(r, ms));
+const { warte } = require('./helpers/zeit');
 
 function freierPort() {
   return new Promise((auf, ab) => {

@@ -35,12 +35,12 @@ test('Merkliste: letzter Stand statt Fehler, auch nach dem Neuladen der Seite', 
   await warte(() => erst.d.querySelector('#mk-list .mk-zeile'));
   const speicher = Object.fromEntries(Object.keys(erst.w.sessionStorage).map(k => [k, erst.w.sessionStorage.getItem(k)]));
   erst.w.close();
-  const { w, d } = await oeffneOberflaeche({ '/v1/wanted': () => { throw new TypeError('Failed to fetch'); } },
+  const { w, d, ruhig } = await oeffneOberflaeche({ '/v1/wanted': () => { throw new TypeError('Failed to fetch'); } },
     { vorher: (w2) => { for (const [k, v] of Object.entries(speicher)) w2.sessionStorage.setItem(k, v); } });
   try {
     netz(w, false);
     await reiter(w, 'wanted');
-    await takt(150);
+    await ruhig();
     assert.equal(d.querySelector('#mk-list .fehler-zustand'), null, 'Merkliste: letzter Stand');
     assert.match(d.getElementById('mk-list').textContent, /Galaxie-Forscher/);
     assert.match(d.getElementById('offline-band').textContent, /^Keine Verbindung/);
