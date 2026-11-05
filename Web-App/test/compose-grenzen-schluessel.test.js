@@ -41,7 +41,7 @@ const wert = (roh) => roh.replace(/^\$\{\w+:-(.*)\}$/, '$1');
 const byte = (roh) => { const m = wert(roh).match(/^(\d+)([kmg])?$/i); return m ? Number(m[1]) * { k: 2 ** 10, m: 2 ** 20, g: 2 ** 30 }[m[2]?.toLowerCase() ?? ''] || Number(m?.[1]) : NaN; };
 
 test('jeder Dienst hat Grenzen für Speicher, Prozesse und CPU', () => {
-  assert.ok(DIENSTE.length >= 7, `nur ${DIENSTE.join(', ')}`);
+  assert.ok(DIENSTE.length >= 6, `nur ${DIENSTE.join(', ')}`);
   const fehlt = [];
   for (const n of DIENSTE) {
     const b = dienst(n);

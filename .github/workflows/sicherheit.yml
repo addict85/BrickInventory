@@ -189,6 +189,29 @@ jobs:
             echo "::warning title=Lücken in ${IMAGE%%@*}::Trivy meldet behebbare Lücken ab high, siehe Zusammenfassung."
           fi
 
+  # ── Hier gebaute Betriebs-Images (Caddy aus Dockerfile.caddy) ─────────────
+  # Ohne Ausnahmeliste: Für einen eigenen Bau gibt es keinen Grund, auf einen
+  # fremden Digest zu warten.
+  trivy-eigenbau:
+    name: Trivy (Caddy, eigener Bau)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Caddy bauen
+        run: docker build -f Web-App/Dockerfile.caddy -t brickinventory-caddy:pruefung Web-App
+      - name: Bekannte Lücken
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: brickinventory-caddy:pruefung
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
   zap:
     name: ZAP-Baseline
     runs-on: ubuntu-latest

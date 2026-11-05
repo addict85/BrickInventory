@@ -36,7 +36,7 @@ den Commits, nicht hier.
 ### Transport (1)
 - HTTPS als Standard: Caddy vor der App, die App veröffentlicht keinen Port;
   Port 80 leitet um und liefert nur `/ca.crt`: `compose.yaml`, `Caddyfile` —
-  `compose-pgweb`.
+  `compose-haertung`.
 - Keine CA ohne Namensbeschränkung als stiller Rückfall: Caddy startet nur mit
   eigener, auf `BRICK_HOST` beschränkter CA (`scripts/ca-einrichten.sh`), mit
   `BRICK_TLS=acme` (öffentlicher Name) oder ausdrücklich mit
@@ -152,7 +152,7 @@ den Commits, nicht hier.
   Netzen; Vorgabe Loopback, `docker`/`true`/Hop-Zahlen verweigern den Start:
   `utils/proxyVertrauen.ts` — `anmeldesperre-db`, `proxy-hinweis`, `startverbot`.
 - `compose.yaml`: festes Netz `172.28.73.0/24`; ein Reverse-Proxy bekommt
-  darin eine feste Adresse, und genau die steht in `TRUST_PROXY` — `compose-pgweb`.
+  darin eine feste Adresse, und genau die steht in `TRUST_PROXY` — `compose-haertung`.
 
 ### CSRF (2)
 - Ändernde Anfragen: `Sec-Fetch-Site`, sonst `Origin`/`Referer` gegen Host
@@ -294,7 +294,7 @@ den Commits, nicht hier.
 - Mail-Links ohne Token in den Protokollen: `utils/mailer.ts`.
 
 ### Lieferkette (5)
-- Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-pgweb`.
+- Actions per Commit-SHA, Images per Digest — `workflow-ort`, `compose-haertung`.
   Dependabot schlägt neue Fassungen vor: Actions, Dockerfiles und die Dienste
   in `compose.yaml` (`docker-compose`); npm und Gradle über Renovate
   (`renovate.json` im Wurzelverzeichnis), frühestens drei Tage nach
@@ -353,7 +353,7 @@ den Commits, nicht hier.
   `pg_execute_server_program` & Co.; die Rolle besitzt Datenbank, Tabellen und
   Funktionen (Migrationen). Den Superuser kennen nur Postgres und der
   einmalige Dienst `db-rolle` (`postgres/app-rolle.sh`). Läuft die App doch als
-  Superuser, warnt der Start — `db-rolle-db`, `compose-pgweb`.
+  Superuser, warnt der Start — `db-rolle-db`, `compose-haertung`.
 - `db-rolle` läuft als Superuser in einer Datenbank, die der App-Rolle gehört.
   Deshalb fester `search_path=pg_catalog,pg_temp` und `role=none` schon beim
   Verbinden (PGOPTIONS), nur `pg_catalog.`-Funktionen, zuerst
@@ -374,7 +374,7 @@ den Commits, nicht hier.
 - pgweb nur auf `127.0.0.1`, nur mit Profil `tools`, nur mit Anmeldung und
   als Leserolle `brickinventory_lesen`; als uid 1000, `read_only`, ohne
   Capabilities und in einem eigenen Netz nur mit `postgres` —
-  `compose-pgweb`, `compose-geheimnisse`. Die Leserolle liest nur eine
+  `compose-haertung`, `compose-geheimnisse`. Die Leserolle liest nur eine
   Allowlist je Tabelle (`LESEN_SPALTEN` in `postgres/app-rolle.sh`): eine neue
   Tabelle oder Spalte bleibt unlesbar, bis sie dort steht; Tokens, Sitzungen,
   Passwort-Hashes, TOTP, Einstellungswerte und Gutschein-PINs stehen nicht

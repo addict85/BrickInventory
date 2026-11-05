@@ -106,19 +106,25 @@ mkdir -p "$TARGET"
 # BusyBox und macOS.)
 case "$(ls -ld "$TARGET")" in
   ???????---*) ;;
-  *) echo "[backup] Warnung: $TARGET ist für andere Benutzer zugänglich — die Sicherung enthält Klartext-Schlüssel (chmod 700 \"$TARGET\")" >&2 ;;
+  *) echo "[backup] Warnung: $TARGET ist für andere Benutzer zugänglich — die Sicherung enthält Passwort-Hashes und personenbezogene Daten (chmod 700 \"$TARGET\")" >&2 ;;
 esac
 
 DB_DATEI="$TARGET/db_$STAMP.sql.gz$ENDUNG"
 echo "[backup] Datenbank → $DB_DATEI"
 # --clean --if-exists: Der Dump lässt sich in eine bestehende Datenbank
-# einspielen, ohne sie vorher von Hand leeren zu müssen.
+# einspielen, ohne sie vorher von Hand leeren zu müssen. Sitzungen,
+# Anmeldezähler, Protokollzeilen und die Kopien vor Migrationen braucht keine
+# Wiederherstellung; im Dump lebten sie nur länger als ihre Frist.
+DUMP_OPTIONEN="--clean --if-exists --exclude-table-data=user_sessions --exclude-table-data=rate_limit_attempts --exclude-table-data=app_logs --exclude-schema=vor_migration_*"
 mkfifo "$KLAR/strom"
 tail -c 1024 < "$KLAR/strom" > "$KLAR/ende" &
 TEIL="$DB_DATEI.teil"
+# Die Optionen getrennt an Leerzeichen, aber ohne Dateinamen-Muster (das * gilt pg_dump).
+set -f
 docker compose exec -T "$DB_SERVICE" \
-  pg_dump --clean --if-exists -U "$DB_USER" "$DB_NAME" \
+  pg_dump $DUMP_OPTIONEN -U "$DB_USER" "$DB_NAME" \
   | tee "$KLAR/strom" | gzip | schreibe "$TEIL"
+set +f
 wait
 
 # POSIX-sh hat kein pipefail: Scheitert pg_dump, laufen gzip und age trotzdem

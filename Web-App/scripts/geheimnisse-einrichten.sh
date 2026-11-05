@@ -4,10 +4,10 @@
 # Zugang zu Docker; Dateien unter /run/secrets/ nicht. UPGRADE.md, Abschnitt 33.
 #
 #   sh scripts/geheimnisse-einrichten.sh            (im Ordner mit compose.yaml)
-#   PGWEB=ja sh scripts/geheimnisse-einrichten.sh   auch die Passwörter für pgweb
+#   PGWEB=ja sh scripts/geheimnisse-einrichten.sh   auch ein Passwort für die Leserolle
 #
 # Vorhandene Dateien bleiben. Fehlende kommen aus einer alten .env
-# (SESSION_SECRET, DB_PASSWORD, DB_APP_PASSWORD, PGWEB_PASSWORD) oder werden
+# (SESSION_SECRET, DB_PASSWORD, DB_APP_PASSWORD) oder werden
 # zufällig erzeugt. DB_PASSWORD einer bestehenden Datenbank lässt sich nicht
 # erzeugen: Ohne Wert in .env bricht das Skript dann ab.
 set -eu
@@ -65,14 +65,12 @@ richte_ein session_secret SESSION_SECRET 48
 richte_ein db_password DB_PASSWORD 24
 richte_ein db_app_password DB_APP_PASSWORD 24
 # Die Leserolle bekommt ihr Passwort bei jedem Lauf von db-rolle neu; leer
-# heisst: sie meldet sich gar nicht an. pgweb ist ein Werkzeug auf Zeit.
+# heisst: sie meldet sich gar nicht an. Der Dateiname stammt aus der Zeit von pgweb.
 if [ "${PGWEB:-nein}" = ja ]; then
   richte_ein pgweb_db_password "" 24
-  richte_ein pgweb_password PGWEB_PASSWORD 16
-  echo "[geheimnisse] pgweb: Benutzer ${PGWEB_USER:-pgweb}, Passwort in $ORDNER/pgweb_password."
+  echo "[geheimnisse] Leserolle brickinventory_lesen: Passwort in $ORDNER/pgweb_db_password (README, „Datenbank ansehen“)."
 else
   [ -e "$ORDNER/pgweb_db_password" ] || richte_ein pgweb_db_password "" 0
-  [ -e "$ORDNER/pgweb_password" ] || richte_ein pgweb_password "" 0
 fi
 
 if [ "$(cat "$ORDNER/db_password")" = "$(cat "$ORDNER/db_app_password")" ]; then

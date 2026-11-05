@@ -351,7 +351,8 @@ test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy'
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const images = JSON.parse(fs.readFileSync(ausgabe, 'utf8').match(/^images=(.*)$/m)?.[1] ?? '[]');
   fs.rmSync(ort, { recursive: true, force: true });
-  assert.deepEqual(images.map(i => i.split(':')[0]).sort(), ['caddy', 'postgres', 'sosedoff/pgweb']);
+  // Caddy baut compose.yaml selbst (Dockerfile.caddy), pgweb gibt es nicht mehr.
+  assert.deepEqual(images.map(i => i.split(':')[0]).sort(), ['postgres']);
   assert.ok(images.every(i => /@sha256:[0-9a-f]{64}$/.test(i)), images.join(', '));
 
   const trivy = yml.slice(yml.indexOf('\n  trivy-compose:'), yml.indexOf('\n  zap:'));
@@ -405,4 +406,38 @@ test('das Image trägt Herkunft und Stückliste, bescheinigt am signierten Diges
   // Bescheinigt wird genau der Digest, den cosign signiert hat.
   assert.equal([...merge.matchAll(/subject-digest: \$\{\{ steps\.signatur\.outputs\.digest \}\}/g)].length, 2);
   assert.match(merge, /- name: Image signieren\s*\n\s+id: signatur/);
+});
+
+// Gegenproben (05.11.2026 gemessen, je einzeln): im Publish-Bau `no-cache:
+// true` durch `cache-from: type=gha,…` ersetzt → rot „der signierte Bau liest
+// keinen Cache“; im Trivy-Schritt vor der Signatur eine andere Action → rot
+// „Trivy prüft den Digest, bevor er signiert wird“; `npm audit signatures` aus
+// web-ci gestrichen → rot „… nach npm ci“; im Job trivy-eigenbau
+// `trivyignores:` ergänzt → rot „Caddy wird ohne Ausnahmen geprüft“.
+test('der signierte Bau ohne Cache, Trivy vor der Signatur, Paketsignaturen in der CI', () => {
+  const ohneKommentar = (t) => t.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
+  const pub = ohneKommentar(fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8'));
+  assert.doesNotMatch(pub, /cache-(from|to)|type=gha/, 'der signierte Bau liest keinen Cache');
+  const bau = pub.split(/\n  build:\n/)[1].split(/\n  merge:\n/)[0];
+  assert.match(bau, /^\s+no-cache: true\s*$/m, 'der signierte Bau liest keinen Cache');
+  const merge = pub.split(/\n  merge:\n/)[1];
+  const trivy = merge.indexOf('uses: aquasecurity/trivy-action@'), signieren = merge.indexOf('cosign sign ');
+  assert.ok(trivy > 0 && signieren > trivy, 'Trivy prüft den Digest, bevor er signiert wird');
+  const schritt = merge.slice(trivy, merge.indexOf('\n      - ', trivy));
+  assert.match(schritt, /image-ref: \$\{\{ env\.IMAGE \}\}@\$\{\{ steps\.manifest\.outputs\.digest \}\}/);
+  assert.match(schritt, /exit-code: '1'/);
+  assert.match(schritt, /severity: HIGH,CRITICAL/);
+
+  const ci = ohneKommentar(fs.readFileSync(path.join(ECHTER_ORT, 'web-ci.yml'), 'utf8'));
+  const ci0 = ci.indexOf('npm ci --ignore-scripts'), sig = ci.indexOf('run: npm audit signatures');
+  assert.ok(ci0 > 0 && sig > ci0, 'npm audit signatures läuft nach npm ci');
+
+  const sich = ohneKommentar(fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8'));
+  const eigen = sich.slice(sich.indexOf('\n  trivy-eigenbau:'), sich.indexOf('\n  zap:'));
+  assert.match(eigen, /docker build -f Web-App\/Dockerfile\.caddy /);
+  assert.match(eigen, /exit-code: '1'/);
+  assert.doesNotMatch(eigen, /trivyignores/, 'Caddy wird ohne Ausnahmen geprüft');
+  const ausnahmen = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.ignore'), 'utf8');
+  assert.doesNotMatch(ausnahmen.split('\n').filter(l => !l.startsWith('#   ')).join('\n'), /^# (caddy|pgweb)/m,
+    'Caddy oder pgweb mit hingenommenen Lücken');
 });
