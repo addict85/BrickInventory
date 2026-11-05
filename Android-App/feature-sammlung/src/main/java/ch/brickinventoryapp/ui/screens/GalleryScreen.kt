@@ -64,7 +64,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.NumericInput
@@ -144,7 +143,7 @@ fun GalleryRoute(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, FlowPreview::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GalleryScreen(
     zustand: GalerieZustand,
@@ -154,47 +153,7 @@ fun GalleryScreen(
     onSetClick: (String) -> Unit,
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    // Das Set, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
-    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
-    // Die Namen bleiben dieselben wie vor der Teilung, damit der Rumpf darunter unverändert ist.
-    val state = zustand.app
-    val blick = zustand.blick
     val galerie = zustand.galerie
-    val preise = zustand.preise
-    val barcodeState = zustand.barcode
-    val lagerState = zustand.lager
-
-    val sets = galerie.sets
-    val query = galerie.galleryQuery
-    val theme = galerie.galleryTheme
-    val sort = galerie.gallerySort
-    val themes = galerie.galleryThemes
-    val total = galerie.galleryTotal
-    val loadingMore = galerie.galleryLoadingMore
-    val stats = galerie.stats
-    val isLoading = galerie.galleryLoading
-    val serverUrl = state.serverUrl
-    val defaultCondition = state.userDefaultCondition ?: "N"
-    val currency = state.currency
-    val householdMembers = blick.householdMembers
-    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key]
-        ?: ch.brickinventoryapp.data.ScopeFilter.ALL
-
-    val onQueryChange: (String) -> Unit = ereignisse.suche
-    val onThemeChange: (String) -> Unit = ereignisse.thema
-    val onSortChange: (String) -> Unit = ereignisse.sortierung
-    val onLoadMore: () -> Unit = ereignisse.mehrLaden
-    val onScopeChange: (String) -> Unit = ereignisse.konto
-    val lagerorte = lagerState.orte
-    val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
-    val onLagerChange: (String) -> Unit = ereignisse.lagerort
-    val onRefresh: () -> Unit = ereignisse.aktualisieren
-    val onAddSet: (String, Int, Double?, String?, Int?, String?) -> Unit = ereignisse.setErfassen
-    // Der VORRAT, nicht die belegten Orte: `lagerorte` eine Zeile weiter oben
-    // speist den FILTER und enthaelt nur, worin schon etwas liegt. Beim
-    // Erfassen soll auch ein leeres Regal zur Wahl stehen.
-    val lagerortVorrat = lagerState.eigene.map { it.name }
-
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
     // ── Erfolgloser Scan öffnet die manuelle Erfassung ──
@@ -202,8 +161,8 @@ fun GalleryScreen(
     // Die erfolglosen Wege (EAN nicht auflösbar, ohne Setnummer, Texterkennung ohne
     // Treffer) melden sich über ein Feld im Zustand; hier abgeholt und quittiert,
     // sonst ginge der Dialog beim nächsten Zusammensetzen erneut auf.
-    LaunchedEffect(barcodeState.manuelleErfassungAnfordern) {
-        if (barcodeState.manuelleErfassungAnfordern) {
+    LaunchedEffect(zustand.barcode.manuelleErfassungAnfordern) {
+        if (zustand.barcode.manuelleErfassungAnfordern) {
             showAddDialog = true
             ereignisse.manuelleErfassungQuittiert()
         }
@@ -212,7 +171,7 @@ fun GalleryScreen(
     // Entprellung und der Abruf liegen im ViewModel, weil dort auch die
     // Filter-Generation hängt. Wechselt der Wert von aussen (Anmeldung,
     // Zurücksetzen), zieht das Feld nach.
-    var searchInput by remember(query) { mutableStateOf(query) }
+    var searchInput by remember(galerie.galleryQuery) { mutableStateOf(galerie.galleryQuery) }
     var zeigeFilter by rememberSaveable { mutableStateOf(false) }
 
     // Kein lokales Filtern und keine Themenliste aus `sets`: Der Schirm zeigt, was der
@@ -220,14 +179,14 @@ fun GalleryScreen(
     // und die Themen kämen aus der geladenen Seite statt aus dem Bestand.
 
     // Endlos-Scroll: nachladen, sobald die letzten Kacheln in Sicht kommen.
-    LaunchedEffect(gridState, sets.size, total) {
+    LaunchedEffect(gridState, galerie.sets.size, galerie.galleryTotal) {
         snapshotFlow {
             val letzte = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-            letzte >= sets.size - 6 && sets.isNotEmpty()
-        }.collect { nah -> if (nah) onLoadMore() }
+            letzte >= galerie.sets.size - 6 && galerie.sets.isNotEmpty()
+        }.collect { nah -> if (nah) ereignisse.mehrLaden() }
     }
 
-    val anzeige = galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || theme.isNotEmpty())
+    val anzeige = galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || galerie.galleryTheme.isNotEmpty())
     // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
     val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
     val erfassenText = stringResource(R.string.gallery_add_set)
@@ -237,101 +196,18 @@ fun GalleryScreen(
             // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster. Scannen
             // sitzt daneben, damit unten nur EIN Knopf schwebt. Im Fehlerzustand nicht:
             // Ohne Sammlung gibt es nichts zu suchen.
-            if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) SucheMitFilter(
-                wert = searchInput,
-                onWert = { searchInput = it; onQueryChange(it) },
-                platzhalter = stringResource(R.string.gallery_search_placeholder),
-                aktiveFilter = Filterzahl.galerie(householdMembers, scopeMode, lagerorte, lagerModus, theme),
-                onFilter = { zeigeFilter = true },
-                onScannen = onScanBarcode,
-                erfassen = erfassenText to { showAddDialog = true },
-                sortierung = {
-                    // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
-                    // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
-                    SortierMenue(
-                        optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
-                                          "year_desc", "price_desc", "price_asc",
-                                          "qty_desc", "qty_asc").map { it to gallerySortLabel(it) },
-                        gewaehlt = sort, onWahl = onSortChange,
-                        vorgabe = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
-                    )
-                },
+            if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) GalerieSuche(
+                zustand, ereignisse, searchInput, { searchInput = it }, onScanBarcode,
+                onFilter = { zeigeFilter = true }, erfassen = erfassenText to { showAddDialog = true },
             )
 
             ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
             // Der Kringel des Ziehens nur über einer Liste: Beim ersten Laden zeigt das
             // Skelett schon, dass etwas kommt, zwei Ladeanzeigen übereinander wirkten unruhig.
-            PullToRefreshBox(isRefreshing = isLoading && anzeige == GalerieAnzeige.LISTE, onRefresh = onRefresh,
-                             modifier = Modifier.fillMaxSize()) {
-                when (anzeige) {
-                    GalerieAnzeige.LAEDT -> SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 252.dp,
-                        kopfzeile = true, bildVerhaeltnis = BILD_SEITENVERHAELTNIS)
-                    // Fehler und leere Sammlung sehen verschieden aus und bieten
-                    // Verschiedenes an: hier den Grund und einen neuen Versuch.
-                    GalerieAnzeige.FEHLER -> GalerieHinweis {
-                        ch.brickinventoryapp.ui.components.FehlerHinweis(galerie.galleryFehler, onRefresh,
-                            galerie.galleryFehlerKlasse)
-                    }
-                    GalerieAnzeige.LEER -> GalerieHinweis {
-                        Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
-                        Text(stringResource(R.string.gallery_no_sets), fontWeight = FontWeight.SemiBold)
-                        Text(stringResource(R.string.gallery_empty_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center)
-                        // Derselbe Dialog wie der Plus-Knopf — kein zweiter Erfassungsweg.
-                        ch.brickinventoryapp.ui.components.KnopfStapel {
-                            Button(onClick = { showAddDialog = true }, modifier = Modifier.fillMaxWidth()) {
-                                Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                                Spacer(Modifier.width(Abstaende.klein))
-                                Text(stringResource(R.string.gallery_add_first))
-                            }
-                            OutlinedButton(onClick = onScanBarcode, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-                                Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
-                                Spacer(Modifier.width(Abstaende.klein))
-                                Text(stringResource(R.string.gallery_scan_barcode))
-                            }
-                        }
-                    }
-                    GalerieAnzeige.KEINE_TREFFER -> GalerieHinweis {
-                        // Die Kennzahlen meinen die ganze Sammlung — auch ohne Treffer.
-                        if (stats != null) GalerieKennzahlen(stats)
-                        LeerSymbol(Icons.Default.SearchOff)
-                        Text(stringResource(R.string.gallery_no_results, searchInput), fontWeight = FontWeight.SemiBold)
-                    }
-                    GalerieAnzeige.LISTE -> LazyVerticalGrid(
-                        columns = ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp),
-                        state = gridState,
-                        contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
-                            bottom = ch.brickinventoryapp.ui.components.FabPlatz),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        if (stats != null) {
-                            item(key = "gallery-stats", span = { GridItemSpan(maxLineSpan) }) {
-                                GalerieKennzahlen(stats)
-                            }
-                        }
-                        itemsIndexed(sets, key = { _, s -> s.setNumber }) { index, set ->
-                            Bewegt {
-                                SetCard(set, serverUrl, imageLoader, onSetClick, index,
-                                    preis = preise[set.setNumber], waehrung = currency,
-                                    ausgewaehlt = set.setNumber == gewaehlt)
-                            }
-                        }
-                        if (loadingMore) {
-                            // Ein fester Schlüssel für den Lade-Eintrag: Ohne bekäme er einen aus
-                            // dem Index gebildeten Ersatz, der beim Wachsen der Liste wechselt —
-                            // für das Raster verschwände dann ein Eintrag und ein anderer
-                            // erschiene.
-                            item(key = "gallery-loading-more", span = { GridItemSpan(maxLineSpan) }) {
-                                Box(Modifier.fillMaxWidth().padding(Abstaende.gross), Alignment.Center) {
-                                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                                }
-                            }
-                        }
-                    }
-                }
+            PullToRefreshBox(isRefreshing = galerie.galleryLoading && anzeige == GalerieAnzeige.LISTE,
+                             onRefresh = ereignisse.aktualisieren, modifier = Modifier.fillMaxSize()) {
+                GalerieInhalt(anzeige, zustand, searchInput, imageLoader, gridState, onSetClick,
+                    onScanBarcode, onErfassen = { showAddDialog = true }, onRefresh = ereignisse.aktualisieren)
             }
         }
 
@@ -344,26 +220,185 @@ fun GalleryScreen(
         )
     }
 
-    if (zeigeFilter) {
-        GalerieFilterBlatt(
-            members = householdMembers, konto = scopeMode, onKonto = onScopeChange,
-            orte = lagerorte, lager = lagerModus, onLager = onLagerChange,
-            themen = themes, thema = theme, onThema = onThemeChange,
-            onSchliessen = { zeigeFilter = false },
-        )
-    }
+    if (zeigeFilter) GalerieFilter(zustand, ereignisse, onSchliessen = { zeigeFilter = false })
+    if (showAddDialog) GalerieErfassen(zustand, ereignisse, onSchliessen = { showAddDialog = false })
+}
 
-    if (showAddDialog) {
-        AddSetDialog(
-            onDismiss = { showAddDialog = false },
-            onAdd = { sn, qty, price, cond, owner, ort ->
-                showAddDialog = false; onAddSet(sn, qty, price, cond, owner, ort) },
-            householdMembers = householdMembers,
-            defaultCondition = defaultCondition,
-            lagerorte = lagerortVorrat,
-            vorgabe = lagerState.vorgabe?.name ?: "",
-        )
+/** Der Bereich des Kontos und der gewählte Lagerort der Galerie. */
+private fun GalerieZustand.kontoWahl(): String =
+    blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ch.brickinventoryapp.data.ScopeFilter.ALL
+
+private fun GalerieZustand.lagerWahl(): String =
+    lager.modi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
+
+/** Suche, Filterknopf, Scannen und Sortierung über dem Raster. */
+@Composable
+private fun GalerieSuche(
+    zustand: GalerieZustand,
+    ereignisse: GalerieEreignisse,
+    suchtext: String,
+    onSuchtext: (String) -> Unit,
+    onScanBarcode: () -> Unit,
+    onFilter: () -> Unit,
+    erfassen: Pair<String, () -> Unit>,
+) {
+    val galerie = zustand.galerie
+    SucheMitFilter(
+        wert = suchtext,
+        onWert = { onSuchtext(it); ereignisse.suche(it) },
+        platzhalter = stringResource(R.string.gallery_search_placeholder),
+        aktiveFilter = Filterzahl.galerie(zustand.blick.householdMembers, zustand.kontoWahl(), zustand.lager.orte,
+            zustand.lagerWahl(), galerie.galleryTheme),
+        onFilter = onFilter,
+        onScannen = onScanBarcode,
+        erfassen = erfassen,
+        sortierung = {
+            // Dieselben Werte wie SET_SORTS auf dem Server (utils/handlers.ts):
+            // Einen unbekannten Wert setzte er still auf die Vorgabe zurück.
+            SortierMenue(
+                optionen = listOf("added_desc", "added_asc", "name_asc", "num_asc",
+                                  "year_desc", "price_desc", "price_asc",
+                                  "qty_desc", "qty_asc").map { it to gallerySortLabel(it) },
+                gewaehlt = galerie.gallerySort, onWahl = ereignisse.sortierung,
+                vorgabe = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
+            )
+        },
+    )
+}
+
+/** Was unter der Suche steht: Skelett, Fehler, leere Sammlung, keine Treffer oder das Raster. */
+@Composable
+private fun GalerieInhalt(
+    anzeige: GalerieAnzeige,
+    zustand: GalerieZustand,
+    suchtext: String,
+    imageLoader: ImageLoader,
+    gridState: LazyGridState,
+    onSetClick: (String) -> Unit,
+    onScanBarcode: () -> Unit,
+    onErfassen: () -> Unit,
+    onRefresh: () -> Unit,
+) {
+    val galerie = zustand.galerie
+    val stats = galerie.stats
+    when (anzeige) {
+        GalerieAnzeige.LAEDT -> SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 252.dp,
+            kopfzeile = true, bildVerhaeltnis = BILD_SEITENVERHAELTNIS)
+        // Fehler und leere Sammlung sehen verschieden aus und bieten
+        // Verschiedenes an: hier den Grund und einen neuen Versuch.
+        GalerieAnzeige.FEHLER -> GalerieHinweis {
+            ch.brickinventoryapp.ui.components.FehlerHinweis(galerie.galleryFehler, onRefresh,
+                galerie.galleryFehlerKlasse)
+        }
+        GalerieAnzeige.LEER -> GalerieLeer(onErfassen, onScanBarcode)
+        GalerieAnzeige.KEINE_TREFFER -> GalerieHinweis {
+            // Die Kennzahlen meinen die ganze Sammlung — auch ohne Treffer.
+            if (stats != null) GalerieKennzahlen(stats)
+            LeerSymbol(Icons.Default.SearchOff)
+            Text(stringResource(R.string.gallery_no_results, suchtext), fontWeight = FontWeight.SemiBold)
+        }
+        GalerieAnzeige.LISTE -> GalerieRaster(zustand, imageLoader, gridState, onSetClick)
     }
+}
+
+/** Die leere Sammlung: Erfassen und Scannen, derselbe Dialog wie der Plus-Knopf. */
+@Composable
+private fun GalerieLeer(onErfassen: () -> Unit, onScanBarcode: () -> Unit) {
+    GalerieHinweis {
+        Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
+        Text(stringResource(R.string.gallery_no_sets), fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.gallery_empty_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center)
+        // Derselbe Dialog wie der Plus-Knopf — kein zweiter Erfassungsweg.
+        ch.brickinventoryapp.ui.components.KnopfStapel {
+            Button(onClick = onErfassen, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                Spacer(Modifier.width(Abstaende.klein))
+                Text(stringResource(R.string.gallery_add_first))
+            }
+            OutlinedButton(onClick = onScanBarcode, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+                Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                Spacer(Modifier.width(Abstaende.klein))
+                Text(stringResource(R.string.gallery_scan_barcode))
+            }
+        }
+    }
+}
+
+/** Kennzahlen und Kacheln; das Set, dessen Detail daneben offen ist, ist markiert. */
+@Composable
+private fun GalerieRaster(
+    zustand: GalerieZustand,
+    imageLoader: ImageLoader,
+    gridState: LazyGridState,
+    onSetClick: (String) -> Unit,
+) {
+    val galerie = zustand.galerie
+    val stats = galerie.stats
+    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
+    LazyVerticalGrid(
+        columns = ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp),
+        state = gridState,
+        contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
+            bottom = ch.brickinventoryapp.ui.components.FabPlatz),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        if (stats != null) {
+            item(key = "gallery-stats", span = { GridItemSpan(maxLineSpan) }) {
+                GalerieKennzahlen(stats)
+            }
+        }
+        itemsIndexed(galerie.sets, key = { _, s -> s.setNumber }) { index, set ->
+            Bewegt {
+                SetCard(set, zustand.app.serverUrl, imageLoader, onSetClick, index,
+                    preis = zustand.preise[set.setNumber], waehrung = zustand.app.currency,
+                    ausgewaehlt = set.setNumber == gewaehlt)
+            }
+        }
+        if (galerie.galleryLoadingMore) {
+            // Ein fester Schlüssel für den Lade-Eintrag: Ohne bekäme er einen aus
+            // dem Index gebildeten Ersatz, der beim Wachsen der Liste wechselt —
+            // für das Raster verschwände dann ein Eintrag und ein anderer
+            // erschiene.
+            item(key = "gallery-loading-more", span = { GridItemSpan(maxLineSpan) }) {
+                Box(Modifier.fillMaxWidth().padding(Abstaende.gross), Alignment.Center) {
+                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                }
+            }
+        }
+    }
+}
+
+/** Das Filterblatt mit den Werten der Galerie. */
+@Composable
+private fun GalerieFilter(zustand: GalerieZustand, ereignisse: GalerieEreignisse, onSchliessen: () -> Unit) {
+    GalerieFilterBlatt(
+        members = zustand.blick.householdMembers, konto = zustand.kontoWahl(), onKonto = ereignisse.konto,
+        orte = zustand.lager.orte, lager = zustand.lagerWahl(), onLager = ereignisse.lagerort,
+        themen = zustand.galerie.galleryThemes, thema = zustand.galerie.galleryTheme, onThema = ereignisse.thema,
+        onSchliessen = onSchliessen,
+    )
+}
+
+/**
+ * Ein Set erfassen. Zur Wahl steht der VORRAT an Lagerorten, nicht die belegten:
+ * Die Filterliste enthält nur, worin schon etwas liegt; beim Erfassen soll auch
+ * ein leeres Regal zur Wahl stehen.
+ */
+@Composable
+private fun GalerieErfassen(zustand: GalerieZustand, ereignisse: GalerieEreignisse, onSchliessen: () -> Unit) {
+    AddSetDialog(
+        onDismiss = onSchliessen,
+        onAdd = { sn, qty, price, cond, owner, ort ->
+            onSchliessen(); ereignisse.setErfassen(sn, qty, price, cond, owner, ort) },
+        householdMembers = zustand.blick.householdMembers,
+        defaultCondition = zustand.app.userDefaultCondition ?: "N",
+        lagerorte = zustand.lager.eigene.map { it.name },
+        vorgabe = zustand.lager.vorgabe?.name ?: "",
+    )
 }
 
 /**

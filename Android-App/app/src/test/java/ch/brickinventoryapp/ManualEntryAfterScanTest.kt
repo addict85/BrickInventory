@@ -37,7 +37,7 @@ class ManualEntryAfterScanTest {
         // Die Galerie öffnet ihren Dialog, die Teileliste setzt den Cursor.
         // Beide quittieren.
         val g = code(lies("ui/screens/GalleryScreen.kt"))
-        assert(g.contains("barcodeState.manuelleErfassungAnfordern") && g.contains("showAddDialog = true")) {
+        assert(g.contains("barcode.manuelleErfassungAnfordern") && g.contains("showAddDialog = true")) {
             "Die Galerie öffnet die manuelle Erfassung nach einem erfolglosen Scan nicht"
         }
         assert(g.contains("erfassung.manuelleErfassungQuittieren()")) { "Die Galerie quittiert nicht" }
