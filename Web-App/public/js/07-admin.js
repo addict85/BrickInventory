@@ -84,7 +84,8 @@ export async function triggerCsvSync(btn) {
 }
 
 /**
- * Alle fehlenden Katalogbilder einreihen.
+ * Alle fehlenden Katalogbilder einreihen. Der Server reiht nur ein und holt gedrosselt im Hintergrund;
+ * die Rückmeldung nennt darum Aufträge, nicht Bilder — „fertig“ wäre bei Stunden Laufzeit irreführend.
  * Ausführlich: docs/begruendungen/public/js/07-admin.js.md#queuecatalogimages
  */
 /** @param {HTMLButtonElement} btn */
@@ -202,8 +203,9 @@ export async function loadBricksetQueue() {
 }
 
 /**
- * Der Dispatcher (js/11-actions.js) legt bei data-self="1" ZUERST das Element
- * an und hängt danach die data-arg-Werte an:
+ * Erst das Element, dann data-arg: Bei data-self="1" legt der Dispatcher (js/11-actions.js) den Knopf
+ * zuerst ab. Verdreht ging der Knopf als Setnummer in die Adresse, und der Server fand nie einen
+ * Eintrag.
  * Ausführlich: docs/begruendungen/public/js/07-admin.js.md#retrybricksetqueueentry
  */
 /** @param {HTMLButtonElement} btn @param {string} setNumber */

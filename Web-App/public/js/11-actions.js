@@ -10,10 +10,9 @@ import { autosaveSet, closeImageLightbox, openImageLightbox } from './07-set-det
 import { hideProgress } from './01-fortschritt.js';
 import { deleteManualPart } from './03-parts.js';
 
-// Ziel: `script-src 'unsafe-inline'` aus der CSP entfernen. Solange irgendwo
-// `onclick="…"` im Markup steht, muss der Browser Inline-Skript erlauben — und
-// damit fehlt genau die Verteidigungslinie, die bei einer übersehenen
-// XSS-Lücke greifen würde.
+// Ein delegierter Dispatcher für data-click & Co. statt onclick im Markup: So kommt die CSP ohne
+// script-src 'unsafe-inline' aus, und eine übersehene XSS-Lücke trifft noch auf diese
+// Verteidigungslinie.
 // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#ziel-script-src-unsafe-inline-aus-der-cs
 
 (function () {
@@ -66,7 +65,9 @@ import { deleteManualPart } from './03-parts.js';
   function attrFor(type) { return 'data-' + type; }
 
   /**
-   * Löst den Handlernamen über die Registry auf (js/00-registry.js).
+   * Handlernamen über die Registry auflösen: Modul-Funktionen liegen nicht auf window. resolveAction()
+   * fällt intern noch auf window zurück, für den Log-Betrachter, der als klassisches Skript im eigenen
+   * Popup läuft.
    * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#resolve
    * @param {string} name
    */
@@ -125,10 +126,9 @@ import { deleteManualPart } from './03-parts.js';
     el.click();
   });
 
-  // Die Anmelde-, Registrier- und Passwortfelder liegen seit Nachtrag … in
-  // einem <form>. Nicht aus Formtreue: Ohne umgebendes Formular meldet Chrome
-  // „Password field is not contained in a form", und Passwortmanager bieten
-  // Speichern und Ausfuellen dann nur noch nach Heuristik an — mal ja, mal …
+  // Anmelde- und Passwortfelder stehen in einem <form>, damit Passwortmanager zuverlässig speichern und
+  // ausfüllen. Abgesendet wird nie: Ein echtes Absenden lüde die Seite neu; stattdessen läuft der Knopf
+  // aus data-submit.
   // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#die-anmelde-registrier-und-passwortfelde
   document.addEventListener('submit', ev => {
     const form = ev.target;
@@ -161,7 +161,8 @@ import { deleteManualPart } from './03-parts.js';
     const el = ev.target;
     if (!(el instanceof HTMLImageElement)) return;
 
-    // Erst einmal wiederholen, bevor aufgegeben wird.
+    // Einmal wiederholen, bevor aufgegeben wird: Ein einzelner Verbindungsfehler (ETIMEDOUT beim CDN)
+    // liess die Kachel sonst dauerhaft leer, obwohl das Bild in Ordnung war.
     // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#if
     if (!el.dataset.retried && el.src) {
       el.dataset.retried = '1';
@@ -193,10 +194,8 @@ import { deleteManualPart } from './03-parts.js';
     else { el.removeAttribute('src'); el.classList.add('loaded'); }
   }, true);
 
-  // styles.css blendet JEDES img[loading=lazy] auf opacity:0 aus und erst die
-  // Klasse .loaded wieder ein. Die Markierung darf deshalb nicht an data-fade
-  // hängen — sonst bleibt jedes Bild unsichtbar, dem beim Ergänzen von
-  // loading="lazy" das Zusatzattribut gefehlt hat. Genau das ist passiert: …
+  // .loaded an jedes img[loading=lazy], nicht nur an data-fade: styles.css blendet alle lazy-Bilder aus,
+  // und ohne Zusatzattribut blieben sie sonst trotz geladenem Bild unsichtbar.
   // Ausführlich: docs/begruendungen/public/js/11-actions.js.md#markloaded
   /** @param {EventTarget | null} el */
   function markLoaded(el) {
@@ -267,9 +266,9 @@ function setLangFromEl() { setLang(this.value); }
 /** @this {HTMLSelectElement} */
 function setzeDunkel() { window.__bimDunkel?.(this.value); }
 
-/** Neu zeichnen mit der zuletzt geladenen Liste. */
 /**
- * Der Ansichtsumschalter des Figuren-Reiters — fuer BEIDE Listen.
+ * Der Ansichtsumschalter des Figuren-Reiters gilt für beide Listen: Er steht über beiden, also
+ * schaltet er auch die manuell erfassten Figuren um.
  * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#renderfigsall
  */
 function renderFigsAll() { renderFigs(alleFiguren()); renderManualFigsTable(); }
@@ -331,7 +330,8 @@ export function saveManualFigBl(id, owner) {
 export function delSetStop(sn, ev) { ev?.stopPropagation(); delSet(sn); }
 
 /**
- * Löschen von einer KACHEL aus — Figur, Teil, Merkposten.
+ * Löschen von einer Kachel aus, mit stopPropagation: Die Kachel hat selbst ein data-click, und ohne
+ * Stopp öffnete der Papierkorb zusätzlich den Dialog hinter der Löschabfrage.
  * Ausführlich: docs/begruendungen/public/js/11-actions.js.md#deletemanualfigstop
  * @param {string} n
  * @param {string} owner

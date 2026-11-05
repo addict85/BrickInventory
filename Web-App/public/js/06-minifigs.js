@@ -35,10 +35,9 @@ function figParams(page) {
   const p = new URLSearchParams();
   p.set('page', String(page));
   p.set('page_size', String(FIG_PAGE_SIZE));
-  // Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss
-  // gehört auf den Server — clientseitig gefiltert könnte eine ganze Seite
-  // wegfallen und die Liste bliebe scheinbar leer.
-  // Fest 'set': Manuell erfasste Figuren haben ihren eigenen Bereich mit …
+  // Fest 'set': Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss gehört auf den
+  // Server — clientseitig gefiltert könnte eine ganze Seite wegfallen und die Liste bliebe scheinbar
+  // leer.
   // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuell-erfasste-figuren-haben-oben-eine
   p.set('source', 'set');
   const q = G('fig-search')?.value?.trim();
@@ -97,10 +96,8 @@ export async function loadMinifigs() {
   renderFigs(allFigsCache);
   loadManualFigsTable();
 
-  // Stats
-  // Kennzahlen MIT dem Filter des Reiters — vorher lief die Abfrage ohne ihn
-  // und ohne Blickfeld: Im Haushalt zeigte die Kachel die eigenen Zahlen,
-  // während die Liste darunter alle Konten zeigte, und Umschalten änderte oben …
+  // Kennzahlen mit dem Filter des Reiters: Sonst zeigte die Kachel im Haushalt die eigenen Zahlen,
+  // während die Liste darunter alle Konten zeigte.
   // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#s
   const s = await api('GET', `/v1/minifigs/stats${scopeQuery('minifigs')}`);
   if (s.success) {
@@ -118,15 +115,15 @@ export async function loadMinifigs() {
 }
 
 /**
- * Suche und Quellenfilter liegen auf dem Server (getMinifigs kannte beide
- * schon). Hier wird deshalb neu GELADEN statt clientseitig gefiltert — sonst
- * durchsuchte der Filter nur die bereits geladene Seite.
+ * Suche und Quelle filtert der Server; hier wird neu geladen, sonst durchsuchte der Filter nur die
+ * geladene Seite. Beide Listen, weil die manuellen Figuren unter derselben Filterleiste stehen.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#filterfigs
  */
 function filterFigs() { loadMinifigs(); loadManualFigsTable(); }
 
 /**
- * Hängt eine nachgeladene Seite an, statt die Liste neu zu bauen.
+ * Hängt eine nachgeladene Seite an, statt die Liste neu zu bauen: Ein Ersetzen per innerHTML brach die
+ * laufenden Bildanfragen ab, und Kacheln, deren Bild nie über eine Runde hinauskam, blieben leer.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#appendfigs
  */
 /** @param {Figur[]} batch */
@@ -174,7 +171,8 @@ export function renderFigs(list, target) {
   const viewMode = G('figs-view')?.value || 'grid';
 
   if (viewMode === 'table') {
-    // Ohne die Spalten „Quelle" und Papierkorb.
+    // Ohne „Quelle“ und Papierkorb: Diese Liste lädt nur source=set, beide Spalten wären in jeder Zeile
+    // gleich bzw. leer. Manuelle Figuren haben ihren eigenen Bereich mit editierbaren Karten.
     // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#ohne-die-spalten-quelle-und-papierkorb
     el.innerHTML = `<div class="tw"><table class="dt">
       <thead><tr>
@@ -221,10 +219,8 @@ export function renderFigs(list, target) {
           // (styles.css). Marcos Vorgabe vom 24.09., zweiter Teil: „analog den
           // Kacheln bei den Sets. Dies aber nur in der webapp."
           const delBtn = f.source==='manual' ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id||''}" title="${esc(t('figs.delete'))}">${TRASH_ICON_SVG}</span></div>` : '';
-          // Zustand nur bei manuell erfassten Minifiguren anzeigen (automatisch
-          // hinzugefügte aus Sets haben keinen eigenen Zustand).
-          // Eine Plakette je erfasstem Zustand — gemeinsame Fassung in
-          // 02-gallery.js. Die frühere Inline-Fassung hier trug dieselben …
+          // Zustand nur bei manuell erfassten Figuren — aus Sets haben sie keinen eigenen. Die Besitzer-Plakette
+          // dagegen immer: „Wem gehört das?“ stellt sich bei der Figur aus dem Set eines Kindes genauso.
           // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#condbadge
           const condBadge = f.source==='manual'
             ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
@@ -350,7 +346,9 @@ export async function updateManualFig(figNumber, body, owner) {
 }
 
 /**
- * Der Hinweis, wenn der Kaufpreis aus dem ANDEREN Zustand stammt.
+ * Hinweis, wenn der Kaufpreis aus dem anderen Zustand stammt: BrickLink führt oft nur einen.
+ * Übernehmen und kennzeichnen, damit der Rückfall weder unsichtbar ist noch das Feld leer bleibt. Ein
+ * Helfer für Teile und Figuren.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#preisherkunfthinweis
  * @param {string | null | undefined} zustand 'N' | 'U' | null — null heisst „nichts zu sagen".
  */
@@ -431,7 +429,9 @@ G('btn-fig-csv-template').onclick = (e) => {
 
 
 /**
- * Abfrageteil für die MANUELL erfassten Listen: Kontofilter und Suchtext.
+ * Abfrageteil der manuellen Listen: Kontofilter UND Suchtext. scopeQuery() allein liess die Suche an
+ * den manuellen Kacheln vorbeilaufen, obwohl die Filterleiste über beiden Listen steht. Gefiltert wird
+ * am Server.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuellquery
  * @param {string} view     Name des Blickfelds ('parts' | 'minifigs')
  * @param {string} sucheId  ID des Suchfelds der Filterleiste
@@ -451,7 +451,9 @@ export function manuellQuery(view, sucheId) {
 }
 
 /**
- * Die manuell erfassten Posten als TABELLE — Teile und Figuren.
+ * Die manuell erfassten Posten als Tabelle: Der Ansichtsumschalter steht über beiden Listen und muss
+ * für beide gelten. Eine Funktion für Teile und Figuren, damit die zwei Tabellen nicht
+ * auseinanderlaufen.
  * Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#manuelletabelle
  * @param {(import('./03-parts.js').ManuellesTeil | ManuelleFigur)[]} posten  Die Einträge aus dem jeweiligen Cache.
  * @param {'part'|'fig'} art

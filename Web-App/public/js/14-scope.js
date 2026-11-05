@@ -1,11 +1,10 @@
-// Dieser Abschnitt lag in js/01-core.js. Deren Kopfzeile nennt als Inhalt
-// „Utils, i18n-Glue, Auth & Panels, Login/Logout, CSV-Import-Fortschrittsbalken"
-// — der Kontofilter ist nichts davon.
+// Der Kontofilter je Ansicht ist eine eigene Datei: Er hängt an keinem anderen Modul, nur am
+// localStorage, und hat mit dem Kern nichts zu tun.
 // Ausführlich: docs/begruendungen/public/js/14-scope.js.md#dieser-abschnitt-lag-in-js-01-core-js-de
 /**
- * Ein Hauptkonto kann je Ansicht zwischen Alle / Eigene / Unterkonten
- * umschalten. Die Wahl gilt PRO ANSICHT: Wer in der Galerie den ganzen
- * Haushalt sieht, will in den Finanzen womöglich nur die eigenen Zahlen.
+ * Der Kontofilter gilt je Ansicht: Wer in der Galerie den Haushalt sieht, will in den Finanzen
+ * vielleicht nur die eigenen Zahlen. Gefiltert wird am Server (accounts=), sonst stimmten Gesamtzahl
+ * und Bewertung nicht.
  * Ausführlich: docs/begruendungen/public/js/14-scope.js.md#ein-hauptkonto-kann-je-ansicht-zwischen
  */
 // 'merkliste' steht seit dem 24.09. mit darin (Marcos Vorgabe: „In der
@@ -31,7 +30,9 @@ export function setScopeMode(view, mode) {
 }
 
 /**
- * Kontofilter aller Ansichten zurücksetzen — bei jeder ANMELDUNG.
+ * Kontofilter bei jeder Anmeldung zurücksetzen: Er liegt im localStorage und überlebte sonst Ab- und
+ * Anmelden — wer zuletzt auf ein Konto gefiltert hatte, sah danach nur dessen Sets und hielt den Rest
+ * für verloren.
  * Ausführlich: docs/begruendungen/public/js/14-scope.js.md#resetscopemodes
  */
 export function resetScopeModes() {
@@ -59,10 +60,8 @@ export function scopeQuery(view) {
   const m = scopeMode(view);
   return (m && m !== 'all') ? `?accounts=${m}` : '';
 }
-// Der Lagerortfilter ist derselbe Gegenstand wie der Kontofilter: eine Wahl je
-// Ansicht, die als Anfrageparameter mitreist und am Server in die Abfrage
-// eingeht. Er teilt sogar die Begründungen — gefiltert wird am Server, weil
-// sich die Gesamtzahl darunter clientseitig nicht aussieben lässt, und die …
+// Der Lagerortfilter steht hier, weil er derselbe Gegenstand ist wie der Kontofilter: eine Wahl je
+// Ansicht, am Server gefiltert, beim Anmelden zurückgesetzt — aus denselben Gründen.
 // Ausführlich: docs/begruendungen/public/js/14-scope.js.md#der-lagerortfilter-ist-derselbe-gegensta
 
 /** Ansichten mit einem Lagerortfilter. Sets und Teile — nur die haben einen. */

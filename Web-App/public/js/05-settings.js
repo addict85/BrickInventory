@@ -188,10 +188,9 @@ async function generateQrCode() {
   const container = G('qr-code');
   const frei = knopfBesetzt(btn);
   try {
-    // POST, nicht GET: Der Aufruf LEGT eine Nonce AN. Als GET war
-    // er über eine Navigation von einer fremden Seite auslösbar, weil
-    // SameSite=lax das Cookie dort mitschickt.
-    // Die gewaehlte Laufzeit des SPAETEREN Geraete-Tokens reist mit der …
+    // POST, weil der Aufruf eine Nonce anlegt: Als GET löste ihn eine fremde Seite per Navigation aus
+    // (SameSite=lax). Die Laufzeit des späteren Tokens reist mit der Erzeugung, sonst wählte sich der
+    // Finder eines Codes die längste.
     // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#gueltigkeit
     const gueltigkeit = G('qr-validity')?.value || '';
     const pw = G('qr-password');
@@ -208,8 +207,9 @@ async function generateQrCode() {
       container.innerHTML = '';
       frei(); return;
     }
-    // Genau eine: die, die der Server nennt (`url`, aus APP_BASE_URL). Der
-    // Klient hat hier NICHTS zu entscheiden.
+    // Nur die Adresse, die der Server nennt (APP_BASE_URL): Die in der Browserzeile ist die des
+    // Betrachters, etwa eine LAN-Adresse, die ausser Haus nicht existiert. Lieber kein Code als einer, der
+    // sich falsch scannen lässt.
     // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#serverurl
     const serverUrl = d.url;
 
@@ -243,10 +243,9 @@ async function generateQrCode() {
       if (secs <= 0) { clearInterval(timer); hint.textContent = tRaw('qr.expired'); container.innerHTML=''; }
     }, 1000);
     hint.textContent = tRaw('qr.valid_for',{t:fmt(secs)});
-    // Wie lange der ZUGANG danach gilt — die Antwort des Servers, nicht die
-    // Auswahl daneben: Kennt er den Wert nicht, hat er nichts vermerkt, und
-    // dann gilt die Gleitfrist. Eigene Zeile, weil die darueber im
-    // Sekundentakt neu geschrieben wird (der Zaehler des Codes).
+    // Die Laufzeit aus der Serverantwort, nicht aus der Auswahl: Kennt er den Wert nicht, gilt die
+    // Gleitfrist. Drei Fälle — 0 heisst unbegrenzt, null nichts gewählt; ein einfacher Wahrheitstest würfe
+    // beide zusammen.
     // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#klartext
     const klartext = G('qr-tls-hint');
     if (klartext) {
@@ -266,10 +265,9 @@ async function generateQrCode() {
 
 G('btn-gen-qr').onclick = generateQrCode;
 
-// Die Endpunkte /v1/settings/tokens gab es schon, einen Weg dorthin nicht:
-// Ein verlorenes Telefon war nur loszuwerden, indem man das Passwort ändert
-// (das verwirft ALLE Zugänge). Wer nur eines aussperren wollte, sperrte alle
-// aus.
+// Angemeldete Geräte einzeln aussperren: Sonst blieb für ein verlorenes Telefon nur das Passwort zu
+// ändern, und das wirft alle Zugänge hinaus. Der Browser selbst hängt an der Sitzung, nicht an einem
+// Token.
 // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#die-endpunkte-v1-settings-tokens-gab-es
 
 /**
@@ -342,7 +340,8 @@ async function revokeToken(tokenId, label) {
 }
 
 /**
- * Alle Zugänge ausser dem eigenen entwerten.
+ * Alle Zugänge ausser dem eigenen entwerten, nacheinander über den bestehenden Endpunkt: Eine zweite
+ * Adresse für „dasselbe, mehrfach“ wäre Doppelung. Gezählt wird, was wirklich weg ist.
  * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#revokeothertokens
  */
 async function revokeOtherTokens() {
@@ -545,9 +544,9 @@ export async function loadSettings(){
 // HAUSHALT — Konten verknüpfen
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * Ablauf: Das Hauptkonto erzeugt einen Einladungscode, das andere Konto gibt
- * ihn hier ein. Zustimmen muss zwingend BEIDE Seiten — der eine durch
- * Erzeugen, der andere durch Einlösen.
+ * Einladen und Beitreten brauchen beide Seiten: das Hauptkonto erzeugt, das andere löst ein. Je nach
+ * Rolle steht nur einer der Kästen da — ein Knopf, den der Server immer ablehnt, ist schlimmer als
+ * keiner.
  * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#loadhousehold
  */
 export async function loadHousehold(){
@@ -945,16 +944,10 @@ async function importConfig() {
   fi.value = '';
 }
 
-// „Der Lagerort soll ein Auswahlfeld mit einem Dropdown sein, bei dem man auch
-// gleich neue Auswahlwerte erfassen kann. Die Werte sollen pro User verwaltet
-// werden können und sollen in den Einstellungen bearbeitbar sein."
+// Lagerorte verwalten. Nur die eigenen: Ein Ort ist ein Regal in der eigenen Wohnung, fremde
+// umzubenennen wäre ein Versehen. Die Auswahl selbst steckt im Detailfenster (ladeOrtAuswahl).
 // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#der-lagerort-soll-ein-auswahlfeld-mit-ei
 
-/** Die eigenen Orte samt Belegung. */
-/**
- * Alle Preisalarme des Kontos — die Uebersicht in den Einstellungen.
- * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#alle-preisalarme-des-kontos-die-uebersic
- */
 /** Ein Preisalarm direkt in der Übersicht, ohne Umweg über das Set. */
 async function legeAlarmAn() {
   const roh = String(G('alarm-neu-set')?.value || '').trim();
@@ -970,6 +963,12 @@ async function legeAlarmAn() {
   await ladeAlarmUebersicht();
 }
 
+/**
+ * Alle Preisalarme an einem Ort: Im Set-Detail findet man einen Alarm nur, wenn man das Set schon
+ * gefunden hat. Schwelle als Feld (speichert beim Verlassen), dazu der letzte Preis, ohne den sie
+ * nicht zu beurteilen ist.
+ * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#alle-preisalarme-des-kontos-die-uebersic
+ */
 export async function ladeAlarmUebersicht() {
   const el = G('alerts-list');
   if (!el) return;
@@ -991,10 +990,8 @@ export async function ladeAlarmUebersicht() {
     const stand = a.zuletzt_preis == null
       ? ''
       : t('alerts.last', { preis: fmtN(a.zuletzt_preis, a.currency_code) });
-    // „scharf" gegen „unscharf" — und der Unterschied darf NICHT in der Farbe
-    // liegen. Marco ist rot-gruen-schwach; gruen gegen grau ist fuer ihn
-    // zweimal dasselbe, und damit stand die Aussage bisher nirgends. Sie
-    // haengt jetzt an drei Dingen, von denen jedes einzeln reicht: am Wort …
+    // „scharf“ gegen „unscharf“ nicht über die Farbe allein, denn grün und grau sind für Rot-Grün-Schwache
+    // gleich: Wort, Fläche (gefüllt/umrandet) und Zeichen (●/○) tragen es je für sich, wie in der App.
     // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marke
     const marke = a.ausgeloest
       ? `<span class="alarm-marke alarm-marke-aus">${esc(tRaw('alerts.fired'))}</span>`
@@ -1007,10 +1004,9 @@ export async function ladeAlarmUebersicht() {
     const bild = bildQuelle
       ? bildTag({ src: imgUrl(thumbUrl(bildQuelle) || bildQuelle, true), alt: '', klasse: 'bild-38', ph: 'set' })
       : `<span class="bild-ph bild-38" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
-    // Die ganze Zeile oeffnet den Detaildialog — derselbe `openModal` wie in
-    // den Finanzen und in der Galerie. Weil der Dialog ueber der Seite liegt
-    // und diese nicht verlaesst, steht man nach dem Schliessen wieder an
-    // derselben Stelle; dafuer ist nichts zu merken.
+    // Die Zeile öffnet das Set-Detail, aber nur wenn das Set im Bestand ist — sonst käme statt Dialog ein
+    // Fehler. Feld und Löschknopf haben eigenes data-click, sonst öffnete jeder Klick ins Feld den Dialog
+    // darüber.
     // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#oeffnet
     const oeffnet = a.besitzt
       ? ` class="zeiger" data-click="openModal" data-arg="${esc(a.set_number)}"`
@@ -1075,6 +1071,9 @@ async function loescheAlarm(schluessel, setNumber) {
   await ladeAlarmUebersicht();
 }
 
+/**
+ * Die eigenen Orte samt Belegung.
+ */
 export async function ladeLagerortVerwaltung() {
   const el = G('storage-list');
   if (!el) return;
@@ -1095,8 +1094,10 @@ export async function ladeLagerortVerwaltung() {
   // Marcos Stern: „Weiter möchte ich ein Lagerort in den Einstellungen als
   // Default setzen können. […] Ich stelle mir das mit einem Sternicon vor."
   const vorgabeId = v.vorgabe?.id ?? null;
-  // Marcos Befund: „dass die Felder alle schön gleich ausgerichtet sind wie in
-  // einer Tabelle? aktuell sind sie alle unterschiedlich lang".
+  // Das Raster liegt an der Liste, die Zeilen sind display:contents: So teilen alle Zeilen dieselben
+  // Spaltenbreiten, und das Namensfeld wird nicht vom Belegungstext daneben schmal gedrückt.
+  // minmax(0,1fr), damit ein langer Name die Spalte nicht sprengt; der Trennstrich liegt darum an jeder
+  // Zelle.
   // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marcos-befund-dass-die-felder-alle-schoe
   el.innerHTML = `<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">` +
                  `${esc(tRaw('storage.default_hint'))}</div>` +
@@ -1166,7 +1167,9 @@ async function benenneLagerortUm(id, wert) {
 }
 
 /**
- * Den Stern umschalten.
+ * Den Stern umschalten. ★/☆ unterscheiden sich in der Form, nicht in der Farbe, und tragen Titel und
+ * aria-pressed. Ein zweiter Druck auf denselben Stern schaltet die Vorgabe ab — ein eigener Knopf
+ * dafür wäre zu viel.
  * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#schaltelagerortvorgabe
  * @param {string} id
  * @param {string} war
@@ -1195,7 +1198,9 @@ async function loescheLagerort(id, name) {
 }
 
 /**
- * Preisalarme aus einer CSV einlesen.
+ * Preisalarme aus einer CSV einlesen. Die Schwellen werden nicht umgerechnet (ein falscher Kurs wäre
+ * schlimmer), gelten aber in der Kontowährung; ein Währungshinweis meldet deshalb mit „info“ statt im
+ * Erfolgston.
  * Ausführlich: docs/begruendungen/public/js/05-settings.js.md#importalarmecsv
  */
 async function importAlarmeCsv() {
@@ -1206,8 +1211,8 @@ async function importAlarmeCsv() {
   if (d) await ladeAlarmUebersicht();
 }
 
-// Marcos Vorgabe: „Bitte auch den Import der xml Files für wanted listen in den
-// Sets, teilen und Minifiguren ergänzen und aus den Einstellungen entfernen."
+// Der Import von Wanted-Listen steht bei Sets, Teilen und Figuren (js/18-wanted-xml.js), nicht mehr
+// hier: Man importiert dort, wo man die Posten danach sieht.
 // Ausführlich: docs/begruendungen/public/js/05-settings.js.md#marcos-vorgabe-bitte-auch-den-import-der
 
 /**

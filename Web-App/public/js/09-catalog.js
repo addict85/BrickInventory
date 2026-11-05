@@ -18,9 +18,9 @@ let _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'ye
 // Filterwechsel (gleiches Muster wie in der Android-App), _catItems hält die
 // geladenen Sets für In-Place-Updates (owned-Badge nach Galerie-Aufnahme).
 let _catGen = 0;
-// Marcos Vorgabe: Die Jahres-Leiste soll nicht filtern, sondern schnell
-// scrollen — „kann nicht geprüft werden, wo man hinscrollt, und dieser Teil
-// wird dann geladen".
+// Fensterladen statt Endlos-Scroll: Die Jahresleiste springt mitten in die Liste, und eine angehängte
+// Liste hätte darüber und darunter nichts. Ein Block je Seite; geladen wird, was ins Bild kommt,
+// Platzhalter halten die Höhe frei.
 // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#cat-limit
 const CAT_LIMIT = 60;
 let _catTotal = 0;
@@ -202,10 +202,8 @@ async function loadCatalogSets(){
     const anzahl = (seite === _catPageCount) ? (_catTotal - (seite - 1) * CAT_LIMIT) : CAT_LIMIT;
     html += seite === 1
       ? `<div class="sgrid cat-page" data-page="1">${_catItems.map(catCard).join('')}</div>`
-      // Ungeladene Seiten sind EIN leerer Block, nicht 60 Kachel-Platzhalter.
-      // Bei 25 000 Sets wären das über 25 000 Elemente auf einmal — der Browser
-      // baut sie, aber langsam, und jeder Scroll-Schritt kostet danach. Die
-      // Höhe kommt gleich nach dem Zeichnen aus der GEMESSENEN ersten Seite …
+      // Ungeladene Seiten sind EIN leerer Block statt 60 Platzhalterkacheln: Bei 25 000 Sets wären das 25
+      // 000 Elemente. Die Höhe kommt aus der gemessenen ersten Seite, weil die Spaltenzahl am Fenster hängt.
       // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#ungeladene-seiten-sind-ein-leerer-block
       : `<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`;
   }
@@ -238,7 +236,8 @@ function _setzePlatzhalterHoehe(){
 }
 
 /**
- * Wo liegt welcher Seitenblock? EINMAL gemessen, dann aus dem Gedächtnis.
+ * Die Lage der Seitenblöcke einmal messen, dann aus dem Gedächtnis: getBoundingClientRect je Block und
+ * Bild erzwang über 400 Layouts, und das Ziehen am Balken legte die CPU auf 100 %.
  * Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#catblocklagen
  */
 /** @type {{ seite: number, oben: number, unten: number }[]} */
@@ -261,7 +260,9 @@ function _messeBloecke(){
 }
 
 /**
- * Die Seiten laden, die im Bild stehen — erst, wenn das Rollen zur Ruhe kommt.
+ * Erst laden, wenn das Rollen ruht (150 ms): Ein Zug über die ganze Leiste forderte sonst hunderte
+ * Seiten an, von denen nur die letzte angesehen wird. Beim normalen Scrollen merkt man die Pause
+ * nicht.
  * Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#die-seiten-laden-die-im-bild-stehen-erst
  */
 /** @type {number | null} */
@@ -344,10 +345,8 @@ export async function ladeSeite(seite){
 
 /** @param {import('../../frontend-typen/vertrag').CatalogSetItem} s */
 function catCard(s){
-  // Über den Server statt direkt im Browser vom CDN — dieselbe Logik wie
-  // Sets, Teile und Minifiguren (imgUrl(thumbUrl(...), true)), auf Wunsch
-  // auch für den Katalog vereinheitlicht. Vorteil gegenüber der bisherigen
-  // rohen CDN-Adresse: kleineres Vorschaubild statt der vollen Auflösung, …
+  // Vorschau über den Server wie bei Sets, Teilen und Figuren: kleiner als die volle CDN-Auflösung, und
+  // schon heruntergeladene Bilder (image_local) sparen den Weg zum CDN ganz.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#src
   const src = s.image_local || s.image_url;
   const img = src
@@ -392,10 +391,9 @@ async function openCatModal(setNumber){
   G('cat-m-tit').textContent = s.name || s.set_number;
   G('cat-m-sub').textContent = s.set_number;
   leereLagerortFeld('cat-m-storage');
-  // Volle Auflösung im Detail-Modal — wie beim Zoom der eigenen Sets
-  // (11-actions.js, openImageLightboxFromEl): NICHT über den Proxy, sondern
-  // direkt im Browser vom CDN geladen. Das ist bewusst so: Der Server-Umweg
-  // lohnt sich für die kleine Vorschau (spart Bandbreite, profitiert vom …
+  // Die volle Auflösung im Detail direkt vom CDN, nicht über den Proxy: Für ein einmaliges grosses Bild
+  // ist das schneller und entlastet den Server; der Proxy lohnt sich nur für die vielen kleinen
+  // Vorschauen.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#detailsrc
   const detailSrc = s.image_local || s.image_url;
   G('cat-m-img').src = detailSrc ? fullUrl(detailSrc) : '/assets/set-placeholder.svg';
@@ -408,10 +406,9 @@ async function openCatModal(setNumber){
   ];
   if (s.owned) rows.push([t('catalog.owned'), '×' + s.owned_quantity]);
   G('cat-m-det').innerHTML = rows.map(([k, v]) => detailZeile(k, esc(String(v)))).join('');
-  // Kauf-Link kommt fertig vom Server (src/katalog/bricklinkLink.ts). Vorher wurde er
-  // hier aus der Rebrickable-Nummer gebaut und immer als Set verlinkt (S=…) —
-  // für alles, was BrickLink als Gear oder Buch führt, war damit sowohl der
-  // Parameter als auch die Nummer falsch (dort ohne "-1"-Suffix). …
+  // Der Kauf-Link kommt fertig vom Server (bricklinkLink.ts): Aus der Rebrickable-Nummer gebaut, war er
+  // für Gear, Bücher und Sammelfiguren falsch. Ist der Artikel nicht eindeutig, zeigt er auf die Suche —
+  // nie ausblenden.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#bl
   const bl = s.bricklink;
   const blBtn = G('cat-m-bricklink');
@@ -425,9 +422,8 @@ async function openCatModal(setNumber){
   G('cat-m-add').textContent = s.owned ? t('catalog.add_again') : t('catalog.add_to_gallery');
   G('cat-m-qty').value = '1';
   G('cat-m-price').value = '';
-  // Die Setnummer am Modal hinterlegen: Der Merklisten-Knopf liegt in einem
-  // anderen Modul und hat auf _catCurSet keinen Zugriff. Ein Export waere ein
-  // zweiter Weg zu demselben Zustand — das Modal weiss ohnehin, was es zeigt.
+  // Die Setnummer hängt am Modal: Der Merklisten-Knopf liegt in einem anderen Modul, und das Modal weiss
+  // ohnehin, was es zeigt. Ein Export von _catCurSet wäre ein zweiter Weg zum selben Zustand.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#cat-modal
   G('cat-modal').dataset.setNumber = s.set_number;
   G('cat-modal').classList.add('open');
@@ -500,9 +496,8 @@ registerActions({
 });
 
 
-// Den Balken selbst zeichnet die Anwendung für die ganze Seite (js/01-core.js,
-// #app-scrollbar). Der Katalog trägt hier nur bei, WAS beim Ziehen daneben
-// steht: das Jahr an der aktuellen Stelle.
+// Den Balken zeichnet die Anwendung (#app-scrollbar); der Katalog liefert nur das Jahr daneben.
+// Gelesen aus der obersten sichtbaren Kachel — geschätzt wird nur, wo noch nichts geladen ist.
 // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#jahranposition
 function _jahrAnPosition(){
   const grid = G('catalog-grid');
@@ -517,7 +512,8 @@ function _jahrAnPosition(){
       break;
     }
   }
-  // Zweite Wahl: über die tatsächliche VERTEILUNG rechnen.
+  // Zweite Wahl: über die tatsächliche Verteilung der Jahre rechnen. Linear auf 1949–2027 umgerechnet
+  // stand bei neun Zehnteln „1965“, weil der Katalog fast ganz aus den letzten Jahrzehnten stammt.
   // Ausführlich: docs/begruendungen/public/js/09-catalog.js.md#if
   if (!_catJahrVerteilung.length || !_catTotal) return null;
   const doc = document.documentElement;

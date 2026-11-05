@@ -130,8 +130,9 @@ async function loadPortfolioChart(){
 }
 
 /**
- * Plakette in der letzten Spalte der Finanztabelle: Ist für diese Zeile ein
- * Marktpreis da oder nicht?
+ * Plakette „Marktpreis da oder nicht“ mit nur zwei Zuständen: Ob der Preis aus dem Cache oder frisch
+ * kam, ändert an der Zahl nichts. title UND aria-label, sonst sind es unerklärte Zeichen auch für
+ * Vorleseprogramme.
  * Ausführlich: docs/begruendungen/public/js/04-finance.js.md#pricestatusbadge
  */
 /** @param {{ error?: string | null, no_price?: boolean | null, bl_unbekannt?: boolean | null }} s */
@@ -168,13 +169,15 @@ function besitzer(it, mehrereKonten) {
 }
 
 const condBadge = (/** @type {string} */ c) => condBadges({ conditions: [c] });
-// Feste Spaltenbreiten (colgroup, table-layout:fixed), damit die Preisspalten
-// der Teile- und Figurentabellen unter denen der Sets stehen.
+// Feste Spaltenbreiten (colgroup, table-layout:fixed): Die Preisspalten der Teile- und Figurentabellen
+// beginnen so genau unter denen der Sets, und man kann die Zahlen untereinander vergleichen.
 // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#condbadge
 const PM_COLGROUP = `<colgroup>
     <col class="sp-60"><col class="sp-325"><col class="sp-70"><col class="sp-100"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55">
   </colgroup>`;
-/** Klick auf eine Teile- oder Figurenzeile öffnet ihr Detail.
+/**
+ * Teile- und Figurenzeilen öffnen ihr Detail wie die Kachel im Reiter: Eine Tabelle, in der nur die
+ * Set-Zeilen auf Klick reagieren, sieht kaputt aus.
  * Ausführlich: docs/begruendungen/public/js/04-finance.js.md#manargs
  * @param {any} it */
 const manArgs = it => it.fig_number
@@ -242,7 +245,9 @@ function manuellerAbschnitt(o) {
     </div>`;
 }
 
-// Eine Zeile je Kaufpreis-Erfassung, jede mit dem Marktpreis ihres Zustands.
+// Eine vollständige Zeile je Kaufpreis-Erfassung, jede mit dem Marktpreis ihres Zustands: Sonst
+// bewertete eine Gebraucht-Erfassung auch das neu gekaufte Exemplar gebraucht. Keine Summenzeile und
+// kein Einrücken — die Zeilen sind gleichrangige Käufe, keine Aufschlüsselung.
 // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#setrow
 /** @param {any} s @param {any} acq @param {Zeilenlage} lage */
 function setRow(s, acq, lage){
@@ -336,6 +341,8 @@ export async function loadFinance(){
   if (listeLadefehler(G('fin-tbl'), d, { erneut: 'loadFinance', behalten: hatteTabelle })) { finanzenFehlen(d); return; }
   const cur=d.currency;
   const extra = parseFloat(partsVal.success ? partsVal.total_value||'0' : '0') + parseFloat(figsVal.success ? figsVal.total_value||'0' : '0');
+  // Ohne vergleichbaren Posten keine G&V — auch nicht die vom letzten Filter: Eine stehengebliebene Zahl
+  // sähe aus wie die Antwort auf den neuen.
   // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#gesamtguv
   const gesamtGuv = pnlData.success ? pnlData.totals?.pnl_prozent : null;
   const alleZeilen = [...(d.sets || []), ...(partsVal.success ? partsVal.parts : []), ...(figsVal.success ? figsVal.figs : [])];
@@ -356,6 +363,8 @@ export async function loadFinance(){
     + [...partsItems, ...figsItems].filter(it => !(Number(it.avg_price ?? it.qty_avg_price) > 0)).length;
   // Summen vom Server (`total_value`), wie in der App.
   const setsQtyAvg = parseFloat(d.totals.avg||'0');
+  // Der Gesamtwert kommt vom Server (totals.grand_total, je Zeile gerechnet): Die Regel, was mitzählt,
+  // soll an einer Stelle liegen. Die eigene Summe ist nur Rückfall, wenn die pnl-Abfrage scheitert.
   // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#grandtotal
   const grandTotal = parseFloat(pnlData?.totals?.grand_total || '0') || (setsQtyAvg + extra);
   const basis = basisAus(pt, ohnePreis);
@@ -542,8 +551,8 @@ function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehru
   zeile.innerHTML = `${ico('info')}<span><strong>${esc(tRaw('finance.basis.gerechnet', { n: basis.bewertet, von: basis.gesamt }))}</strong> ${esc(teile.join(' · '))}</span>`;
 }
 
-// Marcos Vorgabe, dass die Funktionen in beiden Apps dieselben sein sollen.
-// Der Reiter hatte den Filter bisher nur in der App.
+// Kategoriefilter wie in der Android-App; leere Auswahl heisst alle. Gefiltert wird durch Ausblenden,
+// nicht Neuzeichnen: Die Summen beschreiben den Bestand, nicht die Auswahl, und sollen stehen bleiben.
 // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#finkategorien
 const finKategorien = new Set();
 

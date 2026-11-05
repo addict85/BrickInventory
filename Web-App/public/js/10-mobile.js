@@ -1,5 +1,5 @@
-// Ergänzt mobile.css um die zwei Dinge, die sich nicht rein deklarativ lösen
-// lassen. Läuft auf jeder Bildschirmgrösse, tut aber nur auf schmalen etwas.
+// Was mobile.css nicht deklarativ kann: Tabellenzellen bekommen ihre Spaltenbeschriftung in data-label
+// gestempelt, statt zehn Vorlagen anzufassen und künftige zu vergessen. Läuft immer, wirkt nur schmal.
 // Ausführlich: docs/begruendungen/public/js/10-mobile.js.md#ergaenzt-mobile-css-um-die-zwei-dinge-di
 
 (function () {
@@ -87,10 +87,8 @@
     setTimeout(scrollActiveTabIntoView, 300);
   }
 
-  // Bedingung ist das Vorhandensein von <body>, nicht der readyState: Das
-  // Skript steht am Ende des Body, dort ist der Baum bereits da und die
-  // Beschriftungen greifen noch vor dem ersten Paint. Auf DOMContentLoaded zu
-  // warten wäre nicht nur unnötig spät — würde das Skript jemals NACH diesem …
+  // Bedingung ist <body>, nicht der readyState: Das Skript steht am Ende des Body, die Beschriftungen
+  // greifen so vor dem ersten Paint. Nur auf DOMContentLoaded zu warten liefe bei spätem Laden nie an.
   // Ausführlich: docs/begruendungen/public/js/10-mobile.js.md#start
   start();
   if (!started) document.addEventListener('DOMContentLoaded', start);

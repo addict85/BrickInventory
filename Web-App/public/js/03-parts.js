@@ -159,10 +159,9 @@ export function teileFilterZuruecksetzen(){
 // von Dateien, die VOR dieser geladen werden. Das ging nur gut, weil die
 // Aufrufe erst nach dem Laden aller Skripte passieren.
 
-// Vorher holte diese Ansicht in einem Zug JEDE Teil/Farb-Kombination der
-// Sammlung und baute daraus in einem Rutsch die komplette Kachelwand. An einem
-// Datensatz mit 380 Sets (171'000 parts-Zeilen) gemessen: 20,65 MB Nutzlast und
-// zehntausende DOM-Knoten pro Tabwechsel. Mit Seiten zu 100 sind es 0,03 MB und …
+// Seitenweise mit Endlos-Scroll statt der ganzen Wand auf einmal: Alle Teil/Farb-Kombinationen waren
+// 20 MB und zehntausende Knoten je Tabwechsel. Eine Farbe kann über die Seitengrenze laufen;
+// _partsLastColor hängt die neue Seite deshalb an die letzte Gruppe an statt eine zweite Überschrift.
 // Ausführlich: docs/begruendungen/public/js/03-parts.js.md#parts-page-size
 
 const PARTS_PAGE_SIZE = 100;
@@ -357,8 +356,8 @@ function bumpGroupCount(groupEl, add){
 }
 
 /**
- * Ersatzteil-Plakette. Sets enthalten ein Tütchen Ersatzteile; Rebrickable
- * kennzeichnet sie.
+ * Ersatzteil-Plakette. `p.is_spare` genügt, weil der Server die vier Schreibweisen in istErsatzteil()
+ * zu einem echten Wahrheitswert macht — die Zeichenkette "0" wäre in JavaScript wahr.
  * Ausführlich: docs/begruendungen/public/js/03-parts.js.md#ersatzteilplakette
  * @param {{ is_spare?: boolean | null }} p
  */
@@ -452,7 +451,8 @@ function maybeLoadMoreParts(){
 }
 
 /**
- * Suchtext — und zwar fuer BEIDE Listen des Reiters.
+ * Der Suchtext gilt für BEIDE Listen des Reiters: Die Filterleiste steht über den manuellen Teilen,
+ * also müssen sie mitfiltern. Eine Entprellung für beide, damit keine Liste vergessen werden kann.
  * Ausführlich: docs/begruendungen/public/js/03-parts.js.md#teilefiltergeaendert
  */
 function teileFilterGeaendert() {
@@ -472,7 +472,9 @@ G('parts-ordnung').addEventListener('change', () => {
   loadPartsData();
 });
 /**
- * Der Ansichtsumschalter — fuer BEIDE Listen des Reiters.
+ * Der Ansichtsumschalter gilt für beide Listen. Die Set-Teile laden neu (Tabelle braucht with_sets=1),
+ * die manuellen werden nur neu gezeichnet: Sie haben die Daten schon, ein zweiter Abruf wäre nur
+ * Wartezeit.
  * Ausführlich: docs/begruendungen/public/js/03-parts.js.md#teileansichtgeaendert
  */
 function teileAnsichtGeaendert() {
@@ -613,7 +615,8 @@ G('btn-add-part')?.addEventListener('click', async () => {
   res.style.color = 'var(--r500)';
   if(!num){ res.textContent=tRaw('parts.number_required'); return; }
   const colorSel = G('ap-color-select');
-  // "Keine Farbe" ist NICHT 0.
+  // „Keine Farbe“ ist null, nicht 0: 0 ist bei Rebrickable Schwarz. Mit 0 für beides suchte der Server
+  // für schwarze Teile kein Farbbild und zeigte das allgemeine, meist weisse.
   // Ausführlich: docs/begruendungen/public/js/03-parts.js.md#rawcolor
   const rawColor = colorSel?.value ?? '';
   const colorId  = String(rawColor).trim() === '' ? null : (parseInt(rawColor) || 0);

@@ -1,7 +1,5 @@
-// Diese 110 Zeilen standen in js/01-core.js. Deren Kopfzeile nennt als Inhalt
-// „Utils, i18n-Glue, Auth & Panels, Login/Logout, CSV-Import-Fortschrittsbalken"
-// — ein PDF-Betrachter ist nichts davon. Die Datei war 1479 Zeilen lang und
-// hiess nach ihrer Geschichte, nicht nach ihrem Inhalt.
+// Der PDF-Betrachter ist eine eigene Datei: Er hängt nur an G und esc und wird über openPdfViewer()
+// gerufen. In 01-core.js stand er zwischen Dingen, die mit ihm nichts zu tun haben.
 // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#diese-110-zeilen-standen-in-js-01-core-j
 import { registerActions } from './00-registry.js';
 import { G } from './01-core.js';
@@ -31,7 +29,9 @@ const PDF_ZOOM_MIN = 1;
 const PDF_ZOOM_MAX = 5;
 const PDF_ZOOM_SCHRITT = 1.25;   // ein Druck auf + bzw. −
 
-// Obergrenze für die Leinwand, in Pixeln der Fläche.
+// Obergrenze der Leinwand in Pixeln der Fläche. Der Riegel ist der Speicher, nicht die Grenze des
+// Browsers (16384 je Seite): 16 MPixel sind rund 60 MB und reichen für jede Zoomstufe, die man lesen
+// will.
 // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdf-leinwand-max-px
 const PDF_LEINWAND_MAX_PX = 16e6;
 
@@ -98,7 +98,9 @@ function _pdfMasse() {
 }
 
 /**
- * Einen Platzhalter auf die aktuelle Zoomgrösse bringen.
+ * Einen Platzhalter auf die Zoomgrösse bringen. margin:0 auto statt nur align-items:center: Bei einer
+ * Seite breiter als der Behälter läge der linke Rand sonst im Negativen und wäre nicht mehr
+ * erreichbar.
  * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfmassplatzhalter
  * @param {HTMLElement} ph
  */
@@ -166,7 +168,8 @@ async function _renderPdfPage(pdf, n, ph) {
     _pdfRenderTasks.set(n, task);
     await task.promise;
     _pdfRenderTasks.delete(n);
-    // Zwischenzeitlich gezoomt. Diese Leinwand hat die Auflösung von VORHER.
+    // Zwischenzeitlich gezoomt: Diese Leinwand hat die alte Auflösung. Einmal eingehängt, bräche der neue
+    // Durchlauf oben ab (Leinwand schon da), und die Seite bliebe grob bis zum nächsten Zoom.
     // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#if
     if (gen !== _pdfZoomGen) { canvas.width = 0; canvas.height = 0; ph.dataset.rendering = '0'; return; }
     ph.innerHTML = ''; ph.appendChild(canvas);
@@ -247,7 +250,8 @@ function pdfZoomOut() { _pdfSetzeZoom(_pdfZoom / PDF_ZOOM_SCHRITT, null, null); 
 function pdfZoomReset() { _pdfSetzeZoom(1, null, null); }
 
 /**
- * Mausrad mit Strg/⌘ zoomt, ohne Zusatztaste rollt es weiter.
+ * Strg/⌘ + Rad zoomt das PDF statt der ganzen Oberfläche; ohne Zusatztaste rollt das Rad weiter, weil
+ * man durch Anleitungen vor allem blättert. Der Zeiger ist der Anker.
  * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfrad
  */
 /** @param {WheelEvent} ev */
@@ -315,10 +319,8 @@ function _pdfTouchEnd(ev) {
 }
 
 /**
- * Die Zuhörer hängen am Behälter und nicht am Fenster, und sie werden EINMAL
- * angemeldet — beim Laden des Moduls, nicht bei jedem openPdfViewer(). Sonst
- * sammelt jedes geöffnete PDF einen weiteren Zuhörer an, und nach zehn
- * Anleitungen zoomt ein Raddreh um das Zehnfache.
+ * Zuhörer einmal am Behälter anmelden, nicht bei jedem openPdfViewer(): Sonst zoomte nach zehn PDFs
+ * ein Raddreh zehnfach. passive:false, damit preventDefault() greift und der Browser nicht mitzoomt.
  * Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#pdfhaengezuhoererein
  */
 function _pdfHaengeZuhoererEin() {

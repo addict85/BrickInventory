@@ -43,12 +43,11 @@ export async function mitZweitemFaktor(ruf) {
   const passkey = await /** @type {() => Promise<object | null>} */ (passkeyHolen)();
   return passkey ? ruf({ passkey }) : null;
 }
-/** Ein Bestätigen ist kein Löschen: Knopf in der Hauptfarbe statt rot. */
 /**
  * Hauptknopf des Rückfragedialogs: Text, Art (bp blau, bd rot), Feldbeschriftung.
  * @typedef {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean }} Knopf
  */
-/** @type {Knopf} */
+/** Ein Bestätigen ist kein Löschen: Knopf in der Hauptfarbe statt rot. @type {Knopf} */
 const BESTAETIGEN = { knopf: 'common.confirm', art: 'bp', feld: 'settings.password.current' };
 
 /**

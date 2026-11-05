@@ -6,10 +6,8 @@ import { CURRENCY, _settingsCache } from './00-zustand.js';
 import { esc } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 
-// „Im Eigenen Profil sollen Lego-Gutscheine mit Gutscheinnummer und Pins und
-// Betrag hinterlegt werden können. […] Die Erfassung, Änderung und Anzeige
-// soll sowohl in der Android-App als auch in der Webapp möglich sein und
-// möglichst einfach erreichbar sein."
+// Gutscheine (LEGO-Geschenkkarten) stehen direkt im Profil statt in einem eigenen Reiter: Sie sollen
+// schnell erreichbar sein, und wie in der App erfassen, ändern und anzeigen.
 // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#im-eigenen-profil-sollen-lego-gutscheine
 
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
@@ -215,14 +213,16 @@ export function gutscheinAbbrechen() {
   if (pdfZeile) pdfZeile.style.display = '';
 }
 
-/**
- * Speichern — der eine Knopf für beide Wege.
- * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#speichern-der-eine-knopf-fuer-beide-wege
- */
 /** Fehlercodes des Servers → Feld im Formular (Meldung am Feld statt Toast). */
 const GUTSCHEIN_FELDER = { nummer_ungueltig: 'v-number', gutschein_existiert: 'v-number',
   pin_ungueltig: 'v-pin', betrag_ungueltig: 'v-amount', waehrung_ungueltig: 'v-currency' };
 
+/**
+ * Speichern, ein Knopf für beide Wege: Liegt eine Datei im Feld, liest der Server sie, und ausgefüllte
+ * Felder gewinnen. So kann man ein PDF hochladen und den Betrag selbst ergänzen, wenn es ihn nicht
+ * hergibt.
+ * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#speichern-der-eine-knopf-fuer-beide-wege
+ */
 export async function gutscheinSpeichern() {
   const number   = el('v-number').value.trim();
   const pin      = el('v-pin').value.trim();
@@ -275,10 +275,9 @@ export async function gutscheinSpeichern() {
     }
     if (!d?.success) { antwortFehler(d, GUTSCHEIN_FELDER, tRaw('vouchers.save_error')); return; }
 
-    // Marcos Vorgabe: „Wenn ein PDF mit mehreren Seiten selektiert wird,
-    // sollen mehrere Gutscheine erfasst werden." Welcher Fall es ist,
-    // entscheidet der SERVER — er liest die Datei. Hier wird nur die Antwort
-    // gezeigt, und `mehrere` sagt, welche es ist.
+    // Ob ein PDF einen oder mehrere Gutscheine ergab, entscheidet der Server; `mehrere` sagt es. Dann
+    // dieselbe Meldung wie bei CSV-Importen, damit niemand bei drei Gutscheinen „gespeichert“ liest und
+    // rät.
     // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#if
     if (d.mehrere) {
       toast(tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated,
@@ -330,7 +329,8 @@ export async function gutscheinPinUmschalten(id) {
 }
 
 /**
- * Das PDF im Betrachter der App — derselbe wie bei den Bauanleitungen.
+ * Das PDF im Betrachter der Anleitungen, wie in der Android-App: Er kann anzeigen und herunterladen,
+ * zwei eigene Knöpfe dafür wären doppelt.
  * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheinpdfoeffnen
  */
 /** @param {string} id */
@@ -359,7 +359,8 @@ async function pdfFreigabe(pfad) {
 }
 
 /**
- * Gutscheinnummer oder PIN in die Zwischenablage.
+ * Nummer oder PIN kopieren, roh statt gruppiert: Die Leerzeichen sind eine Lesehilfe an der Kasse, ein
+ * Bezahlfeld nimmt sie nicht an. navigator.clipboard braucht HTTPS, daher der Rückfall.
  * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheinkopieren
  */
 /** @param {string} id @param {string} feld */
@@ -394,7 +395,8 @@ export async function gutscheinKopieren(id, feld) {
 }
 
 /**
- * Alle Gutscheine als EIN PDF herunterladen.
+ * Alle Gutscheine als ein PDF, per fetch statt Link: Die Kopfzeile X-Gutschein-Befunde sagt, wo der
+ * Betrag nicht ersetzt werden konnte — ein <a href> würfe genau diese Auskunft weg.
  * Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#gutscheineexportieren
  */
 async function gutscheineExportieren() {
@@ -434,10 +436,9 @@ async function gutscheineExportieren() {
     if (!offen.length) {
       toast(tRaw('vouchers.export_done', { n: befunde.length }), 'success');
     } else {
-      // tRaw und nicht t: Das Ziel ist ein TOAST, also reiner Text. t()
-      // maskiert die eingesetzten Werte, und die Maskierung erscheint dort
-      // WOERTLICH — aus 9'325 wurde im Katalog sichtbar „9&#39;325".
-      // test/frontend-escaping.test.js faengt genau das, und es hat es …
+      // tRaw statt t(), weil ein Toast reiner Text ist: t() maskiert, und aus 9'325 würde sichtbar
+      // „9&#39;325“. Die Nummern stehen in der Meldung, damit man weiss, welche Karte auf Papier den alten
+      // Betrag trägt.
       // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#toast
       toast(tRaw('vouchers.export_done', { n: befunde.length }) + ' — '
           + tRaw('vouchers.export_offen', { n: offen.length }) + ': '
@@ -448,8 +449,9 @@ async function gutscheineExportieren() {
   }
 }
 
-// „Kannst du dies bei den Gutscheinen einbauen, damit dies auf Knopfdruck
-//  abgefragt und gespeichert werden kann?"
+// Guthaben bei LEGO auf Knopfdruck abfragen. Die Grenze (eine Anfrage je 30 s über alle Benutzer)
+// setzt der Server; die Oberfläche befolgt sie: Bei 429 wartet sie wartenSek ab und fragt dieselbe
+// Karte erneut. Eine Sammelroute hielte dafür Minuten eine Verbindung offen.
 // Ausführlich: docs/begruendungen/public/js/17-gutscheine.js.md#kannst-du-dies-bei-den-gutscheinen-einba
 
 /** Höchstens so oft dieselbe Karte erneut versuchen, wenn die Schranke bremst. */
@@ -478,8 +480,6 @@ async function warteSichtbar(sekunden, nummer) {
  * Gibt zurück, was der Aufrufer wissen muss: ob es geklappt hat, und wenn
  * nicht, ob es am Abstand lag (dann lohnt Warten) oder am Bot-Schutz (dann
  * wird AUFGEHÖRT — weiterzufragen ist genau das, was nicht sein soll).
- */
-/**
  * @param {number | string} id
  * @returns {Promise<{ art: 'ok', antwort: import('../../frontend-typen/vertrag').GuthabenAntwort } | { art: 'abstand', wartenSek: number } | { art: 'botschutz' | 'fehler', fehler: string }>}
  */

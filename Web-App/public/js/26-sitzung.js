@@ -35,7 +35,8 @@ abonniere('passwortWechselNoetig', () => zeigePflichtwechsel());
 abonniere('zweiterFaktorPflicht', () => zeigeZweitpflicht());
 
 /**
- * Antwortet der Server mit 401, ist die Sitzung nicht mehr gültig.
+ * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten
+ * geht es zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
  * Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#abonniere
  */
 abonniere('sitzungBeendet', (path) => {
@@ -428,8 +429,9 @@ function showApp(){ bindTabs(); plInit(); setTimeout(()=>{ gibCheckOnLoad(); }, 
   zeigeOffeneAlarme();
   // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
   if (ME?.isAdmin) pruefeEinrichtung();
-  // Marcos Wunsch vom 25.09.: „Bei den Mails waere es schoen wenn es ebenfalls
-  // einen direkt link auf die Webapp mit dem entsprechenden Set geben wuerde."
+  // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil
+  // erst hier eine Sitzung besteht. Danach fällt der Parameter weg, damit F5 das Detail nicht erneut
+  // öffnet.
   // Ausführlich: docs/begruendungen/public/js/26-sitzung.js.md#setauslink
   const setAusLink = new URLSearchParams(location.search).get('set');
   if (setAusLink) {

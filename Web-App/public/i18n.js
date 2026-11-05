@@ -1,8 +1,7 @@
 import { melde } from './js/00-ereignisse.js';
 
-// Minimales Übersetzungs-System. Sprache wird beim App-Start aus den User-
-// Settings geladen und im localStorage gecacht, damit beim nächsten Seitenlade
-// keine sichtbare Verzögerung entsteht.
+// Minimales Übersetzungs-System: t('key', {name}) liefert den Text. Die Sprache wird im localStorage
+// gemerkt, damit beim nächsten Laden nichts verzögert. Nur die aktive Sprache wird ausgeliefert.
 // Ausführlich: docs/begruendungen/public/i18n.js.md#minimales-uebersetzungs-system-sprache-w
 
 /**
@@ -15,7 +14,8 @@ if (window.I18N_DE) I18N.de = window.I18N_DE;
 if (window.I18N_EN) I18N.en = window.I18N_EN;
 
 /**
- * Eine Sprachdatei nachladen, falls sie noch nicht da ist.
+ * Eine Sprachdatei nachladen, bevor neu übersetzt wird: Sonst stünden eine halbe Sekunde lang
+ * Schlüsselnamen da. Scheitert es, bleibt die bisherige Sprache — der Aufrufer prüft I18N[lang].
  * Ausführlich: docs/begruendungen/public/i18n.js.md#loadlang
  * @param {string} lang 'de' oder 'en'
  * @returns {Promise<void>}
@@ -93,7 +93,9 @@ function mehrzahlSchluessel(dict, key, vars) {
 }
 
 /**
- * Übersetzten Text holen und {platzhalter} ersetzen.
+ * Übersetzten Text holen und {platzhalter} ersetzen. Die Werte werden maskiert, weil fast jede
+ * Aufrufstelle das Ergebnis in innerHTML schiebt und darin Nutzereingaben stehen. Für reinen Text gibt
+ * es tRaw().
  * Ausführlich: docs/begruendungen/public/i18n.js.md#t
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
@@ -149,7 +151,8 @@ let _langApplied = null;
 
 
 /**
- * Farbnamen übersetzen.
+ * Farbnamen nur in der Anzeige übersetzen: Daten und BrickLink-Abfragen brauchen die englischen Namen.
+ * Ein Wortschatz statt einer Liste aller Farben, damit auch neue Rebrickable-Farben lesbar werden.
  * Ausführlich: docs/begruendungen/public/i18n.js.md#color-words-de
  */
 /** @type {Record<string, string>} */
@@ -198,10 +201,9 @@ export function colorName(en) {
     out.push(de === undefined ? tok : de);     // unbekannt: englisch lassen
   }
 
-  // Modifikatoren an das folgende Wort anschliessen und dieses kleinschreiben:
-  // „Dunkel Bläulich Grau" → „Dunkelbläulichgrau", wie es im Deutschen üblich
-  // ist. Nur bei bekannten Modifikatoren — unbekannte Wörter bleiben getrennt,
-  // sonst entstünde aus einer neuen Rebrickable-Farbe ein Wortungetüm. …
+  // Bekannte Modifikatoren ans nächste Wort hängen („Dunkelbläulichgrau“), unbekannte Wörter getrennt
+  // lassen. Entschieden am vorigen Token, nicht am Zusammengesetzten — sonst bräche die Kette nach dem
+  // zweiten Glied ab.
   // Ausführlich: docs/begruendungen/public/i18n.js.md#res
   let res = '';
   let joinNext = false;
@@ -220,7 +222,8 @@ export function colorName(en) {
  * @param {boolean} persist auch am Konto speichern
  */
 export function applyLang(lang, persist) {
-  // Sprache noch nicht geladen? Nachholen und danach erneut anlaufen.
+  // Sprache noch nicht geladen: nachladen und erneut anlaufen. Ein stilles return hiesse, der Klick auf
+  // Englisch tut nichts. Synchron, damit die rund zwanzig Aufrufstellen bleiben, wie sie sind.
   // Ausführlich: docs/begruendungen/public/i18n.js.md#if
   if (!I18N[lang]) {
     loadLang(lang).then(() => { if (I18N[lang]) applyLang(lang, persist); });

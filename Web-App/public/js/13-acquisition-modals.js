@@ -1,7 +1,5 @@
-// Diese 708 Zeilen standen in js/07-admin.js, deren Kopfzeile als Inhalt
-// „Confirm-Dialog, Config-Export/Import, API-Tokens, Job-Status" nennt. Keines
-// der beiden Fenster hier ist Administration: Das eine erfasst Kaufpreise zu
-// einem Set, das andere zeigt Details zu manuell erfassten Teilen und …
+// Kaufpreis-Modal und Detailfenster für manuelle Einträge: Beides ist Erfassung, keine Administration,
+// und gehört deshalb nicht nach 07-admin.js.
 // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#diese-708-zeilen-standen-in-js-07-admin
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
@@ -43,10 +41,8 @@ export function openAcqModal(sn) {
   loadAcqModal(sn);
 }
 
-// HINWEIS: Hier stand eine ZWEITE, kürzere Fassung von closeAcqModal().
-// Als klassisches Skript war die doppelte Deklaration erlaubt — die spätere
-// (weiter unten, mit der vollständigen Rückkehr-Logik für _acqManItem UND
-// _acqModalSn) hat sie stillschweigend überschrieben. Die kurze Fassung war …
+// Ein Klick auf den Hintergrund schliesst über closeAcqModal(), die einzige Fassung mit der
+// Rückkehr-Logik für Set und manuellen Eintrag.
 // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#acq-modal
 G('acq-modal').addEventListener('click', e => e.target === e.currentTarget && closeAcqModal());
 
@@ -230,10 +226,8 @@ async function acqSave(sn, id, field, value) {
   } else if (field === 'date') {
     body.date = value;
   } else if (field === 'owner') {
-    // Eigentümerwechsel = Verschieben genau dieser einen Kaufpreis-Zeile.
-    // KEIN from_user_id: Den Absender ermittelt der Server aus der Zeile
-    // selbst (acquisitionMoveSource). Hier stand der BETRACHTER — für die
-    // Zeile eines Unterkontos suchte der Server sie damit unter dem falschen …
+    // Eigentümerwechsel verschiebt genau diese Kaufpreis-Zeile, ohne from_user_id: Den Absender kennt der
+    // Server aus der Zeile. Mit dem Betrachter als Absender fand er Zeilen von Unterkonten nicht (404).
     // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#eigentuemerwechsel-verschieben-genau-die
     body.owner_user_id = parseInt(value);
   } else {
@@ -270,7 +264,8 @@ async function acqSave(sn, id, field, value) {
   // des Dialogs.
   api('GET', `/v1/sets/${sn}/price-history`).then(renderMarketRows).catch(()=>{});
 
-  // Kennzahlen, Galerie und Finanzen mitziehen.
+  // Galerie und Finanzen mitziehen: Kaufpreis und Menge wirken auf die Kachel und die Auswertung, die
+  // sonst bis zum Neuladen alt blieben. restore, damit der Wechsel nicht die gescrollte Tiefe kostet.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#loadgallery
   loadGallery({ restore: true });
   loadFinance();
@@ -442,8 +437,9 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
     `));
   }
 
-  // Marcos Bitte vom 19.10.: „Weiter möchte ich die Farbe nachträglich
-  // anpassen können für den Fall dass diese nicht korrekt geladen wurde."
+  // Die Farbe eines Teils ist änderbar, für den Fall, dass sie falsch geladen wurde — gerade ein Teil
+  // ohne Farbname braucht die Zeile. Dieselbe Liste wie beim Erfassen (loadBrickColors), nachgeladen
+  // nach dem Zeichnen.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#if-2
   if (type === 'part') {
     const swatch = `<span id="man-farb-punkt" data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`;
@@ -456,10 +452,9 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
       { wertStil: 'display:flex;align-items:center;gap:6px;justify-content:flex-end' }));
   }
 
-  // Marcos Befund vom 24.09.: „Auf dem Detail Dialog der manuell erfassten
-  // Teile ist der Lagerort nicht ersichtlich. Auf dem Detaildialog der manuell
-  // erfassten Minifiguren ist das Lagerort nicht ersichtlich." Er vermutete
-  // es auch in der Webapp — zu Recht: Die Zeile gab es nur im Dialog der Teile …
+  // Lagerort auch im Detail der manuell erfassten Teile und Figuren: Dasselbe Bedienelement und derselbe
+  // Speicherweg wie bei Teilen aus Sets, nur die Adresse hängt am Typ. Die Ortsliste gehört dem
+  // Besitzer.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#ladeortauswahl-2
   ladeOrtAuswahl(item?.user_id != null ? [item.user_id] : []).catch(() => {});
   rows.push(detailZeile(t('detail.storage'),
@@ -477,7 +472,8 @@ function manDetailZeilen(type, id, colorId, item, acqs, ad) {
          wertId: 'man-acq-summary',
          wertStil: 'flex-direction:column;align-items:flex-end;gap:3px' }));
 
-  // Preisverlauf — wie im Set-Detail, beide Zustände in einem Diagramm.
+  // Preisverlauf wie im Set-Detail, beide Zustände in einem Diagramm, der Marktpreis je Zustand darüber.
+  // Bis genug Punkte gesammelt sind, bleibt das Diagramm leer — das ist erwartet.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#preisverlauf-wie-im-set-detail-beide-zus
   rows.push('<div id="man-market-rows"></div>');
 
@@ -552,10 +548,8 @@ export async function openManDetail(type, id, colorId) {
   G('man-detail-tit').textContent = String(item.fig_name || item.part_name || id);
   G('man-detail-sub').textContent = id + (item.color_name ? ' · ' + colorName(String(item.color_name)) : '');
 
-  // War: fullUrl(...) allein — bei einer CDN-Quelle ohne imgUrl()-Umwicklung
-  // lädt der Browser direkt von Rebrickable, am Server vorbei. Das ist der
-  // eigenständige Kaufpreis-Detail-Dialog für manuell erfasste Teile/
-  // Minifiguren — ein anderer Ort als die Kachel-Zoom-Funktion in 03-parts.js/ …
+  // Volle Auflösung über den Server-Proxy, nicht direkt vom CDN: Fremde Bildadressen lädt der Browser
+  // nie selbst (Hotlink-Schutz, Cache).
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#rawimgsrc
   const rawImgSrc = item.image_local || item.image_url || '';
   const imgSrc = rawImgSrc ? imgUrl(fullUrl(rawImgSrc), false) : '';
@@ -590,15 +584,15 @@ export async function openManDetail(type, id, colorId) {
 
 }
 
-// „Kannst du noch einbauen, dass auch die automatisch erfassten Teile und
-// Minifiguren einen Detail-Dialog inkl. Zoom haben? Der Marktpreis kann
-// weggelassen werden. Die Anzahl soll nicht geändert werden können. Dafür soll
-// angezeigt werden, welche Sets dieses Teil und Minifigur verwenden — inkl. …
+// Detail-Dialog für Teile und Figuren aus Sets: mit Zoom und der Liste der Sets, in denen sie stecken,
+// ohne Marktpreis und ohne änderbare Anzahl — die Menge entsteht aus den Inventaren. Derselbe Rahmen
+// wie openManDetail.
 // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#opensetitemdetail
 /** Die Sets, in denen ein Teil oder eine Figur steckt, als klickbare Liste. @param {any[]} sets */
 function verwendetInListe(sets) {
-  // Jede Zeile öffnet das Set-Detail. `openSetAusItem` schliesst diesen Dialog
-  // zuerst — zwei offene Fenster übereinander wären nicht mehr zu schliessen.
+  // Die Sets als Tabelle (Bild, Nummer, Name) wie im Reiter Finanzen: Als Fliesstext stand jeder Name
+  // woanders. Jede Zeile öffnet das Set-Detail und schliesst diesen Dialog, zwei offene Fenster wären
+  // nicht zu schliessen.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#setbild
   const setBild = (/** @type {{ image_local?: string | null, image_url?: string | null }} */ s) => {
     const klein = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
@@ -636,9 +630,8 @@ export async function openSetItemDetail(type, id, colorId) {
   bodyEl.innerHTML = ladeAnzeige('', { stil: 'padding:1rem' });
   modal.classList.add('open');
 
-  // Blickfeld mitgeben wie überall sonst — im Haushalt gehört das Set des
-  // Geschwisterkontos dazu, sonst sagt der Dialog etwas anderes als die Liste,
-  // aus der man kommt.
+  // Blickfeld mitgeben wie überall: Im Haushalt gehört das Set des Geschwisterkontos dazu. scopeQuery()
+  // angehängt, nicht im Pfad, damit test/frontend-api-paths.test.js die Adresse lesen kann.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#url
   const url = (type === 'fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
@@ -669,10 +662,8 @@ export async function openSetItemDetail(type, id, colorId) {
   }
 
   const zeilen = [];
-  // Anzahl: NUR Anzeige. Marcos Vorgabe — eine Menge, die aus den Inventaren
-  // der Sets entsteht, lässt sich hier nicht sinnvoll ändern.
-  // fmtN() ist der GELDformatierer. Hier stand `fmtN(total_quantity)` ohne
-  // Waehrung — aus der Menge 6 wurde damit „EUR 6.00×". Anzahlen schreibt …
+  // Anzahl nur zur Anzeige: Sie entsteht aus den Inventaren der Sets. Mit toLocaleString wie auf der
+  // Teilekachel — fmtN() ist der Geldformatierer und machte aus 6 „EUR 6.00×“.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#anzahl-nur-anzeige-marcos-vorgabe-eine-m
   zeilen.push(detailZeile(t('setitem.total_qty'),
     `<span data-stil="font-family:var(--mono);font-weight:600">×${(item?.total_quantity || 0).toLocaleString(locale())}</span>`));
@@ -686,13 +677,12 @@ export async function openSetItemDetail(type, id, colorId) {
   if (item?.category_name) zeilen.push(detailZeile(t('setitem.category'), esc(item.category_name)));
   if (item?.is_spare) zeilen.push(detailZeile(t('parts.spare_tag'), ico('ok')));
 
-  // Nur für Teile, nicht für Figuren: Eine Minifigur steckt in ihrem Set, und
-  // dessen Lagerort steht im Set-Detail. Ein zweiter Ort für dieselbe Sache
-  // wäre eine Stelle, an der zwei Antworten auseinanderlaufen können.
+  // Lagerort nur für Teile: Eine Figur steckt in ihrem Set, dessen Ort im Set-Detail steht. Das Feld
+  // schreibt auf alle Zeilen des Teil-Farb-Paares, weil man das Teil meint, nicht eine seiner Zeilen.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#if
   if (type === 'part') {
-    // Die Auswahlliste gehört dem BESITZER des Teils, nicht dem Betrachter —
-    // dieselbe Regel wie beim Set, Begründung an ladeOrtAuswahl().
+    // Die Ortsliste gehört dem Besitzer, wie beim Set. owner_ids statt owners, weil gruppierte Teilezeilen
+    // keine Besitzerplakette tragen.
     // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#ladeortauswahl
     ladeOrtAuswahl(item?.owner_ids).catch(() => {});
     zeilen.push(detailZeile(t('detail.storage'),
@@ -703,10 +693,8 @@ export async function openSetItemDetail(type, id, colorId) {
   }
 
   const liste = verwendetInListe(sets);
-  // Marcos Befund am Bild: „Der Text 'Verwendet in' kommt in das erste Bild
-  // der Sets." Die Zeile ist ein `.dr` und damit ein Flex-Kasten mit
-  // `justify-content:space-between` (styles.css): Beschriftung links, Wert
-  // rechts. Bei EINEM Set ist die Tabelle so schmal, dass sie neben die …
+  // Die Tabelle steht unter der Beschriftung (flex-direction:column): In der .dr-Zeile rutschte sie bei
+  // einem einzigen Set neben „Verwendet in“, und das Bild berührte den Text.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#marcos-befund-am-bild-der-text-verwendet
   zeilen.push(detailZeile(t('setitem.used_in'), liste,
     { zeilenStil: 'flex-direction:column;align-items:stretch;gap:4px',
@@ -716,7 +704,8 @@ export async function openSetItemDetail(type, id, colorId) {
 }
 
 /**
- * Lagerort eines Teils oder einer Figur speichern.
+ * Lagerort eines Teils oder einer Figur speichern, beim Verlassen des Feldes (sonst ein Zwischenstand
+ * je Zeichen). `this` statt fester Kennung, weil zwei Dialoge denselben Handler nutzen.
  * Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#speichereteillagerort
  */
 async function speichereTeilLagerort() {
@@ -736,7 +725,9 @@ async function speichereTeilLagerort() {
 }
 
 /**
- * Die Auswahlliste der Farben im Detaildialog füllen.
+ * Die Farbliste getrennt vom Zeichnen füllen: Der erste Abruf geht zu Rebrickable, der Dialog steht
+ * derweil offen. Scheitert er, bleibt die aktuelle Farbe als einzige Wahl — besser als eine Liste ohne
+ * sie.
  * Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#fuellefarbwahl
  * @param {number} aktuell
  */
@@ -764,7 +755,8 @@ async function fuelleFarbwahl(aktuell) {
 }
 
 /**
- * Die Farbe eines manuell erfassten Teils ändern.
+ * Die Farbe eines manuellen Teils ändern (die Regeln stehen in src/teile/teilFarbeAendern.ts). Danach
+ * öffnet der Dialog mit der neuen Farbe: Sie ist Teil der Adresse, der alte Dialog zeigte ins Leere.
  * Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#speichereteilfarbe
  */
 async function speichereTeilFarbe() {
@@ -836,7 +828,9 @@ async function manQtySave() {
     await updateManualPart(id, colorId, { quantity: qty }, owner);
   }
 
-  // Erfassungsliste IMMER neu laden — in beide Richtungen.
+  // Die Erfassungsliste nach jeder Mengenänderung neu laden, in beide Richtungen: Beim Verringern
+  // entfernt der Server Erfassungen (LIFO), und nur beim Erhöhen neu zu laden zeigte gelöschte Einträge
+  // weiter an.
   // Ausführlich: docs/begruendungen/public/js/13-acquisition-modals.js.md#acqurl2
   const acqUrl2 = type==='fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/acquisitions`

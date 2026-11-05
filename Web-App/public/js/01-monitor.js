@@ -1,7 +1,5 @@
-// Dieser Block lag in js/01-core.js. Deren Kopfzeile nennt als Inhalt „Utils,
-// i18n-Glue, Auth & Panels, Login/Logout, CSV-Import-Fortschrittsbalken" — die
-// Überwachung stand nicht darin. Sie war damit nicht nur gross, sondern in
-// einer Datei, die selbst behauptete, sie nicht zu enthalten.
+// Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster. In
+// 01-core.js stand das eingekeilt in einer Datei, deren Kopf es nicht einmal nannte.
 // Ausführlich: docs/begruendungen/public/js/01-monitor.js.md#dieser-block-lag-in-js-01-core-js-deren
 import { echt, registerActions } from './00-registry.js';
 import { fmtDatum, ico, G, api, escHtmlAttr, toast, apiDaten } from './01-core.js';
@@ -263,11 +261,6 @@ const STATUSNAMEN = {
 const artName = (/** @type {string} */ art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : esc(art));
 
 /**
- * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers
- * (GET /api/v1/admin/auftraege) — je Art die Zahlen mit „Jetzt“ und
- * „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
- */
-/**
  * Eine Fehlermeldung des Servers in einem Satz, den man ohne Netzwerkwissen
  * versteht; der Originaltext bleibt aufklappbar, er ist für die Fehlersuche da.
  * @param {unknown} text
@@ -287,6 +280,11 @@ function fehlerKasten(text) {
   return `<details class="fehler-kasten"><summary>${ico('warnung')} ${esc(fehlerKurz(text))}</summary><code>${esc(text)}</code></details>`;
 }
 
+/**
+ * Die Karte „Hintergrundarbeiten“: die Auftragstabelle des Servers
+ * (GET /api/v1/admin/auftraege) — je Art die Zahlen mit „Jetzt“ und
+ * „Leeren“, darunter laufende, wartende und gescheiterte Aufträge.
+ */
 async function zeigeAuftraege() {
   const el = G('auftraege-karte');
   if (!el) return;

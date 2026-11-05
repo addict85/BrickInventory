@@ -4,10 +4,9 @@ import { beiDialogWechsel, istOffen, obersterDialog } from './01-dialoge.js';
 import { springe } from './00-ziele.js';
 import { ME } from './00-zustand.js';
 
-// Jede Ansicht steht als `#/pfad` in der Adresse, Filter als Query dahinter.
-// Ein Hash-Router, damit der Server für Unterseiten nichts ausliefern muss
-// und die Anmeldelinks (?token=, ?set=) unverändert bleiben. Jeder offene
-// Dialog ist ein Verlaufseintrag: Die Zurück-Geste schliesst ihn, statt die …
+// Jede Ansicht als #/pfad, Filter als Query dahinter: Ein Hash-Router braucht keine Serverrouten, und
+// Anmeldelinks (?token=, ?set=) bleiben unberührt. Offene Dialoge sind Verlaufseinträge, damit
+// „Zurück“ sie schliesst.
 // Ausführlich: docs/begruendungen/public/js/24-router.js.md#jede-ansicht-steht-als-pfad-in-der-adres
 
 /** Ansicht (data-tab bzw. Sicht) → Pfad in der Adresse. */
@@ -252,8 +251,8 @@ function wennOption(sel, wert) {
   setTimeout(() => b.disconnect(), 15000);
 }
 
-/** Den Zustand eines Verlaufseintrags herstellen (Zurück, Vor, Start). */
 /**
+ * Den Zustand eines Verlaufseintrags herstellen (Zurück, Vor, Start).
  * @param {NonNullable<ReturnType<typeof leseAdresse>>} ziel @param {string[]} dlg
  * @returns {boolean} true, wenn die Ansicht abgewiesen wurde (Verwalterseite) */
 function wendeAn(ziel, dlg) {

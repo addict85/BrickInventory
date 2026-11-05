@@ -6,8 +6,9 @@
 // von aussen nur G() — den Rest macht er selbst.
 import { G } from './01-core.js';
 
-// Marcos Vorgabe: „Der rechte Scrollbalken ist der vom Browser, der durch den
-// eigenen ersetzt werden soll. Gerne gleich in der ganzen App."
+// Ein eigener Scrollbalken für die ganze Seite, fest am rechten Rand, statt eines Scrollkastens im
+// Katalog: Dort sass der Balken mitten im Fenster, und das Nachladen mass gegen den Kasten statt gegen
+// das Fenster.
 // Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#marcos-vorgabe-der-rechte-scrollbalken-i
 
 /**
@@ -41,7 +42,8 @@ export function zeichneScrollbalken() {
 }
 
 /**
- * Das Balken-Element erzeugen, falls es noch nicht da ist.
+ * Das Balken-Element aus JavaScript erzeugen: app.bundle.js läuft, sobald der Parser es erreicht, und
+ * ein <div> dahinter im Markup gab es beim Start noch nicht — der Balken fehlte still.
  * Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#erzeugescrollbalken
  */
 function _erzeugeScrollbalken() {
@@ -112,7 +114,8 @@ export function initScrollbalken() {
     if (!ziehen) return;
     ziehen = false;
     bar.classList.remove('dragging');
-    // Die INLINE gesetzte Sichtbarkeit wieder wegnehmen.
+    // Die inline gesetzte Sichtbarkeit wieder wegnehmen: Sie schlägt die CSS-Regel für .dragging, und das
+    // Jahresetikett blieb nach dem Loslassen in jedem Reiter stehen.
     // Ausführlich: docs/begruendungen/public/js/15-scrollbar.js.md#if
     if (label) label.style.display = '';
   };

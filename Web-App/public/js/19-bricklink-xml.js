@@ -1,5 +1,5 @@
-// Die Gegenrichtung zu js/18-wanted-xml.js (das liest). Benutzt wird sie vom
-// BrickLink-Knopf der Teileliste (plExportBricklink in js/08-init.js).
+// Wanted-Listen schreiben, die Gegenrichtung zu 18-wanted-xml.js. Eine eigene, DOM-freie Datei, damit
+// ein Test sie einlesen kann — 08-init.js greift schon beim Laden aufs Dokument zu.
 // Ausführlich: docs/begruendungen/public/js/19-bricklink-xml.js.md#die-gegenrichtung-zu-js-18-wanted-xml-js
 
 /**
@@ -44,7 +44,9 @@ export function baueWantedXml(posten) {
 }
 
 /**
- * Dieselbe Liste, in Stücke geschnitten, die BrickLink annimmt.
+ * Die Liste in Stücke schneiden, die BrickLink annimmt. Gemessen in Bytes (TextEncoder), weil Umlaute
+ * mehr Bytes als Zeichen sind. Ein einzeln zu grosser Posten bekommt sein Stück, statt still zu
+ * fehlen.
  * Ausführlich: docs/begruendungen/public/js/19-bricklink-xml.js.md#bauewantedxmlstuecke
  */
 /** @param {Parameters<typeof item>[0][]} posten */

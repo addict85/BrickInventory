@@ -1,7 +1,6 @@
-// Die CSP erlaubt keine style-Attribute im Markup: Eine eingeschleuste
-// Auszeichnung soll die Seite nicht umgestalten können (falsches Formular über
-// dem echten). Das Markup trägt den Stil deshalb als data-stil, und diese Datei
-// setzt ihn per CSSOM — aber nur Werte, die so im Quelltext stehen. Die Liste …
+// Die CSP verbietet style-Attribute, damit eingeschleustes Markup die Seite nicht umgestalten kann.
+// Stile stehen deshalb als data-stil da und gelten nur, wenn sie im Quelltext vorkommen (Liste aus
+// scripts/build-frontend.js).
 // Ausführlich: docs/begruendungen/public/js/00-stile.js.md#die-csp-erlaubt-keine-style-attribute-im
 
 /* global __ERLAUBTE_STILE__ */

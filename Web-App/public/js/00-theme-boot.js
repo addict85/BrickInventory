@@ -1,5 +1,6 @@
-// Läuft als blockierendes Skript im <head>, also VOR dem ersten Paint — und
-// bewusst vor 01-core.js.
+// Läuft blockierend im <head>, vor dem ersten Paint: Auch Anmelde- und Startseite tragen so sofort das
+// richtige Design. Erst der letzte bekannte Wert, dann der Abgleich mit dem Server — so blinkt nichts
+// und nichts veraltet.
 // Ausführlich: docs/begruendungen/public/js/00-theme-boot.js.md#laeuft-als-blockierendes-skript-im-head
 
 (function () {
@@ -9,8 +10,8 @@
   var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
   /**
-   * Wendet ein Design an. Unbekannte Werte (null, '', undefined) bedeuten
-   * "keine Information" und ändern NICHTS.
+   * Wendet ein Design an. Ein leerer Wert heisst „keine Auskunft“ und ändert nichts: Ein Rückfall auf
+   * classic liess die Seite beim Anmelden umspringen und schrieb den falschen Wert in den Cache.
    * Ausführlich: docs/begruendungen/public/js/00-theme-boot.js.md#apply
    * @param {string | null | undefined} theme
    */

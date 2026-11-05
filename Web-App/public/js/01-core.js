@@ -4,28 +4,25 @@ import { abonniere, melde } from './00-ereignisse.js';
 import { LANG, applyLang, locale, tRaw } from '../i18n.js';
 import { CURRENCY, _settingsCache, ME } from './00-zustand.js';
 
-// Was NICHT (mehr) hier steht, obwohl es hier stand:
-//   Kontofilter                    → js/14-scope.js
-//   eigener Scrollbalken           → js/15-scrollbar.js
-//   PDF-Betrachter                 → js/12-pdfviewer.js …
+// Hierher gehört nur, was die Zeile darüber nennt. Die Datei wuchs zweimal auf über 1300 Zeilen, weil
+// Neues dort landete, wo gerade jemand las; alles andere bekommt eine eigene Datei.
 // Ausführlich: docs/begruendungen/public/js/01-core.js.md#was-nicht-mehr-hier-steht-obwohl-es-hier
 
-// Alle Listen und Detailansichten werden per innerHTML aus Template-Literalen
-// gebaut. Jeder Wert, der aus der DB, einem CSV-Import oder einer Fremd-API
-// kommt, MUSS deshalb durch einen dieser Helfer — sonst ist jedes freie
-// Textfeld (Teilename, Farbname, Notiz, Bild-URL) ein Stored-XSS-Vektor. …
+// Ansichten entstehen per innerHTML aus Vorlagen; jeder Wert aus Datenbank, CSV oder Fremd-API muss
+// durch einen dieser Helfer, sonst ist jedes freie Textfeld ein gespeichertes XSS. esc() für Text,
+// escJs() in data-arg, escUrl() für src/href, escHex() für Farben.
 // Ausführlich: docs/begruendungen/public/js/01-core.js.md#alle-listen-und-detailansichten-werden-p
 
-/** HTML-Escape für Textinhalte und doppelt-gequotete Attributwerte. */
 /**
- * Wie kurz ein Passwort hoechstens sein darf — dieselbe Zahl wie im Server
- * (PASSWORT_MIN_ZEICHEN in src/konto/auth.ts) und in der App.
+ * Mindestlänge eines Passworts. Der Server setzt sie durch, der Browser sagt sie vorher;
+ * test/passwortlaenge.test.js hält Server, Web und App gleich.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#passwort-min-zeichen
  */
 export const PASSWORT_MIN_ZEICHEN = 12;
 
 /**
- * Ist dieses Passwort zu kurz?
+ * Die Webapp prüfte die Länge an keiner der fünf Stellen, die ein Passwort setzen, und lief in den
+ * Serverfehler, wo die App den Knopf gar nicht erst freigibt. Hier wird vorher gefragt.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#passwortzukurz
  * @param {unknown} p
  */
@@ -95,7 +92,8 @@ export function escHex(hex, fallback){
 }
 
 /**
- * Dieselbe Prüfung wie [escHex], aber OHNE das Doppelkreuz.
+ * Wie escHex(), aber ohne „#“: für Attribute, deren Leser das Doppelkreuz selbst ergänzen (data-hex).
+ * escHex() dort ergäbe „##RRGGBB“.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#hexziffern
  * @param {unknown} hex
  */
@@ -107,10 +105,8 @@ export function hexZiffern(hex){
 /** Rückwärtskompatibler Alias (wurde früher in 03-parts.js definiert). */
 export const escHtml = escJs;
 
-// Diese Helfer werden von anderen Modulen bei DEREN Top-Level-Auswertung
-// benutzt (z. B. G('parts-search').addEventListener(…) in 03-parts.js). Bei
-// gegenseitigen Importen wertet JavaScript das importierte Modul zuerst aus —
-// eine `const`-Pfeilfunktion aus 01-core.js liegt dann noch in der temporalen …
+// function statt const: Andere Module rufen G() & Co. schon beim eigenen Laden. Eine
+// const-Pfeilfunktion läge dann noch in der Todeszone und würfe „G is not a function“.
 // Ausführlich: docs/begruendungen/public/js/01-core.js.md#diese-helfer-werden-von-anderen-modulen
 /**
  * Als Formularelement typisiert: Die meisten Aufrufe lesen .value, .checked
@@ -296,7 +292,9 @@ export function zuruecksetzenKnopf(ansicht) {
 }
 
 /**
- * Einen Knopf für die Dauer eines Aufrufs sperren.
+ * Sperrt einen Knopf für die Dauer eines Aufrufs und merkt sich seine Beschriftung, statt sie danach
+ * neu zu setzen: Fest eingetragene Texte waren falsch übersetzt, und ein kurz leerer Knopf sah wie ein
+ * Fehler aus.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#knopfbesetzt
  * @param {HTMLButtonElement | HTMLInputElement} btn
  * @param {string} [laeuft] Andere Beschriftung waehrend der Arbeit. NUR
@@ -310,7 +308,8 @@ export function zuruecksetzenKnopf(ansicht) {
  */
 export function knopfBesetzt(btn, laeuft) {
   const vorher = btn.textContent;
-  // Die Breite einfrieren, BEVOR sich etwas aendern kann.
+  // Die Breite einfrieren, bevor sich etwas ändert: Ein kürzerer Wartetext liesse sonst die ganze
+  // flex-Zeile daneben nachrutschen.
   // Ausführlich: docs/begruendungen/public/js/01-core.js.md#breite
   const breite = btn.offsetWidth;
   const minVorher = btn.style.minWidth;
@@ -331,16 +330,9 @@ export function knopfBesetzt(btn, laeuft) {
   };
 }
 
-// Return thumbnail URL if it would exist, else original
 /**
- * @param {string} src
- * @param {boolean} [thumb] Verkleinerte Fassung anfordern. Wirkt nur für
- *        Bilder, die über /api/img-proxy laufen (Rebrickable-CDN) — für
- *        lokale Dateien entscheidet ausschliesslich der Server (image_local
- *        ist bereits die richtige Adresse, siehe thumbUrl()).
- */
-/**
- * Die Adresse des Bild-Proxys — und die alte daneben.
+ * Der Bild-Proxy liegt unter /api/v1. Ältere image_url aus der Datenbank tragen noch die alte Adresse;
+ * erkannt werden beide, gebaut wird nur die neue.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#img-proxy
  */
 const IMG_PROXY = '/api/v1/img-proxy';
@@ -354,7 +346,9 @@ function istProxyPfad(src) {
 }
 
 /**
- * Adressen auf den EIGENEN Server auf ihren Pfad zurückführen.
+ * Adressen auf den eigenen Server auf ihren Pfad kürzen: imgEl.src liefert die absolute Adresse, und
+ * der Proxy lehnt sich selbst als Ziel zu Recht ab (offene Weiterleitung). Ohne das brach der Zoom mit
+ * 403.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#stripownorigin
  * @param {string} src
  * @returns {string} Pfad, wenn die Adresse auf den eigenen Ursprung zeigt, sonst unverändert
@@ -366,6 +360,9 @@ function stripOwnOrigin(src) {
 }
 
 /**
+ * Die Adresse, unter der ein Bild geladen wird. `thumb` wirkt nur bei Bildern
+ * über den Proxy; bei lokalen Dateien entscheidet der Server (image_local
+ * ist schon die richtige Adresse, siehe thumbUrl()).
  * @param {string | null | undefined} src
  * @param {boolean | 'nur'} [thumb]  'nur': nur die verkleinerte Fassung, nie das Original nachladen
  */
@@ -373,7 +370,8 @@ export function imgUrl(src, thumb) {
   if (!src) return '';
   src = stripOwnOrigin(src);
 
-  // Bereits eine Server-Adresse (lokale Datei oder Proxy) — unverändert lassen.
+  // Lokale Datei oder schon über den Proxy: unverändert. Fremde Adressen lädt der Browser nie direkt —
+  // nur der Proxy setzt die Kopfzeilen gegen den Hotlink-Schutz und hält den Cache.
   // Ausführlich: docs/begruendungen/public/js/01-core.js.md#if-2
   if (src.startsWith('/data/') || src.startsWith('/images/') || istProxyPfad(src)) {
     return src;
@@ -387,10 +385,9 @@ export function imgUrl(src, thumb) {
   // Allowlist-Test im Client wäre nur eine weitere Stelle, die man vergisst
   // mitzupflegen.
   if (/^https?:\/\//.test(src)) {
-    // Teilebilder haben auf dem CDN keine _thumb-Variante; die Verkleinerung
-    // entsteht serverseitig aus dem Proxy-Cache (siehe routes/imgProxy.ts).
-    // `thumb` kennt drei Werte:
-    //   false  — volle Auflösung …
+    // Vorschauen entstehen im Proxy. `thumb` 'nur' nutzt eine vorhandene, rechnet aber keine neue: für den
+    // Katalog mit 25 000 fremden Sets, an denen man vorbeiscrollt. Der eigene Bestand bekommt die Vorschau
+    // (true).
     // Ausführlich: docs/begruendungen/public/js/01-core.js.md#tp
     const tp = thumb === 'nur' ? '&thumb=1&gen=0' : (thumb ? '&thumb=1' : '');
     return IMG_PROXY + '?url=' + encodeURIComponent(src) + tp;
@@ -418,11 +415,9 @@ export function fullUrl(src) {
 }
 
 /**
- * Wert für ein HTML-Attribut absichern. Wird für die Datenattribute des
- * Log-Fensters gebraucht: Token, Basis-URL und die Übersetzungen als JSON.
- */
-/**
- * Symbol für die BrickLink-Wanted-Listen-Knöpfe: ein XML-Dokument.
+ * Symbol für die BrickLink-XML-Knöpfe: eine Datei mit spitzen Klammern zeigt, was der Knopf tut. Der
+ * Ziegelstein stand schon für Teile und Sets, und das fremde BrickLink-Logo nachzuzeichnen wäre eine
+ * Anmassung.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#xml-icon-svg
  */
 export const XML_ICON_SVG = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" '
@@ -457,7 +452,9 @@ export function escHtmlAttr(v) {
 }
 
 /**
- * Bildadresse für eine lokale Datei — unverändert, wie vom Server geliefert.
+ * Lokale Bildadressen bleiben, wie der Server sie liefert: Er weiss, ob es die Vorschau gibt. Eine
+ * selbst gebaute _thumb-Adresse lud Bilder, die nicht existierten, auch nach dem Neuladen nicht
+ * (gleich in der App).
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#thumburl
  * @template {string | null | undefined} T
  * @param {T} src
@@ -469,8 +466,9 @@ export function thumbUrl(src) {
 
 // Lazy image loading with IntersectionObserver and fade-in
 /**
- * Blendet Bilder erst beim Sichtbarwerden ein — und markiert alles, was schon
- * fertig geladen ist, SOFORT als geladen.
+ * Blendet Bilder beim Sichtbarwerden ein und markiert schon geladene sofort: Nach innerHTML starten
+ * alle <img> bei opacity 0, und bis der Beobachter antwortet, stand sonst eine kurz weisse Kachelwand
+ * da.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#observelazyimages
  * @param {ParentNode} [root]
  */
@@ -807,7 +805,9 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Ein GELDBETRAG in der Waehrung des Nutzers.
+ * Ein Geldbetrag in der Währung des Nutzers. Ohne Angabe gilt die eingestellte Währung, nicht fest
+ * EUR: Sonst stand bei Franken still „EUR“ da. test/geldformat.test.js hält fest, dass kein Aufruf sie
+ * weglässt.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#fmtn
  * @param {number | string | null | undefined} v
  * @param {string} [cur]
@@ -973,17 +973,15 @@ if (typeof document !== 'undefined') document.addEventListener('input', (ev) => 
   if (f?.getAttribute('aria-invalid') === 'true') f.removeAttribute('aria-invalid');
 });
 
-// Setzt das globale App-Design (vom Admin gewählt) als data-theme auf <html>.
-// Das CSS bringt für [data-theme="brick"] das blaue Stein-Design mit.
+// Reicht das Design an 00-theme-boot.js weiter, das es schon im <head> anwendet und den Cache führt:
+// So wirkt ein Wechsel sofort und beim nächsten Laden ohne Aufblitzen.
 // Ausführlich: docs/begruendungen/public/js/01-core.js.md#applytheme
 /**
  * @param {string} theme
  */
 export function applyTheme(theme){
-  // Hier stand `if (theme !== 'brick' && theme !== 'classic') return null;` —
-  // eine EIGENE Liste der gueltigen Designs, geschrieben, als es zwei gab.
-  // Inzwischen sind es sechs. Die vier neueren wurden hier abgewiesen und
-  // NIE angewendet: Der Wechsel wirkte erst beim naechsten Seitenaufruf, …
+  // Keine eigene Liste gültiger Designs: Die alte kannte zwei von sechs, und die neueren wirkten erst
+  // nach dem Neuladen. Gültig ist, was 00-theme-boot.js kennt; ohne dieses Skript wird nichts gesetzt.
   // Ausführlich: docs/begruendungen/public/js/01-core.js.md#if
   if (typeof window.__bimApplyTheme !== 'function') return null;
   return window.__bimApplyTheme(theme);
@@ -1004,7 +1002,8 @@ export async function initDefaultCondition(){
 }
 
 /**
- * Den Namenszug in der Kopfleiste schreiben — mit dem Verwalter-Zusatz.
+ * Der Name in der Kopfleiste, für Verwalter mit „(Verwalter)“ statt eigener Plakette. Eine Funktion,
+ * weil Anmeldung und Profil ihn schreiben und eine zweite Fassung schon einmal ins Leere lief.
  * Ausführlich: docs/begruendungen/public/js/01-core.js.md#zeigebenutzernamen
  */
 export function zeigeBenutzernamen(){

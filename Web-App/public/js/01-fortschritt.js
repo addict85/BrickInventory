@@ -1,7 +1,6 @@
-// Der Block lag in js/01-core.js und war dort mit 211 Zeilen der zweitgrösste
-// zusammenhängende Gegenstand. Er ist geschlossen: zwölf Namen, von denen drei
-// nach aussen gebraucht werden — der Rest ist Innenleben (zwei Zeitgeber, ein
-// EventSource, zwei Merker). Genau deshalb fiel er beim Lesen von 01-core.js …
+// Der Importbalken im Seitenkopf ist ein geschlossener Gegenstand: Nach aussen zählen gibCheckOnLoad()
+// und gibZuruecksetzen(), der Rest ist Innenleben. In 01-core.js stand er Lesern im Weg, die dort
+// esc() oder api() suchten.
 // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#der-block-lag-in-js-01-core-js-und-war-d
 import { registerActions } from './00-registry.js';
 import { ico, G, apiRoh, fmtPct, api, toast, apiDaten } from './01-core.js';
@@ -122,7 +121,9 @@ function gibToggle() {
 
 
 /**
- * Eine Zeile fuers Import-Protokoll — oder null, wenn es nichts zu sagen gibt.
+ * Eine Zeile fürs Import-Protokoll, oder null: Eine Zeile ohne Setnummer sagt nichts (sie erschien
+ * 322-mal als „undefined – aktualisiert“). Eine Fassung für beide Protokolle, damit die Schranke nicht
+ * an einer Stelle fehlt.
  * Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#protokollzeile
  * @param {ImportErgebnis | null | undefined} r
  * @param {string} [warnZusatz]
@@ -171,10 +172,8 @@ export function gibStart() {
   G('gib-text').textContent = tRaw('csv.running_text');
   G('gib-fill').style.width = '0%';
 
-  // Kein Token in der Adresse. EventSource kann zwar keine Kopfzeile setzen,
-  // schickt mit `withCredentials: true` aber das Sitzungs-Cookie — und genau
-  // das war schon vorher der Weg, auf dem dieser Kanal wirklich lief. Der
-  // angehängte `?token=` war der Sitzungstoken selbst; er hätte im …
+  // Kein Token in der Adresse: EventSource schickt mit withCredentials das Sitzungscookie, und ein
+  // ?token= stünde im Proxy-Protokoll und im Verlauf.
   // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#url
   const url = '/api/v1/sets/import/csv/stream';
 
@@ -249,8 +248,8 @@ export async function gibCheckOnLoad() {
 /** @type {number | null} */
 let _gibCheckTimer = null;
 /**
- * Setzt den Balken auf „nichts läuft" zurück: Anzeige aus, beide Abfragen
- * gestoppt, Protokoll geleert.
+ * Setzt den Balken auf „nichts läuft“. Eine Funktion statt Zeilen beim Abmelden: Wer von aussen
+ * zurücksetzt, müsste sonst das Innenleben dieser Datei kennen und bei jeder neuen Variable mitdenken.
  * Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#gibzuruecksetzen
  */
 export function gibZuruecksetzen() {
@@ -333,7 +332,9 @@ export function addCsvLog(text, ok){
   line.textContent=text; d.appendChild(line); d.scrollTop=d.scrollHeight;
 }
 
-// Verarbeitet die SSE-Ereignisse beim Erfassen EINES Sets.
+// SSE-Ereignisse beim Erfassen eines Sets. Gewartet wird nur auf Set-Daten und Bild; Anleitungen,
+// Teile und Preis laufen danach im Hintergrund, und ein Balken für Arbeit, auf die niemand wartet,
+// wäre eine Behauptung.
 // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#handlesseevent
 /**
  * @param {any} ev
@@ -390,10 +391,9 @@ export function streamRequest(path, body, onEvent){
  * @param {AbortSignal} signal
  */
 async function readSSE(res, onEvent, signal){
-  // Antwortet der Server mit gewöhnlichem JSON statt einem Ereignisstrom, ist
-  // die Sache schon entschieden — beim Erfassen etwa, wenn das Set bereits im
-  // Blickfeld steht (src/sets/setAdd.ts). Dann gibt es nichts zu verfolgen, und
-  // die eine Antwort wird wie ein einzelnes Ereignis durchgereicht. Ohne …
+  // Antwortet der Server mit JSON statt einem Strom, ist die Sache entschieden (etwa: Set schon im
+  // Blickfeld). Die Antwort geht als ein Ereignis durch; sonst wartete die Anzeige auf eine data:-Zeile,
+  // die nie kommt.
   // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#if
   if ((res.headers.get('content-type') || '').includes('application/json')) {
     const daten = await res.json().catch(() => null);

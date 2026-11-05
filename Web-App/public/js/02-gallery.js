@@ -35,10 +35,8 @@ function faecherTon(s) {
 
 // ── STATS ─────────────────────────────────────────────
 export async function loadStats(){
-  // Mit Kontofilter. Hier stand `api('GET', '/v1/stats')` ohne ihn — und das
-  // war nachweislich nicht so gemeint: onScopeChange('gallery') ruft
-  // ausgerechnet loadStats() gleich nach loadGallery() auf. Etwas neu zu laden,
-  // das sich nicht ändern kann, ergibt nur einen Sinn, wenn es sich ändern …
+  // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe
+  // des ganzen Haushalts.
   // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#d
   const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);
   if (d.success && d.stats) {
@@ -63,8 +61,8 @@ export async function loadStats(){
 let curView='grid';
 
 /**
- * Übernimmt das vom Server gelieferte Zustands-Aggregat eines Sets in die
- * Galerie-Liste und zeichnet neu.
+ * Übernimmt das Zustands-Aggregat vom Server: Die eigene Nachrechnung nahm die zuletzt erfasste
+ * Position und zeigte bei [U, N] „neu“ statt „gebraucht“.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#applysetaggregate
  * @param {Partial<Kachel> | null | undefined} agg
  */
@@ -141,7 +139,8 @@ function maybeLoadMoreGallery(){
 }
 
 /**
- * Nachfassen, wenn der Sentinel OHNE Zustandswechsel sichtbar bleibt.
+ * Selbst nachsehen, ob der Sentinel sichtbar ist: IntersectionObserver meldet nur Übergänge, und wird
+ * der Inhalt darunter ersetzt, lädt sonst nichts mehr, bis man hoch- und wieder herunterscrollt.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#kickgallerysentinel
  */
 function kickGallerySentinel(){
@@ -265,7 +264,8 @@ export function renderGallery(){
   }
 }
 /**
- * Trägt Marktpreis und Gewinn/Verlust in die bestehenden Kacheln nach.
+ * Preise in die bestehenden Kacheln nachtragen statt die Wand neu zu bauen: Neu gebaute <img>
+ * blendeten erneut ein und liessen die Galerie flackern.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#updategalleryprices
  */
 export function updateGalleryPrices(){
@@ -568,10 +568,8 @@ function csvApplyOverlayStatus(s, ctx, fi){
       if(s.results) {
         const remaining = s.results.slice(ctx.prevResultCount);
         remaining.forEach(r=>{
-          // Derselbe Bauer wie oben und in 01-fortschritt.js. Hier war die
-          // DRITTE Fassung derselben drei Zeilen — und es ist die, die Marco
-          // am 21.10. fotografiert hat: der Dialog NACH dem Import, in der
-          // Sitzung, die ihn gestartet hat.
+          // Derselbe Zeilenbauer wie in 01-fortschritt.js. Ohne esc(), weil addCsvLog textContent setzt; der
+          // Hinweis auf Zeitüberschreitung gilt nur hier.
           // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#z
           const z = protokollZeile(r, t('csv.timeout_retry'));
           if (z) addCsvLog(z.text, z.ok);
@@ -624,7 +622,8 @@ G('gs').addEventListener('input',()=>{ clearTimeout(G('gs')._t); G('gs')._t=setT
 G('gsort').addEventListener('change',() => loadGallery());
 
 /**
- * Ein Set löschen — mit GENAU EINER Rückfrage.
+ * Ein Set löschen, mit genau EINER Rückfrage hier an der einen Stelle, die löscht: Der Detail-Dialog
+ * fragte vorher selbst und dann noch einmal.
  * Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#delset
  * @returns {Promise<boolean>} true, wenn wirklich gelöscht wurde
  * @param {string} sn
@@ -691,10 +690,8 @@ G('btn-set-csv-template').onclick = (e) => {
 abonniere('setsGeaendert', () => { loadGallery(); loadStats(); });
 abonniere('bestandGeaendert', () => { loadGallery(); loadStats(); });
 
-// `benutzerMenue` und `oeffneSicht` sind das Menü hinter dem Benutzernamen.
-// Der Hinweis steht VOR dem Aufruf und nicht zwischen den Namen: Die Prüfung
-// in test/bundle-smoke.test.js liest die Schlüssel, indem sie den Inhalt an
-// Kommas trennt — ein Kommentar vor dem ersten Namen wandert dabei IN den …
+// Kein Kommentar zwischen den Namen: test/bundle-smoke.test.js trennt die Schlüssel an Kommas, und ein
+// Kommentar wanderte in den ersten Namen.
 // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#registeractions
 registerActions({
   loadGallery,

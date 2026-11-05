@@ -8,7 +8,8 @@ import { locale, t, tRaw } from '../i18n.js';
 import { esc } from './00-escapen.js';
 
 /**
- * Marktpreis und Entwicklung je Zustand in den Detail-Dialog schreiben.
+ * Marktpreis und Entwicklung je Zustand. Der Server liefert nur Zustände mit Erfassung; nach jedem
+ * Speichern neu geladen, erscheint eine neue Zeile so von selbst.
  * Ausführlich: docs/begruendungen/public/js/01-diagramme.js.md#rendermarketrows
  * @param {{ by_condition?: import('../../frontend-typen/vertrag').PriceByCondition }} ph
  */
@@ -166,7 +167,6 @@ export function zeitTeilung(von, bis, maxStriche) {
 }
 
 /**
- * Eine Beschriftung am rechten Rand endet dort, statt halb hinauszuragen.
  * Eine Beschriftung am Rand endet bzw. beginnt dort, statt halb hinauszuragen.
  * @param {number} x
  * @param {number} rechts
@@ -241,7 +241,6 @@ function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1, innen
   return striche + achse + bruch;
 }
 
-/** Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung am rechten Ende. */
 /**
  * Die Beträge innen (achsenLage): nur unterste und oberste Linie, nach der
  * Kurve gezeichnet und mit Rand in der Kartenfarbe; keiner dort, wo die

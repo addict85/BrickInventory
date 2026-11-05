@@ -8,7 +8,8 @@ import { esc } from './00-escapen.js';
 // wird die Anwendung von 26-sitzung.js (startApp), nicht beim Laden dieses Moduls.
 
 /**
- * Auffangnetz für Fehler, die niemand behandelt.
+ * Auffangnetz für Fehler, die niemand behandelt: api() wirft nicht mehr, aber ein Programmierfehler in
+ * einem Rückruf endete sonst nur in der Konsole — man klickt, nichts passiert, und niemand erfährt es.
  * Ausführlich: docs/begruendungen/public/js/08-init.js.md#letztefehlermeldung
  */
 let _letzteFehlermeldung = 0;
@@ -25,7 +26,8 @@ function meldeUnerwartet(quelle, fehler) {
 }
 
 /**
- * Stammt der Fehler aus UNSEREM Code?
+ * Stammt der Fehler aus unserem Code? Das Netz hört am Fenster und fängt auch Ablehnungen von
+ * Browser-Erweiterungen (MetaMask); als „Unerwarteter Fehler“ gemeldet, suchte man den Fehler bei uns.
  * Ausführlich: docs/begruendungen/public/js/08-init.js.md#vonuns
  * @param {unknown} fehler
  */
@@ -156,9 +158,9 @@ async function plGenerate() {
       if (d.success && d.parts?.length) {
         for (const p of d.parts) {
           const blNum = p.bl_part_number || p.part_number;
-          // Marcos Frage: „Kann der Abgleich im Hintergrund nicht über die
-          // Rebrickable ID erfolgen, die Anzeige aber weiterhin über die
-          // BrickLink ID?" — Ja, und genau hier lag der Fehler.
+          // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand danach nachgefragt wird: Mehrere
+          // Formvarianten teilen eine BrickLink-Nummer, und nach ihr zusammengelegt zählte der Bedarf doppelt,
+          // der Bestand einfach.
           // Ausführlich: docs/begruendungen/public/js/08-init.js.md#key
           const key = `${p.part_number}|${p.color_id||0}`;
           if (combined[key]) {
@@ -218,7 +220,9 @@ async function plGenerate() {
 }
 
 /**
- * „Kann ich das bauen?" — die Spalte „Vorhanden" aus dem eigenen Bestand füllen.
+ * „Kann ich das bauen?“ füllt die vorhandene Spalte „Vorhanden“ aus dem Bestand statt einer zweiten
+ * Ansicht: Zwei Tabellen wären zwei Orte, an denen die Rechnung auseinanderläuft. Die Zahl
+ * überschreibt Handeingaben.
  * Ausführlich: docs/begruendungen/public/js/08-init.js.md#plfuellebestand
  */
 async function plFuelleBestand() {
@@ -314,10 +318,8 @@ function plRenderTable(fehler = 0) {
         ? bildTag({ src: imgUrl(thumbUrl(imgSrc)||imgSrc, true), alt: '', klasse: 'bild-44', ph: 'teil' })
         : `<span class="bild-ph bild-44" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
       const pkey = `${esc(p.part_number)}__${p.color_id||0}`;
-      // Hier stand `… ?? p.color_id ?? 0`. Fehlte die Zuordnung, ging damit
-      // die Rebrickable-Farbnummer als BrickLink-Farbnummer hinaus — eine
-      // gültige Datei mit der FALSCHEN Farbe. Das ist der Fehler vom 19.10.
-      // spiegelverkehrt: Dort wurde beim Import eine Farbe erfunden, hier …
+      // Kein Rückfall auf die Rebrickable-Farbnummer: Das ergäbe eine gültige Datei mit der falschen Farbe.
+      // Leer heisst unbekannt; plExportBricklink lässt solche Posten weg und nennt sie.
       // Ausführlich: docs/begruendungen/public/js/08-init.js.md#blcolorid
       const blColorId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? '';
       html += `<div data-stil="display:flex;align-items:center;gap:10px;padding:5px 4px;border-bottom:1px solid var(--bdr)">${img}<span data-stil="font-family:monospace;font-size:var(--fs-2);color:var(--b600);min-width:65px;flex-shrink:0" title="Rebrickable: ${esc(p.part_number)}">${esc(p.bl_part_number||p.part_number)}</span><span data-stil="flex:1;font-size:var(--fs-3)">${esc(p.part_name)}</span><span data-stil="font-weight:700;font-size:var(--fs-3);width:70px;text-align:right;flex-shrink:0">×${p.quantity.toLocaleString(locale())}</span><span data-stil="width:70px;flex-shrink:0;padding-left:6px"><input inputmode="numeric" type="number" min="0" value="0" data-key="${pkey}" data-need="${p.quantity}" data-part="${esc(p.bl_part_number||p.part_number)}" data-color="${blColorId}" data-rb-color="${p.color_id||0}" data-color-name="${esc(p.color_name||'')}" data-type="${(p.bl_part_number||p.part_number||'P').startsWith('fig-')?'M':'P'}" class="pl-have-input" aria-label="${esc(tRaw('pl.col_have'))}: ${esc(p.bl_part_number||p.part_number)} ${esc(p.color_name||'')}" data-stil="width:58px;height:28px;border:1px solid var(--feldrand);border-radius:5px;padding:0 6px;font-size:var(--fs-2);text-align:center" /></span></div>`;
@@ -547,10 +549,9 @@ async function plExportBricklink() {
 
   const expanded = await figurenAufloesen(missing);
 
-  // Sie werden genannt. Eine geratene Farbnummer ergibt eine gültige Datei,
-  // die das falsche Teil bestellt — und das fällt erst auf, wenn das Paket da
-  // ist. Dieselbe Regel wie beim Import (src/merkliste/wantedListe.ts): Was sich
-  // nicht abbilden lässt, bleibt offen und wird gesagt.
+  // Posten ohne bekannte BrickLink-Farbe gehen nicht mit, sie werden genannt: Eine geratene Farbe
+  // bestellt das falsche Teil, und das merkt man erst am Paket. Figuren (Typ M) haben keine Farbe und
+  // sind nie betroffen.
   // Ausführlich: docs/begruendungen/public/js/08-init.js.md#ohnefarbe
   const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
   const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
@@ -558,10 +559,8 @@ async function plExportBricklink() {
   const stuecke = baueWantedXmlStuecke(
     exportierbar.map(m => ({ ...m, condition })));
 
-  // BrickLink nimmt höchstens BL_UPLOAD_MAX_BYTES je Upload und weist eine
-  // grössere Datei GANZ ab. Passt alles in ein Stück, bleibt es beim alten
-  // Verhalten: in einem neuen Tab öffnen, damit man den Text kopieren kann.
-  // Sonst werden die Stücke heruntergeladen — ein Tab je Stück wäre ein …
+  // BrickLink weist eine Datei über BL_UPLOAD_MAX_BYTES ganz ab. Ein Stück öffnet wie bisher im Tab zum
+  // Kopieren; mehrere werden heruntergeladen — ein Tab je Stück wäre ein Popup-Gewitter.
   // Ausführlich: docs/begruendungen/public/js/08-init.js.md#if
   wantedXmlAusliefern(stuecke);
 

@@ -25,10 +25,8 @@ function setDetailHtml(sn, acqs) {
   const set = curSet;
   if (!set) return '';
   const addedFmt = set.added_at ? fmtDatum(set.added_at) : '—';
-  // Marktpreis und Entwicklung stehen jetzt JE ZUSTAND — und die Werte dafür
-  // kommen aus derselben Abfrage wie der Preisverlauf (by_condition). Hier nur
-  // der Platzhalter; gefüllt wird er in renderMarketRows() weiter unten,
-  // sobald die Antwort da ist.
+  // Marktpreis und Entwicklung je Zustand, aus derselben Abfrage wie der Preisverlauf; hier nur der
+  // Platzhalter. Ein Wert fürs ganze Set vermischte neu und gebraucht.
   // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#pricerow
   const priceRow = `<div class="m-wertkopf" id="m-market-rows" data-kopf="1" role="group" aria-label="${esc(tRaw('detail.wert'))}"><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
   const pnlRow  = '';
@@ -70,7 +68,8 @@ function setDetailHtml(sn, acqs) {
 
 /** Figurenzahl und Preisverlauf nachladen, ohne den Dialog aufzuhalten. @param {string} sn */
 function ladeSetNachtraege(sn) {
-  // Load actual minifig count from minifigs table (more reliable than sets.minifigs)
+  // Die Figurenzahl aus der Figurentabelle (verlässlicher als sets.minifigs). Die Antwort kann nach dem
+  // Schliessen oder einem Setwechsel kommen; nur wenn noch dasselbe Set offen ist, wird geschrieben.
   // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#api
   api('GET', `/v1/minifigs?source=set`).then(md => {
     const el = G('m-minifigs-val');
@@ -261,7 +260,9 @@ export function autosaveSet(){
     const prevQty = set.quantity || qty;
     const d = await api('PUT',`/v1/sets/${esc(set.set_number)}`,{quantity:qty});
     if(d.success){
-      // Die WIRKLICHE Gesamtmenge kommt vom Server.
+      // Die wirkliche Gesamtmenge kommt vom Server: Beim Verringern deckelt er bei den eigenen Exemplaren,
+      // und dann stimmt die gesendete Zahl nicht. Ohne Übernahme stünde bis zum nächsten Öffnen die eigene
+      // Annahme da.
       // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#echt
       const echt = d.quantity != null && Number.isInteger(d.quantity) ? d.quantity : qty;
       set.quantity = echt;

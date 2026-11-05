@@ -174,10 +174,9 @@ export function bindTabs(){
 // nicht initialisiert, und t() wirft.
 
 
-//   „Kannst du in der Webapp die Punkte analog der Android-App in
-//    verschiedenen Sichten aufteilen? Gerne den Reiter Einstellungen mit den
-//    Punkten belassen die nur der Administrator setzen kann, und die
-//    restlichen Seiten oben Rechts hinter dem Benutzernamen als Aufklappbares …
+// Die Sichten hinter dem Benutzermenü, wie in der Android-App. Jede Sicht lädt nur, was sie zeigt:
+// Vorher holte der Einstellungs-Reiter bei jedem Öffnen fünf Bereiche, von denen man meist einen sehen
+// wollte.
 // Ausführlich: docs/begruendungen/public/js/25-navigation.js.md#sichten
 /** @type {Record<string, () => unknown>} */
 const SICHTEN = {

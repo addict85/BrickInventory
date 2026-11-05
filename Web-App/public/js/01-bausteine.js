@@ -1,6 +1,5 @@
-// 01-core.js sammelt WERKZEUGE: Escaping, Bild-URLs, Formatierung, Toasts,
-// Theme. Was dort fehlte, sind Bausteine für die ANSICHT — und die standen
-// deshalb als HTML-Zeichenkette in jedem Modul neu.
+// Bausteine für Ansichten (Detailzeile, Ladeanzeige, Leer- und Fehlerzustand) an einer Stelle: Was
+// überall gleich aussehen soll, stand vorher fünfzehnmal als eigene HTML-Zeichenkette in vier Modulen.
 // Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#01-core-js-sammelt-werkzeuge-escaping-bi
 import { ico, toast, G, fmtBig, fmtPct, istGeschenk, api } from './01-core.js';
 import { tRaw, t } from '../i18n.js';
@@ -166,8 +165,8 @@ export function pnlBadge(pct, kauf){
 }
 
 /**
- * Besitzer-Plaketten — nur im Haushalt. Gezeigt nur, wenn ein ANDERES Konto
- * mit drinsteckt: Der eigene Name auf jeder Kachel beantwortet keine Frage.
+ * Besitzer-Plaketten nur, wenn ein ANDERES Konto mit drinsteckt: Im Haushalt verhindern sie, dass man
+ * das falsche Exemplar verschiebt; der eigene Name auf jeder Kachel wäre nur Rauschen.
  * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#besitzer-plaketten-nur-im-haushalt
  * @param {{ owners?: { id: number, username: string }[] } | null | undefined} item
  */
@@ -178,7 +177,9 @@ export function ownerBadges(item) {
 }
 
 /**
- * Zustands-Plaketten eines Eintrags — eine je erfasstem Zustand.
+ * Eine Plakette je erfasstem Zustand, aus `conditions` vom Server: Das Aggregat `condition` zeigte bei
+ * neu und gebraucht nur „gebraucht“, und die Neu-Erfassung war unsichtbar, obwohl sie mitbewertet
+ * wird.
  * Ausführlich: docs/begruendungen/public/js/01-bausteine.js.md#zustands-plaketten-eines-eintrags-eine-j
  * @param {{ conditions?: string[] | null, condition?: string | null } | null | undefined} item
  */
