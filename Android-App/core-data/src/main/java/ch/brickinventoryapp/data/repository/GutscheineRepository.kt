@@ -117,8 +117,8 @@ class GutscheineRepository @Inject constructor(
         }
     }
 
-    // Kein eigener PDF-Download: PdfViewerScreen bekommt eine Adresse und lädt sie mit
-    // dem angemeldeten Client (vm.apiHttpClient — Token, Klartext-Verbot und
+    // Kein eigener PDF-Download: Der PDF-Betrachter bekommt eine Adresse und lädt sie mit
+    // dem angemeldeten Client (AnleitungsLader — Token, Klartext-Verbot und
     // 401-Meldung hängen daran). Ein eigener Weg wäre eine zweite Fassung und legte
     // Nummer und PIN in den Cache des Geräts.
 

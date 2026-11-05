@@ -18,7 +18,7 @@ import ch.brickinventoryapp.service.CsvImportService
 import ch.brickinventoryapp.ui.viewmodel.Texte
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +35,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Named
+import ch.brickinventoryapp.di.BrickDispatchers
+import ch.brickinventoryapp.di.Dispatcher
 
 /**
  * Was der ganzen App gehört: Sitzung beginnen und beenden, Design und Sprache,
@@ -54,11 +56,8 @@ class AppViewModel @Inject constructor(
     private val rechte: ch.brickinventoryapp.data.RechteSignal,
     meldungen: MeldungsKanal,
     private val texte: Texte,
-    // Der PdfViewer leitet seinen Download-Client hiervon ab, damit Token,
-    // Klartext-Verbot und 401-Meldung auch dort gelten.
-    @param:Named("api") val apiHttpClient: okhttp3.OkHttpClient,
-    /** Die verschlüsselte Ablage der Anleitungen für den PdfViewer; geleert beim Abmelden. */
-    val anleitungen: ch.brickinventoryapp.util.AnleitungsAblage,
+    // Nur für seinen Verbindungspool: Ein neu vertrautes Zertifikat verwirft offene Verbindungen.
+    @param:Named("api") private val apiHttpClient: okhttp3.OkHttpClient,
     // Nur für seinen Zwischenspeicher: Beim Abmelden geleert wie Coils eigene Caches.
     @param:Named("image") private val bildHttpClient: okhttp3.OkHttpClient,
     // Beim Abmelden mit geleert: Die Vorschaubilder gehören zum Konto.
@@ -78,6 +77,7 @@ class AppViewModel @Inject constructor(
     private val abmeldung: ch.brickinventoryapp.data.Abmeldung,
     /** Zeichnet das Startbildschirm-Widget neu (AppModule); core-zustand kennt es nicht. */
     private val widget: Widgetanstoss,
+    @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel() {
 
     // Der Zustand wird mit dem gemerkten Design geboren: appTheme unten nimmt
@@ -286,7 +286,7 @@ class AppViewModel @Inject constructor(
             passwortPflicht.erledigt()
             zweiterFaktorPflicht.erledigt()
             repo.clearCache()
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            kotlinx.coroutines.withContext(io) {
                 runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(ctx.cacheDir) }
                 runCatching { ch.brickinventoryapp.util.raeumeAnleitungenAuf(ctx.cacheDir) }
                 runCatching { ch.brickinventoryapp.util.raeumeKontoDateienAuf(ctx.filesDir, ctx.getExternalFilesDir(null)) }
@@ -393,7 +393,7 @@ class AppViewModel @Inject constructor(
     private fun vorwaermenAnstossen() {
         if (vorwaermenLaeuft) return
         vorwaermenLaeuft = true
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(io) {
             delay(VorschauVorwaermer.ANLAUF_MS)
             // Erst Netzlage und Platz prüfen, sonst kostet jeder Start vier Listenabrufe umsonst.
             if (!vorwaermer.darfStarten()) return@launch

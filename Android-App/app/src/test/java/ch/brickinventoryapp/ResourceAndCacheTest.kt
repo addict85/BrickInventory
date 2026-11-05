@@ -50,7 +50,7 @@ class ResourceAndCacheTest {
 
     @Test
     fun `der PDF-Ansichts-Cache hat eine Obergrenze`() {
-        val src = code(read("ui/screens/PdfViewerScreen.kt"))
+        val src = code(read("ui/pdf/AnleitungsLader.kt"))
         assert(src.contains("private fun prunePdfCache")) {
             "Kein Aufräumen des PDF-Caches. Angesehene Anleitungen bleiben absichtlich " +
                 "liegen (Resume, erneutes Öffnen ohne Neudownload) — bei bis zu 300 MB " +

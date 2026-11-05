@@ -1,7 +1,7 @@
 package ch.brickinventoryapp
 
-import ch.brickinventoryapp.ui.screens.PDF_BITMAP_MAX_PX
-import ch.brickinventoryapp.ui.screens.bitmapMasse
+import ch.brickinventoryapp.ui.pdf.PDF_BITMAP_MAX_PX
+import ch.brickinventoryapp.ui.pdf.bitmapMasse
 import ch.brickinventoryapp.ui.screens.renderStufe
 import org.junit.Test
 
@@ -166,7 +166,7 @@ class PdfZoomTest {
         // gerendert, ohne dass die Anzeige vorher leer wird. Verglichen werden die
         // Schluessel mit den Parametern von PdfPage, nicht feste Namen.
         // Gegenprobe: gegenproben/pdf-bitmap-an-renderbreite.patch → rot hier.
-        val kopf = Regex("""fun PdfPage\((\w+): PdfQuelle, (\w+): Int, (\w+): Int\)""").find(quelle)
+        val kopf = Regex("""fun PdfPage\((\w+): PdfQuelle, (\w+): Int, (\w+): Int[,)]""").find(quelle)
         assert(kopf != null) { "PdfPage(quelle: PdfQuelle, index: Int, renderBreite: Int) nicht gefunden." }
         val (pdf, seite, breite) = kopf!!.destructured
         fun schluessel(muster: String) =

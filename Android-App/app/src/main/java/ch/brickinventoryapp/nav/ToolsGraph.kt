@@ -250,12 +250,10 @@ fun NavGraphBuilder.toolsGraph(
             val pdfTitle = backStackEntry.textArgument("title")
             if (ch.brickinventoryapp.ui.viewmodel.zeigtGutscheine(pdfUrl)) ch.brickinventoryapp.ui.components.Sichtschutz()
             val state by vm.state.collectAsStateWithLifecycle()
-            PdfViewerScreen(
+            PdfViewerRoute(
                 pdfUrl = pdfUrl,
                 title  = pdfTitle,
-                httpClient = vm.apiHttpClient,
                 serverUrl = state.serverUrl,
-                anleitungen = vm.anleitungen,
                 onBack = { navController.popBackStack() }
             )
         }
