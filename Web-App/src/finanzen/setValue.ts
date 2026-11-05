@@ -130,6 +130,9 @@ export interface AcquisitionValueRow {
   pnl_pct: string | null;
   pnl_prozent: number | null;
   created_at: any;
+  /** Ein Kaufpreis in fremder Währung ohne Kurs: Er zählt nicht mit, steht aber da. */
+  kaufpreis_original?: number;
+  kaufpreis_waehrung?: string;
 }
 
 /** @param prices Map "setNumber|condition" → avg_price (loadConditionPrices) */
@@ -158,6 +161,8 @@ export function valueAcquisitionRows(
       pnl_pct: pnlPct(purchase, unit),
       pnl_prozent: pnlProzent(purchase, unit),
       created_at: a.created_at ?? null,
+      ...(a.kaufpreis_fremd && a.kaufpreis_original != null
+        ? { kaufpreis_original: parseFloat(String(a.kaufpreis_original)), kaufpreis_waehrung: String(a.currency) } : {}),
     };
   });
 }

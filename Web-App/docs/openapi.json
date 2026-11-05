@@ -16277,6 +16277,12 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "kaufpreis_original": {
+                        "type": "number"
+                      },
+                      "kaufpreis_waehrung": {
+                        "type": "string"
                       }
                     },
                     "required": [
@@ -18078,6 +18084,12 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "kaufpreis_original": {
+                        "type": "number"
+                      },
+                      "kaufpreis_waehrung": {
+                        "type": "string"
                       }
                     },
                     "required": [
@@ -18358,6 +18370,12 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "kaufpreis_original": {
+                        "type": "number"
+                      },
+                      "kaufpreis_waehrung": {
+                        "type": "string"
                       }
                     },
                     "required": [
@@ -19468,6 +19486,12 @@
                             "type": "null"
                           }
                         ]
+                      },
+                      "kaufpreis_original": {
+                        "type": "number"
+                      },
+                      "kaufpreis_waehrung": {
+                        "type": "string"
                       }
                     },
                     "required": [
@@ -22498,6 +22522,12 @@
                       "type": "null"
                     }
                   ]
+                },
+                "kaufpreis_original": {
+                  "type": "number"
+                },
+                "kaufpreis_waehrung": {
+                  "type": "string"
                 }
               },
               "required": [

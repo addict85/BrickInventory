@@ -128,7 +128,10 @@ export async function openModal(sn){
   set_curSet(set);
   document.querySelector('#set-modal .mehr-menue')?.removeAttribute('open');
   G('m-tit').textContent=set.name||set.set_number;
-  G('m-untertit').textContent=set.name?set.set_number:'';
+  // Gehört das Set einem anderen Konto im Haushalt, steht es dabei; sonst sähe es aus wie das eigene.
+  const fremd = (set.owners || []).filter(o => !ME || o.id !== ME.id).map(o => o.username);
+  G('m-untertit').textContent = [set.name ? set.set_number : '', fremd.length ? tRaw('detail.konto_von', { namen: fremd.join(', ') }) : '']
+    .filter(Boolean).join(' · ');
   // fullUrl(): volle Auflösung, auch wenn image_local auf die _thumb-Datei zeigt
   const img=G('m-img'); img.src=fullUrl(set.image_local||set.image_url)||'/assets/set-placeholder.svg'; img.style.display='block';
 

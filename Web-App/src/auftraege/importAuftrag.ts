@@ -1,6 +1,6 @@
 import * as stand from './repository/importStand';
 import { meldeUndWeiter, logAndContinue } from '../infra/fehler';
-import { fehlerText, antwortSprache } from '../infra/fehlerTexte';
+import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../infra/fehlerTexte';
 
 /** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen.
  * Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#abschnitt */
@@ -25,12 +25,14 @@ type ImportAuftrag = {
   results?: ImportErgebnis[] | null;
 } | null | undefined;
 
-export function buildJobStatus(job: ImportAuftrag, req?: any) {
+export function buildJobStatus(job: ImportAuftrag, req?: any, sprache: Sprache = antwortSprache(req)) {
   if (!job || !job.status) {
     return { success: false, code: 'kein_import_laeuft',
-             error: fehlerText('kein_import_laeuft', antwortSprache(req)) };
+             error: fehlerText('kein_import_laeuft', sprache) };
   }
-  const results = Array.isArray(job.results) ? job.results : [];
+  // Zeilen mit Code bekommen ihren Satz erst hier, in der Sprache des Lesers.
+  const results = (Array.isArray(job.results) ? job.results : []).map((r: ImportErgebnis) =>
+    r.code ? { ...r, error: fehlerText(r.code as FehlerCode, sprache, r.vars) } : r);
   const ok   = results.filter((r: ImportErgebnis)=>r.success).length;
   const err  = results.filter((r: ImportErgebnis)=>!r.success && !r.isWarning).length;
   const warn = results.filter((r: ImportErgebnis)=>!r.success &&  r.isWarning).length;

@@ -5,7 +5,7 @@
 import { registerActions } from './00-registry.js';
 import { ico, G, apiRoh, fmtPct, api, toast, apiDaten } from './01-core.js';
 import { melde } from './00-ereignisse.js';
-import { t, tRaw } from '../i18n.js';
+import { LANG, t, tRaw } from '../i18n.js';
 import { ME } from './00-zustand.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
@@ -14,7 +14,7 @@ let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
 /**
  * Ein Eintrag im Ergebnis eines Imports. `results` nennt der Vertrag nicht
  * (CsvImportStatus ist offen); so schreibt ihn src/import/csvImport.ts.
- * @typedef {{ set_number?: string, success?: boolean, action?: string, isWarning?: boolean, error?: string | null }} ImportErgebnis
+ * @typedef {{ set_number?: string, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportErgebnis
  * @typedef {import('../../frontend-typen/vertrag').CsvImportStatus & { results?: ImportErgebnis[] }} ImportStand
  */
 /** @type {EventSource | null} */
@@ -22,6 +22,16 @@ let _gibSse         = null;   // aktive EventSource (SSE), falls verfügbar
 let _gibLastCount   = 0;
 
 // Rendert einen Import-Status ins UI. Quelle (SSE oder Polling) ist egal.
+/**
+ * „2 ok, 1 Fehler“: Zahl und Wort aus einem Schlüssel, damit die Einzahl stimmt („1 Errors“).
+ * @param {{ ok?: number | null, warn?: number | null, err?: number | null }} s
+ * @param {string} [warnSchluessel] eigene Bezeichnung der Warnungen
+ */
+export function importZaehler(s, warnSchluessel = 'csv.warnings_n') {
+  return [`${s.ok || 0} ok`, ...(s.warn ? [tRaw(warnSchluessel, { n: s.warn })] : []),
+          ...(s.err ? [tRaw('csv.errors_n', { n: s.err })] : [])].join(', ');
+}
+
 /** @param {ImportStand | null | undefined} s */
 function gibApplyStatus(s) {
   if (!s || !s.success || !s.status) { gibStop(); return; }
@@ -38,7 +48,7 @@ function gibApplyStatus(s) {
     G('gib-fill').style.width = pct + '%';
     G('gib-text').textContent = running
       ? `${done}/${total} (${fmtPct(pct, { vorzeichen: false, stellen: 0 })})`
-      : `${s.ok} ok${s.warn ? ', '+s.warn+' '+t('csv.warnings') : ''}${s.err ? ', '+s.err+' '+t('csv.errors') : ''}`;
+      : importZaehler(s);
   }
 
   // Update overlay whenever it's open (both browser 1 minimized+reopened, and browser 2)
@@ -47,10 +57,10 @@ function gibApplyStatus(s) {
     G('prog-title-txt').textContent = tRaw('csv.import_title');
     G('prog-bar').style.width = pct + '%';
     if (running) {
-      G('prog-footer').textContent = `${t('csv.items_progress',{done,total})} (${s.ok} ok${s.warn ? ', '+s.warn+' '+t('csv.warnings') : ''}${s.err ? ', '+s.err+' '+t('csv.errors') : ''})`;
-      if (s.current) G('prog-set-name').textContent = `Verarbeite: ${s.current} (${done}/${total})`;
+      G('prog-footer').textContent = `${t('csv.items_progress',{done,total})} (${importZaehler(s)})`;
+      if (s.current) G('prog-set-name').textContent = tRaw('csv.verarbeite', { set: s.current, done, total });
     } else {
-      G('prog-footer').textContent = `${t('csv.finished')} ${s.ok} ok${s.warn ? ', '+s.warn+' '+t('csv.warnings') : ''}${s.err ? ', '+s.err+' '+t('csv.errors') : ''}`;
+      G('prog-footer').textContent = `${t('csv.finished')} ${importZaehler(s)}`;
       G('prog-set-name').textContent = '';
     }
   }
@@ -62,9 +72,9 @@ function gibApplyStatus(s) {
     gpw.style.display = 'block';
     G('gib-panel-fill').style.width = pct + '%';
     G('gib-panel-footer').textContent = `${t('csv.items_progress',{done,total})} (${fmtPct(pct, { vorzeichen: false, stellen: 0 })})`;
-    if(s.current) G('gib-panel-set').textContent = `Verarbeite: ${s.current}`;
+    if(s.current) G('gib-panel-set').textContent = tRaw('csv.verarbeite', { set: s.current, done, total });
   }
-  G('gib-stats').textContent = `${s.ok || 0} ok · ${s.warn || 0} ${t('csv.warnings')} · ${s.err || 0} ${t('csv.errors')}`;
+  G('gib-stats').textContent = [`${s.ok || 0} ok`, tRaw('csv.warnings_n', { n: s.warn || 0 }), tRaw('csv.errors_n', { n: s.err || 0 })].join(' · ');
 
   // Add new log entries — but only if the CSV poll loop isn't already writing them
   // (_csvPollActive = true means this window started the import and the CSV loop handles logs)
@@ -131,8 +141,11 @@ function gibToggle() {
 export function protokollZeile(r, warnZusatz = '') {
   if (!r?.set_number) return null;
   if (r.success) {
-    return { ok: true, text: r.set_number + ' – '
-      + (r.action === 'added' ? t('common.added') : t('common.updated')) };
+    // Ein bekanntes Set bekommt ein weiteres Exemplar; „aktualisiert“ verschwieg das.
+    const was = r.action === 'added'
+      ? tRaw('common.added') + (r.katalog_offen ? ' — ' + tRaw('csv.log_unbekannt') : '')
+      : r.menge ? tRaw('csv.log_mehr', { n: r.menge }) : tRaw('common.updated');
+    return { ok: true, text: r.set_number + ' – ' + was };
   }
   // `warnZusatz` nur fuer den CSV-Import: Dort heisst eine Anmerkung
   // „Zeitueberschreitung, wird erneut versucht". Beim Wanted-Listen-Import
@@ -175,7 +188,7 @@ export function gibStart() {
   // Kein Token in der Adresse: EventSource schickt mit withCredentials das Sitzungscookie, und ein
   // ?token= stünde im Proxy-Protokoll und im Verlauf.
   // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#url
-  const url = '/api/v1/sets/import/csv/stream';
+  const url = `/api/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`;
 
   if (typeof EventSource !== 'undefined') {
     try {

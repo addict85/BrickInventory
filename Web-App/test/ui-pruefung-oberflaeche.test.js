@@ -102,8 +102,11 @@ test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf stat
   const { w, d } = await oeffneOberflaeche({ '/v1/finance/valuation': netzweg, '/v1/finance/portfolio-history': netzweg });
   try {
     await reiter(w, 'finance');
-    await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
-    assert.match(text(d.getElementById('portfolio-chart')), /^Diagramm nicht verfügbar ?Keine Verbindung zum Server.*Erneut versuchen$/);
+    // Grund und Knopf stehen einmal, bei der Liste; das Diagramm sagt nur, dass es fehlt (UI-Prüfung 16).
+    await warte(() => /nicht erreichbar/.test(text(d.getElementById('fin-tbl'))));
+    assert.match(text(d.getElementById('fin-tbl')), /Keine Verbindung zum Server.*Erneut versuchen/);
+    assert.equal(text(d.getElementById('portfolio-chart')), 'Diagramm nicht verfügbar');
+    assert.equal(d.querySelectorAll('#tab-finance [data-click="loadFinance"], #tab-finance [data-click="loadPortfolioChart"]').length, 1);
   } finally { w.close(); }
 });
 

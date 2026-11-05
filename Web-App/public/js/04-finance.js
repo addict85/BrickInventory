@@ -169,11 +169,13 @@ function besitzer(it, mehrereKonten) {
 }
 
 const condBadge = (/** @type {string} */ c) => condBadges({ conditions: [c] });
+/** Ein fehlender Marktwert sieht in Zeile, Summe und Kachel gleich aus: Strich, für Vorleser „Preis fehlt“. */
+const ohneWert = () => `<span class="text-mut" title="${esc(tRaw('finance.price_missing_short'))}"><span aria-hidden="true">—</span><span class="vh">${t('finance.price_missing_short')}</span></span>`;
 // Feste Spaltenbreiten (colgroup, table-layout:fixed): Die Preisspalten der Teile- und Figurentabellen
 // beginnen so genau unter denen der Sets, und man kann die Zahlen untereinander vergleichen.
 // Ausführlich: docs/begruendungen/public/js/04-finance.js.md#condbadge
 const PM_COLGROUP = `<colgroup>
-    <col class="sp-60"><col class="sp-325"><col class="sp-70"><col class="sp-100"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55">
+    <col class="sp-60"><col class="sp-325 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110 fin-k-markt"><col class="sp-110"><col class="sp-90"><col class="sp-55">
   </colgroup>`;
 /**
  * Teile- und Figurenzeilen öffnen ihr Detail wie die Kachel im Reiter: Eine Tabelle, in der nur die
@@ -213,9 +215,9 @@ function pmRow(it, label, acq, lage){
       <td class="fin-name"><span class="fin-name-text">${label}${acq?` ${condBadge(acq.condition)}`:''} ${besitzer(it, lage.mehrereKonten)}</span><span class="fin-unter">×${qty}</span></td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${acq?.created_at?fmtDatum(acq.created_at):''}</td>
-    <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
-    <td class="fin-detail price-cell zahl">${current>0?geschaetztMarke(it, fmtN(current,cur)):'<span class="text-mut">—</span>'}</td>
-    <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total,cur) : '<span class="text-mut">—</span>'}</td>
+    <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur, acq)}</td>
+    <td class="fin-detail price-cell zahl">${current>0?geschaetztMarke(it, fmtN(current,cur)):ohneWert()}</td>
+    <td class="fin-wert price-total zahl">${total > 0 ? fmtN(total,cur) : ohneWert()}</td>
     <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
     <td class="fin-status"></td>
   </tr>`;
@@ -252,6 +254,7 @@ function manuellerAbschnitt(o) {
 /** @param {any} s @param {any} acq @param {Zeilenlage} lage */
 function setRow(s, acq, lage){
   const { cur, fehlerNeutral } = lage;
+  const mitPreis = !s.error;
   const qty      = acq ? acq.quantity : s.quantity;
   const purchase = acq ? acq.purchase_price : s.purchase_price;
   const market   = acq ? acq.avg_price : s.avg_price;
@@ -269,9 +272,9 @@ function setRow(s, acq, lage){
     <td class="fin-name">${esc(s.name)||'—'}${s.year?` <span class="fin-jahr">${s.year}</span>`:''}${acq?` ${condBadge(acq.condition)}`:''} ${besitzer(s, lage.mehrereKonten)}<span class="fin-unter">${esc(s.set_number)}${s.year?` · ${s.year}`:''} · ×${qty}</span></td>
   <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
   <td class="fin-detail fin-datum">${dateSrc?fmtDatum(dateSrc):'—'}</td>
-  <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur)}</td>
-    <td class="fin-detail zahl ${s.error?'':'price-cell'}">${s.error?`<span class="fin-fehlt${fehlerNeutral ? ' neutral' : ''}" title="${esc(t('finance.price_failed'))}: ${esc(s.error)}">${t('finance.price_missing_short')}</span>`:fmtN(market,cur)}</td>
-  <td class="fin-wert zahl ${s.error?'':'price-total'}">${s.error?'<span class="text-mut">—</span>':fmtN(total,cur)}</td>
+  <td class="fin-detail price-cell zahl">${einstandZelle(purchase, qty, cur, acq)}</td>
+    <td class="fin-detail zahl price-cell">${mitPreis && Number(market) > 0 ? fmtN(market,cur) : ohneWert()}</td>
+  <td class="fin-wert zahl price-total">${mitPreis && Number(total) > 0 ? fmtN(total,cur) : ohneWert()}</td>
   <td class="fin-guv zahl">${pnlBadge(pnl, purchase)||'<span class="text-mut">—</span>'}</td>
     <td class="fin-status">${priceStatusBadge(s, fehlerNeutral)}</td>
 </tr>`;
@@ -279,7 +282,7 @@ function setRow(s, acq, lage){
 
 /** @param {string} rows @param {{ sets: number }} einstand @param {number} setsQtyAvg @param {string} cur */
 function setsTabelle(rows, einstand, setsQtyAvg, cur) {
-  return `<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90"><col class="sp-235"><col class="sp-70"><col class="sp-100"><col class="sp-110"><col class="sp-110"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
+  return `<div class="tw" data-fin-art="sets" tabindex="0" role="region" aria-label="${esc(t('finance.filter.sets'))}"><div class="ctitle fin-abschnitt">${ico('set')} ${t('finance.filter.sets')}</div><table class="dt dt-fin"><colgroup><col class="sp-60"><col class="sp-90 fin-k-zusatz"><col class="sp-235 fin-k-name"><col class="sp-70 fin-k-zusatz"><col class="sp-100 fin-k-zusatz"><col class="sp-110"><col class="sp-110 fin-k-markt"><col class="sp-110"><col class="sp-90"><col class="sp-55"></colgroup><thead><tr><th><span class="vh">${t('col.image')}</span></th><th>${t('col.nr')}</th><th>${t('col.name')}</th><th class="zahl">${t('detail.qty')}</th><th>${t('detail.added')}</th>${preisKoepfe()}<th title="${esc(t('finance.price_status'))}"><span aria-hidden="true">${t('finance.price_status_kurz')}</span><span class="vh">${esc(t('finance.price_status'))}</span></th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="5" class="fin-fuss-l">${t('finance.sum')}</td>${summenZellen(einstand.sets, setsQtyAvg, cur, 1)}<td colspan="2"></td></tr></tfoot></table></div>${legende()}`;
 }
 
 /** Gesamtübersicht: Einstand und Wert je Bereich und zusammen.
@@ -321,7 +324,8 @@ function finanzenLaedt() {
 /** Ladefehler: Diagramm und Kennzahlen dürfen nicht auf „Laden…“ stehen bleiben. @param {any} d */
 function finanzenFehlen(d) {
   if (d?.status === 401) return;
-  if (!_letzteKurve) G('portfolio-chart').innerHTML = diagrammNichtDa(!!d.networkError, d);
+  // Grund und „Erneut versuchen“ stehen schon bei der Liste darunter; ein zweiter Block sagte dasselbe.
+  if (!_letzteKurve) G('portfolio-chart').innerHTML = `<p class="fehler-zustand text-mut">${esc(tRaw('chart.unavailable'))}</p>`;
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').removeAttribute('aria-busy');
     for (const id of KENNZAHLEN) G(id).textContent = '—';
@@ -415,9 +419,13 @@ export async function loadFinance(){
  * @param {unknown} stueck
  * @param {unknown} menge
  * @param {string} cur
+ * @param {{ kaufpreis_original?: number, kaufpreis_waehrung?: string } | null} [acq]
  */
-function einstandZelle(stueck, menge, cur) {
+function einstandZelle(stueck, menge, cur, acq) {
   const p = stueck == null || String(stueck).trim() === '' ? NaN : Number(stueck);
+  // In fremder Währung ohne Kurs zählt der Preis nicht mit, steht aber da: Ein Strich hiesse „unbekannt“.
+  if (!Number.isFinite(p) && acq?.kaufpreis_original != null)
+    return `${fmtGeld(acq.kaufpreis_original * (parseInt(String(menge)) || 1), acq.kaufpreis_waehrung)}<span class="fin-je">${esc(tRaw('finance.nicht_umgerechnet'))}</span>`;
   if (!Number.isFinite(p)) return '<span class="text-mut">—</span>';
   const n = parseInt(String(menge)) || 1;
   if (n <= 1) return fmtGeld(p, cur);
@@ -476,8 +484,8 @@ function einstandAus(liste) {
  * @param {number} luecke
  */
 function summenZellen(kauf, wert, cur, luecke, zusatz = '') {
-  const k = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.col.purchase'))}">${kauf > 0 ? fmtN(kauf, cur) : '—'}</td>`;
-  const w = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.grand.value'))}">${wert > 0 ? fmtN(wert, cur) + (zusatz ? `<span class="fin-je">${esc(zusatz)}</span>` : '') : `<span class="fin-fehlt-kurz">${t('finance.price_missing_short')}</span>`}</td>`;
+  const k = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.col.purchase'))}">${kauf > 0 ? fmtN(kauf, cur) : '<span class="text-mut">—</span>'}</td>`;
+  const w = `<td class="price-total fin-fuss-wert" data-kurz="${esc(t('finance.grand.value'))}">${wert > 0 ? fmtN(wert, cur) + (zusatz ? `<span class="fin-je">${esc(zusatz)}</span>` : '') : ohneWert()}</td>`;
   return k + '<td></td>'.repeat(luecke) + w;
 }
 /**
@@ -521,9 +529,12 @@ function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehru
     ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung })
     : teilweise ? tRaw('finance.stat.purchase_von', { betrag: fmtN(einstandAlle, cur) }) : tRaw('finance.stat.purchase_hint');
   const fehlt = basis.ohneMarkt > 0 ? tRaw('finance.price_missing_n', { n: basis.ohneMarkt }) : '';
+  // Rechnet die Kachel nur über bewertete Posten, sagt sie es; sonst stünden zwei „Marktwerte“ verschieden da.
+  const wertTeilweise = mitBasis && Math.abs(wertAlle - basis.wert) >= 0.005;
+  G('fin-wert-titel').textContent = tRaw(wertTeilweise ? 'finance.stat.value_basis' : 'finance.stat.value');
   if (wert > 0) {
     G('fin-wert').textContent = fmtN(wert, cur);
-    G('fin-wert-sub').textContent = tRaw('finance.stat.value_hint');
+    G('fin-wert-sub').textContent = wertTeilweise ? tRaw('finance.stat.value_von', { betrag: fmtN(wertAlle, cur) }) : tRaw('finance.stat.value_hint');
   } else {
     // Ohne Positionen fehlt kein Preis — dann einfach „—“.
     if (fehlt) G('fin-wert').innerHTML = `<span class="fval-hinweis">${esc(fehlt)}</span>`;

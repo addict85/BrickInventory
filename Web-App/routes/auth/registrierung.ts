@@ -157,6 +157,9 @@ router.post('/reset-password', ipThrottle('reset-password', 10, 60 * 60 * 1000),
   if (mangel) return sendeFehler(req, res, 400, mangel);
   const user = await K.kontoNachRuecksetzToken(hashToken(token));
   if (!user) return sendeFehler(req, res, 400, 'token_ungueltig');
+  // Den Namen kennt erst das Konto hinter dem Token; die Regel gilt wie auf allen anderen Wegen.
+  const nameMangel = passwortMangel(password, user.username);
+  if (nameMangel) return sendeFehler(req, res, 400, nameMangel);
   await K.setzePasswortZurueck(user.id, password);
   hinweisNebenher(user.id, 'passwort_zurueckgesetzt');
   res.json({ success: true, message: 'Passwort erfolgreich geändert.' });

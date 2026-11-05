@@ -16,7 +16,7 @@ import * as db from './db/database';
 import { fehlertext, logAndContinue, meldeUndWeiter, meldeUndLiefere } from './src/infra/fehler';
 import { fehlerAntwort, unbekannterApiPfad } from './src/infra/httpAntwort';
 import { fehlerText, antwortSprache } from './src/infra/fehlerTexte';
-import { startVerbote } from './src/infra/konfig';
+import { startVerbote, startWarnungen } from './src/infra/konfig';
 import { hinweisOhneBasisUrl } from './src/infra/basisUrl';
 import { sitzungsKeksName, sitzungsKeksOptionen } from './src/infra/sitzungsKeks';
 import { bereiteDatenbankVor } from './startup/datenbank';
@@ -429,6 +429,7 @@ async function starte(): Promise<void> {
   if (k.produktion) {
     const verbote = startVerbote();
     if (verbote.length) { for (const v of verbote) console.error(`❌ ${v}`); process.exit(1); }
+    for (const w of startWarnungen()) console.warn(`⚠️ ${w}`);
   }
   for (const v of k.veraltet) console.warn(`⚠️ [start] ${v} wird nicht mehr ausgewertet und kann weg (siehe UPGRADE.md).`);
   if (!k.appBaseUrl) hinweisOhneBasisUrl('start', 'Mails enthalten keine Links (Bestätigung, Passwort vergessen), Passkeys und QR-Code der App sind aus.');

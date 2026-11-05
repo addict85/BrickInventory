@@ -115,6 +115,20 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     assert.ok(bcrypt.compareSync(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash));
   });
 
+  // Gegenprobe (05.11.2026 gemessen): in /reset-password die zweite Prüfung
+  // mit user.username gestrichen → rot (200, das Passwort ist der Name).
+  await t.test('Zurücksetzen: der Benutzername ist kein Passwort', async () => {
+    const roh = 'b'.repeat(64);
+    await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`,
+      [ziel, require('node:crypto').createHash('sha256').update(roh).digest('hex')]);
+    assert.equal(await ruf(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() + '-x' }]).then(r => r.split(' ')[1]), '200',
+      'ein anderes Passwort geht (Prüfung des Tokens)');
+    await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`,
+      [ziel, require('node:crypto').createHash('sha256').update(roh).digest('hex')]);
+    assert.equal(await ruf(['POST', '/reset-password', { token: roh, password: ZIEL.toUpperCase() }]), '/reset-password 400 passwort_zu_haeufig');
+    assert.ok(!bcrypt.compareSync(ZIEL.toUpperCase(), (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash));
+  });
+
   await t.test('ein schwaches ADMIN_PASSWORD wird nicht übernommen', async () => {
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');

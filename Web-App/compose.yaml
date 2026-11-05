@@ -97,7 +97,7 @@ services:
   # legt er keinen neuen an: Der Server meldet dann den Umzug (UPGRADE.md).
   schluessel:
     # Dasselbe Image wie app (siehe dort).
-    image: addict85/brickinventory:${BRICK_TAG:-latest}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
     pull_policy: missing
     container_name: brickinventory-schluessel
     restart: "no"
@@ -118,11 +118,11 @@ services:
 
   # ── BrickInventory Manager App ───────────────────────────────────────────────
   app:
-    # Ein Image für schluessel, app und jobs. `docker compose pull` holt das
-    # signierte von Docker Hub (BRICK_TAG, Vorgabe latest); fehlt es lokal und
-    # ist es nicht abrufbar, baut `app` es aus diesem Ordner. Nur `app` hat
-    # `build:`, damit `--build` das Dockerfile einmal baut und nicht dreimal.
-    image: addict85/brickinventory:${BRICK_TAG:-latest}
+    # Ein Image für schluessel, app und jobs, als Digest: Ein Tag lässt sich
+    # umhängen. scripts/image-pruefen.sh prüft die Signatur und trägt
+    # BRICK_IMAGE in .env ein. Wer selbst baut, setzt BRICK_IMAGE auf einen
+    # eigenen Namen; nur `app` hat `build:`, damit `--build` einmal baut.
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
     pull_policy: missing
     build:
       context: .
@@ -240,7 +240,7 @@ services:
   # sie fort. Die Migrationen macht, wer zuerst startet — der andere wartet.
   jobs:
     # Dasselbe Image wie app (siehe dort).
-    image: addict85/brickinventory:${BRICK_TAG:-latest}
+    image: ${BRICK_IMAGE:?BRICK_IMAGE fehlt in .env - einmal sh scripts/image-pruefen.sh ausfuehren (UPGRADE.md, Abschnitt 42)}
     pull_policy: missing
     container_name: brickinventory-jobs
     restart: unless-stopped

@@ -192,7 +192,7 @@ export async function recordLoginFailure(ip: string, username: unknown): Promise
 }
 
 export type Anmeldeereignis = 'anmeldung_fehlgeschlagen' | 'anmeldung_gesperrt' | 'zweiter_faktor_falsch'
-  | 'bestaetigung_fehlgeschlagen' | 'bestaetigung_gesperrt';
+  | 'bestaetigung_fehlgeschlagen' | 'bestaetigung_gesperrt' | 'bestaetigung_gebremst';
 /** Eine Warnzeile je Ereignis für Protokoll, app_logs und fail2ban; nie Passwort, Code
  * oder eingegebener Name, denn im Namensfeld landet auch einmal ein Passwort. */
 export function meldeAnmeldeereignis(ereignis: Anmeldeereignis, angaben: { ip?: string; konto?: number | null; art?: Bremse; zugang?: string }): void {
@@ -255,12 +255,27 @@ const _bestaetigungKey = (art: Bremse, uid: number, zugang: string) =>
   `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen|${uid}|${zugang}`;
 const fenster = (art: Bremse) => (art === 'faktor' ? FAKTOR_FENSTER_MIN : WINDOW_MIN);
 
+/** Über alle Zugänge eines Kontos: Wer mehrere Zugänge erbeutet hat, rät damit
+ * nicht mehrfach. Sie gilt nur für Zugänge, die selbst schon falsch geraten
+ * haben; der Inhaber bestätigt in seinem sauberen Zugang weiter. */
+export const MAX_BESTAETIGUNG_JE_KONTO = 20;
+const KONTO_FENSTER_MIN = 24 * 60;
+const _kontoBestaetigungKey = (art: Bremse, uid: number) => `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen-konto|${uid}`;
+
 export async function bestaetigungGesperrt(art: Bremse, uid: number, zugang: string): Promise<Sperre | null> {
-  const r = await _reserviere(_bestaetigungKey(art, uid, zugang), fenster(art), s => s.count + s.laufend < MAX_ATTEMPTS);
-  return r.ok ? null : { code: 'zu_viele_fehlversuche', vars: { minuten: r.stand.waitMin } };
+  const konto = await _read(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
+  const kontoVoll = !!konto && konto.count >= MAX_BESTAETIGUNG_JE_KONTO;
+  const r = await _reserviere(_bestaetigungKey(art, uid, zugang), fenster(art),
+    s => s.count + s.laufend < MAX_ATTEMPTS && !(kontoVoll && s.count > 0));
+  if (r.ok) return null;
+  const minuten = kontoVoll && r.stand.count < MAX_ATTEMPTS ? konto!.waitMin : r.stand.waitMin;
+  return { code: 'zu_viele_fehlversuche', vars: { minuten } };
 }
-export async function bestaetigungFehlgeschlagen(art: Bremse, uid: number, zugang: string): Promise<void> {
-  await _bump(_bestaetigungKey(art, uid, zugang), fenster(art));
+/** @returns true, wenn dieser Fehlversuch eine Bremse (Zugang oder Konto) gerade erreicht hat */
+export async function bestaetigungFehlgeschlagen(art: Bremse, uid: number, zugang: string): Promise<boolean> {
+  const jeZugang = await _bump(_bestaetigungKey(art, uid, zugang), fenster(art));
+  const jeKonto = await _bump(_kontoBestaetigungKey(art, uid), KONTO_FENSTER_MIN);
+  return jeZugang === MAX_ATTEMPTS || jeKonto === MAX_BESTAETIGUNG_JE_KONTO;
 }
 export async function bestaetigungGelungen(art: Bremse, uid: number, zugang: string): Promise<void> {
   await _clear(_bestaetigungKey(art, uid, zugang));

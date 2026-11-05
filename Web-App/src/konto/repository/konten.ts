@@ -235,8 +235,8 @@ export function erneuereEmailTokenWennFrei(email: string, hash: string, gueltigS
       RETURNING u.id, u.email_neu AS email`, [email, hash, gueltigStd, pauseMin]);
 }
 
-export function kontoNachRuecksetzToken(hash: string): Promise<{ id: number } | undefined> {
-  return db.get('SELECT id FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()', [hash]);
+export function kontoNachRuecksetzToken(hash: string): Promise<{ id: number; username: string } | undefined> {
+  return db.get('SELECT id, username FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()', [hash]);
 }
 
 export async function setzePasswortNachRuecksetzen(id: number, hash: string): Promise<void> {

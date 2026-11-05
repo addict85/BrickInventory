@@ -77,7 +77,8 @@ test('alle fuenf Routen, die ein Passwort setzen, pruefen die Laenge', () => {
   const pruefungen = (quelle.match(/passwortMangel\(/g) || []).length;
   assert.equal(hashes, 5,   // PUT /profile setzt seit dem 27.10. keines mehr
     `${hashes} Stellen setzen ein Passwort — die Zahl hat sich geaendert, der Test muss mit`);
-  assert.equal(pruefungen, hashes,
+  // Mehr Prüfungen als Stellen sind erlaubt: /reset-password prüft zweimal, erst ohne, dann mit Namen.
+  assert.ok(pruefungen >= hashes,
     `Nur ${pruefungen} von ${hashes} Stellen pruefen die Laenge. Genau so entstand die ` +
     'Luecke: PUT /profile und POST /change-password prueften nicht, und damit war ' +
     'die Regel wirkungslos.');

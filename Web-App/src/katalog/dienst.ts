@@ -8,6 +8,7 @@ import { downloadSetImage } from './bilder/setImages';
 import { neuestesInventar } from './rbInventar';
 import { mitVersion } from '../infra/setNummer';
 import { nacharbeit } from '../auftraege/nacharbeit';
+import { scopeIds } from '../haushalt/haushalt';
 
 // rb_themes ändert sich höchstens täglich; der Baum wird je Prozess eine
 // Stunde gemerkt, weil jeder Filter ihn braucht.
@@ -108,7 +109,7 @@ const lokalesBild = async (uid: number, sn: string) =>
 export async function katalogSeite(userId: number, f: KatalogFilter, sortRoh: unknown, page: number, limit: number) {
   const wahl = await waehle(f);
   const [total, sets] = await Promise.all([
-    repo.katalogAnzahl(wahl), repo.katalogZeilen(userId, wahl, sortRoh, limit, (page - 1) * limit)]);
+    repo.katalogAnzahl(wahl), repo.katalogZeilen(await scopeIds(userId), wahl, sortRoh, limit, (page - 1) * limit)]);
   const tree = await getThemeTree();
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
   return { total, page, pages: Math.max(1, Math.ceil(total / limit)),
@@ -120,7 +121,7 @@ export const katalogGeladen = async () => !(await repo.katalogLeer());
 
 export async function katalogSet(userId: number, roh: string) {
   const n = mitVersion(roh.trim());
-  const set = await repo.katalogZeile(userId, n);
+  const set = await repo.katalogZeile(await scopeIds(userId), n);
   if (!set) return null;
   const invId = await neuestesInventar(n).catch(meldeUndLiefere('katalog:neuestesInventar', null));
   const m = invId ? await repo.figurenImInventar(invId)

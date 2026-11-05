@@ -156,6 +156,7 @@ test('die Lagerorte stehen wie in einer Tabelle', () => {
     ico: (n) => `<svg class="ico"><use href="#i-${n}"/></svg>`,
     t: (k, v) => k + ' ' + JSON.stringify(v || {}),
     tRaw: (k) => k,
+    ladeLagerorte: async () => {},
     // success: true, sonst kehrt die Funktion gleich am Anfang um. Und die
     // Belegung schluesselt auf `ort`, nicht auf `name` — genau Marcos Lage:
     // drei Orte mit Inhalt, einer leer, damit die Spalte „Belegung" wirklich

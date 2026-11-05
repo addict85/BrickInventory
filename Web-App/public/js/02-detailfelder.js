@@ -357,21 +357,28 @@ export async function ladeOrtAuswahl(besitzer) {
   setzeOrtVorrat((d.orte || []).map(o => o.name));
 }
 
+/** Die Konten, deren Lagerorte beim Erfassen zur Wahl stehen; gesetzt vom Laden des Haushalts. @type {number[]} */
+let _vorratKonten = [];
+
 /**
- * Die bekannten Lagerorte in die gemeinsame <datalist> schreiben: eine Liste
- * für alle Eingabefelder, damit „Kiste 3“ wiederkommt statt neben „kiste 3“
- * zu stehen und getrennt gezählt zu werden.
+ * Zur Wahl steht der ganze Vorrat (/v1/storage/locations), auch ein neuer, leerer Ort; die Filter
+ * zeigen nur belegte Orte (/v1/storage), weil ein leerer Ort dort nichts fände.
+ * @param {number[]} [konten] Haushaltskonten; ohne Angabe die zuletzt genannten
  */
-export async function ladeLagerorte() {
-  const d = await api('GET', `/v1/storage${scopeQuery('gallery')}`).catch(() => null);
-  if (!d?.success) return;
-  const orte = d.orte || [];
-  const dl = G('lagerorte');
-  if (dl) dl.innerHTML = orte.map(o => `<option value="${esc(o.ort)}"></option>`).join('');
-  setzeOrtVorrat(orte.map(o => o.ort));
-  // Dieselbe Liste speist die Filter-Auswahlfelder. Sie getrennt zu holen
-  // hiesse, dass Vorschlag und Filter kurzzeitig zwei Staende zeigen.
-  initStorageSelects(orte);
+export async function ladeLagerorte(konten) {
+  if (konten) _vorratKonten = konten;
+  const frage = _vorratKonten.length > 1 ? '?owner=' + encodeURIComponent(_vorratKonten.join(',')) : '';
+  const [vorrat, belegt] = await Promise.all([
+    api('GET', `/v1/storage/locations${frage}`).catch(() => null),
+    api('GET', `/v1/storage${scopeQuery('gallery')}`).catch(() => null),
+  ]);
+  if (vorrat?.success) {
+    const namen = (vorrat.orte || []).map(o => o.name);
+    const dl = G('lagerorte');
+    if (dl) dl.innerHTML = [...new Set(namen)].map(n => `<option value="${esc(n)}"></option>`).join('');
+    setzeOrtVorrat(namen);
+  }
+  if (belegt?.success) initStorageSelects(belegt.orte || []);
 }
 
 // Hier und nicht im Set-Detail: Auch der Kaufpreis-Dialog schliesst ihn, und der

@@ -565,6 +565,8 @@ export type FigsValuationResponse = {
       pnl_prozent?: number | null;
       created_at?: string | null;
       owner_user_id?: number | null;
+      kaufpreis_original?: number;
+      kaufpreis_waehrung?: string;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -945,6 +947,8 @@ export type ManualFigsResponse = {
       pnl_prozent?: number | null;
       created_at?: string | null;
       owner_user_id?: number | null;
+      kaufpreis_original?: number;
+      kaufpreis_waehrung?: string;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -995,6 +999,8 @@ export type ManualPartsResponse = {
       pnl_prozent?: number | null;
       created_at?: string | null;
       owner_user_id?: number | null;
+      kaufpreis_original?: number;
+      kaufpreis_waehrung?: string;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -1225,6 +1231,8 @@ export type PartsValuationResponse = {
       pnl_prozent?: number | null;
       created_at?: string | null;
       owner_user_id?: number | null;
+      kaufpreis_original?: number;
+      kaufpreis_waehrung?: string;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -1869,6 +1877,8 @@ export type ValuationSet = {
     pnl_prozent?: number | null;
     created_at?: string | null;
     owner_user_id?: number | null;
+    kaufpreis_original?: number;
+    kaufpreis_waehrung?: string;
     [feld: string]: unknown;
   }>;
   mixed: boolean;

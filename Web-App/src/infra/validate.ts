@@ -4,7 +4,7 @@
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
-import { fehlerWerfen, Meldung } from './fehlerTexte';
+import { fehlerWerfen } from './fehlerTexte';
 
 /** Die Spalten sind integer (int4): Ein grösserer Wert endete als 500 in PostgreSQL. */
 export const GROESSTE_ID = 2 ** 31 - 1;
@@ -53,15 +53,12 @@ export function einmalDekodiert(text: string): string {
   try { return decodeURIComponent(text); } catch { return text; }
 }
 
-function fail(msg: string): never {
-  throw new Meldung(msg, 400);
-}
 
 export function requireItemNumber(value: unknown, field = 'part_number'): string {
   const v = String(value ?? '').trim();
-  if (!v) fail(`${field} erforderlich`);
+  if (!v) fehlerWerfen('feld_erforderlich', 400, { feld: field });
   if (!ITEM_NUMBER_RE.test(v))
-    fail(`${field} darf nur Buchstaben, Zahlen und . _ - / enthalten (max. 64 Zeichen)`);
+    fehlerWerfen('feld_nummer_ungueltig', 400, { feld: field });
   return v;
 }
 
@@ -77,10 +74,10 @@ export function optionalText(value: unknown, maxLen = 200): string | null {
 export function optionalImageUrl(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
   const v = String(value).trim();
-  if (v.length > 2048) fail('image_url ist zu lang');
+  if (v.length > 2048) fehlerWerfen('bild_url_zu_lang', 400);
   let u: URL;
-  try { u = new URL(v); } catch { fail('image_url ist keine gültige URL'); }
-  if (u.protocol !== 'https:') fail('image_url muss https sein');
+  try { u = new URL(v); } catch { fehlerWerfen('bild_url_ungueltig', 400); }
+  if (u.protocol !== 'https:') fehlerWerfen('bild_url_nicht_https', 400);
   return u.toString();
 }
 
@@ -129,8 +126,8 @@ export function optionalPrice(value: unknown, feld = 'Preis'): number | null {
   if (value === undefined || value === null || value === '') return null;
   const n = parseFloat(String(value).replace(',', '.'));
   if (!Number.isFinite(n)) return null;
-  if (n < 0) fail(`${feld} darf nicht negativ sein`);
-  if (n > 1_000_000) fail(`${feld} ist unplausibel hoch`);
+  if (n < 0) fehlerWerfen('feld_negativ', 400, { feld });
+  if (n > 1_000_000) fehlerWerfen('feld_zu_hoch', 400, { feld });
   return n;
 }
 
@@ -139,7 +136,7 @@ export function optionalPrice(value: unknown, feld = 'Preis'): number | null {
 export function strictBool(value: unknown, feld = 'Wert'): boolean {
   if (value === true  || value === 'true'  || value === 1 || value === '1') return true;
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
-  fail(`${feld} muss true oder false sein`);
+  fehlerWerfen('feld_kein_wahrheitswert', 400, { feld });
 }
 
 /** Aggregate kommen als Zeichenkette, und "0" ist in JavaScript wahr.

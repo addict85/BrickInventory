@@ -2,6 +2,7 @@
 // unten, damit keine Ansicht eine andere importieren muss, nur um an ihn
 // heranzukommen. Geschrieben wird über die Setter: Importierte Bindungen sind
 // in ES-Modulen schreibgeschützt.
+import { setzeZahlenWaehrung } from '../i18n.js';
 
 /**
  * @typedef {object} Konto
@@ -35,7 +36,7 @@ export let _lastImportAt = 0;
 /** @param {typeof ME} v */
 export function set_ME(v) { ME = v; }
 /** @param {string} v */
-export function set_CURRENCY(v) { CURRENCY = v; }
+export function set_CURRENCY(v) { CURRENCY = v; setzeZahlenWaehrung(v); }
 /** @param {typeof _settingsCache} v */
 export function set_settingsCache(v) { _settingsCache = v; }
 /** @param {Kachel[]} v */

@@ -1780,3 +1780,80 @@ Telefon die Webseite.
   Protokoll von `app` oder `jobs` (wer zuerst migriert):
   `docker compose logs app jobs | grep -A2 Standard-Admin`. `ADMIN_PASSWORD`
   reicht `compose.yaml` nicht durch.
+
+## 42. Runde 16 – Image nur als geprüfter Digest, Startverbot für Mail-Tokens
+
+**Für jeden Docker-Betreiber einmal zu tun (Punkt 1).** Ohne diesen Schritt
+bricht `docker compose` mit „BRICK_IMAGE fehlt in .env“ ab.
+
+**1. Das App-Image kommt nur noch signaturgeprüft und als Digest**
+
+`compose.yaml` zieht `app`, `jobs` und `schluessel` nicht mehr über den
+veränderlichen Tag `latest`, sondern über `BRICK_IMAGE` aus `.env`, etwa
+`BRICK_IMAGE=addict85/brickinventory@sha256:…`. Ein Tag lässt sich bei Docker
+Hub umhängen, ein Digest nicht. Eintragen tut ihn das neue Skript:
+
+```bash
+sh scripts/image-pruefen.sh     # im Ordner mit compose.yaml
+docker compose up -d
+```
+
+Das Skript:
+
+- prüft mit `cosign verify` die Signatur des Tags aus `BRICK_TAG` (Vorgabe
+  `latest`) gegen den Workflow `docker-publish.yml` auf `main`;
+- übernimmt genau den Digest, den cosign geprüft hat, und schreibt ihn als
+  `BRICK_IMAGE` in `.env` (eine alte Zeile `BRICK_IMAGE=` wird ersetzt, die
+  Rechte der Datei bleiben);
+- zieht danach `schluessel`, `app` und `jobs`. Scheitert die Prüfung, ändert
+  es nichts.
+
+**Update ab jetzt:** `sh scripts/image-pruefen.sh && docker compose up -d`
+statt `docker compose pull && docker compose up -d`.
+
+**cosign** muss auf dem Docker-Rechner installiert sein: über die
+Paketverwaltung oder als einzelne Datei von
+<https://github.com/sigstore/cosign/releases> (amd64 und arm64). Die Prüfung
+braucht Zugang zu Docker Hub und zu Sigstore, aber nur beim Aufruf des
+Skripts, nicht beim Start der Container.
+
+**Ausnahmen, bewusst gesetzt:**
+
+- **Selbst gebaut:** `BRICK_IMAGE=brickinventory:lokal` in `.env`, dann wie
+  bisher `docker compose up -d --build`.
+- **Ohne Prüfung** (nicht empfohlen): `BRICK_IMAGE=addict85/brickinventory:latest`
+  von Hand eintragen. Dann gilt wieder der Tag wie vor dieser Runde.
+
+**2. `MAIL_KONSOLE_MIT_TOKEN=1` verhindert den Start im Betrieb**
+
+Mit `NODE_ENV=production` (Docker, `npm start`) startet der Server mit
+`MAIL_KONSOLE_MIT_TOKEN=1` nicht mehr: Rücksetz- und Bestätigungslinks samt
+Token landeten in `app_logs`, und jeder Verwalter liest sie dort. Die Zeile aus
+`.env` entfernen. Auf einem Entwicklungsrechner (`NODE_ENV=development`) geht es
+weiter.
+
+`COOKIE_SECURE=0` bleibt im Betrieb erlaubt (README.md, „Ohne HTTPS“). Der
+Server meldet es aber beim Start mit der Warnzeile `⚠️ [start] COOKIE_SECURE=0 …`.
+
+**3. Bremse für Passwortbestätigungen auch je Konto (nichts zu tun)**
+
+Neben den fünf Fehlversuchen je Zugang und Viertelstunde zählt der Server jetzt
+höchstens 20 je Konto und Tag, über alle Sitzungen und App-Zugänge. Die Grenze
+sperrt nur Zugänge, die selbst falsch geraten haben; eine eigene, saubere
+Sitzung bestätigt weiter. Erreicht ein Zugang oder das Konto die Bremse, steht
+`bestaetigung_gebremst` im Protokoll, und der Inhaber bekommt höchstens einmal
+am Tag eine Mail.
+
+**4. Signatur in der Pipeline (nichts zu tun)**
+
+`docker-publish.yml` signiert den Digest aus der Ausgabe des Pushs
+(`imagetools create --metadata-file`), nicht mehr den, auf den der Tag kurz
+danach zeigt.
+
+**5. Datenbankrolle (unverändert, zur Kenntnis)**
+
+`brickinventory_app` bleibt Eigentümerin von Datenbank und Schema. Die App
+migriert beim Start, und der Katalog-Import arbeitet mit Schattentabellen;
+beides braucht Eigentümerrechte. Eine getrennte Migrationsrolle verlangt einen
+eigenen Migrationsdienst und einen umgebauten Import. Das kommt in einer
+eigenen Runde mit Anleitung.

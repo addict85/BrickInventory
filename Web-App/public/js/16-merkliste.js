@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
 import { detailZeile, listeLadefehler, skelettZeilen, csvHochladen } from './01-bausteine.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { addScopeParam } from './14-scope.js';
@@ -168,6 +168,8 @@ export async function ladeMerkliste() {
   // Ausführlich: docs/begruendungen/public/js/16-merkliste.js.md#filter
   const filter = new URLSearchParams(merklisteParams()); filter.delete('sort');
   const gefiltert = !!filter.toString();
+  if (gefiltert) meldeTreffer(_merkposten.length ? tRaw('treffer.merkliste', { n: _merkposten.length })
+    : G('mks')?.value.trim() ? tRaw('common.no_hits', { query: G('mks').value.trim() }) : tRaw('wanted.no_results'));
   ziel.innerHTML = _merkposten.length
     ? _merkposten.map(zeile).join('')
     : (gefiltert

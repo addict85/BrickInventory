@@ -19,7 +19,7 @@ cp .env.example .env
 echo BRICK_HOST=nas.example.lan >> .env   # Name oder IP-Adresse des Servers
 sh scripts/geheimnisse-einrichten.sh      # Sitzungsgeheimnis und DB-Passwörter nach ./geheimnisse/
 sudo sh scripts/ca-einrichten.sh          # eigene CA, die nur für BRICK_HOST gilt (siehe unten)
-docker compose pull                       # das signierte Image von Docker Hub
+sh scripts/image-pruefen.sh               # Signatur prüfen, Image als Digest in .env, pull (braucht cosign)
 docker compose up -d
 docker compose logs app jobs | grep -A2 Standard-Admin   # Erstpasswort von admin
 ```
@@ -38,17 +38,18 @@ entsteht und warum:
    ausdrücklichen Schalter `CA_OHNE_NAMENSBESCHRAENKUNG=ja` (UPGRADE.md,
    Abschnitt 33). Die App selbst veröffentlicht keinen Port.
 4. **Das Image** `addict85/brickinventory` gilt für `app`, `jobs` und
-   `schluessel`. `docker compose pull` holt die signierte Fassung (Tag aus
-   `BRICK_TAG`, Vorgabe `latest`; prüfen mit `cosign verify`, siehe
-   `README.md` im Wurzelordner). Wer selbst baut, nimmt
-   `docker compose up -d --build`; das lokale Image ersetzt dann das gezogene,
-   bis zum nächsten `pull`.
+   `schluessel`. `scripts/image-pruefen.sh` prüft mit `cosign verify` die
+   Signatur des Tags (`BRICK_TAG`, Vorgabe `latest`), trägt den geprüften
+   Digest als `BRICK_IMAGE` in `.env` ein und zieht ihn; ohne `BRICK_IMAGE`
+   startet compose nicht. cosign muss dafür installiert sein (UPGRADE.md,
+   Abschnitt 42). Wer selbst baut, setzt `BRICK_IMAGE=brickinventory:lokal`
+   und nimmt `docker compose up -d --build`.
 5. **Das Konto `admin`** bekommt beim allerersten Start ein Zufallspasswort,
    das nur in diesem Protokoll steht und bei der ersten Anmeldung geändert
    werden muss. Den ersten Start migriert `app` oder `jobs`, je nachdem, wer
    zuerst kommt; deshalb beide Protokolle.
 
-**Update:** `docker compose pull && docker compose up -d` (selbst gebaut:
+**Update:** `sh scripts/image-pruefen.sh && docker compose up -d` (selbst gebaut:
 `docker compose up -d --build`). Vorher `UPGRADE.md` lesen; die Abschnitte
 stehen in zeitlicher Reihenfolge.
 
@@ -340,7 +341,7 @@ für pgweb unlesbar, bis sie dort eingetragen ist.
 | `DATA_KEY_FILE` | Datei mit dem Schlüssel, ausserhalb von `data/` (compose.yaml: `/app/schluessel/datenschluessel`, Vorgabe `<APP_ROOT>/schluessel/datenschluessel`). Fehlt sie, legt der erste Start sie an (nur für den Besitzer lesbar). |
 | `ADMIN_PASSWORD` | Passwort des beim ersten Start angelegten Admins (nur `npm start`; `compose.yaml` reicht es nicht durch). Sonst wird ein Zufallspasswort erzeugt und **einmalig** ins Log geschrieben. |
 | `SESSION_SECRET` | Pflicht in Produktion (der Start bricht sonst ab). Mit Docker als Datei: `SESSION_SECRET_FILE` (setzt `compose.yaml`). |
-| `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Nur dort setzen. |
+| `MAIL_KONSOLE_MIT_TOKEN` | Ohne SMTP schreibt der Server jede Mail ins Log, den Link darin **ohne Token** — das Log sieht jeder Verwalter, und ein Rücksetz-Link ist ein Zugang zum Konto. Die Empfängeradresse steht dort maskiert (`m…@example.org`). `1` zeigt den vollständigen Link und die volle Adresse, etwa auf einem Entwicklungsrechner ohne Mailserver. Mit `NODE_ENV=production` verweigert der Server damit den Start. |
 | `BRICK_HOST` | Name oder IP-Adresse des Servers für Caddy (Pflicht mit `compose.yaml`). Ohne `APP_BASE_URL` gilt `https://BRICK_HOST`. Passkeys brauchen einen Namen, keine IP-Adresse. |
 | `CA_ZERTIFIKAT` | Pfad zum Wurzelzertifikat der internen CA (setzt `compose.yaml`). Daraus kommen `/ca.crt` und der Fingerabdruck `fp` im QR-Code. |
 | `TOKEN_IDLE_DAYS` | Tage ohne Nutzung, nach denen ein Gerätezugang (Token) verfällt (Vorgabe `90`, mindestens `1`). Jede Nutzung schiebt die Frist nach; geschrieben wird höchstens einmal je Tag. Ohne Ablauf gibt es nur die Wahl „Unbegrenzt“ beim QR-Code, nur über HTTPS und mit Rotation. |

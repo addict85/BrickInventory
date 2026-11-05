@@ -501,7 +501,9 @@
     @media (hover:hover){.acq-loeschen:hover{background:var(--r100)}}
 
     /* DATA TABLE */
-    .tw{overflow-x:auto}
+    /* position:relative macht .tw zum Bezug der absolut gesetzten .vh-Texte im Tabellenkopf;
+       ohne ihn ragten sie über den Rollbereich hinaus, und die ganze Seite rollte seitlich. */
+    .tw{overflow-x:auto;position:relative}
     /* Kaufpreis-Dialog: sechs Spalten brauchen Breite. Der Rollbalken bleibt
        als Rückfall für schmale Telefone — dort hilft keine Breite mehr, und
        die Alternative wäre, Spalten zu verstecken. */
@@ -543,7 +545,6 @@
     /* Summenzeilen der Finanztabellen: Einstand und Marktwert. */
     .fin-fuss-l{text-align:right;padding:11px 13px;font-weight:600}
     .fin-fuss-wert{font-size:var(--fs-4);padding:11px 13px}
-    .fin-fehlt-kurz{font-size:var(--fs-2);font-weight:600;color:var(--s600)}
     .fstat.hi .flbl{color:var(--s600)}
     .dt-summe{width:100%}
     .dt-summe th:not(:first-child),.dt-summe td:not(:first-child){width:160px;text-align:right}
@@ -713,6 +714,8 @@
       #set-modal .m-kopfteil .mimg{position:sticky;top:3.5rem;margin-bottom:0}
     }
     .mimg{width:100%;aspect-ratio:4/3;object-fit:contain;background:var(--s50);border-radius:8px;border:1px solid var(--bdr);margin-bottom:1rem}
+    /* Ohne Bild genügt ein flacher Platzhalter; in 4:3 nahm er den halben Dialog ein. */
+    #mk-detail-modal .mimg[src$="set-placeholder.svg"]{aspect-ratio:auto;height:7rem;padding:1.5rem}
     .dr{display:flex;justify-content:space-between;gap:.25rem .75rem;padding:7px 0;border-bottom:1px solid var(--bdr);font-size:var(--fs-3)}
     .dr:last-child{border-bottom:none}
     .dl{color:var(--mut);font-weight:500}.dv{font-weight:600;min-width:0;text-align:right}
@@ -752,8 +755,6 @@
     /* Beträge neutral: Grün sah beim Kaufpreis wie ein Gewinn aus; Gewinn und
        Verlust zeigt die G&V-Spalte. */
     .price-cell{font-variant-numeric:tabular-nums;color:var(--txt);font-size:var(--fs-2)}
-    .fin-fehlt{color:var(--a-schrift);font-size:var(--fs-1);cursor:help;border-bottom:1px dotted currentColor}
-    .fin-fehlt.neutral{color:var(--mut)}
     .price-total{font-variant-numeric:tabular-nums;color:var(--preis,var(--b700));font-weight:600}
     .lv{display:inline-flex;align-items:center;background:var(--g100);color:var(--g700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
     .lc{display:inline-flex;align-items:center;background:var(--b100);color:var(--b700);font-size:var(--fs-0);font-weight:600;padding:2px 6px;border-radius:999px}
@@ -987,7 +988,8 @@ html{scroll-padding-top:calc(var(--leiste-oben,0px) + .5rem);scroll-padding-bott
 .fest{white-space:nowrap;flex-shrink:0}
 .fest-breite{flex-shrink:0}
 .block{display:block}
-.knopf-fuellend{flex:1;justify-content:center}
+/* Grundbreite = Inhalt: Bei flex:1 bekamen beide Knöpfe dieselbe Breite, und „Auf BrickLink kaufen“ stiess an den Rand. */
+.knopf-fuellend{flex:1 1 auto;min-width:0;white-space:normal;justify-content:center}
 .btn.knopf-breit{width:100%;justify-content:center;padding:11px}
 .zf-knoepfe{display:flex;gap:.5rem;flex-wrap:wrap}
 .zf-knoepfe-breit{display:flex;flex-direction:column;gap:.5rem}
@@ -1162,6 +1164,19 @@ body:not(:has(:is(#tab-gallery,#tab-parts,#tab-minifigs,#tab-catalog).active)) #
 /* Zahlen rechtsbündig, samt Köpfen: So stehen Stellen untereinander. */
 .dt-fin .zahl,.dt-fin th.zahl,.dt-fin .fin-fuss-wert{text-align:right}
 .dt-fin .zahl .qbadge{margin-left:auto}
+/* Tablet und 200 % Zoom: Nummer, Menge und Datum rücken unter den Namen, darunter auch der
+   Stückpreis. Die Kernzahlen (Kaufpreis, Wert, G/V, Stand) bleiben ohne seitliches Rollen sichtbar. */
+@media (min-width:641px) and (max-width:1100px){
+  .dt-fin{min-width:0}
+  .dt-fin col.fin-k-zusatz{visibility:collapse}
+  .dt-fin col.fin-k-name{width:220px}
+  .dt-fin .fin-unter{display:block;font-size:var(--fs-0);font-weight:400;color:var(--mut);margin-top:2px}
+  .dt-fin .fin-jahr{display:none}
+}
+@media (min-width:641px) and (max-width:800px){
+  .dt-fin col.fin-k-markt{visibility:collapse}
+  .dt-fin col.fin-k-name{width:170px}
+}
 
 /* ── Beträge ─────────────────────────────────────────────────────────── */
 .man-preis{font-size:var(--fs-2);margin-top:3px}

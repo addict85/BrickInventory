@@ -505,7 +505,7 @@ export async function mailBereit(neu: { smtp_host?: unknown; smtp_user?: unknown
 export type KontoHinweis = 'passkey_neu' | 'passwort_geaendert' | 'passwort_zurueckgesetzt' | 'token_neu' | 'qr_zugang_neu'
   | 'zweiter_faktor_entfernt' | 'verwalter_ernannt' | 'verwaltung_faktor_entfernt' | 'token_wiederverwendet'
   | 'passwort_durch_verwalter' | 'verwaltung_passwort_gesetzt' | 'zweiter_faktor_eingerichtet' | 'zweiter_faktor_abgeschaltet'
-  | 'anmeldung_gebremst' | 'einstellungen_geaendert';
+  | 'anmeldung_gebremst' | 'bestaetigung_gebremst' | 'einstellungen_geaendert';
 
 /** Ohne Geheimnisse und ohne Link. `haushalt` nennt die Konten, die diese
  * Sammlung sehen: Ein Eindringling könnte sich dort eingetragen haben. */
@@ -538,6 +538,8 @@ export async function sendKontoHinweisMail(to: string, username: string, art: Ko
     zweiter_faktor_abgeschaltet: en ? 'the second factor of your account was turned off.' : 'der zweite Faktor deines Kontos wurde abgeschaltet.',
     anmeldung_gebremst: en ? 'there were several failed sign-in attempts for your account; further attempts are slowed down for now.'
                            : 'für dein Konto gab es mehrere fehlgeschlagene Anmeldeversuche; weitere Versuche werden vorerst gebremst.',
+    bestaetigung_gebremst: en ? 'in a signed-in session or app of your account, the password or code was entered wrongly several times when confirming; further attempts are slowed down for now.'
+                              : 'in einer angemeldeten Sitzung oder App deines Kontos wurde beim Bestätigen mehrmals ein falsches Passwort oder ein falscher Code eingegeben; weitere Versuche werden vorerst gebremst.',
     einstellungen_geaendert: en ? `“${o.durch ?? ''}” changed security-relevant settings: ${o.konto ?? ''}.`
                                 : `„${o.durch ?? ''}“ hat sicherheitsrelevante Einstellungen geändert: ${o.konto ?? ''}.`,
     token_wiederverwendet: en ? `an already replaced app token (“${o.passkey ?? ''}”) was used again, so someone has a copy. All tokens of that device were ended; sign in to the app again.`

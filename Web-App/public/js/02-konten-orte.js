@@ -6,6 +6,7 @@ import { SCOPE_VIEWS, scopeMode, setScopeMode } from './14-scope.js';
 import { ladeLagerorte, lagerortBlock } from './02-detailfelder.js';
 import { tRaw } from '../i18n.js';
 import { esc } from './00-escapen.js';
+import { abonniere } from './00-ereignisse.js';
 /** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} HouseholdMember */
 
 /**
@@ -83,25 +84,43 @@ export async function loadHouseholdMembers() {
   // Die Lagerorte in EINEM Zug: Sie fuellen die Auswahlfelder der Filter UND
   // die gemeinsame <datalist> der Eingabefelder. Zwei Aufrufe waeren zwei
   // Staende derselben Liste.
-  ladeLagerorte().catch(() => {});
+  ladeLagerorte(members.map(m => m.id)).catch(() => {});
   // Die Vorgabe fuer die Erfassungsfelder (Marcos Stern) — eigener Abruf,
   // Begruendung bei ladeLagerortVorgabe().
   ladeLagerortVorgabe().catch(() => {});
+  zeichneKontoauswahl(members);
+  zeichneLagerortFelder();
+}
+
+/**
+ * Alle fünf Erfassungswege (Set, Teil, Figur, Katalog, Merkliste) bekommen dieselbe Kontoauswahl:
+ * Etwas für ein Kind zu erfassen soll überall gleich gehen. Eine getroffene Wahl bleibt beim Neuzeichnen.
+ * Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#for
+ * @param {HouseholdMember[]} members
+ */
+function zeichneKontoauswahl(members) {
   const html = members.map(m =>
     `<option value="${m.id}"${m.is_self ? ' selected' : ''}>${esc(m.username)}${m.is_self ? ' ' + esc(tRaw('household.ich')) : ''}</option>`
   ).join('');
-  // Alle fünf Erfassungswege (Set, Teil, Figur, Katalog, Merkliste) bekommen dieselbe Kontoauswahl:
-  // Etwas für ein Kind zu erfassen soll überall gleich gehen.
-  // Ausführlich: docs/begruendungen/public/js/02-konten-orte.js.md#for
   for (const id of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner', 'mk-owner']) {
     const box = G(`${id}-box`), sel = G(id);
     if (!box || !sel) continue;
     if (members.length < 2) { box.style.display = 'none'; continue; }
+    const vorher = sel.value;
     sel.innerHTML = html;
+    if (vorher && [...sel.querySelectorAll('option')].some(o => o.value === vorher)) sel.value = vorher;
     box.style.display = '';
   }
-  zeichneLagerortFelder();
 }
+
+// Erzeugte Auswahlfelder tragen Texte der Sprache, in der sie gebaut wurden; beim Wechsel neu
+// zeichnen, die Wahl bleibt. Die Lagerorte zieht ladeLagerorte() samt Vorrat und Filtern nach.
+abonniere('spracheGewechselt', () => {
+  if (!_haushalt.length) return;
+  initScopeSelects(_haushalt);
+  zeichneKontoauswahl(_haushalt);
+  ladeLagerorte().catch(() => {});
+});
 
 /**
  * Die Lagerortfelder der fünf Erfassungswege, einmal aus lagerortBlock() gezeichnet statt fünfmal im

@@ -4,9 +4,9 @@
 import { abonniere } from './00-ereignisse.js';
 import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
-import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, G, TRASH_ICON_SVG, api, escJs, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, alle } from './01-core.js';
-import { gibStart, protokollZeile, csvPollAktiv, addCsvLog, handleSseEvent, hideProgress, setProgBar, showProgress, streamFertig, streamRequest, setzeCsvPollAktiv } from './01-fortschritt.js';
+import { LANG, locale, t, tRaw} from '../i18n.js';
+import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, api, escJs, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, alle } from './01-core.js';
+import { gibStart, importZaehler, protokollZeile, csvPollAktiv, addCsvLog, handleSseEvent, hideProgress, setProgBar, showProgress, streamFertig, streamRequest, setzeCsvPollAktiv } from './01-fortschritt.js';
 import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './14-scope.js';
 import { loadParts, loadManualParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -246,12 +246,15 @@ export function renderGallery(){
   const gefiltert = !!(q || G('gtheme')?.value || lagerModus('gallery'));
   // Ohne ein einziges Set filtern und sortieren die Felder nichts (N5).
   G('tab-gallery')?.classList.toggle('sammlung-leer', !list.length && !gefiltert);
+  if (gefiltert) meldeTreffer(list.length ? tRaw('treffer.sets', { n: _galTotal || list.length })
+    : q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'));
   if(!list.length){
     c.innerHTML = gefiltert
       ? leerZustand({ ico: 'suche', titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
                       knopf: zuruecksetzenKnopf('gallery') })
       // Ohne eigenen Knopf: „Set hinzufügen“ steht direkt darüber in der Erfassen-Leiste.
-      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'), text: tRaw('gallery.empty_hint'),
+      : leerZustand({ ico: 'set', titel: tRaw('gallery.empty'),
+                      text: tRaw(window.matchMedia?.('(max-width: 640px)').matches ? 'gallery.empty_hint_telefon' : 'gallery.empty_hint'),
                       knopf: { text: tRaw('gallery.add.title'), click: 'oeffneErfassen', arg: 'set' } });
     return;
   }
@@ -497,7 +500,7 @@ async function startSetCsvImport(){
     // Ohne `?token=` — dieselbe Begründung wie an der Zwillingsstelle in
     // 01-core.js: das Cookie trägt den Kanal, der Token in der Adresse wäre
     // nur der Sitzungstoken im Protokoll.
-    const url = '/api/v1/sets/import/csv/stream';
+    const url = `/api/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`;
 
     await /** @type {Promise<void>} */ (new Promise((resolve) => {
       let settled = false;
@@ -543,8 +546,8 @@ function csvApplyOverlayStatus(s, ctx, fi){
     const done = s.done ?? 0;
     const pct = total>0 ? (done/total)*95 : 0;
     setProgBar(pct);
-    G('prog-footer').textContent=`${t('csv.items_progress',{done,total})} (${s.ok} ok${s.warn?', '+s.warn+' '+t('csv.warnings'):''}${s.err?', '+s.err+' '+t('csv.errors'):''})`;
-    if(s.current) G('prog-set-name').textContent=`Verarbeite: ${s.current} (${done}/${total})`;
+    G('prog-footer').textContent=`${t('csv.items_progress',{done,total})} (${importZaehler(s)})`;
+    if(s.current) G('prog-set-name').textContent=tRaw('csv.verarbeite', { set: s.current, done, total });
     // Update header progress bar directly
     { const _p=total>0?Math.round(done/total*100):0; const _b=G('global-import-bar'); if(_b){_b.style.display='flex';G('gib-fill').style.width=_p+'%';G('gib-text').textContent=done+'/'+total+' ('+fmtPct(_p,{vorzeichen:false,stellen:0})+')';} }
     // Show live results as they come in
@@ -581,13 +584,12 @@ function csvApplyOverlayStatus(s, ctx, fi){
         const errList = errSets.map(r=>r.set_number+': '+(r.error||'?')).join('; ');
         console.warn('[CSV Import] Fehler: '+errList);
       }
-      const warnTxt = s.warn ? `, ${s.warn} ${t('csv.timeout_warn')}` : '';
-      const errTxt  = s.err  ? `, ${s.err} ${t('csv.errors')}` : '';
-      G('prog-footer').textContent=`Import: ${s.ok} ok${warnTxt}${errTxt}`;
+      const zaehler = importZaehler(s, 'csv.timeout_warn_n');
+      G('prog-footer').textContent=`Import: ${zaehler}`;
       const btnClose = G('btn-close-import');
       if (btnClose) btnClose.style.display = '';
       loadGallery();
-      toast(`Import: ${s.ok} ok${warnTxt}${errTxt}`,s.err?'error':s.warn?'info':'success');
+      toast(`Import: ${zaehler}`,s.err?'error':s.warn?'info':'success');
       if(fi) fi.value='';
     }
     return true;

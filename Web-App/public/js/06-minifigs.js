@@ -4,7 +4,7 @@ import { abonniere } from './00-ereignisse.js';
 import { echt, registerActions } from './00-registry.js';
 import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, escHex, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, ico } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, meldeTreffer, escHex, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, ico } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { loadFinance } from './04-finance.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
@@ -288,6 +288,7 @@ function figurenLeerAbgleichen() {
   if (_manuelleFigurenLeer === false) { el.innerHTML = ''; return; }
   const q = G('fig-search')?.value.trim() || '';
   G('tab-minifigs')?.classList.toggle('sammlung-leer', !q);
+  if (q) meldeTreffer(tRaw('common.no_hits', { query: q }));
   el.innerHTML = q
     ? leerZustand({ ico: 'suche', titel: tRaw('common.no_hits', { query: q }), knopf: zuruecksetzenKnopf('minifigs') })
     : leerZustand({ ico: 'figur', titel: tRaw('figs.empty'), text: tRaw('figs.auto_hint'),

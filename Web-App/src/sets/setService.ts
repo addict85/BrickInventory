@@ -15,7 +15,7 @@ import { brickset, getItemImageUrl } from '../katalog/quellen';
 import { generateThumb } from '../katalog/bilder/thumbs';
 import { stelleAuftragEin } from '../auftraege/dienst';
 import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
-import { fehlerWerfen, Meldung } from '../infra/fehlerTexte';
+import { fehlerWerfen } from '../infra/fehlerTexte';
 import { setzeLagerort, ortFuerNeuerfassung } from '../bestand/lagerort';
 import { bestandsMenge } from '../infra/validate';
 import { resolveSetCondition } from '../finanzen/financeCalc';
@@ -234,7 +234,7 @@ export async function updateSet(uid: number, sn: string, body: any) {
   const _wids = await writableIds(uid);
   // Die EIGENE Zeile gewinnt, sonst entschiede die Tabellenreihenfolge.
   const existing = await repo.setZeileImSchreibfeld(_wids, sn, uid);
-  if (!existing) throw new Meldung('Set nicht gefunden', 404);
+  if (!existing) fehlerWerfen('set_nicht_gefunden', 404);
   // Ab hier zählt der BESITZER, sonst entstünden Erfassungen im falschen Konto.
   const ownerId = parseInt(String(existing.user_id));
 

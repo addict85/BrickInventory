@@ -309,5 +309,19 @@ export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
   if (!env.APP_BASE_URL?.trim() && env.ROLLE?.trim().toLowerCase() !== 'jobs' && env.APP_BASE_URL_FEHLT_OK?.trim() !== '1')
     gruende.push('[start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter gegen DNS-Rebinding wäre aus — Start verweigert. '
       + 'In .env setzen (README.md); nur bewusst ohne: APP_BASE_URL_FEHLT_OK=1 (UPGRADE.md).');
+  // Rücksetzlinks samt Token in app_logs sind ein Kontozugang für jeden Verwalter.
+  if (env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1')
+    gruende.push('[mail] MAIL_KONSOLE_MIT_TOKEN=1 schreibt Rücksetz- und Bestätigungslinks samt Token ins Protokoll — '
+      + 'im Betrieb Start verweigert. Nur auf einem Entwicklungsrechner setzen (NODE_ENV=development).');
   return gruende;
+}
+
+/** Erlaubt, aber laut: Schalter, die im Betrieb eine Schutzschicht abschalten. */
+export function startWarnungen(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (env.NODE_ENV !== 'production') return [];
+  const w: string[] = [];
+  if (schalter(env, 'COOKIE_SECURE', []) === false)
+    w.push('[start] COOKIE_SECURE=0: Das Sitzungs-Cookie geht auch über http, Passwort und Sitzung lesbar durchs Netz. '
+      + 'Nur ohne TLS gedacht (README.md, „Ohne HTTPS“).');
+  return w;
 }
