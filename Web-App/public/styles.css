@@ -498,7 +498,15 @@
     .acq-datum-text{font-size:var(--fs-1);color:var(--txt)}
     .acq-aktion{text-align:right;white-space:nowrap}
     .acq-ok{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-1);font-weight:600;color:var(--gewinn,var(--g700));margin-right:6px}
-    .acq-ok[hidden]{display:none}
+    .acq-ok[hidden]{display:inline-flex;visibility:hidden}
+    .preis-mit-waehrung{display:flex;gap:6px;align-items:stretch}
+    .preis-mit-waehrung input{flex:1 1 auto;min-width:0}
+    .preis-mit-waehrung select{flex:0 0 auto;width:auto}
+    .acq-preisfeld{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+    .acq-waehrung{font-size:var(--fs-1);color:var(--mut);font-weight:600}
+    .acq-umgerechnet{display:block;font-size:var(--fs-1);color:var(--mut)}
+    .acq-umgerechnet:empty{display:none}
+    .acq-umgerechnet-inline{font-size:var(--fs-1);color:var(--mut)}
     .acq-loeschen{background:none;border:none;cursor:pointer;color:var(--r700);min-width:32px;min-height:32px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center}
     @media (hover:hover){.acq-loeschen:hover{background:var(--r100)}}
 

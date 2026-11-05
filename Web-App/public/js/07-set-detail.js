@@ -16,7 +16,8 @@ import { detailZeile, oderStrich, skelettZeilen, oeffneErfassen } from './01-bau
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
 import { loadFinance } from './04-finance.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
+import { openAcqModal, renderAcqModalBody } from './13-acquisition-modals.js';
+import { kurzfassung, renderAcquisitionSummary } from './13-kaufpreis-anzeige.js';
 
 // Verschoben wird nur über den Kaufpreis (Kaufpreis-Dialog, Zeile für Zeile), nicht das ganze Set: Mehrere
 // Käufe eines Sets können im Haushalt verschiedenen Konten gehören. Der Server verlangt dafür
@@ -277,7 +278,7 @@ export function autosaveSet(){
           if (!ad?.success) return;
           if (echt > prevQty) meldeNeueExemplare(sn, ad.acquisitions, echt - prevQty);
           const sumEl = G('m-acq-summary');
-          if (sumEl) setzeHtml(sumEl, html`${ungeprueft(renderAcquisitionSummary(ad.acquisitions, set.set_number))}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${set.set_number}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`);
+          if (sumEl) setzeHtml(sumEl, kurzfassung(ad.acquisitions, set.set_number));
           if (G('acq-modal').classList.contains('open') && typeof renderAcqModalBody === 'function') {
             renderAcqModalBody(set.set_number, ad.acquisitions, undefined);
           }

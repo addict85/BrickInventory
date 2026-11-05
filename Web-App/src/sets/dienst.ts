@@ -226,8 +226,7 @@ export async function setPreis(uid: number, blickfeldWahl: Sicht | number[], sn:
   const blickfeld = await blickfeldAus(blickfeldWahl);
   const set = await repo.setImFeld(sn, blickfeld);
   if (!set) return null;
-  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert
-  // mit, bevor sie die Einstellung kannte.
+  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung kannte.
   const currency  = await getSetting(uid, 'currency', 'EUR');
   const guideType = await getSetting(uid, 'price_guide_type', 'sold');
   const ttlHours  = await getSetting(uid, 'price_cache_ttl', '24');
@@ -277,8 +276,7 @@ export interface ImportZeile {
   zeile?: number; fehler?: { code: 'csv_menge_ungueltig' | 'csv_keine_setnummer'; wert?: string };
 }
 
-/** Leer heisst 1; sonst nur eine ganze Zahl ab 1. Aus „x“ eine 1 und aus „-2“ eine 2 zu machen,
- * buchte still etwas anderes, als in der Datei steht. */
+/** Aus „x“ eine 1 und aus „-2“ eine 2 zu machen buchte still etwas anderes, als in der Datei steht. */
 function csvMenge(roh: string): number | null {
   const s = roh.trim();
   if (s === '') return 1;
@@ -317,16 +315,14 @@ export function setCsvZeilen(text: string): { rows: ImportZeile[]; uebersprungen
   return { rows, uebersprungen: gelesen.uebersprungen };
 }
 
-/** Setnummern der Datei, die das Konto schon hat: Der Import erhöht dort die Menge, das Einzel-Erfassen
- * lehnt dasselbe ab. Die Oberfläche fragt deshalb vorher nach. */
+/** Der Import erhöht bei vorhandenen Sets die Menge, das Einzel-Erfassen lehnt sie ab: Die Oberfläche fragt. */
 async function schonVorhanden(userId: number, rows: ImportZeile[]): Promise<string[]> {
   const da = new Set((await repo.setsMitMenge(userId)).map(s => s.set_number));
   const treffer = rows.filter(r => !r.fehler).map(r => normalizeSetNumber(r.sn)).filter(sn => da.has(sn));
   return [...new Set(treffer)];
 }
 
-/** Ein laufender Import desselben Kontos wird abgebrochen. Mit `nurPruefen` startet nichts: Die Antwort
- * nennt nur, wie viele Zeilen gelesen wurden und welche Sets schon da sind. */
+/** Ein laufender Import desselben Kontos wird abgebrochen; `nurPruefen` liest nur. */
 export async function setCsvImportStarten(userId: number, text: string, nurPruefen = false) {
   const { rows, uebersprungen } = setCsvZeilen(text);
   const vorhanden = await schonVorhanden(userId, rows);

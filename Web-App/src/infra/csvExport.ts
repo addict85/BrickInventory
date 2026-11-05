@@ -1,6 +1,5 @@
 
-// CSV mit richtigem Quoting, damit ein Export mit dem passenden Import
-// unverändert wieder eingelesen werden kann.
+// CSV mit richtigem Quoting, damit ein Export mit dem passenden Import unverändert wieder eingelesen werden kann.
 import { parse } from 'csv-parse/sync';
 import { fehlerText, type Sprache } from './fehlerTexte';
 
@@ -78,8 +77,7 @@ export function parseCsvDate(raw: unknown) {
     let year = parseInt((m[3] ?? ''));
     if ((m[3] ?? '').length === 2) year += year < 70 ? 2000 : 1900;
     if (day < 1 || day > 31 || mon < 1 || mon > 12) return null;
-    // Über ein echtes Datum prüfen: 31.02. gibt es nicht; Date rollt ihn in den
-    // Folgemonat, und das fällt hier auf.
+    // Über ein echtes Datum prüfen: 31.02. gibt es nicht; Date rollt ihn in den Folgemonat, und das fällt hier auf.
     const probe = new Date(Date.UTC(year, mon - 1, day));
     if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== mon - 1 ||
         probe.getUTCDate() !== day) return null;
@@ -116,8 +114,7 @@ export function csvEinlesen(csvText: string): { records: any[]; delimiter: strin
     info: true,
   }) as { record: any; info: { lines: number } }[];
 
-  // Zeilen ohne Inhalt gelten als übersprungen — das macht `relax_column_count`
-  // aus einer krummen Zeile.
+  // Zeilen ohne Inhalt gelten als übersprungen — das macht `relax_column_count` aus einer krummen Zeile.
   const brauchbar: any[] = [];
   const zeilen: number[] = [];
   records.forEach(({ record: r, info }) => {

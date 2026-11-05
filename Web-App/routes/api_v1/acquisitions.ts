@@ -1,6 +1,6 @@
 /** Kaufpreis-Erfassungen; die Regeln stehen in src/sammlung/erfassungen.ts. */
 import express from 'express';
-import { acquisitionTotals } from '../../src/bestand/acquisitions';
+import { acquisitionTotals, erfassungenInKontowaehrung } from '../../src/bestand/acquisitions';
 import { meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { requireToken, sichtVon } from './middleware';
@@ -34,7 +34,7 @@ router.get('/sets/:setNumber/acquisitions', requireToken, async (req: Anfrage<'G
   const rows = await setErfassungen(sichtVon(req), pfadParam(req, 'setNumber'))
     .catch(meldeUndLiefere('v1 acquisitions GET', null));
   if (!rows) return res.json({ success: true, acquisitions: [], totals: acquisitionTotals([]) });
-  res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: uid });
+  res.json({ success: true, ...await erfassungenInKontowaehrung(rows, uid), owner_user_id: uid });
 });
 const setSchluessel: Schluessel = req => [pfadParam(req, 'setNumber')];
 router.put('/sets/:setNumber/acquisitions/:acqId', requireToken, aendern('set', 'acqId', setSchluessel));
@@ -44,7 +44,7 @@ router.get('/parts/:partNumber/:colorId/acquisitions', requireToken, async (req:
   const rows = await getPartAcquisitions(
     sichtVon(req),
     pfadParam(req, 'partNumber'), pfadParam(req, 'colorId'));
-  res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
+  res.json({ success: true, ...await erfassungenInKontowaehrung(rows, req.apiUser.user_id), owner_user_id: req.apiUser.user_id });
 });
 const teilSchluessel: Schluessel = req => [pfadParam(req, 'partNumber'), V.colorId(req.params.colorId)];
 router.put('/parts/:partNumber/:colorId/acquisitions/:acqId', requireToken, aendern('part', 'acqId', teilSchluessel));
@@ -53,7 +53,7 @@ router.delete('/parts/:partNumber/:colorId/acquisitions/:acqId', requireToken, l
 router.get('/minifigs/:figNumber/acquisitions', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/:figNumber/acquisitions'>, res: Antwort<'GET /api/v1/minifigs/:figNumber/acquisitions'>) => {
   const rows = await getFigAcquisitions(
     sichtVon(req), pfadParam(req, 'figNumber'));
-  res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
+  res.json({ success: true, ...await erfassungenInKontowaehrung(rows, req.apiUser.user_id), owner_user_id: req.apiUser.user_id });
 });
 const figurSchluessel: Schluessel = req => [pfadParam(req, 'figNumber')];
 router.put('/minifigs/:figNumber/acquisitions/:acqId', requireToken, aendern('fig', 'acqId', figurSchluessel));

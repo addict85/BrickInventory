@@ -150,7 +150,7 @@ function adminQuelle() {
   const path = require('path'), fs = require('fs');
   const ROOT = path.join(__dirname, '..', '..');
   return ['07-admin.js', '07-set-detail.js', '02-detailfelder.js', '01-diagramme.js', '01-rueckfrage.js',
-          '13-acquisition-modals.js']
+          '13-acquisition-modals.js', '13-kaufpreis-anzeige.js']
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
 }

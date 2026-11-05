@@ -8,7 +8,7 @@ import { toast } from './01-meldungen.js';
 import { tRaw } from '../i18n.js';
 import { registerActions, resolveAction } from './00-registry.js';
 import { esc, html, ungeprueft } from './00-escapen.js';
-import { ME } from './00-zustand.js';
+import { ME, CURRENCY } from './00-zustand.js';
 
 /**
  * Eine Zeile „Label — Wert" in einer Detailansicht.
@@ -148,6 +148,13 @@ export function teileAufschluesselung(ausSets, einzeln) {
   return tRaw('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
 }
 
+/** „≈“ vor einem Kaufpreis, der ein eingesetzter Marktpreis ist; sonst läse er sich wie bezahlt.
+ * @param {string | import('./00-escapen.js').SicheresHtml} markup schon maskiertes Markup */
+export function geschaetztKauf(markup) {
+  const hinweis = tRaw('acq.geschaetzt');
+  return html`<span class="kauf-geschaetzt" title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${ungeprueft(String(markup))}</span>`;
+}
+
 /**
  * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0 gerechnet stünde dort „+327.600
  * %“, und das sagt nichts.
@@ -196,7 +203,20 @@ const erfassenDialog = (/** @type {unknown} */ art) => G(`add-${typeof art === '
 /**
  * @param {string} [art]
  */
-export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open'); }
+export function oeffneErfassen(art){
+  const dialog = erfassenDialog(art);
+  // Das Kaufdatum steht auf heute und die Währung auf der des Kontos, solange niemand etwas anderes wählt.
+  dialog?.querySelectorAll('input[data-heute]').forEach(f => { if (f instanceof HTMLInputElement && !f.value) f.value = heuteIso(); });
+  const w = /** @type {HTMLSelectElement | null} */ (dialog?.querySelector('#add-currency') ?? null);
+  if (w && !/** @type {HTMLInputElement | null} */ (dialog?.querySelector('#add-price'))?.value) w.value = CURRENCY;
+  dialog?.classList.add('open');
+}
+
+/** Heute als JJJJ-MM-TT im Kalender des Geräts. */
+export function heuteIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 /**
  * @param {string} [art]

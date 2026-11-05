@@ -65,8 +65,7 @@ test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async (t) =>
   const sende = async (pruefen) => {
     const fd = new FormData();
     fd.append('file', new Blob([DATEI]), 'import-fehler.csv');
-    if (pruefen) fd.append('pruefen', '1');
-    const r = await fetch(`${base}/api/v1/sets/import/csv`, { method: 'POST', body: fd });
+    const r = await fetch(`${base}/api/v1/sets/import/csv${pruefen ? '?pruefen=1' : ''}`, { method: 'POST', body: fd });
     assert.equal(r.status, 200);
     return r.json();
   };

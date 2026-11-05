@@ -49,7 +49,7 @@ function waehleDatei(w, d) {
 test('vorhandene Sets: erst fragen, Abbrechen startet nichts', async () => {
   const posts = [];
   const { w, d } = await oeffneOberflaeche({
-    '/v1/sets/import/csv': (_u, o) => { posts.push(o.body.get('pruefen')); return { success: true, total: 8, gestartet: false, vorhanden: 2, vorhanden_nummern: ['10305-1', '10200-1'] }; },
+    '/v1/sets/import/csv': (u) => { posts.push(new URL(u, 'http://x').searchParams.get('pruefen')); return { success: true, total: 8, gestartet: false, vorhanden: 2, vorhanden_nummern: ['10305-1', '10200-1'] }; },
   });
   try {
     waehleDatei(w, d);
@@ -65,7 +65,7 @@ test('vorhandene Sets: erst fragen, Abbrechen startet nichts', async () => {
 test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
   let abrufe = 0, gestartet = false;
   const { w, d } = await oeffneOberflaeche({
-    '/v1/sets/import/csv': (_u, o) => (o.body.get('pruefen') ? { success: true, total: 8, gestartet: false, vorhanden: 0 }
+    '/v1/sets/import/csv': (u) => (u.includes('pruefen=1') ? { success: true, total: 8, gestartet: false, vorhanden: 0 }
       : (gestartet = true, { success: true, total: 8, gestartet: true })),
     // Vor dem Start läuft nichts; danach erst ein wartender Auftrag, dann das Ergebnis.
     '/v1/sets/import/csv/status': () => (!gestartet ? { success: false, code: 'kein_import_laeuft' } : ++abrufe < 2

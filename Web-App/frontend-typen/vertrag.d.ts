@@ -11,6 +11,7 @@ export type Acquisition = {
   owner_user_id?: number | null;
   price_estimated: boolean;
   currency?: string | null;
+  preis_konto?: number | null;
   [feld: string]: unknown;
 };
 export type AcquisitionsResponse = {
@@ -24,6 +25,8 @@ export type AcquisitionTotals = {
   quantity: number;
   amount?: number | null;
   priced_rows: number;
+  currency?: string;
+  ohne_kurs?: number;
   [feld: string]: unknown;
 };
 export type AddMinifigResponse = {
@@ -568,6 +571,7 @@ export type FigsValuationResponse = {
       owner_user_id?: number | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
+      price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -950,6 +954,7 @@ export type ManualFigsResponse = {
       owner_user_id?: number | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
+      price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -1002,6 +1007,7 @@ export type ManualPartsResponse = {
       owner_user_id?: number | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
+      price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -1234,6 +1240,7 @@ export type PartsValuationResponse = {
       owner_user_id?: number | null;
       kaufpreis_original?: number;
       kaufpreis_waehrung?: string;
+      price_estimated?: boolean;
       [feld: string]: unknown;
     }>;
     storage?: string | null;
@@ -1668,6 +1675,7 @@ export type SetItem = {
   }[];
   max_purchase_price?: number | null;
   avg_purchase_price?: number | null;
+  kaufpreis_geschaetzt?: boolean | null;
   used_count?: number | null;
   instructions: Instruction[];
   bricklink?: {
@@ -1883,6 +1891,7 @@ export type ValuationSet = {
     owner_user_id?: number | null;
     kaufpreis_original?: number;
     kaufpreis_waehrung?: string;
+    price_estimated?: boolean;
     [feld: string]: unknown;
   }>;
   mixed: boolean;

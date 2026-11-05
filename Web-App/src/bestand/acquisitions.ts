@@ -93,6 +93,19 @@ export function acquisitionTotals(rows: any[]): {
   };
 }
 
+type MitPreis = { quantity?: unknown; purchase_price?: unknown; unit_price?: unknown; currency?: string | null | undefined; created_at?: unknown };
+
+/** Summe in der Währung des Betrachters, zum Kurs des Kauftags wie in den Finanzen: Sonst stünden
+ * 3 × 260,66 USD als Euro darin. Ohne Kurs zählt die Zeile in `ohne_kurs`, nicht in der Summe. */
+export async function erfassungenInKontowaehrung<T extends MitPreis>(rows: T[], betrachter: number) {
+  const preise = rows.map(r => { const roh = r.purchase_price ?? r.unit_price; return roh === null || roh === undefined ? null : Number(roh); });
+  const tage = rows.map(r => { const d = r.created_at ? new Date(String(r.created_at)) : null; return d && !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null; });
+  const umgerechnet = await repo.inWaehrungDesKontos(betrachter, preise, rows.map(r => r.currency ?? null), tage);
+  const acquisitions = rows.map((r, i) => ({ ...r, preis_konto: umgerechnet.betraege[i] ?? null }));
+  return { acquisitions, totals: { ...acquisitionTotals(acquisitions.map(a => ({ quantity: a.quantity, purchase_price: a.preis_konto }))),
+    currency: umgerechnet.waehrung, ohne_kurs: acquisitions.filter((a, i) => preise[i] != null && a.preis_konto == null).length } };
+}
+
 /** Gibt es am selben Tag schon eine gleiche Zeile, wandert die Menge dorthin,
  * statt am eindeutigen Index zu scheitern.
  * @returns true, wenn etwas geändert wurde */

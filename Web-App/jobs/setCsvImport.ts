@@ -72,8 +72,7 @@ async function fuehreCsvImportAus(n: CsvNutzlast, k: AuftragsKontext): Promise<v
   for (let i = results.length; i < rows.length; i++) {
     if (k.beendet) throw new AuftragUnterbrochen();
     const z = rows[i]!;
-    // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde
-    // Zeilen zu schreiben.
+    // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde Zeilen zu schreiben.
     if (!await k.lebenszeichen() || !await jobUpdate(userId, { current: z.sn }, lauf)) return;
     await emitJobStatus(userId);
     results.push(await importiereZeile(z, userId));

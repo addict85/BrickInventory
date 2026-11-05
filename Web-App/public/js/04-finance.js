@@ -1,5 +1,5 @@
 // Finanzen: Bewertung, G&V und Wertentwicklung des Bestands.
-import { ladeAnzeige, listeLadefehler, verstaendlicherGrund, condBadges, ownerBadges, pnlBadge } from './01-bausteine.js';
+import { ladeAnzeige, listeLadefehler, verstaendlicherGrund, condBadges, ownerBadges, pnlBadge, geschaetztKauf } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escJs, esc, html, ungeprueft } from './00-escapen.js';
@@ -198,6 +198,12 @@ function geschaetztMarke(it, markup){
   return html`<span title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${ungeprueft(markup)}</span>`;
 }
 
+/** Am Telefon fehlt die Kaufpreisspalte; die Zeile darunter sagt dann, dass der Kaufpreis geschätzt ist.
+ * @param {{ price_estimated?: boolean } | null | undefined} acq */
+function unterGeschaetzt(acq) {
+  return acq?.price_estimated ? html` · ${geschaetztKauf(tRaw('finance.kauf_geschaetzt'))}` : '';
+}
+
 /** @param {ManPosten} it @param {string} label @param {ManKauf | null} acq @param {Zeilenlage} lage */
 function pmRow(it, label, acq, lage){
   const cur = lage.cur;
@@ -216,7 +222,7 @@ function pmRow(it, label, acq, lage){
   // als Inline-Handler die CSP blockiert.
     return html`<tr class="zeiger" tabindex="0" ${ungeprueft(manArgs(it))}>
     <td class="fin-bild">${img}</td>
-      <td class="fin-name"><span class="fin-name-text">${ungeprueft(label)}${acq ? html` ${ungeprueft(condBadge(acq.condition))}` : ''} ${ungeprueft(besitzer(it, lage.mehrereKonten))}</span><span class="fin-unter">×${qty}</span></td>
+      <td class="fin-name"><span class="fin-name-text">${ungeprueft(label)}${acq ? html` ${ungeprueft(condBadge(acq.condition))}` : ''} ${ungeprueft(besitzer(it, lage.mehrereKonten))}</span><span class="fin-unter">×${qty}${unterGeschaetzt(acq)}</span></td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${acq?.created_at ? fmtDatum(acq.created_at) : ''}</td>
     <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
@@ -273,7 +279,7 @@ function setRow(s, acq, lage){
   return html`<tr class="zeiger" tabindex="0" data-click="openModal" data-arg="${s.set_number}">
   <td class="fin-bild">${s.image_local||s.image_url ? bildTag({ src: imgUrl(thumbUrl(s.image_local||s.image_url)||s.image_local||s.image_url, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
   <td class="fin-detail"><span class="nummer-klein">${s.set_number}</span></td>
-    <td class="fin-name">${s.name || '—'}${s.year ? html` <span class="fin-jahr">${s.year}</span>` : ''}${acq ? html` ${ungeprueft(condBadge(acq.condition))}` : ''} ${ungeprueft(besitzer(s, lage.mehrereKonten))}<span class="fin-unter">${s.set_number}${s.year ? html` · ${s.year}` : ''} · ×${qty}</span></td>
+    <td class="fin-name">${s.name || '—'}${s.year ? html` <span class="fin-jahr">${s.year}</span>` : ''}${acq ? html` ${ungeprueft(condBadge(acq.condition))}` : ''} ${ungeprueft(besitzer(s, lage.mehrereKonten))}<span class="fin-unter">${s.set_number}${s.year ? html` · ${s.year}` : ''} · ×${qty}${unterGeschaetzt(acq)}</span></td>
   <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
   <td class="fin-detail fin-datum">${dateSrc ? fmtDatum(dateSrc) : '—'}</td>
   <td class="fin-detail price-cell zahl">${ungeprueft(einstandZelle(purchase, qty, cur, acq))}</td>
@@ -388,8 +394,9 @@ export async function loadFinance(){
   const leer = !d.sets.length && !partsItems.length && !figsItems.length;
   G('tab-finance')?.classList.toggle('finanzen-leer', leer);
   loadPortfolioChart();
+  const geschaetzt = alleZeilen.flatMap(z => z.acquisitions || []).filter(a => a.price_estimated).length;
   zeigeKennzahlen({ basis, einstandAlle: einstand.alle, wertAlle: grandTotal, guv: gesamtGuv, cur,
-    fremdeWaehrung: pnlData?.totals?.kaufpreise_fremde_waehrung || 0 });
+    fremdeWaehrung: pnlData?.totals?.kaufpreise_fremde_waehrung || 0, geschaetzt });
   // Nichts erfasst: ein Leerzustand statt Tabellen, die fünfmal „Preis fehlt“ melden.
   if (leer) {
     setzeHtml(G('fin-tbl'), leerZustand({ ico: 'finanzen', titel: tRaw('finance.empty'), text: tRaw('finance.empty_text'),
@@ -422,9 +429,18 @@ export async function loadFinance(){
  * @param {unknown} stueck
  * @param {unknown} menge
  * @param {string} cur
- * @param {{ kaufpreis_original?: number, kaufpreis_waehrung?: string } | null} [acq]
+ * @param {{ kaufpreis_original?: number, kaufpreis_waehrung?: string, price_estimated?: boolean } | null} [acq]
  */
 function einstandZelle(stueck, menge, cur, acq) {
+  const betrag = einstandBetrag(stueck, menge, cur, acq);
+  return acq?.price_estimated ? geschaetztKauf(betrag) : betrag;
+}
+
+/**
+ * @param {unknown} stueck @param {unknown} menge @param {string} cur
+ * @param {{ kaufpreis_original?: number, kaufpreis_waehrung?: string } | null} [acq]
+ */
+function einstandBetrag(stueck, menge, cur, acq) {
   const p = stueck == null || String(stueck).trim() === '' ? NaN : Number(stueck);
   // In fremder Währung ohne Kurs zählt der Preis nicht mit, steht aber da: Ein Strich hiesse „unbekannt“.
   if (!Number.isFinite(p) && acq?.kaufpreis_original != null)
@@ -511,8 +527,8 @@ function basisAus(pt, ohnePreis) {
  * Die Kacheln über der Tabelle. Der Einstand ist immer bekannt; Gesamtwert und G&V nur, wenn es Marktpreise
  * gibt — sonst sagt die Kachel, für wie viele Positionen der Preis fehlt, statt „—“ zu zeigen.
  */
-/** @param {{ basis: Basis, einstandAlle: number, wertAlle: number, guv: number | null | undefined, cur: string, fremdeWaehrung?: number }} p */
-function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehrung = 0 }) {
+/** @param {{ basis: Basis, einstandAlle: number, wertAlle: number, guv: number | null | undefined, cur: string, fremdeWaehrung?: number, geschaetzt?: number }} p */
+function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehrung = 0, geschaetzt = 0 }) {
   G('fin-sum').dataset.geladen = '1';
   G('fin-sum').removeAttribute('aria-busy');
   const mitBasis = basis.bewertet > 0;
@@ -555,6 +571,8 @@ function zeigeKennzahlen({ basis, einstandAlle, wertAlle, guv, cur, fremdeWaehru
   const teile = [];
   if (basis.ohneMarkt > 0) teile.push(tRaw('finance.basis.ohne_markt', { n: basis.ohneMarkt, betrag: fmtN(basis.ohneMarktEinstand || 0, cur) }));
   if (basis.ohneKauf > 0) teile.push(tRaw('finance.basis.ohne_kauf', { n: basis.ohneKauf, betrag: fmtN(basis.ohneKaufWert || 0, cur) }));
+  // Geschätzte Kaufpreise rechnen mit, sind aber nicht bezahlt: Die Zahl gehört neben das Ergebnis.
+  if (geschaetzt > 0) teile.push(tRaw('finance.basis.geschaetzt', { n: geschaetzt }));
   if (!mitBasis || !teile.length) { zeile.hidden = true; zeile.textContent = ''; return; }
   zeile.hidden = false;
   setzeHtml(zeile, html`${ico('info')}<span><strong>${tRaw('finance.basis.gerechnet', { n: basis.bewertet, von: basis.gesamt })}</strong> ${teile.join(' · ')}</span>`);

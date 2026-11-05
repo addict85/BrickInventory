@@ -1,4 +1,5 @@
 import type { DbSchnittstelle, Zeile } from '../../../db/database';
+import * as db from '../../../db/database';
 import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES } from '../../../db/bestandsmenge';
 import type { ErfassungsArt } from '../../../db/bestandsmenge';
 
@@ -57,4 +58,16 @@ export async function legeErfassungZusammen(tx: DbSchnittstelle, art: Erfassungs
 
 export async function setzePreisGeschaetzt(tx: DbSchnittstelle, art: ErfassungsArt, id: number, preis: number): Promise<void> {
   await tx.run(`UPDATE ${SHAPES[art].table} SET ${SHAPES[art].price} = $1, price_estimated = true WHERE id = $2`, [preis, id]);
+}
+
+/** Beträge in die Währung des Kontos, zum Kurs des Tages (in_waehrung, 0077); ohne Kurs null. */
+export async function inWaehrungDesKontos(uid: number, betraege: (number | null)[], waehrungen: (string | null)[], tage: (string | null)[]) {
+  const zeilen = await db.all<{ i: string; k: number | null }>(
+    `SELECT t.i, in_waehrung(t.b, COALESCE(t.c, konto_waehrung($1)), konto_waehrung($1), COALESCE(t.d, CURRENT_DATE))::float8 AS k
+       FROM unnest($2::numeric[], $3::text[], $4::date[]) WITH ORDINALITY AS t(b, c, d, i)`,
+    [uid, betraege, waehrungen, tage]);
+  const waehrung = (await db.get<{ w: string }>('SELECT konto_waehrung($1) AS w', [uid]))?.w ?? 'EUR';
+  const aus: (number | null)[] = betraege.map(() => null);
+  for (const z of zeilen) aus[Number(z.i) - 1] = z.k == null ? null : Number(z.k);
+  return { waehrung, betraege: aus };
 }

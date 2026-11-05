@@ -610,6 +610,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     quantity: parseInt(G('ap-qty-inline')?.value)||1,
     unit_price: preis.wert,
     condition: G('ap-condition')?.value || 'N',
+    acquired_at: G('ap-date')?.value || null,
     owner_user_id: selectedOwner('ap-owner'),
     storage: selectedStorage('ap-storage'),
   });
@@ -620,7 +621,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     res.textContent=`${d.part_number} ${d.action==='added'?t('common.added'):t('common.updated')}`
       + (hinweisT ? ` — ${hinweisT}` : '');
     schliesseErfassen('part'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
-    G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value='';
+    G('ap-num-inline').value=''; G('ap-qty-inline').value='1'; G('ap-price-inline').value=''; G('ap-date').value='';
     leereLagerortFeld('ap-storage');
     if(colorSel) colorSel.selectedIndex=0;
     loadManualParts();

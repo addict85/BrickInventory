@@ -5,8 +5,7 @@ import { fehlerText, antwortSprache, type FehlerCode, type Sprache } from '../in
 /** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen.
  * Ausführlich: docs/begruendungen/src/auftraege/importAuftrag.ts.md#abschnitt */
 
-// Der Ereignisbus schiebt den Stand ohne Polling an verbundene Ströme; /status
-// bleibt als Rückfall.
+// Der Ereignisbus schiebt den Stand ohne Polling an verbundene Ströme; /status bleibt als Rückfall.
 import EventEmitter from 'events';
 import * as pgNotify from '../../db/pgNotify';
 export const csvImportBus = new EventEmitter();
@@ -46,7 +45,6 @@ export function buildJobStatus(job: ImportAuftrag, req?: any, sprache: Sprache =
     ok, err, warn,
     results,
     error:   job.error  || null,
-    // Woran die Oberfläche nach dem Neuladen erkennt, ob das Ergebnis noch frisch genug ist.
     ...(job.updated_at ? { beendet_am: new Date(job.updated_at).toISOString() } : {}),
   };
 }
@@ -57,8 +55,7 @@ export async function emitJobStatus(userId: number) {
     // Ohne Request ist die Sprache des Empfängers unbekannt; `code` reist mit.
     csvImportBus.emit(`progress:${userId}`, buildJobStatus(job));
   } catch (_) { /* Fortschritt geht notfalls über den Nachzieh-Timer im Stream */ }
-  // Der Bus ist prozesslokal, der Import läuft im Job-Prozess: NOTIFY trägt den
-  // Stand in den Web-Prozess.
+  // Der Bus ist prozesslokal, der Import läuft im Job-Prozess: NOTIFY trägt den Stand in den Web-Prozess.
   pgNotify.notify('csv_import_progress', String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
 
@@ -91,8 +88,7 @@ export async function setzeImportFort(userId: number, lauf: string):
   return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;
 }
 
-// ── Andere Importe als CSV melden sich hier an, statt selbst in die Tabelle
-// zu schreiben.
+// ── Andere Importe als CSV melden sich hier an, statt selbst in die Tabelle zu schreiben.
 
 const MELDE_ABSTAND_MS = 300;
 

@@ -54,6 +54,7 @@ export const ValuationAcquisition = z.looseObject({
   owner_user_id: z.number().int().nullable().optional(),
   kaufpreis_original: z.number().optional(),
   kaufpreis_waehrung: z.string().optional(),
+  price_estimated: z.boolean().optional(),
 });
 
 export const FigValuationItem = z.looseObject({

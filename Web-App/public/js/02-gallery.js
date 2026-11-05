@@ -1,10 +1,10 @@
 // Die Sammlung: Kennzahlen, Galerie (Kacheln und Liste), Set erfassen, Set-CSV-Import und Löschen. Neu
 // geladen wird sie auch, wenn ein tieferes Modul 'setsGeaendert' oder 'bestandGeaendert' meldet.
 import { abonniere } from './00-ereignisse.js';
-import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung } from './01-bausteine.js';
+import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung, geschaetztKauf } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { LANG, locale, t, tRaw} from '../i18n.js';
-import { esc, html, ungeprueft } from './00-escapen.js';
+import { html, ungeprueft } from './00-escapen.js';
 import { fehlerMeldung, api, apiDaten } from './01-api.js';
 import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './01-bilder.js';
 import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, zuruecksetzenKnopf, aktiverReiter, alle, fuegeHtmlEin, setzeHtml } from './01-dom.js';
@@ -287,7 +287,8 @@ function preisZeile(s){
   const kauf = s.avg_purchase_price ?? s.max_purchase_price;
   // Der Server sagt, woher kachel_preis stammt: Ohne Marktpreis ist es der Kaufpreis.
   const markt = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
-  const betrag = markt ? fmtN(s._price, CURRENCY) : (kauf != null ? fmtGeld(kauf, CURRENCY) : (s._price ? fmtGeld(s._price, CURRENCY) : ''));
+  const kaufBetrag = kauf != null ? fmtGeld(kauf, CURRENCY) : (s._price ? fmtGeld(s._price, CURRENCY) : '');
+  const betrag = markt ? fmtN(s._price, CURRENCY) : (s.kaufpreis_geschaetzt && kaufBetrag ? String(geschaetztKauf(kaufBetrag)) : kaufBetrag);
   // Ein Geschenk steht als Plakette beim Zustand: Im Preiskasten las es sich als Eigenschaft des Marktpreises.
   const pnl = istGeschenk(kauf) ? '' : pnlBadge(s._pnl_pct, kauf);
   if (!betrag && !pnl) return '';
@@ -423,6 +424,8 @@ async function doAddSet(){
   const preis = betragAusFeld('add-price');
   const purchase_price = preis.wert;
   const condition = G('add-condition')?.value || 'N';
+  const currency = preis.wert != null ? (G('add-currency')?.value || null) : null;
+  const date = G('add-date')?.value || null;
   // Zielkonto nur mitschicken, wenn die Auswahl überhaupt sichtbar ist. Ohne Haushalt schickt die Webapp gar
   // nichts, und der Server bleibt beim eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
@@ -431,7 +434,7 @@ async function doAddSet(){
   unbekanntZuruecksetzen();
   showProgress(tRaw('gallery.adding_set',{num}), false);
   try{
-    await streamRequest('/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
+    await streamRequest('/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage'),currency,date}, (ev)=>{
       handleSseEvent(ev, num);
       if(ev.step==='done' && ev.action==='exists'){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben (Marcos Festlegung,
@@ -448,10 +451,10 @@ async function doAddSet(){
         schliesseErfassen();
         setTimeout(()=>{
           hideProgress(); loadGallery(); loadStats();
-          G('add-num').value=''; if(G('add-price')) G('add-price').value='';
+          G('add-num').value=''; if(G('add-price')) G('add-price').value=''; if(G('add-date')) G('add-date').value='';
           leereLagerortFeld('add-storage');
           if (ev.katalog_offen) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
-          else toast(`Set ${esc(ev.set_number)} ${ev.action==='added'?t('common.added'):t('common.updated')}!`,'success');
+          else toast(`Set ${ev.set_number} ${ev.action==='added'?tRaw('common.added'):tRaw('common.updated')}!`,'success');
           // Background jobs still running — refresh all tabs periodically
           set_lastImportAt(Date.now());
           [3000, 8000, 15000, 25000].forEach(delay => setTimeout(()=>{
@@ -470,11 +473,10 @@ async function doAddSet(){
 // CSV import via SSE stream — Datei-Auswahl startet den Import direkt (analog Teile-Import)
 async function startSetCsvImport(){
   const fi=G('csv-file'); const datei = fi.files?.[0]; if(!datei){toast(tRaw('csv.select_file'),'error');return;}
-  /** @param {boolean} pruefen */
-  const formular = (pruefen) => { const fd=new FormData(); fd.append('file', datei); if (pruefen) fd.append('pruefen', '1'); return fd; };
+  const formular = () => { const fd=new FormData(); fd.append('file', datei); return fd; };
   // Erst lesen lassen, dann fragen: Der Import erhöht bei vorhandenen Sets die Menge, das Einzel-Erfassen
   // lehnt dasselbe Set ab. Wer eine Datei zweimal wählt, soll das vorher erfahren.
-  const vorab = await api('POST', '/v1/sets/import/csv', formular(true));
+  const vorab = await api('POST', '/v1/sets/import/csv?pruefen=1', formular());
   if(!vorab.success){ toast(vorab.error||tRaw('settings.error'),'error'); fi.value=''; return; }
   if((vorab.vorhanden ?? 0) > 0 && !await confirmDelete(tRaw('csv.vorhanden_titel'),
     tRaw('csv.vorhanden_text', { n: vorab.vorhanden ?? 0, nummern: (vorab.vorhanden_nummern || []).slice(0, 5).join(', ') }),
@@ -482,7 +484,7 @@ async function startSetCsvImport(){
   showProgress(tRaw('csv.import_title'), true);
   try{
     // Start import job (returns immediately)
-    const startData = await api('POST', '/v1/sets/import/csv', formular(false));
+    const startData = await api('POST', '/v1/sets/import/csv', formular());
     if(!startData.success){ hideProgress(); toast(startData.error||t('settings.error'),'error'); return; }
     const total = startData.total;
     // Übersprungene Zeilen nennen — der Import läuft trotzdem weiter, aber wer 500 Zeilen schickt und 498

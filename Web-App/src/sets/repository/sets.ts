@@ -144,7 +144,7 @@ const SET_SORTS = {
 
 /** acq_count und used_count sind ::int, die Preise numeric (Text). */
 export type SetListenZeile = { set_number: string; acq_count: number; used_count: number;
-  avg_purchase_price: string | null; image_local: string | null; owner_ids?: number[] | null };
+  avg_purchase_price: string | null; kaufpreis_geschaetzt?: boolean | null; image_local: string | null; owner_ids?: number[] | null };
 
 export type SetFilter = { search?: unknown; theme?: unknown; storage?: unknown; sort?: unknown;
   seite: { groesse: number; versatz: number } | null; themen: boolean };
@@ -254,7 +254,7 @@ export async function setListe(uids: number[], f: SetFilter) {
   const [sets, countRow, themeRows] = await Promise.all([
     // Ein gruppierter Scan per LEFT JOIN statt drei korrelierter Subqueries je Zeile.
     db.all<Zeile<SetListenZeile>>(`SELECT ${SET_COLS}${SET_OWNER_COL},
-      a.max_purchase_price, a.avg_purchase_price, a.letzter_kauf,
+      a.max_purchase_price, a.avg_purchase_price, a.kaufpreis_geschaetzt, a.letzter_kauf,
       COALESCE(a.acq_count, 0)::int AS acq_count, COALESCE(a.used_count, 0)::int AS used_count
       FROM ${setsFrom}
       LEFT JOIN (
@@ -266,6 +266,9 @@ export async function setListe(uids: number[], f: SetFilter) {
                SUM(purchase_price * quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})::numeric
                  / NULLIF(SUM(quantity) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')}), 0)
                                                        AS avg_purchase_price,
+               -- Nur geschätzte Kaufpreise: Die Kachel darf den Betrag nicht „bezahlt“ nennen.
+               bool_and(price_estimated) FILTER (WHERE purchase_price IS NOT NULL AND ${inKontowaehrung('set_acquisitions')})
+                                                       AS kaufpreis_geschaetzt,
                -- Die Kachel zeigt den letzten Kauf, nicht die Aufnahme des Sets.
                MAX(set_acquisitions.created_at)        AS letzter_kauf,
                COUNT(*)                                AS acq_count,

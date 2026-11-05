@@ -16,6 +16,15 @@ export function fmtN(v,cur){
 }
 
 /**
+ * Betrag mit ISO-Code statt Zeichen („260,66 USD“): für fremde Währungen, deren Zeichen mehrdeutig ist.
+ * @param {unknown} v @param {string} cur
+ */
+export function fmtGeldCode(v, cur){
+  if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '—';
+  return new Intl.NumberFormat(locale(), { style: 'currency', currency: cur, currencyDisplay: 'code', minimumFractionDigits: 2 }).format(Number(v));
+}
+
+/**
  * Ein erfasster Kaufpreis von 0 ist ein Geschenk; fehlt er (null), ist er unbekannt.
  * @param {unknown} kauf
  */

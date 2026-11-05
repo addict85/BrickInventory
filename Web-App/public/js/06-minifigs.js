@@ -370,6 +370,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     quantity:   parseInt(G('af-qty-inline')?.value)||1,
     unit_price: preis.wert,
     condition: G('af-condition')?.value || 'N',
+    acquired_at: G('af-date')?.value || null,
     owner_user_id: selectedOwner('af-owner'),
     storage: selectedStorage('af-storage'),
   });
@@ -381,7 +382,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
       + (hinweisF ? ` — ${hinweisF}` : '');
     // Der Dialog schliesst; das Ergebnis samt Preishinweis kommt als Meldung.
     schliesseErfassen('fig'); toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
-    G('af-num-inline').value=''; G('af-blnum-inline').value=''; G('af-qty-inline').value='1'; G('af-price-inline').value='';
+    G('af-num-inline').value=''; G('af-blnum-inline').value=''; G('af-qty-inline').value='1'; G('af-price-inline').value=''; G('af-date').value='';
     leereLagerortFeld('af-storage');
     loadMinifigs();
     // Mit Hinweis laenger stehen lassen: Drei Sekunden reichen fuer ein Haekchen, nicht fuer einen Satz, den
