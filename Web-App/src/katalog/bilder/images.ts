@@ -95,7 +95,7 @@ export function proxyCacheSchluessel(url: string): string {
   return crypto.createHash('sha1').update(proxyAdresse(url) ?? url).digest('hex');
 }
 
-// Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#proxycachepathfor
+// Ausführlich: docs/begruendungen/src/katalog/bilder/images.ts.md#proxycachepathfor
 export function proxyCachePathFor(url: string): string | null {
   if (!url) return null;
   return path.join(APP_ROOT, 'data', 'img_proxy_cache', proxyCacheSchluessel(url));

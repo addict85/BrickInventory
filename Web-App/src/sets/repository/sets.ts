@@ -99,7 +99,7 @@ export async function setMenge(dbh: Pick<DbSchnittstelle, 'get'>, konten: 'eines
 
 // Eine Zeile je Erfassung, damit Kaufpreis, Zustand und Datum beim Re-Import
 // 1:1 zurückkommen.
-// Ausführlich: docs/begruendungen/src/sets/setService.ts.md#sets-csv-sql
+// Ausführlich: docs/begruendungen/src/sets/repository/sets.ts.md#sets-csv-sql
 const SETS_CSV_SQL = `
   SELECT s.set_number,
          -- Hier stand CASE WHEN a.id IS NULL THEN s.quantity ELSE a.quantity.
@@ -137,7 +137,7 @@ const SET_SORTS = {
   year_desc:  's.year DESC NULLS LAST',
   price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
   price_asc:  'COALESCE(a.max_purchase_price, 0) ASC',
-  // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#set-sorts-2
+  // Ausführlich: docs/begruendungen/src/sets/repository/sets.ts.md#set-sorts-2
   qty_desc:   's.quantity DESC, s.added_at DESC',
   qty_asc:    's.quantity ASC, s.added_at DESC',
 };
@@ -242,7 +242,7 @@ export async function setListe(uids: number[], f: SetFilter) {
   const orderSql = ausTabelle(SET_SORTS, sort, SET_SORTS.added_desc);
 
   // Ohne page_size bleibt die Liste UNBEGRENZT.
-  // Ausführlich: docs/begruendungen/src/sets/abfragen.ts.md#getsets-limitsql
+  // Ausführlich: docs/begruendungen/src/sets/repository/sets.ts.md#getsets-limitsql
   const listParams = [...params];
   let limitSql = '';
   if (f.seite) {

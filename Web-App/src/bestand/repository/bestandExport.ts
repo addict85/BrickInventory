@@ -3,7 +3,7 @@ import { erfassungsTagSql } from '../../../db/bestandsmenge';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 // Eine Zeile je Erfassung in einer Abfrage statt einer je Teil.
-// Ausführlich: docs/begruendungen/src/teile/manuelleTeile.ts.md#parts-csv-sql
+// Ausführlich: docs/begruendungen/src/bestand/repository/bestandExport.ts.md#parts-csv-sql
 const PARTS_CSV_SQL = `
   SELECT p.part_number,
          -- Die Menge der ERFASSUNG, ohne Rueckfall auf die Zeile: Migration

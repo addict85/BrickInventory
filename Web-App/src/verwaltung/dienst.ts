@@ -26,7 +26,7 @@ import { anfragenJeMinute, bildbedarfAnstossen } from '../katalog/bilder/bildbed
 import { fehlerWerfen, type FehlerCode } from '../infra/fehlerTexte';
 import { alsAbrufFehler, pruefeBricklinkZugang, ausRetryWarteschlange, pruefeBricksetZugang, pruefeRebrickableZugang } from '../katalog/quellen';
 
-// Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#job-frisch-ms
+// Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#job-frisch-ms
 const JOB_FRISCH_MS = 3 * 60_000;
 
 const QUELLEN: Record<string, () => Promise<void>> = {
@@ -241,11 +241,11 @@ export async function jobUebersicht() {
     : null;
   // Katalogbilder gehören in DIESE Kachel, sonst meldete sie „alle gecacht",
   // während der Hintergrund-Job nachlädt.
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-katalogoffen
+  // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-katalogoffen
   const katalogOffen = (await verwaltung.katalogBilderOffen().catch(meldeUndLiefere('verwaltung:katalogBilderOffen', null)))?.c ?? 0;
   // „läuft" heisst: hat kürzlich etwas getan — eine steckengebliebene
   // Warteschlange sähe sonst aus wie eine arbeitende.
-  // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#get-admin-jobs-letzterlauf
+  // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#get-admin-jobs-letzterlauf
   let letzterLauf: { zeit?: number } | null = null;
   try {
     const roh = await liesZustand('imgqueue_last_run');
@@ -455,7 +455,7 @@ export async function katalogBilderEinreihen(alleErneut: boolean) {
       ? await vergissFehlend(zuVergessen.map(r => r.cache_key))
       : 0;
     // Was schon fertig ist, wird nicht wieder eingereiht.
-    // Ausführlich: docs/begruendungen/routes/api_v1/admin.ts.md#post-admin-catalog-images-fs
+    // Ausführlich: docs/begruendungen/src/verwaltung/dienst.ts.md#post-admin-catalog-images-fs
         let vorhanden: Set<string> = new Set();
     try {
       const namen = new Set<string>(fs.readdirSync(SET_IMAGES_DIR));

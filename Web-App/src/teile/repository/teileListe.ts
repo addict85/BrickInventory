@@ -143,7 +143,7 @@ function teileWo(uids: number[], f: TeileFilter) {
 }
 
 /** Mit Setfilter ohne Set-Menge, denn dort geht es um die Teile EINES Sets.
- * Ausführlich: docs/begruendungen/src/teile/abfragen.ts.md#getparts-joinclause */
+ * Ausführlich: docs/begruendungen/src/teile/repository/teileListe.ts.md#getparts-joinclause */
 export async function seiteLive(uids: number[], f: TeileFilter, s: Seite) {
   const { where, params, pi } = teileWo(uids, f);
   // ::int: Der JSON-Typ von total_quantity darf nicht vom Zweig abhängen.

@@ -13,7 +13,7 @@ const router = express.Router();
 
 // scopeIds(): Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht
 // umgekehrt. Ein erstes Segment ohne Benutzer-ID wird abgewiesen.
-// Ausführlich: docs/begruendungen/server.ts.md#servedatafile
+// Ausführlich: docs/begruendungen/routes/datenDateien.ts.md#servedatafile
 router.get('/data/uploads/*pfad', requireLoginOrToken, async (req: WildcardRequest, res: Response) => {
   const userId = angemeldeteNutzerId(req);
   // Rechnungen und Gutscheine: nie in einen Zwischenspeicher, auch keine Absage.

@@ -43,7 +43,7 @@ const KOPFFELDER = {
           false AS is_spare, NULL::text AS storage`,
 } as const;
 
-// Ausführlich: docs/begruendungen/src/bestand/gemeinsam.ts.md#katalogjoin
+// Ausführlich: docs/begruendungen/src/bestand/repository/gemeinsam.ts.md#katalogjoin
 const KATALOGJOIN = {
   parts: `${teilSichtJoin('x.user_id', 'x.part_number', 'x.color_id')}
           LEFT JOIN set_teile spc ON spc.set_number  = x.set_number

@@ -18,24 +18,6 @@ getSets() liest Teile, und die Minifiguren-Kennzahlen lesen Sets. Beides
 geht in EINE Richtung, es entsteht also kein Kreis.
 ```
 
-<a id="set-sorts-2"></a>
-## Abschnitt
-
-```text
-Anzahl der besessenen Exemplare.
-
-`s.quantity` ist hier KEINE Tabellenspalte mehr — die ist mit Migration
-0036 weg. `s` ist in beiden Zweigen von `setsFrom` eine Unterabfrage, und
-deren Mengenspalte heisst `quantity` (aus db/bestandsmenge.ts). Diese
-Sortierung bleibt dadurch wörtlich stehen, und das ist Absicht: Der Name
-nach aussen soll sich nicht ändern, nur seine Herkunft.
-
-Zweiter Sortierschlüssel: Ohne ihn stehen alle Sets mit derselben Anzahl —
-und das sind fast alle, nämlich die mit genau einem Exemplar — in einer
-von Postgres nicht festgelegten Reihenfolge. Beim Blättern könnte
-dasselbe Set dadurch zweimal oder gar nicht erscheinen.
-```
-
 <a id="getsets-set-cols"></a>
 ## `SET_COLS`
 
@@ -119,30 +101,6 @@ sie anfassen kann). Jeder Zugriff darauf wurde damit zweideutig.
 GEMESSEN an test/api-parity.test.js, das nur initSchema() ruft und keine
 Migrationen: „column reference \"name\" is ambiguous", und die ganze
 Set-Liste antwortete mit 500.
-```
-
-<a id="getsets-limitsql"></a>
-## `limitSql`
-
-```text
-Ohne page_size bleibt die Set-Liste UNBEGRENZT.
-
-Hier stand kurzzeitig eine Obergrenze. Das war falsch, und der Grund hat
-sich seither GEÄNDERT — die frühere Begründung stand noch hier:
-
-  „Die Android-App blättert die Galerie NICHT (BrickApiService.getSets
-   kennt keinen page-Parameter)."
-
-Das stimmt nicht mehr. SetsRepository.getSets nimmt page und pageSize,
-und loadMoreSets fordert `galleryPage + 1` an: BEIDE Clients blättern.
-Der Satz stand an drei Stellen, berichtigt wurde nur eine (die Notiz in
-routes/api_v1/sets.ts) — dieselbe Falle wie bei jeder anderen Regel, die
-mehrfach niedergeschrieben ist.
-
-Unbegrenzt bleibt die Liste trotzdem, aus dem Grund, der DORT steht: Der
-Weg ist absichtlich offen für Aufrufer, die alles wollen — Skripte und
-ältere App-Stände, denen eine stille Grenze ab dem Grenzwert Sets
-unterschlüge. Wer blättert, schickt page_size mit und bekommt die Grenze.
 ```
 
 <a id="getsets-2"></a>

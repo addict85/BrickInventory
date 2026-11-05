@@ -248,36 +248,6 @@ Cookie, dann fasst express-session den Speicher gar nicht erst an
 Anfragen ohne Cookie). Ihre eigene Frist ist TOKEN_IDLE_DAYS.
 ```
 
-<a id="servedatafile"></a>
-## `serveDataFile`
-
-```text
-Ausliefern einer Datei unter data/<subDir>/<benutzer-id>/…
-
-── Wer darf das lesen? ─────────────────────────────────────────────────────
-Hier stand `parseInt(segments[0]) !== userId` — also „nur deine eigene ID".
-Das war richtig, solange ein Konto für sich allein stand, und passte nach dem
-Haushalt an zwei Stellen nicht mehr:
-
-  • Das Hauptkonto SIEHT die Anleitung eines Unterkontos (getSet listet sie
-    mit user_id = ANY(uids), also haushaltsweit) — und lief beim Klick in
-    ein 403. Sichtbar, aber nicht zu öffnen.
-  • Nach dem Verschieben eines Sets gehört die Anleitungs-Zeile dem neuen
-    Konto, ihr local_path zeigt aber weiter in den Ordner des alten
-    (moveSetBetweenAccounts kopiert den Pfad wörtlich). Das Hauptkonto
-    bekam also für seine EIGENE Zeile 403.
-
-Deshalb entscheidet jetzt scopeIds() — dieselbe Stelle, die überall sonst
-beantwortet, wessen Daten jemand sehen darf. Die Benutzer-ID im Pfad ist
-damit das, was sie ohnehin schon war: eine Ablagestruktur, keine
-Zugriffsregel. Die Regel steht in src/haushalt/haushalt.ts.
-
-Die Asymmetrie bleibt gewahrt: Ein Unterkonto hat nur sich selbst im
-Blickfeld (resolveHousehold: memberIds = [self, …eigene Subs]), kommt also
-NICHT an die Uploads des Hauptkontos. Geprüft wird weiterhin gegen eine
-Liste erlaubter IDs, nicht gegen „irgendwer im System".
-```
-
 <a id="abschnitt-4"></a>
 ## Abschnitt
 
@@ -577,44 +547,4 @@ Der Handler laeuft auch beim (Wieder-)Verbinden ohne Signal — dann mit
 undefined als Payload (siehe db/pgNotify.ts). Genau richtig: Was
 waehrend einer Trennung passiert ist, weiss dieser Worker nicht, also
 faengt er ohne gemerkten Stand neu an.
-```
-
-<a id="electprimaryworker-manualparts"></a>
-## `manualParts`
-
-```text
-Manuell erfasste Teile mit fehlendem lokalen Bild — im selben Job
-dauerhaft in den lokalen Cache laden (statt nur über den Proxy).
-
-Ohne user_id, und das ist der Punkt: Das Bild haengt am Teil-Farb-Paar
-und liegt seit Migration 0034 EINMAL im Katalog. Vorher stand diese
-Abfrage auf parts und lieferte dasselbe Paar je Konto erneut — der
-Job lud dieselbe Datei mehrfach herunter.
-
-Der JOIN auf parts bleibt: Geladen werden nur Bilder von Teilen, die
-jemand tatsaechlich manuell erfasst hat. Set-Teile deckt
-downloadSetImages() oben ueber set_parts_catalog ab.
-```
-
-<a id="electprimaryworker-figstofetch"></a>
-## `figsToFetch`
-
-```text
-Minifiguren — ALLE, nicht nur manuell erfasste.
-
-Bisher stand hier `source='manual'`. Minifiguren aus Sets liefen
-dadurch dauerhaft über /api/img-proxy: Anmeldeprüfung, Cache-Suche
-und Stream bei jeder einzelnen Kachel, beim ersten Anzeigen dazu ein
-CDN-Roundtrip je Bild. Set-Bilder liegen längst lokal und gehen über
-express.static — deshalb war die Minifiguren-Ansicht spürbar träger.
-
-Das DISTINCT ON ueber die Nummer stand hier, weil die Abfrage auf
-minifigs lief und dieselbe Figur je Konto eine Zeile hatte. Seit
-Migration 0034 steht Name und Bild EINMAL im Katalog, und
-fig_number ist dort der Primaerschluessel — die Verdichtung erledigt
-die Tabelle.
-
-Das EXISTS haelt die Menge bei dem, was die Abfrage vorher lieferte:
-Figuren, die jemand besitzt. Der Katalog kennt auch Figuren aus
-Set-Teilelisten, die niemand hat.
 ```

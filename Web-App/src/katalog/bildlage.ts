@@ -13,9 +13,9 @@ export async function bilderFuerNachlauf() {
   const [sets, teile, figuren] = await Promise.all([
     repo.setsMitFehlendenKatalogbildern().catch(meldeUndLiefere('bild-nachlauf:sets', [])),
     // Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten.
-    // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-manualparts
+    // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-manualparts
     repo.manuelleTeileOhneBild().catch(meldeUndLiefere('bild-nachlauf:manualParts', [])),
-    // Ausführlich: docs/begruendungen/server.ts.md#electprimaryworker-figstofetch
+    // Ausführlich: docs/begruendungen/src/katalog/bildlage.ts.md#electprimaryworker-figstofetch
     repo.figurenOhneBild().catch(meldeUndLiefere('bild-nachlauf:figsToFetch', [])),
   ]);
   return { sets, teile, figuren };

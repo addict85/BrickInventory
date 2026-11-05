@@ -64,3 +64,16 @@ einmal ausgeliefert wird.
 @param {string} publicRelPath z. B. "/images/sets/10283-1.jpg"
 @returns {string|null}
 ```
+
+<a id="proxycachepathfor"></a>
+## `proxyCachePathFor`
+
+```text
+Wo läge das Bild dieser CDN-Adresse im Proxy-Cache?
+
+Die Regel (SHA1 der Adresse, Ablage unter data/img_proxy_cache) stand bisher
+NUR mitten in der Route. Für die Bild-Diagnose (Nachtrag 50) wird sie von
+aussen gebraucht — und eine zweite, abgeschriebene Fassung anderswo wäre
+genau die Sorte Duplikat, die irgendwann auseinanderläuft und dann falsche
+Auskunft gibt.
+```

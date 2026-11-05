@@ -12,7 +12,7 @@ const BEDINGUNG: Record<LagerTabelle, (ab: number) => string> = {
 
 /** Über den Namen im Vorrat des EIGENEN Kontos: Im Haushalt kann derselbe Name
  * in zwei Konten mit je eigener ID liegen.
- * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#setzelagerort-setzen */
+ * Ausführlich: docs/begruendungen/src/bestand/repository/lagerort.ts.md#setzelagerort-setzen */
 export async function ordneOrtZu(dbh: DbSchnittstelle, art: LagerTabelle, besitzer: number[], ort: string | null,
                                  schluessel: string[]): Promise<number> {
   const r = await dbh.run(

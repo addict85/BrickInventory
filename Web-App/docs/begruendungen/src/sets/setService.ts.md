@@ -397,35 +397,6 @@ Setnummer im Haushalt ueberhaupt?". Ohne diese Bedingung legte ein
 Mengenregler eine Zeile fuer eine Nummer an, die niemand haelt.
 ```
 
-<a id="sets-csv-sql"></a>
-## `SETS_CSV_SQL`
-
-```text
-Shared logic to build the Sets CSV export content. Used by both the
-standalone CSV download and the combined ZIP export in settings.js.
-Eine Zeile pro Erfassung, damit Kaufpreis, Zustand und Datum je Kauf erhalten
-bleiben und beim Re-Import 1:1 wiederhergestellt werden. Sets ohne Erfassungen
-fallen auf die Set-Zeile zurück — die trägt seit Migration 0032 nur noch die
-Menge, Kaufpreis und Zustand bleiben dann leer bzw. 'N'.
-
-── Warum ein LEFT JOIN und keine Schleife ──────────────────────────────────
-Vorher lief hier eine Abfrage JE SET. Bei 700 Sets waren das 701 Hin- und
-Rückwege zur Datenbank; jeder einzelne war schnell, die Summe nicht. Der
-Export ist die Stelle, an der ein Nutzer am ehesten den GANZEN Bestand
-anfasst — also genau die, an der sich das am stärksten auswirkt.
-
-Der LEFT JOIN erzeugt dieselben Zeilen: zu jedem Set entweder eine je
-Erfassung oder, wenn es keine gibt, genau eine mit NULL-Erfassungsspalten.
-
-── Die Falle dabei ─────────────────────────────────────────────────────────
-Die Unterscheidung „Erfassung vorhanden, aber ohne Preis" gegen „keine
-Erfassung" bleibt wichtig, auch wenn der frühere Rückfall auf
-s.purchase_price/s.condition mit Migration 0032 weggefallen ist: Zu einer
-vorhandenen Erfassung ohne Preis gehört ein leeres Feld. Das ergibt sich
-jetzt von selbst, weil a.purchase_price dann NULL ist.
-csv-export-acquisitions-db.test.js prüft genau diesen Fall.
-```
-
 <a id="buildsetscsv-rows"></a>
 ## `rows`
 

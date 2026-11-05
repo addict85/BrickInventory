@@ -25,7 +25,7 @@ export async function zweiterFaktorPflicht(req: Request): Promise<boolean> {
 
 /** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
  * einem vertrauten Proxy kommt.
- * Ausführlich: docs/begruendungen/src/konto/loginLimiter.ts.md#ipof */
+ * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#ipof */
 export function adresse(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
@@ -37,7 +37,7 @@ export function anmelden(req: Request, username: unknown, password: unknown, cod
 
 /** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
  * Anfrage die neue ID schon kennt.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#establishsession */
+ * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#establishsession */
 export async function establishSession(req: Request, data: { userId: number; username: string; isAdmin: boolean;
                                                        mussPasswortAendern?: boolean; passwortBestaetigtAm?: number }): Promise<void> {
   // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
@@ -74,7 +74,7 @@ export function gnadenfristVerbrauchen(req: Request): boolean {
 
 /** Der ganze Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler nicht, ob
  * es ein Verwalter ist. ?token= zählt nicht, nur der Authorization-Header.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#resolveuserid */
+ * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#resolveuserid */
 export async function resolveUserId(req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
@@ -112,7 +112,7 @@ export function loginOrTokenGuard(opts: { timeoutMs?: number } = {}) {
 export const requireLoginOrToken = loginOrTokenGuard();
 
 /** EINE Antwort für Sitzung und Token: Vorher stand die Frage in zwei Reihenfolgen.
- * Ausführlich: docs/begruendungen/src/konto/auth.ts.md#nutzerid */
+ * Ausführlich: docs/begruendungen/src/konto/http/anmeldung.ts.md#nutzerid */
 export function nutzerId(req: Request): number | null {
   const roh = req.session?.userId ?? req.tokenUserId ?? req.apiUser?.user_id;
   if (roh == null) return null;
