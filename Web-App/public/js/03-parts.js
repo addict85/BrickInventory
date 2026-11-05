@@ -1,7 +1,7 @@
 import { ladeAnzeige, skelettKacheln, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { bildTag, ico, G, api, esc, escHex, escHtml, escJs, escUrl, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf } from './01-core.js';
+import { bildTag, G, api, esc, escHex, escHtml, escJs, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf } from './01-core.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { allSets, teileAufschluesselung } from './02-gallery.js';
 import { loadManualParts, manualPartsCache, renderManualParts } from './06-minifigs.js';

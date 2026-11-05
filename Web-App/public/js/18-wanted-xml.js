@@ -18,7 +18,7 @@
 // der Sache, um die es geht.
 import { registerActions } from './00-registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
-import { bildTag, platzhalterInhalt, ico, G, XML_ICON_SVG, api, esc, escHex, escUrl, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
+import { bildTag, platzhalterInhalt, ico, G, XML_ICON_SVG, apiRoh, esc, escHex, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
 import { loadBrickColors, loadManualParts, loadManualFigsTable } from './06-minifigs.js';
 import { loadGallery } from './02-gallery.js';
 
@@ -32,8 +32,6 @@ import { loadGallery } from './02-gallery.js';
  * oder eben nie.
  */
 let _datei = null;
-/** 'part' | 'fig' | 'set' — woher der Knopf kam. Steuert nur, was danach neu lädt. */
-let _art = 'part';
 /** index → { rbId?, rbFarbe? } — was in der Tabelle geändert wurde. */
 let _korrekturen = new Map();
 /** Der letzte Bericht, für die Tabelle. */
@@ -96,7 +94,6 @@ async function wantedXmlGewaehlt() {
   // nicht grau, also wird die Eingabe hier abgewiesen.
   if (_laeuft) { toast(tRaw('import.running'), 'info'); el.value = ''; return; }
   _datei = el.files[0];
-  _art = el.dataset.art || 'part';
   // Das Feld leeren: Sonst löst die GLEICHE Datei beim zweiten Mal kein
   // change-Ereignis aus, und der Dialog ginge nicht wieder auf.
   el.value = '';
@@ -251,7 +248,7 @@ async function liesWirklich(schreiben) {
   zeichneFortschritt(null);
   let d;
   try {
-    const r = await fetch(`/api/v1/wanted-list/import/xml?${p}`, { method: 'POST', body: fd });
+    const r = await apiRoh('POST', `/v1/wanted-list/import/xml?${p}`, { body: fd });
     d = await liesStrom(r);
   } catch { d = {}; }
   zeichneFortschritt(null);

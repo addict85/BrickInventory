@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
+import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
 import { detailZeile, listeLadefehler, skelettZeilen } from './01-bausteine.js';
 import { alarmBlock, diagrammBreite, ladeAlarm, priceChartSVG, renderMarketRows, setzeAlarmFeld } from './07-admin.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten, loadGallery, loadStats } from './02-gallery.js';
@@ -621,8 +621,7 @@ async function importMerklisteCsv() {
   const status = G('mk-status');
   if (status) status.textContent = tRaw('import.running');
   try {
-    const r = await fetch('/api/v1/wanted/import/csv', { method: 'POST', body: fd });
-    const d = await r.json();
+    const d = await api('POST', '/v1/wanted/import/csv', fd);
     fi.value = '';
     if (status) status.textContent = '';
     if (d.success) {

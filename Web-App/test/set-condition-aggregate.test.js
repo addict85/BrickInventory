@@ -685,23 +685,6 @@ test('genau EINE Zustandsauflösung für Einzelsets — resolveSetCondition', ()
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
-test('die Sparkline zeichnet avg_price, nicht qty_avg_price', () => {
-  // Der Server wählte längst den richtigen Zustand (resolveSetCondition),
-  // aber die Sparkline zeichnete `qty_avg_price` — eine andere Preisspalte
-  // desselben, korrekt aufgelösten Zustands. qty_avg_price kann fehlen oder
-  // 0 sein, während avg_price vorhanden ist; das erzeugte einen Graphen-Abfall,
-  // der mit dem tatsächlichen Marktpreis nichts zu tun hatte. Android hatte
-  // dieselbe Stelle (SetDetailComponents.kt) längst richtig — der Webapp fehlte
-  // der Fix.
-  const src = require('./helpers/sources').adminQuelle();
-  const fn = src.slice(src.indexOf('function sparklineSVG'),
-                       src.indexOf('function sparklineSVG') + 1000);
-  assert.match(fn, /const vals = data\.map\(d=>d\.avg_price\|\|d\.qty_avg_price\|\|d\.total\|\|0\);/,
-    'avg_price muss vor qty_avg_price stehen');
-  assert.doesNotMatch(fn, /const vals = data\.map\(d=>d\.qty_avg_price\|\|d\.total\|\|0\);/,
-    'Die alte, fehlerhafte Reihenfolge darf nicht mehr vorkommen');
-});
-
 // Die Datenbank-Sperre des Neuaufbaus prüft test/teile-zusammenfassung-sperre-db.test.js.
 
 test('CDN-Anfragen erzwingen IPv4', () => {

@@ -1,7 +1,7 @@
 import { detailZeile, ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, escUrl, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
+import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, esc, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { PARTS_ICON_SVG, handleSseEvent, hideProgress, leereLagerortFeld, loadGallery, loadStats, selectedOwner, selectedStorage, showProgress, streamFertig, streamRequest } from './02-gallery.js';
 import { _lastImportAt , set_lastImportAt} from './07-admin.js';
@@ -467,7 +467,7 @@ async function addCatalogSetToGallery(){
   closeCatModal();
   showProgress(t('gallery.adding_set', { num }), false);
   try {
-    await streamRequest('/api/v1/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id, storage }, (ev)=>{
+    await streamRequest('/v1/sets/add-stream', { set_number: num, quantity: qty, purchase_price, condition, owner_user_id, storage }, (ev)=>{
       handleSseEvent(ev, num);
       if (ev.step === 'done') {
         streamFertig();

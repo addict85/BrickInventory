@@ -1,5 +1,5 @@
 import { echt, registerActions } from './00-registry.js';
-import { locale, t, tRaw } from '../i18n.js';
+import { t, tRaw } from '../i18n.js';
 import { fmtDatum, ico, G, api, esc, toast } from './01-core.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 import { loadGallery, loadStats } from './02-gallery.js';

@@ -1,7 +1,7 @@
 import { bindTabs } from './02-gallery.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, checkAuth, esc, escUrl, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
+import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, apiRoh, checkAuth, esc, imgUrl, knopfBesetzt, thumbUrl, toast } from './01-core.js';
 import { initScrollbalken } from './15-scrollbar.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
 
@@ -350,7 +350,6 @@ async function plFuelleBestand() {
 }
 
 function plRenderTable() {
-  let _imgLogged = false;
   if (!_plParts?.length) { G('pl-result').innerHTML = `<div class="empty"><p>${t('parts.none_found')}</p></div>`; return; }
 
   // Group by color
@@ -417,12 +416,7 @@ async function plExportPdf() {
     }));
 
     // Step 1: Async PDF-Job starten
-    const startResp = await fetch('/api/v1/sets/partslist-pdf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ sets: _plSets, parts: pdfParts })
-    });
+    const startResp = await apiRoh('POST', '/v1/sets/partslist-pdf', { body: { sets: _plSets, parts: pdfParts } });
     if (!startResp.ok) throw new Error(`HTTP ${startResp.status}`);
     const { jobId } = await startResp.json();
     if (!jobId) throw new Error(t('pdf.no_job_id'));
@@ -464,7 +458,7 @@ async function plExportPdf() {
     });
 
     // Step 3: Download
-    const dlResp = await fetch(`/api/v1/sets/partslist-pdf/download/${jobId}`, { credentials: 'include' });
+    const dlResp = await apiRoh('GET', `/v1/sets/partslist-pdf/download/${jobId}`);
     if (!dlResp.ok) throw new Error(t('pdf.download_error',{status:dlResp.status}));
     const blob = await dlResp.blob();
     const url = URL.createObjectURL(blob);
@@ -486,7 +480,7 @@ async function pollPdfStatus(jobId, btn, finish, startEta) {
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 1500));
     try {
-      const r = await fetch(`/api/v1/sets/partslist-pdf/status/${jobId}`, { credentials: 'include' });
+      const r = await apiRoh('GET', `/v1/sets/partslist-pdf/status/${jobId}`);
       const { status, error, etaSeconds } = await r.json();
       if (status === 'running' && etaSeconds != null && startEta) startEta(etaSeconds);
       if (status === 'done') { finish(null); return; }

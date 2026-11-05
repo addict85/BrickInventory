@@ -79,7 +79,7 @@ function webAufrufe() {
     const src = ohneKommentare(fs.readFileSync(path.join(JS, datei), 'utf8'));
     const zeileVon = (i) => src.slice(0, i).split('\n').length;
 
-    for (const m of src.matchAll(/api\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
+    for (const m of src.matchAll(/\bapi(?:Roh)?\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
       const lit = leseLiteral(src, m.index + m[0].length);
       if (!lit || !lit.text.startsWith('/')) continue;
       out.push({ datei, zeile: zeileVon(m.index), verb: m[1], pfad: pfadFormV1('/api' + lit.text) });

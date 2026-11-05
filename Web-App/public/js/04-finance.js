@@ -1,11 +1,11 @@
 import { ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
-import { colorName, locale, t, tRaw} from '../i18n.js';
-import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, api, esc, escJs, escUrl, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
+import { colorName, t, tRaw } from '../i18n.js';
+import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, leerZustand, ico, CURRENCY, G, api, esc, escJs, fmtN, imgUrl, thumbUrl, toast } from './01-core.js';
 import { scopeMode, scopeQuery } from './14-scope.js';
 import { _pnlCache, condBadges, ownerBadges, pnlBadge } from './02-gallery.js';
 import { loadCacheStats } from './05-settings.js';
-import { diagrammBreite, openModal, portfolioChartSVG, zeitpunkt } from './07-admin.js';
+import { diagrammBreite, portfolioChartSVG, zeitpunkt } from './07-admin.js';
 
 // ═══ Finanzen: Bewertung, G&V, Portfolio-Chart ═══
 // Teil von app.js — die Dateien in public/js/ werden in nummerierter

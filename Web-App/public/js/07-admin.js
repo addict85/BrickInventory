@@ -2,13 +2,12 @@ import { echt, registerActions } from './00-registry.js';
 import { detailZeile, oderStrich, skelettZeilen } from './01-bausteine.js';
 import { renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fmtDatum, ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, imgUrl, toast , set_settingsCache, leseBetrag, betragFuerFeld } from './01-core.js';
+import { fmtDatum, ico, CURRENCY, G, ME, _settingsCache, api, esc, escJs, fmtN, fullUrl, toast, set_settingsCache, leseBetrag, betragFuerFeld } from './01-core.js';
 import { initStorageSelects } from './02-gallery.js';
-import { _pnlCache, allSets, setAllSets, applySetAggregate, autosaveSet, closeModal, curSet, loadGallery, pnlBadge, renderInstructions, updateGalleryPrices , set_pnlCache, set_curSet} from './02-gallery.js';
-import { diagrammLeer, loadFinance } from './04-finance.js';
+import { _pnlCache, allSets, setAllSets, curSet, pnlBadge, renderInstructions, updateGalleryPrices, set_pnlCache, set_curSet } from './02-gallery.js';
+import { diagrammLeer } from './04-finance.js';
 import { scopeQuery } from './14-scope.js';
 import { loadApiLimits, loadCacheTtl, loadSettings } from './05-settings.js';
-import { deleteManualFig, deleteManualPart, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
 
 // ═══ Confirm-Dialog, Config-Export/Import, API-Tokens, Job-Status ═══
 // (Kaufpreis-Modal und Detailfenster lagen früher ebenfalls hier —
@@ -105,8 +104,7 @@ async function importConfig() {
   st.textContent = tRaw('settings.importing');
   const fd = new FormData(); fd.append('file', fi.files[0]);
   try {
-    const r = await fetch('/api/v1/settings/import', { method: 'POST', body: fd });
-    const d = await r.json();
+    const d = await api('POST', '/v1/settings/import', fd);
     if (d.success) {
       // Welche SMTP-Werte die Datei mitbrachte, steht dabei: Sie werden nur im Formular gesetzt.
       const smtp = (d.smtp_uebergangen || []).join(', ');
@@ -159,61 +157,6 @@ export async function enrichGalleryWithPrices(){
   updateGalleryPrices();
 }
 
-// Sparkline SVG renderer
-function sparklineSVG(data, width=260, height=44){
-  if(!data||data.length<2) return `<span data-stil="color:var(--mut);font-size:var(--fs-1)">${t('detail.no_history')}</span>`;
-  // avg_price ist die massgebliche Grösse (siehe die frühere Preis-Umstellung
-  // in dieser Sitzung) — qty_avg_price kann für denselben, korrekt
-  // aufgelösten Zustand trotzdem fehlen oder abweichen. Genau das erzeugte
-  // den weiterhin gemeldeten Graphen-Fehler: Der Server wählte inzwischen
-  // längst den richtigen Zustand, aber diese Zeile hier zeichnete eine andere
-  // Preisspalte davon. Android hatte dieselbe Stelle bereits richtig
-  // (avgPrice ?: qtyAvgPrice) — der Webapp fehlte der Fix.
-  const vals = data.map(d=>d.avg_price||d.qty_avg_price||d.total||0);
-  const min=Math.min(...vals), max=Math.max(...vals), range=max-min||1;
-  const pts = vals.map((v,i) => {
-    const x = (i/(vals.length-1))*width;
-    const y = height - ((v-min)/range)*(height-6) - 3;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  const lastVal = vals[vals.length-1];
-  const color = '#2563eb';
-  const purchaseColor = '#16a34a';
-  const areaStart = `0,${height}`;
-  const areaEnd   = `${width},${height}`;
-  const area = `${areaStart} ${pts} ${areaEnd}`;
-  const hasPurchasePoint = !!data[0]?.is_purchase_price;
-  const purchaseDot = hasPurchasePoint
-    ? `<circle cx="0" cy="${(height-((vals[0]-min)/range)*(height-6)-3).toFixed(1)}" r="3.5" fill="${purchaseColor}" stroke="white" stroke-width="1"><title>${esc(t('detail.purchase_price'))}</title></circle>`
-    : '';
-
-  // Format first/last date as DD.MM.YYYY
-  function fmtD(entry) {
-    const raw = entry?.recorded_at || entry?.day || '';
-    if (!raw) return '';
-    try {
-      const d = new Date(raw);
-      return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
-    } catch(_) { return ''; }
-  }
-  const dateFirst = fmtD(data[0]);
-  const dateLast  = fmtD(data[data.length-1]);
-  const labelHeight = dateFirst || dateLast ? 14 : 0;
-  const totalH = height + labelHeight;
-
-  return `<svg viewBox="0 0 ${width} ${totalH}" xmlns="http://www.w3.org/2000/svg" data-stil="width:100%" data-hoehe-px="${totalH}">
-    <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${color}" stop-opacity=".18"/>
-      <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-    </linearGradient></defs>
-    <polygon points="${area}" fill="url(#sg)"/>
-    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>
-    <circle cx="${(vals.length-1)/(vals.length-1)*width}" cy="${(height-((lastVal-min)/range)*(height-6)-3).toFixed(1)}" r="3" fill="${color}"/>
-    ${purchaseDot}
-    ${dateFirst ? `<text x="1" y="${totalH}" font-size="9" fill="var(--mut)" text-anchor="start" font-family="inherit">${dateFirst}</text>` : ''}
-    ${dateLast  ? `<text x="${width-1}" y="${totalH}" font-size="9" fill="var(--mut)" text-anchor="end" font-family="inherit">${dateLast}</text>` : ''}
-  </svg>`;
-}
 
 
 /**
@@ -1165,7 +1108,6 @@ export async function openModal(sn){
   const img=G('m-img'); img.src=fullUrl(curSet.image_local||curSet.image_url)||'/assets/set-placeholder.svg'; img.style.display='block';
 
   const addedFmt = curSet.added_at ? fmtDatum(curSet.added_at) : '—';
-  const cached = _pnlCache[sn];
   // Marktpreis und Entwicklung stehen jetzt JE ZUSTAND — und die Werte dafür
   // kommen aus derselben Abfrage wie der Preisverlauf (by_condition). Hier nur
   // der Platzhalter; gefüllt wird er in renderMarketRows() weiter unten,

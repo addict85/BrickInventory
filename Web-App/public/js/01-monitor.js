@@ -13,7 +13,7 @@
 // Seiten der Überwachung beieinander — die Liste, die zeigt, was läuft, und
 // das Fenster, das zeigt, was dabei protokolliert wurde.
 import { echt, registerActions } from './00-registry.js';
-import { fmtDatum, ico, G, api, esc, escHtmlAttr, toast } from './01-core.js';
+import { fmtDatum, ico, G, api, apiRoh, esc, escHtmlAttr, toast } from './01-core.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 
 /**
@@ -117,7 +117,7 @@ export async function loadMonitor() {
   if (!el) return;
   if (_monitorTimer) clearInterval(_monitorTimer);
   const render = async () => {
-    const d = await fetch('/api/v1/admin/jobs').then(r=>r.json()).catch(()=>null);
+    const d = await apiRoh('GET', '/v1/admin/jobs').then(r=>r.json()).catch(()=>null);
     if (!d?.success) return;
     // Nicht neu rendern, während der Nutzer gerade eine Zeitplan-Eingabe bearbeitet
     // (sonst würde das 3s-Re-Render die Eingabe/den Fokus verwerfen).

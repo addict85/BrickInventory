@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
-import { locale, t, tRaw } from '../i18n.js';
-import { antwortFehler, fmtDatum, ico, G, api, esc, fmtN, toast, betragAusFeld, betragFuerFeld, CURRENCY, _settingsCache } from './01-core.js';
+import { t, tRaw } from '../i18n.js';
+import { antwortFehler, fmtDatum, ico, G, api, apiRoh, esc, fmtN, toast, betragAusFeld, betragFuerFeld, CURRENCY, _settingsCache } from './01-core.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './07-admin.js';
 
@@ -258,7 +258,7 @@ export async function gutscheinSpeichern() {
     if (currency) form.append('currency', currency);
     let r, d;
     try {
-      r = await fetch('/api/v1/vouchers/pdf', { method: 'POST', body: form });
+      r = await apiRoh('POST', '/v1/vouchers/pdf', { body: form });
       d = await r.json();
     } catch { toast(tRaw('vouchers.save_error'), 'error'); return; }
 
@@ -358,7 +358,7 @@ export async function gutscheinPdfOeffnen(id) {
   const g = _gutscheine.find(x => String(x.id) === String(id));
   const f = await pdfFreigabe(`/v1/vouchers/${id}/pdf-freigabe`);
   if (!f) return;
-  const r = await fetch(`/api/v1/vouchers/${id}/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
+  const r = await apiRoh('GET', `/v1/vouchers/${id}/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
   if (!r.ok) { toast((await r.json().catch(() => ({}))).error || tRaw('settings.error'), 'error'); return; }
   const daten = await r.arrayBuffer();
   openPdfViewer(URL.createObjectURL(new Blob([daten], { type: 'application/pdf' })), g ? g.number : 'PDF',
@@ -450,7 +450,7 @@ async function gutscheineExportieren() {
   if (!f) return;
   toast(tRaw('vouchers.export_running'), 'info');
   try {
-    const r = await fetch(`/api/v1/vouchers/export/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
+    const r = await apiRoh('GET', `/v1/vouchers/export/pdf?ticket=${encodeURIComponent(f.ticket)}`, { signal: f.frist });
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       toast(d.error || tRaw('settings.error'), 'error');

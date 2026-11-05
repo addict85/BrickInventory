@@ -21,14 +21,13 @@
 // längst denselben); kritisch wäre nur ein const-Zugriff während der
 // Auswertung, und den gibt es hier nicht.
 import { registerActions } from './00-registry.js';
-import { ico, G, ME, api, fmtPct } from './01-core.js';
+import { ico, G, ME, apiRoh, fmtPct } from './01-core.js';
 import { _csvPollActive, hideProgress, loadGallery, loadStats, showProgress } from './02-gallery.js';
 import { t, tRaw } from '../i18n.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
 export let _gibTimer       = null;   // Polling-Fallback-Timer (nur wenn SSE scheitert)
 export let _gibSse         = null;   // aktive EventSource (SSE), falls verfügbar
-let _gibExpanded    = false;
 let _gibLastCount   = 0;
 
 // Rendert einen Import-Status ins UI. Quelle (SSE oder Polling) ist egal.
@@ -90,7 +89,6 @@ function gibApplyStatus(s) {
     setTimeout(() => {
       G('global-import-bar').style.display='none';
       G('import-detail-panel').classList.remove('open');
-      _gibExpanded = false;
       // Don't clear log or close overlay — user may still be reading results
     }, 5000);
     // Show close button so user can dismiss the overlay when ready
@@ -104,7 +102,7 @@ function gibApplyStatus(s) {
 // Polling-Fallback: einmalig den Status holen und rendern.
 async function gibPoll() {
   try {
-    const s = await fetch('/api/v1/sets/import/csv/status', { credentials: 'include' }).then(r=>r.json());
+    const s = await apiRoh('GET', '/v1/sets/import/csv/status').then(r=>r.json());
     gibApplyStatus(s);
   } catch(_) {}
 }
@@ -245,7 +243,7 @@ export async function gibCheckOnLoad() {
     // auf dem Login-Screen im Drei-Sekunden-Takt weiter.
     if (!ME) return;
     try {
-      const r = await fetch('/api/v1/sets/import/csv/status', { credentials: 'include' });
+      const r = await apiRoh('GET', '/v1/sets/import/csv/status');
 
       // Antwort erst prüfen, dann parsen. Steht ein Reverse-Proxy oder Tunnel
       // davor, liefert der bei Neustart oder Aussetzer eine HTML-Fehlerseite —

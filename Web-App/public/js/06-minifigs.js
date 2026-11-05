@@ -1,12 +1,11 @@
 import { echt, registerActions } from './00-registry.js';
 import { listeLadefehler } from './01-bausteine.js';
-import { colorName, locale, t, tRaw} from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, ico, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
+import { colorName, t, tRaw } from '../i18n.js';
+import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, escHex, hexZiffern, CURRENCY, G, TRASH_ICON_SVG, api, esc, escJs, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
 import { condBadges, leereLagerortFeld, ownerBadges, schliesseErfassen, selectedOwner, selectedStorage } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { confirmDelete } from './07-admin.js';
-import { openManDetail } from './13-acquisition-modals.js';
 import { teileLeerAbgleichen, teilPasstZumFilter, zeichneTeileFilter } from './03-parts.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
 
@@ -454,8 +453,7 @@ async function importFigsCsv() {
   const fd = new FormData(); fd.append('file', fi.files[0]);
   csvImportStatus('fig-csv-status', 'running', t('import.running'));
   try {
-    const r = await fetch('/api/v1/minifigs/import/csv', { method: 'POST', body: fd });
-    const d = await r.json();
+    const d = await api('POST', '/v1/minifigs/import/csv', fd);
     fi.value = '';
     if (d.success) {
       const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
@@ -484,20 +482,6 @@ G('btn-fig-csv-template').onclick = (e) => {
   a.click();
 };
 
-async function loadMinifigsValuation() {
-  // Dieser Banner steht im FINANZEN-Reiter — also dessen Filter.
-  const v = await api('GET', '/v1/finance/minifigs-valuation'+scopeQuery('finance'));
-  const banner = G('fin-figs-banner');
-  const valEl  = G('fin-figs-val');
-  if (!v.success || !v.figs?.length || parseFloat(v.total_value) === 0) {
-    if (banner) banner.style.display = 'none';
-    return;
-  }
-  if (banner && valEl) {
-    banner.style.display = 'flex';
-    valEl.textContent = fmtN(v.total_value, v.currency || CURRENCY);
-  }
-}
 
 /**
  * Abfrageteil für die MANUELL erfassten Listen: Kontofilter und Suchtext.
@@ -800,8 +784,7 @@ async function importPartsCsv() {
   const fd = new FormData(); fd.append('file', fi.files[0]);
   csvImportStatus('part-csv-status', 'running', t('import.running'));
   try {
-    const r = await fetch('/api/v1/parts/import/csv', { method: 'POST', body: fd });
-    const d = await r.json();
+    const d = await api('POST', '/v1/parts/import/csv', fd);
     fi.value = '';
     if (d.success) {
       const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
@@ -840,21 +823,6 @@ G('btn-csv-template').onclick = (e) => {
   a.click();
 };
 
-// Parts valuation for finance tab
-async function loadPartsValuation() {
-  // Steht im FINANZEN-Reiter — also dessen Filter, nicht der des Teile-Reiters.
-  const v = await api('GET', '/v1/finance/parts-valuation'+scopeQuery('finance'));
-  if (!v.success || !v.parts?.length) {
-    const b = G('fin-parts-banner'); if(b) b.style.display='none';
-    return;
-  }
-  const banner = G('fin-parts-banner');
-  const valEl  = G('fin-parts-val');
-  if (banner && valEl) {
-    banner.style.display = 'flex';
-    valEl.textContent = fmtN(v.total_value, v.currency || CURRENCY);
-  }
-}
 
 
 

@@ -41,6 +41,9 @@ function routen() {
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1'))) {
     if (f.endsWith('.ts')) sammle(`routes/api_v1/${f.replace(/\.ts$/, '')}`, '/api/v1');
   }
+  // Und die wenigen, die direkt in server.ts hängen (startup-status, health …).
+  const srv = fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
+  for (const m of srv.matchAll(/app\.(get|post|put|delete|patch)\(\s*'(\/api\/[^']+)'/g)) raus.add(`${m[1].toUpperCase()} ${m[2]}`);
 
   function sammle(rel, praefix) {
     const datei = path.join(ROOT, rel + '.ts');
@@ -128,7 +131,7 @@ test('jeder API-Pfad des Frontends trifft eine Route', () => {
     // den Text `/v1/parts/${nr}/${farbe}/color${owner ` — gemeldet wurde ein
     // Pfad, den niemand aufruft, und die Route dahinter gab es sehr wohl.
     // leseLiteral() zählt die Verschachtelung mit (test/helpers/sources.js).
-    for (const m of s.matchAll(/api\(\s*'(GET|POST|PUT|DELETE|PATCH)'\s*,\s*/g)) {
+    for (const m of s.matchAll(/\bapi(?:Roh)?\(\s*'(GET|POST|PUT|DELETE|PATCH)'\s*,\s*/g)) {
       const lit = leseLiteral(s, m.index + m[0].length);
       if (!lit || !lit.text.startsWith('/')) continue;
       const p = normieren(lit.text);

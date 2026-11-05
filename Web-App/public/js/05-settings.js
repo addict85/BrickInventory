@@ -1,6 +1,6 @@
 import { echt, registerActions } from './00-registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw} from '../i18n.js';
-import { antwortFehler, feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, escUrl, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen , set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
+import { antwortFehler, feldFehler, fehlerMeldung, fmtN, fmtDatum, bildTag, platzhalterInhalt, ico, CURRENCY, G, ME, _settingsCache, _updateLangSelect, api, applyTheme, esc, imgUrl, initDefaultCondition, knopfBesetzt, thumbUrl, toast, zeigeBenutzernamen, set_CURRENCY, set_settingsCache, passwortRegelText, leseBetrag, betragFuerFeld } from './01-core.js';
 import { allSets, loadGallery, loadStats } from './02-gallery.js';
 import { loadParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
@@ -274,10 +274,6 @@ G('btn-gen-qr').onclick = generateQrCode;
 //
 // Der Browser selbst ist kein Token, sondern die Sitzung; die Liste zeigt die
 // Geräte mit Token (App, ältere Browser-Anmeldungen).
-async function tokenRuf(pfad, method = 'GET') {
-  const r = await fetch('/api/v1/settings' + pfad, { method, credentials: 'include' });
-  return r.json().catch(() => ({ success: false, error: 'HTTP ' + r.status }));
-}
 
 /** „—", wenn nie benutzt: `new Date(null)` wäre der 1.1.1970. */
 function tokenDatum(wert) {
@@ -288,7 +284,7 @@ function tokenDatum(wert) {
 export async function loadTokens() {
   const ziel = G('tokens-tbl');
   if (!ziel) return;
-  const d = await tokenRuf('/tokens');
+  const d = await api('GET', '/v1/settings/tokens');
   if (!d.success) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${esc(d.error || t('settings.error'))}</p>`; return; }
   if (!d.tokens.length) { ziel.innerHTML = `<p data-stil="color:var(--mut)">${t('tokens.none')}</p>`; return; }
   ziel.innerHTML = `<div class="tw"><table class="dt"><thead><tr>
@@ -336,7 +332,7 @@ export async function ladeTls() {
 
 async function revokeToken(tokenId, label) {
   if (!await confirmDelete(tRaw('tokens.revoke.title'), tRaw('tokens.revoke.text', { name: label || '—' }), 'schluessel')) return;
-  const d = await tokenRuf('/tokens/' + encodeURIComponent(tokenId), 'DELETE');
+  const d = await api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tokenId)}`);
   if (d.success) { toast(tRaw('tokens.revoked'), 'success'); loadTokens(); }
   else toast(d.error || t('settings.error'), 'error');
 }
@@ -353,7 +349,7 @@ async function revokeToken(tokenId, label) {
  * sind darum alle Token und alle übrigen Sitzungen.
  */
 async function revokeOtherTokens() {
-  const d = await tokenRuf('/tokens');
+  const d = await api('GET', '/v1/settings/tokens');
   if (!d.success) { toast(d.error || t('settings.error'), 'error'); return; }
   const andere = d.tokens.filter(tk => !tk.aktuell);
   const password = await bestaetigeMitPasswort(tRaw('tokens.revoke_others.title'),
@@ -365,7 +361,7 @@ async function revokeOtherTokens() {
   if (!s.success) { toast(s.error || t('settings.error'), 'error'); return; }
   let weg = 0;
   for (const tk of andere) {
-    const r = await tokenRuf('/tokens/' + encodeURIComponent(tk.token_id), 'DELETE');
+    const r = await api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tk.token_id)}`);
     weg += r.deleted || 0;
   }
   toast(tRaw('tokens.revoked_n', { n: weg + (s.deleted || 0) }), weg === andere.length ? 'success' : 'error');
@@ -1122,8 +1118,7 @@ async function importAlarmeCsv() {
   const status = G('alerts-csv-status');
   if (status) status.textContent = tRaw('import.running');
   try {
-    const r = await fetch('/api/v1/alerts/import/csv', { method: 'POST', body: fd });
-    const d = await r.json();
+    const d = await api('POST', '/v1/alerts/import/csv', fd);
     fi.value = '';
     if (status) status.textContent = '';
     if (d.success) {

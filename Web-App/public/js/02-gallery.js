@@ -1,7 +1,7 @@
 import { skelettKacheln, listeLadefehler } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, esc, escJs, escUrl, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
+import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, CURRENCY, G, ME, TRASH_ICON_SVG, api, apiRoh, esc, escJs, escUrl, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld } from './01-core.js';
 import { _gibSse, _gibTimer, gibStart, protokollZeile } from './01-fortschritt.js';
 import { _monitorTimer, loadMonitor, set_monitorTimer } from './01-monitor.js';
 import { SCOPE_VIEWS, addScopeParam, scopeMode, scopeQuery, setScopeMode,
@@ -19,7 +19,6 @@ import { _lastImportAt, confirmDelete, enrichGalleryWithPrices, jobPollTimer, la
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
 import { ladeMerkliste, merklisteZuruecksetzen } from './16-merkliste.js';
 import { initCatalog, katalogZuruecksetzen } from './09-catalog.js';
-import { delSetStop, openPdfViewerLink, stopEvent } from './11-actions.js';
 import { meldeAnsicht, meldeFilter } from './24-router.js';
 
 // ═══ Navigation, Stats, Progress-Overlay, Galerie, CSV-Polling, Set-Detail-Modal ═══
@@ -372,14 +371,6 @@ export function hideProgress(){
   }
 }
 
-// Call this whenever progress changes to sync header bar
-function syncGibFromProgress(pct, text) {
-  const bar = G('global-import-bar');
-  if (!bar) return;
-  bar.style.display = 'flex';
-  G('gib-fill').style.width = pct + '%';
-  G('gib-text').textContent = text;
-}
 // `extra` fiel weg: Es schrieb in ein `.step-count`-Feld, das nur die
 // entfernten Teile-/Teilbilder-Schritte hatten. Ohne diese Schritte gibt es
 // kein Element mehr, in das es hätte schreiben können.
@@ -1187,7 +1178,7 @@ async function doAddSet(){
   unbekanntZuruecksetzen();
   showProgress(t('gallery.adding_set',{num}), false);
   try{
-    await streamRequest('/api/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
+    await streamRequest('/v1/sets/add-stream', {set_number:num,quantity:qty,purchase_price,condition,owner_user_id,storage:selectedStorage('add-storage')}, (ev)=>{
       handleSseEvent(ev, num);
       if(ev.step==='done' && ev.action==='exists'){
         // Set steht schon im Blickfeld — der Server hat NICHTS geschrieben
@@ -1231,8 +1222,7 @@ async function startSetCsvImport(){
   const fd=new FormData(); fd.append('file',fi.files[0]);
   try{
     // Start import job (returns immediately)
-    const start = await fetch('/api/v1/sets/import/csv',{method:'POST',body:fd});
-    const startData = await start.json();
+    const startData = await api('POST', '/v1/sets/import/csv', fd);
     if(!startData.success){ hideProgress(); toast(startData.error||t('settings.error'),'error'); return; }
     const total = startData.total;
     // Übersprungene Zeilen nennen — der Import läuft trotzdem weiter, aber wer
@@ -1250,7 +1240,6 @@ async function startSetCsvImport(){
     // 01-core.js: das Cookie trägt den Kanal, der Token in der Adresse wäre
     // nur der Sitzungstoken im Protokoll.
     const url = '/api/v1/sets/import/csv/stream';
-    let usedSse = false;
 
     await new Promise((resolve) => {
       let settled = false;
@@ -1259,7 +1248,6 @@ async function startSetCsvImport(){
       if (typeof EventSource !== 'undefined') {
         try {
           const es = new EventSource(url, { withCredentials: true });
-          usedSse = true;
           es.onmessage = (e) => {
             let s; try { s = JSON.parse(e.data); } catch(_) { return; }
             const finished = csvApplyOverlayStatus(s, ctx, fi);
@@ -1269,7 +1257,6 @@ async function startSetCsvImport(){
             es.close();
             if (!settled) {
               // SSE weg → auf Polling zurückfallen
-              usedSse = false;
               csvPollLoop(ctx, fi).then(finish);
             }
           };
@@ -1383,27 +1370,15 @@ function cancelImport(){
 }
 G('btn-cancel-import').onclick = cancelImport;
 
-// SSE helper for JSON body — abortable
-export function streamRequest(url, body, onEvent){
+/** Abbrechbarer Ereignisstrom (POST mit JSON-Körper); ein Abbruch endet ohne Fehler.
+ * @param {string} path @param {object} body @param {(ev: any) => void} onEvent
+ * @returns {Promise<void>} */
+export function streamRequest(path, body, onEvent){
   const ac = _activeAbort = new AbortController();
   G('btn-cancel-import').style.display='inline-flex';
-  return new Promise((resolve,reject)=>{
-    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ac.signal})
-      .then(res=>readSSE(res,onEvent,ac.signal)).then(resolve).catch(e=>{
-        if(e.name==='AbortError') resolve(); else reject(e);
-      });
-  });
-}
-// SSE helper for FormData — abortable
-function streamRequestForm(url, formData, onEvent){
-  const ac = _activeAbort = new AbortController();
-  G('btn-cancel-import').style.display='inline-flex';
-  return new Promise((resolve,reject)=>{
-    fetch(url,{method:'POST',body:formData,signal:ac.signal})
-      .then(res=>readSSE(res,onEvent,ac.signal)).then(resolve).catch(e=>{
-        if(e.name==='AbortError') resolve(); else reject(e);
-      });
-  });
+  return apiRoh('POST', path, { body, signal: ac.signal })
+    .then(res=>readSSE(res,onEvent,ac.signal))
+    .catch(e=>{ if(e.name!=='AbortError') throw e; });
 }
 async function readSSE(res, onEvent, signal){
   // Antwortet der Server mit gewöhnlichem JSON statt einem Ereignisstrom, ist
@@ -1557,8 +1532,7 @@ async function uploadInstr(sn) {
   const desc = G('instr-desc').value.trim();
   if (desc) fd.append('description', desc);
   try {
-    const r = await fetch(`/api/v1/sets/${sn}/instructions/upload`, { method: 'POST', body: fd });
-    const d = await r.json();
+    const d = await api('POST', `/v1/sets/${sn}/instructions/upload`, fd);
     if (d.success) { toast(tRaw('instr.uploaded'), 'success'); openModal(sn); }
     else { status.textContent = d.error || tRaw('settings.error'); status.style.color = 'var(--r500)'; }
   } catch (e) { status.textContent = tRaw('common.network_error'); }

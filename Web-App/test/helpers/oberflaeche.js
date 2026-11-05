@@ -79,7 +79,7 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
   // Eine Antwort darf ein Promise sein (verzögert) oder werfen (Netzfehler);
   // `$status` setzt den HTTP-Status, z. B. { $status: 500, success: false }.
   w.fetch = async (url, o = {}) => {
-    aufrufe.push({ url: String(url), method: o.method || 'GET', body: o.body });
+    aufrufe.push({ url: String(url), method: o.method || 'GET', body: o.body, headers: o.headers || {} });
     const daten = await antwortFuer(alle, url, o);
     const status = daten?.$status ?? 200;
     return { ok: status < 400, status, headers: { get: () => 'application/json' },

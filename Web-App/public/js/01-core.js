@@ -669,70 +669,68 @@ export function verwirfToasts() {
   for (const el of [...(G('toasts')?.children || [])]) if (!el.querySelector('.toast-aktion')) el.remove();
 }
 /**
- * Aufruf der eigenen API. Liefert IMMER ein Objekt — nie eine Ausnahme.
- *
- * ── Woher das kommt ─────────────────────────────────────────────────────────
- * Vorher stand hier `return (await fetch(...)).json()`, ohne Blick auf
- * res.ok. Antwortet irgendetwas mit einer nicht-JSON-Seite — ein 502 oder 504
- * vom Reverse Proxy, 413 bei zu grossem Körper, eine HTML-Fehlerseite —, warf
- * .json() einen SyntaxError:
- *
- *     Unexpected token '<', "<html>502 "... is not valid JSON
- *
- * Bei rund 88 Aufrufstellen ist längst nicht jede in try/catch. Für den
- * Benutzer hiess das: klicken, nichts passiert, keine Meldung. Die
- * Fehlerbehandlung war da — sie prüft `d.success` und zeigt `d.error` —, sie
- * bekam nur nie ein Objekt zu sehen.
- *
- * Deshalb wird jeder Fehlschlag in genau die Form gebracht, die der Server
- * auch liefern würde: { success: false, error: '…' }. Damit greifen alle
- * bestehenden Pfade unverändert, ohne dass 88 Stellen angefasst werden müssen.
- *
- * `status` und `networkError` hängen zusätzlich am Ergebnis, für die wenigen
- * Stellen, die genauer unterscheiden wollen (z. B. 401 → Anmeldemaske).
+ * Jeder Weg zur eigenen API läuft hierüber: Sprache, Verbindungsband und das
+ * Ende der Sitzung (401) gelten dann auch für Uploads, Downloads und Ströme.
+ * Wirft nur bei Netzfehler oder Abbruch; den Status prüft der Aufrufer.
+ * @param {string} method
+ * @param {string} path  ohne `/api`, z. B. `/v1/sets`
+ * @param {{ body?: FormData | object | null, signal?: AbortSignal, headers?: Record<string, string>, cache?: RequestCache }} [o]
+ * @returns {Promise<Response>}
  */
-export async function api(method, path, body) {
-  // ── Accept-Language: die Sprache, die gerade AUF DEM BILDSCHIRM steht ──────
-  //
-  // Der Server hat seine Fehlermeldungen in beiden Sprachen
-  // (src/infra/fehlerTexte.ts) und antwortet in der, die hier steht. Vorher waren
-  // alle 80 Meldungen deutsch — in einer sonst vollständig englischen
-  // Oberfläche.
-  //
-  // `LANG` und nicht die Spracheinstellung des KONTOS: Wer die Oberfläche
-  // umschaltet, will sofort alles in der neuen Sprache, auch die nächste
-  // Fehlermeldung. Das Konto nachzuziehen ist ein eigener Vorgang.
-  const o={method,headers:{'Content-Type':'application/json','Accept-Language':LANG}};
-  if(body) o.body=JSON.stringify(body);
+export async function apiRoh(method, path, o = {}) {
+  /** @type {Record<string, string>} */
+  const headers = { 'Accept-Language': LANG, ...o.headers };
+  /** @type {RequestInit} */
+  const init = { method, headers, credentials: 'same-origin' };
+  if (o.body instanceof FormData) init.body = o.body;
+  else if (o.body) { headers['Content-Type'] = 'application/json'; init.body = JSON.stringify(o.body); }
+  if (o.signal) init.signal = o.signal;
+  if (o.cache) init.cache = o.cache;
   let res;
   try {
-    res = await fetch('/api'+path, o);
+    res = await fetch('/api' + path, init);
   } catch (e) {
-    // Netzfehler: offline, Verbindungsabbruch, DNS. Kein Status vorhanden.
-    console.warn('[api]', method, path, e);
-    zeigeVerbindung(false);
-    return { success:false, error:tRaw('api.unreachable'), networkError:true, status:0 };
+    if (/** @type {any} */ (e)?.name !== 'AbortError') { console.warn('[api]', method, path, e); zeigeVerbindung(false); }
+    throw e;
   }
   _letzteAntwort = new Date();
   zeigeVerbindung(true);
+  if (res.status === 401) meldeSitzungBeendet(path);
+  return res;
+}
+
+/**
+ * Aufruf der eigenen API mit JSON-Antwort. Liefert IMMER ein Objekt, nie eine
+ * Ausnahme: Jeder Fehlschlag (Netz, HTML-Fehlerseite des Proxys, Status ohne
+ * `success`) kommt als `{ success: false, error }` zurück, wie vom Server.
+ * `status` und `networkError` sind für die Stellen, die genauer unterscheiden.
+ * Ein FormData-Körper geht als Upload, jeder andere als JSON.
+ * @param {string} method
+ * @param {string} path
+ * @param {FormData | object | null} [body]
+ * @param {{ signal?: AbortSignal, cache?: RequestCache }} [o]
+ * @returns {Promise<any>}
+ */
+export async function api(method, path, body, o = {}) {
+  let res;
+  try {
+    res = await apiRoh(method, path, { ...o, body: body ?? null });
+  } catch (_) {
+    return { success:false, error:tRaw('api.unreachable'), networkError:true, status:0 };
+  }
   let daten = null;
   try {
     daten = await res.json();
   } catch (_) {
-    // Antwort war kein JSON. Bei einem Fehlerstatus ist das der Normalfall
-    // (Proxy-Seite); bei 200 wäre es ein Fehler auf unserer Seite.
     console.warn('[api]', method, path, 'Antwort ist kein JSON (Status ' + res.status + ')');
     return { success:false, status:res.status,
              error: res.ok ? tRaw('api.unexpected') : tRaw('api.server_error', { status:res.status }) };
   }
-  // JSON da, aber Fehlerstatus: success/error können fehlen (z. B. bei einer
-  // Antwort aus einer Zwischenschicht) — dann selbst ergänzen.
   if (!res.ok && daten && typeof daten === 'object' && daten.success === undefined) {
     return { ...daten, success:false, status:res.status,
              error: daten.error || tRaw('api.server_error', { status:res.status }) };
   }
   if (daten && typeof daten === 'object') daten.status = res.status;
-  if (res.status === 401) meldeSitzungBeendet(path);
   if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') zeigePflichtwechsel();
   return daten;
 }
@@ -1021,8 +1019,6 @@ export function _updateLangSelect() {
   const sel = document.getElementById('lang-select');
   if (sel) sel.value = LANG;
 }
-// keep alias so existing calls still work
-function _updateLangChips() { _updateLangSelect(); }
 
 // ── AUTH & PANELS ─────────────────────────────────────
 let _resetToken = null;
@@ -1246,7 +1242,6 @@ export async function checkAuth(){
 async function waitForStartup() {
   const ss = G('startup-screen');
   if (ss) ss.style.display = 'flex';
-  const startedAt = Date.now();
   // Kein hartes Gesamt-Timeout mehr: Download/Import der Rebrickable-CSVs kann
   // bei einer Neuinstallation viele Minuten dauern. Stattdessen nur abbrechen,
   // wenn sich der Fortschritt über längere Zeit gar nicht mehr ändert (Server
@@ -1256,7 +1251,7 @@ async function waitForStartup() {
   let lastSig = '';
   while (true) {
     try {
-      const r = await fetch('/api/v1/startup-status?_=' + Date.now(), {
+      const r = await apiRoh('GET', '/v1/startup-status?_=' + Date.now(), {
         cache: 'no-store', headers: { 'Cache-Control': 'no-cache' }
       });
       const s = await r.json();
@@ -1326,7 +1321,8 @@ function showLogin(){
 }
 async function checkRegistrationEnabled(){
   try {
-    const d = await fetch('/api/v1/auth/registration-status').then(r=>r.json());
+    const d = await api('GET', '/v1/auth/registration-status');
+    if (d.success === false) return;
     const wrap = G('link-register-wrap');
     if(wrap) wrap.style.display = d.enabled ? '' : 'none';
     // Nur Wege anbieten, die der Server kann; fehlt die Angabe (älterer Server), bleibt alles wie es war.
@@ -1477,8 +1473,7 @@ async function doLogin(){
 G('btn-logout').onclick=async()=>{
   // Ein Token aus einer älteren Anmeldung wird mit entwertet.
   const _wt = sessionStorage.getItem('webToken');
-  await fetch('/api/v1/auth/logout', {
-    method: 'POST',
+  await apiRoh('POST', '/v1/auth/logout', {
     headers: _wt ? { 'Authorization': 'Bearer ' + _wt } : {},
   }).catch(()=>{});
   ME=null; setAllSets([]);

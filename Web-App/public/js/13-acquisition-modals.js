@@ -16,13 +16,12 @@
 import { detailZeile, ladeAnzeige } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, escUrl, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
-import { allSets, applySetAggregate, closeModal, curSet, loadGallery, pnlBadge, updateGalleryPrices } from './02-gallery.js';
+import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, ico, escHex, CURRENCY, G, ME, api, esc, escJs, fmtN, fullUrl, hexZiffern, imgUrl, thumbUrl, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
+import { applySetAggregate, closeModal, curSet, loadGallery } from './02-gallery.js';
 import { loadFinance } from './04-finance.js';
 import { deleteManualFig, deleteManualPart, loadBrickColors, loadManualFigsTable, loadManualParts, manualFigsCache, manualPartsCache, updateManualFig, updateManualPart } from './06-minifigs.js';
 import { confirmDelete, diagrammBreite, ladeLagerorte, lagerortBlock, openModal, priceChartSVG, renderMarketRows, ladeOrtAuswahl } from './07-admin.js';
 import { scopeQuery } from './14-scope.js';
-import { blurOnEnter, mQtyDec, mQtyInc, saveManualFigBl } from './11-actions.js';
 
 // ── KAUFPREIS-MODAL ─────────────────────────────────────────────────────────
 let _acqModalSn = null;
@@ -937,8 +936,6 @@ function openManAcqModal() {
 
 let _acqManItem = null;
 
-// Override the acq-modal close button behaviour for manual items
-const _origCloseAcqModal = closeAcqModal;
 function closeAcqModal() {
   G('acq-modal').classList.remove('open');
   if (_acqManItem) {
