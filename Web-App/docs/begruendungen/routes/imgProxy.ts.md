@@ -402,38 +402,3 @@ in Datenbankzeilen steht und installierte App-Fassungen sie selbst
 zusammenbauen — die Begründung samt Auslauf-Charakter steht bei den
 Konstanten in src/katalog/bilder/images.ts.
 ```
-
-<a id="startimgcachecleanup"></a>
-## `startImgCacheCleanup`
-
-```text
-Img-Proxy-Cache aufräumen: Dateien, die 30 Tage nicht angefasst wurden,
-löschen — sonst wächst data/img_proxy_cache unbegrenzt.
-
-── Warum das nicht mehr in registerImgProxy steht ──────────────────────────
-Dort lief es in JEDEM Cluster-Worker: registerImgProxy(app) wird von jedem
-Prozess aufgerufen, und jeder legte sein eigenes tägliches Intervall an. Bei
-acht Workern hiess das acht vollständige Durchläufe über das
-Cache-Verzeichnis (readdir plus stat je Datei) und acht Prozesse, die sich
-beim unlink gegenseitig ins Gehege kamen — unbemerkt, weil die Fehler
-ohnehin verworfen werden.
-
-Alle übrigen wiederkehrenden Arbeiten (Preis-Job, Token-Aufräumen,
-Log-Bereinigung) hängen längst hinter isPrimaryWorker. Diese gehört dazu.
-
-Bewusst KEIN Aufräumen beim Start: Ein Neustart soll schnell antworten
-können, und einen Tag länger im Cache schadet nichts.
-```
-
-<a id="proxycachepathfor"></a>
-## `proxyCachePathFor`
-
-```text
-Wo läge das Bild dieser CDN-Adresse im Proxy-Cache?
-
-Die Regel (SHA1 der Adresse, Ablage unter data/img_proxy_cache) stand bisher
-NUR mitten in der Route. Für die Bild-Diagnose (Nachtrag 50) wird sie von
-aussen gebraucht — und eine zweite, abgeschriebene Fassung anderswo wäre
-genau die Sorte Duplikat, die irgendwann auseinanderläuft und dann falsche
-Auskunft gibt.
-```

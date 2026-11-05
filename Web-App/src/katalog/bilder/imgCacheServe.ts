@@ -88,7 +88,7 @@ const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
 
 /** 30 Tage nicht angefasst → weg; danach, falls der Cache noch über der
  * Grenze liegt, die am längsten unbenutzten Bilder samt .ct und Vorschau.
- * Ausführlich: docs/begruendungen/routes/imgProxy.ts.md#startimgcachecleanup */
+ * Ausführlich: docs/begruendungen/src/katalog/bilder/imgCacheServe.ts.md#startimgcachecleanup */
 export async function raeumeBildCacheAuf(maxBytes = konfig().bildCacheMaxMb * 1024 * 1024): Promise<number> {
   const cacheDir = CACHE_DIR();
   const files = await fs.promises.readdir(cacheDir).catch(() => [] as string[]);

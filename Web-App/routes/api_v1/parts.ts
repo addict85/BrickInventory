@@ -31,7 +31,7 @@ router.get('/parts/categories', requireToken, async (req: AuthedRequest, res: An
   res.json({ success: true, categories: await getPartsCategories(uids) });
 });
 
-router.post('/parts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/parts/import/csv'>) => {
+router.post('/parts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: AuthedRequest, res: Antwort<'POST /api/v1/parts/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'teile_csv', { text: req.file.buffer.toString('utf-8') }));
 });

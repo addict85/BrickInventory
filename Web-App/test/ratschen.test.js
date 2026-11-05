@@ -415,13 +415,18 @@ test('jeder Verweis auf docs/begruendungen trifft Datei und Anker', () => {
   // Die langen Begründungen liegen in docs/begruendungen/<datei>.md; der Code
   // verweist mit „Ausführlich: …#anker". Beim Verschieben einer Datei wandert
   // das Dokument mit — dieser Test hält Verweis und Ziel zusammen.
-  // Gegenprobe (31.10.2026): #post-tokens statt #get-tokens in
-  // routes/api_v1/settings.ts → rot.
+  // Und nur in das Dokument der EIGENEN Datei: Sonst bleibt beim Teilen
+  // einer Datei die Begründung beim alten Namen liegen.
+  // Gegenproben: #post-tokens statt #get-tokens in routes/api_v1/settings.ts
+  // → rot (31.10.2026); in routes/auth/benutzer.ts wieder auf
+  // routes/auth.ts.md#delete-users-id verwiesen → rot (05.11.2026).
   const kaputt = [];
   let n = 0;
   for (const f of serverUndOberflaeche()) {
+    const eigen = path.relative(WEB, f).split(path.sep).join('/') + '.md';
     for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#([\w-]+)/g)) {
       n++;
+      if (m[1] !== eigen) { kaputt.push(`${path.relative(WEB, f)}: verweist auf ${m[1]} statt ${eigen}`); continue; }
       const doc = path.join(WEB, 'docs', 'begruendungen', m[1]);
       if (!fs.existsSync(doc)) { kaputt.push(`${path.relative(WEB, f)}: ${m[1]} fehlt`); continue; }
       if (!fs.readFileSync(doc, 'utf8').includes(`<a id="${m[2]}"></a>`)) kaputt.push(`${path.relative(WEB, f)}: ${m[1]}#${m[2]}`);
@@ -429,6 +434,33 @@ test('jeder Verweis auf docs/begruendungen trifft Datei und Anker', () => {
   }
   assert.ok(n > 200, `nur ${n} Verweise gefunden — greift die Suche noch?`);
   assert.deepEqual(kaputt, []);
+});
+
+test('Anker ohne Verweis werden weniger, nie mehr', () => {
+  // Ein Abschnitt, auf den kein Code mehr zeigt, gehört zu einer gekürzten
+  // oder entfernten Stelle — Geschichte, die nach git gehört.
+  // Gemessen 288 von 905 am 05.11.2026. Gegenprobe: einen Verweis in
+  // routes/auth/benutzer.ts gestrichen → rot (289).
+  const SCHRANKE = 288;
+  const verwiesen = new Set();
+  for (const f of serverUndOberflaeche())
+    for (const m of fs.readFileSync(f, 'utf8').matchAll(/docs\/begruendungen\/([^\s#`'"]+\.md)#([\w-]+)/g)) verwiesen.add(`${m[1]}#${m[2]}`);
+  const wurzel = path.join(WEB, 'docs', 'begruendungen');
+  let alle = 0, ohne = 0;
+  (function lauf(d) {
+    for (const n of fs.readdirSync(d)) {
+      const p = path.join(d, n);
+      if (fs.statSync(p).isDirectory()) { lauf(p); continue; }
+      const rel = path.relative(wurzel, p).split(path.sep).join('/');
+      for (const m of fs.readFileSync(p, 'utf8').matchAll(/<a id="([\w-]+)"><\/a>/g)) {
+        alle++;
+        if (!verwiesen.has(`${rel}#${m[1]}`)) ohne++;
+      }
+    }
+  })(wurzel);
+  assert.ok(alle > 500, `nur ${alle} Anker gefunden — greift die Suche noch?`);
+  assert.ok(ohne <= SCHRANKE, `${ohne} Anker ohne Verweis, erlaubt sind ${SCHRANKE}`);
+  if (ohne < SCHRANKE) console.log(`  ℹ Anker ohne Verweis: ${ohne} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
 test('jedes Dokument unter docs/begruendungen wird vom Code erreicht', () => {

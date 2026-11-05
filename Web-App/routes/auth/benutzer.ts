@@ -65,7 +65,7 @@ router.put('/users/:id/admin', requireAdmin, async (req, res: Antwort<'PUT /api/
 
   // Sitzungen enden, weil istVerwalter() zuerst das nie nachgeführte
   // `req.session.isAdmin` fragt; ein Entzug wirkte sonst im offenen Fenster nicht.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-admin
+  // Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#put-users-id-admin
   res.json({ success: true });
 });
 
@@ -94,7 +94,7 @@ router.put('/users/:id/freischalten', requireAdmin, async (req, res: Antwort<'PU
 });
 
 /** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters.
- * Ausführlich: docs/begruendungen/routes/auth.ts.md#put-users-id-password */
+ * Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#put-users-id-password */
 router.put('/users/:id/password', requireAdmin, async (req, res: Antwort<'PUT /api/v1/auth/users/:id/password'>) => {
   const { password } = req.body || {};
   const targetId = parseInt(pfadParam(req, 'id'));
@@ -124,7 +124,7 @@ router.delete('/users/:id', requireAdmin, async (req, res: Antwort<'DELETE /api/
   if (!await K.loescheKonto(targetId, nutzerId(req))) return sendeFehler(req, res, 404, 'benutzer_nicht_gefunden_oder_eigenes');
   // user_sessions hat keinen Fremdschlüssel auf users: Die offene Sitzung des
   // gelöschten Kontos bliebe ohne diesen Aufruf gültig.
-  // Ausführlich: docs/begruendungen/routes/auth.ts.md#delete-users-id
+  // Ausführlich: docs/begruendungen/routes/auth/benutzer.ts.md#delete-users-id
   await revokeAllSessions(targetId);
   // Eigene Anleitungen und Gutschein-PDFs gehören zum Konto; liegen blieben sie ohne Besitzer.
   await loescheKontoDateien(targetId);

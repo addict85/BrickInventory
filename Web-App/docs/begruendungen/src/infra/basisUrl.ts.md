@@ -54,3 +54,24 @@ Je BEREICH und nicht global: Wer den QR-Code erzeugt und spaeter eine Mail
 ausloest, soll beide Stellen im Protokoll sehen — es sind zwei verschiedene
 Folgen derselben fehlenden Zeile in der Konfiguration.
 ```
+
+<a id="getbaseurl"></a>
+## `getBaseUrl`
+
+```text
+── Helper: get base URL from request ────────────────────────────────────────
+
+VORHER: proto/host kamen ungeprüft aus X-Forwarded-Host bzw. Host. Diese
+Funktion baut Links für Verifizierungs- und Passwort-Reset-Mails — ein
+Angreifer, der bei POST /forgot-password einen fremden Host-Header mitgibt
+(z.B. per curl direkt gegen den Node-Prozess, oder wenn der Reverse-Proxy
+ihn durchreicht), bekommt eine ECHTE, vom Server verschickte Mail mit einem
+Link, dessen Domain er kontrolliert. Klickt das Opfer, geht der Reset-Token
+an den Angreifer. Ein Header darf für sicherheitsrelevante Ausgaben nie als
+vertrauenswürdig gelten, egal was der Proxy normalerweise setzt.
+
+Fix: APP_BASE_URL aus der Umgebung, wenn gesetzt — dann zählt NUR das.
+Ohne die Variable fällt die Funktion auf den alten (unsicheren) Header-Pfad
+zurück, damit bestehende Installationen ohne Konfiguration weiterlaufen;
+ein einmaliger Log-Hinweis in Produktion macht auf die Lücke aufmerksam.
+```

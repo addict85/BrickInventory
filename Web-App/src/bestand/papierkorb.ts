@@ -36,7 +36,7 @@ export interface PapierkorbEintrag {
 
 export async function listePapierkorb(uids: number[]): Promise<PapierkorbEintrag[]> {
   const rows = await repo.eintraege(uids, AUFBEWAHRUNG_TAGE);
-  return rows.map((r: PapierkorbEintrag & { zeilen?: Record<string, { quantity?: unknown }[]> }) => {
+  return rows.map((r) => {
     const erfassungen = r.zeilen?.[ERFASSUNGEN[r.art]] ?? [];
     const { zeilen: _z, ...rest } = r;
     return { ...rest, anzahl: erfassungen.reduce((s, e) => s + (Number(e.quantity) || 0), 0) };

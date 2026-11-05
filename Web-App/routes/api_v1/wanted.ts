@@ -88,7 +88,7 @@ router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (re
 /** Das Gegenstück zu buildMerklisteCsv().
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-import-csv */
 router.post('/wanted/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
-  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
+  async (req: AuthedRequest, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const owner = await resolveWriteTarget(req.apiUser.user_id, req.body?.owner_user_id);
     if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
@@ -103,7 +103,7 @@ router.post('/wanted/import/csv', requireToken, kontoSchranke('upload'), csvEmpf
  * Zwischenstände als NDJSON-Zeilen hinaus, ohne als eine JSON-Antwort (App).
  * Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#post-wanted-list-import-xml */
 router.post('/wanted-list/import/xml', requireToken, kontoSchranke('upload'), xmlEmpfang.single('file'),
-  async (req: AuthedRequest & { file?: { buffer: Buffer; originalname?: string } }, res: Antwort<'POST /api/v1/wanted-list/import/xml'>) => {
+  async (req: AuthedRequest, res: Antwort<'POST /api/v1/wanted-list/import/xml'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const xml = req.file.buffer.toString('utf-8');
     // Ohne <INVENTORY> keine Wanted-Liste — eine bessere Auskunft als „0 Posten".

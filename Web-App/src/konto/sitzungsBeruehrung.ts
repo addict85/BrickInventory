@@ -10,17 +10,18 @@ export const BERUEHREN_MS = Math.min(5 * 60 * 1000, Math.floor(SITZUNG_LEERLAUF_
  * kostet genau ein zusätzliches UPDATE. */
 const MAX_SITZUNGEN = 1000;
 
-interface Speicher {
-  touch?: (sid: string, sess: unknown, cb?: (err?: unknown) => void) => void;
+/** S: die Sitzungsdaten des Speichers; hier nur durchgereicht, daher `never` an der Schranke. */
+interface Speicher<S> {
+  touch?: (sid: string, sess: S, cb?: (err?: unknown) => void) => void;
 }
 
 // Ausführlich: docs/begruendungen/src/konto/sitzungsBeruehrung.ts.md#drossleberuehren
-export function drossleBeruehren<T extends Speicher>(speicher: T, frist = BERUEHREN_MS): T {
+export function drossleBeruehren<T extends Speicher<never>>(speicher: T, frist = BERUEHREN_MS): T {
   const echt = speicher.touch?.bind(speicher);
   if (!echt) return speicher;
 
   const zuletzt = new Map<string, number>();
-  speicher.touch = function (sid: string, sess: unknown, cb?: (err?: unknown) => void) {
+  speicher.touch = function (sid: string, sess: never, cb?: (err?: unknown) => void) {
     const jetzt = Date.now();
     const vorher = zuletzt.get(sid);
     if (vorher !== undefined && jetzt - vorher < frist) return cb?.();

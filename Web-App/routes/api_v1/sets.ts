@@ -119,7 +119,7 @@ router.get('/alerts', requireToken, async (req: AuthedRequest, res: Antwort<'GET
 });
 
 router.post('/alerts/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
-  async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/alerts/import/csv'>) => {
+  async (req: AuthedRequest, res: Antwort<'POST /api/v1/alerts/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
     const uid = req.apiUser.user_id;
     const waehrung = String(await getSetting(uid, 'currency', 'EUR'));
@@ -379,7 +379,7 @@ router.get('/sets/export/rebrickable', requireToken, async (req, res) => {
     ['Set Number', 'Quantity'], await rebrickableListe(angemeldeteNutzerId(req)));
 });
 
-router.post('/sets/add-stream', requireToken, kontoSchranke('strom'), async (req: LoggedInRequest, res) => {
+router.post('/sets/add-stream', requireToken, kontoSchranke('strom'), async (req: AuthedRequest, res) => {
   const { set_number, quantity = 1, purchase_price, condition: setCondition, owner_user_id, storage } = req.body;
   if (!set_number) { sendeFehler(req, res, 400, 'set_number_erforderlich'); return; }
   const owner = await resolveWriteTarget(angemeldeteNutzerId(req), owner_user_id);
@@ -405,7 +405,7 @@ router.post('/sets/add-stream', requireToken, kontoSchranke('strom'), async (req
 });
 
 /** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
-router.post('/sets/:setNumber/parts', requireToken, async (req: LoggedInRequest, res: Antwort<'POST /api/v1/sets/:setNumber/parts'>) => {
+router.post('/sets/:setNumber/parts', requireToken, async (req: AuthedRequest, res: Antwort<'POST /api/v1/sets/:setNumber/parts'>) => {
   const uid = angemeldeteNutzerId(req);
   const set = await findSetInScope(uid, pfadParam(req, 'setNumber'));
   if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');

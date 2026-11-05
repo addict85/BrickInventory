@@ -235,21 +235,6 @@ Der Merker bleibt im Modul, weil der Takt ihn im Sekundenbereich braucht;
 maßgeblich für die Kachel ist aber die Zeile in `global_settings`.
 ```
 
-<a id="loescheverfallene"></a>
-## `loescheVerfallene`
-
-```text
-Verfallene Notizen löschen.
-
-── Was der Kommentar behauptete und der Code nicht tat (Nachtrag 121) ──────
-Bei NOTIZ_GILT_MS stand „Ältere Notizen als diese verfallen". Sie verfielen
-nicht: Die Abfrage des Stapels grenzt nur ein, was sie AUSWÄHLT — gelöscht
-wurde nie etwas anderes. Notizen älter als drei Tage blieben also für immer
-liegen, zählten weiter in der Kachel (COUNT(*) ohne Frist) und liessen den
-Job verstummen, weil die Logzeile an `gesamt > 0` hängt. Von aussen sah das
-aus wie eine Warteschlange, die bei einer Zahl stehenbleibt.
-```
-
 <a id="arbeitestapel-arbeit"></a>
 ## `arbeit`
 

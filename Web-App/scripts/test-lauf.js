@@ -29,7 +29,9 @@ const id = (s) => `"${s.replace(/"/g, '""')}"`;
 /** @param {string[]} dateien @param {number} n @param {Record<string, string>} env @param {number} frist @returns {Promise<number>} */
 function lauf(dateien, n, env, frist = 60_000) {
   if (!dateien.length) return Promise.resolve(0);
-  const vorlader = env.TEST_DB_VORLAGE ? ['--require', path.join(ROOT, 'test', 'helpers', 'eigene-db.js')] : [];
+  // textausgabe.js hält Text aus dem Strom der Berichtsrahmen (Begründung dort).
+  const vorlader = ['--require', path.join(ROOT, 'test', 'helpers', 'textausgabe.js'),
+    ...(env.TEST_DB_VORLAGE ? ['--require', path.join(ROOT, 'test', 'helpers', 'eigene-db.js')] : [])];
   return new Promise((fertig) => {
     const p = spawn(process.execPath,
       [...vorlader, '--test', `--test-concurrency=${n}`, `--test-timeout=${frist}`, ...dateien],

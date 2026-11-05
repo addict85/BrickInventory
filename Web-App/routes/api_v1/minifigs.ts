@@ -85,7 +85,7 @@ router.get('/minifigs/:figNumber/parts', requireToken, async (req: AuthedRequest
   res.json({ success: true, ...await teileDerFigur(String(req.params.figNumber)) }); 
 });
 
-router.post('/minifigs/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: AuthedRequest & { file?: { buffer: Buffer } }, res: Antwort<'POST /api/v1/minifigs/import/csv'>) => {
+router.post('/minifigs/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'), async (req: AuthedRequest, res: Antwort<'POST /api/v1/minifigs/import/csv'>) => {
   if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
   res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', { text: req.file.buffer.toString('utf-8') }));
 });

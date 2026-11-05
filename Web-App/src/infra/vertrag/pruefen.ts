@@ -62,9 +62,21 @@ export function vertragPruefen(req: Request, res: Response, next: NextFunction):
   next();
 }
 
+/** Middleware, die dem Rest der Kette einen engeren Request zusichert (z. B.
+ * AuthedRequest hinter requireToken). Die Marke `sichert` hat nur, was mit
+ * waechter() gebaut ist: Eine beliebige Funktion an erster Stelle sichert nichts zu. */
+export type Waechter<R extends Request> = ((req: Request, res: Response, next: NextFunction) => void) & { readonly sichert: (r: R) => R };
+export function waechter<R extends Request>(f: (req: Request, res: Response, next: NextFunction) => void): Waechter<R> {
+  return Object.assign(f, { sichert: (r: R) => r });
+}
+type Schritt<R extends Request, S extends Response> = (req: R, res: S, next: NextFunction) => unknown;
+type Bewacht = <R extends Request, S extends Response>(pfad: string, w: Waechter<R>, ...schritte: Schritt<R, S>[]) => VertragsRouter;
+/** Wie express.Router; steht ein Wächter vorn, bekommen die Schritte dahinter seinen Request-Typ. */
+export type VertragsRouter = express.Router & { get: Bewacht; post: Bewacht; put: Bewacht; patch: Bewacht; delete: Bewacht };
+
 /** Ein Router, der Eingaben im Betrieb und seine Antworten in Tests gegen den
  * Vertrag prüft — auch dort, wo ein Test ihn ohne routes/api_v1/index.ts einhängt. */
-export function vertragsRouter(o: { grosseIds?: boolean } = {}): express.Router {
+export function vertragsRouter(o: { grosseIds?: boolean } = {}): VertragsRouter {
   // Wie der Vertrag: Eine andere Schreibung ist eine andere Route (404), nicht dieselbe ohne Eintrag.
   const router = express.Router({ caseSensitive: true });
   router.use(vertragPruefen);
@@ -82,5 +94,5 @@ export function vertragsRouter(o: { grosseIds?: boolean } = {}): express.Router 
     router.param(name, (req, res, next, wert) =>
       idWert(wert, hoechstens) === null ? sendeFehler(req, res, 400, 'id_ungueltig') : next());
   }
-  return router;
+  return router as VertragsRouter;
 }

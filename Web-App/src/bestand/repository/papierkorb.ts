@@ -60,8 +60,15 @@ export async function legeEintragAn(tx: DbSchnittstelle, userId: number, art: Pa
   return r?.id ?? null;
 }
 
+/** Wie die Tabelle sie liefert; `art` prüft die Tabelle per CHECK. */
+export interface PapierkorbZeile {
+  id: number; user_id: number; art: PapierArt; nummer: string; farbe_id: number | null;
+  bezeichnung: string | null; zeilen: Record<string, { quantity?: unknown }[]> | null;
+  geloescht_am: string; endgueltig_am: string;
+}
+
 export function eintraege(uids: number[], aufbewahrungTage: number) {
-  return db.all(
+  return db.all<PapierkorbZeile>(
     `SELECT id, user_id, art, nummer, farbe_id, bezeichnung, zeilen, geloescht_am,
             geloescht_am + make_interval(days => $2) AS endgueltig_am
        FROM papierkorb WHERE user_id = ANY($1)

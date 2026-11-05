@@ -40,20 +40,3 @@ dort `undefined`, und `undefined >= MAX_ATTEMPTS` ist `false` — die Sperre
 faellt still aus, und nichts im Protokoll sagt es. Genau diese Fehlerklasse
 faengt eine Typpruefung, und genau hier ist sie am meisten wert.
 ```
-
-<a id="ipof"></a>
-## `_ipOf`
-
-```text
-VORHER: der ERSTE Eintrag aus dem rohen X-Forwarded-For-Header, ungeprüft.
-Der Header kommt vom CLIENT, nicht vom Proxy — jeder darf ihn mitschicken.
-Ein Angreifer, der bei jedem Versuch einen anderen (frei erfundenen) Wert
-sendet, bekommt bei jedem Versuch einen frischen Rate-Limit-Bucket; die
-"5 Fehlversuche, dann 15 Min Sperre"-Regel griff dadurch nie.
-
-server.ts setzt bereits `app.set('trust proxy', 1)` in Produktion — Express
-wertet X-Forwarded-For damit selbst aus (genau ein Hop, der eigene
-Reverse-Proxy) und legt das Ergebnis in req.ip ab. req.ip ist deshalb die
-vertrauenswürdige Quelle; der Header-Zugriff bleibt nur als Fallback für
-Kontexte ohne Express-Request (aktuell keine), falls req.ip einmal fehlt.
-```
