@@ -95,7 +95,7 @@ function eigenesSkript(u) {
   return url.protocol === 'blob:' || /^\/(locales|vendor\/pdfjs|js)\//.test(url.pathname);
 }
 tt?.createPolicy('default', {
-  createHTML: (/** @type {string} */ s) => { if (s === '') return s; throw new TypeError('Trusted Types: Markup nur über setzeHtml()'); },
+  createHTML: (/** @type {string} */ s) => { if (s === '') return s; throw new TypeError('Trusted Types: Markup nur über die Richtlinie app'); },
   createScriptURL: (/** @type {string} */ u) => { if (eigenesSkript(u)) return u; throw new TypeError(`Trusted Types: fremdes Skript ${u}`); },
   createScript: () => { throw new TypeError('Trusted Types: kein Skript aus Text'); },
 });
