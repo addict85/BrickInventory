@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.components
 
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -103,27 +104,34 @@ fun <T> WahlChips(
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
     ) {
-        optionen.forEach { (wert, text) ->
-            val an = wert == gewaehlt
-            // Surface mit selected/onClick statt Modifier.selectable: so bleibt die Welle in der Chipform.
-            Surface(
-                selected = an,
-                onClick = { onWahl(wert) },
-                enabled = enabled,
-                shape = Formen.chip,
-                color = if (an) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
-                contentColor = if (an) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                border = BorderStroke(if (an) 2.dp else 1.dp,
-                    if (an) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
-                modifier = Modifier.heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.6f).semantics { role = Role.RadioButton },
-            ) {
-                Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (an) Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))
-                    Text(text, style = MaterialTheme.typography.labelLarge)
-                }
-            }
+        optionen.forEach { (wert, text) -> WahlChip(text, wert == gewaehlt, { onWahl(wert) }, enabled = enabled) }
+    }
+}
+
+/**
+ * Ein Chip einer Einfachwahl, vorgelesen als Optionsfeld; die Gruppe drumherum trägt
+ * `selectableGroup()`. Der Text bricht um statt abgeschnitten zu werden.
+ */
+@Composable
+fun WahlChip(text: String, an: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    // Surface mit selected/onClick statt Modifier.selectable: so bleibt die Welle in der Chipform.
+    Surface(
+        selected = an,
+        onClick = onClick,
+        enabled = enabled,
+        shape = Formen.chip,
+        color = if (an) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface,
+        contentColor = if (an) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        border = BorderStroke(if (an) 2.dp else 1.dp,
+            if (an) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
+        modifier = modifier.heightIn(min = 48.dp).alpha(if (enabled) 1f else 0.6f).fokusRahmen(Formen.chip)
+            .semantics { role = Role.RadioButton },
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (an) Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))
+            Text(text, style = MaterialTheme.typography.labelLarge)
         }
     }
 }
@@ -144,7 +152,8 @@ fun SortierMenue(
     var offen by rememberSaveable { mutableStateOf(false) }
     val aktuell = optionen.firstOrNull { it.first == gewaehlt }?.second ?: ""
     Box(modifier) {
-        BadgedBox(badge = { if (vorgabe != null && gewaehlt != vorgabe) Badge() }) {
+        // Der Punkt ist Zierde; was er sagt, steht schon im Namen des Knopfs.
+        BadgedBox(badge = { if (vorgabe != null && gewaehlt != vorgabe) Badge(Modifier.clearAndSetSemantics {}) }) {
             MitTooltip(stringResource(R.string.sort_menu_cd, aktuell)) {
                 OutlinedIconButton(
                     onClick = { offen = true },

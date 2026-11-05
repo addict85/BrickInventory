@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import ch.brickinventoryapp.ui.components.GedrosselteAnsage
+import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.KaestchenZeile
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -307,39 +312,28 @@ fun PartsListScreen(
                             Spacer(Modifier.width(Abstaende.winzig))
                             Text(stringResource(R.string.partslist_fill_owned))
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                            Checkbox(checked = nurLose, onCheckedChange = onNurLose)
-                            Text(stringResource(R.string.partslist_only_loose),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
+                        KaestchenZeile(stringResource(R.string.partslist_only_loose), nurLose, onNurLose)
                         // Zweite Wahl, andere Frage: Die erste sagt, WELCHE ART
                         // Teile zaehlt, diese sagt, WESSEN. Beide wirken
                         // zusammen — „nur manuell erfasste" plus „mit
                         // Unterkonten" zaehlt die manuell erfassten Teile des
                         // ganzen Haushalts.
                         if (hatUnterkonten) {
-                            Row(verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                                Checkbox(checked = mitUnterkonten,
-                                    onCheckedChange = onMitUnterkonten)
-                                Text(stringResource(R.string.partslist_include_subs),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            KaestchenZeile(stringResource(R.string.partslist_include_subs), mitUnterkonten, onMitUnterkonten)
                         }
                     }
                 }
 
                 if (status.isNotBlank()) {
-                    Text(status, style = MaterialTheme.typography.bodySmall,
+                    Text(status, Modifier.ansagen(), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 // Live-Countdown während der PDF-Erstellung (nur wenn ein Export läuft).
                 pdfStatus?.let { txt ->
-                    Text(txt, style = MaterialTheme.typography.bodyMedium,
+                    // Sichtbar jede Sekunde, angesagt alle zehn.
+                    GedrosselteAnsage(txt)
+                    Text(txt, Modifier.clearAndSetSemantics { contentDescription = txt }, style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary)
                 }
             }

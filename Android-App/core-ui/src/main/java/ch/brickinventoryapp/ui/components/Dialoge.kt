@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.components
 
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -62,10 +63,12 @@ fun Rueckfrage(
     onAbbrechen: () -> Unit,
     symbol: ImageVector? = null,
 ) {
+    // Titel als Überschrift und Name des Fensters: TalkBack nennt beim Öffnen, worum es geht.
     AlertDialog(
         onDismissRequest = onAbbrechen,
+        modifier = Modifier.semantics { paneTitle = titel },
         icon = symbol?.let { s -> { Icon(s, null, tint = MaterialTheme.colorScheme.error) } },
-        title = { Text(titel) },
+        title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Bei 200 % Schrift reicht ein langer Satz sonst unter die Knöpfe.
         text = { Text(text, Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
@@ -96,7 +99,8 @@ fun ErfassenDialog(
     }
     AlertDialog(
         onDismissRequest = onAbbrechen,
-        title = { Text(titel) },
+        modifier = Modifier.semantics { paneTitle = titel },
+        title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Ist die Schrift gross, sind die Felder höher als das Fenster; die
         // Knöpfe bleiben dabei stehen, nur die Felder rollen.
         text = {

@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.ui.theme
 
+import ch.brickinventoryapp.ui.components.fokusRahmen
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -83,6 +88,8 @@ fun AppKarte(
      * Wellenanzeige; ein `clickable` an der unantippbaren Fassung sähe anders aus.
      */
     onClick: (() -> Unit)? = null,
+    /** Was das Antippen tut, für TalkBack („Doppeltippen, um Details zu öffnen“). */
+    onClickLabel: String? = null,
     inhalt: @Composable ColumnScope.() -> Unit
 ) {
     val form = Formen.karte
@@ -92,7 +99,12 @@ fun AppKarte(
         Card(modifier = modifier.fillMaxWidth(), shape = form,
              elevation = erhebung, colors = farben, content = inhalt)
     } else {
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = form,
+        // Card(onClick) setzt keine Rolle; TalkBack nannte die Kachel nicht als Knopf.
+        val bedienung = Modifier.fokusRahmen(form).semantics {
+            role = Role.Button
+            onClick(label = onClickLabel) { onClick(); true }
+        }
+        Card(onClick = onClick, modifier = modifier.fillMaxWidth().then(bedienung), shape = form,
              elevation = erhebung, colors = farben, content = inhalt)
     }
 }

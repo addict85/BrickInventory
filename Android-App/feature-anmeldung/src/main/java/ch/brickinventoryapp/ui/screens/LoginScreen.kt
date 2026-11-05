@@ -111,7 +111,8 @@ fun LoginScreen(
                 },
                 shape = Formen.chip,
                 color = MaterialTheme.colorScheme.surface,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                // outline: Der Rand ist die einzige Grenze des Chips und braucht 3:1.
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
                 Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
                     verticalAlignment = Alignment.CenterVertically,

@@ -4,10 +4,10 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Galerie bei 200 Prozent zeigt mehrere Sets ganz
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-index b31c912..c900c5b 100644
+index d46c92b..b1981f2 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/GalleryScreen.kt
-@@ -525,7 +525,7 @@ fun SetCard(
+@@ -526,7 +526,7 @@ fun SetCard(
      // Ab grosser Schrift eine Listenzeile, Bild links und Text rechts, wie die Merkliste:
      // Über die volle Breite nahm das Bild zwei Drittel der Höhe, und es stand ein Set je
      // Bildschirm. Die Plaketten rücken dann vom Bild in den Text, das Bild ist zu klein.
@@ -15,4 +15,4 @@ index b31c912..c900c5b 100644
 +    val zeile = false
      val pct = preis?.pnlPct
      val betrag = kachelBetrag(set, preis)
-     val guv: (@Composable () -> Unit)? = if (pct != null && betrag != null) ({
+     // Was die Plaketten auf dem Bild sagen, liest TalkBack am Ende der Kachel: zuerst der Name.

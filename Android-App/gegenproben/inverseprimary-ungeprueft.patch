@@ -1,0 +1,18 @@
+Gegenprobe: inversePrimary (Aktion der Snackbar) wieder ohne Kontrastprüfung (05.11.2026, thema.py lokal)
+Modul: core-ui
+Test: ch.brickinventoryapp.TextKontrastTest
+Rot: jede Schriftrolle erreicht 4,5 zu 1 (farbfaecher.inversePrimary/inverseSurface 3,73)
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+index 8831478..dd73e3b 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
+@@ -455,7 +455,7 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
+         inverseSurface = s.onSurface,
+         inverseOnSurface = s.surface,
+         // Die Snackbar-Aktion: so weit aufgehellt bzw. abgedunkelt, bis sie 4,5:1 erreicht.
+-        inversePrimary = mitKontrast(lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f), s.onSurface),
++        inversePrimary = lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f),
+         // Material setzt im Dunkeln #690005, auf den hellen Fehlertönen nur 4,48:1.
+         onError = if (dunkel) s.background else Color.White,
+         errorContainer = lerp(s.error, s.surface, 0.85f),

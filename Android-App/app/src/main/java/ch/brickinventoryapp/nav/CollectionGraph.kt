@@ -76,7 +76,7 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
         // Gelöscht wird erst, wenn die Snackbar ohne „Rückgängig“ endet — auch wenn
         // sie verschwindet, weil man die Galerie verlässt (finally).
         val vorgemerkt by galerieVm.vorgemerkt.collectAsStateWithLifecycle()
-        val geloeschtText = vorgemerkt?.let { stringResource(R.string.gallery_set_deleted_undo, it.name) }
+        val geloeschtText = vorgemerkt?.let { stringResource(R.string.vm_set_deleted, it.name) }
         val rueckgaengigText = stringResource(R.string.common_undo)
         LaunchedEffect(vorgemerkt) {
             if (vorgemerkt == null || geloeschtText == null) return@LaunchedEffect

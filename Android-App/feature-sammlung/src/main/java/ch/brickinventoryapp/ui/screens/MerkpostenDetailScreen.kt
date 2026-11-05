@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.theme.mittigBis
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
@@ -135,15 +136,16 @@ fun MerkpostenDetailScreen(
                     // Set- und im Katalog-Detail.
                     modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5)
                         .clip(MaterialTheme.shapes.medium)
-                        .clickable(enabled = bildUrl != null, role = Role.Button) { zoomOffen = true },
+                        .clickable(enabled = bildUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { zoomOffen = true },
                     ersatzGroesse = Abstaende.riesig * 2,
                     bildgrund = true,
                     innenAbstand = Abstaende.mittel,
                 )
             }
 
+            // Die Karten begrenzen die Breite (wie im Set-Detail), nicht jedes Element darin.
             item {
-                AppKarte {
+                AppKarte(Modifier.mittigBis(Lesebreite.formular)) {
                     // Mit Abstand zwischen den Zeilen wie im Katalog-Detail: Dicht gestapelt
                     // las sich die Karte als ein Block.
                     Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
@@ -189,7 +191,7 @@ fun MerkpostenDetailScreen(
                 aussenAbstand = false)
 
             item {
-                AppKarte {
+                AppKarte(Modifier.mittigBis(Lesebreite.formular)) {
                     Column(Modifier.padding(Abstaende.mittel)) {
                         Abschnittstitel(stringResource(R.string.detail_section_market))
                         Spacer(Modifier.height(Abstaende.klein))
@@ -228,8 +230,7 @@ fun MerkpostenDetailScreen(
                             ?.takeIf { it.isNotBlank() }
                             ?.let { R.string.detail_compare to it },
                     )
-                    // Höchstens Bedienbreite: Auf dem Tablet liefen die Knöpfe sonst über die ganze Spalte.
-                    val breite = Modifier.widthIn(max = Lesebreite.bedienung).fillMaxWidth()
+                    val breite = Modifier.fillMaxWidth()
                     if (adressen.isNotEmpty()) {
                         Row(
                             breite,

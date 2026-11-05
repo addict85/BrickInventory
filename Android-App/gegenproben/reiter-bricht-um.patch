@@ -1,29 +1,26 @@
-Gegenprobe: Beschriftung der Reiter wieder als Text ohne Zeilengrenze
+Gegenprobe: Beschriftung der Reiter wieder ohne Zeilengrenze, alle Ziele beschriftet
 Modul: app
 Test: ch.brickinventoryapp.FeinschliffRegelnTest
-Rot: Reiterleiste bricht
+Rot: Reiterleiste bricht bei 200 Prozent kein Wort um
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-index b22d2a1..c22a50c 100644
+index b2ab7a3..11cfef4 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/MainScaffold.kt
-@@ -285,18 +285,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, be
-     val stil = MaterialTheme.typography.labelSmall
-     val boden = stil.fontSize / LocalDensity.current.fontScale.coerceAtLeast(1f)
-     val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
--    Text(
--        // Mindestabstand zum Rand des Ziels: Bei 200 % stand „Sammlung“ 1 dp vor der Kante.
--        text, Modifier.padding(horizontal = Abstaende.winzig),
--        style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
--        overflow = TextOverflow.Clip,
--        onTextLayout = { l ->
--            if (l.hasVisualOverflow) {
--                if (aktuell.value - REITER_SCHRIFT_SCHRITT >= boden.value) groesse.value = (aktuell.value - REITER_SCHRIFT_SCHRITT).sp
--                else beschriftet.value = false
--            }
--        },
--    )
-+    Text(text, style = stil.copy(fontSize = aktuell), onTextLayout = { if (beschriftet.value && boden.value < 0f) groesse.value = aktuell })
+@@ -281,7 +281,6 @@ private fun ReiterZiel(
+             // Fett und in Hauptfarbe: Das gewählte Ziel unterscheidet sich auch in der Form.
+             fontWeight = if (gewaehlt) FontWeight.Bold else FontWeight.Medium,
+             color = if (gewaehlt) farben.gewaehlt else farben.ungewaehlt,
+-            maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
+         )
+     }
  }
- 
- /** Ohne Beschriftung trägt das Symbol den Namen des Ziels. */
+@@ -311,7 +310,7 @@ private fun ReiterLeiste(
+             }
+             Row(Modifier.fillMaxWidth().heightIn(min = LEISTE_HOEHE).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+                 ziele.forEachIndexed { i, (screen, icon, name) ->
+-                    val beschriftet = satz.alle || i == satz.gewaehlt
++                    val beschriftet = true
+                     val platz = Modifier.weight(if (i == satz.gewaehlt) satz.gewicht else 1f)
+                     val ziel: @Composable (Modifier) -> Unit = { m ->
+                         ReiterZiel(gewaehlt(screen), name, if (beschriftet) stil.fontSize * satz.faktor else null, farben,

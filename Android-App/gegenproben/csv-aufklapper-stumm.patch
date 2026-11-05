@@ -1,0 +1,20 @@
+Gegenprobe: Zustand und Aufklappen am CSV-Balken entfernt
+Modul: app
+Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Rot: M11 CSV-Balken nennt Zustand (Der Aufklapper nennt keinen Zustand)
+
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CsvImportBanner.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CsvImportBanner.kt
+index f5a08f5..11163df 100644
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CsvImportBanner.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/CsvImportBanner.kt
+@@ -66,10 +66,6 @@ fun CsvImportBanner(
+                 .clickable(role = Role.Button, onClickLabel = ziel) {
+                     expanded = !expanded
+                 }
+-                .semantics {
+-                    stateDescription = zustand
+-                    if (expanded) collapse { expanded = false; true } else expand { expanded = true; true }
+-                }
+         ) {
+             Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.klein)) {
+                 CsvKopfzeile(done, total, ok, running, expanded, fortschritt, onAbbrechen)

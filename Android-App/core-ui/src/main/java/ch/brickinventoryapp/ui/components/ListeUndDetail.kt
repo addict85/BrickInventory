@@ -114,7 +114,8 @@ fun DetailTopAppBar(
     TopAppBar(
         title = {
             Column {
-                Text(titel, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                // Bei grosser Schrift drei Zeilen: Ein Teilename mit 30 Zeichen brauchte sie bei 200 %.
+                Text(titel, fontWeight = FontWeight.SemiBold, maxLines = if (grosseSchrift()) 3 else 2, overflow = TextOverflow.Ellipsis,
                     onTextLayout = { zeilen = it.lineCount }, modifier = Modifier.semantics { heading() })
                 if (untertitel != null) Text(untertitel, style = typo.bodySmall, maxLines = 1,
                     overflow = TextOverflow.Ellipsis)

@@ -1,0 +1,18 @@
+Gegenprobe: Die Anzahl aus dem Barcode-Dialog wird nicht weitergereicht
+Modul: app
+Test: ch.brickinventoryapp.AblaufBefundeTest
+Rot: M4 die Erfassung nach dem Scan hat eine Anzahl (expected 2 but was 1)
+
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/dialogs/BarcodeResultDialog.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/dialogs/BarcodeResultDialog.kt
+index 424584f..58419ba 100644
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/dialogs/BarcodeResultDialog.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/dialogs/BarcodeResultDialog.kt
+@@ -106,7 +106,7 @@ ErfassenDialog(
+                 // eigenen Konto (gleiche Regel wie im Galerie-Dialog).
+                 if (blick.householdMembers.size > 1) barcodeOwner else null,
+                 barcodeLagerort.trim().takeIf { it.isNotEmpty() },
+-                quantity = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
++                quantity = 1,
+             )
+         }
+     },

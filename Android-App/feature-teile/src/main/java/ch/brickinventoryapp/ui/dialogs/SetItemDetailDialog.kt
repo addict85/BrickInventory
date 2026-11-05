@@ -140,7 +140,7 @@ private fun SetItemDetail(
                                 .fillMaxWidth()
                                 .height(140.dp)
                                 .clip(MaterialTheme.shapes.medium)
-                                .clickable(enabled = bild != null, role = Role.Button) { zeigeZoom = true },
+                                .clickable(enabled = bild != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { zeigeZoom = true },
                         )
                         Spacer(Modifier.height(Abstaende.mittel))
                         SetItemZeile(

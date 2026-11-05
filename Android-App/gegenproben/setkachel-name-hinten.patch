@@ -1,0 +1,23 @@
+Gegenprobe: Name der Katalogkachel wieder unter der Setnummer
+Modul: app
+Test: ch.brickinventoryapp.BarrierefreiheitBefundeTest
+Rot: M13 Set- und Katalogkachel lesen zuerst den Namen
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
+index db4ec14..eb479af 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogScreen.kt
+@@ -519,11 +519,11 @@ fun CatalogSetCard(
+                 Box {
+                     Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein),
+                         verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+-                        Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+-                            maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
+                         Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
+                             style = MaterialTheme.typography.bodySmall,
+                             color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
++                        Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
++                            maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
+                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                             val jahr = set.year
+                             if (jahr != null) Text("$jahr", Modifier.vorgelesenAls(stringResource(R.string.cd_jahr, "$jahr")),

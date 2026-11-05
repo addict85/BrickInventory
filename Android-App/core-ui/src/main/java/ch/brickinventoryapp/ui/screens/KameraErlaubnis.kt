@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.ansagen
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -108,7 +109,7 @@ fun KameraUeberlagerung(
         Surface(color = Color.Black.copy(alpha = 0.72f), shape = Formen.kachel) {
             Text(
                 hinweis,
-                Modifier.padding(horizontal = 18.dp, vertical = 10.dp),
+                Modifier.padding(horizontal = 18.dp, vertical = 10.dp).ansagen(),
                 color = Color.White, style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )

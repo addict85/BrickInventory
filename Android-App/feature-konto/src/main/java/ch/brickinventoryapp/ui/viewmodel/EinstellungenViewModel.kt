@@ -168,6 +168,14 @@ class EinstellungenViewModel @Inject constructor(
     override fun loescheAlarm(setNumber: String, condition: String) =
         alarmSchleuse { sets.deletePreisalarm(setNumber, condition) }
 
+    /** Ohne Bindestrich gilt die erste Fassung („10294“ → „10294-1“), wie beim Erfassen. */
+    override fun legeAlarmAn(setNumber: String, condition: String, richtung: String, roh: String) {
+        val nummer = setNumber.trim().let { if (it.isBlank() || it.contains('-')) it else "$it-1" }
+        val schwelle = Alarmeingabe.zahl(roh)
+        if (nummer.isBlank() || schwelle == null || schwelle <= 0.0) { zeigeMeldung(text(R.string.alerts_bad_value)); return }
+        alarmSchleuse { sets.setPreisalarm(nummer, richtung, schwelle, condition) }
+    }
+
     /** Ändern und Löschen: rufen, melden, die Übersicht lädt auf das Signal nach. */
     private fun alarmSchleuse(tun: suspend () -> Result<PreisalarmResponse>) {
         viewModelScope.launch {

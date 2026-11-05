@@ -1,5 +1,7 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.components.fokusRahmen
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -21,9 +23,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.TextUnit
-import androidx.compose.ui.unit.isSpecified
+import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.rememberTextMeasurer
+import ch.brickinventoryapp.ui.theme.ReiterFarben
+import ch.brickinventoryapp.ui.theme.reiterFarben
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -121,12 +131,6 @@ fun MainScaffold(
 
     // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten
     // Bildschirm ist schmal und bekommt die Leiste unten.
-    // Eine Grösse für alle Beschriftungen: Schrumpft jede für sich, steht „Sammlung“
-    // klein neben grossem „Mehr“.
-    val reiterSchrift = remember(LocalDensity.current.fontScale) { mutableStateOf(REITER_SCHRIFT_START) }
-    // Passt eine Beschriftung auch in Normalgrösse nicht, stehen nur Symbole da (Name für
-    // TalkBack); das gewählte Ziel nennt der Titel oben.
-    val beschriftet = remember(LocalDensity.current.fontScale) { mutableStateOf(true) }
     // Die Snackbar liegt über dem Inhalt; ihre Höhe hebt den Erfassen-Knopf darüber.
     var snackbarHoehe by remember { mutableIntStateOf(0) }
     val offlineHinweise = remember { mutableIntStateOf(0) }
@@ -136,17 +140,7 @@ fun MainScaffold(
         // und Inhalt rechts daneben — dieselben Ziele wie unten, „Mehr“ eingeschlossen.
         Row(Modifier.fillMaxSize()) {
         if (art == Navigationsart.SEITENLEISTE) {
-            NavigationRail(containerColor = MaterialTheme.colorScheme.surface) {
-                Spacer(Modifier.height(12.dp))
-                bottomNavItems.forEach { (screen, icon, label) ->
-                    NavigationRailItem(
-                        selected = istGewaehlt(screen),
-                        onClick = { reiterWaehlen(screen) },
-                        icon = { ReiterSymbol(label, beschriftet.value) { Symbol(screen, icon) } },
-                        label = if (beschriftet.value) ({ ReiterBeschriftung(label, reiterSchrift, beschriftet) }) else null,
-                    )
-                }
-            }
+            ReiterSeitenleiste(bottomNavItems, ::istGewaehlt, ::reiterWaehlen) { screen, icon -> Symbol(screen, icon) }
         }
         Scaffold(
             modifier = Modifier.weight(1f).nestedScroll(einklappen.nestedScrollConnection),
@@ -182,19 +176,7 @@ fun MainScaffold(
             },
             bottomBar = {
                 if (art == Navigationsart.LEISTE_UNTEN) {
-                    NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        tonalElevation = 3.dp
-                    ) {
-                        bottomNavItems.forEach { (screen, icon, label) ->
-                            NavigationBarItem(
-                                icon = { ReiterSymbol(label, beschriftet.value) { Symbol(screen, icon) } },
-                                label = if (beschriftet.value) ({ ReiterBeschriftung(label, reiterSchrift, beschriftet) }) else null,
-                                selected = istGewaehlt(screen),
-                                onClick = { reiterWaehlen(screen) }
-                            )
-                        }
-                    }
+                    ReiterLeiste(bottomNavItems, ::istGewaehlt, ::reiterWaehlen) { screen, icon -> Symbol(screen, icon) }
                 }
             },
             snackbarHost = { SnackbarHost(snackbarHostState, Modifier.onSizeChanged { snackbarHoehe = it.height }) },
@@ -271,42 +253,123 @@ fun ReiterGeruest(
     )
 }
 
+/** Ein Ziel der Navigation: Symbol mit Anzeige, darunter die Beschriftung oder (ohne [groesse]) nur ihr Name. */
+@Composable
+private fun ReiterZiel(
+    gewaehlt: Boolean, name: String, groesse: TextUnit?, farben: ReiterFarben,
+    onClick: () -> Unit, modifier: Modifier = Modifier, symbol: @Composable () -> Unit,
+) {
+    Column(
+        modifier.fokusRahmen(Formen.kachel).selectable(selected = gewaehlt, onClick = onClick, role = Role.Tab)
+            .then(if (groesse == null) Modifier.semantics { contentDescription = name } else Modifier)
+            .padding(horizontal = Abstaende.winzig, vertical = Abstaende.mittel),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+    ) {
+        Box(
+            Modifier.size(width = ANZEIGE_BREITE, height = ANZEIGE_HOEHE)
+                .background(if (gewaehlt) farben.anzeige else Color.Transparent, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            CompositionLocalProvider(LocalContentColor provides if (gewaehlt) farben.aufAnzeige else farben.ungewaehlt) { symbol() }
+        }
+        if (groesse != null) Text(
+            name, style = MaterialTheme.typography.labelMedium.copy(fontSize = groesse),
+            // Fett und in Hauptfarbe: Das gewählte Ziel unterscheidet sich auch in der Form.
+            fontWeight = if (gewaehlt) FontWeight.Bold else FontWeight.Medium,
+            color = if (gewaehlt) farben.gewaehlt else farben.ungewaehlt,
+            maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
+        )
+    }
+}
+
 /**
- * Beschriftung eines Ziels in Leiste und Seitenleiste: immer eine Zeile, alle in einer
- * Grösse. Reicht die Breite nicht, wird die Schrift kleiner, aber nie kleiner als ohne
- * Vergrösserung — sonst hebt die Leiste die Systemeinstellung auf. Passt sie dann noch
- * nicht, fällt die Beschriftung weg ([beschriftet]).
+ * Die Leiste unten. Alle Beschriftungen stehen in einer Grösse und schrumpfen höchstens
+ * bis zum Anderthalbfachen der Normalgrösse, sonst höbe die Leiste die Systemeinstellung
+ * auf. Reicht der Platz dann nicht, ist nur das gewählte Ziel beschriftet und breiter;
+ * die übrigen tragen ihren Namen für TalkBack und als Tooltip.
  */
 @Composable
-private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, beschriftet: MutableState<Boolean>) {
-    val stil = MaterialTheme.typography.labelSmall
-    val boden = stil.fontSize / LocalDensity.current.fontScale.coerceAtLeast(1f)
-    val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
-    Text(
-        // Mindestabstand zum Rand des Ziels: Bei 200 % stand „Sammlung“ 1 dp vor der Kante.
-        text, Modifier.padding(horizontal = Abstaende.winzig),
-        style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
-        overflow = TextOverflow.Clip,
-        onTextLayout = { l ->
-            if (l.hasVisualOverflow) {
-                if (aktuell.value - REITER_SCHRIFT_SCHRITT >= boden.value) groesse.value = (aktuell.value - REITER_SCHRIFT_SCHRITT).sp
-                else beschriftet.value = false
+private fun ReiterLeiste(
+    ziele: List<Triple<Screen, @Composable () -> Unit, String>>,
+    gewaehlt: (Screen) -> Boolean, onWahl: (Screen) -> Unit,
+    symbol: @Composable (Screen, @Composable () -> Unit) -> Unit,
+) {
+    val farben = reiterFarben(MaterialTheme.colorScheme)
+    val stil = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
+    val messer = rememberTextMeasurer()
+    val dichte = LocalDensity.current
+    Surface(color = farben.leiste) {
+        BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)) {
+            val satz = with(dichte) {
+                reiterSatz(ziele.map { messer.measure(it.third, stil).size.width.toFloat() },
+                    ziele.indexOfFirst { gewaehlt(it.first) }, maxWidth.toPx(), (Abstaende.winzig * 2).toPx(),
+                    ANZEIGE_MIN.toPx(), fontScale)
             }
-        },
-    )
+            Row(Modifier.fillMaxWidth().heightIn(min = LEISTE_HOEHE).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+                ziele.forEachIndexed { i, (screen, icon, name) ->
+                    val beschriftet = satz.alle || i == satz.gewaehlt
+                    val platz = Modifier.weight(if (i == satz.gewaehlt) satz.gewicht else 1f)
+                    val ziel: @Composable (Modifier) -> Unit = { m ->
+                        ReiterZiel(gewaehlt(screen), name, if (beschriftet) stil.fontSize * satz.faktor else null, farben,
+                            { onWahl(screen) }, m) { symbol(screen, icon) }
+                    }
+                    if (beschriftet) ziel(platz) else MitTooltip(name, platz) { ziel(Modifier.fillMaxWidth()) }
+                }
+            }
+        }
+    }
 }
 
-/** Ohne Beschriftung trägt das Symbol den Namen des Ziels. */
+/** Die Seitenleiste wird so breit, wie die längste Beschriftung in voller Grösse braucht. */
 @Composable
-private fun ReiterSymbol(name: String, beschriftet: Boolean, symbol: @Composable () -> Unit) {
-    if (beschriftet) symbol() else Box(Modifier.semantics { contentDescription = name }) { symbol() }
+private fun ReiterSeitenleiste(
+    ziele: List<Triple<Screen, @Composable () -> Unit, String>>,
+    gewaehlt: (Screen) -> Boolean, onWahl: (Screen) -> Unit,
+    symbol: @Composable (Screen, @Composable () -> Unit) -> Unit,
+) {
+    val farben = reiterFarben(MaterialTheme.colorScheme)
+    val groesse = MaterialTheme.typography.labelMedium.fontSize
+    Surface(color = MaterialTheme.colorScheme.surface) {
+        Column(
+            Modifier.fillMaxHeight().width(IntrinsicSize.Max).widthIn(min = SEITENLEISTE_BREITE)
+                .windowInsetsPadding(NavigationRailDefaults.windowInsets).padding(top = Abstaende.mittel).selectableGroup(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            ziele.forEach { (screen, icon, name) ->
+                ReiterZiel(gewaehlt(screen), name, groesse, farben, { onWahl(screen) }, Modifier.fillMaxWidth()) { symbol(screen, icon) }
+            }
+        }
+    }
 }
 
-/** Unbestimmt: Die Beschriftung beginnt bei der Grösse des Themas. */
-private val REITER_SCHRIFT_START = TextUnit.Unspecified
+/** Wie die Leiste unten beschriftet ist: alle mit [faktor] der vollen Grösse, oder nur [gewaehlt] mit [gewicht]. */
+internal data class ReiterSatz(val alle: Boolean, val faktor: Float, val gewaehlt: Int, val gewicht: Float)
 
-/** Um so viel Punkt schrumpft die gemeinsame Grösse je Messung mit Überstand. */
-private const val REITER_SCHRIFT_SCHRITT = 0.5f
+/**
+ * Aus den Breiten der Beschriftungen in voller Grösse ([breiten], px, ohne [rand]) und der
+ * Schriftskala [schrift]: ob alle passen, wie weit sie schrumpfen, sonst wie breit das gewählte Ziel wird.
+ */
+internal fun reiterSatz(breiten: List<Float>, gewaehlt: Int, gesamt: Float, rand: Float, minZiel: Float, schrift: Float): ReiterSatz {
+    val anteil = gesamt / breiten.size - rand
+    val boden = minOf(schrift, REITER_MIN_SKALA) / schrift
+    val faktor = minOf(1f, anteil / (breiten.maxOrNull() ?: 1f))
+    if (faktor >= boden || gewaehlt < 0 || breiten.size < 2) return ReiterSatz(true, maxOf(faktor, boden), gewaehlt, 1f)
+    val noetig = breiten[gewaehlt] + rand
+    val rest = (gesamt - noetig) / (breiten.size - 1)
+    if (rest >= minZiel) return ReiterSatz(false, 1f, gewaehlt, noetig / rest)
+    val frei = gesamt - minZiel * (breiten.size - 1)
+    return ReiterSatz(false, ((frei - rand) / breiten[gewaehlt]).coerceIn(boden, 1f), gewaehlt, frei / minZiel)
+}
+
+/** Kleiner als das Anderthalbfache der Normalgrösse wird keine Beschriftung (WCAG 1.4.4). */
+private const val REITER_MIN_SKALA = 1.5f
+private val ANZEIGE_BREITE = 56.dp
+private val ANZEIGE_HOEHE = 32.dp
+/** Breite eines unbeschrifteten Ziels: Anzeige und Rand. */
+private val ANZEIGE_MIN = 64.dp
+private val LEISTE_HOEHE = 80.dp
+private val SEITENLEISTE_BREITE = 80.dp
 
 /** Die Ziele des Umschalters Sets | Teile | Minifiguren, in seiner Reihenfolge. */
 internal val SAMMLUNGS_ZIELE: List<Screen> = listOf(Screen.Gallery, Screen.Parts, Screen.Minifigs)

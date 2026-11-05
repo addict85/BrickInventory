@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.dialogs
 
+import ch.brickinventoryapp.ui.screens.InfoPlakette
+import ch.brickinventoryapp.ui.components.ErfassenDialog
+import androidx.compose.runtime.saveable.rememberSaveable
 import ch.brickinventoryapp.ui.viewmodel.ErfassungAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -68,34 +71,48 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
     val barcodeState = zustand.barcodeState
     if (barcodeState.result == null) return
 
-// Preisfeld pro gescanntem Barcode zurücksetzen
-var barcodePriceText by remember(barcodeState.result) { mutableStateOf("") }
-var barcodeCondition by remember(barcodeState.result) { mutableStateOf(state.userDefaultCondition ?: "N") }
+// Je gescanntem Barcode neu, und über eine Drehung hinweg (rememberSaveable): Preis
+// und Lagerort gingen beim Drehen verloren.
+var barcodeQuantity by rememberSaveable(barcodeState.result) { mutableStateOf("1") }
+var barcodePriceText by rememberSaveable(barcodeState.result) { mutableStateOf("") }
+var barcodeCondition by rememberSaveable(barcodeState.result) { mutableStateOf(state.userDefaultCondition ?: "N") }
 // Eigentümer wie im Galerie-Dialog vorbelegen: das eigene Konto. Repository, API
 // und Server nehmen ihn entgegen, also muss auch dieser Weg ihn abfragen.
-var barcodeOwner by remember(barcodeState.result, blick.householdMembers) {
+var barcodeOwner by rememberSaveable(barcodeState.result, blick.householdMembers) {
     mutableStateOf(blick.householdMembers.firstOrNull { it.isSelf }?.id)
 }
-// Lagerort, ebenfalls je gescanntem Barcode zurückgesetzt — der Barcode-Weg soll
-// dieselben Felder haben wie die übrigen. Zurückgesetzt auf die Vorgabe, nicht auf
-// leer, damit sie bei einer Neuerfassung vorausgewählt ist. Der zweite Schlüssel
-// ist die Vorgabe selbst: Sie kommt übers Netz und kann nach dem Scan eintreffen.
+// Lagerort zurückgesetzt auf die Vorgabe, nicht auf leer, damit sie bei einer
+// Neuerfassung vorausgewählt ist; die Vorgabe kann nach dem Scan eintreffen.
 val lagerZustand = zustand.lagerZustand
 val lagerVorgabe = lagerZustand.vorgabe?.name ?: ""
-var barcodeLagerort by remember(barcodeState.result, lagerVorgabe) { mutableStateOf(lagerVorgabe) }
-AlertDialog(
-    // Während des Hinzufügens nicht per Tipp daneben schliessbar —
-    // sonst verschwindet der Dialog, während der Aufruf noch läuft.
-    onDismissRequest = { if (!barcodeState.adding) aktionen.cancelBarcode() },
-    title = {
-        Text(
-            if (barcodeState.source == "partslist") stringResource(R.string.main_barcode_add_partslist)
+var barcodeLagerort by rememberSaveable(barcodeState.result, lagerVorgabe) { mutableStateOf(lagerVorgabe) }
+val fuerTeileliste = barcodeState.source == "partslist"
+// Derselbe Rahmen wie „Set erfassen“: Titel, Felder untereinander, rechts der volle Knopf.
+ErfassenDialog(
+    titel = if (fuerTeileliste) stringResource(R.string.main_barcode_add_partslist)
             else stringResource(R.string.main_barcode_add_set),
-            fontWeight = FontWeight.Bold
-        )
+    bestaetigen = stringResource(R.string.barcode_add),
+    // Die Sperre gegen die Doppelerfassung sitzt in confirmAddBarcode(); hier sieht man,
+    // dass das Tippen angekommen ist.
+    bestaetigenAn = !barcodeState.adding,
+    onBestaetigen = {
+        if (fuerTeileliste) {
+            // Nur die Nummer: Aus der Teileliste entsteht kein Bestand.
+            aktionen.confirmAddBarcode(barcodeState.result)
+        } else {
+            aktionen.confirmAddBarcode(
+                barcodeState.result, barcodePriceText.replace(',', '.').toDoubleOrNull(), barcodeCondition,
+                // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim
+                // eigenen Konto (gleiche Regel wie im Galerie-Dialog).
+                if (blick.householdMembers.size > 1) barcodeOwner else null,
+                barcodeLagerort.trim().takeIf { it.isNotEmpty() },
+                quantity = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
+            )
+        }
     },
-    text = {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    // Während des Hinzufügens nicht schliessbar — der Aufruf läuft noch.
+    onAbbrechen = { if (!barcodeState.adding) aktionen.cancelBarcode() },
+) {
             // ── Hinweis bei geratener Nummer ──
             //
             // Der Dialog zeigt Bild und Namen; der Hinweis sagt, wann man hinsehen muss
@@ -137,6 +154,9 @@ AlertDialog(
             if (barcodeState.setName != null)
                 Text(barcodeState.setName, fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.titleMedium)
+            // Wie im Katalog: Wer ein Set schon hat, soll es sehen, bevor er es ein zweites Mal erfasst.
+            if (barcodeState.besitzMenge > 0 && !fuerTeileliste)
+                InfoPlakette(stringResource(R.string.barcode_schon_besessen, barcodeState.besitzMenge), icon = Icons.Default.Check)
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), verticalAlignment = Alignment.CenterVertically) {
                 Text(barcodeState.result, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
@@ -181,6 +201,15 @@ AlertDialog(
                 )
                 OutlinedTextField(
                     shape = Formen.feld,
+                    value = barcodeQuantity,
+                    onValueChange = { barcodeQuantity = NumericInput.quantity(it) },
+                    label = { Text(stringResource(R.string.common_quantity)) },
+                    singleLine = true,
+                    keyboardOptions = NumericInput.ganzzahlTastatur(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    shape = Formen.feld,
                     value = barcodePriceText,
                     onValueChange = { nv -> barcodePriceText = NumericInput.price(nv) },
                     label = { Text(stringResource(R.string.barcode_purchase_price)) },
@@ -200,54 +229,5 @@ AlertDialog(
                     { barcodeLagerort = it }
                 )
             }
-        }
-    },
-    confirmButton = {
-        // Zweite Verteidigungslinie gegen die Doppelerfassung: sichtbar gesperrter Knopf
-        // mit Spinner. Die eigentliche Sperre sitzt in confirmAddBarcode() — hier sieht
-        // der Nutzer, dass sein Tippen angekommen ist, und tippt kein zweites Mal.
-        Button(
-            onClick = {
-                if (barcodeState.source == "partslist") {
-                    // Nur die Nummer: Aus der Teileliste entsteht kein Bestand, die Felder sind
-                    // oben nicht sichtbar. confirmAddBarcode() verwürfe sie zwar, aber der Aufruf
-                    // soll beim Lesen zeigen, was gemeint ist.
-                    aktionen.confirmAddBarcode(barcodeState.result)
-                } else {
-                    val price = barcodePriceText.replace(',', '.').toDoubleOrNull()
-                    aktionen.confirmAddBarcode(
-                        barcodeState.result, price, barcodeCondition,
-                        // Ohne Haushalt gar nichts mitschicken — der Server
-                        // bleibt dann beim eigenen Konto (gleiche Regel wie
-                        // im Galerie-Dialog).
-                        if (blick.householdMembers.size > 1) barcodeOwner else null,
-                        barcodeLagerort.trim().takeIf { it.isNotEmpty() }
-                    )
-                }
-            },
-            enabled = !barcodeState.adding,
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            if (barcodeState.adding) {
-                CircularProgressIndicator(
-                    Modifier.size(16.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    strokeWidth = 2.dp
-                )
-                Spacer(Modifier.width(Abstaende.klein))
-                Text(stringResource(R.string.barcode_add))
-            } else {
-                Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))
-                Spacer(Modifier.width(Abstaende.klein))
-                Text(stringResource(R.string.barcode_add))
-            }
-        }
-    },
-    dismissButton = {
-        TextButton(
-            onClick = { aktionen.cancelBarcode() },
-            enabled = !barcodeState.adding
-        ) { Text(stringResource(R.string.common_cancel)) }
-    }
-)
+}
 }

@@ -66,7 +66,7 @@ fun Ladezustand(
 @Composable
 fun LadeKreis(modifier: Modifier = Modifier) {
     val text = stringResource(R.string.common_loading)
-    Box(modifier.fillMaxSize().semantics { contentDescription = text }, contentAlignment = Alignment.Center) {
+    Box(modifier.fillMaxSize().semantics { contentDescription = text; liveRegion = LiveRegionMode.Polite }, contentAlignment = Alignment.Center) {
         CircularProgressIndicator()
     }
 }

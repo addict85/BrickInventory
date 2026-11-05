@@ -8,6 +8,8 @@ interface EinstellungenAktionen {
     fun aendereAlarmSchwelle(setNumber: String, condition: String, richtung: String, schwelle: Double)
     fun setzeAlarmSchwelle(setNumber: String, condition: String, richtung: String, roh: String)
     fun loescheAlarm(setNumber: String, condition: String)
+    /** Einen Alarm anlegen wie in der Web-App: Setnummer, Zustand, Richtung und Schwelle (roh). */
+    fun legeAlarmAn(setNumber: String, condition: String, richtung: String, roh: String)
     fun ladeEigeneLagerorte()
     fun legeLagerortAn(name: String)
     fun benenneLagerortUm(id: Int, name: String)

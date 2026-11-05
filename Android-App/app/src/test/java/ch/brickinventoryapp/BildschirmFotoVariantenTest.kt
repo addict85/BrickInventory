@@ -109,6 +109,38 @@ import java.time.Duration
 import org.junit.Assert
 import org.robolectric.Shadows
 import org.robolectric.shadows.ShadowDialog
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.test.performScrollTo
+import ch.brickinventoryapp.data.repository.BrickRepository
+import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.ui.AppUiState
+import ch.brickinventoryapp.ui.BarcodeUiState
+import ch.brickinventoryapp.ui.BlickfeldUiState
+import ch.brickinventoryapp.ui.LagerUiState
+import ch.brickinventoryapp.ui.UpdateUiState
+import ch.brickinventoryapp.ui.VerwaltungUiState
+import ch.brickinventoryapp.ui.dialogs.BarcodeDialogZustand
+import ch.brickinventoryapp.ui.dialogs.BarcodeResultDialog
+import ch.brickinventoryapp.ui.screens.AcquisitionManagementRoute
+import ch.brickinventoryapp.ui.screens.BarcodeScannerScreen
+import ch.brickinventoryapp.ui.screens.CacheEreignisse
+import ch.brickinventoryapp.ui.screens.CsvImportBanner
+import ch.brickinventoryapp.ui.screens.EinstellungenZustand
+import ch.brickinventoryapp.ui.screens.GutscheineRoute
+import ch.brickinventoryapp.ui.screens.KameraErlaubnisHinweis
+import ch.brickinventoryapp.ui.screens.ManualItemDetailRoute
+import ch.brickinventoryapp.ui.screens.MonitoringScreen
+import ch.brickinventoryapp.ui.screens.MonitoringZustand
+import ch.brickinventoryapp.ui.screens.SettingsScreen
+import ch.brickinventoryapp.ui.viewmodel.DarstellungAktionen
+import ch.brickinventoryapp.ui.viewmodel.GutscheinViewModel
+import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
+import ch.brickinventoryapp.ui.viewmodel.MonitoringUiState
+import ch.brickinventoryapp.ui.viewmodel.MonitoringViewModel
+import ch.brickinventoryapp.ui.viewmodel.UpdateAktionen
+import ch.brickinventoryapp.util.UpdateBeschreibung
 
 /**
  * Was BildschirmFotoTest nicht abdeckt, je einmal statt im vollen Raster (die
@@ -1017,4 +1049,209 @@ class BildschirmFotoVariantenTest {
         anhalten()
         foto("offline")
     }
+
+    // ── Abläufe, die sonst kein Foto hatten: Einstellungen, Update, Scanner, Barcode,
+    // Kaufpreise, Einzelteil, Hintergrundarbeiten, Gutschein, Einladung, CSV-Import ──
+
+    private val keinUpdate = object : UpdateAktionen {
+        override fun pruefeAufUpdate(still: Boolean) = Unit
+        override fun updateHinweisSchliessen() = Unit
+        override fun ladeUpdate() = Unit
+        override fun starteInstallation() = Unit
+    }
+
+    private val keineDarstellung = object : DarstellungAktionen {
+        override fun setLanguage(languageCode: String) = Unit
+        override fun setHelligkeit(wahl: String) = Unit
+        override fun setSystemfarben(an: Boolean) = Unit
+        override fun setVorschauVerbergen(an: Boolean) = Unit
+        override fun setWidgetWerte(an: Boolean) = Unit
+    }
+
+    private fun einstellungenFoto(name: String, dunkel: Boolean, geraet: String, update: UpdateUiState = UpdateUiState()) {
+        val vm = einstellungen()
+        zeige(name, dunkel = dunkel, geraet = geraet) {
+            SettingsScreen(
+                zustand = EinstellungenZustand(AppUiState(serverUrl = "https://brick.example.org"), update,
+                    "system", "classic", false, false, false, false),
+                aktionen = vm, update = keinUpdate, darstellung = keineDarstellung, onNutzerCa = {},
+                onLogout = {}, onServerWechseln = {}, scrollState = androidx.compose.foundation.rememberScrollState(),
+            )
+        }
+        // Die Update-Karte steht weiter unten: Ohne Scrollen fehlte der Fortschritt im Bild.
+        update.fortschritt?.let { p ->
+            compose.onNodeWithText(ApplicationProvider.getApplicationContext<android.content.Context>()
+                .getString(R.string.update_downloading, p)).performScrollTo()
+        }
+        anhalten()
+        foto(name, dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun einstellungenTelefon() = einstellungenFoto("einstellungen", false, "telefon")
+    @Test fun einstellungenTabletDunkel() = einstellungenFoto("einstellungen", true, "tablet")
+
+    @Test fun updateLaedt() = einstellungenFoto("update-laedt", false, "telefon",
+        UpdateUiState(geprueft = true, fortschritt = 42,
+            neuereFassung = UpdateBeschreibung(versionCode = 240, versionName = "2.4.0", apkUrl = "https://brick.example.org/app.apk")))
+
+    // Ohne Kamera nur die Überlagerung: Rahmen, Hinweis, Licht und Schliessen.
+    private fun scannerFoto(geraet: String) {
+        zeige("scanner", geraet = geraet, warten = false) {
+            BarcodeScannerScreen(onResult = {}, onDismiss = {}, ohneKamera = true)
+        }
+        anhalten()
+        foto("scanner", dunkel = true, geraet = geraet)
+    }
+
+    @Test fun scannerTelefon() = scannerFoto("telefon")
+    @Test fun scannerTablet() = scannerFoto("tablet")
+
+    @Test
+    fun scannerErlaubnis() {
+        zeige("scanner-erlaubnis", warten = false) {
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color.Black)) { KameraErlaubnisHinweis(onErlauben = {}) }
+        }
+        anhalten()
+        foto("scanner-erlaubnis", dunkel = true)
+    }
+
+    private fun barcodeFoto(dunkel: Boolean) {
+        val zustand = BarcodeDialogZustand(AppUiState(), BlickfeldUiState(),
+            BarcodeUiState(result = "75192-1", setName = "Millennium Falcon", besitzMenge = 1), LagerUiState())
+        zeige("dialog-barcode-ergebnis", dunkel = dunkel, warten = false) {
+            BarcodeResultDialog(zustand, erfassung(), bilder)
+        }
+        compose.waitForIdle()
+        dialogFoto("dialog-barcode-ergebnis", "classic", dunkel, "telefon", 1f)
+    }
+
+    @Test fun dialogBarcodeErgebnis() = barcodeFoto(false)
+    @Test fun dialogBarcodeErgebnisDunkel() = barcodeFoto(true)
+
+    private fun kaeufe() = welt.t.merke(KaeufeViewModel(welt.t.dienste, HaushaltRepository(welt.t.api, welt.t.cache),
+        FinanzenRepository(welt.t.api, welt.t.cache), TeileRepository(welt.t.api, welt.t.cache),
+        FigurenRepository(welt.t.api, welt.t.cache)))
+
+    private fun kaufpreiseFoto(dunkel: Boolean, geraet: String) {
+        val vm = kaeufe()
+        zeige("kaufpreise", dunkel = dunkel, geraet = geraet) {
+            AcquisitionManagementRoute(vm, type = "set", id = Beispiele.SET, title = "Millennium Falcon", onBack = {})
+        }
+        anhalten()
+        foto("kaufpreise", dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun kaufpreiseTelefon() = kaufpreiseFoto(false, "telefon")
+    @Test fun kaufpreiseTabletDunkel() = kaufpreiseFoto(true, "tablet")
+
+    // Ein manuell erfasstes Teil mit zwei Käufen: Die Beispieldaten haben keine manuellen Teile.
+    private fun einzelteilFoto(dunkel: Boolean, geraet: String) {
+        welt.pfade.antworten["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
+            "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12,"image_local":"/beispiel/teil1.png",
+            "avg_price":0.18,"avg_purchase_price":0.12}]}"""
+        welt.pfade.antworten["/api/v1/parts/3001/5/acquisitions"] = """{"success":true,"acquisitions":[
+            {"id":21,"quantity":8,"purchase_price":0.96,"condition":"N","created_at":"2026-05-02T10:00:00Z"},
+            {"id":22,"quantity":4,"purchase_price":0.48,"condition":"U","created_at":"2026-09-12T10:00:00Z"}],
+            "totals":{"quantity":12,"amount":1.44,"priced_rows":2}}"""
+        val vm = kaeufe()
+        val teile = welt.teile()
+        zeige("einzelteil-detail", dunkel = dunkel, geraet = geraet) {
+            ManualItemDetailRoute(vm, teile, type = "part", id = "3001", colorId = 5, fallbackTitle = "Brick 2 x 4",
+                imageLoader = bilder, onBack = {}, onNavigateToAcqMgmt = { _, _, _, _ -> })
+        }
+        anhalten()
+        foto("einzelteil-detail", dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun einzelteilDetailTelefon() = einzelteilFoto(false, "telefon")
+    @Test fun einzelteilDetailTabletDunkel() = einzelteilFoto(true, "tablet")
+
+    // Dieselbe Antwort wie in HintergrundarbeitenTest: ein laufender und ein gescheiterter Auftrag.
+    private fun hintergrundFoto(dunkel: Boolean, geraet: String) {
+        welt.pfade.antworten["/api/v1/admin/auftraege"] = """{"success":true,
+            "auftraege":[
+              {"id":"17","art":"bilder","status":"laeuft","versuche":1,"max_versuche":5,"faellig_ab":"2026-10-30T10:00:00Z",
+               "frist_bis":null,"gestartet":"2026-10-30T10:00:05Z","erstellt":"2026-10-30T09:59:00Z","aktualisiert":null,
+               "fortschritt":{"erledigt":3,"gesamt":12,"text":"Bilder"},"fehler":null,"user_id":4,"geplant":false,"set_number":"75192-1"},
+              {"id":"18","art":"preise","status":"fehler","versuche":3,"max_versuche":3,"faellig_ab":"2026-10-30T11:00:00Z",
+               "frist_bis":null,"gestartet":null,"erstellt":"2026-10-30T09:00:00Z","aktualisiert":null,
+               "fortschritt":null,"fehler":"BrickLink antwortet nicht","user_id":null,"geplant":true,"set_number":null}],
+            "zusammenfassung":[{"art":"bilder","status":"laeuft","anzahl":1}],
+            "pausen":[{"art":"preise","bis":"2026-10-30T12:00:00Z","grund":"Kontingent"}],
+            "bildbedarf":7,
+            "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
+        val api = welt.t.api
+        val cache = welt.t.cache
+        val vm = MonitoringViewModel(BrickRepository(
+            sets = SetsRepository(api, cache), teile = TeileRepository(api, cache),
+            finanzen = FinanzenRepository(api, cache), haushalt = HaushaltRepository(api, cache),
+            figuren = FigurenRepository(api, cache), konto = KontoRepository(api, cache),
+            verwaltung = VerwaltungRepository(api, cache), katalog = KatalogRepository(api, cache),
+            gutscheine = GutscheineRepository(api, cache), cache = cache,
+        ), KontextTexte(), welt.t.meldungen)
+        kotlinx.coroutines.runBlocking { vm.ladeHintergrund() }
+        val ereignisse = CacheEreignisse({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
+        zeige("hintergrundarbeiten", dunkel = dunkel, geraet = geraet, warten = false) {
+            MonitoringScreen(MonitoringZustand(MonitoringUiState(), vm.hintergrund.value, VerwaltungUiState(),
+                emptyMap(), "classic", 0L), vm, ereignisse)
+        }
+        anhalten()
+        foto("hintergrundarbeiten", dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun hintergrundarbeitenTelefon() = hintergrundFoto(false, "telefon")
+    @Test fun hintergrundarbeitenTabletDunkel() = hintergrundFoto(true, "tablet")
+
+    @Test
+    fun gutscheinFormular() {
+        welt.pfade.antworten["/api/v1/vouchers"] = """{"success":true,"vouchers":[]}"""
+        val vm = welt.t.merke(GutscheinViewModel(GutscheineRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            object : DateiLeser {
+                override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
+            }, welt.t.meldungen))
+        zeige("gutschein-formular") {
+            GutscheineRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
+        }
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        compose.onNode(androidx.compose.ui.test.hasText(ctx.getString(R.string.vouchers_add)) and
+            androidx.compose.ui.test.hasClickAction()).performClick()
+        compose.waitForIdle()
+        blattAufziehen()
+        // Am PIN-Feld erkannt: Der Titel des Blatts steht auch auf dem Knopf darunter.
+        blattFoto(R.string.vouchers_pin, "gutschein-formular", "classic", false, "telefon")
+    }
+
+    @Test
+    fun haushaltCode() {
+        welt.pfade.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
+            "sub_accounts":[{"id":2,"username":"lena"}],"open_invites":0}"""
+        welt.pfade.antworten["/api/v1/settings/household/invite"] = """{"success":true,"code":"K7QF-2M9X","expires_in":86400}"""
+        val vm = welt.t.merke(HaushaltViewModel(welt.t.dienste,
+            HaushaltRepository(welt.t.api, welt.t.cache),
+            KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+        zeige("haushalt-code", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
+            HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
+        }
+        val ctx = ApplicationProvider.getApplicationContext<android.content.Context>()
+        compose.onNodeWithText(ctx.getString(R.string.household_invite_create)).performScrollTo().performClick()
+        bereitstellen("haushalt-code (Code)", { vm.householdState.value.inviteCode != null }, { vm.householdState.value })
+        compose.onNodeWithText(ctx.getString(R.string.household_invite_teilen)).performScrollTo()
+        anhalten()
+        foto("haushalt-code")
+    }
+
+    private fun csvLaeuftFoto(dunkel: Boolean, geraet: String) {
+        zeige("csv-import-laeuft", dunkel = dunkel, geraet = geraet, warten = false) {
+            androidx.compose.foundation.layout.Column {
+                CsvImportBanner(done = 37, total = 120, current = "75192-1 Millennium Falcon",
+                    ok = 35, warn = 1, err = 1, running = true, onAbbrechen = {})
+            }
+        }
+        anhalten()
+        foto("csv-import-laeuft", dunkel = dunkel, geraet = geraet)
+    }
+
+    @Test fun csvImportLaeuftTelefon() = csvLaeuftFoto(false, "telefon")
+    @Test fun csvImportLaeuftTabletDunkel() = csvLaeuftFoto(true, "tablet")
 }

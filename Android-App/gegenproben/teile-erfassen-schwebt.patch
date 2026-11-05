@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Teile bei 200 Prozent zeigen mehrere Teile ganz
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
-index 5fd88a0..3f1eba4 100644
+index 50d1959..f6ece0c 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
-@@ -296,7 +296,7 @@ fun PartsScreen(
-         }
-     }
+@@ -311,7 +311,7 @@ fun PartsScreen(
  
--        if (!gross) ErfassenFab(
-+        if (!gross || gross) ErfassenFab(
+         // Eine Regel für alle Reiter (wie Galerie und Merkliste): Kein „+“ im Fehlerzustand,
+         // und leer steht der Knopf schon mitten im Bild.
+-        if (!gross && anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
++        if ((!gross || gross) && anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
              erfassenText, { showAddDialog = true },
              Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
          )
