@@ -203,6 +203,42 @@ test('reine Quelltext-Tests werden weniger, nie mehr', () => {
 });
 
 /**
+ * Je Testfall statt je Datei: Auch eine Datei, die irgendwo Code ausführt,
+ * kann zwanzig Fälle haben, die nur eine Zeile im Quelltext suchen. Ein Fall
+ * zählt, wenn er Quelltext liest (direkt oder über eine Quelltext-Variable der
+ * Datei) und nichts ausführt. Zählweise wie im Prüfbericht arch17-web-b.
+ */
+const FALL_FUEHRT_AUS = /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|JSDOM|new Function|vm\.|import\(|require\(.*dist|\.request\(|agent\.|oberflaeche\(|browser|seite\.|page\.|await |starte|lade\w*\(/;
+const FALL_LIEST = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
+function quelltextFaelle() {
+  let n = 0, alle = 0;
+  for (const name of fs.readdirSync(__dirname).filter(x => x.endsWith('.test.js'))) {
+    const s = fs.readFileSync(path.join(__dirname, name), 'utf8');
+    const vars = new Set();
+    for (const m of s.matchAll(/(?:const|let|var)\s+(\w+)\s*=\s*[^;\n]*(readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare|Quelle\b)/g)) vars.add(m[1]);
+    for (const m of s.matchAll(/(?:const|let|var)\s+\{([^}]+)\}\s*=\s*require\(['"]\.\/helpers\/sources['"]\)/g))
+      for (const x of m[1].split(',')) vars.add(x.trim().split(':').pop()?.trim() ?? '');
+    for (const fall of s.split(/\n(?=\s{0,4}(?:test|it)\(\s*['"`])/).slice(1)) {
+      alle++;
+      const liest = FALL_LIEST.test(fall) || [...vars].some(v => v && new RegExp(`\\b${v}\\b`).test(fall));
+      if (liest && !FALL_FUEHRT_AUS.test(fall)) n++;
+    }
+  }
+  return { n, alle };
+}
+
+test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
+  // Gemessen 613 am 05.11.2026 (Prüfbericht: 632); der Rückgang steht im git log.
+  // Gegenprobe (05.11.2026): parts-paging.test.js auf den Stand vor den jsdom-Tests → rot.
+  const SCHRANKE = 613;
+  const { n, alle } = quelltextFaelle();
+  assert.ok(alle > 2000, `nur ${alle} Testfälle gefunden — greift die Suche noch?`);
+  assert.ok(n <= SCHRANKE, `${n} Testfälle lesen nur Quelltext, erlaubt sind ${SCHRANKE}. ` +
+    'Verhalten gehört in einen Test, der den Code ausführt (jsdom, buildAndRequire, testServer).');
+  if (n < SCHRANKE) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
+/**
  * Emoji in der Oberfläche. Seit dem 25.10. gibt es eine Symbolfamilie (Sprite
  * in index.html); Emoji sehen je Gerät anders aus und passen weder in Grösse
  * noch Farbe dazu. Gezählt werden Markup, deutsche Sprachtexte und die
