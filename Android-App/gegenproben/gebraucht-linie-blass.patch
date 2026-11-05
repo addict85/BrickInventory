@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.TextKontrastTest
 Rot: Diagrammschrift und Linien sind lesbar (noppe.gebraucht/surface 2,61)
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
-index 8831478..c0a4f32 100644
+index 7826b40..8c22e3d 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 @@ -503,7 +503,7 @@ internal fun diagrammFarben(theme: String, dunkel: Boolean, s: ColorScheme): Cha
          // blau, Gebraucht bernstein/orange, damit sich die Farbsysteme nicht verwechseln.
          "farbfaecher" -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher, gedaempft = gedaempft)
-         // Das Orange des Webs (#FF7A00) erreicht auf Weiss nur 2,6:1; als Linie braucht es 3:1.
--        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, mitKontrast(ChartUsedNoppe, s.surface, GRAFIK_KONTRAST),
+         // Das Orange des Webs (ChartUsedNoppe) erreicht auf Weiss nur 2,6:1; als Linie braucht es 3:1.
+-        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe.let { mitKontrast(it, s.surface, GRAFIK_KONTRAST) },
 +        "noppe", "hochglanz" -> ChartColors(ChartNewNoppe, ChartUsedNoppe,
              raster = Color(0xFFE4E8EF), gedaempft = gedaempft)
          else -> ChartColors(ChartNewClassic, ChartUsedClassic, gedaempft = gedaempft)

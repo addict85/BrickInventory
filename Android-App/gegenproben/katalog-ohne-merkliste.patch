@@ -4,7 +4,7 @@ Test: ch.brickinventoryapp.AblaufBefundeTest
 Rot: M6 das Katalog-Detail zeigt den Merkposten (Merkliste nicht genannt)
 
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
-index 72046c9..539d61c 100644
+index fe0f0a1..9216630 100644
 --- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
 +++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/screens/CatalogDetailScreen.kt
 @@ -140,7 +140,7 @@ fun CatalogDetailScreen(
