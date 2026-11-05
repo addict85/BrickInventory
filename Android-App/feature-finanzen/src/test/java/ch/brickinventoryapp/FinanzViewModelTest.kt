@@ -46,8 +46,10 @@ class FinanzViewModelTest {
             "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[
                 {"set_number":"75192-1","name":"Falke"}]}""",
             "/api/v1/finance/portfolio-history" to """{"success":true,"period":"month","points":[]}""",
-            "/api/v1/finance/parts-valuation" to """{"success":true,"parts":[]}""",
-            "/api/v1/finance/minifigs-valuation" to """{"success":true,"figs":[]}""",
+            // Vollständig nach DTO: Wirft das Einlesen, reicht Retrofit den Fehler über
+            // Dispatchers.Default weiter, und der Test läuft nicht mehr im Takt.
+            "/api/v1/finance/parts-valuation" to """{"success":true,"total_value":"0.00","parts":[]}""",
+            "/api/v1/finance/minifigs-valuation" to """{"success":true,"total_value":"0.00","figs":[]}""",
         )
         t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
