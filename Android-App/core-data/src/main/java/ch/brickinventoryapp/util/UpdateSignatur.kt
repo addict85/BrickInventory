@@ -57,7 +57,7 @@ fun beschreibungsSchluessel(pem: String): List<ByteArray> =
         .toList()
 
 /** ECDSA mit SHA-256, wie `openssl dgst -sha256 -sign` im Signierjob; andere Verfahren gelten nicht. */
-fun beschreibungsSignaturGilt(daten: ByteArray, signatur: ByteArray, spki: ByteArray): Boolean = runCatching {
+internal fun beschreibungsSignaturGilt(daten: ByteArray, signatur: ByteArray, spki: ByteArray): Boolean = runCatching {
     val schluessel = KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(spki))
     Signature.getInstance("SHA256withECDSA").run {
         initVerify(schluessel)
@@ -67,7 +67,7 @@ fun beschreibungsSignaturGilt(daten: ByteArray, signatur: ByteArray, spki: ByteA
 }.getOrDefault(false)
 
 /** SHA-256 mit RSA oder ECDSA, je nach Schlüssel des Zertifikats — so signiert openssl im Workflow. */
-fun signaturGilt(daten: ByteArray, signatur: ByteArray, zertifikat: ByteArray): Boolean = runCatching {
+internal fun signaturGilt(daten: ByteArray, signatur: ByteArray, zertifikat: ByteArray): Boolean = runCatching {
     val schluessel = CertificateFactory.getInstance("X.509").generateCertificate(zertifikat.inputStream()).publicKey
     val verfahren = when (schluessel.algorithm) {
         "RSA" -> "SHA256withRSA"

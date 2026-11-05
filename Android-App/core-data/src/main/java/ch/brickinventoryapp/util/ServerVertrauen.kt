@@ -272,7 +272,7 @@ class PinVertrauen(
  * wie für den eigenen Server. Eine Abweichung fragt niemanden (eigene
  * [ZertifikatsFrage]) und merkt nichts — sie bricht den Handshake nur ab.
  */
-fun auftragsVertrauen(
+internal fun auftragsVertrauen(
     kette: X509ExtendedTrustManager,
     system: X509ExtendedTrustManager,
     schluessel: String,

@@ -68,7 +68,7 @@ internal fun teilelistenAblage(intern: File, extern: File?): File {
  * später noch. Verschlüsselt ist sie auch dann, aber das Inventar soll nicht länger
  * auf dem Gerät liegen, als jemand es braucht.
  */
-const val TEILELISTE_FRIST_MS: Long = 30L * 60 * 1000
+internal const val TEILELISTE_FRIST_MS: Long = 30L * 60 * 1000
 
 /** Löscht die Teileliste, wenn sie älter als [frist] ist; beim Start und im Auftrag nach dem Export. */
 fun raeumeAlteTeilelisteAuf(intern: File, jetzt: Long, frist: Long = TEILELISTE_FRIST_MS): Boolean {

@@ -9,21 +9,21 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 
 /** Dieselben Hosts wie ERLAUBTE_BILD_HOSTS der Webapp (src/infra/fremdeAdressen.ts). */
-val ERLAUBTE_BILD_HOSTS = setOf(
+internal val ERLAUBTE_BILD_HOSTS = setOf(
     "cdn.rebrickable.com", "rebrickable.com",
     "images.brickset.com",
     "www.bricklink.com", "img.bricklink.com",
 )
 
 /** Genau ein Host der Liste, über https auf 443; Unterdomänen zählen nicht. */
-fun istErlaubterBildHost(url: HttpUrl): Boolean = url.isHttps && url.port == 443 && url.host in ERLAUBTE_BILD_HOSTS
+internal fun istErlaubterBildHost(url: HttpUrl): Boolean = url.isHttps && url.port == 443 && url.host in ERLAUBTE_BILD_HOSTS
 
 /**
  * Der eigene Server für den Bild-Client. localhost nur im Debug-Build ([entwicklung]):
  * Im Release-Build könnten Bild-Adressen aus einer Server-Antwort sonst Dienste
  * auf dem Gerät selbst ansprechen, an der Liste der erlaubten Hosts vorbei.
  */
-fun istEigenerBildServer(url: HttpUrl, serverUrl: String, entwicklung: Boolean): Boolean =
+internal fun istEigenerBildServer(url: HttpUrl, serverUrl: String, entwicklung: Boolean): Boolean =
     (entwicklung && url.host == "localhost") || NetworkPolicy.isSameOrigin(url, serverUrl)
 
 /**

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.util
 
 /** So lange bleibt ein kopiertes Geheimnis in der Zwischenablage. */
-const val GEHEIM_ABLAUF_MS = 60_000L
+internal const val GEHEIM_ABLAUF_MS = 60_000L
 
 /** Was mit einem abgelaufenen Geheimnis in der Zwischenablage geschieht. */
 enum class GeheimSchritt { WARTEN, LEEREN, VERGESSEN }
@@ -12,7 +12,7 @@ enum class GeheimSchritt { WARTEN, LEEREN, VERGESSEN }
  * (ab Android 10 im Hintergrund), wird gewartet, bis die App wieder vorne ist —
  * blind zu leeren könnte fremden Inhalt treffen.
  */
-fun geheimSchritt(kennung: String?, faelligAb: Long, jetzt: Long, lesbar: Boolean, kennungImClip: String?): GeheimSchritt = when {
+internal fun geheimSchritt(kennung: String?, faelligAb: Long, jetzt: Long, lesbar: Boolean, kennungImClip: String?): GeheimSchritt = when {
     kennung == null -> GeheimSchritt.VERGESSEN
     jetzt < faelligAb || !lesbar -> GeheimSchritt.WARTEN
     kennungImClip == kennung -> GeheimSchritt.LEEREN

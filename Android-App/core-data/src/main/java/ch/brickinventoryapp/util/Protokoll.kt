@@ -34,7 +34,7 @@ object Protokoll {
  * (Passwörter, Gutschein-PINs). Die Köpfe mit Token oder Sitzung sind zusätzlich
  * geschwärzt, falls jemand beim Suchen die Stufe hochdreht.
  */
-fun netzMitschnitt(
+internal fun netzMitschnitt(
     schreiber: HttpLoggingInterceptor.Logger = HttpLoggingInterceptor.Logger { Protokoll.notiz("OkHttp", it) },
 ): HttpLoggingInterceptor = HttpLoggingInterceptor(schreiber).apply {
     level = HttpLoggingInterceptor.Level.BASIC

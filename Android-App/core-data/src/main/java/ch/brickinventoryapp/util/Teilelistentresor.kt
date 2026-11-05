@@ -5,7 +5,7 @@ import java.io.IOException
 import javax.inject.Inject
 
 /** Die verschlüsselte Teileliste in filesDir/pdf; ältere Fassungen legten `teileliste.pdf` im Klartext ab. */
-const val TEILELISTE_DATEI = "teileliste.bin"
+internal const val TEILELISTE_DATEI = "teileliste.bin"
 
 /**
  * Die Teileliste trägt das ganze Inventar. Auf der Platte liegt sie darum nur mit
@@ -45,7 +45,7 @@ class Teilelistentresor(private val chiffre: AblageChiffre) {
  * die Zahl zurück, 0 am Ende. So liest der Proxy-Deskriptor des Providers: Die
  * Ziel-App darf springen, die Liste liegt dabei nur im Speicher.
  */
-fun liesAusSpeicher(inhalt: ByteArray, versatz: Long, laenge: Int, ziel: ByteArray): Int {
+internal fun liesAusSpeicher(inhalt: ByteArray, versatz: Long, laenge: Int, ziel: ByteArray): Int {
     if (versatz < 0 || laenge < 0) throw IOException("Ungültiger Lesebereich")
     if (versatz >= inhalt.size) return 0
     val n = minOf(laenge.toLong(), inhalt.size - versatz, ziel.size.toLong()).toInt()

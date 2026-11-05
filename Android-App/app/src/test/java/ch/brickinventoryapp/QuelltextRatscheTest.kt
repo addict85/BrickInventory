@@ -45,6 +45,8 @@ import org.junit.Test
  *   Vorwaermen.kt `ch.brickinventoryapp.util.fangeAusserAbbruch` aus → rot „kein voll …“
  * Warten (05.11.2026, gemessen mit kotlinc lokal): warten-in-echtzeit schläft in
  *   TeileViewModelTest wieder 200 ms → rot „Echtzeit-Warten in Tests …“
+ * Fläche (05.11.2026, gemessen mit kotlinc lokal): core-data-oeffentlich nimmt liegtUnter
+ *   das internal → rot „die oeffentliche Flaeche von core-data …“
  */
 class QuelltextRatscheTest {
 
@@ -293,6 +295,23 @@ class QuelltextRatscheTest {
                 "im Takt: PfadServer.imTakt() oder FakeApi mit Test-Dispatcher, Compose mit waitUntil."
         }
         if (schlafen < SCHLAFEN || warten < WARTEN) println("  Echtzeit-Warten: $schlafen / $warten — Schranken nachziehen")
+    }
+
+    @Test
+    fun `die oeffentliche Flaeche von core-data waechst nicht`() {
+        // Was nur core-data selbst braucht, ist internal: Jede öffentliche Deklaration ist
+        // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene.
+        val GRENZE = 236
+        val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
+        val dateien = java.io.File(Quellen.projekt, "core-data/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        assert(dateien.size > 100) { "Nur ${dateien.size} Dateien in core-data — greift die Suche noch?" }
+        val oeffentlich = dateien.sumOf { f ->
+            dekl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
+        }
+        assert(oeffentlich <= GRENZE) {
+            "$oeffentlich öffentliche Deklarationen in core-data, erlaubt sind $GRENZE. Was nur das Modul braucht, wird internal."
+        }
+        if (oeffentlich < GRENZE) println("  core-data öffentlich: $oeffentlich (Grenze $GRENZE) — nachziehen")
     }
 
     @Test

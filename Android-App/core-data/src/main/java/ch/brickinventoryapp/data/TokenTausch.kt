@@ -84,9 +84,9 @@ class TokenSchranke {
  * Prüfung hier ist die zweite Linie: Die App meldet sich selbst ab und entwertet den
  * Token, statt erst am 401 zu merken, dass die Kette zu Ende ist.
  */
-const val TOKEN_HOECHSTDAUER_TAGE = 180L
+internal const val TOKEN_HOECHSTDAUER_TAGE = 180L
 
-fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
+internal fun anmeldungUeberfaellig(angemeldetAm: Long, jetzt: Long): Boolean =
     jetzt - angemeldetAm > TOKEN_HOECHSTDAUER_TAGE * 24 * 60 * 60 * 1000
 
 /**

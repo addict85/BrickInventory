@@ -16,7 +16,7 @@ import java.util.UUID
  * Der Schlüssel als Text, weil ClipDescription.EXTRA_IS_SENSITIVE erst ab API 33
  * existiert und ältere Geräte ihn ebenso lesen dürfen.
  */
-fun geheimerClip(etikett: String, text: String, kennung: String? = null): ClipData =
+internal fun geheimerClip(etikett: String, text: String, kennung: String? = null): ClipData =
     ClipData.newPlainText(etikett, text).apply {
         description.extras = PersistableBundle().apply {
             putBoolean(IST_GEHEIM, true)
@@ -25,7 +25,7 @@ fun geheimerClip(etikett: String, text: String, kennung: String? = null): ClipDa
     }
 
 /** Derselbe Wert wie ClipDescription.EXTRA_IS_SENSITIVE. */
-const val IST_GEHEIM = "android.content.extra.IS_SENSITIVE"
+internal const val IST_GEHEIM = "android.content.extra.IS_SENSITIVE"
 private const val GEHEIM_KENNUNG = "ch.brickinventoryapp.geheim_kennung"
 
 /**

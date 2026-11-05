@@ -33,7 +33,7 @@ sealed interface Tresorbefund {
  * unlesbarer Schlüssel, unlesbares Base64. Alles andere kann beim nächsten
  * Versuch gehen und darf nicht abmelden.
  */
-fun tresorFehlerDauerhaft(e: Throwable): Boolean = when (e) {
+internal fun tresorFehlerDauerhaft(e: Throwable): Boolean = when (e) {
     is javax.crypto.BadPaddingException -> true
     is android.security.keystore.KeyPermanentlyInvalidatedException -> true
     is java.security.UnrecoverableKeyException -> true
@@ -42,7 +42,7 @@ fun tresorFehlerDauerhaft(e: Throwable): Boolean = when (e) {
 }
 
 /** Ein Versuch und bei einem vorübergehenden Fehler genau ein zweiter. */
-fun oeffneMitNeuversuch(versuch: () -> String?): Tresorbefund {
+internal fun oeffneMitNeuversuch(versuch: () -> String?): Tresorbefund {
     repeat(2) {
         fangeAusserAbbruch { versuch() }
             .onSuccess { return it?.let { Tresorbefund.Lesbar(it) } ?: Tresorbefund.Weg }
@@ -52,11 +52,11 @@ fun oeffneMitNeuversuch(versuch: () -> String?): Tresorbefund {
 }
 
 /** Pausen beim Start: zusammen unter der Wartezeit des Wächters (PreferencesManager.warteAufStart). */
-val TRESOR_ANLAUF_MS = listOf(250L, 750L, 2_000L)
+internal val TRESOR_ANLAUF_MS = listOf(250L, 750L, 2_000L)
 
 /** Danach im Hintergrund weiter, höchstens zehn Minuten; der nächste Start versucht es neu. */
-const val TRESOR_NACHLAUF_MS = 30_000L
-const val TRESOR_NACHLAUF_VERSUCHE = 20
+internal const val TRESOR_NACHLAUF_MS = 30_000L
+internal const val TRESOR_NACHLAUF_VERSUCHE = 20
 
 /**
  * Das Token aus der Ablage für [melde]. Ein gesperrter Keystore meldet nach dem
@@ -64,7 +64,7 @@ const val TRESOR_NACHLAUF_VERSUCHE = 20
  * löscht aber nichts und meldet das Token nach, sobald es sich öffnen lässt.
  * [alt]: der Klartext aus einer Fassung vor der Verschlüsselung.
  */
-suspend fun liesToken(
+internal suspend fun liesToken(
     tresor: TokenVerschluesselung,
     geheim: String?,
     alt: String?,

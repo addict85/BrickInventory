@@ -138,7 +138,7 @@ abstract class BestandDatenbank : RoomDatabase() {
  * dem Update schon einmal gesendet wurde, trug keinen; ab jetzt hat er einen
  * festen, damit seine weiteren Versuche beim Server nur einmal wirken.
  */
-val MIGRATION_1_2 = object : Migration(1, 2) {
+internal val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE `ausgang` ADD COLUMN `schluessel` TEXT NOT NULL DEFAULT ''")
         val ids = mutableListOf<Long>()

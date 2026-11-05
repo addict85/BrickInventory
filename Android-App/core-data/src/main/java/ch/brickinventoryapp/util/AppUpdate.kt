@@ -27,7 +27,7 @@ import java.security.MessageDigest
  */
 
 /** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */
-const val UPDATE_RELEASE_WURZEL = "https://github.com/addict85/BrickInventory/releases/download"
+internal const val UPDATE_RELEASE_WURZEL = "https://github.com/addict85/BrickInventory/releases/download"
 
 /** Die Release-Ablage der neusten Fassung — EIN Ort, aus dem die Adressen entstehen. */
 const val UPDATE_RELEASE_BASIS = "$UPDATE_RELEASE_WURZEL/apk-neuste"
@@ -57,7 +57,7 @@ const val UPDATE_MAX_BYTES: Long = 300L * 1024 * 1024
 const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
 
 /** Wohin das geladene APK kommt; installiert wird per PackageInstaller-Sitzung, ohne FileProvider. */
-const val UPDATE_ORDNER = "update"
+internal const val UPDATE_ORDNER = "update"
 
 /**
  * Was in version.json steht. `apkUrl` wird trotzdem geprüft
@@ -219,7 +219,7 @@ object Installationsmeldung {
 }
 
 /** Die Aktion des Bestätigungsdialogs einer Installer-Sitzung (im SDK nur als SystemApi benannt). */
-const val INSTALLATION_BESTAETIGEN = "android.content.pm.action.CONFIRM_INSTALL"
+internal const val INSTALLATION_BESTAETIGEN = "android.content.pm.action.CONFIRM_INSTALL"
 
 /**
  * Wohin die Bestätigung führt, wenn das ein System-Installer ist, sonst `null`.
