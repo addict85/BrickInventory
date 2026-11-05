@@ -124,7 +124,7 @@ class BrickRepository @Inject constructor(
     val katalog: KatalogRepository,
     val gutscheine: GutscheineRepository,
     private val cache: ResponseCache,
-    private val ablage: Offlineablage = Offlineablage.fluechtig(),
+    private val ablage: Offlineablage,
 ) {
 
     /**

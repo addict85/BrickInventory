@@ -23,7 +23,7 @@ import javax.inject.Singleton
 class SetsRepository @Inject constructor(
     api: SetsApi,
     cache: ResponseCache,
-    ablage: Offlineablage = Offlineablage.fluechtig(),
+    ablage: Offlineablage,
 ) : RepoBasis<SetsApi>(api, cache, ablage) {
 
     /**

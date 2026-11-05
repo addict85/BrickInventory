@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.ui.viewmodel
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
+import ch.brickinventoryapp.data.CsvImportStrom
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Zugangsdaten
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.service.CsvImportService
+import ch.brickinventoryapp.service.CsvImportDienst
 import ch.brickinventoryapp.ui.Aenderung
 import ch.brickinventoryapp.ui.Bestandssignal
 import ch.brickinventoryapp.ui.CsvFolge
@@ -21,7 +21,6 @@ import ch.brickinventoryapp.ui.model.CsvImportStandAnsicht
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,10 +37,10 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class CsvImportViewModel @Inject constructor(
-    @param:ApplicationContext private val ctx: Context,
-    private val sseClient: CsvImportSseClient,
+    private val sseClient: CsvImportStrom,
+    private val dienst: CsvImportDienst,
     private val repo: BrickRepository,
-    private val prefs: PreferencesManager,
+    private val prefs: Zugangsdaten,
     private val texte: Texte,
     private val bestand: Bestandssignal,
     private val meldungen: MeldungsKanal,
@@ -109,7 +108,7 @@ class CsvImportViewModel @Inject constructor(
     private suspend fun handleCsvStatus(s: CsvImportStandAnsicht) {
         // Vor dem Überschreiben entscheiden — danach wäre „vorher“ schon der neue Zustand.
         val folge = csvFolge(warVorherAktiv = _csvImportState.value.running, status = s.status)
-        if (folge == CsvFolge.DIENST_STARTEN) CsvImportService.start(ctx)
+        if (folge == CsvFolge.DIENST_STARTEN) dienst.start()
         _csvImportState.value = CsvImportUiState(
             running = importLaeuft(s.status),
             done    = s.done,
@@ -124,7 +123,7 @@ class CsvImportViewModel @Inject constructor(
             CsvFolge.FEHLER_AUFRAEUMEN -> {
                 delay(BALKEN_STEHT_MS)
                 _csvImportState.value = CsvImportUiState()
-                CsvImportService.stop(ctx)
+                dienst.stop()
             }
             CsvFolge.DIENST_STARTEN, CsvFolge.NICHTS -> {}
         }
@@ -138,7 +137,7 @@ class CsvImportViewModel @Inject constructor(
             bestand.melde(Aenderung.Sets)
             delay(BALKEN_STEHT_MS)
             _csvImportState.value = CsvImportUiState()
-            CsvImportService.stop(ctx)
+            dienst.stop()
         } finally {
             csvFinishing = false
         }

@@ -15,6 +15,11 @@ import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
 
+/** Die Schritte eines CSV-Imports, solange jemand sammelt; im Test eine Folge aus dem Speicher. */
+interface CsvImportStrom {
+    fun stream(): Flow<CsvImportSseClient.Event>
+}
+
 /**
  * Persistenter SSE-Client für den CSV-Import-Kanal.
  * Ausführlich: docs/begruendungen/core-data/data/CsvImportSseClient.kt.md#constructor
@@ -25,9 +30,9 @@ class CsvImportSseClient @Inject constructor(
     // val-Konstruktorparametern (künftig Parameter UND Property). Für Dagger/Hilt
     // zählt der Parameter; der Use-Site-Target macht das eindeutig.
     @param:Named("sse") private val client: OkHttpClient,
-    private val prefs: PreferencesManager,
+    private val prefs: Zugangsdaten,
     private val json: Json
-) {
+) : CsvImportStrom {
     sealed class Event {
         /** Statusänderung vom Server (inkl. idle-Zustand wenn kein Import läuft). */
         data class Status(val status: CsvImportStatus) : Event()
@@ -45,7 +50,7 @@ class CsvImportSseClient @Inject constructor(
      * den der Server schickt. Schließt sich nur bei Verbindungsfehler.
      * cold Flow — Verbindung wird beim Collect aufgebaut, beim Cancel geschlossen.
      */
-    fun stream(): Flow<Event> = callbackFlow {
+    override fun stream(): Flow<Event> = callbackFlow {
         val baseUrl = prefs.serverUrlJetzt().trim().trimEnd('/')
         val token   = prefs.tokenJetzt()
 

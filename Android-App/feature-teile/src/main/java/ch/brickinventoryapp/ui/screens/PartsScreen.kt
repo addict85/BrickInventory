@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.theme.farbeAusHex
 import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
 import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
 import ch.brickinventoryapp.ui.model.TeilAnsicht
@@ -37,7 +38,6 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.util.rememberTileImageWithFallback
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.core.graphics.toColorInt
 import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -158,9 +158,7 @@ fun PartsScreen(
             f.colorName?.takeIf { it.isNotBlank() }?.let { name ->
                 TeileFilterEintrag(
                     wert = name, text = farbe(name), anzahl = f.uniqueParts,
-                    farbe = f.colorHex?.let {
-                        try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
-                    },
+                    farbe = farbeAusHex(f.colorHex),
                 )
             }
         }
@@ -395,9 +393,7 @@ private fun TeileKennzahlen(stats: TeileKennzahlenAnsicht) {
 fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                    waehrung: String, onEdit: () -> Unit) {
     val farbe = remember(part.colorHex) {
-        part.colorHex?.let {
-            try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
-        }
+        farbeAusHex(part.colorHex)
     }
     // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
     // den Server-Proxy, nicht direkt zum CDN — anders als bei Sets/Katalog.
@@ -430,9 +426,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     val ctx = LocalContext.current
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
     val colorObj = remember(part.colorHex) {
-        part.colorHex?.let {
-            try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
-        }
+        farbeAusHex(part.colorHex)
     }
     // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
     // den Server-Proxy, nicht direkt zum CDN — anders als bei Sets/Katalog.
@@ -547,9 +541,7 @@ fun SectionHeader(text: String) {
 fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                  onClick: (() -> Unit)? = null) {
     val farbe = remember(part.colorHex) {
-        part.colorHex?.let {
-            try { Color("#$it".toColorInt()) } catch (_: Exception) { null }
-        }
+        farbeAusHex(part.colorHex)
     }
     val (bildUrl, onFehler) = rememberTileImageWithFallback(
         serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)

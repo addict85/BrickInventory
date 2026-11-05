@@ -251,15 +251,13 @@
             android:name="ch.brickinventoryapp.util.InstallationsEmpfaenger"
             android:exported="false" />
 
+        <!-- Die Teileliste liegt verschlüsselt; der Provider gibt sie nur aus dem Speicher
+             weiter, und nur an die App, der die Auswahl das Leserecht gibt. -->
         <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.provider"
+            android:name="ch.brickinventoryapp.service.TeilelistenProvider"
+            android:authorities="${applicationId}.teileliste"
             android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
+            android:grantUriPermissions="true" />
     </application>
 
 </manifest>

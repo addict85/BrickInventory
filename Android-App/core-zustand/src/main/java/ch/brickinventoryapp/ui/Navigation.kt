@@ -40,23 +40,37 @@ sealed interface Screen {
     @Serializable data object Comparison : Screen
     @Serializable data object Monitoring : Screen
 
-    /** Käufe eines Sets, Teils oder einer Figur; [type] ist "set", "part" oder "fig". */
+    /** Käufe eines Sets, Teils oder einer Figur. */
     @Serializable data class AcquisitionManagement(
-        val type: String,
+        val art: Postenart,
         val id: String,
         val colorId: Int = KEINE_FARBE,
         val title: String,
     ) : Screen
 
-    /** Detail eines manuell erfassten Teils oder einer Figur; [type] ist "part" oder "fig". */
+    /** Detail eines manuell erfassten Teils oder einer Figur. */
     @Serializable data class ManualItemDetail(
-        val type: String,
+        val art: Postenart,
         val id: String,
         val colorId: Int = KEINE_FARBE,
         val title: String,
     ) : Screen
 
     @Serializable data class PdfViewer(val url: String, val title: String) : Screen
+}
+
+/**
+ * Welche Art Posten eine Route meint. Als Aufzählung, damit ein Tippfehler nicht
+ * erst am Server auffällt; [kennung] ist der Text, den Api und Bildschirme führen.
+ */
+@Serializable
+enum class Postenart(val kennung: String) {
+    SET("set"), PART("part"), FIG("fig");
+
+    companion object {
+        /** Wirft bei einem unbekannten Text: Die Kennungen stammen aus dem eigenen Code. */
+        fun aus(kennung: String): Postenart = entries.first { it.kennung == kennung }
+    }
 }
 
 /**

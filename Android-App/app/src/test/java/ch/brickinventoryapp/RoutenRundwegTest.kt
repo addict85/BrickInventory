@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.data.model.KEINE_FARBE
+import ch.brickinventoryapp.ui.Postenart
 import ch.brickinventoryapp.ui.Screen
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -22,6 +23,8 @@ import org.robolectric.annotation.Config
  *
  * Gegenprobe (gegenproben/route-feld-transient.patch, nur in der CI messbar):
  *   ManualItemDetail.title als @Transient → rot „Titel mit Sonderzeichen kommen unverändert an“
+ * Gegenprobe (gegenproben/postenart-aus-fest.patch, nur in der CI messbar):
+ *   Postenart.aus() liefert immer SET → rot „jede Postenart kommt als dieselbe an“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -75,9 +78,9 @@ class RoutenRundwegTest {
     fun `Titel mit Sonderzeichen kommen unverändert an`() {
         aufbauen()
         for (t in titel) {
-            val teil = Screen.ManualItemDetail("part", "3001 b", 4, t)
+            val teil = Screen.ManualItemDetail(Postenart.PART, "3001 b", 4, t)
             assertEquals("Teil „$t“", teil, hin(teil))
-            val kauf = Screen.AcquisitionManagement("fig", "sw0001+", 0, t)
+            val kauf = Screen.AcquisitionManagement(Postenart.FIG, "sw0001+", 0, t)
             assertEquals("Kauf „$t“", kauf, hin(kauf))
             val pdf = Screen.PdfViewer("https://srv/a.pdf", t)
             assertEquals("PDF „$t“", pdf, hin(pdf))
@@ -85,9 +88,19 @@ class RoutenRundwegTest {
     }
 
     @Test
+    fun `jede Postenart kommt als dieselbe an`() {
+        aufbauen()
+        for (art in Postenart.entries) {
+            val kauf = Screen.AcquisitionManagement(art, "3001", 4, "Stein")
+            assertEquals(kauf, hin(kauf))
+            assertEquals(art, Postenart.aus(art.kennung))
+        }
+    }
+
+    @Test
     fun `ohne Farbe kommt keine Farbe an, nicht Schwarz`() {
         aufbauen()
-        assertEquals(KEINE_FARBE, (hin(Screen.ManualItemDetail("fig", "sw0001", title = "Luke")) as Screen.ManualItemDetail).colorId)
+        assertEquals(KEINE_FARBE, (hin(Screen.ManualItemDetail(Postenart.FIG, "sw0001", title = "Luke")) as Screen.ManualItemDetail).colorId)
     }
 
     @Test

@@ -18,7 +18,7 @@ import javax.inject.Singleton
 class FigurenRepository @Inject constructor(
     api: FigurenApi,
     cache: ResponseCache,
-    ablage: Offlineablage = Offlineablage.fluechtig(),
+    ablage: Offlineablage,
 ) : RepoBasis<FigurenApi>(api, cache, ablage) {
 
     /**

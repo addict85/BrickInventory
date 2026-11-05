@@ -56,7 +56,7 @@ private fun NavGraphBuilder.finanzZiele(u: ZielUmgebung) {
                     // Den Namen gibt die angeklickte Zeile mit, sonst stünde bis zum ersten
                     // Laden die nackte Nummer in der Leiste.
                     onManualClick = { type, id, colorId, name ->
-                        navController.navigate(Screen.ManualItemDetail(type, id, colorId, name ?: id))
+                        navController.navigate(Screen.ManualItemDetail(Postenart.aus(type), id, colorId, name ?: id))
                     },
                     listState = financeListState
                 )

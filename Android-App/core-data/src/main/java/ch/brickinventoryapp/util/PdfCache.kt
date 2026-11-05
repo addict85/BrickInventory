@@ -52,25 +52,28 @@ fun raeumeVertraulichePdfsAuf(cacheDir: File) {
 }
 
 /**
- * Wohin die Teileliste kommt: Sie trägt das Inventar, also nach filesDir. Den
- * externen App-Bereich liest unter Android 8/9 jede App mit Speicherrecht; eine
- * Kopie älterer Fassungen dort wird entfernt. pdf/ gibt file_paths.xml frei.
+ * Wohin die Teileliste kommt: Sie trägt das Inventar, also nach filesDir. Kopien
+ * älterer Fassungen (extern lesbar unter Android 8/9, intern im Klartext) werden
+ * dabei entfernt.
  */
 internal fun teilelistenAblage(intern: File, extern: File?): File {
     extern?.let { File(it, "pdf/teileliste.pdf").delete() }
-    return File(File(intern, "pdf").apply { mkdirs() }, "teileliste.pdf")
+    val ordner = File(intern, "pdf").apply { mkdirs() }
+    File(ordner, "teileliste.pdf").delete()
+    return File(ordner, TEILELISTE_DATEI)
 }
 
 /**
- * Wie lange die Teileliste im Klartext liegen bleibt. Sie muss es eine Weile: Die App,
- * an die sie geteilt wird, liest sie über den FileProvider, und die Meldung „fertig,
- * antippen“ öffnet sie später. Danach soll das Inventar nicht offen liegen (sec11 N1).
+ * Wie lange die Teileliste liegen bleibt: Die Meldung „fertig, antippen“ öffnet sie
+ * später noch. Verschlüsselt ist sie auch dann, aber das Inventar soll nicht länger
+ * auf dem Gerät liegen, als jemand es braucht.
  */
 const val TEILELISTE_FRIST_MS: Long = 30L * 60 * 1000
 
 /** Löscht die Teileliste, wenn sie älter als [frist] ist; beim Start und im Auftrag nach dem Export. */
 fun raeumeAlteTeilelisteAuf(intern: File, jetzt: Long, frist: Long = TEILELISTE_FRIST_MS): Boolean {
-    val datei = File(File(intern, "pdf"), "teileliste.pdf")
+    File(File(intern, "pdf"), "teileliste.pdf").delete()
+    val datei = File(File(intern, "pdf"), TEILELISTE_DATEI)
     return datei.isFile && jetzt - datei.lastModified() >= frist && datei.delete()
 }
 

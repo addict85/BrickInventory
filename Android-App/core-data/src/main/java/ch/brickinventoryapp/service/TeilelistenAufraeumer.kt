@@ -12,8 +12,8 @@ import ch.brickinventoryapp.util.raeumeAlteTeilelisteAuf
 import java.util.concurrent.TimeUnit
 
 /**
- * Löscht die exportierte Teileliste nach [TEILELISTE_FRIST_MS]: Sie liegt im Klartext,
- * weil die Ziel-App sie über den FileProvider lesen muss, aber nicht länger als nötig.
+ * Löscht die exportierte Teileliste nach [TEILELISTE_FRIST_MS]: Auch verschlüsselt soll
+ * das Inventar nur so lange auf dem Gerät liegen, wie jemand es öffnen will.
  * Die Meldung „fertig, antippen“ verschwindet mit, sie zeigte sonst ins Leere.
  */
 class TeilelistenAufraeumer(context: Context, params: WorkerParameters) : Worker(context, params) {

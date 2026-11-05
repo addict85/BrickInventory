@@ -18,9 +18,11 @@ abstract class RepoBasis<A : Any>(
     /** Nur der Bereich der Schnittstelle, den dieses Repository braucht (data/api/). */
     protected val api: A,
     protected val cache: ResponseCache,
-    /** Room-Ablage und Ausgang; ohne Hilt eine flüchtige im Speicher. */
-    protected val ablage: Offlineablage = Offlineablage.fluechtig(),
+    /** Room-Ablage und Ausgang. */
+    protected val ablage: Offlineablage,
 ) {
+    /** Für Bereiche ohne Offline-Bestand: Sie lesen und schreiben nur am Server. */
+    constructor(api: A, cache: ResponseCache) : this(api, cache, Offlineablage.fluechtig())
 
     /**
      * Eine Liste vom Server holen und in die lokale Ablage übernehmen; ist der

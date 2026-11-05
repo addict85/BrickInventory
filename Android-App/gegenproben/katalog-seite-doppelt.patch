@@ -1,0 +1,18 @@
+Gegenprobe: Eine Katalogseite, die gerade lädt, wird noch einmal angefordert
+Modul: feature-katalog
+Test: ch.brickinventoryapp.CatalogViewModelTest
+Rot: eine Seite wird nur einmal geholt
+
+diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
+index 42ef43c..dbdb7cf 100644
+--- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
++++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/ui/viewmodel/CatalogViewModel.kt
+@@ -131,7 +131,7 @@ class CatalogViewModel @Inject constructor(
+     fun ensureCatalogPage(seite: Int) {
+         if (seite < 1) return
+         val s = _catalogState.value
+-        if (s.loadedPages.containsKey(seite) || s.loadingPages.contains(seite)) return
++        if (s.loadedPages.containsKey(seite)) return
+         val gen = catalogGeneration
+         _catalogState.update { it.copy(loadingPages = it.loadingPages + seite) }
+         viewModelScope.launch {

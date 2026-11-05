@@ -1,0 +1,18 @@
+Gegenprobe: Die Teileliste (ganzes Inventar) liegt wieder im Klartext in filesDir/pdf
+Modul: core-data
+Test: ch.brickinventoryapp.TeilelistenAblageTest
+Rot: die Teileliste liegt nur verschluesselt
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Teilelistentresor.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Teilelistentresor.kt
+index 60d71b0..3c92f1f 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Teilelistentresor.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/util/Teilelistentresor.kt
+@@ -20,7 +20,7 @@ class Teilelistentresor(private val chiffre: AblageChiffre) {
+     fun lege(intern: File, extern: File?, pdf: ByteArray): File {
+         val ziel = teilelistenAblage(intern, extern)
+         val tmp = File(ziel.parentFile, ziel.name + ".tmp")
+-        tmp.writeBytes(chiffre.verschluessle(pdf, ZWECK))
++        tmp.writeBytes(pdf)
+         if (!tmp.renameTo(ziel)) {
+             tmp.delete()
+             throw IOException("Teileliste nicht abgelegt")

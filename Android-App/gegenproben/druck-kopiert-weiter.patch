@@ -1,0 +1,17 @@
+Gegenprobe: Das Kopieren für den Druck prüft den Abbruch nicht und schreibt die ganze Datei
+Modul: feature-finanzen
+Test: ch.brickinventoryapp.KopiereAbbrechbarTest
+Rot: ein Abbruch beendet das Kopieren
+
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/pdf/KopiereAbbrechbar.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/pdf/KopiereAbbrechbar.kt
+index 3410c20..6cc3b25 100644
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/pdf/KopiereAbbrechbar.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/ui/pdf/KopiereAbbrechbar.kt
+@@ -18,7 +18,6 @@ suspend fun kopiereAbbrechbar(ein: InputStream, aus: OutputStream, stueck: Int =
+     val puffer = ByteArray(stueck)
+     var gesamt = 0L
+     while (true) {
+-        currentCoroutineContext().ensureActive()
+         val n = ein.read(puffer)
+         if (n < 0) return gesamt
+         aus.write(puffer, 0, n)

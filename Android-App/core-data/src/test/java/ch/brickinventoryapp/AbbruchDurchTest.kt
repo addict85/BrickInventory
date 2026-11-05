@@ -40,8 +40,8 @@ class AbbruchDurchTest {
     /** Scheitert beim Schreiben und Lesen wie ein geändertes Modell. */
     private object Kaputt : KSerializer<String> {
         override val descriptor: SerialDescriptor = String.serializer().descriptor
-        override fun serialize(encoder: Encoder, value: String) = throw IllegalStateException("kaputt")
-        override fun deserialize(decoder: Decoder): String = throw IllegalStateException("kaputt")
+        override fun serialize(encoder: Encoder, value: String) = error("kaputt")
+        override fun deserialize(decoder: Decoder): String = error("kaputt")
     }
 
     private fun cache() = ResponseCache(bereichQuelle = { "konto" }) { ordner.root }

@@ -6,16 +6,8 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.ContextWrapper
 import android.graphics.Bitmap
-import android.os.Bundle
-import android.os.CancellationSignal
-import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
-import android.print.PageRange
 import android.print.PrintAttributes
-import android.print.PrintDocumentAdapter
-import android.print.PrintDocumentAdapter.LayoutResultCallback
-import android.print.PrintDocumentAdapter.WriteResultCallback
-import android.print.PrintDocumentInfo
 import android.print.PrintManager
 import android.view.WindowManager
 import androidx.compose.material.icons.filled.Print
@@ -54,7 +46,6 @@ import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import java.io.FileOutputStream
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.AnleitungsAblage
 import ch.brickinventoryapp.ui.theme.Formen
@@ -62,6 +53,9 @@ import ch.brickinventoryapp.ui.pdf.PdfFehler
 import ch.brickinventoryapp.ui.pdf.PdfLoadState
 import ch.brickinventoryapp.ui.pdf.PdfQuelle
 import ch.brickinventoryapp.ui.pdf.SeitenRenderer
+import ch.brickinventoryapp.ui.pdf.PdfDruckAdapter
+import ch.brickinventoryapp.ui.pdf.PdfSchreiber
+import kotlinx.coroutines.CoroutineScope
 import ch.brickinventoryapp.ui.viewmodel.PdfBetrachterViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -113,6 +107,7 @@ fun PdfViewerRoute(
         speicherbar = remember(pdfUrl) { ch.brickinventoryapp.ui.viewmodel.pdfDarfGespeichertWerden(pdfUrl) },
         onBack = onBack,
         rendereSeite = vm::seite,
+        schreibe = vm.schreiber,
     )
 }
 
@@ -126,6 +121,8 @@ fun PdfViewerScreen(
     onBack: () -> Unit,
     /** Rendert eine Seite abseits des Hauptfadens (PdfBetrachterViewModel.seite). */
     rendereSeite: SeitenRenderer,
+    /** Schreibt die Datei für den Druck, abseits des Hauptfadens (PdfBetrachterViewModel.schreiber). */
+    schreibe: PdfSchreiber,
 ) {
     val ctx = LocalContext.current
     // Rückmeldungen von Drucken und Herunterladen als Snackbar im eigenen Gerüst: Ein
@@ -179,7 +176,7 @@ fun PdfViewerScreen(
                                 }
                             }
                             ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.pdfview_print)) {
-                                IconButton(onClick = { melde(printPdf(ctx, s.quelle, title)) }) {
+                                IconButton(onClick = { melde(printPdf(ctx, s.quelle, title, schreibe, bereich)) }) {
                                     Icon(Icons.Default.Print, contentDescription = stringResource(R.string.pdfview_print))
                                 }
                             }
@@ -489,51 +486,11 @@ private fun fehlerText(grund: PdfFehler): String = when (grund) {
 
 // Druckt die bereits geladene PDF-Datei über das System-Druckframework. Gibt bei einem
 // Fehler die Meldung zurück; das Gelingen zeigt der Druckdialog selbst.
-private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String): String? {
+private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String, schreiber: PdfSchreiber, bereich: CoroutineScope): String? {
     return fangeAusserAbbruch {
         val printManager = ctx.getSystemService(Context.PRINT_SERVICE) as PrintManager
         val jobName = title.ifBlank { ctx.getString(R.string.pdfview_default_name) }
-        val adapter = object : PrintDocumentAdapter() {
-            override fun onLayout(
-                oldAttributes: PrintAttributes?,
-                newAttributes: PrintAttributes?,
-                cancellationSignal: CancellationSignal?,
-                callback: LayoutResultCallback?,
-                extras: Bundle?
-            ) {
-                if (cancellationSignal?.isCanceled == true) {
-                    callback?.onLayoutCancelled()
-                    return
-                }
-                val info = PrintDocumentInfo.Builder("$jobName.pdf")
-                    .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
-                    .build()
-                callback?.onLayoutFinished(info, oldAttributes != newAttributes)
-            }
-
-            override fun onWrite(
-                pages: Array<out PageRange>?,
-                destination: ParcelFileDescriptor,
-                cancellationSignal: CancellationSignal?,
-                callback: WriteResultCallback?
-            ) {
-                fangeAusserAbbruch {
-                    quelle.eingang().use { input ->
-                        FileOutputStream(destination.fileDescriptor).use { output ->
-                            input.copyTo(output)
-                        }
-                    }
-                    if (cancellationSignal?.isCanceled == true) {
-                        callback?.onWriteCancelled()
-                    } else {
-                        callback?.onWriteFinished(arrayOf(PageRange.ALL_PAGES))
-                    }
-                }.onFailure { e ->
-                    callback?.onWriteFailed(e.message)
-                }
-            }
-        }
-        printManager.print(jobName, adapter, PrintAttributes.Builder().build())
+        printManager.print(jobName, PdfDruckAdapter(quelle, jobName, schreiber, bereich), PrintAttributes.Builder().build())
         null
     }.getOrElse { e ->
         ctx.getString(R.string.pdfview_print_failed, e.message ?: "")

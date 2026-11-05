@@ -35,8 +35,9 @@ class PreferencesManager @Inject constructor(
     private val tresor: TokenVerschluesselung,
     /** Die Spiegel laufen, solange die App lebt; kein eigener Bereich ohne Besitzer. */
     @param:ApplicationScope private val prefsScope: CoroutineScope,
-) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, ch.brickinventoryapp.util.PinAblage, Entwertungsquelle,
-    ch.brickinventoryapp.util.UpdateStandAblage, GeraeteEinstellungen, Sitzungsablage {
+) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, Entwertungsquelle,
+    ch.brickinventoryapp.util.UpdateStandAblage, GeraeteEinstellungen, Sitzungsablage,
+    Darstellungsablage, Vertrauensablage, Zugangsdaten {
     companion object {
         /**
          * Welche Designs es gibt — dieselbe Liste wie ALLOWED in js/00-theme-boot.js, die
@@ -209,7 +210,7 @@ class PreferencesManager @Inject constructor(
      * PDF-Export und Preisalarm-Arbeiter alle hier: erst der Speicherwert, nur beim
      * Kaltstart die Platte.
      */
-    suspend fun tokenJetzt(): String = _authTokenState.value ?: authToken.first()
+    override suspend fun tokenJetzt(): String = _authTokenState.value ?: authToken.first()
 
     /** Dieselbe Regel fuer die Server-Adresse — aus demselben Grund. */
     override suspend fun serverUrlJetzt(): String = _serverUrlState.value ?: serverUrl.first()
@@ -423,7 +424,7 @@ class PreferencesManager @Inject constructor(
         erlaubt,
     )
 
-    suspend fun saveLanguage(lang: String) {
+    override suspend fun saveLanguage(lang: String) {
         context.dataStore.edit { it[LANGUAGE] = lang }
         designSpiegel.edit { putString(SPRACHE_SPIEGEL, lang) }
     }
@@ -457,17 +458,17 @@ class PreferencesManager @Inject constructor(
      * Das zuletzt bekannte Design — synchron, für den allerersten Bildaufbau. Ohne
      * Eintrag (Neuinstallation) gilt der Standard.
      */
-    fun gemerktesDesign(): String =
+    override fun gemerktesDesign(): String =
         designSpiegel.getString(APP_THEME_SPIEGEL, null) ?: "classic"
 
     /**
      * System, Hell oder Dunkel — je Gerät. Im Spiegel, weil es wie das Design schon
      * das erste Bild bestimmt; ohne neue Wahl gilt die frühere „dunkel nach System“.
      */
-    fun helligkeit(): String = ch.brickinventoryapp.ui.theme.helligkeitGilt(
+    override fun helligkeit(): String = ch.brickinventoryapp.ui.theme.helligkeitGilt(
         designSpiegel.getString(HELLIGKEIT, null),
         if (designSpiegel.contains(DUNKEL_NACH_SYSTEM)) designSpiegel.getBoolean(DUNKEL_NACH_SYSTEM, true) else null)
-    fun setzeHelligkeit(wahl: String) {
+    override fun setzeHelligkeit(wahl: String) {
         designSpiegel.edit { putString(HELLIGKEIT, wahl) }
     }
     /**
@@ -475,8 +476,8 @@ class PreferencesManager @Inject constructor(
      * (util/ServerVertrauen.kt)? Je Gerät und synchron: Gefragt wird bei jedem
      * Verbindungsaufbau.
      */
-    fun nutzerCaErlaubt(): Boolean = designSpiegel.getBoolean(NUTZER_CA, false)
-    fun setzeNutzerCa(an: Boolean) {
+    override fun nutzerCaErlaubt(): Boolean = designSpiegel.getBoolean(NUTZER_CA, false)
+    override fun setzeNutzerCa(an: Boolean) {
         designSpiegel.edit { putBoolean(NUTZER_CA, an) }
         nutzerCaHoerer.forEach { it() }
     }
@@ -509,14 +510,14 @@ class PreferencesManager @Inject constructor(
      * Geldwerte im Startbildschirm-Widget zeigen? Je Gerät, Vorgabe aus: Das Widget
      * ist ohne Entsperren für jeden lesbar, der das Telefon sieht.
      */
-    fun widgetWerteZeigen(): Boolean = designSpiegel.getBoolean(WIDGET_WERTE, false)
-    fun setzeWidgetWerteZeigen(an: Boolean) {
+    override fun widgetWerteZeigen(): Boolean = designSpiegel.getBoolean(WIDGET_WERTE, false)
+    override fun setzeWidgetWerteZeigen(an: Boolean) {
         designSpiegel.edit { putBoolean(WIDGET_WERTE, an) }
     }
 
     /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */
-    fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)
-    fun setzeSystemfarben(an: Boolean) {
+    override fun systemfarben(): Boolean = designSpiegel.getBoolean(SYSTEMFARBEN, false)
+    override fun setzeSystemfarben(an: Boolean) {
         designSpiegel.edit { putBoolean(SYSTEMFARBEN, an) }
     }
 
@@ -525,8 +526,8 @@ class PreferencesManager @Inject constructor(
      * an: Die Übersicht zeigt Bestand, Preise und Konto jedem, der das Telefon kurz
      * in der Hand hat. Wer Bildschirmfotos braucht, schaltet es aus.
      */
-    fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, true)
-    fun setzeVorschauVerbergen(an: Boolean) {
+    override fun vorschauVerbergen(): Boolean = designSpiegel.getBoolean(VORSCHAU_VERBERGEN, true)
+    override fun setzeVorschauVerbergen(an: Boolean) {
         designSpiegel.edit { putBoolean(VORSCHAU_VERBERGEN, an) }
     }
 

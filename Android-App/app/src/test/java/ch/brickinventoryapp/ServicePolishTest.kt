@@ -4,14 +4,14 @@ import org.junit.Test
 
 /**
  * Absicherung der Aufräumrunde: lokalisierte Service-Benachrichtigungen,
- * Status-Icon, eingegrenzter FileProvider und der vom api-Client abgeleitete
- * PDF-Download.
+ * Status-Icon, die Teileliste ohne FileProvider und der vom api-Client
+ * abgeleitete PDF-Download.
  *
  * Alle Prüfungen lesen nur Quell- und Ressourcendateien.
  *
- * Gegenprobe (04.11.2026, sec12 H11): in file_paths.xml wieder
- * `<external-files-path name="pdf_external" path="pdf/" />` → rot „FileProvider teilt
- * nur das pdf-Unterverzeichnis“.
+ * Gegenprobe (05.11.2026, sec16 N4): im Manifest den FileProvider neben den
+ * TeilelistenProvider gestellt → rot „die Teileliste geht nur ueber den eigenen
+ * Provider“ (gegenproben/fileprovider-extern.patch).
  */
 class ServicePolishTest {
 
@@ -113,34 +113,22 @@ class ServicePolishTest {
         }
     }
 
-    // ── FileProvider-Eingrenzung ─────────────────────────────────────────────
+    // ── Teileliste ohne Klartext-Freigabe ────────────────────────────────────
 
     @Test
-    fun `FileProvider teilt nur das pdf-Unterverzeichnis`() {
-        val fp = code(read("res/xml/file_paths.xml"))
-        assert(!fp.contains("path=\".\"")) {
-            "file_paths.xml gibt wieder ein Wurzelverzeichnis frei — damit ist auch der " +
-                "API-Cache (Inventar im Klartext-JSON) über die Provider-Authority erreichbar"
+    fun `die Teileliste geht nur ueber den eigenen Provider, kein FileProvider`() {
+        val manifest = code(read("AndroidManifest.xml"))
+        assert(!manifest.contains("FileProvider")) {
+            "Das Manifest trägt wieder einen FileProvider — er gibt nur Klartext-Dateien weiter, " +
+                "die Teileliste läge dann wieder offen in filesDir"
         }
-        assert(!fp.contains("cache-path")) {
-            "file_paths.xml teilt den Cache — dort liegt nichts, das über den Provider " +
-                "weitergegeben wird"
+        val eintrag = Regex("""<provider[^>]*TeilelistenProvider[^>]*>""").find(manifest)?.value
+            ?: error("Der TeilelistenProvider fehlt im Manifest")
+        assert(eintrag.contains("android:exported=\"false\"")) { "Der TeilelistenProvider ist exportiert" }
+        assert(eintrag.contains("android:grantUriPermissions=\"true\"")) {
+            "Ohne grantUriPermissions öffnet die gewählte App die Teileliste nicht"
         }
-        // Der externe App-Bereich trägt seit minSdk 30 nichts mehr, was geteilt wird (sec12 H11).
-        assert(!fp.contains("external")) {
-            "file_paths.xml gibt wieder einen externen Bereich frei — dort liegt nichts, das geteilt wird"
-        }
-        assert(fp.contains("path=\"pdf/\"")) {
-            "file_paths.xml deckt das pdf/-Verzeichnis nicht mehr ab — das Öffnen des " +
-                "exportierten Teilelisten-PDFs bricht dann mit SecurityException ab"
-        }
-        // Und der Export muss auch dort ablegen, wo der Provider hinzeigt; wohin
-        // teilelistenAblage() legt, prüft TeilelistenAblageTest (core-data).
-        val mgr = code(read("java/ch/brickinventoryapp/service/PdfExportManager.kt"))
-        assert(mgr.contains("teilelistenAblage(context.filesDir")) {
-            "PdfExportManager legt die Teileliste nicht über teilelistenAblage() in filesDir/pdf ab — " +
-                "ausserhalb des freigegebenen Pfads wirft FileProvider.getUriForFile()"
-        }
+        assert(!java.io.File(Quellen.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }
     }
 
     // ── PdfViewer-Client ─────────────────────────────────────────────────────

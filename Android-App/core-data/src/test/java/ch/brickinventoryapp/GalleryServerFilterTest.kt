@@ -61,7 +61,7 @@ class GalleryServerFilterTest {
     @Test
     fun `Suchtext, Thema und Sortierung werden nach oben gemeldet`() {
         val s = code(read("ui/screens/GalleryScreen.kt"))
-        for (r in listOf("onQueryChange", "onThemeChange", "onSortChange", "onLoadMore")) {
+        for (r in listOf("ereignisse.suche", "ereignisse.thema", "ereignisse.sortierung", "ereignisse.mehrLaden")) {
             assert(s.contains(r)) { "Rückruf $r fehlt — der Wert käme nie beim Server an" }
         }
         // Die Themen kommen vom Server, NICHT aus der geladenen Seite —

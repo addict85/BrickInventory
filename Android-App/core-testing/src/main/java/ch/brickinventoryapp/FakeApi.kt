@@ -33,14 +33,20 @@ class FakeApi {
     val codes: MutableMap<String, Int> = Collections.synchronizedMap(mutableMapOf())
     val aufrufe: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
+    /** Die Argumente je Aufruf (ohne die Continuation), für „mit welchem Filter“. */
+    val argumente: MutableList<Pair<String, List<Any?>>> = Collections.synchronizedList(mutableListOf())
+
     val api: BrickApiService = Proxy.newProxyInstance(
         BrickApiService::class.java.classLoader, arrayOf(BrickApiService::class.java),
-    ) { proxy, methode, argumente ->
+    ) { proxy, methode, args ->
         when (methode.name) {
             "toString" -> "FakeApi"
             "hashCode" -> System.identityHashCode(proxy)
-            "equals" -> proxy === argumente?.firstOrNull()
-            else -> antwort(methode.name)
+            "equals" -> proxy === args?.firstOrNull()
+            else -> {
+                argumente += methode.name to args?.filterNot { it is kotlin.coroutines.Continuation<*> }.orEmpty()
+                antwort(methode.name)
+            }
         }
     } as BrickApiService
 

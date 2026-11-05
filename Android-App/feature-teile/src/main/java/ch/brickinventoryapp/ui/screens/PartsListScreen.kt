@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.theme.farbeAusHex
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,7 +36,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.text.input.ImeAction
-import androidx.core.graphics.toColorInt
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.TeilelisteUiState
 import ch.brickinventoryapp.ui.viewmodel.TeilelisteViewModel
@@ -87,8 +87,8 @@ fun PartsListRoute(
     }
     // Das fertige PDF einmal zur Auswahl anbieten; ein Activity-Start gehört nicht ins ViewModel.
     LaunchedEffect(zustand.pdfDatei) {
-        zustand.pdfDatei?.let { datei ->
-            ctx.startActivity(ch.brickinventoryapp.service.teilelistenAuswahl(ctx, datei, oeffnenMit))
+        if (zustand.pdfDatei != null) {
+            ctx.startActivity(ch.brickinventoryapp.service.teilelistenAuswahl(ctx, oeffnenMit))
             vm.pdfGeoeffnet()
         }
     }
@@ -403,7 +403,7 @@ private fun FarbGruppenKopf(colorName: String, colorParts: List<PlPart>) {
         val hex = colorParts.first().colorHex
         if (hex != null && !colorParts.first().isFig) {
             Box(Modifier.size(14.dp).clip(CircleShape)
-                .background(try { Color("#$hex".toColorInt()) } catch (_: Exception) { Color.Gray }))
+                .background(farbeAusHex(hex) ?: Color.Gray))
             Spacer(Modifier.width(6.dp))
         }
         val displayName = if (colorName.isEmpty()) stringResource(R.string.partslist_no_color) else farbe(colorName)

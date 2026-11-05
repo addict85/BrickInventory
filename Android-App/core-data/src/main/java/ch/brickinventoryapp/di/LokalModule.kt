@@ -36,6 +36,11 @@ abstract class LokalModule {
     @Binds abstract fun sender(s: ServerSender): Bearbeitungssender
     @Binds abstract fun geraet(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.GeraeteEinstellungen
     @Binds abstract fun sitzungsablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Sitzungsablage
+    @Binds abstract fun darstellung(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Darstellungsablage
+    @Binds abstract fun vertrauensablage(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Vertrauensablage
+    @Binds abstract fun zugang(p: ch.brickinventoryapp.data.PreferencesManager): ch.brickinventoryapp.data.Zugangsdaten
+    @Binds abstract fun csvStrom(c: ch.brickinventoryapp.data.CsvImportSseClient): ch.brickinventoryapp.data.CsvImportStrom
+    @Binds abstract fun csvDienst(d: ch.brickinventoryapp.service.AndroidCsvImportDienst): ch.brickinventoryapp.service.CsvImportDienst
     @Binds abstract fun alarm(p: ch.brickinventoryapp.alarm.WorkManagerAlarmPlaner): ch.brickinventoryapp.data.AlarmPlaner
 
     companion object {

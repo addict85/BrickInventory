@@ -2,7 +2,7 @@ package ch.brickinventoryapp.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.ui.Sitzung
 import ch.brickinventoryapp.ui.setzeDesign
 import ch.brickinventoryapp.ui.Widgetanstoss
@@ -26,7 +26,7 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class DarstellungViewModel @Inject constructor(
-    private val prefs: PreferencesManager,
+    private val prefs: Darstellungsablage,
     sitzung: Sitzung,
     private val widget: Widgetanstoss,
 ) : ViewModel(), DarstellungAktionen {

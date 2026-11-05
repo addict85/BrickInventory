@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.RoutenRundwegTest
 Rot: Titel mit Sonderzeichen kommen unverändert an
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt
-index 95c5d96..9eb74b1 100644
+index 9924c56..4e98f99 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/Navigation.kt
 @@ -53,7 +53,7 @@ sealed interface Screen {
-         val type: String,
+         val art: Postenart,
          val id: String,
          val colorId: Int = KEINE_FARBE,
 -        val title: String,

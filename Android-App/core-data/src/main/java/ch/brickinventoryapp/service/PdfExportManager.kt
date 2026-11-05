@@ -5,7 +5,7 @@ import android.content.Context
 import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.repository.BrickRepository
 import ch.brickinventoryapp.data.repository.Result
-import ch.brickinventoryapp.util.teilelistenAblage
+import ch.brickinventoryapp.util.Teilelistentresor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.coroutineScope
@@ -48,6 +48,7 @@ class PdfExportManager @Inject constructor(
     private val prefs: PreferencesManager,
     @param:Named("sse") private val sseClient: OkHttpClient,
     private val json: Json,
+    private val teilelistentresor: Teilelistentresor,
     @param:ApplicationContext private val context: Context
 ) {
     private val _state = MutableStateFlow<PdfExportState>(PdfExportState.Idle)
@@ -136,9 +137,8 @@ class PdfExportManager @Inject constructor(
             }
             when (val r = downloadResult) {
                 is Result.Success -> {
-                    val file = teilelistenAblage(context.filesDir, context.getExternalFilesDir(null))
-                    file.outputStream().use { it.write(r.data) }
-                    // Das Inventar liegt im Klartext, solange die Ziel-App es lesen muss, nicht länger.
+                    val file = teilelistentresor.lege(context.filesDir, context.getExternalFilesDir(null), r.data)
+                    // Auch verschlüsselt bleibt das Inventar nur, solange jemand es öffnen will.
                     runCatching { TeilelistenAufraeumer.plane(context) }
                     _state.value = PdfExportState.Done(file)
                 }

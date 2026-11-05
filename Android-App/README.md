@@ -198,7 +198,7 @@ Zweck gebunden):
 | Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `VerschluesseltesDateisystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
 | Gutschein-PDF (Nummer, PIN) | nie auf der Platte: in den Speicher geladen, gerendert aus einem memfd, der mit dem Betrachter oder dem Prozess vergeht |
 | Bauanleitungen `cache/anleitung_*.bin` (höchstens 500 MB) | `VerschluesseltesDateisystem` (Zweck `anleitungen`, an den Dateinamen gebunden, Endmarker); angezeigt aus einem Bereich ohne Namen (siehe unten); beim Abmelden gelöscht, Klartext älterer Fassungen (`pdfview_*`) beim Start |
-| Teileliste-PDF `files/pdf/teileliste.pdf` | Klartext, weil die Ziel-App sie über den FileProvider liest; nach 30 Minuten gelöscht (WorkManager, dazu beim Start und beim Abmelden) |
+| Teileliste-PDF `files/pdf/teileliste.bin` | AES-GCM (Ablageschlüssel, Zweck „teileliste“); die Ziel-App liest über den nicht exportierten `TeilelistenProvider` aus dem Speicher (Proxy-Deskriptor), nie Klartext auf der Platte; nach 30 Minuten gelöscht (WorkManager, dazu beim Start und beim Abmelden) |
 
 **Anleitungen anzeigen:** `PdfRenderer` braucht einen Deskriptor, in dem er
 springt. Bis 64 MB entschlüsselt der Betrachter in einen memfd; darüber

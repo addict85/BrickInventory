@@ -21,7 +21,7 @@ import javax.inject.Singleton
 class GutscheineRepository @Inject constructor(
     api: GutscheineApi,
     cache: ResponseCache,
-    ablage: Offlineablage = Offlineablage.fluechtig(),
+    ablage: Offlineablage,
 ) : RepoBasis<GutscheineApi>(api, cache, ablage) {
 
     suspend fun liste(): Result<GutscheinListe> =

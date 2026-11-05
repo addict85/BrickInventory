@@ -15,10 +15,24 @@ import ch.brickinventoryapp.data.PreferencesManager
 import ch.brickinventoryapp.data.repository.Result
 import ch.brickinventoryapp.data.repository.BrickRepository
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.model.CsvImportStatus
 import javax.inject.Inject
+
+/** Der Vordergrund-Dienst eines laufenden CSV-Imports; im Test ein Zähler. */
+interface CsvImportDienst {
+    fun start()
+    fun stop()
+}
+
+class AndroidCsvImportDienst @Inject constructor(
+    @param:ApplicationContext private val ctx: Context,
+) : CsvImportDienst {
+    override fun start() = CsvImportService.start(ctx)
+    override fun stop() = CsvImportService.stop(ctx)
+}
 
 @AndroidEntryPoint
 class CsvImportService : Service() {
