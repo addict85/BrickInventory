@@ -169,9 +169,8 @@ test('jeder in Vorlagen referenzierte Handler ist bei der Registry angemeldet', 
       }
   }
 
-  // logviewer.js läuft als klassisches Skript in einem eigenen Popup-Fenster
-  // und meldet sich nicht an — für seine vier Handler gilt weiterhin die
-  // window-Auflösung (Rückfall in resolveAction).
+  // logviewer.js läuft in einem eigenen Popup-Fenster und löst seine vier
+  // Handler über eine eigene Tabelle auf (test/logviewer-oberflaeche.test.js).
   const logviewer = strip(fs.readFileSync(path.join(PUB, 'js', 'logviewer.js'), 'utf8'));
 
   const missing = [...names].filter(n =>

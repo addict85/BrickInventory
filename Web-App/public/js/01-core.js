@@ -708,6 +708,20 @@ export async function apiRoh(method, path, o = {}) {
 }
 
 /**
+ * JSON einer Antwort, deren Felder unverändert bleiben sollen (etwa ein eigenes
+ * `status`, das api() mit dem HTTP-Status überschriebe). null bei Netzfehler,
+ * Fehlerstatus oder einer Antwort, die kein JSON ist.
+ * @param {string} method @param {string} path
+ * @returns {Promise<any>}
+ */
+export async function apiDaten(method, path) {
+  try {
+    const r = await apiRoh(method, path);
+    return r.ok ? await r.json() : null;
+  } catch (_) { return null; }
+}
+
+/**
  * Aufruf der eigenen API mit JSON-Antwort. Liefert IMMER ein Objekt, nie eine
  * Ausnahme: Jeder Fehlschlag (Netz, HTML-Fehlerseite des Proxys, Status ohne
  * `success`) kommt als `{ success: false, error }` zurück, wie vom Server.

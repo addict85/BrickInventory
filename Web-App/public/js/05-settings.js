@@ -13,6 +13,7 @@ import { esc } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 import { loadFinance } from './04-finance.js';
 import { ladeLagerortVorgabe } from './02-konten-orte.js';
+import { csvHochladen } from './01-bausteine.js';
 
 // ── SETTINGS ──────────────────────────────────────────
 // SMTP + Registration settings load/save
@@ -1145,31 +1146,11 @@ async function loescheLagerort(id, name) {
  * Aussage, nicht die Farbe.
  */
 async function importAlarmeCsv() {
-  const fi = G('alerts-csv-file');
-  if (!fi?.files[0]) return;
-  const fd = new FormData();
-  fd.append('file', fi.files[0]);
-
   const status = G('alerts-csv-status');
-  if (status) status.textContent = tRaw('import.running');
-  try {
-    const d = await api('POST', '/v1/alerts/import/csv', fd);
-    fi.value = '';
-    if (status) status.textContent = '';
-    if (d.success) {
-      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
-      const zusatz = [d.skipped_hint, d.waehrung_hinweis].filter(Boolean).join(' — ');
-      toast(summary + (zusatz ? ` — ${zusatz}` : ''),
-        (d.errors || d.skipped || d.waehrung_hinweis) ? 'info' : 'success');
-      await ladeAlarmUebersicht();
-    } else {
-      toast(d.error || tRaw('settings.error'), 'error');
-    }
-  } catch (e) {
-    fi.value = '';
-    if (status) status.textContent = '';
-    toast(tRaw('settings.error'), 'error');
-  }
+  const d = await csvHochladen({ feld: 'alerts-csv-file', pfad: '/v1/alerts/import/csv',
+    hinweise: (a) => [a.waehrung_hinweis],
+    zeige: (l) => { if (status) status.textContent = l ? tRaw('import.running') : ''; } });
+  if (d) await ladeAlarmUebersicht();
 }
 
 // ── Die Wanted-Liste ist UMGEZOGEN (19.10.) ────────────────────────────────

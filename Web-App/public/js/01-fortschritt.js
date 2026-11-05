@@ -21,7 +21,7 @@
 // längst denselben); kritisch wäre nur ein const-Zugriff während der
 // Auswertung, und den gibt es hier nicht.
 import { registerActions } from './00-registry.js';
-import { ico, G, apiRoh, fmtPct, api, toast } from './01-core.js';
+import { ico, G, apiRoh, fmtPct, api, toast, apiDaten } from './01-core.js';
 import { melde } from './00-ereignisse.js';
 import { t, tRaw } from '../i18n.js';
 import { ME } from './00-zustand.js';
@@ -105,8 +105,8 @@ function gibApplyStatus(s) {
 // Polling-Fallback: einmalig den Status holen und rendern.
 async function gibPoll() {
   try {
-    const s = await apiRoh('GET', '/v1/sets/import/csv/status').then(r=>r.json());
-    gibApplyStatus(s);
+    const s = await apiDaten('GET', '/v1/sets/import/csv/status');
+    if (s) gibApplyStatus(s);
   } catch(_) {}
 }
 

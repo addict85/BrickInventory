@@ -458,6 +458,8 @@ async function pollPdfStatus(jobId, btn, finish, startEta) {
     await new Promise(r => setTimeout(r, 1500));
     try {
       const r = await apiRoh('GET', `/v1/sets/partslist-pdf/status/${jobId}`);
+      // Ein Fehlerstatus (Auftrag unbekannt, Server weg) beendet das Warten gleich.
+      if (!r.ok) { finish(t('pdf.server_error')); return; }
       const { status, error, etaSeconds } = await r.json();
       if (status === 'running' && etaSeconds != null && startEta) startEta(etaSeconds);
       if (status === 'done') { finish(null); return; }

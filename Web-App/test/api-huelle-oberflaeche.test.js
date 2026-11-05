@@ -8,8 +8,10 @@
  *   A  importAlarmeCsv wieder mit `fetch('/api/v1/alerts/import/csv', …)` →
  *      rot: „Upload trägt die Sprache“ (kein Accept-Language) und
  *      „401 beim Upload“ (die Anmeldemaske blieb verborgen)
- *   B  in apiRoh die Zeile `if (res.status === 401) meldeSitzungBeendet(path)`
+ *   B  in apiRoh die Zeile `if (res.status === 401) melde('sitzungBeendet', path)`
  *      entfernt → rot: „401 beim Upload“
+ *   C  in csvHochladen (01-bausteine.js) `d.skipped_hint` aus der Meldung
+ *      genommen → rot: „übersprungene Zeilen“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,5 +51,20 @@ test('401 beim Upload beendet die Sitzung wie bei jedem anderen Aufruf', async (
     assert.ok(await warte(() => d.getElementById('login-screen').style.display === 'flex'),
       'Nach 401 steht die Anmeldemaske nicht da');
     assert.equal(d.getElementById('app').style.display, 'none');
+  } finally { w.close(); }
+});
+
+test('der CSV-Import meldet übersprungene Zeilen und Zusatzhinweise in einer Meldung', async () => {
+  const { w, d } = await oeffneOberflaeche({
+    '/v1/alerts/import/csv': { success: true, added: 1, updated: 0, errors: 0, skipped: 2,
+                               skipped_hint: 'zwei Zeilen übersprungen', waehrung_hinweis: 'Währung CHF' },
+  });
+  try {
+    waehleAlarmCsv(w);
+    assert.ok(await warte(() => /zwei Zeilen übersprungen/.test(d.getElementById('toasts')?.textContent || '')),
+      'Der Hinweis auf übersprungene Zeilen fehlt in der Meldung');
+    const text = d.getElementById('toasts').textContent;
+    assert.match(text, /Währung CHF/, 'Der Zusatzhinweis des Alarm-Imports fehlt');
+    assert.equal(w.document.getElementById('alerts-csv-file').value, '', 'Das Dateifeld wird nicht geleert');
   } finally { w.close(); }
 });

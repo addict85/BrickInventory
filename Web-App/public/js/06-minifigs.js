@@ -2,7 +2,7 @@
 // die gemeinsamen Hilfen für manuelle Tabellen und CSV-Status.
 import { abonniere } from './00-ereignisse.js';
 import { echt, registerActions } from './00-registry.js';
-import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen } from './01-bausteine.js';
+import { listeLadefehler, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { fmtDatum, bildTag, platzhalterInhalt, leerZustand, escHex, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter } from './01-core.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './14-scope.js';
@@ -451,29 +451,9 @@ export function csvImportStatus(elId, state, msg) {
 }
 
 async function importFigsCsv() {
-  const fi = G('fig-csv-file');
-  if (!fi.files[0]) return;
-  const fd = new FormData(); fd.append('file', fi.files[0]);
-  csvImportStatus('fig-csv-status', 'running', t('import.running'));
-  try {
-    const d = await api('POST', '/v1/minifigs/import/csv', fd);
-    fi.value = '';
-    if (d.success) {
-      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
-      // Übersprungene Zeilen anhängen — sonst sieht ein Import mit stillen
-      // Lücken aus wie ein vollständiger.
-      toast(summary + (d.skipped_hint ? ` — ${d.skipped_hint}` : ''),
-        (d.errors || d.skipped) ? 'info' : 'success');
-      loadMinifigs();
-    } else {
-      toast(d.error || t('settings.error'), 'error');
-    }
-    csvImportStatus('fig-csv-status', 'hide');
-  } catch (e) {
-    fi.value = '';
-    csvImportStatus('fig-csv-status', 'hide');
-    toast(tRaw('settings.error'), 'error');
-  }
+  const d = await csvHochladen({ feld: 'fig-csv-file', pfad: '/v1/minifigs/import/csv',
+    zeige: (l) => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', t('import.running')) });
+  if (d) loadMinifigs();
 }
 
 G('btn-fig-csv-template').onclick = (e) => {

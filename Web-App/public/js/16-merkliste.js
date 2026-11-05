@@ -1,7 +1,7 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, ico, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
-import { detailZeile, listeLadefehler, skelettZeilen } from './01-bausteine.js';
+import { detailZeile, listeLadefehler, skelettZeilen, csvHochladen } from './01-bausteine.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { addScopeParam } from './14-scope.js';
 import { CURRENCY } from './00-zustand.js';
@@ -615,32 +615,12 @@ G('mks')?.addEventListener('input', () => {
  * und das ist eine andere Frage als „wessen Liste sehe ich".
  */
 async function importMerklisteCsv() {
-  const fi = G('mk-csv-file');
-  if (!fi?.files[0]) return;
-  const fd = new FormData();
-  fd.append('file', fi.files[0]);
   const owner = selectedOwner();
-  if (owner) fd.append('owner_user_id', String(owner));
-
   const status = G('mk-status');
-  if (status) status.textContent = tRaw('import.running');
-  try {
-    const d = await api('POST', '/v1/wanted/import/csv', fd);
-    fi.value = '';
-    if (status) status.textContent = '';
-    if (d.success) {
-      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
-      toast(summary + (d.skipped_hint ? ` — ${d.skipped_hint}` : ''),
-        (d.errors || d.skipped) ? 'info' : 'success');
-      ladeMerkliste();
-    } else {
-      toast(d.error || tRaw('settings.error'), 'error');
-    }
-  } catch (e) {
-    fi.value = '';
-    if (status) status.textContent = '';
-    toast(tRaw('settings.error'), 'error');
-  }
+  const d = await csvHochladen({ feld: 'mk-csv-file', pfad: '/v1/wanted/import/csv',
+    felder: owner ? { owner_user_id: String(owner) } : {},
+    zeige: (l) => { if (status) status.textContent = l ? tRaw('import.running') : ''; } });
+  if (d) ladeMerkliste();
 }
 
 registerActions({ ladeMerkliste, merkpostenHinzufuegen, katalogAufMerkliste, merkpostenLoeschen,

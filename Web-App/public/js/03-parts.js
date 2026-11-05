@@ -2,7 +2,7 @@
 // Teile samt Erfassen, Farbwahl und CSV-Import — beide Listen teilen Filter
 // und Leerzustand.
 import { abonniere } from './00-ereignisse.js';
-import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen } from './01-bausteine.js';
+import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
 import { registerActions, echt } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { bildTag, G, api, escHex, escHtml, escJs, fmtBig, fullUrl, imgUrl, leerZustand, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf, TRASH_ICON_SVG, betragAusFeld, fmtN, hexZiffern, toast, aktiverReiter } from './01-core.js';
@@ -644,29 +644,9 @@ G('btn-add-part')?.addEventListener('click', async () => {
 
 // CSV import
 async function importPartsCsv() {
-  const fi = G('part-csv-file');
-  if (!fi.files[0]) return;
-  const fd = new FormData(); fd.append('file', fi.files[0]);
-  csvImportStatus('part-csv-status', 'running', t('import.running'));
-  try {
-    const d = await api('POST', '/v1/parts/import/csv', fd);
-    fi.value = '';
-    if (d.success) {
-      const summary = t('import.summary', { added: d.added, updated: d.updated, errors: d.errors });
-      // Übersprungene Zeilen anhängen — sonst sieht ein Import mit stillen
-      // Lücken aus wie ein vollständiger.
-      toast(summary + (d.skipped_hint ? ` — ${d.skipped_hint}` : ''),
-        (d.errors || d.skipped) ? 'info' : 'success');
-      loadManualParts();
-    } else {
-      toast(d.error || t('settings.error'), 'error');
-    }
-    csvImportStatus('part-csv-status', 'hide');
-  } catch (e) {
-    fi.value = '';
-    csvImportStatus('part-csv-status', 'hide');
-    toast(tRaw('settings.error'), 'error');
-  }
+  const d = await csvHochladen({ feld: 'part-csv-file', pfad: '/v1/parts/import/csv',
+    zeige: (l) => csvImportStatus('part-csv-status', l ? 'running' : 'hide', t('import.running')) });
+  if (d) loadManualParts();
 }
 
 G('btn-csv-template').onclick = (e) => {

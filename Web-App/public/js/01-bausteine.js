@@ -1,4 +1,3 @@
-import { registerActions } from './00-registry.js';
 // ── Bausteine für Ansichten ──────────────────────────────────────────────────
 //
 // 01-core.js sammelt WERKZEUGE: Escaping, Bild-URLs, Formatierung, Toasts,
@@ -28,9 +27,9 @@ import { registerActions } from './00-registry.js';
 // verbessert, das man sehen kann. Ab jetzt sind sie eine INNERE Angelegenheit
 // dieser Datei — wer eine Detailzeile braucht, schreibt `detailZeile(…)` und
 // sieht die Kürzel nie. In styles.css steht daneben, wofür sie stehen.
-import { ico, toast, G, fmtBig, fmtPct, istGeschenk } from './01-core.js';
+import { ico, toast, G, fmtBig, fmtPct, istGeschenk, api } from './01-core.js';
 import { tRaw, t } from '../i18n.js';
-import { resolveAction } from './00-registry.js';
+import { registerActions, resolveAction } from './00-registry.js';
 import { esc } from './00-escapen.js';
 import { ME } from './00-zustand.js';
 
@@ -219,6 +218,33 @@ const erfassenDialog = (art) => G(`add-${typeof art === 'string' ? art : 'set'}-
 export function oeffneErfassen(art){ erfassenDialog(art)?.classList.add('open'); }
 
 export function schliesseErfassen(art){ erfassenDialog(art)?.classList.remove('open'); }
+
+/**
+ * Gewählte CSV-Datei hochladen und das Ergebnis melden — eine Fassung für
+ * Teile, Figuren, Merkliste und Alarme. Übersprungene Zeilen und Zusatz-
+ * hinweise stehen überall in der Meldung, sonst sähe ein lückenhafter Import
+ * aus wie ein vollständiger.
+ * @param {{ feld: string, pfad: string, felder?: Record<string, string>,
+ *           zeige?: (laeuft: boolean) => void, hinweise?: (d: any) => unknown[] }} o
+ * @returns {Promise<any>} die Antwort bei Erfolg, sonst null
+ */
+export async function csvHochladen(o) {
+  const fi = G(o.feld);
+  if (!fi?.files?.[0]) return null;
+  const fd = new FormData();
+  fd.append('file', fi.files[0]);
+  for (const [k, v] of Object.entries(o.felder ?? {})) fd.append(k, v);
+  o.zeige?.(true);
+  const d = await api('POST', o.pfad, fd);
+  fi.value = '';
+  o.zeige?.(false);
+  if (!d.success) { toast(d.error || tRaw('settings.error'), 'error'); return null; }
+  const extra = (o.hinweise?.(d) ?? []).filter(Boolean);
+  const zusatz = [d.skipped_hint, ...extra].filter(Boolean).join(' — ');
+  toast(t('import.summary', { added: d.added, updated: d.updated, errors: d.errors }) + (zusatz ? ` — ${zusatz}` : ''),
+    (d.errors || d.skipped || extra.length) ? 'info' : 'success');
+  return d;
+}
 
 registerActions({
   oeffneErfassen,
