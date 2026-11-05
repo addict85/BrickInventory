@@ -92,6 +92,11 @@ async function mitNachlauf(/** @type {{ code: number, frist: string[], andere: n
 async function main() {
   const start = Date.now();
   execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], { stdio: 'ignore' });
+  // Die Browser-Tests laden das Bündel; gebaut wird es hier, damit sie die Quellen prüfen, nicht einen alten Stand.
+  const buendel = path.join(ROOT, 'public', 'js', 'app.bundle.js');
+  const vorher = fs.existsSync(buendel) ? fs.readFileSync(buendel, 'utf8') : '';
+  require('./build-frontend').baueBuendel(buendel);
+  if (fs.readFileSync(buendel, 'utf8') !== vorher) console.log('[test-lauf] app.bundle.js war veraltet und ist neu gebaut — mitcommitten.');
 
   const dateien = auswahl.length ? auswahl
     : fs.readdirSync(path.join(ROOT, 'test')).filter(f => f.endsWith('.test.js')).sort().map(f => path.join('test', f));

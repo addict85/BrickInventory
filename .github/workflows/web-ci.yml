@@ -140,6 +140,9 @@ jobs:
       - name: Bauen
         run: npm run build
 
+      - name: Bündel passt zu den Quellen
+        run: git diff --exit-code -- public/js/app.bundle.js
+
       # Mitschnitt für den Schritt danach: Am Jobende überdeckt das Protokoll
       # des Postgres-Dienstes die roten Zeilen. pipefail, sonst bestimmt tee
       # den Rückgabewert und der Schritt wäre bei roten Tests grün.
