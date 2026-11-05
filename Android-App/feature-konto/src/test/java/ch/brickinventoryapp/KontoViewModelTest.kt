@@ -100,7 +100,7 @@ class KontoViewModelTest {
         val entwertet = (1..2).map { server.takeRequest().path.orEmpty() }
         assertTrue("Entwertet: $entwertet", entwertet.any { it.endsWith("b2") } && entwertet.any { it.endsWith("c3") })
         assertFalse(entwertet.any { it.endsWith("a1") })
-        assertEquals("m${R.plurals.tokens_revoked_n}:2", kanal.fluss.value)
+        assertEquals("m${R.plurals.tokens_revoked_n}:2", kanal.meldung.value)
     }
 
     @Test
@@ -133,7 +133,7 @@ class KontoViewModelTest {
         server.enqueue(antwort(geraete(aktuellDabei = true)))
         vm.entwerteAndereGeraete()
         warteBis("neu geladen") { server.requestCount == 4 && !vm.geraeteState.value.laedt }
-        assertEquals("m${R.plurals.tokens_revoked_n}:0", kanal.fluss.value)
+        assertEquals("m${R.plurals.tokens_revoked_n}:0", kanal.meldung.value)
     }
 
     @Test
@@ -153,10 +153,10 @@ class KontoViewModelTest {
         var abgemeldet = false
         server.enqueue(antwort("""{"success":true}"""))
         vm.aenderePasswort("alt", "neuNeuNeu123!") { abgemeldet = true }
-        warteBis("Meldung") { kanal.fluss.value != null }
+        warteBis("Meldung") { kanal.meldung.value != null }
 
         assertTrue(abgemeldet)
-        assertEquals("t${R.string.konto_password_changed}", kanal.fluss.value)
+        assertEquals("t${R.string.konto_password_changed}", kanal.meldung.value)
         assertFalse(vm.kontoState.value.speichert)
     }
 
@@ -169,7 +169,7 @@ class KontoViewModelTest {
 
         assertFalse(abgemeldet)
         assertEquals("Aktuelles Passwort falsch", vm.kontoState.value.fehler)
-        assertNull(kanal.fluss.value)
+        assertNull(kanal.meldung.value)
     }
 
     @Test
@@ -183,7 +183,7 @@ class KontoViewModelTest {
         assertEquals(2, z.codesUebrig)
         assertNull(z.geheimnis)
         assertFalse(z.laedt)
-        assertEquals("t${R.string.zf_enabled}", kanal.fluss.value)
+        assertEquals("t${R.string.zf_enabled}", kanal.meldung.value)
         // Der Code geht ohne Leerzeichen hinaus.
         assertTrue(server.takeRequest().body.readUtf8().contains("\"123456\""))
     }

@@ -28,11 +28,9 @@ class GeraeteEinstellungenViewModel @Inject constructor(
     private val einstellungen: GeraeteEinstellungen,
     private val planer: AlarmPlaner,
     private val texte: Texte,
-    meldungen: MeldungsKanal,
+    private val meldungen: MeldungsKanal,
     private val vorschau: VorschauSpeicher,
 ) : ViewModel() {
-
-    private val _snackbar = meldungen.fluss
 
     val alarmMeldungenAn: StateFlow<Boolean> =
         einstellungen.alarmMeldungenAn.stateIn(viewModelScope, SharingStarted.Eagerly, false)
@@ -51,8 +49,8 @@ class GeraeteEinstellungenViewModel @Inject constructor(
         viewModelScope.launch {
             einstellungen.setzeAlarmMeldungen(an)
             val fehler = planer.einplanen(an) ?: return@launch
-            _snackbar.value = texte.text(R.string.alert_schedule_failed,
-                "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}")
+            meldungen.zeige(texte.text(R.string.alert_schedule_failed,
+                "${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
         }
     }
 
@@ -69,7 +67,7 @@ class GeraeteEinstellungenViewModel @Inject constructor(
     fun ablageLeeren() {
         vorschau.leeren()
         _ablageBytes.value = vorschau.belegt()
-        _snackbar.value = texte.text(R.string.monitoring_cache_saved)
+        meldungen.zeige(texte.text(R.string.monitoring_cache_saved))
     }
 
     companion object {

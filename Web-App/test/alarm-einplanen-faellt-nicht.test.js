@@ -94,7 +94,7 @@ test('3. und wirft den Fehler nicht weg', () => {
   const s = app('ui/viewmodel/GeraeteEinstellungenViewModel.kt');
   const i = s.indexOf('planer.einplanen(');
   const danach = s.slice(i, i + 400);
-  assert.match(danach, /_snackbar\.value\s*=/,
+  assert.match(danach, /meldungen\.zeige\(/,
     'Ein Fehlschlag des Einplanens wird nicht gemeldet.');
   assert.match(danach, /alert_schedule_failed/,
     'Für den Fehlschlag gibt es keinen eigenen Text.');

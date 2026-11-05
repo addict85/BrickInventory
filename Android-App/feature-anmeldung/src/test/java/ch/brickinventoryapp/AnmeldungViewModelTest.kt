@@ -179,7 +179,7 @@ class AnmeldungViewModelTest {
     @Test
     fun `ein zweiter QR-Anlauf nach gelungener Anmeldung meldet keinen Fehler`() {
         pfade.antworten["/api/v1/auth/qr-login"] = """{"success":false,"error":"Ungültiges oder abgelaufenes Token"}"""
-        t.sitzung.aendere { it.copy(isLoggedIn = true) }
+        t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://server/", "einmalig", abmelden = { ablage.protokoll += "abmelden" })
         TestApi.warteBis("Antwort") { pfade.anfragenAn("qr-login").isNotEmpty() && !vm.anmeldeState.value.loginLaeuft }
@@ -302,7 +302,7 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `eine http-Adresse wird nicht gespeichert, eine ohne Schema als https`() {
-        t.sitzung.aendere { it.copy(isLoggedIn = true) }
+        t.sitzung.angemeldet(admin = false)
         val vm = vm()
         assertFalse(vm.saveServerUrl("http://nas:3000", abmelden = { ablage.protokoll += "abmelden" }))
         assertTrue(vm.saveServerUrl("brick.example.org", abmelden = { ablage.protokoll += "abmelden" }))
@@ -325,7 +325,7 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `ein anderer Server meldet vor der neuen Adresse ab`() {
-        t.sitzung.aendere { it.copy(isLoggedIn = true) }
+        t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.saveServerUrl("https://anderer.example:8443", abmelden = { ablage.protokoll += "abmelden" })
         TestApi.warteBis("abgelegt") { ablage.protokoll.any { it.startsWith("url:") } }
@@ -334,7 +334,7 @@ class AnmeldungViewModelTest {
 
     @Test
     fun `derselbe Server mit Schraegstrich meldet nicht ab`() {
-        t.sitzung.aendere { it.copy(isLoggedIn = true) }
+        t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.saveServerUrl("https://SERVER/", abmelden = { ablage.protokoll += "abmelden" })
         TestApi.warteBis("abgelegt") { ablage.protokoll.any { it.startsWith("url:") } }
@@ -344,7 +344,7 @@ class AnmeldungViewModelTest {
     @Test
     fun `ein QR-Code fuer einen anderen Server meldet zuerst ab`() {
         pfade.antworten["/api/v1/auth/qr-login"] = """{"success":true,"token":"neu","user":{"id":2,"username":"anna"}}"""
-        t.sitzung.aendere { it.copy(isLoggedIn = true) }
+        t.sitzung.angemeldet(admin = false)
         val vm = vm()
         vm.loginWithQrToken("https://neu.example", "einmalig", abmelden = { ablage.protokoll += "abmelden" })
         TestApi.warteBis("angemeldet") { ablage.protokoll.contains("token:neu") }

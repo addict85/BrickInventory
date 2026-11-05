@@ -110,11 +110,9 @@ test('beide Oberflaechen zeigen den Hinweis, aus je EINER Stelle', () => {
     path.join(__dirname, '..', '..', 'Android-App', 'feature-teile', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'viewmodel', 'TeileViewModel.kt'), 'utf8'));
   assert.strictEqual((app.match(/fun erfassungsMeldung\(/g) || []).length, 1,
     'Der Hinweis der App ist nicht an genau einer Stelle gebaut');
-  // `= erfassungsMeldung(` misst die AUFRUFE. Ein blosses
-  // `erfassungsMeldung\(` zaehlte die Definition mit und meldete 3 statt 2 —
-  // eine Zahl, die etwas anderes zaehlt als sie behauptet, taugt auch als
-  // Selbstbeweis nichts.
-  assert.strictEqual((app.match(/= erfassungsMeldung\(/g) || []).length, 2,
+  // `zeigeMeldung(erfassungsMeldung(` misst die AUFRUFE; ein blosses
+  // `erfassungsMeldung\(` zaehlte die Definition mit und meldete 3 statt 2.
+  assert.strictEqual((app.match(/zeigeMeldung\(erfassungsMeldung\(/g) || []).length, 2,
     'Der Hinweis fehlt bei einer der beiden Erfassungen der App');
   assert.match(app, /r\.data\.priceFromCondition/,
     'Die App liest die Herkunft nicht aus der Antwort');

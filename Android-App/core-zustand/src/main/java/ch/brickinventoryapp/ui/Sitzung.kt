@@ -24,7 +24,18 @@ class Sitzung @Inject constructor() {
     private val _state = MutableStateFlow(AppUiState())
     val state: StateFlow<AppUiState> = _state.asStateFlow()
 
-    fun aendere(aenderung: (AppUiState) -> AppUiState) = _state.update(aenderung)
+    /** Nur innerhalb von core-zustand; die Bereiche ändern die Sitzung über die benannten Schritte unten. */
+    internal fun aendere(aenderung: (AppUiState) -> AppUiState) = _state.update(aenderung)
+
+    /** Die Anmeldung ist gelungen; das Verwalterrecht gilt bis zur nächsten Antwort von /auth/me. */
+    fun angemeldet(admin: Boolean) = aendere { it.copy(isLoggedIn = true, isAdmin = admin) }
+
+    /** Der Server hat Währung und Bedingung des Kontos gespeichert. */
+    fun einstellungenGespeichert(currency: String, priceCondition: String) =
+        aendere { it.copy(currency = currency, priceCondition = priceCondition) }
+
+    /** Eine Antwort des Servers nennt die Währung des Kontos (etwa die Bewertung). */
+    fun waehrungUebernommen(currency: String) = aendere { it.copy(currency = currency) }
 
     private val _abmeldungen = MutableSharedFlow<Unit>(
         extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)

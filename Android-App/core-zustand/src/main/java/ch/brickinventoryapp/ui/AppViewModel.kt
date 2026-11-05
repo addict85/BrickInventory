@@ -41,7 +41,7 @@ class AppViewModel @Inject constructor(
     private val prefs: PreferencesManager,
     private val sessionExpired: SessionExpiredSignal,
     private val rechte: RechteSignal,
-    meldungen: MeldungsKanal,
+    private val meldungen: MeldungsKanal,
     private val texte: Texte,
     private val sitzung: Sitzung,
     private val blickfeldDienst: Blickfeld,
@@ -56,12 +56,11 @@ class AppViewModel @Inject constructor(
 
     val state: StateFlow<AppUiState> = sitzung.state
 
-    private val _snackbar = meldungen.fluss
     val snackbar = meldungen.meldung
 
     /** Offline gespeicherte Änderungen, die noch zum Server müssen — für die Leiste im Gerüst. */
     val offeneAenderungen: StateFlow<Int> = ausgangsmelder.starte(viewModelScope)
-    fun clearSnackbar() { _snackbar.value = null }
+    fun clearSnackbar() { meldungen.quittiere() }
 
     /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
     val startpasswortNoetig: StateFlow<Boolean> = passwortPflicht.noetig
@@ -73,8 +72,8 @@ class AppViewModel @Inject constructor(
     // Benachrichtigung kann fehlen, also hier noch einmal, einmalig.
     init {
         prefs.gescheiterteEntwertungen().firstOrNull()?.let { server ->
-            _snackbar.value = texte.text(R.string.abmeldung_gescheitert_text,
-                NetworkPolicy.ansicht(server)?.adresse ?: server)
+            meldungen.zeige(texte.text(R.string.abmeldung_gescheitert_text,
+                NetworkPolicy.ansicht(server)?.adresse ?: server))
             prefs.quittiereGescheiterteEntwertungen()
         }
     }
@@ -116,7 +115,7 @@ class AppViewModel @Inject constructor(
         viewModelScope.launch {
             sessionExpired.events.collect {
                 if (sitzung.state.value.isLoggedIn) {
-                    _snackbar.value = texte.text(R.string.vm_session_expired)
+                    meldungen.zeige(texte.text(R.string.vm_session_expired))
                     logout()
                 }
             }
@@ -124,7 +123,7 @@ class AppViewModel @Inject constructor(
         // Ein 403 `nur_admins`: Recht nachziehen; die Meldung nur beim Übergang.
         viewModelScope.launch {
             rechte.entzogen.collect {
-                if (sitzung.rechteNachziehen(repo.konto)) _snackbar.value = texte.text(R.string.vm_rechte_entzogen)
+                if (sitzung.rechteNachziehen(repo.konto)) meldungen.zeige(texte.text(R.string.vm_rechte_entzogen))
             }
         }
     }
@@ -136,7 +135,7 @@ class AppViewModel @Inject constructor(
             .collect { (url, token) ->
                 sitzung.aendere { it.copy(serverUrl = url, isLoggedIn = token.isNotBlank()) }
                 if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
-                    _snackbar.value = texte.text(R.string.vm_anmeldung_zu_alt)
+                    meldungen.zeige(texte.text(R.string.vm_anmeldung_zu_alt))
                     logout()
                     return@collect
                 }
@@ -176,7 +175,7 @@ class AppViewModel @Inject constructor(
      */
     fun logout(): Job = viewModelScope.launch {
         if (abmelden.ausfuehren() == Abmeldeweg.NACHGEHOLT) {
-            _snackbar.value = texte.text(R.string.vm_abmelden_nachgeholt)
+            meldungen.zeige(texte.text(R.string.vm_abmelden_nachgeholt))
         }
         // Das Design des Kontos gilt nicht mehr; ohne Token liefert der Server die Vorgabe.
         loadAppTheme()

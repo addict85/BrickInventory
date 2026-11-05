@@ -65,7 +65,7 @@ data class HintergrundUiState(
 class MonitoringViewModel @Inject constructor(
     private val repo: BrickRepository,
     private val texte: Texte,
-    meldungen: MeldungsKanal,
+    private val meldungen: MeldungsKanal,
 ) : ViewModel(), MonitoringAktionen {
 
     private val _state = MutableStateFlow(MonitoringUiState())
@@ -122,9 +122,6 @@ class MonitoringViewModel @Inject constructor(
     internal suspend fun leereAuftragsArt(art: String): String =
         nachAuftrag(repo.verwaltung.leereAuftragsArt(art)) { texte.menge(R.plurals.hintergrund_geleert, it.entfernt, it.entfernt) }
 
-    /** Sätze zu Aufträgen und Speichern gehen in den einen Kanal der Snackbar. */
-    private val _snackbar = meldungen.fluss
-
     // Im viewModelScope, nicht im Scope des Bildschirms: Wer die Seite verlässt,
     // bricht die Aktion nicht ab, und der Satz geht nicht am Zustand vorbei.
     override fun auftragAbbrechen(id: String) = melde { brichAuftragAb(id) }
@@ -138,7 +135,7 @@ class MonitoringViewModel @Inject constructor(
     val einstellungenNeu = _einstellungenNeu.asStateFlow()
 
     override fun melde(satz: String) {
-        _snackbar.value = satz
+        meldungen.zeige(satz)
     }
 
     fun einstellungenGeladen() {
@@ -162,12 +159,12 @@ class MonitoringViewModel @Inject constructor(
         viewModelScope.launch {
             if (!aktion()) return@launch
             if (einstellungen) _einstellungenNeu.value = true
-            _snackbar.value = texte.text(satz)
+            meldungen.zeige(texte.text(satz))
         }
     }
 
     private fun melde(aktion: suspend () -> String) {
-        viewModelScope.launch { _snackbar.value = aktion() }
+        viewModelScope.launch { meldungen.zeige(aktion()) }
     }
 
     private suspend fun <T> nachAuftrag(r: Result<T>, erfolg: (T) -> String): String {

@@ -31,7 +31,7 @@ class Ausgangsmelder @Inject constructor(
         scope.launch {
             var vorher = 0
             offene.collect { n ->
-                if (n > vorher) meldungen.fluss.value = texte.menge(R.plurals.offline_ausgang, n, n)
+                if (n > vorher) meldungen.zeige(texte.menge(R.plurals.offline_ausgang, n, n))
                 vorher = n
             }
         }
@@ -47,8 +47,8 @@ class Ausgangsmelder @Inject constructor(
                 val signale = e.arten.mapNotNull { signal(it) }.distinct()
                 if (signale.isNotEmpty()) bestand.melde(*signale.toTypedArray())
             }
-            is Abgleichsereignis.Verworfen -> meldungen.fluss.value = texte.text(R.string.offline_verworfen,
-                e.bearbeitung.ziel, e.meldung.ifBlank { texte.text(R.string.offline_verworfen_ohne_grund) })
+            is Abgleichsereignis.Verworfen -> meldungen.zeige(texte.text(R.string.offline_verworfen,
+                e.bearbeitung.ziel, e.meldung.ifBlank { texte.text(R.string.offline_verworfen_ohne_grund) }))
         }
     }
 

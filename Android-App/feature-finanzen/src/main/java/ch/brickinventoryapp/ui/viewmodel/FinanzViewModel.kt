@@ -48,12 +48,12 @@ class FinanzViewModel @Inject constructor(
                     _financeState.update { it.copy(valuation = r.data.alsAnsicht(), valuationLoading = false) }
                     // Die Währung des Kontos kommt mit der Bewertung; das
                     // AppViewModel merkt sie sich für den nächsten Start.
-                    dienste.sitzung.aendere { it.copy(currency = r.data.currency) }
+                    dienste.sitzung.waehrungUebernommen(r.data.currency)
                 }
                 is Result.Error -> {
                     _financeState.update { it.copy(valuationLoading = false, valuationFehler = meldung(r),
                         valuationFehlerKlasse = ch.brickinventoryapp.ui.fehlerklasse(r)) }
-                    _snackbar.value = meldungFuerSnackbar(r)
+                    zeigeMeldung(meldungFuerSnackbar(r))
                 }
             }
             (finanzen.getPartsValuation(konto) as? Result.Success)

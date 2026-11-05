@@ -49,7 +49,7 @@ class GalerieViewModel @Inject constructor(
             }
         },
         holeKennzahlen = { finanzen.getStats(scopeFor(ScopeFilter.View.GALLERY)) },
-        meldeFehler = { _snackbar.value = meldungFuerSnackbar(it) },
+        meldeFehler = { zeigeMeldung(meldungFuerSnackbar(it)) },
         beschreibeFehler = { meldung(it) },
         vergissScroll = { dienste.scrollMemory.vergiss("gallery") },
         lokal = sets.beobachteSets(),
@@ -162,7 +162,7 @@ class GalerieViewModel @Inject constructor(
         viewModelScope.launch {
             val (geloescht, satz) = setLoeschen(sets, dienste.texte, setNumber)
             if (geloescht) galerie.entferne(setNumber)
-            if (!geloescht || erfolgMelden) _snackbar.value = satz
+            if (!geloescht || erfolgMelden) zeigeMeldung(satz)
             if (geloescht) dienste.bestand.melde(Aenderung.Sets, Aenderung.Teile, Aenderung.Figuren)
         }
     }

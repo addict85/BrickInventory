@@ -97,22 +97,22 @@ class GutscheinViewModelTest {
         server.enqueue(antwort("""{"success":false,"error":"Betrag fehlt",
             "gelesen":{"number":"6000999988887777","pin":"4321","currency":"EUR"}}""", 422))
         vm.speichere { "application/pdf" to byteArrayOf(37, 80, 68, 70) }
-        warteBis("Formular") { !vm.state.value.speichert && server.requestCount == 1 && kanal.fluss.value != null }
+        warteBis("Formular") { !vm.state.value.speichert && server.requestCount == 1 && kanal.meldung.value != null }
 
         val s = vm.state.value
         assertEquals("6000999988887777", s.nummer)
         assertEquals("4321", s.pin)
         assertEquals("EUR", s.waehrung)
         assertEquals("", s.betrag)
-        assertEquals("t${R.string.vouchers_pdf_incomplete}", kanal.fluss.value)
+        assertEquals("t${R.string.vouchers_pdf_incomplete}", kanal.meldung.value)
         assertTrue(server.takeRequest().path!!.endsWith("/api/v1/vouchers/pdf"))
     }
 
     @Test
     fun `eine Nicht-PDF-Datei geht nicht zum Server`() {
         vm.speichere { "image/png" to byteArrayOf(1, 2, 3) }
-        warteBis("Meldung") { kanal.fluss.value != null && !vm.state.value.speichert }
-        assertEquals("t${R.string.vouchers_only_pdf}", kanal.fluss.value)
+        warteBis("Meldung") { kanal.meldung.value != null && !vm.state.value.speichert }
+        assertEquals("t${R.string.vouchers_only_pdf}", kanal.meldung.value)
         assertEquals(0, server.requestCount)
     }
 
@@ -133,7 +133,7 @@ class GutscheinViewModelTest {
         warteBis("neu geladen") { server.requestCount == 3 }
         assertNull(vm.state.value.guthabenLauf)
         assertNull(vm.state.value.guthabenLaeuft)
-        assertEquals("t${R.string.vouchers_balance_alle_fertig}", kanal.fluss.value)
+        assertEquals("t${R.string.vouchers_balance_alle_fertig}", kanal.meldung.value)
     }
 
     // Gegenprobe (02.11.2026 gemessen): `|| d.grund == "konto"` im ViewModel

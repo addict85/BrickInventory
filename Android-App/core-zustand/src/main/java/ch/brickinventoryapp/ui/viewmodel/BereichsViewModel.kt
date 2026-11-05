@@ -13,7 +13,6 @@ import ch.brickinventoryapp.ui.BlickfeldUiState
 import ch.brickinventoryapp.ui.LagerUiState
 import ch.brickinventoryapp.ui.ScrollMemory
 import ch.brickinventoryapp.ui.Sitzung
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -46,8 +45,11 @@ abstract class BereichsViewModel(protected val dienste: AppDienste) : ViewModel(
     val blickfeld: StateFlow<BlickfeldUiState> = dienste.blickfeld.konten
     val lagerState: StateFlow<LagerUiState> = dienste.blickfeld.lager
 
-    /** Der eine Meldungskanal der App — siehe MeldungsKanal. */
-    protected val _snackbar: MutableStateFlow<String?> = dienste.meldungen.fluss
+    /** In den einen Meldungskanal der App (MeldungsKanal); null zeigt nichts. */
+    protected fun zeigeMeldung(text: String?) = dienste.meldungen.zeige(text)
+
+    /** Eine überholte Meldung zurücknehmen, etwa nach einem gelungenen zweiten Scan. */
+    protected fun quittiereMeldung() = dienste.meldungen.quittiere()
 
     protected fun text(id: Int, vararg args: Any?): String = dienste.texte.text(id, *args)
     protected fun menge(id: Int, anzahl: Int, vararg args: Any?): String = dienste.texte.menge(id, anzahl, *args)

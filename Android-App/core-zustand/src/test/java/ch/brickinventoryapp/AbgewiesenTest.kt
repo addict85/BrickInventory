@@ -158,16 +158,20 @@ class AbgewiesenTest {
         // schreibt, geht ueber meldungFuerSnackbar(). Sechsunddreissig Stellen
         // taten es vorher ueber meldung() — eine neue faellt jetzt auf.
         val treffer = mutableListOf<String>()
+        val schreibt = Regex("""\bzeigeMeldung\(|\b(?:meldungen|kanal)\.zeige\(""")
+        var schreiber = 0
         for (datei in Quellen.alle()) {
             val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
             val code = Quellen.ohneKommentare(datei.readText())
             for (zeile in code.lines()) {
-                if (!zeile.contains("_snackbar")) continue
+                if (!schreibt.containsMatchIn(zeile)) continue
+                schreiber++
                 if (!Regex("""[^a-zA-Z]meldung\(""").containsMatchIn(zeile)) continue
                 if (zeile.contains("meldungFuerSnackbar(")) continue
                 treffer += "$name: ${zeile.trim()}"
             }
         }
+        assert(schreiber >= 50) { "Nur $schreiber Schreibstellen der Snackbar gefunden — Muster veraltet?" }
         assert(treffer.isEmpty()) {
             "Diese Stellen schreiben meldung() direkt in die Snackbar und umgehen " +
                 "damit die Regel: $treffer"

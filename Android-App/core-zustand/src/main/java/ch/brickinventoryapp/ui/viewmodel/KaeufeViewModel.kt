@@ -100,7 +100,7 @@ class KaeufeViewModel @Inject constructor(
             when (val r = haushalt.updateAcquisition(setNumber, acqId, purchasePrice, condition, quantity, date)) {
                 is Result.Success -> if (r.data.success) setGeaendert(r.data.set)
                 is Result.Error -> {
-                    _snackbar.value = meldungFuerSnackbar(r)
+                    zeigeMeldung(meldungFuerSnackbar(r))
                     // Eine abgelehnte Datumsänderung steht sonst weiter im Feld.
                     if (date != null) loadAcquisitions(setNumber)
                 }
@@ -112,7 +112,7 @@ class KaeufeViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
                 is Result.Success -> if (r.data.success) setGeaendert(r.data.set)
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)?.let { text(ch.brickinventoryapp.ressourcen.R.string.vm_error, it) }
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(ch.brickinventoryapp.ressourcen.R.string.vm_error, it) })
             }
         }
     }
@@ -143,7 +143,7 @@ class KaeufeViewModel @Inject constructor(
             if (r is Result.Success && r.data.success) {
                 dienste.bestand.melde(manuelleArt(type))
             } else if (r is Result.Error) {
-                _snackbar.value = meldungFuerSnackbar(r)
+                zeigeMeldung(meldungFuerSnackbar(r))
                 if (date != null) neuLaden()
             }
         }
@@ -155,7 +155,7 @@ class KaeufeViewModel @Inject constructor(
                     else haushalt.deletePartAcquisition(id, colorId, acqId)
             when (r) {
                 is Result.Success -> dienste.bestand.melde(manuelleArt(type))
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
             }
         }
     }
@@ -195,11 +195,11 @@ class KaeufeViewModel @Inject constructor(
             val r = if (type == "fig") figuren.setFigStorage(id, ort) else teile.setPartStorage(id, farbe, ort)
             when (r) {
                 is Result.Success -> {
-                    if (!r.data.success) { _snackbar.value = r.data.error ?: ""; return@launch }
+                    if (!r.data.success) { zeigeMeldung(r.data.error ?: ""); return@launch }
                     dienste.bestand.melde(manuelleArt(type))
                     dienste.blickfeld.ladeEigeneLagerorte()
                 }
-                is Result.Error -> _snackbar.value = meldungFuerSnackbar(r)
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r))
             }
         }
     }

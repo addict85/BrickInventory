@@ -11,6 +11,9 @@ import org.junit.Test
  * den GEMEINSAMEN schreiben darf und welche Felder; ein neuer Schreiber oder
  * ein neues Feld fällt auf, statt still einen zweiten Weg zu öffnen.
  *
+ * Ausserhalb von core-zustand verhindert schon der Übersetzer jedes aendere{}
+ * (internal); dieser Test hält fest, welche Felder die Schritte setzen.
+ *
  * Gegenproben (28.10.2026, gemessen):
  *   A  in GalerieViewModel.loadSets() `dienste.sitzung.aendere { it }`
  *      ergänzt → rot „nur die bekannten Stellen schreiben …“
@@ -23,15 +26,10 @@ class StateDomainBoundaryTest {
         // Sitzung beginnen und beenden, Design, Sprache, Serverstart.
         "AppViewModel.kt" to setOf("appTheme", "serverUrl", "isLoggedIn", "isAdmin",
                                    "currency", "language", "startupStatus"),
-        // isAdmin: rechteNachziehen() nach einem 403 `nur_admins`.
+        // Die benannten Schritte (angemeldet, einstellungenGespeichert, …), die die
+        // Bereiche aufrufen; aendere selbst ist internal in core-zustand.
         "Sitzung.kt" to setOf("currency", "priceCondition", "defaultPriceCondition",
-                              "userDefaultCondition", "appTheme", "isAdmin"),
-        "AnmeldungViewModel.kt" to setOf("isLoggedIn", "isAdmin"),
-        // Der Zustand wird mit dem gemerkten Design geboren.
-        "DarstellungViewModel.kt" to setOf("appTheme"),
-        "EinstellungenViewModel.kt" to setOf("currency", "priceCondition"),
-        // Die Bewertung nennt die Währung des Servers.
-        "FinanzViewModel.kt" to setOf("currency"),
+                              "userDefaultCondition", "appTheme", "isAdmin", "isLoggedIn"),
     )
 
     @Test

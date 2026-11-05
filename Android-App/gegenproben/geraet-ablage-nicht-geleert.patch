@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.GeraeteEinstellungenViewModelTest
 Rot: die Vorschau-Ablage laesst sich sehen und leeren
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
-index 62ea994..11b0a94 100644
+index 216ac25..34e68de 100644
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/ui/viewmodel/GeraeteEinstellungenViewModel.kt
-@@ -67,7 +67,6 @@ class GeraeteEinstellungenViewModel @Inject constructor(
+@@ -65,7 +65,6 @@ class GeraeteEinstellungenViewModel @Inject constructor(
  
      /** Füllt sich beim Blättern wieder; offline ist danach nichts mehr da. */
      fun ablageLeeren() {
 -        vorschau.leeren()
          _ablageBytes.value = vorschau.belegt()
-         _snackbar.value = texte.text(R.string.monitoring_cache_saved)
+         meldungen.zeige(texte.text(R.string.monitoring_cache_saved))
      }

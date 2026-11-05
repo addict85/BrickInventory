@@ -253,7 +253,7 @@ class AnmeldungViewModel @Inject constructor(
         dienste.blickfeld.anmeldungBeginnt()
         ablage.saveAuthToken(token)
         ablage.saveUsername(benutzer)
-        dienste.sitzung.aendere { it.copy(isLoggedIn = true, isAdmin = admin) }
+        dienste.sitzung.angemeldet(admin)
     }
 
     /** Ohne Antwort bleibt der Link verborgen: Ein Knopf ins Leere ist schlechter als keiner. */

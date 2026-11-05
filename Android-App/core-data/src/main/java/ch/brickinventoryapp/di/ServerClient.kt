@@ -92,9 +92,9 @@ internal fun buildInterceptorClient(
 ): OkHttpClient {
     val versionsMeldung: ((VersionsHinweis) -> Unit)? = meldungen?.let { kanal ->
         { hinweis: VersionsHinweis ->
-            kanal.fluss.value = ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx).getString(
+            kanal.zeige(ch.brickinventoryapp.util.LanguageManager.localizedContext(ctx).getString(
                 if (hinweis == VersionsHinweis.APP_ZU_ALT) ch.brickinventoryapp.ressourcen.R.string.api_app_zu_alt
-                else ch.brickinventoryapp.ressourcen.R.string.api_server_zu_alt)
+                else ch.brickinventoryapp.ressourcen.R.string.api_server_zu_alt))
         }
     }
     val client = OkHttpClient.Builder()
