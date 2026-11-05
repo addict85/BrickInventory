@@ -58,6 +58,8 @@ import ch.brickinventoryapp.util.VersionsHinweis
  *      der jetzige Token ist) → rot „ein selbst gesetzter Kopf mit einem aelteren
  *      Token …“ und „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
  *   P  nur `!tokenGehoertHierher` statt `!mitToken` → rot „nach dem Abmelden …“
+ *   R  (05.11.2026, sec17 N1, kotlinc lokal) wieder `herkunft == null ||` in tokenGehoertHierher →
+ *      rot „ein Token ohne Bindung geht an keinen Server“ (gegenproben/token-ohne-bindung-gesendet.patch)
  *   Q  (04.11.2026, misst die CI) gegenproben/waechter-ohne-faktorpflicht.patch nimmt
  *      die Zeile für ZWEITER_FAKTOR_PFLICHT heraus → rot „ein 403 zweiter_faktor_pflicht …“
  */
@@ -77,10 +79,12 @@ class ServerWaechterTest {
         var url: String,
         var tokens: ArrayDeque<String> = ArrayDeque(listOf(TOKEN)),
         var herkunft: String? = null,
+        /** false: ein Token älterer Fassungen ohne Bindung. */
+        val gebunden: Boolean = true,
     ) : Zugangslage {
         override fun serverUrl() = url
         override fun token(): String = if (tokens.size > 1) tokens.removeFirst() else tokens.first()
-        override fun tokenHerkunft() = herkunft
+        override fun tokenHerkunft() = if (gebunden) herkunft ?: NetworkPolicy.herkunft(url) else null
         override fun generation() = 0L
     }
 
@@ -112,6 +116,18 @@ class ServerWaechterTest {
         c.newCall(Request.Builder().url(url).build()).execute().use { it.code }
 
     private fun anfragenAn(teil: String) = synchronized(anfragen) { anfragen.filter { teil in it.first } }
+
+    @Test
+    fun `ein Token ohne Bindung geht an keinen Server`() {
+        codes["/api/v1/sets"] = 401
+        val c = client(Lage(basis(), gebunden = false))
+        assertEquals(401, hole(c, "http://localhost:3000/api/v1/sets"))
+        c.newCall(Request.Builder().url(basis() + "/api/v1/pdf").header("Authorization", "Bearer $TOKEN").build())
+            .execute().close()
+        assertEquals("Ein ungebundener Token ging hinaus", listOf<String?>(null, null),
+            synchronized(anfragen) { anfragen.map { it.second } })
+        assertEquals("Ohne Token meldet ein 401 nicht ab", 0, abgelaufen.get())
+    }
 
     @Test
     fun `ein 401 auf den Token meldet die abgelaufene Sitzung`() {

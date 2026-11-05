@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.di.ServerWaechter
 import ch.brickinventoryapp.di.Zugangslage
 import okhttp3.OkHttpClient
@@ -38,7 +39,7 @@ class UmleitungTest {
     private val lage = object : Zugangslage {
         override fun serverUrl() = a.url("/").toString().trimEnd('/')
         override fun token() = "geheim"
-        override fun tokenHerkunft(): String? = null
+        override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
         override fun generation() = 0L
     }
     private val client = OkHttpClient.Builder()

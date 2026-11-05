@@ -1,0 +1,17 @@
+Gegenprobe: Der Entwerter sendet auch, wenn die Herkunft des Tokens nicht zum Server passt
+Modul: core-data
+Test: ch.brickinventoryapp.EntwertungTest
+Rot: ein Auftrag fuer einen anderen Server schickt nichts
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt
+index 116ec81..2d43f5f 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Entwertung.kt
+@@ -97,7 +97,6 @@ class Entwerter(
+                  herkunft: String? = NetworkPolicy.herkunft(serverUrl)): Entwertungsergebnis {
+         val ziel = eigeneAdresse(serverUrl, "api/v1/auth/logout")
+         if (token.isBlank() || ziel == null) return Entwertungsergebnis.AUFGEBEN
+-        if (herkunft == null || herkunft != NetworkPolicy.herkunft(serverUrl)) return Entwertungsergebnis.AUFGEBEN
+         val lage = object : Zugangslage {
+             override fun serverUrl() = serverUrl
+             override fun token() = token

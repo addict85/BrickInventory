@@ -11,6 +11,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import ch.brickinventoryapp.util.TokenVerschluesselung
+import ch.brickinventoryapp.util.fangeAusserAbbruch
 import ch.brickinventoryapp.util.liesToken
 import dagger.hilt.android.qualifiers.ApplicationContext
 import ch.brickinventoryapp.di.ApplicationScope
@@ -41,6 +42,8 @@ class PreferencesManager @Inject constructor(
     private val tresor: TokenVerschluesselung,
     /** Die Spiegel laufen, solange die App lebt; kein eigener Bereich ohne Besitzer. */
     @param:ApplicationScope private val prefsScope: CoroutineScope,
+    /** Für ein Token, das ein Serverwechsel verwirft, ohne dass es lesbar war (saveServerUrl). */
+    private val entwertung: javax.inject.Provider<EntwertungsPlaner> = javax.inject.Provider { EntwertungsPlaner {} },
 ) : Anmeldeablage, CacheBesitzer, Entwertungsquelle,
     UpdateStandAblage, GeraeteEinstellungen, Sitzungsablage,
     Darstellungsablage, Vertrauensablage, Zugangsdaten, Anmeldestand, Sitzungsende {
@@ -187,7 +190,7 @@ class PreferencesManager @Inject constructor(
     private val _authTokenState = MutableStateFlow<String?>(null)
     override val authTokenState: StateFlow<String?> = _authTokenState.asStateFlow()
     private val _tokenHerkunftState = MutableStateFlow<String?>(null)
-    /** Leer = Altbestand ohne Bindung; dann gilt der eingetragene Server. */
+    /** null: kein Token oder keiner gebunden; ein ungebundener geht an keinen Server (ServerWaechter). */
     val tokenHerkunftState: StateFlow<String?> = _tokenHerkunftState.asStateFlow()
 
     // Drei Spiegel (Adresse, Token, Herkunft) und die einmaligen Aufräumarbeiten:
@@ -262,6 +265,7 @@ class PreferencesManager @Inject constructor(
         prefsScope.launch {
             try {
                 uebernimmAltenCaStand()
+                fangeAusserAbbruch { bindeAltbestand() }
                 // Aufräumen ist Nebensache: Scheitert es, startet die App trotzdem.
                 runCatching { context.dataStore.edit { KlartextReste.entferne(it) } }
                 designSpiegel.edit { KlartextReste.SPIEGEL.forEach { remove(it) } }
@@ -288,13 +292,19 @@ class PreferencesManager @Inject constructor(
             anders
         }
         tokenSchranke.schreibe(neueSitzung = neueHerkunft) {
-            // Die Herkunft hält nur Schema, Host und Port; ein anderer Pfad auf demselben
-            // Host ist eine andere Anwendung, also zählt die bisherige Adresse mit.
-            val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
-            val anderer = tokenJetzt().isNotBlank() &&
+            // Entschieden wird über die Platte, nicht über den Speicher: Bei gesperrtem
+            // Keystore meldet der Speicher "", das Token liegt aber noch da (Tresorbefund).
+            val platte = context.dataStore.data.first()
+            val alteAdresse = serverUrlJetzt()
+            val herkunft = platte[TOKEN_HERKUNFT] ?: _tokenHerkunftState.value ?: alteAdresse
+            val hatToken = platte[AUTH_TOKEN_ENC] != null || !platte[AUTH_TOKEN].isNullOrEmpty() || tokenJetzt().isNotBlank()
+            val anderer = hatToken &&
                 (!NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
-                    !NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized))
-            if (anderer) { _authTokenState.value = ""; _tokenHerkunftState.value = null }
+                    !NetworkPolicy.gleicherServer(alteAdresse, normalized))
+            if (anderer) {
+                verwaistesToken(platte, alteAdresse)?.let { runCatching { entwertung.get().plane(it) } }
+                _authTokenState.value = ""; _tokenHerkunftState.value = null
+            }
             _serverUrlState.value = normalized
             context.dataStore.edit {
                 it[SERVER_URL] = normalized
@@ -305,6 +315,33 @@ class PreferencesManager @Inject constructor(
             }
         }
     }
+
+    /**
+     * Der Auftrag für ein Token, das ohne Abmelden verworfen wird: Abgemeldet wird nur
+     * eine lesbare Sitzung (AnmeldungViewModel). Der Auftrag braucht keinen Klartext und
+     * geht an den Server der Bindung, nie an den neuen.
+     */
+    private fun verwaistesToken(platte: Preferences, alteAdresse: String): Entwertungsauftrag? {
+        val geheim = platte[AUTH_TOKEN_ENC]
+            ?: platte[AUTH_TOKEN]?.takeIf { it.isNotEmpty() }?.let { runCatching { tresor.verschluessle(it) }.getOrNull() }
+            ?: return null
+        val herkunft = platte[TOKEN_HERKUNFT] ?: NetworkPolicy.herkunft(alteAdresse)
+        if (alteAdresse.isBlank() || herkunft == null || herkunft != NetworkPolicy.herkunft(alteAdresse)) return null
+        return Entwertungsauftrag(alteAdresse, geheim, pinSchluessel(alteAdresse)?.let(::pin), herkunft)
+    }
+
+    /**
+     * Ein Token älterer Fassungen ohne Bindung gehört dem eingetragenen Server. Einmal
+     * beim Start gebunden, denn ein ungebundenes Token sendet der Wächter nirgends hin.
+     */
+    private suspend fun bindeAltbestand() {
+        context.dataStore.edit { p ->
+            val token = p[AUTH_TOKEN_ENC] != null || !p[AUTH_TOKEN].isNullOrEmpty()
+            if (!token || p[TOKEN_HERKUNFT] != null) return@edit
+            NetworkPolicy.herkunft(adresseAus(p))?.let { p[TOKEN_HERKUNFT] = it; _tokenHerkunftState.value = it }
+        }
+    }
+
     /**
      * Token ablegen, nur noch verschlüsselt. Der alte Klartext-Eintrag wird im selben
      * Zug entfernt — sonst bliebe er auslesbar, und die Verschlüsselung wäre Zierde.
@@ -342,10 +379,9 @@ class PreferencesManager @Inject constructor(
     /** Nach dem Umschalten der Nutzer-CAs: neuer TLS-Kontext, offene Verbindungen weg (di/ServerClient). */
     fun beimNutzerCaWechsel(hoerer: () -> Unit) { nutzerCaHoerer += hoerer }
 
-    /** Für den Tausch: Herkunft wie im Wächter — ohne Bindung die eingetragene Adresse. */
+    /** Für den Tausch: Herkunft wie im Wächter — ohne Bindung keine, dann tauscht nichts. */
     suspend fun tokenStand(): TokenStand {
         val herkunft = _tokenHerkunftState.value ?: context.dataStore.data.first()[TOKEN_HERKUNFT]
-            ?: NetworkPolicy.herkunft(serverUrlJetzt())
         return TokenStand(tokenJetzt(), herkunft, tokenSchranke.generation)
     }
 
@@ -565,11 +601,14 @@ class PreferencesManager @Inject constructor(
         }
     }
 
-    /** Der Geheimtext wie abgelegt: Der Auftrag braucht das Token nie im Klartext. */
+    /** Der Geheimtext wie abgelegt, nur für den Server seiner Bindung; nie im Klartext. */
     override suspend fun entwertungsauftrag(): Entwertungsauftrag? {
-        val geheim = context.dataStore.data.first()[AUTH_TOKEN_ENC] ?: return null
+        val platte = context.dataStore.data.first()
+        val geheim = platte[AUTH_TOKEN_ENC] ?: return null
         val server = serverUrlJetzt().ifBlank { return null }
-        return Entwertungsauftrag(server, geheim, pinSchluessel(server)?.let(::pin))
+        val herkunft = platte[TOKEN_HERKUNFT] ?: return null
+        if (herkunft != NetworkPolicy.herkunft(server)) return null
+        return Entwertungsauftrag(server, geheim, pinSchluessel(server)?.let(::pin), herkunft)
     }
 
     override suspend fun clearSession(): Unit = tokenSchranke.schreibe<Unit> {

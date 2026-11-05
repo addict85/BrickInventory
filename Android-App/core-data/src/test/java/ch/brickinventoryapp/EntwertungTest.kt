@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.Abmeldung
 import ch.brickinventoryapp.data.ENTWERTUNG_HOECHSTVERSUCHE
@@ -45,6 +46,8 @@ import ch.brickinventoryapp.data.api.ApiJson
  *      schickt genau dieses Token …“ (kein Authorization-Kopf)
  *   D  entwertungsSchritt(): Gesperrt → AUFGEGEBEN → rot „ein gesperrter Keystore
  *      wartet …“
+ *   E  (05.11.2026, sec17 N1, kotlinc lokal) in entwerte() die Prüfung der Herkunft entfernt → rot
+ *      „ein Auftrag für einen anderen Server schickt nichts“ (gegenproben/entwerter-ohne-herkunft.patch)
  */
 class EntwertungTest {
 
@@ -61,7 +64,7 @@ class EntwertungTest {
         val lage = object : Zugangslage {
             override fun serverUrl() = server.url("/").toString().trimEnd('/')
             override fun token() = "geheim"
-            override fun tokenHerkunft(): String? = null
+            override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
             override fun generation() = 0L
         }
         val client = OkHttpClient.Builder()
@@ -127,6 +130,18 @@ class EntwertungTest {
         assertEquals("Kein Token im Klartext, auch nicht später", Entwertungsergebnis.AUFGEBEN, klartext.entwerte(basis, "t"))
         server.shutdown()
         assertEquals(Entwertungsergebnis.SPAETER, entwerter.entwerte(basis, "altes-token"))
+    }
+
+    @Test
+    fun `ein Auftrag fuer einen anderen Server schickt nichts`() {
+        val entwerter = Entwerter(OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).build(), entwicklung = true)
+        val b = server.url("/").toString().trimEnd('/')
+        server.enqueue(MockResponse().setResponseCode(503))
+        assertEquals(Entwertungsergebnis.AUFGEBEN, entwerter.entwerte(b, "token-von-a", herkunft = "https://a.example"))
+        assertEquals(Entwertungsergebnis.AUFGEBEN, entwerter.entwerte(b, "token-von-a", herkunft = null))
+        assertEquals("Das Token von A ging an B", 0, server.requestCount)
+        assertEquals("Ohne Angabe gehört das Token dem Server des Auftrags",
+            NetworkPolicy.herkunft(b), Entwertungsauftrag(b, "x").herkunft)
     }
 
     @Test

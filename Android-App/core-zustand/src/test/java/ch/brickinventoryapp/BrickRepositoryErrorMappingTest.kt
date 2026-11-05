@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.BrickApiService
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
@@ -163,7 +164,7 @@ class BrickRepositoryErrorMappingTest {
         val lage = object : Zugangslage {
             override fun serverUrl() = server.url("/").toString()
             override fun token() = "geheim"
-            override fun tokenHerkunft(): String? = null
+            override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
             override fun generation() = 0L
         }
         val waechter = ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})

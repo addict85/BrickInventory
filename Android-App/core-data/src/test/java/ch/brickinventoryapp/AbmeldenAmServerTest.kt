@@ -1,5 +1,6 @@
 package ch.brickinventoryapp
 
+import ch.brickinventoryapp.util.NetworkPolicy
 import ch.brickinventoryapp.data.api.KontoApi
 import ch.brickinventoryapp.data.cache.ResponseCache
 import ch.brickinventoryapp.data.repository.KontoRepository
@@ -39,7 +40,7 @@ class AbmeldenAmServerTest {
     private val lage = object : Zugangslage {
         override fun serverUrl() = server.url("/").toString().trimEnd('/')
         override fun token() = "geheim"
-        override fun tokenHerkunft(): String? = null
+        override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
         override fun generation() = 0L
     }
     private val client = OkHttpClient.Builder()
