@@ -10,10 +10,10 @@ import java.util.concurrent.TimeUnit
  * ausgeführt gegen zwei kleine Metadateien: eine neue, eine entfernte und eine
  * Komponente mit anderer Prüfsumme bei gleicher Fassung.
  *
- * Gegenproben (30.10.2026, gemessen): in vergleiche() `sa != sn` durch `False`
+ * Gegenproben: in vergleiche() `sa != sn` durch `False`
  * ersetzt → rot „eine geänderte Prüfsumme bei gleicher Fassung fällt auf“;
  * neu_k und weg_k vertauscht → rot „neue und entfernte Komponenten …“.
- * (02.11.2026, gemessen) in vertrauen_markdown() `dazu = []` → rot „ein neu
+ * in vertrauen_markdown() `dazu = []` → rot „ein neu
  * vertrauter Schluessel …“; Sortierung ohne `not` (Regex zuletzt) → ebenso rot.
  */
 class PruefsummenVergleichTest {

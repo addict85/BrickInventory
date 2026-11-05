@@ -19,13 +19,8 @@ import java.util.Locale
  *   1. Die vom Server vorne aufgefüllten NULLEN als Punkt gezeichnet ergeben
  *      eine Linie, die bei null beginnt und senkrecht hochspringt. Das sieht
  *      aus wie ein Kurssturz, den es nie gab.
- *   2. Eine INDEXBASIERTE x-Achse streckt zwei unterschiedlich lange Reihen
- *      beide über die volle Breite. Punkte aus verschiedenen Monaten liegen
- *      dann übereinander, und das Diagramm zeigt einen Vergleich, den es
- *      nicht gibt. Gebrauchtpreise setzen für viele Sets später ein — der
- *      Normalfall, nicht die Ausnahme.
  *
- * Dazu die Beschreibung für TalkBack. Gegenproben (29.10.2026, gemessen):
+ * Dazu die Beschreibung für TalkBack. Gegenproben:
  *   A  in zusammenfassung() Anfang und Ende nach Index statt nach Tag → rot „die
  *      Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
  *   B  `.semantics { contentDescription = beschreibung }` am Canvas entfernt →

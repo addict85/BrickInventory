@@ -52,7 +52,7 @@ class PurchasePriceDisplayTest {
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }
 
-    // Gegenprobe (30.10.2026, gemessen): anzeigeKaufpreis auf maxPurchasePrice
+    // Gegenprobe: anzeigeKaufpreis auf maxPurchasePrice
     // gestellt → rot „die Anzeigeregel steht im Modell …“.
     @Test
     fun `die Anzeigeregel steht im Modell und bevorzugt den Durchschnitt`() {

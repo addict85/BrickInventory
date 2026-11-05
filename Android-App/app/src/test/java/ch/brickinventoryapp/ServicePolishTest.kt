@@ -10,7 +10,7 @@ import java.io.File
  *
  * Alle Prüfungen lesen nur Quell- und Ressourcendateien.
  *
- * Gegenprobe (05.11.2026, sec16 N4): im Manifest den FileProvider neben den
+ * Gegenprobe: im Manifest den FileProvider neben den
  * TeilelistenProvider gestellt → rot „die Teileliste geht nur ueber den eigenen
  * Provider“ (gegenproben/fileprovider-extern.patch).
  */

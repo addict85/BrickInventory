@@ -14,8 +14,6 @@ import java.io.File
  * „Besitzt der Account oder einer der Unteraccounts das Set bereits, soll sich
  * nur der Detail-Dialog des Sets öffnen. Egal ob die Erfassung via
  * Barcodescanner, OCR oder per Nummer-Erfassung erfolgt. Einziger Unterschied:
- * beim Barcodescanner oder OCR erscheint auch dann, wenn das Set NICHT
- * vorhanden ist, ein Zwischendialog zum Prüfen der erkannten Nummer."
  *
  * ── Was sich gegenüber den Nachträgen 57–59 geändert hat ────────────────────
  * Damals prüfte diese App selbst, VOR dem Anlegen, mit `repo.getSetDetail()`
@@ -29,10 +27,6 @@ import java.io.File
  *     `action = "exists"` und schreibt nichts; die App öffnet daraufhin die
  *     Detailansicht. Ein Aufruf weniger, und die Regel kann nicht mehr
  *     zwischen den Clients auseinanderlaufen.
- *   • SCANNER und TEXTERKENNUNG: fragen weiterhin vorher — aber
- *     `GET /sets/exists/:nummer`, das ausdrücklich `exists: true|false` sagt.
- *     Sie MÜSSEN vorher fragen, weil die Antwort darüber entscheidet, ob
- *     überhaupt der Zwischendialog erscheint.
  *
  * Der frühere `transient`-Zweig ist damit entfallen: Ein Fehler ist jetzt
  * eindeutig ein Fehler, weil „nicht vorhanden" nicht mehr als Fehler kommt.
@@ -41,7 +35,7 @@ import java.io.File
  * Scanner, Texterkennung, Fehler der Vorabfrage). Hier: die Vorabfrage gegen
  * einen Testserver und die Struktur, dass die Galerie den Auslöser auswertet.
  *
- * Gegenprobe (29.10.2026, gemessen): an getSetExists ein
+ * Gegenprobe: an getSetExists ein
  * `@Query("accounts") accounts: String? = "own"` → rot „die Existenzprüfung
  * schickt keinen Kontofilter mit“.
  */

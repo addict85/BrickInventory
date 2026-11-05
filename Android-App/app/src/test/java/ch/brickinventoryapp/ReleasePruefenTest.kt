@@ -9,23 +9,23 @@ import java.security.MessageDigest
 import java.util.Base64
 
 /**
- * Die Prüfungen vor dem Veröffentlichen (tools/release-pruefen.py, sec7 N6),
+ * Die Prüfungen vor dem Veröffentlichen (tools/release-pruefen.py),
  * ausgeführt gegen Ausgaben im Format von `apksigner verify --print-certs` und
  * gegen version.json-Dateien wie die des Release `apk-neuste`.
  *
- * Gegenproben (03.11.2026, gemessen, kotlinc und python3 lokal):
+ * Gegenproben:
  *   A  in zertifikat() `fremd = []` → rot „ein fremdes Zertifikat …“
  *   B  in fassung() `neu >= alt_code` ohne Commit-Vergleich → rot „ein älterer
  *      oder gleich alter Stand …“
  *   C  das Muster auf `SHA256 digest` statt `SHA-256 digest` → rot „das hinterlegte
  *      Zertifikat wird angenommen“ (Rückgabe 2 statt 0)
  *   D  tools/release-zertifikat.sha256 ohne Wert → rot „die hinterlegte Datei nennt …“
- *   E  (sec8 N4) in beschreibung() `apkSha256` aus `soll` gestrichen → rot „die
+ *   E  in beschreibung() `apkSha256` aus `soll` gestrichen → rot „die
  *      signierte Beschreibung muss genau dieses APK nennen“ (ein anderes APK ging durch)
- *   F  (sec10 N1) in beschreibung() die Zeile `falsch += frist(…)` gestrichen → rot
+ *   F  in beschreibung() die Zeile `falsch += frist(…)` gestrichen → rot
  *      „eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht“;
  *      gegenproben/beschreibung-ohne-frist.patch
- *   G  (04.11.2026, sec11 H1) in schluessel() die Zeile `if geliefert[0] not in app`
+ *   G  in schluessel() die Zeile `if geliefert[0] not in app`
  *      samt Rückgabe gestrichen → rot „ein Beschreibungsschluessel, den die App nicht
  *      kennt, wird abgelehnt“; gegenproben/beschreibungsschluessel-ungeprueft.patch
  */

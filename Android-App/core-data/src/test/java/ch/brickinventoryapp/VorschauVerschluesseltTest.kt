@@ -11,12 +11,12 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Die Vorschau-Ablage liegt verschlüsselt (sec11 N1): Die Bilder der eigenen
+ * Die Vorschau-Ablage liegt verschlüsselt: Die Bilder der eigenen
  * Sammlung zeigen, welche Sets jemand besitzt. Klartext älterer Fassungen wird
  * verworfen, eine Datei unter fremdem Namen gilt nicht. Ausgeführt gegen ein
  * echtes Verzeichnis.
  *
- * Gegenproben (04.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  schreibe() legt die Bytes wieder unverschlüsselt ab und lies() gibt sie roh
  *      zurück → rot „ein Vorschaubild liegt nicht im Klartext …“;
  *      gegenproben/vorschau-klartext.patch

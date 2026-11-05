@@ -10,7 +10,7 @@ import org.junit.Test
  * Quelltext, weil ein echter Nachweis Gerät, DataStore und ein Zeitfenster von
  * Millisekunden bräuchte; die Reihenfolge ist eine Tatsache der Datei.
  *
- * Gegenprobe (29.10.2026): den Spiegel für `_authTokenState` entfernt → rot
+ * Gegenprobe: den Spiegel für `_authTokenState` entfernt → rot
  * „der DataStore füllt weiterhin nach“. Dass er nichts zurückdreht, prüft
  * SpiegelNachlaufTest ausgeführt.
  */

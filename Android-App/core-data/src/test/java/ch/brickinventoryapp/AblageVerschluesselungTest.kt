@@ -26,12 +26,12 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Lokale Ablagen liegen verschlüsselt (sec8 N5): Antwort-Cache und Widget mit
+ * Lokale Ablagen liegen verschlüsselt: Antwort-Cache und Widget mit
  * AES-GCM, der Bestand mit SQLCipher; der gemeinsame Schlüssel nur vom Keystore
  * umhüllt. Hier steht eine Attrappe für den Keystore, die den Klartext sichtbar
  * verändert; SQLCipher selbst läuft nur auf dem Gerät.
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  ResponseCache.put() schreibt wieder `text` statt des Geheimtexts → rot „der
  *      Antwort-Cache liegt nicht im Klartext auf der Platte“;
  *      gegenproben/antwort-cache-klartext.patch
@@ -40,7 +40,7 @@ import javax.crypto.spec.SecretKeySpec
  *   C  Ablageschluessel.fuer() gibt den gemeinsamen Schlüssel statt eines
  *      abgeleiteten zurück → rot „der Schluessel entsteht einmal …“ und „Klartext
  *      und fremde Daten gelten nicht“ (Widget und Cache teilten einen Schlüssel)
- *   D  (sec10 H7) in AblageChiffre beide `updateAAD(…)` gestrichen → rot „eine
+ *   D  in AblageChiffre beide `updateAAD(…)` gestrichen → rot „eine
  *      Datei unter fremdem Namen gilt nicht“; gegenproben/ablage-ohne-bindung.patch
  *   E  im Antwort-Cache den Aufruf uebernimm(…) gestrichen → rot „der Bestand ohne
  *      Bindung wird uebernommen …“ (der Cache war nach dem Update leer);
@@ -131,7 +131,7 @@ class AblageVerschluesselungTest {
         assertNull("Vertauscht gelesen", cache.getMitStand("konto", "wunsch", liste))
     }
 
-    /** Wie AblageChiffre vor sec10 H7: Kennung 1, ohne AAD. */
+    /** Wie die ältere AblageChiffre: Kennung 1, ohne AAD. */
     private fun ungebunden(schluessel: ByteArray, klartext: ByteArray): ByteArray {
         val iv = ByteArray(12) { it.toByte() }
         val c = Cipher.getInstance("AES/GCM/NoPadding")

@@ -38,7 +38,7 @@ import java.net.SocketTimeoutException
  * Offline bearbeiten von Anfang bis Ende: Repository, Ausgang und Sender gegen
  * einen Testserver, der die Verbindung auf Wunsch abreisst.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in RepoBasis.schreibe den Zweig für transiente Fehler entfernt → rot
  *      „ohne Verbindung geht die Menge in den Ausgang“ (Result.Error statt gepuffert)
  *   B  in RepoBasis.schreibe die Prüfung `ablage.wartet()` entfernt → rot
@@ -47,7 +47,7 @@ import java.net.SocketTimeoutException
  *      rot „gesendet wird der Schritt“
  *   D  in RepoBasis.abgeglichen den Rückfall auf die Ablage entfernt → rot
  *      „ohne Verbindung kommt die Liste aus der Ablage“
- *   (E–I gemessen am 31.10.2026)
+ *   (E–I gemessen)
  *   E  in RepoBasis.schreibe beim Puffern nach dem direkten Versuch einen neuen
  *      Schlüssel nehmen (`puffere(bearbeitung)`) → rot „… denselben Schlüssel“
  *   F  in TeileRepository.deletePart wieder direkt `safeCall` statt `schreibe` →

@@ -44,23 +44,23 @@ import java.util.Locale
  * prüft auf der JVM, dass jede Liste wirklich ankommt — ein Bildschirmfoto einer
  * leeren Liste zeigte nichts.
  *
- * Gegenprobe (30.10.2026, gemessen): in [Beispiele.ANTWORTEN] den Pfad
+ * Gegenprobe: in [Beispiele.ANTWORTEN] den Pfad
  * "/api/v1/wanted" vertippt → rot „jeder Hauptbildschirm bekommt Inhalt“.
- * Gegenproben (01.11.2026, kotlinc): im Detailpreis avg_price 799 statt 812.5 →
+ * Gegenproben: im Detailpreis avg_price 799 statt 812.5 →
  * rot „die Beispiele sind stimmig“; „chart“ aus der Wertentwicklung entfernt →
  * ebenso rot (es blieben die Schweizer Achsentexte des Servers stehen).
- * Gegenproben (02.11.2026, kotlinc): bei den Figuren wieder "name" statt
+ * Gegenproben: bei den Figuren wieder "name" statt
  * "fig_name" → rot „Teile und Figuren tragen echte Namen“; den Pfad
  * /api/v1/minifigs/stats entfernt → ebenso rot (keine Kennzahlen).
- * Gegenproben (02.11.2026, kotlinc): beim Falcon jedes "wert_gesamt" entfernt → rot
+ * Gegenproben: beim Falcon jedes "wert_gesamt" entfernt → rot
  * „jede Finanzzeile trägt …“ (wert=null); im FinanzViewModel die Punkte wieder beim
  * Laden mit Locale.getDefault() übersetzt → rot „die Finanzachse wird erst beim
  * Zeichnen formatiert“ ([10/27, , 10/29]) und „die Beispiele sind stimmig“.
- * Gegenprobe (02.11.2026, kotlinc): bei den Teilen wieder "quantity" statt
+ * Gegenprobe: bei den Teilen wieder "quantity" statt
  * "total_quantity" → rot „die Teilekacheln ergeben die Gesamtzahl“ (82 gegen 0).
- * Gegenprobe (02.11.2026, kotlinc): beim Teil 3039 "image_local" entfernt → rot
+ * Gegenprobe: beim Teil 3039 "image_local" entfernt → rot
  * „jede Kachel hat ein Beispielbild“ ([(3039, null)]).
- * Gegenprobe (03.11.2026, von Hand durchgespielt, kein SDK): das Baumhaus aus
+ * Gegenprobe: das Baumhaus aus
  * /finance/valuation entfernt → rot „jede Finanzzeile trägt …“ (2 statt 3 Zeilen).
  */
 @OptIn(ExperimentalCoroutinesApi::class)

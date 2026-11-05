@@ -31,10 +31,6 @@ import ch.brickinventoryapp.di.Zugangslage
  * `testImplementation(libs.junit)` war die einzige Testabhängigkeit. Ohne
  * Testbibliothek für Koroutinen und ohne HTTP-Attrappe blieb nur, den
  * Quelltext nach Mustern abzusuchen — daher lasen 41 von 47 Testdateien Text.
- * Das findet, ob eine Regel im Code STEHT, nie, ob sie WIRKT. In Nachtrag 48
- * hat genau das sieben Nachträge lang eine kaputte Vorschau-Erzeugung
- * verdeckt: Der Test prüfte, dass „tmp + rename" im Code steht, und sah nie
- * nach, ob am Ende eine Datei lag.
  *
  * Hier läuft jetzt ein echter HTTP-Server im Test, und geprüft wird die
  * Abbildung, die Nachtrag 116 eingeführt hat: Was macht das Repository aus
@@ -155,7 +151,7 @@ class BrickRepositoryErrorMappingTest {
     /**
      * Eine gespeicherte http-Adresse: Der Wächter des Release-Builds lehnt ab, und
      * daraus wird ein eigener Satz mit Anleitung statt „keine Verbindung“.
-     * Gegenprobe (01.11.2026, gemessen): den Zweig für KlartextAbgelehnt in
+     * Gegenprobe: den Zweig für KlartextAbgelehnt in
      * sicherAufrufen() entfernt → rot (Art NETZ, transient).
      */
     @Test

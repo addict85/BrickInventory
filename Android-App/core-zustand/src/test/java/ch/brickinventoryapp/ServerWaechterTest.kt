@@ -40,25 +40,25 @@ import ch.brickinventoryapp.util.VersionsHinweis
  *      wird auf den Server samt Pfad umgeschrieben“
  *   G  eigeneKoepfe() nicht aufgerufen → rot „der eigene Server bekommt Sprache
  *      und Fassung“
- *   I  (01.11.2026) die Prüfung verbindungErlaubt() im Wächter entfernt → rot
+ *   I  die Prüfung verbindungErlaubt() im Wächter entfernt → rot
  *      „im Release-Build erreicht keine http-Anfrage den Server …“ und „auch der
  *      Debug-Build schickt http nur …“
- *   K  (01.11.2026) im Wächter `entwicklung` fest auf true → rot „im
+ *   K  im Wächter `entwicklung` fest auf true → rot „im
  *      Release-Build erreicht keine http-Anfrage den Server …“
- *   H  (30.10.2026) /settings/theme vom Token ausgenommen (`mitToken` falsch für
+ *   H  /settings/theme vom Token ausgenommen (`mitToken` falsch für
  *      Pfade auf "/settings/theme") → rot „das Design des Kontos wird mit Token geholt“
- *   J  (31.10.2026) im Wächter die Meldung über versionsHinweis() entfernt → rot „ein
+ *   J  im Wächter die Meldung über versionsHinweis() entfernt → rot „ein
  *      Server mit hoeherer Mindestfassung meldet App zu alt …“ (leere Liste statt APP_ZU_ALT)
- *   L  (31.10.2026) rechteEntzogen() bei jedem 403 → rot „ein 403 nur_admins …“
- *   M  (31.10.2026) BESTAETIGUNG_NOETIG nicht beachtet (jeder 401 meldet ab) →
+ *   L  rechteEntzogen() bei jedem 403 → rot „ein 403 nur_admins …“
+ *   M  BESTAETIGUNG_NOETIG nicht beachtet (jeder 401 meldet ab) →
  *      rot „eine falsche Passwortbestaetigung meldet nicht ab“
- *   N  (01.11.2026) im Wächter die Zeile für PASSWORT_WECHSEL_NOETIG entfernt →
+ *   N  im Wächter die Zeile für PASSWORT_WECHSEL_NOETIG entfernt →
  *      rot „ein 403 passwort_wechsel_noetig verlangt das neue Passwort …“
- *   O  (02.11.2026) wieder die alte Regel (selbst gesetzter Kopf nur weg, wenn er
+ *   O  wieder die alte Regel (selbst gesetzter Kopf nur weg, wenn er
  *      der jetzige Token ist) → rot „ein selbst gesetzter Kopf mit einem aelteren
  *      Token …“ und „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
  *   P  nur `!tokenGehoertHierher` statt `!mitToken` → rot „nach dem Abmelden …“
- *   Q  (04.11.2026, misst die CI) gegenproben/waechter-ohne-faktorpflicht.patch nimmt
+ *   Q  gegenproben/waechter-ohne-faktorpflicht.patch nimmt
  *      die Zeile für ZWEITER_FAKTOR_PFLICHT heraus → rot „ein 403 zweiter_faktor_pflicht …“
  */
 class ServerWaechterTest {

@@ -25,9 +25,9 @@ import java.io.File
  *      zeichnet das wirksame Design“
  *   D  installSplashScreen() hinter super.onCreate() → rot „der Start blitzt nicht weiss auf"
  *   E  `&& hatDunkleFassung(design)` entfernt → rot „Werkbank bleibt, wie es ist“
- *   F  (01.11.2026) in darstellung() der Zweig `Helligkeit.DUNKEL -> true` entfernt →
+ *   F  in darstellung() der Zweig `Helligkeit.DUNKEL -> true` entfernt →
  *      rot „Dunkel gilt auch bei hellem System …“
- *   G  (01.11.2026) in helligkeitGilt() die Prüfung auf bekannte Werte entfernt →
+ *   G  in helligkeitGilt() die Prüfung auf bekannte Werte entfernt →
  *      rot „die fruehere Ja-Nein-Wahl …“ („blau“ kam durch)
  */
 class WirksamesDesignTest {
@@ -73,7 +73,7 @@ class WirksamesDesignTest {
         assertTrue(helligkeitWaehlbar("werkbank", systemfarben = true, sdk = 31))
     }
 
-    // Gegenprobe (30.10.2026, gemessen): in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`
+    // Gegenprobe: in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`
     // entfernt → rot (Android 11); `dynamisch ||` entfernt → rot (Werkbank dunkel).
     @Test
     fun `Systemfarben gelten erst ab Android 12 und haben immer eine dunkle Fassung`() {

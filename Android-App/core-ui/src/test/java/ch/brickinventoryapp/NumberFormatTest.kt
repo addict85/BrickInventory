@@ -26,15 +26,12 @@ import java.util.Locale
  *   • die REGEL (Teil 1): keine Ansicht baut sich ihren Betrag mehr selbst
  *     zusammen. Das ist die Aussage, die beim nächsten neuen Bildschirm zählt.
  *   • das ERGEBNIS (Teil 2): die Helfer liefern tatsächlich etwas Brauchbares.
- *     Eine reine Quelltextregel hätte hier nicht gereicht — genau diese Lücke
- *     war die Lehre aus Nachtrag 48 (der Test prüfte die Regel, es entstand
- *     trotzdem nie eine Datei).
  *
  * Bewusst NICHT festgenagelt: wo de-CH das Währungssymbol setzt — das
  * entscheidet die Plattform. Festgenagelt sind dagegen Tausender- und
  * Dezimalzeichen je Landesform (Teil 3), denn die wählt unser Code.
  *
- * Gegenproben Teil 3 (29.10.2026, gemessen gegen util/NumberFormatUtils.kt):
+ * Gegenproben Teil 3 :
  *   A  zahlenLocale() wieder fest de-CH/en-GB → rot „de-DE schreibt Punkt und
  *      Komma …“ und „ohne passende Landesform …“ (de-AT)
  *   B  das Land ohne Sprachprüfung übernommen → rot „ohne passende Landesform …“
@@ -79,12 +76,6 @@ class NumberFormatTest {
                     "sonst steht es hier vor und anderswo hinter dem Betrag"
             }
             // Das Dollarzeichen steht als ${'$'} und nicht als Backslash-$.
-            // In einem Rohstring (dreifache Anfuehrungszeichen) wirken KEINE
-            // Backslash-Escapes, die String-Vorlage aber schon. Die alte
-            // Schreibweise war deshalb kein Zeichen, sondern ein Zugriff auf eine
-            // Variable namens currency — die es nicht gibt. Genau daran scheiterte
-            // der Testbau ("Unresolved reference 'currency'"), und zwar seit dem
-            // ersten Commit: ohne Gradle-Wrapper lief hier nie ein Testlauf.
             assert(!Regex("""\{[^}]*fmt[A-Za-z]*\([^)]*\)[^}]*\}\s*\${'$'}currency""").containsMatchIn(c)) {
                 "$f hängt den Währungscode von Hand an einen formatierten Betrag"
             }
@@ -180,7 +171,7 @@ class NumberFormatTest {
 
     /**
      * Wie Intl im Web: „CHF 812.50“ mit festem Leerzeichen, nie „CHF812.50“.
-     * Gegenprobe (02.11.2026, kotlinc): mitWaehrungsAbstand() in fmtMoney entfernt →
+     * Gegenprobe: mitWaehrungsAbstand() in fmtMoney entfernt →
      * rot (en-GB ergab „CHF812.50“).
      */
     @Test

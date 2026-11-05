@@ -44,7 +44,7 @@ private fun <T> mitServer(block: (PfadServer, ResponseCache) -> T): T {
  * die Filter aus dem Zustand mitreisen und die Scrollstelle vergessen, prüft
  * TeileTest.
  *
- * Gegenprobe (29.10.2026, gemessen): in TeileRepository.getPartsFilterColors
+ * Gegenprobe: in TeileRepository.getPartsFilterColors
  * `accounts` nicht weitergereicht → rot „die App ruft beide Filterlisten …“.
  */
 class TeileFilterTest {

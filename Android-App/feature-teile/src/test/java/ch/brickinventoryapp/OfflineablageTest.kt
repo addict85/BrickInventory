@@ -26,7 +26,7 @@ import org.junit.Test
  * eine Serverantwort ersetzt die Liste, und was noch wartet, liegt danach
  * wieder darüber. Je Konto getrennt.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in Offlineablage.uebernimm die Schleife über den Ausgang entfernt → rot
  *      „eine Serverantwort verschluckt keine wartende Änderung“ (Menge 1 statt 2)
  *   B  in Offlineablage.puffere `wendeAn` weggelassen → rot „offline Bearbeitetes

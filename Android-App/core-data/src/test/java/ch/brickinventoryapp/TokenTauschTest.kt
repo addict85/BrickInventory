@@ -29,7 +29,7 @@ import org.junit.Test
  * speichern, wenn inzwischen abgemeldet oder der Server gewechselt wurde. Die
  * Ablage hier benutzt dieselbe [TokenSchranke] wie der PreferencesManager.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in TokenTausch `speichere(neu)` hinter das `return` verlegt (nicht
  *      gespeichert) → rot „der neue Token ist gespeichert, bevor der Tausch endet“
  *   B  die Sperre entfernt (`sperre.withLock` → direkt) → rot „zwei Anfragen mit
@@ -37,7 +37,7 @@ import org.junit.Test
  *   C  bei einem transienten Fehler sofort SPAETER statt erneut → rot „eine
  *      verlorene Antwort wird mit dem alten Token wiederholt“
  *   D  den 401-Zweig entfernt → rot „gilt der alte nicht mehr, muss neu gekoppelt werden“
- * Gegenproben (02.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   E  in tauscheGesperrt() die Prüfung `stand() != vorher` vor der Wiederholung
  *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (der alte
  *      Token ging noch dreimal hinaus)
@@ -49,10 +49,10 @@ import org.junit.Test
  *      derselbe Token zurueckkommt“
  *   I  anmeldungUeberfaellig() mit `TOKEN_HOECHSTDAUER_TAGE * 24 * 60 * 1000`
  *      (Minuten statt Stunden) → rot „nach 180 Tagen ist die Anmeldung ueberfaellig …“
- * Gegenprobe (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenprobe:
  *   J  noetig() wieder ohne Herkunft und Generation (`stand().token.takeIf …`) →
  *      rot „schon getauscht heisst nicht: den Token einer anderen Sitzung nehmen“
- * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; tausch-faellig-im-aufrufer.patch):
+ * Gegenprobe:
  *   K  faellig() tauscht mit runBlocking im Aufrufer statt im übergebenen Bereich →
  *      rot „faellig tauscht im Anwendungsbereich und kehrt sofort zurueck“
  */

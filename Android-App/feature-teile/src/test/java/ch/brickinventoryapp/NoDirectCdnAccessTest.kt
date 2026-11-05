@@ -23,7 +23,7 @@ import java.io.File
  * server-aufgelöste Quelle wie ui/Teileliste.kt) läuft — nie direkt aus
  * einem `.imageUrl`-Feld ohne Auflösung.
  *
- * Gegenprobe (31.10.2026, gemessen): in resolveImageUrl die volle Auflösung
+ * Gegenprobe: in resolveImageUrl die volle Auflösung
  * ohne Proxy (`imageUrl` direkt) → rot „resolveImageUrl-Helfer existiert …“.
  */
 class NoDirectCdnAccessTest {
@@ -56,11 +56,6 @@ class NoDirectCdnAccessTest {
             val fn = code(read(rel))
             // rememberTileImageWithFallback() zählt ebenfalls (Nachtrag 38):
             // Der Helfer in util/BildRueckfall.kt ruft intern resolveThumbUrl()
-            // bzw. resolveFullUrl() auf — ein Screen, der ihn benutzt, geht
-            // also gerade NICHT am Proxy vorbei. GalleryScreen tut genau das
-            // und wurde hier trotzdem beanstandet, weil nur der wörtliche
-            // Aufruf gesucht wurde. Geprüft wird die ABSICHT: keine eigene
-            // Adressbildung am Helfer vorbei.
             assert(fn.contains("resolveThumbUrl(") || fn.contains("resolveFullUrl(") ||
                    fn.contains("rememberTileImageWithFallback(")) {
                 "$rel lädt ein Bild, ohne resolveThumbUrl()/resolveFullUrl() oder den " +

@@ -61,7 +61,7 @@ class MengePlaketteTest {
      * wirklich benutzen. Ohne das zweite koennte eine der beiden wieder eine
      * eigene Kachel bauen, und der Test bliebe still.
      */
-    // Gegenproben (02.11.2026, kotlinc): mengeAusSet() zurück auf "$menge×" → rot;
+    // Gegenproben: mengeAusSet() zurück auf "$menge×" → rot;
     // mengeManuell() auf "$menge×" → rot.
     @Test
     fun `die Menge steht ueberall als Zeichen vor der Zahl`() {

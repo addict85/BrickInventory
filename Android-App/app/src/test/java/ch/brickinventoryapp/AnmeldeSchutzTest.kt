@@ -33,7 +33,7 @@ import androidx.compose.ui.platform.InterceptPlatformTextInput
  *       vor Ueberlagerung geschuetzt …“ (gegenproben/anmeldung-ohne-ueberdeckungsschutz.patch)
  *   (b) Sichtschutz() für das sichtbare Passwort entfernt → rot „ein sichtbares
  *       Passwort …“ (gegenproben/passwort-ohne-sichtschutz.patch)
- *   (c) (sec8 H4) TastaturOhneLernen setzt die Flagge nicht mehr → rot „Passwort
+ *   (c) TastaturOhneLernen setzt die Flagge nicht mehr → rot „Passwort
  *       und Code lernt die Tastatur nicht mit“ (gegenproben/tastatur-lernt-mit.patch)
  */
 @RunWith(RobolectricTestRunner::class)

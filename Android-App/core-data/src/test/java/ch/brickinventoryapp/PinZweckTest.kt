@@ -11,7 +11,7 @@ import java.util.Base64
 
 /**
  * Unter einer gepinnten eigenen CA gilt nur ein Blatt, das einen Server ausweisen
- * darf (sec10 H8): EKU serverAuth, oder gar keine EKU-Erweiterung. Die Zertifikate
+ * darf: EKU serverAuth, oder gar keine EKU-Erweiterung. Die Zertifikate
  * sind mit openssl erzeugte feste Testdaten (Wurzel, drei Blätter für localhost).
  *
  * Gegenprobe: in passtZumPin() `|| !fuerServer(chain[0])` entfernt → rot „ein

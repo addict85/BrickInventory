@@ -37,7 +37,7 @@ import java.lang.reflect.Method
  * sieht nur seinen, jede Adresse steht in genau einem, und Retrofit baut die
  * Bereiche samt geerbter Adressen.
  *
- * Gegenproben (29.10.2026, gemessen):
+ * Gegenproben:
  *   A  SetsRepository wieder mit `api: BrickApiService` → rot „jedes Repository
  *      sieht nur seinen Bereich“
  *   B  getMe zusätzlich in GutscheineApi deklariert → rot „jede Adresse steht in
@@ -45,7 +45,7 @@ import java.lang.reflect.Method
  *   C  `: BestandsInhaltApi` an SetsApi entfernt → übersetzt nicht mehr
  *      (SetsRepository ruft getParts) — die Vererbung trägt
  *
- * Seit der Teilung in neun Bereiche (30.10.2026, gemessen):
+ * Seit der Teilung in neun Bereiche :
  *   D  KatalogRepository mit `api: KontoApi` → übersetzt nicht (unresolved reference
  *      'getCatalogSets' …) — der Bereich ist im Typ, nicht nur im Namen
  *   E  getMinifigs zusätzlich in FigurenApi → rot „jede Adresse steht in genau einem

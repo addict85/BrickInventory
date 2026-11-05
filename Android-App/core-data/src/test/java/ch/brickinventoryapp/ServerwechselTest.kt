@@ -31,14 +31,8 @@ import ch.brickinventoryapp.di.Rotationsanlass
 
 /**
  * Ein Serverwechsel, während eine Anfrage beim alten Server hängt: Der alte (A)
- * hält seine Antwort zurück, bis die App auf den neuen (B) gewechselt und sich
- * dort angemeldet hat. Nichts aus der späten Antwort darf den Token von B zu A
- * tragen oder die Sitzung bei B beenden. Nachgestellt nach dem Nachweis der
- * Sicherheitsprüfung (pruef6, M1): zwei echte Testserver, echter Wächter, im
- * zweiten Fall der echte TokenTausch. Der Wechsel geht über eine TokenSchranke,
- * wie PreferencesManager.saveServerUrl() und saveAuthToken().
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  in ServerWaechter.tokenFuer() die Bindung weggelassen (`passt` nur
  *      `token.isNotBlank()`) → rot „eine Anfrage ohne Token fasst nach dem
  *      Wechsel nicht mit dem Token des neuen Servers nach“ (A erhielt Bearer B)

@@ -27,7 +27,7 @@ import org.junit.Test
  * Das CatalogViewModel ausgeführt: Api ohne Netz, Texte als Ressourcennummern,
  * Zeit virtuell. Die Entprellung der Suche ist damit ohne Warten prüfbar.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   katalog-suche-ohne-entprellen  setCatalogQuery() lädt sofort → rot „die Suche wartet …“
  *   katalog-seite-doppelt          ensureCatalogPage() ohne Prüfung „lädt schon“ → rot „eine Seite …“
  *   katalog-filter-behaelt-rolle   loadCatalogSets() ohne `scrollIndex = 0` → rot „ein Filterwechsel …“

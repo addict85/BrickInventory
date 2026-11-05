@@ -175,7 +175,7 @@ class ResultAndStateSplitTest {
         // selbst, auf Sitzung.abgemeldet() hin. Ausgeführt prüfen das die
         // ViewModel-Tests („nach dem Abmelden …“); hier steht die Regel für
         // jedes künftige: Wer Zustand hält, überschreibt zuruecksetzen().
-        // Gegenprobe (28.10.2026): HaushaltViewModel ohne override → rot.
+        // Gegenprobe: HaushaltViewModel ohne override → rot.
         val abmelden = code(read("ui/Abmelden.kt"))
         for (reset in listOf("sitzung.abgemeldet()", "blickfeld.zuruecksetzen()")) {
             assert(abmelden.contains(reset)) { "Abmelden ruft $reset nicht mehr" }

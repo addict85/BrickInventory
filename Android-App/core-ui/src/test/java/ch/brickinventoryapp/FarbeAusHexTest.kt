@@ -10,7 +10,7 @@ import org.junit.Test
  * Teile-Bildschirme: mit und ohne „#“, voll deckend, ein unlesbarer Wert ergibt
  * keine Farbe statt einer Ausnahme.
  *
- * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal): in argbAusHex() die Prüfung
+ * Gegenprobe: in argbAusHex() die Prüfung
  * auf Hex-Ziffern gestrichen → rot „ein unlesbarer Wert …“ (NumberFormatException);
  * gegenproben/farbe-hex-ungeprueft.patch.
  */

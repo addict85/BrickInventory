@@ -94,10 +94,6 @@ class DesignVorAnmeldungTest {
         // Unbekannte Werte duerfen den gemerkten Wert NICHT loeschen: "" oder
         // null heisst „keine Information", nicht „classic". Dieselbe Regel wie
         // applyTheme() in 00-theme-boot.js.
-        // Hier stand die Liste woertlich ("classic" || "brick"). Seit es vier
-        // Designs gibt, steht sie als ERLAUBTE_DESIGNS an einer Stelle — und
-        // eine Pruefung im Web-Baum (theme.test.js) haelt sie mit den drei
-        // anderen Listen zusammen. Hier bleibt nur: Es WIRD gefiltert.
         assert(prefs.contains("if (theme in ERLAUBTE_DESIGNS)")) {
             "saveAppTheme schreibt auch unbekannte Werte — ein leerer Wert loescht dann das Design"
         }
@@ -109,7 +105,7 @@ class DesignVorAnmeldungTest {
 
     /**
      * Die Abfrage gegen einen Testserver; das Einbinden ins AppViewModel führt
-     * AppViewModelTest aus. Gegenprobe (29.10.2026, gemessen): `@GET("api/v1/settings/theme")`
+     * AppViewModelTest aus. Gegenprobe: `@GET("api/v1/settings/theme")`
      * auf "…/design" → rot.
      */
     @Test
@@ -140,7 +136,7 @@ class CacheLeerenTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     /**
-     * Gegen einen Testserver. Gegenprobe (29.10.2026, gemessen): in
+     * Gegen einen Testserver. Gegenprobe: in
      * VerwaltungRepository.clearCache immer `emptyMap()` → rot.
      */
     @Test

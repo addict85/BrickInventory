@@ -24,7 +24,7 @@ import org.junit.Test
  * Vorgabe). Die Wahl gilt sofort in der Sitzung, und das Abmelden lässt das
  * Design stehen, bis die Vorgabe des Servers da ist.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
+ * Gegenproben:
  *   A  in KontoViewModel.waehleDesign() `sitzung.setzeDesign(…)` entfernt → rot
  *      „die Wahl gilt sofort in der ganzen App“ (classic statt noppe)
  *   B  in KontoRepository.setzeEigenesDesign den Schlüssel "design" statt

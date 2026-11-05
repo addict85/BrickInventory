@@ -7,11 +7,6 @@ import java.io.File
  * Absicherung der 16-KB-Speicherseiten-Tauglichkeit.
  *
  * Vier native Bibliotheken lagen im APK, alle mit 4-KB-Ausrichtung:
- *   libimage_processing_util_jni.so  → CameraX      → ab 1.4.0 ausgerichtet
- *   libbarhopper_v3.so               → ML Kit       → nur über das unbundled
- *                                                     Paket loszuwerden
- *   libdatastore_shared_counter.so   → DataStore    → am APK GEMESSEN
- *   libandroidx.graphics.path.so     → Compose      → OFFEN
  *
  * Jede dieser Entscheidungen lässt sich mit einer einzigen Zeile in
  * libs.versions.toml wieder rückgängig machen, ohne dass es auffiele —
@@ -87,9 +82,6 @@ class SixteenKbAlignmentTest {
         //   1. Es prueft die Nummer, nicht die Ausrichtung. Richtet Google
         //      eine spaetere Fassung wieder aus, bleibt der Riegel trotzdem
         //      zu. Faellt eine ANDERE Bibliothek zurueck, merkt es niemand.
-        //   2. Ob eine Fassung ausgerichtet ist, liess sich hier gar nicht
-        //      nachsehen — die AARs liegen auf dl.google.com, und das ist aus
-        //      der Entwicklungsumgebung nicht erreichbar.
         //
         // Gemessen wird das jetzt am ERGEBNIS: tools/apk-ausrichtung.py liest
         // die ELF-Koepfe aller .so im gebauten APK und meldet jede Ausrichtung

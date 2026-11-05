@@ -45,7 +45,7 @@ import java.util.Base64
  * Signatur, Fassung und Installer, mit einem Gerät im Speicher, einem Client ohne
  * Netz und virtueller Zeit.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   update-angebot-ohne-frische  Angebot mit istNeuer statt anzubietendeFassung →
  *                                rot „eine zurueckgesetzte Beschreibung bietet nichts an“
  *   update-signatur-ungeprueft   die Signaturprüfung nach dem Download entfernt →

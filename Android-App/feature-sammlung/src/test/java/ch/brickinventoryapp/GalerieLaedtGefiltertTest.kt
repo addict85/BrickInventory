@@ -43,7 +43,7 @@ import org.junit.Test
  * Filter — GEFUNDEN, nicht aufgezählt, damit ein dritter Lader (das
  * Vorwärmen, ui/Vorwaermen.kt, ist im JVM-Bau nicht übersetzbar) mitgeprüft ist.
  *
- * Gegenprobe (29.10.2026, gemessen): in GalerieViewModel.holeSeite `search =
+ * Gegenprobe: in GalerieViewModel.holeSeite `search =
  * null` → rot „erste Seite und Nachladen tragen dieselben Filter“.
  */
 @OptIn(ExperimentalCoroutinesApi::class)

@@ -21,8 +21,6 @@ import org.json.JSONObject
  *    Betrag hinterlegt werden können. Für die Erfassung soll dies entweder
  *    manuell möglich sein für die 3 Werte oder das PDF des Gutscheins soll
  *    hochgeladen werden können und die App soll daraus die Werte extrahieren.
- *    […] Bitte die Login jeweils nur 1x im Backend bauen. Beide Apps sollen
- *    die gleichen Services des Backends verwenden."
  *
  * ── Was dieser Test prueft, und was NICHT ───────────────────────────────────
  *
@@ -36,12 +34,12 @@ import org.json.JSONObject
  * die App dieselben Dienste benutzt und keine eigenen baut. Genau das war
  * Marcos Vorgabe, und genau das laeuft erfahrungsgemaess auseinander.
  *
- * Gegenproben (29.10.2026, gemessen): in GutscheineRepository.liste() den Abruf
+ * Gegenproben: in GutscheineRepository.liste() den Abruf
  * mit cached("gutscheine", …) umhüllt → rot „die Liste wird nicht
  * zwischengespeichert“; @PUT("api/v1/vouchers/{id}") auf POST → rot „die App
  * ruft dieselben Adressen wie die Webapp“.
  *
- * Gegenproben (03.11.2026, kotlinc lokal, Runde 8):
+ * Gegenproben:
  *  - Löschen wieder als @DELETE ohne Rumpf (Bestätigung nicht mitgeschickt) → rot
  *    „Löschen, Klartext und PDF-Freigabe tragen Passwort und Code“.
  *  - pdfFreigabe() ruft für id=null die Route des einzelnen PDFs (mit id 0) → rot

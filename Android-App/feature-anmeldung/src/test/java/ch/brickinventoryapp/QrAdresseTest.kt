@@ -28,7 +28,7 @@ import java.util.Collections
  * mit den Eingaben aus dem Nachweis der Sicherheitsprüfung (sec7, M1): Jede sah
  * im Dialog nach `brick.meinserver.ch` aus und führte woandershin.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *   A  NetworkPolicy.adressfehler() auf den Stand ad4a297 (nur UNLESBAR/KLARTEXT)
  *      → rot „Benutzerangabe, Zeilenumbruch und Rueckstrich …“ und „das ViewModel
  *      nimmt eine Adresse mit Benutzerangabe nicht an“

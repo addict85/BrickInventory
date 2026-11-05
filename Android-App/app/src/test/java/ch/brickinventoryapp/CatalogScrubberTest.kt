@@ -10,8 +10,6 @@ import java.io.File
  * „Im Katalog die Zeitleiste rechts anpassen. Diese soll nicht ein Filter sein,
  * sondern zum Schnellscrollen verwendet werden können, analog wie es in der
  * Android-Galerie-Foto-App der Fall ist." Dazu sein Hinweis auf die Umsetzung:
- * „Kann nicht geprüft werden, wo man hinscrollt, und dieser Teil wird dann
- * geladen. So macht dies soweit ich sehe auch die Foto-App von Google."
  *
  * ── Warum das die Liste umbaut ──────────────────────────────────────────────
  * Vorher hing die Liste am Endlos-Scroll: Seite 1, 2, 3 … angehängt. Wer auf
@@ -27,9 +25,6 @@ import java.io.File
  *   • Die Leiste rollt die Liste, sie filtert nicht.
  *   • Die Liste zählt über `total`, nicht über die geladene Teilmenge.
  *   • Geladen wird in BEIDE Richtungen.
- *   • Der Platzhalter hat eine feste Höhe — sonst springt die Liste, sobald
- *     die Seite eintrifft, und der Sprung landet daneben.
- *   • Welches Jahr an einer Stelle liegt, rechnet der SERVER.
  *
  * Der ausdrückliche Jahresfilter (Chip und Auswahlblatt) bleibt: Marco wollte
  * die LEISTE anders, nicht das Filtern abschaffen.

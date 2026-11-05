@@ -29,12 +29,10 @@ import org.junit.Test
  *  - flüchtige Meldungen → `_snackbar`
  *  - bleibende Formularfehler → `loginError` (nur Anmeldung; steht im Formular,
  *    während der Nutzer das Passwort korrigiert)
- *  - ganzseitige Fehlerflächen → das `error` des jeweiligen Bereichszustands
- *    (nur `CatalogUiState`, und der Katalog zeigt es auch)
  */
 class ErrorChannelTest {
 
-    // Dass nur die Anmeldung loginError schreibt, stellt seit dem 28.10.2026
+    // Dass nur die Anmeldung loginError schreibt, stellt
     // der Compiler sicher: Das Feld steht in AnmeldeUiState, und den hält das
     // AnmeldungViewModel privat.
 
@@ -67,8 +65,6 @@ class ErrorChannelTest {
         // PDF-Betrachter, `scopeModes` an ScopeFilter — die tauchen als
         // Parameter auf, nicht als `state.feld`. Deshalb wird auf den blossen
         // Feldnamen geprüft, nicht auf den qualifizierten Zugriff.
-        // Felder, die BEWUSST nur im ViewModel leben. Kurz halten: Jeder
-        // Eintrag ist ein Feld, dessen Nutzen niemand mehr nachprüft.
         val nurIntern = mapOf<String, String>()
         val ungelesen = felder.filter { feld ->
             feld !in nurIntern && !Regex("""\b$feld\b""").containsMatchIn(leserQuellen)
@@ -96,8 +92,6 @@ class ErrorChannelTest {
      * meisten sind zu Recht still. Ein misslungener Hintergrund-Nachladevorgang
      * behält den letzten Stand, statt zu nörgeln (SetDetailFeature, Preisverlauf,
      * Katalog-Metadaten); die Haushaltsliste bleibt ohne Haushalt einfach leer.
-     * Zwanzig Ausnahmen sind keine Regel — dieselbe Überlegung wie beim
-     * Geltungsbereich von StateDomainBoundaryTest.
      *
      * Was den ursprünglichen Fehler wirklich verhindert, steht im Test darüber:
      * ein Feld, in das geschrieben und aus dem nie gelesen wird, fällt auf.

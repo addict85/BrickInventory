@@ -12,7 +12,7 @@ import java.io.File
  * Gradle bricht bei einem Zyklus ab, aber nicht bei einer Kante, die nur in
  * die falsche Richtung zeigt — die fängt dieser Test.
  *
- * Gegenproben (31.10.2026, gemessen):
+ * Gegenproben:
  *   A  feature-sammlung: `implementation(project(":feature-teile"))` → rot
  *      „feature-sammlung hängt an feature-teile“
  *   B  core-model: jvm.library durch android.library ersetzt → rot „core-model
@@ -21,11 +21,11 @@ import java.io.File
  *      der Kernmodule: core-data hängt an [core-ui]“
  *   D  include(":feature-verwaltung") aus settings.gradle.kts gestrichen → rot
  *      „jeder Modulordner ist eingebunden“
- *   E  (02.11.2026) in dependencyResolutionManagement wieder `google()` → rot
+ *   E  in dependencyResolutionManagement wieder `google()` → rot
  *      „google() liefert nur Googles Gruppen“ (Ohne Inhaltsfilter)
- *   F  (04.11.2026) gegenproben/konvention-mit-modulkante.patch: die Bereichs-Konvention
+ *   F  gegenproben/konvention-mit-modulkante.patch: die Bereichs-Konvention
  *      trägt core-ui ein → rot „Konventionen tragen keine Modulkanten ein“
- *   G  (04.11.2026) in build-logic/settings.gradle.kts `google()` ohne Filter →
+ *   G  in build-logic/settings.gradle.kts `google()` ohne Filter →
  *      rot „Ohne Inhaltsfilter in build-logic/settings.gradle.kts“
  */
 class ModulgrenzenTest {

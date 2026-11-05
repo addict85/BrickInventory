@@ -27,10 +27,6 @@ class PartsListScannerTest {
 
     // Der Barcode-Dialog steht seit seiner Auslagerung in
     // ui/dialogs/BarcodeResultDialog.kt; AppNavigation.kt ruft ihn nur noch auf.
-    // Beide Dateien werden aneinandergehaengt gelesen. Die Reihenfolge-Pruefungen
-    // unten bleiben gueltig: Die gesuchten Marken stehen ausschliesslich in der
-    // Dialogdatei, ihre Reihenfolge zueinander aendert sich durch das
-    // Voranstellen von AppNavigation.kt nicht.
     private val src: String by lazy {
         val w = ""
         File(Quellen.wurzel, w + "AppNavigation.kt").readText() + "\n" +

@@ -14,7 +14,7 @@ import java.io.File
  * Prozente kommen aus fmtProzent(): eine Nachkommastelle, Vorzeichen bei ≠ 0,
  * Zeichen und Abstand nach der App-Sprache.
  *
- * Gegenproben (28.10.2026, gemessen mit kotlinc gegen util/NumberFormatUtils.kt):
+ * Gegenproben:
  *   A  das Runden vor dem Vorzeichen entfernt → rot „was auf null rundet, …“
  *      („-0.0%“)
  *   B  das Plus weggelassen → rot „ein Gewinn trägt ein Plus …“

@@ -18,7 +18,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Ein Gerät ohne Displaysperre (sec10 H3): Gutschein-PIN, Wiederherstellungscodes
+ * Ein Gerät ohne Displaysperre: Gutschein-PIN, Wiederherstellungscodes
  * und Verwaltung gehen dort nicht mehr still auf, die App sagt erst, dass sie
  * ungeschützt sind. Robolectric meldet von sich aus kein gesichertes Gerät.
  *

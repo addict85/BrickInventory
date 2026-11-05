@@ -14,7 +14,7 @@ import org.junit.Test
  * Ausserhalb von core-zustand verhindert schon der Übersetzer jedes aendere{}
  * (internal); dieser Test hält fest, welche Felder die Schritte setzen.
  *
- * Gegenproben (28.10.2026, gemessen):
+ * Gegenproben:
  *   A  in GalerieViewModel.loadSets() `dienste.sitzung.aendere { it }`
  *      ergänzt → rot „nur die bekannten Stellen schreiben …“
  *   B  in FinanzViewModel `priceCondition` mitgeschrieben → rot, derselbe Fall

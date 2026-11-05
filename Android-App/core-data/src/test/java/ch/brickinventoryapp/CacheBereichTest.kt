@@ -20,7 +20,7 @@ import ch.brickinventoryapp.data.lokal.Bestandsart
  * Fahrzeug ist KatalogRepository.getCatalogMeta() mit echtem Testserver und
  * echter Platte; der Bereich kommt aus einer Variablen statt aus den Prefs.
  *
- * Gegenproben (28.10.2026, gemessen mit kotlinc gegen die Datenschicht):
+ * Gegenproben:
  *   A  fach() ohne Bereich (alle Konten in einem Ordner) → rot „ein anderes
  *      Konto sieht offline nichts …“ und „ein anderer Server …“
  *   B  in put() die anderen Bereiche nicht geräumt → rot „wer schreibt, räumt
@@ -30,7 +30,7 @@ import ch.brickinventoryapp.data.lokal.Bestandsart
  *   D  in cached() bei bereich == null trotzdem abgelegt (fester Bereich) →
  *      rot „ohne Anmeldung wird nichts abgelegt“
  *   E  den alten Ablageort nicht geräumt → rot „der alte Ablageort …“
- *   F  (03.11.2026, kotlinc lokal) ein weiteres Fach `PROBE` in Bestandsart → rot
+ *   F  ein weiteres Fach `PROBE` in Bestandsart → rot
  *      „die Offline-Ablage kennt genau die eingeordneten Faecher“
  */
 class CacheBereichTest {

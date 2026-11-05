@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
  * einem Wegwerf-Repository mit einem Gradle-Ersatz: Der schreibt einen
  * JUnit-Bericht, rot genau dann, wenn in der Datei „kaputt“ steht.
  *
- * Gegenproben (31.10.2026, gemessen):
+ * Gegenproben:
  *   A  in miss() `if not rot` gestrichen → rot „eine Gegenprobe, die grün
  *      bleibt, macht den Job rot“
  *   B  einen fehlenden Bericht als rot gezählt (`return True, …`) → rot „ohne

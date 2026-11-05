@@ -37,7 +37,7 @@ import org.junit.Test
  * Speicher, Api ohne Netz, Zeit virtuell. So sind die fünf Sekunden „Balken bleibt
  * stehen“ und der wachsende Abstand der Wiederverbindung ohne Warten prüfbar.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   csv-zustand-zuerst  entschieden mit dem schon neuen Zustand → rot „ein laufender Import …“
  *   csv-ohne-nachladen  finishCsvImport() ohne `bestand.melde` → rot „ein laufender Import …“
  *   csv-rueckzug-fest   der Abstand wächst nicht mehr → rot „ein abgerissener Strom …“

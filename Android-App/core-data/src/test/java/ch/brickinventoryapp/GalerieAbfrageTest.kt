@@ -33,11 +33,6 @@ import ch.brickinventoryapp.data.api.ApiJson
  *     weitergereicht wird. Der Quelltext liest sich richtig, der Server sieht
  *     nichts, und die Galerie zeigt den vollen Bestand — für den Nutzer sieht
  *     das aus, als täte der Filter nichts.
- *   • Eine GEFILTERTE Antwort, die unter dem Schlüssel der ungefilterten Sicht
- *     abgelegt wird. Das fällt nicht sofort auf, sondern beim NÄCHSTEN Start:
- *     Die App zeigt dann eine gefilterte Liste als vollen Bestand an, ohne dass
- *     ein Filter gesetzt wäre. Der Wortlaut `ungefiltert` im Quelltext sagt
- *     darüber nichts — die Bedingung könnte falsch herum stehen.
  *
  * Beides sind Aussagen über den ABLAUF (welche Anfrage geht raus, was liegt
  * danach auf der Platte), und die zeigt nur ein Aufruf. Aufbau wie in
@@ -49,17 +44,10 @@ import ch.brickinventoryapp.data.api.ApiJson
  *   Lauf 1 (fec5f68), zwei unabhängige Brüche gleichzeitig:
  *     a) `search` im gefilterten Zweig durch `null` ersetzt.
  *     c) `page == 1` aus der Bedingung `ungefiltert` gestrichen.
- *     → „336 tests completed, 2 failed": Teilschritt 1 (Zeile 101) und
- *       Teilschritt 4 (Zeile 159). Genau die beiden und keine anderen — die
- *       Brüche greifen also getrennt, und kein anderer Test im Baum merkt
- *       davon etwas.
  *
  *   Lauf 2 (283e64d), ein Bruch:
  *     b) Die Bedingung `ungefiltert` durch `true` ersetzt, sodass auch
  *        gefilterte Abrufe über den Cache laufen.
- *     → „336 tests completed, 3 failed": Teilschritt 3 (Zeile 137) — der
- *       gesuchte Fall — sowie 1 und 4. Das ist stimmig: Der Cache-Zweig ruft
- *       ohne Filter und mit Seite 1 ab, verletzt also alle drei Aussagen.
  */
 class GalerieAbfrageTest {
 
@@ -185,7 +173,7 @@ class GalerieAbfrageTest {
         // Das Gegenstueck: Genau EIN Fall darf auf die Platte, und der muss es
         // auch wirklich tun — sonst startet die App ohne Netz mit leerer Galerie.
         // Netzausfall = die Verbindung bricht ab; ein 500 ist eine Auskunft des
-        // Servers und traegt seit dem 28.10.2026 nicht mehr (RepoCacheRueckfallTest).
+        // Servers und traegt nicht mehr (RepoCacheRueckfallTest).
         server.enqueue(MockResponse().setResponseCode(200).setBody(antwort("10-1", "11-1")))
         assert(nummern(repo.getSets()) == listOf("10-1", "11-1"))
 

@@ -81,7 +81,7 @@ class AddPathOwnerTest {
     /**
      * Die Umrechnung der Eingaben steht an einer Stelle (erfassungsWerte, Nachtrag
      * 140): Die Dialoge benutzen sie (Struktur), und sie wird hier ausgeführt.
-     * Gegenprobe (31.10.2026, gemessen): in erfassungsWerte `haushalt.size > 1` →
+     * Gegenprobe: in erfassungsWerte `haushalt.size > 1` →
      * `haushalt.size > 0` → rot „ohne Haushalt geht kein Eigentuemer mit“.
      */
     @Test

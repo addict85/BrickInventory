@@ -43,11 +43,11 @@ import java.util.concurrent.ConcurrentHashMap
  *      Server meldet zuerst ab“
  *   F  gleicheHerkunft() durch `!=` der rohen Texte ersetzt → rot „derselbe
  *      Server mit Schrägstrich meldet nicht ab“
- *   G  (01.11.2026) in saveServerUrl() die Prüfung adressfehler() entfernt → rot
+ *   G  in saveServerUrl() die Prüfung adressfehler() entfernt → rot
  *      „eine http-Adresse wird nicht gespeichert“
- *   H  (01.11.2026) in loginWithQrToken() die Prüfung entfernt → rot „ein
+ *   H  in loginWithQrToken() die Prüfung entfernt → rot „ein
  *      QR-Code mit http-Adresse …“ (Adresse gespeichert, qr-login gerufen)
- *   I  (30.10.2026) merkePin() in loginWithQrToken() nach qrLogin() → rot „ein
+ *   I  merkePin() in loginWithQrToken() nach qrLogin() → rot „ein
  *      QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage“ (Test seit O–Q
  *      umgeschrieben: vorgehalten statt gemerkt)
  *   O  in loginWithQrToken() wieder merkePin() statt halteVor() vor qrLogin() →
@@ -55,23 +55,23 @@ import java.util.concurrent.ConcurrentHashMap
  *      Pin … vor“
  *   P  die Prüfung bisherigerPin() vor dem Start entfernt → rot „ein QR-Code
  *      mit anderem Schluessel ersetzt den Pin nie still“
- *   R  (01.11.2026) die Prüfung bestaetigtFingerabdruck() in loginWithQrToken()
+ *   R  die Prüfung bestaetigtFingerabdruck() in loginWithQrToken()
  *      durch `pinWechselEingabe == null` ersetzt (jede Eingabe genügt) → rot
  *      „ein QR-Code mit anderem Schluessel ersetzt den Pin nie still“ (falsch
  *      abgeschriebener Wert angenommen)
  *   Q  das finally mit vergissVorgehaltenen() entfernt → rot „ein gescheiterter
  *      QR-Code hinterlaesst keinen Pin“ (Zeitüberschreitung, nichts vergessen)
- *   J  (30.10.2026) LoginRequest wieder mit festem neverExpires = true → rot
+ *   J  LoginRequest wieder mit festem neverExpires = true → rot
  *      „ein Token ohne Ablauf nur ueber https“ (http-Teil)
- *   K  (31.10.2026) PasskeyAnmeldung mit mitToken = false → rot „mit Passkey
+ *   K  PasskeyAnmeldung mit mitToken = false → rot „mit Passkey
  *      anmelden legt den Token ab …“
- *   L  (31.10.2026) Abgebrochen wie KeinPasskey mit Satz → rot „ein
+ *   L  Abgebrochen wie KeinPasskey mit Satz → rot „ein
  *      abgebrochener Passkey-Dialog …“
- *   M  (31.10.2026) ZweiterFaktorWege im KontoRepository nicht gelesen → rot
+ *   M  ZweiterFaktorWege im KontoRepository nicht gelesen → rot
  *      „der zweite Faktor nimmt den Passkey …“ (Knopf fehlt)
- *   N  (31.10.2026) passkeyStattCode() reicht den Passkey nicht an login() →
+ *   N  passkeyStattCode() reicht den Passkey nicht an login() →
  *      rot „der zweite Faktor nimmt den Passkey …“ (kein passkey im Rumpf)
- *   S  (02.11.2026) in holePasskey() RpIdBefund.FREMD durchgelassen → rot
+ *   S  in holePasskey() RpIdBefund.FREMD durchgelassen → rot
  *      „Optionen fuer eine fremde Domain …“ und „Optionen ohne rpId … zweiten Faktor“
  *   T  RpIdBefund.FEHLT durchgelassen → rot „Optionen ohne rpId …“
  *   U  pruefeRpId() mit ignoreCase und Unterdomänen (`host.endsWith("." + rpId)`)
@@ -80,7 +80,7 @@ import java.util.concurrent.ConcurrentHashMap
  *      Adresse waehrend des Passkey-Dialogs …“
  *   W  FINGERABDRUCK_ABTIPPEN = 16 → rot „ein QR-Code mit anderem Schluessel
  *      ersetzt den Pin nie still“ (16 Zeichen angenommen)
- *   X  (sec10 N2) mussAbtippen() ohne Pin wieder `false` (Stand davor: ein Tipp
+ *   X  mussAbtippen() ohne Pin wieder `false` (Stand davor: ein Tipp
  *      genügte beim ersten Einrichten) → rot „ein eigener Schluessel aus dem
  *      QR-Code gilt beim ersten Einrichten nur abgetippt“;
  *      gegenproben/qr-pin-ohne-abtippen.patch
@@ -153,7 +153,7 @@ class AnmeldungViewModelTest {
     /**
      * Ohne das Häkchen ein Token mit Scope "app": Das Kontorecht allein macht in
      * der App keinen Verwalter, der Server wiese dessen Aufrufe mit 403 ab.
-     * Gegenprobe (30.10.2026, gemessen): in AnmeldungViewModel `r.data.verwalter`
+     * Gegenprobe: in AnmeldungViewModel `r.data.verwalter`
      * → `r.data.user?.isAdmin == true` → rot „Verwalterkonto ohne Häkchen …“.
      */
     @Test

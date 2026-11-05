@@ -10,7 +10,6 @@ import org.junit.Test
  * AppCompat-ACTIVITIES. Der Application-Context behält unterhalb von
  * Android 13 die SYSTEM-Sprache — minSdk ist 30, betroffen sind also
  * Android 11 und 12. Das steht seit Langem in LanguageManager.localizedContext()
- * und war für die Foreground-Services auch umgesetzt.
  *
  * Die ViewModels waren die Lücke: dort standen zweiunddreissig direkte
  * `ctx.getString(...)` auf dem Application-Context. Wer sein Telefon auf

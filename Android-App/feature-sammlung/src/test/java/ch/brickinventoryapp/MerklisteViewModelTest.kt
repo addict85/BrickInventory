@@ -38,9 +38,9 @@ import kotlinx.coroutines.CoroutineScope
  *      Übernahme meldet Merkliste und Sets“
  *   D  im Preisalarm das Nachladen der Alarme des offenen Postens entfernt →
  *      rot „ein Preisalarm im Merkposten wird entprellt gespeichert …“
- *   E  (31.10.2026) im init-Sammler die Bedingung `ungefiltert(f)` entfernt →
+ *   E  im init-Sammler die Bedingung `ungefiltert(f)` entfernt →
  *      rot „mit Suchtext bleibt die Serverantwort stehen“
- *   F  (31.10.2026) den init-Sammler entfernt → rot „offline gelöscht“ (Zeitüberschreitung)
+ *   F  den init-Sammler entfernt → rot „offline gelöscht“ (Zeitüberschreitung)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MerklisteViewModelTest {

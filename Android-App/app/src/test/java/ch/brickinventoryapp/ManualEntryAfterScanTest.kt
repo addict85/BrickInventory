@@ -15,10 +15,6 @@ import org.junit.Test
  *
  * ── Vier erfolglose Wege, ein Feld ──────────────────────────────────────────
  * Alle vier liegen im ViewModel:
- *   1. EAN gar nicht auflösbar
- *   2. EAN aufgelöst, aber ohne Setnummer
- *   3. Texterkennung ohne verwertbare Nummer
- *   4. Katalogabfrage zur erkannten Nummer scheitert
  *
  * Statt in jeden Bildschirm einen Aufruf zu setzen, melden sie sich über
  * `manuelleErfassungAnfordern` im Zustand. Wer den Scanner einbindet, liest das

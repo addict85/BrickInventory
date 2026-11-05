@@ -44,13 +44,13 @@ import org.junit.Test
  *      falsches Passwort beim Einlösen markiert das Feld“
  *   H  in einloeseFehler() den Zweig für die Sperre entfernt → rot „nach zu
  *      vielen Fehlversuchen …“ (statt des eigenen Satzes kam „fehler“)
- *   I  (01.11.2026) im Repository `faktor_code` nicht in den Rumpf → rot „bei
+ *   I  im Repository `faktor_code` nicht in den Rumpf → rot „bei
  *      aktivem zweitem Faktor geht dessen Code …“
- *   J  (01.11.2026) in pruefeZweitenFaktor() `r.data.aktiv` → `false` → rot
+ *   J  in pruefeZweitenFaktor() `r.data.aktiv` → `false` → rot
  *      „bei aktivem zweitem Faktor …“ (Zeitüberschreitung Codefeld)
- *   K  (01.11.2026) im Fehlerzweig `faktorNoetig` nicht gesetzt → rot „verlangt
+ *   K  im Fehlerzweig `faktorNoetig` nicht gesetzt → rot „verlangt
  *      der Server den Code …“
- *   L  (01.11.2026) in saveUserDefaultCondition() die Erfolgsmeldung entfernt →
+ *   L  in saveUserDefaultCondition() die Erfolgsmeldung entfernt →
  *      rot „der Standard-Zustand meldet das Speichern“ (Zeitüberschreitung Meldung)
  */
 @OptIn(ExperimentalCoroutinesApi::class)

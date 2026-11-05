@@ -22,19 +22,19 @@ import java.security.spec.X509EncodedKeySpec
 
 /**
  * Die Fassungsbeschreibung des Selbst-Updaters ist mit dem Release-Schlüssel
- * signiert (sec8 N4): Wer nur Schreibrecht am Repository hat, kann ein Update weder
+ * signiert: Wer nur Schreibrecht am Repository hat, kann ein Update weder
  * unterdrücken noch auf ein anderes APK umleiten. Die Signaturen sind mit openssl
  * erzeugt, genau wie im Signierjob (`openssl dgst -sha256 -sign`), einmal RSA wie
  * ein üblicher APK-Schlüssel, einmal ECDSA; die Zertifikate sind feste Testdaten.
  *
- * Gegenproben (03.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   A  gepruefteBeschreibung() ohne die Zeile `if (!echt) return null` (bis sec11: `if (zertifikate.none { … })`)
  *      → rot „ein fremder Schluessel …“, „veraenderte Daten …“ und „eine
  *      unsignierte version.json …“; gegenproben/update-beschreibung-ungeprueft.patch
  *   B  pruefsummePasst() vergleicht nur als Präfix (`startsWith`) und ohne die
  *      Leer-Abfrage → rot „das APK muss die signierte Pruefsumme tragen“
  *   C  istErlaubteApkAdresse() ohne FASSUNGS_ETIKETT.matches → rot „nur Fassungsetiketten …“
- * Gegenproben (04.11.2026, gemessen mit kotlinc lokal; sec11 H1, Schlüsseltrennung):
+ * Gegenproben:
  *   D  gepruefteBeschreibung() nimmt die APK-Signatur auch dann, wenn die App
  *      Beschreibungsschlüssel kennt (`|| zertifikate.any { … }`) → rot „kennt die App
  *      einen Beschreibungsschluessel, gilt die APK-Signatur nicht mehr“;

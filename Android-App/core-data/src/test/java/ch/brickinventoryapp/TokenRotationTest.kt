@@ -42,7 +42,7 @@ import okhttp3.mockwebserver.SocketPolicy
  * abweist oder den Tausch per Kopfzeile verlangt. Der Testserver spricht http
  * auf localhost; der Wächter läuft darum wie im Debug-Build (entwicklung = true).
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in ServerWaechter den Zweig für 401 `token_rotation_noetig` entfernt →
  *      rot „ein abgewiesener alter Token wird getauscht und die Anfrage wiederholt“
  *      (401 statt 200, Sitzung abgelaufen gemeldet)
@@ -52,7 +52,7 @@ import okhttp3.mockwebserver.SocketPolicy
  *      rot „gleichzeitig abgewiesene Anfragen blockieren den Tausch nicht“
  *      (Zeitüberschreitung: beide Plätze warten auf den Tausch, der Tausch auf
  *      einen Platz)
- * Gegenproben (02.11.2026, gemessen mit kotlinc lokal):
+ * Gegenproben:
  *   D  in TokenTausch die Prüfung `stand() != vorher` vor der Wiederholung
  *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (SPAETER)
  *   E  im Wächter wieder die alte Regel (Kopf nur weg, wenn er der jetzige Token

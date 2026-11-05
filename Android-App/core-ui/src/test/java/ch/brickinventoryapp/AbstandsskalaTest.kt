@@ -167,11 +167,6 @@ class AbstandsskalaTest {
         // haette die Zahl auf 55 gehoben.
         //
         // 55 -> 54 (Nachtrag 160): Genau dieser Kandidat ist zweimal gefallen.
-        // In MonitoringSections standen zwei Chip-Reihen direkt uebereinander,
-        // die eine auf 13.sp; als die zweite dazukam, hat diese Ratsche das
-        // gemeldet. Beide stehen jetzt auf Schrift.klein — ein Punkt kleiner,
-        // dafuer gleich. Die Ratsche zieht nach, sonst waere der gewonnene
-        // Platz sofort wieder frei fuer die naechste rohe Zahl.
         //
         // 51 -> 2 (27.10.): Die rohen Groessen sind auf Rollen der Material-
         // Skala umgestellt (bodyMedium, labelSmall, titleMedium …).

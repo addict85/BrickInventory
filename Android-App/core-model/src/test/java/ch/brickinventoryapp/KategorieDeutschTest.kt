@@ -8,7 +8,7 @@ import org.junit.Test
  * Teilekategorien auf Deutsch wie die Farben daneben: Wörter übersetzt, Kommas und
  * Bindestriche bleiben, unbekannte Wörter stehen englisch da.
  *
- * Gegenprobe (05.11.2026, kotlinc lokal): in uebersetze() das Wörterbuch nicht
+ * Gegenprobe: in uebersetze() das Wörterbuch nicht
  * gefragt (`val de = wort`) → rot „bekannte Kategorien …“ („Bricks“ statt „Steine“).
  */
 class KategorieDeutschTest {

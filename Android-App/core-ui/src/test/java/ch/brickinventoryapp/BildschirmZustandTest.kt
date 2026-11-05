@@ -46,11 +46,9 @@ import java.io.File
  *
  *  4. Passwörter und Codes. Das Bundle liegt bei Prozesstod auf der Platte;
  *     sie gehören nicht hinein und werden nach einer Drehung neu eingegeben.
- *     Gegenprobe (01.11.2026, gemessen): `pwNeu` in StartpasswortMaske wieder
+ *     Gegenprobe: `pwNeu` in StartpasswortMaske wieder
  *     `rememberSaveable` → rot „Passwoerter und Codes …“; die Ausnahme `geheim`
  *     im ersten Test entfernt → rot „vom Menschen eingegebener Zustand …“.
- *     Dazu `entsperrt` der Schrittsperre. Gegenprobe (03.11.2026, kotlinc lokal):
- *     dort `rememberSaveable` → rot „Passwoerter und Codes …“ (Schrittschutz.kt).
  *
  * Dieselbe Falle ist in diesem Baum schon einmal zugeschnappt: ScrollMemory.kt
  * hält in seiner eigenen Erklärung fest, dass der dortige Merker als
@@ -83,9 +81,6 @@ class BildschirmZustandTest {
      * „laeuft", „loading", „saving" — aber nicht die Schreibweise, die im Baum
      * tatsaechlich stand. `isExporting` im PDF-Knopf war deshalb seit jeher
      * `rememberSaveable` und ist der Fall, gegen den diese Regel gebaut ist:
-     * Nach einer Drehung waehrend des Exports kaeme `true` zurueck, die
-     * Koroutine dazu ist aber tot — der Knopf bliebe fuer immer gesperrt und
-     * zeigte einen Kreisel, der sich nie aufloest.
      *
      * Die Lehre ist die dieser ganzen Reihe: eine Sache in zwei Schreibweisen,
      * und die Suche kennt nur eine.

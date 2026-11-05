@@ -62,8 +62,6 @@ class ManuelleKachelTest {
         // Einzelpreis. Wer einmal fuer 2.- und einmal fuer 8.- gekauft hat,
         // saehe dort 8.- statt 5.-. Der Server rechnet es richtig
         // (utils/handlers/shared.ts) — die App las das Feld nur nicht ein.
-        // Ausgeführt mit dem Json der App. Gegenprobe (29.10.2026, gemessen): in
-        // FigValuationItem @SerialName("avg_purchase_price") entfernt → rot.
         val teil = ApiJson.decodeFromString(PartValuationItem.serializer(),
             """{"part_number":"3001","unit_price":8.0,"avg_purchase_price":5.0}""")
         val figur = ApiJson.decodeFromString(FigValuationItem.serializer(),

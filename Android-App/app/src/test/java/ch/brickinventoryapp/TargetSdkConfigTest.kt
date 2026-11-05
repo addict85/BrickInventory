@@ -14,8 +14,6 @@ import java.io.File
  * überschreiben, sonst prüfte diese Klasse eine Zahl, die nicht gilt.
  * Gegenproben (Patches unter gegenproben/, am 04.11.2026 rot wie angegeben):
  *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt auf 31 → rot „minSdk ist Android 11“
- *   sdk-im-modulskript.patch   `minSdk = 31` in app/build.gradle.kts → rot
- *                              „kein Modulskript setzt die SDK-Stände selbst“
  */
 class TargetSdkConfigTest {
 
@@ -74,7 +72,7 @@ class TargetSdkConfigTest {
         }
     }
 
-    // Android 11 als Untergrenze (sec8 H11): Darunter keine Sicherheitsupdates, und
+    // Android 11 als Untergrenze: Darunter keine Sicherheitsupdates, und
     // erst ab 30 bindet die Gerätesperre einen Keystore-Schlüssel samt PIN/Muster
     // (Schrittschutz). Wer sie senkt, holt die Sonderwege für 8 bis 10 zurück.
     @Test

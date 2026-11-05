@@ -46,12 +46,6 @@ import java.io.File
  * örtlichen Spiegel gefunden statt von einem zehnminütigen Lauf:
  *   - `File(dir, "…")` fand DREI „Zielnamen", weil daneben die Quellnamen von
  *     AGP in derselben Schreibweise stehen. Jetzt `val target = File(dir, …)`.
- *   - Der Erklärabsatz im Workflow nennt die alte Schreibweise zwangsläufig und
- *     war damit selbst der Verstoss. Kommentarzeilen werden ausgeblendet.
- * Die dritte Regel ist ihrer eigenen Gegenprobe zunächst NICHT standgehalten:
- * Sie mass `indexOf` über die ganze Datei und traf den Kommentar, nicht den
- * Code — bei umgedrehter Reihenfolge blieb sie grün. Jetzt misst sie im
- * Ausdruck.
  */
 class ApkNameTest {
 
@@ -209,11 +203,6 @@ class ApkNameTest {
         // Unterschied steckt allein im Quellnamen. Lagen nach einem Wechsel der
         // Schlüssel beide Dateien im Ordner, entschied vorher der Zeitstempel —
         // also der Zufall. Ein unsigniertes APK lässt sich nicht installieren.
-        // Gemessen wird im AUSDRUCK, nicht in der Datei: Der Erklärabsatz
-        // weiter oben nennt „app-release.apk" ebenfalls und steht vor beidem.
-        // Der erste Entwurf hat genau das gemessen und blieb bei umgedrehter
-        // Reihenfolge grün — eine Prüfung, die den Kommentar liest statt den
-        // Code, prüft nichts.
         val src = bauskript.readText()
         val anfang = src.indexOf("val built =")
         assert(anfang >= 0) { "Der Ausdruck `val built =` steht nicht mehr in build.gradle.kts" }

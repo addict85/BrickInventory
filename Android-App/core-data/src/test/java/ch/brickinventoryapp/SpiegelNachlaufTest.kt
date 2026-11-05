@@ -13,7 +13,7 @@ import org.junit.Test
  * schon überholt hat, dreht den Speicher nicht zurück. Sonst hält der Interceptor
  * nach dem Verwerfen kurz wieder den alten Token.
  *
- * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; spiegel-nachlauf.patch):
+ * Gegenprobe:
  *   in TokenSchranke.spiegle() die Prüfung `roh(jetzt()) == r` entfernt → rot
  *   „ein überholter Plattenwert dreht den Speicher nicht zurück“ (war: token-zwischen).
  */

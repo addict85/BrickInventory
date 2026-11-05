@@ -26,9 +26,9 @@ import java.io.File
  * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel führt
  * AppViewModelTest aus, die Anzeige liest Quelltext (Gerät und Compose fehlen hier).
  *
- * Gegenprobe (29.10.2026, gemessen): in VerwaltungApi `@GET("api/v1/startup-status")`
+ * Gegenprobe: in VerwaltungApi `@GET("api/v1/startup-status")`
  * auf "…/startstatus" → rot „die App fragt den Startzustand ab“.
- * Gegenprobe (01.11.2026, misst die CI): gegenproben/startstatus-ganzzahl.patch
+ * Gegenprobe: gegenproben/startstatus-ganzzahl.patch
  * macht progress wieder zu Int → rot „ein Fortschritt mit Anteil wird gelesen“.
  */
 class ServerStartTest {

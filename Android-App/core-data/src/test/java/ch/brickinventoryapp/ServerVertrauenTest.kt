@@ -15,7 +15,7 @@ import javax.net.ssl.X509ExtendedTrustManager
  * Nutzerinstallierte CAs gelten nur auf ausdrückliche Einstellung, und erst
  * dann wird der CA-Speicher überhaupt gelesen.
  *
- * Gegenproben (29.10.2026, gemessen gegen util/ServerVertrauen.kt):
+ * Gegenproben:
  *   A  wahl() immer `mitNutzer.value` → rot „ohne Einstellung gilt nur das System“
  *      und „mit Einstellung gelten die Nutzer-CAs, sofort“
  *   B  checkClientTrusted an wahl() statt an system → rot „Client-Prüfungen

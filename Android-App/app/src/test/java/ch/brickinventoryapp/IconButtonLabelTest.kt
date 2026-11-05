@@ -30,8 +30,6 @@ class IconButtonLabelTest {
     // Tests sechs weitere Stellen zutage gefoerdert, an die vorher niemand
     // dachte: die Mengen-Knoepfe (+/-) in den beiden Detail-Ansichten und zwei
     // Bearbeiten-Knoepfe im Monitoring. Die Mengen-Knoepfe trugen "+" und "-"
-    // als Beschreibung — das liest TalkBack als "Plus", nicht als "Menge
-    // erhoehen".
 
     private fun screens(): List<File> =
         Quellen.wurzel

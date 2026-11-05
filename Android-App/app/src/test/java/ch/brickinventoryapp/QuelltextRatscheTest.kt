@@ -1,99 +1,89 @@
 package ch.brickinventoryapp
 
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 /**
- * Testdateien, die nur Quelltext lesen, werden weniger, nie mehr.
+ * Ratschen: Zahlen, die nur sinken dürfen. Jede steht genau auf dem gemessenen Wert;
+ * steigt sie, ist der Test rot, sinkt sie, verlangt er, die Schranke nachzuziehen.
+ * Eine Regex auf den Quelltext bestätigt nur, dass eine Zeile dasteht; gezählt wird,
+ * wie viele Testfunktionen das noch tun. Gegenstück zu Web-App/test/ratschen.test.js.
  *
- * Eine Regex auf den Quelltext bestätigt, dass eine Zeile dasteht — nicht,
- * dass sie an der richtigen Stelle steht und wirkt. Neue Prüfungen von
- * Verhalten führen den Code aus (TestDienste, PfadServer, die ViewModels);
- * Quelltext-Prüfungen bleiben für Struktur. Gegenstück zu
- * Web-App/test/ratschen.test.js.
- *
- * „Liest Quelltext": Quellen.*, ein Pfad unter src/main, der Workflow oder die
- * Ressourcen. „Führt aus": ruft Code der App auf — runTest/runBlocking, ein
- * Robolectric- oder Compose-Lauf oder der Aufruf einer Klasse bzw. Funktion aus
- * src/main. Ein Import allein zählt nicht: KatalogSprungEntprelltTest importierte
- * eine Konstante und galt so als Verhaltenstest (arch14 N4).
- *
- * Gegenproben (29.10.2026, gemessen): SCHRANKE auf 62 → rot mit 63 Dateien;
- * eine zusätzliche Testdatei, die nur Quellen.lies() aufruft → rot mit 64.
- * Stände: 82 vor dem Schnitt des MainViewModels (307ee28), 77 bei 8f4f9d3,
- * 61 seit FinanzZeilenGleichTest und ClientRendersOnlyTest die Finanzwahl ausführen,
- * 59 seit MengePlaketteTest und PurchasePriceDisplayTest die Regel ausführen.
- * 54 seit die Bildadressen, das Katalogmodell, erfassungsWerte und die Teilefilter
- * ausgeführt werden (ThumbFallback-, NoDirectCdnAccess-, CatalogUsesLocalImages-,
- * AddPathOwner-, ListenfilterImZustandTest).
- * 53 seit der Aufteilung in Module: Gezählt wird über die Tests aller Module;
- * ModulgrenzenTest kam als Strukturprüfung dazu, ZustandsflussBreiteTest prüft
- * die übersetzten Klassen, BarcodeDoubleAddGuardTest ging in Verhaltens- und
- * Verdrahtungstests auf.
- * 54 seit „führt aus“ am Aufruf statt am Import hängt (arch14 N4); gezählt wird
- * strenger, KatalogSprungEntprelltTest zählt weiter als ausführend (er rechnet).
- * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal): ein Import gilt wieder als
- * Ausführen (gegenproben/ratsche-import-zaehlt.patch) → rot „ein Import allein …“.
- *
- * Kommentare (05.11.2026, gemessen mit kotlinc lokal):
- *   kommentar-zu-lang    sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
- *   verweis-ins-leere    ein Anker in Vorwaermen.kt verschrieben → rot „jeder Verweis …“
- * detekt-Baseline (05.11.2026, gemessen mit kotlinc lokal):
- *   detekt-baseline-waechst       Obergrenze eins unter den Einträgen → rot „die detekt-Baseline …“
+ * Gegenproben (Patches unter gegenproben/):
+ *   schranke-zu-hoch           Schranke der Quelltext-Funktionen +1 → rot „Testfunktionen,
+ *                              die Quelltext lesen …“ (gesunken, nachziehen)
+ *   helfer-zaehlt-nicht        ein lesender Helfer zählt nicht mehr → rot, derselbe Test
+ *   kommentar-zu-lang          sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
+ *   bau-kommentar-zu-lang      sechs Zeilen in gradle.properties → rot „kein Kommentar in Build …“
+ *   verweis-ins-leere          ein Anker in Vorwaermen.kt verschrieben → rot „jeder Verweis …“
+ *   detekt-baseline-waechst    Obergrenze eins unter den Einträgen → rot „die detekt-Baseline …“
  *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
- * Abbruch (05.11.2026): cache-schluckt-abbruch macht auch „kein breiter Fang …“ rot.
- * Namen (05.11.2026, gemessen mit kotlinc lokal): voll-qualifiziert schreibt in
- *   Vorwaermen.kt `ch.brickinventoryapp.util.fangeAusserAbbruch` aus → rot „kein voll …“
- * Warten (05.11.2026, gemessen mit kotlinc lokal): warten-in-echtzeit schläft in
- *   TeileViewModelTest wieder 200 ms → rot „Echtzeit-Warten in Tests …“
- * Fläche (05.11.2026, gemessen mit kotlinc lokal): core-data-oeffentlich nimmt liegtUnter
- *   das internal → rot „die oeffentliche Flaeche von core-data …“
+ *   cache-schluckt-abbruch     macht „kein breiter Fang …“ rot
+ *   voll-qualifiziert          `ch.brickinventoryapp.util.fangeAusserAbbruch` ausgeschrieben → rot
+ *                              „kein voll qualifizierter Projektname …“ und „voll qualifizierte Namen …“
+ *   warten-in-echtzeit         TeileViewModelTest schläft wieder 200 ms → rot „Echtzeit-Warten …“
+ *   core-data-oeffentlich      liegtUnter ohne internal → rot „die oeffentliche Flaeche …“
  */
 class QuelltextRatscheTest {
 
-    private val liest = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values""")
-    private val laeuft = Regex("""\brunTest\b|\brunBlocking\b|@RunWith\(|\bcreate(?:Android)?ComposeRule\b""")
-    private val deklaration = Regex("""^(?:(?:private|internal|public|data|sealed|abstract|open|enum|inline|suspend|fun)\s+)*(?:class|object|interface|fun)\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""", RegexOption.MULTILINE)
     private val zeichenkette = Regex("\"\"\"[\\s\\S]*?\"\"\"|\"(?:\\\\.|[^\"\\\\\n])*\"")
-
-    /** Was die App deklariert (ohne core-testing, dessen Hilfen keine App sind). */
-    private val produktiv: Set<String> by lazy {
-        Quellen.alle().filterNot { it.invariantSeparatorsPath.endsWith("/Quellen.kt") || it.name == "TestApi.kt" }
-            .flatMap { f -> deklaration.findAll(Quellen.ohneKommentare(f.readText())).map { it.groupValues[1] } }
-            .filter { it.length > 3 }.toSet()
-    }
 
     /** Ohne Kommentare und Zeichenketten: Ein Dateiname wie "GalleryScreen.kt" ist kein Aufruf. */
     private fun code(roh: String) = zeichenkette.replace(Quellen.ohneKommentare(roh), "\"\"")
 
-    private fun fuehrtAus(roh: String): Boolean {
-        val c = code(roh)
-        if (laeuft.containsMatchIn(c)) return true
-        val eigene = Regex("""\b(?:class|object|interface|fun|val|var)\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""").findAll(c).map { it.groupValues[1] }.toSet()
-        return (produktiv - eigene).any { Regex("""(?<![\w.])$it\s*[(.]""").containsMatchIn(c) }
+    /** Gleichheit: Steigt die Zahl, ist das ein Fehler; sinkt sie, wird die Schranke nachgezogen. */
+    private fun ratsche(was: String, schranke: Number, gemessen: Number, hinweis: String = "") {
+        assertTrue("$was: $gemessen, erlaubt $schranke. $hinweis", gemessen.toDouble() <= schranke.toDouble())
+        assertEquals("$was ist auf $gemessen gesunken — die Schranke von $schranke auf $gemessen senken",
+            schranke.toDouble(), gemessen.toDouble(), 0.0)
+    }
+
+    /** Was als Lesen von Quelltext zählt: Quellen.*, Pfade unter src/main, Workflow, Ressourcen, Dateitext. */
+    private val liestQuelle = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|readText\(\)|readLines\(\)""")
+
+    /**
+     * (Testfunktionen, davon lesend) einer Datei. Eine Funktion liest Quelltext, wenn ihr Rumpf
+     * es tut oder einen Wert bzw. eine Funktion der Datei benutzt, die es tut.
+     */
+    internal fun quelltextFunktionen(roh: String): Pair<Int, Int> {
+        val c = Quellen.ohneKommentare(roh)
+        val helfer = Regex("""(?:val|fun)\s+(\w+)[^\n]*""").findAll(c).filter { m ->
+            val stueck = c.substring(m.range.first, minOf(c.length, m.range.first + 400)).substringBefore("\n\n")
+            liestQuelle.containsMatchIn(m.value) || (m.value.startsWith("fun") && liestQuelle.containsMatchIn(stueck))
+        }.map { it.groupValues[1] }.toSet()
+        val tests = c.split(Regex("""@Test\b""")).drop(1).map { it.substringBefore("\n    }\n") }
+        val lesend = tests.count { t -> liestQuelle.containsMatchIn(t) || helfer.any { Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(t) } }
+        return tests.size to lesend
     }
 
     @Test
-    fun `reine Quelltext-Tests werden weniger, nie mehr`() {
-        val SCHRANKE = 54
-        // Die Tests aller Module; seit der Aufteilung liegen sie neben ihrem Code.
-        val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }.toList()
-        assert(alle.size >= 100) { "Nur ${alle.size} Testdateien gefunden — greift die Suche noch?" }
-        assert(produktiv.size >= 300) { "Nur ${produktiv.size} Deklarationen der App gefunden — Muster veraltet?" }
-        val nur = alle.filter { it.name != "QuelltextRatscheTest.kt" }.filter {
-            val s = it.readText()
-            liest.containsMatchIn(s) && !fuehrtAus(s)
-        }
-        assert(nur.size <= SCHRANKE) {
-            "${nur.size} Testdateien lesen nur Quelltext, erlaubt sind $SCHRANKE. Prüft der " +
-                "neue Test Verhalten, soll er den Code ausführen statt per Regex nachzusehen, " +
-                "ob eine Zeile dasteht.\n  " + nur.joinToString("\n  ") { it.name }
-        }
-        if (nur.size < SCHRANKE) println("  reine Quelltext-Tests: ${nur.size} (Schranke $SCHRANKE) — Schranke nachziehen")
+    fun `Testfunktionen, die Quelltext lesen, werden weniger, nie mehr`() {
+        val FUNKTIONEN = 331
+        val NUR_QUELLTEXT = 53
+        val alle = Quellen.tests.walkTopDown().filter { it.isFile && it.name.endsWith("Test.kt") }
+            .filter { it.name != "QuelltextRatscheTest.kt" }.toList()
+        val zaehlung = alle.associate { it.name to quelltextFunktionen(it.readText()) }
+        val gesamt = zaehlung.values.sumOf { it.first }
+        assertTrue("Nur ${alle.size} Testdateien, $gesamt Tests — greift die Suche noch?", alle.size >= 200 && gesamt >= 1000)
+        val nur = zaehlung.filterValues { (n, l) -> n > 0 && l == n }.keys.sorted()
+        ratsche("Testfunktionen, die Quelltext lesen", FUNKTIONEN, zaehlung.values.sumOf { it.second },
+            "Prüft der neue Test Verhalten, soll er den Code ausführen statt nachzusehen, ob eine Zeile dasteht.")
+        ratsche("Testdateien, die nur Quelltext lesen", NUR_QUELLTEXT, nur.size, nur.joinToString())
+    }
+
+    @Test
+    fun `ein lesender Helfer zaehlt fuer jede Funktion, die ihn benutzt`() {
+        val datei = "private val src = Quellen.lies(\"x.kt\")\n" +
+            "@Test\nfun a() {\n    assert(\"y\" in src)\n    }\n" +
+            "@Test\nfun b() {\n    assert(1 + 1 == 2)\n    }\n"
+        assertEquals(2 to 1, quelltextFunktionen(datei))
     }
 
     /** Die Kotlin-Dateien unter src/main aller Module, ohne die aus den Design-Tokens erzeugten. */
-    private fun produktivDateien(): List<java.io.File> = Quellen.module.flatMap { m ->
-        java.io.File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+    private fun produktivDateien(): List<File> = Quellen.module.flatMap { m ->
+        File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
     }.filterNot { "ERZEUGT aus shared/design-tokens.json" in it.readText() }
 
     private fun istKommentar(t: String) = t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
@@ -136,9 +126,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `der Kommentaranteil sinkt, nie steigt`() {
-        // CLAUDE.md: zwei bis fünf Zeilen Warum, die Geschichte in den Commit.
-        // Gemessen am 05.11.2026: 24,1 %; nach dem Auslagern der langen Kommentare
-        // nach docs/begruendungen/ 22,7 % (ohne die erzeugten Token-Dateien).
+        // Ein Anteil, keine Zahl: Er darf sinken, ohne dass jemand nachziehen muss.
         val SCHRANKE = 22.7
         var zeilen = 0
         var kommentar = 0
@@ -155,7 +143,6 @@ class QuelltextRatscheTest {
 
     @Test
     fun `kein Kommentar hat mehr als fuenf Zeilen Prosa`() {
-        // Gemessen am 05.11.2026: 111 Blöcke, ausgelagert nach docs/begruendungen/; seitdem 0.
         var gezaehlt = 0
         val lang = produktivDateien().flatMap { f ->
             bloecke(f.readLines()).also { gezaehlt += it.size }
@@ -165,6 +152,89 @@ class QuelltextRatscheTest {
         assert(lang.isEmpty()) { "Kommentare über fünf Zeilen; das Warum kürzen, die Geschichte in den Commit:\n  " + lang.joinToString("\n  ") }
     }
 
+    /** Prosazeilen je `#`-Block (gleiche Einrückung); leere `#`-Zeilen zählen nicht. */
+    private fun rautenBloecke(zeilen: List<String>): List<Pair<Int, Int>> {
+        val ergebnis = mutableListOf<Pair<Int, Int>>()
+        var i = 0
+        while (i < zeilen.size) {
+            val einzug = zeilen[i].length - zeilen[i].trimStart().length
+            if (!zeilen[i].trimStart().startsWith("#")) { i++; continue }
+            var j = i
+            while (j + 1 < zeilen.size && zeilen[j + 1].trimStart().startsWith("#") &&
+                zeilen[j + 1].length - zeilen[j + 1].trimStart().length == einzug) j++
+            ergebnis += (i + 1) to (i..j).count { zeilen[it].trim().trimStart('#').isNotBlank() }
+            i = j + 1
+        }
+        return ergebnis
+    }
+
+    /** Buildskripte aller Module, build-logic, Katalog und gradle.properties. */
+    private fun baudateien(): List<File> =
+        Quellen.module.map { File(it, "build.gradle.kts") }.filter { it.isFile } +
+            listOf("build.gradle.kts", "settings.gradle.kts", "gradle/libs.versions.toml", "gradle.properties")
+                .map { File(Quellen.projekt, it) }.filter { it.isFile } +
+            File(Quellen.projekt, "build-logic").walkTopDown()
+                .filter { it.isFile && (it.extension == "kt" || it.name.endsWith(".gradle.kts")) && "/build/" !in it.invariantSeparatorsPath }
+
+    @Test
+    fun `kein Kommentar in Build-Dateien hat mehr als fuenf Zeilen Prosa`() {
+        var gezaehlt = 0
+        val lang = baudateien().flatMap { f ->
+            val z = f.readLines()
+            val bloecke = if (f.extension in setOf("toml", "properties")) rautenBloecke(z) else bloecke(z)
+            bloecke.also { gezaehlt += it.size }.filter { it.second > 5 }.map { "${f.name}:${it.first} (${it.second} Zeilen)" }
+        }
+        assertTrue("Nur $gezaehlt Kommentarblöcke in Build-Dateien — greift die Suche noch?", gezaehlt > 30)
+        assertTrue("Kommentare über fünf Zeilen; das Warum kürzen, die Geschichte in den Commit:\n  " + lang.joinToString("\n  "),
+            lang.isEmpty())
+    }
+
+    @Test
+    fun `lange Kommentare im Workflow und in Tests werden weniger`() {
+        val WORKFLOW = 4
+        val TESTS = 93
+        val DATUM_UND_KENNUNG = 0
+        val wf = File(Quellen.projekt, "../.github/workflows/android.yml").readLines()
+        val wfLang = rautenBloecke(wf).filter { it.second > 5 }
+        // In Tests darf ein Absatz nur dann länger sein, wenn er die Gegenproben aufzählt.
+        val dateien = Quellen.tests.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        val testLang = dateien.flatMap { f -> langeAbsaetze(f.readLines()).map { "${f.name}:$it" } }
+        val kennung = Regex("""[0-9]{2}\.[0-9]{2}\.20[0-9]{2}|\b(?:arch|sec|ux|perf)[0-9]+ [HMN][0-9]*""")
+        val geschichte = dateien.flatMap { f ->
+            f.readLines().filter { z ->
+                val t = z.trim()
+                (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) &&
+                    kennung.containsMatchIn(t) && !t.contains("Gegenprobe", ignoreCase = true)
+            }.map { "${f.name}: ${it.trim()}" }
+        }
+        assertTrue("Nur ${wf.size} Zeilen Workflow — Pfad veraltet?", wf.size > 500)
+        ratsche("Workflow-Kommentare über fünf Zeilen", WORKFLOW, wfLang.size, wfLang.joinToString())
+        ratsche("Absätze über fünf Zeilen in Tests ohne Gegenproben", TESTS, testLang.size, testLang.take(20).joinToString())
+        ratsche("Datum oder Prüfkennung in Testkommentaren ausserhalb der Gegenproben", DATUM_UND_KENNUNG, geschichte.size,
+            geschichte.take(20).joinToString("\n  "))
+    }
+
+    /** Zeilennummern der Kommentar-Absätze über fünf Prosazeilen, die nicht mit „Gegenprobe“ beginnen. */
+    private fun langeAbsaetze(zeilen: List<String>): List<Int> {
+        val funde = mutableListOf<Int>()
+        var anfang = -1
+        val absatz = mutableListOf<String>()
+        fun schliessen() {
+            if (absatz.size > 5 && !absatz.first().startsWith("Gegenprobe")) funde += anfang + 1
+            absatz.clear()
+        }
+        for ((i, z) in zeilen.withIndex()) {
+            val t = z.trim()
+            val kommentar = t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
+            val text = t.removePrefix("/**").removePrefix("/*").removePrefix("//").removeSuffix("*/").removePrefix("*").trim()
+            if (!kommentar || text.isEmpty() || text.startsWith("@")) { schliessen(); continue }
+            if (absatz.isEmpty()) anfang = i
+            absatz += text
+        }
+        schliessen()
+        return funde
+    }
+
     @Test
     fun `jeder Verweis auf docs-begruendungen trifft Datei und Anker`() {
         val verweis = Regex("""docs/begruendungen/(\S+?\.md)#([\w-]+)""")
@@ -172,7 +242,7 @@ class QuelltextRatscheTest {
         val kaputt = produktivDateien().flatMap { f ->
             verweis.findAll(f.readText()).mapNotNull { m ->
                 n++
-                val doc = java.io.File(Quellen.projekt, "docs/begruendungen/" + m.groupValues[1])
+                val doc = File(Quellen.projekt, "docs/begruendungen/" + m.groupValues[1])
                 when {
                     !doc.isFile -> "${f.name}: ${m.groupValues[1]} fehlt"
                     "<a id=\"${m.groupValues[2]}\"></a>" !in doc.readText() -> "${f.name}: ${m.value}"
@@ -264,37 +334,32 @@ class QuelltextRatscheTest {
 
     @Test
     fun `die detekt-Baseline haelt nur Laenge und Verzweigung und schrumpft`() {
-        val baseline = java.io.File(Quellen.projekt, "config/detekt/baseline.xml").readText()
+        val baseline = File(Quellen.projekt, "config/detekt/baseline.xml").readText()
         val ids = Regex("""<ID>(\w+):""").findAll(baseline).map { it.groupValues[1] }.toList()
-        val grenze = java.io.File(Quellen.projekt, "tools/detekt-obergrenze.txt").readLines()
+        val grenze = File(Quellen.projekt, "tools/detekt-obergrenze.txt").readLines()
             .first { it.isNotBlank() && !it.startsWith("#") }.trim().toInt()
         assert(ids.size >= 10) { "Nur ${ids.size} Einträge in der Baseline — Muster veraltet?" }
         val fremd = ids.filter { it !in setOf("LongMethod", "CyclomaticComplexMethod") }.distinct()
         assert(fremd.isEmpty()) { "Die Baseline verschweigt andere Regeln: $fremd. Den Fund beheben, nicht eintragen." }
-        assert(ids.size <= grenze) {
-            "${ids.size} Funktionen in der detekt-Baseline, erlaubt sind $grenze. Eine neue lange " +
-                "oder verzweigte Funktion zerlegen, statt sie einzutragen."
-        }
-        if (ids.size < grenze) println("  detekt-Baseline: ${ids.size} (Obergrenze $grenze) — tools/detekt-obergrenze.txt nachziehen")
+        ratsche("Funktionen in der detekt-Baseline (tools/detekt-obergrenze.txt)", grenze, ids.size,
+            "Eine neue lange oder verzweigte Funktion zerlegen, statt sie einzutragen.")
     }
 
     @Test
     fun `Echtzeit-Warten in Tests wird weniger, nie mehr`() {
         // Ein Test, der schläft, ist langsam und auf einem vollen Runner brüchig. ViewModel-Tests
         // laufen im Takt (PfadServer.imTakt, Test-Dispatcher); gezählt wird, was noch wartet.
-        val SCHLAFEN = 17
-        val WARTEN = 83
-        val dateien = (Quellen.tests.walkTopDown() + java.io.File(Quellen.projekt, "core-testing/src/main").walkTopDown())
+        val SCHLAFEN = 4
+        val WARTEN = 17
+        val dateien = (Quellen.tests.walkTopDown() + File(Quellen.projekt, "core-testing/src/main").walkTopDown())
             .filter { it.isFile && it.extension == "kt" }.toList()
         val texte = dateien.map { code(it.readText()) }
         val schlafen = texte.sumOf { Regex("""\bThread\.sleep\(""").findAll(it).count() }
         val warten = texte.sumOf { Regex("""\bwarteBis\(""").findAll(it).count() }
         assert(dateien.size > 200) { "Nur ${dateien.size} Testdateien gefunden — greift die Suche noch?" }
-        assert(schlafen <= SCHLAFEN && warten <= WARTEN) {
-            "Thread.sleep $schlafen (erlaubt $SCHLAFEN), warteBis $warten (erlaubt $WARTEN). Neue Tests laufen " +
-                "im Takt: PfadServer.imTakt() oder FakeApi mit Test-Dispatcher, Compose mit waitUntil."
-        }
-        if (schlafen < SCHLAFEN || warten < WARTEN) println("  Echtzeit-Warten: $schlafen / $warten — Schranken nachziehen")
+        val hinweis = "Neue Tests laufen im Takt: PfadServer.imTakt() oder FakeApi mit Test-Dispatcher."
+        ratsche("Thread.sleep in Tests", SCHLAFEN, schlafen, hinweis)
+        ratsche("warteBis in Tests", WARTEN, warten, hinweis)
     }
 
     @Test
@@ -303,15 +368,12 @@ class QuelltextRatscheTest {
         // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene.
         val GRENZE = 236
         val dekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
-        val dateien = java.io.File(Quellen.projekt, "core-data/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+        val dateien = File(Quellen.projekt, "core-data/src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         assert(dateien.size > 100) { "Nur ${dateien.size} Dateien in core-data — greift die Suche noch?" }
         val oeffentlich = dateien.sumOf { f ->
             dekl.findAll(f.readText()).count { "private" !in it.groupValues[1] && "internal" !in it.groupValues[1] }
         }
-        assert(oeffentlich <= GRENZE) {
-            "$oeffentlich öffentliche Deklarationen in core-data, erlaubt sind $GRENZE. Was nur das Modul braucht, wird internal."
-        }
-        if (oeffentlich < GRENZE) println("  core-data öffentlich: $oeffentlich (Grenze $GRENZE) — nachziehen")
+        ratsche("öffentliche Deklarationen in core-data", GRENZE, oeffentlich, "Was nur das Modul braucht, wird internal.")
     }
 
     @Test
@@ -330,11 +392,20 @@ class QuelltextRatscheTest {
     }
 
     @Test
-    fun `ein Import allein fuehrt nichts aus, ein Aufruf schon`() {
-        val nurImport = "import ch.brickinventoryapp.ui.CatalogYearMath\nval s = Quellen.lies(\"ui/CatalogYearMath.kt\")"
-        val aufruf = nurImport + "\nval n = CatalogYearMath.nummerAus(0.5f, 100)"
-        org.junit.Assert.assertFalse("Ein Import ist kein Aufruf", fuehrtAus(nurImport))
-        org.junit.Assert.assertTrue("Ein Aufruf einer App-Funktion führt aus", fuehrtAus(aufruf))
-        org.junit.Assert.assertTrue(fuehrtAus("fun x() = runTest { }"))
+    fun `voll qualifizierte Namen fremder Pakete werden weniger`() {
+        // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
+        val HAUPT = 270
+        val TESTS = 0
+        val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
+        fun zaehle(dateien: Sequence<File>) = dateien.sumOf { f ->
+            code(f.readText()).lines().map { it.replace(Regex("//.*"), "") }
+                .filterNot { it.trimStart().startsWith("import ") || it.trimStart().startsWith("package ") }
+                .sumOf { voll.findAll(it).count() }
+        }
+        val haupt = zaehle(produktivDateien().asSequence())
+        val tests = zaehle(Quellen.tests.walkTopDown().filter { it.isFile && it.extension == "kt" })
+        assertTrue("Keine voll qualifizierten Namen gefunden — greift das Muster noch?", haupt + tests > 0)
+        ratsche("voll qualifizierte Namen im Hauptcode", HAUPT, haupt)
+        ratsche("voll qualifizierte Namen in Tests", TESTS, tests)
     }
 }

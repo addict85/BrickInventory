@@ -23,7 +23,6 @@ import java.io.File
  *     Preis aus verschiedenen Feldern.
  *   • Die drei Kacheln im Minifiguren-Reiter. Sie rechneten über `figs`, und
  *     diese Liste ist gefiltert (`source != "manual"`). „Manuell erfasst"
- *     konnte damit gar nichts anderes als 0 ergeben.
  *
  * Der Test hält das Ergebnis nicht fest (das prüft die Serverseite), sondern
  * die REGEL: Diese Zahlen kommen aus der Antwort, nicht aus einer Schleife
@@ -66,7 +65,7 @@ class ServerComputedValuesTest {
     }
 
     /**
-     * Ausgeführt mit dem Json der App. Gegenprobe (29.10.2026, gemessen): die
+     * Ausgeführt mit dem Json der App. Gegenprobe: die
      * Vorgabe `= AcquisitionTotals()` entfernt → rot.
      */
     @Test

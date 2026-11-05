@@ -18,17 +18,17 @@ import org.junit.Test
  * Die Zahlen des Startbildschirm-Widgets, gerechnet aus echten Antworten des
  * Servers (G&V-Übersicht und Wochenverlauf), und ihre Ablage als Text.
  *
- * Gegenproben (30.10.2026, gemessen gegen widget/WidgetZahlen.kt):
+ * Gegenproben:
  *   A  heute aus dem ERSTEN statt dem vorletzten Punkt → rot „heute ist die
  *      Differenz der letzten zwei Tage“
  *   B  gesamt = wert statt wert - kauf → rot „gesamt ist Wert minus Kaufpreis“
  *   C  in gvText() das Pluszeichen entfernt → rot „ein Gewinn trägt ein Plus“
- *   D  (01.11.2026) widgetAnzeige() gibt immer `abgelegt` zurück → rot
+ *   D  widgetAnzeige() gibt immer `abgelegt` zurück → rot
  *      „abgemeldet zeigt das Widget keine Zahlen“
- *   E  (03.11.2026, sec8 H5, kotlinc lokal) widgetWerte() ohne die Abfrage von
+ *   E  widgetWerte() ohne die Abfrage von
  *      `zeigen` → rot „ohne Erlaubnis sind die Betraege verdeckt“;
  *      gegenproben/widget-zeigt-betraege.patch
- *   F  (03.11.2026, nur CI) gegenproben/widget-guv-aus-allen.patch: Basis
+ *   F  gegenproben/widget-guv-aus-allen.patch: Basis
  *      übergangen → rot „mit Basis stehen Wert und G&V wie in der Finanzkarte“
  *      (32.40 statt 212.40)
  */

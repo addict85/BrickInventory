@@ -18,11 +18,11 @@ import java.util.Locale
  * jedem Zeitstempel OHNE Millisekunden still auf null zurueck — dann stand gar
  * kein Datum da. Genau das prueft der erste Fall unten mit.
  *
- * Gegenproben (02.11.2026, kotlinc): in fmtDatum den Zweig `locale.language !=
+ * Gegenproben: in fmtDatum den Zweig `locale.language !=
  * "en"` immer genommen → rot „je Sprache eine Form wie im Web“; im en-Zweig `DatumJahr.OHNE`
  * wie VOLL behandelt → ebenso rot; in fmtStand das Datum wieder fest als
  * dd.MM.yyyy → rot „der Stand folgt derselben Form“. Englisch wieder „$t/$m/$jj“
- * (05.11.2026, kotlinc) → rot „je Sprache eine Form …“.
+ * → rot „je Sprache eine Form …“.
  */
 class DatumFormatTest {
 

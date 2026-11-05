@@ -33,7 +33,7 @@ import java.io.File
  * Gegenproben: in GalleryScreen wieder ein `sets.filter { … }` eingesetzt → der
  * erste Teilschritt wird rot (durchgeführt). In SetsRepository.getSets die
  * Bedingung `ungefiltert` auf `true` gesetzt → rot „der Ablage-Cache greift nur
- * ungefiltert“ (29.10.2026, gemessen).
+ * ungefiltert“ .
  */
 class GalleryServerFilterTest {
 
@@ -73,7 +73,6 @@ class GalleryServerFilterTest {
         // (Nachtrag 96/115) ist es ein Feld des Galerie-Zustands. Geprueft
         // wird deshalb die ABSICHT — Herkunft Zustand, keine eigene Ableitung
         // aus `sets` — statt der damaligen Schreibweise.
-        // Wieder das FELD statt des Zustandsnamens — siehe AddExistingSetTest.
         assert(Regex("""\w+\.galleryThemes""").containsMatchIn(s)) {
             "Die Themenliste kommt nicht mehr aus dem Zustand (…galleryThemes)"
         }

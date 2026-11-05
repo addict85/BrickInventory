@@ -9,7 +9,7 @@ import org.junit.Test
  * Das geladene APK muss die Fassung tragen, die version.json ankündigt, und
  * neuer sein als die laufende App.
  *
- * Gegenprobe (01.11.2026, gemessen mit kotlinc lokal): in fassungPasst() den
+ * Gegenprobe: in fassungPasst() den
  * Vergleich `imApk == gemeldet` entfernt → rot „ein APK mit anderer Fassung
  * als angekuendigt passt nicht“.
  */

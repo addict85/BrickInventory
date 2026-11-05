@@ -12,11 +12,6 @@ import org.junit.Test
  * ── Warum es die zwei Caches nicht schon taten ──────────────────────────────
  *
  * Die App hatte zwei Zwischenspeicher fuer Bilder (Coil und OkHttp, je 50 MB).
- * Beide liegen unter `cacheDir`, und das Wort steht dort nicht zufaellig: Was
- * dort liegt, darf Android jederzeit loeschen, wenn der Platz knapp wird — ohne
- * Rueckfrage und ohne Ruecksicht darauf, was morgen gebraucht wird. Beide sind
- * ausserdem LRU: Wer durch den Katalog blaettert, verdraengt damit die Bilder
- * der eigenen Sammlung.
  *
  * Die Ablage liegt unter `filesDir`. Das ist der ganze Unterschied zwischen
  * „meistens noch da" und „da" — und deshalb die erste Pruefung hier.
@@ -62,11 +57,6 @@ class VorschauAblageTest {
         }
         // Unter filesDir raeumt niemand ausser uns. Ohne Obergrenze waechst die
         // Ablage, bis das Telefon voll ist, und niemand fiele es auf.
-        // Auf die DEFINITION geprueft, nicht auf den Namen: Die erste Fassung
-        // suchte nur "MAX_BYTES" irgendwo in der Datei. Die Gegenprobe (Zeile
-        // mit `const val` entfernt) blieb damit gruen, weil die VERWENDUNG
-        // weiter unten stehen blieb — eine Zusicherung, die den Namen findet,
-        // aber nicht die Sache.
         assert(Regex("""const val MAX_BYTES = \d""").containsMatchIn(s)) {
             "Die Ablage hat keine Obergrenze. Unter filesDir raeumt Android " +
                 "nichts weg — sie waechst dann, bis der Speicher voll ist."
@@ -176,8 +166,6 @@ class VorschauAblageTest {
     // und ListenfilterImZustandTest haben genau das gemeldet. Seither sammelt
     // ui/Vorwaermen.kt die Adressen (mit dem Blickfeld), und
     // data/cache/VorschauVorwaermer.kt holt, drosselt und haelt die Grenze.
-    // Diese Pruefungen folgen der Aufteilung.
-    // ────────────────────────────────────────────────────────────────────────
 
     @Test
     fun `das Vorwaermen hoert bei vier Fuenfteln auf`() {

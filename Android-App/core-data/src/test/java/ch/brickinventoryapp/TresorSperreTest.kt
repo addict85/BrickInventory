@@ -25,7 +25,7 @@ import javax.crypto.BadPaddingException
  * jede Ausnahme beim Entschlüsseln „kein Token“, auch ein KeyStoreException beim
  * Hochfahren oder ein hängender StrongBox-Chip.
  *
- * Gegenproben (03.11.2026, kotlinc lokal gemessen):
+ * Gegenproben:
  *   A  tresorFehlerDauerhaft() immer true (der alte Stand: jeder Fehler = weg) →
  *      rot „nur ein dauerhafter Fehler heisst Token weg“ und „ein vorübergehender
  *      Fehler wird einmal wiederholt“

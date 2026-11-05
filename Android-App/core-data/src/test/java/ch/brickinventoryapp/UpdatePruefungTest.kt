@@ -12,7 +12,7 @@ import org.junit.Test
  * version.json in unserer Release-Ablage, und darf die Signatur des geladenen APK
  * die laufende ersetzen (auch nach einer Schlüsselrotation)?
  *
- * Gegenproben (01.11.2026, gemessen gegen util/UpdatePruefung.kt):
+ * Gegenproben:
  *   A  in liegtUnter() den Vergleich des Hosts entfernt → rot „nur Adressen in
  *      der Release-Ablage“ (fremder Host mit gleichem Pfad)
  *   B  in liegtUnter() `ziel.pathSegments.size == ordner.size + 1` entfernt →

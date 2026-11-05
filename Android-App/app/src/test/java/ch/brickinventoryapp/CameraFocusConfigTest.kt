@@ -112,10 +112,6 @@ class CameraFocusConfigTest {
      * ── Warum die Regel schaerfer wurde ─────────────────────────────────────
      * Ganz zuerst zaehlte dieser Test das Vorkommen der Zeichenfolge
      * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in den einzelnen Bildschirmdateien:
-     * einmal im Scanner, einmal im Analyzer, ZWEIMAL im SetupScreen. Das
-     * pruefte die Formulierung an jeder Kopie — und dass es Kopien gab, war der
-     * eigentliche Fehler. Genau in dieser Doppelung hat die Behebung aus
-     * Nachtrag 112 eine Kopie nicht erreicht.
      *
      * Dann hiess sie „wer eine Vorschau baut, muss den AF-Modus setzen" —
      * die Fassung fuer eine Welt mit zwei Kopien. Seit auch die BINDUNG

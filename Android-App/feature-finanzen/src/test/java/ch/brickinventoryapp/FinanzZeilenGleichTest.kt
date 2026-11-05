@@ -31,7 +31,7 @@ import java.io.File
  * Die Wahl des Kaufpreises (Erfassung vor Eintrag) läuft in ui/Finanzzeilen.kt
  * und wird ausgeführt; dass die Karte ihn zeigt, prüft der Quelltext.
  *
- * Gegenprobe (30.10.2026, gemessen): in teilZeilen() `acq?.purchasePrice ?:
+ * Gegenprobe: in teilZeilen() `acq?.purchasePrice ?:
  * p.purchasePrice` durch `p.purchasePrice` ersetzt → rot „beide Aufrufstellen
  * reichen den Kaufpreis durch“ (150.0 statt 120.0).
  */

@@ -40,7 +40,7 @@ class SessionAndLifecycleTest {
     /**
      * Ein 401 ist von einem gewöhnlichen Serverfehler unterscheidbar — sonst bliebe
      * ein abgelaufener Token unerkannt. Ausgeführt gegen einen Testserver.
-     * Gegenprobe (29.10.2026, gemessen): in RepoBasis.safeCall `unauthorized =
+     * Gegenprobe: in RepoBasis.safeCall `unauthorized =
      * false` → rot.
      */
     @Test

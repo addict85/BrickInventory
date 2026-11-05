@@ -33,10 +33,6 @@ import javax.inject.Singleton
  *
  * Genau das stand ZWEIMAL in CatalogGraph.kt. Und das ist der gefährliche Teil:
  * Wer ein drittes Ziel hinzufügt und den Block vergisst, bekommt keinen Fehler.
- * Nichts schlägt fehl, es passiert nur nichts — die Fehlermeldungen dieses
- * Bildschirms verschwinden lautlos. Ein Test, der das erst bemerkt, wenn er
- * nach dem Block sucht, kommt zu spät; deshalb prüft er hier die URSACHE: dass
- * es überhaupt nur einen Fluss gibt.
  *
  * Das ist zugleich die Rechnung des ViewModel-Schnitts, sichtbar gemacht: Jedes
  * herausgelöste ViewModel bringt sonst einen weiteren Kanal mit.

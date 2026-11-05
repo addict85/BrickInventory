@@ -38,7 +38,7 @@ class VerwaltungLueckenTest {
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     /**
-     * Ausgeführt gegen einen Testserver. Gegenproben (29.10.2026, gemessen):
+     * Ausgeführt gegen einen Testserver. Gegenproben:
      *   A  `@POST("api/v1/admin/catalog-images")` auf "…/katalogbilder" → rot
      *   B  setJobSchedule wieder mit `Map<String, Any>` (Stand 8f4f9d3) → rot:
      *      Der kotlinx-Wandler kann `Any` nicht schreiben, der Zeitplan ging nie

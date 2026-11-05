@@ -29,8 +29,6 @@ import org.junit.Test
  *     Abfrage, der Endlos-Scroll rechnete also gegen eine fremde Zahl.
  *   - `onRefresh` gab ausdruecklich `search = null` — die Liste sprang auf den
  *     ganzen Bestand, waehrend das Suchfeld daneben den Text weiter zeigte.
- *   - Nach dem Loeschen eines manuellen Teils, nach einem Wechsel des
- *     Kontofilters und beim Betreten des Reiters ebenso.
  *
  * Dieselbe Form wie beim zweiten Galerie-Lader (GalerieLaedtGefiltertTest):
  * Ein Weg fuehrt den Filter mit, ein zweiter nicht. Solange der Filter ein
@@ -41,8 +39,6 @@ import org.junit.Test
  * `search`, `theme`, `sort` sind die Filter, die eine LISTE einschraenken und
  * neben denen eine Gesamtzahl steht. Genau daraus entsteht der Schaden:
  * geblaetterte Seiten und eine Gesamtzahl aus verschiedenen Abfragen.
- * `loadPortfolioHistory(period)` ist bewusst nicht gemeint — der Verlauf wird
- * vollstaendig ersetzt, blaettert nicht und fuehrt keine Gesamtzahl.
  *
  * Geprueft werden ALLE Lader unter ui/, nicht nur die des MainViewModel:
  * CatalogViewModel blaettert genauso (ensureCatalogPage) und haelt seine
@@ -93,7 +89,7 @@ class ListenfilterImZustandTest {
     /**
      * Ausgeführt: Erste Seite, Nachladen und der Abschnitt der manuellen Teile
      * tragen Blickfeld und Suchtext (TeileViewModel gegen einen PfadServer ohne Netz).
-     * Gegenprobe (31.10.2026, gemessen): in TeileViewModel.manuelleTeile
+     * Gegenprobe: in TeileViewModel.manuelleTeile
      * `teileSicht` → `null` → rot „… ohne accounts=own“.
      */
     @Test
@@ -181,8 +177,6 @@ class ListenfilterImZustandTest {
      * utils/handlers/minifigs.ts. Und sie waren nicht deckungsgleich: Der
      * Server sucht VOR der Gruppierung ueber jede fig_name-Zeile, der
      * Bildschirm danach nur ueber die eine, die MAX(fig_name) uebrig laesst.
-     * Dieselbe Figur, die in zwei Sets unter zwei Namen steht, fand die Webapp
-     * und das Telefon nicht.
      *
      * ── Was geprueft wird ───────────────────────────────────────────────────
      * Ein `.filter { … contains(…, ignoreCase = true) … }` unter ui/ ist die

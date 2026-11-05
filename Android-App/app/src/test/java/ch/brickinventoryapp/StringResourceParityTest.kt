@@ -12,12 +12,6 @@ import java.io.File
  * treffen:
  *
  *  1. Vier Schlüssel gab es nur in `values/strings.xml`:
- *     `settings_default_condition`, `_hint`, `_global` und
- *     `monitoring_default_condition`. Ein deutscher Nutzer las in den
- *     Einstellungen „Default condition" und „— Global default —". Android
- *     fällt bei einem fehlenden Eintrag stillschweigend auf die
- *     Vorgabesprache zurück — es gibt keinen Fehler, nur einen englischen
- *     Satz mitten in einer deutschen Oberfläche.
  *
  *  2. `PdfViewerScreen.kt` benutzte kein einziges `stringResource`.
  *     Beschriftungen, Ladetexte und drei Toasts standen als deutsche Literale
@@ -84,16 +78,11 @@ class StringResourceParityTest {
      * solange es keine gab, war das kein Loch. Mit dem Beheben der zehn
      * PluralsCandidate-Befunde gibt es sechzehn, und damit wäre eine fehlende
      * deutsche Einzahlform genau der Fehler, den die Datei oben beschreibt:
-     * Android fällt stillschweigend auf die Vorgabesprache zurück, und ein
-     * deutscher Nutzer liest bei genau einem Treffer einen englischen Satz.
      *
      * Geprüft wird darum dreierlei:
      *   1. Dieselben Namen in beiden Dateien.
      *   2. Dieselben Mengenklassen je Name — eine deutsche `<plurals>` ohne
      *      `one` sieht vollständig aus und ist es nicht.
-     *   3. Jede hat mindestens `one` und `other`. Fehlt `one` in BEIDEN
-     *      Dateien, fällt Punkt 2 nicht auf, und doch steht dann überall die
-     *      Mehrzahl — „1 Sets im Katalog".
      *
      * Gegenproben (durchgeführt, in derselben Logik gegen die echten Dateien
      * und vier verfälschte Fassungen):
@@ -276,7 +265,7 @@ class StringResourceParityTest {
     /**
      * Ein Bereich, ein Name — wie im Web (monitor.title): „Hintergrundarbeiten“
      * bzw. „Background work“ in Titel, Navigation und Menü, kein „Monitoring“.
-     * Gegenprobe (29.10.2026): nav_monitoring auf Englisch wieder „Monitoring“ → rot.
+     * Gegenprobe: nav_monitoring auf Englisch wieder „Monitoring“ → rot.
      */
     @Test
     fun `der Bereich heisst ueberall Hintergrundarbeiten`() {
@@ -294,7 +283,7 @@ class StringResourceParityTest {
      * Schweizer Schreibung und ein Wort je Sache: kein „ß“, keine Abkürzung „ggü.“, die
      * App-Version heisst „Version“ (nicht „Fassung“), und die Überschrift der Anmeldung
      * ist nicht derselbe Text wie ihr Knopf.
-     * Gegenprobe (02.11.2026, kotlinc): scanner_close wieder „Schließen“ → rot.
+     * Gegenprobe: scanner_close wieder „Schließen“ → rot.
      */
     @Test
     fun `deutsche Texte in Schweizer Schreibung und eindeutig`() {
@@ -355,21 +344,12 @@ class StringResourceParityTest {
         // liest. Bewusst NICHT beanstandet:
         //  - Emoji und Symbole ("👷", "📅") — die sind in jeder Sprache gleich
         //    und stehen absichtlich im Code statt in den Sprachdateien.
-        //  - Zeichenketten mit Platzhaltern, die nur Zahlen zusammensetzen
-        //    ("${'$'}{a} / ${'$'}{b}").
-        //  - Alles ausserhalb der drei genannten Stellen; ein Dateiname oder
-        //    ein MIME-Typ ist kein Oberflächentext.
         val muster = listOf(
             Regex("""Text\(\s*"([^"]{3,})"""),
             Regex("""contentDescription\s*=\s*"([^"]{3,})""""),
             Regex("""Toast\.makeText\([^,]+,\s*"([^"]{3,})"""),
         )
         // Eigennamen und Abkürzungen, die in jeder Sprache gleich lauten.
-        // Kurz halten: Jeder Eintrag hier ist eine Ausnahme — und damit sie
-        // nicht, wie es hier stand, „niemand mehr prüft", tut es jetzt der
-        // Test selbst: Am Ende muss jeder Eintrag mindestens einmal gegriffen
-        // haben. Ein Eintrag, der nichts mehr beschreibt, sieht aus wie eine
-        // Entscheidung und ist doch bloss eine Vermutung.
         val erlaubt = setOf("PDF")
         val erlaubtGesehen = mutableSetOf<String>()
 

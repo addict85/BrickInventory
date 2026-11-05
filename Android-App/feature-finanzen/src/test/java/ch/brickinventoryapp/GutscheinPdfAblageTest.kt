@@ -16,7 +16,7 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Ein Gutschein-PDF (Nummer und PIN) kommt nie auf die Platte (sec11 N1): Der
+ * Ein Gutschein-PDF (Nummer und PIN) kommt nie auf die Platte: Der
  * Betrachter bekommt dafür keine Datei, lädt in den Speicher und rendert aus einem
  * memfd. Was ältere Fassungen in ihren Ordner legten, verschwindet beim Abmelden und
  * Start. Anleitungen bleiben im Zwischenspeicher.
@@ -29,21 +29,21 @@ import java.io.File
  * es seit sec11 nicht mehr gibt):
  *   A  in pdfAblage() `vertraulich` übergangen (immer cacheDir) → rot „ein
  *      Gutschein-PDF bekommt keine Datei …“
- *   D  (01.11.2026) pdfDarfGespeichertWerden() immer true → rot „ein
+ *   D  pdfDarfGespeichertWerden() immer true → rot „ein
  *      Gutschein-PDF laesst sich nicht herunterladen …“
- *   E  (01.11.2026) im PdfViewerScreen `if (speicherbar)` um den Knopf entfernt
+ *   E  im PdfViewerScreen `if (speicherbar)` um den Knopf entfernt
  *      → rot „Betrachter, Abmelden und Start räumen auf“ (Knopf ungeschützt)
- *   F  (02.11.2026) in pdfAblage() wieder `pdfUrl.hashCode()` als Name → rot
+ *   F  in pdfAblage() wieder `pdfUrl.hashCode()` als Name → rot
  *      „der Dateiname haengt an der ganzen Adresse …“
- *   G  (02.11.2026) zeigtGutscheine() wieder `"/api/v1/vouchers/" in pdfUrl` →
+ *   G  zeigtGutscheine() wieder `"/api/v1/vouchers/" in pdfUrl` →
  *      rot „Gutscheine erkennt der Pfad …“
- * Gegenproben (04.11.2026, gemessen mit kotlinc lokal; sec11 N1):
+ * Gegenproben:
  *   H  pdfAblage() gibt auch für vertrauliche PDFs eine Datei im Zwischenspeicher
  *      → rot „ein Gutschein-PDF bekommt keine Datei …“;
  *      gegenproben/gutschein-pdf-auf-platte.patch
  *   I  im Lader (damals PdfViewerScreen) `if (ablage == null)` durch `if (false)` ersetzt → rot
  *      „Betrachter, Abmelden und Start raeumen auf“ (Speicherweg nicht gewählt)
- * Gegenproben (04.11.2026, sec12 H5 und N1):
+ * Gegenproben:
  *   J  im PdfViewerScreen den Drucken-Knopf vor `if (speicherbar)` gezogen → rot
  *      „Betrachter, Abmelden und Start raeumen auf“ (Drucken ungeschützt);
  *      gegenproben/gutschein-drucken.patch

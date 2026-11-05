@@ -67,9 +67,6 @@ class ThumbFallbackTest {
         // ── Nachgezogen (Nachtrag 38) ───────────────────────────────────────
         // Hier standen zwei Verbote: kein `retryNonce`, kein `setParameter`
         // (das hiess in Coil 2 so; heute `memoryCacheKeyExtra`).
-        // Sie stammen aus einer Phase, in der ein Wiederholversuch als
-        // wirkungslos verworfen wurde („fragt bei einer echt fehlenden Datei
-        // zweimal dieselbe 404 an"). Das galt für den DAMALIGEN Fall.
         //
         // Inzwischen ist der Ablauf ein anderer: Direkt nach dem Erfassen
         // erzeugt der Server die Vorschau erst noch — der zweite Versuch nach
@@ -275,12 +272,10 @@ class SetDetailUsesFullResolutionTest {
  * fullUrl() in der Webapp (public/js/01-core.js).
  *
  * Die Adress-Prüfungen dieser Datei rufen die Helfer auf, statt ihren Quelltext
- * zu lesen. Gegenproben (31.10.2026, gemessen):
+ * zu lesen. Gegenproben:
  *   A  in resolveImageUrl das Entfernen von `_thumb` weggelassen → rot „resolveFullUrl
  *      entfernt …“ und „Vorschau und volle Aufloesung …“
  *   B  `&thumb=1` beim Vorschaubild weggelassen → rot „Vorschaubild laeuft …“
- *   C  im Zweig der vollen Auflösung den Proxy umgangen (`imageUrl` direkt) → rot
- *      „resolveFullUrl leitet …“ und NoDirectCdnAccessTest „resolveImageUrl-Helfer …“
  */
 class FullResolutionStripsThumbSuffixTest {
 

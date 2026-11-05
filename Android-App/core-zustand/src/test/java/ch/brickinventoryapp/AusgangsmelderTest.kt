@@ -25,7 +25,7 @@ import org.junit.Test
  * wurde; Nachladen, wenn gesendet wurde; ein Satz mit Grund, wenn der Server
  * ablehnte.
  *
- * Gegenproben (30.10.2026, gemessen):
+ * Gegenproben:
  *   A  in Ausgangsmelder.starte den Hinweis bei steigender Zahl entfernt → rot
  *      „offline Gespeichertes wird gemeldet“
  *   B  für MANUELLE_TEILE `null` statt Aenderung.Teile → rot „gesendet lädt die

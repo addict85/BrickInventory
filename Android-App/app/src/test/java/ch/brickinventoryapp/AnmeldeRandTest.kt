@@ -49,10 +49,6 @@ import java.util.Locale
 /**
  * Anmelden, Registrieren und Einrichten stehen ohne Gerüst auf dem ganzen Fenster
  * (enableEdgeToEdge). Ausgeführt mit gemeldeten Leisten (Status 24 dp, Gesten 48 dp)
- * und Tastatur (300 dp): Inhalt nicht unter den Leisten, „Registrieren“ über der
- * Tastatur erreichbar, „Erweitert“ meldet seinen Zustand, auf dem Tablet steht
- * „Registrieren“ ohne Rollen im Bild, und „Weiter“ hebt sich in jedem Design von
- * der Karte ab (≥ 3:1) und vom gesperrten Zustand (≥ 1,5:1).
  *
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   anmeldung-hinter-tastatur     imePadding() aus ausserhalbDerSystemleisten → rot „Registrieren bleibt …“

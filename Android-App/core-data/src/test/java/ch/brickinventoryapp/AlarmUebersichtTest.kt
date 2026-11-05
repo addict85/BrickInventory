@@ -42,10 +42,8 @@ import retrofit2.http.PUT
  *   a) LaunchedEffect(Unit) { vm.ladeAlarmUebersicht() } aus SettingsScreen.kt
  *      entfernt
  *        → „die Rubrik steht in den Einstellungen und laedt sich selbst" rot
- *   b) (die Schwelle prueft seit dem 28.10.2026 EinstellungenViewModelTest
+ *   b) (die Schwelle prueft EinstellungenViewModelTest
  *      ausgefuehrt, „eine Schwelle von null geht nicht hinaus")
- *   c) getAlleAlarme in SetsRepository.kt und an der Aufrufstelle umbenannt
- *        → „die App holt alle Alarme ueber die gemeinsame Route" rot
  *
  * Ergebnis des Laufs: 495 Tests, genau 3 rot — einer je Eingriff, keiner
  * zusaetzlich. Damit haengt jede Regel an ihrer eigenen Aussage und nicht an
@@ -64,13 +62,6 @@ import retrofit2.http.PUT
  *   a) FinanzBild-Aufruf aus SettingsScreen entfernt
  *        → „die Zeile zeigt ein Bild und fuehrt in die Detailansicht" rot
  *   b) Schluessel des Rollmerkers von "settings" auf "einstellungen"
- *        → „die Einstellungen merken sich ihre Rollposition" rot
- *   c) Loeschknopf schreibt ueber eine Zwischenvariable
- *        → „vor dem Loeschen wird gefragt" rot
- *   d) `border` der Plakette auf null — nur noch Farbe traegt den Unterschied
- *        → „der Alarmzustand steht als Plakette da" rot
- *   e) 'alerts_fired' zurueck auf „○ hat gemeldet" — Zeichen statt Wort
- *        → „die beiden Alarmzustaende sagen ohne Farbe und Zeichen, was gilt" rot
  *
  * Ergebnis: 501 Tests, GENAU 5 rot — einer je Eingriff, keiner zusaetzlich.
  * Jeder Anker war vorher auf Eindeutigkeit geprueft (je genau 1 Fundstelle);
@@ -86,7 +77,7 @@ class AlarmUebersichtTest {
     private fun quelle(rel: String) = Quellen.ohneKommentare(Quellen.lies(rel))
 
     /**
-     * Ausgeführt gegen einen Testserver. Gegenprobe (29.10.2026, gemessen): in
+     * Ausgeführt gegen einen Testserver. Gegenprobe: in
      * SetsApi `@GET("api/v1/alerts")` auf "api/v1/alarme" → rot.
      */
     @Test

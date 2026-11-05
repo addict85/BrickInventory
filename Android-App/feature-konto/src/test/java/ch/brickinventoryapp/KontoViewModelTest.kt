@@ -32,17 +32,17 @@ import ch.brickinventoryapp.ui.Sitzung
  *    Passwortwechsel wird abgemeldet" rot.
  *  - In zweiterFaktor() `erfolgText` nicht mehr gemeldet: „der bestätigte
  *    zweite Faktor zeigt die Codes" rot an der Meldung.
- *  - (30.10.2026) In alsGeraet() `.minOrNull()` → `.maxOrNull()`: „die
+ *  - In alsGeraet() `.minOrNull()` → `.maxOrNull()`: „die
  *    Geräteliste zeigt Vollzugriff und die frühere Frist" rot (2027 statt 2026);
  *    `deleted` beim Zählen nicht beachtet: „ein schon entwertetes Gerät zählt
  *    nicht“ rot (m…:1 statt m…:0).
- *  - (01.11.2026) In abgelehnt() `codeNoetig` nicht gesetzt: „ohne Code
+ *  - In abgelehnt() `codeNoetig` nicht gesetzt: „ohne Code
  *    verlangt der zweite Faktor …“ und „eine neue E-Mail …“ rot; in aenderePasswort()
  *    den Code nicht an changePassword() gereicht: dieselbe Prüfung rot (kein
  *    "code" im Rumpf).
- *  - (01.11.2026) In richteZweitenFaktorEin() `d.otpauth` ungeprüft übernommen:
+ *  - In richteZweitenFaktorEin() `d.otpauth` ungeprüft übernommen:
  *    „eine fremde Adresse statt otpauth wird nicht geöffnet“ rot.
- *  - (03.11.2026) Patch gegenproben/profil-ohne-passwort.patch (die Prüfung
+ *  - Patch gegenproben/profil-ohne-passwort.patch (die Prüfung
  *    `passwort.isNullOrBlank()` in speichereProfil() entfernt): „ohne Passwort
  *    fragt das Profil den Server nicht“ rot.
  *  - Patch gegenproben/profil-mail-nicht-gesendet-still.patch (`emailSent` nicht

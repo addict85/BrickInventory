@@ -105,7 +105,7 @@ class ResourceAndCacheTest {
 
     /**
      * Derselbe Commit ergibt dieselbe Version; die CI holt dafür die ganze
-     * Historie. Gegenprobe (30.10.2026, gemessen): `fetch-depth: 0` aus
+     * Historie. Gegenprobe: `fetch-depth: 0` aus
      * android.yml entfernt → rot; `LocalDateTime.now()` zurück → rot.
      */
     @Test
