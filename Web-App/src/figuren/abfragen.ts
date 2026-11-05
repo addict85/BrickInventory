@@ -9,8 +9,8 @@ import * as repo from './repository/figurenListe';
 
 /** Ohne page_size unverändertes Verhalten — die Android-App ruft so auf. */
 type FigurenWunsch = { search?: string | undefined; source?: string | undefined; set_number?: string | undefined;
-  page?: number | undefined; page_size?: number | undefined };
-export async function getMinifigs(userIdWahl: Sicht | number | number[], { search, source, set_number, page = 1, page_size }: FigurenWunsch = {}) {
+  page?: number | undefined; page_size?: number | null | undefined };
+export async function getMinifigs(userIdWahl: Sicht | number | number[], { search, source, set_number, page = 1, page_size = null }: FigurenWunsch = {}) {
   const userId = await blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
@@ -58,11 +58,13 @@ export async function getMinifigStats(userIdWahl: Sicht | number | number[]) {
 
 /** @param viewerId wessen Einstellungen gelten (Währung); `userId` sagt, wessen Daten. */
 export async function getManualMinifigs(userIdWahl: Sicht | number | number[], viewerId: number,
-                                 { search = null }: { search?: string | null } = {}) {
+                                 { page = 1, page_size = null, search = null }:
+                                 { page?: number; page_size?: number | null; search?: string | null } = {}) {
   const userId = await blickfeldAus(userIdWahl);
   const uids = asIds(userId);
-  // Seiten schneidet die Route (src/infra/seite.ts), nach Zustand und Preis.
-  const figs = await repo.manuelleFigurenListe(uids, search, null);
+  const size = page_size ? clampPageSize(page_size, 60) : null;
+  const figs = await repo.manuelleFigurenListe(uids, search,
+    size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null);
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
   const mitZustand = await applyManualCondition(uids, mapped, 'fig');
 

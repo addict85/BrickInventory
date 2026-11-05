@@ -701,15 +701,16 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   // zuerst eine IPv6-Adresse von Cloudflares Edge, der Verbindungsaufbau
   // dorthin hängt lautlos, und ohne Happy-Eyeballs-Rückfall wird nie auf IPv4
   // gewechselt, bevor der eigene Timeout zuschlägt.
-  const server = require('./helpers/sources').serverAll();
-  const agentBlock = server.slice(server.indexOf('const _cdnAgent ='), server.indexOf('const _cdnAgent =') + 1000);
-  assert.match(agentBlock, /family: 4,/,
+  // Der Verbindungspool der Bild-CDNs steht seit 05.11.2026 in clients/bildCdn.ts.
+  const cdn = fs.readFileSync(path.join(ROOT, 'clients/bildCdn.ts'), 'utf8');
+  const agentBlock = cdn.slice(cdn.indexOf('const POOL ='), cdn.indexOf('const POOL =') + 400);
+  assert.match(agentBlock, /family: 4\b/,
     'Der Bild-Proxy muss IPv4 für CDN-Anfragen erzwingen');
 
   // Der lokale Set-Bild-Download liegt seit Nachtrag 125 in src/katalog/bilder/setImages.ts.
   // Er läuft über den gemeinsamen Abrufhelfer; der erzwingt IPv4 (Test darunter).
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/katalog/bilder/setImages.ts'), 'utf8');
-  assert.match(setsFile, /await holeHttps\(url, \{/,
+  assert.match(setsFile, /await hole(?:Https|Bild)\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort');
 });
 

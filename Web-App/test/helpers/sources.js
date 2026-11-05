@@ -241,7 +241,8 @@ module.exports.coreQuelle = coreQuelle;
  * @returns {string} z.B. "function f(a, b: string | null = null)"
  */
 function funktionsKopf(src, name) {
-  const i = src.indexOf(`function ${name}(`);
+  // Auch mit Typparametern (`function f<T>(`).
+  const i = Math.max(src.indexOf(`function ${name}(`), src.indexOf(`function ${name}<`));
   if (i < 0) throw new Error(`Funktion ${name} gibt es nicht (mehr)`);
   let depth = 0;
   for (let j = src.indexOf('(', i); j < src.length; j++) {

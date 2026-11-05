@@ -475,7 +475,7 @@ async function loeseVollstaendigAuf(posten: WantedPosten[], uid: number, opt: Wa
 }
 
 /** Die Berichtszeile eines Postens, vor dem Schreiben. */
-function postenZeile(a: Aufloesung): PostenErgebnis {
+function berichtsZeile(a: Aufloesung): PostenErgebnis {
   // Eine nicht abbildbare Farbe wird nicht erfunden: color_id 0 ist bei
   // Rebrickable Schwarz, nicht „keine Farbe".
   // Ausführlich: docs/begruendungen/src/merkliste/wantedListe.ts.md#importierewantedliste-grund
@@ -590,7 +590,7 @@ export async function importiereWantedListe(
     const rbId = a.rbId;
     const offen = rbId === null || a.farbeOffen;
     lfd++;
-    const zeile = postenZeile(a);
+    const zeile = berichtsZeile(a);
     if (rbId === null || a.farbeOffen || opt.vorschau) {
       // In der Vorschau heisst „angelegt" „würde angelegt".
       if (offen) zeile.ausgang = 'offen';

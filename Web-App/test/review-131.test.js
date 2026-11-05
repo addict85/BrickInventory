@@ -92,7 +92,8 @@ test('Bilddownloads sind nach oben begrenzt', () => {
 
   assert.doesNotMatch(körper, /fs\.writeFileSync|fs\.existsSync/,
     'blockierende Dateizugriffe im Anfragepfad — dieselbe Sache wie in routes/parts.ts');
-  assert.match(körper, /holeHttps\(url, \{/,
+  // holeBild (clients/bildCdn.ts) geht über denselben Helfer mit Umleitungsgrenze.
+  assert.match(körper, /hole(?:Https|Bild)\(url, \{/,
     'eigener Abruf statt des Helfers mit Umleitungsgrenze');
   assert.match(körper, /MAX_BYTES/,
     'kein Grössendeckel — eine beliebig grosse Antwort landet komplett im Speicher');

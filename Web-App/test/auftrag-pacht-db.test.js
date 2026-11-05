@@ -5,7 +5,7 @@
  * Auftrag, der gerade auf einen Download wartet.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in fuehreAus() `haltePacht(...)` durch `() => {}` ersetzt → rot: „ein
+ *   A  in fuehreAuftragAus() `haltePacht(...)` durch `() => {}` ersetzt → rot: „ein
  *      Auftrag ohne eigenes Lebenszeichen läuft genau einmal“ (5 Starts, Status fehler)
  *   C  Trigger auftrag_exklusiv gelöscht (DROP TRIGGER) → rot: „B belegt,
  *      solange A noch nicht festgeschrieben hat“

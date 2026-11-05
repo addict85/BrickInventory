@@ -99,7 +99,7 @@ function kontextFuer(a: AuftragsZeile, ac: AbortController, fristSek: number, is
   };
 }
 
-async function fuehreAus(a: AuftragsZeile, ac: AbortController, b: Bearbeiter | undefined, fristSek: number,
+async function fuehreAuftragAus(a: AuftragsZeile, ac: AbortController, b: Bearbeiter | undefined, fristSek: number,
                          istBeendet: () => boolean): Promise<void> {
   let nutzlast: Nutzlast<AuftragsArt> | undefined;
   const k = kontextFuer(a, ac, fristSek, istBeendet);
@@ -155,7 +155,7 @@ function erzeugeWorker(bearbeiter: Bearbeitertabelle, o: WorkerOptionen = {}) {
     const ac = new AbortController();
     const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
     laufend.set(a.id, lauf);
-    lauf.fertig = fuehreAus(a, ac, bearbeiter[a.art], fristSek, () => beendet).catch(logAndContinue(`auftraege:${a.art}`)).finally(() => { laufend.delete(a.id); });
+    lauf.fertig = fuehreAuftragAus(a, ac, bearbeiter[a.art], fristSek, () => beendet).catch(logAndContinue(`auftraege:${a.art}`)).finally(() => { laufend.delete(a.id); });
     return lauf;
   }
 

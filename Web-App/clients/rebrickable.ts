@@ -170,7 +170,7 @@ async function holeSetTeile(n: string): Promise<{ teile: any[]; verweigert: bool
     }
     if (status === 404) break;
     if (status !== 200) { console.error(`  Parts HTTP ${status}`); break; }
-    let data; try { data = JSON.parse(body); } catch (e) { meldeUndWeiter('rebrickable:figuren-seite', e); break; }
+    let data; try { data = JSON.parse(body); } catch (e) { meldeUndWeiter('rebrickable:teile-seite', e); break; }
     allParts.push(...(data.results || []));
     url = data.next || null;
     if (url) await sleep(500);
@@ -193,7 +193,7 @@ async function scrapeInstructions(setNumber: string) {
       }
     }
     return found;
-  } catch (e) { return meldeUndLiefere('rebrickable:figuren', [])(e); }
+  } catch (e) { return meldeUndLiefere('rebrickable:anleitungen', [])(e); }
 }
 
 /**
@@ -268,7 +268,7 @@ async function getMinifigInfo(figNumber: string) {
       fig_name:   data.name || null,
       image_url:  data.set_img_url || null,
     };
-  } catch (e) { return meldeUndLiefere('rebrickable:set', null)(e); }
+  } catch (e) { return meldeUndLiefere('rebrickable:figur', null)(e); }
 }
 
 // ── Get color list ──────────────────────────────────────────────────────
@@ -291,7 +291,7 @@ async function getBrickColors() {
       hex:  c.rgb || null,
     }));
     return _colorsCache;
-  } catch (e) { return meldeUndLiefere('rebrickable:teile', [])(e); }
+  } catch (e) { return meldeUndLiefere('rebrickable:farben', [])(e); }
 }
 
 /**

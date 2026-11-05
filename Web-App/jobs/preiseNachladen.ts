@@ -19,7 +19,7 @@ async function holeEinen(p: Posten, uid: number, waehrung: string, ttl: string):
 }
 
 /** Ist das Tageskontingent erschöpft, wartet der Rest bis morgen; ein einzelner Fehlschlag hält die Liste nicht an. */
-export async function preiseNachladen(n: Nutzlast<'preise_nachladen'>, k: AuftragsKontext): Promise<void> {
+async function preiseNachladen(n: Nutzlast<'preise_nachladen'>, k: AuftragsKontext): Promise<void> {
   const ttl = (await getGlobalSetting('price_cache_ttl', '24')) || '24';
   for (const [i, p] of n.posten.entries()) {
     pruefeAbbruch(k);
@@ -29,3 +29,5 @@ export async function preiseNachladen(n: Nutzlast<'preise_nachladen'>, k: Auftra
     if (i % 10 === 9) await k.fortschritt({ erledigt: i + 1, gesamt: n.posten.length });
   }
 }
+
+export { preiseNachladen };

@@ -135,7 +135,8 @@ async function nurVorschau(setNummer: string, vorschau: string, st: StapelStand)
 }
 
 /** @returns true, wenn das CDN drosselt und der Stapel abbricht */
-async function nachFehlschlag(setNummer: string, status: number | undefined, st: StapelStand): Promise<boolean> {
+async function nachFehlschlag(setNummer: string, info: { status?: number }, st: StapelStand): Promise<boolean> {
+  const status = info.status;
   // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures
   // Weiterfragen verlängert die Sperre.
   // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-2
@@ -148,7 +149,7 @@ async function nachFehlschlag(setNummer: string, status: number | undefined, st:
   // NUR ein 404/410 heisst „das Bild gibt es nicht"; Zeitüberschreitungen und
   // Netzaussetzer dürfen ein Bild nicht dauerhaft sperren.
   // Ausführlich: docs/begruendungen/jobs/imageQueue.ts.md#arbeitestapel-hartfehlend
-  const hartFehlend = status === 404 || status === 410;
+  const hartFehlend = info.status === 404 || info.status === 410;
   if (hartFehlend) merkeFehlend('set:' + setNummer, `HTTP ${status} vom CDN`);
   else st.etwasZuTun = true;
   st.erg.nichtGeladen++;
@@ -195,7 +196,7 @@ async function arbeiteStapel(): Promise<StapelErgebnis> {
     const info: { status?: number } = {};
     const lokal = await downloadSetImage(r.url, r.set_number, info).catch(meldeUndLiefere('bild-job:downloadSetImage', null));
     if (!lokal) {
-      if (await nachFehlschlag(r.set_number, info.status, st)) {
+      if (await nachFehlschlag(r.set_number, info, st)) {
         // ALLE unbearbeiteten Notizen zurücklegen: Der Stapel kam per
         // DELETE … RETURNING, der Rest wäre sonst still verloren.
         const rest = rows.slice(idx);
