@@ -73,7 +73,7 @@ export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
       <label class="alarm-preis" for="${p}-alert-val"><span class="alarm-preis-titel">${tRaw('detail.alert_preis_ph')}</span>
       <input inputmode="decimal" type="text" autocomplete="off" id="${p}-alert-val" class="alarm-feld" aria-label="${tRaw('detail.alert_price')} (${CURRENCY})"
              data-input="alarmGetippt" data-arg="${sn}"
-             data-change="speichereAlarm" /><span class="alarm-waehrung" aria-hidden="true">${CURRENCY}</span></label>
+             data-change="speichereAlarm" /></label><span class="alarm-waehrung" aria-hidden="true">${CURRENCY}</span>
       <span id="${p}-alert-state" class="alarm-stand"></span>
     `;
 }

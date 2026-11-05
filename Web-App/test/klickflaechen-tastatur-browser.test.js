@@ -2,7 +2,10 @@
  * Jede Klickfläche ist mit der Tastatur bedienbar (WCAG 2.1.1, Stufe A): Auf
  * allen Hauptseiten, in Karten- und Tabellenansicht und im Haushalt, hat jedes
  * sichtbare Element mit data-click, das kein Knopf, Link oder Feld ist,
- * tabindex="0" und eine Rolle (eine Tabellenzeile hat ihre eigene). Ausgenommen
+ * tabindex="0" und eine Rolle. Eine Tabellenzeile ist bedienbar, wenn sie
+ * einen Zeilenknopf (.zeile-oeffnen) mit derselben Aktion trägt: Eine
+ * fokussierbare Zeile ohne Namen las der Bildschirmleser als leere Zeile
+ * (UI-Prüfung 17, Barrierefreiheit M2). Ausgenommen
  * sind nur aria-hidden-Abkürzungen in einer selbst bedienbaren Karte (der
  * Papierkorb der Kachel löscht, was ihr Dialog auch löscht) und stopEvent,
  * das nur den Klick der Zeile von ihren Knöpfen fernhält. Dazu der Befund
@@ -16,6 +19,9 @@
  *      → rot: „jede Klickfläche ist bedienbar“ (Finanzen: TR openManDetail)
  *   C  Tabellenzeile der Figuren wieder ohne tabindex → rot: „jede Klickfläche
  *      ist bedienbar“ (Minifiguren Tabelle: TR openSetItemDetail)
+ *   D  (05.11.2026) Zeilenknopf der Figurentabelle durch reinen Text ersetzt
+ *      → rot: „jede Klickfläche ist bedienbar“ (Minifiguren Tabelle: TR
+ *      openSetItemDetail) und „Figur aus Set per Tastatur“ (table)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -47,8 +53,8 @@ const SEITEN = [
 /** Klickflächen ohne Tastaturweg; eine Zeile je Art, damit die Meldung kurz bleibt. */
 const UNBEDIENBAR = `(() => {
   const NATIV = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'SUMMARY', 'LABEL', 'OPTION']);
-  const bedienbar = (el) => NATIV.has(el.tagName) || (el.tabIndex >= 0 && el.hasAttribute('tabindex')
-    && (el.tagName === 'TR' || !!el.getAttribute('role')));
+  const bedienbar = (el) => NATIV.has(el.tagName) || (el.tabIndex >= 0 && el.hasAttribute('tabindex') && !!el.getAttribute('role'))
+    || (el.tagName === 'TR' && !!el.querySelector('.zeile-oeffnen[data-click="' + el.dataset.click + '"]'));
   const funde = new Set();
   for (const el of document.querySelectorAll('[data-click]')) {
     if (!el.checkVisibility() || bedienbar(el) || el.dataset.click === 'stopEvent') continue;
@@ -82,7 +88,7 @@ test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async (t) => {
   await t.test('Figur aus Set per Tastatur', async () => {
     await b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open')); true`);
     await b.auswerten(reiter('minifigs'));
-    for (const [wert, sel] of [['grid', '#figs-list .part-card[data-click="openSetItemDetail"]'], ['table', '#figs-list tr[data-click="openSetItemDetail"]']]) {
+    for (const [wert, sel] of [['grid', '#figs-list .part-card[data-click="openSetItemDetail"]'], ['table', '#figs-list tr .zeile-oeffnen[data-click="openSetItemDetail"]']]) {
       await b.auswerten(ansicht('figs-view', wert));
       await bis(`!!document.querySelector(${JSON.stringify(sel)})`, `Figur aus Set (${wert})`);
       // Mit Tab hin, nicht mit focus(): Der Befund war, dass der Tab-Gang sie übersprang.

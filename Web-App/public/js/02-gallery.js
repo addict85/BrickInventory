@@ -378,6 +378,7 @@ G('add-num').addEventListener('keydown',e=>e.key==='Enter'&&doAddSet());
 function unbekanntZuruecksetzen() {
   const box = G('add-unbekannt'); if (box) box.hidden = true;
   delete G('add-num').dataset.bestaetigt;
+  delete G('add-num').dataset.vorhanden;
   G('btn-add-text').textContent = tRaw('gallery.add.submit');
 }
 
@@ -393,6 +394,7 @@ async function setUnbekannt(num) {
   const eigen = await api('GET', `/v1/sets/${encodeURIComponent(nr)}`);
   if (eigen?.success && eigen.set) {
     G('add-num').dataset.bestaetigt = nr;
+    G('add-num').dataset.vorhanden = nr;
     // Der Hauptknopf heisst jetzt „Set öffnen“; ein zweiter gleichen Namens im Hinweis war einer zu viel.
     box.textContent = tRaw('gallery.add.schon_da', { num: nr, name: eigen.set.name || nr, n: eigen.set.quantity || 1 });
     box.hidden = false;
@@ -440,6 +442,9 @@ async function doAddSet(){
   // nichts, und der Server bleibt beim eigenen Konto — dieselbe Antwort wie vor der Haushaltssicht.
   const owner_user_id = selectedOwner('add-owner');
   if(!setnummerFeldGueltig('add-num', num) || !preis.ok) return;
+  // Steht das Set schon da, heisst der Hauptknopf „Set öffnen“ und tut genau das, ohne Schreibversuch.
+  const vorhanden = G('add-num').dataset.vorhanden;
+  if (vorhanden && vorhanden === (/-\d+$/.test(num) ? num : num + '-1')) { erfassenZumSet(vorhanden); return; }
   if (await setUnbekannt(num)) return;
   unbekanntZuruecksetzen();
   showProgress(tRaw('gallery.adding_set',{num}), false);
