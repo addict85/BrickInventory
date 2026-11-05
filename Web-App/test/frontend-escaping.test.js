@@ -14,28 +14,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
 
 const JS_DIR = path.join(__dirname, '..', 'public', 'js');
 const FILES = fs.readdirSync(JS_DIR).filter(f => /^\d\d-.*\.js$/.test(f)).sort();
 
-// ── Helfer aus 01-core.js in einer Sandbox laden ────────────────────────────
-function loadHelpers() {
-  // `export` und `import` heraus: In der Sandbox läuft der Ausschnitt als
-  // klassisches Skript. Er reicht über die Grenze von 00-escapen.js in den
-  // Kopf von 01-core.js; die vier Helfer brauchen dessen Einfuhren nicht.
-  const src = require('./helpers/sources').coreQuelle()
-    .replace(/^export /gm, '')
-    .replace(/^import .*;$/gm, '');
-  const block = src.slice(src.indexOf('function esc(s)'), src.indexOf('const escHtml'));
-  const ctx = {};
-  vm.createContext(ctx);
-  vm.runInContext(block + '\n;({ esc, escJs, escUrl, escHex })', ctx);
-  return vm.runInContext('({ esc, escJs, escUrl, escHex })', ctx);
-}
+// Die Helfer selbst, nicht nachgebaut: 00-escapen.js ist DOM-frei und lädt in Node.
+const helfer = import(require('node:url').pathToFileURL(path.join(JS_DIR, '00-escapen.js')).href);
+const loadHelpers = () => helfer;
 
-test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', () => {
-  const { esc } = loadHelpers();
+test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
+  const { esc } = await loadHelpers();
   assert.equal(esc('<script>'), '&lt;script&gt;');
   assert.equal(esc('a"b'), 'a&quot;b');
   assert.equal(esc("a'b"), 'a&#39;b');
@@ -44,8 +32,8 @@ test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', () => {
   assert.equal(esc(undefined), '');
 });
 
-test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', () => {
-  const { escJs } = loadHelpers();
+test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', async () => {
+  const { escJs } = await loadHelpers();
   // Der klassische Ausbruch: Apostroph schliesst den JS-String, danach Code.
   const payload = "');alert(1);//";
   const out = escJs(payload);
@@ -55,8 +43,8 @@ test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', () => {
   assert.equal(escJs('a\\'), 'a\\\\');
 });
 
-test('escUrl() lässt nur relative Pfade und http(s) durch', () => {
-  const { escUrl } = loadHelpers();
+test('escUrl() lässt nur relative Pfade und http(s) durch', async () => {
+  const { escUrl } = await loadHelpers();
   assert.equal(escUrl('https://cdn.rebrickable.com/x.jpg'), 'https://cdn.rebrickable.com/x.jpg');
   assert.equal(escUrl('/data/part_images/x.jpg'), '/data/part_images/x.jpg');
   assert.equal(escUrl('javascript:alert(1)'), '');
@@ -67,8 +55,8 @@ test('escUrl() lässt nur relative Pfade und http(s) durch', () => {
   assert.ok(!escUrl('https://a/" onerror="alert(1)').includes('"'));
 });
 
-test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', () => {
-  const { escHex } = loadHelpers();
+test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', async () => {
+  const { escHex } = await loadHelpers();
   assert.equal(escHex('FF0000'), '#FF0000');
   assert.equal(escHex('#00ff00'), '#00ff00');
   assert.equal(escHex('red;background:url(x)'), 'var(--s300)');
@@ -110,18 +98,10 @@ test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
 });
 
 test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
-  // ── Die Regel ist „EINMAL", nicht „in 01-core.js" ───────────────────────
-  //
-  // esc() liegt seit dem 20.10. in js/00-escapen.js. Der Grund steht dort:
-  // Der BrickLink-Export (js/19-bricklink-xml.js) muss maskieren und ist
-  // bewusst DOM-frei, js/01-core.js laesst sich aber ohne Dokument nicht
-  // laden. Die Wahl war, esc() zu KOPIEREN — also genau das, was diese
-  // Pruefung verbietet — oder es dorthin zu legen, wo beide es erreichen.
-  //
-  // Was NICHT nachgegeben wurde: die Zahl. Jeder dieser vier Namen hat
-  // weiterhin GENAU EINE Deklaration; js/01-core.js reicht esc() nur weiter.
-  const zuhause = { esc: '00-escapen.js', escJs: '01-core.js',
-                    escUrl: '01-core.js', escHex: '01-core.js' };
+  // Alle Maskierer liegen in 00-escapen.js (DOM-frei, auch der BrickLink-Export
+  // lädt es). Zwei Fassungen desselben Maskierers liefen schon einmal auseinander.
+  const zuhause = { esc: '00-escapen.js', escJs: '00-escapen.js',
+                    escUrl: '00-escapen.js', escHex: '00-escapen.js' };
   for (const [name, datei] of Object.entries(zuhause)) {
     const defs = FILES.filter(f =>
       new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')));

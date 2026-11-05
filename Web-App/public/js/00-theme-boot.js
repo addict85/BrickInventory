@@ -53,7 +53,7 @@
   window.__bimNurDunkel = function (theme) { return theme === 'werkbank'; };
 
   /**
-   * Setter für 01-core.js und den Admin-Speichern-Handler. Nur gültige Werte
+   * Setter für 01-konto.js und den Admin-Speichern-Handler. Nur gültige Werte
    * werden angewendet UND gecacht — ein leerer oder fehlender Wert darf den
    * Cache nicht überschreiben.
    * @param {string} theme

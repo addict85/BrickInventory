@@ -3,7 +3,7 @@
  * style-Attribut kommt.
  *
  * ── Der Befund ──────────────────────────────────────────────────────────────
- * 01-core.js hat escHex() genau dafür, und der Kommentar dort sagt es
+ * 00-escapen.js hat escHex() genau dafür, und der Kommentar dort sagt es
  * ausdrücklich: „Farbwert in style="" → escHex()". Benutzt hat es aber nur
  * 03-parts.js — das Modul, in dem die Funktion ursprünglich stand. Drei andere
  * schrieben den Wert roh hinein:
@@ -58,5 +58,5 @@ test('Farbwerte kommen nur über escHex ins Markup', () => {
   assert.deepEqual(treffer, [],
     'Diese Stellen schreiben einen Farbwert roh ins Markup:\n  ' + treffer.join('\n  ') +
     '\nescHex(wert, rückfall) prüft auf sechs Hexziffern und liefert sonst den ' +
-    'Rückfall — siehe den Hinweis in 01-core.js.');
+    'Rückfall — siehe den Hinweis in 00-escapen.js.');
 });

@@ -1,11 +1,16 @@
 import { echt, registerActions } from './00-registry.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fmtDatum, bildTag, platzhalterInhalt, setnummerFeldGueltig, leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, api, escJs, fmtN, fullUrl, imgUrl, knopfBesetzt, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, leseBetrag } from './01-core.js';
+import { escJs, esc } from './00-escapen.js';
+import { api } from './01-api.js';
+import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
+import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, knopfBesetzt, zuruecksetzenKnopf } from './01-dom.js';
+import { fmtDatum, fmtN, leseBetrag } from './01-format.js';
+import { setnummerFeldGueltig, betragAusFeld } from './01-formular.js';
+import { toast } from './01-meldungen.js';
 import { detailZeile, listeLadefehler, skelettZeilen, csvHochladen } from './01-bausteine.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { addScopeParam } from './14-scope.js';
 import { CURRENCY } from './00-zustand.js';
-import { esc } from './00-escapen.js';
 import { alarmBlock, ladeAlarm, setzeAlarmFeld } from './02-detailfelder.js';
 import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten } from './02-konten-orte.js';
@@ -334,7 +339,7 @@ export async function oeffneMerkpostenDetail(arg) {
   G('mk-m-tit').textContent = w.name || w.set_number;
   G('mk-m-sub').textContent = [w.set_number, zustandText(w.condition)].join(' · ');
   // Volle Aufloesung, aber ebenfalls ueber den eigenen Server: fullUrl()
-  // schickt eine absolute CDN-Adresse durch den Bild-Proxy (01-core.js).
+  // schickt eine absolute CDN-Adresse durch den Bild-Proxy (01-bilder.js).
   // Das lokale Bild hat Vorrang — es liegt schon da.
   const bild = (w.image_local || w.image_url)
     ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';

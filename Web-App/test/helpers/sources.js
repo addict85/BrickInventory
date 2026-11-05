@@ -226,7 +226,8 @@ function coreQuelle() {
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
   // 00-escapen.js VORNE: esc() gehört zur Grundausstattung, und
   // test/frontend-escaping.test.js schneidet seinen Sandkasten ab `function esc(s)`.
-  return ['00-escapen.js', '00-zustand.js', '00-ereignisse.js', '01-core.js', '01-fortschritt.js',
+  return ['00-escapen.js', '00-zustand.js', '00-ereignisse.js', '01-dom.js', '01-format.js', '01-meldungen.js',
+          '01-verbindung.js', '01-api.js', '01-bilder.js', '01-formular.js', '01-konto.js', '01-fortschritt.js',
           '01-monitor.js', '14-scope.js', '15-scrollbar.js', '26-sitzung.js']
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
 }

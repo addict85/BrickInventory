@@ -8,7 +8,7 @@
  * wie `npm run typecheck:frontend` und der Schritt in der CI.
  *
  * Gegenproben (am 05.11.2026 gemessen):
- *   A  an G() in 01-core.js die Typangabe {Feld} entfernt → rot: Hauptlauf
+ *   A  an G() in 01-dom.js die Typangabe {Feld} entfernt → rot: Hauptlauf
  *      mit 357 Meldungen
  *   B  in 01-fortschritt.js den Import von apiRoh entfernt → rot, TS2304
  *      „Cannot find name 'apiRoh'“ mit beiden Fundstellen

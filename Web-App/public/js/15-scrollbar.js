@@ -2,9 +2,8 @@
 //
 // ── Warum eigene Datei ───────────────────────────────────────
 //
-// Lag ebenfalls in js/01-core.js und gehört zu keinem ihrer Themen. Braucht
-// von aussen nur G() — den Rest macht er selbst.
-import { G } from './01-core.js';
+// Braucht von aussen nur G() — den Rest macht er selbst.
+import { G } from './01-dom.js';
 
 // Ein eigener Scrollbalken für die ganze Seite, fest am rechten Rand, statt eines Scrollkastens im
 // Katalog: Dort sass der Balken mitten im Fenster, und das Nachladen mass gegen den Kasten statt gegen

@@ -4,10 +4,13 @@
 // Ausführlich: docs/begruendungen/public/js/18-wanted-xml.js.md#noch-besser-waere-wenn-es-beim-import-di
 import { registerActions } from './00-registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
-import { bildTag, platzhalterInhalt, ico, G, XML_ICON_SVG, apiRoh, escHex, fullUrl, hexZiffern, imgUrl, toast } from './01-core.js';
+import { escHex, hexZiffern, esc } from './00-escapen.js';
+import { apiRoh } from './01-api.js';
+import { bildTag, platzhalterInhalt, fullUrl, imgUrl } from './01-bilder.js';
+import { ico, G, XML_ICON_SVG } from './01-dom.js';
+import { toast } from './01-meldungen.js';
 import { loadManualFigsTable } from './06-minifigs.js';
 import { loadGallery } from './02-gallery.js';
-import { esc } from './00-escapen.js';
 import { loadBrickColors, loadManualParts } from './03-parts.js';
 
 /**

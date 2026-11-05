@@ -2,10 +2,13 @@
 import { ladeAnzeige, listeLadefehler, verstaendlicherGrund, condBadges, ownerBadges, pnlBadge } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
-import { fmtDatum, fmtGeld, bildTag, platzhalterInhalt, leerZustand, ico, G, api, escJs, fmtN, imgUrl, thumbUrl, alle } from './01-core.js';
+import { escJs, esc } from './00-escapen.js';
+import { api } from './01-api.js';
+import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './01-bilder.js';
+import { leerZustand, ico, G, alle } from './01-dom.js';
+import { fmtDatum, fmtGeld, fmtN } from './01-format.js';
 import { scopeMode, scopeQuery } from './14-scope.js';
 import { CURRENCY, _pnlCache } from './00-zustand.js';
-import { esc } from './00-escapen.js';
 import { diagrammBreite, portfolioChartSVG, zeitpunkt, diagrammLeer } from './01-diagramme.js';
 
 // ── FINANCE ───────────────────────────────────────────

@@ -5,14 +5,19 @@ import { abonniere } from './00-ereignisse.js';
 import { skelettKacheln, listeLadefehler, condBadges, ownerBadges, pnlBadge, schliesseErfassen, teileAufschluesselung } from './01-bausteine.js';
 import { echt, registerActions } from './00-registry.js';
 import { LANG, locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, fmtDatum, bildTag, fullUrl, platzhalterInhalt, setnummerFeldGueltig, leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, api, escJs, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk, imgUrl, observeLazyImages, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, aktiverReiter, alle } from './01-core.js';
+import { escJs, esc } from './00-escapen.js';
+import { fehlerMeldung, api } from './01-api.js';
+import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './01-bilder.js';
+import { leerZustand, meldeTreffer, ico, G, TRASH_ICON_SVG, zuruecksetzenKnopf, aktiverReiter, alle } from './01-dom.js';
+import { fmtDatum, fmtBig, fmtGeld, fmtN, fmtPct, istGeschenk } from './01-format.js';
+import { setnummerFeldGueltig, betragAusFeld } from './01-formular.js';
+import { toast } from './01-meldungen.js';
 import { gibStart, importZaehler, protokollZeile, csvPollAktiv, addCsvLog, handleSseEvent, hideProgress, setProgBar, showProgress, streamFertig, streamRequest, setzeCsvPollAktiv } from './01-fortschritt.js';
 import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './14-scope.js';
 import { loadParts, loadManualParts } from './03-parts.js';
 import { loadMinifigs } from './06-minifigs.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
 import { CURRENCY, _lastImportAt, set_lastImportAt, setAllSets, allSets, curSet, _pnlCache, set_pnlCache } from './00-zustand.js';
-import { esc } from './00-escapen.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { springe } from './00-ziele.js';
 import { leereLagerortFeld, selectedOwner, selectedStorage } from './02-konten-orte.js';
@@ -497,8 +502,7 @@ async function startSetCsvImport(){
 
     // Fortschritt bevorzugt über SSE; nur bei Ausfall Polling-Fallback.
     const ctx = { total: total ?? 0, prevDone: /** @type {number | null | undefined} */ (-1), prevResultCount:0 };
-    // Ohne `?token=` — dieselbe Begründung wie an der Zwillingsstelle in
-    // 01-core.js: das Cookie trägt den Kanal, der Token in der Adresse wäre
+    // Ohne `?token=`: Das Cookie trägt den Kanal, der Token in der Adresse wäre
     // nur der Sitzungstoken im Protokoll.
     const url = `/api/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`;
 

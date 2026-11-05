@@ -77,7 +77,7 @@ test('jeder Klassenname gestaltet etwas oder ist ein Griff', () => {
   assert.ok(dateien.length >= 20, `Nur ${dateien.length} Quelldateien gefunden`);
 
   // Definiert: alles, was in einem Stylesheet als Selektor steht — UND was das
-  // Skript selbst als Stil zusammensetzt. Die Protokollseite (01-core.js) baut
+  // Skript selbst als Stil zusammensetzt. Die Protokollseite (01-monitor.js) baut
   // ihr eigenes <style> als Zeichenkette; ohne diesen Schritt gälten ihre
   // sechs Klassen als undefiniert.
   const definiert = new Set();

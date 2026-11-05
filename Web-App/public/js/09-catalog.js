@@ -2,7 +2,11 @@
 import { detailZeile, ladeAnzeige, listeLadefehler } from './01-bausteine.js';
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, platzhalterInhalt, leerZustand, ico, G, api, fullUrl, imgUrl, thumbUrl, toast, zuruecksetzenKnopf, betragAusFeld, alle, eins } from './01-core.js';
+import { fehlerMeldung, api } from './01-api.js';
+import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './01-bilder.js';
+import { leerZustand, ico, G, zuruecksetzenKnopf, alle, eins } from './01-dom.js';
+import { betragAusFeld } from './01-formular.js';
+import { toast } from './01-meldungen.js';
 import { setScrollLabel } from './15-scrollbar.js';
 import { loadGallery, loadStats } from './02-gallery.js';
 import { _lastImportAt, set_lastImportAt, ME, _settingsCache } from './00-zustand.js';

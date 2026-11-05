@@ -1,9 +1,11 @@
 // Der Importbalken im Seitenkopf ist ein geschlossener Gegenstand: Nach aussen zählen gibCheckOnLoad()
-// und gibZuruecksetzen(), der Rest ist Innenleben. In 01-core.js stand er Lesern im Weg, die dort
-// esc() oder api() suchten.
+// und gibZuruecksetzen(), der Rest ist Innenleben.
 // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#der-block-lag-in-js-01-core-js-und-war-d
 import { registerActions } from './00-registry.js';
-import { ico, G, apiRoh, fmtPct, api, toast, apiDaten } from './01-core.js';
+import { apiRoh, api, apiDaten } from './01-api.js';
+import { ico, G } from './01-dom.js';
+import { fmtPct } from './01-format.js';
+import { toast } from './01-meldungen.js';
 import { melde } from './00-ereignisse.js';
 import { LANG, t, tRaw } from '../i18n.js';
 import { ME } from './00-zustand.js';

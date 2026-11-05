@@ -367,7 +367,7 @@
              noch, was ein Verwalter setzt.
 
              Warum die ID `ubadge` am INNEREN Feld hängt und nicht am Knopf:
-             01-core.js und 05-settings.js setzen `G('ubadge').textContent`.
+             01-konto.js setzt `G('ubadge').textContent`.
              Am Knopf würde das dessen GANZEN Inhalt ersetzen — die Striche
              wären beim Anmelden weg. So schreibt der Name nur in sein eigenes
              Feld, und beide Dateien bleiben unverändert.
@@ -548,7 +548,7 @@
            Fenster statt am Rand, und der Beobachter, der die Seiten nachlädt,
            mass gegen diesen Bereich — nach unten kam nichts nach. Den
            Scrollbalken zeichnet jetzt die Anwendung selbst, für die GANZE
-           Seite (#app-scrollbar, siehe js/01-core.js). -->
+           Seite (#app-scrollbar, siehe js/15-scrollbar.js). -->
       <div id="catalog-grid"></div>
     </div>
 
@@ -2258,7 +2258,7 @@
      dass „Kiste 3“ und „kiste 3“ nebeneinander entstehen. -->
 <datalist id="lagerorte"></datalist>
 
-<!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/01-core.js ERZEUGT,
+<!-- Der eigene Scrollbalken (#app-scrollbar) wird von js/15-scrollbar.js ERZEUGT,
      nicht hier ausgezeichnet. Grund: app.bundle.js ist ein klassisches Skript
      und läuft, sobald es geparst ist — also VOR allem, was danach im Markup
      steht. Ein hier notiertes Element gäbe es beim Start noch nicht, und der

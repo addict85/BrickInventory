@@ -1,7 +1,8 @@
 // Rückfragen vor heiklen Schritten: Bestätigen, eigenes Passwort, zweiter
 // Faktor. Eine Ebene über dem Kern, damit jede Ansicht sie nutzen kann, ohne
 // eine andere Ansicht zu importieren.
-import { G, ico, api } from './01-core.js';
+import { api } from './01-api.js';
+import { G, ico } from './01-dom.js';
 import { t, tRaw } from '../i18n.js';
 
 /**
@@ -89,7 +90,7 @@ export async function speichereEinstellungen(titel, werte) {
 
 
 /** 23-passkeys.js meldet sich hier an, wenn der Browser Passkeys kann: Ein
- * Import in die Gegenrichtung schlösse einen Kreis über 01-core.js.
+ * Import in die Gegenrichtung liesse den Kern eine Ansicht laden.
  * @type {(() => Promise<object | null>) | null} */
 let passkeyHolen = null;
 

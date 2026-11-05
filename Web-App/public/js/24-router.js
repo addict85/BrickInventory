@@ -1,4 +1,5 @@
-import { G, toast, verwirfToasts } from './01-core.js';
+import { G } from './01-dom.js';
+import { toast, verwirfToasts } from './01-meldungen.js';
 import { tRaw } from '../i18n.js';
 import { beiDialogWechsel, istOffen, obersterDialog } from './01-dialoge.js';
 import { springe } from './00-ziele.js';

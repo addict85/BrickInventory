@@ -68,9 +68,9 @@ export function locale() {
 }
 
 /**
- * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/01-core.js.
+ * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/00-escapen.js.
  *
- * Bewusst hier dupliziert und nicht importiert: i18n.js wird VOR 01-core.js
+ * Bewusst hier dupliziert und nicht importiert: i18n.js wird VOR den Kernmodulen
  * geladen (siehe Skript-Reihenfolge in index.html), esc() existiert zum
  * Zeitpunkt der ersten t()-Aufrufe also noch nicht.
  * @param {unknown} v
@@ -288,7 +288,7 @@ export function applyLang(lang, persist) {
   const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('lang-select'));
   if (sel) sel.value = lang;
 
-  // Speichern (01-core.js) und das Neuladen des offenen Reiters (25-navigation.js)
+  // Speichern (01-konto.js) und das Neuladen des offenen Reiters (25-navigation.js)
   // hören auf dieses Ereignis: Die Übersetzung selbst kennt keine Ansicht.
   melde('spracheGewechselt', { sprache: lang, speichern: !!persist, echterWechsel: !!isRealSwitch });
 }
@@ -299,7 +299,7 @@ export function applyLang(lang, persist) {
 /**
  * Aktive Sprache setzen, ohne die volle Neuübersetzung von applyLang().
  *
- * Braucht 01-core.js beim Start, um den in localStorage gespeicherten Wert zu
+ * Braucht 26-sitzung.js beim Start, um den in localStorage gespeicherten Wert zu
  * übernehmen, bevor die Oberfläche steht. Importierte Bindungen sind in
  * ES-Modulen schreibgeschützt, deshalb dieser Weg statt `LANG = …`.
  *

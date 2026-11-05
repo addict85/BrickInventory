@@ -261,7 +261,7 @@ test('nur das Boot-Skript kennt die Liste der Designs', () => {
   // Marco: „Teilweise (nicht bei allen Designs) muss beim Aendern die Seite
   // neu geladen werden."
   //
-  // js/01-core.js fuehrte in applyTheme() eine ZWEITE Liste:
+  // js/01-konto.js fuehrte in applyTheme() eine ZWEITE Liste:
   //
   //     if (theme !== 'brick' && theme !== 'classic') return null;
   //
@@ -287,7 +287,7 @@ test('nur das Boot-Skript kennt die Liste der Designs', () => {
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
 
   // Kommentare zuerst weg: Die Begruendung oben nennt die Designs im
-  // Fliesstext, und die Erklaerung in 01-core.js ebenso. Ohne diesen Schritt
+  // Fliesstext, und die Erklaerung in 01-konto.js ebenso. Ohne diesen Schritt
   // meldete die Regel genau den Text, der sie erklaert.
   const ohneKommentare = js => js
     .replace(/\/\*[\s\S]*?\*\//g, '')

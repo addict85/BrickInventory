@@ -2,7 +2,8 @@
 // Darstellung ohne Abrufe; Set-Detail, Merkliste, Teile-Detail und Finanzen
 // zeichnen damit dieselben Achsen und dasselbe Fadenkreuz.
 import { CURRENCY } from './00-zustand.js';
-import { G, fmtDatum, fmtN } from './01-core.js';
+import { G } from './01-dom.js';
+import { fmtDatum, fmtN } from './01-format.js';
 import { detailZeile, pnlBadge } from './01-bausteine.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { esc } from './00-escapen.js';

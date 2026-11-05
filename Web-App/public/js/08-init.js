@@ -1,8 +1,12 @@
 import { registerActions } from './00-registry.js';
 import { locale, t, tRaw} from '../i18n.js';
-import { fehlerMeldung, bildTag, feldFehler, istSetnummer, platzhalterInhalt, leerZustand, ico, escHex, G, api, apiRoh, imgUrl, knopfBesetzt, thumbUrl, toast, alle } from './01-core.js';
+import { escHex, esc } from './00-escapen.js';
+import { fehlerMeldung, api, apiRoh } from './01-api.js';
+import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './01-bilder.js';
+import { leerZustand, ico, G, knopfBesetzt, alle } from './01-dom.js';
+import { feldFehler, istSetnummer } from './01-formular.js';
+import { toast } from './01-meldungen.js';
 import { baueWantedXmlStuecke } from './19-bricklink-xml.js';
-import { esc } from './00-escapen.js';
 
 // Auffangnetz für unbehandelte Fehler und die temporäre Teileliste. Gestartet
 // wird die Anwendung von 26-sitzung.js (startApp), nicht beim Laden dieses Moduls.
@@ -624,7 +628,7 @@ registerActions({
 /**
  * Teileliste-Zustand zurücksetzen (beim Abmelden).
  *
- * Ersetzt die früheren direkten Zuweisungen aus 01-core.js — importierte
+ * Importierte
  * Bindungen sind in ES-Modulen schreibgeschützt. Die Funktion hält das Wissen,
  * was "leer" für diesen Zustand heisst, dort wo der Zustand definiert ist.
  */

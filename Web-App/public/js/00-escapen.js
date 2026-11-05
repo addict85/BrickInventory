@@ -18,3 +18,64 @@ export function esc(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+// Ansichten entstehen per innerHTML aus Vorlagen; jeder Wert aus Datenbank, CSV oder Fremd-API muss
+// durch einen dieser Helfer, sonst ist jedes freie Textfeld ein gespeichertes XSS. esc() für Text,
+// escJs() in data-arg, escUrl() für src/href, escHex() für Farben.
+// Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#alle-listen-und-detailansichten-werden-p
+
+/**
+ * Wert in einem einfach-gequoteten JS-String innerhalb eines doppelt-gequoteten HTML-Attributs. Erst
+ * JS-escapen (Backslash, Apostroph), dann HTML: esc() allein liesse den Apostroph als &#39; stehen,
+ * der Browser dekodiert ihn vor dem JS-Parsen zurück, und der String bricht auf.
+ * @param {unknown} s
+ */
+export function escJs(s){
+  return String(s ?? '')
+    .replace(/\\/g,'\\\\').replace(/'/g,"\\'")
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/**
+ * src/href: nur relative Pfade und http(s) durchlassen. Manuell erfasste Teile
+ * und Minifiguren dürfen eine Bild-URL mitbringen — ohne diese Prüfung landet
+ * "javascript:…" ungefiltert in einem href.
+ * @param {unknown} u
+ */
+export function escUrl(u){
+  const v = String(u ?? '').trim();
+  if (!v) return '';
+  if (!/^(https?:\/\/|\/(?!\/)|data:image\/)/i.test(v)) return '';
+  return esc(v);
+}
+
+/**
+ * Farbwert für data-farbe="…" (js/00-stile.js) — alles ausser 6 Hex-Ziffern fliegt raus.
+ * @param {unknown} hex
+ * @param {string} fallback
+ */
+export function escHex(hex, fallback){
+  const v = String(hex ?? '').trim().replace(/^#/, '');
+  return /^[0-9A-Fa-f]{6}$/.test(v) ? '#' + v : (fallback || 'var(--s300)');
+}
+
+/**
+ * Wie escHex(), aber ohne „#“: für Attribute, deren Leser das Doppelkreuz selbst ergänzen (data-hex).
+ * escHex() dort ergäbe „##RRGGBB“.
+ * Ausführlich: docs/begruendungen/public/js/00-escapen.js.md#hexziffern
+ * @param {unknown} hex
+ */
+export function hexZiffern(hex){
+  const v = String(hex ?? '').trim().replace(/^#/, '');
+  return /^[0-9A-Fa-f]{6}$/.test(v) ? v : '';
+}
+
+/**
+ * @param {string} v
+ */
+export function escHtmlAttr(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}

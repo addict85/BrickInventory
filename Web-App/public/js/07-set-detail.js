@@ -4,7 +4,12 @@
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions, echt } from './00-registry.js';
 import { CURRENCY, ME, curSet, set_curSet } from './00-zustand.js';
-import { G, api, escJs, escUrl, fmtDatum, fmtGeld, fullUrl, ico, toast, aktiverReiter, verwirfToasts } from './01-core.js';
+import { escJs, escUrl, esc } from './00-escapen.js';
+import { api } from './01-api.js';
+import { fullUrl } from './01-bilder.js';
+import { G, ico, aktiverReiter } from './01-dom.js';
+import { fmtDatum, fmtGeld } from './01-format.js';
+import { toast, verwirfToasts } from './01-meldungen.js';
 import { alarmBlock, closeModal, ladeAlarm, ladeOrtAuswahl, lagerortBlock, setzeAlarmFeld } from './02-detailfelder.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { delSet, loadGallery, loadStats, reimportParts } from './02-gallery.js';
@@ -13,7 +18,6 @@ import { diagrammBreite, priceChartSVG, renderMarketRows } from './01-diagramme.
 import { loadFinance } from './04-finance.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { openAcqModal, renderAcqModalBody, renderAcquisitionSummary } from './13-acquisition-modals.js';
-import { esc } from './00-escapen.js';
 
 // Verschoben wird nur über den Kaufpreis (Kaufpreis-Dialog, Zeile für Zeile),
 // nicht das ganze Set: Mehrere Käufe eines Sets können im Haushalt

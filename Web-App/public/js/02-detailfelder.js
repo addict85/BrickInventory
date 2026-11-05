@@ -2,11 +2,14 @@
 // Eintrag), Preisalarm und das Schliessen des Set-Dialogs. Liegt unter den
 // Ansichten, damit Set-Detail, Merkliste und Teile-Detail sie gleich nutzen.
 import { registerActions } from './00-registry.js';
-import { G, api, betragFuerFeld, escJs, leseBetrag, toast } from './01-core.js';
+import { escJs, esc } from './00-escapen.js';
+import { api } from './01-api.js';
+import { G } from './01-dom.js';
+import { betragFuerFeld, leseBetrag } from './01-format.js';
+import { toast } from './01-meldungen.js';
 import { ME, allSets, curSet, set_curSet } from './00-zustand.js';
 import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './14-scope.js';
 import { tRaw } from '../i18n.js';
-import { esc } from './00-escapen.js';
 
 /**
  * Lagerort eines Sets speichern.

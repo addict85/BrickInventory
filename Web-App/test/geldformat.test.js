@@ -3,7 +3,7 @@
  *
  * ── Der Befund ──────────────────────────────────────────────────────────────
  *
- * `fmtN(v, cur)` (01-core.js) formatiert einen Geldbetrag. Das zweite Argument
+ * `fmtN(v, cur)` (01-format.js) formatiert einen Geldbetrag. Das zweite Argument
  * war optional und fiel auf 'EUR' zurück. NACHGEMESSEN: 30 Aufrufstellen, 28
  * übergeben eine Währung — und die zwei übrigen wollten überhaupt keinen
  * Betrag formatieren, sondern eine ANZAHL:
@@ -88,7 +88,7 @@ test('jeder fmtN-Aufruf nennt die Währung', () => {
  * Franken rechnet.
  */
 test('der Rückfall von fmtN ist die eingestellte Währung', () => {
-  const core = fs.readFileSync(path.join(JS, '01-core.js'), 'utf8');
+  const core = fs.readFileSync(path.join(JS, '01-format.js'), 'utf8');
   const i = core.indexOf('export function fmtN(');
   assert.ok(i > 0, 'fmtN nicht gefunden');
   const rumpf = core.slice(i, core.indexOf('\n}', i));

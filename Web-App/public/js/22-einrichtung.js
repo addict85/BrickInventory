@@ -1,6 +1,10 @@
 import { registerActions } from './00-registry.js';
 import { tRaw } from '../i18n.js';
-import { ico, G, api, toast, passwortRegelText, rbHinweisVerbergen, rbHinweisZeigen, alle, eins, formularFehler, verwirfToasts } from './01-core.js';
+import { api } from './01-api.js';
+import { ico, G, alle, eins } from './01-dom.js';
+import { passwortRegelText, formularFehler } from './01-formular.js';
+import { rbHinweisVerbergen, rbHinweisZeigen } from './01-konto.js';
+import { toast, verwirfToasts } from './01-meldungen.js';
 import { oeffneErfassen, verstaendlicherGrund } from './01-bausteine.js';
 import { mitZweitemFaktor, speichereEinstellungen } from './01-rueckfrage.js';
 import { esc } from './00-escapen.js';

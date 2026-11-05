@@ -1,6 +1,9 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { ico, G, api, toast, formularFehler } from './01-core.js';
+import { api } from './01-api.js';
+import { ico, G } from './01-dom.js';
+import { formularFehler } from './01-formular.js';
+import { toast } from './01-meldungen.js';
 import { loadUsers } from './05-settings.js';
 import { esc } from './00-escapen.js';
 import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBestaetigen } from './01-rueckfrage.js';
@@ -9,7 +12,7 @@ import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor, mitPasswortBest
 // Ablauf: Passwort → QR-Code und Schlüssel → Code bestätigen → die zehn
 // Wiederherstellungscodes einmal zeigen. Danach: abschalten oder neue Codes.
 
-// Im Anmeldebildschirm, solange ein Verwalter ihn einrichten muss (js/01-core.js).
+// Im Anmeldebildschirm, solange ein Verwalter ihn einrichten muss (js/01-api.js meldet es).
 let pflicht = false;
 const flaeche = () => pflicht ? G('zf-pflicht-flaeche') : G('zf-flaeche');
 if (typeof document !== 'undefined') document.addEventListener('zweitpflicht', () => { pflicht = true; pflichtHinweis('zfpflicht.hint'); void ladeZweitenFaktor(); });

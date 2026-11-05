@@ -3,7 +3,7 @@
 // Sichten über 00-ziele.js, nicht über einen Import.
 import { stelleZielBereit } from './00-ziele.js';
 import { registerActions } from './00-registry.js';
-import { G, leerZustand, alle, eins } from './01-core.js';
+import { G, leerZustand, alle, eins } from './01-dom.js';
 import { ME, _lastImportAt } from './00-zustand.js';
 import { loadMonitor, stoppeMonitor } from './01-monitor.js';
 import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './06-minifigs.js';

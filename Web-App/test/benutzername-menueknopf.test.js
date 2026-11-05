@@ -15,7 +15,7 @@
  * Nicht wegen des Aussehens — das sieht man. Sondern wegen einer Falle, die
  * man NICHT sieht und die beim Bauen fast zugeschnappt ist:
  *
- *     01-core.js:827   G('ubadge').textContent = ME.username;
+ *     01-konto.js:827   G('ubadge').textContent = ME.username;
  *     05-settings.js   if (uel) uel.textContent = username;
  *
  * Beide Stellen schreiben den Namen über `textContent`. Das ersetzt den
@@ -118,9 +118,9 @@ test('die Striche überleben den Benutzernamen', () => {
   const { document } = kopfleiste().window;
   const knopf = menueKnopf(document);
   const name = document.getElementById('ubadge');
-  assert.ok(name, 'Kein #ubadge — 01-core.js schreibt den Namen genau dorthin');
+  assert.ok(name, 'Kein #ubadge — 01-konto.js schreibt den Namen genau dorthin');
 
-  // Genau was 01-core.js in showApp() tut.
+  // Genau was 01-konto.js in showApp() tut.
   name.textContent = 'marco';
 
   assert.ok(striche(knopf),
@@ -201,7 +201,7 @@ test('mit Verwalterrecht steht (Admin) dahinter, ohne nur der Name', () => {
   // Geprüft wird die QUELLE und nicht ein nachgebauter Ablauf: zeigeBenutzernamen()
   // hängt an ME und am Sprachtext, beides gibt es hier nicht. Was zählt, ist,
   // dass die Regel beide Fälle unterscheidet — und dass sie nur EINMAL dasteht.
-  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');
+  const core = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-konto.js'), 'utf8');
   const fn = core.slice(core.indexOf('export function zeigeBenutzernamen'));
   const rumpf = fn.slice(0, fn.indexOf('\n}'));
   assert.ok(rumpf.includes('ME.isAdmin'),

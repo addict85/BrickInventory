@@ -1,6 +1,9 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { fmtDatum, ico, G, api, toast } from './01-core.js';
+import { api } from './01-api.js';
+import { ico, G } from './01-dom.js';
+import { fmtDatum } from './01-format.js';
+import { toast } from './01-meldungen.js';
 import { esc } from './00-escapen.js';
 import { bestaetigeMitPasswort, mitZweitemFaktor } from './01-rueckfrage.js';
 import { melde } from './00-ereignisse.js';

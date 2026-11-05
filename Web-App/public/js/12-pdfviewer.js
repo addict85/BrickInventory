@@ -1,13 +1,8 @@
 // Der PDF-Betrachter ist eine eigene Datei: Er hängt nur an G und esc und wird über openPdfViewer()
-// gerufen. In 01-core.js stand er zwischen Dingen, die mit ihm nichts zu tun haben.
+// gerufen.
 // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#diese-110-zeilen-standen-in-js-01-core-j
 import { registerActions } from './00-registry.js';
-import { G } from './01-core.js';
-// t() wird für die Lade- und Fehlermeldung gebraucht. Beim Herauslösen aus
-// 01-core.js früher blieb der Import zurück — dort war t() über den
-// Dateikopf verfügbar. Der Fehler flog erst beim ÖFFNEN eines PDFs
-// („ReferenceError: t is not defined"), also nicht beim Laden der Seite und
-// damit auch nicht beim Bündeln.
+import { G } from './01-dom.js';
 import { t } from '../i18n.js';
 import { esc } from './00-escapen.js';
 
@@ -357,6 +352,5 @@ function printPdfViewer() {
   if (_pdfCurrentUrl) { try { window.open(_pdfCurrentUrl, '_blank'); } catch (_) {} }
 }
 
-// Die Knöpfe im PDF-Fenster melden sich hier an, nicht mehr in 01-core.js —
-// der Handler gehört zu dem Modul, das ihn umsetzt.
+// Die Knöpfe im PDF-Fenster melden sich hier an: Der Handler gehört zu dem Modul, das ihn umsetzt.
 registerActions({ closePdfViewer, printPdfViewer, pdfZoomIn, pdfZoomOut, pdfZoomReset });

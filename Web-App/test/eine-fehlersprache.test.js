@@ -150,9 +150,9 @@ test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', (
 test('beide Oberflächen sagen dem Server, welche Sprache sie zeigen', () => {
   // Ohne diesen Kopf nützt die Tabelle nichts — der Server fiele auf Deutsch
   // zurück, und alles oben wäre wirkungslos.
-  const web = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-core.js'), 'utf8');
+  const web = fs.readFileSync(path.join(ROOT, 'public', 'js', '01-api.js'), 'utf8');
   assert.match(web, /'Accept-Language'\s*:\s*LANG/,
-    'Die Webapp schickt Accept-Language nicht mit (public/js/01-core.js, api()).');
+    'Die Webapp schickt Accept-Language nicht mit (public/js/01-api.js, api()).');
 
   const app = fs.readFileSync(
     path.join(__dirname, '..', '..', 'Android-App', 'core-data', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'di', 'ServerClient.kt'), 'utf8');

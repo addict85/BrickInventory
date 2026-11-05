@@ -179,7 +179,7 @@ test('Schreibziele in Routen werden weniger, nie mehr', () => {
  * gehören in einen Test, der den Code laufen lässt.
  */
 const LIEST_QUELLE = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
-const FUEHRT_AUS = /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|new Function|vm\./;
+const FUEHRT_AUS = /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|new Function|vm\.|= import\(/;
 function reineQuelltextTests() {
   return fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).filter(n => {
     const src = fs.readFileSync(path.join(__dirname, n), 'utf8');
@@ -319,7 +319,7 @@ const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this
 test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
   // Gemessen am 05.11.2026: 35,9 %; nach dem Auslagern der langen Kommentare
   // nach docs/begruendungen/public/ 26,1 %; ohne Typzeilen gezählt 22,0 %.
-  // Gegenprobe: 300 Kommentarzeilen an 01-core.js gehängt → rot.
+  // Gegenprobe: 300 Kommentarzeilen an 01-dom.js gehängt → rot.
   const SCHRANKE = 22.0;
   let zeilen = 0, kommentar = 0;
   for (const f of oberflaeche()) {
@@ -353,7 +353,7 @@ test('kein Kommentar der Oberfläche hat mehr als fünf Zeilen Prosa', () => {
   // CLAUDE.md: Ein Kommentar sagt in zwei bis fünf Zeilen, warum. JSDoc-Tags
   // (@param, @returns …) zählen nicht mit. Gemessen am 05.11.2026: 206 Blöcke,
   // ausgelagert nach docs/begruendungen/public/; seitdem 0.
-  // Gegenprobe: ein //-Block mit sechs Zeilen in 01-core.js → rot mit Fundstelle.
+  // Gegenprobe: ein //-Block mit sechs Zeilen in 01-dom.js → rot mit Fundstelle.
   const lang = [];
   let bloecke = 0;
   for (const f of oberflaeche()) {

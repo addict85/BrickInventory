@@ -188,7 +188,7 @@ test('der Dispatcher reicht mehrere Argumente und den Feldwert durch', () => {
 });
 
 test('Bildfehler kennen die Modi aus den Templates', () => {
-  // Zwei Modi gibt es noch: den Platzhalter (bildTag in 01-core.js) und
+  // Zwei Modi gibt es noch: den Platzhalter (bildTag in 01-bilder.js) und
   // „keep" für den Zoom. Was er im Bild bewirkt, prüft test/bilder-platzhalter.test.js.
   const js = path.join(__dirname, '..', 'public', 'js');
   const quellen = HTML + fs.readdirSync(js).filter(f => /^\d\d-.*\.js$/.test(f))

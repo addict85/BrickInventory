@@ -159,7 +159,7 @@ test('kein Token reitet mehr in der Adresszeile', () => {
     { re: /\?token=\$/,      wo: 'Kotlin' },
   ];
   const quellen = [
-    ...['public/js/01-core.js', 'public/js/01-fortschritt.js', 'public/js/01-monitor.js',
+    ...['public/js/01-api.js', 'public/js/01-bilder.js', 'public/js/01-fortschritt.js', 'public/js/01-monitor.js',
         'public/js/02-gallery.js', 'public/js/05-settings.js']
       .map(f => [f, read(f)]),
     // Jeder Dateiname AUSGESCHRIEBEN, nicht ueber eine Schleifenvariable

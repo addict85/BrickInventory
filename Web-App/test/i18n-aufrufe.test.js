@@ -30,7 +30,7 @@
  *
  * ── Die eine Ausnahme, und warum sie eine ist ───────────────────────────────
  *
- * 01-core.js baut einen Schlüssel zusammen: `t('monitor.job.' + k)`. Der
+ * 01-monitor.js baut einen Schlüssel zusammen: `t('monitor.job.' + k)`. Der
  * Aufruf prüft das Ergebnis SELBST gegen den Schlüssel und fällt auf die
  * Beschriftung des Servers zurück, wenn nichts da ist. Solche Präfixe enden
  * auf einen Punkt und werden hier übersprungen — mit einer Zusicherung auf

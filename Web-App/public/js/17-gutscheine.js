@@ -1,6 +1,10 @@
 import { echt, registerActions } from './00-registry.js';
 import { t, tRaw } from '../i18n.js';
-import { antwortFehler, fmtDatum, ico, G, api, apiRoh, fmtN, toast, betragAusFeld, betragFuerFeld } from './01-core.js';
+import { api, apiRoh } from './01-api.js';
+import { ico, G } from './01-dom.js';
+import { fmtDatum, fmtN, betragFuerFeld } from './01-format.js';
+import { antwortFehler, betragAusFeld } from './01-formular.js';
+import { toast } from './01-meldungen.js';
 import { openPdfViewer } from './12-pdfviewer.js';
 import { CURRENCY, _settingsCache } from './00-zustand.js';
 import { esc } from './00-escapen.js';

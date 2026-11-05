@@ -42,13 +42,13 @@ const path = require('node:path');
  *    Farbe). In js/08-init.js ging das nicht: Sie laedt die Teileliste und
  *    braucht dafuer `document`.
  *
- * 2. esc() liegt nicht mehr in js/01-core.js, sondern in js/00-escapen.js.
- *    Das ist die Folge aus 1.: Der Aufbau muss maskieren, js/01-core.js
+ * 2. esc() liegt nicht mehr in js/00-escapen.js, sondern in js/00-escapen.js.
+ *    Das ist die Folge aus 1.: Der Aufbau muss maskieren, js/00-escapen.js
  *    laesst sich aber ohne Dokument nicht laden (GEMESSEN: „document is not
  *    defined"). Die Wahl war, esc() zu KOPIEREN — also genau die zweite
  *    Fassung, die dieser Test verbietet — oder es dorthin zu legen, wo beide
- *    Seiten es erreichen. js/01-core.js reicht es weiter, jeder bestehende
- *    `import { esc } from './01-core.js'` gilt unveraendert.
+ *    Seiten es erreichen. js/00-escapen.js reicht es weiter, jeder bestehende
+ *    `import { esc } from './00-escapen.js'` gilt unveraendert.
  */
 
 const WURZEL = path.join(__dirname, '..');

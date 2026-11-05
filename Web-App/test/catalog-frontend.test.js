@@ -122,7 +122,7 @@ function fakeApi(_method, url) {
   return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
 }
 
-// ── Globale Stubs, wie sie 01-core/i18n bereitstellen ────────────────────────
+// ── Globale Stubs, wie sie 01-*/i18n bereitstellen ────────────────────────
 w.eval(`
   window.G = id => document.getElementById(id);
   window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
@@ -134,10 +134,10 @@ w.eval(`
   // gebraucht: Der Test prüft die Katalog-Kachel, nicht das Bild darin.
   // Seit Nachtrag 89 steht es dort statt des Puzzleteil-Emojis.
   window.PARTS_ICON_SVG = '<svg data-test-parts-icon></svg>';
-  // Bild und Platzhalter kommen aus 01-core.js; hier zählt nur die Kachel.
+  // Bild und Platzhalter kommen aus 01-bilder.js; hier zählt nur die Kachel.
   window.bildTag = o => '<img src="' + o.src + '" alt="">';
   window.platzhalterInhalt = () => '';
-  // Den gemeinsamen Scrollbalken stellt js/01-core.js; hier zählt nur, DASS
+  // Den gemeinsamen Scrollbalken stellt js/15-scrollbar.js; hier zählt nur, DASS
   // der Katalog sein Etikett dort anmeldet.
   window.__scrollLabelFn = undefined;
   window.setScrollLabel = fn => { window.__scrollLabelFn = fn; };

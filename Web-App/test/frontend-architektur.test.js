@@ -9,8 +9,8 @@
  * 00-ereignisse.js (melde/abonniere) oder 00-ziele.js (springe).
  *
  * Gegenproben (am 05.11.2026 gemessen):
- *   A  in 01-core.js `import { loadGallery } from './02-gallery.js'` samt
- *      Aufruf ergänzt → rot: „kein Importkreis“, der Kreis nennt 01-core.js
+ *   A  in 01-api.js `import { loadGallery } from './02-gallery.js'` samt
+ *      Aufruf ergänzt → rot: „kein Importkreis“, der Kreis nennt 01-api.js
  *   B  in 02-konten-orte.js `import('./05-settings.js')` ergänzt → rot: die
  *      dynamische Kante schliesst einen Kreis und zählt mit
  *   C  in 05-settings.js den Alarm-Import wieder per
@@ -119,10 +119,10 @@ test('kein fetch an der API-Hülle vorbei', () => {
     zeilen.forEach((z, i) => {
       if (/^\s*(\/\/|\*)/.test(z) || !/\bfetch\(/.test(z)) return;
       gesehen++;
-      if (path.basename(f) === '01-core.js' && /res = await fetch\('\/api' \+ path, init\)/.test(z)) return;
+      if (path.basename(f) === '01-api.js' && /res = await fetch\('\/api' \+ path, init\)/.test(z)) return;
       treffer.push(`${path.relative(ROOT, f)}:${i + 1}: ${z.trim()}`);
     });
   }
   assert.ok(gesehen >= 1, 'Nicht einmal der Aufruf in apiRoh() gefunden — greift die Suche noch?');
-  assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api() oder apiRoh() (js/01-core.js)');
+  assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api() oder apiRoh() (js/01-api.js)');
 });

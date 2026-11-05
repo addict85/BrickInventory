@@ -5,7 +5,7 @@
  * des Startpassworts, echtes Bündel in jsdom.
  *
  * Gegenproben (01.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  im Pflichtwechsel (01-core.js) wieder api() direkt statt
+ *   A  im Pflichtwechsel (01-api.js) wieder api() direkt statt
  *      mitZweitemFaktor → rot: „der Code-Dialog erscheint"
  *   B  in mitZweitemFaktor `code` nicht mitgeschickt → rot: „die zweite
  *      Anfrage trägt den Code"

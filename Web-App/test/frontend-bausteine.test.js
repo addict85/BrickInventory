@@ -2,7 +2,7 @@
  * Wiederkehrende Ansichtsteile stehen an EINER Stelle.
  *
  * ── Der Befund ──────────────────────────────────────────────────────────────
- * 01-core.js sammelt WERKZEUGE: Escaping, Bild-URLs, Formatierung, Toasts,
+ * Die 01-Module sammeln WERKZEUGE: Escaping, Bild-URLs, Formatierung, Toasts,
  * Theme. Was fehlte, waren Bausteine für die ANSICHT — und die standen deshalb
  * als HTML-Zeichenkette in jedem Modul neu:
  *

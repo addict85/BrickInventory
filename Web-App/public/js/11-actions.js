@@ -1,5 +1,8 @@
 import { istVertraut, registerActions, resolveAction } from './00-registry.js';
-import { G, bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl, setLang, toast } from './01-core.js';
+import { bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl } from './01-bilder.js';
+import { G } from './01-dom.js';
+import { setLang } from './01-konto.js';
+import { toast } from './01-meldungen.js';
 import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './01-monitor.js';
 import { openPdfViewer } from './12-pdfviewer.js';

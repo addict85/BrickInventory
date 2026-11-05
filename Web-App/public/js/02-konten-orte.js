@@ -1,7 +1,8 @@
 // Konto- und Lagerortfelder: Haushaltsmitglieder, Kontofilter und die
 // Lagerortfelder der Erfassungswege. Eine gemeinsame Quelle, damit alle
 // Formulare dieselbe Liste zeigen.
-import { G, api } from './01-core.js';
+import { api } from './01-api.js';
+import { G } from './01-dom.js';
 import { SCOPE_VIEWS, scopeMode, setScopeMode } from './14-scope.js';
 import { ladeLagerorte, lagerortBlock } from './02-detailfelder.js';
 import { tRaw } from '../i18n.js';

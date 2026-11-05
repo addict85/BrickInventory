@@ -1,10 +1,12 @@
-// Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster. In
-// 01-core.js stand das eingekeilt in einer Datei, deren Kopf es nicht einmal nannte.
+// Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster.
 // Ausführlich: docs/begruendungen/public/js/01-monitor.js.md#dieser-block-lag-in-js-01-core-js-deren
 import { echt, registerActions } from './00-registry.js';
-import { fmtDatum, ico, G, api, escHtmlAttr, toast, apiDaten } from './01-core.js';
+import { escHtmlAttr, esc } from './00-escapen.js';
+import { api, apiDaten } from './01-api.js';
+import { ico, G } from './01-dom.js';
+import { fmtDatum } from './01-format.js';
+import { toast } from './01-meldungen.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
-import { esc } from './00-escapen.js';
 /** @typedef {import('../../frontend-typen/vertrag').AuftragPause} AuftragPause */
 /** @typedef {import('../../frontend-typen/vertrag').Auftrag} Auftrag */
 /** @typedef {import('../../frontend-typen/vertrag').JobStatus} JobStatus */
@@ -12,7 +14,7 @@ import { esc } from './00-escapen.js';
 /**
  * Zeitgeber, der die Jobliste nachzieht, solange der Reiter offen ist.
  *
- * Er steht hier und nicht in 01-core.js, weil nur diese Datei ihn setzt —
+ * Er steht hier, weil nur diese Datei ihn setzt —
  * js/02-gallery.js hält ihn beim Reiterwechsel an, dafür gibt es den Setter
  * unten.
  */

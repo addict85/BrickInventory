@@ -5,10 +5,15 @@ import { abonniere } from './00-ereignisse.js';
 import { ladeAnzeige, skelettKacheln, listeLadefehler, teileAufschluesselung, condBadges, ownerBadges, schliesseErfassen, csvHochladen } from './01-bausteine.js';
 import { registerActions, echt } from './00-registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
-import { bildTag, G, api, escHex, escHtml, escJs, fmtBig, fullUrl, imgUrl, leerZustand, meldeTreffer, observeLazyImages, platzhalterInhalt, thumbUrl, zuruecksetzenKnopf, TRASH_ICON_SVG, betragAusFeld, fmtN, hexZiffern, toast, aktiverReiter } from './01-core.js';
+import { escHex, esc, escJs, hexZiffern } from './00-escapen.js';
+import { api } from './01-api.js';
+import { bildTag, fullUrl, imgUrl, observeLazyImages, platzhalterInhalt, thumbUrl } from './01-bilder.js';
+import { G, leerZustand, meldeTreffer, zuruecksetzenKnopf, TRASH_ICON_SVG, aktiverReiter } from './01-dom.js';
+import { fmtBig, fmtN } from './01-format.js';
+import { betragAusFeld } from './01-formular.js';
+import { toast } from './01-meldungen.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './14-scope.js';
 import { allSets, CURRENCY } from './00-zustand.js';
-import { esc } from './00-escapen.js';
 import { confirmDelete } from './01-rueckfrage.js';
 import { csvImportStatus, manuellQuery, manuelleTabelle, preisHerkunftHinweis, tabellenAnsicht } from './06-minifigs.js';
 import { geloeschtMitRueckgaengig } from './20-papierkorb.js';
@@ -95,7 +100,7 @@ function fuelleFilter(id, alle, eintraege, gewaehlt){
   // Eine gewählte Farbe bleibt auswählbar, auch wenn ein anderer Filter sie gerade ausblendet.
   if (gewaehlt && !eintraege.has(gewaehlt)) eintraege.set(gewaehlt, gewaehlt);
   el.innerHTML = `<option value="">${esc(alle)}</option>` +
-    [...eintraege].map(([wert, text]) => `<option value="${escHtml(wert)}">${esc(text)}</option>`).join('');
+    [...eintraege].map(([wert, text]) => `<option value="${esc(wert)}">${esc(text)}</option>`).join('');
   el.value = gewaehlt || '';
   el.style.display = eintraege.size ? '' : 'none';
 }
@@ -155,10 +160,6 @@ export function teileFilterZuruecksetzen(){
   for (const id of ['parts-search', 'parts-spare', 'parts-color', 'parts-cat']) { const el = G(id); if (el) el.value = ''; }
   teileFilterGeaendert();
 }
-// esc / escJs / escUrl / escHex liegen jetzt zentral in 01-core.js — sie wurden
-// hier definiert, aber auch von 02-gallery.js und 04-finance.js benutzt, also
-// von Dateien, die VOR dieser geladen werden. Das ging nur gut, weil die
-// Aufrufe erst nach dem Laden aller Skripte passieren.
 
 // Seitenweise mit Endlos-Scroll statt der ganzen Wand auf einmal: Alle Teil/Farb-Kombinationen waren
 // 20 MB und zehntausende Knoten je Tabwechsel. Eine Farbe kann über die Seitengrenze laufen;
