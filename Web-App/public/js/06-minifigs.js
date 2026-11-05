@@ -101,7 +101,7 @@ export async function loadMinifigs() {
 
   // Kennzahlen mit dem Filter des Reiters: Sonst zeigte die Kachel im Haushalt die eigenen Zahlen, während
   // die Liste darunter alle Konten zeigte.
-  // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#s
+  // Ausführlich: docs/begruendungen/public/js/06-minifigs.js.md#kennzahlen-mit-dem-filter-des
   const s = await api('GET', `/v1/minifigs/stats${scopeQuery('minifigs')}`);
   if (s.success) {
     G('mf-unique').textContent = String(s.stats.types);

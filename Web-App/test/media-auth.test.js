@@ -1,18 +1,6 @@
 /**
  * Bilder und PDFs verlangen ausnahmslos eine Anmeldung.
- *
- * ── Was vorher offen war ────────────────────────────────────────────────────
- * Set-Bilder liefen über `app.use('/images', express.static(IMAGES_DIR))` — also
- * ohne jede Prüfung. Die Begründung im Code lautete, es seien öffentliche
- * Katalogfotos, die dieselben CDNs ohnehin ausliefern.
- *
- * Für das einzelne Bild stimmt das. Für die SAMMLUNG nicht: Wer die Adressen
- * durchprobiert, liest ab, welche Sets jemand besitzt — und das ist der Teil,
- * der schützenswert ist. Teile- und Minifiguren-Bilder verlangten schon immer
- * eine Anmeldung; die Ungleichbehandlung war historisch, nicht begründet.
- *
- * Dieser Test hält fest, dass keine Datei aus dem Datenverzeichnis mehr ohne
- * Anmeldung erreichbar ist.
+ * Ausführlich: docs/begruendungen/test/media-auth.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,24 +12,7 @@ const read   = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const SERVER = read('server.ts');
 /**
  * Kommentare weg — der Erklärtext oben nennt express.static selbst.
- *
- * ── Warum das mehr braucht als zwei replace() ───────────────────────────────
- * Die frühere Fassung war `.replace(/\/\*[\s\S]*?\*\//g, '')`. Sie sieht harmlos
- * aus, hat aber einen Startpunkt mitten in einer ZEICHENKETTE: `'/images/*'`
- * enthält `/*`. Von dort frass sie alles bis zum nächsten `*​/` — und wie viel
- * das ist, hing davon ab, wo zufällig der nächste Blockkommentar stand.
- *
- * Aufgefallen ist es, als ein einziger neuer Inline-Kommentar (`catch { /*…*​/ }`)
- * weiter unten dazukam: Danach fand die Prüfung NULL Datei-Routen und meldete
- * „liefe ins Leere" — vier Sicherheitsprüfungen auf einmal, ohne dass sich an
- * der Sicherheit irgendetwas geändert hatte.
- *
- * Genau das ist der Schaden: Ein Sicherheitstest, der aus einem unbeteiligten
- * Grund rot wird, wird beim nächsten Mal übergangen.
- *
- * Der Ersatz läuft einmal durch den Text und merkt sich, ob er gerade in einer
- * Zeichenkette steht. Zeilenkommentare und Blockkommentare fallen weg,
- * Zeichenketten bleiben unangetastet.
+ * Ausführlich: docs/begruendungen/test/media-auth.test.js.md#ohnekommentare
  */
 function ohneKommentare(src) {
   let out = '', i = 0, str = null;
@@ -134,22 +105,8 @@ test('der PDF-Download verlangt einen Token', () => {
 });
 
 test('die Webapp ruft nie direkt ein CDN auf', () => {
-  // ── Nutzerentscheidung ───────────────────────────────────────────────────
-  // Alle Bildabrufe laufen über /api/img-proxy. Nicht aus Prinzip: Der Proxy
-  // setzt die Kopfzeilen gegen Cloudflares Hotlink-Schutz, entpackt
-  // komprimierte Antworten, hält Platten- und Negativ-Cache. Nichts davon
-  // wirkt, wenn der Browser die CDN-Adresse selbst aufruft.
-  //
-  // Zwei Lecks gab es in imgUrl(): ein "Entpacken" von Proxy-Adressen für
-  // Hosts ausser rebrickable.com, und ein Durchfallen absoluter Adressen am
-  // Ende der Funktion. fullUrl() gab rohe CDN-Adressen ebenfalls unverändert
-  // zurück.
-  //
-  // Bewusst OHNE Kommentar-Entferner geprüft: Der einfache Zeilenfilter
-  // zerschneidet das Regex-Literal /^https?:\/\// (die beiden Schrägstriche
-  // darin sehen aus wie ein Kommentaranfang) — genau die Zeile, um die es
-  // hier geht. Stattdessen wird auf Muster geprüft, die in keinem Kommentar
-  // vorkommen.
+  // Nutzerentscheidung
+  // Ausführlich: docs/begruendungen/test/media-auth.test.js.md#core
   const core = require('./helpers/sources').coreQuelle();
 
   assert.doesNotMatch(core, /^\s*const inner = decodeURIComponent/m,
@@ -166,7 +123,7 @@ test('die Webapp ruft nie direkt ein CDN auf', () => {
                                ? core.indexOf('export function imgUrl')
                                : core.indexOf('export function fullUrl') + 900);
   // Geprueft wird die KONSTANTE, nicht die Adresse: Der Proxy ist mit der
-  // API-Zusammenlegung nach /api/v1/img-proxy gezogen (Nachtrag 162), und ein
+  // API-Zusammenlegung nach /api/v1/img-proxy gezogen, und ein
   // Test, der die Zeichenkette abschreibt, prueft nach dem naechsten Umzug auf
   // eine Adresse, die es nicht mehr gibt. Wo sie steht, haelt
   // test/img-proxy-v1.test.js fest.
@@ -175,18 +132,8 @@ test('die Webapp ruft nie direkt ein CDN auf', () => {
 });
 
 test('die SQL-Migrationen landen im Build', () => {
-  // ── Woher dieser Test kommt ──────────────────────────────────────────────
-  // scripts/build-ts.js verarbeitete nur .ts. Die Migrationen in
-  // db/migrations/ sind .sql und landeten damit NIE in dist/ — und weil das
-  // Laufzeit-Image ausschliesslich dist/ übernimmt, fand runMigrations() dort
-  // gar kein Verzeichnis vor.
-  //
-  // Der Fehler war still: Die Datenbank behielt die alten Bildpfade, und der
-  // davon abhängige (inzwischen entfernte) Dateiumzug ordnete jede Datei als
-  // "verwaist" ein. Es sah aus, als sei die Umsortierung wirkungslos.
-  //
-  // Die Prüfung bleibt, obwohl 0002 weg ist: db/migrations/0001-baseline.sql
-  // liegt weiterhin dort, und jede künftige Migration ist wieder eine .sql.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/media-auth.test.js.md#build
   const build = read('scripts/build-ts.js');
   assert.match(build, /ASSET_EXT/,
     'build-ts.js kopiert keine Nicht-TS-Dateien mit — .sql-Migrationen fehlen im Build');
@@ -194,17 +141,8 @@ test('die SQL-Migrationen landen im Build', () => {
 });
 
 test('data-self-Handler nehmen das Element als ERSTES Argument', () => {
-  // ── Woher dieser Test kommt ──────────────────────────────────────────────
-  // Der Dispatcher (public/js/11-actions.js) baut die Argumentliste so:
-  //     if (el.dataset.self === '1') args.push(el);
-  //     for (const key of ['data-arg', …]) args.push(…);
-  // Das Element kommt also VOR den data-arg-Werten.
-  //
-  // retryBricksetQueueEntry und deleteBricksetQueueEntry hatten die Signatur
-  // (setNumber, btn) — verdreht. setNumber war damit das Knopf-Element: Die
-  // Meldung lautete "[object HTMLButtonElement] wird erneut versucht", und die
-  // Adresse zeigte auf einen Eintrag, den es nicht gibt. Der Knopf sah aus, als
-  // täte er etwas, und traf nie den gemeinten Datensatz.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/media-auth.test.js.md#fs2-stelle
   const fs2 = require('node:fs');
   const jsDir = path.join(ROOT, 'public', 'js');
   const files = fs2.readdirSync(jsDir).filter(f => /^\d\d-/.test(f) && f !== '00-registry.js');
@@ -234,20 +172,8 @@ test('data-self-Handler nehmen das Element als ERSTES Argument', () => {
 });
 
 test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
-  // ── Woher dieser Test kommt ──────────────────────────────────────────────
-  // Nach der Umstellung "jede absolute Adresse über /api/img-proxy" schlug der
-  // Zoom fehl:
-  //   GET /api/img-proxy?url=https%3A%2F%2F<server>%2Fimages%2Fsets%2F9396-1.jpg
-  //   → 403
-  //
-  // Der Proxy lehnte zu Recht ab — seine Allowlist kennt nur die Bild-CDNs,
-  // und ein Proxy, der auf sich selbst zeigt, wäre eine offene Weiterleitung.
-  //
-  // Die Adresse entstand, weil `imgEl.src` nicht den Attributwert liefert,
-  // sondern die vom Browser AUFGELÖSTE absolute Adresse. Der Zoom greift
-  // darauf zurück, wenn data-orig nur den Platzhalter trägt (#m-img im
-  // Set-Detail). Die Kacheln waren nicht betroffen: Sie beziehen ihre
-  // Adressen relativ aus den Vorlagen — deshalb fiel es nur beim Zoom auf.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/media-auth.test.js.md#vm-stelle
   const vm   = require('node:vm');
   const src  = require('./helpers/sources').coreQuelle()
     .replace(/^export /gm, '').replace(/^import[^;]*;\s*$/gm, '');

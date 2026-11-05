@@ -1,17 +1,6 @@
 /**
  * Reihenfolge der Reiter-Bereiche: Erfassen → Suche/Filter → Liste.
- *
- * ── Woher dieser Test kommt (Nachtrag 32) ───────────────────────────────────
- * Marcos Wunsch aus dem Betrieb: Die Filter-Bedienelemente sollen NACH der
- * Erfassung stehen, nicht im Kopf des Reiters — sie stehen damit direkt über
- * der Liste, auf die sie wirken. Gilt für Galerie, Teile und Minifiguren;
- * Finanzen ausdrücklich nicht (dort gibt es keine Erfassen-Box), Teileliste
- * hat keine Filter, der Katalog keine Erfassung.
- *
- * Der Test prüft die REIHENFOLGE im Markup, nicht Pixel: Erfassen-Formular
- * vor Filterleiste vor Listencontainer. Zusätzlich: Jede Bedienelement-ID
- * genau einmal — die IDs sind der Vertrag mit dem JS, ein verschobenes
- * Duplikat würde die Handler an das falsche Element binden.
+ * Ausführlich: docs/begruendungen/test/tab-layout.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): Filterleiste der Galerie probeweise zurück in
  * den .ph-Kopf gesetzt → der Galerie-Schritt wird rot.
@@ -37,7 +26,7 @@ test('Erfassen steht vor den Filtern, die Filter stehen vor der Liste', () => {
     const b = html.indexOf(filter);
     const c = html.indexOf(liste);
     assert.ok(a >= 0 && b >= 0 && c >= 0, `${name}: Kennungen nicht gefunden`);
-    assert.ok(a < b, `${name}: die Filterleiste muss NACH der Erfassen-Box stehen (Marcos Wunsch, Nachtrag 32)`);
+    assert.ok(a < b, `${name}: die Filterleiste muss NACH der Erfassen-Box stehen (Marcos Wunsch)`);
     assert.ok(b < c, `${name}: die Filterleiste muss VOR der Liste stehen, auf die sie wirkt`);
   }
 });
@@ -66,7 +55,7 @@ test('jede Bedienelement-ID existiert genau einmal', () => {
   }
 });
 
-test('die manuell erfassten Listen stehen unter der Filterleiste (Nachtrag 34)', () => {
+test('die manuell erfassten Listen stehen unter der Filterleiste', () => {
   // Marcos Hinweis: Der Filter der Reiter Teile und Minifiguren wirkt auf
   // BEIDE Listen — die manuell erfassten Einträge und die aus Sets. Stand die
   // manuelle Liste über der Filterleiste, sah es aus, als beträfe der Filter
@@ -86,7 +75,7 @@ test('die manuell erfassten Listen stehen unter der Filterleiste (Nachtrag 34)',
 });
 
 test('der Katalogtitel steht allein, die Suche darunter', () => {
-  // Analog zu den anderen Reitern (Marcos Wunsch, Nachtrag 34).
+  // Analog zu den anderen Reitern (Marcos Wunsch, eine frühere Runde).
   const titel = html.indexOf('data-tab-title="catalog"');
   const suche = html.indexOf('id="cat-search"');
   const liste = html.indexOf('id="catalog-grid"');
@@ -103,13 +92,7 @@ test('der Katalogtitel steht allein, die Suche darunter', () => {
 test('die Filterleisten halten Abstand zur Liste', () => {
   // Marcos Wunsch: „Der Zwischenraum sollte grösser sein, damit es schön
   // aussieht." Gemeinsamer Wert für alle fünf Filterleisten — 1rem war zu eng.
-  //
-  // Die fünfte ist die Merkliste (24.09.). Diese Regel hat sie prompt
-  // gemeldet: Sie stand auf 1rem, also genau auf dem Wert, den Marco
-  // verworfen hat — eine neue Leiste, die den alten Fehler wiederholt, ist
-  // der Fall, für den eine Zahl hier überhaupt steht.
-  // Seit dem 28.10. trägt jede Leiste die Klasse .filterzeile statt eines
-  // Inline-Stils; der Abstand steht an genau einer Stelle in styles.css.
+  // Ausführlich: docs/begruendungen/test/tab-layout.test.js.md#leisten
   const leisten = [...html.matchAll(/class="[^"]*\bfilterzeile\b[^"]*"/g)].length;
   assert.equal(leisten, 5,
     `erwartet werden fünf Filterleisten (Galerie, Teile, Minifiguren, Katalog, Merkliste), gefunden: ${leisten}`);
@@ -121,28 +104,7 @@ test('die Filterleisten halten Abstand zur Liste', () => {
 
 /**
  * Der eigene Bestand steht in der Teileliste auf einer EIGENEN Zeile.
- *
- * ── Marcos Vorgabe ──────────────────────────────────────────────────────────
- *
- * „Bitte die rot umkreisten Buttons auf eine neue Zeile verschieben. Diese
- * gehören thematisch nicht zum Rest." Gemeint waren „Eigenen Bestand
- * eintragen" und „nur lose Teile".
- *
- * Er hat recht, und die erste Zeile sagt jetzt auch, warum: Dort steht das
- * ZUSAMMENSTELLEN der Liste (Set-Nr., Hinzufügen, Erstellen) und das
- * WEITERGEBEN (PDF, BrickLink, Reset). Der eigene Bestand ist keines von
- * beidem — er trägt Zahlen IN die fertige Liste ein.
- *
- * ── Warum eine Regel und nicht nur die Änderung ─────────────────────────────
- *
- * Die erste Zeile trägt `flex-wrap:nowrap` und einen waagerechten Rollbalken.
- * Ein Knopf, der dort wieder hineinrutscht, faellt nicht auf — er schiebt
- * bloss den Rest aus dem Bild. Genau so ist die Vermischung ueberhaupt
- * entstanden.
- *
- * NACHGEMESSEN (Chromium, 1440px): Werkzeugzeile auf y=486, Bestand-Zeile auf
- * y=524 — zwei Zeilen, 8px Abstand. Ohne erzeugte Liste ist der Kopf 72px
- * statt 108px hoch, es bleibt also KEIN leerer Streifen stehen.
+ * Ausführlich: docs/begruendungen/test/tab-layout.test.js.md#der-eigene-bestand-steht-nicht-in-der-we
  *
  * Gegenproben (beide durchgefuehrt): den Bestand-Knopf zurueck in die erste
  * Zeile gesetzt → Schritt 1 rot; in der App `partslist_fill_owned` zurueck

@@ -1,14 +1,6 @@
 /**
  * Lagerort — dieselbe Antwort in beiden Oberflächen.
- *
- * Wie test/bauabgleich-beide.test.js und aus demselben Grund: Marcos stehende
- * Vorgabe ist „zwei saubere Apps, in den Oberflächen einheitliche Ansichten,
- * ansonsten identische Funktion". Eine Erweiterung, die nur in der Webapp
- * landet, verletzt sie — und das fällt erst auf, wenn jemand am Telefon danach
- * sucht.
- *
- * Geprüft wird die NAHT. Ob die Zahlen stimmen, beantwortet
- * test/lagerort-db.test.js gegen echte Daten.
+ * Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,9 +30,8 @@ const KT_FELD   = lies(path.join(__dirname, '..', '..', 'Android-App', 'core-ui'
 // Die Einstellungen der App liegen in mehreren Dateien: Der Bildschirm
 // selbst traegt nur die Liste, jede Rubrik hat ihre eigene Seite
 // (EinstellungenUnterseiten.kt) mit der Karte in Einstellungen*.kt. Gelesen
-// werden deshalb alle, die es betrifft — die
-// Zusicherung lautet „die App tut das in ihren Einstellungen" und nicht
-// „in dieser Datei".
+// werden deshalb alle, die es betrifft — die …
+// Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#kt-einst
 const KT_EINST  = lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'SettingsScreen.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenUnterseiten.kt'))
                 + lies(path.join(__dirname, '..', '..', 'Android-App', 'feature-konto', 'src', 'main', 'java', 'ch', 'brickinventoryapp', 'ui', 'screens', 'EinstellungenAlarme.kt'))
@@ -76,9 +67,8 @@ test('beide zeigen den Lagerort dort, wo er hingehört', () => {
   // Set-Detail und Teil-Detail, in beiden Oberflächen. NICHT bei Figuren:
   // Eine Minifigur steckt in ihrem Set, und dessen Ort steht im Set-Detail —
   // ein zweiter Ort für dieselbe Sache wäre eine Stelle, an der zwei
-  // Antworten auseinanderlaufen können.
-  // Beide Oberflaechen bauen das Feld aus EINEM Baustein (07-admin.js,
-  // lagerortBlock) — vorher stand die Auszeichnung an jeder Stelle einzeln.
+  // Antworten auseinanderlaufen können. …
+  // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#stelle
   assert.match((web('public/js/02-detailfelder.js') + web('public/js/07-set-detail.js')), /lagerortBlock\('m-storage'/, 'Webapp: Set-Detail');
   assert.match(require('./helpers/sources').ansichtQuelle('13'), /lagerortBlock\('setitem-storage'/,
     'Webapp: Teil-Detail');
@@ -211,12 +201,7 @@ test('der Filter steht neben dem Kontofilter, nicht darunter', () => {
 });
 
 // ═══ Der VORRAT: auswählen ODER neu eintippen ═══════════════════════════════
-//
-// Marcos Vorgabe: „Der Lagerort soll ein Auswahlfeld mit einem Dropdown sein,
-// bei dem man auch gleich neue Auswahlwerte erfassen kann. Die Werte sollen
-// pro User verwaltet werden können und sollen in den Einstellungen bearbeitbar
-// sein. Der Grossvater soll die Werte der Enkel für die entsprechenden Sets
-// sehen und wählen können."
+// Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#beide-sprechen-dieselben-vier-endpunkte
 
 test('beide sprechen dieselben vier Endpunkte des Vorrats an', () => {
   const route = web('routes/api_v1/sets.ts');
@@ -257,16 +242,8 @@ test('beim Set gilt die Liste des BESITZERS, nicht die des Betrachters', () => {
 });
 
 test('auch das TEIL kennt seine Besitzer — es war die letzte Lücke', () => {
-  // ── Was hier fehlte ──────────────────────────────────────────────────────
-  //
-  // Der Teil-Dialog zeigte als EINZIGE Stelle im Baum die eigene Liste statt
-  // der des Besitzers. Nicht aus Absicht: Der Kopf des Dialogs kannte die
-  // Besitzer nicht. Eine gruppierte Teilezeile trägt keine Besitzerplakette
-  // (withOwners lässt sie bewusst in Ruhe), und niemandem war aufgefallen,
-  // dass der Dialog sie trotzdem braucht.
-  //
-  // Sie kostet nichts: Die Set-Zeilen darunter tragen `owner_user_id` längst;
-  // der Kopf verdichtet sie. Eine zweite Abfrage wäre eine zweite Wahrheit.
+  // Was hier fehlte
+  // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#geteilt
   const geteilt = web('src/bestand/gemeinsam.ts');
   assert.match(geteilt, /owner_ids: number\[\];/,
     'Der Teil-Kopf führt keine Besitzer');
@@ -292,10 +269,8 @@ test('beide bieten auswählen UND neu eintippen in EINEM Feld', () => {
   // Und getippte Werte landen im Vorrat — sonst stünde der Ort am Set und
   // fehlte in der Liste, aus der er gewählt werden soll.
   // Hier stand `stelleOrteSicher(besitzerIds, ort)`. Die Funktion gibt es nicht
-  // mehr: Mit der ID muss der Ort VOR dem Zuordnen im Vorrat stehen (ohne
-  // Zeile keine ID), und beides laeuft deshalb in einer Transaktion in
-  // setzeLagerort(). Gesucht wird jetzt die Anweisung selbst — die Aussage
-  // bleibt, dass ein getippter Ort in den Vorrat kommt.
+  // mehr: Mit der ID muss der Ort VOR dem Zuordnen im Vorrat stehen (ohne …
+  // Ausführlich: docs/begruendungen/test/lagerort-beide.test.js.md#stelle-2
   assert.match(web('src/bestand/repository/lagerort.ts'),
     /INSERT INTO storage_locations \(user_id, name\)\s*\n\s*SELECT id, \$2 FROM users/,
     'Ein frisch getippter Ort landet nicht im Vorrat');

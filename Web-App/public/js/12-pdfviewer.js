@@ -159,7 +159,7 @@ async function _renderPdfPage(pdf, n, ph) {
     _pdfRenderTasks.delete(n);
     // Zwischenzeitlich gezoomt: Diese Leinwand hat die alte Auflösung. Einmal eingehängt, bräche der neue
     // Durchlauf oben ab (Leinwand schon da), und die Seite bliebe grob bis zum nächsten Zoom.
-    // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#if
+    // Ausführlich: docs/begruendungen/public/js/12-pdfviewer.js.md#zwischenzeitlich-gezoomt-diese-leinwand
     if (gen !== _pdfZoomGen) { canvas.width = 0; canvas.height = 0; ph.dataset.rendering = '0'; return; }
     ph.replaceChildren(); ph.appendChild(canvas);
   } catch (e) { /* Render abgebrochen (Scroll) o.ä. */ }

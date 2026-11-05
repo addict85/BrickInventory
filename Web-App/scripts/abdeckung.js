@@ -4,9 +4,7 @@
  * Server aus dist/, Oberfläche über die Sourcemap des Mess-Bündels bis in
  * public/js/. Eigene Auswertung statt `c8 report`: c8 verwarf die Funktionen
  * der Oberfläche beim Umschreiben der Sourcemap-Pfade (alles 100 %, 0 Funktionen).
- *
- *   node scripts/abdeckung.js bericht   coverage/v8 → coverage/lcov.info, coverage-summary.json, bereiche.json
- *   node scripts/abdeckung.js pruefen   Bereiche gegen scripts/abdeckung-schranken.json
+ * Ausführlich: docs/begruendungen/scripts/abdeckung.js.md#kopf
  */
 const fs = require('node:fs');
 const path = require('node:path');

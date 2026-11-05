@@ -99,7 +99,7 @@ function mehrzahlSchluessel(dict, key, vars) {
 /**
  * Übersetzten Text holen und {platzhalter} ersetzen. Die Werte werden maskiert, weil fast jede Aufrufstelle
  * das Ergebnis in innerHTML schiebt und darin Nutzereingaben stehen. Für reinen Text gibt es tRaw().
- * Ausführlich: docs/begruendungen/public/i18n.js.md#t
+ * Ausführlich: docs/begruendungen/public/i18n.js.md#uebersetzten-text-holen-und-platzhalter
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
  * @returns {string}
@@ -205,7 +205,7 @@ export function colorName(en) {
   // Bekannte Modifikatoren ans nächste Wort hängen („Dunkelbläulichgrau“), unbekannte Wörter getrennt lassen.
   // Entschieden am vorigen Token, nicht am Zusammengesetzten — sonst bräche die Kette nach dem zweiten Glied
   // ab.
-  // Ausführlich: docs/begruendungen/public/i18n.js.md#res
+  // Ausführlich: docs/begruendungen/public/i18n.js.md#bekannte-modifikatoren-ans-naechste-wort
   let res = '';
   let joinNext = false;
   for (const cur of out) {
@@ -249,7 +249,7 @@ function schreibeI18n(el) {
 export function applyLang(lang, persist) {
   // Sprache noch nicht geladen: nachladen und erneut anlaufen. Ein stilles return hiesse, der Klick auf
   // Englisch tut nichts. Synchron, damit die rund zwanzig Aufrufstellen bleiben, wie sie sind.
-  // Ausführlich: docs/begruendungen/public/i18n.js.md#if
+  // Ausführlich: docs/begruendungen/public/i18n.js.md#sprache-noch-nicht-geladen-nachladen
   if (!I18N[lang]) {
     loadLang(lang).then(() => { if (I18N[lang]) applyLang(lang, persist); });
     return;

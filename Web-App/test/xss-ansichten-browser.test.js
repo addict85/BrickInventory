@@ -1,12 +1,7 @@
 /**
  * Kein Markup aus Daten: Namen, Themen, Kategorien und Lagerorte mit XSS-Nutzlast
  * durch die Hauptansichten gerendert, im echten Chrome.
- *
- * Geprüft wird das Ergebnis im DOM, nicht der Quelltext: Kein Element trägt einen
- * Ereignis-Handler aus den Daten, kein <img src=x> oder <svg> aus der Nutzlast
- * entsteht, und die Nutzlast steht als Text da (sonst wäre die Ansicht leer und
- * der Test bewiese nichts). Die CSP würde einen Handler ohnehin nicht ausführen;
- * deshalb zählt das Element, nicht der Aufruf.
+ * Ausführlich: docs/begruendungen/test/xss-ansichten-browser.test.js.md#kopf
  *
  * Gegenproben (gemessen):
  *   A  im Kachelnamen der Sammlung (02-gallery.js) den Namen in ungeprueft()

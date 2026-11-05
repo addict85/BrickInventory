@@ -1,12 +1,6 @@
 /**
  * Das Wertdiagramm in Finanzen — am echten Bündel in jsdom.
- *
- *   - Vorgewählt ist „Max“; die erste Abfrage fragt period=max.
- *   - Mit weniger als zwei echten Messpunkten (der Server ergänzt dann einen
- *     künstlichen Startwert) steht ein Leerzustand statt einer flachen Linie,
- *     und neben dem Titel steht keine Veränderung.
- *   - Mit Verlauf steht die Veränderung mit ihrem Zeitraum da.
- *   - Der Leerzustand ist übersetzt (vorher fest „Noch keine Verlaufsdaten.“).
+ * Ausführlich: docs/begruendungen/test/wertdiagramm-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  in loadPortfolioChart die Bedingung `messpunkte < 2` entfernt → rot:

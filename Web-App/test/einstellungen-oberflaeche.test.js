@@ -1,18 +1,7 @@
 /**
  * Einstellungen: einheitliche Speichern-Knöpfe und benannte Aktionen der
  * Benutzertabelle — am echten Bündel in jsdom nach dem Übersetzen.
- *
- *   - Jeder Speichern-Knopf der Einstellungen heisst „Speichern“ und trägt
- *     das Speichern-Symbol (vorher: mal ohne Symbol, mal mit Schlüssel, einmal
- *     „SMTP speichern“).
- *   - Jede Aktion der Benutzertabelle hat ein sichtbares Wort, einen Tooltip
- *     und einen Namen mit dem Konto.
- *   - API-Schlüssel und Geheimnisse sind Passwortfelder mit einem Knopf
- *     „Anzeigen“ (aria-pressed); die Leiste wechselt zwischen den Abschnitten,
- *     von denen je einer dasteht.
- *   - „Zum Benutzer“ bei einem Admin schickt is_admin:false. Vorher kam
- *     data-arg2="true" an, toggleAdmin() kannte nur '1' und machte jeden
- *     Admin erneut zum Admin.
+ * Ausführlich: docs/begruendungen/test/einstellungen-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 28.10. gemessen):
  *   A  btn-sav-bl wieder mit data-ico="schluessel" → rot: „Speichern-Knöpfe“

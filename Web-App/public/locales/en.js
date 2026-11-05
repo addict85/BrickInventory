@@ -301,7 +301,7 @@ window.I18N_EN = {
   'common.added_cap': 'Added',
   'common.updated_cap': 'Updated',
   'common.delete_title': 'Delete?',
-  // Vorlesetexte fuer Knoepfe, die nur ein Symbol tragen (Nachtrag 143).
+  // Vorlesetexte fuer Knoepfe, die nur ein Symbol tragen.
   // common.close stand hier schon einmal und ist als tot entfernt worden —
   // damals zu Recht: Es rief ihn niemand. Jetzt gibt es einen Aufrufer.
   'auth.resend_mail': 'Resend confirmation link',
@@ -842,7 +842,7 @@ window.I18N_EN = {
   'parts.num_label': 'Part number *',
   'parts.color_label': 'Color',
   // ── Vorlesetexte (aria-label) der Auswahlfelder ──────────────────────────
-  // Nachtrag 142: Diese neun standen als data-i18n im HTML und fehlten in
+  // Diese neun standen als data-i18n im HTML und fehlten in
   // BEIDEN Woerterbuechern. t() faellt auf den SCHLUESSEL zurueck — der
   // Bildschirmleser las danach „catalog.year_from" vor, in beiden Sprachen.
   'import.csv_file': 'CSV file',

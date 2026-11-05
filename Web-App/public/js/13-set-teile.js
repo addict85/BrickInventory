@@ -58,7 +58,7 @@ export async function openSetItemDetail(type, id, colorId) {
 
   // Blickfeld mitgeben wie überall: Im Haushalt gehört das Set des Geschwisterkontos dazu. scopeQuery()
   // angehängt, nicht im Pfad, damit test/frontend-api-paths.test.js die Adresse lesen kann.
-  // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#url
+  // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#blickfeld-mitgeben-wie-ueberall-im
   const url = (type === 'fig'
     ? `/v1/minifigs/${encodeURIComponent(id)}/sets`
     : `/v1/parts/${encodeURIComponent(id)}/${farbe}/sets`)
@@ -104,7 +104,7 @@ export async function openSetItemDetail(type, id, colorId) {
 
   // Lagerort nur für Teile: Eine Figur steckt in ihrem Set, dessen Ort im Set-Detail steht. Das Feld schreibt
   // auf alle Zeilen des Teil-Farb-Paares, weil man das Teil meint, nicht eine seiner Zeilen.
-  // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#if
+  // Ausführlich: docs/begruendungen/public/js/13-set-teile.js.md#lagerort-nur-fuer-teile-eine
   if (type === 'part') {
     // Die Ortsliste gehört dem Besitzer, wie beim Set. owner_ids statt owners, weil gruppierte Teilezeilen
     // keine Besitzerplakette tragen.

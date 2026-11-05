@@ -5,11 +5,7 @@
  * (src/infra/vertrag/) ohne Platzhalter gegen ihr Schema. Die vollständige
  * Prüfung mit Bestand steht in test/vertrag-lesen-db.test.js; dieses Skript
  * ist für einen echten Bestand (nach `npm run build`).
- *
- *   BASE_URL=http://localhost:3000 TOKEN=… node scripts/check-api-contract.js
- *   BASE_URL=… USERNAME=marco PASSWORD=… node scripts/check-api-contract.js
- *
- * Exit-Code 0 = Vertrag eingehalten, 1 = Abweichungen, 2 = keine Anmeldung.
+ * Ausführlich: docs/begruendungen/scripts/check-api-contract.js.md#path
  */
 const path = require('path');
 const { VERTRAG } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'vertrag', 'index.js'));

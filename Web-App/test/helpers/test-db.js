@@ -3,12 +3,7 @@
  * Datenbanken für den parallelen Testlauf anlegen und löschen, als eigener
  * Prozess: Der Vorlader (eigene-db.js) muss synchron fertig sein, bevor die
  * Testdatei ihre erste Zeile ausführt.
- *
- *   node test/helpers/test-db.js anlegen <name> <vorlage>
- *   node test/helpers/test-db.js loeschen <name>
- *
- * Verbunden wird mit TEST_DB_BASIS (der Datenbank aus TEST_DATABASE_URL), nie
- * mit der Vorlage: CREATE DATABASE … TEMPLATE verlangt, dass niemand an ihr hängt.
+ * Ausführlich: docs/begruendungen/test/helpers/test-db.js.md#path
  */
 const path = require('node:path');
 const { Client } = require(path.join(__dirname, '..', '..', 'node_modules', 'pg'));

@@ -26,7 +26,7 @@ Er steht deshalb im Schlüssel, genau wie beim Preisalarm seit 0019, und
 jeder Knopf hier trägt ihn mit.
 ```
 
-<a id="roh"></a>
+<a id="bild-ueber-imgurl-nicht-thumburl"></a>
 ## `roh`
 
 ```text
@@ -214,7 +214,7 @@ keine Auskunft. Dieselbe Regel wie bei den Erfassungsmasken
 (02-gallery.js: `if (members.length < 2)`).
 ```
 
-<a id="mks"></a>
+<a id="suche-entprellt-250-ms-wie"></a>
 ## `mks`
 
 ```text

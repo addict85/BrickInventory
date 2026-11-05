@@ -3,12 +3,7 @@
  * Menge. Der Server sortiert in beiden Wegen (Live-Abfrage und
  * Zusammenfassung, einzeln und im Haushalt) gleich, und die Oberfläche
  * zeichnet ungruppiert keine Farbkacheln.
- *
- * Die drei Teile sind so gewählt, dass jede Reihenfolge eine andere ist:
- *   Farbe: Blau ORD2, Gelb ORD3, Rot ORD1
- *   Name:  Axle ORD3, Brick ORD1, Plate ORD2
- *   Menge: ORD1 (9), ORD3 (7, im Haushalt 8), ORD2 (1)
- * Eigene Nummern, damit keine BrickLink-Zuordnung aus anderen Tests greift.
+ * Ausführlich: docs/begruendungen/test/teile-ordnung-db.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in ordnungSql() den Zweig 'name' entfernt (fällt auf Farbe zurück)

@@ -127,7 +127,7 @@ export function imgUrl(src, thumb) {
     // Vorschauen entstehen im Proxy. `thumb` 'nur' nutzt eine vorhandene, rechnet aber keine neue: für den
     // Katalog mit 25 000 fremden Sets, an denen man vorbeiscrollt. Der eigene Bestand bekommt die Vorschau
     // (true).
-    // Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#tp
+    // Ausführlich: docs/begruendungen/public/js/01-bilder.js.md#vorschauen-entstehen-im-proxy-thumb
     const tp = thumb === 'nur' ? '&thumb=1&gen=0' : (thumb ? '&thumb=1' : '');
     return IMG_PROXY + '?url=' + encodeURIComponent(src) + tp;
   }

@@ -80,7 +80,7 @@ fällt aber auf älteren Browsern als ganze Deklaration aus — dann gilt
 überall.
 ```
 
-<a id="if"></a>
+<a id="zwischenzeitlich-gezoomt-diese-leinwand"></a>
 ## `if`
 
 ```text

@@ -1,22 +1,6 @@
 /**
  * Rauchtest für das Frontend-Bündel.
- *
- * ── Warum es diesen Test braucht ────────────────────────────────────────────
- * Mit der Umstellung auf ES-Module hat sich die riskanteste Eigenschaft des
- * Frontends geändert: Vorher waren alle Handler globale Funktionen und der
- * Dispatcher fand sie über window[name]. Jetzt melden sich die Module bei einer
- * Registry an (js/00-registry.js). Vergisst ein Modul die Anmeldung — oder
- * bricht es beim Auswerten ab —, merkt man das NICHT beim Bauen und nicht beim
- * Typprüfen, sondern erst, wenn jemand auf den betroffenen Knopf klickt.
- *
- * Dieser Test wertet das gebaute Bündel in jsdom aus und prüft danach:
- *   1. Es läuft überhaupt durch (kein Fehler beim Modul-Init).
- *   2. Jeder im Markup verwendete data-click/data-change-Name ist auflösbar.
- *
- * Punkt 2 ist die eigentliche Zusicherung: Er ersetzt genau die Sicherheit,
- * die vorher darin lag, dass alles global war.
- *
- * Ausführen: npm test (setzt `npm run build:frontend` voraus)
+ * Ausführlich: docs/begruendungen/test/bundle-smoke.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert/strict');
@@ -116,6 +100,7 @@ test('das Bündel lässt sich auswerten, ohne zu werfen', async () => {
 // HINWEIS: Hier stand der Versuch eines Wächters gegen vergessene Importe —
 // erst als Klick-Test durch alle Reiter, dann als statische Prüfung "jeder
 // modulfremde Aufruf muss importiert sein".
+// Ausführlich: docs/begruendungen/test/bundle-smoke.test.js.md#api-liefert-bei-jedem-fehlschlag-ein-obj
 //
 // Beide sind wieder entfernt, weil sie nicht funktionierten:
 //   • Der Klick-Test scheiterte an abgewiesenen Zusagen aus den Datenabrufen.
@@ -125,21 +110,10 @@ test('das Bündel lässt sich auswerten, ohne zu werfen', async () => {
 //     initCatalog zur Gegenprobe wieder entfernt wurde. Ein Test, der grün
 //     bleibt, während der Fehler vorhanden ist, ist schlechter als kein Test:
 //     Er erzeugt Sicherheit, die es nicht gibt.
-//
-// Die Lücke bleibt damit offen und ist hier benannt statt kaschiert: Ein
-// vergessener Import in einem Funktionsrumpf fällt weiterhin erst im Browser
-// auf. Wer das lösen will, braucht einen echten Parser (z. B. esbuild als
-// Bibliothek mit Metafile-Analyse) statt Regex über den Quelltext.
 
 test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // api() war `return (await fetch(...)).json()` — ohne Blick auf res.ok.
-  // Jede nicht-JSON-Antwort (502/504 vom Reverse Proxy, 413, HTML-Fehlerseite)
-  // liess .json() einen SyntaxError werfen: "Unexpected token '<'". Bei rund
-  // 88 Aufrufstellen ist längst nicht jede in try/catch — für den Benutzer
-  // hiess das: klicken, nichts passiert, keine Meldung. Die Fehlerbehandlung
-  // war da (sie prüft d.success und zeigt d.error), sie bekam nur nie ein
-  // Objekt zu sehen.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/bundle-smoke.test.js.md#http
   const http = require('node:http');
   const srv = http.createServer((q, r) => {
     const sende = (code, typ, körper) => { r.writeHead(code, { 'content-type': typ }); r.end(körper); };
@@ -216,19 +190,8 @@ test('unbehandelte Fehler landen nicht nur in der Konsole', () => {
 });
 
 test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Ein 401 wurde zu einem Hinweis pro Klick („Nicht angemeldet"), während
-  // die Oberfläche weiter alte Daten zeigte und sich nicht mehr bedienen
-  // liess. Die Android-App macht es längst richtig: Interceptor meldet den
-  // 401, die App zeigt „Sitzung abgelaufen" und führt zur Anmeldung.
-  //
-  // Wahrscheinlicher geworden ist der Fall durch die Sitzungs-Bereinigung
-  // beim Passwortwechsel — seitdem verwerfen alle drei Passwort-Wege
-  // sämtliche Sitzungen des Kontos, offene Tabs landen also genau hier.
-  //
-  // Verhalten gegen einen echten kleinen Server nachgestellt:
-  //   abgemeldet + 401 → nichts        (sonst Schleife auf der Anmeldemaske)
-  //   angemeldet + 401 → login-screen: flex, app: none
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/bundle-smoke.test.js.md#core
   const core = require('./helpers/sources').coreQuelle();
   assert.match(core, /if \(res\.status === 401\) melde\('sitzungBeendet', path\);/,
     'Der 401 muss zentral behandelt werden, nicht an 88 Aufrufstellen');

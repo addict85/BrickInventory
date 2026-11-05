@@ -190,7 +190,7 @@ export function gibStart() {
 
   // Kein Token in der Adresse: EventSource schickt mit withCredentials das Sitzungscookie, und ein ?token=
   // stünde im Proxy-Protokoll und im Verlauf.
-  // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#url
+  // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#kein-token-in-der-adresse
   const url = `/api/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`;
 
   if (typeof EventSource !== 'undefined') {
@@ -411,7 +411,7 @@ async function readSSE(res, onEvent, signal){
   // Antwortet der Server mit JSON statt einem Strom, ist die Sache entschieden (etwa: Set schon im
   // Blickfeld). Die Antwort geht als ein Ereignis durch; sonst wartete die Anzeige auf eine data:-Zeile, die
   // nie kommt.
-  // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#if
+  // Ausführlich: docs/begruendungen/public/js/01-fortschritt.js.md#antwortet-der-server-mit-json
   if ((res.headers.get('content-type') || '').includes('application/json')) {
     const daten = await res.json().catch(() => null);
     if (daten) onEvent({ step: daten.success === false ? 'error' : 'done', ...daten });

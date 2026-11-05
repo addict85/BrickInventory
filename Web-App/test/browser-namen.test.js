@@ -1,11 +1,6 @@
 /**
  * Typprüfung der Oberfläche: kein unbekannter Name, keine Meldung.
- *
- * Ein Tippfehler in einem Namen oder ein Feld, das ein Element nicht hat,
- * fällt im Browser erst auf, wenn die Zeile läuft. tsc prüft deshalb die
- * ES-Module unter public/js samt i18n.js (tsconfig.frontend.json) und die
- * zwei klassischen Skripte (tsconfig.frontend-skripte.json) — derselbe Lauf
- * wie `npm run typecheck:frontend` und der Schritt in der CI.
+ * Ausführlich: docs/begruendungen/test/browser-namen.test.js.md#kopf
  *
  * Gegenproben (am 05.11.2026 gemessen):
  *   A  an G() in 01-dom.js die Typangabe {Feld} entfernt → rot: Hauptlauf

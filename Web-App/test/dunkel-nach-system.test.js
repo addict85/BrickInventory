@@ -3,9 +3,7 @@
  * Seit dem 29.10. heisst das: dasselbe Design in seiner dunklen Variante
  * (data-dunkel am <html>, Farben aus tokens.css), nicht mehr „werkbank".
  * Ohne gespeicherte Wahl folgt das Gerät dem System (Vorgabe „system“).
- *
- * Ausgeführt in jsdom mit nachgestelltem matchMedia: Das Skript läuft wie im
- * Browser im <head>, mit einem vom Server gesetzten data-theme.
+ * Ausführlich: docs/begruendungen/test/dunkel-nach-system.test.js.md#kopf
  *
  * Gegenproben (am 25.10. gemessen):
  *   A  wirksam() gibt immer das Server-Design zurück → rot: „bleibt hell"

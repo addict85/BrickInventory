@@ -73,7 +73,7 @@ function setDetailHtml(sn, acqs) {
 function ladeSetNachtraege(sn) {
   // Die Figurenzahl aus der Figurentabelle (verlässlicher als sets.minifigs). Die Antwort kann nach dem
   // Schliessen oder einem Setwechsel kommen; nur wenn noch dasselbe Set offen ist, wird geschrieben.
-  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#api
+  // Ausführlich: docs/begruendungen/public/js/07-set-detail.js.md#die-figurenzahl-aus-der-figurentabelle
   api('GET', `/v1/minifigs?source=set`).then(md => {
     const el = G('m-minifigs-val');
     if (!el || !curSet || curSet.set_number !== sn) return;

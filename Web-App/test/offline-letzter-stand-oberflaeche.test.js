@@ -2,9 +2,8 @@
  * Offline zeigt eine Liste den zuletzt geladenen Stand dieses Tabs statt
  * eines Fehlers, und Band und Inhalt widersprechen sich nicht: Hat eine Liste
  * nie geladen, sagt sie „Keine Verbindung“, ihr „Erneut versuchen“ bleibt
- * bedienbar (es liest nur) und lädt von selbst, sobald die Verbindung zurück
- * ist. Eine Datei-Wahl im Label ist gesperrt wie jeder andere Knopf. Am
- * echten Bündel in jsdom, mit styles.css.
+ * bedienbar (es liest nur) und lädt von selbst, sobald die Verbindung zurück …
+ * Ausführlich: docs/begruendungen/test/offline-letzter-stand-oberflaeche.test.js.md#kopf
  *
  * Gegenproben (am 03.11.2026 gemessen):
  *   A  in api() ausZwischenspeicher() nicht gefragt → rot: „Merkliste: letzter Stand“

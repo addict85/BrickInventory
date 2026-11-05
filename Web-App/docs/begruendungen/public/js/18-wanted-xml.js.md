@@ -206,7 +206,7 @@ dieselbe wie CONDITION=X) und wird deshalb als `null` geschickt, nicht
 weggelassen. Beim Preis ebenso: leer heisst „keiner, hol den Marktpreis".
 ```
 
-<a id="for"></a>
+<a id="das-symbol-einmal-hier-an"></a>
 ## `for`
 
 ```text

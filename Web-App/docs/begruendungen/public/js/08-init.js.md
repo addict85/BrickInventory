@@ -60,7 +60,7 @@ erkennbare Adresse wird weiter gemeldet. Ein verschwiegener eigener Fehler
 waere der teurere der beiden Irrtuemer — genau darum gibt es dieses Netz.
 ```
 
-<a id="key"></a>
+<a id="zusammengefasst-wird-nach-der-rebrickabl"></a>
 ## `key`
 
 ```text
@@ -138,7 +138,7 @@ nicht abbilden lässt, bleibt offen und wird gesagt.
 Minifiguren (Typ M) haben keine Farbe und sind deshalb nie betroffen.
 ```
 
-<a id="if"></a>
+<a id="bricklink-weist-eine-datei-ueber"></a>
 ## `if`
 
 ```text

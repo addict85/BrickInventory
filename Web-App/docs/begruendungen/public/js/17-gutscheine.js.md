@@ -43,7 +43,7 @@ damit kein Entweder-oder in der Bedienung — man kann ein PDF hochladen UND
 den Betrag selbst eintragen, wenn das PDF ihn nicht hergibt.
 ```
 
-<a id="if"></a>
+<a id="ob-ein-pdf-einen-oder"></a>
 ## `if`
 
 ```text

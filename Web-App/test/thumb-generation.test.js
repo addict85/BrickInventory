@@ -1,30 +1,6 @@
 /**
  * Vorschaubilder entstehen WIRKLICH — und fehlende heilen sich selbst.
- *
- * ── Woher dieser Test kommt (Nachtrag 48) ───────────────────────────────────
- * Marco meldete: „In der Setgalerie werden für neue Sets keine Thumbs
- * angezeigt, sondern immer die grossen Bilder. Bei älter erfassten Sets wird
- * das Thumb korrekt genutzt." Und auf Nachfrage: die Datei `…_thumb.jpg`
- * existiert auf dem Server gar nicht.
- *
- * Zwei Ursachen, beide von mir eingebaut bzw. übersehen:
- *
- * 1. MEIN FEHLER AUS NACHTRAG 41. Beim Umbau auf atomares Schreiben bekam die
- *    temporäre Datei den Namen `<ziel>.<pid>.<zeit>.tmp`. Jimp leitet das
- *    Zielformat aber aus der DATEIENDUNG ab: `.tmp` ergibt „Unsupported MIME
- *    type: null". Der Fehler landete im umgebenden catch und wurde zu einem
- *    stillen `return null`. Seither entstand ÜBERHAUPT KEINE Vorschau mehr —
- *    weder lokal noch im Bild-Proxy. Sichtbar wurde es nur, weil ältere Sets
- *    ihre vor 41 erzeugte Vorschau behielten. Genau diese Sorte Fehler prüft
- *    der erste Teil hier: nicht „steht der rename im Code", sondern „liegt
- *    hinterher eine Datei da, und ist sie kleiner als das Original".
- *
- * 2. Die Vorschau war ein reines ERFASSUNGS-Ereignis: erzeugt nur direkt nach
- *    dem Download. Ging dabei etwas schief, entstand sie nie mehr — der
- *    Bilder-Nachlauf deckt `sets` nicht ab und repariert ohnehin nur fehlende
- *    Dateien, keine fehlenden Vorschauen. Deshalb stösst die Bildroute die
- *    Erzeugung jetzt an, wenn sie beim Ausliefern bemerkt, dass die Vorschau
- *    fehlt und das Original vorliegt.
+ * Ausführlich: docs/begruendungen/test/thumb-generation.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): temporären Namen zurück auf `.tmp` gedreht →
  * der erste Teilschritt wird rot (keine Datei, generateThumb liefert null).
@@ -72,7 +48,7 @@ test('generateThumb() legt tatsächlich eine kleinere Datei an', async () => {
 test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
   // Die Quelltextregel zum Verhaltenstest oben: Jimp entscheidet über die
   // Endung, deshalb muss der temporäre Name auf .jpg enden.
-  // Fundort seit Nachtrag 129: src/katalog/bilder/proxyThumbs.ts.
+  // Fundort seit einer früheren Runde: src/katalog/bilder/proxyThumbs.ts.
   for (const datei of ['src/katalog/bilder/thumbs.ts', 'src/katalog/bilder/proxyThumbs.ts']) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
@@ -83,7 +59,7 @@ test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
 });
 
 test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
-  // ohneKommentare() statt eines //-Filters (Nachtrag 155): Der Filter liess
+  // ohneKommentare() statt eines //-Filters: Der Filter liess
   // Blockkommentare stehen, und einer davon enthielt "app.get('/images/*', …)"
   // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.
   const src = require('./helpers/sources').ohneKommentare(

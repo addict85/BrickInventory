@@ -1,12 +1,6 @@
 /**
  * Der Start des Job-Prozesses trägt jede Hintergrundarbeit als Auftrag ein.
- *
- * Seit Nachtrag 139 gilt: Ein Start muss WIRKLICH ankommen, nicht nur im
- * Quelltext stehen (damals warfen alle Aufrufe still in einem catch). Mit den
- * Aufträgen ist das in der Datenbank abzulesen: Nach starteJobs() steht jede
- * geplante Art mit ihrem Termin da, der Katalogabgleich ist sofort fällig, und
- * jeder Nachlauf ist einmal eingestellt. Der Worker selbst wird abgefangen —
- * geprüft wird, was er vorfände.
+ * Ausführlich: docs/begruendungen/test/background-jobs-start.test.js.md#kopf
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in starteJobs() `ziehePlanVor('csv_sync', …)` entfernt → rot: „jede

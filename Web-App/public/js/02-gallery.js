@@ -40,7 +40,7 @@ function faecherTon(s) {
 export async function loadStats(){
   // Kennzahlen mit demselben Kontofilter wie die Liste: Sonst stand über „nur meine“ weiter die Summe des
   // ganzen Haushalts.
-  // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#d
+  // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#kennzahlen-mit-demselben-kontofilter-wie
   const d = await api('GET', `/v1/stats${scopeQuery('gallery')}`);
   if (d.success && d.stats) {
     // Die Kennzahlen stehen in jedem Design als Kacheln über der Sammlung. Stück wie Teile und Figuren
@@ -563,7 +563,7 @@ function csvApplyOverlayStatus(s, ctx, fi){
         remaining.forEach(r=>{
           // Derselbe Zeilenbauer wie in 01-fortschritt.js. Ohne esc(), weil addCsvLog textContent setzt; der
           // Hinweis auf Zeitüberschreitung gilt nur hier.
-          // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#z
+          // Ausführlich: docs/begruendungen/public/js/02-gallery.js.md#derselbe-zeilenbauer-wie-in-01
           const z = protokollZeile(r, t('csv.timeout_retry'));
           if (z) addCsvLog(z.text, z.ok);
         });

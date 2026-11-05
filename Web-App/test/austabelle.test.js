@@ -1,14 +1,6 @@
 /**
- * Nachschlagetabellen mit Schlüssel von aussen (Nachtrag 155).
- *
- * Der Befund: `TABELLE[schluessel]` liefert in JavaScript auch GEERBTE
- * Eigenschaften, und die sind wahrheitswertig. Die verbreitete Absicherung
- * `TABELLE[k] || VORGABE` greift deshalb genau dann nicht, wenn sie soll.
- *
- * Diese Datei prüft den Helfer selbst UND die drei Stellen, an denen das Muster
- * stand — die beiden tragenden über den Quelltext, weil ein ORDER BY bzw. ein
- * multer-fileFilter ohne laufende DB/Upload nicht sinnvoll zu fahren sind.
- * Für das Verhalten der Routen gibt es die DB-Suiten daneben.
+ * Nachschlagetabellen mit Schlüssel von aussen.
+ * Ausführlich: docs/begruendungen/test/austabelle.test.js.md#kopf
  */
 const test   = require('node:test');
 const assert = require('node:assert');

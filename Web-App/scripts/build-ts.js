@@ -5,10 +5,7 @@
  * Transpiliert alle .ts-Dateien nach .js — je Datei, KEIN Bundle, damit die
  * CommonJS-Modulgrenzen bleiben. Für `npm run build` und den Docker-Build;
  * public/ bleibt reines JavaScript.
- *
- * Aufruf:
- *   node scripts/build-ts.js            → schreibt .js neben die .ts (in-place)
- *   node scripts/build-ts.js --outdir X → schreibt nach X/ (Verzeichnisbaum erhalten)
+ * Ausführlich: docs/begruendungen/scripts/build-ts.js.md#stelle
  */
 
 const { execFileSync } = require('child_process');

@@ -2,15 +2,8 @@
  * Im Dunkelmodus jedes Designs bleibt keine Fläche hell und kein Text
  * unlesbar. Gemessen in Chrome an der echten App: je Design data-dunkel
  * setzen, jeden Reiter und das Set-Detail öffnen und jedes sichtbare Element
- * prüfen — eigene Hintergrundfarbe nicht hell (relative Helligkeit ≤ 0,4),
- * Text mindestens 4,5:1 (gross 3:1) gegen den tatsächlichen Grund.
- *
- * Ausgenommen sind Inhalte, deren Farbe Information ist (Farbpunkte, Bilder,
- * Diagramme), und Flächen in Marken- oder Diagrammfarbe — deren Text wird
- * trotzdem auf Kontrast geprüft. Die Bildfläche .sci ist seit dem 29.10.
- * dunkel und wird mitgeprüft.
- *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
+ * prüfen — eigene Hintergrundfarbe nicht hell (relative Helligkeit ≤ 0,4), …
+ * Ausführlich: docs/begruendungen/test/dunkel-flaechen-browser.test.js.md#kopf
  *
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in styles.css .cond-used wieder `background:#fef3c7;color:#92400e`

@@ -1,17 +1,6 @@
 /**
  * Doppelte Übersetzungsschlüssel.
- *
- * In einem JavaScript-Objektliteral gewinnt bei einem doppelten Schlüssel
- * stillschweigend der SPÄTERE Eintrag. In public/i18n.js waren fünf Schlüssel
- * je Sprache doppelt vergeben (login.password, login.forgot, figs.stat.types,
- * partslist.reset, common.network_error) — mit teils UNTERSCHIEDLICHEN Texten:
- * 'Typen' gegen 'Figurtypen', 'Zurücksetzen' gegen '🗑️ Zurücksetzen'.
- *
- * Der Effekt: Wer den früheren Eintrag ändert, sieht keine Wirkung. Genau die
- * Sorte Beobachtung, die man sich als eigenen Fehler erklärt.
- *
- * Aufgefallen ist das erst, als scripts/build-frontend.js die Dateien für das
- * Bündel durch esbuild geschickt hat — der Minifizierer warnt davor.
+ * Ausführlich: docs/begruendungen/test/i18n-duplicates.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,12 +11,7 @@ const SRC = require('./helpers/sources').i18nAll();
 
 /**
  * Liest die Schlüssel einer Sprachdatei aus der QUELLE.
- *
- * Bewusst textuell statt per require(): Ein geladenes Objekt hätte die
- * Duplikate schon aufgelöst — also genau die Information verloren, um die es
- * hier geht. Seit die Wörterbücher in public/locales/{de,en}.js liegen, ist je
- * Sprache eine eigene Datei zu lesen; die frühere Klammer-Zählerei über den
- * de:/en:-Block entfällt damit.
+ * Ausführlich: docs/begruendungen/test/i18n-duplicates.test.js.md#keysof
  */
 function keysOf(lang) {
   const src = require('./helpers/sources').localeSource(lang);

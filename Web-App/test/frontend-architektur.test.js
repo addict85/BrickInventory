@@ -1,12 +1,6 @@
 /**
  * Aufbau des Frontends: kein Importkreis, kein API-Aufruf an der Hülle vorbei.
- *
- * Der Importgraph kommt vom Bündler selbst (esbuild --metafile), nicht aus
- * einem Muster über den Quelltext: Was esbuild auflöst, wird ausgeliefert —
- * auch ein dynamisches import(). Ein Kreis darin hiesse, dass die
- * Auswertungsreihenfolge vom Einstieg abhängt und ein `const` des anderen
- * Moduls beim Laden noch nicht steht. Rückwege nach oben laufen über
- * 00-ereignisse.js (melde/abonniere) oder 00-ziele.js (springe).
+ * Ausführlich: docs/begruendungen/test/frontend-architektur.test.js.md#kopf
  *
  * Gegenproben (am 05.11.2026 gemessen):
  *   A  in 01-api.js `import { loadGallery } from './02-gallery.js'` samt

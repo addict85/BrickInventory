@@ -10,13 +10,7 @@ const path = require('node:path');
 
 /**
  * import-/export-Syntax aus einer Moduldatei entfernen.
- *
- * Diese Tests werten den Quelltext in einer vm-Sandbox bzw. in jsdom als
- * KLASSISCHES Skript aus. Seit der Umstellung auf ES-Module enthalten die
- * Dateien import- und export-Anweisungen, die dort einen SyntaxError erzeugen
- * ("Cannot use import statement outside a module"). Die geprüfte Logik ändert
- * sich dadurch nicht — nur die Modulverpackung muss weg.
- *
+ * Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#stripmodulesyntax
  * @param {string} src
  * @returns {string}
  */
@@ -27,10 +21,8 @@ function stripModuleSyntax(src) {
   // registerActions() kommt sonst aus js/00-registry.js und ist nach dem
   // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
   // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
-  // und test/bundle-smoke.test.js gegen den echten Quelltext.
-  // tRaw() lebt in i18n.js und wird hier nicht mitgeladen. In der Sandbox
-  // genügt die Weiterleitung an t(): Der Unterschied liegt allein in der
-  // Maskierung der eingesetzten Werte, die diese Tests nicht prüfen.
+  // und test/bundle-smoke.test.js gegen den echten Quelltext. …
+  // Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#registeractions
   return 'function registerActions() {}\n'
        + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n'
        + body;
@@ -137,7 +129,7 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
     'Ohne Obergrenze laufen beliebig viele Verkleinerungen gleichzeitig');
   assert.match(server, /function queueThumb/, 'Warteschlange fehlt');
   // Im Ausliefer-Pfad darf nicht auf die Verkleinerung gewartet werden.
-  // Dieser Pfad IST seit Nachtrag 135 src/katalog/bilder/imgCacheServe.ts — vorher ein
+  // Dieser Pfad IST seit einer früheren Runde src/katalog/bilder/imgCacheServe.ts — vorher ein
   // grosszügig geschnittenes Stück des Route-Rumpfs, was nach dem Umzug ins
   // Leere zeigte.
   const proxy = fs.readFileSync(
@@ -168,9 +160,8 @@ test('Kategorien werden über den Teilekatalog aufgelöst', () => {
   // parts.category_name enthält die Rebrickable-Kategorie-ID als Text — oder
   // 'Unknown', wenn die Set-Teile-Antwort kein part_cat_id mitliefert. Das ist
   // bei /sets/{id}/parts/ die Regel: Das eingebettete part-Objekt führt das
-  // Feld meist nicht. Die Filterliste zeigte deshalb nur einen Eintrag.
-  // Die Liste steht seit dem 29.10. in src/teile/abfragen.ts
-  // (getPartsCategories), einmal für Zusammenfassung und Live-Abfrage.
+  // Feld meist nicht. Die Filterliste zeigte deshalb nur einen Eintrag. …
+  // Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#parts
   const parts = require('./helpers/sources').handlerQuelle();
   assert.match(parts, /LEFT JOIN rb_parts rp ON rp\.part_num = \$\{nummer\}/,
     'Die Kategorieliste muss über rb_parts auflösen');
@@ -192,16 +183,8 @@ test('Kategorien werden über den Teilekatalog aufgelöst', () => {
 });
 
 test('beide Abfragewege deckeln page_size gleich', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // getParts hat zwei Wege: die Live-Abfrage und die vorberechnete
-  // Zusammenfassung. Nur der erste deckelte page_size (bei 500), der zweite
-  // reichte den Wert ungeprüft ins LIMIT durch. DIESELBE Anfrage lieferte
-  // damit unterschiedlich viele Zeilen, je nachdem ob die Zusammenfassung
-  // gerade frisch war — an 5000 Teilen mit page_size=100000 gemessen:
-  // 500 Zeilen über die Live-Abfrage, 5000 über die Zusammenfassung. Ein
-  // Unterschied, der am Cache-Zustand hängt, ist beim Suchen eines Fehlers
-  // das Letzte, was man vermutet — und nebenbei ein Weg, sich beliebig grosse
-  // Antworten bauen zu lassen.
+  // Woher dieser Test kommt
+  // Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#h-stelle
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /export const MAX_PAGE_SIZE = 500;/,
     'Die Obergrenze gehört an EINE Stelle');
@@ -210,12 +193,7 @@ test('beide Abfragewege deckeln page_size gleich', () => {
   assert.doesNotMatch(h, /Math\.min\(500,/,
     'Die 500 darf nicht wieder als Literal an einzelnen Stellen stehen');
   // Und der Weg, der sie NICHT hatte, deckelt jetzt ebenfalls.
-  //
-  // Geprüft wird die AUSSAGE, nicht der Aufruf von clampPageSize: Seit die
-  // Teileliste eines einzelnen Sets eine höhere Grenze hat
-  // (SET_PARTS_MAX_PAGE_SIZE, weil die App sie in einem Stück holt), rechnet
-  // der Pfad die Grenze selbst aus. Entscheidend bleibt, dass BEIDE Wege
-  // dieselben zwei Grenzen kennen und keiner den Wert ungeprüft durchreicht.
+  // Ausführlich: docs/begruendungen/test/parts-paging.test.js.md#stelle
   const { funktionsRumpf } = require('./helpers/sources');
   const grenze = funktionsRumpf(h, 'seitengroesse');
   assert.match(grenze, /SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE/, 'Die Seitengrösse kennt die Grenzen nicht');

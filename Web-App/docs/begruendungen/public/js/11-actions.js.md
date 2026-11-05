@@ -81,7 +81,7 @@ Klick loeste wieder ein submit aus, und .click() hier drehte sich im
 Kreis.
 ```
 
-<a id="if"></a>
+<a id="einmal-wiederholen-bevor-aufgegeben-wird"></a>
 ## `if`
 
 ```text

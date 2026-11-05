@@ -1,26 +1,6 @@
 /**
  * Vorschaubilder entstehen ATOMAR — halbe Dateien gehen nie an den Client.
- *
- * ── Woher dieser Test kommt (Marcos Beobachtung, Nachtrag 41) ───────────────
- * Bild in der Galerie-Kachel dauerhaft leer, in der Detailansicht dagegen
- * einwandfrei. Das war der entscheidende Hinweis: Die Kachel fragt dieselbe
- * Datei MIT `thumb=1` an, die Detailansicht OHNE. Der Fehler musste also im
- * Vorschau-Zweig liegen.
- *
- * Die Erzeugung schrieb direkt auf den ENDGÜLTIGEN Dateinamen. Eine Anfrage,
- * die in genau diesem Moment hereinkommt, sieht die Datei bereits (access()
- * gelingt), liest per stat() eine TEILgrösse und setzt sie als
- * Content-Length — der Browser bekommt ein abgeschnittenes JPEG und zeigt
- * nichts. Hinterher liegt die Datei heil auf der Platte, der Fehler ist also
- * unsichtbar; im Browser bleibt er stehen, weil das kaputte Bild samt ETag im
- * Zwischenspeicher landet.
- *
- * Empirisch nachgestellt: Die parallele Anfrage sah 4'000 von 12'000 Bytes.
- * Mit rename() sieht sie entweder nichts (und fällt sauber auf das Original
- * zurück) oder die fertige Datei — dazwischen gibt es nichts.
- *
- * Der Bild-Cache daneben machte es seit jeher richtig (tmpFile → rename); nur
- * bei den Vorschauen fehlte es, in BEIDEN Erzeugern.
+ * Ausführlich: docs/begruendungen/test/thumb-atomic.test.js.md#kopf
  *
  * Gegenprobe (durchgeführt): rename in routes/imgProxy.ts entfernt und wieder
  * direkt auf den Zielnamen geschrieben → der erste Teilschritt wird rot.
@@ -38,10 +18,10 @@ const ohneKommentare = s => s
   .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 test('beide Vorschau-Erzeuger schreiben über eine temporäre Datei', () => {
-  // Fundort seit Nachtrag 129: src/katalog/bilder/proxyThumbs.ts.
+  // Fundort seit einer früheren Runde: src/katalog/bilder/proxyThumbs.ts.
   for (const datei of ['src/katalog/bilder/proxyThumbs.ts', 'src/katalog/bilder/thumbs.ts']) {
     const src = ohneKommentare(lies(datei));
-    // Seit Nachtrag 118 schreibt src/katalog/bilder/thumbs.ts über verkleinern() (sharp,
+    // Seit einer früheren Runde schreibt src/katalog/bilder/thumbs.ts über verkleinern() (sharp,
     // mit Jimp als Rückfall); der Bild-Proxy hat weiterhin seinen eigenen
     // Jimp-Aufruf. Geprüft wird deshalb die AUSSAGE — geschrieben wird auf den
     // temporären Namen — statt einer bestimmten Bibliothek.
@@ -55,10 +35,10 @@ test('beide Vorschau-Erzeuger schreiben über eine temporäre Datei', () => {
 
 test('eine unbrauchbar kleine Vorschau wird verworfen statt ausgeliefert', () => {
   // Diese Prüfung gehört zur AUSLIEFERUNG, nicht zur Erzeugung: Sie steht
-  // weiterhin in routes/imgProxy.ts. (Beim Umzug in Nachtrag 129 hatte ich sie
+  // weiterhin in routes/imgProxy.ts. (Beim Umzug in einer früheren Runde hatte ich sie
   // per Massenersetzung mit auf src/katalog/bilder/proxyThumbs.ts umgebogen — zum dritten
   // Mal in dieser Reihe eine zu breite Ersetzung.)
-  // Fundort seit Nachtrag 135: src/katalog/bilder/imgCacheServe.ts (die Auslieferung).
+  // Fundort seit einer früheren Runde: src/katalog/bilder/imgCacheServe.ts (die Auslieferung).
   const src = ohneKommentare(lies('src/katalog/bilder/imgCacheServe.ts'));
   assert.ok(/tst0\.size < 200/.test(src),
     'Altbestände aus der Zeit vor dem atomaren Schreiben müssen abgefangen werden');

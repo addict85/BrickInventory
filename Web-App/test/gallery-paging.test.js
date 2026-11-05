@@ -14,18 +14,8 @@ const H_SRC = require('./helpers/sources').handlerQuelle();
 test('die Sortierung ist eine Whitelist, kein interpolierter Parameter', () => {
   assert.match(H_SRC, /const SET_SORTS = \{/,
     'Ohne Whitelist landet der Wert eines <select> ungeprüft in der ORDER BY-Klausel');
-  // Geprüft wird die AUSSAGE, nicht der Wortlaut (Nachtrag 155).
-  //
-  // Vorher stand hier der Ausdruck `SET_SORTS[sort] || SET_SORTS.added_desc`
-  // wörtlich. Als dieser Zugriff auf ausTabelle() umgestellt wurde — weil der
-  // direkte Zugriff auch GEERBTE Eigenschaften lieferte und `|| Vorgabe` die
-  // eben NICHT abfing —, wurde der Test rot, obwohl die geprüfte Zusage nicht
-  // nur galt, sondern strenger geworden war.
-  //
-  // Zwei Dinge werden verlangt, beide als Sachverhalt:
-  //   1. Kein direkter Index auf die Tabelle mehr (das war die Lücke).
-  //   2. Der Wert geht durch ausTabelle() MIT Vorgabe (das ist die Zusage).
-  // Das Verhalten von ausTabelle() selbst prüft test/austabelle.test.js.
+  // Geprüft wird die AUSSAGE, nicht der Wortlaut.
+  // Ausführlich: docs/begruendungen/test/gallery-paging.test.js.md#ohnekommentare
   const ohneKommentare = H_SRC.split('\n')
     .filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*'))
     .join('\n');
@@ -72,7 +62,7 @@ test('die Themenliste kommt vom Server und nur auf Seite 1', () => {
 test('Minifiguren laden seitenweise', () => {
   // Auf die Parameter geprüft, nicht auf den Wortlaut des Kopfes: Eine
   // Typannotation an userId sagt über das Blättern nichts. Derselbe Fall wie
-  // in Nachtrag 148 — dort brachen fünf solcher Muster, ohne dass sich am
+  // in einer früheren Runde — dort brachen fünf solcher Muster, ohne dass sich am
   // Verhalten etwas geändert hatte.
   const { funktionsKopf } = require('./helpers/sources');
   const figKopf = funktionsKopf(H_SRC, 'getMinifigs');
@@ -89,14 +79,8 @@ test('Minifiguren laden seitenweise', () => {
 });
 
 test('auch die manuellen Listen können seitenweise', () => {
-  // ── Der Rumpf GANZ, nicht die ersten 900 Zeichen (20.10., GEMESSEN) ──────
-  //
-  // Hier stand `H_SRC.slice(i, i + 900)`. Am 20.10. bekam getManualParts einen
-  // Suchfilter samt Begründung, und diese Prüfung meldete „LIMIT/OFFSET müssen
-  // gebunden werden, nicht interpoliert" — die Zeile stand unverändert da, nur
-  // ab Zeichen 1100. Eine Prüfung, die richtigen Code anmeckert, wird
-  // abgeschaltet statt befolgt; funktionsRumpf() schneidet deshalb an der
-  // schliessenden Klammer (test/helpers/sources.js, dort steht die Lehre).
+  // Der Rumpf GANZ, nicht die ersten 900 Zeichen (20.10., GEMESSEN)
+  // Ausführlich: docs/begruendungen/test/gallery-paging.test.js.md#stelle
   const { funktionsRumpf } = require('./helpers/sources');
   for (const [f, liste] of [['getManualParts', 'manuelleTeile'], ['getManualMinifigs', 'manuelleFigurenListe']]) {
     assert.match(funktionsRumpf(H_SRC, f), /page_size/, `${f} kennt kein page_size`);
@@ -107,12 +91,8 @@ test('auch die manuellen Listen können seitenweise', () => {
 });
 
 test('nach Anzahl lässt sich in beide Richtungen sortieren', () => {
-  // ── Warum ein zweiter Sortierschlüssel nötig ist ──────────────────────────
-  // Die allermeisten Sets stehen mit genau einem Exemplar im Bestand. Ohne
-  // festen Zweitschlüssel wäre die Reihenfolge innerhalb dieser grossen Gruppe
-  // von Postgres nicht definiert — und weil die Galerie seitenweise lädt,
-  // könnte dasselbe Set beim Blättern zweimal oder gar nicht erscheinen. Das
-  // ist dieselbe Falle wie bei jeder anderen nicht eindeutigen Sortierung.
+  // Warum ein zweiter Sortierschlüssel nötig ist
+  // Ausführlich: docs/begruendungen/test/gallery-paging.test.js.md#handlers
   const handlers = require('./helpers/sources').handlerQuelle();
   const sorts = handlers.slice(handlers.indexOf('const SET_SORTS'),
                                handlers.indexOf('};', handlers.indexOf('const SET_SORTS')));

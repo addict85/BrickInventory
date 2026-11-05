@@ -3,9 +3,7 @@
  * Frontend-Modulen muss in index.html existieren. Genau diese Fehlerklasse
  * (JS greift auf umbenannte/entfernte IDs zu) fällt sonst erst zur Laufzeit
  * als stiller TypeError auf.
- *
- * Geprüft werden die statischen String-Literale G('id') — dynamische Aufrufe
- * wie G('tab-'+name) werden bewusst ignoriert.
+ * Ausführlich: docs/begruendungen/test/dom-ids.test.js.md#kopf
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,31 +27,18 @@ const collect = src => {
   for (const m of src.matchAll(/id=\\?"([^"\\]+)\\?"/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/id='([^']+)'/g)) knownIds.add(m[1]);
   // Auch Elemente, die der Code SELBST erzeugt: `el.id = 'name'`.
-  //
-  // Der Prüfer kannte bisher nur Auszeichnung — ein `<div id="…">` im Markup
-  // oder in einem Template-String. Der eigene Scrollbalken (Nachtrag 94)
-  // entsteht aber in JavaScript, und zwar aus gutem Grund: app.bundle.js läuft
-  // vor dem Ende des Body, ein dort notiertes Element gäbe es beim Start noch
-  // nicht. Ohne diese Zeile meldete der Prüfer es als fehlend, und man
-  // gewöhnte sich an, ihn zu übergehen.
+  // Ausführlich: docs/begruendungen/test/dom-ids.test.js.md#for-stelle
   for (const m of src.matchAll(/\.id\s*=\s*'([^']+)'/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/\.id\s*=\s*"([^"]+)"/g)) knownIds.add(m[1]);
   // Und der vierte Weg: Der Ansichts-Baustein setzt die id als OPTION.
-  //
-  //     detailZeile(t('detail.purchase_price'), inhalt, { wertId: 'm-acq-summary' })
-  //
-  // Genau dieselbe Lage wie beim Scrollbalken eine Zeile darüber: Das Element
-  // entsteht wirklich — 01-bausteine.js schreibt ` id="${o.wertId}"` —, nur
-  // steht das id-Literal nicht mehr an der Aufrufstelle. Ohne diese Zeile
-  // meldete der Prüfer drei Modal-IDs als fehlend, obwohl sie da sind.
+  // Ausführlich: docs/begruendungen/test/dom-ids.test.js.md#for-stelle-2
   for (const m of src.matchAll(/wertId:\s*'([^']+)'/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/wertId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
   // Und der fuenfte Weg: Der Lagerort-Baustein erzeugt ZWEI Elemente aus
   // einer Kennung — das Textfeld `id` und die Auswahl `id-sel`
   // (07-admin.js, lagerortBlock). Seit das Feld ein Auswahlfeld mit
-  // Neuerfassung ist, steht das id-Literal nicht mehr an der Aufrufstelle,
-  // sondern als `id="${id}"` im Baustein. Ohne diese Zeile meldete der
-  // Pruefer m-storage und setitem-storage als fehlend, obwohl beide entstehen.
+  // Neuerfassung ist, steht das id-Literal nicht mehr an der Aufrufstelle, …
+  // Ausführlich: docs/begruendungen/test/dom-ids.test.js.md#for-stelle-3
   for (const m of src.matchAll(/lagerortBlock\(\s*'([^']+)'/g)) {
     knownIds.add(m[1]);
     knownIds.add(m[1] + '-sel');
@@ -63,19 +48,7 @@ collect(fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'));
 for (const f of JS_FILES) collect(fs.readFileSync(path.join(PUB, 'js', f), 'utf8'));
 
 // Ausnahmen — und die Liste ist LEER, mit Absicht.
-//
-// Hier stand `uname`, mit der Begründung „Referenz ist im Code null-geprüft
-// (if(uel)), das Element wurde aus dem Header entfernt". Der zweite Halbsatz
-// war falsch: Der Namenszug im Kopf steht sehr wohl noch da, er heisst nur
-// `ubadge` (index.html). Gesetzt wurde er ausserdem nur ein einziges Mal —
-// in showApp() beim Anmelden. Wer seinen Benutzernamen änderte, sah bis zum
-// nächsten Neuladen weiter den alten; die Zeile, die das hätte richten
-// sollen, schlug ins Leere.
-//
-// Daran liegt der Reiz dieser Liste: Ein Eintrag hier sieht aus wie eine
-// Entscheidung und ist doch nur eine Vermutung, sobald niemand mehr
-// nachsieht. Wer hier etwas einträgt, muss NACHGESEHEN haben, dass es das
-// Element wirklich nicht mehr gibt — und den Fundort nennen.
+// Ausführlich: docs/begruendungen/test/dom-ids.test.js.md#allowed-missing
 const ALLOWED_MISSING = new Set();
 
 for (const file of JS_FILES) {
@@ -83,9 +56,8 @@ for (const file of JS_FILES) {
     // ohneKommentare: Gesucht wird nach IDs im CODE. Ein Erklärkommentar, der
     // beschreibt, welches G('…') hier früher stand und warum es weg ist, ist
     // keine Verwendung — ohne diesen Schritt meldet der Test eine ID, die
-    // niemand mehr abruft. Dieselbe Falle, gegen die es helpers/sources.js
-    // überhaupt gibt (dort in der Begründung: „der eigene Erklärkommentar
-    // über einer Prüfung enthält den gesuchten Namen").
+    // niemand mehr abruft. Dieselbe Falle, gegen die es helpers/sources.js …
+    // Ausführlich: docs/begruendungen/test/dom-ids.test.js.md#src-stelle
     const src = ohneKommentare(fs.readFileSync(path.join(PUB, 'js', file), 'utf8'));
     const ids = [...src.matchAll(/G\(\s*'([^'+]+)'\s*\)/g)].map(m => m[1]);
     const missing = [...new Set(ids)].filter(id => !knownIds.has(id) && !ALLOWED_MISSING.has(id));
@@ -94,22 +66,8 @@ for (const file of JS_FILES) {
 }
 
 test('jede Moduldatei hängt im Bündel-Graphen', () => {
-  // ── Was diese beiden Tests früher prüften ────────────────────────────────
-  // Hier standen zwei Prüfungen auf doppelte Top-Level-Deklarationen über die
-  // Dateigrenzen hinweg. Sie waren nötig, weil alle Dateien sich EINEN globalen
-  // Gültigkeitsbereich teilten: Ein zweites `const X` in einer anderen Datei
-  // brach die betroffene Datei komplett ab ("Identifier has already been
-  // declared"), und dann war keine ihrer Funktionen mehr definiert.
-  //
-  // Mit ES-Modulen kann das nicht mehr passieren — jede Datei hat ihren eigenen
-  // Bereich, gleichnamige Deklarationen sind unabhängig voneinander. esbuild
-  // meldet eine echte Doppeldeklaration INNERHALB einer Datei beim Bauen als
-  // harten Fehler (genau so ist die doppelte closeAcqModal() in 07-admin.js
-  // aufgefallen, die vorher jahrelang als toter Code danebenlag).
-  //
-  // Was dafür neu abgesichert werden muss: dass jede Datei überhaupt im
-  // Modulgraphen hängt. Eine nicht importierte Datei würde stillschweigend nie
-  // ausgeliefert.
+  // Was diese beiden Tests früher prüften
+  // Ausführlich: docs/begruendungen/test/dom-ids.test.js.md#stelle
   const { STANDALONE } = require('../scripts/build-frontend.js');
   const entry = fs.readFileSync(path.join(PUB, 'js', 'main.js'), 'utf8');
   const imported = new Set(

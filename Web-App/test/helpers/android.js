@@ -1,11 +1,6 @@
 /**
  * Android-Quellen über alle Gradle-Module.
- *
- * Seit der Aufteilung der App liegt eine Kotlin-Datei in app, einem core- oder
- * einem feature-Modul. Die Web-Tests fragen nach dem Paketpfad (`ui/screens/X.kt`),
- * nicht nach dem Modul: Wandert eine Datei zwischen Modulen, bleibt der Test
- * gleich. Was es nicht genau einmal gibt, ist ein Fehler mit Namen — nie eine
- * leere Zeichenkette, die eine Prüfung still bestehen liesse.
+ * Ausführlich: docs/begruendungen/test/helpers/android.js.md#kopf
  */
 const fs = require('node:fs');
 const path = require('node:path');

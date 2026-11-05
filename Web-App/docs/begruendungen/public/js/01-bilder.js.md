@@ -62,7 +62,7 @@ einen Plattencache und einen Negativ-Cache. Nichts davon wirkt, wenn der
 Browser die Adresse selbst aufruft.
 ```
 
-<a id="tp"></a>
+<a id="vorschauen-entstehen-im-proxy-thumb"></a>
 ## `tp`
 
 ```text

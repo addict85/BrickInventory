@@ -23,7 +23,7 @@ eintreten. Ein Bedienelement, das eine Wahl verspricht und keine anbietet,
 ist raus (die Android-App zeigt an dieser Stelle ebenfalls keines).
 ```
 
-<a id="s"></a>
+<a id="kennzahlen-mit-dem-filter-des"></a>
 ## `s`
 
 ```text

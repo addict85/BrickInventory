@@ -40,30 +40,7 @@ test('Platzhalter stimmen zwischen DE und EN überein', () => {
 
 /**
  * Gleicher Text in beiden Sprachen heisst: nicht übersetzt.
- *
- * ── Warum der Paritätstest oben das nicht fängt (Nachtrag 136) ─────────────
- *
- * Er vergleicht SCHLÜSSEL. Die zehn Texte der Preisalarm-Rubrik standen in
- * der Android-App brav in beiden Sprachdateien — nur trug die deutsche
- * denselben englischen Satz. Marco las in den Einstellungen seiner deutschen
- * App „rises above" und musste nachfragen, was die Rubrik ihm sagt.
- *
- * Die Webapp hatte davon drei eigene Fälle („Minifigs" zweimal, „👤 User"),
- * und der Fehler entsteht immer gleich: Wer einen Schlüssel anlegt, kopiert
- * die Zeile in die zweite Datei und übersetzt sie dann nicht. Danach sehen
- * beide Dateien vollständig aus. Deshalb prüft dieser Test nicht
- * Vollständigkeit, sondern Verschiedenheit.
- *
- * Dieselbe Regel steht in der App (StringResourceParityTest). Zwei
- * Oberflächen, die gleich aussehen sollen, brauchen auch dieselben Wächter —
- * sonst fällt derselbe Fehler nur auf einer Seite auf.
- *
- * Die Liste ist bewusst eine Liste und keine Heuristik: Sie ist eine
- * Behauptung, die jeder Eintrag einzeln trägt („das lautet in beiden Sprachen
- * gleich, und das ist gewollt"). Neue Schlüssel kommen nicht von selbst
- * hinein — genau das ist der Zweck. Und der Test prüft die Liste mit: Ein
- * Eintrag, der nicht mehr zutrifft, fliegt raus, statt als alte Entscheidung
- * stehenzubleiben, die niemand mehr nachsieht.
+ * Ausführlich: docs/begruendungen/test/i18n.test.js.md#kein-text-steht-in-beiden-sprachen-unueb
  */
 test('kein Text steht in beiden Sprachen unübersetzt', () => {
   // Begriffe, Eigennamen und Zahlenformate, die in beiden Sprachen gleich
@@ -170,11 +147,8 @@ test('thumbUrl() rät nicht mehr selbst — vertraut der Server-Antwort wie Andr
   // Gleicher Fehler und derselbe Fix wie in der Android-App
   // (util/ImageUrls.kt, resolveThumbUrl()): src/katalog/bilder/images.ts prüft bereits
   // serverseitig, ob "_thumb.jpg" existiert, und liefert je nachdem den
-  // Thumb- oder den Original-Pfad. thumbUrl() konstruierte trotzdem seine
-  // eigene "_thumb.jpg"-Adresse aus JEDEM lokalen Pfad — auch aus dem
-  // Original, das der Server absichtlich zurückgegeben hatte, weil die
-  // Vorschau fehlte. Das führte zu Bildern, die auch nach einem
-  // vollständigen Neuladen der Seite nicht erschienen.
+  // Thumb- oder den Original-Pfad. thumbUrl() konstruierte trotzdem seine …
+  // Ausführlich: docs/begruendungen/test/i18n.test.js.md#src-stelle
   const src = require('./helpers/sources').coreQuelle();
   const fn = src.slice(src.indexOf('function thumbUrl'), src.indexOf('function thumbUrl') + 200);
 
@@ -189,14 +163,8 @@ test('Teile-Kacheln laden das Zoom-Bild über den Server-Proxy, nicht direkt vom
   // durch das Backend laufen. data-orig speiste bisher die rohe (CDN-)Adresse
   // direkt, der Zoom lief damit am Server vorbei.
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', '03-parts.js'), 'utf8');
-  // ── Warum nicht mehr `+ 900` ────────────────────────────────────────────
-  // Hier stand ein festes Fenster von 900 Zeichen ab dem Funktionsanfang.
-  // Es ging kaputt, als die Funktion einen Erklaerabsatz mehr bekam: Die
-  // gesuchte Zeile rutschte hinter das Fenster, und die Pruefung meldete
-  // einen Fehler, den es nicht gab. Eine Zahl, die die LAENGE eines
-  // Kommentars festschreibt, prueft nicht den Code.
-  //
-  // Jetzt bis zur naechsten Funktion — das ist der Rumpf, ohne Magie.
+  // Warum nicht mehr `+ 900`
+  // Ausführlich: docs/begruendungen/test/i18n.test.js.md#partscard
   const anfang = src.indexOf('function partsCard(');
   assert.ok(anfang >= 0, 'partsCard() gibt es nicht mehr — umbenannt?');
   const naechste = src.indexOf('\nfunction ', anfang + 1);
@@ -221,10 +189,8 @@ test('der manuelle Kaufpreis-Detail-Dialog lädt Teile/Minifiguren-Bilder über 
   // Gemeldet: Detailbilder von Teilen/Minifiguren kamen weiterhin direkt vom
   // CDN. Der vorige Fix deckte nur den Kachel-Zoom ab (03-parts.js,
   // 06-minifigs.js) — dieser eigenständige Dialog (man-detail-img, geöffnet
-  // beim Anklicken eines manuell erfassten Teils/einer Minifigur zum
-  // Bearbeiten des Kaufpreises) hatte eine EIGENE, unabhängige Bildanzeige,
-  // die nur fullUrl() ohne imgUrl()-Umwicklung benutzte — bei einer
-  // CDN-Quelle also weiterhin ein direkter Browser-Zugriff.
+  // beim Anklicken eines manuell erfassten Teils/einer Minifigur zum …
+  // Ausführlich: docs/begruendungen/test/i18n.test.js.md#src-stelle-2
   const src = require('./helpers/sources').adminQuelle();
   // Fenster grosszügig: Zwischen der Bild-Variablen und der Zuweisung stehen
   // inzwischen der Cache-Nachladepfad und Kommentare. Ein knapp bemessener

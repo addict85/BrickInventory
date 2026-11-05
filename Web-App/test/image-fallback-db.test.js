@@ -39,17 +39,8 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog',
   await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
 
-  // ── Was Migration 0033 an diesem Aufbau geaendert hat ──────────────────
-  //
-  // Vorher gab es ZWEI Orte fuer die Bildadresse: die eigene sets-Zeile und
-  // den Katalog. Der Test stellte beide Faelle her — Zeile leer (der Katalog
-  // muss einspringen) und Zeile gefuellt (sie darf nicht ueberschrieben
-  // werden). Genau diesen Rueckfall gibt es nicht mehr: Die Adresse steht nur
-  // im Katalog.
-  //
-  // Geblieben ist die Aussage, auf die es Marco ankam („wenn das Bild lokal
-  // noch nicht vorhanden ist, soll es direkt via Proxy vom CDN geholt
-  // werden"): Ein Set ohne lokale Datei muss die CDN-Adresse mitliefern.
+  // Was Migration 0033 an diesem Aufbau geaendert hat
+  // Ausführlich: docs/begruendungen/test/image-fallback-db.test.js.md#stelle
   await haeltSet(db, uid, OHNE, 1);
   await db.run(`INSERT INTO set_catalog (set_number,name,image_url) VALUES ($1,'F1 Truck',$2)
                 ON CONFLICT (set_number) DO UPDATE SET image_url=EXCLUDED.image_url`, [OHNE, CDN]);
