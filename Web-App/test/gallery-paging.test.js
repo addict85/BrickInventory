@@ -158,7 +158,8 @@ test('Minifiguren laden seitenweise', () => {
   const { funktionsKopf } = require('./helpers/sources');
   const figKopf = funktionsKopf(H_SRC, 'getMinifigs');
   for (const p of ['userId', 'search', 'source', 'set_number', 'page', 'page_size']) {
-    assert.match(figKopf, new RegExp(`\\b${p}\\b`),
+    // userId heisst seit dem 05.11.2026 userIdWahl (Sicht oder IDs).
+    assert.match(figKopf, new RegExp(`\\b${p}(Wahl)?\\b`),
       `getMinifigs nimmt '${p}' nicht mehr entgegen: ${figKopf}`);
   }
   assert.match(figKopf, /page\s*=\s*1/,   'page muss auf 1 vorbelegt sein');

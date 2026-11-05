@@ -4,7 +4,7 @@
 import { meldeUndLiefere, fehlertext } from '../../infra/fehler';
 import * as repo from '../repository/bewertung';
 import { setPreiseFrisch } from '../repository/preisCache';
-import { asIds, withOwners } from '../../haushalt/haushalt';
+import { asIds, withOwners, blickfeldAus, type Sicht } from '../../haushalt/haushalt';
 import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
 import { resolveImageLocal, proxyImageUrl } from '../../katalog/bilder/images';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
@@ -44,7 +44,8 @@ function fremdeKaufpreise(jeEintrag: Map<string, Array<{ kaufpreis_fremd?: boole
 }
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
+export async function computeSetsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
+  const ids = await blickfeldAus(idsWahl);
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten" fehlt das fragende Konto in ids.
   const uids = asIds(ids);
@@ -191,7 +192,8 @@ export async function computeSetsValuation(viewerId: number, ids: Blickfeld) {
 }
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function computeMinifigsValuation(viewerId: number, ids: Blickfeld) {
+export async function computeMinifigsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
+  const ids = await blickfeldAus(idsWahl);
   const uids = asIds(ids);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),
@@ -264,7 +266,8 @@ export async function computeMinifigsValuation(viewerId: number, ids: Blickfeld)
            kaufpreise_umgerechnet: zaehle([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet') };
 }
 
-export async function computePartsValuation(viewerId: number, ids: Blickfeld) {
+export async function computePartsValuation(viewerId: number, idsWahl: Sicht | Blickfeld) {
+  const ids = await blickfeldAus(idsWahl);
   const uids = asIds(ids);
   const [currency, ttlHours] = await Promise.all([
     getSetting(viewerId, 'currency', 'EUR'),

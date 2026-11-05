@@ -149,6 +149,18 @@ test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
   if (ist < SCHRANKE) console.log(`  ℹ req.body/req.query in Routen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
 });
 
+test('Schreibziele in Routen werden weniger, nie mehr', () => {
+  // schreibziel() prüft im Haushalt, für wen geschrieben wird; besser nimmt der
+  // Dienst den Wunsch selbst entgegen. Gemessen 17 am 05.11.2026.
+  // Gegenprobe (05.11.2026): Schranke auf 16 → rot.
+  const SCHRANKE = 17;
+  let ist = 0;
+  for (const f of quellen().filter(f => /[\\/]routes[\\/]/.test(f)))
+    ist += (require('./helpers/sources').ohneKommentare(fs.readFileSync(f, 'utf8')).match(/\bschreibziel\(/g) || []).length;
+  assert.ok(ist <= SCHRANKE, `${ist}-mal schreibziel() in routes/, erlaubt sind ${SCHRANKE}`);
+  if (ist < SCHRANKE) console.log(`  ℹ schreibziel() in Routen: ${ist} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+});
+
 /**
  * Testdateien, die nur Quelltext lesen und nichts ausführen. Eine Regex auf
  * den Quelltext bestätigt, dass eine Zeile dasteht — nicht, dass sie wirkt

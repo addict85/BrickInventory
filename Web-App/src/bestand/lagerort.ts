@@ -5,7 +5,7 @@ import { meldeUndLiefere } from '../infra/fehler';
 import * as db from '../../db/database';
 import * as orte from './repository/lagerort';
 import type { LagerTabelle } from './repository/lagerort';
-import { asIds, scopeIds, writableIds } from '../haushalt/haushalt';
+import { asIds, scopeIds, writableIds, blickfeldAus, type Sicht, schreibbereichAus, type Schreiber } from '../haushalt/haushalt';
 import type { BlickfeldEingabe } from '../haushalt/haushalt';
 import { fehlerWerfen } from '../infra/fehlerTexte';
 import { deleteUserSetting } from '../einstellungen/settings';
@@ -30,8 +30,9 @@ export function normalisiereLagerort(v: unknown): string | null {
  * bekommt die fertige Menge und fragt nicht nach.
  * @returns wie viele Zeilen betroffen waren (0 = es gibt nichts zu setzen) */
 export async function setzeLagerort(
-  art: LagerArt, besitzerIds: number[], schluessel: string[], ort: string | null,
+  art: LagerArt, besitzerIdsWahl: Schreiber | number[], schluessel: string[], ort: string | null,
 ): Promise<number> {
+  const besitzerIds = await schreibbereichAus(besitzerIdsWahl);
   if (ort === null) return orte.ordneOrtZu(db, art, besitzerIds, null, schluessel);
   // Ein neuer Name kommt in den Vorrat — vor der Zuordnung, die ihn über die ID findet.
   return await db.transaction(async (tx) => {
@@ -67,6 +68,11 @@ export async function lagerSchreibkonto(nutzer: number, wunsch: string | number 
   const konto = (await lagerKonten(nutzer, wunsch, true))[0];
   if (konto === undefined) fehlerWerfen('kein_schreibrecht', 403);
   return konto;
+}
+
+/** Der Vorrat der gewünschten Konten, soweit das Konto sie sehen darf. */
+export async function orteFuer(nutzer: number, wunsch: string | undefined): Promise<Lagerort[]> {
+  return orteVon(await lagerKonten(nutzer, wunsch, false));
 }
 
 /** Wer wessen Liste sehen darf, entscheidet der Haushalt; die IDs kommen mit.
@@ -121,7 +127,8 @@ export async function loescheOrt(userId: number, id: number): Promise<void> {
 
 /** EINE Abfrage über alle Tabellen, damit nicht jede Oberfläche selbst zusammenführt.
  * Ausführlich: docs/begruendungen/src/bestand/lagerort.ts.md#lagerorte */
-export async function lagerorte(blickfeld: BlickfeldEingabe) {
+export async function lagerorte(blickfeldWahl: Sicht | BlickfeldEingabe) {
+  const blickfeld = await blickfeldAus(blickfeldWahl);
   const uids = asIds(blickfeld);
   // Über den NAMEN gruppiert, absichtlich: „Keller" von Grossvater und Enkel
   // sind zwei Vorratszeilen, gehören in der Übersicht aber zusammen.

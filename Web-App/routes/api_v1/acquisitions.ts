@@ -3,8 +3,7 @@ import express from 'express';
 import { acquisitionTotals } from '../../src/bestand/acquisitions';
 import { meldeUndLiefere } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
-import { requireToken } from './middleware';
-import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
+import { requireToken, sichtVon } from './middleware';
 import { getPartAcquisitions } from '../../src/teile/manuelleTeile';
 import { getFigAcquisitions } from '../../src/figuren/manuelleFiguren';
 import { erfassungAendern, erfassungLoeschen, setErfassungen } from '../../src/sammlung/erfassungen';
@@ -32,8 +31,7 @@ router.get('/sets/:setNumber/acquisitions', requireToken, async (req: Anfrage<'G
   const uid = req.apiUser.user_id;
   // Blickfeld: Im Haushalt gehören die Kaufpreise eines Sets oft mehreren Konten.
   // Scheitert das Lesen, zeigt die App eine leere Liste statt einer Fehlerseite.
-  const rows = await scopeIds(uid, parseScopeMode(req.abfrage.accounts))
-    .then(ids => setErfassungen(ids, pfadParam(req, 'setNumber')))
+  const rows = await setErfassungen(sichtVon(req), pfadParam(req, 'setNumber'))
     .catch(meldeUndLiefere('v1 acquisitions GET', null));
   if (!rows) return res.json({ success: true, acquisitions: [], totals: acquisitionTotals([]) });
   res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: uid });
@@ -44,7 +42,7 @@ router.delete('/sets/:setNumber/acquisitions/:acqId', requireToken, loeschen('se
 
 router.get('/parts/:partNumber/:colorId/acquisitions', requireToken, async (req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/acquisitions'>, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/acquisitions'>) => {
   const rows = await getPartAcquisitions(
-    await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts)),
+    sichtVon(req),
     pfadParam(req, 'partNumber'), pfadParam(req, 'colorId'));
   res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
 });
@@ -54,7 +52,7 @@ router.delete('/parts/:partNumber/:colorId/acquisitions/:acqId', requireToken, l
 
 router.get('/minifigs/:figNumber/acquisitions', requireToken, async (req: Anfrage<'GET /api/v1/minifigs/:figNumber/acquisitions'>, res: Antwort<'GET /api/v1/minifigs/:figNumber/acquisitions'>) => {
   const rows = await getFigAcquisitions(
-    await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts)), pfadParam(req, 'figNumber'));
+    sichtVon(req), pfadParam(req, 'figNumber'));
   res.json({ success: true, acquisitions: rows, totals: acquisitionTotals(rows), owner_user_id: req.apiUser.user_id });
 });
 const figurSchluessel: Schluessel = req => [pfadParam(req, 'figNumber')];

@@ -264,6 +264,34 @@ export function asIds(v: BlickfeldEingabe): Blickfeld {
   return Array.isArray(v) ? v.map(x => parseInt(String(x))) : [parseInt(String(v))];
 }
 
+/** Wer fragt und welche Konten seines Haushalts er sehen will (`accounts`). Den
+ * Bereich löst der Dienst auf, nicht die Route: Jeder Aufrufer bekommt dieselbe Regel. */
+export interface Sicht { readonly nutzer: number; readonly konten?: string | undefined }
+/** Wer schreibt; sein Schreibbereich sind er selbst und seine Unterkonten. */
+export interface Schreiber { readonly schreiber: number }
+
+/** IDs kommen nur von innen (Jobs, andere Dienste); von aussen kommt eine Sicht. */
+export async function blickfeldAus(v: Sicht | BlickfeldEingabe): Promise<Blickfeld> {
+  return typeof v === 'object' && !Array.isArray(v) ? scopeIds(v.nutzer, parseScopeMode(v.konten)) : asIds(v);
+}
+
+export async function schreibbereichAus(v: Schreiber | number[]): Promise<number[]> {
+  return Array.isArray(v) ? v : writableIds(v.schreiber);
+}
+
+/** Hauptkonten sehen die Dateien ihrer Unterkonten, nicht umgekehrt. */
+export async function siehtKonto(nutzer: number, besitzer: number): Promise<boolean> {
+  return besitzer === nutzer || (await scopeIds(nutzer)).includes(besitzer);
+}
+
+/** Für wen geschrieben wird; ohne Recht 403 mit dem Code der Route. */
+export async function schreibziel(nutzer: number, wunsch: unknown,
+                                  absage: 'kein_schreibrecht' | 'kein_zugriff_konto' = 'kein_schreibrecht'): Promise<number> {
+  const ziel = await resolveWriteTarget(nutzer, wunsch);
+  if (ziel === null) fehlerWerfen(absage, 403);
+  return ziel;
+}
+
 /** Prüft die RICHTUNG (Haupt- für Unterkonto), nicht nur die Mitgliedschaft.
  * Ausführlich: docs/begruendungen/src/haushalt/haushalt.ts.md#resolvewritetarget
  * @returns die Ziel-ID, oder null wenn nicht erlaubt (Aufrufer antwortet 403) */

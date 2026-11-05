@@ -1,5 +1,7 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
+import { blickfeldAus } from '../haushalt/haushalt';
+import type { Sicht } from '../haushalt/haushalt';
 import * as db from '../../db/database';
 import { logAndContinue, oeffentlicherFehler } from '../infra/fehler';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
@@ -160,7 +162,8 @@ export async function updateManualFig(uid: number, figNumber: string, body: any)
 }
 
 /** `uid` ist das Blickfeld (Liste). */
-export async function getFigAcquisitions(uid: number[], figNumber: string) {
+export async function getFigAcquisitions(uidWahl: Sicht | number[], figNumber: string) {
+  const uid = await blickfeldAus(uidWahl);
   return repo.figurErfassungen(uid, figNumber);
 }
 

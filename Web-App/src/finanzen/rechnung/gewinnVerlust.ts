@@ -1,5 +1,5 @@
 
-import { asIds } from '../../haushalt/haushalt';
+import { asIds, blickfeldAus, type Sicht } from '../../haushalt/haushalt';
 import { getGlobalSetting, getSetting } from '../../einstellungen/settings';
 import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
 import { effectiveCondition } from './zustand';
@@ -10,7 +10,8 @@ import { ladeSetErfassungen } from '../repository/erfassungen';
 import { aufRappen, inZehntel4, summeAus } from '../../infra/geld';
 import * as repo from '../repository/gewinnVerlust';
 
-export async function computePnl(viewerId: number, ids: Blickfeld) {
+export async function computePnl(viewerId: number, idsWahl: Sicht | Blickfeld) {
+  const ids = await blickfeldAus(idsWahl);
   // Zwei Grössen: viewerId — wessen EINSTELLUNGEN gelten; ids — WESSEN DATEN
   // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
   const uids = asIds(ids);

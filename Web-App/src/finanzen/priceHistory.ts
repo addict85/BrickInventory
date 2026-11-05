@@ -2,7 +2,7 @@
  * Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#abschnitt */
 import { meldeUndLiefere } from '../infra/fehler';
 import { resolveSetCondition, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds } from '../haushalt/haushalt';
+import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { buildChart } from './chartData';
 import { blNummerVon } from '../katalog/blZuordnung';
 import { entwicklungProzent } from './setValue';
@@ -34,7 +34,8 @@ async function seriesFor(setNumber: string, currency: string, cond: 'N' | 'U'): 
 
 /** @param uid Blickfeld: Im Haushalt gehört das Set oft einem Unterkonto, mit
  *   der nackten Betrachter-ID fände die Abfrage es nicht. */
-export async function getSetPriceHistory(uid: number | number[], setNumber: string, currency: string) {
+export async function getSetPriceHistory(uidWahl: Sicht | number | number[], setNumber: string, currency: string) {
+  const uid = await blickfeldAus(uidWahl);
   const uids = asIds(uid as any);
   const condition = await resolveSetCondition(uids, setNumber);
 
@@ -169,7 +170,8 @@ async function manualPriceHistory(
   };
 }
 
-export async function getPartPriceHistory(uid: number | number[], partNumber: string, colorId: number, currency: string) {
+export async function getPartPriceHistory(uidWahl: Sicht | number | number[], partNumber: string, colorId: number, currency: string) {
+  const uid = await blickfeldAus(uidWahl);
   // Preise liegen unter BrickLink-Nummer und -Farbe, Erfassungen unter denen
   // des Benutzers — die beiden Schlüsselräume dürfen nicht gemischt werden.
   // Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#getpartpricehistory-blnummer
@@ -183,7 +185,8 @@ export async function getPartPriceHistory(uid: number | number[], partNumber: st
 }
 
 // Ausführlich: docs/begruendungen/src/finanzen/priceHistory.ts.md#getminifigpricehistory
-export async function getMinifigPriceHistory(uid: number | number[], figNumber: string, currency: string) {
+export async function getMinifigPriceHistory(uidWahl: Sicht | number | number[], figNumber: string, currency: string) {
+  const uid = await blickfeldAus(uidWahl);
   const nummern = await preisNummernFuerFigur(uid, figNumber);
   return manualPriceHistory(uid, currency,
     'minifig_price_history', 'minifig_price_cache', 'minifig_acquisitions',

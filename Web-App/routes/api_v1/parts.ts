@@ -1,6 +1,6 @@
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
-import { requireToken, kontoSchranke } from './middleware';
-import { scopeIds, parseScopeMode, resolveWriteTarget, writableIds } from '../../src/haushalt/haushalt';
+import { requireToken, kontoSchranke, sichtVon } from './middleware';
+import { schreibziel } from '../../src/haushalt/haushalt';
 import { getBlColorMap, getManualParts, getOwnedQuantities, getParts, getPartsColors, getPartsStats, getPartsCategories } from '../../src/teile/abfragen';
 import { csvEmpfang } from '../../src/infra/dateiEmpfang';
 import { importAlsAuftrag } from '../../src/auftraege/importAlsAuftrag';
@@ -19,7 +19,7 @@ import type { Anfrage, Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 
 router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res: Antwort<'GET /api/v1/parts'>) => {
-  const result = await getParts(await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts)), req.abfrage);
+  const result = await getParts(sichtVon(req), req.abfrage);
   // page_size: der TATSÄCHLICH verwendete Wert, nicht der angefragte.
   res.json({ success: true, page: req.abfrage.page ?? 1, ...result });
 });
@@ -27,7 +27,7 @@ router.get('/parts', requireToken, async (req: Anfrage<'GET /api/v1/parts'>, res
 router.get('/parts/categories', requireToken, async (req: Anfrage<'GET /api/v1/parts/categories'>, res: Antwort<'GET /api/v1/parts/categories'>) => {
   // Dasselbe Blickfeld wie die Farbliste, sonst filtern zwei Listen derselben
   // Ansicht über verschiedene Konten.
-  const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts));
+  const uids = sichtVon(req);
   res.json({ success: true, categories: await getPartsCategories(uids) });
 });
 
@@ -44,8 +44,7 @@ router.get('/parts/brick-colors', requireToken, async (_req: AuthedRequest, res:
 router.post('/parts', requireToken, async (req: Anfrage<'POST /api/v1/parts'>, res: Antwort<'POST /api/v1/parts'>) => {
   // resolveWriteTarget prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
   // nicht bloss die Mitgliedschaft im Blickfeld.
-  const owner = await resolveWriteTarget(req.apiUser.user_id, req.eingabe.owner_user_id);
-  if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const result = await addManualPart(owner, req.eingabe);
   res.json({ success: true, ...result });
 });
@@ -53,8 +52,7 @@ router.post('/parts', requireToken, async (req: Anfrage<'POST /api/v1/parts'>, r
 router.put('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId'>) => {
   // Die Ansicht sagt, wessen Karte gemeint ist; ohne Parameter änderte das
   // Hauptkonto auf der Karte des Kindes die eigene Zeile.
-  const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.abfrage.owner);
-  if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
+  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
   // weiss der Client sie sonst nicht).
   const r = await updateManualPart(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId), req.eingabe);
@@ -63,8 +61,7 @@ router.put('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'PUT
 
 // Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#put-parts-partnumber-colorid-color
 router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/color'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/color'>) => {
-  const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.abfrage.owner);
-  if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
+  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
   // ein stilles Leeren mit Erfolgsmeldung.
   const roh = req.eingabe.color_id;
@@ -80,8 +77,7 @@ router.put('/parts/:partNumber/:colorId/color', requireToken, async (req: Anfrag
 
 router.delete('/parts/:partNumber/:colorId', requireToken, async (req: Anfrage<'DELETE /api/v1/parts/:partNumber/:colorId'>, res: Antwort<'DELETE /api/v1/parts/:partNumber/:colorId'>) => {
   // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
-  const besitzer = await resolveWriteTarget(req.apiUser.user_id, req.abfrage.owner);
-  if (besitzer === null) return sendeFehler(req, res, 403, 'kein_zugriff_konto');
+  const besitzer = await schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
   const geloescht = await loescheTeil(besitzer, String(req.params.partNumber), V.colorId(req.params.colorId));
   if (geloescht === null) return sendeFehler(req, res, 404, 'teil_nicht_manuell');
   res.json({ success: true, papierkorb: [geloescht] });
@@ -97,15 +93,14 @@ router.get('/parts/bl-color-map', requireToken, async (_req: AuthedRequest, res:
  * Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#post-parts-owned */
 router.post('/parts/owned', requireToken, async (req: Anfrage<'POST /api/v1/parts/owned'>, res: Antwort<'POST /api/v1/parts/owned'>) => {
   const teile = req.eingabe.teile ?? [];
-  const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts));
-  res.json({ success: true, bestand: await getOwnedQuantities(ids, teile) });
+  res.json({ success: true, bestand: await getOwnedQuantities(sichtVon(req), teile) });
 });
 
 /** Trifft ALLE Zeilen des Teil-Farb-Paares: Wer „Kiste 3" einträgt, meint das
  * Teil, nicht eine seiner Set-Zeilen. */
 router.put('/parts/:partNumber/:colorId/storage', requireToken, async (req: Anfrage<'PUT /api/v1/parts/:partNumber/:colorId/storage'>, res: Antwort<'PUT /api/v1/parts/:partNumber/:colorId/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
-  const n = await setzeLagerort('part', await writableIds(req.apiUser.user_id),
+  const n = await setzeLagerort('part', { schreiber: req.apiUser.user_id },
     [String(req.params.partNumber), String(V.colorId(req.params.colorId))], ort);
   res.json({ success: true, storage: ort, changed: n });
 });
@@ -114,17 +109,17 @@ router.get('/parts/manual', requireToken, async (req: Anfrage<'GET /api/v1/parts
   // NUR `search`: Die Liste antwortet ohne Blätterung, ein durchgereichtes
   // page_size deckelte sie unbemerkt.
   res.json({ success: true, parts: await getManualParts(
-    await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts)),
+    sichtVon(req),
     req.apiUser.user_id,
     { search: req.abfrage.search ?? '', storage: req.abfrage.storage ?? '' }) });
 });
 
 router.get('/parts/colors', requireToken, async (req: Anfrage<'GET /api/v1/parts/colors'>, res: Antwort<'GET /api/v1/parts/colors'>) => {
-  res.json({ success:true, colors: await getPartsColors(await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts))) });
+  res.json({ success:true, colors: await getPartsColors(sichtVon(req)) });
 });
 
 router.get('/parts/stats', requireToken, async (req: Anfrage<'GET /api/v1/parts/stats'>, res: Antwort<'GET /api/v1/parts/stats'>) => {
-  const stats = await getPartsStats(await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts)));
+  const stats = await getPartsStats(sichtVon(req));
   res.json({ success: true, stats });
 });
 
@@ -134,13 +129,13 @@ router.get('/parts/:partNumber/:colorId/price-history', requireToken, async (req
   const uid = req.apiUser.user_id;
   const currency = await getSetting(uid, 'currency', 'EUR');
   const data = await getPartPriceHistory(
-    await scopeIds(uid, parseScopeMode(req.abfrage.accounts)), V.einzelwert(req.params.partNumber), V.colorId(req.params.colorId), currency);
+    sichtVon(req), V.einzelwert(req.params.partNumber), V.colorId(req.params.colorId), currency);
   res.json({ success: true, ...data });
 });
 
 // Ausführlich: docs/begruendungen/routes/api_v1/parts.ts.md#get-parts-partnumber-colorid-sets
 router.get('/parts/:partNumber/:colorId/sets', requireToken, async (req: Anfrage<'GET /api/v1/parts/:partNumber/:colorId/sets'>, res: Antwort<'GET /api/v1/parts/:partNumber/:colorId/sets'>) => {
-  const uids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts));
+  const uids = sichtVon(req);
   const { item, sets } = await verwendendeSets(uids, 'parts', {
     part_number: V.einzelwert(req.params.partNumber),
     color_id: V.colorId(req.params.colorId),

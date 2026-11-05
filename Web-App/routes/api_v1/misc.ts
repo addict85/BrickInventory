@@ -1,13 +1,12 @@
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
-import { requireToken } from './middleware';
-import { scopeIds, parseScopeMode } from '../../src/haushalt/haushalt';
+import { requireToken, sichtVon } from './middleware';
 import { getStats } from '../../src/bestand/kennzahlen';
 import { vertragsRouter } from '../../src/infra/vertrag/pruefen';
 import type { Anfrage, Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 
 router.get('/stats', requireToken, async (req: Anfrage<'GET /api/v1/stats'>, res: Antwort<'GET /api/v1/stats'>) => {
-  res.json({ success: true, stats: await getStats(await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts))) });
+  res.json({ success: true, stats: await getStats(sichtVon(req)) });
 });
 
 // Hinter requireToken: Die Übersicht verriete sonst die ganze API-Fläche.

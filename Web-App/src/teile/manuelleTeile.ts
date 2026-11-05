@@ -1,5 +1,7 @@
 /** Hier und nicht in einer Route, weil Sitzungsroute und v1-Fabrik beide darauf
  * zugreifen — eine Route soll keine andere importieren. */
+import { blickfeldAus } from '../haushalt/haushalt';
+import type { Sicht } from '../haushalt/haushalt';
 import { meldeUndLiefere, oeffentlicherFehler } from '../infra/fehler';
 import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
 import * as db from '../../db/database';
@@ -179,7 +181,8 @@ export async function updateManualPart(uid: number, partNumber: string, colorId:
   return raus;
 }
 
-export async function getPartAcquisitions(uid: number[], partNumber: string, colorId: string | number) {
+export async function getPartAcquisitions(uidWahl: Sicht | number[], partNumber: string, colorId: string | number) {
+  const uid = await blickfeldAus(uidWahl);
   // Das BLICKFELD: Je Zeile kommt der Eigentümer mit, sonst wüsste die Auswahl
   // im Dialog nicht, worauf sie steht.
   return repo.teilErfassungen(uid, partNumber, V0.colorId(colorId));

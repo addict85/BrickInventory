@@ -7,19 +7,19 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { fehlertext, meldeUndLiefere, logAndContinue, oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
-import { requireToken, kontoSchranke } from './middleware';
+import { requireToken, kontoSchranke, sichtVon } from './middleware';
 import { getSetting } from '../../src/einstellungen/settings';
 import { findSetInScope, normalizeSetNumber } from '../../src/sets/setAdd';
-import { scopeIds, parseScopeMode, writableIds, householdMembers, resolveWriteTarget } from '../../src/haushalt/haushalt';
+import { schreibziel, householdMembers } from '../../src/haushalt/haushalt';
 import { verschiebeSet } from '../../src/sets/setMove';
 import { normalisiereLagerort, setzeLagerort, lagerorte,
-         orteVon, legeOrtAn, benenneOrtUm, loescheOrt, lagerKonten, lagerSchreibkonto,
+         orteFuer, legeOrtAn, benenneOrtUm, loescheOrt, lagerSchreibkonto,
          vorgabeVon, setzeVorgabe } from '../../src/bestand/lagerort';
 import { alarmeFuer, alleAlarme, ausgeloesteSeit, loescheAlarm, setzeAlarm } from '../../src/finanzen/preisalarm';
 import { csvEmpfang, inhaltPasstZuTyp, uploadKontingentBytes, belegterPlatz, FORMULAR_GRENZEN, privaterOrdner } from '../../src/infra/dateiEmpfang';
 import { sendCsv, uebersprungenHinweis } from '../../src/infra/csvExport';
 import { addSet, updateSet } from '../../src/sets/setService';
-import { deleteSet, getSet, getSets } from '../../src/sets/abfragen';
+import { loescheSetFuer, getSet, getSets } from '../../src/sets/abfragen';
 import { getSetPriceHistory } from '../../src/finanzen/priceHistory';
 import * as V from '../../src/infra/validate';
 import { mitVersion, normalisiereSetNummer, moeglicheSetNummer } from '../../src/infra/setNummer';
@@ -79,7 +79,7 @@ router.get('/sets/barcode/:barcode', requireToken, async (req: Anfrage<'GET /api
  * packt sie für alle, die darin nachsehen. */
 router.put('/sets/:setNumber/storage', requireToken, async (req: Anfrage<'PUT /api/v1/sets/:setNumber/storage'>, res: Antwort<'PUT /api/v1/sets/:setNumber/storage'>) => {
   const ort = normalisiereLagerort(req.eingabe.storage);
-  const n = await setzeLagerort('set', await writableIds(req.apiUser.user_id),
+  const n = await setzeLagerort('set', { schreiber: req.apiUser.user_id },
     [normalizeSetNumber(String(req.params.setNumber))], ort);
   res.json({ success: true, storage: ort, changed: n });
 });
@@ -130,7 +130,7 @@ router.get('/storage/locations', requireToken, async (req: Anfrage<'GET /api/v1/
   // Die Liste kann über mehrere Konten spannen, die VORGABE ist immer die des
   // Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung.
   const [orte, vorgabe] = await Promise.all([
-    orteVon(await lagerKonten(req.apiUser.user_id, req.abfrage.owner, false)),
+    orteFuer(req.apiUser.user_id, req.abfrage.owner),
     vorgabeVon(req.apiUser.user_id),
   ]);
   res.json({ success: true, orte, vorgabe });
@@ -166,7 +166,7 @@ router.delete('/storage/locations/:id', requireToken, async (req: Anfrage<'DELET
 
 // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-storage
 router.get('/storage', requireToken, async (req: Anfrage<'GET /api/v1/storage'>, res: Antwort<'GET /api/v1/storage'>) => {
-  const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts));
+  const ids = sichtVon(req);
   res.json({ success: true, orte: await lagerorte(ids) });
 });
 
@@ -182,7 +182,7 @@ router.get('/sets', requireToken, async (req: Anfrage<'GET /api/v1/sets'>, res: 
   // Ohne page_size bleibt die Liste absichtlich unbegrenzt — für Skripte und
   // ältere App-Stände.
   // Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#get-sets-r
-  const r = await getSets(await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts)), req.abfrage);
+  const r = await getSets(sichtVon(req), req.abfrage);
   const sets = r.sets;
   res.json({ success: true, count: sets.length, total: r.total, sets, ...(r.themes ? { themes: r.themes } : {}) });
 });
@@ -191,7 +191,7 @@ router.get('/sets/:setNumber/price', requireToken, async (req: Anfrage<'GET /api
   const uid = req.apiUser.user_id;
   const sn  = V.einzelwert(req.params.setNumber);
   // Blickfeld statt eigener ID: Im Haushalt gehört das Set oft einem Unterkonto.
-  const preis = await setPreis(uid, await scopeIds(uid, parseScopeMode(req.abfrage.accounts)), sn);
+  const preis = await setPreis(uid, sichtVon(req), sn);
   if (!preis) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
   res.json({ success: true, ...preis });
 });
@@ -201,7 +201,7 @@ router.get('/sets/:setNumber/price-history', requireToken, async (req: Anfrage<'
   const uid = req.apiUser.user_id;
   const sn  = String(req.params.setNumber);
   const currency = await getSetting(uid, 'currency', 'EUR');
-  const data = await getSetPriceHistory(await scopeIds(uid, parseScopeMode(req.abfrage.accounts)), sn, currency);
+  const data = await getSetPriceHistory(sichtVon(req), sn, currency);
   res.json({ success: true, set_number: sn, ...data });
 });
 
@@ -212,7 +212,7 @@ router.get('/sets/household-members', requireToken, async (req: Anfrage<'GET /ap
 });
 
 router.get('/sets/:setNumber', requireToken, async (req: Anfrage<'GET /api/v1/sets/:setNumber'>, res: Antwort<'GET /api/v1/sets/:setNumber'>) => {
-  const set = await getSet(await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts)), pfadParam(req, 'setNumber'));
+  const set = await getSet(sichtVon(req), pfadParam(req, 'setNumber'));
   if (!set) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
   res.json({ success:true, set });
 });
@@ -223,8 +223,7 @@ router.post('/sets', requireToken, async (req: Anfrage<'POST /api/v1/sets'>, res
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
   // resolveWriteTarget prüft die RICHTUNG (Haupt- für Unterkonto), nicht bloss
   // die Mitgliedschaft im Blickfeld.
-  const owner = await resolveWriteTarget(req.apiUser.user_id, owner_user_id);
-  if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const owner = await schreibziel(req.apiUser.user_id, owner_user_id);
   // Schon im Blickfeld? Dann NICHT die Menge erhöhen — die Oberfläche öffnet
   // die Detailansicht (src/sets/setAdd.ts, für alle Erfassungswege).
   const vorhanden = await findSetInScope(req.apiUser.user_id, set_number);
@@ -248,11 +247,7 @@ router.put('/sets/:setNumber', requireToken, async (req: Anfrage<'PUT /api/v1/se
 /** Standardmässig im ganzen SCHREIB-Blickfeld.
  * Ausführlich: docs/begruendungen/routes/api_v1/sets.ts.md#delete-sets-setnumber */
 router.delete('/sets/:setNumber', requireToken, async (req: Anfrage<'DELETE /api/v1/sets/:setNumber'>, res: Antwort<'DELETE /api/v1/sets/:setNumber'>) => {
-  const schreibbar = await writableIds(req.apiUser.user_id);
-  const gewaehlt = req.abfrage.accounts === undefined ? schreibbar
-    : await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts));
-  const papierkorb = await deleteSet(gewaehlt.filter(id => schreibbar.includes(id)),
-                                     pfadParam(req, 'setNumber'));
+  const papierkorb = await loescheSetFuer(sichtVon(req), pfadParam(req, 'setNumber'));
   if (!papierkorb) return sendeFehler(req, res, 404, 'set_nicht_gefunden');
   res.json({ success: true, papierkorb });
 });
@@ -264,10 +259,8 @@ router.post('/sets/:sn/move', requireToken, async (req: Anfrage<'POST /api/v1/se
   const raw = String(req.params.sn);
   const sn  = mitVersion(raw);
   const uid = req.apiUser.user_id;
-  const fromId = await resolveWriteTarget(uid, req.eingabe.from_user_id ?? uid);
-  const toId   = await resolveWriteTarget(uid, req.eingabe.to_user_id);
-  if (fromId === null || toId === null)
-    return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const fromId = await schreibziel(uid, req.eingabe.from_user_id ?? uid);
+  const toId   = await schreibziel(uid, req.eingabe.to_user_id);
   if (fromId === toId)
     return sendeFehler(req, res, 400, 'quelle_ziel_identisch');
   // acquisition_ids ist Pflicht: Drei Erfassungen sind drei Käufe und können im
@@ -359,8 +352,7 @@ router.post('/sets/add-stream', requireToken, kontoSchranke('strom'), async (req
   const { quantity = 1, purchase_price = null, condition: setCondition = null, owner_user_id, storage = null } = req.eingabe;
   const set_number = String(req.eingabe.set_number ?? '');
   if (!set_number) { sendeFehler(req, res, 400, 'set_number_erforderlich'); return; }
-  const owner = await resolveWriteTarget(angemeldeteNutzerId(req), owner_user_id);
-  if (owner === null) { sendeFehler(req, res, 403, 'kein_schreibrecht'); return; }
+  const owner = await schreibziel(angemeldeteNutzerId(req), owner_user_id);
   // Schon im Blickfeld: kein Strom, sondern „exists" — es gibt nichts zu verfolgen.
   const vorhanden = await findSetInScope(angemeldeteNutzerId(req), set_number);
   if (vorhanden) { res.json({ success: true, action: 'exists', ...vorhanden }); return; }

@@ -1,6 +1,8 @@
 /** Die Merkliste — was man haben MÖCHTE, getrennt vom Bestand. Ein Helfer
  * statt Code in den Routen, weil beide Oberflächen und mehrere Erfassungswege
  * dieselben Regeln brauchen. */
+import { blickfeldAus } from '../haushalt/haushalt';
+import type { Sicht } from '../haushalt/haushalt';
 import { nacharbeit } from '../auftraege/nacharbeit';
 import { LIKE_ESCAPE, enthaeltMuster } from '../../db/likeSuche';
 import { addSet, sanitizeSetNumber } from '../sets/setService';
@@ -132,8 +134,9 @@ export interface MerkFilter {
 /** `userIds`: Die Merkliste folgt dem Kontenbaum wie alles andere.
  * Ausführlich: docs/begruendungen/src/merkliste/merkliste.ts.md#merkpostenvon */
 export async function merkpostenVon(
-  userIds: number[], nurSet?: string, waehrung = 'EUR', filter?: MerkFilter,
+  userIdsWahl: Sicht | number[], nurSet?: string, waehrung = 'EUR', filter?: MerkFilter,
 ): Promise<Merkposten[]> {
+  const userIds = await blickfeldAus(userIdsWahl);
   if (!userIds?.length) return [];
   const params: unknown[] = [userIds];
   let wo = '';

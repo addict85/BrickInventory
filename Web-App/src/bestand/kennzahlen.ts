@@ -1,10 +1,11 @@
 import { meldeUndLiefere } from '../infra/fehler';
-import { asIds } from '../haushalt/haushalt';
+import { asIds, blickfeldAus, type Sicht } from '../haushalt/haushalt';
 import { getGlobalSetting } from '../einstellungen/settings';
 import * as repo from './repository/kennzahlen';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
-export async function getStats(userId: number | number[]) {
+export async function getStats(userIdWahl: Sicht | number | number[]) {
+  const userId = await blickfeldAus(userIdWahl);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, einzelnRow] = await Promise.all([

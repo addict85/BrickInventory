@@ -1,5 +1,7 @@
 /** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen
  * nur Anfrage und Antwort kennen. */
+import { blickfeldAus } from '../haushalt/haushalt';
+import type { Sicht } from '../haushalt/haushalt';
 import { logAndContinue, meldeUndLiefere, meldeUndWeiter, vorDem, fehlertext, ohneFehlendeDatei, oeffentlicherFehler } from '../infra/fehler';
 import fs from 'fs';
 import path from 'path';
@@ -220,7 +222,8 @@ async function figurenMerken(n: string, figs: Array<{ fig_number: string; fig_na
 }
 
 /** Im Zustand des Bestands. null: kein Set im Blickfeld. */
-export async function setPreis(uid: number, blickfeld: number[], sn: string) {
+export async function setPreis(uid: number, blickfeldWahl: Sicht | number[], sn: string) {
+  const blickfeld = await blickfeldAus(blickfeldWahl);
   const set = await repo.setImFeld(sn, blickfeld);
   if (!set) return null;
   // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert

@@ -132,7 +132,7 @@ test('beide fragen ihr Blickfeld an DIESER Stelle', () => {
   // Unverändert und weiterhin die Voraussetzung für beides: Der Endpunkt muss
   // den Namen in IDs übersetzen.
   assert.match(web('routes/api_v1/parts.ts'),
-    /router\.post\('\/parts\/owned'[\s\S]{0,400}?parseScopeMode\(req\.abfrage\.accounts\)/,
+    /router\.post\('\/parts\/owned'[\s\S]{0,400}?getOwnedQuantities\(sichtVon\(req\)/,
     'Der Endpunkt übersetzt den Kontofilter nicht in IDs');
 });
 

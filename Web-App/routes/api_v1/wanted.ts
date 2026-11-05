@@ -3,8 +3,8 @@
 import { oeffentlicherFehler } from '../../src/infra/fehler';
 import { fehlerAntwort, pfadParam } from '../../src/infra/httpAntwort';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { requireToken, kontoSchranke } from './middleware';
-import { scopeIds, parseScopeMode, resolveWriteTarget } from '../../src/haushalt/haushalt';
+import { requireToken, kontoSchranke, sichtVon } from './middleware';
+import { schreibziel } from '../../src/haushalt/haushalt';
 import { legeMerkpostenAn, loescheMerkposten, verschiebeMerkposten, uebernimm, merkpostenVon, preiseBeiderZustaende } from '../../src/merkliste/merkliste';
 import { getSetting } from '../../src/einstellungen/settings';
 import { csvEmpfang, xmlEmpfang } from '../../src/infra/dateiEmpfang';
@@ -23,7 +23,7 @@ type WantedXmlBericht = z.infer<typeof WantedXmlErgebnis>;
 
 // Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#get-wanted
 router.get('/wanted', requireToken, async (req: Anfrage<'GET /api/v1/wanted'>, res: Antwort<'GET /api/v1/wanted'>) => {
-  const ids = await scopeIds(req.apiUser.user_id, parseScopeMode(req.abfrage.accounts));
+  const ids = sichtVon(req);
   // Die Währung des LESERS; price_cache ist je Währung verschlüsselt, deshalb
   // gehört sie in die Abfrage.
   const waehrung = await getSetting(req.apiUser.user_id, 'currency', 'EUR');
@@ -41,17 +41,15 @@ router.get('/wanted', requireToken, async (req: Anfrage<'GET /api/v1/wanted'>, r
 router.post('/wanted', requireToken, async (req: Anfrage<'POST /api/v1/wanted'>, res: Antwort<'POST /api/v1/wanted'>) => {
   const { set_number, condition, owner_user_id } = req.eingabe;
   if (!set_number) return sendeFehler(req, res, 400, 'set_number_erforderlich');
-  const owner = await resolveWriteTarget(req.apiUser.user_id, owner_user_id);
-  if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const owner = await schreibziel(req.apiUser.user_id, owner_user_id);
   const { merkposten, war_neu } = await legeMerkpostenAn(owner, set_number, condition);
   res.json({ success: true, war_neu, merkposten });
 });
 
 // Ausführlich: docs/begruendungen/routes/api_v1/wanted.ts.md#put-wanted-setnumber-condition-inhaber
 router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: Anfrage<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>, res: Antwort<'PUT /api/v1/wanted/:setNumber/:condition/inhaber'>) => {
-  const von = await resolveWriteTarget(req.apiUser.user_id, req.eingabe.owner_user_id);
-  const zu  = await resolveWriteTarget(req.apiUser.user_id, req.eingabe.neuer_inhaber);
-  if (von === null || zu === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const von = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+  const zu  = await schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
   const r = await verschiebeMerkposten(von, pfadParam(req, 'setNumber'),
                                    pfadParam(req, 'condition'), zu);
   res.json({ success: true, ...r, owner_user_id: zu });
@@ -60,8 +58,7 @@ router.put('/wanted/:setNumber/:condition/inhaber', requireToken, async (req: An
 /** Der Zustand steht im Pfad, weil er zum Schlüssel gehört: Dasselbe Set kann
  * neu UND gebraucht gewünscht sein. */
 router.delete('/wanted/:setNumber/:condition', requireToken, async (req: Anfrage<'DELETE /api/v1/wanted/:setNumber/:condition'>, res: Antwort<'DELETE /api/v1/wanted/:setNumber/:condition'>) => {
-  const owner = await resolveWriteTarget(req.apiUser.user_id, req.abfrage.owner_user_id);
-  if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const owner = await schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
   const weg = await loescheMerkposten(owner, pfadParam(req, 'setNumber'), pfadParam(req, 'condition'));
   res.json({ success: true, geloescht: weg });
 });
@@ -77,8 +74,7 @@ router.get('/wanted/:setNumber/preise', requireToken, async (req: Anfrage<'GET /
 /** Die Regel steht in merkliste.ts:uebernimm() — über addSet(), die eine
  * Wahrheit fürs Erfassen. Hier bleibt nur, wer schreiben darf. */
 router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (req: Anfrage<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>, res: Antwort<'POST /api/v1/wanted/:setNumber/:condition/uebernehmen'>) => {
-  const owner = await resolveWriteTarget(req.apiUser.user_id, req.eingabe.owner_user_id);
-  if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+  const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
   const r = await uebernimm(req.apiUser.user_id, owner,
     pfadParam(req, 'setNumber'), pfadParam(req, 'condition'), req.eingabe ?? {});
   res.json({ success: true, ...r });
@@ -89,8 +85,7 @@ router.post('/wanted/:setNumber/:condition/uebernehmen', requireToken, async (re
 router.post('/wanted/import/csv', requireToken, kontoSchranke('upload'), csvEmpfang.single('file'),
   async (req: Anfrage<'POST /api/v1/wanted/import/csv'>, res: Antwort<'POST /api/v1/wanted/import/csv'>) => {
     if (!req.file) return sendeFehler(req, res, 400, 'keine_datei');
-    const owner = await resolveWriteTarget(req.apiUser.user_id, req.eingabe.owner_user_id);
-    if (owner === null) return sendeFehler(req, res, 403, 'kein_schreibrecht');
+    const owner = await schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
     res.json(await importAlsAuftrag<CsvImportBericht>(req.apiUser.user_id, 'merkliste_csv',
       { owner, text: req.file.buffer.toString('utf-8') }));

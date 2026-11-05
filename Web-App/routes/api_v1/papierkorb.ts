@@ -2,7 +2,6 @@
  * Hauptkonto, die Unterkonten. */
 import { fehlerAntwort } from '../../src/infra/httpAntwort';
 import { sendeFehler } from '../../src/infra/fehlerTexte';
-import { writableIds } from '../../src/haushalt/haushalt';
 import { listePapierkorb, stelleWiederHer, loescheEndgueltig, leerePapierkorb } from '../../src/bestand/papierkorb';
 import { requireToken } from './middleware';
 import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
@@ -13,13 +12,13 @@ import type { Anfrage, Antwort } from '../../src/infra/vertrag';
 const router = vertragsRouter();
 
 router.get('/papierkorb', requireToken, async (req: Anfrage<'GET /api/v1/papierkorb'>, res: Antwort<'GET /api/v1/papierkorb'>) => {
-  res.json({ success: true, eintraege: await listePapierkorb(await writableIds(req.apiUser.user_id)) });
+  res.json({ success: true, eintraege: await listePapierkorb({ schreiber: req.apiUser.user_id }) });
 });
 
 router.post('/papierkorb/:id/wiederherstellen', requireToken, async (req: Anfrage<'POST /api/v1/papierkorb/:id/wiederherstellen'>, res: Antwort<'POST /api/v1/papierkorb/:id/wiederherstellen'>) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
-  const r = await stelleWiederHer(await writableIds(req.apiUser.user_id), id);
+  const r = await stelleWiederHer({ schreiber: req.apiUser.user_id }, id);
   if (!r.ok) return sendeFehler(req, res, r.code === 'nicht_gefunden' ? 404 : 409, r.code);
   res.json({ success: true, art: r.art, nummer: r.nummer, user_id: r.user_id });
 });
@@ -29,7 +28,7 @@ router.delete('/papierkorb/:id', requireToken, async (req: Anfrage<'DELETE /api/
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return sendeFehler(req, res, 400, 'id_ungueltig');
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
-  if (!await loescheEndgueltig(await writableIds(req.apiUser.user_id), id))
+  if (!await loescheEndgueltig({ schreiber: req.apiUser.user_id }, id))
     return sendeFehler(req, res, 404, 'nicht_gefunden');
   res.json({ success: true });
 });
@@ -42,7 +41,7 @@ router.delete('/bestand', requireToken, async (req: Anfrage<'DELETE /api/v1/best
 
 router.delete('/papierkorb', requireToken, async (req: Anfrage<'DELETE /api/v1/papierkorb'>, res: Antwort<'DELETE /api/v1/papierkorb'>) => {
   if (!await bestaetigeMitFaktor(req, res, req.apiUser.user_id, req.eingabe.password)) return;
-  res.json({ success: true, entfernt: await leerePapierkorb(await writableIds(req.apiUser.user_id)) });
+  res.json({ success: true, entfernt: await leerePapierkorb({ schreiber: req.apiUser.user_id }) });
 });
 
 router.use(fehlerAntwort);
