@@ -202,12 +202,12 @@ export function bricksetWartende() {
        FROM auftraege WHERE art = 'brickset' AND status IN ('offen', 'laeuft')`);
 }
 
-/** Ohne Nutzlast (sie trägt ganze Listen). */
-
+/** Ohne Nutzlast (sie trägt ganze Listen) und ohne Konto: Die Liste sieht der
+ * Verwalter, wessen Set ein Auftrag betrifft, gehört nicht dazu. */
 export function auftragsListe(status: string[], art: string | null) {
   return db.all<z.infer<typeof Auftrag>>(
     `SELECT id::text AS id, art, status, versuche, max_versuche, faellig_ab, frist_bis, gestartet, erstellt,
-            aktualisiert, fortschritt, fehler, user_id, COALESCE(schluessel LIKE 'plan:%', false) AS geplant,
+            aktualisiert, fortschritt, fehler, COALESCE(schluessel LIKE 'plan:%', false) AS geplant,
             nutzlast->>'set_number' AS set_number
        FROM auftraege
       WHERE status = ANY($1) AND ($2::text IS NULL OR art = $2)

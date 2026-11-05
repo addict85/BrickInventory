@@ -63,7 +63,8 @@ router.get('/admin/cache-stats', requireApiAdmin, async (_req: AuthedRequest, re
 router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: Anfrage<'GET /api/v1/admin/image-diag/:setNumber'>, res: Antwort<'GET /api/v1/admin/image-diag/:setNumber'>) => {
   const sn = String(req.params.setNumber);
 
-  const zeilen: KontoBildzeile[] = await bildZeilenDerKonten(sn).catch(meldeUndLiefere('verwaltung:bildZeilenDerKonten', []));
+  const konten: KontoBildzeile = await bildZeilenDerKonten(sn)
+    .catch(meldeUndLiefere('verwaltung:bildZeilenDerKonten', { anzahl_konten: 0, image_local: null, image_url: null }));
   const katalog = await katalogBild(sn).catch(meldeUndLiefere('verwaltung:katalogBild', null));
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
@@ -74,7 +75,7 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: Anfrage<
   const original = datei(path.join(SET_IMAGES_DIR, `${safe}.jpg`));
   const vorschau = datei(path.join(SET_IMAGES_DIR, `${safe}_thumb.jpg`));
 
-  const cdnUrl = zeilen.find(r => r.image_url)?.image_url || katalog?.image_url || null;
+  const cdnUrl = konten.image_url || katalog?.image_url || null;
   let proxy: any = { adresse: cdnUrl, gecacht: false };
   if (cdnUrl) {
     const cf = proxyCachePathFor ? proxyCachePathFor(cdnUrl) : null;
@@ -90,10 +91,10 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: Anfrage<
   const vorschauMerker = await fehlanzeigeDerVorschau(safe).catch(meldeUndLiefere('verwaltung:fehlanzeigeDerVorschau', null));
 
   const hinweise: string[] = [];
-  if (!zeilen.length) hinweise.push('Kein Konto führt dieses Set.');
-  if (zeilen.length && !zeilen.some(r => r.image_local) && !cdnUrl)
+  if (!konten.anzahl_konten) hinweise.push('Kein Konto führt dieses Set.');
+  if (konten.anzahl_konten && !konten.image_local && !cdnUrl)
     hinweise.push('Weder lokale Datei noch CDN-Adresse bekannt — die Clients können nichts anzeigen.');
-  if (zeilen.some(r => r.image_local) && !original.vorhanden)
+  if (konten.image_local && !original.vorhanden)
     hinweise.push('image_local ist gesetzt, die Datei fehlt aber — die Bildroute weicht auf den Proxy aus.');
   if (original.vorhanden && !vorschau.vorhanden)
     hinweise.push('Original da, Vorschau fehlt — sie entsteht beim nächsten Abruf oder über den Bilder-Nachlauf.');
@@ -109,7 +110,7 @@ router.get('/admin/image-diag/:setNumber', requireApiAdmin, async (req: Anfrage<
   if (!hinweise.length) hinweise.push('Alles vorhanden: Original und Vorschau liegen bereit.');
 
   res.json({ success: true, set_number: sn,
-    datenbank: { zeilen, katalog_bild: katalog?.image_url || null },
+    datenbank: { ...konten, katalog_bild: katalog?.image_url || null },
     lokal: { original, vorschau },
     merker: merker ? { seit: merker.checked_at, grund: merker.reason || null } : null,
     proxy, hinweise });

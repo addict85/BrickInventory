@@ -14240,18 +14240,6 @@
               "null"
             ]
           },
-          "user_id": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "geplant": {
             "type": "boolean"
           },
@@ -14275,7 +14263,6 @@
           "aktualisiert",
           "fortschritt",
           "fehler",
-          "user_id",
           "geplant",
           "set_number"
         ],
@@ -14618,22 +14605,22 @@
           "datenbank": {
             "type": "object",
             "properties": {
-              "zeilen": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "user_id": {
-                      "type": "integer",
-                      "minimum": -9007199254740991,
-                      "maximum": 9007199254740991
-                    }
-                  },
-                  "required": [
-                    "user_id"
-                  ],
-                  "additionalProperties": {}
-                }
+              "anzahl_konten": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "image_local": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "image_url": {
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "katalog_bild": {
                 "type": [
@@ -14643,7 +14630,9 @@
               }
             },
             "required": [
-              "zeilen",
+              "anzahl_konten",
+              "image_local",
+              "image_url",
               "katalog_bild"
             ],
             "additionalProperties": {}
