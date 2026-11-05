@@ -219,7 +219,7 @@ object Beispiele {
             {"set_number":"75192-1","image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,"num_parts":7541},
             {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","year":2021,"theme":"Icons","quantity":2,"num_parts":9090},
             {"set_number":"21318-1","image_local":"/beispiel/set3.png","name":"Baumhaus","year":2019,"theme":"Ideas","quantity":1,"num_parts":3036}]}""",
-        "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757,"total_instructions":2,"total_parts":82,"total_minifigs":2,"set_parts":42,"manual_parts":40}}""",
+        "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757,"total_instructions":2,"total_parts":82,"total_minifigs":3,"set_parts":42,"manual_parts":40}}""",
         // Das Baumhaus hat noch keinen Marktpreis: Die Kopfkarte rechnet über die zwei
         // übrigen Positionen (1500 + 212.40 = 1712.40) und nennt es in der Basiszeile, die
         // Galeriekachel zeigt seinen Kaufpreis als solchen (kachel_quelle "kauf").

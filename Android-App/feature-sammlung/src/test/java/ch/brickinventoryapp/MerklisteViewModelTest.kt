@@ -40,6 +40,9 @@ import org.junit.Test
  *   E  (31.10.2026) im init-Sammler die Bedingung `ungefiltert(f)` entfernt →
  *      rot „mit Suchtext bleibt die Serverantwort stehen“
  *   F  (31.10.2026) den init-Sammler entfernt → rot „offline gelöscht“ (Zeitüberschreitung)
+ *   G  (05.11.2026, kotlinc lokal) loescheMerkposten() löscht wieder sofort am Server
+ *      (gegenproben/merkposten-loeschen-sofort.patch) → rot „ein geloeschter Merkposten …“
+ *      („Noch kein DELETE“)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MerklisteViewModelTest {
@@ -68,6 +71,28 @@ class MerklisteViewModelTest {
         t.aufraeumen()
         Dispatchers.resetMain()
         pfade.server.shutdown()
+    }
+
+    @Test
+    fun `ein geloeschter Merkposten laesst sich zurueckholen, geloescht wird erst danach`() {
+        pfade.antworten["/api/v1/wanted"] = """{"success":true,"merkposten":[
+            {"set_number":"10294-1","condition":"N","user_id":1,"name":"Titanic"},
+            {"set_number":"10305-1","condition":"N","user_id":1,"name":"Lion Knights' Castle"}]}"""
+        pfade.antworten["/api/v1/wanted/10294-1/N"] = """{"success":true}"""
+        val vm = vm()
+        vm.ladeMerkliste()
+        assertEquals(2, vm.merklisteState.value.merkposten.size)
+        vm.loescheMerkposten("10294-1", "N", 1)
+        assertTrue("aus der Liste", vm.merklisteState.value.merkposten.none { it.setNumber == "10294-1" })
+        assertEquals("Titanic", vm.vorgemerkt.value?.name)
+        assertTrue("Noch kein DELETE", pfade.anfragenAn("DELETE /api/v1/wanted/10294-1").isEmpty())
+        vm.merkpostenRueckgaengig()
+        assertTrue("wieder da", vm.merklisteState.value.merkposten.any { it.setNumber == "10294-1" })
+        assertTrue("nach Rückgängig kein DELETE", pfade.anfragenAn("DELETE /api/v1/wanted/10294-1").isEmpty())
+        vm.loescheMerkposten("10294-1", "N", 1)
+        vm.merkpostenLoeschenAusfuehren()
+        assertTrue("DELETE gesendet", pfade.anfragenAn("DELETE /api/v1/wanted/10294-1").isNotEmpty())
+        assertEquals(null, vm.vorgemerkt.value)
     }
 
     @Test

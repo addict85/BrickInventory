@@ -10,6 +10,8 @@ import ch.brickinventoryapp.ui.model.*
 data class CatalogUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
+    /** Welche Art Fehler: bestimmt Symbol, Überschrift und Rat im Fehlerzustand wie in der Galerie. */
+    val fehlerKlasse: Fehlerklasse? = null,
     /**
      * Geladene Seiten, nach Seitennummer. Eine Karte statt einer Liste, weil die
      * Zeitleiste rechts schnell scrollt statt filtert: Wer auf 2005 springt, landet

@@ -68,14 +68,14 @@ class KennzahlenPluralTest {
             }
     }
 
-    private val mehrzahl = Regex("\\b1 (Sets|Exemplare|Teile|Minifiguren|Anleitungen|Figurenarten|Figuren|Teilearten|Farben" +
-        "|sets|copies|parts|minifigures|manuals|figure types|figures|part types|colors|pieces)\\b")
+    private val mehrzahl = Regex("\\b1 (Sets|Exemplare|Teile|Minifiguren|Anleitungen|Minifigurensorten|Teilesorten|Farben" +
+        "|sets|copies|parts|minifigures|manuals|minifigure types|part types|colors)\\b")
 
     @Test
     fun `bei 1 steht auf Deutsch die Einzahl`() {
         val text = leiste("de-rCH", 1)
         assertEquals("Mehrzahl bei 1: $text", null, mehrzahl.find(text)?.value)
-        assertTrue(text, "1 Exemplar" in text && "1 Anleitung" in text && "1 Teileart" in text)
+        assertTrue(text, "1 Exemplar" in text && "1 Anleitung" in text && "1 Teilesorte" in text)
     }
 
     @Test
@@ -88,6 +88,6 @@ class KennzahlenPluralTest {
     @Test
     fun `bei 2 steht die Mehrzahl`() {
         val text = leiste("de-rCH", 2)
-        assertTrue(text, "2 Exemplare" in text && "2 Anleitungen" in text && "2 Figurenarten" in text)
+        assertTrue(text, "2 Exemplare" in text && "2 Anleitungen" in text && "2 Minifigurensorten" in text)
     }
 }

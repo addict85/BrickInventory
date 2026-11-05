@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
+import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.fokusRahmen
 import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
 import ch.brickinventoryapp.ui.erfassungsWerte
 import ch.brickinventoryapp.ui.model.FigurAnsicht
@@ -124,12 +129,12 @@ fun MinifigsScreen(
     // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
     val gross = grosseSchrift()
     val erfassenText = stringResource(R.string.minifigs_add)
+    // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
+    // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
+    val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
+    val anzeige = ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
-        // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
-        val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
-        val anzeige = ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, partsState.minifigsFehler, figurenGefiltert)
         // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die Kennzahlen rollen mit
         // dem Raster. Im Fehlerzustand nicht — ohne Liste gibt es nichts zu suchen.
         if (anzeige != Ladeanzeige.FEHLER) SucheMitFilter(
@@ -146,23 +151,18 @@ fun MinifigsScreen(
             Ladeanzeige.LAEDT ->
                 SkelettRaster(LesbareSpalten(140.dp), kachelHoehe = 196.dp)
             Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(partsState.minifigsFehler, onRefresh, partsState.minifigsFehlerKlasse) }
-            Ladeanzeige.LEER -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
-                    Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { FigurenKennzahlen(minifigStats) }
-                }
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    LeerSymbol(Icons.Default.Person)
-                    Text(stringResource(R.string.minifigs_none), fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.minifigs_loaded_on_import),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
+            // Wie der leere Teile-Reiter: Satz und Handlung, keine Kennzahlen neben „leer“.
+            Ladeanzeige.LEER -> ZustandsHinweis {
+                HinweisText(Icons.Default.Person, stringResource(R.string.minifigs_none),
+                    stringResource(R.string.minifigs_leer_text))
+                Button(onClick = { showAddDialog = true }) { Text(erfassenText) }
             }
-            Ladeanzeige.KEINE_TREFFER -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    LeerSymbol(Icons.Default.SearchOff)
-                    Text(stringResource(R.string.minifigs_no_results), fontWeight = FontWeight.SemiBold)
-                }
+            Ladeanzeige.KEINE_TREFFER -> ZustandsHinweis {
+                KeinTrefferHinweis(stringResource(R.string.minifigs_no_results))
+                OutlinedButton(onClick = {
+                    search = ""; aktionen.setMinifigsQuery("")
+                    if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
+                }) { Text(stringResource(R.string.search_clear_all)) }
             }
             Ladeanzeige.LISTE -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
                 LazyVerticalGrid(
@@ -224,7 +224,8 @@ fun MinifigsScreen(
         }
     }
 
-        if (!gross) ErfassenFab(
+        // Wie Galerie, Teile und Merkliste: kein „+“ im Fehlerzustand, leer steht es im Bild.
+        if (!gross && anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
             erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
@@ -383,7 +384,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
         modifier = Modifier.fillMaxWidth().heightIn(min = 196.dp)
             .semantics { selected = ausgewaehlt }
             .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
-            .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
+            .let { if (onClick != null) it.fokusRahmen(Formen.leiste).clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

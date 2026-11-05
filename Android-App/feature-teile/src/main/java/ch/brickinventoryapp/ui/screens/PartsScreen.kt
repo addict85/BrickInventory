@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.fokusRahmen
 import ch.brickinventoryapp.ui.theme.farbeAusHex
 import ch.brickinventoryapp.ui.viewmodel.TeileAktionen
 import ch.brickinventoryapp.ui.model.ManuellesTeilAnsicht
@@ -191,13 +195,13 @@ fun PartsScreen(
     // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
     val gross = grosseSchrift()
     val erfassenText = stringResource(R.string.parts_add)
+    // Suche und „Filter“: Konto, Lagerort, Ersatzteile, Farbe, Kategorie
+    // und die Ansicht stehen im Blatt, die Kennzahlen rollen mit dem Raster.
+    val teileGefiltert = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
+        lagerModus, partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter) > 0
+    val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, partsState.partsFehler, teileGefiltert)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Suche und „Filter“: Konto, Lagerort, Ersatzteile, Farbe, Kategorie
-        // und die Ansicht stehen im Blatt, die Kennzahlen rollen mit dem Raster.
-        val teileGefiltert = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
-            lagerModus, partsState.partsSpare, partsState.partsColorFilter, partsState.partsCategoryFilter) > 0
-        val anzeige = ladeanzeige(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, partsState.partsFehler, teileGefiltert)
         // Im Fehlerzustand weder Suche noch Filter — ohne Liste gibt es nichts zu suchen.
         if (anzeige != Ladeanzeige.FEHLER) SucheMitFilter(
             wert = searchQuery,
@@ -214,17 +218,26 @@ fun PartsScreen(
             SkelettRaster(LesbareSpalten(120.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
             ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh, partsState.partsFehlerKlasse) }
-        } else if (anzeige != Ladeanzeige.LISTE) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) {
-                // Die Kennzahlen meinen die ganze Sammlung — auch bei einer Suche ohne Treffer.
-                if (stats != null) Box(Modifier.align(Alignment.TopStart).padding(Abstaende.mittel)) { TeileKennzahlen(stats) }
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    if (anzeige == Ladeanzeige.KEINE_TREFFER) KeinTrefferHinweis()
-                    else {
-                        Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(40.dp), tint = Color.Unspecified)
-                        Text(stringResource(R.string.parts_none), fontWeight = FontWeight.SemiBold)
-                    }
-                }
+        } else if (anzeige == Ladeanzeige.KEINE_TREFFER) {
+            // Die Kennzahlen meinen die ganze Sammlung; ohne Treffer bleibt der Weg zurück.
+            if (stats != null) Box(Modifier.padding(Abstaende.mittel)) { TeileKennzahlen(stats) }
+            ZustandsHinweis {
+                KeinTrefferHinweis()
+                OutlinedButton(onClick = {
+                    searchQuery = ""; onSearch("")
+                    if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
+                    if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
+                    if (partsState.partsSpare.isNotBlank()) aktionen.setPartsSpare("")
+                    if (partsState.partsColorFilter.isNotBlank()) aktionen.setPartsColorFilter("")
+                    if (partsState.partsCategoryFilter.isNotBlank()) aktionen.setPartsCategoryFilter("")
+                }) { Text(stringResource(R.string.search_clear_all)) }
+            }
+        } else if (anzeige == Ladeanzeige.LEER) {
+            // Leer ohne Kennzahlen: „82 Stück“ neben „Keine Teile“ widersprach sich.
+            ZustandsHinweis {
+                HinweisText(ImageVector.vectorResource(R.drawable.ic_parts_bricks), stringResource(R.string.parts_none),
+                    stringResource(R.string.parts_leer_text))
+                Button(onClick = { showAddDialog = true }) { Text(erfassenText) }
             }
         } else {
             PullToRefreshBox(isRefreshing = isLoading && parts.isNotEmpty(), onRefresh = onRefresh) {
@@ -296,7 +309,9 @@ fun PartsScreen(
         }
     }
 
-        if (!gross) ErfassenFab(
+        // Eine Regel für alle Reiter (wie Galerie und Merkliste): Kein „+“ im Fehlerzustand,
+        // und leer steht der Knopf schon mitten im Bild.
+        if (!gross && anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
             erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
@@ -524,7 +539,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
         modifier = Modifier.fillMaxWidth().heightIn(min = if (zeile) 0.dp else 164.dp)
             .semantics { selected = ausgewaehlt }
             .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
-            .let { if (onClick != null) it.clickable(role = Role.Button, onClick = onClick) else it },
+            .let { if (onClick != null) it.fokusRahmen(Formen.leiste).clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)

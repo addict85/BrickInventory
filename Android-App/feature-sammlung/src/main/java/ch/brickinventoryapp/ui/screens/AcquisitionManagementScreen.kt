@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.ManualItemDetailUiState
 import ch.brickinventoryapp.ui.BlickfeldUiState
 import ch.brickinventoryapp.ui.AppUiState
@@ -108,16 +110,8 @@ fun AcquisitionManagementScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(title, fontWeight = FontWeight.Bold, maxLines = 1) },
-                navigationIcon = {
-                    MitTooltip(stringResource(R.string.common_back)) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
-                        }
-                    }
-                }
-            )
+            // Der Titel ist ein Teile- oder Setname: zweizeilig statt hart abgeschnitten.
+            DetailTopAppBar(title, onBack, schliessen = false)
         }
     ) { innerPadding ->
         if (isLoading && acquisitions.isEmpty()) {
@@ -306,21 +300,12 @@ private fun AcquisitionManagementRow(
     DisposableEffect(acquisition.id) { onDispose { flushPending() } }
 
     if (showDeleteConfirm) {
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = false },
-            title = { Text(stringResource(R.string.acq_delete_title), fontWeight = FontWeight.Bold) },
-            text  = { Text(stringResource(R.string.acq_delete_text)) },
-            confirmButton = {
-                TextButton(onClick = { showDeleteConfirm = false; onDelete() }) {
-                    Text(stringResource(R.string.common_delete),
-                        color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            }
+        Rueckfrage(
+            titel = stringResource(R.string.acq_delete_title),
+            text = stringResource(R.string.acq_delete_text),
+            bestaetigen = stringResource(R.string.common_delete),
+            onBestaetigen = { showDeleteConfirm = false; onDelete() },
+            onAbbrechen = { showDeleteConfirm = false },
         )
     }
 

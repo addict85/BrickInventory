@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.viewmodel
 
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
 import androidx.lifecycle.SavedStateHandle
 import ch.brickinventoryapp.ui.model.alsAnsicht
 import androidx.lifecycle.viewModelScope
@@ -47,7 +50,18 @@ class MerklisteViewModel @Inject constructor(
         zustandFilter = gemerkt[ZUSTAND] ?: "",
         sortierung = gemerkt[SORTIERUNG] ?: MERKLISTE_DEFAULT_SORT,
     ))
-    val merklisteState: StateFlow<MerklisteUiState> = _merklisteState.asStateFlow()
+    /** Ein Merkposten, der erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    data class VorgemerkterMerkposten(val setNumber: String, val zustand: String, val besitzer: Int?, val name: String)
+
+    private val _vorgemerkt = MutableStateFlow<VorgemerkterMerkposten?>(null)
+    val vorgemerkt: StateFlow<VorgemerkterMerkposten?> = _vorgemerkt.asStateFlow()
+
+    /** Die Liste ohne den vorgemerkten Posten, auch wenn sie inzwischen neu kam (wie die Galerie). */
+    val merklisteState: StateFlow<MerklisteUiState> = _merklisteState
+        .combine(_vorgemerkt) { st, v ->
+            if (v == null) st else st.copy(merkposten = st.merkposten.filterNot { it.setNumber == v.setNumber && it.condition == v.zustand })
+        }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, _merklisteState.value)
 
     private val _merkpostenDetailState = MutableStateFlow(MerkpostenDetailUiState())
     val merkpostenDetailState: StateFlow<MerkpostenDetailUiState> = _merkpostenDetailState.asStateFlow()
@@ -150,11 +164,36 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Löschen mit „Rückgängig“ wie in der Galerie: Der Posten verschwindet sofort, der
+     * Server erfährt es erst mit [merkpostenLoeschenAusfuehren]. Mit ihm gingen Schwelle,
+     * Richtung und „auf der Liste seit“ verloren. Ein früher vorgemerkter wird zuerst gelöscht.
+     */
     override fun loescheMerkposten(setNumber: String, zustand: String, besitzer: Int?) {
+        merkpostenLoeschenAusfuehren()
+        val name = _merklisteState.value.merkposten
+            .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
+        _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
+    }
+
+    /** Der vorgemerkte Posten bleibt; die Liste kommt neu vom Server, wo er nie fehlte. */
+    fun merkpostenRueckgaengig(nur: VorgemerkterMerkposten? = null) {
+        if (_vorgemerkt.value == null || (nur != null && _vorgemerkt.value != nur)) return
+        _vorgemerkt.value = null
+        ladeMerkliste()
+    }
+
+    /** [nur]: nur diesen Posten — eine abgelöste Snackbar führt nicht den nächsten aus. */
+    fun merkpostenLoeschenAusfuehren(nur: VorgemerkterMerkposten? = null) {
+        val v = _vorgemerkt.value ?: return
+        if (nur != null && v != nur) return
+        _vorgemerkt.value = null
         viewModelScope.launch {
-            when (val r = sets.loescheMerkposten(setNumber, zustand, besitzer)) {
+            when (val r = sets.loescheMerkposten(v.setNumber, v.zustand, v.besitzer)) {
+                // „genommen“ stand schon in der Snackbar mit „Rückgängig“.
                 is Result.Success -> {
-                    zeigeMeldung(text(R.string.wanted_deleted))
+                    _merklisteState.update { st -> st.copy(merkposten = st.merkposten
+                        .filterNot { it.setNumber == v.setNumber && it.condition == v.zustand }) }
                     dienste.bestand.melde(Aenderung.Merkliste)
                 }
                 is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) })

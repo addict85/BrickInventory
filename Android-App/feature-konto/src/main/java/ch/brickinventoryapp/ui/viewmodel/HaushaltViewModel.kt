@@ -49,7 +49,8 @@ class HaushaltViewModel @Inject constructor(
             _householdState.update { it.copy(isLoading = true, message = null) }
             when (val r = haushalt.createHouseholdInvite()) {
                 is Result.Success ->
-                    if (r.data.success) _householdState.update { it.copy(isLoading = false, inviteCode = r.data.code) }
+                    if (r.data.success) _householdState.update { it.copy(isLoading = false, inviteCode = r.data.code,
+                        inviteGueltigBis = r.data.expiresIn?.let { s -> System.currentTimeMillis() + s * 1000L }) }
                     else _householdState.update { it.copy(isLoading = false, message = r.data.error) }
                 is Result.Error -> _householdState.update { it.copy(isLoading = false, message = meldung(r)) }
             }

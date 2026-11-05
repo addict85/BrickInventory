@@ -17,3 +17,6 @@ fun stueckzahl(menge: Int): String = pluralStringResource(R.plurals.cd_stueck, m
  * nackte Jahreszahl haben vorgelesen keine Bedeutung.
  */
 fun Modifier.vorgelesenAls(text: String): Modifier = clearAndSetSemantics { contentDescription = text }
+
+/** „a 1 b 2 - c 3 d 4“: Codes Zeichen für Zeichen vorlesen, nicht als Wort („i9j0“). */
+fun zeichenweise(code: String): String = code.toList().joinToString(" ")

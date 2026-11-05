@@ -31,6 +31,8 @@ data class BarcodeUiState(
     val pieces: Int? = null,
     val theme: String? = null,
     val minifigs: Int? = null,
+    /** Wie oft das gescannte Set schon in der Sammlung steht; 0 = gar nicht. */
+    val besitzMenge: Int = 0,
     // Läuft gerade ein Hinzufügen aus dem Barcode-Dialog? Sperrt den Knopf
     // gegen den zweiten Klick, der sonst dasselbe Set ein zweites Mal erfasst.
     val adding: Boolean = false,

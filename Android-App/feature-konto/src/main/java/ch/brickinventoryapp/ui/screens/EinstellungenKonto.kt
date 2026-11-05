@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.zeichenweise
+import ch.brickinventoryapp.ui.components.vorgelesenAls
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
@@ -277,8 +279,10 @@ internal fun ZweiterFaktorCard(
                 Sichtschutz()
                 Text(stringResource(R.string.zf_codes_title), fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
+                // Zeichen für Zeichen vorgelesen: Als Wort las TalkBack „i9j0“.
                 Text(zfZustand.codes.joinToString("\n"),
-                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    modifier = Modifier.vorgelesenAls(zfZustand.codes.joinToString(", ") { zeichenweise(it) }))
                 OutlinedButton(onClick = { kopieren(zfZustand.codes.joinToString("\n")) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_copy)) }
                 OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, zfZustand.codes) }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.zf_share)) }
                 CodesGesichert(gesichert) { gesichert = it }

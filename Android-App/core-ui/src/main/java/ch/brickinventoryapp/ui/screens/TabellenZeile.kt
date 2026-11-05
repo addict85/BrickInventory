@@ -1,5 +1,10 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.katalogName
+import ch.brickinventoryapp.ui.components.fokusRahmen
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -74,7 +79,7 @@ fun TabellenZeile(
     Surface(
         modifier = modifier.fillMaxWidth()
             .let {
-                if (onClick != null) it.clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
+                if (onClick != null) it.fokusRahmen(Formen.etikett).clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
                 else it
             },
         color = MaterialTheme.colorScheme.surface,
@@ -115,8 +120,9 @@ fun TabellenZeile(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
+                    // Katalognamen sind englisch; TalkBack spricht sie so aus (katalogName).
                     Text(
-                        name ?: stringResource(R.string.name_unknown),
+                        name?.let { katalogName(it) } ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
                         color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         style = MaterialTheme.typography.bodySmall,
                         maxLines = 1,
@@ -176,12 +182,14 @@ fun Suchfeld(
     platzhalter: String,
     modifier: Modifier = Modifier,
 ) {
+    // Bei normaler Schrift eine Zeile: Ein umbrechender Platzhalter machte das Feld doppelt
+    // so hoch wie den Filterknopf daneben. Bei grosser Schrift bricht er um, statt bei
+    // „Nummer oder…“ abzureissen.
+    val zeilen = if (grosseSchrift()) PLATZHALTER_ZEILEN_GROSS else 1
     OutlinedTextField(
         value = wert,
         onValueChange = onWert,
-        // Eine Zeile: Ein umbrechender Platzhalter machte das Feld doppelt so hoch
-        // wie den Filterknopf daneben.
-        placeholder = { Text(platzhalter, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        placeholder = { Text(platzhalter, maxLines = zeilen, overflow = TextOverflow.Ellipsis) },
         leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(mitSchrift(20.dp))) },
         trailingIcon = {
             if (wert.isNotEmpty()) {
@@ -192,11 +200,15 @@ fun Suchfeld(
                 }
             }
         },
-        modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Abstaende.klein),
+        // Der Platzhalter verschwindet mit der ersten Eingabe; der Name des Felds bleibt.
+        modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Abstaende.klein)
+            .semantics { contentDescription = platzhalter },
         singleLine = true,
         shape = Formen.karte,
     )
 }
+
+private const val PLATZHALTER_ZEILEN_GROSS = 3
 
 /**
  * Die Zustands-Zeile: Beschriftung „Zustand“ und daneben Neu/Gebraucht. Eine

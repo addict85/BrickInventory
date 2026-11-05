@@ -1,5 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.*
@@ -41,20 +42,8 @@ fun Unterseite(
         // in der Komposition ist. Ohne diese Zeile gingen „Gutschein gespeichert“, „250
         // CHF“ und jede Absage der Guthaben-Abfrage still verloren.
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                // Überschrift der Unterseite: Vorleseprogramme springen dorthin.
-                title = { Text(titel, maxLines = 1, modifier = Modifier.semantics { heading() }) },
-                navigationIcon = {
-                    MitTooltip(stringResource(R.string.common_back)) {
-                        IconButton(onClick = onZurueck) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack,
-                                 stringResource(R.string.common_back))
-                        }
-                    }
-                },
-            )
-        },
+        // Der Kopf der Detailseiten: Überschrift, bei grosser Schrift zweizeilig statt abgeschnitten.
+        topBar = { DetailTopAppBar(titel, onZurueck, schliessen = false) },
     ) { innen ->
         Column(
             Modifier

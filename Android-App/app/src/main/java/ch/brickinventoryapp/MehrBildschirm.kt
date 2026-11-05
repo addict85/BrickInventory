@@ -22,7 +22,6 @@ import androidx.compose.material.icons.outlined.Redeem
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.Badge
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -75,27 +74,22 @@ fun MehrBildschirm(
         onAbbrechen = { fragtAbmelden = false },
         symbol = Icons.AutoMirrored.Outlined.Logout,
     )
+    // Abmelden steht unter „Konto und App“, wohin es gehört, als letzter Eintrag dort.
     @Composable
-    fun Gruppe(nummer: Int, trenner: Boolean) = MehrGruppeInhalt(nummer, trenner, updateVerfuegbar, onZiel)
-    // Abmelden für sich am Ende, abgesetzt: Zwischen den Einstellungen sah es aus wie
-    // eine von ihnen, beendet aber die Sitzung.
-    @Composable
-    fun Abmelden() {
-        HorizontalDivider(Modifier.padding(top = Abstaende.klein, bottom = Abstaende.klein))
-        MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout) { fragtAbmelden = true }
-    }
+    fun Gruppe(nummer: Int, trenner: Boolean) =
+        MehrGruppeInhalt(nummer, trenner, updateVerfuegbar, onZiel, onAbmelden = { fragtAbmelden = true })
     // Die Servergruppe nur für Verwalter.
     val gruppen = if (isAdmin) 5 else 4
-    // Auf dem Tablet zwei Spalten: Einspaltig stand die Liste schmal in der Mitte einer
-    // leeren Fläche. Preise und Werkzeuge links, Bestand und Konto rechts.
+    // Auf dem Tablet zwei Spalten, etwa gleich hoch: Preise, Werkzeuge und Server links,
+    // Bestand und Konto rechts. Einspaltig stand die Liste schmal in einer leeren Fläche.
     BoxWithConstraints(modifier.fillMaxSize()) {
         val zweispaltig = maxWidth >= MEHR_ZWEISPALTIG_AB
         val rahmen = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .mittigBis(if (zweispaltig) Lesebreite.liste else Lesebreite.formular).padding(vertical = Abstaende.klein)
         if (zweispaltig) Row(rahmen, horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
-            Column(Modifier.weight(1f)) { for (i in 0 until 2) Gruppe(i, trenner = i > 0) }
-            Column(Modifier.weight(1f)) { for (i in 2 until gruppen) Gruppe(i, trenner = i > 2); Abmelden() }
-        } else Column(rahmen) { for (i in 0 until gruppen) Gruppe(i, trenner = i > 0); Abmelden() }
+            Column(Modifier.weight(1f)) { listOf(0, 1, 4).filter { it < gruppen }.forEachIndexed { i, g -> Gruppe(g, trenner = i > 0) } }
+            Column(Modifier.weight(1f)) { Gruppe(2, trenner = false); Gruppe(3, trenner = true) }
+        } else Column(rahmen) { for (i in 0 until gruppen) Gruppe(i, trenner = i > 0) }
     }
 }
 
@@ -105,7 +99,9 @@ fun MehrBildschirm(
  * Unterseiten. Gemischt sah „Vergleich“ neben „Gutscheine“ anders aus als erwartet.
  */
 @Composable
-private fun MehrGruppeInhalt(nummer: Int, trenner: Boolean, updateVerfuegbar: Boolean, onZiel: (Screen) -> Unit) {
+private fun MehrGruppeInhalt(
+    nummer: Int, trenner: Boolean, updateVerfuegbar: Boolean, onZiel: (Screen) -> Unit, onAbmelden: () -> Unit,
+) {
     when (nummer) {
         0 -> {
             MehrGruppe(R.string.nav_group_prices, trenner)
@@ -129,6 +125,7 @@ private fun MehrGruppeInhalt(nummer: Int, trenner: Boolean, updateVerfuegbar: Bo
             MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { onZiel(Screen.Konto) }
             // Der Punkt allein sagte nicht, wofür er steht: Darunter steht es in Worten.
             MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, punkt = updateVerfuegbar) { onZiel(Screen.Settings) }
+            MehrEintrag(R.string.main_menu_logout, Icons.AutoMirrored.Outlined.Logout, onKlick = onAbmelden)
         }
         else -> {
             MehrGruppe(R.string.nav_group_server, trenner)

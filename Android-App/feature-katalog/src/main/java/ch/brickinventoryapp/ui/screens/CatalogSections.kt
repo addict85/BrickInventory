@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.selection.selectableGroup
 import ch.brickinventoryapp.ui.components.AuswahlChip
 /**
  * Die Abschnitte der Katalogseite: Suchfeld, Filterzeile (Thema, Jahr, Sortierung)
@@ -94,13 +97,14 @@ fun CatalogYearSheet(state: CatalogUiState, showYearSheet: androidx.compose.runt
     if (showYearSheet.value) {
         ModalBottomSheet(onDismissRequest = { showYearSheet.value = false }) {
             Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
-                Text(stringResource(R.string.catalog_filter_year), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.catalog_filter_year), Modifier.semantics { heading() },
+                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(Abstaende.klein))
                 val years = remember(state.yearMin, state.yearMax) {
                     val max = state.yearMax ?: 0; val min = state.yearMin ?: 0
                     if (max >= min && max > 0) (max downTo min).toList() else emptyList()
                 }
-                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp).selectableGroup()) {
                     item {
                         ThemeRow(stringResource(R.string.catalog_all_years), state.year == null) {
                             showYearSheet.value = false; onYearChange(null)
@@ -126,7 +130,8 @@ fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: androidx.compose.ru
         ModalBottomSheet(onDismissRequest = { showThemeSheet.value = false }) {
             var themeFilter by rememberSaveable { mutableStateOf("") }
             Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
-                Text(stringResource(R.string.catalog_filter_theme), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.catalog_filter_theme), Modifier.semantics { heading() },
+                    fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 // Der gemeinsame Baustein, damit auch dieses Feld einen Leeren-Knopf hat wie alle
                 // anderen Suchfelder.
                 Suchfeld(
@@ -138,7 +143,7 @@ fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: androidx.compose.ru
                     if (themeFilter.isBlank()) state.themes
                     else state.themes.filter { it.name.contains(themeFilter, ignoreCase = true) }
                 }
-                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 420.dp).selectableGroup()) {
                     item {
                         ThemeRow(stringResource(R.string.catalog_all_themes), state.themeId == null) {
                             showThemeSheet.value = false; onThemeChange(null)

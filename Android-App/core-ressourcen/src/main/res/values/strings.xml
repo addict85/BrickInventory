@@ -140,7 +140,6 @@
     <string name="gallery_card_paid">Purchase price</string>
     <string name="gallery_delete_title">Delete set?</string>
     <string name="gallery_delete_text">%1$s and its parts will be removed. You can still undo it for a moment afterwards.</string>
-    <string name="gallery_set_deleted_undo">%1$s deleted</string>
     <string name="common_undo">Undo</string>
     <string name="gallery_pieces_suffix"> parts</string>
     <string name="gallery_scan_barcode">Scan barcode</string>
@@ -273,7 +272,7 @@
         <item quantity="other">%1$d distinct</item>
     </plurals>
     <string name="partslist_owned_error">Could not load your inventory.</string>
-    <string name="partslist_empty_hint">Enter a set number and tap “Create build list”; “+” in the field adds more sets — for rebuilding or ordering what is missing.</string>
+    <string name="partslist_empty_hint">Enter a set number and tap “Create build list”. Once you have typed one, the plus in the field adds more sets — for rebuilding or ordering what is missing.</string>
     <string name="partslist_empty_title">No build list yet</string>
     <string name="partslist_no_color">(No color)</string>
     <plurals name="partslist_group_summary">
@@ -435,7 +434,7 @@
     <string name="vm_settings_saved">Settings saved</string>
 
     <!-- ══════════════ ViewModel messages ══════════════ -->
-    <string name="vm_barcode_not_found">No set found for barcode %1$s</string>
+    <string name="vm_barcode_not_found">No set found for “%1$s”</string>
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Search…</string>
@@ -463,9 +462,9 @@
     <string name="vm_saved">Saved</string>
     <string name="vm_part_deleted">Part deleted</string>
     <string name="vm_minifig_deleted">Minifigure deleted</string>
-    <string name="vm_set_deleted">%1$s deleted</string>
-    <string name="vm_added">%1$s added</string>
-    <string name="vm_updated">%1$s updated</string>
+    <string name="vm_set_deleted">“%1$s” deleted</string>
+    <string name="vm_added">“%1$s” added</string>
+    <string name="vm_updated">“%1$s” updated</string>
     <string name="pruef_titel">Checking…</string>
     <string name="pruef_barcode">Resolving barcode %1$s…</string>
     <string name="pruef_bestand">Checking whether %1$s is already in your collection…</string>
@@ -473,8 +472,7 @@
     <string name="pruef_anlegen_bild">Downloading the image for %1$s…</string>
     <string name="pruef_anlegen_abschluss">Finishing %1$s…</string>
     <string name="pruef_hinweis">Adding then happens in the background — just a moment before the next scan.</string>
-    <string name="vm_barcode_no_set">No set found for: %1$s</string>
-    <string name="vm_set_added">%1$s added!</string>
+    <string name="vm_set_added">“%1$s” added</string>
     <string name="vm_set_added_no_catalog">Set %1$s saved — name and image will follow once the catalog is reachable.</string>
     <string name="vm_error">Error: %1$s</string>
     <string name="vm_anmeldung_zu_alt">You signed in more than 180 days ago. Please sign in again.</string>
@@ -870,10 +868,9 @@
     <string name="wanted_owned">Already owned</string>
     <string name="wanted_alert_below">Alert below %1$s</string>
     <string name="wanted_alert_above">Alert above %1$s</string>
-    <string name="wanted_price_pending">Price pending</string>
     <string name="wanted_added">Added to the wanted list</string>
     <string name="wanted_already">Already on the wanted list</string>
-    <string name="wanted_deleted">Removed from the wanted list</string>
+    <string name="wanted_deleted">“%1$s” removed from the wanted list</string>
     <string name="wanted_take">Add to collection</string>
     <string name="wanted_taken">Moved into the collection</string>
     <string name="wanted_taken_existing">Was already in the collection — taken off the wanted list</string>
@@ -882,8 +879,8 @@
     <string name="detail_compare">Compare prices</string>
     <string name="wanted_since">On the list since</string>
     <string name="alerts_group">Price alerts</string>
-    <string name="alerts_intro">Change a threshold here or remove the alert.</string>
-    <string name="alerts_empty">No price alert set yet. You set one in the detail view of a set.</string>
+    <string name="alerts_intro">Create alerts here, change their threshold and direction, or remove them.</string>
+    <string name="alerts_empty">No price alert yet. Create one below or in the detail view of a set.</string>
     <string name="alerts_armed">Active</string>
     <string name="alerts_fired">Triggered</string>
     <string name="alerts_last">last %1$s</string>
@@ -1152,12 +1149,12 @@
         <item quantity="other">%1$s manuals</item>
     </plurals>
     <plurals name="minifigs_stat_types">
-        <item quantity="one">%1$s figure type</item>
-        <item quantity="other">%1$s figure types</item>
+        <item quantity="one">%1$s minifigure type</item>
+        <item quantity="other">%1$s minifigure types</item>
     </plurals>
     <plurals name="minifigs_stat_total">
-        <item quantity="one">%1$s figure in total</item>
-        <item quantity="other">%1$s figures in total</item>
+        <item quantity="one">%1$s minifigure in total</item>
+        <item quantity="other">%1$s minifigures in total</item>
     </plurals>
     <plurals name="minifigs_stat_manual">
         <item quantity="one">%1$s added by you</item>
@@ -1172,8 +1169,8 @@
         <item quantity="other">%1$s colors</item>
     </plurals>
     <plurals name="parts_stat_total">
-        <item quantity="one">%1$s piece in total</item>
-        <item quantity="other">%1$s pieces in total</item>
+        <item quantity="one">%1$s part in total</item>
+        <item quantity="other">%1$s parts in total</item>
     </plurals>
     <plurals name="cd_stueck">
         <item quantity="one">%1$s piece</item>
@@ -1187,4 +1184,31 @@
         <item quantity="one">In the collection, %1$s copy</item>
         <item quantity="other">In the collection, %1$s copies</item>
     </plurals>
+    <plurals name="csv_fortschritt">
+        <item quantity="one">%1$d of %2$d set</item>
+        <item quantity="other">%1$d of %2$d sets</item>
+    </plurals>
+    <string name="csv_details_zeigen">Show details</string>
+    <string name="csv_details_verbergen">Hide details</string>
+    <string name="cd_details_oeffnen">Open details</string>
+    <string name="cd_bild_vergroessern">Enlarge image</string>
+    <string name="cd_set_oeffnen">Open set</string>
+    <string name="erklaer_mehr_zu">More about %1$s</string>
+    <string name="erklaer_weniger">Less</string>
+    <string name="filter_reset_all">Reset filters</string>
+    <string name="catalog_leer_titel">The catalog is empty</string>
+    <string name="catalog_leer_text">Sets appear here once the server has loaded the catalog.</string>
+    <string name="parts_leer_text">Parts come with your sets, or you add single parts yourself.</string>
+    <string name="minifigs_leer_text">Minifigures come with your sets, or you add them yourself.</string>
+    <string name="search_clear_all">Clear search and filters</string>
+    <string name="catalog_auf_merkliste">On the wanted list</string>
+    <string name="catalog_merkposten_oeffnen">Open wanted item</string>
+    <string name="barcode_schon_besessen">Already in your collection (×%1$d)</string>
+    <string name="alerts_anlegen_titel">Create price alert</string>
+    <string name="alerts_anlegen">Create alert</string>
+    <string name="alerts_anlegen_sperrgrund">Enter the set number and threshold, then create.</string>
+    <string name="household_invite_teilen">Share</string>
+    <string name="household_invite_gueltig_bis">Valid until %1$s</string>
+    <string name="household_redeem_sperrgrund">Enter code and password, then link.</string>
+    <string name="household_redeem_sperrgrund_faktor">Enter code, password and second-factor code, then link.</string>
 </resources>

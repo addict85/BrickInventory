@@ -1,5 +1,11 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.ui.theme.mittigBis
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.PathEffect
+import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.model.PreisDiagrammAnsicht
 import ch.brickinventoryapp.ui.model.PreisJeZustandAnsicht
 import androidx.compose.ui.semantics.contentDescription
@@ -74,7 +80,10 @@ fun SectionCard(
     aussenAbstand: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    AppKarte(if (aussenAbstand) Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp) else Modifier) {
+    // Die Karte begrenzt die Breite, nicht jedes Element darin: Sonst endeten Werte, Felder
+    // und Knöpfe auf dem Tablet an verschiedenen Stellen mitten in der Karte.
+    AppKarte(Modifier.mittigBis(Lesebreite.formular)
+        .then(if (aussenAbstand) Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp) else Modifier)) {
         Column(Modifier.padding(horizontal = Abstaende.gross, vertical = 14.dp)) {
             Abschnittstitel(title, Modifier.padding(bottom = 10.dp))
             content()
@@ -132,10 +141,13 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
         lines.forEach { line ->
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                Canvas(Modifier.size(width = 16.dp, height = 3.dp)) {
-                    drawLine(colorFor(line.condition),
-                        Offset(0f, size.height / 2), Offset(size.width, size.height / 2),
-                        strokeWidth = size.height)
+                // Dasselbe Muster wie die Linie: gestrichelt oder durchgezogen, mit ihrer Endmarke.
+                Canvas(Modifier.size(width = 28.dp, height = 10.dp)) {
+                    val stil = linienStil(line.condition)
+                    val mitte = Offset(size.width - 5.dp.toPx(), size.height / 2)
+                    drawLine(colorFor(line.condition), Offset(0f, size.height / 2), mitte,
+                        strokeWidth = PREISLINIE_BREITE.toPx(), pathEffect = strich(stil))
+                    endmarke(colorFor(line.condition), stil, mitte, 3.5.dp.toPx())
                 }
                 Text(labelFor(line.condition),
                     style = MaterialTheme.typography.labelSmall,
@@ -185,8 +197,9 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
             val color = colorFor(line.condition)
             val pts = line.points.map { Offset(px(it.day), py(it.value)) }
 
+            val stil = linienStil(line.condition)
             if (pts.size == 1) {
-                drawCircle(color, radius = 4f, center = pts.first())
+                endmarke(color, stil, pts.first(), 3.dp.toPx())
                 return@forEach
             }
 
@@ -205,12 +218,12 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
                 moveTo(pts.first().x, pts.first().y)
                 pts.drop(1).forEach { lineTo(it.x, it.y) }
             }
-            drawPath(path, color, style = Stroke(width = 3f))
+            drawPath(path, color, style = Stroke(width = PREISLINIE_BREITE.toPx(), pathEffect = strich(stil)))
 
             // Endpunkt: heller Ring, damit er auch dort sichtbar bleibt, wo
             // sich beide Linien treffen.
-            drawCircle(surfaceCol, radius = 5.5f, center = pts.last())
-            drawCircle(color, radius = 3.5f, center = pts.last())
+            endmarke(surfaceCol, stil, pts.last(), 4.dp.toPx())
+            endmarke(color, stil, pts.last(), 2.5.dp.toPx())
         }
     }
     }
@@ -233,6 +246,26 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
 
 /** Ab so vielen Messpunkten einer Reihe zeigt PriceChart eine Linie. */
 const val MIN_PUNKTE_VERLAUF = 3
+
+/** Breite der Preislinien: 3 px waren auf einem dichten Telefon kaum ein Strich. */
+val PREISLINIE_BREITE = 2.dp
+
+/**
+ * Neu und Gebraucht unterscheiden sich auch in der Form, nicht nur im Farbton
+ * (WCAG 1.4.1): Gebraucht gestrichelt und mit eckiger Endmarke.
+ */
+data class LinienStil(val gestrichelt: Boolean, val eckig: Boolean)
+
+fun linienStil(zustand: String): LinienStil = if (zustand == "U") LinienStil(gestrichelt = true, eckig = true)
+    else LinienStil(gestrichelt = false, eckig = false)
+
+private fun DrawScope.strich(stil: LinienStil): PathEffect? =
+    if (stil.gestrichelt) PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())) else null
+
+private fun DrawScope.endmarke(farbe: Color, stil: LinienStil, mitte: Offset, radius: Float) {
+    if (stil.eckig) drawRect(farbe, Offset(mitte.x - radius, mitte.y - radius), Size(radius * 2, radius * 2))
+    else drawCircle(farbe, radius = radius, center = mitte)
+}
 
 /** Das Diagramm wächst mit der Schrift, damit die Achsenzahlen nicht ineinanderlaufen. */
 @Composable
@@ -308,7 +341,7 @@ fun PreisLaedtZeile(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp)
-        Text(stringResource(R.string.detail_price_loading),
+        Text(stringResource(R.string.detail_price_loading), Modifier.ansagen(),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -356,11 +389,12 @@ fun kachelAnordnung(breite: Dp, bedarf: Dp, abstand: Dp): KachelAnordnung = when
  * untereinander. Kacheln einer Reihe sind gleich hoch.
  */
 @Composable
-fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = Modifier) {
+fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = Modifier, pnlBetrag: String? = null) {
     val farben = MaterialTheme.colorScheme
     val akzent = LocalAkzentflaechen.current
     val status = LocalStatusFarben.current
-    val pnlText = pnl?.let { fmtProzent(it) } ?: "—"
+    // Betrag und Prozent wie in den Finanzen („+CHF 112.50 · +16.1 %“), nicht nur Prozent.
+    val pnlText = pnl?.let { listOfNotNull(pnlBetrag, fmtProzent(it)).joinToString(" · ") } ?: "—"
     val marktKachel: @Composable (Modifier) -> Unit = { m ->
         WertKachel(stringResource(R.string.detail_section_market), markt, akzent.markt, akzent.aufMarkt, m)
     }

@@ -314,7 +314,9 @@ class StringResourceParityTest {
     @Test
     fun `ein Begriff je Sache in beiden Sprachen`() {
         val verboten = mapOf(
-            "values-de/strings.xml" to listOf(Regex("Set-Nummer"), Regex("""\bSumme\b"""), Regex("Kauf gesamt")),
+            // Sorten wie in der Web-App, nicht „Teileart“; „Stück gesamt“ hiess in der Galerie „Teile“.
+            "values-de/strings.xml" to listOf(Regex("Set-Nummer"), Regex("""\bSumme\b"""), Regex("Kauf gesamt"),
+                Regex("Teileart|Figurenart|Stück gesamt|Webapp|Android App")),
             "values/strings.xml" to listOf(Regex("""(?i)\blog(?:ged)? (?:in|out)\b"""), Regex("Gain/loss"),
                 Regex("""\badmin rights\b""")),
         )

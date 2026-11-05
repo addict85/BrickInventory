@@ -1,5 +1,9 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.material.icons.filled.Bookmark
+import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.ui.components.ErfassenDialog
+import ch.brickinventoryapp.ui.model.MerkpostenAnsicht
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
@@ -80,7 +84,11 @@ fun CatalogDetailScreen(
      */
     onWish: (String, String, String, String, Int?) -> Unit,
     onOpenInGallery: (String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** Der Merkposten zu diesem Set, falls es schon auf der Merkliste steht. */
+    gemerkt: MerkpostenAnsicht? = null,
+    /** Den Merkposten öffnen — Setnummer und Zustand. */
+    onOeffneMerkposten: (String, String) -> Unit = { _, _ -> },
 ) {
     LaunchedEffect(setNumber) { onLoad(setNumber) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
@@ -122,7 +130,7 @@ fun CatalogDetailScreen(
                         imageLoader = imageLoader,
                         contentDescription = detail.name,
                         modifier = m.clip(Formen.karte)
-                            .clickable(enabled = fullUrl != null, role = Role.Button) { showImageZoom = true },
+                            .clickable(enabled = fullUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { showImageZoom = true },
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit,
                         ersatzGroesse = 64.dp,
                         bildgrund = true,
@@ -132,7 +140,8 @@ fun CatalogDetailScreen(
                 val angaben: @Composable ColumnScope.() -> Unit = {
                     KatalogAngaben(
                         detail = detail,
-                        onMerken = { showWishDialog = true },
+                        gemerkt = gemerkt,
+                        onMerken = { if (gemerkt != null) onOeffneMerkposten(gemerkt.setNumber, gemerkt.condition) else showWishDialog = true },
                         onAufnehmen = { showAddDialog = true },
                         onOpenInGallery = onOpenInGallery,
                         onBrickLink = { url ->
@@ -227,6 +236,7 @@ private val BILD_HOECHSTENS = 480.dp
 @Composable
 private fun ColumnScope.KatalogAngaben(
     detail: KatalogDetailAnsicht,
+    gemerkt: MerkpostenAnsicht?,
     onMerken: () -> Unit,
     onAufnehmen: () -> Unit,
     onOpenInGallery: (String) -> Unit,
@@ -244,6 +254,8 @@ private fun ColumnScope.KatalogAngaben(
             if (detail.owned) {
                 CatalogDetailRow(stringResource(R.string.catalog_owned), "✓ ×${detail.ownedQuantity}")
             }
+            // Steht das Set schon auf der Merkliste, sagt es die Tabelle — mit Zustand und Alarm.
+            if (gemerkt != null) CatalogDetailRow(stringResource(R.string.catalog_auf_merkliste), merkpostenText(gemerkt))
         }
     }
 
@@ -258,10 +270,12 @@ private fun ColumnScope.KatalogAngaben(
         Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
             textAlign = TextAlign.Center)
     }
+    // Gemerkt: zum Merkposten statt ein zweites Mal merken.
     OutlinedButton(onClick = onMerken, modifier = knopf, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-        Icon(Icons.Default.BookmarkAdd, null, Modifier.size(mitSchrift(18.dp)))
+        Icon(if (gemerkt != null) Icons.Default.Bookmark else Icons.Default.BookmarkAdd, null, Modifier.size(mitSchrift(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
-        Text(stringResource(R.string.wanted_add_submit), textAlign = TextAlign.Center)
+        Text(stringResource(if (gemerkt != null) R.string.catalog_merkposten_oeffnen else R.string.wanted_add_submit),
+            textAlign = TextAlign.Center)
     }
     if (detail.owned) {
         OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = knopf, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
@@ -285,6 +299,17 @@ private fun ColumnScope.KatalogAngaben(
         Spacer(Modifier.width(Abstaende.winzig))
         Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(mitSchrift(16.dp)))
     }
+}
+
+/** „Neu, Alarm unter CHF 349.00“ — Zustand und Alarm eines Merkpostens in einer Zeile. */
+@Composable
+private fun merkpostenText(m: MerkpostenAnsicht): String {
+    val zustand = stringResource(if (m.condition == "U") R.string.condition_used else R.string.condition_new)
+    val alarm = m.alarm?.let { a ->
+        stringResource(if (a.richtung == "ueber") R.string.wanted_alert_above else R.string.wanted_alert_below,
+            fmtMoney(a.schwelle, m.waehrung))
+    }
+    return listOfNotNull(zustand, alarm).joinToString(", ")
 }
 
 /** Anzahl/Preis/Zustand abfragen — wie AddSetDialog, aber ohne Setnummern-Feld. */
@@ -383,11 +408,16 @@ private fun MerkpostenDialog(
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.wanted_add_submit), fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
+    // Derselbe Rahmen wie „Set merken“ in der Merkliste und jedes Erfassen.
+    ErfassenDialog(
+        titel = stringResource(R.string.wanted_add_submit),
+        bestaetigen = stringResource(R.string.wanted_add_submit),
+        onBestaetigen = { onWish(zustand, richtung, schwelle,
+            // Ohne Haushalt gar nichts mitschicken — dann bleibt der Server
+            // beim eigenen Konto (gleiche Regel wie im Erfassungsdialog).
+            if (householdMembers.size > 1) konto else null) },
+        onAbbrechen = onDismiss,
+    ) {
                 Text(setName, style = MaterialTheme.typography.bodyMedium)
                 // Zielkonto wie beim Erfassen; blendet sich bei weniger als
                 // zwei Mitgliedern selbst aus.
@@ -413,16 +443,5 @@ private fun MerkpostenDialog(
                     keyboardOptions = NumericInput.preisTastatur(),
                     modifier = Modifier.fillMaxWidth(),
                 )
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onWish(zustand, richtung, schwelle,
-                // Ohne Haushalt gar nichts mitschicken — dann bleibt der Server
-                // beim eigenen Konto (gleiche Regel wie im Erfassungsdialog).
-                if (householdMembers.size > 1) konto else null) }) {
-                Text(stringResource(R.string.wanted_add_submit))
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_cancel)) } },
-    )
+    }
 }

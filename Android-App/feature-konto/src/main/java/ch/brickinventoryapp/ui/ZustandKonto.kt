@@ -63,6 +63,8 @@ data class HouseholdUiState(
     val status: HaushaltStatusAnsicht? = null,
     /** Zuletzt erzeugter Einladungscode — nur bis zum Verlassen der Ansicht. */
     val inviteCode: String? = null,
+    /** Bis wann der Code gilt (Millisekunden seit 1970); null, wenn der Server es nicht sagt. */
+    val inviteGueltigBis: Long? = null,
     /** Meldung des Servers (Währung weicht ab, schon verknüpft, zweite Stufe). */
     val message: String? = null,
     /** Das Passwort beim Einlösen war falsch; das Feld zeigt es an. */

@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.nav
 
+import androidx.compose.runtime.remember
+import ch.brickinventoryapp.ui.screens.MerkpostenRueckgaengig
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -54,8 +56,10 @@ private fun NavGraphBuilder.merklisteZiele(u: ZielUmgebung) {
             val nebeneinander = listeUndDetail(maxWidth.value)
             ReiterGeruest(stringResource(R.string.nav_wanted), u) {
                 val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
+                val merkliste = hiltViewModel<MerklisteViewModel>()
+                MerkpostenRueckgaengig(merkliste, u.snackbarHostState)
                 MerklisteRoute(
-                    vm = hiltViewModel<MerklisteViewModel>(),
+                    vm = merkliste,
                     imageLoader = imageLoader,
                     nebeneinander = nebeneinander,
                     onScan = { erfassung.setScannerSource("wanted"); navController.navigate(Screen.BarcodeScanner) },
@@ -68,8 +72,11 @@ private fun NavGraphBuilder.merklisteZiele(u: ZielUmgebung) {
     }
     composable<Screen.MerkpostenDetail> { backStack ->
         val ziel = backStack.toRoute<Screen.MerkpostenDetail>()
+        // Dasselbe ViewModel wie die Liste darunter: Dort läuft die Snackbar mit
+        // „Rückgängig“, nachdem das Detail eines gelöschten Postens zurückgegangen ist.
+        val liste = remember(backStack) { runCatching { navController.getBackStackEntry<Screen.Wanted>() }.getOrNull() }
         MerkpostenDetailRoute(
-            vm = hiltViewModel<MerklisteViewModel>(),
+            vm = if (liste != null) hiltViewModel<MerklisteViewModel>(liste) else hiltViewModel<MerklisteViewModel>(),
             setNumber = ziel.setNumber,
             condition = ziel.condition,
             imageLoader = imageLoader,
@@ -112,6 +119,9 @@ private fun NavGraphBuilder.katalogZiele(u: ZielUmgebung) {
             val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
             val catalogState by katalog.state.collectAsStateWithLifecycle()
             val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+            // Steht das Set schon auf der Merkliste? Dann zeigt das Detail den Posten statt „Auf die Merkliste“.
+            val merkposten by merkliste.merklisteState.collectAsStateWithLifecycle()
+            LaunchedEffect(Unit) { merkliste.ladeMerkliste() }
             // loadCatalogDetail() meldet über denselben Kanal wie alle ViewModels
             // (data/MeldungsKanal.kt), eingesammelt in AppNavigation.kt.
             CatalogDetailScreen(
@@ -140,7 +150,13 @@ private fun NavGraphBuilder.katalogZiele(u: ZielUmgebung) {
                     merkliste.merkpostenMitAlarm(sn, zustand, richtung, schwelle, konto)
                 },
                 onOpenInGallery = { sn -> navController.navigate(Screen.SetDetail(sn)) },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                gemerkt = merkposten.merkposten.firstOrNull { it.setNumber == catSetNumber },
+                // Über die Liste: Dort läuft die Snackbar, wenn der Posten gelöscht wird.
+                onOeffneMerkposten = { sn, zustand ->
+                    navController.navigate(Screen.Wanted)
+                    navController.navigate(Screen.MerkpostenDetail(sn, zustand))
+                },
             )
         }
     }

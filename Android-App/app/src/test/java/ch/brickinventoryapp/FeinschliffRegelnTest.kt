@@ -58,6 +58,7 @@ import ch.brickinventoryapp.util.fmtMoney
  * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
  *   reiter-bricht-um          Beschriftung wieder als Text ohne Zeilengrenze → rot „Reiterleiste …“
  *   reiter-schrumpft-bis-7sp  Untergrenze wieder fest 7 sp → rot „Reiterleiste schrumpft nie …“
+ *   reiter-boden-normalgroesse  Untergrenze wieder die Normalgrösse → rot „Reiterbeschriftung waechst …“
  *   suche-neben-filtertext    Filterknopf mit Text schon ab 360 dp → rot „Such-Platzhalter …“
  *   verlauf-ab-zwei-punkten   Linie schon ab zwei Punkten → rot „Preisverlauf …“
  *   teile-detail-als-dialog   Teile-Detail auch auf dem Tablet als Dialog → rot „Tablet zeigt Teil …“
@@ -111,11 +112,24 @@ class FeinschliffRegelnTest {
             t.lineCount == 1 && !t.isLineEllipsized(0) && t.getLineEnd(0, visibleEnd = true) == text.length)
     }
 
-    @Test
-    fun `Reiterleiste bricht bei 200 Prozent kein Wort um`() {
-        val ziele = listOf(Screen.Gallery to R.string.nav_collection, Screen.Finance to R.string.nav_finance,
+    private val fuenfZiele by lazy {
+        listOf(Screen.Gallery to R.string.nav_collection, Screen.Finance to R.string.nav_finance,
             Screen.Wanted to R.string.nav_wanted, Screen.Catalog to R.string.nav_catalog, Screen.Mehr to R.string.nav_more)
             .map { (ziel, text) -> ziel to ctx.getString(text) }
+    }
+
+    /** Die sichtbaren Beschriftungen der Leiste; ein Ziel ohne trägt seinen Namen und ist antippbar. */
+    private fun sichtbareBeschriftungen(ziele: List<Pair<Screen, String>>): List<String> = ziele.map { it.second }.filter { text ->
+        val sichtbar = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
+            .any { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
+        if (!sichtbar) compose.onNode(androidx.compose.ui.test.hasContentDescription(text) and androidx.compose.ui.test.hasClickAction())
+            .fetchSemanticsNode("„$text“ hat weder Beschriftung noch Namen")
+        sichtbar
+    }
+
+    @Test
+    fun `Reiterleiste bricht bei 200 Prozent kein Wort um`() {
+        val ziele = fuenfZiele
         zeige(schrift = 2f) {
             val nav = rememberNavController()
             val reiter = remember {
@@ -130,11 +144,41 @@ class FeinschliffRegelnTest {
                 NavHost(nav, startDestination = Screen.Finance) { composable<Screen.Finance> { } }
             }
         }
-        ziele.forEach { (_, text) -> ganzEineZeile(text, "Reiterleiste") }
-        // Gegenprobe reiter-eigene-groesse: jede Beschriftung schrumpft für sich → rot
-        // „Reiterleiste in verschiedenen Grössen“.
-        val groessen = ziele.map { (_, text) -> layout(textKnoten(text)).layoutInput.style.fontSize }.toSet()
+        val sichtbar = sichtbareBeschriftungen(ziele)
+        assertTrue("Das gewählte Ziel ist nicht beschriftet", ctx.getString(R.string.nav_finance) in sichtbar)
+        sichtbar.forEach { ganzEineZeile(it, "Reiterleiste") }
+        val groessen = sichtbar.map { layout(textKnoten(it)).layoutInput.style.fontSize }.toSet()
         assertTrue("Reiterleiste in verschiedenen Grössen: $groessen", groessen.size == 1)
+    }
+
+    /** M4 (Barrierefreiheit): Bei 200 % stehen die Beschriftungen mindestens anderthalbmal so gross da wie bei 100 %. */
+    @Test
+    fun `Reiterbeschriftung waechst bei 200 Prozent mindestens aufs Anderthalbfache`() {
+        val ziele = fuenfZiele
+        var normal = 0f
+        zeige(schrift = 2f) {
+            normal = MaterialTheme.typography.labelMedium.fontSize.value
+            val nav = rememberNavController()
+            val reiter = remember {
+                ziele.map { (ziel, text) -> Triple<Screen, @Composable () -> Unit, String>(ziel, { Icon(Icons.Default.ViewInAr, null) }, text) }
+            }
+            MainScaffold(
+                title = "Titel", navController = nav, bottomNavItems = reiter,
+                snackbarHostState = remember { SnackbarHostState() },
+                csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
+                onCsvAbbrechen = {}, serverUrl = "", onTabAngetippt = {},
+            ) {
+                NavHost(nav, startDestination = Screen.Wanted) { composable<Screen.Wanted> { } }
+            }
+        }
+        val sichtbar = sichtbareBeschriftungen(ziele)
+        assertTrue("Keine Beschriftung sichtbar", sichtbar.isNotEmpty())
+        sichtbar.forEach { text ->
+            val t = layout(textKnoten(text))
+            val gesetzt = t.layoutInput.style.fontSize.value * t.layoutInput.density.fontScale
+            assertTrue("„$text“ in $gesetzt statt mindestens ${1.5f * normal} Punkt", gesetzt >= 1.5f * normal - 0.01f)
+            assertTrue("„$text“ läuft über", !t.hasVisualOverflow)
+        }
     }
 
     /**
@@ -150,7 +194,7 @@ class FeinschliffRegelnTest {
         val schrift = 1.3f
         var normal = 0f
         zeige(schrift = schrift) {
-            normal = MaterialTheme.typography.labelSmall.fontSize.value
+            normal = MaterialTheme.typography.labelMedium.fontSize.value
             val nav = rememberNavController()
             val reiter = remember {
                 ziele.map { (ziel, text) -> Triple<Screen, @Composable () -> Unit, String>(ziel, { Icon(Icons.Default.ViewInAr, null) }, text) }
@@ -164,16 +208,9 @@ class FeinschliffRegelnTest {
                 NavHost(nav, startDestination = Screen.Gallery) { composable<Screen.Gallery> { } }
             }
         }
-        ziele.forEach { (_, text) ->
-            val sichtbar = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
-                .filter { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
-            if (sichtbar.isEmpty()) {
-                compose.onNode(androidx.compose.ui.test.hasContentDescription(text) and androidx.compose.ui.test.hasClickAction())
-                    .fetchSemanticsNode("„$text“ hat weder Beschriftung noch Namen")
-            } else sichtbar.forEach { knoten ->
-                val stil = layout(knoten).layoutInput.style.fontSize.value
-                assertTrue("„$text“ in ${stil * schrift} statt mindestens $normal Punkt", stil * schrift >= normal - 0.01f)
-            }
+        sichtbareBeschriftungen(ziele).forEach { text ->
+            val stil = layout(textKnoten(text)).layoutInput.style.fontSize.value
+            assertTrue("„$text“ in ${stil * schrift} statt mindestens ${schrift * normal} Punkt", stil * schrift >= schrift * normal - 0.01f)
         }
     }
 

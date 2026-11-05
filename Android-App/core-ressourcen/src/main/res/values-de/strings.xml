@@ -39,7 +39,7 @@
     <string name="settings_nutzer_ca">Nutzer-Zertifizierungsstellen vertrauen (Risiko)</string>
     <string name="settings_nutzer_ca_hint">Nur für die Verbindung zu deinem Server, nie für Updates. Risiko: Eine vom Nutzer installierte Zertifizierungsstelle – etwa von der Firma oder von Schadsoftware – kann Zertifikate für jeden Server ausstellen und so den Verkehr mitlesen. Nur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
     <string name="nutzer_ca_frage_titel">Nutzer-Zertifizierungsstellen vertrauen?</string>
-    <string name="nutzer_ca_frage_text">Die App nimmt dann für deinen Server auch Zertifikate an, die eine vom Nutzer installierte Zertifizierungsstelle ausgestellt hat.\n\nEine solche Stelle kann von deiner Firma, einem Netzwerkverwalter oder von Schadsoftware stammen. Wer sie kontrolliert, kann den Verkehr mitlesen und verändern, auch Passwort und Anmeldetoken. Schutz bleibt dann nur der Vergleich des Fingerabdrucks mit der Webapp.\n\nUpdates von GitHub prüft die App weiter nur gegen die Zertifizierungsstellen des Systems.\n\nNur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
+    <string name="nutzer_ca_frage_text">Die App nimmt dann für deinen Server auch Zertifikate an, die eine vom Nutzer installierte Zertifizierungsstelle ausgestellt hat.\n\nEine solche Stelle kann von deiner Firma, einem Netzwerkverwalter oder von Schadsoftware stammen. Wer sie kontrolliert, kann den Verkehr mitlesen und verändern, auch Passwort und Anmeldetoken. Schutz bleibt dann nur der Vergleich des Fingerabdrucks mit der Web-App.\n\nUpdates von GitHub prüft die App weiter nur gegen die Zertifizierungsstellen des Systems.\n\nNur einschalten, wenn du die Stelle selbst für deinen Server installiert hast.</string>
     <string name="nutzer_ca_frage_ja">Trotzdem einschalten</string>
     <string name="setup_qr_titel">Diesen Server übernehmen?</string>
     <string name="setup_qr_ziel">Der QR-Code führt zu diesem Server:</string>
@@ -100,7 +100,7 @@
     <string name="setup_scan_qr">QR-Code scannen</string>
     <string name="setup_or_manual">  oder manuell  </string>
     <string name="setup_server_url">Server-URL</string>
-    <string name="setup_url_label">URL der BrickInventory Manager Webapp</string>
+    <string name="setup_url_label">URL der BrickInventory Manager Web-App</string>
     <string name="setup_url_placeholder">https://brick.fritz.box</string>
     <string name="setup_url_supporting">z. B. brick.fritz.box oder brick.example.com – https:// darf fehlen</string>
     <string name="api_app_zu_alt">Diese App ist zu alt für den Server. Bitte die App aktualisieren (Einstellungen → Aktualisierung).</string>
@@ -124,7 +124,6 @@
     <string name="gallery_card_paid">Kaufpreis</string>
     <string name="gallery_delete_title">Set löschen?</string>
     <string name="gallery_delete_text">%1$s und seine Teile werden entfernt. Danach bleibt kurz Zeit für „Rückgängig“.</string>
-    <string name="gallery_set_deleted_undo">%1$s gelöscht</string>
     <string name="common_undo">Rückgängig</string>
     <string name="gallery_pieces_suffix"> Teile</string>
     <string name="gallery_scan_barcode">Barcode scannen</string>
@@ -257,7 +256,7 @@
         <item quantity="other">%1$d verschiedene</item>
     </plurals>
     <string name="partslist_owned_error">Der eigene Bestand liess sich nicht laden.</string>
-    <string name="partslist_empty_hint">Setnummer eingeben und „Bauliste erstellen“ tippen; weitere Sets kommen mit „+“ im Feld dazu — für den Nachbau oder um Fehlendes zu bestellen.</string>
+    <string name="partslist_empty_hint">Setnummer eingeben und „Bauliste erstellen“ tippen. Nach der Eingabe nimmt das Plus im Feld weitere Sets dazu — für den Nachbau oder um Fehlendes zu bestellen.</string>
     <string name="partslist_empty_title">Noch keine Bauliste</string>
     <string name="partslist_no_color">(Keine Farbe)</string>
     <plurals name="partslist_group_summary">
@@ -418,7 +417,7 @@
     <string name="vm_settings_saved">Einstellungen gespeichert</string>
 
     <!-- ══════════════ ViewModel messages ══════════════ -->
-    <string name="vm_barcode_not_found">Kein Set für Barcode %1$s gefunden</string>
+    <string name="vm_barcode_not_found">Kein Set für „%1$s“ gefunden</string>
 
     <!-- Nachtrag i18n-Pass: zuvor hartkodierte Strings -->
     <string name="parts_search_placeholder">Suchen…</string>
@@ -445,9 +444,9 @@
     <string name="vm_saved">Gespeichert</string>
     <string name="vm_part_deleted">Teil gelöscht</string>
     <string name="vm_minifig_deleted">Minifigur gelöscht</string>
-    <string name="vm_set_deleted">%1$s gelöscht</string>
-    <string name="vm_added">%1$s hinzugefügt</string>
-    <string name="vm_updated">%1$s aktualisiert</string>
+    <string name="vm_set_deleted">„%1$s“ gelöscht</string>
+    <string name="vm_added">„%1$s“ hinzugefügt</string>
+    <string name="vm_updated">„%1$s“ aktualisiert</string>
     <string name="pruef_titel">Wird geprüft…</string>
     <string name="pruef_barcode">Barcode %1$s wird aufgelöst…</string>
     <string name="pruef_bestand">Prüfe, ob %1$s schon im Bestand ist…</string>
@@ -455,16 +454,15 @@
     <string name="pruef_anlegen_bild">Bild zu %1$s wird geladen…</string>
     <string name="pruef_anlegen_abschluss">%1$s wird abgeschlossen…</string>
     <string name="pruef_hinweis">Das Hinzufügen läuft danach im Hintergrund — kurz warten vor dem nächsten Scan.</string>
-    <string name="vm_barcode_no_set">Kein Set gefunden für: %1$s</string>
-    <string name="vm_set_added">%1$s hinzugefügt!</string>
+    <string name="vm_set_added">„%1$s“ hinzugefügt</string>
     <string name="vm_set_added_no_catalog">Set %1$s gespeichert — Name und Bild kommen nach, sobald der Katalog erreichbar ist.</string>
     <string name="vm_error">Fehler: %1$s</string>
     <string name="vm_anmeldung_zu_alt">Die Anmeldung ist älter als 180 Tage. Bitte melde dich neu an.</string>
     <string name="vm_session_expired">Sitzung abgelaufen — bitte erneut anmelden</string>
-    <string name="vm_abmelden_nachgeholt">Abgemeldet. Der Server war nicht erreichbar; die App entwertet die Anmeldung dort, sobald er wieder erreichbar ist. Zur Sicherheit in der Webapp unter „Angemeldete Geräte“ nachsehen.</string>
+    <string name="vm_abmelden_nachgeholt">Abgemeldet. Der Server war nicht erreichbar; die App entwertet die Anmeldung dort, sobald er wieder erreichbar ist. Zur Sicherheit in der Web-App unter „Angemeldete Geräte“ nachsehen.</string>
     <string name="abmeldung_kanal">Abmeldung</string>
     <string name="abmeldung_gescheitert_titel">Abmeldung nicht bestätigt</string>
-    <string name="abmeldung_gescheitert_text">Dieses Gerät konnte sich bei %1$s nicht abmelden. Die Anmeldung gilt dort womöglich noch: In der Webapp unter „Angemeldete Geräte“ widerrufen.</string>
+    <string name="abmeldung_gescheitert_text">Dieses Gerät konnte sich bei %1$s nicht abmelden. Die Anmeldung gilt dort womöglich noch: In der Web-App unter „Angemeldete Geräte“ widerrufen.</string>
     <string name="vm_rechte_entzogen">Deine Verwalterrechte gelten nicht mehr — die Verwaltungsbereiche sind ausgeblendet.</string>
 
     <!-- Foreground-Service-Benachrichtigungen (CSV-Import / PDF-Export) -->
@@ -767,7 +765,7 @@
     <string name="csv_upload_wanted">Merkliste importieren …</string>
     <string name="csv_upload_alerts">Preisalarme importieren …</string>
     <string name="vouchers_import_done">%1$s, %2$s</string>
-    <string name="csv_upload_hint">Dieselben Dateien wie in der Webapp, mit Kopfzeile, höchstens %1$d MB.</string>
+    <string name="csv_upload_hint">Dieselben Dateien wie in der Web-App, mit Kopfzeile, höchstens %1$d MB.</string>
     <string name="csv_upload_unreadable">Die gewählte Datei liess sich nicht lesen.</string>
     <string name="csv_upload_too_big">Die Datei ist grösser als %1$d MB.</string>
     <string name="csv_upload_result">%1$s: %2$s, %3$s, %4$s</string>
@@ -794,7 +792,7 @@
     <string name="instr_upload_wrong_type">Nur PDF, JPG oder PNG.</string>
     <string name="instr_upload_done">Anleitung hinzugefügt</string>
     <string name="instr_delete">Anleitung entfernen</string>
-    <!-- Neu einlesen: dieselben zwei Aktionen, die die Webapp im Set-Detail hat
+    <!-- Neu einlesen: dieselben zwei Aktionen, die die Web-App im Set-Detail hat
          (02-gallery.js: redownloadInstr, reimportParts). -->
 
     <!-- ══════════════ Server-Protokoll ══════════════ -->
@@ -856,10 +854,9 @@
     <string name="wanted_owned">Schon vorhanden</string>
     <string name="wanted_alert_below">Alarm unter %1$s</string>
     <string name="wanted_alert_above">Alarm über %1$s</string>
-    <string name="wanted_price_pending">Preis folgt</string>
     <string name="wanted_added">Auf die Merkliste gesetzt</string>
     <string name="wanted_already">Stand schon auf der Merkliste</string>
-    <string name="wanted_deleted">Von der Merkliste genommen</string>
+    <string name="wanted_deleted">„%1$s“ von der Merkliste genommen</string>
     <string name="wanted_take">Zur Sammlung hinzufügen</string>
     <string name="wanted_taken">In die Sammlung übernommen</string>
     <string name="wanted_taken_existing">War schon in der Sammlung — von der Merkliste genommen</string>
@@ -868,8 +865,8 @@
     <string name="detail_compare">Preisvergleich</string>
     <string name="wanted_since">Auf der Liste seit</string>
     <string name="alerts_group">Preisalarme</string>
-    <string name="alerts_intro">Hier änderst du die Schwelle eines Alarms oder entfernst ihn.</string>
-    <string name="alerts_empty">Noch kein Preisalarm gesetzt. Du setzt einen in der Detailansicht eines Sets.</string>
+    <string name="alerts_intro">Hier legst du Alarme an, änderst Schwelle und Richtung oder entfernst sie.</string>
+    <string name="alerts_empty">Noch kein Preisalarm gesetzt. Lege unten einen an oder in der Detailansicht eines Sets.</string>
     <string name="alerts_armed">Aktiv</string>
     <string name="alerts_fired">Ausgelöst</string>
     <string name="alerts_last">zuletzt %1$s</string>
@@ -958,9 +955,9 @@
         <item quantity="other">Eingerichtet · %d Wiederherstellungscodes übrig</item>
     </plurals>
     <string name="acq_preis_geschaetzt">Geschätzt: Marktpreis, kein bezahlter Betrag</string>
-    <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App merkt es sich für diese Adresse und nimmt danach nur noch dieses an. Nur fortfahren, wenn du den Code eben selbst in deiner Webapp erzeugt hast; dort steht unter Einstellungen → Server-Zertifikat derselbe Anfang.</string>
+    <string name="setup_qr_pin">Der Code nennt auch das Zertifikat des Servers. Die App merkt es sich für diese Adresse und nimmt danach nur noch dieses an. Nur fortfahren, wenn du den Code eben selbst in deiner Web-App erzeugt hast; dort steht unter Einstellungen → Server-Zertifikat derselbe Anfang.</string>
     <string name="setup_altbestand_text">Gespeichert ist %1$s – eine Adresse ohne Verschlüsselung. Diese Version verbindet sich nur noch über https, damit im WLAN niemand deinen Zugang mitlesen kann.</string>
-    <string name="setup_altbestand_schritt_qr">In der Webapp unter Einstellungen den QR-Code für die Android App erzeugen und mit dem Knopf darunter scannen.</string>
+    <string name="setup_altbestand_schritt_qr">In der Web-App unter Einstellungen den QR-Code für die Android-App erzeugen und mit dem Knopf darunter scannen.</string>
     <string name="setup_altbestand_schritt_adresse">Oder unten die https-Adresse deines Servers eintragen, z. B. https://brick.fritz.box.</string>
     <string name="setup_altbestand_danach">Danach meldest du dich einmal neu an.</string>
     <string name="setup_altbestand_titel">Nur noch verschlüsselte Verbindungen</string>
@@ -976,26 +973,26 @@
     <string name="zert_titel_erstkontakt">Diesem Server vertrauen?</string>
     <string name="zert_titel_unbekannt">Unbekanntes Zertifikat</string>
     <string name="zert_titel_geaendert">Das Zertifikat des Servers hat sich geändert</string>
-    <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Vergleiche den Fingerabdruck Zeichen für Zeichen mit dem, den die Webapp unter Einstellungen → Server-Zertifikat zeigt. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
-    <string name="zert_text_unbekannt">Das Zertifikat von %1$s stammt von keiner bekannten Stelle – es ist selbst ausgestellt oder kommt von einer eigenen Zertifizierungsstelle. Für einen Server zu Hause ist das üblich, es kann aber auch jemand dazwischen sein. Darum genügt hier kein Tipp: Schreibe die letzten 24 Zeichen des Fingerabdrucks aus der Webapp ab (Einstellungen → Server-Zertifikat); hier steht nur sein Anfang.</string>
-    <string name="zert_text_geaendert">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast: Den neuen Fingerabdruck zeigt nur die Webapp (Einstellungen → Server-Zertifikat); schreibe seine letzten 24 Zeichen von dort ab.</string>
+    <string name="zert_text_erstkontakt">Das ist die erste verschlüsselte Verbindung zu %1$s. Vergleiche den Fingerabdruck Zeichen für Zeichen mit dem, den die Web-App unter Einstellungen → Server-Zertifikat zeigt. Erst nach deinem Ja merkt sich die App ihn und nimmt danach nur noch Zertifikate an, die dazu passen.</string>
+    <string name="zert_text_unbekannt">Das Zertifikat von %1$s stammt von keiner bekannten Stelle – es ist selbst ausgestellt oder kommt von einer eigenen Zertifizierungsstelle. Für einen Server zu Hause ist das üblich, es kann aber auch jemand dazwischen sein. Darum genügt hier kein Tipp: Schreibe die letzten 24 Zeichen des Fingerabdrucks aus der Web-App ab (Einstellungen → Server-Zertifikat); hier steht nur sein Anfang.</string>
+    <string name="zert_text_geaendert">%1$s zeigt ein anderes Zertifikat als das bestätigte. Das geschieht, wenn der Server einen neuen Schlüssel bekommt – oder wenn jemand dazwischen mithört. Es wurde nichts gesendet. Nur annehmen, wenn du den Server selbst umgestellt hast: Den neuen Fingerabdruck zeigt nur die Web-App (Einstellungen → Server-Zertifikat); schreibe seine letzten 24 Zeichen von dort ab.</string>
     <string name="zert_fingerabdruck">Fingerabdruck (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_bisher">Bisher bestätigt</string>
     <string name="zert_vertrauen">Diesem Zertifikat vertrauen</string>
     <string name="zert_vertrauen_neu">Neues Zertifikat annehmen</string>
     <string name="zert_nutzer_ca">Stattdessen eine auf dem Gerät installierte Zertifizierungsstelle verwenden</string>
-    <string name="zert_geaendert_eingabe">Die letzten 24 Zeichen des neuen Fingerabdrucks, abgeschrieben aus der Webapp (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
-    <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Webapp scannen.</string>
-    <string name="zert_unbekannt_eingabe">Die letzten 24 Zeichen des Fingerabdrucks, abgeschrieben aus der Webapp (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="zert_geaendert_eingabe">Die letzten 24 Zeichen des neuen Fingerabdrucks, abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
+    <string name="zert_geaendert_qr">Oder einen neuen QR-Code aus der Web-App scannen.</string>
+    <string name="zert_unbekannt_eingabe">Die letzten 24 Zeichen des Fingerabdrucks, abgeschrieben aus der Web-App (Einstellungen → Server-Zertifikat) oder aus den Zertifikatdetails des Browsers (SHA-256 des öffentlichen Schlüssels)</string>
     <string name="zert_eingabe_falsch">Das passt nicht zum Fingerabdruck dieses Servers.</string>
     <string name="zert_beginnt_mit">Fingerabdruck beginnt mit (nur zur Orientierung)</string>
-    <string name="zert_text_nutzer_ca">Das Zertifikat von %1$s gilt nur über eine Zertifizierungsstelle, die auf diesem Gerät installiert ist. Das kann deine eigene sein – oder eine, die jemand mit Zugriff auf das Gerät eingeschleust hat. Darum genügt hier kein Tipp: Schreibe die letzten 24 Zeichen des Fingerabdrucks aus der Webapp ab (Einstellungen → Server-Zertifikat); hier steht nur sein Anfang.</string>
+    <string name="zert_text_nutzer_ca">Das Zertifikat von %1$s gilt nur über eine Zertifizierungsstelle, die auf diesem Gerät installiert ist. Das kann deine eigene sein – oder eine, die jemand mit Zugriff auf das Gerät eingeschleust hat. Darum genügt hier kein Tipp: Schreibe die letzten 24 Zeichen des Fingerabdrucks aus der Web-App ab (Einstellungen → Server-Zertifikat); hier steht nur sein Anfang.</string>
     <string name="zert_titel_nutzer_ca">Zertifikat einer installierten Zertifizierungsstelle</string>
-    <string name="setup_qr_pin_geaendert">Dieser Code nennt ein anderes Zertifikat als das für diesen Server bestätigte. Nur fortfahren, wenn du den Server selbst umgestellt hast – dann zeigt die Webapp unter Einstellungen → Server-Zertifikat den neuen Fingerabdruck; schreibe seine letzten 24 Zeichen unten ab.</string>
+    <string name="setup_qr_pin_geaendert">Dieser Code nennt ein anderes Zertifikat als das für diesen Server bestätigte. Nur fortfahren, wenn du den Server selbst umgestellt hast – dann zeigt die Web-App unter Einstellungen → Server-Zertifikat den neuen Fingerabdruck; schreibe seine letzten 24 Zeichen unten ab.</string>
     <string name="setup_qr_pin_uebernehmen">Neues Zertifikat annehmen und anmelden</string>
     <string name="setup_qr_pin_wechsel_abgelehnt">Der QR-Code nennt ein anderes Zertifikat als das bestätigte. Es wurde nichts geändert.</string>
-    <string name="setup_qr_pin_abtippen">Der Code nennt auch das Zertifikat deiner eigenen Zertifizierungsstelle. Die App vertraut danach für diese Adresse nur noch diesem Schlüssel – ein fremder Code könnte aber genauso seinen nennen. Schreibe darum die letzten 24 Zeichen des Fingerabdrucks aus deiner Webapp ab (Einstellungen → Server-Zertifikat); hier steht nur sein Anfang.</string>
-    <string name="setup_qr_pin_abtippen_abgelehnt">Ohne die letzten 24 Zeichen des Fingerabdrucks aus der Webapp wird das Zertifikat aus dem QR-Code nicht übernommen. Es wurde nichts gesendet.</string>
+    <string name="setup_qr_pin_abtippen">Der Code nennt auch das Zertifikat deiner eigenen Zertifizierungsstelle. Die App vertraut danach für diese Adresse nur noch diesem Schlüssel – ein fremder Code könnte aber genauso seinen nennen. Schreibe darum die letzten 24 Zeichen des Fingerabdrucks aus deiner Web-App ab (Einstellungen → Server-Zertifikat); hier steht nur sein Anfang.</string>
+    <string name="setup_qr_pin_abtippen_abgelehnt">Ohne die letzten 24 Zeichen des Fingerabdrucks aus der Web-App wird das Zertifikat aus dem QR-Code nicht übernommen. Es wurde nichts gesendet.</string>
     <string name="common_load_failed">Konnte nicht geladen werden</string>
     <string name="common_retry">Erneut versuchen</string>
     <string name="common_no_results">Nichts gefunden</string>
@@ -1032,7 +1029,7 @@
     <string name="widget_heute">Heute</string>
     <string name="widget_gesamt">Gesamt</string>
     <string name="widget_leer">Öffne die App einmal, um die Zahlen zu laden.</string>
-    <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Webapp -->
+    <!-- Hintergrundarbeiten (Auftragstabelle), Namen wie monitor.* in der Web-App -->
     <string name="art_nacharbeit">Nacharbeit nach dem Erfassen</string>
     <string name="art_bilder">Bilder eines Sets</string>
     <string name="art_pdf">PDF-Bauliste</string>
@@ -1133,28 +1130,28 @@
         <item quantity="other">%1$s Anleitungen</item>
     </plurals>
     <plurals name="minifigs_stat_types">
-        <item quantity="one">%1$s Figurenart</item>
-        <item quantity="other">%1$s Figurenarten</item>
+        <item quantity="one">%1$s Minifigurensorte</item>
+        <item quantity="other">%1$s Minifigurensorten</item>
     </plurals>
     <plurals name="minifigs_stat_total">
-        <item quantity="one">%1$s Figur gesamt</item>
-        <item quantity="other">%1$s Figuren gesamt</item>
+        <item quantity="one">%1$s Minifigur gesamt</item>
+        <item quantity="other">%1$s Minifiguren gesamt</item>
     </plurals>
     <plurals name="minifigs_stat_manual">
         <item quantity="one">%1$s selbst erfasst</item>
         <item quantity="other">%1$s selbst erfasst</item>
     </plurals>
     <plurals name="parts_stat_types">
-        <item quantity="one">%1$s Teileart</item>
-        <item quantity="other">%1$s Teilearten</item>
+        <item quantity="one">%1$s Teilesorte</item>
+        <item quantity="other">%1$s Teilesorten</item>
     </plurals>
     <plurals name="parts_stat_colors">
         <item quantity="one">%1$s Farbe</item>
         <item quantity="other">%1$s Farben</item>
     </plurals>
     <plurals name="parts_stat_total">
-        <item quantity="one">%1$s Stück gesamt</item>
-        <item quantity="other">%1$s Stück gesamt</item>
+        <item quantity="one">%1$s Teil gesamt</item>
+        <item quantity="other">%1$s Teile gesamt</item>
     </plurals>
     <plurals name="cd_stueck">
         <item quantity="one">%1$s Stück</item>
@@ -1168,4 +1165,31 @@
         <item quantity="one">In der Sammlung, %1$s Exemplar</item>
         <item quantity="other">In der Sammlung, %1$s Exemplare</item>
     </plurals>
+    <plurals name="csv_fortschritt">
+        <item quantity="one">%1$d von %2$d Set</item>
+        <item quantity="other">%1$d von %2$d Sets</item>
+    </plurals>
+    <string name="csv_details_zeigen">Details anzeigen</string>
+    <string name="csv_details_verbergen">Details ausblenden</string>
+    <string name="cd_details_oeffnen">Details öffnen</string>
+    <string name="cd_bild_vergroessern">Bild vergrössern</string>
+    <string name="cd_set_oeffnen">Set öffnen</string>
+    <string name="erklaer_mehr_zu">Mehr zu %1$s</string>
+    <string name="erklaer_weniger">Weniger</string>
+    <string name="filter_reset_all">Filter zurücksetzen</string>
+    <string name="catalog_leer_titel">Der Katalog ist leer</string>
+    <string name="catalog_leer_text">Die Sets erscheinen hier, sobald der Server den Katalog geladen hat.</string>
+    <string name="parts_leer_text">Teile kommen mit deinen Sets dazu, oder du erfasst einzelne Teile selbst.</string>
+    <string name="minifigs_leer_text">Minifiguren kommen mit deinen Sets dazu, oder du erfasst sie selbst.</string>
+    <string name="search_clear_all">Suche und Filter löschen</string>
+    <string name="catalog_auf_merkliste">Auf der Merkliste</string>
+    <string name="catalog_merkposten_oeffnen">Merkposten öffnen</string>
+    <string name="barcode_schon_besessen">Schon in deiner Sammlung (×%1$d)</string>
+    <string name="alerts_anlegen_titel">Preisalarm anlegen</string>
+    <string name="alerts_anlegen">Alarm anlegen</string>
+    <string name="alerts_anlegen_sperrgrund">Setnummer und Schwelle eingeben, dann anlegen.</string>
+    <string name="household_invite_teilen">Teilen</string>
+    <string name="household_invite_gueltig_bis">Gültig bis %1$s</string>
+    <string name="household_redeem_sperrgrund">Code und Passwort eingeben, dann verknüpfen.</string>
+    <string name="household_redeem_sperrgrund_faktor">Code, Passwort und Code des zweiten Faktors eingeben, dann verknüpfen.</string>
 </resources>

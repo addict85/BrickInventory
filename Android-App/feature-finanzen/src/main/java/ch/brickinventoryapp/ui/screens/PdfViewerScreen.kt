@@ -1,5 +1,8 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import ch.brickinventoryapp.ui.components.GedrosselteAnsage
 import ch.brickinventoryapp.util.fangeAusserAbbruch
 import android.app.Activity
 import android.content.ContentValues
@@ -156,15 +159,9 @@ fun PdfViewerScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
-            TopAppBar(
-                title = { Text(title.ifBlank { "PDF" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    MitTooltip(stringResource(R.string.common_back)) {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.common_back))
-                        }
-                    }
-                },
+            // Der Setname als Überschrift, bei grosser Schrift zweizeilig.
+            DetailTopAppBar(
+                titel = title.ifBlank { "PDF" }, onZurueck = onBack, schliessen = false,
                 actions = {
                     // Erst im Zustand Ready: Beide Knöpfe arbeiten auf der geladenen
                     // Datei, ein eigener Download kennte den Bearer-Token nicht. Beide nur,
@@ -229,7 +226,9 @@ private fun DownloadProgress(s: PdfLoadState.Downloading) {
         ) {
             if (s.total > 0) {
                 CircularProgressIndicator(progress = { s.pct / 100f })
-                Text(stringResource(R.string.pdfview_loading_pct, s.pct))
+                Text(stringResource(R.string.pdfview_loading_pct, s.pct), Modifier.clearAndSetSemantics {})
+                // Der Prozentwert tickt; angesagt wird er alle zehn Sekunden.
+                GedrosselteAnsage(stringResource(R.string.pdfview_loading_pct, s.pct))
                 Text(
                     "${formatMb(s.bytes)} / ${formatMb(s.total)}",
                     style = MaterialTheme.typography.bodySmall,
@@ -237,7 +236,8 @@ private fun DownloadProgress(s: PdfLoadState.Downloading) {
                 )
             } else {
                 CircularProgressIndicator()
-                Text(stringResource(R.string.pdfview_loading_bytes, formatMb(s.bytes)))
+                Text(stringResource(R.string.pdfview_loading_bytes, formatMb(s.bytes)), Modifier.clearAndSetSemantics {})
+                GedrosselteAnsage(stringResource(R.string.pdfview_loading_bytes, formatMb(s.bytes)))
             }
         }
     }

@@ -1,5 +1,17 @@
 package ch.brickinventoryapp.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
+import ch.brickinventoryapp.ui.components.FehlerHinweis
+import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import ch.brickinventoryapp.ui.components.fokusRahmen
 import ch.brickinventoryapp.ui.viewmodel.KatalogAktionen
 import ch.brickinventoryapp.ui.model.JahrAnzahlAnsicht
 import ch.brickinventoryapp.ui.model.KatalogSetAnsicht
@@ -165,11 +177,17 @@ fun CatalogScreen(
     val selectedThemeName = state.themes.firstOrNull { it.id == state.themeId }?.name
         ?.substringAfterLast(" › ")
 
+    // Rechts Platz nur, wenn die Jahres-Leiste dort steht; sonst gleiche Ränder links und rechts.
+    val mitJahresleiste = state.sort.startsWith("year_") && state.jahrVerteilung.isNotEmpty()
+    val rasterRand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel,
+        end = if (mitJahresleiste) 30.dp else Abstaende.mittel)
+    val gefiltert = state.query.isNotBlank() || state.themeId != null || state.year != null
+    val fehlertext = state.error
     Column(Modifier.fillMaxSize()) {
         CatalogSearchField(state, onQueryChange, onSortChange)
         CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
-        // Trefferzahl
-        Text(
+        // Trefferzahl — nicht im Fehlerfall: „0 Sets im Katalog“ stand dort neben dem Fehler.
+        if (fehlertext == null || state.total > 0) Text(
             // pluralStringResource statt stringResource: „1 Set im Katalog",
             // nicht „1 Sets".
             pluralStringResource(R.plurals.catalog_result_count, state.total, state.total),
@@ -183,35 +201,34 @@ fun CatalogScreen(
             onRefresh = onRefresh,
             modifier = Modifier.fillMaxSize()
         ) {
-            // In eine lokale Variable gehoben, damit der Smart Cast greift: `state` ist
-            // delegiert, jeder Zugriff ruft getValue(). Kein `?: ""` — ein leerer Fehlertext
-            // verschwiege die Ursache.
-            val fehlertext = state.error
             when {
                 // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
                 state.isLoading && state.total == 0 -> SkelettRaster(
-                    LesbareSpalten(160.dp), kachelHoehe = 200.dp,
-                    innenabstand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
-                                                 bottom = Abstaende.mittel, end = 30.dp),
+                    LesbareSpalten(160.dp), kachelHoehe = 200.dp, innenabstand = rasterRand,
                 )
-                fehlertext != null && state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                        LeerSymbol(Icons.Default.ErrorOutline)
-                        Text(fehlertext, fontWeight = FontWeight.SemiBold)
-                        Button(onClick = onRefresh) { Text(stringResource(R.string.gallery_refresh)) }
-                    }
+                // Derselbe Fehlerzustand wie Galerie, Teile und Merkliste.
+                fehlertext != null && state.total == 0 -> ZustandsHinweis {
+                    FehlerHinweis(fehlertext, onRefresh, state.fehlerKlasse)
                 }
-                state.total == 0 -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                        LeerSymbol(Icons.Default.SearchOff)
-                        Text(stringResource(R.string.catalog_no_results), fontWeight = FontWeight.SemiBold)
-                    }
+                // Mit Suche oder Filter: sagen, woran es liegt, und den Weg zurück anbieten.
+                state.total == 0 && gefiltert -> ZustandsHinweis {
+                    KeinTrefferHinweis(stringResource(R.string.catalog_no_results))
+                    Button(onClick = {
+                        if (state.query.isNotBlank()) onQueryChange("")
+                        if (state.themeId != null) onThemeChange(null)
+                        if (state.year != null) onYearChange(null)
+                    }) { Text(stringResource(R.string.filter_reset_all)) }
+                }
+                state.total == 0 -> ZustandsHinweis {
+                    HinweisText(Icons.AutoMirrored.Filled.MenuBook, stringResource(R.string.catalog_leer_titel),
+                        stringResource(R.string.catalog_leer_text))
+                    Button(onClick = onRefresh) { Text(stringResource(R.string.common_retry)) }
                 }
                 else -> Box(Modifier.fillMaxSize()) {
                     LazyVerticalGrid(
                         state = gridState,
                         columns = LesbareSpalten(160.dp),
-                        contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel, end = 30.dp),
+                        contentPadding = rasterRand,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -234,8 +251,7 @@ fun CatalogScreen(
                     val sichtbareNummer by remember(gridState) {
                         derivedStateOf { gridState.firstVisibleItemIndex }
                     }
-                    if (state.sort.startsWith("year_") && state.total > 0 &&
-                        state.jahrVerteilung.isNotEmpty()) {
+                    if (mitJahresleiste && state.total > 0) {
                         YearScrubber(
                             listenNummer = sichtbareNummer,
                             total = state.total,
@@ -389,17 +405,16 @@ private fun YearScrubber(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-/**
- * `internal`, weil der Aufrufer in einer anderen Datei steht und `private` in
- * Kotlin dateiweit gilt.
- */
-internal fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
+/** Eine Zeile der Themen- und Jahreswahl; öffentlich, damit der Barrierefreiheitstest sie zeigen kann. */
+fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    // Ein Optionsfeld: TalkBack nennt Rolle und Wahl, das Häkchen allein sah nur, wer sieht.
     Surface(
+        selected = selected,
         onClick = onClick,
         shape = Formen.kachel,
         color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                 else androidx.compose.ui.graphics.Color.Transparent,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth().fokusRahmen(Formen.kachel).semantics { role = Role.RadioButton }
     ) {
         Row(
             Modifier.padding(horizontal = Abstaende.mittel, vertical = 11.dp),
@@ -442,39 +457,33 @@ fun CatalogSetCard(
     // --faecher-ton in js/09-catalog.js. Ohne Thema-Nummer gibt es keinen
     // Streifen, statt eines falschen.
     val ton = if (LocalIsFarbfaecherTheme.current) faecherTon(set.themeId) else null
+    val besitz = set.ownedQuantity.coerceAtLeast(1)
+    val besitzAnsage = if (set.owned) pluralStringResource(R.plurals.cd_in_sammlung, besitz, besitz) else null
     // Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
     // Deshalb rückt die Karte um die Noppenhöhe nach unten, und die Reihe wird daneben
     // gezeichnet und darübergelegt — wie `top:-6px` im CSS.
     Box {
         AppKarte(
-            modifier = Modifier.heightIn(min = 212.dp)
-                .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
-            onClick = { onClick(set.setNumber) }
+            modifier = Modifier.then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
+            onClick = { onClick(set.setNumber) },
+            onClickLabel = stringResource(R.string.cd_details_oeffnen),
         ) {
             Column {
-                // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im
-                // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
-                // daneben gezeichnet, weil die Card sie abschnitte.
-                // Auf der schmalen Telefonkachel eine schlankere Kante: 22 dp nahmen dort dem Bild
-                // sichtbar Platz; ab Tabletbreite die volle Höhe wie im Web.
+                // Die Steinkante und der Steindeckel wie in der Galerie (SetCard).
                 if (isBrick) BoxWithConstraints {
                     BrickStudCap(mass = NoppenMass.Stein, verlauf = SteinKantenVerlauf,
                         height = if (maxWidth < 240.dp) 12.dp else null)
                 }
-                // Der Steindeckel des Designs "noppe" — Position modulo sechs,
-                // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
-                // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
-                // Farbe; deshalb derselbe Baustein statt eines zweiten.
                 if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
                 if (ton != null) {
                     Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
                 }
-                Box(Modifier.fillMaxWidth().height(if (isBrick) 92.dp else 118.dp)) {
-                    // Über den Server auflösen statt roher CDN-Adresse: Hat schon jemand das
-                    // Katalog-Set heruntergeladen, kommt das Bild von dort. Scheitert die Vorschau,
+                // 4:3 wie die Kacheln der Galerie: Eine feste Höhe liess das Bild auf dem
+                // Tablet schmal in der Kachel stehen.
+                Box(Modifier.fillMaxWidth().aspectRatio(KATALOG_BILD_VERHAELTNIS)) {
+                    // Über den Server auflösen statt roher CDN-Adresse; scheitert die Vorschau,
                     // Rückfall auf die volle Auflösung vor dem Platzhalter.
                     val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
-                    // Kaputte oder fehlende CDN-Bilder: das gemeinsame Ersatzbild statt leerer Fläche.
                     ProduktBild(
                         model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
                         imageLoader = imageLoader,
@@ -485,57 +494,56 @@ fun CatalogSetCard(
                             .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
                         contentScale = ContentScale.Fit,
                         ersatzGroesse = 44.dp,
+                        bildgrund = true,
+                        innenAbstand = Abstaende.klein,
                     )
+                    // Die Spiegelung auf der Glasscheibe, nur über dem Bild (LichtStreifen in BrickDecor.kt).
+                    if (istGlanz) Box(Modifier.matchParentSize().background(lichtStreifen()))
+                    // Eine Pille innerhalb des Bilds wie die Mengenplakette der Galerie; vorgelesen am Ende.
                     if (set.owned) {
                         Surface(
                             color = MaterialTheme.colorScheme.primary,
-                            shape = RoundedCornerShape(bottomStart = 10.dp),
-                            modifier = Modifier.align(Alignment.TopEnd)
+                            shape = Formen.etikett,
+                            modifier = Modifier.align(Alignment.TopEnd).padding(KATALOG_PLAKETTE_RAND).clearAndSetSemantics {}
                         ) {
                             Text(
                                 if (set.ownedQuantity > 1) "✓ ×${set.ownedQuantity}" else "✓",
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp).vorgelesenAls(
-                                    pluralStringResource(R.plurals.cd_in_sammlung, set.ownedQuantity.coerceAtLeast(1),
-                                        set.ownedQuantity.coerceAtLeast(1)))
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
                             )
                         }
                     }
-                    // Die Spiegelung auf der Glasscheibe. ZULETZT im Box, damit sie
-                    // ueber dem Bild liegt — und nur hier, nicht ueber der ganzen
-                    // Kachel: Ein weisser Schleier ueber weissem Text ist kein
-                    // Glanz, sondern Grau (siehe LichtStreifen in BrickDecor.kt).
-                    if (istGlanz) Box(Modifier.matchParentSize().background(lichtStreifen()))
                 }
-                Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp)) {
-                    Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                    Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                        maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
-                    Spacer(Modifier.weight(1f))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        val jahr = set.year
-                        if (jahr != null) Text("$jahr", Modifier.vorgelesenAls(stringResource(R.string.cd_jahr, "$jahr")),
-                            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        if ((set.numParts ?: 0) > 0) {
-                            // Dasselbe Teile-Symbol wie im Reiter „Teile" und in der
-                            // Webapp, statt des Puzzleteil-Emojis: Ein Puzzleteil hat
-                            // mit LEGO nichts zu tun, und die Darstellung eines Emojis
-                            // hängt an der Schriftart des Geräts.
-                            Icon(
-                                ImageVector.vectorResource(R.drawable.ic_parts_bricks),
-                                contentDescription = null,
-                                tint = Color.Unspecified,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            val teile = set.numParts ?: 0
-                            Text(fmtInt(teile), Modifier.vorgelesenAls(
-                                pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile))),
+                // Der Name zuerst, wie er vorgelesen wird; Nummer, Jahr und Teile darunter.
+                Box {
+                    Column(Modifier.padding(horizontal = 10.dp, vertical = Abstaende.klein),
+                        verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                        Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                            maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
+                        Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            val jahr = set.year
+                            if (jahr != null) Text("$jahr", Modifier.vorgelesenAls(stringResource(R.string.cd_jahr, "$jahr")),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if ((set.numParts ?: 0) > 0) {
+                                // Dasselbe Teile-Symbol wie im Reiter „Teile" und in der Webapp.
+                                Icon(
+                                    ImageVector.vectorResource(R.drawable.ic_parts_bricks),
+                                    contentDescription = null,
+                                    tint = Color.Unspecified,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                val teile = set.numParts ?: 0
+                                Text(fmtInt(teile), Modifier.vorgelesenAls(
+                                    pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile))),
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
                     }
+                    if (besitzAnsage != null) Box(Modifier.semantics { contentDescription = besitzAnsage })
                 }
             }
         }
@@ -546,6 +554,12 @@ fun CatalogSetCard(
         )
     }
 }
+
+/** Seitenverhältnis der Kachelbilder, wie in der Galerie. */
+private const val KATALOG_BILD_VERHAELTNIS = 4f / 3f
+
+/** Abstand der Besitzplakette vom Bildrand, wie in der Galerie. */
+private val KATALOG_PLAKETTE_RAND = Abstaende.klein + Abstaende.winzig
 
 /**
  * Platzhalter für einen Platz, dessen Seite noch nicht geladen ist — gleich hoch

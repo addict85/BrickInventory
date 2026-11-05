@@ -1,5 +1,16 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.vorgelesenAls
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.expand
+import androidx.compose.ui.semantics.collapse
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -41,11 +52,25 @@ fun CsvImportBanner(
     var expanded by rememberSaveable { mutableStateOf(false) }
     val pct = if (total > 0) done.toFloat() / total else 0f
     val bg  = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
+    // Der Aufklapper nennt, was er tut und ob er offen ist (TalkBack las nur „3/10, Schaltfläche“).
+    val zustand = stringResource(if (expanded) R.string.zustand_ausgeklappt else R.string.zustand_eingeklappt)
+    val fortschritt = pluralStringResource(R.plurals.csv_fortschritt, total, done, total)
+    // Angesagt wird in Zehnerschritten, nicht bei jedem Set.
+    val stufe = if (total > 0) done * ANSAGE_STUFEN / total else 0
+    val angesagt = remember(stufe, running) { fortschritt }
 
     Column {
         Surface(
             color = bg,
-            modifier = Modifier.fillMaxWidth().clickable(role = Role.Button) { expanded = !expanded }
+            modifier = Modifier.fillMaxWidth()
+                .clickable(role = Role.Button,
+                    onClickLabel = stringResource(if (expanded) R.string.csv_details_verbergen else R.string.csv_details_zeigen)) {
+                    expanded = !expanded
+                }
+                .semantics {
+                    stateDescription = zustand
+                    if (expanded) collapse { expanded = false; true } else expand { expanded = true; true }
+                }
         ) {
             Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.klein)) {
                 Row(
@@ -57,13 +82,15 @@ fun CsvImportBanner(
                                else MaterialTheme.colorScheme.onSecondaryContainer)
                     LinearProgressIndicator(
                         progress = { pct },
-                        modifier = Modifier.weight(1f).height(6.dp).clip(MaterialTheme.shapes.small),
+                        modifier = Modifier.weight(1f).height(6.dp).clip(MaterialTheme.shapes.small)
+                            .semantics { progressBarRangeInfo = ProgressBarRangeInfo(done.toFloat(), 0f..total.toFloat().coerceAtLeast(1f)) },
                         color = if (running) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.primary,
                         trackColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.25f)
                     )
                     Text(
                         if (running) "$done/$total" else stringResource(R.string.csv_ok_count, ok),
+                        modifier = if (running) Modifier.vorgelesenAls(fortschritt) else Modifier,
                         style = MaterialTheme.typography.bodySmall,
                         color = if (running) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.onSecondaryContainer,
@@ -87,6 +114,7 @@ fun CsvImportBanner(
                     }
                     Text(
                         if (expanded) "▴" else "▾",
+                        modifier = Modifier.clearAndSetSemantics {},
                         color = if (running) MaterialTheme.colorScheme.onPrimary
                                 else MaterialTheme.colorScheme.onSecondaryContainer
                     )
@@ -101,6 +129,8 @@ fun CsvImportBanner(
                 }
             }
         }
+        // Ausserhalb des Knopfs: Sonst würde der ganze Balken zur Live-Region und jedes Set angesagt.
+        if (running) Box(Modifier.ansagen().semantics { contentDescription = angesagt })
         if (expanded) CsvImportZahlen(ok, warn, err, running)
     }
 }
@@ -144,3 +174,6 @@ private fun CsvImportZahlen(ok: Int, warn: Int, err: Int, running: Boolean) {
         }
     }
 }
+
+/** Zehn Ansagen über einen ganzen Import. */
+private const val ANSAGE_STUFEN = 10
