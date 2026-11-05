@@ -170,6 +170,60 @@ class QuelltextRatscheTest {
         assert(kaputt.isEmpty()) { "Verweise ins Leere:\n  " + kaputt.joinToString("\n  ") }
     }
 
+    /** Index der öffnenden Klammer zur schliessenden bei [zu], -1 wenn keine. */
+    private fun oeffnendeKlammer(c: String, zu: Int): Int {
+        var tiefe = 0
+        for (i in zu downTo 0) {
+            if (c[i] == '}') tiefe++
+            if (c[i] == '{' && --tiefe == 0) return i
+        }
+        return -1
+    }
+
+    private val breiterFang = Regex("""\}\s*catch\s*\(\s*\w+\s*:\s*(?:Exception|Throwable)\s*\)""")
+    private val fangKlausel = Regex("""\}\s*catch\s*\(\s*\w+\s*:\s*([\w.]+)\s*\)$""")
+
+    /** true, wenn der Fang keinen Abbruch-Zweig hat und sein try-Rumpf [aufruf] enthält; null ohne try. */
+    private fun schlucktAbbruch(c: String, fang: MatchResult, aufruf: Regex): Boolean? {
+        var zu = fang.range.first
+        var abbruch = false
+        var auf = oeffnendeKlammer(c, zu)
+        var klausel = if (auf < 0) null else fangKlausel.find(c.substring(maxOf(0, auf - 200), auf).trimEnd())
+        while (auf >= 0 && klausel != null) {
+            if (klausel.groupValues[1].endsWith("CancellationException")) abbruch = true
+            zu = c.lastIndexOf('}', auf - 1)
+            auf = oeffnendeKlammer(c, zu)
+            klausel = if (auf < 0) null else fangKlausel.find(c.substring(maxOf(0, auf - 200), auf).trimEnd())
+        }
+        if (auf < 0 || !c.substring(0, auf).trimEnd().endsWith("try")) return null
+        return !abbruch && aufruf.containsMatchIn(c.substring(auf + 1, zu))
+    }
+
+    @Test
+    fun `kein breiter Fang verschluckt das Abbrechen eines suspendierenden Aufrufs`() {
+        // Ein `catch (_: Exception)` um einen suspendierenden Aufruf fängt auch die
+        // CancellationException; der abgebrochene Aufrufer liefe weiter. Dafür gibt
+        // es fangeAusserAbbruch oder einen vorangestellten Abbruch-Zweig.
+        val texte = produktivDateien().associateWith { code(it.readText()) }
+        val namen = texte.values.flatMap { c ->
+            Regex("""\bsuspend\s+fun\s+(?:<[^>]*>\s*)?(?:\w+\.)?(\w+)""").findAll(c).map { it.groupValues[1] }.toList()
+        }.toSet() + setOf("collect", "withContext", "withLock", "delay", "await", "join", "emit")
+        val aufruf = Regex("""\b(?:${namen.joinToString("|")})\s*[({]""")
+        var geprueft = 0
+        val funde = texte.flatMap { (f, c) ->
+            breiterFang.findAll(c).mapNotNull { m ->
+                val schluckt = schlucktAbbruch(c, m, aufruf) ?: return@mapNotNull null
+                geprueft++
+                if (schluckt) "${f.name}:${c.substring(0, m.range.first).count { it == '\n' } + 1}" else null
+            }.toList()
+        }
+        assert(namen.size > 100 && geprueft >= 20) { "Nur ${namen.size} suspend-Funktionen, $geprueft Fänge — greift die Suche noch?" }
+        assert(funde.isEmpty()) {
+            "Breiter Fang um einen suspendierenden Aufruf ohne Abbruch-Zweig; fangeAusserAbbruch verwenden:\n  " +
+                funde.joinToString("\n  ")
+        }
+    }
+
     @Test
     fun `ein Import allein fuehrt nichts aus, ein Aufruf schon`() {
         val nurImport = "import ch.brickinventoryapp.ui.CatalogYearMath\nval s = Quellen.lies(\"ui/CatalogYearMath.kt\")"

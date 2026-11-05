@@ -1,0 +1,27 @@
+Gegenprobe: ResponseCache.put fängt wieder Throwable und schluckt so das Abbrechen
+Modul: core-data
+Test: ch.brickinventoryapp.AbbruchDurchTest
+Rot: put reicht das Abbrechen weiter
+
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt
+index 14b6b9e..eab87e5 100644
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/ResponseCache.kt
+@@ -115,7 +115,7 @@ class ResponseCache(
+      */
+     suspend fun <T> put(bereich: String, key: String, serializer: KSerializer<T>, value: T) {
+         withContext(io) {
+-            fangeAusserAbbruch {
++            try {
+                 mutex.withLock {
+                     val fach = fach(bereich).apply { mkdirs() }
+                     basis.listFiles()?.filter { it.isDirectory && it.name != fach.name }?.forEach { it.deleteRecursively() }
+@@ -125,7 +125,7 @@ class ResponseCache(
+                     tmp.writeBytes(chiffre?.verschluessle(text, bindung(ziel)) ?: text)
+                     tmp.renameTo(ziel)      // atomar, nie halbe Dateien lesen
+                 }
+-            }
++            } catch (_: Throwable) { /* Best effort */ }
+         }
+     }
+ 

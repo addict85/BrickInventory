@@ -17,7 +17,7 @@ import ch.brickinventoryapp.data.repository.BrickRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import ch.brickinventoryapp.data.CsvImportSseClient
-import kotlinx.coroutines.flow.takeWhile
+import ch.brickinventoryapp.data.model.CsvImportStatus
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -52,7 +52,7 @@ class CsvImportService : Service() {
 
     @Inject lateinit var prefs: PreferencesManager
     @Inject lateinit var repo:  BrickRepository
-    @Inject lateinit var sseClient: ch.brickinventoryapp.data.CsvImportSseClient
+    @Inject lateinit var sseClient: CsvImportSseClient
 
     // Service-Context in der gewählten App-Sprache: setApplicationLocales()
     // lokalisiert nur Activities — ohne diesen Wrapper kämen die
@@ -101,30 +101,14 @@ class CsvImportService : Service() {
         pollJob = serviceScope.launch {
             var errors = 0
             while (isActive) {
-                var sseFailed = false
-                try {
-                    // takeWhile statt collect: applyStatus() liefert false, sobald
-                    // der Import fertig ist — dann endet der Flow und wir verlassen
-                    // die Schleife, statt die Verbindung offen zu halten.
-                    sseClient.stream().takeWhile { ev ->
-                        when (ev) {
-                            is CsvImportSseClient.Event.Status -> {
-                                errors = 0
-                                applyStatus(ev.status)
-                            }
-                            is CsvImportSseClient.Event.Failed -> {
-                                sseFailed = true
-                                false
-                            }
-                        }
-                    }.collect { /* Werte selbst werden nicht gebraucht */ }
-                } catch (_: Exception) {
-                    sseFailed = true
+                val sseFailed = !folgeStrom(sseClient.stream()) { status ->
+                    errors = 0
+                    applyStatus(status)
                 }
 
                 if (!isActive) return@launch
                 if (!sseFailed) {
-                    // Flow reguläre beendet → Import ist durch
+                    // Flow regulär beendet → Import ist durch
                     finishAndStop()
                     return@launch
                 }
@@ -150,7 +134,7 @@ class CsvImportService : Service() {
     private enum class PollResult { RUNNING, FINISHED, ERROR }
 
     /** Eine Status-Abfrage der Rückfallebene. */
-    private suspend fun pollOnce(): PollResult = try {
+    private suspend fun pollOnce(): PollResult = fangeAusserAbbruch {
         val url   = prefs.serverUrlJetzt()
         val token = prefs.tokenJetzt()
         if (token.isBlank()) {
@@ -162,9 +146,7 @@ class CsvImportService : Service() {
                 is Result.Error -> PollResult.ERROR
             }
         }
-    } catch (_: Exception) {
-        PollResult.ERROR
-    }
+    }.getOrElse { PollResult.ERROR }
 
     /**
      * Einzige Stelle, die aus einem Status eine Benachrichtigung macht —
@@ -172,7 +154,7 @@ class CsvImportService : Service() {
      *
      * @return true solange der Import läuft, false wenn er fertig ist.
      */
-    private fun applyStatus(s: ch.brickinventoryapp.data.model.CsvImportStatus): Boolean {
+    private fun applyStatus(s: CsvImportStatus): Boolean {
         val running = s.status == "running" || s.status == "pending"
         val done    = s.done  ?: 0
         val total   = s.total ?: 0
