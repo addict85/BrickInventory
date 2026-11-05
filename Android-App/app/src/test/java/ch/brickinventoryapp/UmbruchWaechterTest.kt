@@ -175,10 +175,10 @@ class UmbruchWaechterTest {
         }))
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.dienste,
-        ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache),
+        KontoRepository(welt.t.api, welt.t.cache),
         ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
-        ch.brickinventoryapp.data.repository.TeileRepository(welt.t.api, welt.t.cache),
+        TeileRepository(welt.t.api, welt.t.cache),
         object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
             override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
         }))

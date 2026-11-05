@@ -117,10 +117,10 @@ class UnterseitenTest {
     private fun imDialog(text: String) = compose.onNode(hasText(text) and hasClickAction() and hasAnyAncestor(isDialog()))
 
     private fun einstellungen() = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
-        ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache),
+        KontoRepository(welt.t.api, welt.t.cache),
         ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
-        ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
-        ch.brickinventoryapp.data.repository.TeileRepository(welt.t.api, welt.t.cache),
+        SetsRepository(welt.t.api, welt.t.cache),
+        TeileRepository(welt.t.api, welt.t.cache),
         object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
             override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
         }))
@@ -174,7 +174,7 @@ class UnterseitenTest {
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
             ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
-            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+            KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
         zeige { ch.brickinventoryapp.ui.screens.HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
 
@@ -237,7 +237,7 @@ class UnterseitenTest {
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
             ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
-            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+            KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
         zeige { ch.brickinventoryapp.ui.screens.HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {}) }
         warte("Haushalt") { vm.householdState.value.status != null }
         val entfernen = ctx.getString(R.string.household_remove)
@@ -271,7 +271,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
-            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige {
             ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
@@ -298,7 +298,7 @@ class UnterseitenTest {
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true,
             "email_neu":"neu@example.org"}}"""
         val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
-            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige {
             ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
@@ -316,7 +316,7 @@ class UnterseitenTest {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
         val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
-            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige {
             ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },

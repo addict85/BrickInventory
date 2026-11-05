@@ -108,7 +108,7 @@ class AnmeldungViewModelTest {
         }
         val blickfeld = ch.brickinventoryapp.ui.Blickfeld(blickAblage,
             ch.brickinventoryapp.data.repository.HaushaltRepository(t.api, t.cache),
-            ch.brickinventoryapp.data.repository.TeileRepository(t.api, t.cache))
+            TeileRepository(t.api, t.cache))
         val dienste = ch.brickinventoryapp.ui.viewmodel.AppDienste(t.sitzung, blickfeld, t.meldungen,
             NummernTexte, t.bestand, t.scrollMemory)
         return t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage) { it in wurzeln })

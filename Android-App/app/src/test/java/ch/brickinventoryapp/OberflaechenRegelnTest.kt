@@ -345,7 +345,7 @@ class OberflaechenRegelnTest {
     private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
         val vm = welt.galerie().also { it.loadSets() }
         val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
-            ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
+            SetsRepository(welt.t.api, welt.t.cache),
             ch.brickinventoryapp.data.repository.KatalogRepository(welt.t.api, welt.t.cache),
             object : ch.brickinventoryapp.data.SetAnleger {
                 override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
@@ -515,7 +515,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.galerie().also { it.loadSets() }
             val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
-                ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
+                SetsRepository(welt.t.api, welt.t.cache),
                 ch.brickinventoryapp.data.repository.KatalogRepository(welt.t.api, welt.t.cache),
                 object : ch.brickinventoryapp.data.SetAnleger {
                     override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,

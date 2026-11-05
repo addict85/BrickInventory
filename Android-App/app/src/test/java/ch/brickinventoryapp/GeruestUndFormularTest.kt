@@ -200,10 +200,10 @@ class GeruestUndFormularTest {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
             val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
-                ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache),
+                KontoRepository(welt.t.api, welt.t.cache),
                 ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
-                ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
-                ch.brickinventoryapp.data.repository.TeileRepository(welt.t.api, welt.t.cache),
+                SetsRepository(welt.t.api, welt.t.cache),
+                TeileRepository(welt.t.api, welt.t.cache),
                 object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
                     override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
                 }))
@@ -281,10 +281,10 @@ class GeruestUndFormularTest {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
                 {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
             val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
-                ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache),
+                KontoRepository(welt.t.api, welt.t.cache),
                 ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
-                ch.brickinventoryapp.data.repository.SetsRepository(welt.t.api, welt.t.cache),
-                ch.brickinventoryapp.data.repository.TeileRepository(welt.t.api, welt.t.cache),
+                SetsRepository(welt.t.api, welt.t.cache),
+                TeileRepository(welt.t.api, welt.t.cache),
                 object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
                     override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
                 }))

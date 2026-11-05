@@ -522,10 +522,10 @@ class BildschirmFotoVariantenTest {
     // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
 
     private fun einstellungen() = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.EinstellungenViewModel(welt.t.dienste,
-        ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache),
+        KontoRepository(welt.t.api, welt.t.cache),
         ch.brickinventoryapp.data.repository.VerwaltungRepository(welt.t.api, welt.t.cache),
         SetsRepository(welt.t.api, welt.t.cache),
-        ch.brickinventoryapp.data.repository.TeileRepository(welt.t.api, welt.t.cache),
+        TeileRepository(welt.t.api, welt.t.cache),
         object : ch.brickinventoryapp.ui.viewmodel.DateiLeser {
             override suspend fun lies(uri: android.net.Uri): Pair<String?, ByteArray>? = null
         }))
@@ -560,7 +560,7 @@ class BildschirmFotoVariantenTest {
             "sub_accounts":[{"id":2,"username":"lena"},{"id":3,"username":"tim"}],"open_invites":1}"""
         val vm = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.HaushaltViewModel(welt.t.dienste,
             ch.brickinventoryapp.data.repository.HaushaltRepository(welt.t.api, welt.t.cache),
-            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
+            KontoRepository(welt.t.api, welt.t.cache))).also { it.loadHouseholdStatus() }
         zeige("haushalt", bereit = { vm.householdState.value.status != null }, zustand = { vm.householdState.value }) {
             ch.brickinventoryapp.ui.screens.HaushaltRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
         }
@@ -689,7 +689,7 @@ class BildschirmFotoVariantenTest {
             {"token_id":"a1","label":"Pixel 8","created_at":"2026-09-01T10:00:00Z","last_used":"2026-11-02T18:00:00Z","aktuell":true,"scope":"app"},
             {"token_id":"b2","label":"Galaxy Tab","created_at":"2026-06-12T10:00:00Z","last_used":"2026-10-20T08:00:00Z","scope":"app"}]}"""
         val konto = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.KontoViewModel(
-            ch.brickinventoryapp.data.repository.KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
+            KontoRepository(welt.t.api, welt.t.cache), KontextTexte(),
             welt.t.meldungen, welt.t.sitzung))
         zeige(name, dunkel = dunkel, geraet = geraet) {
             ch.brickinventoryapp.ui.screens.KontoRoute(onAbmelden = {}, snackbarHostState = remember { SnackbarHostState() },
