@@ -19,6 +19,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.math.BigDecimal
+import ch.brickinventoryapp.ui.FinanzZeile
+import ch.brickinventoryapp.ui.finanzKopf
 
 /**
  * Die Finanzseite zeigt die Zahlenfelder des Servers (wert_gesamt,
@@ -142,7 +144,7 @@ class FinanzZahlenTest {
      */
     @Test
     fun `Kauf und Gewinn stehen auf der Grundlage des Marktwerts`() {
-        val zwei = ch.brickinventoryapp.ui.FinanzZeile("t", menge = 2, wert = 899.9, kaufpreis = 400.0,
+        val zwei = FinanzZeile("t", menge = 2, wert = 899.9, kaufpreis = 400.0,
             zustand = "N", pnlProzent = 12.5)
         assertEquals(800.0, zwei.kaufGesamt!!, 0.0)
         assertEquals(99.9, zwei.gewinn!!, 0.0)
@@ -163,7 +165,7 @@ class FinanzZahlenTest {
      */
     @Test
     fun `die Kopfkarte rechnet auf der Basis des Servers`() {
-        val k = ch.brickinventoryapp.ui.finanzKopf(bewertung, null, null, pnl("""{"purchase": "1680.00",
+        val k = finanzKopf(bewertung, null, null, pnl("""{"purchase": "1680.00",
             "current": "1712.40", "grand_total": "1712.40", "pnl_prozent": 14.2, "positionen": 3,
             "positionen_bewertet": 2, "positionen_ohne_marktpreis": 1, "positionen_ohne_kaufpreis": 0,
             "basis_einstand": "1500.00", "basis_marktwert": "1712.40", "basis_guv_betrag": "212.40",
@@ -180,7 +182,7 @@ class FinanzZahlenTest {
 
     @Test
     fun `ohne Basisfelder bleibt die Kopfkarte wie bisher`() {
-        val k = ch.brickinventoryapp.ui.finanzKopf(bewertung, null, null,
+        val k = finanzKopf(bewertung, null, null,
             pnl("""{"purchase": "1680.00", "current": "1712.40", "grand_total": "1712.40", "pnl_prozent": 1.9}"""))
         assertEquals(false, k.basisBekannt)
         assertNull("kein Einstand: die alte Karte zeigte keinen", k.einstand)
@@ -193,7 +195,7 @@ class FinanzZahlenTest {
     /** Keine Position mit beiden Preisen: Summen aller Positionen, keine G/V gegen nichts. */
     @Test
     fun `ohne bewertete Position gibt es keine G und V`() {
-        val k = ch.brickinventoryapp.ui.finanzKopf(bewertung, null, null, pnl("""{"purchase": "180.00",
+        val k = finanzKopf(bewertung, null, null, pnl("""{"purchase": "180.00",
             "current": "0.00", "grand_total": "0.00", "pnl_prozent": null, "positionen": 1,
             "positionen_bewertet": 0, "positionen_ohne_marktpreis": 1, "positionen_ohne_kaufpreis": 0,
             "basis_einstand": "0.00", "basis_marktwert": "0.00", "basis_guv_betrag": "0.00",

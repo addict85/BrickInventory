@@ -35,6 +35,13 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.LocalChartColors
 import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
+import ch.brickinventoryapp.util.fmtAmount
+import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.fmtMoneyGanz
 
 // Geteilte Detail-Composables, Preis-Chart und Kaufpreis-Erfassungszeile: Set-,
 // Merkposten-, Teile- und Finanzansicht zeigen sie gleich, darum in core-ui.
@@ -69,7 +76,7 @@ fun SectionCard(
 ) {
     AppKarte(if (aussenAbstand) Modifier.padding(horizontal = Abstaende.gross, vertical = 5.dp) else Modifier) {
         Column(Modifier.padding(horizontal = Abstaende.gross, vertical = 14.dp)) {
-            ch.brickinventoryapp.ui.components.Abschnittstitel(title, Modifier.padding(bottom = 10.dp))
+            Abschnittstitel(title, Modifier.padding(bottom = 10.dp))
             content()
         }
     }
@@ -102,8 +109,8 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     // Preis zeigt jede Karte schon darüber, er stand sonst dreimal da.
     val allValues = lines.flatMap { it.points }.map { it.value }
     val tiefHoch = stringResource(R.string.price_chart_low_high,
-        ch.brickinventoryapp.util.fmtMoney(allValues.min(), waehrung),
-        ch.brickinventoryapp.util.fmtMoney(allValues.max(), waehrung))
+        fmtMoney(allValues.min(), waehrung),
+        fmtMoney(allValues.max(), waehrung))
     // Unter drei Messpunkten ist eine Linie keine Aussage: Zwei Punkte ohne Achse
     // lasen sich wie ein Trend. Dann Tief und Hoch und ein Satz, warum kein Diagramm.
     if (lines.maxOf { it.points.size } < MIN_PUNKTE_VERLAUF) {
@@ -142,8 +149,8 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     // Wie im Wertdiagramm (PortfolioChart): ohne Beschreibung überspringt TalkBack die Fläche.
     val beschreibung = PriceChartMath.zusammenfassung(lines).map { z ->
         stringResource(R.string.price_chart_summary, labelFor(z.zustand), z.von, z.bis,
-            ch.brickinventoryapp.util.fmtAmount(z.anfang), ch.brickinventoryapp.util.fmtAmount(z.ende),
-            ch.brickinventoryapp.util.fmtAmount(z.tief), ch.brickinventoryapp.util.fmtAmount(z.hoch))
+            fmtAmount(z.anfang), fmtAmount(z.ende),
+            fmtAmount(z.tief), fmtAmount(z.hoch))
     }.joinToString("; ")
     val achse = PriceChartMath.yTicks(bounds).reversed()
     Row(Modifier.fillMaxWidth().height(mitSchriftHoehe(120.dp))) {
@@ -151,7 +158,7 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: String) {
     Column(Modifier.fillMaxHeight().padding(end = Abstaende.klein),
         verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
         achse.forEach { v ->
-            Text(ch.brickinventoryapp.util.fmtMoneyGanz(v, waehrung), style = MaterialTheme.typography.labelSmall,
+            Text(fmtMoneyGanz(v, waehrung), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false)
         }
     }
@@ -229,7 +236,7 @@ const val MIN_PUNKTE_VERLAUF = 3
 
 /** Das Diagramm wächst mit der Schrift, damit die Achsenzahlen nicht ineinanderlaufen. */
 @Composable
-private fun mitSchriftHoehe(basis: Dp): Dp = ch.brickinventoryapp.ui.components.mitSchrift(basis)
+private fun mitSchriftHoehe(basis: Dp): Dp = mitSchrift(basis)
 
 /**
  * Marktpreis und Entwicklung je Zustand. Eine Zeile erscheint nur, wenn der Server
@@ -247,7 +254,7 @@ fun MarketPriceByCondition(
     val labelUsed = stringResource(R.string.condition_used)
     val marketLabel = stringResource(R.string.detail_section_market)
 
-    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val gross = grosseSchrift()
     Column(Modifier.fillMaxWidth()) {
         rows.forEach { (cond, data) ->
             val label = if (cond == "U") labelUsed else labelNew
@@ -263,7 +270,7 @@ fun MarketPriceByCondition(
                     // sah aus wie ein Fehler. Ohne Preis ein Wort statt eines Strichs.
                     val markt = data.marketPrice
                     if (markt != null) {
-                        Text(ch.brickinventoryapp.util.fmtMoney(markt, currency),
+                        Text(fmtMoney(markt, currency),
                             fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1, softWrap = false)
                     } else {
@@ -351,7 +358,7 @@ fun kachelAnordnung(breite: Dp, bedarf: Dp, abstand: Dp): KachelAnordnung = when
 @Composable
 fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = Modifier) {
     val farben = MaterialTheme.colorScheme
-    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
+    val akzent = LocalAkzentflaechen.current
     val status = LocalStatusFarben.current
     val pnlText = pnl?.let { fmtProzent(it) } ?: "—"
     val marktKachel: @Composable (Modifier) -> Unit = { m ->

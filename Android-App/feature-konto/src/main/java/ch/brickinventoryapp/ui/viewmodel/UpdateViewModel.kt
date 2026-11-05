@@ -42,6 +42,7 @@ import javax.inject.Inject
 import javax.inject.Named
 import ch.brickinventoryapp.di.BrickDispatchers
 import ch.brickinventoryapp.di.Dispatcher
+import ch.brickinventoryapp.util.AppFassung
 
 /**
  * Selbstaktualisierung: nachsehen, laden, installieren lassen. Beim Start still
@@ -56,7 +57,7 @@ class UpdateViewModel @Inject constructor(
     @param:Named("update") private val updateHttpClient: OkHttpClient,
     private val texte: Texte,
     private val prefs: PreferencesManager,
-    private val fassung: ch.brickinventoryapp.util.AppFassung,
+    private val fassung: AppFassung,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel(), UpdateAktionen {
 

@@ -34,6 +34,7 @@ import androidx.compose.ui.window.DialogProperties
 import ch.brickinventoryapp.ressourcen.R
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.util.appNumberLocale
 
 /**
  * Bild bildschirmfuellend anzeigen, mit Zoom und Verschieben.
@@ -93,7 +94,7 @@ fun ZoomableImageDialog(
             }
             if (zoomScale > 1.01f) {
                 Text(
-                    String.format(ch.brickinventoryapp.util.appNumberLocale(), "%.1f×", zoomScale),
+                    String.format(appNumberLocale(), "%.1f×", zoomScale),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier

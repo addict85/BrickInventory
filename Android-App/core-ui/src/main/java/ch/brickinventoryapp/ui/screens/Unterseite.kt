@@ -16,6 +16,8 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.mittigBis
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
  * Der Rahmen jeder Unterseite: Titel, Zurück-Pfeil, darunter der Inhalt mit einem
@@ -28,7 +30,7 @@ fun Unterseite(
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
     /** Formulare schmaler als Listen: Ein Eingabefeld über 800 dp liest sich nicht mehr als eines. */
-    breite: androidx.compose.ui.unit.Dp = ch.brickinventoryapp.ui.theme.Lesebreite.liste,
+    breite: androidx.compose.ui.unit.Dp = Lesebreite.liste,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
@@ -44,7 +46,7 @@ fun Unterseite(
                 // Überschrift der Unterseite: Vorleseprogramme springen dorthin.
                 title = { Text(titel, maxLines = 1, modifier = Modifier.semantics { heading() }) },
                 navigationIcon = {
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                    MitTooltip(stringResource(R.string.common_back)) {
                         IconButton(onClick = onZurueck) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack,
                                  stringResource(R.string.common_back))

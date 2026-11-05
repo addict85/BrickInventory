@@ -23,6 +23,16 @@ import ch.brickinventoryapp.util.resolveFullUrl
 import coil3.ImageLoader
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.FehlerHinweis
+import ch.brickinventoryapp.ui.components.LadeKreis
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
+import ch.brickinventoryapp.ui.viewmodel.ANLEITUNG_TYPEN
+import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.fmtTag
 
 /** Das Set-Detail am Navigationsziel: sammelt die Flüsse und reicht sie an [SetDetailScreen]. */
 @Composable
@@ -104,13 +114,13 @@ fun SetDetailScreen(
     }
 
     fun fmtPrice(v: Double?) = if (v == null) "—"
-        else ch.brickinventoryapp.util.fmtMoney(v, currency)
+        else fmtMoney(v, currency)
 
     // Gemeinsamer Helfer (util/DatumFormat.kt) — dieselbe Umwandlung stand in
     // MinifigsScreen in einer zweiten, abweichenden Fassung.
-    fun fmtDate(iso: String?) = ch.brickinventoryapp.util.fmtTag(iso) ?: iso ?: "—"
+    fun fmtDate(iso: String?) = fmtTag(iso) ?: iso ?: "—"
 
-    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
+    val akzent = LocalAkzentflaechen.current
     // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
     val meldungen = remember { SnackbarHostState() }
     val keineAppText = stringResource(R.string.common_no_app_to_open)
@@ -119,7 +129,7 @@ fun SetDetailScreen(
         snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
             // Derselbe Kopf wie in Katalog, Merkliste und Teilen (DetailTopAppBar).
-            ch.brickinventoryapp.ui.components.DetailTopAppBar(
+            DetailTopAppBar(
                 titel = set?.name ?: setNumber,
                 onZurueck = onBack,
                 farben = TopAppBarDefaults.topAppBarColors(
@@ -132,7 +142,7 @@ fun SetDetailScreen(
                     // Kein Verschieben-Knopf: Verschoben wird über den Kaufpreis, Zeile für Zeile —
                     // ein Set mit drei Erfassungen sind drei Käufe, die verschiedenen Kindern gehören
                     // können. Der Server erzwingt dasselbe (move ohne acquisition_ids: 400).
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
+                    MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
                         IconButton(onClick = {
                             haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                             if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
@@ -150,11 +160,11 @@ fun SetDetailScreen(
             // Ohne Detail und ohne Vorschau: laden oder gescheitert — nie ein Kringel ohne Ende.
             val fehler = detailState.setDetailFehler
             if (fehler != null && !detailState.setDetailLoading) {
-                ch.brickinventoryapp.ui.components.ZustandsHinweis(Modifier.padding(padding)) {
-                    ch.brickinventoryapp.ui.components.FehlerHinweis(fehler, { aktionen.loadSetDetail(setNumber) },
+                ZustandsHinweis(Modifier.padding(padding)) {
+                    FehlerHinweis(fehler, { aktionen.loadSetDetail(setNumber) },
                         detailState.setDetailFehlerKlasse)
                 }
-            } else ch.brickinventoryapp.ui.components.LadeKreis(Modifier.padding(padding))
+            } else LadeKreis(Modifier.padding(padding))
             return@Scaffold
         }
 
@@ -193,7 +203,7 @@ fun SetDetailScreen(
         val anleitungen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             setDetailInstructionsSection(
                 set, detailState, serverUrl, onOpenPdf,
-                onAnleitungWaehlen = { anleitungAuswahl.launch(ch.brickinventoryapp.ui.viewmodel.ANLEITUNG_TYPEN) },
+                onAnleitungWaehlen = { anleitungAuswahl.launch(ANLEITUNG_TYPEN) },
                 onAnleitungLoeschen = { aktionen.loescheAnleitung(setNumber, it) },
                 onKeineApp = { coroutineScope.launch { meldungen.showSnackbar(keineAppText) } },
             )
@@ -216,7 +226,7 @@ fun SetDetailScreen(
 
         if (showSetDeleteConfirm) {
             val name = set.name ?: setNumber
-            ch.brickinventoryapp.ui.components.Rueckfrage(
+            Rueckfrage(
                 titel = stringResource(R.string.gallery_delete_title),
                 // Bei mehreren Exemplaren sagt der Satz, dass alle gemeint sind.
                 text = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_delete_text_exemplare, set.quantity, set.quantity, name)

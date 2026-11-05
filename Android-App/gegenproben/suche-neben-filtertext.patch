@@ -4,13 +4,13 @@ Test: ch.brickinventoryapp.FeinschliffRegelnTest
 Rot: Such-Platzhalter
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
-index e9893ac..db472dd 100644
+index 55af067..57f2b19 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Filterblatt.kt
-@@ -119,12 +119,13 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Mo
+@@ -122,12 +122,13 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Mo
          modifier = modifier,
      ) {
-         ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.filter_button)) {
+         MitTooltip(stringResource(R.string.filter_button)) {
 -            OutlinedIconButton(
 +            androidx.compose.material3.OutlinedButton(
                  onClick = onClick,

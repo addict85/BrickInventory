@@ -67,6 +67,18 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.data.SetAnlegenSchritt
+import ch.brickinventoryapp.data.SetAnleger
+import ch.brickinventoryapp.data.repository.KatalogRepository
+import ch.brickinventoryapp.ui.components.BILD_ERSATZ
+import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.screens.FinanceRoute
+import ch.brickinventoryapp.ui.screens.GalleryRoute
+import ch.brickinventoryapp.ui.screens.PartsRoute
+import ch.brickinventoryapp.ui.screens.WertKacheln
+import ch.brickinventoryapp.ui.setZeilen
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
+import ch.brickinventoryapp.util.inVierergruppen
 
 /**
  * Was die Bildschirmfotos zeigen, hier als Regel ausgeführt: Bei 200 % Schrift bricht
@@ -165,7 +177,7 @@ class OberflaechenRegelnTest {
         val pnl = fmtProzent(14.2)
         zeige(schrift) {
             Box(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
-                ch.brickinventoryapp.ui.screens.WertKacheln(markt, kauf, 14.2)
+                WertKacheln(markt, kauf, 14.2)
             }
         }
         for (betrag in listOf(markt, kauf, pnl)) {
@@ -344,16 +356,16 @@ class OberflaechenRegelnTest {
     /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
     private fun galerieMit(welt: Beispiele.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
         val vm = welt.galerie().also { it.loadSets() }
-        val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
+        val erfassung = welt.t.merke(ErfassungViewModel(welt.t.dienste,
             SetsRepository(welt.t.api, welt.t.cache),
-            ch.brickinventoryapp.data.repository.KatalogRepository(welt.t.api, welt.t.cache),
-            object : ch.brickinventoryapp.data.SetAnleger {
+            KatalogRepository(welt.t.api, welt.t.cache),
+            object : SetAnleger {
                 override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
                                      ownerUserId: Int?, storage: String?) =
-                    kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
+                    kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
             }))
         zeige(schrift) {
-            ch.brickinventoryapp.ui.screens.GalleryRoute(vm = vm, erfassung = erfassung,
+            GalleryRoute(vm = vm, erfassung = erfassung,
                 imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
         warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
@@ -411,7 +423,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.teile().also { it.loadParts() }
             zeige(schrift = 2f) {
-                ch.brickinventoryapp.ui.screens.PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
+                PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
             warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
             val namen = vm.partsState.value.parts.mapNotNull { it.partName }
@@ -472,7 +484,7 @@ class OberflaechenRegelnTest {
     }
 
     private fun ersatzbilder() = compose.onAllNodes(
-        androidx.compose.ui.test.hasTestTag(ch.brickinventoryapp.ui.components.BILD_ERSATZ), useUnmergedTree = true)
+        androidx.compose.ui.test.hasTestTag(BILD_ERSATZ), useUnmergedTree = true)
         .fetchSemanticsNodes().size
 
     @Test
@@ -514,16 +526,16 @@ class OberflaechenRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.galerie().also { it.loadSets() }
-            val erfassung = welt.t.merke(ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel(welt.t.dienste,
+            val erfassung = welt.t.merke(ErfassungViewModel(welt.t.dienste,
                 SetsRepository(welt.t.api, welt.t.cache),
-                ch.brickinventoryapp.data.repository.KatalogRepository(welt.t.api, welt.t.cache),
-                object : ch.brickinventoryapp.data.SetAnleger {
+                KatalogRepository(welt.t.api, welt.t.cache),
+                object : SetAnleger {
                     override fun anlegen(setNumber: String, quantity: Int, purchasePrice: Double?, condition: String?,
                                          ownerUserId: Int?, storage: String?) =
-                        kotlinx.coroutines.flow.emptyFlow<ch.brickinventoryapp.data.SetAnlegenSchritt>()
+                        kotlinx.coroutines.flow.emptyFlow<SetAnlegenSchritt>()
                 }))
             zeige {
-                ch.brickinventoryapp.ui.screens.GalleryRoute(vm = vm, erfassung = erfassung,
+                GalleryRoute(vm = vm, erfassung = erfassung,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), onScanBarcode = {}, onSetClick = {})
             }
             warte("Galerie") { vm.galleryState.value.sets.isNotEmpty() && !vm.galleryState.value.galleryLoading }
@@ -545,7 +557,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.teile().also { it.loadParts() }
             zeige(schrift = 2f) {
-                ch.brickinventoryapp.ui.screens.PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
+                PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build())
             }
             warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
             val namen = vm.partsState.value.parts.mapNotNull { it.partName }
@@ -584,7 +596,7 @@ class OberflaechenRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.teile().also { it.loadParts() }
-            zeige { ch.brickinventoryapp.ui.screens.PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            zeige { PartsRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
             warte("Teile") { vm.partsState.value.parts.isNotEmpty() }
             compose.onAllNodesWithText("Trans-Klar", useUnmergedTree = true).fetchSemanticsNodes().let {
                 assertTrue("Trans-Klar steht da", it.isNotEmpty())
@@ -605,7 +617,7 @@ class OberflaechenRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-            zeige { ch.brickinventoryapp.ui.screens.FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
             warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.historyLoading } }
             val verlauf = compose.onNodeWithText(ctx.getString(R.string.chart_portfolio_value), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot
@@ -624,7 +636,7 @@ class OberflaechenRegelnTest {
     @Test
     fun `Gutschein-Knoepfe nennen die Nummer und der PIN hat 48 dp`() {
         zeige { Gutscheine() }
-        val nummer = ch.brickinventoryapp.util.inVierergruppen("6061 2345 6789")
+        val nummer = inVierergruppen("6061 2345 6789")
         val pin = compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, nummer))
             .fetchSemanticsNode().boundsInRoot
         val dichte = ctx.resources.displayMetrics.density
@@ -692,7 +704,7 @@ class OberflaechenRegelnTest {
         try {
             val vm = welt.merkliste().also { it.ladeMerkliste() }
             zeige {
-                ch.brickinventoryapp.ui.screens.MerklisteRoute(vm = vm,
+                MerklisteRoute(vm = vm,
                     imageLoader = coil3.ImageLoader.Builder(ctx).build(), nebeneinander = true,
                     onScan = {}, onOeffnenEinzeln = { _, _ -> error("auf dem Tablet keine eigene Seite") })
             }
@@ -759,8 +771,8 @@ class OberflaechenRegelnTest {
             R.string.chart_period_max).map { ctx.getString(it) }
         zeige(schrift = 2f) {
             androidx.compose.foundation.layout.Column(Modifier.width(360.dp).padding(horizontal = 16.dp)) {
-                ch.brickinventoryapp.ui.components.SegmentWahl(zustaende.map { it to it }, zustaende[0], {})
-                ch.brickinventoryapp.ui.components.SegmentWahl(zeitraum.map { it to it }, zeitraum[0], {})
+                SegmentWahl(zustaende.map { it to it }, zustaende[0], {})
+                SegmentWahl(zeitraum.map { it to it }, zeitraum[0], {})
             }
         }
         (zustaende + zeitraum).forEach { ganzEineZeile(it) }
@@ -795,9 +807,9 @@ class OberflaechenRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.finanzen().also { it.loadValuation() }
-            zeige { ch.brickinventoryapp.ui.screens.FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
             warte("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.valuationLoading } }
-            val zeile = ch.brickinventoryapp.ui.setZeilen(vm.financeState.value.valuation!!.sets).map { it.second }
+            val zeile = setZeilen(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
             // Selbst gerechnet, nicht aus kaufGesamt/gewinn: Sonst prüfte der Test die Rechnung mit sich selbst.
             val gesamt = java.math.BigDecimal.valueOf(zeile.kaufpreis!!).multiply(java.math.BigDecimal(zeile.menge)).toDouble()
@@ -823,7 +835,7 @@ class OberflaechenRegelnTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             val vm = welt.finanzen().also { it.loadValuation() }
-            zeige { ch.brickinventoryapp.ui.screens.FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
+            zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
             warte("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.valuationLoading } }
             compose.waitForIdle()
             // Die Zahlen der Beispiele, nicht aus finanzKopf: Sonst prüfte der Test die Rechnung mit sich selbst.

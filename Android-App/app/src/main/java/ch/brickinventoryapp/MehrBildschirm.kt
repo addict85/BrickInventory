@@ -47,6 +47,7 @@ import ch.brickinventoryapp.ui.Screen
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.theme.mittigBis
+import ch.brickinventoryapp.ui.components.Gruppentitel
 
 /**
  * Das Ziel „Mehr“ der unteren Leiste: alle Seiten, die kein Bestandsreiter sind, in
@@ -152,7 +153,7 @@ private val MEHR_ZWEISPALTIG_AB = 840.dp
 /** Überschrift einer Gruppe — Vorleseprogramme springen von einer zur nächsten. */
 @Composable
 private fun MehrGruppe(titel: Int, trenner: Boolean) =
-    ch.brickinventoryapp.ui.components.Gruppentitel(stringResource(titel), trenner = trenner)
+    Gruppentitel(stringResource(titel), trenner = trenner)
 
 /** Ein Eintrag: Symbol, Text, ganze Zeile antippbar (mindestens 56 dp hoch). */
 @Composable

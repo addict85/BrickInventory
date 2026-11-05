@@ -20,6 +20,8 @@ import kotlinx.coroutines.*
 import ch.brickinventoryapp.data.CsvImportSseClient
 import ch.brickinventoryapp.data.model.CsvImportStatus
 import javax.inject.Inject
+import ch.brickinventoryapp.di.Anwendungsbereiche
+import ch.brickinventoryapp.util.LanguageManager
 
 /** Der Vordergrund-Dienst eines laufenden CSV-Imports; im Test ein Zähler. */
 interface CsvImportDienst {
@@ -73,10 +75,10 @@ class CsvImportService : Service() {
     // Benachrichtigungen unterhalb von Android 13 in der Systemsprache
     // (bzw. vorher: hartkodiert auf Deutsch).
     private val loc: Context by lazy {
-        ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
+        LanguageManager.localizedContext(this)
     }
 
-    @Inject lateinit var bereiche: ch.brickinventoryapp.di.Anwendungsbereiche
+    @Inject lateinit var bereiche: Anwendungsbereiche
 
     // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
     // in super.onCreate() setzt.

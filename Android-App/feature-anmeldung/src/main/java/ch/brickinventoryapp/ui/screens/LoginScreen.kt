@@ -43,6 +43,14 @@ import androidx.compose.ui.semantics.collapse
 import androidx.compose.ui.semantics.expand
 import androidx.compose.ui.semantics.stateDescription
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.AnmeldeKarte
+import ch.brickinventoryapp.ui.components.AnmeldeTitel
+import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.MarkenKopf
+import ch.brickinventoryapp.ui.components.TastaturOhneLernen
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
  * Anmelden, Konto anlegen, Link zum Zurücksetzen anfordern — wie die Webapp. Drei
@@ -81,13 +89,13 @@ fun LoginScreen(
     val focusMgr = LocalFocusManager.current
     // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey. Den
     // Sichtschutz für ein aufgedecktes Passwort bringt das PasswortFeld selbst mit.
-    ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+    Ueberdeckungsschutz()
 
     // Passwort, Code und Adresse lernt die Tastatur nicht mit (sec8 H4).
-    ch.brickinventoryapp.ui.components.TastaturOhneLernen {
+    TastaturOhneLernen {
     val kopf: @Composable ColumnScope.() -> Unit = {
             // Derselbe Kopf wie beim Einrichten, das direkt davor kommt.
-            ch.brickinventoryapp.ui.components.MarkenKopf()
+            MarkenKopf()
             Spacer(Modifier.height(Abstaende.mittel))
 
             // Der Chip wechselt den Server: TalkBack nennt das samt Adresse (die Fläche fasst
@@ -108,17 +116,17 @@ fun LoginScreen(
                 Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Icon(Icons.Default.Cloud, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
+                    Icon(Icons.Default.Cloud, null, Modifier.size(mitSchrift(16.dp)),
                         tint = MaterialTheme.colorScheme.primary)
                     Text(serverUrl, Modifier.weight(1f, fill = false),
                         style = MaterialTheme.typography.labelMedium)
-                    Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
+                    Icon(Icons.Default.Edit, null, Modifier.size(mitSchrift(16.dp)),
                         tint = MaterialTheme.colorScheme.primary)
                 }
             }
     }
     val karte: @Composable (breit: Boolean) -> Unit = { breit ->
-            ch.brickinventoryapp.ui.components.AnmeldeKarte {
+            AnmeldeKarte {
                 when (formular) {
                     AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
                         username = username, onUsername = { username = it },
@@ -150,7 +158,7 @@ fun LoginScreen(
         val hoehe = maxHeight
         if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
             Row(
-                Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular * 2)
+                Modifier.fillMaxSize().mittigBis(Lesebreite.formular * 2)
                     .padding(horizontal = Abstaende.riesig),
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.riesig),
             ) {
@@ -166,7 +174,7 @@ fun LoginScreen(
             }
         } else Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular)
+                .mittigBis(Lesebreite.formular)
                 .padding(horizontal = 28.dp, vertical = Abstaende.gross),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -253,7 +261,7 @@ private fun AnmeldeFelder(
     onPasskey: (() -> Unit)?,
     onPasskeyStattCode: ((String, String) -> Unit)?,
 ) {
-    ch.brickinventoryapp.ui.components.AnmeldeTitel(stringResource(R.string.login_title))
+    AnmeldeTitel(stringResource(R.string.login_title))
 
     OutlinedTextField(
         value = username, onValueChange = onUsername,
@@ -302,7 +310,7 @@ private fun AnmeldeFelder(
     // Häkchen setzen fragt die Gerätesperre: Ein Token mit Scope voll darf alles.
     // Eingeklappt unter „Erweitert“: Zum Sammeln braucht es niemand, und offen schob
     // es bei 200 % den Anmeldeknopf aus dem ersten Bild.
-    val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+    val schutz = LocalSchrittschutz.current
     val vollGrund = stringResource(R.string.schritt_voller_zugriff)
     var erweitert by rememberSaveable { mutableStateOf(vollerZugriff) }
     // Der Zustand für TalkBack: Ob der Bereich offen ist, sah man sonst nur.
@@ -344,7 +352,7 @@ private fun AnmeldeFelder(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             colors = nebenKnopfFarben(),
             border = nebenKnopfRand(!isLoading && username.isNotBlank() && password.isNotBlank())) {
-            Icon(Icons.Default.Fingerprint, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+            Icon(Icons.Default.Fingerprint, null, Modifier.size(mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.login_passkey_statt_code))
         }
@@ -353,7 +361,7 @@ private fun AnmeldeFelder(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             colors = nebenKnopfFarben(),
             border = nebenKnopfRand(!isLoading)) {
-            Icon(Icons.Default.Fingerprint, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+            Icon(Icons.Default.Fingerprint, null, Modifier.size(mitSchrift(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.login_passkey))
         }
@@ -398,7 +406,7 @@ private fun RegistrierFelder(
     val zuKurz     = stringResource(R.string.register_password_short)
     val ungleich   = stringResource(R.string.register_password_mismatch)
 
-    ch.brickinventoryapp.ui.components.AnmeldeTitel(stringResource(R.string.register_title))
+    AnmeldeTitel(stringResource(R.string.register_title))
 
     // Nach einer erfolgreichen Registrierung stehen nur noch die Meldung und
     // der Weg zurueck — die Felder waeren jetzt nur eine Einladung, dasselbe
@@ -491,7 +499,7 @@ private fun VergessenFelder(
     var eigenerFehler by rememberSaveable { mutableStateOf<String?>(null) }
     val brauchtEmail = stringResource(R.string.forgot_email_required)
 
-    ch.brickinventoryapp.ui.components.AnmeldeTitel(stringResource(R.string.forgot_title))
+    AnmeldeTitel(stringResource(R.string.forgot_title))
 
     if (meldung != null) {
         FormularMeldung(meldung, fehler = false)

@@ -55,6 +55,12 @@ import ch.brickinventoryapp.ui.parseQrPayload
 import ch.brickinventoryapp.ui.qrWechseltServer
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
+import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.MarkenKopf
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
  * Server einrichten: per QR-Code oder von Hand, nur mit https. Steht noch eine
@@ -124,7 +130,7 @@ fun SetupScreen(
     // Kopf (Marke, Hinweis zum Altbestand) und Handlung (QR, Adresse, Weiter) als zwei
     // Teile: Im Querformat stehen sie nebeneinander, sonst lag „Weiter“ unter dem Falz.
     val kopfTeil: @Composable ColumnScope.() -> Unit = {
-        ch.brickinventoryapp.ui.components.MarkenKopf(untertitel = stringResource(R.string.setup_subtitle))
+        MarkenKopf(untertitel = stringResource(R.string.setup_subtitle))
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))
@@ -138,7 +144,7 @@ fun SetupScreen(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Row(Modifier.padding(Abstaende.gross), horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                    Icon(Icons.Default.Lock, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(24.dp)),
+                    Icon(Icons.Default.Lock, null, Modifier.size(mitSchrift(24.dp)),
                         tint = MaterialTheme.colorScheme.primary)
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold)
@@ -149,7 +155,7 @@ fun SetupScreen(
                                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                                     // Feste Ziffernspalte mit Tabellenziffern: „1.“ ist schmaler als
                                     // „2.“, und die Schritte begannen verschieden weit rechts.
-                                    Text("${i + 1}.", Modifier.width(ch.brickinventoryapp.ui.components.mitSchrift(20.dp)),
+                                    Text("${i + 1}.", Modifier.width(mitSchrift(20.dp)),
                                         style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
                                         fontWeight = FontWeight.SemiBold)
                                     Text(stringResource(schritt), style = MaterialTheme.typography.bodyMedium)
@@ -172,7 +178,7 @@ fun SetupScreen(
             onClick = { scanError = null; showScanner = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
-            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(20.dp)))
+            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(mitSchrift(20.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.setup_scan_qr), fontWeight = FontWeight.SemiBold)
         }
@@ -246,7 +252,7 @@ fun SetupScreen(
         }
         // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
         // (app/build.gradle.kts). Ohne Namen (Vorschau, Test) bliebe nur „Build “ stehen.
-        val fassung = ch.brickinventoryapp.ui.components.LocalAppFassung.current.name
+        val fassung = LocalAppFassung.current.name
         if (fassung.isNotBlank()) {
             Spacer(Modifier.height(Abstaende.gross))
             Text(
@@ -265,7 +271,7 @@ fun SetupScreen(
         val hoehe = maxHeight
         if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
             Row(
-                Modifier.fillMaxSize().mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular * 2)
+                Modifier.fillMaxSize().mittigBis(Lesebreite.formular * 2)
                     .padding(horizontal = Abstaende.riesig),
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.riesig),
             ) {
@@ -281,7 +287,7 @@ fun SetupScreen(
             }
         } else Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                .mittigBis(ch.brickinventoryapp.ui.theme.Lesebreite.formular).padding(Abstaende.riesig),
+                .mittigBis(Lesebreite.formular).padding(Abstaende.riesig),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -325,7 +331,7 @@ private fun QrVorschlagDialog(
         title = { Text(stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)) },
         text = {
             // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
-            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+            Ueberdeckungsschutz()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
                 // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
@@ -441,7 +447,7 @@ fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
                 KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
-        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
             IconButton(onClick = onDismiss, Modifier.padding(Abstaende.gross)) {
                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
             }

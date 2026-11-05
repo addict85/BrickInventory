@@ -35,6 +35,17 @@ import ch.brickinventoryapp.ui.*
 import ch.brickinventoryapp.ui.screens.*
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.nav.ZielUmgebung
+import ch.brickinventoryapp.ui.components.AusgangLeiste
+import ch.brickinventoryapp.ui.components.LocalOffeneAenderungen
+import ch.brickinventoryapp.ui.components.LocalOfflineHinweise
+import ch.brickinventoryapp.ui.components.LocalSnackbarPlatz
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.UpdatePunkt
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
+import ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel
 
 /**
  * Gemeinsames Gerüst aller eingeloggten Screens: obere Leiste mit Titel und
@@ -76,7 +87,7 @@ fun MainScaffold(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDest = navBackStackEntry?.destination
-    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
+    val akzent = LocalAkzentflaechen.current
     // Die App-Leiste weicht beim Rollen nach unten und kommt beim Zurückrollen wieder:
     // Auf dem Telefon standen sonst Titel und Umschalter dauerhaft über dem Inhalt.
     // Ein neues Ziel beginnt mit sichtbarer Leiste.
@@ -106,7 +117,7 @@ fun MainScaffold(
     // Das Symbol eines Ziels, an „Mehr“ mit dem Punkt für eine neue Version.
     @Composable
     fun Symbol(screen: Screen, icon: @Composable () -> Unit) {
-        if (screen == Screen.Mehr && updateVerfuegbar) BadgedBox(badge = { ch.brickinventoryapp.ui.components.UpdatePunkt() }) { icon() } else icon()
+        if (screen == Screen.Mehr && updateVerfuegbar) BadgedBox(badge = { UpdatePunkt() }) { icon() } else icon()
     }
 
     // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten
@@ -147,7 +158,7 @@ fun MainScaffold(
                     // „Mehr“ als Menüknopf. Vorleseprogramme springen zur Überschrift.
                     title = { Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) },
                     navigationIcon = {
-                        if (mehrUnterseite) ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                        if (mehrUnterseite) MitTooltip(stringResource(R.string.common_back)) {
                             IconButton(onClick = { zurueckZuMehr() }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
@@ -205,7 +216,7 @@ fun MainScaffold(
                             })
                     }
                     // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
-                    if (offlineHinweise.intValue == 0) ch.brickinventoryapp.ui.components.AusgangLeiste(offeneAenderungen)
+                    if (offlineHinweise.intValue == 0) AusgangLeiste(offeneAenderungen)
                     if (csvImport.running) {
                         CsvImportBanner(
                             done = csvImport.done, total = csvImport.total, current = csvImport.current,
@@ -215,10 +226,10 @@ fun MainScaffold(
                     }
                     Box(Modifier.fillMaxSize()) {
                         CompositionLocalProvider(
-                            ch.brickinventoryapp.ui.components.LocalSnackbarPlatz provides
+                            LocalSnackbarPlatz provides
                                 with(LocalDensity.current) { snackbarHoehe.toDp() },
-                            ch.brickinventoryapp.ui.components.LocalOffeneAenderungen provides offeneAenderungen,
-                            ch.brickinventoryapp.ui.components.LocalOfflineHinweise provides offlineHinweise,
+                            LocalOffeneAenderungen provides offeneAenderungen,
+                            LocalOfflineHinweise provides offlineHinweise,
                         ) { content() }
                     }
                 }
@@ -237,7 +248,7 @@ fun MainScaffold(
 @Composable
 fun ReiterGeruest(
     titel: String,
-    umgebung: ch.brickinventoryapp.nav.ZielUmgebung,
+    umgebung: ZielUmgebung,
     content: @Composable () -> Unit
 ) {
     val vm: AppViewModel = aktivitaetsViewModel()
@@ -245,7 +256,7 @@ fun ReiterGeruest(
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
     val offen by vm.offeneAenderungen.collectAsStateWithLifecycle()
-    val csvImport: ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel = aktivitaetsViewModel()
+    val csvImport: CsvImportViewModel = aktivitaetsViewModel()
     MainScaffold(
         title = titel,
         navController = umgebung.navController,
@@ -276,7 +287,7 @@ private fun ReiterBeschriftung(text: String, groesse: MutableState<TextUnit>, be
     val aktuell = if (groesse.value.isSpecified) groesse.value else stil.fontSize
     Text(
         // Mindestabstand zum Rand des Ziels: Bei 200 % stand „Sammlung“ 1 dp vor der Kante.
-        text, Modifier.padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.winzig),
+        text, Modifier.padding(horizontal = Abstaende.winzig),
         style = stil.copy(fontSize = aktuell), maxLines = 1, softWrap = false,
         overflow = TextOverflow.Clip,
         onTextLayout = { l ->
@@ -339,12 +350,12 @@ private fun androidx.navigation.NavController.zuReiter(ziel: Screen) =
 private fun SammlungUmschalter(aktuell: Screen, onWahl: (Screen) -> Unit, modifier: Modifier = Modifier) {
     val texte = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs)
     val ziele = SAMMLUNGS_ZIELE.zip(texte).map { (ziel, text) -> ziel to stringResource(text) }
-    ch.brickinventoryapp.ui.components.SegmentWahl<Screen?>(
+    SegmentWahl<Screen?>(
         optionen = ziele,
         gewaehlt = aktuell,
         onWahl = { if (it != null) onWahl(it) },
-        modifier = modifier.padding(horizontal = ch.brickinventoryapp.ui.theme.Abstaende.mittel,
-            vertical = ch.brickinventoryapp.ui.theme.Abstaende.winzig),
+        modifier = modifier.padding(horizontal = Abstaende.mittel,
+            vertical = Abstaende.winzig),
     )
 }
 

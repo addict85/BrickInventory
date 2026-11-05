@@ -18,6 +18,9 @@ import org.junit.Test
 import retrofit2.Retrofit
 import java.io.File
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.di.ServerWaechter
+import ch.brickinventoryapp.di.Zugangslage
 
 /**
  * Der erste Test in diesem Projekt, der VERHALTEN ausführt statt Quelltext zu
@@ -59,7 +62,7 @@ class BrickRepositoryErrorMappingTest {
             .build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
-        val json = ch.brickinventoryapp.data.api.ApiJson
+        val json = ApiJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
@@ -157,13 +160,13 @@ class BrickRepositoryErrorMappingTest {
      */
     @Test
     fun `eine abgelehnte http-Anfrage ist kein Netzfehler und nicht voruebergehend`() = runTest {
-        val lage = object : ch.brickinventoryapp.di.Zugangslage {
+        val lage = object : Zugangslage {
             override fun serverUrl() = server.url("/").toString()
             override fun token() = "geheim"
             override fun tokenHerkunft(): String? = null
             override fun generation() = 0L
         }
-        val waechter = ch.brickinventoryapp.di.ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})
+        val waechter = ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})
         val e = fehler(baueRepo(waechter = waechter).getMe())
         assert(e.art == Fehlerart.KLARTEXT) { "Art war ${e.art}" }
         assert(!e.transient) { "Ein zweiter Versuch ginge genauso an http" }

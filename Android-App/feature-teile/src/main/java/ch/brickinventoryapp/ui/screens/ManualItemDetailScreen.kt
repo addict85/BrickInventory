@@ -34,6 +34,14 @@ import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.util.resolveFullUrlViaProxy
 import coil3.ImageLoader
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.DetailTopAppBar
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.farbUebersetzer
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
+import ch.brickinventoryapp.util.fmtMoney
 
 /**
  * Detailansicht eines manuell erfassten Teils / einer Minifigur — als ganzer Screen wie bei
@@ -47,7 +55,7 @@ fun ManualItemDetailRoute(
     teile: TeileViewModel,
     type: String,
     id: String,
-    colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
+    colorId: Int = OHNE_FARBE,
     fallbackTitle: String,
     imageLoader: ImageLoader,
     onBack: () -> Unit,
@@ -83,7 +91,7 @@ fun ManualItemDetailScreen(
     teile: TeileAktionen,
     type: String,          // "part" | "fig"
     id: String,            // partNumber / figNumber
-    colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
+    colorId: Int = OHNE_FARBE,
     /** Aus der Navigation — bis die Bewertung geladen ist, steht er in der Leiste. */
     fallbackTitle: String,
     imageLoader: ImageLoader,
@@ -135,11 +143,11 @@ fun ManualItemDetailScreen(
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
 
-    val akzent = ch.brickinventoryapp.ui.theme.LocalAkzentflaechen.current
+    val akzent = LocalAkzentflaechen.current
     Scaffold(
         topBar = {
             // Derselbe Kopf wie jedes Detail (DetailTopAppBar).
-            ch.brickinventoryapp.ui.components.DetailTopAppBar(
+            DetailTopAppBar(
                 titel = title,
                 onZurueck = onBack,
                 farben = TopAppBarDefaults.topAppBarColors(
@@ -149,7 +157,7 @@ fun ManualItemDetailScreen(
                     actionIconContentColor = akzent.aufDetailLeiste,
                 ),
                 actions = {
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_delete)) {
+                    MitTooltip(stringResource(R.string.common_delete)) {
                         IconButton(onClick = { showDeleteConfirm = true }) {
                             Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
                         }
@@ -175,7 +183,7 @@ fun ManualItemDetailScreen(
                 val labelNumber = stringResource(
                     if (isFig) R.string.detail_fig_number else R.string.detail_part_number)
                 val labelColor  = stringResource(R.string.detail_color)
-                val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
+                val farbe = farbUebersetzer()
                 val chips = buildList {
                     add(labelNumber to id)
                     part?.colorName?.let { add(labelColor to farbe(it)) }
@@ -189,7 +197,7 @@ fun ManualItemDetailScreen(
             // ── Wert-Kacheln wie im Set-Detail, in jedem Design ───────────────
             item {
                 fun fmt(v: Double?) = if (v == null) "—"
-                    else ch.brickinventoryapp.util.fmtMoney(v, currency)
+                    else fmtMoney(v, currency)
                 WertKacheln(
                     markt = fmt(fig?.avgPrice ?: part?.avgPrice),
                     kauf = fmt(fig?.purchasePrice ?: part?.purchasePrice),
@@ -359,7 +367,7 @@ private fun BildKarte(imageUrl: String?, imageLoader: ImageLoader, title: String
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
-        ch.brickinventoryapp.ui.components.ProduktBild(
+        ProduktBild(
             model = imageUrl,
             imageLoader = imageLoader,
             contentDescription = title,
@@ -388,19 +396,19 @@ private fun MengenZeile(menge: Int, onWeniger: () -> Unit, onMehr: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_decrease)) {
+            MitTooltip(stringResource(R.string.cd_qty_decrease)) {
                 FilledTonalIconButton(
                     onClick = onWeniger,
                     shape = Formen.etikett
-                ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                ) { Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease), Modifier.size(mitSchrift(14.dp))) }
             }
             Text("$menge", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.widthIn(min = 24.dp), textAlign = TextAlign.Center)
-            ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_increase)) {
+            MitTooltip(stringResource(R.string.cd_qty_increase)) {
                 FilledTonalIconButton(
                     onClick = onMehr,
                     shape = Formen.etikett
-                ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp))) }
+                ) { Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase), Modifier.size(mitSchrift(14.dp))) }
             }
         }
     }

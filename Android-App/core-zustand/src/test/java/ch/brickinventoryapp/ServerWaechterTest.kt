@@ -18,6 +18,9 @@ import org.junit.Test
 import java.util.Collections
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import ch.brickinventoryapp.util.APP_API_VERSION
+import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.VersionsHinweis
 
 /**
  * Der Wächter aller Anfragen an den eigenen Server, ausgeführt gegen einen
@@ -172,7 +175,7 @@ class ServerWaechterTest {
             .header("Authorization", "Bearer alt").build()).execute().close()
         assertNull("Abgemeldet: kein Token", anfragenAn("/api/v1/csv").single().second)
 
-        val eigene = ch.brickinventoryapp.util.NetworkPolicy.herkunft(basis())
+        val eigene = NetworkPolicy.herkunft(basis())
         client(Lage(basis(), herkunft = eigene)).newCall(Request.Builder().url(basis() + "/api/v1/pdf")
             .header("Authorization", "Bearer alt").build()).execute().close()
         assertEquals("Bearer alt", anfragenAn("/api/v1/pdf").single().second)
@@ -183,26 +186,26 @@ class ServerWaechterTest {
         hole(client(Lage(basis(), tokens = ArrayDeque(listOf(""))), api = false), basis() + "/api/v1/stats")
         val r = server.takeRequest()
         assertEquals("de", r.getHeader("Accept-Language"))
-        assertEquals(ch.brickinventoryapp.util.APP_API_VERSION.toString(), r.getHeader("X-App-Api"))
+        assertEquals(APP_API_VERSION.toString(), r.getHeader("X-App-Api"))
     }
 
     @Test
     fun `ein Server mit hoeherer Mindestfassung meldet App zu alt statt eines Lesefehlers`() {
         // So antwortet der Server einer alten App: 426 samt beiden Fassungen im Kopf.
-        val neuer = (ch.brickinventoryapp.util.APP_API_VERSION + 1).toString()
+        val neuer = (APP_API_VERSION + 1).toString()
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(426)
                 .setHeader("X-Api-Version", neuer).setHeader("X-Api-Min-App", neuer)
                 .setBody("""{"success":false,"error":"App zu alt","code":"app_zu_alt"}""")
         }
-        val hinweise = Collections.synchronizedList(mutableListOf<ch.brickinventoryapp.util.VersionsHinweis>())
+        val hinweise = Collections.synchronizedList(mutableListOf<VersionsHinweis>())
         val c = OkHttpClient.Builder()
             .addInterceptor(ServerWaechter(Lage(basis(), tokens = ArrayDeque(listOf(""))), true, true,
                 sitzungAbgelaufen = { abgelaufen.incrementAndGet() }, versionsMeldung = { hinweise += it }))
             .readTimeout(2, TimeUnit.SECONDS).build()
         assertEquals(426, hole(c, basis() + "/api/v1/auth/profile"))
         assertEquals(426, hole(c, basis() + "/api/v1/sets"))
-        assertEquals("einmal gemeldet, nicht je Anfrage", listOf(ch.brickinventoryapp.util.VersionsHinweis.APP_ZU_ALT), hinweise.toList())
+        assertEquals("einmal gemeldet, nicht je Anfrage", listOf(VersionsHinweis.APP_ZU_ALT), hinweise.toList())
         assertEquals(0, abgelaufen.get())
     }
 

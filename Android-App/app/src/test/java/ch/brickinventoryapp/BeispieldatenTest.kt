@@ -29,6 +29,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import ch.brickinventoryapp.ui.finanzSummen
+import ch.brickinventoryapp.ui.lokaleAchse
+import ch.brickinventoryapp.ui.lokaleWerte
+import ch.brickinventoryapp.ui.setZeilen
+import ch.brickinventoryapp.ui.viewmodel.Texte
 
 /**
  * Beispieldaten für Bildschirmfotos und Oberflächentests: ein Testserver mit
@@ -118,8 +123,8 @@ class BeispieldatenTest {
         // Die Achse trägt Daten, keine Wochentage — chart.x passt Punkt für Punkt, und
         // übersetzt wird erst in der Sprache der Anzeige.
         val f = finanzen.financeState.value
-        val de = ch.brickinventoryapp.ui.lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("de-CH"))
-        val en = ch.brickinventoryapp.ui.lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("en-GB"))
+        val de = lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("de-CH"))
+        val en = lokaleAchse(f.historyPoints, f.historyTage, java.util.Locale.forLanguageTag("en-GB"))
         assertEquals(listOf("27.10.", "29.10."), de.map { it.xLabel }.filter { it.isNotBlank() })
         assertEquals(listOf("27 Oct", "29 Oct"), en.map { it.xLabel }.filter { it.isNotBlank() })
     }
@@ -138,7 +143,7 @@ class BeispieldatenTest {
             val f = finanzen.financeState.value
             assertEquals(listOf("27.10", "", "29.10"), f.historyPoints.map { it.xLabel })
             assertEquals("CHF", f.historyWaehrung)
-            val y = ch.brickinventoryapp.ui.lokaleWerte(f.historyYAxis, f.historyWaehrung!!, java.util.Locale.forLanguageTag("de-CH"))
+            val y = lokaleWerte(f.historyYAxis, f.historyWaehrung!!, java.util.Locale.forLanguageTag("de-CH"))
             val label = y.last().label.replace(' ', ' ')
             assertTrue(label, label == "CHF 1’720" || label == "CHF 1'720")
         } finally {
@@ -191,14 +196,14 @@ class BeispieldatenTest {
         val finanzen = welt.finanzen().also { it.loadValuation() }
         TestApi.warteBis("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
         val z = finanzen.financeState.value
-        val zeilen = ch.brickinventoryapp.ui.setZeilen(z.valuation!!.sets).map { it.second }
+        val zeilen = setZeilen(z.valuation!!.sets).map { it.second }
         // Zwei bewertete Zeilen und das Baumhaus ohne Marktpreis — der Fall der Basiszeile.
         assertEquals(3, zeilen.size)
         val bewertet = zeilen.filter { it.wert != null }
         assertEquals(2, bewertet.size)
         assertTrue(bewertet.toString(), bewertet.all { it.kaufpreis != null && it.zustand != null && it.pnlProzent != null })
         assertTrue("ohne Marktpreis, mit Kaufpreis", zeilen.single { it.wert == null }.kaufpreis != null)
-        val kopf = ch.brickinventoryapp.ui.finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
+        val kopf = finanzSummen(z.valuation!!, z.partsValuation, z.figsValuation, z.pnl).gesamt
         assertEquals(0, kopf.compareTo(bewertet.sumOf { java.math.BigDecimal.valueOf(it.wert!!) }))
     }
 }
@@ -282,7 +287,7 @@ object Beispiele {
     )
 
     /** Ein eigener Server je Test; [close] räumt ihn wieder ab. */
-    class Welt(texte: ch.brickinventoryapp.ui.viewmodel.Texte = NummernTexte) : AutoCloseable {
+    class Welt(texte: Texte = NummernTexte) : AutoCloseable {
         val pfade = PfadServer(*ANTWORTEN)
         val t = TestDienste(pfade.server, texte).also { d -> d.sitzung.waehrungUebernommen("CHF") }
 

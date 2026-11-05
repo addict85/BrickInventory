@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.theme.skelettTon
 
 /**
  * Kacheln ohne Inhalt, solange die erste Seite lädt. Die Fläche steht schon so
@@ -68,8 +69,8 @@ fun SkelettRaster(
         animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart),
         label = "skelett-schimmer",
     )
-    val grund = ch.brickinventoryapp.ui.theme.skelettTon(MaterialTheme.colorScheme)
-    val licht = ch.brickinventoryapp.ui.theme.skelettTon(MaterialTheme.colorScheme, 0.04f)
+    val grund = skelettTon(MaterialTheme.colorScheme)
+    val licht = skelettTon(MaterialTheme.colorScheme, 0.04f)
     // Ohne Bewegung eine ruhige Fläche statt des wandernden Lichts.
     val schimmer = if (bewegungReduziert()) SolidColor(grund) else Brush.linearGradient(listOf(grund, licht, grund),
         start = Offset(weg, 0f), end = Offset(weg + 600f, 600f))

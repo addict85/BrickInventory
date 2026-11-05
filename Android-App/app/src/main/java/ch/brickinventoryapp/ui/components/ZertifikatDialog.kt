@@ -29,6 +29,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.util.ZertifikatUngeklaert
 import ch.brickinventoryapp.util.fingerabdruckAnfang
 import ch.brickinventoryapp.util.fingerabdruckLesbar
+import ch.brickinventoryapp.ui.theme.Formen
 
 /**
  * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der Fingerabdruck
@@ -77,7 +78,7 @@ fun ZertifikatDialog(
                     color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
                 if (abschreiben) {
                     OutlinedTextField(
-                        shape = ch.brickinventoryapp.ui.theme.Formen.feld,
+                        shape = Formen.feld,
                         value = eingabe,
                         onValueChange = { eingabe = it; falsch = false },
                         label = { Text(stringResource(if (geaendert) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe)) },

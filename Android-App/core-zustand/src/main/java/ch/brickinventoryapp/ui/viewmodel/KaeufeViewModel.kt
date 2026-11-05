@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.data.model.SetAggregate
+import ch.brickinventoryapp.ressourcen.R
 
 /**
  * Die Käufe eines Eintrags — Set, manuelles Teil oder manuelle Figur:
@@ -112,7 +114,7 @@ class KaeufeViewModel @Inject constructor(
         viewModelScope.launch {
             when (val r = haushalt.deleteAcquisition(setNumber, acqId)) {
                 is Result.Success -> if (r.data.success) setGeaendert(r.data.set)
-                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(ch.brickinventoryapp.ressourcen.R.string.vm_error, it) })
+                is Result.Error -> zeigeMeldung(meldungFuerSnackbar(r)?.let { text(R.string.vm_error, it) })
             }
         }
     }
@@ -122,7 +124,7 @@ class KaeufeViewModel @Inject constructor(
      * passt damit die Kachel an, ohne die Liste neu zu holen. Diese Liste lädt
      * auf dasselbe Signal nach (beiAenderung).
      */
-    private fun setGeaendert(agg: ch.brickinventoryapp.data.model.SetAggregate?) {
+    private fun setGeaendert(agg: SetAggregate?) {
         if (agg != null && agg.setNumber.isNotBlank()) {
             dienste.bestand.melde(Aenderung.SetZusammenfassung(agg))
         } else {

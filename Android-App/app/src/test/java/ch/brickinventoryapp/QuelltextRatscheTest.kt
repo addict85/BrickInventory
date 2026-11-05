@@ -41,6 +41,8 @@ import org.junit.Test
  *   detekt-baseline-waechst       Obergrenze 133 statt 134 → rot „die detekt-Baseline …“
  *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
  * Abbruch (05.11.2026): cache-schluckt-abbruch macht auch „kein breiter Fang …“ rot.
+ * Namen (05.11.2026, gemessen mit kotlinc lokal): voll-qualifiziert schreibt in
+ *   Vorwaermen.kt `ch.brickinventoryapp.util.fangeAusserAbbruch` aus → rot „kein voll …“
  */
 class QuelltextRatscheTest {
 
@@ -266,6 +268,21 @@ class QuelltextRatscheTest {
                 "oder verzweigte Funktion zerlegen, statt sie einzutragen."
         }
         if (ids.size < grenze) println("  detekt-Baseline: ${ids.size} (Obergrenze $grenze) — tools/detekt-obergrenze.txt nachziehen")
+    }
+
+    @Test
+    fun `kein voll qualifizierter Projektname im Code`() {
+        // Ein Import zeigt die Abhängigkeit im Kopf der Datei; inline bleibt sie
+        // unsichtbar und die Zeile lang. Kommentare und Zeichenketten zählen nicht.
+        val voll = Regex("""(?<![\w.])ch\.brickinventoryapp(?:\.[a-z]\w*)+\.[A-Za-z_]\w*""")
+        val dateien = produktivDateien() + Quellen.tests.walkTopDown().filter { it.isFile && it.extension == "kt" }
+        assert(dateien.size > 500) { "Nur ${dateien.size} Dateien gefunden — greift die Suche noch?" }
+        val funde = dateien.flatMap { f ->
+            code(f.readText()).lines().map { it.replace(Regex("//.*"), "") }
+                .filterNot { it.trimStart().startsWith("import ") || it.trimStart().startsWith("package ") }
+                .filter { voll.containsMatchIn(it) }.map { "${f.name}: ${it.trim()}" }
+        }
+        assert(funde.isEmpty()) { "Voll qualifizierte Namen; importieren statt ausschreiben:\n  " + funde.joinToString("\n  ") }
     }
 
     @Test

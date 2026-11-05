@@ -21,6 +21,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.data.model.AppThemeResponse
+import ch.brickinventoryapp.util.otpauthAdresse
 
 /**
  * Das eigene Konto: Profil, Passwort, angemeldete Geräte, zweiter Faktor.
@@ -170,7 +172,7 @@ class KontoViewModel @Inject constructor(
     }
 
     /** Ohne `vorgabe` ist der Server älter und kennt kein Design je Konto: dann keine Auswahl. */
-    private fun designWahl(a: ch.brickinventoryapp.data.model.AppThemeResponse) =
+    private fun designWahl(a: AppThemeResponse) =
         a.vorgabe?.let { DesignWahl(a.theme, it, a.eigenes) }
 
     /** Meldung/Fehler der Kontokarte wegräumen, wenn der Nutzer weitertippt. */
@@ -232,7 +234,7 @@ class KontoViewModel @Inject constructor(
     }
 
     fun richteZweitenFaktorEin(passwort: String) = zweiterFaktor({ konto.zweiterFaktorEinrichten(passwort) }) { s, d ->
-        s.copy(geheimnis = d.geheimnis, otpauth = ch.brickinventoryapp.util.otpauthAdresse(d.otpauth))
+        s.copy(geheimnis = d.geheimnis, otpauth = otpauthAdresse(d.otpauth))
     }
 
     fun bestaetigeZweitenFaktor(code: String) =

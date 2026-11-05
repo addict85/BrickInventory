@@ -27,6 +27,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import ch.brickinventoryapp.di.Rotationsanlass
 
 /**
  * Ein Serverwechsel, während eine Anfrage beim alten Server hängt: Der alte (A)
@@ -108,7 +109,7 @@ class ServerwechselTest {
         schranke.schreibe { herkunft = NetworkPolicy.herkunft(adresse(ziel)); token = neuerToken }
     }
 
-    private fun client(rotation: ch.brickinventoryapp.di.Rotationsanlass? = null) = OkHttpClient.Builder()
+    private fun client(rotation: Rotationsanlass? = null) = OkHttpClient.Builder()
         .addInterceptor(ServerWaechter(lage, true, entwicklung = true, sitzungAbgelaufen = { abgelaufen.incrementAndGet() },
             rotation = rotation, rechteEntzogen = { entzogen.incrementAndGet() }))
         .readTimeout(10, TimeUnit.SECONDS).build()

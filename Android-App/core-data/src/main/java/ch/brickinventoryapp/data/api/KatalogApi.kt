@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data.api
 import ch.brickinventoryapp.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
+import ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse
 
 /**
  * Der Set-Katalog des Servers: Themen, Liste, Detail, Jahresverteilung (KatalogRepository).
@@ -32,5 +33,5 @@ interface KatalogApi {
         @Query("q") q: String? = null,
         @Query("theme_id") themeId: Int? = null,
         @Query("sort") sort: String? = null
-    ): Response<ch.brickinventoryapp.data.model.CatalogYearVerteilungResponse>
+    ): Response<CatalogYearVerteilungResponse>
 }

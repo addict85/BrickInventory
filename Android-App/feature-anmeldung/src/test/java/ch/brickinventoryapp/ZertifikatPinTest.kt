@@ -34,6 +34,7 @@ import javax.net.ssl.KeyManagerFactory
 import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509ExtendedTrustManager
+import ch.brickinventoryapp.util.ErneuerbareTlsFabrik
 
 /**
  * Pinning des eigenen Servers, über echtes TLS gegen einen Testserver: Wurzel →
@@ -453,7 +454,7 @@ class ZertifikatPinTest {
             override fun checkClientTrusted(c: Array<X509Certificate>, a: String) = basis.checkClientTrusted(c, a)
             override fun getAcceptedIssuers(): Array<X509Certificate> = basis.acceptedIssuers
         }
-        val fabrik = ch.brickinventoryapp.util.ErneuerbareTlsFabrik {
+        val fabrik = ErneuerbareTlsFabrik {
             SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }.socketFactory
         }
         val c = OkHttpClient.Builder().sslSocketFactory(fabrik, tm)

@@ -10,11 +10,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import ch.brickinventoryapp.ui.components.grosseSchrift
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /** Eine Zeile der Detailkarten (Katalog, Merkposten), auf dem Tablet höchstens in Lesebreite. */
 @Composable
 fun CatalogDetailRow(label: String, value: String) {
-    BezeichnungUndWert(label, value, Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.wertzeile))
+    BezeichnungUndWert(label, value, Modifier.widthIn(max = Lesebreite.wertzeile))
 }
 
 /**

@@ -25,6 +25,8 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.Startziel
+import ch.brickinventoryapp.data.model.Preisalarm
 
 /**
  * Holt stündlich ab, ob ein Preisalarm ausgelöst hat, und meldet es. Abholen statt
@@ -43,7 +45,7 @@ class PreisalarmWorker(
     interface Zugang {
         fun repo(): BrickRepository
         fun prefs(): PreferencesManager
-        fun startziel(): ch.brickinventoryapp.data.Startziel
+        fun startziel(): Startziel
     }
 
     // erfolg=false heisst NUR „der Server war nicht erreichbar". Alles andere
@@ -153,7 +155,7 @@ class PreisalarmWorker(
          * Zusammenfassung: Man will ohne die App zu öffnen wissen, welcher Alarm gefallen
          * ist.
          */
-        fun zeige(context: Context, meldungen: List<ch.brickinventoryapp.data.model.Preisalarm>) {
+        fun zeige(context: Context, meldungen: List<Preisalarm>) {
             if (meldungen.isEmpty()) return
             // Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung.
             // Ohne sie wirft notify() nicht, es passiert schlicht nichts —

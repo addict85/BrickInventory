@@ -13,6 +13,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ch.brickinventoryapp.di.Rotationsanlass
 
 /**
  * Wie ein Tausch ausging. VERWORFEN: Während des Tauschs wurde abgemeldet, neu
@@ -103,7 +104,7 @@ class TokenTausch(
     private val pausen: List<Long> = listOf(2_000, 10_000, 30_000),
     /** Für [faellig]: der Anwendungsbereich, damit der Tausch das Verlassen eines Bildschirms überlebt. */
     private val hintergrund: CoroutineScope,
-) : ch.brickinventoryapp.di.Rotationsanlass {
+) : Rotationsanlass {
     private val sperre = Mutex()
 
     /** Für die Kopfzeile: nicht warten, die Anfrage selbst ist gelungen. */

@@ -29,6 +29,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 import java.util.Collections
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.data.api.BrickApiService
 
 /**
  * Offline bearbeiten von Anfang bis Ende: Repository, Ausgang und Sender gegen
@@ -103,8 +105,8 @@ class OfflineBearbeitungTest {
             }
             antwort
         }.build())
-        .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
-        .build().create(ch.brickinventoryapp.data.api.BrickApiService::class.java)
+        .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
+        .build().create(BrickApiService::class.java)
     private val repo = SetsRepository(api, ResponseCache { cacheDir }, ablage)
     private val teile = TeileRepository(api, ResponseCache { cacheDir }, ablage)
     private val figuren = FigurenRepository(api, ResponseCache { cacheDir }, ablage)

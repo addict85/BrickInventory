@@ -24,6 +24,13 @@ import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
+import ch.brickinventoryapp.ui.ScrollPositionKeeper
+import ch.brickinventoryapp.ui.components.ListeUndDetail
+import ch.brickinventoryapp.ui.components.LocalOffenesDetail
+import ch.brickinventoryapp.ui.components.MitZiel
+import ch.brickinventoryapp.ui.components.detailSchluessel
+import ch.brickinventoryapp.ui.dialogs.SetItemDetailBereich
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 
 /** Navigationsziele des Bestands: Galerie, Teile, Minifiguren und ihre Details. */
 fun NavGraphBuilder.collectionGraph(u: ZielUmgebung) {
@@ -43,7 +50,7 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
             val galerieVm: GalerieViewModel = hiltViewModel()
             val state by galerieVm.state.collectAsStateWithLifecycle()
             val galerie by galerieVm.galleryState.collectAsStateWithLifecycle()
-            val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+            val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
             val barcode by erfassung.barcodeState.collectAsStateWithLifecycle()
             // Retry loading if sets are empty and server URL is available
             LaunchedEffect(state.serverUrl) {
@@ -53,7 +60,7 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
             }
             // Rollposition ausdrücklich wiederherstellen — der hochgezogene Zustand allein
             // landet verschoben.
-            ch.brickinventoryapp.ui.ScrollPositionKeeper(
+            ScrollPositionKeeper(
                 Screen.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), vm.scrollMemory)
 
             // Gallery-Search: set found → navigate to detail
@@ -81,7 +88,7 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
             }
             val ziel = this
             ReiterGeruest(stringResource(R.string.nav_collection), u) {
-                ch.brickinventoryapp.ui.components.MitZiel(ziel) {
+                MitZiel(ziel) {
                 GalleryRoute(
                     vm = galerieVm,
                     erfassung = erfassung,
@@ -137,13 +144,13 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
             // anderes Set ersetzt dieses Detail, statt sich darüber zu stapeln. Ohne
             // gemeinsames Bild: Kachel und Detail sind dann beide zu sehen.
             androidx.compose.foundation.layout.BoxWithConstraints {
-                if (galerieUnten != null && ch.brickinventoryapp.ui.listeUndDetail(maxWidth.value)) {
-                    val erfassung = ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel<ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel>()
+                if (galerieUnten != null && listeUndDetail(maxWidth.value)) {
+                    val erfassung = aktivitaetsViewModel<ErfassungViewModel>()
                     ReiterGeruest(stringResource(R.string.nav_collection), u) {
-                        ch.brickinventoryapp.ui.components.ListeUndDetail(
+                        ListeUndDetail(
                             liste = {
                                 androidx.compose.runtime.CompositionLocalProvider(
-                                    ch.brickinventoryapp.ui.components.LocalOffenesDetail provides setNumber) {
+                                    LocalOffenesDetail provides setNumber) {
                                 GalleryRoute(
                                     vm = galerieUnten,
                                     erfassung = erfassung,
@@ -161,7 +168,7 @@ private fun NavGraphBuilder.galerieZiele(u: ZielUmgebung) {
                             detail = detail,
                         )
                     }
-                } else ch.brickinventoryapp.ui.components.MitZiel(this@composable) { detail() }
+                } else MitZiel(this@composable) { detail() }
             }
         }
 }
@@ -188,7 +195,7 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
                 }
             }
             ReiterGeruest(stringResource(R.string.nav_parts), u) {
-                ch.brickinventoryapp.ui.ScrollPositionKeeper(
+                ScrollPositionKeeper(
                     Screen.Parts.rollSchluessel, partsGridState,
                     // Beide Ladevorgänge, nicht nur die Set-Teile. `manualParts != null` heisst
                     // „die Antwort ist zurück“ — auch bei null manuell erfassten Teilen. Mit
@@ -222,7 +229,7 @@ private fun NavGraphBuilder.teileZiele(u: ZielUmgebung) {
             val partsState by teileVm.partsState.collectAsStateWithLifecycle()
             LaunchedEffect(state.serverUrl) { if (state.serverUrl.isNotBlank()) { if (partsState.minifigs.isEmpty()) teileVm.loadMinifigs() } }
             ReiterGeruest(stringResource(R.string.nav_minifigs), u) {
-                ch.brickinventoryapp.ui.ScrollPositionKeeper(
+                ScrollPositionKeeper(
                     Screen.Minifigs.rollSchluessel, minifigsGridState,
                     // Auf abgeschlossen statt auf Inhalt prüfen, wie bei den Teilen: Sonst bekäme,
                     // wer keine manuell erfassten Minifiguren hat, nie eine Position
@@ -331,19 +338,19 @@ internal fun TeileListeUndDetailRoute(
         if (nebeneinander && (setItem.offen || offen != null)) {
             // Die Kachel des offenen Teils ist markiert wie in Merkliste und Galerie.
             val offenesTeil = setItem.art?.let { art ->
-                ch.brickinventoryapp.ui.components.detailSchluessel(art, setItem.nummer,
+                detailSchluessel(art, setItem.nummer,
                     setItem.colorId.takeIf { art == "part" })
             }
-            ch.brickinventoryapp.ui.components.ListeUndDetail(
+            ListeUndDetail(
                 liste = {
                     androidx.compose.runtime.CompositionLocalProvider(
-                        ch.brickinventoryapp.ui.components.LocalOffenesDetail provides offenesTeil) {
+                        LocalOffenesDetail provides offenesTeil) {
                         liste(oeffneManuell)
                     }
                 },
                 detail = {
                     if (setItem.offen) {
-                        ch.brickinventoryapp.ui.dialogs.SetItemDetailBereich(setItem, lager, teileVm, imageLoader, serverUrl, oeffneSet)
+                        SetItemDetailBereich(setItem, lager, teileVm, imageLoader, serverUrl, oeffneSet)
                     } else if (offen != null) key(offen) {
                         ManualItemDetailRoute(
                             vm = hiltViewModel<KaeufeViewModel>(),

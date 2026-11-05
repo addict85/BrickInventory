@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.mitSchrift
 
 /**
  * Der Kontofilter, wie ihn eine Bestandsansicht zeigt: links oben, mit dem
@@ -96,7 +97,7 @@ fun LagerortFilterChip(
                     style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
             },
             trailingIcon = {
-                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(mitSchrift(18.dp)))
             },
             shape = Formen.kachel,
         )
@@ -231,7 +232,7 @@ fun OwnerPicker(
         OutlinedButton(onClick = { open = true }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
             Text(stringResource(R.string.household_for_account) + ": " + current.username,
                 style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+            Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(18.dp)))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             members.forEach { m ->

@@ -8,6 +8,8 @@ import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
+import ch.brickinventoryapp.data.model.FigValuationItem
+import ch.brickinventoryapp.data.model.Minifig
 
 /**
  * Der Plattenspeicher (data/cache/ResponseCache.kt) legt API-Antworten als JSON
@@ -89,7 +91,7 @@ class ValuationPriceFieldsTest {
         val raw = """{"set_number":"10290-1","quantity":2,
             "avg_price":148.72,"qty_avg_price":141.60,
             "total_avg":"297.44","total_qty_avg":"283.20","purchase_price":120.0}"""
-        val s = json.decodeFromString(ch.brickinventoryapp.data.model.ValuationSet.serializer(), raw)
+        val s = json.decodeFromString(ValuationSet.serializer(), raw)
         assertEquals(148.72, s.avgPrice!!, 0.001)
         assertEquals("297.44", s.totalAvg)
         assertEquals(120.0, s.purchasePrice!!, 0.001)
@@ -98,7 +100,7 @@ class ValuationPriceFieldsTest {
     @Test
     fun `fehlende Felder brechen nichts`() {
         // Ältere Server liefern total_avg und purchase_price nicht.
-        val s = json.decodeFromString(ch.brickinventoryapp.data.model.ValuationSet.serializer(),
+        val s = json.decodeFromString(ValuationSet.serializer(),
             """{"set_number":"1-1","qty_avg_price":10.0,"total_qty_avg":"10.00"}""")
         assertEquals(null, s.totalAvg)
         assertEquals(null, s.purchasePrice)
@@ -121,7 +123,7 @@ class MinifigImageFieldTest {
     @Test
     fun `image_local wird gelesen und hat Vorrang`() {
         val fig = json.decodeFromString(
-            ch.brickinventoryapp.data.model.Minifig.serializer(),
+            Minifig.serializer(),
             """{"fig_number":"fig-000140","image_url":"https://cdn.rebrickable.com/x.jpg",
                 "image_local":"/images/sets/fig-000140.jpg"}"""
         )
@@ -142,7 +144,7 @@ class MinifigImageFieldTest {
     fun `ohne image_local bleibt die CDN-Adresse`() {
         // Solange der Hintergrundlauf das Bild noch nicht geholt hat.
         val fig = json.decodeFromString(
-            ch.brickinventoryapp.data.model.Minifig.serializer(),
+            Minifig.serializer(),
             """{"fig_number":"fig-1","image_url":"https://cdn.rebrickable.com/y.jpg"}"""
         )
         assertEquals(null, fig.imageLocal)
@@ -152,7 +154,7 @@ class MinifigImageFieldTest {
     @Test
     fun `auch die Finanz-Minifiguren kennen image_local`() {
         val item = json.decodeFromString(
-            ch.brickinventoryapp.data.model.FigValuationItem.serializer(),
+            FigValuationItem.serializer(),
             """{"fig_number":"fig-2","image_local":"/images/sets/fig-2.jpg"}"""
         )
         assertEquals("/images/sets/fig-2.jpg", item.imageLocal)

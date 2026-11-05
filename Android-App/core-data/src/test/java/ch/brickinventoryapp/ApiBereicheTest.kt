@@ -29,6 +29,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import retrofit2.Retrofit
+import ch.brickinventoryapp.data.api.ApiJson
 
 /**
  * Die Schnittstelle zum Server ist nach Bereichen geteilt: Jedes Repository
@@ -91,7 +92,7 @@ class ApiBereicheTest {
         server.start()
         try {
             val sets = Retrofit.Builder().baseUrl(server.url("/"))
-                .addConverterFactory(ch.brickinventoryapp.data.api.ApiJson.asConverterFactory("application/json".toMediaType()))
+                .addConverterFactory(ApiJson.asConverterFactory("application/json".toMediaType()))
                 .build().create(SetsApi::class.java)
             runBlocking { sets.getParts(page = 1, pageSize = 5, setNumber = "75192-1") }
             val pfad = server.takeRequest().path.orEmpty()

@@ -37,6 +37,11 @@ import androidx.compose.material.icons.outlined.Info
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.mengeManuell
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
 
 /**
  * Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. `valuation` ist hier nicht nullbar: FinanceScreen() steigt bei `null` vorher
@@ -85,7 +90,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFi
     val figsItems = figsValuation?.figs ?: emptyList()
     if (figsItems.isNotEmpty() && showFigs) {
         item {
-            ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.finance_section_minifigs),
+            Abschnittstitel(stringResource(R.string.finance_section_minifigs),
                 Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
         }
         items(figurZeilen(figsItems), key = { it.second.schluessel }) { (fig, zeile) ->
@@ -97,7 +102,7 @@ fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFi
             ManualFinanceRow(
                 imageUrl = figImg,
                 imageLoader = imageLoader,
-                onClick = { onManualClick("fig", fig.figNumber, ch.brickinventoryapp.ui.model.OHNE_FARBE, fig.figName) },
+                onClick = { onManualClick("fig", fig.figNumber, OHNE_FARBE, fig.figName) },
                 title = fig.figName ?: fig.figNumber,
                 blId = fig.blFigNumber ?: fig.figNumber,
                 quantity = zeile.menge,
@@ -123,7 +128,7 @@ fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showPa
     val partsItems = partsValuation?.parts ?: emptyList()
     if (partsItems.isNotEmpty() && showParts) {
         item {
-            ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.finance_section_parts),
+            Abschnittstitel(stringResource(R.string.finance_section_parts),
                 Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
         }
         // Wie bei den Sets: eine vollständige Zeile je Kaufpreis. Ein
@@ -164,7 +169,7 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
     // Section header
     if (showSets) {
     item {
-        ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.finance_section_sets),
+        Abschnittstitel(stringResource(R.string.finance_section_sets),
             Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
     }
 
@@ -194,8 +199,8 @@ fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean,
                     Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary)
                     if (rowQty > 1)
-                        Text(ch.brickinventoryapp.ui.mengeManuell(rowQty),
-                            Modifier.vorgelesenAls(ch.brickinventoryapp.ui.components.stueckzahl(rowQty)),
+                        Text(mengeManuell(rowQty),
+                            Modifier.vorgelesenAls(stueckzahl(rowQty)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     // Zustand dieser Erfassung — bei mehreren Karten
@@ -255,7 +260,7 @@ fun LazyListScope.financeCategoryFilter(
     item {
         // Beschriftet und direkt über den Zeilen: Unter dem Diagramm war unklar, ob die
         // Chips auch die Kurve filtern. Sie wählen nur die Positionen darunter.
-        ch.brickinventoryapp.ui.components.Abschnittstitel(stringResource(R.string.finance_positionen),
+        Abschnittstitel(stringResource(R.string.finance_positionen),
             Modifier.padding(top = Abstaende.klein))
     }
     item {
@@ -420,7 +425,7 @@ fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuatio
             Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
-            Icon(Icons.Outlined.Info, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)),
+            Icon(Icons.Outlined.Info, null, Modifier.size(mitSchrift(16.dp)),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                 zeilen.forEach {

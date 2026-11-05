@@ -49,6 +49,22 @@ import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
 import ch.brickinventoryapp.ui.components.ZustandsHinweis
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.ErfassenFab
+import ch.brickinventoryapp.ui.components.FabPlatz
+import ch.brickinventoryapp.ui.components.LesbareSpalten
+import ch.brickinventoryapp.ui.components.LocalOffenesDetail
+import ch.brickinventoryapp.ui.components.OfflineHinweis
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.detailSchluessel
+import ch.brickinventoryapp.ui.components.farbUebersetzer
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.katalogName
+import ch.brickinventoryapp.ui.components.kategorieUebersetzer
+import ch.brickinventoryapp.ui.model.LagerortAnsicht
+import ch.brickinventoryapp.ui.model.MitgliedAnsicht
 
 /** Was der Teile- und der Figurenreiter zeigen; die Routen sammeln es aus den Flüssen. */
 data class TeileZustand(
@@ -97,7 +113,7 @@ fun PartsScreen(
     val partsState = zustand.partsState
     val lagerState = zustand.lagerState
     // Das Teil, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
-    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
+    val gewaehlt = LocalOffenesDetail.current
 
     val parts = partsState.parts
     val stats = partsState.partsStats
@@ -109,8 +125,8 @@ fun PartsScreen(
     val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: "N"
     val householdMembers = blick.householdMembers
-    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key]
-        ?: ch.brickinventoryapp.data.ScopeFilter.ALL
+    val scopeMode = blick.scopeModes[ScopeFilter.View.PARTS.key]
+        ?: ScopeFilter.ALL
     val manualParts = partsState.manualParts ?: emptyList()
 
     // Aktualisieren behält den Suchtext — sonst spränge die Liste auf den ganzen
@@ -119,10 +135,10 @@ fun PartsScreen(
     val onRefresh: () -> Unit = { aktionen.loadParts() }
     val onSearch: (String) -> Unit = aktionen::setPartsQuery
     val onLoadMore: (Int) -> Unit = { aktionen.loadParts(page = it) }
-    val onScopeChange: (String) -> Unit = { aktionen.setScope(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
+    val onScopeChange: (String) -> Unit = { aktionen.setScope(ScopeFilter.View.PARTS, it) }
     val lagerorte = lagerState.orte
-    val lagerModus = lagerState.modi[ch.brickinventoryapp.data.ScopeFilter.View.PARTS.key] ?: ""
-    val onLagerChange: (String) -> Unit = { aktionen.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.PARTS, it) }
+    val lagerModus = lagerState.modi[ScopeFilter.View.PARTS.key] ?: ""
+    val onLagerChange: (String) -> Unit = { aktionen.setLagerFilter(ScopeFilter.View.PARTS, it) }
     val ansicht = partsState.partsView
     val onAddPart: (String, Int, String?, String?, Int, Double?, String?, Int?, String?) -> Unit =
         { num, colorId, colorName, colorHex, qty, unitPrice, cond, owner, ort ->
@@ -152,7 +168,7 @@ fun PartsScreen(
     // Farbe und Kategorie — die beiden Filterlisten der Webapp (03-parts.js,
     // loadPartsFilters). Die Umrechnung auf die gemeinsame Form steht hier: Die beiden
     // Antworten tragen verschiedene Feldnamen, alles andere ist gleich.
-    val farbe = ch.brickinventoryapp.ui.components.farbUebersetzer()
+    val farbe = farbUebersetzer()
     val farbEintraege = remember(partsState.partsFilterColors, farbe) {
         partsState.partsFilterColors.mapNotNull { f ->
             f.colorName?.takeIf { it.isNotBlank() }?.let { name ->
@@ -163,7 +179,7 @@ fun PartsScreen(
             }
         }
     }
-    val kategorieText = ch.brickinventoryapp.ui.components.kategorieUebersetzer()
+    val kategorieText = kategorieUebersetzer()
     val kategorieEintraege = remember(partsState.partsCategories, kategorieText) {
         partsState.partsCategories.mapNotNull { k ->
             k.categoryName?.takeIf { it.isNotBlank() }?.let { wert ->
@@ -173,7 +189,7 @@ fun PartsScreen(
     }
 
     // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
-    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val gross = grosseSchrift()
     val erfassenText = stringResource(R.string.parts_add)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
@@ -193,9 +209,9 @@ fun PartsScreen(
             erfassen = erfassenText to { showAddDialog = true },
         )
 
-        ch.brickinventoryapp.ui.components.OfflineHinweis(partsState.teileOfflineStand)
+        OfflineHinweis(partsState.teileOfflineStand)
         if (anzeige == Ladeanzeige.LAEDT) {
-            SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(120.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
+            SkelettRaster(LesbareSpalten(120.dp), kachelHoehe = 164.dp, abstand = Abstaende.klein)
         } else if (anzeige == Ladeanzeige.FEHLER) {
             ZustandsHinweis { FehlerHinweis(partsState.partsFehler, onRefresh, partsState.partsFehlerKlasse) }
         } else if (anzeige != Ladeanzeige.LISTE) {
@@ -214,10 +230,10 @@ fun PartsScreen(
             PullToRefreshBox(isRefreshing = isLoading && parts.isNotEmpty(), onRefresh = onRefresh) {
                 LazyVerticalGrid(
                     state = gridState,
-                    columns = ch.brickinventoryapp.ui.components.LesbareSpalten(120.dp),
+                    columns = LesbareSpalten(120.dp),
                     // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
                     contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
-                        end = Abstaende.mittel, bottom = ch.brickinventoryapp.ui.components.FabPlatz),
+                        end = Abstaende.mittel, bottom = FabPlatz),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
@@ -263,7 +279,7 @@ fun PartsScreen(
                         Bewegt {
                             if (ansicht == "table") PartTableRow(part, serverUrl, imageLoader, oeffne)
                             else PartCard(part, serverUrl, imageLoader, oeffne,
-                                ausgewaehlt = gewaehlt == ch.brickinventoryapp.ui.components.detailSchluessel("part", part.partNumber, part.colorId))
+                                ausgewaehlt = gewaehlt == detailSchluessel("part", part.partNumber, part.colorId))
                         }
                     }
                     if (isLoading) {
@@ -280,7 +296,7 @@ fun PartsScreen(
         }
     }
 
-        if (!gross) ch.brickinventoryapp.ui.components.ErfassenFab(
+        if (!gross) ErfassenFab(
             erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
@@ -326,10 +342,10 @@ fun PartsScreen(
 private fun TeileFilterBlatt(
     aktionen: TeileAktionen,
     partsState: PartsUiState,
-    householdMembers: List<ch.brickinventoryapp.ui.model.MitgliedAnsicht>,
+    householdMembers: List<MitgliedAnsicht>,
     scopeMode: String,
     onScopeChange: (String) -> Unit,
-    lagerorte: List<ch.brickinventoryapp.ui.model.LagerortAnsicht>,
+    lagerorte: List<LagerortAnsicht>,
     lagerModus: String,
     onLagerChange: (String) -> Unit,
     farbEintraege: List<TeileFilterEintrag>,
@@ -341,7 +357,7 @@ private fun TeileFilterBlatt(
     val kategorie = partsState.partsCategoryFilter
     // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
     val zuruecksetzen: () -> Unit = {
-        if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ch.brickinventoryapp.data.ScopeFilter.ALL)
+        if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
         if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
         if (ersatz.isNotBlank()) aktionen.setPartsSpare("")
         if (farbe.isNotBlank()) aktionen.setPartsColorFilter("")
@@ -413,7 +429,7 @@ fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: I
         waehrung = waehrung,
         onEdit = onEdit,
         farbe = farbe,
-        farbname = part.colorName?.let { ch.brickinventoryapp.ui.components.farbUebersetzer()(it) },
+        farbname = part.colorName?.let { farbUebersetzer()(it) },
     )
 }
 
@@ -433,8 +449,8 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
     // Ab grosser Schrift eine Listenzeile wie die Sets: Das Bild über die volle Breite
     // liess ein Teil je Bildschirm. Die Menge rückt dann vom Bild in den Text.
-    val zeile = ch.brickinventoryapp.ui.components.grosseSchrift()
-    val weich = !ch.brickinventoryapp.ui.components.bewegungReduziert()
+    val zeile = grosseSchrift()
+    val weich = !bewegungReduziert()
     val menge: @Composable () -> Unit = {
         Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.marke) {
             Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp)
@@ -448,7 +464,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     // Bild über einer breiten Kachel.
     val bildflaeche: @Composable (Modifier) -> Unit = { flaeche ->
         Box(flaeche) {
-            ch.brickinventoryapp.ui.components.ProduktBild(
+            ProduktBild(
                 model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(weich).build() },
                 imageLoader = imageLoader,
                 // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
@@ -484,7 +500,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold)
-            Text(part.partName?.let { ch.brickinventoryapp.ui.components.katalogName(it) }
+            Text(part.partName?.let { katalogName(it) }
                     ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
@@ -493,7 +509,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 minLines = if (zeile) 1 else 2,
                 maxLines = if (zeile) 4 else 2, overflow = TextOverflow.Ellipsis)
             part.colorName?.let {
-                Text(ch.brickinventoryapp.ui.components.farbUebersetzer()(it), style = MaterialTheme.typography.bodySmall,
+                Text(farbUebersetzer()(it), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
@@ -529,7 +545,7 @@ private val ZEILE_BILD_BREITE = 96.dp
 /** Sektions-Überschrift innerhalb der Grids (Manuell erfasst / Aus Sets). */
 @Composable
 fun SectionHeader(text: String) {
-    ch.brickinventoryapp.ui.components.Abschnittstitel(text,
+    Abschnittstitel(text,
         Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig))
 }
 
@@ -548,7 +564,7 @@ fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     // Kategorie und Sets in einer Zeile, mit „·" getrennt — und nur, was da
     // ist. Ein leeres „ · " sieht nach einem fehlenden Wert aus.
     val ersatzteil = stringResource(R.string.parts_spare_tag)
-    val kategorie = ch.brickinventoryapp.ui.components.kategorieUebersetzer()
+    val kategorie = kategorieUebersetzer()
     val zweite = listOfNotNull(
         part.categoryName?.takeIf { it.isNotBlank() }?.let(kategorie),
         part.inSets?.takeIf { it.isNotBlank() }?.replace(",", ", "),

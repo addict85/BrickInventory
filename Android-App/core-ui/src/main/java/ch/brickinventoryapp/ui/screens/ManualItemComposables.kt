@@ -34,6 +34,12 @@ import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.mengeManuell
 
 /**
  * Gemeinsame Composables für manuell erfasste Teile UND Minifiguren.
@@ -50,7 +56,7 @@ fun AcquisitionSummarySection(
 ) {
     // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
     // „CHF 700.00“ so wenig Breite, dass der Betrag Ziffer für Ziffer umbrach.
-    val untereinander = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val untereinander = grosseSchrift()
     val ausrichtung = if (untereinander) Alignment.Start else Alignment.End
     val kaeufe: @Composable () -> Unit = {
         Column(horizontalAlignment = ausrichtung) {
@@ -66,7 +72,7 @@ fun AcquisitionSummarySection(
                 modifier = Modifier.heightIn(min = 28.dp),
                 colors = nebenKnopfFarben(),
                 border = nebenKnopfRand()) {
-                Icon(Icons.Default.Edit, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(14.dp)))
+                Icon(Icons.Default.Edit, null, Modifier.size(mitSchrift(14.dp)))
                 Spacer(Modifier.width(Abstaende.winzig))
                 Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
             }
@@ -105,7 +111,7 @@ fun AcquisitionSummarySection(
 private fun KaufZeile(acq: KaufAnsicht, currency: String) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         val mitte = Modifier.align(Alignment.CenterVertically)
-        Text(ch.brickinventoryapp.ui.mengeManuell(acq.quantity), mitte.vorgelesenAls(stueckzahl(acq.quantity)),
+        Text(mengeManuell(acq.quantity), mitte.vorgelesenAls(stueckzahl(acq.quantity)),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(mitte) { ConditionBadge(acq.condition) }
@@ -192,7 +198,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
         Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (icon != null) Icon(icon, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+            if (icon != null) Icon(icon, null, Modifier.size(mitSchrift(16.dp)))
             Text(text, style = MaterialTheme.typography.labelMedium)
         }
     }
@@ -302,8 +308,8 @@ fun ManuelleKachel(
     ) {
         Column {
             Box(Modifier.fillMaxWidth().height(76.dp)) {
-                ch.brickinventoryapp.ui.components.ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert()).build() },
+                ProduktBild(
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
                     imageLoader = imageLoader,
                     // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
                     contentDescription = null,
@@ -323,7 +329,7 @@ fun ManuelleKachel(
                     // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
                     // sondern die Regel der Webapp — `man-tile` traegt dort ein
                     // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
-                    Text(ch.brickinventoryapp.ui.mengeManuell(menge), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp).vorgelesenAls(stueckzahl(menge)),
+                    Text(mengeManuell(menge), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp).vorgelesenAls(stueckzahl(menge)),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -332,7 +338,7 @@ fun ManuelleKachel(
                         .clip(CircleShape).background(farbe))
                 }
                 Row(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_edit)) {
+                    MitTooltip(stringResource(R.string.common_edit)) {
                         IconButton(onClick = onEdit) {
                             Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
                                 Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)

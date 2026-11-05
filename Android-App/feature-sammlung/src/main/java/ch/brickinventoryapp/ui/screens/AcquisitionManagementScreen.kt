@@ -36,6 +36,9 @@ import ch.brickinventoryapp.ui.viewmodel.KaeufeViewModel
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
+import ch.brickinventoryapp.util.fmtEingabe
 
 /**
  * Eigener Screen für die Kaufpreis-Verwaltung — analog zum acq-modal der Webapp,
@@ -48,7 +51,7 @@ fun AcquisitionManagementRoute(
     vm: KaeufeViewModel,
     type: String,
     id: String,
-    colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
+    colorId: Int = OHNE_FARBE,
     title: String,
     onBack: () -> Unit
 ) {
@@ -72,7 +75,7 @@ fun AcquisitionManagementScreen(
     aktionen: KaeufeAktionen,
     type: String,           // "set" | "part" | "fig"
     id: String,             // setNumber / partNumber / figNumber
-    colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
+    colorId: Int = OHNE_FARBE,
     title: String,
     onBack: () -> Unit
 ) {
@@ -108,7 +111,7 @@ fun AcquisitionManagementScreen(
             TopAppBar(
                 title = { Text(title, fontWeight = FontWeight.Bold, maxLines = 1) },
                 navigationIcon = {
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+                    MitTooltip(stringResource(R.string.common_back)) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                         }
@@ -266,7 +269,7 @@ private fun AcquisitionManagementRow(
 ) {
     var qtyText   by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
     var priceText by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { ch.brickinventoryapp.util.fmtEingabe(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { fmtEingabe(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
     val geschaetztText = stringResource(R.string.acq_preis_geschaetzt)
@@ -277,7 +280,7 @@ private fun AcquisitionManagementRow(
     // DisposableEffect fürs Zurücknavigieren. lastSaved verhindert doppeltes Speichern
     // und das Löschen durch blosses Antippen eines leeren Feldes.
     var lastSavedPrice by remember(acquisition.id) {
-        mutableStateOf(acquisition.effectivePrice?.let { ch.brickinventoryapp.util.fmtEingabe(it) } ?: "")
+        mutableStateOf(acquisition.effectivePrice?.let { fmtEingabe(it) } ?: "")
     }
     var lastSavedQty by remember(acquisition.id) { mutableStateOf(acquisition.quantity.toString()) }
 
@@ -418,7 +421,7 @@ private fun AcquisitionManagementRow(
         )
 
         // Delete
-        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.acq_delete_title)) {
+        MitTooltip(stringResource(R.string.acq_delete_title)) {
             IconButton(onClick = { showDeleteConfirm = true }) {
                 Icon(Icons.Default.Delete, stringResource(R.string.acq_delete_title),
                     tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))

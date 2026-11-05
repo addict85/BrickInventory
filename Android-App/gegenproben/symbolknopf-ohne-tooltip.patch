@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.IconButtonLabelTest
 Rot: jeder Symbolknopf zeigt seinen Namen als Tooltip
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Unterseite.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Unterseite.kt
-index fdc90a1..7c7ca82 100644
+index 142ba3e..a796f1c 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Unterseite.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Unterseite.kt
-@@ -44,11 +44,9 @@ fun Unterseite(
+@@ -46,11 +46,9 @@ fun Unterseite(
                  // Überschrift der Unterseite: Vorleseprogramme springen dorthin.
                  title = { Text(titel, maxLines = 1, modifier = Modifier.semantics { heading() }) },
                  navigationIcon = {
--                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.common_back)) {
+-                    MitTooltip(stringResource(R.string.common_back)) {
 -                        IconButton(onClick = onZurueck) {
 -                            Icon(Icons.AutoMirrored.Filled.ArrowBack,
 -                                 stringResource(R.string.common_back))

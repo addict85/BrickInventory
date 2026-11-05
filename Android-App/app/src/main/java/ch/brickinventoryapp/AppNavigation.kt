@@ -29,6 +29,15 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.viewmodel.aktivitaetsViewModel
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.nav.Reiter
+import ch.brickinventoryapp.nav.Rollzustaende
+import ch.brickinventoryapp.nav.ZielUmgebung
+import ch.brickinventoryapp.ui.components.UebergangsRahmen
+import ch.brickinventoryapp.ui.dialogs.BarcodeResultRoute
+import ch.brickinventoryapp.ui.dialogs.SetPruefungRoute
+import ch.brickinventoryapp.ui.dialogs.UpdateRoute
+import ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 
 // Die Navigationsziele liegen seit der Aufteilung in nav/ (eigenes Paket).
 
@@ -46,16 +55,16 @@ fun BrickInventoryRoute(
     // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
     // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
     val state by vm.state.collectAsStateWithLifecycle()
-    val erfassung: ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel = aktivitaetsViewModel()
+    val erfassung: ErfassungViewModel = aktivitaetsViewModel()
     val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
     val selbstUpdate: UpdateViewModel = aktivitaetsViewModel()
-    val csvImport: ch.brickinventoryapp.ui.viewmodel.CsvImportViewModel = aktivitaetsViewModel()
+    val csvImport: CsvImportViewModel = aktivitaetsViewModel()
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
     // Rollzustände oberhalb des NavHost (siehe Rollzustaende). Der Katalog merkt sich
     // seine Position im ViewModel, weil seine Plätze beim Zurückkommen noch nicht
     // geladen sind.
-    val rollen = ch.brickinventoryapp.nav.Rollzustaende(
+    val rollen = Rollzustaende(
         galerie = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
         teile = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
         minifiguren = androidx.compose.foundation.lazy.grid.rememberLazyGridState(),
@@ -111,19 +120,19 @@ fun BrickInventoryRoute(
     // ── Barcode-Bestätigung — über jedem Bildschirm ──
     // Der Dialog steht in ui/dialogs/BarcodeResultDialog.kt; hier nur, wann er erscheint.
     if (barcodeState.result != null) {
-        ch.brickinventoryapp.ui.dialogs.BarcodeResultRoute(erfassung, imageLoader)
+        BarcodeResultRoute(erfassung, imageLoader)
     }
 
     // ── „Wird geprüft“ — über allem, auch über dem Scanner-Weg ──
     // Hier, weil die Prüfung zu keinem einzelnen Bildschirm gehört: Sie beginnt im Scanner, der sich sofort schliesst, und läuft über Galerie, Teileliste oder Katalog weiter.
-    ch.brickinventoryapp.ui.dialogs.SetPruefungRoute(erfassung)
+    SetPruefungRoute(erfassung)
 
     // ── „Es gibt eine neue Fassung“ — ebenfalls über allem ──
     //
     // Ein Hinweis beim Start mit Ja/Nein, weil ein Punkt in den Einstellungen leicht
     // übersehen wird. Hier, weil die Frage der ganzen App gilt; die auslösende Prüfung
     // steht ein paar Zeilen weiter oben.
-    ch.brickinventoryapp.ui.dialogs.UpdateRoute(selbstUpdate)
+    UpdateRoute(selbstUpdate)
 
     // Eine angetippte Preisalarm-Meldung öffnet ihr Set — hier, weil es den
     // NavController erst in dieser Composition gibt. Nur angemeldet; sonst bleibt
@@ -142,7 +151,7 @@ fun BrickInventoryRoute(
 
     // Der gemeinsame Raum für Elementübergänge (Galerie → Set-Detail); das
     // vorhersagbare Zurück spielt denselben Übergang rückwärts.
-    ch.brickinventoryapp.ui.components.UebergangsRahmen {
+    UebergangsRahmen {
     // Dezente Übergänge: kurz einblenden und ein Stück nachrücken, zurück in die
     // Gegenrichtung. Die Vorgabe (700 ms reines Überblenden) wirkte träge.
     NavHost(navController, startDestination = startDest,
@@ -153,14 +162,14 @@ fun BrickInventoryRoute(
     ) {
         // Kein Zustand hinein: Der NavHost-Builder läuft nur einmal, ein durchgereichter
         // Wert bliebe die Momentaufnahme des ersten Frames. Die Ziele lesen selbst.
-        alleZiele(ch.brickinventoryapp.nav.ZielUmgebung(navController, imageLoader, bottomNavItems,
+        alleZiele(ZielUmgebung(navController, imageLoader, bottomNavItems,
             snackbarHostState, rollen))
     }
     }
 }
 
 /** Alle Ziele der App; der NavHost und ErreichbareRoutenTest bauen denselben Graphen. */
-internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ch.brickinventoryapp.nav.ZielUmgebung) {
+internal fun androidx.navigation.NavGraphBuilder.alleZiele(u: ZielUmgebung) {
     authGraph(u.navController)
     collectionGraph(u)
     catalogGraph(u)
@@ -180,7 +189,7 @@ internal fun startRoute(ziel: StartZiel): Screen = when (ziel) {
  * sonst liest TalkBack doppelt. Merkliste vor dem Katalog, wie in der Webapp.
  */
 @Composable
-internal fun reiterDerLeiste(): List<ch.brickinventoryapp.nav.Reiter> {
+internal fun reiterDerLeiste(): List<Reiter> {
     val sammlung = stringResource(R.string.nav_collection)
     val finanzen = stringResource(R.string.nav_finance)
     val merkliste = stringResource(R.string.nav_wanted)

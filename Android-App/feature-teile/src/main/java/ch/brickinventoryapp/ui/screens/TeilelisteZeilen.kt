@@ -1,5 +1,7 @@
 package ch.brickinventoryapp.ui.screens
 
+import ch.brickinventoryapp.ui.model.OHNE_FARBE
+
 // Die Zeilen der temporären Teileliste. Eigene Datei ohne Compose, damit die
 // Auflösung eines Sets (ui/Teileliste.kt) ohne Oberfläche prüfbar ist.
 
@@ -14,7 +16,7 @@ data class PlPart(
     val partName: String,
     val colorName: String,
     val colorHex: String?,
-    val colorId: Int = ch.brickinventoryapp.ui.model.OHNE_FARBE,
+    val colorId: Int = OHNE_FARBE,
     val blColorId: Int? = null,
     var quantity: Int,
     val imageUrl: String?,

@@ -6,6 +6,7 @@ import ch.brickinventoryapp.ui.fehlerTextBrauchtCode
 import ch.brickinventoryapp.ui.fehlerklasse
 import ch.brickinventoryapp.ui.fehlerTextId
 import org.junit.Test
+import ch.brickinventoryapp.data.repository.Result
 
 /**
  * Jede Fehlerursache bekommt einen eigenen Satz — ausgeführt, nicht gelesen.
@@ -77,7 +78,7 @@ class FehlerTexteTest {
     @Test
     fun `jede Fehlerart hat eine passende Klasse`() {
         fun fehler(art: Fehlerart?, code: Int? = null, abgemeldet: Boolean = false) =
-            ch.brickinventoryapp.data.repository.Result.Error("", unauthorized = abgemeldet, art = art, httpCode = code)
+            Result.Error("", unauthorized = abgemeldet, art = art, httpCode = code)
         val erwartet = mapOf(
             Fehlerart.NETZ to Fehlerklasse.OFFLINE, Fehlerart.ZEIT to Fehlerklasse.OFFLINE,
             Fehlerart.VERBINDUNG_BEENDET to Fehlerklasse.OFFLINE, Fehlerart.SERVER to Fehlerklasse.SERVER,

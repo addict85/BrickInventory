@@ -26,6 +26,12 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import ch.brickinventoryapp.ui.theme.helligkeitGilt
+import ch.brickinventoryapp.util.NetworkPolicy
+import ch.brickinventoryapp.util.UpdateStand
+import ch.brickinventoryapp.util.UpdateStandAblage
+import ch.brickinventoryapp.util.pinSchluessel
+import ch.brickinventoryapp.data.cache.CacheBesitzer
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "app_prefs")
 
@@ -35,8 +41,8 @@ class PreferencesManager @Inject constructor(
     private val tresor: TokenVerschluesselung,
     /** Die Spiegel laufen, solange die App lebt; kein eigener Bereich ohne Besitzer. */
     @param:ApplicationScope private val prefsScope: CoroutineScope,
-) : Anmeldeablage, ch.brickinventoryapp.data.cache.CacheBesitzer, Entwertungsquelle,
-    ch.brickinventoryapp.util.UpdateStandAblage, GeraeteEinstellungen, Sitzungsablage,
+) : Anmeldeablage, CacheBesitzer, Entwertungsquelle,
+    UpdateStandAblage, GeraeteEinstellungen, Sitzungsablage,
     Darstellungsablage, Vertrauensablage, Zugangsdaten {
     companion object {
         /**
@@ -276,7 +282,7 @@ class PreferencesManager @Inject constructor(
         // Zuerst in den Speicher, dann auf die Platte (siehe serverUrlState).
         // Ein anderer Server beendet die Sitzung: Der Token gehört dem alten.
         val neueHerkunft: suspend () -> Boolean = {
-            val anders = !ch.brickinventoryapp.util.NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized)
+            val anders = !NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized)
             // Laufende Aufrufe gehören dem alten Server; ihre Antworten sollen nichts mehr auslösen.
             if (anders) serverwechselHoerer.forEach { it() }
             anders
@@ -286,8 +292,8 @@ class PreferencesManager @Inject constructor(
             // Host ist eine andere Anwendung, also zählt die bisherige Adresse mit.
             val herkunft = _tokenHerkunftState.value ?: serverUrlJetzt()
             val anderer = tokenJetzt().isNotBlank() &&
-                (!ch.brickinventoryapp.util.NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
-                    !ch.brickinventoryapp.util.NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized))
+                (!NetworkPolicy.gleicheHerkunft(herkunft, normalized) ||
+                    !NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized))
             if (anderer) { _authTokenState.value = ""; _tokenHerkunftState.value = null }
             _serverUrlState.value = normalized
             context.dataStore.edit {
@@ -304,7 +310,7 @@ class PreferencesManager @Inject constructor(
      * Zug entfernt — sonst bliebe er auslesbar, und die Verschlüsselung wäre Zierde.
      */
     override suspend fun saveAuthToken(token: String) = tokenSchranke.schreibe {
-        schreibeToken(token, ch.brickinventoryapp.util.NetworkPolicy.herkunft(serverUrlJetzt()), angemeldetAm = System.currentTimeMillis())
+        schreibeToken(token, NetworkPolicy.herkunft(serverUrlJetzt()), angemeldetAm = System.currentTimeMillis())
     }
 
     /**
@@ -339,7 +345,7 @@ class PreferencesManager @Inject constructor(
     /** Für den Tausch: Herkunft wie im Wächter — ohne Bindung die eingetragene Adresse. */
     suspend fun tokenStand(): TokenStand {
         val herkunft = _tokenHerkunftState.value ?: context.dataStore.data.first()[TOKEN_HERKUNFT]
-            ?: ch.brickinventoryapp.util.NetworkPolicy.herkunft(serverUrlJetzt())
+            ?: NetworkPolicy.herkunft(serverUrlJetzt())
         return TokenStand(tokenJetzt(), herkunft, tokenSchranke.generation)
     }
 
@@ -467,7 +473,7 @@ class PreferencesManager @Inject constructor(
      * System, Hell oder Dunkel — je Gerät. Im Spiegel, weil es wie das Design schon
      * das erste Bild bestimmt; ohne neue Wahl gilt die frühere „dunkel nach System“.
      */
-    override fun helligkeit(): String = ch.brickinventoryapp.ui.theme.helligkeitGilt(
+    override fun helligkeit(): String = helligkeitGilt(
         designSpiegel.getString(HELLIGKEIT, null),
         if (designSpiegel.contains(DUNKEL_NACH_SYSTEM)) designSpiegel.getBoolean(DUNKEL_NACH_SYSTEM, true) else null)
     override fun setzeHelligkeit(wahl: String) {
@@ -546,13 +552,13 @@ class PreferencesManager @Inject constructor(
         designSpiegel.edit { remove(ENTWERTUNG_GESCHEITERT) }
     }
 
-    override suspend fun updateStand(): ch.brickinventoryapp.util.UpdateStand? {
+    override suspend fun updateStand(): UpdateStand? {
         val p = context.dataStore.data.first()
         val code = p[UPDATE_HOECHSTER_CODE] ?: return null
-        return ch.brickinventoryapp.util.UpdateStand(code, p[UPDATE_AUSGESTELLT] ?: 0L)
+        return UpdateStand(code, p[UPDATE_AUSGESTELLT] ?: 0L)
     }
 
-    override suspend fun merkeUpdateStand(stand: ch.brickinventoryapp.util.UpdateStand) {
+    override suspend fun merkeUpdateStand(stand: UpdateStand) {
         context.dataStore.edit {
             it[UPDATE_HOECHSTER_CODE] = stand.hoechsterCode
             it[UPDATE_AUSGESTELLT] = stand.ausgestellt
@@ -563,7 +569,7 @@ class PreferencesManager @Inject constructor(
     override suspend fun entwertungsauftrag(): Entwertungsauftrag? {
         val geheim = context.dataStore.data.first()[AUTH_TOKEN_ENC] ?: return null
         val server = serverUrlJetzt().ifBlank { return null }
-        return Entwertungsauftrag(server, geheim, ch.brickinventoryapp.util.pinSchluessel(server)?.let(::pin))
+        return Entwertungsauftrag(server, geheim, pinSchluessel(server)?.let(::pin))
     }
 
     suspend fun clearSession() = tokenSchranke.schreibe {

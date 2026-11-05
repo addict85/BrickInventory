@@ -49,6 +49,21 @@ import androidx.compose.runtime.mutableIntStateOf
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.ALARM_ZUSTAND_VORGABE
+import ch.brickinventoryapp.ui.components.GemeinsamesBild
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.model.PreisalarmAnsicht
+import ch.brickinventoryapp.ui.theme.Lesebreite
+import ch.brickinventoryapp.util.eigeneAdresse
+import ch.brickinventoryapp.util.fmtEingabe
+import ch.brickinventoryapp.util.fmtInt
+import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.oeffneExtern
 
 /**
  * Anleitungen — ansehen, hinzufügen und entfernen. Die Karte steht auch ohne
@@ -87,7 +102,7 @@ fun LazyListScope.setDetailInstructionsSection(
                             // Backstack, als Text unter der Anleitung und im Zugriffsprotokoll. Der
                             // In-App-Betrachter lädt über den geteilten Client, der den
                             // Authorization-Kopf setzt (di/ServerClient.kt).
-                            val eigene = instr.localPath?.let { ch.brickinventoryapp.util.eigeneAdresse(serverUrl, it) }
+                            val eigene = instr.localPath?.let { eigeneAdresse(serverUrl, it) }
                             val openUrl = eigene ?: instr.url
 
                             if (idx > 0) HorizontalDivider(
@@ -101,7 +116,7 @@ fun LazyListScope.setDetailInstructionsSection(
                             val oeffneAnleitung: () -> Unit = {
                                 if (eigene != null) {
                                     onOpenPdf(eigene, instr.description ?: "")
-                                } else if (!ch.brickinventoryapp.util.oeffneExtern(ctx, instr.url)) {
+                                } else if (!oeffneExtern(ctx, instr.url)) {
                                     // Rückmeldung statt Stille, siehe CatalogDetailScreen.
                                     onKeineApp()
                                 }
@@ -169,7 +184,7 @@ fun LazyListScope.setDetailInstructionsSection(
                                 // treffen.
                                 val id = instr.id
                                 if (id != null && instr.isManual) {
-                                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.instr_delete)) {
+                                    MitTooltip(stringResource(R.string.instr_delete)) {
                                         IconButton(
                                             onClick = { onAnleitungLoeschen(id) },
                                         ) {
@@ -189,11 +204,11 @@ fun LazyListScope.setDetailInstructionsSection(
                         OutlinedButton(
                             onClick = onAnleitungWaehlen,
                             modifier = Modifier.padding(top = Abstaende.klein)
-                                .widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.bedienung).fillMaxWidth(),
+                                .widthIn(max = Lesebreite.bedienung).fillMaxWidth(),
                             colors = nebenKnopfFarben(),
                             border = nebenKnopfRand(),
                         ) {
-                            Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                            Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.instr_upload))
                         }
@@ -261,7 +276,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, la
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium)
             }
-            if (ch.brickinventoryapp.ui.components.grosseSchrift()) {
+            if (grosseSchrift()) {
                 Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
                        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
                     lagerBezeichnung()
@@ -272,7 +287,7 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, la
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-            } else Row(Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.wertzeile).fillMaxWidth()
+            } else Row(Modifier.widthIn(max = Lesebreite.wertzeile).fillMaxWidth()
                     .padding(vertical = Abstaende.haar),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically) {
@@ -311,13 +326,13 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, la
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
                 ) {
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_decrease)) {
+                    MitTooltip(stringResource(R.string.cd_qty_decrease)) {
                         FilledTonalIconButton(
                             onClick = { if (qty > 1) { qty--; takt(); aktionen.aendereMengeUm(set.setNumber, -1) } },
                             shape = Formen.etikett
                         ) {
                             Icon(Icons.Default.Remove, stringResource(R.string.cd_qty_decrease),
-                                Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                                Modifier.size(mitSchrift(18.dp)))
                         }
                     }
                     Text(
@@ -327,13 +342,13 @@ fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, la
                         modifier = Modifier.widthIn(min = 24.dp),
                         textAlign = TextAlign.Center
                     )
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_qty_increase)) {
+                    MitTooltip(stringResource(R.string.cd_qty_increase)) {
                         FilledTonalIconButton(
                             onClick = { qty++; takt(); aktionen.aendereMengeUm(set.setNumber, 1) },
                             shape = Formen.etikett
                         ) {
                             Icon(Icons.Default.Add, stringResource(R.string.cd_qty_increase),
-                                Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                                Modifier.size(mitSchrift(18.dp)))
                         }
                     }
                 }
@@ -376,7 +391,7 @@ fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
         val labelTheme    = stringResource(R.string.detail_theme)
         val chips = buildList {
             set.year?.let     { add(labelYear     to "$it")  }
-            set.pieces?.let   { add(labelPieces   to ch.brickinventoryapp.util.fmtInt(it)) }
+            set.pieces?.let   { add(labelPieces   to fmtInt(it)) }
             set.minifigs?.let { add(labelMinifigs to "$it")  }
             set.theme?.let    { add(labelTheme    to it)     }
         }
@@ -410,13 +425,13 @@ fun LazyListScope.setDetailHeroImage(
             elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebungHoch),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
-            ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
-                ch.brickinventoryapp.ui.components.ProduktBild(
+            GemeinsamesBild(set.setNumber) { bild ->
+                ProduktBild(
                     model = imageUrl?.let {
                         coil3.request.ImageRequest.Builder(LocalContext.current)
                             .data(it)
                             .memoryCacheKeyExtra("retry", detailRetry.intValue.toString())
-                            .crossfade(!ch.brickinventoryapp.ui.components.bewegungReduziert())
+                            .crossfade(!bewegungReduziert())
                             .build()
                     },
                     imageLoader = imageLoader,
@@ -455,7 +470,7 @@ fun LazyListScope.setDetailHeroImage(
  */
 fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
-    alarme: List<ch.brickinventoryapp.ui.model.PreisalarmAnsicht>,
+    alarme: List<PreisalarmAnsicht>,
     currency: String,
     onSetze: (setNumber: String, richtung: String, roh: String, zustand: String) -> Unit,
     /** Aus, wo die Liste selbst schon einen Rand hat (Merkposten-Detail). */
@@ -466,7 +481,7 @@ fun LazyListScope.setDetailAlarmSection(
         // um ein Vielfaches auseinander; wer ein gebrauchtes Exemplar sucht,
         // hatte bisher keine Moeglichkeit, darauf zu warten.
         var zustand by rememberSaveable {
-            mutableStateOf(ch.brickinventoryapp.ui.ALARM_ZUSTAND_VORGABE)
+            mutableStateOf(ALARM_ZUSTAND_VORGABE)
         }
         val alarm = alarme.firstOrNull { it.condition == zustand }
         SectionCard(title = stringResource(R.string.detail_alert), aussenAbstand = aussenAbstand) {
@@ -475,7 +490,7 @@ fun LazyListScope.setDetailAlarmSection(
             // hier gespeichert, legte schon das Umschalten einen Alarm im
             // neuen Zustand an. Dass `alarm` oben am Zustand haengt, erledigt
             // das Laden von selbst: Die Liste traegt beide.
-            ch.brickinventoryapp.ui.components.SegmentWahl(
+            SegmentWahl(
                 optionen = listOf("N" to stringResource(R.string.condition_new), "U" to stringResource(R.string.condition_used)),
                 gewaehlt = zustand,
                 onWahl = { zustand = it },
@@ -488,13 +503,13 @@ fun LazyListScope.setDetailAlarmSection(
                 mutableStateOf(alarm?.richtung ?: "unter")
             }
             var schwelle by rememberSaveable(alarm?.schwelle) {
-                mutableStateOf(alarm?.let { if (it.schwelle > 0) ch.brickinventoryapp.util.fmtEingabe(it.schwelle) else "" } ?: "")
+                mutableStateOf(alarm?.let { if (it.schwelle > 0) fmtEingabe(it.schwelle) else "" } ?: "")
             }
 
             // Segmente statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
             // Aufklappen lesbar. Die Richtung geht nur mit, wenn eine Schwelle dasteht — sonst
             // liefe der Aufruf auf ein Löschen hinaus.
-            ch.brickinventoryapp.ui.components.SegmentWahl(
+            SegmentWahl(
                 optionen = listOf("unter" to stringResource(R.string.detail_alert_chip_below),
                                   "ueber" to stringResource(R.string.detail_alert_chip_above)),
                 gewaehlt = richtung,
@@ -519,7 +534,7 @@ fun LazyListScope.setDetailAlarmSection(
                         else stringResource(
                             R.string.detail_alert_saved,
                             stringResource(if (alarm.richtung == "ueber") R.string.detail_alert_above else R.string.detail_alert_below),
-                            ch.brickinventoryapp.util.fmtMoney(alarm.schwelle, currency),
+                            fmtMoney(alarm.schwelle, currency),
                             stringResource(if (alarm.ausgeloest) R.string.detail_alert_fired else R.string.detail_alert_armed),
                         )
                     )
@@ -527,7 +542,7 @@ fun LazyListScope.setDetailAlarmSection(
                 keyboardOptions = NumericInput.preisTastatur(),
                 shape = Formen.feld,
                 // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
-                modifier = Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.bedienung).fillMaxWidth(),
+                modifier = Modifier.widthIn(max = Lesebreite.bedienung).fillMaxWidth(),
             )
         }
     }

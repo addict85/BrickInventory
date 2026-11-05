@@ -14,6 +14,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.viewmodel.UpdateViewModel
+import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
+import ch.brickinventoryapp.util.erlaubnisAbsicht
 
 /**
  * „Es gibt eine neue Fassung — jetzt aktualisieren?“ Ein Dialog beim Start, weil
@@ -42,10 +45,10 @@ fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) {
         onDismissRequest = { if (!laedt) schliessen() },
         title = { Text(stringResource(R.string.update_dialog_title)) },
         text = {
-            ch.brickinventoryapp.ui.components.Ueberdeckungsschutz()
+            Ueberdeckungsschutz()
             Column {
                 Text(stringResource(R.string.update_dialog_text,
-                    neuere.versionName, ch.brickinventoryapp.ui.components.LocalAppFassung.current.name))
+                    neuere.versionName, LocalAppFassung.current.name))
                 zustand.fortschritt?.let { p ->
                     Spacer(Modifier.height(Abstaende.mittel))
                     Text(stringResource(R.string.update_downloading, p),
@@ -74,7 +77,7 @@ fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) {
                 // Die Systemerlaubnis fehlt: Der einzige Knopf, der jetzt
                 // weiterhilft, fuehrt in die Systemeinstellungen.
                 zustand.erlaubnisFehlt -> TextButton(onClick = {
-                    ctx.startActivity(ch.brickinventoryapp.util.erlaubnisAbsicht(ctx))
+                    ctx.startActivity(erlaubnisAbsicht(ctx))
                 }) { Text(stringResource(R.string.update_permission_grant)) }
                 // Liegt schon auf der Platte (etwa weil der System-Installer
                 // abgebrochen wurde): nicht noch einmal laden.

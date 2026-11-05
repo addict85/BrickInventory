@@ -47,7 +47,7 @@ class GutscheinSichtschutzTest {
         assertTrue("Die Gutscheinseite setzt keinen Überdeckungsschutz", seite.contains("Ueberdeckungsschutz()"))
         val graph = Quellen.ohneKommentare(Quellen.lies("nav/ToolsGraph.kt"))
         assertTrue("Das Gutschein-PDF setzt keinen Sichtschutz",
-            Regex("""zeigtGutscheine\(ziel\.url\)\)\s*ch\.brickinventoryapp\.ui\.components\.Sichtschutz\(\)""").containsMatchIn(graph))
+            Regex("""zeigtGutscheine\(ziel\.url\)\)\s*(?:ch\.brickinventoryapp\.ui\.components\.)?Sichtschutz\(\)""").containsMatchIn(graph))
     }
 
     /** Dieselbe Regel für den TOTP-Schlüssel und die Wiederherstellungscodes. */
@@ -56,7 +56,7 @@ class GutscheinSichtschutzTest {
         val konto = Quellen.ohneKommentare(Quellen.lies("ui/screens/EinstellungenKonto.kt"))
         for (zweig in listOf("zfZustand.codes.isNotEmpty() ->", "zfZustand.geheimnis != null ->")) {
             assertTrue("Ohne Sichtschutz: $zweig", Regex(Regex.escape(zweig) +
-                """\s*\{\s*ch\.brickinventoryapp\.ui\.components\.Sichtschutz\(\)""").containsMatchIn(konto))
+                """\s*\{\s*(?:ch\.brickinventoryapp\.ui\.components\.)?Sichtschutz\(\)""").containsMatchIn(konto))
         }
     }
 }

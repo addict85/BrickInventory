@@ -4,15 +4,15 @@ Test: ch.brickinventoryapp.OberflaechenRegelnTest
 Rot: Teile bei 200 Prozent zeigen mehrere Teile ganz
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
-index f8d902b..66167ee 100644
+index 5fd88a0..8537f16 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/ui/screens/PartsScreen.kt
-@@ -398,7 +398,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
+@@ -449,7 +449,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
      val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
      // Ab grosser Schrift eine Listenzeile wie die Sets: Das Bild über die volle Breite
      // liess ein Teil je Bildschirm. Die Menge rückt dann vom Bild in den Text.
--    val zeile = ch.brickinventoryapp.ui.components.grosseSchrift()
+-    val zeile = grosseSchrift()
 +    val zeile = false
-     val weich = !ch.brickinventoryapp.ui.components.bewegungReduziert()
+     val weich = !bewegungReduziert()
      val menge: @Composable () -> Unit = {
          Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.marke) {

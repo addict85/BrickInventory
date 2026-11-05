@@ -4,14 +4,14 @@ Test: ch.brickinventoryapp.GeruestUndFormularTest
 Rot: Detailkarten stehen auf dem Tablet in Lesebreite
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/DetailZeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/DetailZeile.kt
-index 6c033bf..f501e45 100644
+index ff75eab..d89debc 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/DetailZeile.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/DetailZeile.kt
-@@ -14,7 +14,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
+@@ -15,7 +15,7 @@ import ch.brickinventoryapp.ui.theme.Lesebreite
  /** Eine Zeile der Detailkarten (Katalog, Merkposten), auf dem Tablet höchstens in Lesebreite. */
  @Composable
  fun CatalogDetailRow(label: String, value: String) {
--    BezeichnungUndWert(label, value, Modifier.widthIn(max = ch.brickinventoryapp.ui.theme.Lesebreite.wertzeile))
+-    BezeichnungUndWert(label, value, Modifier.widthIn(max = Lesebreite.wertzeile))
 +    BezeichnungUndWert(label, value)
  }
  

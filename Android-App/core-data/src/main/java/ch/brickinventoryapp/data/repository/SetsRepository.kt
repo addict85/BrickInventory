@@ -13,6 +13,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
+import ch.brickinventoryapp.data.model.CsvImportStatus
+import ch.brickinventoryapp.data.model.SetExistsResponse
 
 /**
  * Sets: Bestand, Details, Anlegen, Ändern, PDF-Ausgabe — eines der Sachgebiete der
@@ -59,7 +61,7 @@ class SetsRepository @Inject constructor(
      * Steht das Set schon im Blickfeld? Die Regel dahinter (Normalisierung der
      * Nummer, Haushalt) liegt auf dem Server — hier wird nur gefragt.
      */
-    suspend fun getSetExists(setNumber: String): Result<ch.brickinventoryapp.data.model.SetExistsResponse> =
+    suspend fun getSetExists(setNumber: String): Result<SetExistsResponse> =
         safeCall { api.getSetExists(setNumber) }
 
     suspend fun getSetDetail(setNumber: String): Result<SetDetailResponse> =
@@ -198,7 +200,7 @@ class SetsRepository @Inject constructor(
     suspend fun resolveBarcode(barcode: String): Result<BarcodeResponse> =
         safeCall { api.getBarcodeSet(barcode) }
 
-    suspend fun getCsvImportStatus(serverUrl: String, token: String): Result<ch.brickinventoryapp.data.model.CsvImportStatus> {
+    suspend fun getCsvImportStatus(serverUrl: String, token: String): Result<CsvImportStatus> {
         // Use full URL via Retrofit @Url — bypasses localhost rewrite, uses existing SSL client
         // Umgezogen nach /api/v1 — ein Adressraum (siehe server.ts).
         val url = serverUrl.trimEnd('/') + "/api/v1/sets/import/csv/status"

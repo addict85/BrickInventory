@@ -18,6 +18,10 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.ui.Blickfeld
+import ch.brickinventoryapp.ui.FilterAblage
+import ch.brickinventoryapp.ui.viewmodel.AppDienste
 
 /**
  * Das Anmelde-ViewModel, ausgeführt gegen einen Testserver und eine Ablage im
@@ -103,13 +107,13 @@ class AnmeldungViewModelTest {
 
     /** Die Filterablage meldet ihr Leeren in dasselbe Protokoll; [wurzeln] spielt die System-Wurzeln. */
     private fun vm(wurzeln: Set<String> = emptySet()): AnmeldungViewModel {
-        val blickAblage = object : ch.brickinventoryapp.ui.FilterAblage by SpeicherAblage() {
+        val blickAblage = object : FilterAblage by SpeicherAblage() {
             override suspend fun allesVergessen() { ablage.protokoll += "filter-leer" }
         }
-        val blickfeld = ch.brickinventoryapp.ui.Blickfeld(blickAblage,
-            ch.brickinventoryapp.data.repository.HaushaltRepository(t.api, t.cache),
+        val blickfeld = Blickfeld(blickAblage,
+            HaushaltRepository(t.api, t.cache),
             TeileRepository(t.api, t.cache))
-        val dienste = ch.brickinventoryapp.ui.viewmodel.AppDienste(t.sitzung, blickfeld, t.meldungen,
+        val dienste = AppDienste(t.sitzung, blickfeld, t.meldungen,
             NummernTexte, t.bestand, t.scrollMemory)
         return t.merke(AnmeldungViewModel(dienste, KontoRepository(t.api, t.cache), ablage) { it in wurzeln })
     }

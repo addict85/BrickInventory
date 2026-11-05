@@ -15,6 +15,8 @@ import ch.brickinventoryapp.ressourcen.R
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import javax.inject.Inject
+import ch.brickinventoryapp.di.Anwendungsbereiche
+import ch.brickinventoryapp.util.LanguageManager
 
 /**
  * Foreground-Service für den PDF-Export der Teileliste.
@@ -48,10 +50,10 @@ class PdfExportService : Service() {
     // Siehe CsvImportService: Services bekommen die per-App-Sprache unterhalb
     // von Android 13 nicht automatisch — Context dafür wrappen.
     private val loc: Context by lazy {
-        ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
+        LanguageManager.localizedContext(this)
     }
 
-    @Inject lateinit var bereiche: ch.brickinventoryapp.di.Anwendungsbereiche
+    @Inject lateinit var bereiche: Anwendungsbereiche
 
     // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
     // in super.onCreate() setzt.

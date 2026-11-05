@@ -39,6 +39,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.util.fmtInt
 
 /**
  * Ein Filtereintrag der Teileliste: Wert, Beschriftung, Anzahl, Farbpunkt. Eine
@@ -93,7 +95,7 @@ fun TeileFilterZeile(
                         ?: stringResource(R.string.parts_filter_color),
                         style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp))) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(18.dp))) },
             )
         }
         if (kategorien.isNotEmpty()) {
@@ -105,7 +107,7 @@ fun TeileFilterZeile(
                         ?: stringResource(R.string.parts_filter_category),
                         style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp))) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(18.dp))) },
             )
         }
     }
@@ -186,7 +188,7 @@ private fun FilterZeile(
             Text(text, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis,
                 fontWeight = if (gewaehlt) FontWeight.Bold else FontWeight.Normal)
             if (anzahl != null) {
-                Text(ch.brickinventoryapp.util.fmtInt(anzahl),
+                Text(fmtInt(anzahl),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }

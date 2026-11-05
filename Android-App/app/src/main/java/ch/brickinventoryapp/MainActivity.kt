@@ -29,15 +29,32 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import ch.brickinventoryapp.alarm.PreisalarmWorker
+import ch.brickinventoryapp.ui.Meldungseingang
+import ch.brickinventoryapp.ui.components.GeraeteSchrittschutz
+import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.NutzerCaDialog
+import ch.brickinventoryapp.ui.components.OhneSperreWarnung
+import ch.brickinventoryapp.ui.components.Sichtschutz
+import ch.brickinventoryapp.ui.components.TastaturOhneLernen
+import ch.brickinventoryapp.ui.components.ZertifikatDialog
+import ch.brickinventoryapp.ui.screens.StartpasswortMaske
+import ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske
+import ch.brickinventoryapp.ui.viewmodel.DarstellungViewModel
+import ch.brickinventoryapp.ui.viewmodel.KontoViewModel
+import ch.brickinventoryapp.ui.viewmodel.VertrauenViewModel
+import ch.brickinventoryapp.util.GeheimeZwischenablage
+import ch.brickinventoryapp.util.LanguageManager
+import ch.brickinventoryapp.util.Protokoll
 
 @AndroidEntryPoint
 class MainActivity : NurLauncherStart() {
     private val vm: AppViewModel by viewModels()
-    private val darstellung: ch.brickinventoryapp.ui.viewmodel.DarstellungViewModel by viewModels()
-    private val vertrauen: ch.brickinventoryapp.ui.viewmodel.VertrauenViewModel by viewModels()
+    private val darstellung: DarstellungViewModel by viewModels()
+    private val vertrauen: VertrauenViewModel by viewModels()
 
     // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.
-    private val startKontoVm: ch.brickinventoryapp.ui.viewmodel.KontoViewModel by viewModels()
+    private val startKontoVm: KontoViewModel by viewModels()
 
     // ImageLoader als Hilt-Singleton aus NetzModule — eine Instanz je Prozess statt je
     // Activity: Sonst verlöre jede Drehung den Memory-Cache, und zwei
@@ -46,17 +63,17 @@ class MainActivity : NurLauncherStart() {
 
     /** Rückfrage per Gerätesperre vor heiklen Schritten; gilt bis die App in den Hintergrund geht. */
     private val schrittschutz by lazy {
-        ch.brickinventoryapp.ui.components.GeraeteSchrittschutz(this, keinSchluessel = {
-            android.widget.Toast.makeText(this, ch.brickinventoryapp.util.LanguageManager.localizedContext(this).getString(R.string.schritt_kein_schluessel),
+        GeraeteSchrittschutz(this, keinSchluessel = {
+            android.widget.Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.schritt_kein_schluessel),
                 android.widget.Toast.LENGTH_LONG).show()
         }) {
-            ch.brickinventoryapp.util.LanguageManager.localizedContext(this)
+            LanguageManager.localizedContext(this)
                 .getString(R.string.schritt_untertitel)
         }
     }
 
     /** Das Ziel einer angetippten Meldung; abgelegt nur vom nicht exportierten MeldungsEinstieg. */
-    @Inject lateinit var meldungseingang: ch.brickinventoryapp.ui.Meldungseingang
+    @Inject lateinit var meldungseingang: Meldungseingang
 
     /**
      * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Das
@@ -82,8 +99,8 @@ class MainActivity : NurLauncherStart() {
     override fun onStart() {
         super.onStart()
         lifecycleScope.launch {
-            fangeAusserAbbruch { ch.brickinventoryapp.alarm.PreisalarmWorker.durchgang(applicationContext) }
-                .onFailure { ch.brickinventoryapp.util.Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
+            fangeAusserAbbruch { PreisalarmWorker.durchgang(applicationContext) }
+                .onFailure { Protokoll.warnung("Preisalarm", "Abruf beim Oeffnen fehlgeschlagen", it) }
         }
     }
 
@@ -95,7 +112,7 @@ class MainActivity : NurLauncherStart() {
     /** Ein abgelaufenes Geheimnis lässt sich ab Android 10 erst mit Fokus aus der Zwischenablage nehmen. */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) ch.brickinventoryapp.util.GeheimeZwischenablage.pruefe(this)
+        if (hasFocus) GeheimeZwischenablage.pruefe(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,19 +135,19 @@ class MainActivity : NurLauncherStart() {
             // Über den Zähler von Sichtschutz, damit ein Bildschirm, der ihn selbst
             // setzt, beim Verlassen den Wunsch des Nutzers nicht aufhebt.
             val vorschauVerbergen by darstellung.vorschauVerbergen.collectAsStateWithLifecycle()
-            if (vorschauVerbergen) ch.brickinventoryapp.ui.components.Sichtschutz(ueberdeckung = false)
+            if (vorschauVerbergen) Sichtschutz(ueberdeckung = false)
             val sicht = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = sicht.design, dunkel = sicht.dunkel, systemfarben = sicht.systemfarben) {
                 // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.
                 CompositionLocalProvider(
                     LocalAppFassung provides AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
-                    ch.brickinventoryapp.ui.components.LocalSchrittschutz provides schrittschutz,
-                ) { ch.brickinventoryapp.ui.components.TastaturOhneLernen {
+                    LocalSchrittschutz provides schrittschutz,
+                ) { TastaturOhneLernen {
                     // App-weit (sec8 H4): Gutschein-Nummer und PIN, Passwörter, Codes und
                     // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
                     BrickInventoryRoute(vm, imageLoader)
                     // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen (sec10 H3).
-                    ch.brickinventoryapp.ui.components.OhneSperreWarnung(schrittschutz.ohneSperre)
+                    OhneSperreWarnung(schrittschutz.ohneSperre)
                     // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
                     val startpasswort by vm.startpasswortNoetig.collectAsStateWithLifecycle()
                     // Startwert false: Die Maske erscheint erst mit beiden Zuständen,
@@ -141,7 +158,7 @@ class MainActivity : NurLauncherStart() {
                     val faktorPflicht by vm.zweiterFaktorNoetig.collectAsStateWithLifecycle()
                     if (startpasswort && angemeldet) {
                         val kontoZustand by startKontoVm.kontoState.collectAsStateWithLifecycle()
-                        ch.brickinventoryapp.ui.screens.StartpasswortMaske(
+                        StartpasswortMaske(
                             kontoZustand = kontoZustand,
                             onErsetzen = { alt, neu, code -> startKontoVm.aenderePasswort(alt, neu, code) { vm.logout() } },
                             onAbmelden = { vm.logout() },
@@ -149,7 +166,7 @@ class MainActivity : NurLauncherStart() {
                     } else if (faktorPflicht && angemeldet) {
                         val faktorZustand by startKontoVm.zweiterFaktorState.collectAsStateWithLifecycle()
                         LaunchedEffect(Unit) { startKontoVm.ladeZweitenFaktor() }
-                        ch.brickinventoryapp.ui.screens.ZweiterFaktorPflichtMaske(
+                        ZweiterFaktorPflichtMaske(
                             zustand = faktorZustand,
                             onEinrichten = startKontoVm::richteZweitenFaktorEin,
                             onBestaetigen = startKontoVm::bestaetigeZweitenFaktor,
@@ -161,7 +178,7 @@ class MainActivity : NurLauncherStart() {
                     val zertifikat by vertrauen.zertifikat.collectAsStateWithLifecycle()
                     val nutzerCa by vertrauen.nutzerCa.an.collectAsStateWithLifecycle()
                     zertifikat?.let { frage ->
-                        ch.brickinventoryapp.ui.components.ZertifikatDialog(
+                        ZertifikatDialog(
                             frage = frage,
                             nutzerCaAn = nutzerCa,
                             onVertrauen = vertrauen::zertifikatVertrauen,
@@ -172,7 +189,7 @@ class MainActivity : NurLauncherStart() {
                     // Hier und nicht in den Einstellungen: Auch der Zertifikatsdialog fragt an.
                     val nutzerCaFrage by vertrauen.nutzerCa.frage.collectAsStateWithLifecycle()
                     if (nutzerCaFrage) {
-                        ch.brickinventoryapp.ui.components.NutzerCaDialog(
+                        NutzerCaDialog(
                             onJa = vertrauen.nutzerCa::bestaetigen,
                             onAbbrechen = vertrauen.nutzerCa::abbrechen,
                         )

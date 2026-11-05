@@ -13,6 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import ch.brickinventoryapp.data.lokal.Bestandsart
 
 /**
  * Der Antwort-Cache gehört Server und Sitzung: Nach einem Kontowechsel oder auf
@@ -43,7 +44,7 @@ class CacheBereichTest {
     @Test
     fun `die Offline-Ablage kennt genau die eingeordneten Faecher`() {
         assertEquals(setOf("SETS", "MERKLISTE", "TEILE", "FIGUREN", "MANUELLE_TEILE", "MANUELLE_FIGUREN", "GUTSCHEINE"),
-            ch.brickinventoryapp.data.lokal.Bestandsart.entries.map { it.name }.toSet())
+            Bestandsart.entries.map { it.name }.toSet())
     }
 
     private lateinit var server: MockWebServer

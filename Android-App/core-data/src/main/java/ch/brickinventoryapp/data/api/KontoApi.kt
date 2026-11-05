@@ -3,6 +3,7 @@ package ch.brickinventoryapp.data.api
 import ch.brickinventoryapp.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
+import ch.brickinventoryapp.data.model.AppThemeResponse
 
 /**
  * Anmeldung und das eigene Konto: Profil, Passwort, zweiter Faktor, angemeldete
@@ -96,11 +97,11 @@ interface KontoApi {
      * mit Token das des Kontos. Der ServerWaechter hängt den Token an.
      */
     @GET("api/v1/settings/theme")
-    suspend fun getAppTheme(): Response<ch.brickinventoryapp.data.model.AppThemeResponse>
+    suspend fun getAppTheme(): Response<AppThemeResponse>
 
     /** Eigenes Design des Kontos; "" heisst „Vorgabe des Verwalters“. */
     @POST("api/v1/settings/user/theme")
-    suspend fun setzeEigenesDesign(@Body body: Map<String, String>): Response<ch.brickinventoryapp.data.model.AppThemeResponse>
+    suspend fun setzeEigenesDesign(@Body body: Map<String, String>): Response<AppThemeResponse>
 
     @GET("api/v1/settings")
     suspend fun getSettings(): Response<SettingsResponse>

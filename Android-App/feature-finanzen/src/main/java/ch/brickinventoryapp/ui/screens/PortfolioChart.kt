@@ -25,6 +25,7 @@ import ch.brickinventoryapp.ui.diagrammZusammenfassung
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.SegmentWahl
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -185,7 +186,7 @@ fun PortfolioChart(
             Spacer(Modifier.height(10.dp))
 
             // Zeitraum: eine Einfachwahl, darum Segmente wie überall (SegmentWahl).
-            ch.brickinventoryapp.ui.components.SegmentWahl(
+            SegmentWahl(
                 optionen = listOf(
                     "week" to stringResource(R.string.chart_period_week),
                     "month" to stringResource(R.string.chart_period_month),

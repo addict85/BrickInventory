@@ -75,6 +75,27 @@ import ch.brickinventoryapp.ui.components.SortierMenue
 import ch.brickinventoryapp.ui.components.ansagen
 import ch.brickinventoryapp.ui.components.vorgelesenAls
 import androidx.compose.ui.res.pluralStringResource
+import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT
+import ch.brickinventoryapp.ui.components.BarcodeSymbol
+import ch.brickinventoryapp.ui.components.ErfassenDialog
+import ch.brickinventoryapp.ui.components.ErfassenFab
+import ch.brickinventoryapp.ui.components.FabPlatz
+import ch.brickinventoryapp.ui.components.FehlerHinweis
+import ch.brickinventoryapp.ui.components.GemeinsamesBild
+import ch.brickinventoryapp.ui.components.KnopfStapel
+import ch.brickinventoryapp.ui.components.LesbareSpalten
+import ch.brickinventoryapp.ui.components.LocalOffenesDetail
+import ch.brickinventoryapp.ui.components.OfflineHinweis
+import ch.brickinventoryapp.ui.components.ProduktBild
+import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
+import ch.brickinventoryapp.ui.theme.LocalSteinDekor
+import ch.brickinventoryapp.ui.theme.faecherTon
+import ch.brickinventoryapp.ui.theme.lichtStreifen
+import ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel
 
 /** Was die Galerie zeigt; die Route sammelt es aus den Flüssen der ViewModels. */
 data class GalerieZustand(
@@ -104,7 +125,7 @@ class GalerieEreignisse(
 fun GalleryRoute(
     vm: GalerieViewModel,
     /** Erfassen und Scannen gehören der ganzen App, nicht der Galerie. */
-    erfassung: ch.brickinventoryapp.ui.viewmodel.ErfassungViewModel,
+    erfassung: ErfassungViewModel,
     imageLoader: ImageLoader,
     /** Barcode-Scanner öffnen — nur der Graph kennt den NavController. */
     onScanBarcode: () -> Unit,
@@ -127,8 +148,8 @@ fun GalleryRoute(
             thema = vm::setGalleryTheme,
             sortierung = vm::setGallerySort,
             mehrLaden = vm::loadMoreSets,
-            konto = { vm.setScope(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) },
-            lagerort = { vm.setLagerFilter(ch.brickinventoryapp.data.ScopeFilter.View.GALLERY, it) },
+            konto = { vm.setScope(ScopeFilter.View.GALLERY, it) },
+            lagerort = { vm.setLagerFilter(ScopeFilter.View.GALLERY, it) },
             // Auch die Filterlisten: Sie werden sonst nur beim Start geladen.
             aktualisieren = vm::aktualisieren,
             setErfassen = { sn, qty, price, cond, owner, ort -> erfassung.addSet(sn, qty, price, cond, owner, ort) },
@@ -190,7 +211,7 @@ fun GalleryScreen(
 
     val anzeige = galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || galerie.galleryTheme.isNotEmpty())
     // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
-    val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val gross = grosseSchrift()
     val erfassenText = stringResource(R.string.gallery_add_set)
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -203,7 +224,7 @@ fun GalleryScreen(
                 onFilter = { zeigeFilter = true }, erfassen = erfassenText to { showAddDialog = true },
             )
 
-            ch.brickinventoryapp.ui.components.OfflineHinweis(galerie.offlineStand)
+            OfflineHinweis(galerie.offlineStand)
             // Der Kringel des Ziehens nur über einer Liste: Beim ersten Laden zeigt das
             // Skelett schon, dass etwas kommt, zwei Ladeanzeigen übereinander wirkten unruhig.
             PullToRefreshBox(isRefreshing = galerie.galleryLoading && anzeige == GalerieAnzeige.LISTE,
@@ -216,7 +237,7 @@ fun GalleryScreen(
         // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
         // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
         // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
-        if (!gross && anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ch.brickinventoryapp.ui.components.ErfassenFab(
+        if (!gross && anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ErfassenFab(
             erfassenText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
@@ -228,10 +249,10 @@ fun GalleryScreen(
 
 /** Der Bereich des Kontos und der gewählte Lagerort der Galerie. */
 private fun GalerieZustand.kontoWahl(): String =
-    blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ch.brickinventoryapp.data.ScopeFilter.ALL
+    blick.scopeModes[ScopeFilter.View.GALLERY.key] ?: ScopeFilter.ALL
 
 private fun GalerieZustand.lagerWahl(): String =
-    lager.modi[ch.brickinventoryapp.data.ScopeFilter.View.GALLERY.key] ?: ""
+    lager.modi[ScopeFilter.View.GALLERY.key] ?: ""
 
 /** Suche, Filterknopf, Scannen und Sortierung über dem Raster. */
 @Composable
@@ -262,7 +283,7 @@ private fun GalerieSuche(
                                   "year_desc", "price_desc", "price_asc",
                                   "qty_desc", "qty_asc").map { it to gallerySortLabel(it) },
                 gewaehlt = galerie.gallerySort, onWahl = ereignisse.sortierung,
-                vorgabe = ch.brickinventoryapp.data.repository.GALLERY_DEFAULT_SORT,
+                vorgabe = GALLERY_DEFAULT_SORT,
             )
         },
     )
@@ -284,12 +305,12 @@ private fun GalerieInhalt(
     val galerie = zustand.galerie
     val stats = galerie.stats
     when (anzeige) {
-        GalerieAnzeige.LAEDT -> SkelettRaster(ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp), kachelHoehe = 252.dp,
+        GalerieAnzeige.LAEDT -> SkelettRaster(LesbareSpalten(160.dp), kachelHoehe = 252.dp,
             kopfzeile = true, bildVerhaeltnis = BILD_SEITENVERHAELTNIS)
         // Fehler und leere Sammlung sehen verschieden aus und bieten
         // Verschiedenes an: hier den Grund und einen neuen Versuch.
         GalerieAnzeige.FEHLER -> GalerieHinweis {
-            ch.brickinventoryapp.ui.components.FehlerHinweis(galerie.galleryFehler, onRefresh,
+            FehlerHinweis(galerie.galleryFehler, onRefresh,
                 galerie.galleryFehlerKlasse)
         }
         GalerieAnzeige.LEER -> GalerieLeer(onErfassen, onScanBarcode)
@@ -314,14 +335,14 @@ private fun GalerieLeer(onErfassen: () -> Unit, onScanBarcode: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center)
         // Derselbe Dialog wie der Plus-Knopf — kein zweiter Erfassungsweg.
-        ch.brickinventoryapp.ui.components.KnopfStapel {
+        KnopfStapel {
             Button(onClick = onErfassen, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.gallery_add_first))
             }
             OutlinedButton(onClick = onScanBarcode, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-                Icon(ch.brickinventoryapp.ui.components.BarcodeSymbol, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                Icon(BarcodeSymbol, null, Modifier.size(mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.gallery_scan_barcode))
             }
@@ -339,12 +360,12 @@ private fun GalerieRaster(
 ) {
     val galerie = zustand.galerie
     val stats = galerie.stats
-    val gewaehlt = ch.brickinventoryapp.ui.components.LocalOffenesDetail.current
+    val gewaehlt = LocalOffenesDetail.current
     LazyVerticalGrid(
-        columns = ch.brickinventoryapp.ui.components.LesbareSpalten(160.dp),
+        columns = LesbareSpalten(160.dp),
         state = gridState,
         contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
-            bottom = ch.brickinventoryapp.ui.components.FabPlatz),
+            bottom = FabPlatz),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -432,7 +453,7 @@ private fun GalerieFilterBlatt(
 ) {
     // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
     val zuruecksetzen: () -> Unit = {
-        if (Filterzahl.konto(members, konto) > 0) onKonto(ch.brickinventoryapp.data.ScopeFilter.ALL)
+        if (Filterzahl.konto(members, konto) > 0) onKonto(ScopeFilter.ALL)
         if (Filterzahl.lager(orte, lager) > 0) onLager("")
         if (thema.isNotBlank()) onThema("")
     }
@@ -498,13 +519,13 @@ fun SetCard(
     val istGlanz = LocalIstGlanz.current
     // Im Design "farbfaecher" trägt jede Kachel den Ton ihres Themas als Streifen, wie
     // im Katalog. Die Galerie kennt nur den Namen; derselbe Name ergibt denselben Ton.
-    val ton = if (ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme.current)
-        ch.brickinventoryapp.ui.theme.faecherTon(set.theme?.hashCode()) else null
+    val ton = if (LocalIsFarbfaecherTheme.current)
+        faecherTon(set.theme?.hashCode()) else null
 
     // Ab grosser Schrift eine Listenzeile, Bild links und Text rechts, wie die Merkliste:
     // Über die volle Breite nahm das Bild zwei Drittel der Höhe, und es stand ein Set je
     // Bildschirm. Die Plaketten rücken dann vom Bild in den Text, das Bild ist zu klein.
-    val zeile = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val zeile = grosseSchrift()
     val pct = preis?.pnlPct
     val betrag = kachelBetrag(set, preis)
     val guv: (@Composable () -> Unit)? = if (pct != null && betrag != null) ({
@@ -519,7 +540,7 @@ fun SetCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
                     Icon(if (pct >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-                        null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(12.dp)), tint = farbe)
+                        null, Modifier.size(mitSchrift(12.dp)), tint = farbe)
                     Text(fmtProzent(pct), Modifier.semantics { contentDescription = ansage },
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
                         color = farbe, maxLines = 1, softWrap = false)
@@ -535,13 +556,13 @@ fun SetCard(
             }
     }) else null
     // Weich einblenden nur, wenn Bewegung erwünscht ist (bewegungReduziert).
-    val weich = !ch.brickinventoryapp.ui.components.bewegungReduziert()
+    val weich = !bewegungReduziert()
 
     // Die Bildfläche; in der Zeile ohne Plaketten und links statt oben gerundet.
     val bildflaeche: @Composable (Modifier) -> Unit = { flaeche ->
         Box(flaeche) {
-            ch.brickinventoryapp.ui.components.GemeinsamesBild(set.setNumber) { bild ->
-                    ch.brickinventoryapp.ui.components.ProduktBild(
+            GemeinsamesBild(set.setNumber) { bild ->
+                    ProduktBild(
                     model = imageUrl?.let { ImageRequest.Builder(ctx).data(it)
                         .memoryCacheKeyExtra("retry", retryNonce.toString())
                         .crossfade(weich).build() },
@@ -582,7 +603,7 @@ fun SetCard(
             }
             // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
             // Menü, damit die Bedienelemente auf eigener Fläche stehen (lichtStreifen()).
-            if (istGlanz) Box(Modifier.matchParentSize().background(ch.brickinventoryapp.ui.theme.lichtStreifen()))
+            if (istGlanz) Box(Modifier.matchParentSize().background(lichtStreifen()))
             // Die Kachel trägt keine zerstörerische Aktion: Gelöscht wird im Detail,
             // mit Rückfrage und danach „Rückgängig“. Plaketten mit Abstand innerhalb
             // des Bilds (PLAKETTE_RAND): Auf dessen Rand sassen sie über der Ecke.
@@ -701,7 +722,7 @@ fun SetCard(
         if (isBrick) NoppenReihe(
             mass = NoppenMass.Stein,
             modifier = Modifier.align(Alignment.TopStart),
-            farbe = ch.brickinventoryapp.ui.theme.LocalSteinDekor.current.noppen,
+            farbe = LocalSteinDekor.current.noppen,
         )
     }
 }
@@ -789,7 +810,7 @@ fun AddSetDialog(
     }
 
     // Derselbe Rahmen wie jede Erfassung (ErfassenDialog): Titel links, ohne Symbol.
-    ch.brickinventoryapp.ui.components.ErfassenDialog(
+    ErfassenDialog(
         titel = stringResource(R.string.gallery_add_set_title),
         bestaetigen = stringResource(R.string.gallery_add),
         onBestaetigen = { submit() },

@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
+import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.Result
 
 /**
  * Die Sitzung der App: Server, Anmeldung, Einstellungen des Kontos.
@@ -63,9 +66,9 @@ class Sitzung @Inject constructor() {
  * Design nicht: /settings nennt in app_theme die Vorgabe des Verwalters, das
  * des Kontos kommt von /settings/theme (AppViewModel.loadAppTheme).
  */
-suspend fun Sitzung.ladeEinstellungen(konto: ch.brickinventoryapp.data.repository.KontoRepository) {
+suspend fun Sitzung.ladeEinstellungen(konto: KontoRepository) {
     val r = konto.getSettings()
-    if (r is ch.brickinventoryapp.data.repository.Result.Success) {
+    if (r is Result.Success) {
         val e = r.data.settings
         aendere { it.copy(
             currency = e.currency,
@@ -81,11 +84,11 @@ suspend fun Sitzung.ladeEinstellungen(konto: ch.brickinventoryapp.data.repositor
  * aus dem Verwalterzustand heraus — wiederholte 403 (eine pollende Seite)
  * lösen so höchstens einen Abruf aus. @return true, wenn das Recht wegfiel
  */
-suspend fun Sitzung.rechteNachziehen(konto: ch.brickinventoryapp.data.repository.KontoRepository): Boolean {
+suspend fun Sitzung.rechteNachziehen(konto: KontoRepository): Boolean {
     if (!state.value.isAdmin) return false
     val me = konto.getMe()
     // Ohne Antwort gilt das 403: Der Server hat das Recht eben verneint.
-    val verwalter = me is ch.brickinventoryapp.data.repository.Result.Success && me.data.user?.isAdmin == true
+    val verwalter = me is Result.Success && me.data.user?.isAdmin == true
     aendere { it.copy(isAdmin = verwalter) }
     return !verwalter
 }
@@ -96,11 +99,11 @@ suspend fun Sitzung.rechteNachziehen(konto: ch.brickinventoryapp.data.repository
  * da, bevor die übrigen Abrufe mit 403 scheitern. Ohne Antwort bleibt alles, wie es ist.
  */
 suspend fun Sitzung.kontoUebernehmen(
-    konto: ch.brickinventoryapp.data.repository.KontoRepository,
-    faktorPflicht: ch.brickinventoryapp.data.ZweiterFaktorPflicht,
+    konto: KontoRepository,
+    faktorPflicht: ZweiterFaktorPflicht,
 ) {
     val me = konto.getMe()
-    if (me !is ch.brickinventoryapp.data.repository.Result.Success) return
+    if (me !is Result.Success) return
     val nutzer = me.data.user
     aendere { it.copy(isAdmin = nutzer?.isAdmin == true) }
     if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.melde()

@@ -4,11 +4,11 @@ Test: ch.brickinventoryapp.AblaufTest
 Rot: ein Set loescht mit Rueckgaengig sofort
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
-index 06f449a..902e029 100644
+index 51c2899..3db7de0 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/ui/screens/SetDetailScreen.kt
-@@ -111,7 +111,7 @@ fun SetDetailScreen(
-                     ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
+@@ -145,7 +145,7 @@ fun SetDetailScreen(
+                     MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
                          IconButton(onClick = {
                              haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
 -                            if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true

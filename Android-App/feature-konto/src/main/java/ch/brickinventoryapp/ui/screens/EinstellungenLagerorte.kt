@@ -19,6 +19,8 @@ import ch.brickinventoryapp.ui.components.Rueckfrage
 import ch.brickinventoryapp.ui.model.LagerortEintragAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.viewmodel.EinstellungenAktionen
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.mitSchrift
 
 /**
  * Die eigenen Lagerorte verwalten, je Benutzer.
@@ -56,7 +58,7 @@ internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
     // Hinzufügen in einer Unterseite: Knopf in voller Breite wie in Konto und Haushalt.
     // Der schwebende Knopf gehört dem Hauptobjekt eines Reiters (Sets, Merkposten).
     Button(onClick = { neu = true }, modifier = Modifier.fillMaxWidth()) {
-        Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+        Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
         Spacer(Modifier.width(8.dp))
         Text(stringResource(R.string.storage_add_button))
     }
@@ -117,7 +119,7 @@ private fun LagerortZeile(
                         tint = if (istVorgabe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Box {
-                    ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.storage_menu_cd, ort.name)) {
+                    MitTooltip(stringResource(R.string.storage_menu_cd, ort.name)) {
                         IconButton(onClick = { menue = true }) {
                             Icon(Icons.Default.MoreVert, stringResource(R.string.storage_menu_cd, ort.name))
                         }

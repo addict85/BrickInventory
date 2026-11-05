@@ -126,7 +126,7 @@ test('beide fragen ihr Blickfeld an DIESER Stelle', () => {
   assert.match(KT_FEAT, /if \(mitUnterkonten\) null else "own"/,
     'Die App schickt ohne Haken kein „own"');
   assert.doesNotMatch(KT_FEAT,
-    /scopeFor\(ch\.brickinventoryapp\.data\.ScopeFilter\.View\.PARTS\)/,
+    /scopeFor\((ch\.brickinventoryapp\.data\.)?ScopeFilter\.View\.PARTS\)/,
     'Die App hängt wieder am Kontofilter des Teile-Reiters');
 
   // Unverändert und weiterhin die Voraussetzung für beides: Der Endpunkt muss

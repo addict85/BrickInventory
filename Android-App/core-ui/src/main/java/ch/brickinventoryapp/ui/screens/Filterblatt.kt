@@ -44,6 +44,9 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.ScanKnopf
+import ch.brickinventoryapp.ui.components.grosseSchrift
 
 /**
  * Suche und daneben ein Knopf „Filter“ — der Kopf über Galerie, Teilen und
@@ -74,7 +77,7 @@ fun SucheMitFilter(
         // Filter, Sortieren und Scannen gleich: drei Symbole mit Tooltip und Namen für
         // TalkBack. Auf dem Tablet stand „Filter“ beschriftet neben zwei nackten Symbolen.
         // Die Zahl am Symbol sagt weiter, wie viele Filter wirken.
-        val gross = ch.brickinventoryapp.ui.components.grosseSchrift()
+        val gross = grosseSchrift()
         // Bei grosser Schrift steht Erfassen in dieser Zeile statt schwebend: Über einer
         // Liste, die nur zwei Einträge zeigt, verdeckte der schwebende Knopf ihren Text.
         val erfassenHier = erfassen.takeIf { gross }
@@ -82,9 +85,9 @@ fun SucheMitFilter(
             val folgt = onScannen != null || sortierung != null || erfassenHier != null
             FilterKnopf(aktiveFilter, onFilter, Modifier.padding(end = if (folgt) Abstaende.winzig else 14.dp))
             if (sortierung != null) Box(Modifier.padding(end = if (onScannen != null || erfassenHier != null) Abstaende.winzig else 14.dp)) { sortierung() }
-            if (onScannen != null) ch.brickinventoryapp.ui.components.ScanKnopf(onScannen,
+            if (onScannen != null) ScanKnopf(onScannen,
                 Modifier.padding(end = if (erfassenHier != null) Abstaende.winzig else 14.dp))
-            if (erfassenHier != null) ch.brickinventoryapp.ui.components.MitTooltip(erfassenHier.first, Modifier.padding(end = 14.dp)) {
+            if (erfassenHier != null) MitTooltip(erfassenHier.first, Modifier.padding(end = 14.dp)) {
                 FilledIconButton(onClick = erfassenHier.second) { Icon(Icons.Default.Add, contentDescription = erfassenHier.first) }
             }
         }
@@ -118,7 +121,7 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Mo
         badge = { if (aktiv > 0) Badge { Text(aktiv.toString()) } },
         modifier = modifier,
     ) {
-        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.filter_button)) {
+        MitTooltip(stringResource(R.string.filter_button)) {
             OutlinedIconButton(
                 onClick = onClick,
                 modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },

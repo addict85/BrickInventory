@@ -26,6 +26,14 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.LeerSymbol
 import ch.brickinventoryapp.ui.components.Ladezustand
 import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.data.ScopeFilter
+import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.stueckzahl
+import ch.brickinventoryapp.ui.mengeManuell
+import ch.brickinventoryapp.util.fmtMoney
+import ch.brickinventoryapp.util.fmtMoneyOrDash
+import ch.brickinventoryapp.util.zahlenLocale
 
 /** Was der Finanzen-Reiter zeigt; die Route sammelt es aus den Flüssen. */
 data class FinanzZustand(
@@ -77,13 +85,13 @@ fun FinanceScreen(
     // Sprachwechsel neu formatiert, ohne neu zu laden.
     val konfig = androidx.compose.ui.platform.LocalConfiguration.current
     val zahlen = remember(konfig) {
-        ch.brickinventoryapp.util.zahlenLocale(konfig.locales[0], java.util.Locale.getDefault())
+        zahlenLocale(konfig.locales[0], java.util.Locale.getDefault())
     }
     val historyPoints = remember(financeState.historyPoints, financeState.historyTage, zahlen) {
         lokaleAchse(financeState.historyPoints, financeState.historyTage, zahlen)
     }
     // Bei grosser Schrift kurz („1,7k“): Ausgeschrieben nahm die Achse ein Drittel der Breite.
-    val kompakt = ch.brickinventoryapp.ui.components.grosseSchrift()
+    val kompakt = grosseSchrift()
     val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen, kompakt) {
         val w = financeState.historyWaehrung ?: valuation?.currency
         if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen, kompakt)
@@ -92,18 +100,18 @@ fun FinanceScreen(
     val figsValuation = financeState.figsValuation
     val pnl = financeState.pnl
     val householdMembers = blick.householdMembers
-    val scopeMode = blick.scopeModes[ch.brickinventoryapp.data.ScopeFilter.View.FINANCE.key]
-        ?: ch.brickinventoryapp.data.ScopeFilter.ALL
+    val scopeMode = blick.scopeModes[ScopeFilter.View.FINANCE.key]
+        ?: ScopeFilter.ALL
 
-    val onScopeChange: (String) -> Unit = { aktionen.setScope(ch.brickinventoryapp.data.ScopeFilter.View.FINANCE, it) }
+    val onScopeChange: (String) -> Unit = { aktionen.setScope(ScopeFilter.View.FINANCE, it) }
     val onPeriodChange: (String) -> Unit = { aktionen.loadPortfolioHistory(it) }
     val onRefresh: () -> Unit = { aktionen.loadValuation(); aktionen.loadPortfolioHistory(financeState.historyPeriod) }
 
     val currencyCode = valuation?.currency ?: "EUR"
     // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
     // Betrag entscheidet die Sprache, wie in der Webapp.
-    fun fmtPrice(v: String?): String = ch.brickinventoryapp.util.fmtMoneyOrDash(v, currencyCode)
-    fun fmtWert(v: Double?): String = v?.let { ch.brickinventoryapp.util.fmtMoney(it, currencyCode) } ?: "—"
+    fun fmtPrice(v: String?): String = fmtMoneyOrDash(v, currencyCode)
+    fun fmtWert(v: Double?): String = v?.let { fmtMoney(it, currencyCode) } ?: "—"
 
     // Ohne Bewertung: laden, gescheitert (mit Grund und neuem Versuch) oder
     // wirklich keine Preise — vorher sah ein Fehler aus wie „keine Preisdaten“.
@@ -126,7 +134,7 @@ fun FinanceScreen(
                 LeerSymbol(Icons.Default.Savings, 48.dp)
                 Text(stringResource(R.string.finance_no_data), fontWeight = FontWeight.SemiBold)
                 Button(onClick = onRefresh) {
-                    Icon(Icons.Default.Refresh, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(16.dp)))
+                    Icon(Icons.Default.Refresh, null, Modifier.size(mitSchrift(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.finance_load_prices))
                 }
@@ -255,8 +263,8 @@ fun ManualFinanceRow(
                 Text(blId, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary)
                 if (quantity > 1)
-                    Text(ch.brickinventoryapp.ui.mengeManuell(quantity),
-                        Modifier.vorgelesenAls(ch.brickinventoryapp.ui.components.stueckzahl(quantity)),
+                    Text(mengeManuell(quantity),
+                        Modifier.vorgelesenAls(stueckzahl(quantity)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Bei mehreren Zeilen desselben Eintrags ist die Plakette das

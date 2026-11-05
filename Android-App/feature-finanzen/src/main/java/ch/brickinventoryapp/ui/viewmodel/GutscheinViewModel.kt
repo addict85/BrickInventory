@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import ch.brickinventoryapp.util.fmtMoney
 
 /**
  * Gutscheine im eigenen Profil. Das PDF liest und die Werte prüft der Server, einmal
@@ -309,7 +310,7 @@ class GutscheinViewModel @Inject constructor(
                             meldungen.zeige(d.error ?: texte.text(R.string.err_generic))
                             return@launch
                         }
-                        val betrag = d.angezeigt ?: ch.brickinventoryapp.util.fmtMoney(v.amount, v.currency)
+                        val betrag = d.angezeigt ?: fmtMoney(v.amount, v.currency)
                         var satz = texte.text(R.string.vouchers_balance_done, v.number, betrag)
                         // Angehängt statt als zweite Meldung, die die erste überschriebe.
                         if (d.waehrungGeaendert) satz += " " + texte.text(R.string.vouchers_balance_currency, v.currency)

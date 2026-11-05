@@ -7,11 +7,20 @@ import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import ch.brickinventoryapp.alarm.PreisalarmWorker
+import ch.brickinventoryapp.data.PreferencesManager
+import ch.brickinventoryapp.di.Anwendungsbereiche
+import ch.brickinventoryapp.util.LanguageManager
+import ch.brickinventoryapp.util.Protokoll
+import ch.brickinventoryapp.util.raeumeAlteTeilelisteAuf
+import ch.brickinventoryapp.util.raeumeKlartextAnleitungenAuf
+import ch.brickinventoryapp.util.raeumeKlartextBildcachesAuf
+import ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf
 
 @HiltAndroidApp
 class BrickInventoryApp : Application(), Configuration.Provider {
-    @Inject lateinit var preferencesManager: ch.brickinventoryapp.data.PreferencesManager
-    @Inject lateinit var bereiche: ch.brickinventoryapp.di.Anwendungsbereiche
+    @Inject lateinit var preferencesManager: PreferencesManager
+    @Inject lateinit var bereiche: Anwendungsbereiche
 
     /**
      * WorkManager auf Abruf statt beim Start, das Gegenstück zum tools:node="remove"
@@ -28,21 +37,21 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         // Hintergrund: Der Lesepfad kommt auch ohne Übernahme an das alte Token.
         bereiche.anwendung.launch {
             // Gutschein-PDFs eines abgebrochenen Laufs: Das Verlassen des Betrachters kam nie.
-            runCatching { ch.brickinventoryapp.util.raeumeVertraulichePdfsAuf(cacheDir) }
+            runCatching { raeumeVertraulichePdfsAuf(cacheDir) }
             // Anleitungen älterer Fassungen lagen im Klartext; neu liegen sie verschlüsselt.
-            runCatching { ch.brickinventoryapp.util.raeumeKlartextAnleitungenAuf(cacheDir) }
+            runCatching { raeumeKlartextAnleitungenAuf(cacheDir) }
             // Bild-Zwischenspeicher älterer Fassungen (Klartext) und eine abgelaufene Teileliste.
-            runCatching { ch.brickinventoryapp.util.raeumeKlartextBildcachesAuf(cacheDir) }
-            runCatching { ch.brickinventoryapp.util.raeumeAlteTeilelisteAuf(filesDir, System.currentTimeMillis()) }
+            runCatching { raeumeKlartextBildcachesAuf(cacheDir) }
+            runCatching { raeumeAlteTeilelisteAuf(filesDir, System.currentTimeMillis()) }
             runCatching { preferencesManager.uebernehmeAltesToken() }
             // Den Preisalarm-Abruf wieder einplanen: Zurückgesetzte App-Daten oder ein
             // „Force Stop“ verwerfen die Aufträge, der Schalter stünde sonst auf „an“
             // ohne Wirkung. KEEP lässt einen eingeplanten Auftrag unverändert.
             runCatching {
                 if (preferencesManager.alarmMeldungenAn.first()) {
-                    ch.brickinventoryapp.alarm.PreisalarmWorker
+                    PreisalarmWorker
                         .einplanen(this@BrickInventoryApp, true)
-                        ?.let { ch.brickinventoryapp.util.Protokoll.warnung("Preisalarm", "Abruf nicht eingeplant", it) }
+                        ?.let { Protokoll.warnung("Preisalarm", "Abruf nicht eingeplant", it) }
                 }
             }
         }
@@ -53,11 +62,11 @@ class BrickInventoryApp : Application(), Configuration.Provider {
         if (android.os.Build.VERSION.SDK_INT < 33) {
             val gemerkt = preferencesManager.gemerkteSprache()
             if (gemerkt != null) {
-                ch.brickinventoryapp.util.LanguageManager.applyLanguage(gemerkt)
+                LanguageManager.applyLanguage(gemerkt)
             } else {
                 bereiche.anwendung.launch(bereiche.haupt) {
                     val lang = fangeAusserAbbruch { preferencesManager.spracheNachziehen() }.getOrNull() ?: return@launch
-                    ch.brickinventoryapp.util.LanguageManager.applyLanguage(lang)
+                    LanguageManager.applyLanguage(lang)
                 }
             }
         }

@@ -39,6 +39,17 @@ import ch.brickinventoryapp.util.fmtTag
 import ch.brickinventoryapp.util.fmtMoney
 import ch.brickinventoryapp.util.inVierergruppen
 import ch.brickinventoryapp.ui.viewmodel.eingabeUeberMaske
+import ch.brickinventoryapp.ui.GutscheinSchritt
+import ch.brickinventoryapp.ui.components.FehlerHinweis
+import ch.brickinventoryapp.ui.components.LocalSchrittschutz
+import ch.brickinventoryapp.ui.components.MitTooltip
+import ch.brickinventoryapp.ui.components.PasswortRueckfrage
+import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.gutscheinSumme
+import ch.brickinventoryapp.ui.model.KlartextAnsicht
+import ch.brickinventoryapp.ui.model.PIN_MASKE_ANZEIGE
+import ch.brickinventoryapp.ui.model.istMaskierteNummer
+import ch.brickinventoryapp.ui.theme.Formen
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil, möglichst einfach erreichbar
@@ -85,7 +96,7 @@ fun GutscheineCard(
     ) { uri -> pdfUri = uri }
     // Nummer und PIN, die PDFs und Löschen: erst nach der Gerätesperre (Schrittschutz),
     // danach fragt das ViewModel nach Passwort und Code.
-    val schutz = ch.brickinventoryapp.ui.components.LocalSchrittschutz.current
+    val schutz = LocalSchrittschutz.current
     val grund = stringResource(R.string.schritt_gutschein)
     val geschuetzt: (() -> Unit) -> Unit = { schritt -> schutz.bestaetige(grund, schritt) }
     // Das Formular steht in einem Blatt, nicht dauerhaft unter der Liste: Auf dem
@@ -121,7 +132,7 @@ fun GutscheineCard(
         FlowRow(verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Button(onClick = { neu = true }, modifier = knopfBreite) {
-                Icon(Icons.Default.Add, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_add))
             }
@@ -134,7 +145,7 @@ fun GutscheineCard(
             ) {
                 // Kreisel an der Stelle des Symbols, nicht der Beschriftung.
                 if (lauf != null) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                else Icon(Icons.Default.Sync, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                else Icon(Icons.Default.Sync, null, Modifier.size(mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_balance_all))
             }
@@ -146,7 +157,7 @@ fun GutscheineCard(
             // Ohne Gutscheine aus: Der Server antwortete mit 404, ein Betrachter mit
             // Fehlermeldung wäre der umständlichste Weg zu „du hast noch keine“.
             OutlinedButton(onClick = { geschuetzt(onExportieren) }, modifier = knopfBreite, enabled = zustand.gutscheine.isNotEmpty(), colors = nebenKnopfFarben(), border = nebenKnopfRand(zustand.gutscheine.isNotEmpty())) {
-                Icon(Icons.Default.PictureAsPdf, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                Icon(Icons.Default.PictureAsPdf, null, Modifier.size(mitSchrift(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.vouchers_export))
             }
@@ -168,7 +179,7 @@ fun GutscheineCard(
         // Kein eigener Knopf für den Stapel-Import: Die Datei geht über das Feld im
         // Formular, und der Server entscheidet, ob daraus einer oder zwanzig werden.
         if (zustand.gutscheine.isEmpty() && !zustand.laedt && zustand.fehler != null) {
-            ch.brickinventoryapp.ui.components.FehlerHinweis(zustand.fehler, onErneut)
+            FehlerHinweis(zustand.fehler, onErneut)
         } else if (zustand.gutscheine.isEmpty() && !zustand.laedt) {
             Text(
                 stringResource(R.string.vouchers_empty),
@@ -215,7 +226,7 @@ fun GutscheineCard(
         } else zustand.gutscheine.forEach { karte(it, Modifier.fillMaxWidth()) }
 
         // Die Summe — nur bei EINER Waehrung (gutscheinSumme).
-        val summe = ch.brickinventoryapp.ui.gutscheinSumme(zustand.gutscheine)
+        val summe = gutscheinSumme(zustand.gutscheine)
         if (summe != null) {
             HorizontalDivider(Modifier.padding(vertical = Abstaende.klein))
             BezeichnungUndWert(stringResource(R.string.vouchers_total), fmtMoney(summe.first.toDouble(), summe.second),
@@ -228,10 +239,10 @@ fun GutscheineCard(
     val frage = zustand.bestaetigung
     if (frage != null) {
         val nummer = zustand.gutscheine.find { it.id == frage.id }?.number.orEmpty()
-        val loeschen = frage.schritt == ch.brickinventoryapp.ui.GutscheinSchritt.LOESCHEN
-        val pdf = frage.schritt == ch.brickinventoryapp.ui.GutscheinSchritt.PDF ||
-            frage.schritt == ch.brickinventoryapp.ui.GutscheinSchritt.EXPORT
-        ch.brickinventoryapp.ui.components.PasswortRueckfrage(
+        val loeschen = frage.schritt == GutscheinSchritt.LOESCHEN
+        val pdf = frage.schritt == GutscheinSchritt.PDF ||
+            frage.schritt == GutscheinSchritt.EXPORT
+        PasswortRueckfrage(
             titel = stringResource(if (loeschen) R.string.common_delete else R.string.vouchers_confirm_title),
             text = when {
                 loeschen -> stringResource(R.string.vouchers_delete_confirm, nummer)
@@ -287,9 +298,9 @@ private fun GutscheinFormularBlatt(
         // Tastatur und die Zwischenablage liefern trotzdem Buchstaben. Die
         // Regel steht in ZahlentastaturTest, der Filter in NumericInput.kt.
         // Ausführlich: docs/begruendungen/feature-finanzen/ui/screens/GutscheineCard.kt.md#nummermaske
-        val nummerMaske = ch.brickinventoryapp.ui.model.istMaskierteNummer(zustand.nummer)
+        val nummerMaske = istMaskierteNummer(zustand.nummer)
         OutlinedTextField(
-            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
+            shape = Formen.feld,
             value = zustand.nummer,
             onValueChange = {
                 onFeld(NumericInput.quantity(eingabeUeberMaske(zustand.nummer, it, nummerMaske)), null, null, null)
@@ -302,9 +313,9 @@ private fun GutscheinFormularBlatt(
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            val pinMaske = zustand.pin == ch.brickinventoryapp.ui.model.PIN_MASKE_ANZEIGE
+            val pinMaske = zustand.pin == PIN_MASKE_ANZEIGE
             OutlinedTextField(
-                shape = ch.brickinventoryapp.ui.theme.Formen.feld,
+                shape = Formen.feld,
                 value = zustand.pin,
                 onValueChange = { onFeld(null, NumericInput.quantity(eingabeUeberMaske(zustand.pin, it, pinMaske)), null, null) },
                 label = { Text(stringResource(R.string.vouchers_pin)) },
@@ -313,7 +324,7 @@ private fun GutscheinFormularBlatt(
                 modifier = Modifier.weight(1f),
             )
             OutlinedTextField(
-                shape = ch.brickinventoryapp.ui.theme.Formen.feld,
+                shape = Formen.feld,
                 value = zustand.betrag,
                 onValueChange = { onFeld(null, null, NumericInput.price(it), null) },
                 label = { Text(stringResource(R.string.vouchers_amount)) },
@@ -336,7 +347,7 @@ private fun GutscheinFormularBlatt(
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedButton(onClick = onPdfWaehlen, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-                    Icon(Icons.Default.UploadFile, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)))
+                    Icon(Icons.Default.UploadFile, null, Modifier.size(mitSchrift(18.dp)))
                     Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.vouchers_pick_pdf))
                 }
@@ -386,7 +397,7 @@ private fun GutscheinKarte(
     onGuthaben: () -> Unit,
     guthabenLaeuft: Boolean,
     /** Nummer und PIN im Klartext, wenn sie auf dieser Seite schon geholt sind. */
-    klartext: ch.brickinventoryapp.ui.model.KlartextAnsicht?,
+    klartext: KlartextAnsicht?,
     modifier: Modifier = Modifier,
 ) {
     var menue by rememberSaveable { mutableStateOf(false) }
@@ -403,7 +414,7 @@ private fun GutscheinKarte(
                 Text(nummer, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             }
             Box {
-                ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.vouchers_cd_menu, nummer)) {
+                MitTooltip(stringResource(R.string.vouchers_cd_menu, nummer)) {
                     IconButton(onClick = { menue = true }) {
                         if (guthabenLaeuft) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         else Icon(Icons.Default.MoreVert, stringResource(R.string.vouchers_cd_menu, nummer))
@@ -431,7 +442,7 @@ private fun GutscheinKarte(
             Text(fmtMoney(g.amount, g.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             // Der Stand der Abfrage als Etikett und im Wort, nicht nur als Farbe.
             val stand = fmtTag(g.guthabenGeprueftAm)
-            Surface(shape = ch.brickinventoryapp.ui.theme.Formen.etikett, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+            Surface(shape = Formen.etikett, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
                 Text(
                     if (stand != null) stringResource(R.string.vouchers_balance_as_of, stand)
                     else stringResource(R.string.vouchers_balance_never),
@@ -449,7 +460,7 @@ private fun GutscheinKarte(
                 Text(pinText, style = MaterialTheme.typography.bodyMedium)
             }
             val pinSchalter = stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show)
-            ch.brickinventoryapp.ui.components.MitTooltip(pinSchalter) {
+            MitTooltip(pinSchalter) {
                 IconButton(onClick = onPinSchalten) {
                     // In primary wie das Kopiersymbol daneben: gleichrangige Handlungen, eine Farbe.
                     Icon(
@@ -503,7 +514,7 @@ private fun KopierZeile(
     ) {
         inhalt()
         // Dieselbe Grösse an Nummer und PIN (vorher 24 und 18 dp).
-        Icon(Icons.Default.ContentCopy, null, Modifier.size(ch.brickinventoryapp.ui.components.mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
+        Icon(Icons.Default.ContentCopy, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -516,7 +527,7 @@ private fun WaehrungsWahl(gewaehlt: String, onWahl: (String) -> Unit) {
     var offen by rememberSaveable { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = offen, onExpandedChange = { offen = it }) {
         OutlinedTextField(
-            shape = ch.brickinventoryapp.ui.theme.Formen.feld,
+            shape = Formen.feld,
             value = gewaehlt,
             onValueChange = {},
             readOnly = true,

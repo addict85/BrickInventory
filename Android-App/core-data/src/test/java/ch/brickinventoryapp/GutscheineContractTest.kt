@@ -8,6 +8,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import ch.brickinventoryapp.data.repository.Result
 
 /**
  * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
@@ -121,7 +122,7 @@ class GutscheineContractTest {
         pfade.antworten["/api/v1/vouchers/5/klartext"] =
             """{"success":true,"id":5,"number":"6000111122223333","pin":"9876"}"""
         val r = runBlocking { repo.liste(); repo.klartext(5, ZweiterFaktorAnfrage(password = "geheim")) }
-        assertEquals("6000111122223333", (r as ch.brickinventoryapp.data.repository.Result.Success).data.number)
+        assertEquals("6000111122223333", (r as Result.Success).data.number)
         val abgelegt = ordner.walkTopDown().filter { it.isFile }
             .filter { it.readText().let { t -> "6000111122223333" in t || "9876" in t } }.toList()
         assertTrue("Klartext liegt auf der Platte: $abgelegt", abgelegt.isEmpty())

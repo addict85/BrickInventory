@@ -26,6 +26,7 @@ import ch.brickinventoryapp.ui.model.AuftragAnsicht
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.viewmodel.HintergrundUiState
+import ch.brickinventoryapp.util.fmtTag
 
 /**
  * Die Hintergrundarbeiten aus der Auftragstabelle, wie in der Webapp. Die
@@ -59,7 +60,7 @@ internal fun HintergrundSection(
             if (ansicht == null) return@Column
             for (p in ansicht.pausen) {
                 Text(stringResource(R.string.hintergrund_pause, auftragsArtText(p.art)?.let { stringResource(it) } ?: p.art,
-                    ch.brickinventoryapp.util.fmtTag(p.bis) ?: "—", p.grund), style = MaterialTheme.typography.bodySmall)
+                    fmtTag(p.bis) ?: "—", p.grund), style = MaterialTheme.typography.bodySmall)
             }
             if (ansicht.bildbedarf > 0) Text(pluralStringResource(R.plurals.hintergrund_bildbedarf,
                 ansicht.bildbedarf, ansicht.bildbedarf), style = MaterialTheme.typography.bodySmall)
@@ -99,7 +100,7 @@ private fun AuftragZeile(a: AuftragAnsicht, onAbbrechen: () -> Unit, onWiederhol
             Text(kopf, style = MaterialTheme.typography.bodyMedium)
             a.faelligAb?.let { zeit ->
                 Text(stringResource(if (a.geplant) R.string.hintergrund_geplant else R.string.hintergrund_faellig,
-                    ch.brickinventoryapp.util.fmtTag(zeit) ?: zeit), style = MaterialTheme.typography.bodySmall,
+                    fmtTag(zeit) ?: zeit), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             a.fehler?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }

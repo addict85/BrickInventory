@@ -18,6 +18,9 @@ import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.*
 import kotlinx.coroutines.launch
+import ch.brickinventoryapp.ui.CsvHochladenUiState
+import ch.brickinventoryapp.ui.model.CsvImportArt
+import ch.brickinventoryapp.ui.viewmodel.CSV_MAX_BYTES
 
 /**
  * Eine CSV-Datei hochladen — Sets, Teile, Minifiguren, Merkliste oder Preisalarme,
@@ -28,15 +31,15 @@ import kotlinx.coroutines.launch
  */
 @Composable
 internal fun CsvImportCard(
-    csvZustand: ch.brickinventoryapp.ui.CsvHochladenUiState,
-    onDatei: (ch.brickinventoryapp.ui.model.CsvImportArt, android.net.Uri) -> Unit,
+    csvZustand: CsvHochladenUiState,
+    onDatei: (CsvImportArt, android.net.Uri) -> Unit,
     onSchliessen: () -> Unit,
 ) {
     // Welche Art beim Antippen gemeint war — der Dateiauswahl-Vertrag liefert nur den
     // Uri, nicht den Knopf. rememberSaveable, nicht remember: Die Dateiauswahl ist
     // eine fremde Anwendung, währenddessen darf das System diesen Vorgang beenden;
     // fiele der Wert auf SETS zurück, landete eine Teile-Datei in der falschen Tabelle.
-    var gewaehlteArt by rememberSaveable { mutableStateOf(ch.brickinventoryapp.ui.model.CsvImportArt.SETS) }
+    var gewaehlteArt by rememberSaveable { mutableStateOf(CsvImportArt.SETS) }
     val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> if (uri != null) onDatei(gewaehlteArt, uri) }
@@ -50,17 +53,17 @@ internal fun CsvImportCard(
 
     Text(
         stringResource(R.string.csv_upload_hint,
-            (ch.brickinventoryapp.ui.viewmodel.CSV_MAX_BYTES / 1024 / 1024).toInt()),
+            (CSV_MAX_BYTES / 1024 / 1024).toInt()),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 
     Abschnitt(titel = null, innenAbstand = false) {
         listOf(
-            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.SETS, R.string.csv_upload_sets, R.string.csv_desc_sets, R.string.csv_format_sets),
-            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.TEILE, R.string.csv_upload_parts, R.string.csv_desc_parts, R.string.csv_format_parts),
-            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.MINIFIGUREN, R.string.csv_upload_figs, R.string.csv_desc_figs, R.string.csv_format_figs),
-            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.MERKLISTE, R.string.csv_upload_wanted, R.string.csv_desc_wanted, R.string.csv_format_wanted),
-            CsvArt(ch.brickinventoryapp.ui.model.CsvImportArt.PREISALARME, R.string.csv_upload_alerts, R.string.csv_desc_alerts, R.string.csv_format_alerts),
+            CsvArt(CsvImportArt.SETS, R.string.csv_upload_sets, R.string.csv_desc_sets, R.string.csv_format_sets),
+            CsvArt(CsvImportArt.TEILE, R.string.csv_upload_parts, R.string.csv_desc_parts, R.string.csv_format_parts),
+            CsvArt(CsvImportArt.MINIFIGUREN, R.string.csv_upload_figs, R.string.csv_desc_figs, R.string.csv_format_figs),
+            CsvArt(CsvImportArt.MERKLISTE, R.string.csv_upload_wanted, R.string.csv_desc_wanted, R.string.csv_format_wanted),
+            CsvArt(CsvImportArt.PREISALARME, R.string.csv_upload_alerts, R.string.csv_desc_alerts, R.string.csv_format_alerts),
         ).forEachIndexed { i, (art, titel, inhalt, spalten) ->
             if (i > 0) HorizontalDivider()
             ListItem(
@@ -113,7 +116,7 @@ internal fun CsvImportCard(
 
 /** Eine Importart: was sie ist, was drinsteht (Klartext) und wie die Spalten der Datei heissen. */
 private data class CsvArt(
-    val art: ch.brickinventoryapp.ui.model.CsvImportArt,
+    val art: CsvImportArt,
     val titel: Int,
     val inhalt: Int,
     val spalten: Int,

@@ -31,6 +31,7 @@ import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.components.MitTooltip
 
 @Composable
 fun BarcodeScannerScreen(
@@ -156,7 +157,7 @@ fun BarcodeScannerScreen(
                 KameraErlaubnisHinweis { cameraPermission.anfragen() }
             }
         }
-        ch.brickinventoryapp.ui.components.MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
+        MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
             IconButton(onClick = onDismiss, modifier = Modifier.padding(Abstaende.gross)) {
                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
             }

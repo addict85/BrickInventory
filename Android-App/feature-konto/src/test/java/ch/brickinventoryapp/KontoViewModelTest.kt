@@ -19,6 +19,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import ch.brickinventoryapp.ui.Sitzung
 
 /**
  * Das Konto-ViewModel, ausgeführt gegen einen Testserver.
@@ -69,7 +70,7 @@ class KontoViewModelTest {
         cacheDir.mkdirs()
         kanal = MeldungsKanal()
         vm = KontoViewModel(KontoRepository(TestApi.fuer(server), ResponseCache { cacheDir }), NummernTexte, kanal,
-                            ch.brickinventoryapp.ui.Sitzung())
+                            Sitzung())
     }
 
     @After

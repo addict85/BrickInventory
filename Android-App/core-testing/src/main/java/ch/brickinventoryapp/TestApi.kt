@@ -30,6 +30,8 @@ import retrofit2.Retrofit
 import java.io.File
 import java.util.Collections
 import java.util.concurrent.TimeUnit
+import ch.brickinventoryapp.data.api.ApiJson
+import ch.brickinventoryapp.ui.Aenderung
 
 /** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */
 object TestApi {
@@ -38,7 +40,7 @@ object TestApi {
     fun fuer(server: MockWebServer): BrickApiService {
         val client = OkHttpClient.Builder()
             .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
-        val json = ch.brickinventoryapp.data.api.ApiJson
+        val json = ApiJson
         return Retrofit.Builder()
             .baseUrl(server.url("/"))
             .client(client)
@@ -149,8 +151,8 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, io: Cor
      * nach dem Zustand, auf den der Test wartet. Bei 0 kurz warten: Es soll
      * nichts kommen.
      */
-    fun gemeldet(erwartet: Int, block: () -> Unit): List<ch.brickinventoryapp.ui.Aenderung> {
-        val liste = Collections.synchronizedList(mutableListOf<ch.brickinventoryapp.ui.Aenderung>())
+    fun gemeldet(erwartet: Int, block: () -> Unit): List<Aenderung> {
+        val liste = Collections.synchronizedList(mutableListOf<Aenderung>())
         val sammler = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
             bestand.aenderungen.collect { liste += it }
         }
